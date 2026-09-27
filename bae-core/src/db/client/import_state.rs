@@ -11,7 +11,6 @@ mod rows;
 mod session_rows;
 mod signal_rows;
 mod verdict_rows;
-mod watched_folder_adoption;
 mod watched_folder_removal;
 
 use edit_rows::{delete_file_edits, insert_file_edits};
@@ -39,9 +38,8 @@ use std::collections::HashSet;
 use verdict_rows::{delete_verdict, insert_verdict};
 
 impl Database {
-    /// Whether a draft is already stored for `content_hash`. A candidate that
-    /// has one is never re-seeded — a rescan re-reads files, not decisions —
-    /// so this is what the pre-fill asks before reading any tags.
+    /// Whether a draft is stored for `content_hash`; the pre-fill never
+    /// re-seeds a candidate that has one.
     pub(crate) async fn candidate_has_draft(&self, content_hash: &str) -> Result<bool, DbError> {
         let content_hash = content_hash.to_string();
         self.read(move |sql| {
@@ -58,12 +56,7 @@ impl Database {
     }
 }
 
-/// Seed a candidate's stored draft from the folder's own file tags: the draft
-/// they project and the provenance naming them as its source, written by
-/// discovery rather than by anyone who looked at it. The cover the tags embed
-/// is stored with the folder's own cover, beside this.
-/// Store `edits` as every file decision held for `content_hash`, in place of
-/// whatever was held.
+/// Replace every file decision held for `content_hash` with `edits`.
 pub(super) fn store_file_edits(
     sql: &SqlContext<'_, '_>,
     content_hash: &str,
@@ -73,6 +66,8 @@ pub(super) fn store_file_edits(
     insert_file_edits(sql, content_hash, edits)
 }
 
+/// Seed a candidate's draft from the folder's file tags, authored by the
+/// pre-fill, with provenance naming the tags as its source.
 pub(crate) fn insert_file_tags_draft(
     sql: &SqlContext<'_, '_>,
     content_hash: &str,
@@ -123,10 +118,29 @@ pub(super) fn require_current_candidate(
         .map_err(|_| DbError::Message("candidate scan generation is negative".into()))
 }
 
-/// The next scan generation. One upsert rather than a read of a seeded row
-/// and a write back: the counter's row is created by the first allocation,
-/// so a store whose device-local tables were rebuilt without the migration's
-/// seed still scans.
+/// `folder`, a stored folder under the watched folder `root`, by its path
+/// below it.
+pub(super) fn relative_below(root: &str, folder: &str) -> Result<String, DbError> {
+    crate::import::watched_folder::candidate_relative_path(root, std::path::Path::new(folder))
+        .map_err(|error| DbError::Message(error.to_string()))
+}
+
+/// The watched folder covering `folder`. A decision about a folder is deleted
+/// with the watched folder covering it, so one stored outside every watched
+/// folder would never be deleted.
+pub(super) fn require_watched(sql: &SqlContext<'_, '_>, folder: &str) -> Result<String, DbError> {
+    let roots: Vec<String> = sql.query(
+        "SELECT path FROM watched_import_folders",
+        [],
+        |row| row.get(0),
+    )?;
+    crate::import::watched_folder::covering_root(&roots, folder)
+        .map(str::to_string)
+        .ok_or_else(|| DbError::Message(format!("{folder} is under no watched folder")))
+}
+
+/// The next scan generation. An upsert, so a missing seed row is created
+/// rather than failing the scan.
 pub(super) fn next_folder_scan_generation(sql: &SqlContext<'_, '_>) -> Result<i64, DbError> {
     let generation: i64 = sql.query_row(
         "INSERT INTO folder_scan_generation_sequence (singleton, last_generation) \
@@ -140,11 +154,8 @@ pub(super) fn next_folder_scan_generation(sql: &SqlContext<'_, '_>) -> Result<i6
 }
 
 impl Database {
-    /// Every watched folder, in the order they were added.
-    ///
-    /// A stored root is canonical by construction and no two overlap, so a
-    /// store that says otherwise is corrupt and is read loudly rather than
-    /// quietly rewritten.
+    /// Every watched folder, in the order they were added. A stored root that
+    /// is not canonical, or overlaps another, fails the read.
     pub async fn load_watched_import_folders(
         &self,
     ) -> Result<Vec<crate::import::WatchedFolder>, DbError> {
@@ -168,29 +179,29 @@ impl Database {
             .collect())
     }
 
-    /// Every skipped candidate under one root, by relative path — what a scan
-    /// pass reads once so each candidate it writes is stamped without a
-    /// query of its own. A stored path is normalized by construction, so one
-    /// that is not is corrupt durable state and is read loudly.
+    /// Every skipped candidate under one root, by its path below the root, read
+    /// once per scan pass. A stored path that is not canonical fails the read.
     pub async fn load_skipped_import_candidates(
         &self,
         watched_folder_path: &str,
     ) -> Result<HashSet<String>, DbError> {
-        let watched_folder_path = watched_folder_path.to_string();
         let paths = self
             .read(move |sql| {
                 Ok(sql.query(
-                    "SELECT relative_candidate_path FROM skipped_import_candidates \
-                     WHERE watched_folder_path = ?",
-                    [watched_folder_path],
+                    "SELECT candidate_path FROM skipped_import_candidates",
+                    [],
                     |row| row.get::<_, String>(0),
                 )?)
             })
             .await?;
+        let mut below = HashSet::new();
         for path in &paths {
-            crate::import::watched_folder::validate_relative_path(path)?;
+            crate::import::watched_folder::validate_stored_folder(path)?;
+            if std::path::Path::new(path).starts_with(watched_folder_path) {
+                below.insert(relative_below(watched_folder_path, path)?);
+            }
         }
-        Ok(paths.into_iter().collect())
+        Ok(below)
     }
 
     /// Every watched root, in the order they were added.
@@ -205,18 +216,14 @@ impl Database {
         .await
     }
 
-    /// Watch the folder `path` names, keyed by its canonical spelling. `false`
-    /// when that folder is already watched, however it was spelled this time.
+    /// Watch the folder `path` names, keyed by its canonical spelling; `false`
+    /// when it is already watched.
     ///
-    /// The overlap check reads the roots inside the write that inserts, so
-    /// the check and the insert are one decision: two overlapping folders
-    /// added at once cannot both pass a check that saw neither. The answer
-    /// that the folder is already watched writes nothing, so it is read
-    /// first; a folder watched in between refuses the write instead, and
-    /// asking again answers `false`.
+    /// The overlap check runs inside the inserting write, so two overlapping
+    /// folders added at once cannot both pass. Already-watched is answered by
+    /// a read first, since the store refuses a write that changes nothing; a
+    /// folder watched in between fails the write.
     pub async fn add_watched_import_folder(&self, path: &str) -> Result<bool, DbError> {
-        // Keyed by the one spelling this host stores, so two spellings of one
-        // folder can never become two rows.
         let path = crate::import::watched_folder::canonical_absolute_root(path)?;
         if self.watched_import_roots().await?.contains(&path) {
             return Ok(false);
@@ -256,26 +263,23 @@ impl Database {
         .await
     }
 
+    /// Set the candidate whose folder on disk is `candidate_path` aside, or
+    /// back; `false` when it already was.
     pub async fn set_import_candidate_skipped(
         &self,
-        watched_folder_path: &str,
-        relative_candidate_path: &str,
+        candidate_path: &str,
         skipped: bool,
     ) -> Result<bool, DbError> {
-        crate::import::watched_folder::validate_relative_path(relative_candidate_path)?;
-        let watched_folder_path = watched_folder_path.to_string();
-        let relative_candidate_path = relative_candidate_path.to_string();
-        // Restating what the row already says writes nothing, so it must not
-        // open a write to discover that: read the standing answer first.
+        crate::import::watched_folder::validate_stored_folder(candidate_path)?;
+        let candidate_path = candidate_path.to_string();
+        // The store refuses a write that changes nothing, so read first.
         let stored = {
-            let watched_folder_path = watched_folder_path.clone();
-            let relative_candidate_path = relative_candidate_path.clone();
+            let candidate_path = candidate_path.clone();
             self.read(move |sql| {
                 Ok(sql
                     .query_row(
-                        "SELECT 1 FROM skipped_import_candidates \
-                         WHERE watched_folder_path = ? AND relative_candidate_path = ?",
-                        params![watched_folder_path, relative_candidate_path],
+                        "SELECT 1 FROM skipped_import_candidates WHERE candidate_path = ?",
+                        [candidate_path],
                         |_| Ok(()),
                     )
                     .optional()?
@@ -288,17 +292,16 @@ impl Database {
         }
         self.call(move |sql| {
             let changed = if skipped {
+                require_watched(sql, &candidate_path)?;
                 sql.execute(
-                    "INSERT INTO skipped_import_candidates \
-                         (watched_folder_path, relative_candidate_path) VALUES (?, ?) \
+                    "INSERT INTO skipped_import_candidates (candidate_path) VALUES (?) \
                      ON CONFLICT DO NOTHING",
-                    params![watched_folder_path, relative_candidate_path],
+                    [candidate_path],
                 )?
             } else {
                 sql.execute(
-                    "DELETE FROM skipped_import_candidates \
-                     WHERE watched_folder_path = ? AND relative_candidate_path = ?",
-                    params![watched_folder_path, relative_candidate_path],
+                    "DELETE FROM skipped_import_candidates WHERE candidate_path = ?",
+                    [candidate_path],
                 )?
             };
             Ok(changed == 1)
@@ -308,10 +311,9 @@ impl Database {
 }
 
 impl Database {
-    /// Store the reading a scan settled on for one folder, under the grouping
-    /// key the scan gave it, without disturbing the scan that produced it: no
-    /// generation bump, no re-scan. Refused when the folder already reads
-    /// some stored way — the scan proposes only where nothing is stored.
+    /// Store the reading a scan settled on for one folder under the grouping
+    /// key the scan gave it, without a new scan generation. A user's reading
+    /// is kept; the write fails when the folder is stored under another key.
     pub async fn record_scanned_folder_release_decision(
         &self,
         key: &FolderReleaseDecisionKey,
@@ -332,8 +334,7 @@ impl Database {
         .await
     }
 
-    /// How every folder below one watched root reads, where a reading is
-    /// stored.
+    /// Each stored folder reading below one watched root, by path below it.
     pub async fn load_folder_release_decisions(
         &self,
         watched_folder_path: &str,
@@ -341,10 +342,9 @@ impl Database {
         let watched_folder_path = watched_folder_path.to_string();
         self.read(move |sql| {
             let rows = sql.query(
-                "SELECT anchor_relative_path, combined, author, key \
-                 FROM release_grouping \
-                 WHERE watched_folder_path = ? AND anchor_relative_path IS NOT NULL",
-                [watched_folder_path],
+                "SELECT anchor_folder, combined, author, key \
+                 FROM release_grouping WHERE anchor_folder IS NOT NULL",
+                [],
                 |row| {
                     Ok((
                         row.get::<_, String>(0)?,
@@ -354,9 +354,13 @@ impl Database {
                     ))
                 },
             )?;
-            let mut readings = HashMap::with_capacity(rows.len());
-            for (path, combined, author, grouping) in rows {
-                crate::import::watched_folder::validate_relative_path(&path)?;
+            let mut readings = HashMap::new();
+            for (folder, combined, author, grouping) in rows {
+                crate::import::watched_folder::validate_stored_folder(&folder)?;
+                if !std::path::Path::new(&folder).starts_with(&watched_folder_path) {
+                    continue;
+                }
+                let path = relative_below(&watched_folder_path, &folder)?;
                 let author = match author.as_str() {
                     "user" => FolderReleaseDecisionAuthor::User,
                     "heuristic" => FolderReleaseDecisionAuthor::Heuristic,
@@ -384,17 +388,9 @@ impl Database {
         .await
     }
 
-    /// Every candidate's user-set file decisions, keyed by `content_hash` — the
-    /// shape a folder scan takes so the roles it reports are the ones the user
-    /// settled, not only the ones its filenames propose.
-    ///
-    /// One candidate's file decisions. Progressive scans call this after they
-    /// compute a candidate content hash so each emitted row performs one indexed
-    /// lookup instead of rereading the whole candidate-state table.
-    ///
-    /// Projected from the one stored-row read rather than a query of its own:
-    /// the sweep and the scan want different halves of the same few hundred
-    /// rows, and two queries over one table is two things to keep in step.
+    /// Every candidate's user-set file decisions, keyed by `content_hash`, so a
+    /// folder scan reports the roles the user settled. Projected from the
+    /// candidate-state read rather than a second query over the same rows.
     pub async fn load_stored_candidate_edits(&self) -> Result<StoredCandidateEdits, DbError> {
         self.read(move |sql| load_states_rows_on(&sql, None))
             .process(|process| {
@@ -408,9 +404,8 @@ impl Database {
             .await
     }
 
-    /// One candidate's file decisions. Progressive scans call this after they
-    /// compute a candidate content hash so each emitted row performs one indexed
-    /// lookup instead of rereading the whole candidate-state table.
+    /// One candidate's file decisions, by one indexed lookup, for a scan that
+    /// has just computed the content hash.
     pub async fn load_candidate_file_edits(
         &self,
         content_hash: &str,
@@ -421,13 +416,8 @@ impl Database {
             .await
     }
 
-    /// Every stored `import_candidate_state` row, keyed by `content_hash`. The
-    /// queue is small enough to read whole; callers classify in memory rather
-    /// than filtering in SQL.
-    ///
-    /// A row whose columns hold a spelling no writer here produces cannot come
-    /// from either write path above. Loading fails rather than substituting a
-    /// plausible candidate shape.
+    /// Every stored `import_candidate_state` row, keyed by `content_hash`. A
+    /// column holding a value no writer produces fails the read.
     pub async fn load_import_candidate_states(
         &self,
     ) -> Result<HashMap<String, DbImportCandidateState>, DbError> {
@@ -452,10 +442,9 @@ impl Database {
     }
 }
 
-/// Apply source decisions to every candidate sharing the preparation: each
-/// takes its settled files, and every grouping built from one of them is
-/// rebuilt. Every row must still have the revision the caller prepared
-/// against.
+/// Give every candidate sharing the preparation its settled files and rebuild
+/// every grouping built from one of them. Every row must still be at the
+/// revision the caller prepared against.
 pub(super) fn settle_scanned_candidates(
     sql: &SqlContext<'_, '_>,
     content_hash: &str,
@@ -492,12 +481,9 @@ pub(super) fn settle_scanned_candidates(
                         "persisted candidate {path} was missing from the settled file edit"
                     ))
                 })?;
-                // The file-tag reading names the files it was read from, so
-                // taking the file rows away takes it too. The decision
-                // changed which files are tracks, not the files, so the
-                // reading is laid back down over the settled rows as it was —
-                // with the revision it was taken at, which is no longer the
-                // candidate's.
+                // Deleting the file rows deletes the file-tag reading with
+                // them; the files themselves did not change, so it is put
+                // back as it was, at the revision it was taken at.
                 let reading =
                     folder_scans::read::load_file_tag_snapshot(sql, &watched_folder_path, &path)?;
                 sql.execute(
@@ -551,8 +537,6 @@ pub(super) fn settle_scanned_candidates(
             missing.join(", ")
         )));
     }
-    // A release a grouping built from one of these is built again, with the
-    // files it now holds.
     let settled: Vec<String> = updated_folders.into_iter().collect();
     let regrouped = super::release_groupings::rebuild_groupings(sql, &settled, &[], observed_at)?;
     updated_candidates.extend(regrouped.written.into_iter().filter_map(|item| match item {

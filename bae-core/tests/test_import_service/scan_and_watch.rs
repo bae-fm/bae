@@ -1,4 +1,4 @@
-/// 2. Folder scan produces correct candidates from a multi-album directory.
+/// A folder scan finds each album in a multi-album folder as its own candidate.
 #[tokio::test]
 async fn folder_scan_produces_candidates() {
     support::tracing_init();
@@ -34,20 +34,16 @@ async fn folder_scan_produces_candidates() {
     .await
     .expect("Scan did not finish within 5s");
 
-    // `Collection/` has no disc-indicator subdirs, so it's a navigation
-    // container. Each album inside it is its own candidate.
+    // `Collection/` has no disc-named subfolders, so it only holds albums.
     assert_eq!(candidates.len(), 2, "each album should be a candidate");
     let names: std::collections::BTreeSet<_> = candidates.iter().map(|c| c.name.as_str()).collect();
     assert!(names.contains("Artist - First Album"));
     assert!(names.contains("Artist - Second Album"));
 }
 
-/// The watcher reconciles a folder against the candidates it last emitted: a new
-/// release folder appears as a candidate, and a deleted one emits
-/// `CandidateRemoved`. Driven by `scan_watched_folders` re-triggers (plus the
-/// watcher's own debounced FS reconciles), so it doesn't hinge on
-/// filesystem-event timing — both paths reconcile to the same on-disk truth, so
-/// each step waits for its expected candidate event regardless of how many fire.
+/// A new release folder appears as a candidate and a deleted one emits
+/// `CandidateRemoved`. Each step rescans explicitly and waits for its event, so
+/// filesystem-event timing does not matter.
 #[tokio::test]
 async fn watcher_reconciles_added_and_removed_candidates() {
     support::tracing_init();
@@ -113,12 +109,8 @@ struct ScanBatch {
     removed: Vec<String>,
 }
 
-/// Drain scan events until one matching `done` arrives, collecting the candidate
-/// paths added and candidate keys removed along the way. Event-driven: returns
-/// the instant the awaited event lands, and fails loud if it never does within a
-/// bounded deadline. Positive assertions read the returned batch. (The watcher's
-/// debounced FS reconcile can land alongside an explicit re-scan; both reconcile
-/// to the same on-disk truth, so the batch is stable however many fire.)
+/// Read scan events until one matching `done` arrives, collecting the
+/// candidates added and removed along the way; panics after the deadline.
 async fn scan_batch_until(
     rx: &mut tokio::sync::mpsc::UnboundedReceiver<ScanEvent>,
     what: &str,
@@ -142,8 +134,6 @@ async fn scan_batch_until(
     ScanBatch { added, removed }
 }
 
-/// Wait for a single scan event matching `pred`, failing loud if none arrives
-/// within a bounded deadline — the event-driven form of a fixed positive window.
 /// The first candidate list `accept` admits, within the test deadline.
 async fn wait_for_candidates(
     f: &ImportFixture,
@@ -187,6 +177,7 @@ fn candidate_rows(
         .collect()
 }
 
+/// Wait for a scan event matching `pred`; panics after the deadline.
 async fn wait_for_scan_event(
     rx: &mut tokio::sync::mpsc::UnboundedReceiver<ScanEvent>,
     what: &str,
@@ -199,17 +190,14 @@ async fn wait_for_scan_event(
     .unwrap_or_else(|| panic!("timed out after 10s waiting for {what}"));
 }
 
-/// Collect every scan event that arrives within a fixed window. For the
-/// negative assertions below — that after a handle call NO event of some kind
-/// arrives (an unwatched folder surfaces no candidate; a redundant skip
-/// re-broadcasts nothing) — where a window is the assertion, not overhead.
+/// Every scan event that arrives within `window`, for asserting that an event
+/// does not arrive.
 async fn drain_scan_events(
     rx: &mut tokio::sync::mpsc::UnboundedReceiver<ScanEvent>,
     window: std::time::Duration,
 ) -> Vec<ScanEvent> {
     let mut events = Vec::new();
-    // The predicate never accepts, so this returns only once the window is
-    // spent — every event that arrived inside it, which is the assertion.
+    // The predicate never accepts, so this runs the whole window.
     support::next_matching(rx, window, |event| {
         events.push(event);
         None::<()>
@@ -218,10 +206,9 @@ async fn drain_scan_events(
     events
 }
 
-/// `remove_watched_folder` drops the folder from the persisted list, drops its
-/// candidates from the reducer, and broadcasts the shortened list (plus sending
-/// the watcher an `Unwatch`). Exercises the handle's remove path and
-/// `watched_folders` accessor.
+/// `remove_watched_folder` drops the folder from the stored list and its
+/// candidates from the import list, broadcasts the shortened list, and stops
+/// watching it.
 #[tokio::test]
 async fn remove_watched_folder_drops_folder_and_candidates() {
     support::tracing_init();
@@ -268,8 +255,8 @@ async fn remove_watched_folder_drops_folder_and_candidates() {
         .await
         .unwrap();
 
-    // The list accessor reflects the removal synchronously; the candidate
-    // list follows once its query re-reads.
+    // The watched list changes at once; the candidate list once its query
+    // reads again.
     assert!(
         f.handle.watched_folders().await.unwrap().is_empty(),
         "removed folder is gone from the persisted list"
@@ -281,7 +268,7 @@ async fn remove_watched_folder_drops_folder_and_candidates() {
     )
     .await;
 
-    // The shortened (now empty) list is broadcast.
+    // The empty list is broadcast.
     wait_for_scan_event(
         &mut scan_rx,
         "the shortened folder-list broadcast",
@@ -289,9 +276,7 @@ async fn remove_watched_folder_drops_folder_and_candidates() {
     )
     .await;
 
-    // The watcher actually stopped: a new release folder appearing under the
-    // now-unwatched root produces no scan activity (the reconcile that would
-    // surface it never runs).
+    // The watch stopped: a new release folder under the root is not found.
     let new_album = collection.join("Artist - Second Album");
     fs::create_dir_all(&new_album).unwrap();
     generate_album_files(&new_album, &["01 Track.flac"]);
@@ -333,10 +318,8 @@ async fn unavailable_watched_folder_remains_durable_and_reports_scan_failure() {
     assert_eq!(f.handle.watched_folders().await.unwrap().len(), 1);
 }
 
-/// A scan reads the user's stored file decisions before it walks anything. When
-/// that read fails — a database an older build left behind, missing what this
-/// one reads — the root lands on the failed status carrying the error, so the
-/// import list has something to show instead of staying silent.
+/// A scan that cannot read the stored file decisions leaves the root failed,
+/// carrying the error.
 #[tokio::test]
 async fn scan_whose_stored_decisions_cannot_be_read_records_the_failure() {
     support::tracing_init();
@@ -381,10 +364,8 @@ async fn scan_whose_stored_decisions_cannot_be_read_records_the_failure() {
     );
 }
 
-/// Choosing a folder that is already watched reads it again. It used to return
-/// having done nothing at all — no scan, no status, no log line — so a user
-/// whose folder could not be read got the same silence however many times they
-/// picked it.
+/// Choosing a folder that is already watched reads it again, so a folder that
+/// could not be read reports its status again.
 #[tokio::test]
 async fn adding_an_already_watched_folder_reads_it_again() {
     support::tracing_init();
@@ -425,8 +406,8 @@ async fn adding_an_already_watched_folder_reads_it_again() {
     assert_eq!(f.handle.watched_folders().await.unwrap().len(), 1);
 }
 
-/// A folder inside a watched folder is already covered by it: adding it reads
-/// the watched folder again rather than watching an overlapping second root.
+/// Adding a folder inside a watched one reads the watched one again rather
+/// than watching an overlapping root.
 #[tokio::test]
 async fn adding_a_folder_inside_a_watched_one_reads_the_watched_one_again() {
     support::tracing_init();
@@ -472,11 +453,159 @@ async fn adding_a_folder_inside_a_watched_one_reads_the_watched_one_again() {
     assert_eq!(watched[0].path, root_key);
 }
 
-/// A refresh waits for its scan to be over. If a watched root disappears, the
-/// scan records the failed status and preserves the last candidate snapshot
-/// rather than turning an unavailable filesystem into removals — and the
-/// refresh returns having done what was asked, since what the scan found is
-/// the folder's status, not the refresh's outcome.
+/// An album folder with one track at `relative` under the fixture's folder.
+fn album_dir(f: &ImportFixture, relative: &str) -> std::path::PathBuf {
+    let dir = f.temp_path().join(relative);
+    fs::create_dir_all(&dir).unwrap();
+    generate_album_files(&dir, &["01 Track.flac"]);
+    dir
+}
+
+fn path_string(path: &Path) -> String {
+    path.to_string_lossy().into_owned()
+}
+
+/// Wait until every one of `roots` has been read to the end.
+async fn wait_for_reads(f: &ImportFixture, what: &str, roots: &[&Path]) {
+    let roots: Vec<String> = roots.iter().map(|root| path_string(root)).collect();
+    wait_for_candidates(f, what, |projection| {
+        roots.iter().all(|root| {
+            projection.folder_scans.statuses.iter().any(|status| {
+                &status.watched_folder_path == root
+                    && matches!(status.status, bae_core::import::FolderScanStatus::Complete)
+            })
+        })
+    })
+    .await;
+}
+
+/// The stored candidate at `path`, as a scanned folder.
+async fn scanned_folder(
+    f: &ImportFixture,
+    path: &str,
+) -> (bae_core::import::FolderCandidate, bool) {
+    match f.handle.get_candidate(path).await.unwrap() {
+        Some(bae_core::import::ImportCandidateSnapshot::Folder {
+            candidate, skipped, ..
+        }) => (candidate, skipped),
+        other => panic!("{path} is a scanned folder: {other:?}"),
+    }
+}
+
+/// A folder holding watched folders is watched in their place, and a skip, a
+/// folder read as one release, and a pick made under them all stay.
+#[tokio::test]
+async fn a_folder_holding_watched_folders_takes_them_over_and_keeps_what_was_decided() {
+    support::tracing_init();
+    let f = ImportFixture::new().await;
+    let music = f.temp_path().join("Music");
+    let artist = music.join("Artist");
+    let other = music.join("Other Artist");
+    let skipped = album_dir(&f, "Music/Artist/Album");
+    let picked = album_dir(&f, "Music/Artist/Album 2");
+    album_dir(&f, "Music/Other Artist/Box/Album A");
+    album_dir(&f, "Music/Other Artist/Box/Album B");
+    f.handle.add_watched_folder(path_string(&artist)).await.unwrap();
+    f.handle.add_watched_folder(path_string(&other)).await.unwrap();
+    wait_for_reads(&f, "the inner folders are read", &[&artist, &other]).await;
+
+    f.handle
+        .set_candidate_skipped(path_string(&skipped), true)
+        .await
+        .unwrap();
+    f.handle
+        .select_candidate_metadata_provenance(
+            path_string(&picked),
+            MetadataProvenance::FileMetadata,
+        )
+        .await
+        .unwrap();
+    let combined = f
+        .handle
+        .combine_folder(bae_core::import::FolderReleaseDecisionKey {
+            watched_folder_path: path_string(&other),
+            relative_folder_path: "Box".to_string(),
+        })
+        .await
+        .unwrap();
+    let picked_hash = scanned_folder(&f, &path_string(&picked))
+        .await
+        .0
+        .files
+        .content_hash();
+
+    f.handle
+        .add_watched_folder(path_string(&music))
+        .await
+        .expect("the folder takes over the ones inside it");
+    wait_for_reads(&f, "the folder that took over is read", &[&music]).await;
+
+    let watched: Vec<String> = f
+        .handle
+        .watched_folders()
+        .await
+        .unwrap()
+        .into_iter()
+        .map(|folder| folder.path)
+        .collect();
+    assert_eq!(watched, vec![path_string(&music)]);
+    let (album, is_skipped) = scanned_folder(&f, &path_string(&skipped)).await;
+    assert_eq!(album.watched_folder_path, path_string(&music));
+    assert!(is_skipped, "the skip stays");
+    let (release, _) = scanned_folder(&f, &combined).await;
+    assert_eq!(
+        release.watched_folder_path,
+        path_string(&music),
+        "the box is still read as one release, under the same key"
+    );
+    let state = f
+        .library_manager
+        .load_import_candidate_state(&picked_hash)
+        .await
+        .unwrap()
+        .expect("the picked album keeps its state");
+    assert_eq!(
+        state.metadata_provenance,
+        Some(MetadataProvenance::FileMetadata),
+        "the pick stays"
+    );
+}
+
+/// Removing a watched folder forgets what was decided under it, so adding it
+/// again starts fresh.
+#[tokio::test]
+async fn removing_a_watched_folder_forgets_what_was_decided_under_it() {
+    support::tracing_init();
+    let f = ImportFixture::new().await;
+    let artist = f.temp_path().join("Music/Artist");
+    let album = album_dir(&f, "Music/Artist/Album");
+    f.handle.add_watched_folder(path_string(&artist)).await.unwrap();
+    wait_for_reads(&f, "the folder is read", &[&artist]).await;
+    f.handle
+        .set_candidate_skipped(path_string(&album), true)
+        .await
+        .unwrap();
+
+    f.handle
+        .remove_watched_folder(path_string(&artist))
+        .await
+        .unwrap();
+    assert!(f
+        .library_manager
+        .load_skipped_import_candidates(&path_string(&artist))
+        .await
+        .unwrap()
+        .is_empty());
+    f.handle.add_watched_folder(path_string(&artist)).await.unwrap();
+    wait_for_reads(&f, "the folder is read again", &[&artist]).await;
+
+    let (_, is_skipped) = scanned_folder(&f, &path_string(&album)).await;
+    assert!(!is_skipped, "the skip went with the folder");
+}
+
+/// Refreshing a watched root that disappeared succeeds, records the failed
+/// status, and keeps the candidates rather than treating the missing folder as
+/// removals.
 #[tokio::test]
 async fn refresh_missing_watched_folder_records_failure_and_preserves_candidates() {
     support::tracing_init();
@@ -523,9 +652,8 @@ async fn refresh_missing_watched_folder_records_failure_and_preserves_candidates
     }));
 }
 
-/// `set_candidate_skipped` flips the reducer's skip flag and broadcasts
-/// `CandidateSkipChanged`; a no-op request (already in the target state) changes
-/// nothing and emits nothing.
+/// `set_candidate_skipped` moves the candidate between the Pending and Skipped
+/// tabs and broadcasts `CandidateSkipChanged`; repeating it emits nothing.
 #[tokio::test]
 async fn set_candidate_skipped_flips_flag_and_is_idempotent() {
     support::tracing_init();
@@ -582,7 +710,7 @@ async fn set_candidate_skipped_flips_flag_and_is_idempotent() {
     )
     .await;
 
-    // A redundant skip=true request is a no-op: no event, flag unchanged.
+    // A repeated skip emits nothing.
     f.handle
         .set_candidate_skipped(album_key.clone(), true)
         .await
@@ -603,10 +731,8 @@ async fn set_candidate_skipped_flips_flag_and_is_idempotent() {
     wait_for_skipped(&f, &album, false).await;
 }
 
-/// A Done row presents the library release its import became, read from the
-/// library as the library has it now: editing that release after the import
-/// reaches the row through the list subscription already open, with nothing
-/// resubscribed.
+/// A Done row shows the library release its import became, and an edit to
+/// that release reaches the row through the open list subscription.
 #[tokio::test]
 async fn a_done_row_follows_the_library_release_it_became() {
     support::tracing_init();

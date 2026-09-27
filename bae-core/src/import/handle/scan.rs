@@ -2,14 +2,11 @@ use super::*;
 use crate::util::rate_limiter::CallPriority;
 
 impl ImportServiceHandle {
-    /// Mark the candidate at `path` skipped or unskipped, persisting the change
-    /// and broadcasting it so the import view re-tabs the row (New ↔ Skipped).
-    /// A no-op request (already in the requested state) persists nothing and
-    /// emits no event.
+    /// Mark the candidate at `path` skipped or unskipped and announce the
+    /// change; a request that changes nothing writes nothing and sends no event.
     ///
-    /// Skipping is a decision about the candidate, so it ends the
-    /// identification it had going — nothing is left answering a candidate the
-    /// person has set aside.
+    /// Skipping ends the candidate's identification, since the person has set
+    /// it aside.
     pub async fn set_candidate_skipped(
         &self,
         path: String,
@@ -48,14 +45,9 @@ impl ImportServiceHandle {
             }
             return Ok(());
         }
-        let watched_folder_path = candidate.watched_folder_path;
-        let relative_candidate_path = crate::import::watched_folder::candidate_relative_path(
-            &watched_folder_path,
-            std::path::Path::new(&path),
-        )?;
         let changed = self
             .library_manager
-            .set_import_candidate_skipped(&watched_folder_path, &relative_candidate_path, skipped)
+            .set_import_candidate_skipped(&candidate.path.to_string_lossy(), skipped)
             .await?;
         if changed {
             if skipped {
@@ -70,14 +62,11 @@ impl ImportServiceHandle {
         Ok(())
     }
 
-    /// What the track sheet at `sheet_file_id` can be bound to: the candidate's
-    /// audio, each file either offered or refused with the reason.
+    /// For each FILE reference of the track sheet at `sheet_file_id`, the
+    /// candidate's audio files, each offered or refused with the reason.
     ///
-    /// The refusals are decided here rather than by a UI reading codecs,
-    /// because deciding them anywhere else means offering a file the commit
-    /// would then reject — the failure an editable binding exists to remove.
-    /// The choices use stored scan facts without opening audio. They are also
-    /// carried on each sheet in the candidate mapping projection.
+    /// Refusals are decided here from stored scan facts, so the picker never
+    /// offers a file that [`Self::set_sheet_binding`] would reject.
     pub async fn sheet_binding_options(
         &self,
         candidate_key: String,
@@ -92,23 +81,13 @@ impl ImportServiceHandle {
             })
     }
 
-    /// Bind one of a candidate's track sheets to an audio file, or clear the
-    /// binding by passing `None`.
+    /// Bind a FILE reference of one of a candidate's track sheets to an audio
+    /// file, or clear the binding with `None`.
     ///
-    /// Clearing does **not** restore what the scan proposed. Someone who
-    /// cleared a binding is saying the guess was wrong, so re-guessing it is
-    /// the one answer that is certainly not what they asked for.
-    ///
-    /// The named audio must be one the sheet can actually use; the same
-    /// offerable set the picker was built from is what decides, so a choice
-    /// that would fail at commit is refused here instead.
-    ///
-    /// The decision is written before anything else changes, and writing it
-    /// clears the candidate's stored identify verdict in the same statement:
-    /// binding a sheet turns a one-track image into a twelve-track disc with a
-    /// computable disc ID, so the verdict was an answer about a folder that no
-    /// longer exists. The event that follows makes the view read the candidate
-    /// again and the identification queue answer it again.
+    /// Clearing does not restore the scan's guess: clearing says the guess was
+    /// wrong. Only audio that [`Self::sheet_binding_options`] offers is
+    /// accepted. The write also clears the stored identify verdict, because a
+    /// binding changes the folder's tracks.
     pub async fn set_sheet_binding(
         &self,
         candidate_key: String,
@@ -195,18 +174,14 @@ impl ImportServiceHandle {
         .await
     }
 
-    /// Say which disc of the release one of a candidate's track sheets holds,
+    /// Set which disc of the release one of a candidate's track sheets holds,
     /// or take the sheet out of the tracklist with
     /// [`SheetDisc::Ignored`](crate::import::folder_scanner::SheetDisc::Ignored).
     ///
-    /// Cue filenames are arbitrary — `CD1.cue` may hold disc two — so which
-    /// disc a sheet carves is a decision rather than something read off a name.
-    /// Like a binding it is stored with the candidate and it clears the stored
-    /// identify verdict: re-assigning a sheet re-shapes the tracklist, and
-    /// ignoring one hands its container back to the release as loose audio.
-    ///
-    /// Discs count from one, so disc zero is refused: there is no such disc to
-    /// put the sheet's entries on.
+    /// Cue filenames are arbitrary (`CD1.cue` may hold disc two), so this is
+    /// the person's decision. Like a binding, it clears the stored identify
+    /// verdict. Giving a sheet a disc ignores every other sheet that shares its
+    /// audio. Disc zero and numbers above `i32::MAX` are refused.
     pub async fn set_sheet_disc(
         &self,
         candidate_key: String,
@@ -243,10 +218,8 @@ impl ImportServiceHandle {
                 detail: format!("{candidate_key} has no track sheet {sheet_file_id}"),
             });
         };
-        // Re-stating the disc the sheet already holds decides nothing — the
-        // menu fires on every selection, including of the current item — and
-        // a write here would clear the stored verdict and re-identify a
-        // folder whose shape did not change.
+        // The menu fires even when the current disc is picked again; writing
+        // would clear the verdict of a folder whose shape did not change.
         if selected.disc == disc {
             let _commit = self.folder_state_commit.lock("check a sheet disc").await;
             self.editable_candidate_for_commit(&candidate_key).await?;
@@ -289,10 +262,9 @@ impl ImportServiceHandle {
         .await
     }
 
-    /// Replace the candidate draft with metadata from an explicitly chosen
-    /// source. The projection completes before the database transaction, which
-    /// replaces the draft and provenance together while leaving all physical
-    /// file and track decisions untouched.
+    /// Build a candidate draft from an external release, keeping each current
+    /// track on its file. Refuses a release whose track count differs from the
+    /// candidate's.
     pub(crate) fn external_candidate_draft(
         &self,
         release: &crate::import::source_release::SourceRelease,
@@ -323,14 +295,12 @@ impl ImportServiceHandle {
         Ok(source)
     }
 
-    /// Project one external release and prepare every provider image its
-    /// candidate revision owns before the revision is written.
+    /// Build the metadata for an external release and fetch the artist images
+    /// and cover it needs, before anything is written.
     ///
-    /// The cover is the source's own image and only that: where the source
-    /// offers none, or the one it offers cannot be fetched, this names no
-    /// cover, and the write leaves the candidate the selection it already
-    /// has — a metadata application that names no image says nothing about
-    /// the cover.
+    /// The cover is the first one the release or its partners offer; when there
+    /// is none or it cannot be fetched, `cover` is `None` and the write keeps
+    /// the candidate's current cover.
     pub(crate) async fn external_candidate_metadata(
         &self,
         release: &crate::import::source_release::SourceRelease,
@@ -405,9 +375,8 @@ impl ImportServiceHandle {
         let durations = crate::import::probe::source_durations(&candidate.files)?;
         match &provenance {
             crate::import::MetadataProvenance::FileMetadata => loop {
-                // The folder's tags are read before the commit lock: off a
-                // network share that takes as long as the share does, and
-                // every pane control waits on this lock.
+                // Read tags before taking the commit lock: a network share can
+                // be slow, and every pane control waits on this lock.
                 let read = self
                     .read_file_tag_snapshot(&candidate_key, self.file_tags.clone())
                     .await?;
@@ -427,9 +396,9 @@ impl ImportServiceHandle {
                         current.file_edit_revision,
                     )
                     .await?;
-                // A scan that stored the candidate again while its tags were
-                // read stamped it with a newer generation, and the write takes
-                // only a reading of the generation it lands on: read again.
+                // A scan that stored the candidate while its tags were read gave
+                // it a newer generation, and the write only accepts tags read at
+                // the current one: read again.
                 let stored_generation = self
                     .library_manager
                     .load_candidate_file_tag_snapshot(
@@ -463,8 +432,8 @@ impl ImportServiceHandle {
                 let release = self
                     .release_for_provenance(&candidate_key, &primary)
                     .await?;
-                // Retain every claimed source's exact answer in this metadata
-                // revision. A failed partner leaves the previous pick unchanged.
+                // A partner that fails to load fails the pick, leaving the
+                // previous one in place.
                 let prepared_partners = crate::import::service::prepare_partners(
                     &self.library_manager,
                     &primary,
@@ -516,11 +485,8 @@ impl ImportServiceHandle {
         }
     }
 
-    /// Clear source metadata while retaining the candidate's physical layout
-    /// and every explicit mapping decision.
-    ///
-    /// A clear is a decision like a pick: it ends the candidate's
-    /// identification and announces the change.
+    /// Clear the candidate's source metadata, keeping its file decisions. Like
+    /// a pick, it ends the candidate's identification and announces the change.
     pub(crate) async fn clear_candidate_metadata(
         &self,
         candidate_key: String,
@@ -582,7 +548,6 @@ impl ImportServiceHandle {
             .await?)
     }
 
-    /// Tell the surfaces a candidate's metadata provenance changed.
     pub(crate) fn announce_metadata_provenance(&self, candidate_key: String) {
         self.event_tx
             .send(ImportEvent::Scan(ScanEvent::CandidateMetadataChanged {
@@ -590,23 +555,12 @@ impl ImportServiceHandle {
             }));
     }
 
-    /// Put one of a candidate's files in a role, or put it back in the one the
-    /// scan proposed.
+    /// Make one of a candidate's audio files a track or not a track.
     ///
-    /// Only a file the scan read as playable audio can move, and only between
-    /// being one of the release's tracks and not being one. That is the whole
-    /// set of role changes with a consequence: an image is an image, and a
-    /// track sheet's job is decided by what it is bound to, which
-    /// [`Self::set_sheet_binding`] already owns.
-    ///
-    /// Taking a file out does **not** take it out of the release. The folder is
-    /// the release, so the file still imports, uploads, and comes back on
-    /// export — it just stops being one of the tracks, which is also why the
-    /// content hash this decision is stored under does not move for it.
-    ///
-    /// Taking out the last audio the folder has is refused: there would be
-    /// nothing left to import, and a release with no tracks is not a state the
-    /// rest of the import can describe.
+    /// Only files the scan read as audio have a choice; sheets are handled by
+    /// [`Self::set_sheet_binding`]. A file that is not a track still imports
+    /// with the folder, so the content hash the decision is stored under does
+    /// not change. Taking out the last track is refused.
     pub async fn set_file_role(
         &self,
         candidate_key: String,
@@ -648,8 +602,8 @@ impl ImportServiceHandle {
                 detail: format!("{file_id} is not the folder's audio"),
             });
         }
-        // Same rule as `set_sheet_disc`: re-stating the role in force decides
-        // nothing, and must not clear the verdict.
+        // As in `set_sheet_disc`, re-picking the current role must not clear
+        // the verdict.
         if entry.role_choice() == Some(choice) {
             let _commit = self.folder_state_commit.lock("check a file role").await;
             self.editable_candidate_for_commit(&candidate_key).await?;
@@ -663,13 +617,11 @@ impl ImportServiceHandle {
         .await
     }
 
-    /// Add one decision to what the user has settled about a candidate's files,
-    /// apply the result, and publish it.
+    /// Add one file decision to the candidate's stored ones, apply it to every
+    /// scanned candidate with these files, store the result, and announce it.
     ///
-    /// Applied to a **copy** first: a decision that turns out not to survive
-    /// contact with the folder — audio that has gone unreadable since the offer,
-    /// or a change that would leave the release with no tracks — leaves the
-    /// candidate exactly as it was, with nothing written.
+    /// The decision is applied to copies first, so one the folder cannot take
+    /// (unreadable audio, no tracks left) fails with nothing written.
     async fn write_file_edits(
         &self,
         candidate_key: &str,
@@ -677,12 +629,9 @@ impl ImportServiceHandle {
         offered_revision: u64,
         decide: impl FnOnce(&mut crate::import::folder_scanner::CandidateFileEdits),
     ) -> Result<(), crate::import::ImportError> {
-        // Everything the decision implies — the settled files of every
-        // candidate with these files, the draft their tags seed, the artist
-        // images it credits — is prepared before the commit lock: reading tags
-        // off a network share and fetching images take as long as the share
-        // and the network do, and every pane control waits on this lock. The
-        // lock then covers only the check that nothing moved, and the write.
+        // Settled files, draft, and artist images are prepared before the
+        // commit lock, because tag reads and image fetches can be slow and
+        // every pane control waits on this lock.
         let content_hash = files.content_hash();
         let current_candidate = self.editable_candidate_for_commit(candidate_key).await?;
         let current_files = &current_candidate.files;
@@ -816,9 +765,8 @@ impl ImportServiceHandle {
                 .commit_lock_for_revision(
 "store a file decision",candidate_key, &content_hash, expected_revision)
                 .await?;
-            // A scan that stored or dropped another folder with these same
-            // files while this was prepared changed which candidates the
-            // decision settles: prepare it again over the ones there are now.
+            // A scan may have added or dropped a folder with these files while
+            // this was prepared; if so, prepare again.
             let matching_now = crate::import::candidates::files_for_identity(
                 &self.library_manager.load_all_folder_scan_items().await?,
                 &content_hash,
@@ -831,10 +779,9 @@ impl ImportServiceHandle {
                 drop(commit);
                 continue;
             }
-            // Durable first, and atomically: the decision and the verdict it
-            // invalidates move together, so nothing can observe a folder whose
-            // stored answer describes the shape it just stopped having. The
-            // write refuses a metadata revision that moved since it was read.
+            // One write stores the decision and clears the verdict it
+            // invalidates, and refuses a metadata revision that moved since it
+            // was read.
             let (_next_revision, candidates) = self
                 .preparations
                 .store_file_decisions(
@@ -856,10 +803,8 @@ impl ImportServiceHandle {
         }
     }
 
-    /// A scanned folder candidate's files, read by key, or `None` for a key
-    /// that names no folder — an invalid candidate has no roles or bindings to
-    /// edit. Each caller names the refusal in its own terms rather than
-    /// borrowing the other's.
+    /// The candidate's files and file-edit revision, or `None` when the key
+    /// names no candidate that can be edited; callers word their own refusal.
     pub(super) async fn actionable_candidate_files(
         &self,
         candidate_key: &str,
@@ -873,8 +818,8 @@ impl ImportServiceHandle {
             .map(|candidate| (candidate.files, candidate.file_edit_revision)))
     }
 
-    /// A folder candidate's files for a binding operation, or the refusal that
-    /// names what the key resolved to instead.
+    /// [`Self::actionable_candidate_files`] for a sheet operation, refusing a key
+    /// that names no candidate.
     async fn folder_files_for_binding(
         &self,
         candidate_key: &str,
@@ -887,7 +832,7 @@ impl ImportServiceHandle {
             })
     }
 
-    /// Subscribe to the unified event channel, filtered to only `ScanEvent`s.
+    /// Receive only the `ScanEvent`s from the import event channel.
     pub fn subscribe_folder_scan_events(&self) -> mpsc::UnboundedReceiver<ScanEvent> {
         let mut rx = self.event_tx.subscribe();
         let (tx, out_rx) = mpsc::unbounded_channel();

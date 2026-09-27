@@ -38,7 +38,7 @@ mod root_scan_cause;
 mod scanning;
 mod watch_batches;
 
-use active_roots::{ActiveRoots, AdoptionOutcome, FolderReadingRequest, RemovalOutcome, RootPass};
+use active_roots::{ActiveRoots, FolderReadingRequest, RemovalOutcome, RootPass};
 use folder_watcher::FolderWatchSnapshot;
 use root_backend::{RootRemovalBackend, ServiceRootRemovalBackend};
 use root_scan_cause::RootScanCause;
@@ -50,26 +50,24 @@ pub(crate) use folder_watcher::FolderWatcher;
 use format_prep::resolve_file_content_type;
 
 /// Which import run a progress event is about: the run the pane is watching and
-/// the candidate row it redraws. The pair travels from the command that started
-/// the import through every event it publishes.
+/// the candidate row it redraws.
 #[derive(Clone, Copy)]
 pub(super) struct ImportRun<'a> {
     pub(super) import_id: &'a str,
     pub(super) candidate_key: &'a str,
 }
 
-/// The files one import writes: every file the candidate contributes, and the
-/// track rows already bound to the audio each names. Both are derived from the
-/// same categorized folder, and the write needs them together.
+/// The files one import writes and the track rows bound to their audio, both
+/// read from the same folder.
 #[derive(Clone, Copy)]
 pub(super) struct ImportFiles<'a> {
     pub(super) discovered: &'a [ScannedFile],
     pub(super) tracks: &'a [TrackFile],
 }
 
-/// What `reconcile_prepared_release` yields: the release's rows, ready for the
-/// run pass. Every artist link names one of `artist_credits` by its id; the
-/// commit resolves the credits to library artists in its own transaction.
+/// The release's rows from `reconcile_prepared_release`. Every artist link
+/// names one of `artist_credits`; the commit resolves those to library artists
+/// in its own transaction.
 struct PreparedMetadata {
     db_album: DbAlbum,
     db_release: DbRelease,
@@ -78,8 +76,8 @@ struct PreparedMetadata {
     selected_cover: Option<CoverSelection>,
     /// The exact prepared bytes of a picked remote cover.
     remote_cover_image: Option<cover_image::CoverCandidate>,
-    /// The artwork the file-tag snapshot carried, with the content type the
-    /// download reported — checked at read time and dropped by the resize.
+    /// The file-tag snapshot's artwork; its content type is checked, then
+    /// dropped by the resize.
     embedded_cover: Option<(Vec<u8>, crate::util::content_type::ContentType)>,
     existing_album_id: Option<String>,
     track_artists: Vec<DbTrackArtist>,
@@ -93,18 +91,15 @@ struct PreparedMetadata {
     artist_credits: Vec<crate::db::DbArtist>,
     /// The credits that are library artists a person picked.
     picked_artists: Vec<String>,
-    /// The candidate's Discogs picture answers, for whichever credits the
-    /// commit decides are new artists.
+    /// Discogs pictures for whichever credits the commit finds are new artists.
     prepared_artist_images: Vec<crate::import::PreparedArtistImage>,
-    /// Every catalog's description of this release. Empty for file metadata and
-    /// direct entry, which name no catalog. Commit writes one
-    /// record row per element.
+    /// One per catalog that describes this release; empty for file metadata and
+    /// direct entry.
     records: Vec<crate::import::ReleaseRecord>,
     album_title: String,
 }
 
-/// One release-file row paired with Coven's opaque preparation of the exact
-/// user-owned file that row declares.
+/// One release-file row and Coven's preparation of the file it names.
 pub(crate) struct PreparedImportFile {
     pub(crate) row: DbFile,
     pub(crate) blob: coven::PreparedExternalBlob,
@@ -117,11 +112,9 @@ fn destination_label(destination: ImportDestination) -> &'static str {
     }
 }
 
-/// What the import worker thread receives: an import to run, or the teardown
-/// signal `ImportServiceHandle::stop_and_join` sends. The explicit signal (vs
-/// waiting for the channel to close) exists because the handle owning the last
-/// sender is itself a field of the struct whose `Drop` performs the join —
-/// channel closure could never arrive before the join deadlocked.
+/// What the import worker thread receives. `Shutdown` is sent rather than
+/// closing the channel because the last sender lives in the struct whose `Drop`
+/// joins the thread, so the channel could never close first.
 pub(crate) enum ImportWorkerMessage {
     Import {
         command: ImportCommand,
@@ -137,9 +130,9 @@ pub(crate) struct ImportExpectation {
 }
 
 impl ImportExpectation {
-    /// Whether `current` is still the candidate this import was prepared
-    /// from. The library write asks this inside its own transaction, so
-    /// nothing can move the candidate between the answer and the commit.
+    /// Whether `current` is still the candidate this import was prepared from.
+    /// Asked inside the library write's transaction, so the answer holds
+    /// through the commit.
     pub(crate) fn verify(
         &self,
         candidate_key: &str,
@@ -190,11 +183,9 @@ pub struct ImportService {
     import_cancels: crate::import::import_cancel::ImportCancels,
 }
 
-/// One downloaded cover as the import funnel's candidate.
-///
-/// The content type was verified from the decoded bytes at download time. It
-/// describes the download, not the stored blob — the resize re-encodes those
-/// bytes — so it is checked and dropped, never recorded.
+/// One downloaded cover as an import cover candidate. Its content type is
+/// checked and dropped: the resize re-encodes the bytes, so it does not
+/// describe what is stored.
 fn downloaded_cover(
     image: crate::import::cover_art::RemoteImage,
     url: &str,
@@ -220,15 +211,10 @@ fn downloaded_cover(
     })
 }
 
-/// The paths in one gathered batch that report a *change* to the watched tree.
+/// The paths in one batch of events that report a change to the watched tree.
 ///
-/// Not every event a backend sends is a change. Linux's inotify backend watches
-/// `IN_OPEN`, so every `open()` under a watched root arrives here — including
-/// the scan's own: walking a directory, reading a rip log, parsing a CUE,
-/// probing audio. Scheduling a scan for those would mean every scan schedules
-/// the next one, for as long as the folder stays watched. A close that ended a
-/// write says the file is now different; an open says only that something read
-/// it.
+/// Linux's inotify backend reports every `open()`, including the scan's own
+/// reads, so counting those as changes would make every scan schedule the next.
 fn changed_paths(events: &[notify::Event]) -> Vec<&Path> {
     events
         .iter()
@@ -237,9 +223,8 @@ fn changed_paths(events: &[notify::Event]) -> Vec<&Path> {
         .collect()
 }
 
-/// How many events a batch reported that name paths a scan should be asked for,
-/// and what the first few of them were. Capped: copying an album is hundreds of
-/// events, and the first handful name the cause as well as all of them do.
+/// How many events in a batch count as changes, naming the first few; copying
+/// an album is hundreds of events, and the first few name the cause.
 fn changed_events_summary(events: &[notify::Event]) -> String {
     const NAMED: usize = 6;
     let changes: Vec<&notify::Event> = events
@@ -301,21 +286,8 @@ enum RootChange {
     Folders(std::collections::BTreeSet<String>),
 }
 
-/// What `changed` — paths under `root` — asks to be read again.
-///
-/// A folder directly under the root is the unit a root is read in (see
-/// [`crate::import::folder_scanner::scan_top_level_folder_with_reader`]), so a
-/// change anywhere inside one is a reading of that folder, and a folder that
-/// went away is one whose reading is now empty. The root is read whole only
-/// where a change reaches the root's own release: the root itself changed, an
-/// audio file directly in it came or went, or the root already holds tracks of
-/// its own — whose release takes in the files of every audio-free folder
-/// beside them, so no folder under it reads on its own. A change to a hidden
-/// entry reaches nothing, because the scan never lists one; nor does a file
-/// directly in the root beside no tracks, which belongs to no release.
-/// [`root_change`] asked on a blocking thread: it stats the entries the
-/// changes name, which on a network volume can take as long as the mount does
-/// to answer, and the coordinator must not wait on that.
+/// [`root_change`] on a blocking thread: its stats can take as long as a
+/// network mount does to answer, and the coordinator must not wait on that.
 async fn root_change_of(root: &Path, changed: &[&Path], holds_its_own_release: bool) -> RootChange {
     let root = root.to_path_buf();
     let changed: Vec<PathBuf> = changed.iter().map(|path| path.to_path_buf()).collect();
@@ -330,6 +302,14 @@ async fn root_change_of(root: &Path, changed: &[&Path], holds_its_own_release: b
     }
 }
 
+/// What `changed` (paths under `root`) asks to be read again.
+///
+/// A root is read one top-level folder at a time, so a change inside one reads
+/// that folder again, and an entry that went away is read as a folder that is
+/// now empty. The root is read whole when the root itself changed, an audio
+/// file directly in it came or went, or it holds tracks of its own (whose
+/// release takes in the audio-free folders beside them). Hidden entries are
+/// skipped because the scan never lists them.
 fn root_change(root: &Path, changed: &[&Path], holds_its_own_release: bool) -> RootChange {
     let mut folders = std::collections::BTreeSet::new();
     for path in changed {
@@ -370,15 +350,12 @@ fn root_change(root: &Path, changed: &[&Path], holds_its_own_release: bool) -> R
     RootChange::Folders(folders)
 }
 
-/// What the cheap check of a network folder found moved, as paths the same
-/// reading as a filesystem event's applies to — or `None` when it cannot say
-/// and the root has to be walked.
+/// The paths the directory-mtime check of a network root found changed, in the
+/// form a filesystem event gives them, or `None` when the root has to be walked.
 ///
-/// A directory under the root that moved names itself. The root moving says a
-/// folder directly in it came or went, or a file directly in it did: the
-/// folders that came or went are found by listing the root against what was
-/// recorded, and a root with audio directly in it is named itself, since which
-/// of its files moved is not something the record can tell.
+/// When the root's own mtime moved, the folders that came or went are found by
+/// listing it against the record, and a root with audio directly in it names
+/// itself, since the record cannot tell which of its files moved.
 fn network_changes(root: &Path, recorded: &[(String, i64)]) -> Option<Vec<PathBuf>> {
     let moved = changed_directories(recorded)?;
     let mut changes = Vec::new();
@@ -427,16 +404,14 @@ fn roots_for_watch_error(error_paths: &[PathBuf], roots: &[PathBuf]) -> Vec<Path
     }
 }
 
-/// What the blocking folder walk hands back: whether it read the tree, every
-/// directory it visited, and — where it could read all of their mtimes — when
-/// each was last touched.
+/// What the blocking folder walk returns: whether it read the tree, every
+/// directory it visited, and their mtimes when it could read all of them.
 type FolderWalkOutcome = (
     Result<(), crate::import::folder_scanner::FolderScanError>,
     HashSet<PathBuf>,
     Option<Vec<(String, i64)>>,
 );
 
-/// The walk itself, still running.
 type FolderWalk = tokio::task::JoinHandle<FolderWalkOutcome>;
 
 /// One scan item after its durable write, with the commit lock still held so
@@ -444,9 +419,7 @@ type FolderWalk = tokio::task::JoinHandle<FolderWalkOutcome>;
 struct PersistedScanItem {
     commit: crate::import::FolderStateCommitGuard,
     item: ScanItem,
-    /// What the write did — and so whether there is anything to announce. A
-    /// pass over an untouched folder finds every row exactly as it left it, and
-    /// those rows are told to nobody.
+    /// What the write changed; rows it left as they were are not announced.
     write: crate::db::ScanItemWrite,
 }
 
@@ -455,10 +428,8 @@ struct RootScanTask {
     task: tokio::task::JoinHandle<()>,
 }
 
-/// One scan pass has ended. It carries no result: a scan reports its own
-/// failure — it records the root's failed status and puts the alert on the
-/// event stream — so this only tells the coordinator that the root is free
-/// again and that whoever asked for the refresh can stop waiting.
+/// One scan pass has ended. It carries no result because a scan records and
+/// announces its own failure; this only frees the root and ends the wait.
 struct RootScanCompletion {
     id: u64,
     path: PathBuf,
@@ -470,8 +441,8 @@ type RootScanStarter = Arc<
         + Sync,
 >;
 
-/// What one folder scan runs on: the import service's shared dependencies, plus
-/// the OS watch installer the walk registers each directory it reaches with.
+/// What one folder scan runs on: the import service's dependencies and the
+/// watcher the walk registers each directory with.
 #[derive(Clone)]
 pub(super) struct ScanServices {
     services: crate::import::ImportServices,
@@ -490,8 +461,8 @@ impl ScanServices {
     }
 }
 
-/// Start one pass over `path`: the whole root, or one folder whose reading
-/// changed.
+/// Start one pass over the root at `path`: all of it, one folder decision, or
+/// the folders whose contents changed.
 fn spawn_root_pass(
     id: u64,
     path: PathBuf,
@@ -506,8 +477,7 @@ fn spawn_root_pass(
     }
 }
 
-/// Change how one folder under `path` reads, and tell the person who asked
-/// whether it was stored.
+/// Store one folder decision under `path` and answer whoever asked.
 fn spawn_folder_reading(
     id: u64,
     path: PathBuf,
@@ -522,8 +492,7 @@ fn spawn_folder_reading(
         let result =
             ImportService::change_folder_reading(&path, &target, &scan, &reading_cancellation)
                 .await
-                // The caller hears a detail and reports it as a watch failure
-                // itself, so one that already is one is not said twice.
+                // The caller wraps the detail as a watch failure itself.
                 .map_err(|error| match error {
                     crate::import::ImportError::Watch { detail } => detail,
                     other => other.to_string(),
@@ -573,10 +542,8 @@ fn spawn_root_scan(
     let completion_path = path.clone();
     let task = tokio::spawn(async move {
         if !scan_cancellation.is_cancelled() {
-            // The error is dropped rather than passed on: `rescan_and_reconcile`
-            // has already recorded it as the root's status and announced it, and
-            // a refresh caller that reported it a second time would put two
-            // dialogs on screen for one broken folder.
+            // `rescan_and_reconcile` already recorded and announced any error;
+            // passing it on would show it twice.
             let _ = ImportService::rescan_and_reconcile(&path, &scan, &scan_cancellation).await;
         }
         if completion_tx
@@ -592,8 +559,9 @@ fn spawn_root_scan(
     RootScanTask { cancellation, task }
 }
 
-/// Select supplemental source credits by their stored source-track identity.
-/// The draft supplies the track order and every audio binding.
+/// Rebuild the tracks in the draft's order, reusing the source track each row
+/// names and dropping the credits and works of source tracks left out. Returns
+/// each track's audio binding.
 fn settle_track_rows(
     parsed: &mut crate::import::ParsedAlbum,
     draft: &crate::import::CandidateDraft,
@@ -679,17 +647,9 @@ pub(crate) fn retain_track_metadata(
     });
 }
 
-/// Apply the editor's overlay onto the seeded album/release/tracks.
-///
-/// Overwrites the album title and original year, the release's pressing fields, and each track's
-/// title/side/track_number.
-///
-/// The album's and each explicit track's artist links are rebuilt from the
-/// edit's assignments: a picked library artist is linked by its own id, and a
-/// credit becomes a fresh credit row carrying its name and catalog ids. The
-/// commit resolves every credit against the library; the returned set names
-/// the picked ones, which it links as they are.
-///
+/// Apply the person's edit to the seeded album, release, and tracks, and
+/// rebuild the album's and each explicit track's artist links from it. Returns
+/// the ids of picked library artists, which the commit links as they are.
 fn apply_user_edit_to_seed(
     edit: &crate::import::ReleaseUserEdit,
     seed: &mut crate::import::ParsedAlbum,
@@ -802,16 +762,10 @@ fn materialize_artist_assignment(
     id
 }
 
-/// The release `release_ref` names, stored: as a fetch already stored it, or
-/// fetched now — its documents and every one they link to — and stored as
-/// they extract. A stored release is fetched again only when that could add
-/// what its fetch missed. Takes the bare `LibraryManager` because the sweep
-/// and library re-identification do not hold an `ImportServiceHandle`.
-///
-/// Every path that needs a release it may not have stored comes here: the
-/// sweep settling a lead in the background, selection preparing the candidate,
-/// and re-identify pointing a library release at a new one. The import worker
-/// consumes only the candidate revision those preparation paths already stored.
+/// The release `release_ref` names, from storage or fetched and stored now. A
+/// stored release is fetched again only when that could add what its fetch
+/// missed. Takes the bare `LibraryManager` because the sweep and library
+/// re-identification do not hold an `ImportServiceHandle`.
 pub(crate) async fn prepare_release(
     library_manager: &LibraryManager,
     release_ref: &MetadataRef,
@@ -830,8 +784,7 @@ pub(crate) async fn prepare_release(
     library_manager
         .save_source_release(&payloads.extract()?)
         .await?;
-    // Read back as every reader reads it: the stored release's records carry
-    // what reading its album's group found, which its documents may not.
+    // Read back: the stored records carry what its album's group added.
     library_manager
         .load_source_release(release_ref)
         .await?
@@ -844,13 +797,9 @@ pub(crate) async fn prepare_release(
         })
 }
 
-/// Prepare every partner release of this selection.
-///
-/// A pick names one release per catalog: the primary is the document the draft
-/// is read from, and every partner is a different catalog's release of the same
-/// pressing. Two claims about one catalog are two answers to one question, so
-/// this refuses them rather than picking one. The candidate's provenance is
-/// written only after this returns, so a failed partner leaves the pick unmade.
+/// Prepare every partner release of this pick: other catalogs' releases of the
+/// primary's pressing. Two releases from one catalog are refused rather than
+/// one chosen.
 pub(crate) async fn prepare_partners(
     library_manager: &LibraryManager,
     primary: &MetadataRef,
@@ -874,9 +823,8 @@ pub(crate) async fn prepare_partners(
     Ok(prepared)
 }
 
-/// The records a pick of fetched releases commits: the primary's and every
-/// partner's, each claimed release's own record outranking what another says
-/// about its catalog.
+/// The records a pick commits: the primary's and every partner's, each
+/// release's own record outranking what another says about its catalog.
 pub(crate) fn records_for_commit(
     primary: &crate::import::source_release::SourceRelease,
     partners: &[crate::import::source_release::SourceRelease],

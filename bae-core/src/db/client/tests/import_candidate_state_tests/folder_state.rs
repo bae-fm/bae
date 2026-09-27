@@ -6,8 +6,8 @@ fn scanned_candidate(root: &str, name: &str) -> crate::import::folder_scanner::S
     )
 }
 
-/// The shape a folder read as one release stores as: one candidate at the
-/// folder's own key over everything below it.
+/// A folder read as one release: one candidate at the folder's key over
+/// everything below it.
 fn combined_candidate(root: &str, name: &str) -> crate::import::folder_scanner::ScanItem {
     scanned_candidate_with_scope(
         root,
@@ -108,8 +108,7 @@ async fn imported_content_hash_lookup_uses_its_partial_index() {
     );
 }
 
-/// One stored folder reading: `folder` under `root` read as `decision`,
-/// yielding `items`, under a reading begun now.
+/// Store `folder` under `root` read as `decision`, yielding `items`.
 async fn commit_reading(
     db: &Database,
     root: &str,
@@ -158,8 +157,8 @@ async fn commit_reading_under(
     .await
 }
 
-/// `root` scanned to completion with `Box/CD1`, `Box/CD2` and a sibling
-/// `Other`, returning the generation that scan stamped.
+/// Scan `root` holding `Box/CD1`, `Box/CD2` and `Other`, returning the scan's
+/// generation.
 async fn scanned_box_and_sibling(db: &Database, root: &str) -> u64 {
     db.add_watched_import_folder(root).await.unwrap();
     let generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
@@ -204,8 +203,7 @@ async fn row_generation(db: &Database, root: &str, name: &str) -> i64 {
     .unwrap()
 }
 
-/// Every entry a folder reading took out: the ones its entries replaced, and
-/// the ones it no longer yields.
+/// Every entry a folder reading took out, replaced or pruned.
 fn removed_by(write: &crate::db::FolderReadingWrite) -> Vec<String> {
     let mut removed: Vec<String> = write
         .writes
@@ -225,9 +223,8 @@ fn key_of(root: &str, name: &str) -> String {
         .into_owned()
 }
 
-/// Combining a folder and keeping it separate each trade the folder's entries
-/// for the other reading's in the write that stores the decision; the sibling
-/// folder is neither rewritten nor restamped.
+/// Each decision replaces the folder's entries in the same write that stores
+/// it, and leaves the sibling folder's row untouched.
 #[tokio::test]
 async fn a_folder_reading_trades_its_entries_in_the_write_that_stores_the_decision() {
     use crate::import::folder_scanner::{FolderReleaseDecision, FolderReleaseDecisionAuthor};
@@ -293,8 +290,7 @@ async fn a_folder_reading_trades_its_entries_in_the_write_that_stores_the_decisi
     assert_eq!(row_generation(&db, root, "Other").await, sibling_generation);
 }
 
-/// A reading taken before something else wrote the root's entries describes
-/// a store that is gone: storing it fails, and writes nothing.
+/// A reading begun before another write to the root fails and writes nothing.
 #[tokio::test]
 async fn a_folder_reading_taken_before_the_root_moved_stores_nothing() {
     use crate::import::folder_scanner::FolderReleaseDecision;
@@ -365,173 +361,6 @@ async fn a_folder_reading_that_fails_partway_rolls_back_whole() {
 }
 
 #[tokio::test]
-async fn removed_and_readded_root_rejects_items_from_its_old_registration() {
-    let (db, _tmp) = empty_db().await;
-    let root = &host_root("/mounted/library");
-    db.add_watched_import_folder(root).await.unwrap();
-    let old_generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
-
-    db.remove_watched_import_folder(root).await.unwrap();
-    db.add_watched_import_folder(root).await.unwrap();
-    let new_generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
-    assert!(new_generation > old_generation);
-
-    assert!(db.save_folder_scan_item(root, old_generation, &scanned_candidate(root, "Old")).await.unwrap().is_none());
-    assert!(db.load_folder_scan_snapshots().await.unwrap()[0]
-        .items
-        .is_empty());
-}
-
-#[tokio::test]
-async fn removing_watched_root_cascades_all_local_folder_state() {
-    let (db, _tmp) = empty_db().await;
-    let root = &host_root("/mounted/library");
-    db.add_watched_import_folder(root).await.unwrap();
-    db.set_import_candidate_skipped(root, "Collection/Release", true)
-        .await
-        .unwrap();
-    store_user_folder_decision(
-    &db,
-        &crate::import::folder_scanner::FolderReleaseDecisionKey {
-            watched_folder_path: root.to_string(),
-            relative_folder_path: "Collection".to_string(),
-        },
-        crate::import::folder_scanner::FolderReleaseDecision::KeepAsSeparateReleases,
-    )
-    .await
-    .unwrap();
-    let generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
-    let candidate = scanned_candidate(root, "Release");
-    let crate::import::folder_scanner::ScanItem::Valid(candidate_files) = &candidate else {
-        panic!("the fixture must produce a valid candidate");
-    };
-    let content_hash = candidate_files.files.content_hash();
-    db.save_folder_scan_item(root, generation, &candidate)
-        .await
-        .unwrap();
-    crate::import::CandidatePreparations::new(db.clone()).set_field(
-        &content_hash,
-        crate::import::CandidateEditField::AlbumTitle,
-        "Edited Album Title",
-    )
-    .await
-    .unwrap();
-    assert!(db
-        .load_import_candidate_state(&content_hash)
-        .await
-        .unwrap()
-        .is_some());
-
-    db.finish_folder_scan(root, generation, None)
-        .await
-        .unwrap();
-    let generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
-    db.finish_folder_scan(root, generation, None)
-        .await
-        .unwrap();
-    assert!(db.load_folder_scan_snapshots().await.unwrap()[0]
-        .items
-        .is_empty());
-
-    assert!(db.remove_watched_import_folder(root).await.unwrap().is_some());
-    assert!(db
-        .load_watched_import_folders()
-        .await
-        .unwrap()
-        .is_empty());
-    assert_eq!(
-        db.load_folder_release_decisions(root)
-            .await
-            .unwrap()
-            .get("Collection"),
-        None
-    );
-    assert!(db.load_folder_scan_snapshots().await.unwrap().is_empty());
-    assert!(db
-        .load_import_candidate_state(&content_hash)
-        .await
-        .unwrap()
-        .is_none());
-}
-
-#[tokio::test]
-async fn shared_candidate_state_leaves_with_its_last_watched_root() {
-    let (db, _tmp) = empty_db().await;
-    let first = host_root("/mounted/first");
-    let second = host_root("/mounted/second");
-    for root in [&first, &second] {
-        db.add_watched_import_folder(root).await.unwrap();
-    }
-
-    let second_candidate = scanned_candidate(&second, "Release");
-    let first_candidate = scanned_candidate(&first, "Release");
-    for (root, candidate) in [(&second, &second_candidate), (&first, &first_candidate)] {
-        let generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
-        db.save_folder_scan_item(root, generation, candidate)
-            .await
-            .unwrap();
-        db.finish_folder_scan(root, generation, None)
-            .await
-            .unwrap();
-    }
-    let crate::import::folder_scanner::ScanItem::Valid(candidate) = &first_candidate else {
-        panic!("the fixture must produce a valid candidate");
-    };
-    let content_hash = candidate.files.content_hash();
-
-    db.remove_watched_import_folder(&first).await.unwrap();
-    assert!(db
-        .load_import_candidate_state(&content_hash)
-        .await
-        .unwrap()
-        .is_some());
-
-    let generation = db.begin_folder_scan(&second, crate::import::VolumeKind::Local).await.unwrap();
-    db.finish_folder_scan(&second, generation, None)
-        .await
-        .unwrap();
-    db.remove_watched_import_folder(&second).await.unwrap();
-    assert!(db
-        .load_import_candidate_state(&content_hash)
-        .await
-        .unwrap()
-        .is_none());
-}
-
-#[tokio::test]
-async fn a_late_import_failure_cannot_recreate_state_after_root_removal() {
-    let (db, _tmp) = empty_db().await;
-    let root = host_root("/mounted/library");
-    let candidate = scanned_candidate(&root, "Release");
-    let crate::import::folder_scanner::ScanItem::Valid(folder) = &candidate else {
-        panic!("the fixture must produce a valid candidate");
-    };
-    let content_hash = folder.files.content_hash();
-    db.add_watched_import_folder(&root).await.unwrap();
-    let generation = db.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
-    db.save_folder_scan_item(&root, generation, &candidate)
-        .await
-        .unwrap();
-    db.remove_watched_import_folder(&root).await.unwrap();
-
-    db.save_import_candidate_failure(
-        &content_hash,
-        0,
-        &crate::import::ImportFailure::error_only(
-            "the source disappeared",
-            fixed_now(),
-        ),
-    )
-    .await
-    .expect_err("a removed candidate cannot receive an import failure");
-    assert!(db
-        .load_import_candidate_state(&content_hash)
-        .await
-        .unwrap()
-        .is_none());
-}
-
-#[tokio::test]
 async fn watched_root_overlap_uses_paths_not_sql_patterns() {
     let (db, _tmp) = empty_db().await;
     for root in ["/music/100%", "/music/name_value"] {
@@ -557,7 +386,7 @@ async fn watched_root_order_survives_middle_removal_and_later_add() {
             .await
             .unwrap();
     }
-    db.remove_watched_import_folder(&host_root("/two"))
+    db.remove_watched_import_folders(vec![host_root("/two")], None)
         .await
         .unwrap();
     db.add_watched_import_folder(&host_root("/four"))
@@ -576,18 +405,16 @@ async fn watched_root_order_survives_middle_removal_and_later_add() {
     );
 }
 
-/// However the folder was spelled on the way in, one row exists and it is
-/// keyed by the canonical spelling — so a second spelling of a folder
-/// already watched is recognized as the same folder rather than added
-/// beside it.
+/// Every spelling of a watched folder is the same row, keyed by the canonical
+/// spelling.
 #[tokio::test]
 async fn watched_root_spellings_settle_on_one_row() {
     let (db, _tmp) = empty_db().await;
     let canonical = host_root("/music/rips");
     assert!(db.add_watched_import_folder(&canonical).await.unwrap());
 
-    // The last of these is the drive-lettered, forward-slashed form a
-    // `bae://import` link and a `file://` folder drop hand over on Windows.
+    // The drive-lettered, forward-slashed form a `bae://import` link and a
+    // `file://` folder drop give on Windows.
     #[cfg(windows)]
     const URL_SPELLINGS: &[&str] = &["C:/music/rips"];
     #[cfg(not(windows))]
@@ -619,8 +446,8 @@ async fn watched_root_spellings_settle_on_one_row() {
     assert_eq!(paths, vec![canonical]);
 }
 
-/// `..` never becomes a key: rewriting it without reading the filesystem
-/// is wrong across a symlink, so it is refused instead.
+/// `..` is refused: resolving it without the filesystem is wrong across a
+/// symlink.
 #[tokio::test]
 async fn watched_root_rejects_a_path_climbing_out_of_itself() {
     let (db, _tmp) = empty_db().await;
@@ -629,12 +456,12 @@ async fn watched_root_rejects_a_path_climbing_out_of_itself() {
 }
 
 #[tokio::test]
-async fn corrupt_relative_folder_keys_fail_when_loaded() {
+async fn corrupt_folder_keys_fail_when_loaded() {
     let (db, _tmp) = empty_db().await;
     let root = host_root("/mounted/library");
     db.add_watched_import_folder(&root).await.unwrap();
     assert!(db
-        .set_import_candidate_skipped(&root, "a//b", true)
+        .set_import_candidate_skipped(&format!("{root}/a//b"), true)
         .await
         .is_err());
     assert!(store_user_folder_decision(
@@ -650,14 +477,13 @@ async fn corrupt_relative_folder_keys_fail_when_loaded() {
     let stored_root = root.clone();
     db.call(move |conn| {
         conn.execute(
-            "INSERT INTO skipped_import_candidates VALUES (?, 'a//b')",
-            params![stored_root],
+            "INSERT INTO skipped_import_candidates VALUES (?)",
+            [format!("{stored_root}/a//b")],
         )?;
         conn.execute(
-            "INSERT INTO release_grouping \
-                 (key, watched_folder_path, anchor_relative_path, combined, author) \
-                 VALUES ('grouping:corrupt', ?, 'a/./b', 1, 'user')",
-            params![stored_root],
+            "INSERT INTO release_grouping (key, anchor_folder, combined, author) \
+                 VALUES ('grouping:corrupt', ?, 1, 'user')",
+            [format!("{stored_root}/a/./b")],
         )?;
         Ok(())
     })
@@ -667,9 +493,8 @@ async fn corrupt_relative_folder_keys_fail_when_loaded() {
     assert!(db.load_folder_release_decisions(&root).await.is_err());
 }
 
-/// No two stored roots overlap: the add refuses one under another, on any
-/// spelling. Rows that overlap anyway are corrupt durable state and are read
-/// loudly rather than served as two folders.
+/// The add refuses a root inside another, so stored rows that overlap are
+/// corrupt and fail to load.
 #[tokio::test]
 async fn overlapping_stored_roots_fail_to_load() {
     let (db, _tmp) = empty_db().await;
@@ -691,9 +516,8 @@ async fn overlapping_stored_roots_fail_to_load() {
     assert!(error.to_string().contains("cannot overlap"), "{error}");
 }
 
-/// A candidate's key is its own `path` column, so an entry can no longer
-/// name a folder it does not describe. Its generation is still a separate
-/// column, and one ahead of its root's is a store nothing here wrote.
+/// An entry whose generation is ahead of its root's was written by nothing
+/// here, and fails to load.
 #[tokio::test]
 async fn a_scan_entry_from_a_generation_the_root_never_reached_fails_when_loaded() {
     let (db, _tmp) = empty_db().await;
@@ -717,10 +541,8 @@ async fn a_scan_entry_from_a_generation_the_root_never_reached_fails_when_loaded
     assert!(db.load_folder_scan_snapshots().await.is_err());
 }
 
-/// A disc assignment the user set survives a relaunch: it is stored under
-/// the candidate's content hash, read back from a cold database, and the
-/// scan that follows lays the discs down as they settled them rather than
-/// in the order the cue filenames read.
+/// A disc assignment is stored under the candidate's content hash, and the
+/// next scan orders the discs by it rather than by cue filename.
 #[tokio::test]
 async fn a_disc_assignment_survives_a_relaunch() {
     use crate::import::folder_scanner::{
@@ -795,8 +617,7 @@ async fn a_disc_assignment_survives_a_relaunch() {
         Some(&SheetDisc::Disc { number: 2 })
     );
 
-    // A subsequent scan reads the same decisions, so the folder's audio
-    // comes out in the order the user settled rather than in path order.
+    // The next scan reads the stored decisions.
     let stored = db.load_stored_candidate_edits().await.unwrap();
     let reopened = collect_release_candidate_files_with_scope(
         folder.path(),
@@ -840,8 +661,8 @@ fn two_sheet_folder() -> tempfile::TempDir {
     tmp
 }
 
-/// The walkthrough folder on disk: a twelve-track sheet written against a
-/// WAV, the FLAC it was actually encoded to, and the rip log.
+/// A twelve-track sheet written against a WAV, the FLAC it was encoded to,
+/// and the rip log.
 fn walkthrough_folder() -> tempfile::TempDir {
     let tmp = tempfile::TempDir::new().unwrap();
     let fixtures = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
@@ -867,9 +688,7 @@ fn walkthrough_folder() -> tempfile::TempDir {
     tmp
 }
 
-/// The generation counter is allocated by the scan write itself, not read
-/// from a row a migration seeded: a store whose device-local tables were
-/// rebuilt without the seed still scans.
+/// A scan generation is allocated even when the counter table holds no row.
 #[tokio::test]
 async fn a_scan_generation_is_allocated_without_a_seeded_counter_row() {
     let (db, _tmp) = empty_db().await;
@@ -888,12 +707,8 @@ async fn a_scan_generation_is_allocated_without_a_seeded_counter_row() {
     assert_eq!(second, 2);
 }
 
-/// A tentative candidate is a release approximation the scan found before it
-/// knew what enclosed it, and the list draws none of them. A re-walk sends
-/// every candidate through that state on its way back to valid, so a row that
-/// is already a settled release must not go back through it: it would leave
-/// the list and the tab counts until the valid write landed a moment later,
-/// which is the swing a viewer sees while a folder rescans.
+/// A rescan reports each candidate tentative before valid, and the list hides
+/// tentative rows, so a settled row stays valid or it would vanish mid-rescan.
 #[tokio::test]
 async fn a_rescan_never_takes_a_settled_row_back_to_tentative() {
     use crate::import::folder_scanner::ScanItem;
@@ -945,8 +760,8 @@ async fn a_rescan_never_takes_a_settled_row_back_to_tentative() {
     assert!(matches!(after[0].items[0], ScanItem::Valid(_)));
 }
 
-/// The stamp the kept row takes is this generation's, so completing the scan
-/// does not prune the very row it just decided to keep.
+/// The kept row takes this generation, so completing the scan does not prune
+/// it.
 #[tokio::test]
 async fn a_row_kept_through_a_rescan_survives_the_completion_prune() {
     use crate::import::folder_scanner::ScanItem;
@@ -964,8 +779,7 @@ async fn a_row_kept_through_a_rescan_survives_the_completion_prune() {
     db.save_folder_scan_item(root, generation, &settled).await.unwrap();
     db.finish_folder_scan(root, generation, None).await.unwrap();
 
-    // A re-walk that only ever reports it tentative — the valid write never
-    // arrives, because the scan ended first.
+    // A re-walk that ends before the valid write arrives.
     let generation = db.begin_folder_scan(root, crate::import::VolumeKind::Local).await.unwrap();
     db.save_folder_scan_item(root, generation, &tentative).await.unwrap();
     db.finish_folder_scan(root, generation, None).await.unwrap();

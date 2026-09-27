@@ -34,18 +34,14 @@ mod tests;
 /// The import event channel and the candidate runtime it records into.
 ///
 /// Every event is recorded in the runtime before it is broadcast, so a
-/// subscriber that hears an event and then asks the runtime finds what the
-/// event implies already there. Recording from a subscriber task instead
-/// left a window after an import's `Complete` in which the candidate still
-/// read as claimed by that import, and an edit asked in that window was
-/// refused as in progress rather than as already imported.
+/// subscriber that hears an event and then asks the runtime finds the event's
+/// effect already there.
 #[derive(Clone)]
 pub struct ImportEventBus {
     sender: broadcast::Sender<ImportEvent>,
     runtime: CandidateRuntime,
-    /// Holds the thread that sends one chosen progress event until a test
-    /// lets it through: the test's window to act while that thread is part
-    /// way through an import's work.
+    /// Stops the thread sending one chosen progress event until a test lets
+    /// it through, so the test can act partway through an import.
     #[cfg(test)]
     progress_hold: Arc<ProgressHold>,
 }
@@ -73,11 +69,7 @@ enum HoldState {
 
 impl ImportEventBus {
     /// A bus whose subscribers may fall `capacity` events behind, recording
-    /// into `runtime`.
-    ///
-    /// The runtime announces its identification count on this same bus, so it
-    /// takes the sender as the bus is built — one bus per runtime, handed
-    /// over once.
+    /// into `runtime`, which announces its identification count on this bus.
     pub fn new(capacity: usize, runtime: CandidateRuntime) -> Self {
         let (sender, _) = broadcast::channel(capacity);
         runtime.announce_on(sender.clone());
@@ -89,8 +81,8 @@ impl ImportEventBus {
         }
     }
 
-    /// Record `event` in the runtime, then broadcast it. The bus lives as
-    /// long as the app, so having no subscriber is odd enough to warn about.
+    /// Record `event` in the runtime, then broadcast it. The bus lives as long
+    /// as the app, so having no subscriber is worth a warning.
     pub fn send(&self, event: ImportEvent) {
         #[cfg(test)]
         self.wait_if_held(&event);
@@ -107,9 +99,9 @@ impl ImportEventBus {
     /// Stop the first thread that sends a measured percent of `phase` before
     /// its event is recorded or broadcast, until [`Self::release_progress`].
     ///
-    /// A measured percent above zero, because the running phases report
-    /// their fractions from the threads doing the work, and a zero goes out
-    /// from the worker itself, which must stay free to hear a cancel.
+    /// Only a percent above zero: those come from the threads doing the work,
+    /// while a zero comes from the worker, which must stay free to hear a
+    /// cancel.
     #[cfg(test)]
     pub(crate) fn hold_progress_at(&self, phase: crate::import::ImportPhase) {
         *self.progress_hold.state.lock().unwrap() = HoldState::Armed(phase);
@@ -165,7 +157,7 @@ impl ImportEventBus {
     }
 }
 
-/// All events emitted by the import service. One channel, one subscriber (the bus).
+/// Every event the import service emits, on one channel.
 #[derive(Debug, Clone)]
 pub enum ImportEvent {
     Scan(ScanEvent),
@@ -173,52 +165,40 @@ pub enum ImportEvent {
         candidate_key: String,
         progress: ImportProgress,
     },
-    /// Identify pipeline transitioned to a new state. Emitted by the
-    /// `identify` module; carries the full state, which the signals toolbar
-    /// (the interactive badge row) is a projection of.
+    /// An identify run's new state, in full; the signals toolbar shows a
+    /// projection of it.
     IdentifyStateChanged {
         candidate_key: String,
-        /// The run this state belongs to. A settled run's driver keeps
-        /// broadcasting its state, so a consumer waiting on a later run of the
-        /// same candidate matches on this, not on the key.
+        /// The run this state belongs to. A settled run keeps broadcasting, so
+        /// a consumer waiting on a later run of the candidate matches on this,
+        /// not the key.
         run: crate::identify::IdentifyRunId,
         state: crate::identify::IdentifyState,
-        /// The run's own priority, carried so a consumer can tell a candidate
-        /// a person opened from one the automatic admission picked up. The UI
-        /// bus re-renders for the first and not the second.
+        /// The run's priority, which tells a candidate a person opened from
+        /// one the automatic admission picked up.
         priority: crate::util::rate_limiter::CallPriority,
     },
     /// Full snapshot of a candidate's extracted signals (disc ID, barcodes,
-    /// classified text), emitted on every transition — extraction start, each
-    /// source/OCR completion, natural end, and an abort, which fails every
-    /// signal rather than going silent. The reducer writes it wholesale, so it
-    /// needs no partial-update logic.
+    /// classified text), sent on every change of the extraction, including an
+    /// abort, which fails every signal.
     SignalsUpdated {
         candidate_key: String,
-        /// The identify run this snapshot was extracted for. Starting a run
-        /// replaces the extraction behind the previous run of the same
-        /// candidate, and the two broadcast under the same key: what stores a
-        /// run's verdict beside its snapshot takes only the snapshots that
-        /// name that run. The run itself reads its extraction's watch, not
-        /// the bus.
+        /// The identify run this snapshot was extracted for. Runs of one
+        /// candidate share its key, so a run's verdict is stored beside only
+        /// the snapshots that name that run.
         run: crate::identify::IdentifyRunId,
         signals: crate::signals::Signals,
-        /// Where the artwork pass that feeds the snapshot has got to. Beside
-        /// the snapshot rather than in it: a stored snapshot has no pass to
-        /// report on, and this is what a surface shows as the run's step.
+        /// Where the artwork pass feeding the snapshot has got to, shown as the
+        /// run's step. Kept outside the snapshot because a stored snapshot has
+        /// no pass.
         artwork: crate::signals::ArtworkScan,
-        /// The extraction's own priority — same meaning as
-        /// [`ImportEvent::IdentifyStateChanged`]'s.
+        /// The extraction's priority, as in
+        /// [`ImportEvent::IdentifyStateChanged`].
         priority: crate::util::rate_limiter::CallPriority,
     },
-    /// How far the identifications running right now have got: how many have
-    /// ended, out of how many are in the batch. Announced by the candidate
-    /// runtime, which holds every identification whoever started it — the
-    /// automatic admission, or a person's own Lookup. `(0, 0)` is none
-    /// running.
-    ///
-    /// Both counts are the runtime's, not a view's: a view counting the rows
-    /// it happens to hold is counting a filtered list.
+    /// How many of the running batch of identifications have ended, out of how
+    /// many, whoever started them; `(0, 0)` is none running. Counted by the
+    /// candidate runtime, since a view's rows may be filtered.
     IdentificationProgress {
         identified: u32,
         total: u32,
@@ -238,14 +218,13 @@ pub struct GroupedSearchResults {
     pub statuses: Vec<crate::db::LibraryStatus>,
 }
 
-/// What `save_discogs_token` did with a submitted key, after validating against
-/// Discogs first.
+/// What `save_discogs_token` did with a submitted key after checking it with
+/// Discogs.
 ///
-/// - `Valid` — Discogs accepted the key; it's stored and used.
+/// - `Valid` — Discogs accepted the key; it is stored.
 /// - `Unvalidated` — Discogs was unreachable or rate-limited; the key is stored
-///   optimistically and will be re-checked when possible.
-/// - `Rejected` — Discogs returned 401; nothing is stored, so the UI keeps the
-///   draft for the user to correct.
+///   and re-checked later.
+/// - `Rejected` — Discogs returned 401; nothing is stored.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DiscogsSaveOutcome {
     Valid,
@@ -254,36 +233,26 @@ pub enum DiscogsSaveOutcome {
 }
 
 /// Handle for sending import requests and subscribing to progress updates.
-///
-/// A thin orchestration layer that dispatches prefetches, builds
-/// `ImportCommand`s carrying just `MetadataRef`s, and forwards them to the
-/// worker. It holds no caches of its own — the network-layer caches in
-/// `crate::musicbrainz`, `crate::discogs::client`, and the Cover Art Archive
-/// client serve every caller transparently.
 #[derive(Clone)]
 pub struct ImportServiceHandle {
-    /// The import worker, joined once at teardown (`stop_and_join`). Its
-    /// thread holds a `LibraryManager` clone, which pins coven's exclusive
-    /// store-open lock — until it exits the same library can't reopen
-    /// in-process, so teardown must not return before the join.
+    /// The import worker. Its `LibraryManager` clone holds coven's store-open
+    /// lock, so teardown must not return before it is joined.
     worker: WorkerThread<crate::import::service::ImportWorkerMessage>,
     library_manager: LibraryManager,
-    /// The one writer of candidates' stored state. The handle resolves keys,
-    /// holds the commit lock, and prepares provider answers; the write is its.
+    /// The one writer of candidates' stored state.
     preparations: crate::import::CandidatePreparations,
     clock: coven::ClockRef,
     ids: coven::IdRef,
-    /// What reads a folder's audio files for their embedded tags — the same
-    /// reader the scan's pre-fill uses, so both answer from one source.
+    /// Reads a folder's audio files for their embedded tags; the scan's
+    /// pre-fill uses the same reader.
     file_tags: std::sync::Arc<dyn crate::import::file_tag_snapshot::FileTagReader>,
-    /// Unified event channel — all import service events go here.
+    /// The import service's event channel.
     event_tx: ImportEventBus,
     /// What the bus's events have said about every candidate.
     runtime: CandidateRuntime,
-    /// The identify driver and the extraction feeding it. Built here because
-    /// both run on this handle's event bus, and held here because the commands
-    /// that decide a candidate — a pick, a clear, a skip, an import — end its
-    /// identification as part of their own write.
+    /// The identify driver and the extraction feeding it, held here because
+    /// the commands that decide a candidate end its identification as part of
+    /// their own write.
     identify: crate::identify::IdentifyServiceHandle,
     extraction: crate::signals::ExtractionServiceHandle,
     folder_state_commit: crate::import::FolderStateCommit,
@@ -296,8 +265,8 @@ pub struct ImportServiceHandle {
 
 #[derive(Debug, Clone)]
 pub enum ScanEvent {
-    /// The watched-folder list changed (queried at load, or after add/remove).
-    /// Carries the full ordered list; the reducer replaces its copy.
+    /// The full ordered watched-folder list, sent at load and after each
+    /// change.
     WatchedFoldersChanged {
         folders: Vec<WatchedFolder>,
     },
@@ -311,38 +280,29 @@ pub enum ScanEvent {
         skipped: bool,
         is_added: bool,
     },
-    /// A leaf folder that looks like a release but failed validation
-    /// (corrupt/zero-byte audio, corrupt image, CUE referencing missing audio).
-    /// The reducer surfaces it under the Skipped tab with its reason. The key is
-    /// the folder path, shared with `CandidateRemoved` for reconciliation.
+    /// A folder that looks like a release but failed validation (corrupt or
+    /// empty audio, corrupt image, a CUE sheet naming missing audio), keyed by
+    /// its folder path.
     InvalidCandidate(InvalidCandidate),
-    /// A candidate is gone: the watcher re-scanned its folder and the release
-    /// no longer resolves on disk, or the folder it belonged to stopped being
-    /// watched (one event per candidate the folder held). The reducer removes
-    /// it by key (the key is the candidate's folder path); the extraction
-    /// service cancels the key's in-flight extraction on this event.
+    /// A candidate is gone: a rescan no longer finds it, or its watched folder
+    /// was removed (one event per candidate). The extraction service cancels
+    /// the key's running extraction on this event.
     CandidateRemoved {
         candidate_key: String,
     },
-    /// The user manually skipped or unskipped a candidate. The reducer flips the
-    /// candidate's `skipped` flag in place; the import view re-tabs it from New
-    /// to Skipped (or back). The key is the candidate's folder path.
+    /// A person skipped or unskipped a candidate.
     CandidateSkipChanged {
         candidate_key: String,
         skipped: bool,
     },
-    /// The user bound one of a candidate's track sheets to an audio file, or
-    /// cleared the binding. Carries the re-derived candidate, like
-    /// [`Self::FolderCandidate`] — a bound sheet is a different disc, with a
-    /// different track count and source-audio summary, so every index holding those
-    /// replaces its copy from this rather than keeping stale ones.
-    ///
-    /// It also says the candidate's stored identify verdict was cleared.
+    /// A person bound one of a candidate's track sheets to an audio file, or
+    /// cleared the binding. Carries the re-derived candidate, since a bound
+    /// sheet is a different disc, and says its stored identify verdict was
+    /// cleared.
     CandidateBindingChanged {
         candidate: FolderCandidate,
     },
-    /// The candidate's editable metadata draft or its provenance changed. The
-    /// triage projection re-reads so the row carries the persisted state.
+    /// The candidate's metadata draft or its provenance changed.
     CandidateMetadataChanged {
         candidate_key: String,
     },
@@ -352,9 +312,7 @@ pub enum ScanEvent {
     Finished,
 }
 
-/// Commands to the folder-watch reconciliation task. The scan installs OS
-/// watches from blocking work as directories are reached; synchronous callers
-/// only persist intent and enqueue commands.
+/// Commands to the folder scan coordinator.
 pub(crate) enum WatcherCommand {
     /// Read every watched folder the store lists.
     RescanAll,
@@ -367,16 +325,13 @@ pub(crate) enum WatcherCommand {
         target: (FolderReleaseDecisionKey, FolderReleaseDecision),
         completion: tokio::sync::oneshot::Sender<Result<(), String>>,
     },
+    /// Stop watching `roots` and, given `parent` (the folder holding exactly
+    /// them), watch it in their place. `completion` hears once the change is
+    /// stored, or why it was not.
     Remove {
-        path: std::path::PathBuf,
+        roots: Vec<std::path::PathBuf>,
+        parent: Option<std::path::PathBuf>,
         completion: tokio::sync::oneshot::Sender<Result<(), String>>,
-    },
-    /// Watch `parent` in place of the watched folders `inner` inside it.
-    /// `adopted` hears once the durable change lands or why it did not.
-    Adopt {
-        parent: std::path::PathBuf,
-        inner: Vec<std::path::PathBuf>,
-        adopted: tokio::sync::oneshot::Sender<Result<(), String>>,
     },
     Shutdown {
         completion: std::sync::mpsc::Sender<()>,
@@ -384,8 +339,8 @@ pub(crate) enum WatcherCommand {
 }
 
 impl ImportServiceHandle {
-    /// The release stored at `key`, when it may be worked on. A grouping's
-    /// release that cannot be says why, as a typed refusal.
+    /// The release stored at `key`, when it may be worked on; a grouping's
+    /// release that cannot be fails with why.
     pub async fn get_release_candidate(
         &self,
         key: &str,
@@ -453,12 +408,10 @@ impl ImportServiceHandle {
         self.automatic_admissions.take()
     }
 
-    /// Stop and join both worker threads. Idempotent (each join handle is
-    /// taken once); called from `AppServicesInner`'s drop so the import
-    /// worker's `LibraryManager` clone — and the store-open lock it pins — is
-    /// released before teardown returns. Both are told to stop by an explicit
-    /// `Shutdown` message rather than by channel closure: `self` holds a live
-    /// sender for each, so neither channel can close before the join.
+    /// Stop and join both worker threads; later calls do nothing. Called from
+    /// `AppServicesInner`'s drop so the store-open lock is released before
+    /// teardown returns. Each is sent `Shutdown` because `self` holds a live
+    /// sender, so neither channel closes on its own.
     pub fn stop_and_join(&self) {
         self.watcher.stop_and_join(|watcher_tx| {
             let (completion, receiver) = std::sync::mpsc::channel();
@@ -488,8 +441,7 @@ impl ImportServiceHandle {
     }
 
     /// Claim a candidate the way committing an import does, for a test with no
-    /// worker behind it. The claim is the only runtime a durable write gates
-    /// on, so a test about what a claim does has to make a real one.
+    /// worker behind it.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn claim_candidate_for_import_for_test(&self, candidate_key: &str, import_id: &str) {
         self.claim_candidate_for_import(candidate_key, import_id)
@@ -539,9 +491,8 @@ impl ImportServiceHandle {
             .map(|projection| projection.resolve(&facts)))
     }
 
-    /// One candidate's pane as the tables hold it, kept open for a test that
-    /// watches one subscription deliver change after change — the query the
-    /// pane itself subscribes to, before this process's runtime is folded in.
+    /// The query the pane subscribes to for one candidate, before this
+    /// process's runtime is folded in, for a test that watches it change.
     #[cfg(any(test, feature = "test-utils"))]
     pub fn subscribe_candidate_pane(
         &self,
@@ -554,8 +505,8 @@ impl ImportServiceHandle {
             .subscribe_import_candidate(Some(key.to_string()))
     }
 
-    /// The import list for `view` as one window over every item, kept open
-    /// for a test that watches one subscription deliver change after change.
+    /// The import list for `view` as one window over every item, for a test
+    /// that watches it change.
     #[cfg(any(test, feature = "test-utils"))]
     pub fn subscribe_whole_list(
         &self,
@@ -601,10 +552,9 @@ impl ImportServiceHandle {
         }
     }
 
-    /// One candidate by key, read from the tables with its runtime joined:
-    /// the scanned folder, whether it was skipped, whether its bytes are
-    /// already in the library. A key with runtime but no scanned folder — a
-    /// library release being re-identified — answers with its runtime alone.
+    /// One candidate by key, read from the tables with its runtime joined. A
+    /// key with runtime but no scanned folder (a library release being
+    /// re-identified) answers with its runtime alone.
     pub async fn get_candidate(
         &self,
         key: &str,
@@ -646,9 +596,9 @@ impl ImportServiceHandle {
     }
 
     /// The stored candidate whose preparation may still be changed. A caller
-    /// about to write holds `folder_state_commit` across this check and the
-    /// write, so an import claim cannot land between them; asked without the
-    /// lock, it only refuses early, before work the write would refuse anyway.
+    /// about to write holds `folder_state_commit` across this and the write so
+    /// an import claim cannot land between them; without the lock it only
+    /// refuses early.
     pub(super) async fn editable_candidate_for_commit(
         &self,
         key: &str,
@@ -662,11 +612,9 @@ impl ImportServiceHandle {
         Ok(candidate)
     }
 
-    /// Where the stored candidate at `key` stands: set aside, already in the
+    /// Whether the stored candidate at `key` is set aside, already in the
     /// library, or claimed by a running import. Read from the tables and the
-    /// runtime right now rather than through the list — a caller asks this
-    /// straight after the event that changed the answer, and the list's query
-    /// lands after the commit it reflects.
+    /// runtime because the list's query lands after the commit it reflects.
     pub(crate) async fn candidate_standing(
         &self,
         key: &str,
@@ -688,10 +636,9 @@ impl ImportServiceHandle {
         })
     }
 
-    /// Take `folder_state_commit` and recheck, while holding it, that the
-    /// candidate still stands at the exact revision the edit was prepared
-    /// from. The caller holds the returned guard across its write;
-    /// `operation` names it in the lock's log lines.
+    /// Take `folder_state_commit` and recheck under it that the candidate is
+    /// still at the revision the edit was prepared from. The caller holds the
+    /// guard across its write; `operation` names it in the lock's log lines.
     pub(super) async fn commit_lock_for_revision(
         &self,
         operation: &'static str,
@@ -711,15 +658,9 @@ impl ImportServiceHandle {
         Ok(commit)
     }
 
-    /// Claim `candidate_key` for the test import `import_id`, about to be
-    /// queued.
-    ///
-    /// Takes the folder-state commit lock, which
-    /// [`Self::save_candidate_verdict_if_current`] holds across *both* its
-    /// check and its write. So by the time this returns, either that write has
-    /// already landed or it has yet to read the candidate and will find it
-    /// claimed — there is no interval in which a verdict is stored for a
-    /// candidate whose import has been committed to.
+    /// Claim `candidate_key` for the test import `import_id`, under the lock
+    /// [`Self::save_candidate_verdict_if_current`] holds across its check and
+    /// write, so no verdict is stored for a claimed candidate.
     #[cfg(any(test, feature = "test-utils"))]
     pub(crate) async fn claim_candidate_for_import(&self, candidate_key: &str, import_id: &str) {
         let _commit = self
@@ -741,18 +682,11 @@ impl ImportServiceHandle {
 
     /// Run a durable write to completion once it has been asked for.
     ///
-    /// The write runs as a task of the import runtime, and this only waits on
-    /// it, so whatever happens to the caller's future — a UniFFI call the
-    /// bridge drops because the person looked at another candidate, a settle
-    /// task the app's teardown drops — ends the wait for the outcome and
-    /// nothing else. Coven commits a write on its writer thread whether or not
-    /// the future that asked for it survives, so a write the caller could
-    /// abort is one that can land without the bookkeeping or lock release that
-    /// follows it ever running: a stored verdict nobody accounted for leaves
-    /// the candidate runtime waiting on that write for good, and a pick a
-    /// person made would be dropped partway through its release fetch. The
-    /// `From<JoinError>` on the error type is the one way this can still fail:
-    /// the task panicked, or the runtime is gone.
+    /// The write runs as a task on the import runtime and this only waits on
+    /// it, so dropping the caller's future ends the wait and nothing else.
+    /// Coven commits a write whether or not the future that asked survives, so
+    /// the bookkeeping and lock release after it must run too. Fails through
+    /// `From<JoinError>` only when the task panicked or the runtime is gone.
     pub(crate) async fn committed<V, E>(
         &self,
         write: impl std::future::Future<Output = Result<V, E>> + Send + 'static,
@@ -861,24 +795,17 @@ pub(crate) fn remap_links<T: Clone>(
         .collect()
 }
 
-/// Project a parsed album (mapper output) into the editor's `ReleaseUserEdit`
-/// shape. The one way the edit-metadata form is seeded, from every path: a
-/// source-backed import (the prefetch's `seed`), a file-metadata import's local
-/// evidence, and reset-to-source's cached source payload.
+/// Project a parsed album into the editor's `ReleaseUserEdit`; every path
+/// seeds the edit-metadata form through this.
 ///
-/// It projects the very `ParsedAlbum` the commit worker applies the editor's
-/// overlay onto, which is what lets `apply_user_edit_to_seed` tell an untouched
-/// field from an edited one. Seeding the editor from any other shape — the
-/// picker's release detail, say — makes an untouched artist list read as a
-/// deletion and drops the release's secondary album artists.
+/// It projects the same `ParsedAlbum` the commit worker applies the edit onto,
+/// which is what lets `apply_user_edit_to_seed` tell an untouched field from an
+/// edited one.
 ///
-/// Track artist names are emitted positionally per existing `track_artists` row;
-/// an empty per-track list means "share the album artist" in the editor's
-/// convention.
+/// An empty per-track artist list means the track shares the album artist.
 pub fn parsed_album_to_user_edit(parsed: &super::ParsedAlbum) -> crate::import::ReleaseUserEdit {
-    // A ParsedAlbum is self-consistent by construction (the mapper builds its
-    // artists and junctions together), so a missing reference is a bug here, not
-    // a user-facing error.
+    // The mapper builds a ParsedAlbum's artists and links together, so a
+    // missing reference is a bug.
     let album_artist_assignments = crate::import::artist_assignments::album_artist_assignments(
         &parsed.artists,
         &parsed.album_artists,
@@ -901,9 +828,8 @@ pub fn parsed_album_to_user_edit(parsed: &super::ParsedAlbum) -> crate::import::
                 side: t.side,
                 track_number: t.track_number,
                 artist_assignments,
-                // A seed says what the release is, not which of the folder's
-                // audio backs each track; the track slots settle that, and
-                // stamp the binding onto the rows they hand to the editor.
+                // A seed does not say which audio file backs each track; the
+                // track slots settle that.
                 file: None,
             }
         })
@@ -918,12 +844,9 @@ pub fn parsed_album_to_user_edit(parsed: &super::ParsedAlbum) -> crate::import::
     }
 }
 
-/// The files the import pipeline writes rows for and accounts bytes against, in
-/// the release's own `relative_path` order.
-///
-/// Reads [`CategorizedFiles::release_files`], the same iterator
-/// [`CategorizedFiles::content_hash`] covers — the payload and the fingerprint
-/// that identifies it are one set by construction.
+/// The files the import writes rows for and counts bytes against, in
+/// `relative_path` order: the same set [`CategorizedFiles::content_hash`]
+/// covers.
 pub(crate) fn flatten_categorized_files(
     categorized: &crate::import::folder_scanner::CategorizedFiles,
 ) -> Vec<crate::import::folder_scanner::ScannedFile> {

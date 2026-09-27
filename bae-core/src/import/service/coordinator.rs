@@ -1,35 +1,14 @@
-//! Deciding when a watched root is read.
+//! Deciding when a watched root is read: from commands, filesystem events,
+//! watch failures, and the periodic check of folders on network volumes.
 //!
-//! Every way a scan can be asked for arrives here: a command, a filesystem
-//! event, a watch failure or a watch that lost track, and — for a folder on a
-//! network volume, which has no watch worth the name — the periodic cheap
-//! check that stands in for walking it. What each root has going is
-//! [`ActiveRoots`]'s; this decides what to ask it for.
-//!
-//! A whole root is read only when something asks for all of it: the folder
-//! was added or refreshed, the app started, or the watch failed or lost track.
-//! A change on disk, or one the cheap check found, reads again only the
-//! folders directly under the root that it reached (see [`root_change`]).
-//!
-//! Reading a root is [`super::scanning`]'s; this decides that it happens.
+//! A whole root is read only when something asks for all of it; a change on
+//! disk reads again only the folders directly under the root that it reached.
 
 use super::*;
 
 impl ImportService {
-    /// The folder-watch reconciliation task. A `Rescan` command re-scans a folder
-    /// (the handle sends one right after installing the folder's OS watch, and on
-    /// every `scan_watched_folders` call), and a gathered filesystem change
-    /// under a watched folder reads again the folders it reached. Every re-scan
-    /// reconciles what it finds against the candidates already recorded for
-    /// that folder —
-    /// `FolderCandidate` for what's on disk, `CandidateRemoved` for what's gone —
-    /// so changes propagate beyond the first scan.
-    ///
-    /// OS watch installation lives in `FolderWatcher`, owned by the handle; this
-    /// task only receives the `fs_rx` batches its callback forwards. The store,
-    /// not a task-local set, is the single authority on what's watched:
-    /// `affected_roots` resolves each event batch against what it lists, so
-    /// events from a watch left installed on a since-removed folder match
+    /// The folder-watch coordinator. The store is the one authority on what
+    /// is watched, so events from a watch left on a removed folder match
     /// nothing.
     pub(super) fn start_watcher(
         cmd_rx: mpsc::UnboundedReceiver<WatcherCommand>,
@@ -66,18 +45,10 @@ impl ImportService {
                 .build()
                 .expect("folder scan coordinator runtime");
             runtime.block_on(async move {
-            let (
-                mut active_roots,
-                mut scan_completion_rx,
-                mut removal_completion_rx,
-                mut adoption_completion_rx,
-            ) = ActiveRoots::new(starter, removal_backend, folder_state_commit.clone());
-            // A root on a network volume answers the cheap check off the
-            // coordinator, because asking 500 directories over SMB whether they
-            // have moved takes seconds and the loop has commands to serve
-            // meanwhile. The answer comes back here, and only a "yes" becomes a
-            // scan. One check per root at a time: `checking` is what says one is
-            // already out.
+            let (mut active_roots, mut scan_completion_rx, mut removal_completion_rx) =
+                ActiveRoots::new(starter, removal_backend, folder_state_commit.clone());
+            // The network check runs off the loop, since it can take seconds;
+            // `checking` keeps one per root at a time.
             let (checked_tx, mut checked_rx) =
                 mpsc::unbounded_channel::<(PathBuf, Option<Vec<PathBuf>>)>();
             let mut checking: HashSet<PathBuf> = HashSet::new();
@@ -104,9 +75,6 @@ impl ImportService {
                                 }
                             }
                             WatcherCommand::Rescan(path) => {
-                                if active_roots.is_being_removed(&path) {
-                                    continue;
-                                }
                                 if !is_watched(&library_manager, &path).await {
                                     continue;
                                 }
@@ -117,18 +85,6 @@ impl ImportService {
                                 );
                             }
                             WatcherCommand::Refresh { path, completion } => {
-                                if active_roots.is_being_removed(&path) {
-                                    if completion
-                                        .send(Err(format!(
-                                            "{} is being removed",
-                                            path.display()
-                                        )))
-                                        .is_err()
-                                    {
-                                        debug!("folder refresh caller dropped during removal");
-                                    }
-                                    continue;
-                                }
                                 if !is_watched(&library_manager, &path).await {
                                     if completion
                                         .send(Err(format!(
@@ -157,15 +113,12 @@ impl ImportService {
                                     FolderReadingRequest::new(target, completion),
                                 );
                             }
-                            WatcherCommand::Remove { path, completion } => {
-                                active_roots.remove(path, completion);
-                            }
-                            WatcherCommand::Adopt {
+                            WatcherCommand::Remove {
+                                roots,
                                 parent,
-                                inner,
-                                adopted,
+                                completion,
                             } => {
-                                active_roots.adopt(parent, inner, adopted);
+                                active_roots.remove(roots, parent, completion);
                             }
                             WatcherCommand::Shutdown { completion } => {
                                 active_roots.shutdown().await;
@@ -182,7 +135,6 @@ impl ImportService {
                         };
                         match outcome {
                             RemovalOutcome::Removed {
-                                path,
                                 commit,
                                 removed_keys,
                                 scan_waiters,
@@ -199,7 +151,7 @@ impl ImportService {
                                         ScanEvent::WatchedFoldersChanged { folders },
                                     ),
                                 );
-                                for waiter in scan_waiters {
+                                for (path, waiter) in scan_waiters {
                                     if waiter
                                         .send(Err(format!(
                                             "{} is no longer watched",
@@ -222,28 +174,6 @@ impl ImportService {
                                     if caller.send(Err(error.clone())).is_err() {
                                         debug!("folder removal caller dropped before failure");
                                     }
-                                }
-                            }
-                        }
-                    }
-                    Some(completion) = adoption_completion_rx.recv() => {
-                        let Some(outcome) = active_roots.finish_adoption(completion).await else {
-                            continue;
-                        };
-                        match outcome {
-                            AdoptionOutcome::Adopted { commit, adopted } => {
-                                let folders = watched_folders(&library_manager).await;
-                                event_tx.send(crate::import::handle::ImportEvent::Scan(
-                                    ScanEvent::WatchedFoldersChanged { folders },
-                                ));
-                                drop(commit);
-                                if adopted.send(Ok(())).is_err() {
-                                    debug!("folder adoption caller dropped before completion");
-                                }
-                            }
-                            AdoptionOutcome::Failed { error, adopted } => {
-                                if adopted.send(Err(error)).is_err() {
-                                    debug!("folder adoption caller dropped before failure");
                                 }
                             }
                         }
@@ -272,13 +202,9 @@ impl ImportService {
                                 continue;
                             }
                         };
-                        // A backend that lost track of what changed — FSEvents
-                        // dropping events, inotify's queue overflowing — says so
-                        // with an event of its own, and the path it names is
-                        // where to start: everything under it may have changed
-                        // unseen. One naming a path inside a root reads that
-                        // folder again, like any change there; one naming no
-                        // path, or a path that holds the root, reads the root.
+                        // A watch that lost track names where to start: no path,
+                        // or one holding a root, reads the whole root; one inside
+                        // a root reads that folder again.
                         let roots = watched_roots(&library_manager).await;
                         let mut whole: HashSet<PathBuf> = HashSet::new();
                         for event in events.iter().filter(|event| event.need_rescan()) {
@@ -352,14 +278,8 @@ impl ImportService {
                             if active_roots.is_being_removed(&root) {
                                 continue;
                             }
-                            // A folder on this machine's own disk has a watch
-                            // that reports every change to it, and says so
-                            // when it loses track, so there is nothing for the
-                            // tick to do. A folder on a network volume has no
-                            // such watch: the tick is the only thing that will
-                            // notice, and it asks the cheap question first
-                            // rather than walking a share every quarter of an
-                            // hour to learn nothing.
+                            // A local folder's watch reports every change; a
+                            // network folder has only this check.
                             if volume_kind(&root).await == VolumeKind::Local {
                                 continue;
                             }
@@ -433,9 +353,8 @@ fn request_change(
     }
 }
 
-/// Whether `root` holds tracks of its own. A store that cannot say is read as
-/// yes, which reads the whole root rather than one folder: the answer that is
-/// right either way.
+/// Whether `root` holds tracks of its own. A failed read answers yes, which
+/// reads the whole root: right either way.
 async fn holds_its_own_release(library_manager: &LibraryManager, root: &Path) -> bool {
     let root_key = root.to_string_lossy();
     match library_manager.load_folder_scan_item(&root_key).await {
@@ -447,9 +366,7 @@ async fn holds_its_own_release(library_manager: &LibraryManager, root: &Path) ->
     }
 }
 
-/// What the store lists as watched. A read that fails is logged and answers
-/// nothing: there is nothing to schedule against, and the next trigger reads
-/// the store again.
+/// What the store lists as watched; a failed read is logged and lists nothing.
 async fn watched_folders(library_manager: &LibraryManager) -> Vec<crate::import::WatchedFolder> {
     match library_manager.load_watched_import_folders().await {
         Ok(folders) => folders,

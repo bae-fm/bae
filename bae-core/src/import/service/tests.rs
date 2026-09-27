@@ -9,18 +9,14 @@ use std::sync::Mutex;
 use std::time::Duration;
 use tempfile::TempDir;
 
-/// A stand-in watched root, spelled for the running host. Every `/`-spelled
-/// root literal below goes through this or [`host_root`] before it reaches the
-/// registry, because a watched root has to be absolute by the OS's own rule.
-/// Path literals that never become a watched root — the prefix arithmetic
-/// `roots_for_watch_error` does, say — need no rewrite and get none.
+/// A `/`-spelled watched root in the host's spelling, since a watched root must
+/// be absolute by the OS's own rule.
 fn root_path(posix: &str) -> PathBuf {
     PathBuf::from(host_root(posix))
 }
 
-/// A worker built for a test, with the writer its scans hand file-tag
-/// readings to — the one the production service is started with, built here
-/// over the same database the worker's manager writes through.
+/// A worker for a test, with the candidate-preparations writer over the same
+/// database.
 struct TestService {
     service: ImportService,
     preparations: crate::import::CandidatePreparations,
@@ -111,9 +107,9 @@ async fn prepare_named_candidate(
         .unwrap()
 }
 
-/// Store `folder` as a scanned candidate of its own watched root and settle its
-/// draft, as a scan and a person's pane would, returning its candidate key and
-/// the revision an import of it is queued against.
+/// Store `folder` as a scanned candidate of its own watched root with a named
+/// draft, returning its candidate key and the revision an import is queued
+/// against.
 async fn store_scanned_candidate(
     test: &TestService,
     folder: &Path,
@@ -190,11 +186,9 @@ struct FakeScanStarter {
 
 struct FakeStartedScan {
     path: PathBuf,
-    /// The folder reading this pass stands for, with the caller it answers;
-    /// `None` for a pass over the whole root.
+    /// The folder decision this pass stores, with the caller it answers.
     reading: Option<FolderReadingRequest>,
-    /// The folders this pass reads again because they changed on disk;
-    /// `None` for any other pass.
+    /// The folders this pass reads again because they changed on disk.
     folders: Option<std::collections::BTreeSet<String>>,
     cancellation: crate::import::folder_scanner::ScanCancellation,
     completion: Option<tokio::sync::oneshot::Sender<()>>,
@@ -247,9 +241,8 @@ impl FakeScanStarter {
         }
     }
 
-    /// End the scan at `index`. A scan reports what it found on the event
-    /// stream, not here, so there is no outcome to hand back. A folder
-    /// reading tells its caller it was stored.
+    /// End the scan at `index`, telling a folder decision's caller it was
+    /// stored.
     fn complete(&self, index: usize) {
         if let Some(reading) = self.scans.lock().unwrap()[index].reading.take() {
             reading.answer(Ok(()));
@@ -262,8 +255,7 @@ impl FakeScanStarter {
             .expect("coordinator still waits for the fake scan");
     }
 
-    /// The folder decision the pass at `index` stores, or `None` for a pass
-    /// over the whole root.
+    /// The folder decision the pass at `index` stores, if it is one.
     fn reading(
         &self,
         index: usize,
@@ -277,8 +269,7 @@ impl FakeScanStarter {
             .map(|reading| reading.target().clone())
     }
 
-    /// The folders the pass at `index` reads again, or `None` for a pass
-    /// that is not a reading of changed folders.
+    /// The changed folders the pass at `index` reads again, if it is one.
     fn folders(&self, index: usize) -> Option<Vec<String>> {
         self.scans.lock().unwrap()[index]
             .folders
@@ -286,7 +277,6 @@ impl FakeScanStarter {
             .map(|folders| folders.iter().cloned().collect())
     }
 
-    /// The root the scan at `index` was started for.
     fn path(&self, index: usize) -> PathBuf {
         self.scans.lock().unwrap()[index].path.clone()
     }
@@ -346,19 +336,15 @@ impl RootRemovalBackend for FakeRemovalBackend {
         }
     }
 
-    async fn remove_durable_root(&self, _path: &Path) -> Result<Vec<String>, String> {
+    async fn remove_durable_roots(
+        &self,
+        _roots: &[PathBuf],
+        _parent: Option<&Path>,
+    ) -> Result<Vec<String>, String> {
         self.calls.lock().unwrap().push("remove");
         match self.remove_error.lock().unwrap().clone() {
             Some(error) => Err(error),
             None => Ok(Vec::new()),
-        }
-    }
-
-    async fn adopt_durable_roots(&self, _parent: &Path, _inner: &[PathBuf]) -> Result<(), String> {
-        self.calls.lock().unwrap().push("adopt");
-        match self.remove_error.lock().unwrap().clone() {
-            Some(error) => Err(error),
-            None => Ok(()),
         }
     }
 }
@@ -379,8 +365,8 @@ impl CoordinatorHarness {
         Self::with_roots(&["/music"]).await
     }
 
-    /// `roots` are `/`-spelled labels; each is registered in the host's own
-    /// spelling, the same one [`root_path`] gives the tests that address them.
+    /// `roots` are `/`-spelled; each is registered in the host's spelling, as
+    /// [`root_path`] gives it.
     async fn with_roots(roots: &[&str]) -> Self {
         let roots: Vec<String> = roots.iter().map(|root| host_root(root)).collect();
         let TestService {
@@ -520,10 +506,8 @@ fn terminal_import_failure_preserves_an_artist_identity_conflict() {
     ));
 }
 
-/// The scan dependencies a test drives `rescan_and_reconcile` and
-/// `spawn_root_scan` with: the service's own library, clock and ids, the
-/// preparations writer its harness built, and a folder-state commit lock of its
-/// own.
+/// Scan dependencies over the test service's library, with a folder-state
+/// commit lock of their own.
 fn test_scan_services(
     service: &ImportService,
     preparations: &crate::import::CandidatePreparations,
@@ -549,10 +533,8 @@ fn test_scan_services(
     )
 }
 
-/// Everything a test needs to read a folder besides the folder itself: the scan
-/// dependencies, the cancellation the pass is driven with, and the watcher's own
-/// receiver, held so the folder watcher's sender stays connected for as long as
-/// the scan does.
+/// What a test reads a folder with. `_fs_rx` keeps the folder watcher's sender
+/// connected while the scan runs.
 struct TestScan {
     services: ScanServices,
     cancellation: crate::import::folder_scanner::ScanCancellation,
@@ -573,9 +555,8 @@ impl TestService {
         )
     }
 
-    /// The same scan, reading the folder's tags through `file_tags` and its
-    /// listings through `directories` — for the tests that count what the
-    /// pre-fill opens, and the one that holds a listing closed.
+    /// The same scan, reading tags through `file_tags` and listings through
+    /// `directories`.
     fn scan_with(
         &self,
         file_tags: Arc<dyn crate::import::file_tag_snapshot::FileTagReader>,
@@ -610,7 +591,6 @@ impl TestScan {
     }
 }
 
-include!("tests/adoption.rs");
 include!("tests/coordinator.rs");
 include!("tests/cover_and_rescan.rs");
 include!("tests/edits_and_formats.rs");
@@ -620,3 +600,4 @@ include!("tests/progressive_scan.rs");
 include!("tests/reading_progress.rs");
 include!("tests/failed_import_retry.rs");
 include!("tests/scan_reads.rs");
+include!("tests/takeover.rs");

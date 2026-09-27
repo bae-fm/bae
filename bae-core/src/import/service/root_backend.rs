@@ -1,6 +1,4 @@
-//! What a removal or a takeover of a watched root does outside the
-//! coordinator: the folder watch it takes down or puts back, and the durable
-//! rows it deletes or moves.
+//! The folder watches and store change a removal of watched roots makes.
 
 use super::*;
 
@@ -8,12 +6,13 @@ use super::*;
 pub(super) trait RootRemovalBackend: Send + Sync {
     async fn uninstall(&self, path: &Path) -> Result<FolderWatchSnapshot, String>;
     async fn reinstall(&self, path: &Path, snapshot: &FolderWatchSnapshot) -> Result<(), String>;
-    /// Delete the root's rows and return the scan entry keys that went with
-    /// them.
-    async fn remove_durable_root(&self, path: &Path) -> Result<Vec<String>, String>;
-    /// Watch `parent` in place of the watched folders `inner` inside it, in
-    /// one write that keeps what was decided about their candidates.
-    async fn adopt_durable_roots(&self, parent: &Path, inner: &[PathBuf]) -> Result<(), String>;
+    /// Stop watching `roots` in the store — watching `parent` in their place
+    /// when given — and return the keys of the releases that left the queue.
+    async fn remove_durable_roots(
+        &self,
+        roots: &[PathBuf],
+        parent: Option<&Path>,
+    ) -> Result<Vec<String>, String>;
 }
 
 pub(super) struct ServiceRootRemovalBackend {
@@ -51,24 +50,27 @@ impl RootRemovalBackend for ServiceRootRemovalBackend {
             .map_err(|error| error.to_string())
     }
 
-    async fn remove_durable_root(&self, path: &Path) -> Result<Vec<String>, String> {
+    async fn remove_durable_roots(
+        &self,
+        roots: &[PathBuf],
+        parent: Option<&Path>,
+    ) -> Result<Vec<String>, String> {
         self.library_manager
-            .remove_watched_import_folder(&path.to_string_lossy())
-            .await
-            .map_err(|error| error.to_string())?
-            .ok_or_else(|| format!("{} is not a watched folder", path.display()))
-    }
-
-    async fn adopt_durable_roots(&self, parent: &Path, inner: &[PathBuf]) -> Result<(), String> {
-        self.library_manager
-            .adopt_watched_import_folders(
-                &parent.to_string_lossy(),
-                inner
+            .remove_watched_import_folders(
+                roots
                     .iter()
                     .map(|root| root.to_string_lossy().into_owned())
                     .collect(),
+                parent.map(|parent| parent.to_string_lossy().into_owned()),
             )
             .await
-            .map_err(|error| error.to_string())
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| match parent {
+                None => format!("{roots:?} is not watched"),
+                Some(parent) => format!(
+                    "{} already watches the folders inside it",
+                    parent.display()
+                ),
+            })
     }
 }

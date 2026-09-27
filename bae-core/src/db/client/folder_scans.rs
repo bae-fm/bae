@@ -1,13 +1,11 @@
-//! The durable folder-scan tables: `folder_scan_roots`, the `scan_candidate`
-//! family, and the `scan_sidecar` pair. A scan generation is durable before
-//! traversal begins; items are written as they are discovered, each deleting
-//! what it supersedes; successful completion prunes rows not written in that
-//! generation in the same transaction that marks the root complete.
+//! The folder-scan tables: `folder_scan_roots`, `folder_scan_directory`, the
+//! `scan_candidate` family and the `scan_sidecar` pair. A scan generation is
+//! durable before traversal begins, each item deletes what it supersedes as it
+//! is written, and successful completion prunes rows of other generations in
+//! the transaction that marks the root complete.
 //!
-//! One [`ScanItem`](crate::import::folder_scanner::ScanItem) is a candidate row
-//! with its files, their parsed track sheets and the decisions that exposed it
-//! — or a folder's sidecar files, which [`sidecar`] stores. [`write`] lays
-//! candidate rows down and [`read`] assembles them back.
+//! [`write`] stores candidate rows, [`read`] loads them back, and [`sidecar`]
+//! stores a folder's sidecar files.
 
 pub(super) mod columns;
 mod dates;
@@ -23,8 +21,7 @@ use super::*;
 use crate::import::folder_scanner::{FolderReleaseDecisionKey, ScanItem};
 use std::path::{Path, PathBuf};
 
-// `use super::*` above also brings the client's own `read` and `write` modules
-// into scope, so these name this module's pair explicitly.
+// `use super::*` also brings in the client's own `read` and `write`, hence `self::`.
 pub(super) use self::read::{
     load_candidate_file_tag_snapshot, load_item_by_key, stored_entries, RowSources,
 };
@@ -40,18 +37,15 @@ pub struct FinishedScan {
     pub regrouped: super::release_groupings::GroupingChanges,
 }
 
-/// What one scan item's write did.
-///
-/// The distinction the import list lives on: a pass that finds a folder exactly
-/// as it left it has nothing to tell anyone, and saying so is what keeps a
-/// timer-driven re-read of a watched folder free.
+/// What one scan item's write did. A re-read of an unchanged folder is all
+/// `Unchanged`, so it announces nothing.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ScanItemWrite {
-    /// The stored row already said exactly this. It kept its place and took
-    /// this generation's stamp, so the completion prune keeps it too.
+    /// The stored row already said this; it only took this generation's
+    /// stamp, so the completion prune keeps it.
     Unchanged,
-    /// The row was written, displacing the keys named here, and rebuilding
-    /// the releases that groupings build from what it changed.
+    /// The row was written, replacing the entries at `superseded_keys`;
+    /// `regrouped` is the grouping releases rebuilt from what changed.
     Stored {
         superseded_keys: Vec<String>,
         regrouped: super::release_groupings::GroupingChanges,
@@ -61,13 +55,12 @@ pub enum ScanItemWrite {
 }
 
 impl ScanItemWrite {
-    /// Whether the row now says something it did not say before — the only
-    /// case anyone has to hear about.
+    /// Whether the row now says something it did not say before.
     pub fn changed(&self) -> bool {
         matches!(self, Self::Stored { .. })
     }
 
-    /// The stored entries this write displaced. Empty when it wrote nothing.
+    /// The stored entries this write replaced. Empty when it wrote nothing.
     pub fn superseded_keys(&self) -> &[String] {
         match self {
             Self::Unchanged => &[],
@@ -91,9 +84,9 @@ impl ScanItemWrite {
     }
 }
 
-/// Refuse to write under a generation the root has moved past. Read inside the
-/// write transaction, so a scan that lost the root between the caller's check
-/// and this write is refused rather than writing over its successor.
+/// Refuse to write under a generation the root has moved past. Runs inside the
+/// write transaction, so a scan that lost the root after the caller's check
+/// cannot write over its successor.
 fn ensure_generation(
     sql: &SqlContext<'_, '_>,
     watched_folder_path: &str,
@@ -115,9 +108,8 @@ fn ensure_generation(
     Ok(())
 }
 
-/// Whether `snapshot` is a reading of `item` — the audio it was taken from is
-/// the audio `item` holds. An invalid candidate carries no files, so no
-/// reading is ever a reading of one.
+/// Whether `snapshot` was taken from the audio `item` holds. Only a
+/// tentative or valid candidate holds audio.
 fn item_was_read_for(
     item: &ScanItem,
     snapshot: &crate::import::file_tag_snapshot::FileTagSnapshot,
@@ -136,7 +128,8 @@ fn generation_column(generation: u64) -> Result<i64, DbError> {
     })
 }
 
-/// Store one complete reading only under the source stamp it describes.
+/// [`Database::replace_candidate_file_tag_snapshot`] inside the caller's
+/// transaction.
 pub(super) fn replace_candidate_file_tag_snapshot_on(
     sql: &SqlContext<'_, '_>,
     watched_folder_path: &str,
@@ -199,9 +192,9 @@ pub(super) fn replace_candidate_file_tag_snapshot_on(
 }
 
 impl Database {
-    /// Load the candidate's current scan stamp and whatever complete file-tag
-    /// snapshot is stored beneath it. The two stamps are deliberately not
-    /// collapsed: a caller must distinguish never-read from invalidated.
+    /// The candidate's current scan generation and whatever file-tag snapshot
+    /// is stored for it, even an outdated one, so a caller can tell a
+    /// candidate never read from one whose reading is out of date.
     pub(crate) async fn load_candidate_file_tag_snapshot(
         &self,
         watched_folder_path: &str,
@@ -215,10 +208,9 @@ impl Database {
         .await
     }
 
-    /// Atomically replace a candidate's complete file-tag snapshot if its
-    /// durable scan generation and file-decision revision still match what was
-    /// read. `false` means the candidate moved before the write; nothing was
-    /// deleted or inserted.
+    /// Replace a candidate's file-tag snapshot if its scan generation and file
+    /// edit revision still match the snapshot's. `false` means the candidate
+    /// changed first and nothing was written.
     pub(crate) async fn replace_candidate_file_tag_snapshot(
         &self,
         watched_folder_path: &str,
@@ -251,9 +243,8 @@ impl Database {
             .transpose()
     }
 
-    /// The root's generation as the read connection sees it. A scan that is no
-    /// longer the root's writes nothing, and finding that out is a read — the
-    /// writes below open only once this generation is the one in force.
+    /// The root's generation on the read connection, so a scan that lost the
+    /// root finds out without opening a write.
     async fn current_scan_generation(
         &self,
         watched_folder_path: &str,
@@ -271,9 +262,8 @@ impl Database {
         .await
     }
 
-    /// Start a durable scan generation for one watched root.
     /// Open a new scan generation for `watched_folder_path`, recording the
-    /// volume the folder is on as this scan found it.
+    /// volume the folder is on.
     pub async fn begin_folder_scan(
         &self,
         watched_folder_path: &str,
@@ -298,18 +288,9 @@ impl Database {
         .await
     }
 
-    /// Persist one progressive scan result.
-    ///
-    /// The entries `item` supersedes under its root — what a resolved boundary
-    /// hid, the tentative rows a boundary hides — are found and deleted in the
-    /// same transaction, and returned so the caller can announce them. `None`
-    /// when `generation` is no longer the root's: the generation check and all
-    /// changes share one transaction, so a cancelled scan cannot write over
-    /// its successor.
-    /// `file_metadata` seeds a candidate this scan is storing for the first time:
-    /// the draft the folder's own tags project, the reading it came from, and
-    /// the cover those tags embed. A candidate that already has a draft keeps
-    /// it — a rescan re-reads files, not decisions.
+    /// Store one scan result, deleting the entries it supersedes in the same
+    /// transaction. `None` when `generation` is no longer the root's.
+    /// `file_metadata` is [`ScanItemToWrite::file_metadata`].
     pub(crate) async fn save_folder_scan_item_with_seed(
         &self,
         watched_folder_path: &str,
@@ -354,12 +335,10 @@ impl Database {
             .await
     }
 
-    /// Record every directory a completed walk of `watched_folder_path` read,
-    /// with the mtime it had, replacing whatever the last walk recorded.
-    ///
-    /// An empty list clears the root: a walk that could not read some
-    /// directory's mtime records nothing rather than a partial picture, and a
-    /// root with nothing recorded is one the cheap check refuses to answer for.
+    /// Replace the directories recorded for `watched_folder_path` with those a
+    /// completed walk read, and their mtimes. A walk that missed any mtime
+    /// records none, and a root with nothing recorded is never taken to be
+    /// unchanged.
     pub async fn record_folder_scan_directories(
         &self,
         watched_folder_path: &str,
@@ -384,8 +363,7 @@ impl Database {
         .await
     }
 
-    /// Every directory the last completed walk of this root recorded, with the
-    /// mtime it had. Empty when no walk has recorded any.
+    /// The directories and mtimes recorded for this root; empty when none are.
     pub async fn load_folder_scan_directories(
         &self,
         watched_folder_path: &str,
@@ -402,9 +380,10 @@ impl Database {
         .await
     }
 
-    /// Finish one scan generation. Successful completion removes entries not
-    /// observed in this generation and returns their keys; failure preserves
-    /// them. `None` when `generation` is no longer the root's.
+    /// Finish one scan generation. On success, remove the entries and sidecars
+    /// it did not see and rebuild the groupings they fed; on failure, record
+    /// the error and keep everything. `None` when `generation` is no longer
+    /// the root's.
     pub async fn finish_folder_scan(
         &self,
         watched_folder_path: &str,
@@ -491,9 +470,7 @@ impl Database {
         .await
     }
 
-    /// The stored entry at `entry_key`, whichever root it is under. Watched
-    /// roots never overlap and keys are absolute paths, so at most one root
-    /// holds it.
+    /// The stored entry at `entry_key`, whichever root it is under.
     pub async fn load_folder_scan_item(
         &self,
         entry_key: &str,
@@ -513,14 +490,10 @@ impl Database {
     }
 }
 
-/// The stored entries `item` replaces when it is written: every other entry
-/// reading any of the files it reads. Two readings of one folder cannot both
-/// stand — a folder read as one release replaces the releases below it, and a
-/// release below a folder once read as one replaces that reading.
-///
-/// A tentative candidate replaces nothing: it is seen before the folders
-/// around it are understood, and the reading that settles them is what
-/// replaces whatever it contradicts.
+/// The stored entries `item` replaces: every other entry reading any of its
+/// files, since two readings of one folder cannot both stand. A tentative
+/// candidate replaces nothing; it is seen before the folders around it are
+/// read, and the reading that settles them does the replacing.
 fn superseded_keys(stored: &[StoredEntry], item: &ScanItem) -> Vec<String> {
     let (ScanItem::Valid(_) | ScanItem::Invalid(_)) = item else {
         return Vec::new();
@@ -535,21 +508,17 @@ fn superseded_keys(stored: &[StoredEntry], item: &ScanItem) -> Vec<String> {
         .collect()
 }
 
-/// One scan item as a pass hands it to the store: the entry, the file-tag
-/// reading that seeds a candidate stored for the first time, and the date the
-/// folder carries.
+/// One scan item as a pass hands it to the store.
 pub(crate) struct ScanItemToWrite {
     pub(crate) item: ScanItem,
     /// The draft the folder's own tags project, the reading it came from, and
-    /// the cover those tags embed. A candidate that already has a draft keeps
-    /// it — a rescan re-reads files, not decisions.
+    /// the cover those tags embed. Seeds only a candidate with no draft yet.
     pub(crate) file_metadata: Option<crate::import::file_metadata_seed::FileMetadataSeed>,
     pub(crate) folder_date: Option<crate::import::folder_scanner::FolderDate>,
 }
 
 /// Write one scan item under `generation`, inside the caller's transaction,
-/// deleting the entries it supersedes. The caller has already checked that
-/// `generation` is the one this write may stamp.
+/// deleting the entries it supersedes. The caller has checked `generation`.
 fn write_scan_item(
     sql: &SqlContext<'_, '_>,
     watched_folder_path: &str,
@@ -586,9 +555,7 @@ fn write_scan_item(
     else {
         return Ok(ScanItemWrite::Unchanged);
     };
-    // A settled release holds its files itself, so no sidecar holding one of
-    // them stands beside it. A tentative one settles nothing (see
-    // `superseded_keys`).
+    // A valid release takes its files from any sidecar holding them.
     let uncovered = sidecar::delete_sidecars_holding(sql, &to_write.item)?;
     let touched: Vec<String> = std::iter::once(entry_key)
         .chain(superseded_keys.iter().cloned())
@@ -602,9 +569,8 @@ fn write_scan_item(
     })
 }
 
-/// Who writes an entry: a scan, which reads the folder and replaces whatever
-/// other reading of its files stood; or a grouping, which builds its release
-/// from releases the scans wrote and replaces nothing but its own row.
+/// Who writes an entry: a scan, which replaces every other reading of its
+/// files, or a grouping, which replaces only its own row.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum EntrySource {
     Scanned,
@@ -664,26 +630,17 @@ pub(super) fn write_entry(
         discovery.store(sql, watched_folder_path, &entry_key)?;
         return Ok(EntryWrite::Unchanged);
     }
-    // A walk of a folder nobody has touched produces exactly the items
-    // already stored for it. Rewriting one of those would mean a
-    // transaction, an announcement, and every reader of the import list
-    // rebuilding it — per row, per pass, forever, over a folder that did
-    // not change. So the row keeps its place and takes only this
-    // generation's stamp, which is all the completion prune asks of it.
+    // An unchanged row only takes the stamp, so an untouched folder
+    // announces nothing.
     let stored_item = read::load_item_by_key(sql, &entry_key, sources)?.map(|(_, stored)| stored.item);
     if stored_item.as_ref() == Some(item) {
         write::touch_candidate(sql, watched_folder_path, &entry_key, generation)?;
         discovery.store(sql, watched_folder_path, &entry_key)?;
         return Ok(EntryWrite::Unchanged);
     }
-    // Rewriting the row takes the file-tag reading hanging off it, and
-    // the draft that reading projected outlives the rewrite. So a write
-    // that brings no reading of its own carries the stored one across —
-    // onto a row that still holds the files it was read from, and only
-    // there. A folder that now fails validation holds no files at all,
-    // and one whose audio changed holds other files; either way the
-    // reading describes what the row no longer is, and it goes with the
-    // row it belonged to.
+    // Rewriting the row deletes its file-tag reading; a write with no
+    // reading of its own keeps the stored one if the new row holds the
+    // audio it was read from.
     let carried = match file_metadata.is_some() {
         true => None,
         false => read::load_file_tag_snapshot(sql, watched_folder_path, &entry_key)?
@@ -693,8 +650,7 @@ pub(super) fn write_entry(
         EntrySource::Scanned => superseded_keys(&stored_entries(sql, watched_folder_path)?, item),
         EntrySource::Grouping => Vec::new(),
     };
-    // The item's own prior row goes first: an item is written whole,
-    // so what stood under its key is replaced rather than merged with.
+    // An item replaces its own stored row whole.
     for key in std::iter::once(&entry_key).chain(removed_keys.iter()) {
         delete_entry(sql, watched_folder_path, key)?;
     }
@@ -814,9 +770,9 @@ pub(super) fn validate_scan_item_ownership(
         )));
     }
     let root = Path::new(watched_folder_path);
-    // A release a grouping builds is listed under one watched folder and may
-    // read folders under others; what it reads was checked when each release
-    // it takes in was stored.
+    // A grouping's release is listed under its first member's watched folder
+    // and may read folders under others; each release it takes in was checked
+    // when stored.
     let grouped = match item {
         ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => {
             candidate.grouping.is_some()
@@ -869,14 +825,10 @@ pub(super) fn validate_scan_item_ownership(
     Ok(())
 }
 
-/// Store how the folder at `key` reads, as the grouping `grouping`. Either
-/// author's answer lands where nothing is stored; a scan's own reading never
-/// replaces the person's.
-///
-/// A folder's grouping keeps one key for as long as it is stored, because the
-/// release it reads as is addressed by that key. A reading that names another
-/// key than the one stored at the folder was taken against a store that has
-/// since changed, and is refused.
+/// Store the grouping `grouping` anchored at the folder `key` names; a
+/// heuristic reading never replaces the person's. A folder's grouping keeps
+/// its key while stored, since its release is addressed by it, so a reading
+/// naming a different key is stale and refused.
 pub(super) fn store_folder_reading(
     sql: &SqlContext<'_, '_>,
     key: &FolderReleaseDecisionKey,
@@ -899,26 +851,29 @@ pub(super) fn store_folder_reading(
         decision,
         crate::import::folder_scanner::FolderReleaseDecision::CombineAsOneRelease
     );
+    let anchor = crate::import::watched_folder::folder_below(
+        &key.watched_folder_path,
+        &key.relative_folder_path,
+    )?;
+    let covering = super::import_state::require_watched(sql, &anchor)?;
+    if covering != key.watched_folder_path {
+        return Err(DbError::Message(format!(
+            "{anchor} is watched under {covering}, not {}",
+            key.watched_folder_path
+        )));
+    }
     sql.execute(
-        "INSERT INTO release_grouping \
-             (key, watched_folder_path, anchor_relative_path, combined, author) \
-         VALUES (?, ?, ?, ?, ?) \
-         ON CONFLICT(watched_folder_path, anchor_relative_path) DO UPDATE SET \
+        "INSERT INTO release_grouping (key, anchor_folder, combined, author) \
+         VALUES (?, ?, ?, ?) \
+         ON CONFLICT(anchor_folder) DO UPDATE SET \
              combined = excluded.combined, author = excluded.author \
          WHERE excluded.author = 'user' \
              OR release_grouping.author != 'user'",
-        params![
-            grouping,
-            key.watched_folder_path,
-            key.relative_folder_path,
-            combined,
-            author
-        ],
+        params![grouping, anchor, combined, author],
     )?;
     let stored: String = sql.query_row(
-        "SELECT key FROM release_grouping \
-         WHERE watched_folder_path = ? AND anchor_relative_path = ?",
-        params![key.watched_folder_path, key.relative_folder_path],
+        "SELECT key FROM release_grouping WHERE anchor_folder = ?",
+        [&anchor],
         |row| row.get(0),
     )?;
     if stored != grouping {

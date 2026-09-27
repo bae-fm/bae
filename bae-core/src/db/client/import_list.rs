@@ -1,17 +1,9 @@
 //! The import tab's list, read as columns.
 //!
-//! The whole queue is read on every rerun — a few short columns per scanned
-//! folder, per boundary, per draft and per stored verdict, plus each draft's
-//! album artists and each verdict's match rows,
-//! which is what says how many pressings it named, and, while the view filters,
-//! each Done row's library title, artists and year, which is what the filter
-//! tests it against — and nothing else: no files, no cue sheets, no boundary
-//! trees, no fetched releases, no draft tracks, no covers. Ordering the list
-//! uses folder dates or natural-order paths, keeping each folder group's rows
-//! together. The list interleaves group headers with three kinds of entry, so
-//! the ordering and the offsets are worked out in Rust by
-//! [`crate::import::list::flatten`]. Only the entries inside the requested
-//! windows are then loaded whole.
+//! Every rerun reads the whole queue as a few short columns per folder, draft
+//! and verdict (never files, cue sheets, fetched releases, draft tracks or
+//! covers), places it with [`crate::import::list::flatten`], and loads whole
+//! only the entries inside the requested windows.
 
 mod window;
 
@@ -30,7 +22,7 @@ use folder_scans::columns::{invalid_reason_of, to_u32, to_u64, unreadable};
 /// What the scan made of one folder.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ScanCandidateKind {
-    /// A release approximation found before its enclosing boundary was known.
+    /// A release found before the folder around it was known.
     Tentative,
     Valid,
     Invalid,
@@ -49,8 +41,8 @@ pub struct ScanCandidateListRow {
     pub kind: ScanCandidateKind,
     pub name: String,
     pub display_path: String,
-    /// Filesystem date, or first observation when the filesystem has none.
-    /// Absent for a pre-date-tracking candidate that has not been rescanned.
+    /// Filesystem date, or first observation when the filesystem has none;
+    /// `None` when neither is stored.
     pub discovered_at: Option<i64>,
     /// `None` only for an invalid folder, which carries no files.
     pub content_hash: Option<String>,
@@ -63,8 +55,8 @@ pub struct ScanCandidateListRow {
 #[derive(Debug, Clone, PartialEq)]
 pub struct CandidateListGrouping {
     pub skipped: bool,
-    /// Why the release cannot be worked on as it stands, for a grouping of
-    /// releases picked together.
+    /// Why a grouping of releases picked together cannot be worked on as it
+    /// stands.
     pub error: Option<crate::import::GroupingBlock>,
 }
 
@@ -94,39 +86,31 @@ pub struct CandidateStateListRow {
 /// Every column the queue is placed from, in one read.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct ImportQueueRows {
-    /// The watched roots in their stored order — the list's outer ordering.
+    /// In stored order, which is the list's outer order.
     pub watched_folders: Vec<WatchedFolder>,
     pub candidates: Vec<ScanCandidateListRow>,
-    /// `(watched_folder_path, relative_candidate_path)` of every skipped row.
+    /// Every skipped candidate as the list addresses it: the watched folder
+    /// covering it, and its path below that.
     pub skipped: HashSet<(String, String)>,
     /// The library release each imported content hash became.
     pub imported: HashMap<String, ImportedRelease>,
-    /// When each imported content hash's release was written, as Unix epoch
-    /// milliseconds — the Done tab's within-section order. Kept beside
-    /// `imported` rather than inside `ImportedRelease`: a row carries the
-    /// release its import became, not when the import happened.
+    /// When each imported content hash's release was written, in Unix epoch
+    /// milliseconds; orders rows within a Done section.
     pub imported_at: HashMap<String, i64>,
-    /// The error the last import attempt left behind, by content hash. Read
-    /// here rather than only in the pane because it is what a row's placement
-    /// says on the next launch: without it a candidate whose import failed
-    /// before the app quit comes back looking untouched.
+    /// The error the last import attempt left, by content hash, so a failed
+    /// import still places as failed after a relaunch.
     pub failures: HashMap<String, String>,
     pub states: HashMap<String, CandidateStateListRow>,
-    /// How each folder with a stored reading reads, keyed by
-    /// `(watched_folder_path, relative_folder_path)`: `true` for a folder read
-    /// as one release, `false` for one whose releases are kept apart. The
-    /// list offers to read a folder's releases as one from what is stored
-    /// here and the releases below it.
+    /// Each grouping's anchor folder as (watched folder, path below it):
+    /// `true` when its releases are read as one, `false` when kept apart.
     pub folder_readings: HashMap<(String, String), bool>,
-    /// What each Done row shows of its library release in words, by release
-    /// id — what the filter tests a Done row against. Read only when the view
-    /// filters: `None` when the read left it out, so an unfiltered list does
-    /// not read, or rerun on, every imported album's title and artists.
+    /// Each Done row's library text by release id, which the filter tests;
+    /// `None` when the view does not filter, so an unfiltered list neither
+    /// reads nor reruns on it.
     pub imported_text: Option<HashMap<String, crate::import::ImportedReleaseText>>,
 }
 
-/// Whether a queue read reads the text Done rows show: exactly when the view
-/// it answers filters, which is the only thing that tests it.
+/// Whether a queue read loads the Done rows' text: only when the view filters.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum DoneRowText {
     Read,
@@ -143,10 +127,8 @@ impl DoneRowText {
     }
 }
 
-/// What each Done row shows of its library release in words — the album's
-/// title, its credited artists as they show after merges, its year — keyed by
-/// release id: every imported release's, or `only`'s. The one read of it: a
-/// window draws it and the filter tests it.
+/// Each imported release's title, credited artists after merges, and year, by
+/// release id; only `only`'s when given.
 pub(super) fn load_imported_release_text_on(
     sql: &SqlReadContext<'_>,
     only: Option<&str>,
@@ -191,14 +173,19 @@ pub(super) fn load_import_queue_on(
 
     let candidates = candidate_rows(sql)?;
 
+    let roots: Vec<String> = watched_folders
+        .iter()
+        .map(|folder| folder.path.clone())
+        .collect();
     let skipped: HashSet<(String, String)> = sql
         .query(
-            "SELECT watched_folder_path, relative_candidate_path FROM skipped_import_candidates",
+            "SELECT candidate_path FROM skipped_import_candidates",
             [],
-            |row| Ok((row.get(0)?, row.get(1)?)),
+            |row| row.get::<_, String>(0),
         )?
-        .into_iter()
-        .collect();
+        .iter()
+        .map(|path| listed_below(&roots, path))
+        .collect::<Result<_, _>>()?;
 
     let mut imported: HashMap<String, ImportedRelease> = HashMap::new();
     let mut imported_at: HashMap<String, i64> = HashMap::new();
@@ -227,18 +214,13 @@ pub(super) fn load_import_queue_on(
 
     let folder_readings: HashMap<(String, String), bool> = sql
         .query(
-            "SELECT watched_folder_path, anchor_relative_path, combined \
-             FROM release_grouping WHERE anchor_relative_path IS NOT NULL",
+            "SELECT anchor_folder, combined FROM release_grouping WHERE anchor_folder IS NOT NULL",
             [],
-            |row| {
-                Ok((
-                    (row.get::<_, String>(0)?, row.get::<_, String>(1)?),
-                    row.get::<_, bool>(2)?,
-                ))
-            },
+            |row| Ok((row.get::<_, String>(0)?, row.get::<_, bool>(1)?)),
         )?
         .into_iter()
-        .collect();
+        .map(|(folder, combined)| Ok((listed_below(&roots, &folder)?, combined)))
+        .collect::<Result<_, DbError>>()?;
 
     let failures: HashMap<String, String> = sql
         .query(
@@ -267,9 +249,21 @@ pub(super) fn load_import_queue_on(
     })
 }
 
+/// A stored folder as the list addresses it: the watched folder covering it
+/// and its path below that. A stored folder outside every watched folder is an
+/// error.
+fn listed_below(roots: &[String], folder: &str) -> Result<(String, String), DbError> {
+    crate::import::watched_folder::validate_stored_folder(folder)?;
+    let root = crate::import::watched_folder::covering_root(roots, folder)
+        .ok_or_else(|| DbError::Message(format!("{folder} is under no watched folder")))?;
+    Ok((
+        root.to_string(),
+        super::import_state::relative_below(root, folder)?,
+    ))
+}
+
 fn candidate_rows(sql: &SqlReadContext<'_>) -> Result<Vec<ScanCandidateListRow>, DbError> {
-    // A release a grouping takes in stays stored for as long as the grouping
-    // stands, and leaves the queue for that long.
+    // A release a grouping takes in stays stored but is left out of the queue.
     sql.query(
         "SELECT c.watched_folder_path, c.path, c.folder, c.kind, c.name, c.display_path, \
                 c.content_hash, c.file_edit_revision, c.invalid_reason, c.invalid_reason_path, \
@@ -365,9 +359,7 @@ fn candidate_rows(sql: &SqlReadContext<'_>) -> Result<Vec<ScanCandidateListRow>,
 }
 
 fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateStateListRow>, DbError> {
-    // The draft as the list shows it — its album title and artists, whether
-    // it is blank, whether it is valid — read off its columns, never the
-    // draft whole: its tracks and their artists are the pane's to read.
+    // Only the draft's list columns; its tracks are the pane's to read.
     let mut drafts: HashMap<String, (String, bool, bool, crate::import::MetadataAuthor)> = sql
         .query(
             "SELECT content_hash, album_title, draft_blank, draft_valid, author \
@@ -397,9 +389,8 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
         })
         .collect::<Result<_, DbError>>()?;
     let mut album_artists = super::import_state::load_album_artist_assignments_on(sql, None)?;
-    // Every match row, not a count and a lead row: how many *pressings* a
-    // verdict named is what the Ready rule asks, and which row each match
-    // belongs to is what its own run decided.
+    // Every match row, not a count: pressings are counted by the row each
+    // match's run stored for it.
     let mut matches = load_matches_on(sql, None)?;
     let mut provenances = load_provenance_on(sql, None)?;
     let mut verdicts: HashMap<String, VerdictSummary> = HashMap::new();
@@ -419,18 +410,12 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
         },
     )? {
         let (content_hash, kind, track_count, medium_conflict, sample_rate_hz) = row;
-        // Read the lead off the first row, then spend the rest on the count:
-        // both come from the one read of this candidate's matches.
-        // The releases agreement narrowed out are not what the verdict
-        // settled on: the row leads with a match and counts pressings among
-        // the matches alone.
+        // The releases agreement narrowed out are not what the verdict settled
+        // on, so the lead and the count come from `found` alone.
         let found = matches.remove(&content_hash).unwrap_or_default().found;
         let lead = found
             .first()
             .map(|stored| LeadMatch::of(&stored.result, Some(&stored.provenance)));
-        // The rows the run built, read off the row each match names. Nothing
-        // re-forms them: a list of a run's answers does not hold what it
-        // decided those rows against.
         let pressing_count = crate::import::release_group::row_count(
             &found.iter().map(|stored| stored.pressing).collect::<Vec<_>>(),
         ) as u32;
@@ -533,10 +518,8 @@ fn load_import_list_on(
 }
 
 impl Database {
-    /// The import tab as a reconfigurable live query: the view and the windows
-    /// travel in the request, so changing either reruns the read without
-    /// rebuilding the subscription, and a commit that changes nothing the
-    /// request asked for is withheld.
+    /// The import tab as a live query whose request carries the view and the
+    /// windows, so changing either reruns the read on the same subscription.
     pub(crate) fn subscribe_import_list(
         &self,
         initial: ImportListRequest,
@@ -574,8 +557,8 @@ impl Database {
             .await
     }
 
-    /// The first of `keys` in the queue's own order under `request`'s view,
-    /// read from the tables. `None` when the queue holds none of them.
+    /// The first of `keys` in the queue's order under `request`'s view; `None`
+    /// when the queue holds none of them.
     pub(crate) async fn first_import_candidate_among(
         &self,
         request: ImportListRequest,
@@ -591,10 +574,8 @@ impl Database {
             .await
     }
 
-    /// The candidate `initial` names, as the pane reads it, live; no key reads
-    /// nothing. `None` once the key names no scanned folder, which is what
-    /// clears a selection. The pane moves to another candidate through the
-    /// request handle, not another query.
+    /// The candidate the request names, as the pane reads it, live; `None` for
+    /// no key or a key naming no scanned folder, which clears a selection.
     pub(crate) fn subscribe_import_candidate(
         &self,
         initial: Option<String>,

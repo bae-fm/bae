@@ -37,9 +37,9 @@ impl LibraryManager {
         Ok(self.database.combine_releases(key, members).await?)
     }
 
-    /// Undo the grouping of releases picked together at `key`, returning
-    /// them as they are stored, and the releases of groupings rebuilt because
-    /// the files of the folder it read are free again.
+    /// Undo the grouping of releases picked together at `key`, returning them
+    /// as stored and the releases of groupings rebuilt now that the files of
+    /// the folder it read are free.
     pub(crate) async fn separate_picked_grouping(
         &self,
         key: &str,
@@ -236,40 +236,32 @@ impl LibraryManager {
         Ok(self.database.add_watched_import_folder(path).await?)
     }
 
-    /// Watch `parent` in place of the watched folders `inner` inside it,
-    /// keeping what was decided about their candidates.
-    pub(crate) async fn adopt_watched_import_folders(
+    /// Stop watching `roots`, watching `parent` in their place when given.
+    /// See [`crate::db::Database::remove_watched_import_folders`].
+    pub async fn remove_watched_import_folders(
         &self,
-        parent: &str,
-        inner: Vec<String>,
-    ) -> Result<(), LibraryError> {
+        roots: Vec<String>,
+        parent: Option<String>,
+    ) -> Result<Option<Vec<String>>, LibraryError> {
         Ok(self
             .database
-            .adopt_watched_import_folders(parent, inner)
+            .remove_watched_import_folders(roots, parent)
             .await?)
-    }
-
-    pub async fn remove_watched_import_folder(
-        &self,
-        path: &str,
-    ) -> Result<Option<Vec<String>>, LibraryError> {
-        Ok(self.database.remove_watched_import_folder(path).await?)
     }
 
     pub async fn set_import_candidate_skipped(
         &self,
-        watched_folder_path: &str,
-        relative_candidate_path: &str,
+        candidate_path: &str,
         skipped: bool,
     ) -> Result<bool, LibraryError> {
         Ok(self
             .database
-            .set_import_candidate_skipped(watched_folder_path, relative_candidate_path, skipped)
+            .set_import_candidate_skipped(candidate_path, skipped)
             .await?)
     }
 
     /// Open a new scan generation for `watched_folder_path`, recording the
-    /// volume it is on as the scan finds it now.
+    /// volume it is on.
     pub async fn begin_folder_scan(&self, watched_folder_path: &str) -> Result<u64, LibraryError> {
         let volume =
             crate::import::volume::volume_kind(std::path::Path::new(watched_folder_path)).await;
@@ -310,9 +302,9 @@ impl LibraryManager {
             .await?)
     }
 
-    /// Store one scan item under `generation`, seeded with `file_metadata` —
-    /// the reading [`Self::scan_item_seed`] took of it, which the caller takes
-    /// before the folder-state commit lock and this stores under it.
+    /// Store one scan item under `generation`, seeded with the `file_metadata`
+    /// the caller took from [`Self::scan_item_seed`] before the folder-state
+    /// commit lock.
     pub(crate) async fn save_folder_scan_item_with_seed(
         &self,
         watched_folder_path: &str,
@@ -333,12 +325,10 @@ impl LibraryManager {
             .await?)
     }
 
-    /// What a candidate a pass is about to store under `generation` starts
-    /// from: its own file tags when the pre-fill is on, nothing otherwise.
-    ///
-    /// Reads the folder's audio files, which on a network share takes as long
-    /// as the share does, so it runs on a blocking thread and never under the
-    /// folder-state commit lock every pane control waits on.
+    /// The draft a candidate about to be stored starts from: its own file tags
+    /// when the pre-fill is on, nothing otherwise. Reads audio files, which can
+    /// be slow on a network share, so it runs on a blocking thread and outside
+    /// the folder-state commit lock every pane control waits on.
     pub(crate) async fn scan_item_seed(
         &self,
         item: &crate::import::folder_scanner::ScanItem,
@@ -351,12 +341,9 @@ impl LibraryManager {
         self.file_metadata_seed(item, generation, reader).await
     }
 
-    /// The folder read as its own files describe it, for a candidate this scan
-    /// is about to store.
-    ///
-    /// A folder whose tags cannot be read gets the blank draft instead: the
-    /// pre-fill is a default, not a command, so a folder nobody can read tags
-    /// from still joins the queue and says so in the log.
+    /// The folder as its own file tags describe it. A folder whose tags cannot
+    /// be read starts on a blank draft and is logged, rather than kept out of
+    /// the queue.
     async fn file_metadata_seed(
         &self,
         item: &crate::import::folder_scanner::ScanItem,
@@ -367,9 +354,7 @@ impl LibraryManager {
         let (ScanItem::Discovered(candidate) | ScanItem::Valid(candidate)) = item else {
             return Ok(None);
         };
-        // A candidate that already holds a draft is not re-seeded, so its tags
-        // are not read either: a rescan of a folder nobody touched reads no
-        // audio file at all.
+        // A candidate with a draft is not re-seeded, so its tags go unread.
         if self
             .database
             .candidate_has_draft(&candidate.files.content_hash())
@@ -492,21 +477,14 @@ impl LibraryManager {
             .await?)
     }
 
-    /// Insert all of an import's data in one transaction, so the release either
-    /// exists complete or does not exist at all. Nothing of it is in the DB yet
-    /// except the import record. A Remote import (`destination`) records its
+    /// Insert all of an import's data in one transaction, so the release exists
+    /// complete or not at all. A Remote import (`destination`) records its
     /// make-Remote in the same write and gets back the outbox revision that
     /// shows its uploads queued.
     ///
-    /// Track rows come straight off `tracks_to_files` — each `TrackFile` owns the
-    /// `DbTrack` (with its populated `duration_ms`) that gets inserted. There is no
-    /// parallel list of tracks or durations.
-    ///
-    /// The release's artist credits are resolved inside the write. The Discogs
-    /// pictures of the artists it creates are staged before the write, so they
-    /// are chosen from a read of the library just before it; the write refuses
-    /// to commit if its own resolution creates different artists, and the
-    /// import fails with that rather than landing a picture without its artist.
+    /// The pictures of the artists the import creates are staged from a read
+    /// just before the write; the write fails if its own artist resolution
+    /// creates different artists, so no picture lands without its artist.
     #[allow(clippy::too_many_arguments)]
     pub(crate) async fn finalize_import_atomic(
         &self,
@@ -537,9 +515,8 @@ impl LibraryManager {
             .iter()
             .map(|(image, bytes)| (image, bytes.as_slice()))
             .collect();
-        // The home's storage mode decides the blob layout (opaque hashed-by-id vs.
-        // browsable readable paths); the manager owns config, so it reads the mode
-        // here rather than threading it from the importer.
+        // The home's storage mode decides the blob layout, and the manager owns
+        // config.
         let storage = self.config_handle.config().cloud_home.storage;
         let replacement_deletes: Vec<_> = replacement_plans
             .iter()
@@ -565,9 +542,8 @@ impl LibraryManager {
             )
             .await?;
         let remote = matches!(destination, crate::import::ImportDestination::Remote { .. });
-        // The outbox value that already shows the queued uploads (or the
-        // replaced releases' unwinding), whose revision a Remote import hands
-        // back as its receipt.
+        // A Remote import returns this revision, which already shows its
+        // uploads queued.
         let outbox_revision = if remote || !replacement_plans.is_empty() {
             Some(self.emit_outbox_changed().await)
         } else {
@@ -583,9 +559,8 @@ impl LibraryManager {
         Ok(outbox_revision.filter(|_| remote))
     }
 
-    /// Every stored candidate row, keyed by content hash. The queue is a few
-    /// hundred rows at most, so the sweep reads it whole and decides in memory
-    /// which candidates still need identifying.
+    /// Every stored candidate row, keyed by content hash, for the sweep to
+    /// decide in memory which still need identifying.
     pub async fn load_import_candidate_states(
         &self,
     ) -> Result<HashMap<String, crate::db::DbImportCandidateState>, LibraryError> {
@@ -647,9 +622,8 @@ impl LibraryManager {
             .await?)
     }
 
-    /// Every candidate's user-set file decisions, keyed by content hash — what
-    /// a folder scan needs so the roles it reports are the ones the user
-    /// settled, not only the ones its filenames propose.
+    /// Every candidate's user-set file decisions, keyed by content hash, so a
+    /// folder scan reports the roles the user settled.
     pub async fn load_stored_candidate_edits(
         &self,
     ) -> Result<crate::import::folder_scanner::StoredCandidateEdits, LibraryError> {
@@ -666,8 +640,8 @@ impl LibraryManager {
             .await?)
     }
 
-    /// Store the reading a scan settled on for one folder. Never disturbs the
-    /// scan that produced it, and never replaces the user's own answer.
+    /// Store the reading a scan settled on for one folder, never replacing the
+    /// user's own answer.
     pub async fn record_scanned_folder_release_decision(
         &self,
         key: &crate::import::folder_scanner::FolderReleaseDecisionKey,

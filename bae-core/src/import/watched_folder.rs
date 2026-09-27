@@ -1,5 +1,5 @@
-//! A watched folder as the store names it, and the rules every spelling of
-//! a root or a candidate path is held to before it is stored or compared.
+//! Watched folders, and the rules a watched root or folder path must meet
+//! before it is stored or compared.
 
 use std::path::{Component, Path};
 use tracing::warn;
@@ -26,10 +26,8 @@ impl WatchedFolder {
     }
 }
 
-/// A watched root or a candidate path under one is spelled in a way the store
-/// refuses to key by: relative, climbing out of itself, or not the one
-/// canonical spelling. The only way the rules below fail, so the callers that
-/// hold a path to them convert it with `?` rather than restating it.
+/// A watched root or folder path the store refuses to key by: relative,
+/// containing `..`, or not in canonical form.
 #[derive(Debug, thiserror::Error)]
 #[error("watched folder: {0}")]
 pub(crate) struct WatchedPathError(String);
@@ -48,25 +46,19 @@ impl From<WatchedPathError> for coven::DbError {
 
 /// The one spelling of `path` this device stores for the folder it names.
 ///
-/// A watched root is a durable key: it addresses rows in three tables and is
-/// compared as a string. So there has to be exactly one spelling per folder,
-/// and deciding it is this function's job rather than every caller's. The same
-/// folder reaches core written several ways — a picker gives the host's own
-/// form, a `file://` drop and a `bae://import` link give whatever the URL
-/// carried (on Windows `C:/Music`, forward slashes and all), and a person
-/// typing one adds a trailing separator as often as not.
+/// Stored roots and folders are compared as strings, so each folder needs one
+/// spelling however it arrived (a picker, a `file://` drop or `bae://import`
+/// link, which on Windows gives `C:/Music`, or typed with a trailing
+/// separator). Rejoining the path's [`Component`]s uses the host's separator,
+/// collapses repeated ones, and drops `.` and trailing separators.
 ///
-/// Rejoining the path's [`Component`]s settles all of that: separators become
-/// the host's, runs of them collapse, `.` and trailing separators disappear.
-/// Two things are refused instead of rewritten:
+/// Refused rather than rewritten:
 ///
-/// - A `..`, because resolving it lexically is wrong the moment a symlink is
-///   above it, and resolving it truthfully means reading the filesystem — a
-///   different promise, and one a folder that is merely offline would fail.
-/// - A path that is not absolute *by the host's rule*, which on Windows means
-///   a drive or UNC prefix. `\music` is rooted but drive-relative: the same
-///   text names a different folder depending on the process's current drive,
-///   so nothing durable can be keyed by it.
+/// - `..`: resolving it without reading the filesystem is wrong when a symlink
+///   is above it, and reading the filesystem fails for an offline folder.
+/// - A path that is not absolute by the host's rule. On Windows `\music` is
+///   relative to the current drive, so the same text can name different
+///   folders.
 pub(crate) fn canonical_absolute_root(path: &str) -> Result<String, WatchedPathError> {
     let refuse = |reason: &str| Err(WatchedPathError(format!("watched folder {reason}: {path}")));
     if Path::new(path)
@@ -79,15 +71,12 @@ pub(crate) fn canonical_absolute_root(path: &str) -> Result<String, WatchedPathE
     if !canonical.is_absolute() {
         return refuse("must be an absolute path");
     }
-    // Every component came from a `&str` and the separators joining them are
-    // ASCII, so this is the same text, never a replacement character.
+    // Built from a `&str`, so the lossy conversion never substitutes characters.
     Ok(canonical.to_string_lossy().into_owned())
 }
 
-/// A stored root is canonical by construction, so one that is not is corrupt
-/// durable state — read it loudly rather than quietly rewriting it, which
-/// would hide however it got written and leave its dependent rows keyed by the
-/// spelling this device no longer uses.
+/// Refuse a stored root that is not in canonical form: it is corrupt, and
+/// rewriting it would orphan the rows keyed by it.
 pub(crate) fn validate_absolute_root(path: &str) -> Result<(), WatchedPathError> {
     let canonical = canonical_absolute_root(path)?;
     if canonical != path {
@@ -155,18 +144,43 @@ pub(crate) fn paths_overlap(left: &Path, right: &Path) -> bool {
     left.starts_with(right) || right.starts_with(left)
 }
 
-/// Rewrite a `/`-spelled stand-in root in the running host's own spelling.
+/// The absolute path of `relative` under `root`, spelled as a scan spells it,
+/// which is the key a decision about that folder is stored under.
+pub(crate) fn folder_below(root: &str, relative: &str) -> Result<String, WatchedPathError> {
+    validate_relative_path(relative)?;
+    let mut folder = std::path::PathBuf::from(root);
+    for component in relative.split('/').filter(|component| !component.is_empty()) {
+        folder.push(component);
+    }
+    Ok(folder.to_string_lossy().into_owned())
+}
+
+/// Refuse a stored folder path that is not in canonical form: folder
+/// decisions are keyed by the canonical path, so it is corrupt.
+pub(crate) fn validate_stored_folder(path: &str) -> Result<(), WatchedPathError> {
+    let canonical = canonical_absolute_root(path)?;
+    if canonical != path {
+        return Err(WatchedPathError(format!(
+            "stored folder is not its canonical spelling {canonical}: {path}"
+        )));
+    }
+    Ok(())
+}
+
+/// The watched folder among `roots` that covers `folder`. Watched folders
+/// never overlap, so at most one does.
+pub(crate) fn covering_root<'a>(roots: &'a [String], folder: &str) -> Option<&'a str> {
+    roots
+        .iter()
+        .map(String::as_str)
+        .find(|root| Path::new(folder).starts_with(root))
+}
+
+/// `posix` as an absolute path on the running host (a `C:` prefix and `\` on
+/// Windows, where [`canonical_absolute_root`] refuses a `/`-rooted path).
 ///
-/// A watched root is stored exactly as the OS writes it, and what counts as
-/// absolute is the OS's rule: Windows needs a drive or UNC prefix, so a
-/// `/`-rooted literal is drive-relative there and [`canonical_absolute_root`]
-/// refuses it. Tests that need a root no filesystem has to back ask for one
-/// here rather than writing a literal that is only absolute on Unix.
-///
-/// Only the rooting changes. A path that is non-canonical for another reason —
-/// a trailing separator, a doubled one, a `.` or `..` — stays non-canonical
-/// after the rewrite, so the tests that check those forms are refused still
-/// hand over a form this host refuses.
+/// Only the rooting changes: a trailing or doubled separator, `.`, or `..`
+/// stays in place, so tests of those spellings still exercise them.
 #[cfg(test)]
 pub(crate) fn host_root(posix: &str) -> String {
     #[cfg(windows)]
@@ -189,19 +203,15 @@ mod tests {
         assert_eq!(folder.name, "/");
     }
 
-    /// A drive-lettered path written with forward slashes — what Windows hands
-    /// over for `bae://import?path=C:/music/rips` and for a
-    /// `file:///C:/music/rips` drop. It names `/music/rips` under [`host_root`]
-    /// and has no counterpart on a host whose separator is already `/`.
+    /// The forward-slash spelling a `bae://import` link or `file://` drop gives
+    /// on Windows for `host_root("/music/rips")`.
     #[cfg(windows)]
     const URL_SPELLINGS: &[&str] = &["C:/music/rips"];
     #[cfg(not(windows))]
     const URL_SPELLINGS: &[&str] = &[];
 
-    /// The spellings a folder picker, a `file://` drop, and a `bae://import`
-    /// link each hand over for the same folder. Every one of them names a
-    /// directory this device can address, so every one is accepted — and all
-    /// of them settle on the single spelling the row is keyed by.
+    /// Every spelling a picker, drop, or link gives for one folder is accepted
+    /// and stored as the same string.
     #[test]
     fn a_root_has_one_stored_spelling_however_it_was_written() {
         let canonical = host_root("/music/rips");
@@ -225,10 +235,8 @@ mod tests {
         }
     }
 
-    /// Rooted but not absolute: on Windows a leading separator names the
-    /// current drive, so the same text addresses a different folder depending
-    /// on which drive the process happens to be on. Nothing durable can be
-    /// keyed by it.
+    /// On Windows a leading separator means the current drive, so the path
+    /// names a different folder depending on the process.
     #[cfg(windows)]
     #[test]
     fn a_drive_relative_root_is_refused() {
@@ -238,9 +246,8 @@ mod tests {
         }
     }
 
-    /// A network share is a watched root like any other — it is what the
-    /// folder-scan design's "network filesystem" case is about — and so is a
-    /// verbatim path. Both keep their prefix; only what follows is rejoined.
+    /// Network share and verbatim roots keep their prefix; only what follows
+    /// is rejoined.
     #[cfg(windows)]
     #[test]
     fn unc_and_verbatim_roots_keep_their_prefix() {
@@ -256,14 +263,12 @@ mod tests {
         }
     }
 
-    /// Whatever a root canonicalizes to is itself canonical, which is what
-    /// lets the stored spelling be re-read by [`validate_absolute_root`]
-    /// instead of canonicalized again on every load.
+    /// Canonicalizing is stable, so [`validate_absolute_root`] accepts every
+    /// root this stores.
     #[test]
     fn canonicalizing_a_canonical_root_changes_nothing() {
-        // A bare share root is in here because it is the one input whose
-        // canonical form keeps a trailing separator (`\\storage\share\`, the
-        // share's own root); re-reading it must still be a no-op.
+        // A bare share root's canonical form keeps a trailing separator
+        // (`\\storage\share\`); re-reading it must not change it.
         #[cfg(windows)]
         const SHARE_ROOTS: &[&str] = &[r"\\storage\share"];
         #[cfg(not(windows))]
@@ -291,10 +296,8 @@ mod tests {
         }
     }
 
-    /// `..` is the one lexical form that is not rewritten away: resolving it
-    /// without touching the filesystem is wrong the moment a symlink is in the
-    /// path, and resolving it against the filesystem is a different promise
-    /// than this function makes.
+    /// `..` is refused rather than resolved: resolving it without reading the
+    /// filesystem is wrong when a symlink is in the path.
     #[test]
     fn a_root_climbing_out_of_itself_is_refused() {
         let error = canonical_absolute_root(&host_root("/music/../rips")).unwrap_err();

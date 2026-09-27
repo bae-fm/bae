@@ -1,8 +1,6 @@
 #![cfg(feature = "test-utils")]
-//! Pure reads must run on coven's read-only companion connection. Coven rejects
-//! a write callback that prepares no INSERT, UPDATE, or DELETE statement, so
-//! every read below checks bae's routing without exposing coven's retained
-//! handle.
+//! Pure reads must run on coven's read-only connection, which rejects a write
+//! callback that prepares no INSERT, UPDATE, or DELETE.
 
 #[tokio::test]
 async fn pure_reads_use_the_read_connection() {
@@ -21,8 +19,7 @@ async fn pure_reads_use_the_read_connection() {
     .await
     .unwrap();
 
-    // At least one read per db/client file. A read routed through write returns
-    // coven's ReadOnlyWriteTransaction error here.
+    // At least one read per db/client file.
     db.find_album_by_id("missing").await.unwrap();
     db.get_album_count().await.unwrap();
     db.get_albums(&[]).await.unwrap();
@@ -36,12 +33,7 @@ async fn pure_reads_use_the_read_connection() {
     db.has_pending_cloud_upload("missing").await.unwrap();
     db.outbox_queue().await.unwrap();
 
-    // The six device-local tables the pane writes read back the same way.
-    // `load_import_candidate_state` covers import_candidate_signals and
-    // import_candidate_signal_value;
-    // `load_import_candidate_pane_rows` covers import_candidate_failure,
-    // import_candidate_cover, import_candidate_edit and
-    // import_candidate_track_edit.
+    // The tables the pane writes read back the same way.
     db.load_import_candidate_state("missing").await.unwrap();
     assert_eq!(
         db.load_import_candidate_pane_rows("missing")
@@ -61,14 +53,12 @@ async fn pure_reads_use_the_read_connection() {
     db.clear_playback_state().await.unwrap();
     db.add_watched_import_folder(root).await.unwrap();
     assert!(!db.add_watched_import_folder(root).await.unwrap());
-    db.set_import_candidate_skipped(root, "Album", true)
-        .await
-        .unwrap();
-    assert!(!db
-        .set_import_candidate_skipped(root, "Album", true)
-        .await
-        .unwrap());
-    db.set_import_candidate_skipped(root, "Never Skipped", false)
+    let album = std::path::Path::new(root).join("Album");
+    let album = album.to_str().unwrap();
+    let never_skipped = std::path::Path::new(root).join("Never Skipped");
+    db.set_import_candidate_skipped(album, true).await.unwrap();
+    assert!(!db.set_import_candidate_skipped(album, true).await.unwrap());
+    db.set_import_candidate_skipped(never_skipped.to_str().unwrap(), false)
         .await
         .unwrap();
     let generation = db
@@ -120,7 +110,7 @@ async fn pure_reads_use_the_read_connection() {
         .await
         .unwrap());
     assert!(db
-        .remove_watched_import_folder("/nothing/watches/this")
+        .remove_watched_import_folders(vec!["/nothing/watches/this".to_string()], None)
         .await
         .unwrap()
         .is_none());

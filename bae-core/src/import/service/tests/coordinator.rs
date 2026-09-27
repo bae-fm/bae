@@ -1,5 +1,5 @@
-/// Rescan `root` and wait for the coordinator to start its scan. Returns the
-/// root in the host's own spelling, which the commands that follow address.
+/// Rescan `root`, wait for its scan to start, and return the root in the
+/// host's spelling.
 async fn rescan_and_wait(harness: &CoordinatorHarness, root: &str) -> PathBuf {
     let root = root_path(root);
     harness
@@ -10,9 +10,8 @@ async fn rescan_and_wait(harness: &CoordinatorHarness, root: &str) -> PathBuf {
     root
 }
 
-/// Where the removal tests start: `root` is being scanned, its removal has been
-/// asked for, and the coordinator has cancelled the scan the removal waits on.
-/// What that scan does next is the caller's, as is the returned removal result.
+/// Ask to remove `root` while it is being scanned, and wait for the coordinator
+/// to cancel that scan. The caller ends the scan.
 async fn removal_awaiting_its_cancelled_scan(
     harness: &CoordinatorHarness,
     root: &str,
@@ -22,7 +21,8 @@ async fn removal_awaiting_its_cancelled_scan(
     harness
         .commands
         .send(WatcherCommand::Remove {
-            path: root,
+            roots: vec![root],
+            parent: None,
             completion,
         })
         .unwrap();
@@ -110,7 +110,8 @@ async fn coordinator_coalesces_duplicate_removals_for_one_root() {
     harness
         .commands
         .send(WatcherCommand::Remove {
-            path: root_path("/music"),
+            roots: vec![root_path("/music")],
+            parent: None,
             completion: second_completion,
         })
         .unwrap();
@@ -296,10 +297,8 @@ async fn coordinator_runs_different_roots_concurrently() {
     harness.shutdown().await;
 }
 
-/// A refresh waits for its scan to be over, not for it to have worked. What a
-/// scan made of the folder is the root's stored status and the failure event
-/// the desktops raise as an alert; a refresh caller that reported it a second
-/// time would put two dialogs on screen for one broken folder.
+/// A refresh waits for its scan to end, not to succeed: the scan reports its
+/// own failure, and the caller reporting it too would show it twice.
 #[tokio::test]
 async fn coordinator_completes_refresh_waiter_once_its_scan_is_over() {
     let harness = CoordinatorHarness::new().await;
@@ -310,13 +309,8 @@ async fn coordinator_completes_refresh_waiter_once_its_scan_is_over() {
     harness.shutdown().await;
 }
 
-/// A read is not a change. Linux's inotify backend reports every `open()`
-/// under a watched root, so the scan's own reads — the directory walk, the rip
-/// log, the CUE, the audio probe — arrive here as events about the folder the
-/// scan just finished. Scanning on them would make every scan schedule the
-/// next one for as long as the folder stays watched, and each of those scans
-/// republishes its candidates as tentative on the way to valid, so a queue
-/// sweep reading the list mid-rescan finds nothing to answer.
+/// A read is not a change: Linux reports the scan's own reads as events, and
+/// scanning on them would make every scan schedule the next.
 #[tokio::test]
 async fn a_file_opened_under_a_watched_root_starts_no_scan() {
     use notify::event::{AccessKind, AccessMode};
@@ -335,8 +329,8 @@ async fn a_file_opened_under_a_watched_root_starts_no_scan() {
             ),
         ]))
         .unwrap();
-    // A second batch the coordinator handles after the first, naming a root the
-    // reads did not touch: when its scan starts, the read batch is answered.
+    // Handled after the first batch, so once its scan starts the reads have
+    // been seen.
     harness
         .fs_events
         .send(Ok(vec![watch_event(
@@ -356,9 +350,8 @@ async fn a_file_opened_under_a_watched_root_starts_no_scan() {
     harness.shutdown().await;
 }
 
-/// The other half of the rule above: the close that ended a write is how a
-/// finished copy announces itself on Linux, so it reads again the folder it
-/// landed in — that folder, and nothing else under the root.
+/// A close that ended a write, which is how a finished copy shows up on Linux,
+/// reads again the folder it landed in and nothing else under the root.
 #[tokio::test]
 async fn a_finished_write_under_a_watched_root_reads_its_folder_again() {
     use notify::event::{AccessKind, AccessMode};
@@ -380,8 +373,8 @@ async fn a_finished_write_under_a_watched_root_reads_its_folder_again() {
     harness.shutdown().await;
 }
 
-/// Changes that arrive while a folder is being read again are folded into
-/// one reading afterwards: each changed folder once, whatever the burst.
+/// Changes that arrive during a folder reading are read once afterwards, each
+/// changed folder once.
 #[tokio::test]
 async fn changes_during_a_folder_reading_are_read_once_afterwards() {
     let harness = CoordinatorHarness::new().await;
@@ -411,9 +404,8 @@ async fn changes_during_a_folder_reading_are_read_once_afterwards() {
     harness.shutdown().await;
 }
 
-/// A watch that says it lost track of changes and names no path — inotify's
-/// queue overflowing — could have missed anything, so every root is read
-/// whole.
+/// A watch that lost track of changes without naming a path (inotify's queue
+/// overflowing) could have missed anything, so the root is read whole.
 #[tokio::test]
 async fn a_watch_that_lost_track_of_no_path_reads_the_root_whole() {
     let harness = CoordinatorHarness::new().await;
@@ -428,8 +420,8 @@ async fn a_watch_that_lost_track_of_no_path_reads_the_root_whole() {
     harness.shutdown().await;
 }
 
-/// A watch that lost track naming a path that holds the root — FSEvents
-/// dropping events for the whole stream — reads the root whole.
+/// A watch that lost track above the root (FSEvents dropping events for the
+/// whole stream) reads the root whole.
 #[tokio::test]
 async fn a_watch_that_lost_track_above_the_root_reads_it_whole() {
     let harness = CoordinatorHarness::new().await;
@@ -447,9 +439,8 @@ async fn a_watch_that_lost_track_above_the_root_reads_it_whole() {
     harness.shutdown().await;
 }
 
-/// A watch that lost track inside one album — FSEvents' must-scan-subdirs
-/// naming that folder — reads that album's folder again and nothing beside
-/// it.
+/// A watch that lost track inside one album (FSEvents' must-scan-subdirs)
+/// reads again only the top-level folder holding it.
 #[tokio::test]
 async fn a_watch_that_lost_track_inside_one_folder_reads_only_that_folder() {
     let harness = CoordinatorHarness::new().await;
@@ -474,8 +465,8 @@ fn watch_event(kind: notify::EventKind, path: PathBuf) -> notify::Event {
     notify::Event::new(kind).add_path(path)
 }
 
-/// What a watch that lost track reports: a rescan-flagged event naming where
-/// to start reading again, or nothing at all.
+/// A rescan-flagged event, as a watch that lost track reports, naming where to
+/// read again or nothing.
 fn lost_track(path: Option<PathBuf>) -> notify::Event {
     let event = notify::Event::new(notify::EventKind::Other).set_flag(notify::event::Flag::Rescan);
     match path {
@@ -554,9 +545,9 @@ async fn cancelled_scan_task_does_not_begin_a_durable_generation() {
     ));
 }
 
-/// A decision replaces the whole-root pass it arrives during: that pass is
-/// cancelled, the folder reading runs once it has stopped, and the root is
-/// read whole again afterwards because the cancelled pass left it half read.
+/// A decision cancels the whole-root pass it arrives during, runs once that
+/// pass stops, and the root is read whole again because the pass left it half
+/// read.
 #[tokio::test]
 async fn coordinator_decision_replaces_a_running_root_pass_and_owes_it_again() {
     let harness = CoordinatorHarness::new().await;
@@ -587,9 +578,8 @@ async fn coordinator_decision_replaces_a_running_root_pass_and_owes_it_again() {
     harness.shutdown().await;
 }
 
-/// A decision on an idle root reads only its folder, and a second decision
-/// waits for the first rather than cancelling it. Nothing reads the whole
-/// root afterwards: nothing asked for that.
+/// A decision on an idle root reads only its folder, a second decision waits
+/// for the first rather than cancelling it, and the root is not read whole.
 #[tokio::test]
 async fn coordinator_decisions_on_an_idle_root_run_one_after_another() {
     let harness = CoordinatorHarness::new().await;
@@ -613,8 +603,8 @@ async fn coordinator_decisions_on_an_idle_root_run_one_after_another() {
     harness.shutdown().await;
 }
 
-/// A decision still queued when its root is removed hears that, rather than
-/// waiting on a reading that will never run.
+/// A decision still queued when its root is removed is told so rather than
+/// left waiting.
 #[tokio::test]
 async fn coordinator_queued_decision_hears_its_root_is_being_removed() {
     let harness = CoordinatorHarness::new().await;
@@ -625,7 +615,8 @@ async fn coordinator_queued_decision_hears_its_root_is_being_removed() {
     harness
         .commands
         .send(WatcherCommand::Remove {
-            path: root.clone(),
+            roots: vec![root.clone()],
+            parent: None,
             completion,
         })
         .unwrap();

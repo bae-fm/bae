@@ -1,22 +1,15 @@
 //! Groupings, and the releases the ones with no anchor build.
 //!
-//! A grouping anchored at a folder is how the scan reads that folder: the
-//! scan builds its release from the disk and stores it like any other
-//! (see [`super::folder_scans`]). A grouping with no anchor takes in releases
-//! the scans stored, from anywhere, and its release is built here from theirs.
-//! It is rebuilt in every transaction that writes or removes one of them, so
-//! it never describes files its releases no longer hold. While it stands, the
-//! releases it takes in stay stored and leave the queue.
+//! A grouping anchored at a folder is how the scan reads that folder; the scan
+//! stores its release like any other ([`super::folder_scans`]). A grouping with
+//! no anchor takes in releases the scans stored, from anywhere, and its release
+//! is rebuilt here in every transaction that writes or removes one of them.
+//! While it stands, the releases it takes in stay stored and leave the queue.
 //!
-//! When the releases it takes in all sit directly in one folder, the release
-//! is that folder's and reads the folder's sidecar files too — the cover
-//! beside the disc folders (see `crate::import::grouping::shared_parent`).
-//! One grouping at most reads a folder's files: each grouping records the
-//! folder it sits in and whether it reads its files, the store lets one read
-//! them, and while several sit in a folder that has files, a new one is
-//! refused and a rebuilt one other than the reader is blocked. The sidecar's
-//! own writes rebuild the groupings sitting in its folder, like their
-//! releases' do.
+//! When those releases all sit directly in one folder, the grouping's release
+//! also reads that folder's sidecar files
+//! (`crate::import::grouping::shared_parent`); at most one grouping reads a
+//! folder's files (see `parent_files_on`).
 
 use super::folder_scans::{self, EntrySource, RowSources};
 use super::*;
@@ -28,13 +21,12 @@ use crate::import::grouping::GroupingBlock;
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
-/// One stored release as a reader of one key takes it: whether it may be
-/// worked on, and why not when it is a grouping that cannot be built.
+/// A stored release, whether it may be worked on, and why not when it is a
+/// grouping's release that is blocked.
 pub(super) struct StoredReleaseCandidate {
     pub candidate: FolderCandidate,
     pub generation: u64,
-    /// Settled, not taken into a grouping, and — for a grouping — built from
-    /// every release it takes in.
+    /// Valid, not taken into a grouping, and not blocked.
     pub actionable: bool,
     pub error: Option<GroupingBlock>,
 }
@@ -113,26 +105,17 @@ pub(super) fn skipped_on(
             )
             .optional()?
             .ok_or_else(|| DbError::Message(format!("release {grouping} has no grouping"))),
-        None => {
-            let relative = crate::import::watched_folder::candidate_relative_path(
-                &candidate.watched_folder_path,
-                &candidate.path,
-            )
-            .map_err(|error| DbError::Message(error.to_string()))?;
-            Ok(sql.query_row(
-                "SELECT EXISTS(SELECT 1 FROM skipped_import_candidates \
-                 WHERE watched_folder_path = ? AND relative_candidate_path = ?)",
-                params![candidate.watched_folder_path, relative],
-                |row| row.get(0),
-            )?)
-        }
+        None => Ok(sql.query_row(
+            "SELECT EXISTS(SELECT 1 FROM skipped_import_candidates WHERE candidate_path = ?)",
+            [candidate.path.to_string_lossy()],
+            |row| row.get(0),
+        )?),
     }
 }
 
 /// Rebuild the release of every grouping with no anchor that takes in one of
-/// `touched` — releases just written, or just removed — or reads the sidecar
-/// files of one of `sidecars` — folders whose sidecar was just written or
-/// removed.
+/// `touched` (releases just written or removed) or sits in one of `sidecars`
+/// (folders whose sidecar was just written or removed).
 pub(super) fn rebuild_groupings(
     sql: &SqlContext<'_, '_>,
     touched: &[String],
@@ -161,20 +144,14 @@ pub(super) fn rebuild_groupings(
     Ok(changes)
 }
 
-/// Build the release of the grouping `key` from the releases it takes in, and
-/// store it — or, when one of them is gone or no longer valid, say so on the
-/// grouping and leave its release as it was last built.
+/// Build and store the release of the grouping `key` from the releases it
+/// takes in, or record on the grouping why it cannot be built and leave its
+/// release as last built.
 fn rebuild_grouping(
     sql: &SqlContext<'_, '_>,
     key: &str,
     observed_at: i64,
 ) -> Result<GroupingChanges, DbError> {
-    let root: String = sql.query_row(
-        "SELECT watched_folder_path FROM release_grouping \
-         WHERE key = ? AND anchor_relative_path IS NULL",
-        [key],
-        |row| row.get(0),
-    )?;
     let member_keys: Vec<String> = sql.query(
         "SELECT member_key FROM release_grouping_member WHERE grouping_key = ? ORDER BY position",
         [key],
@@ -224,9 +201,14 @@ fn rebuild_grouping(
             }
         }
     }
-    // Where the grouping sits is recorded first, whatever the rebuild comes
-    // to: that is how another grouping sitting in the same folder finds it.
-    // Leaving a folder frees its files for a grouping blocked on them.
+    // Its release is listed under the watched folder its first member is.
+    let root = members
+        .first()
+        .map(|member| member.watched_folder_path.clone())
+        .ok_or_else(|| DbError::Message(format!("grouping {key} takes in no release")))?;
+    // Record where the grouping sits before anything can block it, so other
+    // groupings in that folder find it; leaving a folder rebuilds the ones
+    // blocked there.
     let sits_in = crate::import::grouping::shared_parent(
         members
             .iter()
@@ -290,9 +272,8 @@ fn rebuild_grouping(
     let item = match parent {
         ParentFiles::Invalid(reason) => invalid(candidate, reason),
         ParentFiles::None | ParentFiles::Files(_) => {
-            // The release's decisions are its own, keyed by its files like
-            // any release's: the ones it took over from its folders were
-            // stored as its own when it was made.
+            // Keyed by the release's own files; the decisions it took over
+            // from its folders were stored that way in `combine_releases`.
             let edits = super::import_state::load_candidate_file_edits_on(
                 sql,
                 &candidate.files.content_hash(),
@@ -360,12 +341,10 @@ fn invalid(candidate: FolderCandidate, reason: InvalidReason) -> ScanItem {
 
 /// The files of the folder a grouping sits in, as its release reads them.
 enum ParentFiles {
-    /// None: it sits in no one folder, or the folder has no files no release
-    /// there owns.
+    /// It sits in no one folder, or that folder has no sidecar.
     None,
     Files(Vec<CandidateFile>),
-    /// The folder's files hold a broken one, so the release cannot be
-    /// imported.
+    /// One of the folder's files is broken, so the release cannot be imported.
     Invalid(InvalidReason),
 }
 
@@ -378,16 +357,12 @@ impl ParentFiles {
     }
 }
 
-/// What the grouping `key`, sitting in `folder`, reads of that folder's files
-/// — `reading` when it is the grouping that already does — or why it cannot
-/// read them yet.
+/// What the grouping `key`, sitting in `folder`, reads of that folder's files,
+/// or why it cannot read them yet; `reading` means it already reads them.
 ///
-/// A folder's files go with one release at most. While another grouping sits
-/// in a folder that has files, only the one already reading them may, and
-/// none does when several came to them at once; a folder with no files of
-/// its own has nothing to go with anyone, so any number may sit in it. Files
-/// still downloading are not known yet, so no release reads them until the
-/// download ends.
+/// At most one release reads a folder's files: while another grouping sits in
+/// a folder with a sidecar, only the one already reading it may. Files still
+/// downloading are read by no release until the download ends.
 fn parent_files_on(
     sql: &(impl QueryOne + QueryRows),
     key: &str,
@@ -480,6 +455,25 @@ fn blocked(
         params![kind, subject, holder, key],
     )?;
     Ok(GroupingChanges::default())
+}
+
+/// The folder a grouping is anchored at, addressed below the watched folder
+/// covering it.
+fn anchored_at(
+    sql: &(impl QueryOne + QueryRows),
+    anchor: &str,
+) -> Result<FolderReleaseDecisionKey, DbError> {
+    let roots: Vec<String> = sql.query(
+        "SELECT path FROM watched_import_folders",
+        [],
+        |row| row.get(0),
+    )?;
+    let root = crate::import::watched_folder::covering_root(&roots, anchor)
+        .ok_or_else(|| DbError::Message(format!("{anchor} is under no watched folder")))?;
+    Ok(FolderReleaseDecisionKey {
+        watched_folder_path: root.to_string(),
+        relative_folder_path: super::import_state::relative_below(root, anchor)?,
+    })
 }
 
 /// Why grouping `key`'s release cannot be worked on, when something says so.
@@ -580,23 +574,19 @@ impl Database {
     pub(crate) async fn load_grouping(&self, key: &str) -> Result<Option<GroupingFacts>, DbError> {
         let key = key.to_string();
         self.read(move |sql| {
-            let stored: Option<(String, Option<String>, bool)> = sql
+            let stored: Option<(Option<String>, bool)> = sql
                 .query_row(
-                    "SELECT watched_folder_path, anchor_relative_path, combined \
-                     FROM release_grouping WHERE key = ?",
+                    "SELECT anchor_folder, combined FROM release_grouping WHERE key = ?",
                     [&key],
-                    |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+                    |row| Ok((row.get(0)?, row.get(1)?)),
                 )
                 .optional()?;
-            let Some((watched_folder_path, anchor, combined)) = stored else {
+            let Some((anchor, combined)) = stored else {
                 return Ok(None);
             };
             Ok(Some(match anchor {
-                Some(relative_folder_path) => GroupingFacts::Anchored {
-                    folder: FolderReleaseDecisionKey {
-                        watched_folder_path,
-                        relative_folder_path,
-                    },
+                Some(anchor) => GroupingFacts::Anchored {
+                    folder: anchored_at(&sql, &anchor)?,
                     decision: if combined {
                         FolderReleaseDecision::CombineAsOneRelease
                     } else {
@@ -616,17 +606,12 @@ impl Database {
         .await
     }
 
-    /// Read `members` — each as the caller read it — as one release under the
-    /// new grouping `key`, listed under the first one's watched folder. They
-    /// leave the queue in the same write the release joins it.
-    ///
-    /// When they all sit directly in one folder, the release reads that
-    /// folder's sidecar files too.
-    ///
-    /// Refused, writing nothing, when any of them changed since the caller
-    /// read it, is already taken into a grouping, or is already in the
-    /// library, when the release they make already is, or when another
-    /// grouping already reads the files of the folder they sit in.
+    /// Combine `members`, as the caller read them, into one release under the
+    /// new grouping `key`, listed under the first member's watched folder;
+    /// they leave the queue in the same write. `Err(block)` when the files of
+    /// the folder they all sit in cannot be read; an error, writing nothing,
+    /// when a member changed or is already grouped or imported, or the
+    /// combined release already exists.
     pub(crate) async fn combine_releases(
         &self,
         key: String,
@@ -637,12 +622,11 @@ impl Database {
                 "combining a release requires at least two folders".into(),
             ));
         }
-        let root = members[0].watched_folder_path.clone();
-        let root_for_compose = root.clone();
+        let root_for_compose = members[0].watched_folder_path.clone();
         let key_for_compose = key.clone();
         let observed_at = self.inner.clock.now().timestamp_millis();
-        // A refusal writes nothing, so it is found by a read. The write below
-        // asks again, and refuses as a fault a store that changed in between.
+        // Check for a refusal on the read connection; the write checks again
+        // and fails if the store changed in between.
         let sits_in = crate::import::grouping::shared_parent(
             members
                 .iter()
@@ -658,8 +642,7 @@ impl Database {
             return Ok(Err(block));
         }
         self.call(move |sql| {
-            // Each folder's own file decisions, which the release takes over
-            // as its own starting point.
+            // Each folder's file decisions, which the release starts from.
             let mut with_edits = Vec::with_capacity(members.len());
             for member in &members {
                 let edits = super::import_state::load_candidate_file_edits_on(
@@ -682,9 +665,8 @@ impl Database {
                 parent.valid(),
             )
             .map_err(|error| DbError::Message(error.to_string()))?;
-            // A release that reads a broken file of its folder cannot be
-            // imported: it holds no files, so no other release can be the
-            // same one, and it has no layout to start from.
+            // A release reading a broken folder file is invalid: it holds no
+            // files another release could share and no layout to start from.
             if !matches!(parent, ParentFiles::Invalid(_)) {
                 let content_hash = composed.files.content_hash();
                 let in_use: bool = sql.query_row(
@@ -699,8 +681,7 @@ impl Database {
                             .into(),
                     ));
                 }
-                // A new grouping starts with the layout it was just given, not
-                // a draft an abandoned grouping of the same files left behind.
+                // Drop any state an undone grouping of the same files left.
                 sql.execute(
                     "DELETE FROM import_candidate_state WHERE content_hash = ?",
                     [&content_hash],
@@ -743,21 +724,20 @@ impl Database {
                 }
             }
             sql.execute(
-                "INSERT INTO release_grouping \
-                     (key, watched_folder_path, anchor_relative_path, combined, author) \
-                 VALUES (?, ?, NULL, 1, 'user')",
-                params![key, root],
+                "INSERT INTO release_grouping (key, anchor_folder, combined, author) \
+                 VALUES (?, NULL, 1, 'user')",
+                [&key],
             )?;
             for (position, member) in members.iter().enumerate() {
                 sql.execute(
                     "INSERT INTO release_grouping_member \
-                         (grouping_key, position, member_key, watched_folder_path) \
+                         (grouping_key, position, member_key, member_folder) \
                      VALUES (?, ?, ?, ?)",
                     params![
                         key,
                         position as i64,
                         member.key(),
-                        member.watched_folder_path
+                        member.path.to_string_lossy()
                     ],
                 )?;
             }
@@ -778,10 +758,9 @@ impl Database {
         .await
     }
 
-    /// Undo the grouping with no anchor at `key`: its release leaves the queue
-    /// and the releases it took in return, as they are stored. Returns them,
-    /// and the releases of groupings rebuilt because the files of the folder
-    /// it read are free again.
+    /// Undo the grouping with no anchor at `key`, removing its release. Returns
+    /// the releases it took in, as stored, and what rebuilding the groupings
+    /// blocked in its folder changed.
     pub(crate) async fn separate_picked_grouping(
         &self,
         key: &str,
@@ -804,7 +783,7 @@ impl Database {
                 .optional()?
                 .flatten();
             let removed = sql.execute(
-                "DELETE FROM release_grouping WHERE key = ? AND anchor_relative_path IS NULL",
+                "DELETE FROM release_grouping WHERE key = ? AND anchor_folder IS NULL",
                 [&key],
             )?;
             if removed != 1 {

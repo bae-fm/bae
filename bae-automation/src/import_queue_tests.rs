@@ -7,9 +7,8 @@ use bae_core::import::{ImportEvent, ImportProgress};
 use bae_core::library::LibraryManager;
 use std::path::PathBuf;
 
-/// An automation surface over a real library in a temporary directory,
-/// with the manager and services behind it so a test can write the scan
-/// rows and the runtime the surface reads.
+/// An `Automation` over a real library in a temporary directory, keeping the
+/// manager and services so tests can write the scan rows and runtime it reads.
 pub(super) struct Fixture {
     automation: Automation,
     manager: LibraryManager,
@@ -39,23 +38,21 @@ impl Fixture {
             .expect("the skip persists");
     }
 
-    /// Claim `key` for the import `importing` reports on, the way starting an
-    /// import does: the runtime takes an import's progress only from the import
-    /// that holds the key.
+    /// Claim `key` for [`IMPORT_ID`] as starting an import does; the runtime
+    /// only takes progress from the import holding the key.
     pub(super) async fn claim(&self, key: &str) {
         self.services
             .claim_candidate_for_import_for_test(key, IMPORT_ID)
             .await;
     }
 
-    /// Record one import event the way the import service would.
+    /// Emit one import event as the import service would.
     pub(super) fn record(&self, event: ImportEvent) {
         self.services.import_emit_event_for_test(event);
     }
 
-    /// Emit `event` and return once the runtime recorder has taken it in.
-    /// The recorder reads the bus on its own task, so a test that asserts
-    /// on what it recorded has to wait for it rather than for the bus.
+    /// Emit `event` and wait until the runtime recorder, which reads on its own
+    /// task, has taken it in.
     pub(super) async fn record_and_settle(&self, event: ImportEvent) {
         let mut changes = self.services.subscribe_candidate_runtime().1;
         self.services.import_emit_event_for_test(event);
@@ -65,7 +62,7 @@ impl Fixture {
             .expect("the runtime stream stays open");
     }
 
-    /// The watched root under this fixture's temporary directory.
+    /// The watched root under the temporary directory, created if missing.
     pub(super) fn root(&self) -> String {
         let root = self.tmp.path().join("watched");
         std::fs::create_dir_all(&root).expect("the watched root exists");
@@ -117,7 +114,7 @@ async fn watched_folder_tool_reads_current_store_rows() {
         } else {
             fixture
                 .manager
-                .remove_watched_import_folder(&root)
+                .remove_watched_import_folders(vec![root.clone()], None)
                 .await
                 .unwrap();
         }
@@ -175,7 +172,8 @@ fn candidate(root: &str, name: &str) -> FolderCandidate {
     }
 }
 
-/// Write one scanned candidate under a watched root, and hand back its key.
+/// Store a scan of the watched root holding only the candidate `name`, and
+/// return its key (the candidate's path).
 pub(super) async fn scan(fixture: &Fixture, name: &str) -> String {
     let root = fixture.root();
     write_scan(fixture, &root, |items| {
@@ -185,7 +183,7 @@ pub(super) async fn scan(fixture: &Fixture, name: &str) -> String {
     format!("{root}/{name}")
 }
 
-/// Write a whole scan generation under a watched root.
+/// Watch `root` and store one complete scan of it.
 async fn write_scan(fixture: &Fixture, root: &str, build: impl FnOnce(&mut Vec<ScanItem>)) {
     let manager = &fixture.manager;
     manager
@@ -214,7 +212,7 @@ fn keys(candidates: &[AutomationCandidate]) -> Vec<&str> {
     candidates.iter().map(AutomationCandidate::key).collect()
 }
 
-/// The import the progress below reports on.
+/// The import `importing` reports progress for.
 const IMPORT_ID: &str = "import-1";
 
 fn importing(key: &str, percent: u8) -> ImportEvent {
@@ -229,9 +227,8 @@ fn importing(key: &str, percent: u8) -> ImportEvent {
     }
 }
 
-/// `reidentify:` runtime entries name releases, not scanned folders. They
-/// carry runtime but no candidate, so they are not listed — and their
-/// updates are not an unknown key to fail on.
+/// A `reidentify:` runtime entry names a release, not a folder: it is not
+/// listed or found as a candidate, and its progress is not an error.
 #[tokio::test]
 async fn runtime_only_entries_are_not_candidates() {
     let fixture = automation_over().await;
@@ -250,9 +247,8 @@ async fn runtime_only_entries_are_not_candidates() {
     );
 }
 
-/// Every call is a read of the tables, so a candidate that changed reads
-/// changed and one that is gone is gone — with no accumulated state that a
-/// missed update could corrupt.
+/// Each call reads the tables: a skip survives a rescan, and a folder the
+/// rescan dropped is gone.
 #[tokio::test]
 async fn the_tables_are_the_answer() {
     let fixture = automation_over().await;
@@ -291,8 +287,7 @@ async fn the_tables_are_the_answer() {
     );
 }
 
-/// What a candidate carries is the tables joined with what is in flight:
-/// the row says an import is running, and the running attempt says how far.
+/// A candidate's runtime carries the progress of the import holding it.
 #[tokio::test]
 async fn a_candidate_carries_the_import_service_s_runtime() {
     let fixture = automation_over().await;

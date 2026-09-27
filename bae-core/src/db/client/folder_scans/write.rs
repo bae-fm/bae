@@ -1,7 +1,6 @@
-//! Writing one scan item down as rows. A saved item replaces what was stored
-//! under its key: the candidate or boundary row is deleted first, and every
-//! table below it goes with it by cascade, so the insert that follows is
-//! always writing into empty space.
+//! Writing one scan item as rows. The caller deletes the item's
+//! `scan_candidate` row first, and every table below it goes with it by
+//! cascade, so these inserts always write into empty space.
 
 use super::columns::*;
 use super::*;
@@ -10,8 +9,8 @@ use crate::import::folder_scanner::{
     CandidateFile, Coverage, FileRole, FolderCandidate, InvalidCandidate, ScanItem,
 };
 
-/// One stored entry, as much of it as a write that may supersede it needs: its
-/// key, and the part of the root it reads its files from.
+/// A stored entry's key and the files it reads, which is all a superseding
+/// write needs.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct StoredEntry {
     pub(crate) key: String,
@@ -30,9 +29,8 @@ pub(crate) fn delete_entry(
     Ok(())
 }
 
-/// Replace one candidate's stored file-tag reading. The caller has already
-/// compared the snapshot stamp with the current candidate inside this write
-/// transaction, so deleting first cannot expose a partial replacement.
+/// Replace one candidate's stored file-tag reading, inside the caller's
+/// transaction.
 pub(crate) fn replace_candidate_file_tag_snapshot(
     sql: &SqlContext<'_, '_>,
     watched_folder_path: &str,
@@ -100,7 +98,8 @@ pub(crate) fn replace_candidate_file_tag_snapshot(
     Ok(())
 }
 
-/// Delete every row not written in `generation`, and say which keys went.
+/// Delete every scanned row, not a grouping's, stamped with another
+/// generation than `generation`, and return their keys.
 pub(super) fn prune_other_generations(
     sql: &SqlContext<'_, '_>,
     watched_folder_path: &str,
@@ -120,12 +119,9 @@ pub(super) fn prune_other_generations(
     Ok(pruned)
 }
 
-/// Stamp an existing candidate row with `generation`, leaving its content
-/// alone, so the completion prune counts it as seen by this scan.
-///
-/// The stored file-tag reading takes the same stamp: this scan read the very
-/// files that reading was taken from — that is what "leaving its content
-/// alone" means — so the reading is as current as the row is.
+/// Stamp a candidate row and its file-tag reading with `generation`, changing
+/// nothing else, so the completion prune keeps the row. The row keeps the
+/// files the reading was taken from, so the reading stays current with it.
 pub(crate) fn touch_candidate(
     sql: &SqlContext<'_, '_>,
     watched_folder_path: &str,
@@ -213,23 +209,19 @@ fn insert_candidate(
             CandidateStateSeed::Blank(&blank)
         }
     };
-    // The candidate's file rows first: a stored file-tag reading names the
-    // file every fact came from, and those rows are what it names.
+    // File rows first: the file-tag reading references them.
     insert_candidate_files(sql, watched_folder_path, &path, &candidate.files)?;
-    ensure_candidate_state(sql, &path, watched_folder_path, &candidate.files, seed)?;
-    // The reading belongs to the scan row, not to the draft: rewriting the row
-    // takes the stored reading with it, and the draft it once seeded — a
-    // person's or the pre-fill's — still commits from one. So a seed always
-    // stores its reading, while the draft is seeded only where there is none.
+    ensure_candidate_state(sql, &path, &candidate.path, &candidate.files, seed)?;
+    // The reading belongs to the scan row, so a seed always stores it, while
+    // its draft only fills a candidate that has none.
     if let Some(seed) = file_metadata {
         replace_candidate_file_tag_snapshot(sql, watched_folder_path, &path, &seed.snapshot)?;
     }
     Ok(())
 }
 
-/// Lay down one candidate's own row and the parts it is read from — every row
-/// its files hang off. `source_kind` says who writes it: `folder` for what a
-/// scan read, `grouping` for what a grouping built.
+/// Insert one candidate's `scan_candidate` row and its parts. `source_kind` is
+/// `folder` for a scan's row, `grouping` for a grouping's.
 pub(crate) fn insert_candidate_row(
     sql: &SqlContext<'_, '_>,
     watched_folder_path: &str,
@@ -281,21 +273,22 @@ pub(crate) fn insert_candidate_row(
     Ok(())
 }
 
-/// What a candidate's draft is created from the first time its state row is
-/// written: nothing, or the folder's own file tags.
+/// What a candidate's draft is created from when it has none.
 pub(crate) enum CandidateStateSeed<'a> {
-    /// The source-less draft: as many track slots as the folder has audio
-    /// units, and no metadata on any of them.
+    /// As many empty track slots as the folder has audio units.
     Blank(&'a crate::import::pane::CandidateSourceDraft),
     /// The folder read as its own files describe it, with the reading it was
     /// projected from and the cover those tags embed.
     FileMetadata(&'a crate::import::file_metadata_seed::FileMetadataSeed),
 }
 
+/// Make sure `files` has a state row, seeding its draft and cover when it has
+/// none, and record `folder` as a folder on disk it was found at; the state
+/// lives while a watched folder covers one of those folders.
 pub(crate) fn ensure_candidate_state(
     sql: &SqlContext<'_, '_>,
     path: &str,
-    watched_folder_path: &str,
+    folder: &std::path::Path,
     files: &crate::import::folder_scanner::CategorizedFiles,
     seed: CandidateStateSeed<'_>,
 ) -> Result<(), DbError> {
@@ -312,9 +305,9 @@ pub(crate) fn ensure_candidate_state(
         )?;
     }
     sql.execute(
-        "INSERT INTO import_candidate_watched_root (content_hash, watched_folder_path) \
+        "INSERT INTO import_candidate_folder (content_hash, folder) \
          VALUES (?, ?) ON CONFLICT DO NOTHING",
-        params![content_hash, watched_folder_path],
+        params![content_hash, folder.to_string_lossy()],
     )?;
     let has_draft = sql
         .query_row(
@@ -343,10 +336,8 @@ pub(crate) fn ensure_candidate_state(
             }
         }
     }
-    // The cover a candidate starts with is the folder's own, stored the
-    // moment the candidate is, so every later reader has a value to read
-    // rather than a rule to re-run. A candidate that already has a
-    // selection keeps it: a rescan re-reads files, not decisions.
+    // The folder's own cover is stored with the candidate so readers never
+    // recompute it; a candidate that already has a cover keeps it.
     let has_cover = sql
         .query_row(
             "SELECT 1 FROM import_candidate_cover WHERE content_hash = ?",
@@ -410,12 +401,10 @@ fn insert_invalid(
     Ok(())
 }
 
-/// Lay down one candidate's files, their parsed track sheets and all. Also
-/// the write a file decision makes: the settled shape replaces the rows the
-/// scan proposed, under the same candidate.
-///
-/// The audio each bound sheet describes goes in last: those rows reference
-/// the audio's own file row, which may sort after the sheet's.
+/// Insert one candidate's files and their parsed track sheets; a file decision
+/// uses it too, to replace the files the scan proposed. Each sheet's audio
+/// links go in last, since they reference file rows that may sort after the
+/// sheet's.
 pub(crate) fn insert_candidate_files(
     sql: &SqlContext<'_, '_>,
     watched_folder_path: &str,

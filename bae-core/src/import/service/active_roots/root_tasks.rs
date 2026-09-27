@@ -1,39 +1,26 @@
-//! The work a removal or an adoption runs off the coordinator's loop: waiting
-//! out the pass it stopped, taking the watches down, and the durable change —
-//! with the watches put back when that change does not land.
-//!
-//! An adoption is a folder taking over the watched folders inside it, which
-//! choosing such a folder asks for. Like a removal, it stops whatever reads
-//! them and takes their watches down first, so nothing reads or watches them
-//! while their rows change hands; unlike one, the durable change keeps
-//! everything decided about their candidates, and the folder that takes over
-//! is read whole straight after.
+//! A removal's work off the coordinator's loop, putting the watches back when
+//! the store change does not land.
 
 use super::*;
 
-pub(super) fn answer(waiter: RefreshCompletion, result: Result<(), String>) {
-    if waiter.send(result).is_err() {
-        debug!("folder adoption caller dropped before it was answered");
-    }
-}
-
-pub(super) async fn run_root_adoption(
-    parent: &Path,
-    inner: &[PathBuf],
+/// Stop watching `roots`, watching `parent` in their place when given.
+pub(super) async fn run_root_removal(
+    roots: &[PathBuf],
+    parent: Option<&Path>,
     scans: Vec<RootScanTask>,
     backend: &dyn RootRemovalBackend,
     folder_state_commit: crate::import::FolderStateCommit,
-) -> Result<crate::import::FolderStateCommitGuard, String> {
+) -> RootRemovalResult {
+    let described = describe(roots, parent);
     for scan in scans {
-        scan.task.await.map_err(|error| {
-            format!(
-                "folder scan task failed while {} took over the folders inside it: {error}",
-                parent.display()
-            )
-        })?;
+        if let Err(error) = scan.task.await {
+            return RootRemovalResult::Failed(format!(
+                "folder scan task failed while removing {described}: {error}"
+            ));
+        }
     }
     let mut uninstalled: Vec<(&PathBuf, FolderWatchSnapshot)> = Vec::new();
-    for root in inner {
+    for root in roots {
         match backend.uninstall(root).await {
             Ok(snapshot) => uninstalled.push((root, snapshot)),
             Err(error) => {
@@ -41,26 +28,49 @@ pub(super) async fn run_root_adoption(
                     "could not remove folder watch for {}: {error}",
                     root.display()
                 );
-                return Err(restore_watches(backend, &uninstalled, error).await);
+                return RootRemovalResult::Failed(
+                    restore_watches(backend, &uninstalled, error).await,
+                );
             }
         }
     }
     let commit = folder_state_commit
-        .lock("take over the watched folders inside a folder")
+        .lock(match parent {
+            None => "remove a watched folder",
+            Some(_) => "watch a folder in place of the watched folders inside it",
+        })
         .await;
-    if let Err(error) = backend.adopt_durable_roots(parent, inner).await {
-        drop(commit);
-        let error = format!(
-            "could not watch {} in place of the folders inside it: {error}",
-            parent.display()
-        );
-        return Err(restore_watches(backend, &uninstalled, error).await);
+    match backend.remove_durable_roots(roots, parent).await {
+        Ok(removed_keys) => RootRemovalResult::Removed {
+            commit,
+            removed_keys,
+        },
+        Err(error) => {
+            drop(commit);
+            let error = format!("could not remove {described}: {error}");
+            RootRemovalResult::Failed(restore_watches(backend, &uninstalled, error).await)
+        }
     }
-    Ok(commit)
 }
 
-/// Put back the watches an adoption took down, and say what went wrong —
-/// including a watch that would not go back.
+/// What a removal changes, in words for its errors.
+fn describe(roots: &[PathBuf], parent: Option<&Path>) -> String {
+    let roots = roots
+        .iter()
+        .map(|root| root.display().to_string())
+        .collect::<Vec<_>>()
+        .join(", ");
+    match parent {
+        None => format!("watched folder {roots}"),
+        Some(parent) => format!(
+            "watched folders {roots} for {} to watch in their place",
+            parent.display()
+        ),
+    }
+}
+
+/// Put back the watches a removal took down, adding any that would not go
+/// back to `error`.
 async fn restore_watches(
     backend: &dyn RootRemovalBackend,
     uninstalled: &[(&PathBuf, FolderWatchSnapshot)],
@@ -76,53 +86,4 @@ async fn restore_watches(
         }
     }
     detail
-}
-
-pub(super) async fn run_root_removal(
-    path: &Path,
-    scan: Option<RootScanTask>,
-    backend: &dyn RootRemovalBackend,
-    folder_state_commit: crate::import::FolderStateCommit,
-) -> RootRemovalResult {
-    if let Some(scan) = scan {
-        if let Err(error) = scan.task.await {
-            return RootRemovalResult::Failed(format!(
-                "folder scan task failed while removing {}: {error}",
-                path.display()
-            ));
-        }
-    }
-    let watch_snapshot = match backend.uninstall(path).await {
-        Ok(snapshot) => snapshot,
-        Err(error) => {
-            return RootRemovalResult::Failed(format!(
-                "could not remove folder watch for {}: {error}",
-                path.display()
-            ));
-        }
-    };
-    let commit = folder_state_commit.lock("remove a watched folder").await;
-    let removed_keys = match backend.remove_durable_root(path).await {
-        Ok(removed_keys) => removed_keys,
-        Err(error) => {
-            drop(commit);
-            let rollback = backend.reinstall(path, &watch_snapshot).await;
-            let detail = match rollback {
-                Ok(()) => format!(
-                    "could not remove watched folder {}: {error}",
-                    path.display()
-                ),
-                Err(rollback_error) => format!(
-                    "could not remove watched folder {}: {error}; restoring its folder watch also \
-                 failed: {rollback_error}",
-                    path.display()
-                ),
-            };
-            return RootRemovalResult::Failed(detail);
-        }
-    };
-    RootRemovalResult::Removed {
-        commit,
-        removed_keys,
-    }
 }
