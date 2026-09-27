@@ -12,7 +12,7 @@ final class ReleaseEditor: Observable {
             _ releaseId: String, _ selection: BridgeCoverSelection
         ) async throws -> Void
     private let moveReleasesToCloudAction:
-        @Sendable (_ releaseIds: [String], _ pin: Bool) async throws ->
+        @Sendable (_ releaseIds: [String]) async throws ->
             BridgeMakeReleasesRemoteOutcome
     private let outboxStore: OutboxStore
     let makeReleaseLocal:
@@ -39,9 +39,9 @@ final class ReleaseEditor: Observable {
             @escaping @Sendable (String, BridgeCoverSelection)
             async throws -> Void = { _, _ in },
         moveReleasesToCloud:
-            @escaping @Sendable ([String], Bool) async throws ->
+            @escaping @Sendable ([String]) async throws ->
             BridgeMakeReleasesRemoteOutcome =
-            { _, _ in throw StubError.notImplemented },
+            { _ in throw StubError.notImplemented },
         outboxStore: OutboxStore,
         makeReleaseLocal:
             @escaping @Sendable (String, String) async throws -> Void = {
@@ -99,7 +99,7 @@ final class ReleaseEditor: Observable {
                 )
             },
             moveReleasesToCloud: {
-                try await handle.makeReleasesRemote(releaseIds: $0, pin: $1)
+                try await handle.makeReleasesRemote(releaseIds: $0)
             },
             outboxStore: outboxStore,
             makeReleaseLocal: {
@@ -137,13 +137,14 @@ final class ReleaseEditor: Observable {
     /// the foreground command and the retained outbox subscription. The bridge
     /// returns the exact revision it published; `OutboxStore` owns the handoff
     /// until that revision arrives or proves the upload already finished.
-    func moveReleasesToCloud(_ releaseIds: [String], _ pin: Bool) async throws {
+    /// Core keeps the releases here as the stored import storage choice says.
+    func moveReleasesToCloud(_ releaseIds: [String]) async throws {
         let command = outboxStore.beginCloudUploads(
             forReleases: releaseIds
         )
         let outcome: BridgeMakeReleasesRemoteOutcome
         do {
-            outcome = try await moveReleasesToCloudAction(releaseIds, pin)
+            outcome = try await moveReleasesToCloudAction(releaseIds)
         }
         catch {
             outboxStore.finishCloudUploads(for: command, receipt: nil)
@@ -158,8 +159,8 @@ final class ReleaseEditor: Observable {
         }
     }
 
-    func moveReleaseToCloud(_ releaseId: String, _ pin: Bool) async throws {
-        try await moveReleasesToCloud([releaseId], pin)
+    func moveReleaseToCloud(_ releaseId: String) async throws {
+        try await moveReleasesToCloud([releaseId])
     }
 
     #if DEBUG

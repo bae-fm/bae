@@ -538,8 +538,8 @@ struct ReleaseEditorCloudBatchTests {
         let recorder = CloudBatchRecorder()
         let store = OutboxStore(snapshot: OutboxStore.emptySnapshot)
         let editor = ReleaseEditor(
-            moveReleasesToCloud: { releaseIds, pin in
-                await recorder.append(releaseIds: releaseIds, pin: pin)
+            moveReleasesToCloud: { releaseIds in
+                await recorder.append(releaseIds: releaseIds)
                 return .complete(
                     receipt: cloudUploadReceipt(releaseIds)
                 )
@@ -547,15 +547,10 @@ struct ReleaseEditorCloudBatchTests {
             outboxStore: store
         )
 
-        try await editor.moveReleasesToCloud(
-            ["release-a", "release-b"],
-            true
-        )
+        try await editor.moveReleasesToCloud(["release-a", "release-b"])
 
         let calls = await recorder.calls
-        #expect(calls.count == 1)
-        #expect(calls.first?.releaseIds == ["release-a", "release-b"])
-        #expect(calls.first?.pin == true)
+        #expect(calls == [["release-a", "release-b"]])
     }
 
     @Test(
@@ -568,7 +563,7 @@ struct ReleaseEditorCloudBatchTests {
             detail: "release release-b already has an active storage transition"
         )
         let editor = ReleaseEditor(
-            moveReleasesToCloud: { _, _ in
+            moveReleasesToCloud: { _ in
                 .partial(
                     receipt: cloudUploadReceipt(["release-a"]),
                     failure: BridgeMakeRemoteBatchFailure(
@@ -581,10 +576,7 @@ struct ReleaseEditorCloudBatchTests {
         )
 
         do {
-            try await editor.moveReleasesToCloud(
-                ["release-a", "release-b"],
-                false
-            )
+            try await editor.moveReleasesToCloud(["release-a", "release-b"])
             Issue.record("the refused release must surface its error")
         }
         catch let error as BridgeError {
@@ -610,14 +602,10 @@ struct ReleaseEditorCloudBatchTests {
 }
 
 private actor CloudBatchRecorder {
-    struct Call: Sendable {
-        let releaseIds: [String]
-        let pin: Bool
-    }
+    /// The releases of each call, in order.
+    private(set) var calls: [[String]] = []
 
-    private(set) var calls: [Call] = []
-
-    func append(releaseIds: [String], pin: Bool) {
-        calls.append(Call(releaseIds: releaseIds, pin: pin))
+    func append(releaseIds: [String]) {
+        calls.append(releaseIds)
     }
 }

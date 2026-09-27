@@ -634,13 +634,10 @@ mod release_storage_action {
     fn each_action_parses_from_its_wire_shape() {
         let moved = parse(serde_json::json!({
             "release_id": "release-1",
-            "action": { "kind": "move_to_cloud", "pin": true },
+            "action": { "kind": "move_to_cloud" },
         }));
         assert_eq!(moved.release_id, "release-1");
-        assert!(matches!(
-            moved.action,
-            AutomationStorageAction::MoveToCloud { pin: true }
-        ));
+        assert!(matches!(moved.action, AutomationStorageAction::MoveToCloud));
 
         assert!(matches!(
             parse(serde_json::json!({
@@ -668,24 +665,15 @@ mod release_storage_action {
         }
     }
 
-    /// Moving to the cloud needs the pin choice and making local a folder; there
-    /// is no default for either.
+    /// Making local needs a folder; there is no default for it.
     #[test]
     fn an_action_missing_what_it_needs_is_refused() {
-        for args in [
-            serde_json::json!({
-                "release_id": "release-1",
-                "action": { "kind": "move_to_cloud" },
-            }),
-            serde_json::json!({
-                "release_id": "release-1",
-                "action": { "kind": "make_local" },
-            }),
-        ] {
-            let error = from_value::<ReleaseStorageActionInput>(args)
-                .expect_err("an action without its required field is not an action");
-            assert_eq!(error.kind(), "validation");
-        }
+        let error = from_value::<ReleaseStorageActionInput>(serde_json::json!({
+            "release_id": "release-1",
+            "action": { "kind": "make_local" },
+        }))
+        .expect_err("an action without its required field is not an action");
+        assert_eq!(error.kind(), "validation");
     }
 
     /// A transition core doesn't offer is refused before any transfer starts.

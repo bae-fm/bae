@@ -471,7 +471,7 @@ mod tests {
         let (manager, diagnostics, transport, _home) = manager_with_recording_transport().await;
 
         let outcome = manager
-            .make_releases_remote(&["missing-release".to_string()], false)
+            .make_releases_remote(&["missing-release".to_string()])
             .await
             .expect("a per-release refusal is returned as a batch outcome");
         let crate::library::MakeReleasesRemoteOutcome::Partial {

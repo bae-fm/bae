@@ -312,14 +312,14 @@ impl LibraryManager {
     /// coven can start draining one release while later releases are still being
     /// checked and admitted. Empty and duplicate selections are invalid commands;
     /// release-specific refusals are returned beside the durable receipt for the
-    /// releases that were admitted. `pin` chooses whether coven keeps the blobs
-    /// in `storage/pinned/` (offline) vs the evictable cache. Once the upload
-    /// lands, a remote release no longer refers to the user's source path; the
-    /// source file itself remains untouched.
+    /// releases that were admitted. The stored import storage choice says
+    /// whether coven keeps the blobs in `storage/pinned/` (offline) or the
+    /// evictable cache. Once the upload lands, a remote release no longer
+    /// refers to the user's source path; the source file itself remains
+    /// untouched.
     pub async fn make_releases_remote(
         &self,
         release_ids: &[String],
-        pin: bool,
     ) -> Result<MakeReleasesRemoteOutcome, LibraryError> {
         if release_ids.is_empty() {
             return Err(LibraryError::Validation(
@@ -336,6 +336,7 @@ impl LibraryManager {
             }
         }
 
+        let pin = self.get_config().prefs.import_storage.pinned;
         let mut admitted_release_ids = Vec::with_capacity(release_ids.len());
         let mut last_revision = None;
         let mut failures = Vec::new();

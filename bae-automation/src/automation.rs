@@ -341,7 +341,7 @@ impl Automation {
     ) -> Result<AutomationStorageActionOutcome, AutomationError> {
         let summary = self.release_storage_summary(&release_id).await?;
         match action {
-            AutomationStorageAction::MoveToCloud { pin } => {
+            AutomationStorageAction::MoveToCloud => {
                 require_action(
                     &summary,
                     AutomationReleaseStorageAction::MakeRemote,
@@ -349,7 +349,7 @@ impl Automation {
                 )?;
                 let outcome = self
                     .services
-                    .make_releases_remote(std::slice::from_ref(&release_id), pin)
+                    .make_releases_remote(std::slice::from_ref(&release_id))
                     .await?;
                 let outbox_revision = match outcome {
                     bae_core::library::MakeReleasesRemoteOutcome::Complete { receipt } => {

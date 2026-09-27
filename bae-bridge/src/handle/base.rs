@@ -149,12 +149,11 @@ forward! { async this => {
         Ok(this.services.unpin_release(&release_id).await?)
     }
 
-    fn make_releases_remote(
-        release_ids: Vec<String>,
-        pin: bool,
-    ) -> BridgeMakeReleasesRemoteOutcome {
+    /// Move the releases to the cloud, pinned here as the stored import
+    /// storage choice says.
+    fn make_releases_remote(release_ids: Vec<String>) -> BridgeMakeReleasesRemoteOutcome {
         this.services
-            .make_releases_remote(&release_ids, pin)
+            .make_releases_remote(&release_ids)
             .await
             .map(BridgeMakeReleasesRemoteOutcome::from_core)
             .map_err(BridgeError::from)

@@ -88,7 +88,7 @@ struct StorageManagerView: View {
         ) {
             if let runner {
                 MoveToCloudConfirmSheet(
-                    onConfirm: { pin in runner.confirmMoveToCloud(pin: pin) },
+                    onConfirm: { runner.confirmMoveToCloud() },
                     onCancel: { runner.cancelMoveToCloud() },
                 )
                 .frame(width: 420)

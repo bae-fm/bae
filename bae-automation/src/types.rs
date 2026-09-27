@@ -704,8 +704,9 @@ pub struct ReleaseIdInput {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationStorageAction {
-    /// Local → Cloud; `pin` keeps the uploaded files offline on this device.
-    MoveToCloud { pin: bool },
+    /// Local → Cloud, kept offline on this device as the stored import storage
+    /// choice says.
+    MoveToCloud,
     /// Keep a cloud release offline on this device.
     Pin,
     /// Stop keeping a cloud release offline. Its bytes stay in the cloud.

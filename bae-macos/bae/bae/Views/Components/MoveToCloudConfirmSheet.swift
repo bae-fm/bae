@@ -2,11 +2,11 @@ import BaeKit
 import SwiftUI
 
 /// Confirmation for moving a local release to cloud storage. The single
-/// toggle chooses whether the release is also pinned on this device — the
-/// same stored choice an import makes, read from and written to core's
-/// preferences, so every surface that asks it starts from the last answer.
+/// toggle is the stored choice of whether a release that goes to the cloud
+/// stays pinned on this device — the same one an import makes — written as it
+/// moves; core reads it when it moves the releases.
 struct MoveToCloudConfirmSheet: View {
-    let onConfirm: (_ pin: Bool) -> Void
+    let onConfirm: () -> Void
     let onCancel: () -> Void
 
     @Environment(ConfigStore.self)
@@ -15,29 +15,18 @@ struct MoveToCloudConfirmSheet: View {
     private var importer
     @Environment(UiStore.self)
     private var uiStore
-    /// What this sheet confirms with: the stored choice it opened on, and
-    /// whatever the person moves it to, which is stored as they move it.
-    @State
-    private var pin: Bool?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Move to Cloud")
                 .font(.headline)
             Toggle("Pinned", isOn: pinned)
-                .onAppear {
-                    if pin == nil {
-                        pin = configStore.config.importStorage.pinned
-                    }
-                }
             HStack {
                 Spacer()
                 Button("Cancel") { onCancel() }
                     .keyboardShortcut(.cancelAction)
-                Button("Move to Cloud") {
-                    onConfirm(pin ?? configStore.config.importStorage.pinned)
-                }
-                .keyboardShortcut(.defaultAction)
+                Button("Move to Cloud") { onConfirm() }
+                    .keyboardShortcut(.defaultAction)
             }
         }
         .padding()
@@ -45,9 +34,8 @@ struct MoveToCloudConfirmSheet: View {
 
     private var pinned: Binding<Bool> {
         Binding(
-            get: { pin ?? configStore.config.importStorage.pinned },
+            get: { configStore.config.importStorage.pinned },
             set: { enabled in
-                pin = enabled
                 Task { @MainActor in
                     do { try await importer.setImportPinned(enabled) }
                     catch { uiStore.showError(error) }
@@ -59,7 +47,7 @@ struct MoveToCloudConfirmSheet: View {
 
 #if DEBUG
     #Preview("Move to Cloud") {
-        MoveToCloudConfirmSheet(onConfirm: { _ in }, onCancel: {})
+        MoveToCloudConfirmSheet(onConfirm: {}, onCancel: {})
             .frame(width: 420)
             .environment(PreviewData.configStore())
             .environment(Importer.stub())

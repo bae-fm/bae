@@ -520,9 +520,7 @@ async fn make_remote_publishes_its_durable_queue_before_returning() {
 
     let outcome = manager
         .make_releases_remote(
-            &[release.id.clone(), second_release.id.clone()],
-            false,
-        )
+            &[release.id.clone(), second_release.id.clone()])
         .await
         .unwrap();
     let MakeReleasesRemoteOutcome::Complete { receipt } = outcome else {
@@ -588,9 +586,7 @@ async fn an_active_target_does_not_block_sibling_cloud_admissions() {
                 first_new_release.id.clone(),
                 active_release.id.clone(),
                 last_new_release.id.clone(),
-            ],
-            false,
-        )
+            ])
         .await
         .expect("the batch returns every release's admission outcome");
     let MakeReleasesRemoteOutcome::Partial {
@@ -636,7 +632,7 @@ async fn a_move_to_cloud_batch_refuses_duplicate_release_ids_without_admission()
     .await;
 
     manager
-        .make_releases_remote(&[release.id.clone(), release.id.clone()], false)
+        .make_releases_remote(&[release.id.clone(), release.id.clone()])
         .await
         .expect_err("a duplicate target refuses the whole batch");
 

@@ -14,7 +14,7 @@ final class MoveToCloudConfirmSheetTests: XCTestCase {
         let importer = Importer(setImportPinned: { writes.append($0) })
         let size = NSSize(width: 420, height: 220)
         try await SnapshotTestSupport.withHostedWindow(
-            MoveToCloudConfirmSheet(onConfirm: { _ in }, onCancel: {})
+            MoveToCloudConfirmSheet(onConfirm: {}, onCancel: {})
                 .frame(width: size.width, height: size.height)
                 .environment(PreviewData.configStore())
                 .environment(importer)

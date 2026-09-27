@@ -12,8 +12,9 @@ import SwiftUI
 /// uses. Errors surface through `UiStore` (shown by the Storage Manager
 /// window's alert); subscribed rows and outbox values carry transition results.
 ///
-/// Moving to cloud storage needs the pin choice, so it stashes the targets in
-/// `pendingMoveToCloud` and the view presents `MoveToCloudConfirmSheet`. Making
+/// Moving to cloud storage is confirmed first, beside the stored pin choice,
+/// so it stashes the targets in `pendingMoveToCloud` and the view presents
+/// `MoveToCloudConfirmSheet`. Making
 /// a release local opens an `NSOpenPanel` for the destination folder. The other
 /// transitions run straight away.
 @MainActor
@@ -119,15 +120,15 @@ final class StorageActionRunner {
     }
 
     /// Confirm callback for `MoveToCloudConfirmSheet`: admit each pending
-    /// release independently, pinning every admitted release when `pin` is set.
-    func confirmMoveToCloud(pin: Bool) {
+    /// release independently; core pins them as the stored choice says.
+    func confirmMoveToCloud() {
         guard let releaseIds = pendingMoveToCloud else {
             preconditionFailure("move-to-cloud confirmation has no releases")
         }
         pendingMoveToCloud = nil
         Task {
             do {
-                try await releaseEditor.moveReleasesToCloud(releaseIds, pin)
+                try await releaseEditor.moveReleasesToCloud(releaseIds)
             }
             catch {
                 uiStore.showError(error)

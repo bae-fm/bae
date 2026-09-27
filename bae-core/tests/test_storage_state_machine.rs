@@ -309,7 +309,7 @@ async fn test_manage_refused_when_sync_not_running() {
     // The manager's make-Remote gate refuses up front when the pipeline is down —
     // nothing would ever drain the queue to flip the release Remote.
     let result = mgr
-        .make_releases_remote(std::slice::from_ref(&release_id), false)
+        .make_releases_remote(std::slice::from_ref(&release_id))
         .await
         .expect("the batch reports a per-release refusal");
     let bae_core::library::MakeReleasesRemoteOutcome::Partial {

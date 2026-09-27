@@ -417,9 +417,7 @@ extension AlbumDetailView {
     private func presentMoveToCloudConfirmSheet(releaseId: String) {
         uiStore.presentModal {
             MoveToCloudConfirmSheet(
-                onConfirm: { pin in
-                    moveReleaseToCloud(releaseId: releaseId, pin: pin)
-                },
+                onConfirm: { moveReleaseToCloud(releaseId: releaseId) },
                 onCancel: { uiStore.dismissModal() },
             )
             .frame(width: 420)
@@ -465,11 +463,11 @@ extension AlbumDetailView {
         }
     }
 
-    private func moveReleaseToCloud(releaseId: String, pin: Bool) {
+    private func moveReleaseToCloud(releaseId: String) {
         uiStore.dismissModal()
         let releaseEditor = releaseEditor
         runStorageTransition {
-            try await releaseEditor.moveReleaseToCloud(releaseId, pin)
+            try await releaseEditor.moveReleaseToCloud(releaseId)
         }
     }
 
