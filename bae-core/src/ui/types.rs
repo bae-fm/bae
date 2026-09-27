@@ -10,6 +10,19 @@ pub enum UiErrorCategory {
     /// Sync encountered data written by a newer app schema.
     SyncUpdateRequired,
     Import,
+    /// Source metadata or artwork could not be parsed or decoded.
+    ImportData,
+    /// The candidate's import is already running.
+    CandidateImportInProgress,
+    /// Identification is still answering for the candidate.
+    CandidateBeingIdentified,
+    /// The candidate's files are already imported.
+    CandidateAlreadyImported,
+    /// The metadata read for the candidate has a different number of tracks.
+    MetadataTrackCount,
+    /// A release read from several folders cannot be worked on as it stands,
+    /// or cannot be made, for a reason the person can act on.
+    GroupingBlocked(GroupingBlockReason),
     Export,
     Save,
     /// A failed cloud-home installation keeps Coven's exact reason so every UI
@@ -36,6 +49,25 @@ pub enum UiErrorCategory {
     /// A library-sharing membership operation failed: the membership chain, an
     /// invite, or key rotation across devices.
     Membership,
+}
+
+/// Why a release read from several folders cannot be worked on as it stands,
+/// or cannot be made. Each asks something different of the person: combine
+/// the folders again, separate the release in the way, or wait for a
+/// download.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GroupingBlockReason {
+    /// A folder the release is read from changed.
+    SourceChanged,
+    /// A folder the release is read from is gone.
+    SourceGone,
+    /// The files of the folder its folders sit in go with another release.
+    FolderFilesTaken,
+    /// More than one release would take the files of the folder its folders
+    /// sit in.
+    FolderFilesContested,
+    /// A download into the folder its folders sit in is still running.
+    FolderFilesDownloading,
 }
 
 /// A user-facing error carried on a UI event. The locale never crosses the

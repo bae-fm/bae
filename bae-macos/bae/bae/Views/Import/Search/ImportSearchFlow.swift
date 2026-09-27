@@ -4,9 +4,10 @@ import SwiftUI
 enum ImportSearchFlow {
     // MARK: - Search dispatch
 
-    /// Submit the form's query. Fire-and-forget: every configured provider is
-    /// asked at once and each answer lands on the candidate's runtime, which
-    /// the pane draws — so nothing here waits for a result or holds one.
+    /// Submit the form's query: every configured provider is asked at once and
+    /// each answer lands on the candidate's runtime, which the pane draws — so
+    /// nothing here waits for a result or holds one. Core clears the failure
+    /// the pane states as the search starts.
     @MainActor
     static func startSearch(
         importer: Importer,
@@ -14,8 +15,11 @@ enum ImportSearchFlow {
         key: String,
         form: CandidateSearchState
     ) {
-        importStore.clearPaneError(forKey: key)
-        importer.startCandidateSearch(key, searchQuery(from: form))
+        let query = searchQuery(from: form)
+        Task { @MainActor in
+            do { try await importer.startCandidateSearch(key, query) }
+            catch { importStore.reportFailure(error) }
+        }
     }
 
     /// The bridge query for the active tab: the general (artist/album),

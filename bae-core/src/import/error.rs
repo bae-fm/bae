@@ -260,6 +260,72 @@ impl ImportError {
     }
 }
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+impl ImportError {
+    /// This failure as a surface states it: its class, which the surface
+    /// words in the person's language, and its own text as the untranslated
+    /// detail. Expected refusals and provider failures are kept apart from
+    /// unusable source data and internal faults, and every variant chooses its
+    /// class, so a new failure has to say how it is shown.
+    pub fn ui_error(&self) -> crate::ui::UiError {
+        use crate::discogs::client::DiscogsError;
+        use crate::musicbrainz::MusicBrainzError;
+        use crate::signals::LookupFailure;
+        use crate::ui::{UiError, UiErrorCategory as C};
+        let category = match self {
+            Self::GroupingBlocked { reason } => return reason.ui_error(),
+            Self::Db(error) => return UiError::diagnostic(error.category(), error),
+            Self::ImportWriting => C::Import,
+            Self::CandidateImportInProgress => C::CandidateImportInProgress,
+            Self::CandidateBeingIdentified => C::CandidateBeingIdentified,
+            Self::CandidateAlreadyImported => C::CandidateAlreadyImported,
+            Self::MetadataTrackCount { .. } => C::MetadataTrackCount,
+            Self::SourceData { .. } | Self::CoverArt { .. } => C::ImportData,
+            Self::MusicBrainz(error) => match error {
+                MusicBrainzError::Other(_) => C::ImportData,
+                MusicBrainzError::NotFound(_)
+                | MusicBrainzError::Network(_)
+                | MusicBrainzError::Timeout
+                | MusicBrainzError::Provider { .. } => C::Import,
+            },
+            Self::Discogs(error) => match error {
+                DiscogsError::Serialization(_) => C::ImportData,
+                DiscogsError::Transport(error) if error.is_builder() || error.is_redirect() => {
+                    C::Internal
+                }
+                DiscogsError::Transport(_)
+                | DiscogsError::Provider { .. }
+                | DiscogsError::RateLimit { .. }
+                | DiscogsError::InvalidApiKey
+                | DiscogsError::NotFound => C::Import,
+            },
+            Self::CoverArtRequest { failure, .. } => match failure {
+                LookupFailure::Network
+                | LookupFailure::Timeout
+                | LookupFailure::Provider { .. } => C::Import,
+                LookupFailure::Diagnostic { .. } | LookupFailure::ArtworkAnalysis => C::ImportData,
+            },
+            Self::Internal { .. } => C::Internal,
+            Self::Config { .. } => C::Config,
+            Self::Scan(_)
+            | Self::InvalidFolder(_)
+            | Self::DiscogsNotConfigured
+            | Self::FileTags { .. }
+            | Self::UnusableFile { .. }
+            | Self::LocalCover { .. }
+            | Self::DecodeVerification { .. }
+            | Self::SourceRead { .. }
+            | Self::AlreadyInLibrary { .. }
+            | Self::Edit(_)
+            | Self::SheetBinding { .. }
+            | Self::FileRole { .. }
+            | Self::WatchedFolder { .. }
+            | Self::Watch { .. } => C::Import,
+        };
+        UiError::diagnostic(category, self)
+    }
+}
+
 #[cfg(all(test, not(any(target_os = "ios", target_os = "android"))))]
 mod tests {
     use super::*;

@@ -198,34 +198,22 @@ pub enum BridgeGroupingBlock {
     FolderFilesDownloading,
 }
 
-impl BridgeGroupingBlock {
-    /// The line for a core grouping block, or `None` for the one no person
-    /// can act on — its releases make no release — which reads as the
-    /// generic import failure it is.
-    #[cfg(feature = "desktop")]
-    pub(crate) fn from_core(block: &bae_core::import::GroupingBlock) -> Option<Self> {
-        use bae_core::import::GroupingBlock;
-        match block {
-            GroupingBlock::SourceChanged { .. } => Some(Self::SourceChanged),
-            GroupingBlock::SourceGone { .. } => Some(Self::SourceGone),
-            GroupingBlock::FolderFilesTaken { .. } => Some(Self::FolderFilesTaken),
-            GroupingBlock::FolderFilesContested { .. } => Some(Self::FolderFilesContested),
-            GroupingBlock::FolderFilesDownloading { .. } => Some(Self::FolderFilesDownloading),
-            GroupingBlock::Unbuildable { .. } => None,
-        }
-    }
+mirror_enum! {
+    BridgeGroupingBlock = bae_core::ui::GroupingBlockReason,
+    from_core: pub(crate) fn,
+    variants: {
+        SourceChanged,
+        SourceGone,
+        FolderFilesTaken,
+        FolderFilesContested,
+        FolderFilesDownloading,
+    },
 }
 
-/// A core grouping block as the error the UI draws: its own line, with the
-/// names it carries as the untranslated detail.
 #[cfg(feature = "desktop")]
 impl From<&bae_core::import::GroupingBlock> for BridgeError {
     fn from(block: &bae_core::import::GroupingBlock) -> Self {
-        let category = match BridgeGroupingBlock::from_core(block) {
-            Some(reason) => BridgeErrorCategory::GroupingBlocked { reason },
-            None => BridgeErrorCategory::Import,
-        };
-        BridgeError::diagnostic(category, block)
+        BridgeError::from_core(block.ui_error())
     }
 }
 
@@ -560,10 +548,9 @@ pub enum CloudKitError {
 // =========================================================================
 
 mirror_enum! {
-    /// The bridge enum carries variants core's has no counterpart for — the two
-    /// candidate-mutation refusals, a device-join failure, a grouping's block,
-    /// an AirPlay receiver bae cannot drive — so only the outward direction is
-    /// a mirror.
+    /// The bridge enum carries variants core's has no counterpart for — a
+    /// device-join failure, an AirPlay receiver bae cannot drive — so only the
+    /// outward direction is a mirror.
     BridgeErrorCategory = bae_core::ui::UiErrorCategory,
     from_core: pub(crate) fn,
     variants: {
@@ -572,6 +559,12 @@ mirror_enum! {
         Internal,
         SyncUpdateRequired,
         Import,
+        ImportData,
+        CandidateImportInProgress,
+        CandidateBeingIdentified,
+        CandidateAlreadyImported,
+        MetadataTrackCount,
+        GroupingBlocked(reason: (BridgeGroupingBlock)),
         Export,
         Save,
         CloudSetup(failure: (BridgeCloudHomeSetupFailure)),
@@ -622,78 +615,11 @@ impl From<bae_core::config::ConfigError> for BridgeError {
     }
 }
 
-/// Preserve expected import refusals and provider failures separately from
-/// unusable source data and internal faults. Every variant has an explicit
-/// classification so new producer errors must choose their presentation.
+/// An import failure crosses in the class core gave it.
 #[cfg(feature = "desktop")]
 impl From<bae_core::import::ImportError> for BridgeError {
     fn from(error: bae_core::import::ImportError) -> Self {
-        use bae_core::{
-            discogs::client::DiscogsError, import::ImportError, musicbrainz::MusicBrainzError,
-            signals::LookupFailure,
-        };
-        if let ImportError::GroupingBlocked { reason } = &error {
-            return BridgeError::from(reason);
-        }
-        let detail = error.to_string();
-        let category = match error {
-            ImportError::GroupingBlocked { .. } | ImportError::ImportWriting => {
-                BridgeErrorCategory::Import
-            }
-            ImportError::CandidateImportInProgress => {
-                BridgeErrorCategory::CandidateImportInProgress
-            }
-            ImportError::CandidateBeingIdentified => BridgeErrorCategory::CandidateBeingIdentified,
-            ImportError::CandidateAlreadyImported => BridgeErrorCategory::CandidateAlreadyImported,
-            ImportError::MetadataTrackCount { .. } => BridgeErrorCategory::MetadataTrackCount,
-            ImportError::SourceData { .. } | ImportError::CoverArt { .. } => {
-                BridgeErrorCategory::ImportData
-            }
-            ImportError::MusicBrainz(error) => match error {
-                MusicBrainzError::Other(_) => BridgeErrorCategory::ImportData,
-                MusicBrainzError::NotFound(_)
-                | MusicBrainzError::Network(_)
-                | MusicBrainzError::Timeout
-                | MusicBrainzError::Provider { .. } => BridgeErrorCategory::Import,
-            },
-            ImportError::Discogs(error) => match error {
-                DiscogsError::Serialization(_) => BridgeErrorCategory::ImportData,
-                DiscogsError::Transport(error) if error.is_builder() || error.is_redirect() => {
-                    BridgeErrorCategory::Internal
-                }
-                DiscogsError::Transport(_)
-                | DiscogsError::Provider { .. }
-                | DiscogsError::RateLimit { .. }
-                | DiscogsError::InvalidApiKey
-                | DiscogsError::NotFound => BridgeErrorCategory::Import,
-            },
-            ImportError::CoverArtRequest { failure, .. } => match failure {
-                LookupFailure::Network
-                | LookupFailure::Timeout
-                | LookupFailure::Provider { .. } => BridgeErrorCategory::Import,
-                LookupFailure::Diagnostic { .. } | LookupFailure::ArtworkAnalysis => {
-                    BridgeErrorCategory::ImportData
-                }
-            },
-            ImportError::Internal { .. } => BridgeErrorCategory::Internal,
-            ImportError::Config { .. } => BridgeErrorCategory::Config,
-            ImportError::Db(error) => return error.into(),
-            ImportError::Scan(_)
-            | ImportError::InvalidFolder(_)
-            | ImportError::DiscogsNotConfigured
-            | ImportError::FileTags { .. }
-            | ImportError::UnusableFile { .. }
-            | ImportError::LocalCover { .. }
-            | ImportError::DecodeVerification { .. }
-            | ImportError::SourceRead { .. }
-            | ImportError::AlreadyInLibrary { .. }
-            | ImportError::Edit(_)
-            | ImportError::SheetBinding { .. }
-            | ImportError::FileRole { .. }
-            | ImportError::WatchedFolder { .. }
-            | ImportError::Watch { .. } => BridgeErrorCategory::Import,
-        };
-        BridgeError::diagnostic(category, detail)
+        BridgeError::from_core(error.ui_error())
     }
 }
 

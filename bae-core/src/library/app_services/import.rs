@@ -25,12 +25,10 @@ impl AppServices {
     delegate_sync!(import, import_subscribe_folder_scan_events => subscribe_folder_scan_events() -> tokio::sync::mpsc::UnboundedReceiver<crate::import::ScanEvent>);
     delegate_async!(import, import_set_candidate_skipped => set_candidate_skipped(path: String, skipped: bool) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_search_with_status => search_with_status(query: crate::import::SearchQuery, source: crate::import::Catalog) -> Result<crate::import::GroupedSearchResults, crate::import::ImportError>);
-    delegate_sync!(import, import_start_candidate_search => start_candidate_search(candidate_key: String, query: crate::import::SearchQuery) -> ());
     delegate_sync!(import, import_retry_candidate_search => retry_candidate_search(candidate_key: String) -> ());
     delegate_sync!(import, import_clear_candidate_search => clear_candidate_search(candidate_key: String) -> ());
     delegate_async!(import, import_start_import => start_import(candidate_key: &str) -> Result<String, crate::import::ImportError>);
     delegate_async!(import, import_selected => import_selected(candidate_key: &str) -> Result<String, crate::import::ImportError>);
-    delegate_async!(import, import_merge_candidate_artist_identity_conflict => merge_candidate_artist_identity_conflict(candidate_key: &str, surviving_artist_id: &str) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_save_discogs_token => save_discogs_token(token: &str) -> Result<crate::import::DiscogsSaveOutcome, crate::import::ImportError>);
     delegate_async!(import, import_revalidate_discogs_token => revalidate_discogs_token() -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_remove_discogs_token => remove_discogs_token() -> Result<(), crate::import::ImportError>);
@@ -47,7 +45,6 @@ impl AppServices {
     delegate_async!(import, import_set_candidate_cover => set_candidate_cover(candidate_key: &str, cover: crate::import::CoverSelection) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_set_candidate_presentation => set_candidate_presentation(candidate_key: &str, presentation: crate::import::MetadataPresentation) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_set_candidate_search_form => set_candidate_search_form(candidate_key: &str, search: crate::import::SearchForm) -> Result<(), crate::import::ImportError>);
-    delegate_async!(import, import_set_candidate_pane_error => set_candidate_pane_error(candidate_key: &str, error: Option<String>) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_set_candidate_edit_field => set_candidate_edit_field(candidate_key: &str, edit: crate::import::DraftFieldEdit) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_set_candidate_album_artists => set_candidate_album_artists(candidate_key: &str, assignments: Vec<crate::import::ArtistAssignment>) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_set_candidate_track_edit => set_candidate_track_edit(candidate_key: &str, track: crate::import::RawTrackEdit) -> Result<(), crate::import::ImportError>);
@@ -68,31 +65,6 @@ impl AppServices {
         &self,
     ) -> tokio::sync::broadcast::Receiver<crate::import::ImportEvent> {
         self.inner.import.subscribe_events()
-    }
-
-    /// Make one change to what a candidate's identification asks about, and
-    /// run it again when what it looks up has changed: a run takes its choices
-    /// at its start, so a person changing one is asking for a run that reads
-    /// it. Any run already going for this candidate is superseded.
-    ///
-    /// Striking a number out of the candidate's text asks nothing of the
-    /// providers — the answers in hand are the same answers, ranked by what
-    /// the folder is now taken to state about them — so it starts no run, and
-    /// the next read of the candidate ranks them afresh.
-    pub async fn import_edit_candidate_lookup_choices(
-        &self,
-        candidate_key: String,
-        edit: crate::import::LookupChoiceEdit,
-    ) -> Result<(), crate::import::ImportError> {
-        let change = self
-            .inner
-            .import
-            .edit_candidate_lookup_choices(&candidate_key, edit)
-            .await?;
-        if change == crate::import::ChoiceChange::Lookups {
-            self.inner.identification.rerun_identify(candidate_key);
-        }
-        Ok(())
     }
 
     /// Identify an existing library release after the person opens the

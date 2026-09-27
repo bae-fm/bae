@@ -597,6 +597,8 @@ mod detail_reads;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod import;
 mod live_query_events;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+mod pane;
 mod queue_reads;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod selection;

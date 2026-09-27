@@ -97,14 +97,17 @@ forward! { async this => {
             .map_err(BridgeError::database_query)
     }
 
+    /// Take the two library artists the candidate's import found to be one
+    /// as one, a pane command.
     fn merge_candidate_artist_identity_conflict(
         candidate_key: String,
         surviving_artist_id: String,
-    ) -> () {
-        this.services
-            .import_merge_candidate_artist_identity_conflict(&candidate_key, &surviving_artist_id)
-            .await
-            .map_err(BridgeError::import)
+    ) -> crate::types::BridgePaneOutcome {
+        Ok(crate::types::BridgePaneOutcome::from_core(
+            this.services
+                .pane_merge_artists(&candidate_key, &surviving_artist_id)
+                .await?,
+        ))
     }
 } }
 

@@ -1,0 +1,151 @@
+//! The commands the import pane runs for its candidate. Each starts by
+//! clearing the failure the pane states for its last command, and a failure of
+//! its own is stored with the candidate for the pane to state, so the pane
+//! shows what core stored rather than what a surface made of an error.
+
+use super::*;
+use crate::import::{
+    ImportError, LookupChoiceEdit, MetadataProvenance, PaneCommand, PaneOutcome, SearchQuery,
+};
+
+impl AppServices {
+    /// Import the candidate the pane shows.
+    pub async fn pane_start_import(&self, candidate_key: &str) -> Result<PaneOutcome, ImportError> {
+        let import = &self.inner.import;
+        import
+            .run_pane_command(
+                candidate_key,
+                PaneCommand::Import,
+                import.start_import(candidate_key),
+            )
+            .await
+    }
+
+    /// Cancel the import of the candidate the pane shows.
+    pub async fn pane_cancel_import(
+        &self,
+        candidate_key: &str,
+    ) -> Result<PaneOutcome, ImportError> {
+        let import = &self.inner.import;
+        import
+            .run_pane_command(candidate_key, PaneCommand::CancelImport, async {
+                import.cancel_import(candidate_key)
+            })
+            .await
+    }
+
+    /// Take the two library artists the candidate's import found to be one as
+    /// one, keeping `surviving_artist_id`.
+    pub async fn pane_merge_artists(
+        &self,
+        candidate_key: &str,
+        surviving_artist_id: &str,
+    ) -> Result<PaneOutcome, ImportError> {
+        let import = &self.inner.import;
+        import
+            .run_pane_command(
+                candidate_key,
+                PaneCommand::MergeArtists,
+                import.merge_candidate_artist_identity_conflict(candidate_key, surviving_artist_id),
+            )
+            .await
+    }
+
+    /// Read the candidate's metadata from `provenance`. Reading the files'
+    /// own tags is a pane command whose failure the pane states; a catalog
+    /// release that fails to load is told on that release's own row, so its
+    /// failure comes back as the error.
+    pub async fn pane_select_metadata_provenance(
+        &self,
+        candidate_key: String,
+        provenance: MetadataProvenance,
+    ) -> Result<PaneOutcome, ImportError> {
+        let import = &self.inner.import;
+        match provenance {
+            MetadataProvenance::FileMetadata => {
+                import
+                    .run_pane_command(
+                        &candidate_key,
+                        PaneCommand::ReadFileTags,
+                        import.select_candidate_metadata_provenance(
+                            candidate_key.clone(),
+                            provenance,
+                        ),
+                    )
+                    .await
+            }
+            MetadataProvenance::ExternalRelease { .. } => {
+                import.clear_pane_failure(&candidate_key).await?;
+                import
+                    .select_candidate_metadata_provenance(candidate_key, provenance)
+                    .await?;
+                Ok(PaneOutcome::Done)
+            }
+        }
+    }
+
+    /// Make one change to what the candidate's identification asks about or
+    /// counts, and run it again when what it looks up changed.
+    pub async fn pane_edit_lookup_choices(
+        &self,
+        candidate_key: String,
+        edit: LookupChoiceEdit,
+    ) -> Result<PaneOutcome, ImportError> {
+        let command = match &edit {
+            LookupChoiceEdit::ToggleDiscId
+            | LookupChoiceEdit::ToggleBarcode { .. }
+            | LookupChoiceEdit::ToggleCatalog { .. } => PaneCommand::ChangeLookups,
+            LookupChoiceEdit::SearchBy { .. } => PaneCommand::ChangeSearchWords,
+            LookupChoiceEdit::ToggleDiscounted { .. } => PaneCommand::ChangeAgreements,
+        };
+        let key = candidate_key.clone();
+        self.inner
+            .import
+            .run_pane_command(
+                &key,
+                command,
+                self.edit_candidate_lookup_choices(candidate_key, edit),
+            )
+            .await
+    }
+
+    /// Submit the candidate's typed search. What it turns up, failures
+    /// included, lands on the candidate's runtime rather than the pane's
+    /// banner, so this only clears the banner for it.
+    pub async fn pane_start_candidate_search(
+        &self,
+        candidate_key: String,
+        query: SearchQuery,
+    ) -> Result<(), ImportError> {
+        self.inner.import.clear_pane_failure(&candidate_key).await?;
+        self.inner
+            .import
+            .start_candidate_search(candidate_key, query);
+        Ok(())
+    }
+
+    /// Make one change to what a candidate's identification asks about, and
+    /// run it again when what it looks up has changed: a run takes its choices
+    /// at its start, so a person changing one is asking for a run that reads
+    /// it. Any run already going for this candidate is superseded.
+    ///
+    /// Striking a number out of the candidate's text asks nothing of the
+    /// providers — the answers in hand are the same answers, ranked by what
+    /// the folder is now taken to state about them — so it starts no run, and
+    /// the next read of the candidate ranks them afresh.
+    async fn edit_candidate_lookup_choices(
+        &self,
+        candidate_key: String,
+        edit: crate::import::LookupChoiceEdit,
+    ) -> Result<(), crate::import::ImportError> {
+        let change = self
+            .inner
+            .import
+            .edit_candidate_lookup_choices(&candidate_key, edit)
+            .await?;
+        if change == crate::import::ChoiceChange::Lookups {
+            self.inner.identification.rerun_identify(candidate_key);
+        }
+        Ok(())
+    }
+}

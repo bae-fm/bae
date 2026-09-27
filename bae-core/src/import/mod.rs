@@ -218,7 +218,10 @@ desktop_only! {
     pub use service::ImportService;
 }
 pub use lookup_choices::{ChoiceChange, LookupChoiceEdit, LookupChoices, SearchWords};
-pub use session::{CandidateSession, MetadataPresentation, SearchForm, SearchTab};
+pub use session::{
+    CandidateSession, MetadataPresentation, PaneCommand, PaneFailure, PaneOutcome, SearchForm,
+    SearchTab,
+};
 desktop_only! {
     pub use identification::IdentificationHandle;
     pub use track_slots::{

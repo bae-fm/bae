@@ -45,17 +45,17 @@ extension ImportView {
         }
     }
 
+    /// Run one of the pane's commands. Core clears the failure the pane states
+    /// as it starts and stores this one's in its place, so a failure comes
+    /// back here only when the pane does not state it.
     private func runCandidateMutation(
         candidate: Candidate,
-        operation: @escaping @MainActor () async throws -> Void
+        operation: @escaping @MainActor () async throws -> BridgePaneOutcome
     ) {
-        // Start each attempt from a clean error state so a prior failed
-        // command's banner does not linger over a succeeding retry.
-        importStore.clearPaneError(forKey: candidate.key)
         candidateMutationTasks[candidate.key]?.cancel()
         candidateMutationTasks[candidate.key] = Task { @MainActor in
             do {
-                try await operation()
+                _ = try await operation()
             }
             catch is CancellationError {
                 importConfirmLogger.debug(
@@ -63,12 +63,7 @@ extension ImportView {
                 )
             }
             catch {
-                if let line = error.displayLine {
-                    importStore.recordPaneError(line, forKey: candidate.key)
-                }
-                else {
-                    uiStore.showError(error)
-                }
+                uiStore.showError(error)
             }
         }
     }

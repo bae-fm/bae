@@ -1218,7 +1218,15 @@ CREATE TABLE IF NOT EXISTS import_candidate_session (
     search_album   TEXT NOT NULL,
     search_catalog TEXT NOT NULL,
     search_barcode TEXT NOT NULL,
-    error          TEXT,
+    -- The pane's last command, when it failed: which command, the class of
+    -- its failure, and the failure's untranslated text.
+    error_command  TEXT CHECK (error_command IN (
+        'import', 'cancel_import', 'merge_artists', 'read_file_tags',
+        'change_lookups', 'change_search_words', 'change_agreements')),
+    error_category TEXT,
+    error_detail   TEXT,
+    CHECK ((error_command IS NULL) = (error_category IS NULL)),
+    CHECK ((error_command IS NULL) = (error_detail IS NULL)),
     FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE
 ) STRICT;
 

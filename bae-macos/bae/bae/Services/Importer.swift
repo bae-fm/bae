@@ -45,8 +45,10 @@ private struct ImportOperations: Sendable {
     let setSheetBinding:
         @Sendable (String, String, String, String?) async throws -> Void
     let applyCandidateExternalMetadata:
-        @Sendable (String, BridgeMetadataProvenance) async throws -> UInt64
-    let applyCandidateFileMetadata: @Sendable (String) async throws -> UInt64
+        @Sendable (String, BridgeMetadataProvenance) async throws ->
+            BridgePaneOutcome
+    let applyCandidateFileMetadata:
+        @Sendable (String) async throws -> BridgePaneOutcome
     let resetCandidateSetup: @Sendable (String) async throws -> Void
     let clearCandidateMetadata: @Sendable (String) async throws -> UInt64
     let setSheetDisc:
@@ -57,20 +59,21 @@ private struct ImportOperations: Sendable {
     let editReleaseLookupChoices:
         @Sendable (String, String, BridgeLookupChoiceEdit) -> Void
     let endReleaseIdentification: @Sendable (String) async throws -> Void
-    let startCandidateSearch: @Sendable (String, BridgeSearchQuery) -> Void
+    let startCandidateSearch:
+        @Sendable (String, BridgeSearchQuery) async throws -> Void
     let retryCandidateSearch: @Sendable (String) -> Void
     let subscribeLibraryStatuses: @Sendable () -> LibraryStatusQuery
     let editCandidateLookupChoices:
-        @Sendable (String, BridgeLookupChoiceEdit) async throws -> Void
+        @Sendable (String, BridgeLookupChoiceEdit) async throws ->
+            BridgePaneOutcome
     let rerunIdentifyForCandidate: @Sendable (String) -> Void
     let cancelAllIdentification: @Sendable () async throws -> Void
-    let cancelImport: @Sendable (String) async throws -> Void
+    let cancelImport: @Sendable (String) async throws -> BridgePaneOutcome
     let cancelAllImports: @Sendable () -> Void
     let setCandidatePresentation:
         @Sendable (String, BridgeMetadataPresentation) async throws -> Void
     let setCandidateSearchForm:
         @Sendable (String, BridgeSearchForm) async throws -> Void
-    let setCandidatePaneError: @Sendable (String, String?) async throws -> Void
     let setCandidateCover:
         @Sendable (String, BridgeCoverSelection) async throws -> Void
     let setCandidateEditField:
@@ -94,9 +97,9 @@ private struct ImportOperations: Sendable {
             String, BridgeCandidateActionBasis, CandidateLiveStateCallback
         ) -> any LiveSubscriptionProtocol
     let candidateSignals: @Sendable (String) -> Signals?
-    let startImport: @Sendable (String) async throws -> Void
+    let startImport: @Sendable (String) async throws -> BridgePaneOutcome
     let mergeCandidateArtistIdentityConflict:
-        @Sendable (String, String) async throws -> Void
+        @Sendable (String, String) async throws -> BridgePaneOutcome
     let setIdentifyAutomatically:
         @MainActor @Sendable (Bool) async throws -> Void
     let setPrefillWithFileMetadata:
@@ -189,7 +192,10 @@ extension ImportOperations {
                 try await handle.endReleaseIdentification(candidateKey: $0)
             },
             startCandidateSearch: {
-                handle.startCandidateSearch(candidateKey: $0, query: $1)
+                try await handle.startCandidateSearch(
+                    candidateKey: $0,
+                    query: $1
+                )
             },
             retryCandidateSearch: {
                 handle.retryCandidateSearch(candidateKey: $0)
@@ -230,12 +236,6 @@ extension ImportOperations {
                 try await handle.setCandidateSearchForm(
                     candidateKey: $0,
                     search: $1
-                )
-            },
-            setCandidatePaneError: {
-                try await handle.setCandidatePaneError(
-                    candidateKey: $0,
-                    error: $1
                 )
             },
             setCandidateCover: {
@@ -376,12 +376,12 @@ final class Importer: Sendable, Observable {
             { _, _, _, _ in },
         applyCandidateExternalMetadata:
             @escaping @Sendable (String, BridgeMetadataProvenance)
-            async throws -> UInt64 = { _, _ in
+            async throws -> BridgePaneOutcome = { _, _ in
                 throw StubError.notImplemented
             },
         applyCandidateFileMetadata:
-            @escaping @Sendable (String) async throws -> UInt64 = { _ in
-                throw StubError.notImplemented
+            @escaping @Sendable (String) async throws -> BridgePaneOutcome = {
+                _ in throw StubError.notImplemented
             },
         resetCandidateSetup:
             @escaping @Sendable (String) async throws -> Void = { _ in
@@ -407,21 +407,22 @@ final class Importer: Sendable, Observable {
         endReleaseIdentification:
             @escaping @Sendable (String) async throws -> Void = { _ in },
         startCandidateSearch:
-            @escaping @Sendable (String, BridgeSearchQuery) -> Void = { _, _ in
-            },
+            @escaping @Sendable (String, BridgeSearchQuery) async throws ->
+            Void = { _, _ in },
         retryCandidateSearch: @escaping @Sendable (String) -> Void = { _ in },
         subscribeLibraryStatuses:
             @escaping @Sendable () -> LibraryStatusQuery = { .inert },
         editCandidateLookupChoices:
             @escaping @Sendable (String, BridgeLookupChoiceEdit) async throws ->
-            Void = { _, _ in },
+            BridgePaneOutcome = { _, _ in .done },
         rerunIdentifyForCandidate:
             @escaping @Sendable (String) -> Void = { _ in },
         cancelAllIdentification:
             @escaping @Sendable () async throws -> Void = {},
-        cancelImport: @escaping @Sendable (String) async throws -> Void = {
-            _ in
-        },
+        cancelImport:
+            @escaping @Sendable (String) async throws -> BridgePaneOutcome = {
+                _ in .done
+            },
         cancelAllImports: @escaping @Sendable () -> Void = {},
         setCandidatePresentation:
             @escaping @Sendable (String, BridgeMetadataPresentation)
@@ -430,11 +431,6 @@ final class Importer: Sendable, Observable {
         setCandidateSearchForm:
             @escaping @Sendable (String, BridgeSearchForm) async throws -> Void =
             {
-                _,
-                _ in
-            },
-        setCandidatePaneError:
-            @escaping @Sendable (String, String?) async throws -> Void = {
                 _,
                 _ in
             },
@@ -477,8 +473,10 @@ final class Importer: Sendable, Observable {
             },
         candidateSignals: @escaping @Sendable (String) -> Signals? = { _ in nil
         },
-        startImport: @escaping @Sendable (String) async throws -> Void = { _ in
-        },
+        startImport:
+            @escaping @Sendable (String) async throws -> BridgePaneOutcome = {
+                _ in .done
+            },
         setIdentifyAutomatically:
             @escaping @MainActor @Sendable (Bool) async throws -> Void = { _ in
             },
@@ -530,7 +528,6 @@ final class Importer: Sendable, Observable {
             cancelAllImports: cancelAllImports,
             setCandidatePresentation: setCandidatePresentation,
             setCandidateSearchForm: setCandidateSearchForm,
-            setCandidatePaneError: setCandidatePaneError,
             setCandidateCover: setCandidateCover,
             setCandidateEditField: setCandidateEditField,
             setCandidateLabels: setCandidateLabels,
@@ -609,15 +606,17 @@ extension Importer {
     func applyCandidateExternalMetadata(
         _ candidateKey: String,
         provenance: BridgeMetadataProvenance
-    ) async throws -> UInt64 {
+    ) async throws -> BridgePaneOutcome {
         try await operations.applyCandidateExternalMetadata(
             candidateKey,
             provenance
         )
     }
 
+    /// Read the candidate's files' own tags into its draft, a pane command:
+    /// its failure is stated on the pane.
     func applyCandidateFileMetadata(_ candidateKey: String) async throws
-        -> UInt64
+        -> BridgePaneOutcome
     {
         try await operations.applyCandidateFileMetadata(candidateKey)
     }
@@ -668,14 +667,14 @@ extension Importer {
         try await operations.endReleaseIdentification(candidateKey)
     }
 
-    /// Submit a candidate's typed search. Fire-and-forget: every configured
-    /// provider is asked at once and each answer lands on the candidate's
-    /// runtime, which the pane already watches.
+    /// Submit a candidate's typed search: every configured provider is asked
+    /// at once and each answer lands on the candidate's runtime, which the
+    /// pane already watches. Clears the failure the pane states.
     func startCandidateSearch(
         _ candidateKey: String,
         _ query: BridgeSearchQuery
-    ) {
-        operations.startCandidateSearch(candidateKey, query)
+    ) async throws {
+        try await operations.startCandidateSearch(candidateKey, query)
     }
 
     /// Re-ask only the providers whose part of the search failed.
@@ -693,7 +692,7 @@ extension Importer {
     func editCandidateLookupChoices(
         _ candidateKey: String,
         _ edit: BridgeLookupChoiceEdit
-    ) async throws {
+    ) async throws -> BridgePaneOutcome {
         try await operations.editCandidateLookupChoices(candidateKey, edit)
     }
 
@@ -713,10 +712,11 @@ extension Importer {
         try await operations.cancelAllIdentification()
     }
 
-    /// Cancel the candidate's import, waiting or running. It writes nothing
-    /// and records no failure; one already writing its release completes, and
-    /// that is the error.
-    func cancelImport(_ candidateKey: String) async throws {
+    /// Cancel the candidate's import, waiting or running, a pane command. It
+    /// records no import failure; one already writing its release completes,
+    /// and the pane states that.
+    func cancelImport(_ candidateKey: String) async throws -> BridgePaneOutcome
+    {
         try await operations.cancelImport(candidateKey)
     }
 
@@ -742,14 +742,6 @@ extension Importer {
         _ search: BridgeSearchForm
     ) async throws {
         try await operations.setCandidateSearchForm(candidateKey, search)
-    }
-
-    /// Record the last command the pane ran for a candidate when it failed,
-    /// or clear it for the next command.
-    func setCandidatePaneError(_ candidateKey: String, _ error: String?)
-        async throws
-    {
-        try await operations.setCandidatePaneError(candidateKey, error)
     }
 
     /// Record the cover this candidate commits with.
@@ -818,15 +810,17 @@ extension Importer {
         try await operations.dropCandidateTrack(candidateKey, trackId)
     }
 
-    /// Commit a candidate from what core stores for it.
-    func startImport(_ candidateKey: String) async throws {
+    /// Commit a candidate from what core stores for it, a pane command.
+    func startImport(_ candidateKey: String) async throws -> BridgePaneOutcome {
         try await operations.startImport(candidateKey)
     }
 
+    /// Take the two library artists the candidate's import found to be one as
+    /// one, a pane command.
     func mergeCandidateArtistIdentityConflict(
         _ candidateKey: String,
         keeping survivingArtistId: String
-    ) async throws {
+    ) async throws -> BridgePaneOutcome {
         try await operations.mergeCandidateArtistIdentityConflict(
             candidateKey,
             survivingArtistId

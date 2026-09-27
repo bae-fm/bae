@@ -205,10 +205,9 @@ struct CandidateSearchState: Equatable {
 struct CandidateSessionState: Equatable {
     var presentation: CandidateMetadataPresentation = .draft
     var search = CandidateSearchState()
-    /// The last command this pane ran, when it failed — a selection whose
-    /// read dropped, a write that would not land, a commit the fields do not
-    /// support. Shown in the banner and cleared by the next command.
-    var error: String?
+    /// The last command this pane ran, when it failed, as core stored it.
+    /// Shown in the banner until the pane's next command clears it.
+    var failure: BridgePaneFailure?
 
     init() {}
 
@@ -217,7 +216,39 @@ struct CandidateSessionState: Equatable {
             bridge: bridge.presentation
         )
         search = CandidateSearchState(bridge: bridge.search)
-        error = bridge.error
+        failure = bridge.error
+    }
+}
+
+extension BridgePaneFailure {
+    /// The banner's line: what the command was doing, where saying so helps,
+    /// and why it failed.
+    var line: String? {
+        guard let displayed = DisplayError(error) else { return nil }
+        let why = displayed.line
+        switch command {
+        case .import, .cancelImport, .mergeArtists:
+            return why
+        case .readFileTags:
+            if case .Diagnostic(.metadataTrackCount, _) = error {
+                return why
+            }
+            return String(localized: "Couldn't read file tags: \(why)")
+        case .changeLookups:
+            return String(
+                localized:
+                    "Couldn't change what identification looks up: \(why)"
+            )
+        case .changeSearchWords:
+            return String(
+                localized:
+                    "Couldn't change what identification searches by: \(why)"
+            )
+        case .changeAgreements:
+            return String(
+                localized: "Couldn't change what counts as an agreement: \(why)"
+            )
+        }
     }
 }
 
@@ -288,7 +319,7 @@ struct Candidate: Equatable, Identifiable {
     }
     var search: CandidateSearchState { session.search }
     /// The last command this pane ran, when it failed.
-    var error: String? { session.error }
+    var error: String? { session.failure?.line }
 
     var id: String {
         key

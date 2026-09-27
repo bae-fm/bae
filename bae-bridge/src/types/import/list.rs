@@ -206,8 +206,9 @@ pub struct BridgeImportCandidateDetail {
     pub failure: Option<BridgeImportFailure>,
     /// Where the pane was when the person last left this candidate, or where
     /// it opens for one nobody has touched. Written through
-    /// `set_candidate_presentation`, `set_candidate_search_form` and
-    /// `set_candidate_pane_error`; the next value of this carries it back.
+    /// `set_candidate_presentation` and `set_candidate_search_form`, and by
+    /// the pane commands themselves, which store their failure; the next value
+    /// of this carries it back.
     pub session: BridgeCandidateSession,
 }
 
@@ -269,7 +270,68 @@ pub struct BridgeCandidateSession {
     pub presentation: BridgeMetadataPresentation,
     pub search: BridgeSearchForm,
     /// The last command the pane ran for this candidate, when it failed.
-    pub error: Option<String>,
+    pub error: Option<BridgePaneFailure>,
+}
+
+/// A command the pane runs for its candidate whose failure the pane states.
+/// Mirrors `bae_core::import::PaneCommand`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgePaneCommand {
+    Import,
+    CancelImport,
+    MergeArtists,
+    ReadFileTags,
+    ChangeLookups,
+    ChangeSearchWords,
+    ChangeAgreements,
+}
+
+/// The pane's last command, which failed, and why. Mirrors
+/// `bae_core::import::PaneFailure`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgePaneFailure {
+    pub command: BridgePaneCommand,
+    pub error: BridgeError,
+}
+
+/// What a pane command came to: it ran, or it failed and the pane states why.
+/// Mirrors `bae_core::import::PaneOutcome`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgePaneOutcome {
+    Done,
+    Failed,
+}
+
+mirror_enum! {
+    #[cfg(feature = "desktop")]
+    BridgePaneCommand = bae_core::import::PaneCommand,
+    from_core: pub(crate) fn,
+    variants: {
+        Import,
+        CancelImport,
+        MergeArtists,
+        ReadFileTags,
+        ChangeLookups,
+        ChangeSearchWords,
+        ChangeAgreements,
+    },
+}
+
+mirror_enum! {
+    #[cfg(feature = "desktop")]
+    BridgePaneOutcome = bae_core::import::PaneOutcome,
+    from_core: pub(crate) fn,
+    variants: { Done, Failed },
+}
+
+mirror_struct! {
+    #[cfg(feature = "desktop")]
+    BridgePaneFailure = bae_core::import::PaneFailure,
+    from_core: pub(crate) fn,
+    fields: {
+        command: (BridgePaneCommand),
+        error: (BridgeError),
+    },
 }
 
 mirror_enum! {
@@ -303,7 +365,7 @@ mirror_struct! {
     fields: {
         presentation: (BridgeMetadataPresentation),
         search: (BridgeSearchForm),
-        error,
+        error: (opt BridgePaneFailure),
     },
 }
 

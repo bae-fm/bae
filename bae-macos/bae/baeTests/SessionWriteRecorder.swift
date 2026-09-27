@@ -9,7 +9,8 @@ import Foundation
 enum CandidateSessionWrite: Equatable, Sendable {
     case presentation(key: String, presentation: BridgeMetadataPresentation)
     case searchForm(key: String, form: BridgeSearchForm)
-    case error(key: String, error: String?)
+    /// A failure no pane states, told to the person.
+    case reportedFailure(String)
 }
 
 extension CandidateSessionWriter {
@@ -24,8 +25,9 @@ extension CandidateSessionWriter {
             setSearchForm: { key, form in
                 record(.searchForm(key: key, form: form))
             },
-            setError: { key, error in record(.error(key: key, error: error)) },
-            reportFailure: { _ in }
+            reportFailure: { error in
+                record(.reportedFailure(String(describing: error)))
+            }
         )
     }
 }
@@ -54,12 +56,12 @@ final class SessionWriteRecorder: @unchecked Sendable {
         }
     }
 
-    /// The banner lines written for `key`, in order; `nil` is a clear.
-    func errors(forKey key: String) -> [String?] {
+    /// The failures told to the person rather than stated on a pane.
+    func reportedFailures() -> [String] {
         lock.withLock {
             writes.compactMap { write in
-                if case .error(let written, let error) = write, written == key {
-                    return .some(error)
+                if case .reportedFailure(let failure) = write {
+                    return failure
                 }
                 return nil
             }

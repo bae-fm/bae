@@ -38,6 +38,38 @@ pub struct SearchForm {
     pub barcode: String,
 }
 
+/// A command the pane runs for its candidate whose failure the pane states
+/// until its next command.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PaneCommand {
+    Import,
+    CancelImport,
+    /// Take the two library artists an import found to be one as one.
+    MergeArtists,
+    /// Read the files' own tags into the draft.
+    ReadFileTags,
+    /// Change which identifiers identification looks up.
+    ChangeLookups,
+    /// Change the words identification searches by.
+    ChangeSearchWords,
+    /// Change which catalog numbers count as the folder's own.
+    ChangeAgreements,
+}
+
+/// The pane's last command, which failed, and why.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PaneFailure {
+    pub command: PaneCommand,
+    pub error: crate::ui::UiError,
+}
+
+/// What a pane command came to: it ran, or it failed and the pane states why.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PaneOutcome {
+    Done,
+    Failed,
+}
+
 /// The pane's per-candidate state between visits.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CandidateSession {
@@ -45,7 +77,7 @@ pub struct CandidateSession {
     pub search: SearchForm,
     /// The last command the pane ran for this candidate, when it failed —
     /// shown in the banner until the next command clears it.
-    pub error: Option<String>,
+    pub error: Option<PaneFailure>,
 }
 
 impl CandidateSession {

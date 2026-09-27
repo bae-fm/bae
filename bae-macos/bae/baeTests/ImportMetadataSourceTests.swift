@@ -33,12 +33,12 @@ private final class MetadataSourceRecorder {
                         )
                     )
                 }
-                return 1
+                return .done
             },
             applyCandidateFileMetadata: { [self] key in
                 await MainActor.run {
                     fileTagApplications.append(key)
-                    return UInt64(fileTagApplications.count)
+                    return .done
                 }
             },
             resetCandidateSetup: { [self] key in

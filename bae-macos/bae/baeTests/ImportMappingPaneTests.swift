@@ -62,14 +62,14 @@ private final class Recorder {
                 try await MainActor.run {
                     externalMetadata.append(provenance)
                     if let pickFailure { throw pickFailure }
-                    return 1
+                    return .done
                 }
             },
             applyCandidateFileMetadata: { [self] _ in
                 try await MainActor.run {
                     fileTagsApplications += 1
                     if let pickFailure { throw pickFailure }
-                    return 1
+                    return .done
                 }
             },
             setSheetDisc: { [self] _, sheetFileId, disc in
@@ -545,8 +545,7 @@ extension ImportMappingPaneTests {
             store.selectedCandidates[MappingFixtures.candidateKey]
         )
         #expect(
-            !writes.errors(forKey: MappingFixtures.candidateKey)
-                .contains { $0 != nil }
+            writes.reportedFailures().isEmpty
         )
         #expect(candidate.error == nil)
         let failure = store.releaseSelectionFailure(

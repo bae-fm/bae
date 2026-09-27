@@ -189,18 +189,6 @@ forward! {
             this.services.import_cancel_all();
         }
 
-        /// Submit a candidate's typed search. Fire-and-forget like
-        /// `rerun_identify_for_candidate`: every configured provider is asked at
-        /// once, and each answer lands on the candidate's runtime as it arrives.
-        /// A search already running for this candidate is superseded.
-        fn start_candidate_search(
-            candidate_key: String,
-            query: crate::types::BridgeSearchQuery,
-        ) {
-            this.services
-                .import_start_candidate_search(candidate_key, query.into_core());
-        }
-
         /// Re-ask only the providers whose part of the search failed, keeping what
         /// the others found. A no-op when the candidate has no search running.
         fn retry_candidate_search(candidate_key: String) {
@@ -218,19 +206,36 @@ forward! {
 forward! {
     #[cfg(feature = "desktop")]
     async this => {
-        /// Replace candidate metadata from a source. An external release's
-        /// documents land before provenance does, so the next value draws whole.
-        /// Identification writes the same record itself when a verdict settles on
-        /// exactly one match; this is the path for the choices only a person can
-        /// make.
+        /// Submit a candidate's typed search: every configured provider is
+        /// asked at once, and each answer lands on the candidate's runtime as
+        /// it arrives. A search already running for this candidate is
+        /// superseded. Clears the failure the pane states for its last
+        /// command.
+        fn start_candidate_search(
+            candidate_key: String,
+            query: crate::types::BridgeSearchQuery,
+        ) -> () {
+            Ok(this
+                .services
+                .pane_start_candidate_search(candidate_key, query.into_core())
+                .await?)
+        }
+
+        /// Replace candidate metadata from a source, a pane command. An
+        /// external release's documents land before provenance does, so the
+        /// next value draws whole. Identification writes the same record itself
+        /// when a verdict settles on exactly one match; this is the path for
+        /// the choices only a person can make. A catalog release that fails to
+        /// load comes back as the error, for its own row to say.
         fn select_candidate_metadata_provenance(
             candidate_key: String,
             provenance: crate::types::BridgeMetadataProvenance,
-        ) -> u64 {
-            Ok(this
-                .services
-                .import_select_candidate_metadata_provenance(candidate_key, provenance.into_core())
-                .await?)
+        ) -> crate::types::BridgePaneOutcome {
+            Ok(crate::types::BridgePaneOutcome::from_core(
+                this.services
+                    .pane_select_metadata_provenance(candidate_key, provenance.into_core())
+                    .await?,
+            ))
         }
 
         /// Restore the candidate's initial scanned setup using current preferences.
@@ -289,13 +294,13 @@ forward! {
                 .map_err(BridgeError::from)
         }
 
-        /// Cancel the import of `candidate_key`, waiting or running. It writes
-        /// nothing and records no failure. An import already writing its
-        /// release completes, and that is the error.
-        fn cancel_import(candidate_key: String) -> () {
-            this.services
-                .import_cancel(&candidate_key)
-                .map_err(BridgeError::import)
+        /// Cancel the import of `candidate_key`, waiting or running, a pane
+        /// command. It records no import failure. An import already writing
+        /// its release completes, and the pane states that.
+        fn cancel_import(candidate_key: String) -> crate::types::BridgePaneOutcome {
+            Ok(crate::types::BridgePaneOutcome::from_core(
+                this.services.pane_cancel_import(&candidate_key).await?,
+            ))
         }
 
         fn remove_watched_folder(path: String) -> () {
@@ -401,13 +406,11 @@ forward! {
         }
 
         /// Commit a candidate from what it stores, to where the stored storage
-        /// choice says.
-        fn start_import(candidate_key: String) -> () {
-            this.services
-                .import_start_import(&candidate_key)
-                .await
-                .map(|_| ())
-                .map_err(BridgeError::import)
+        /// choice says, a pane command.
+        fn start_import(candidate_key: String) -> crate::types::BridgePaneOutcome {
+            Ok(crate::types::BridgePaneOutcome::from_core(
+                this.services.pane_start_import(&candidate_key).await?,
+            ))
         }
 
         /// Record the cover the user chose for a candidate. Nothing comes back:
@@ -453,25 +456,17 @@ forward! {
 
         /// Make one change to what a candidate's identification asks about,
         /// to the choices core holds for it, and start the run that reads them
-        /// when what it looks up changed. A run already going for this
-        /// candidate is superseded.
+        /// when what it looks up changed, a pane command. A run already going
+        /// for this candidate is superseded.
         fn edit_candidate_lookup_choices(
             candidate_key: String,
             edit: crate::types::BridgeLookupChoiceEdit,
-        ) -> () {
-            Ok(this
-                .services
-                .import_edit_candidate_lookup_choices(candidate_key, edit.into_core())
-                .await?)
-        }
-
-        /// Record the last command the pane ran for a candidate when it failed,
-        /// or clear it for the next command.
-        fn set_candidate_pane_error(candidate_key: String, error: Option<String>) -> () {
-            Ok(this
-                .services
-                .import_set_candidate_pane_error(&candidate_key, error)
-                .await?)
+        ) -> crate::types::BridgePaneOutcome {
+            Ok(crate::types::BridgePaneOutcome::from_core(
+                this.services
+                    .pane_edit_lookup_choices(candidate_key, edit.into_core())
+                    .await?,
+            ))
         }
 
         /// Record one album-level field of the candidate's metadata form as the

@@ -124,13 +124,7 @@ extension ImportSearchFlow {
         editLookupChoices(
             toggle.edit,
             services: services,
-            input: input,
-            failure: { line in
-                String(
-                    localized:
-                        "Couldn't change what identification looks up: \(line)"
-                )
-            }
+            input: input
         )
     }
 
@@ -146,13 +140,7 @@ extension ImportSearchFlow {
         editLookupChoices(
             .searchBy(album: album, artist: artist),
             services: services,
-            input: input,
-            failure: { line in
-                String(
-                    localized:
-                        "Couldn't change what identification searches by: \(line)"
-                )
-            }
+            input: input
         )
     }
 
@@ -167,13 +155,7 @@ extension ImportSearchFlow {
         editLookupChoices(
             .toggleDiscounted(number: value),
             services: services,
-            input: input,
-            failure: { line in
-                String(
-                    localized:
-                        "Couldn't change what counts as an agreement: \(line)"
-                )
-            }
+            input: input
         )
     }
 
@@ -202,8 +184,7 @@ extension ImportSearchFlow {
     private static func editLookupChoices(
         _ edit: BridgeLookupChoiceEdit,
         services: ImportServices,
-        input: SearchPaneInput,
-        failure: @escaping (String) -> String
+        input: SearchPaneInput
     ) {
         let key = input.key
         let importStore = services.importStore
@@ -211,18 +192,17 @@ extension ImportSearchFlow {
         case .releaseReIdentify(let releaseId):
             services.importer.editReleaseLookupChoices(key, releaseId, edit)
         case .folder:
+            // Core states a failure on the pane; one it could not store is
+            // told here.
             Task { @MainActor in
                 do {
-                    try await services.importer.editCandidateLookupChoices(
+                    _ = try await services.importer.editCandidateLookupChoices(
                         key,
                         edit
                     )
                 }
                 catch is CancellationError {}
-                catch {
-                    guard let line = error.displayLine else { return }
-                    importStore.recordPaneError(failure(line), forKey: key)
-                }
+                catch { importStore.reportFailure(error) }
             }
         }
     }

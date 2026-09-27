@@ -29,53 +29,95 @@ extension ImportSearchFlow {
 
         let task = Task { @MainActor [weak session] in
             await endEditing()
+            let result: Result<BridgePaneOutcome, Error>
             do {
-                switch provenance {
-                case .externalRelease:
-                    _ = try await importer.applyCandidateExternalMetadata(
-                        key,
-                        provenance: provenance
-                    )
-                case .fileMetadata:
-                    _ = try await importer.applyCandidateFileMetadata(key)
-                }
-                guard let session else { return }
-                importStore.metadataApplicationSucceeded(
-                    key: key,
-                    session: session
+                result = .success(
+                    try await pick(provenance, key: key, importer: importer)
                 )
             }
-            catch is CancellationError {
-                logger.debug("Metadata application cancelled for key: \(key)")
-                guard let session else { return }
-                importStore.metadataApplicationFailed(
-                    key: key,
-                    session: session,
-                    error: nil
-                )
-            }
-            catch {
-                logger.error(
-                    "Metadata application failed: \(error.localizedDescription)"
-                )
-                guard let session else { return }
-                importStore.metadataApplicationFailed(
-                    key: key,
-                    session: session,
-                    error: metadataApplicationError(
-                        error,
-                        provenance: provenance
-                    )
-                )
-            }
+            catch { result = .failure(error) }
+            guard let session else { return }
+            settle(
+                result,
+                provenance: provenance,
+                key: key,
+                session: session,
+                importStore: importStore
+            )
         }
         session.install(task)
     }
 
-    private static func metadataApplicationError(
-        _ error: Error,
-        provenance: BridgeMetadataProvenance
-    ) -> DisplayError? {
+    /// Run the pick core-side.
+    @MainActor
+    private static func pick(
+        _ provenance: BridgeMetadataProvenance,
+        key: String,
+        importer: Importer
+    ) async throws -> BridgePaneOutcome {
+        switch provenance {
+        case .externalRelease:
+            try await importer.applyCandidateExternalMetadata(
+                key,
+                provenance: provenance
+            )
+        case .fileMetadata:
+            try await importer.applyCandidateFileMetadata(key)
+        }
+    }
+
+    /// End the pick as it came out. A pane command's failure is stated on the
+    /// pane from what core stored; a catalog release that failed to load says
+    /// so on its own row; any other failure is told to the person.
+    @MainActor
+    private static func settle(
+        _ result: Result<BridgePaneOutcome, Error>,
+        provenance: BridgeMetadataProvenance,
+        key: String,
+        session: CandidateMetadataApplicationSession,
+        importStore: ImportStore
+    ) {
+        switch result {
+        case .success(.done):
+            importStore.metadataApplicationSucceeded(key: key, session: session)
+        case .success(.failed):
+            importStore.metadataApplicationFailed(
+                key: key,
+                session: session,
+                error: nil
+            )
+        case .failure(is CancellationError):
+            logger.debug("Metadata application cancelled for key: \(key)")
+            importStore.metadataApplicationFailed(
+                key: key,
+                session: session,
+                error: nil
+            )
+        case .failure(let error):
+            logger.error(
+                "Metadata application failed: \(error.localizedDescription)"
+            )
+            if case .externalRelease = provenance {
+                importStore.metadataApplicationFailed(
+                    key: key,
+                    session: session,
+                    error: metadataApplicationError(error)
+                )
+                return
+            }
+            importStore.metadataApplicationFailed(
+                key: key,
+                session: session,
+                error: nil
+            )
+            importStore.reportFailure(error)
+        }
+    }
+
+    /// A catalog release that failed to load, as its row says it.
+    private static func metadataApplicationError(_ error: Error)
+        -> DisplayError?
+    {
         guard let displayed = DisplayError(error) else { return nil }
         let detail: String?
         if case BridgeError.Diagnostic(let category, let diagnostic) = error {
@@ -92,18 +134,12 @@ extension ImportSearchFlow {
         else {
             detail = displayed.detail
         }
-        let line: String
-        switch provenance {
-        case .externalRelease:
-            line = String(
+        return DisplayError(
+            line: String(
                 localized: "Failed to load release details: \(displayed.line)"
-            )
-        case .fileMetadata:
-            line = String(
-                localized: "Couldn't read file tags: \(displayed.line)"
-            )
-        }
-        return DisplayError(line: line, detail: detail)
+            ),
+            detail: detail
+        )
     }
 
     // MARK: - Import status helpers

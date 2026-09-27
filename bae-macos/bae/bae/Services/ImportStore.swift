@@ -334,7 +334,6 @@ class ImportStore {
         let session = CandidateMetadataApplicationSession(
             provenance: provenance
         )
-        clearPaneError(forKey: key)
         picks[key] = Pick(
             audioIdentity: candidate.files.fileMetadataIdentity,
             state: .applying(session)
@@ -357,7 +356,9 @@ class ImportStore {
     }
 
     /// End only the session that raised this failure. A replacement choice may
-    /// already own the candidate by the time an older command returns.
+    /// already own the candidate by the time an older command returns. A
+    /// catalog release that failed to load says so on its own row; any other
+    /// failure is the pane's to state, or was told already, and the pick ends.
     func metadataApplicationFailed(
         key: String,
         session: CandidateMetadataApplicationSession,
@@ -379,7 +380,6 @@ class ImportStore {
             return
         }
         picks.removeValue(forKey: key)
-        if let error { recordPaneError(error.line, forKey: key) }
     }
 
     /// Drop this candidate's pick, cancelling the read it has in flight: the
@@ -449,24 +449,11 @@ extension ImportStore {
         )
     }
 
-    /// The last command the pane ran for a candidate failed: its line goes in
-    /// the banner until the next command clears it.
-    func recordPaneError(_ error: String, forKey key: String) {
-        updateSession(
-            forKey: key,
-            memory: { $0.error = error },
-            stored: { writer in try await writer.setError(key, error) }
-        )
-    }
-
-    /// Start a command from a clean banner, so a prior failure's line does
-    /// not linger over a succeeding retry.
-    func clearPaneError(forKey key: String) {
-        updateSession(
-            forKey: key,
-            memory: { $0.error = nil },
-            stored: { writer in try await writer.setError(key, nil) }
-        )
+    /// Tell the person about a failure no pane states: a pane command whose
+    /// failure core could not store, or a read the pane depends on.
+    @MainActor
+    func reportFailure(_ error: Error) {
+        sessionWriter.reportFailure(error)
     }
 
     /// One session change, routed by what the key names: a re-identify
@@ -535,9 +522,9 @@ extension ImportStore {
                     guard let observation,
                         self?.candidate(forKey: key)?
                             .libraryStatusObservation === observation,
-                        let line = (error as? BridgeError)?.displayLine
+                        (error as? BridgeError)?.displayLine != nil
                     else { return }
-                    self?.recordPaneError(line, forKey: key)
+                    self?.reportFailure(error)
                 }
             )
         }

@@ -2,17 +2,17 @@ import BaeKit
 import Foundation
 
 /// Where a folder candidate's session writes go — which surface the pane
-/// shows, the typed-search form, the banner's error — so core stores them
-/// with the candidate and the next detail carries them back. The store holds
+/// shows and the typed-search form — so core stores them with the candidate
+/// and the next detail carries them back. The store holds
 /// one of these; the app hands it the importer, and previews and tests run
 /// with the inert one.
 struct CandidateSessionWriter: Sendable {
     let setPresentation:
         @Sendable (String, BridgeMetadataPresentation) async throws -> Void
     let setSearchForm: @Sendable (String, BridgeSearchForm) async throws -> Void
-    let setError: @Sendable (String, String?) async throws -> Void
-    /// A write that failed is told to the person: the pane cannot show a state
-    /// core never stored.
+    /// A failure no pane states is told to the person: a session write that
+    /// failed, since the pane cannot show a state core never stored, or a pane
+    /// command whose failure core could not store.
     let reportFailure: @MainActor @Sendable (Error) -> Void
 
     init(
@@ -25,9 +25,6 @@ struct CandidateSessionWriter: Sendable {
         setSearchForm = { key, form in
             try await importer.setCandidateSearchForm(key, form)
         }
-        setError = { key, error in
-            try await importer.setCandidatePaneError(key, error)
-        }
         self.reportFailure = reportFailure
     }
 
@@ -37,12 +34,10 @@ struct CandidateSessionWriter: Sendable {
             async throws -> Void,
         setSearchForm:
             @escaping @Sendable (String, BridgeSearchForm) async throws -> Void,
-        setError: @escaping @Sendable (String, String?) async throws -> Void,
         reportFailure: @escaping @MainActor @Sendable (Error) -> Void
     ) {
         self.setPresentation = setPresentation
         self.setSearchForm = setSearchForm
-        self.setError = setError
         self.reportFailure = reportFailure
     }
 
@@ -50,7 +45,6 @@ struct CandidateSessionWriter: Sendable {
     static let inert = CandidateSessionWriter(
         setPresentation: { _, _ in },
         setSearchForm: { _, _ in },
-        setError: { _, _ in },
         reportFailure: { _ in }
     )
 }

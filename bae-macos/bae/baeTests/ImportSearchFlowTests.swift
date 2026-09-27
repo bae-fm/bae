@@ -68,7 +68,7 @@ struct ImportSearchFlowMetadataApplicationTests {
         let importer = Importer(
             applyCandidateExternalMetadata: { _, provenance in
                 await recorder.record(provenance)
-                return 1
+                return .done
             }
         )
 
@@ -101,7 +101,7 @@ struct ImportSearchFlowMetadataApplicationTests {
             applyCandidateExternalMetadata: { _, provenance in
                 await recorder.record(provenance)
                 for await _ in gate { break }
-                return 1
+                return .done
             }
         )
 
@@ -138,7 +138,7 @@ struct ImportSearchFlowMetadataApplicationTests {
             applyCandidateExternalMetadata: { _, provenance in
                 await recorder.record(provenance)
                 for await _ in gate { break }
-                return 1
+                return .done
             }
         )
 
@@ -201,8 +201,7 @@ struct ImportSearchFlowMetadataApplicationTests {
             .release.key == MappingFixtures.releaseId
         )
         #expect(
-            !writes.errors(forKey: MappingFixtures.candidateKey)
-                .contains { $0 != nil }
+            writes.reportedFailures().isEmpty
         )
         #expect(
             writes.presentations(forKey: MappingFixtures.candidateKey).isEmpty
@@ -482,11 +481,11 @@ private final class MetadataApplicationEditingModel {
         Importer(
             applyCandidateExternalMetadata: { [self] _, _ in
                 await apply()
-                return 1
+                return .done
             },
             applyCandidateFileMetadata: { [self] _ in
                 await apply()
-                return 1
+                return .done
             }
         )
     }

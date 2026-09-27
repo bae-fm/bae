@@ -48,6 +48,24 @@ pub enum GroupingBlock {
     Unbuildable { detail: String },
 }
 
+impl GroupingBlock {
+    /// This block as a surface states it: its own line when the person can
+    /// act on it, the generic import failure when its releases make no
+    /// release, and its text as the untranslated detail.
+    pub fn ui_error(&self) -> crate::ui::UiError {
+        use crate::ui::{GroupingBlockReason as R, UiErrorCategory as C};
+        let category = match self {
+            Self::SourceChanged { .. } => C::GroupingBlocked(R::SourceChanged),
+            Self::SourceGone { .. } => C::GroupingBlocked(R::SourceGone),
+            Self::FolderFilesTaken { .. } => C::GroupingBlocked(R::FolderFilesTaken),
+            Self::FolderFilesContested { .. } => C::GroupingBlocked(R::FolderFilesContested),
+            Self::FolderFilesDownloading { .. } => C::GroupingBlocked(R::FolderFilesDownloading),
+            Self::Unbuildable { .. } => C::Import,
+        };
+        crate::ui::UiError::diagnostic(category, self)
+    }
+}
+
 /// The release a grouping with no anchor reads `members` as, in the order
 /// given — each with the file decisions stored for it — and the decisions the
 /// release takes over from them: its files and parts, before any decision

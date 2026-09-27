@@ -106,7 +106,13 @@ impl From<bae_core::ui::UiError> for AutomationError {
         let UiError::Diagnostic { category, detail } = value;
         match category {
             UiErrorCategory::Database => Self::Database(detail),
-            UiErrorCategory::Import => Self::Import(detail),
+            UiErrorCategory::Import
+            | UiErrorCategory::ImportData
+            | UiErrorCategory::CandidateImportInProgress
+            | UiErrorCategory::CandidateBeingIdentified
+            | UiErrorCategory::CandidateAlreadyImported
+            | UiErrorCategory::MetadataTrackCount
+            | UiErrorCategory::GroupingBlocked(_) => Self::Import(detail),
             UiErrorCategory::Config => Self::Validation(detail),
             UiErrorCategory::Internal => Self::Internal(detail),
             UiErrorCategory::SyncUpdateRequired
