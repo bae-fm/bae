@@ -1,7 +1,4 @@
-//! How the rows and the cards are ordered, and which record of a row leads
-//! it — what the candidate's own text agrees with about each release, which
-//! the grouping tests beside these hold constant. The releases themselves are
-//! built by those tests' fixtures.
+//! How agreements order the records in a row, the rows, and the cards.
 
 use super::tests::*;
 use super::*;
@@ -14,6 +11,7 @@ fn agreed(count: u32) -> Agreements {
         label: count >= 4,
         year: count >= 5,
         country: count >= 6,
+        ..Agreements::NONE
     }
 }
 

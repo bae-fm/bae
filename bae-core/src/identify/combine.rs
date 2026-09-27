@@ -202,14 +202,8 @@ pub fn combine_results(
         .into_iter()
         .flat_map(ReleaseGroup::into_pressings)
         .collect();
-    let (offered, set_aside, medium_conflict) = split_rows(
-        rows,
-        &judgements,
-        &returned_by,
-        text,
-        ripped_from,
-        folder.mono,
-    );
+    let (offered, set_aside, medium_conflict) =
+        split_rows(rows, &judgements, &returned_by, ripped_from, folder.mono);
 
     let statuses: HashMap<ReleaseKey, LibraryStatus> = all
         .into_iter()
@@ -299,7 +293,6 @@ fn support_of(
     row: &Pressing,
     judgements: &Judgements,
     provenance: &HashMap<ReleaseKey, LookupProvenance>,
-    text: &CandidateText,
     ripped_from: RippedFrom,
     mono: bool,
 ) -> Support {
@@ -329,20 +322,7 @@ fn support_of(
         .count() as u32,
         names_pressing: u32::from(agreements.catalog) + u32::from(returned.by_barcode && offered),
         shares_toc: returned.by_disc_id,
-        names_album: [
-            row.releases
-                .iter()
-                .any(|release| text.states(&release.title)),
-            row.releases.iter().any(|release| {
-                release
-                    .artist
-                    .as_deref()
-                    .is_some_and(|artist| text.states(artist))
-            }),
-        ]
-        .into_iter()
-        .filter(|stated| *stated)
-        .count() as u32,
+        names_album: agreements.names_album(),
         states_the_channels: agrees_with_mono(
             mono,
             row.releases
@@ -360,13 +340,12 @@ fn split_rows(
     rows: Vec<Pressing>,
     judgements: &Judgements,
     provenance: &HashMap<ReleaseKey, LookupProvenance>,
-    text: &CandidateText,
     ripped_from: RippedFrom,
     mono: bool,
 ) -> (Vec<Pressing>, Vec<Pressing>, Option<super::MediumConflict>) {
     let support: Vec<Support> = rows
         .iter()
-        .map(|row| support_of(row, judgements, provenance, text, ripped_from, mono))
+        .map(|row| support_of(row, judgements, provenance, ripped_from, mono))
         .collect();
     let Some(best) = support.iter().copied().max() else {
         return (Vec::new(), Vec::new(), None);

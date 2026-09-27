@@ -361,6 +361,37 @@ fn an_area_the_folder_does_not_name_is_no_agreement() {
     }
 }
 
+/// The album's title and artist are read out of the text like the other
+/// fields, but they name the album, so they neither count nor offer a row.
+#[test]
+fn the_title_and_the_artist_are_read_out_of_the_text() {
+    let judged = agreements_of(
+        &MetadataResult {
+            title: "Album Title".to_string(),
+            artist: Some("Artist Name".to_string()),
+            ..result()
+        },
+        &text(&["Artist Name - Album Title"]),
+        &NO_LOOKUP,
+    );
+    assert!(judged.title && judged.artist);
+    assert_eq!(judged.names_album(), 2);
+    assert_eq!(judged.count(), 0);
+    assert!(!judged.offered());
+
+    let other = agreements_of(
+        &MetadataResult {
+            title: "Other Title".to_string(),
+            artist: Some("Other Name".to_string()),
+            ..result()
+        },
+        &text(&["Artist Name - Album Title"]),
+        &NO_LOOKUP,
+    );
+    assert_eq!(other.names_album(), 0);
+    assert_eq!(judged.with(other), judged);
+}
+
 /// A row is one physical object however many sources carry it, so what either
 /// source's record of it agrees with is what the row agrees with.
 #[test]

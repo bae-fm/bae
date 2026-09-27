@@ -19,6 +19,11 @@ pub struct Agreements {
     pub label: bool,
     pub year: bool,
     pub country: bool,
+    /// The album's title and artist, which name the album rather than the
+    /// pressing: they rank rows (see [`Self::names_album`]) but are not
+    /// among [`Self::count`] or [`Self::offered`].
+    pub title: bool,
+    pub artist: bool,
 }
 
 impl Agreements {
@@ -30,6 +35,8 @@ impl Agreements {
         label: false,
         year: false,
         country: false,
+        title: false,
+        artist: false,
     };
 
     /// Both together: a pressing row is one object, so what any of its records
@@ -42,10 +49,13 @@ impl Agreements {
             label: self.label || other.label,
             year: self.year || other.year,
             country: self.country || other.country,
+            title: self.title || other.title,
+            artist: self.artist || other.artist,
         }
     }
 
-    /// How many fields agree, which orders a release group's cards.
+    /// How many of the pressing's fields agree, which orders the records in a
+    /// row, the rows in a card, and the cards.
     pub fn count(&self) -> u32 {
         [
             self.disc_id,
@@ -58,6 +68,11 @@ impl Agreements {
         .into_iter()
         .filter(|agreed| *agreed)
         .count() as u32
+    }
+
+    /// How many of the album's title and artist agree.
+    pub fn names_album(&self) -> u32 {
+        u32::from(self.title) + u32::from(self.artist)
     }
 
     /// Whether anything but the barcode agrees, which is what shows a release
@@ -90,6 +105,11 @@ pub fn agreements_of(
             .year
             .is_some_and(|year| text.states(&year.to_string())),
         country: result.area.is_some_and(|area| text.states_area(area)),
+        title: text.states(&result.title),
+        artist: result
+            .artist
+            .as_deref()
+            .is_some_and(|artist| text.states(artist)),
     }
 }
 

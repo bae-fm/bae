@@ -193,9 +193,8 @@ pub enum AutomationAlbumLinksStep {
     Off,
 }
 
-/// Mirrors bae-core's `identify::Agreements`, paired with the release id it
-/// belongs to: what the candidate's own text agrees with about that result,
-/// which is what ordered the rows and what each row's badges say.
+/// Mirrors bae-core's `identify::Agreements`, with the release id it belongs
+/// to.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationAgreements {
     pub release_id: String,
@@ -205,6 +204,8 @@ pub struct AutomationAgreements {
     pub label: bool,
     pub year: bool,
     pub country: bool,
+    pub title: bool,
+    pub artist: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]

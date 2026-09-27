@@ -442,13 +442,9 @@ mirror_enum! {
     },
 }
 
-/// Not a `mirror_struct`: the rip evidence, the measured durations and the
-/// candidate's own text lines do not cross. The rip evidence is what core
-/// sets rows aside by and whether it hashed a sheet, and both of those cross
-/// already: as the rows' order and as the disc ID's own state. The durations are a Ready-rule input and the mapping
-/// table's lengths, and the pane reads them through its own record; the text
-/// pool is what core judges and orders the rows by, and what it concluded is
-/// already on every row as its badges.
+/// Not a `mirror_struct`: the rip evidence, the mono flag, the durations and
+/// the text lines stay in core, which already shows what it concluded from
+/// them.
 impl BridgeSignals {
     pub(crate) fn from_core(s: bae_core::signals::Signals) -> Self {
         let bae_core::signals::Signals {
@@ -468,16 +464,33 @@ impl BridgeSignals {
     }
 }
 
-mirror_struct! {
-    BridgeAgreements = bae_core::identify::Agreements,
-    from_core: fn,
-    fields: { disc_id, barcode, catalog, label, year, country },
+impl BridgeAgreements {
+    /// The pressing's agreements the list shows as badges. The album's title
+    /// and artist rank the rows but are no badge.
+    fn from_core(agreements: bae_core::identify::Agreements) -> Self {
+        let bae_core::identify::Agreements {
+            disc_id,
+            barcode,
+            catalog,
+            label,
+            year,
+            country,
+            title: _,
+            artist: _,
+        } = agreements;
+        Self {
+            disc_id,
+            barcode,
+            catalog,
+            label,
+            year,
+            country,
+        }
+    }
 }
 
-/// Mirror [`bae_core::identify::IdentifyStateView`] into the uniffi enum. Core has
-/// already folded the matches into their group cards, ranked them, keyed the
-/// agreements, reduced the in-flight payloads to counts, and dropped what must
-/// not cross — this is a field copy per variant and nothing else.
+/// Mirror [`bae_core::identify::IdentifyStateView`] into the uniffi enum, a field
+/// copy per variant.
 impl BridgeIdentifyState {
     pub(crate) fn from_core(s: bae_core::identify::IdentifyState) -> Self {
         use bae_core::identify::IdentifyStateView;
@@ -602,9 +615,7 @@ fn identify_failure(
     }
 }
 
-/// Key library statuses by release id — the UI looks a row's status up by id
-/// rather than re-indexing a flat list. Each status carries its own id, so this
-/// is a re-container, not a re-pairing.
+/// Key library statuses by release id, which each status carries.
 fn status_map(
     statuses: Vec<bae_core::db::LibraryStatus>,
 ) -> std::collections::HashMap<String, BridgeLibraryStatus> {
