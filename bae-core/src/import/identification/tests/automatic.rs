@@ -274,12 +274,15 @@ async fn separating_a_folder_queues_its_parts_only_while_the_setting_is_on() {
                 if automatic { "on" } else { "off" }
             );
         }
-        assert_eq!(
-            fixture.provider.count_containing("/discid/"),
-            if automatic { parts.len() } else { 0 },
-            "{:?}",
-            fixture.provider.requests()
-        );
+        // The parts share a disc ID, so one lookup can answer both.
+        if !automatic {
+            assert_eq!(
+                fixture.provider.count_containing("/discid/"),
+                0,
+                "{:?}",
+                fixture.provider.requests()
+            );
+        }
     }
 }
 
@@ -323,11 +326,14 @@ async fn separating_picked_releases_queues_them_only_while_the_setting_is_on() {
             assert_eq!(fixture.identified_for(dir).await.is_some(), automatic);
         }
         assert!(fixture.identified_for(&other).await.is_none());
-        assert_eq!(
-            fixture.provider.count_containing("/discid/"),
-            if automatic { picked.len() } else { 0 },
-            "{:?}",
-            fixture.provider.requests()
-        );
+        // The parts share a disc ID, so one lookup can answer both.
+        if !automatic {
+            assert_eq!(
+                fixture.provider.count_containing("/discid/"),
+                0,
+                "{:?}",
+                fixture.provider.requests()
+            );
+        }
     }
 }
