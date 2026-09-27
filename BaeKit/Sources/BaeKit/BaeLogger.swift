@@ -2,7 +2,8 @@ import OSLog
 
 /// Local, on-device logging. Writes to OSLog only — nothing here ships to
 /// Datadog. Shipped telemetry is the typed catalog the Rust core emits; host
-/// events go through `AppHandle.telemetry`.
+/// events go through `AppHandle.telemetry`. Messages are public so Console
+/// shows them outside a debugger.
 public struct BaeLogger: Sendable {
     private let osLog: Logger
 
@@ -11,19 +12,19 @@ public struct BaeLogger: Sendable {
     }
 
     public func debug(_ message: String) {
-        osLog.debug("\(message)")
+        osLog.debug("\(message, privacy: .public)")
     }
 
     public func info(_ message: String) {
-        osLog.info("\(message)")
+        osLog.info("\(message, privacy: .public)")
     }
 
     public func warning(_ message: String) {
-        osLog.warning("\(message)")
+        osLog.warning("\(message, privacy: .public)")
     }
 
     public func error(_ message: String) {
-        osLog.error("\(message)")
+        osLog.error("\(message, privacy: .public)")
     }
 }
 
