@@ -62,11 +62,6 @@ struct ImportView: View {
     /// application must wait for the draft the person was editing to commit.
     @State
     var editingCommands = EditingCommitCommands()
-    /// Which section the Find online page opens on for each candidate: the
-    /// entry that opened it says, and the page keeps that until it is opened
-    /// again. Session state of this view, not of the candidate.
-    @State
-    var initialFindOnlineSection: [String: FindOnlineSection] = [:]
     /// An action waiting on the person's say-so before it replaces what they
     /// may have chosen: from the pane a selection opens, or a row's menu.
     @State

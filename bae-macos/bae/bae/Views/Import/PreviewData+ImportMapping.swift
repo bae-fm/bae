@@ -402,6 +402,7 @@
         ) -> BridgeCandidateSession {
             BridgeCandidateSession(
                 presentation: presentation,
+                findOnlineSection: .automatic,
                 search: BridgeSearchForm(
                     tab: .general,
                     artist: "",

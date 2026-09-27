@@ -484,7 +484,7 @@ pub(super) async fn admit(
     let content_hashes = queue.place(context, candidates, admission);
     if let Err(error) = context
         .import
-        .open_find_online_for_admitted(content_hashes)
+        .move_admitted_panes(content_hashes)
         .await
     {
         warn!("identification: could not open the admitted candidates' panes on Find online ({error})");

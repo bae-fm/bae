@@ -266,10 +266,10 @@ pub(super) fn save_preparation_on(
                 .folder_check()
                 .is_none()
             {
-                super::session_rows::present_on(
+                super::session_rows::move_pane_on(
                     sql,
                     content_hash,
-                    crate::import::MetadataPresentation::Draft,
+                    crate::import::PaneMove::SettledOnPick,
                 )?;
             }
         }

@@ -22,12 +22,11 @@ struct ImportOnlineBrowserTests {
             )
         )
         let candidate = try #require(store.candidate(forKey: key))
-        var presentations: [CandidateMetadataPresentation] = []
+        var moves: [BridgePaneMove] = []
         let view = ImportMetadataSourceSection(
             candidate: candidate,
             actionable: true,
             runtime: nil,
-            initialSection: .automatic,
             isReading: false,
             coverContent: nil,
             hasCoverOptions: false,
@@ -35,7 +34,7 @@ struct ImportOnlineBrowserTests {
             editingCommands: EditingCommitCommands(),
             endEditing: {},
             commit: nil,
-            onPresent: { presentations.append($0) },
+            onMovePane: { moves.append($0) },
             onIdentify: {},
             onSearchForRelease: {},
             onReset: {},
@@ -61,7 +60,7 @@ struct ImportOnlineBrowserTests {
             )
             try await SnapshotTestSupport.settle(host)
 
-            #expect(presentations.isEmpty)
+            #expect(moves.isEmpty)
         }
     }
 }

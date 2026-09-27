@@ -20,6 +20,7 @@ private final class MetadataSourceRecorder {
     var events: [String] = []
     var clearedKeys: [String] = []
     var identifiedKeys: [String] = []
+    var automaticKeys: [String] = []
     var errors: [String] = []
 
     var importer: Importer {
@@ -57,6 +58,9 @@ private final class MetadataSourceRecorder {
             // recorder lives.
             rerunIdentifyForCandidate: { [self] key in
                 MainActor.assumeIsolated { identifiedKeys.append(key) }
+            },
+            identifyAutomatically: { [self] key in
+                await MainActor.run { automaticKeys.append(key) }
             }
         )
     }
@@ -122,22 +126,19 @@ extension ImportMetadataSourceTests {
 extension ImportMetadataSourceTests {
     /// Choosing a surface is written to core, not kept in the pane: the
     /// store records the write, and the next detail is what the pane shows.
-    @Test("choosing a surface writes it through, and the detail shows it")
+    @Test("moving the pane asks core, and the detail shows where it went")
     func choosingASurfaceWritesItThrough() async throws {
         let store = MappingFixtures.store(
             mapping: nil,
             metadataProvenance: nil,
             edit: MappingFixtures.blankEdit,
         )
-        let writes = PresentationWriteRecorder()
+        let writes = SessionWriteRecorder()
         store.sessionWriter = .recording { writes.record($0) }
 
-        store.presentMetadata(
-            .findOnline,
-            forKey: MappingFixtures.candidateKey
-        )
+        store.movePane(.findOnline, forKey: MappingFixtures.candidateKey)
         try await Wait.until {
-            !writes.presentations(forKey: MappingFixtures.candidateKey).isEmpty
+            !writes.paneMoves(forKey: MappingFixtures.candidateKey).isEmpty
         }
 
         store.applyCandidateDetail(
@@ -155,7 +156,7 @@ extension ImportMetadataSourceTests {
                 .metadataPresentation == .findOnline
         )
         #expect(
-            writes.presentations(forKey: MappingFixtures.candidateKey)
+            writes.paneMoves(forKey: MappingFixtures.candidateKey)
                 == [.findOnline]
         )
     }
@@ -184,7 +185,7 @@ extension ImportMetadataSourceTests {
         #expect(recorder.errors.isEmpty)
     }
 
-    @Test("applying an online result stores the draft as where the pane is")
+    @Test("applying an online result leaves the move to the draft to core")
     func onlineApplicationStoresTheDraft() async throws {
         let key = MappingFixtures.candidateKey
         let writes = SessionWriteRecorder()
@@ -206,11 +207,12 @@ extension ImportMetadataSourceTests {
             provenance: MappingFixtures.provenance
         )
         try await Wait.until {
-            writes.presentations(forKey: key).last == .draft
+            store.metadataApplicationSession(forKey: key) == nil
         }
 
         #expect(recorder.externalApplications.map(\.key) == [key])
-        #expect(store.metadataApplicationSession(forKey: key) == nil)
+        // Core moves the pane as the pick lands; the store asks for no move.
+        #expect(writes.paneMoves(forKey: key).isEmpty)
         // What the pane shows is core's answer, so it stays on Find online
         // until the read the store just made comes back.
         #expect(
@@ -231,12 +233,12 @@ extension ImportMetadataSourceTests {
         )
     }
 
-    /// Identifying opens the page the run reports on and asks core for a run.
-    /// Core decides nothing about whether the press counts, and neither does
-    /// this: every press is a run.
-    @Test("identifying opens the page and starts a run every time")
-    func identifyingStartsARunEveryTime() async throws {
-        let writes = PresentationWriteRecorder()
+    /// Automatic asks core, which decides what it takes — the stored verdict
+    /// shown as it stood, or a run started — and moves the pane itself: the
+    /// store neither moves the pane nor asks for a run.
+    @Test("Automatic asks core every time and decides nothing here")
+    func automaticAsksCore() async throws {
+        let writes = SessionWriteRecorder()
         let store = MappingFixtures.store(
             mapping: nil,
             metadataProvenance: nil,
@@ -251,28 +253,21 @@ extension ImportMetadataSourceTests {
 
         ImportMappingFlow.identify(candidate, services: services)
         ImportMappingFlow.identify(candidate, services: services)
-        // The presentation write goes to core and comes back; the run request
-        // is fire-and-forget and is already recorded.
-        try await Wait.until {
-            writes.presentations(forKey: MappingFixtures.candidateKey).count
-                == 2
-        }
+        try await Wait.until { recorder.automaticKeys.count == 2 }
 
         #expect(
-            recorder.identifiedKeys
+            recorder.automaticKeys
                 == [MappingFixtures.candidateKey, MappingFixtures.candidateKey]
         )
-        #expect(
-            writes.presentations(forKey: MappingFixtures.candidateKey)
-                == [.findOnline, .findOnline]
-        )
+        #expect(recorder.identifiedKeys.isEmpty)
+        #expect(writes.paneMoves(forKey: MappingFixtures.candidateKey).isEmpty)
     }
 
     /// Searching for a release opens the same page and asks for nothing: what
     /// it offers is the typed form, and a run is the other entry's to start.
     @Test("searching for a release opens the page and starts no run")
     func searchingForAReleaseStartsNoRun() async throws {
-        let writes = PresentationWriteRecorder()
+        let writes = SessionWriteRecorder()
         let store = MappingFixtures.store(
             mapping: nil,
             metadataProvenance: nil,
@@ -284,19 +279,20 @@ extension ImportMetadataSourceTests {
             store.candidate(forKey: MappingFixtures.candidateKey)
         )
 
-        ImportMappingFlow.presentMetadata(
-            .findOnline,
+        ImportMappingFlow.movePane(
+            .search,
             for: candidate,
             services: recorder.services(store)
         )
         try await Wait.until {
-            !writes.presentations(forKey: MappingFixtures.candidateKey).isEmpty
+            !writes.paneMoves(forKey: MappingFixtures.candidateKey).isEmpty
         }
 
         #expect(recorder.identifiedKeys.isEmpty)
+        #expect(recorder.automaticKeys.isEmpty)
         #expect(
-            writes.presentations(forKey: MappingFixtures.candidateKey)
-                == [.findOnline]
+            writes.paneMoves(forKey: MappingFixtures.candidateKey)
+                == [.search]
         )
     }
 
@@ -857,24 +853,3 @@ extension NSRect {
 
 /// Every presentation write the store made, so a test can read what it would
 /// have stored with the candidate.
-private final class PresentationWriteRecorder: @unchecked Sendable {
-    private let lock = NSLock()
-    private var writes: [CandidateSessionWrite] = []
-
-    func record(_ write: CandidateSessionWrite) {
-        lock.withLock { writes.append(write) }
-    }
-
-    func presentations(forKey key: String) -> [BridgeMetadataPresentation] {
-        lock.withLock {
-            writes.compactMap { write in
-                if case .presentation(let written, let presentation) = write,
-                    written == key
-                {
-                    return presentation
-                }
-                return nil
-            }
-        }
-    }
-}

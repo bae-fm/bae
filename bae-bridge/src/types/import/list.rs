@@ -214,7 +214,7 @@ pub struct BridgeImportCandidateDetail {
     pub failure: Option<BridgeImportFailure>,
     /// Where the pane was when the person last left this candidate, or where
     /// it opens for one nobody has touched. Written through
-    /// `set_candidate_presentation` and `set_candidate_search_form`, and by
+    /// `move_candidate_pane` and `set_candidate_search_form`, and by
     /// the pane commands themselves, which store their failure; the next value
     /// of this carries it back.
     pub session: BridgeCandidateSession,
@@ -251,6 +251,30 @@ pub enum BridgeMetadataPresentation {
     FindOnline,
 }
 
+/// Which section of the Find online page is open. Mirrors
+/// `bae_core::import::FindOnlineSection`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, uniffi::Enum)]
+pub enum BridgeFindOnlineSection {
+    Automatic,
+    Search,
+}
+
+/// A move of the pane the person asks for. Identification's results are asked
+/// for through `identify_automatically`; the moves core makes on its own —
+/// an admission, a settled pick, a person's pick landing — are core's. Mirrors
+/// the person's `bae_core::import::PaneMove`s.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgePaneMove {
+    /// The typed search.
+    Search,
+    /// One section of the Find online page.
+    OpenSection { section: BridgeFindOnlineSection },
+    /// The Find online page, on the section last open.
+    FindOnline,
+    /// Back to the draft.
+    Back,
+}
+
 /// Which query the typed-search form is asking. Mirrors
 /// `bae_core::import::SearchTab`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
@@ -276,6 +300,8 @@ pub struct BridgeSearchForm {
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeCandidateSession {
     pub presentation: BridgeMetadataPresentation,
+    /// The section of the Find online page open when it shows.
+    pub find_online_section: BridgeFindOnlineSection,
     pub search: BridgeSearchForm,
     /// The last command the pane ran for this candidate, when it failed.
     pub error: Option<BridgePaneFailure>,
@@ -346,8 +372,27 @@ mirror_enum! {
     #[cfg(feature = "desktop")]
     BridgeMetadataPresentation = bae_core::import::MetadataPresentation,
     from_core: pub(crate) fn,
-    into_core: pub(crate) fn,
     variants: { Draft, FindOnline },
+}
+
+mirror_enum! {
+    #[cfg(feature = "desktop")]
+    BridgeFindOnlineSection = bae_core::import::FindOnlineSection,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    variants: { Automatic, Search },
+}
+
+mirror_enum! {
+    #[cfg(feature = "desktop")]
+    BridgePaneMove = bae_core::import::PaneMove,
+    into_core: pub(crate) fn,
+    variants: {
+        Search,
+        OpenSection(section: (BridgeFindOnlineSection)),
+        FindOnline,
+        Back,
+    },
 }
 
 mirror_enum! {
@@ -372,6 +417,7 @@ mirror_struct! {
     from_core: pub(crate) fn,
     fields: {
         presentation: (BridgeMetadataPresentation),
+        find_online_section: (BridgeFindOnlineSection),
         search: (BridgeSearchForm),
         error: (opt BridgePaneFailure),
     },

@@ -1,6 +1,6 @@
 use super::*;
 use crate::import::{
-    ImportError, MetadataPresentation, PaneCommand, PaneFailure, PaneOutcome, SearchForm,
+    ImportError, MetadataPresentation, PaneCommand, PaneFailure, PaneMove, PaneOutcome, SearchForm,
     SearchTab,
 };
 use crate::ui::{UiError, UiErrorCategory};
@@ -17,7 +17,7 @@ async fn the_pane_s_session_reads_back_part_by_part() {
     );
 
     handle
-        .set_candidate_presentation(&key, MetadataPresentation::FindOnline)
+        .move_candidate_pane(&key, PaneMove::Search)
         .await
         .unwrap();
     let form = SearchForm {
@@ -34,8 +34,21 @@ async fn the_pane_s_session_reads_back_part_by_part() {
 
     let session = pane(&handle, &key).await.session;
     assert_eq!(session.presentation, MetadataPresentation::FindOnline);
+    assert_eq!(
+        session.find_online_section,
+        crate::import::FindOnlineSection::Search
+    );
     assert_eq!(session.search, form);
     assert_eq!(session.error, None);
+
+    // Back to the draft keeps the section Find online opens on.
+    handle.move_candidate_pane(&key, PaneMove::Back).await.unwrap();
+    let session = pane(&handle, &key).await.session;
+    assert_eq!(session.presentation, MetadataPresentation::Draft);
+    assert_eq!(
+        session.find_online_section,
+        crate::import::FindOnlineSection::Search
+    );
 
     shut_down(handle).await;
 }
@@ -45,7 +58,7 @@ async fn the_pane_s_session_reads_back_part_by_part() {
 async fn a_session_write_for_an_unknown_key_is_refused() {
     let (handle, _tmp, _key, _hash) = pane_fixture().await;
     let refused = handle
-        .set_candidate_presentation("/nowhere/at/all", MetadataPresentation::FindOnline)
+        .move_candidate_pane("/nowhere/at/all", PaneMove::FindOnline)
         .await;
     assert!(refused.is_err());
     shut_down(handle).await;
@@ -58,7 +71,7 @@ async fn a_session_write_for_an_unknown_key_is_refused() {
 async fn a_pane_command_s_failure_is_stored_until_the_next_command() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
     handle
-        .set_candidate_presentation(&key, MetadataPresentation::FindOnline)
+        .move_candidate_pane(&key, PaneMove::FindOnline)
         .await
         .unwrap();
 

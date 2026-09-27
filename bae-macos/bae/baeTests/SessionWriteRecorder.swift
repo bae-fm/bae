@@ -7,7 +7,7 @@ import Foundation
 /// because the tests are the only thing that reads a write back — the app
 /// writes through the importer and reads the candidate core hands back.
 enum CandidateSessionWrite: Equatable, Sendable {
-    case presentation(key: String, presentation: BridgeMetadataPresentation)
+    case paneMove(key: String, move: BridgePaneMove)
     case searchForm(key: String, form: BridgeSearchForm)
     /// A failure no pane states, told to the person.
     case reportedFailure(String)
@@ -19,8 +19,8 @@ extension CandidateSessionWriter {
         _ record: @escaping @Sendable (CandidateSessionWrite) -> Void
     ) -> CandidateSessionWriter {
         CandidateSessionWriter(
-            setPresentation: { key, presentation in
-                record(.presentation(key: key, presentation: presentation))
+            movePane: { key, move in
+                record(.paneMove(key: key, move: move))
             },
             setSearchForm: { key, form in
                 record(.searchForm(key: key, form: form))
@@ -42,14 +42,14 @@ final class SessionWriteRecorder: @unchecked Sendable {
         lock.withLock { writes.append(write) }
     }
 
-    /// The surfaces put in the metadata slot for `key`, in order.
-    func presentations(forKey key: String) -> [BridgeMetadataPresentation] {
+    /// The pane moves the store asked core for, for `key`, in order.
+    func paneMoves(forKey key: String) -> [BridgePaneMove] {
         lock.withLock {
             writes.compactMap { write in
-                if case .presentation(let written, let presentation) = write,
+                if case .paneMove(let written, let move) = write,
                     written == key
                 {
-                    return presentation
+                    return move
                 }
                 return nil
             }

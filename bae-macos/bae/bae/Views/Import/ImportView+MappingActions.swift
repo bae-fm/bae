@@ -27,26 +27,20 @@ extension ImportView {
         )
     }
 
-    /// Identify this candidate now: open the Find online page on the run it
-    /// is about to start, and ask core for a fresh one.
+    /// Show identification's results for this candidate, as core decides.
     func identify(_ candidate: Candidate) {
-        initialFindOnlineSection[candidate.key] = .automatic
         ImportMappingFlow.identify(candidate, services: mappingServices)
     }
 
-    /// Open the same page on its typed search, starting nothing.
+    /// Open the Find online page on its typed search, starting nothing.
     func searchForRelease(_ candidate: Candidate) {
-        initialFindOnlineSection[candidate.key] = .search
-        presentMetadata(.findOnline, for: candidate)
+        movePane(.search, for: candidate)
     }
 
-    /// Put the draft or the Find online page in the metadata slot.
-    func presentMetadata(
-        _ presentation: CandidateMetadataPresentation,
-        for candidate: Candidate
-    ) {
-        ImportMappingFlow.presentMetadata(
-            presentation,
+    /// Move the pane as the person asked.
+    func movePane(_ paneMove: BridgePaneMove, for candidate: Candidate) {
+        ImportMappingFlow.movePane(
+            paneMove,
             for: candidate,
             services: mappingServices
         )

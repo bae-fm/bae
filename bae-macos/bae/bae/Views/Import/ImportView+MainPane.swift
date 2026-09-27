@@ -122,11 +122,7 @@ extension ImportView {
             storagePinned: storagePinned,
             mappingActions: mappingActions(for: candidate),
             commitActions: commitActions(for: candidate),
-            onPresentMetadata: {
-                presentMetadata($0, for: candidate)
-            },
-            initialSection: initialFindOnlineSection[candidate.key]
-                ?? .automatic,
+            onMovePane: { movePane($0, for: candidate) },
             onIdentify: { identify(candidate) },
             onSearchForRelease: { searchForRelease(candidate) },
             onReset: {
@@ -239,7 +235,7 @@ extension ImportView {
                     },
                     onFindRelease: {
                         uiStore.dismissModal()
-                        presentMetadata(.findOnline, for: candidate)
+                        movePane(.findOnline, for: candidate)
                     },
                     onSelect: { selection in
                         try await importer.setCandidateCover(

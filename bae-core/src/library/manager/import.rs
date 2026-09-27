@@ -168,14 +168,15 @@ impl LibraryManager {
             .await?)
     }
 
-    /// Open the pane on Find online for every one of these candidates.
-    pub(crate) async fn open_import_candidate_sessions_on_find_online(
+    /// Move the pane of every one of these candidates by `pane_move`.
+    pub(crate) async fn move_import_candidate_panes(
         &self,
         content_hashes: Vec<String>,
+        pane_move: crate::import::PaneMove,
     ) -> Result<(), LibraryError> {
         Ok(self
             .database
-            .open_import_candidate_sessions_on_find_online(content_hashes)
+            .move_import_candidate_panes(content_hashes, pane_move)
             .await?)
     }
 

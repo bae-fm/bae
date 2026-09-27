@@ -1213,6 +1213,7 @@ CREATE TABLE IF NOT EXISTS import_candidate_applied_length (
 CREATE TABLE IF NOT EXISTS import_candidate_session (
     content_hash   TEXT PRIMARY KEY,
     presentation   TEXT NOT NULL CHECK (presentation IN ('draft', 'find_online')),
+    find_online_section TEXT NOT NULL CHECK (find_online_section IN ('automatic', 'search')),
     search_tab     TEXT NOT NULL CHECK (search_tab IN ('general', 'catalog_number', 'barcode')),
     search_artist  TEXT NOT NULL,
     search_album   TEXT NOT NULL,

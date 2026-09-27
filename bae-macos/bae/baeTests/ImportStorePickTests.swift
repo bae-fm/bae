@@ -37,8 +37,8 @@ struct ImportStorePickTests {
         #expect(store.metadataApplicationSession(forKey: Self.key) === session)
     }
 
-    @Test("a pick that lands with nothing selected writes the pane to draft")
-    func landingWithNothingSelectedWritesTheDraft() async throws {
+    @Test("a pick that lands with nothing selected ends without a pane move")
+    func landingWithNothingSelectedEnds() async throws {
         let writes = SessionWriteRecorder()
         let store = pickingStore(writes: writes)
         let session = try #require(beginPick(on: store))
@@ -46,9 +46,7 @@ struct ImportStorePickTests {
 
         store.metadataApplicationSucceeded(key: Self.key, session: session)
 
-        try await Wait.until {
-            writes.presentations(forKey: Self.key) == [.draft]
-        }
+        #expect(writes.paneMoves(forKey: Self.key).isEmpty)
         #expect(store.metadataApplicationSession(forKey: Self.key) == nil)
         #expect(store.loadingReleaseId(forKey: Self.key) == nil)
     }

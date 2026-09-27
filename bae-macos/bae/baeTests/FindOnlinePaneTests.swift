@@ -96,14 +96,12 @@ final class FindOnlinePaneTests: XCTestCase {
         )
     }
 
-    /// Which section the pane opens on is the entry's to say, not the pane's:
-    /// the entry that asked for a run opens on the run, the one that asked to
-    /// search by name opens on the form.
+    /// Which section is open is the session's to say, not the pane's.
     func testThePaneOpensOnTheSectionItWasGiven() async throws {
         let onSearch = try await FindOnlineRendering.text(
             ImportSearchPane.preview(
                 state: PreviewData.searchStateIdle,
-                initialSection: .search
+                openSection: .search
             )
             .importPreviewEnvironment(),
             size: NSSize(width: 900, height: 600)

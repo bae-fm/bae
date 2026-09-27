@@ -5,7 +5,8 @@
 
 use super::*;
 use crate::import::{
-    ImportError, LookupChoiceEdit, MetadataProvenance, PaneCommand, PaneOutcome, SearchQuery,
+    ImportError, LookupChoiceEdit, MetadataProvenance, PaneCommand, PaneMove, PaneOutcome,
+    SearchQuery,
 };
 
 impl AppServices {
@@ -60,6 +61,24 @@ impl AppServices {
         candidate_key: String,
         provenance: MetadataProvenance,
     ) -> Result<PaneOutcome, ImportError> {
+        let outcome = self
+            .select_metadata_provenance(candidate_key.clone(), provenance)
+            .await?;
+        // A pick that landed leaves the draft it read to see.
+        if outcome == PaneOutcome::Done {
+            self.inner
+                .import
+                .move_candidate_pane(&candidate_key, PaneMove::Picked)
+                .await?;
+        }
+        Ok(outcome)
+    }
+
+    async fn select_metadata_provenance(
+        &self,
+        candidate_key: String,
+        provenance: MetadataProvenance,
+    ) -> Result<PaneOutcome, ImportError> {
         let import = &self.inner.import;
         match provenance {
             MetadataProvenance::FileMetadata => {
@@ -107,6 +126,20 @@ impl AppServices {
                 self.edit_candidate_lookup_choices(candidate_key, edit),
             )
             .await
+    }
+
+    /// Show identification's results for the candidate: the stored verdict as
+    /// it stood, picked row and all, when there is one, and a run started
+    /// when there is none. A stored verdict is not asked again: the person
+    /// looks at what it found, and picks from it.
+    pub async fn pane_identify_automatically(
+        &self,
+        candidate_key: String,
+    ) -> Result<(), ImportError> {
+        if self.inner.import.open_automatic(&candidate_key).await? {
+            self.rerun_identify(candidate_key);
+        }
+        Ok(())
     }
 
     /// Submit the candidate's typed search. What it turns up, failures

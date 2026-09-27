@@ -43,7 +43,7 @@ impl AppServices {
     delegate_async!(import, import_fetch_remote_covers => fetch_remote_covers(target: crate::import::cover_art::CoverTarget) -> Result<crate::import::cover_art::RemoteCoverGallery, crate::import::ImportError>);
     delegate_async!(import, import_fetch_remote_image_bytes => fetch_remote_image_bytes(image: crate::import::cover_art::RemoteImageSet, pixels: Option<u32>) -> Result<Option<crate::import::cover_art::RemoteImage>, crate::import::ImportError>);
     delegate_async!(import, import_set_candidate_cover => set_candidate_cover(candidate_key: &str, cover: crate::import::CoverSelection) -> Result<(), crate::import::ImportError>);
-    delegate_async!(import, import_set_candidate_presentation => set_candidate_presentation(candidate_key: &str, presentation: crate::import::MetadataPresentation) -> Result<(), crate::import::ImportError>);
+    delegate_async!(import, import_move_candidate_pane => move_candidate_pane(candidate_key: &str, pane_move: crate::import::PaneMove) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_set_candidate_search_form => set_candidate_search_form(candidate_key: &str, search: crate::import::SearchForm) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_set_candidate_edit_field => set_candidate_edit_field(candidate_key: &str, edit: crate::import::DraftFieldEdit) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_set_candidate_album_artists => set_candidate_album_artists(candidate_key: &str, assignments: Vec<crate::import::ArtistAssignment>) -> Result<(), crate::import::ImportError>);

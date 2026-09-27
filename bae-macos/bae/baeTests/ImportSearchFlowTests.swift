@@ -60,7 +60,7 @@ final class SettingsNavigationTests: XCTestCase {
 @MainActor
 @Suite("ImportSearchFlow metadata application")
 struct ImportSearchFlowMetadataApplicationTests {
-    @Test("the read landing puts the draft back in the metadata slot")
+    @Test("the read landing ends the pick; core moves the pane")
     func theReadLandingReturnsToTheDraft() async throws {
         let writes = SessionWriteRecorder()
         let store = unsettledStore(writes: writes)
@@ -80,9 +80,11 @@ struct ImportSearchFlowMetadataApplicationTests {
             provenance: MappingFixtures.provenance
         )
         try await Wait.until {
-            writes.presentations(forKey: MappingFixtures.candidateKey)
-                == [.draft]
+            store.metadataApplicationSession(
+                forKey: MappingFixtures.candidateKey
+            ) == nil
         }
+        #expect(writes.paneMoves(forKey: MappingFixtures.candidateKey).isEmpty)
 
         #expect(recorder.provenances == [MappingFixtures.provenance])
         #expect(
@@ -204,7 +206,7 @@ struct ImportSearchFlowMetadataApplicationTests {
             writes.reportedFailures().isEmpty
         )
         #expect(
-            writes.presentations(forKey: MappingFixtures.candidateKey).isEmpty
+            writes.paneMoves(forKey: MappingFixtures.candidateKey).isEmpty
         )
     }
 

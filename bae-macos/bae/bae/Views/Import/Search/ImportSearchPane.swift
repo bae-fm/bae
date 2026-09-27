@@ -38,6 +38,10 @@ struct ImportSearchPane: View {
     let onEditTitleSearch: (_ album: String, _ artist: String) -> Void
     /// A pressing row was picked — the flow opens the docked confirm pane.
     let onSelect: (Pressing) -> Void
+    /// Which section is open, as the candidate's session says.
+    let openSection: BridgeFindOnlineSection
+    /// Open one section.
+    let onOpenSection: (BridgeFindOnlineSection) -> Void
 
     /// Whether Discogs can be asked at all is core's answer, carried on the
     /// config the app observes: adding a token in Settings takes the notice
@@ -47,15 +51,6 @@ struct ImportSearchPane: View {
     @Environment(UiStore.self)
     private var uiStore
 
-    /// Which section is open. Seeded from the section the entry that opened
-    /// the pane asked for — a candidate that already has a search submitted
-    /// opens on SEARCH, where its results are. The pane is built afresh every
-    /// time it is opened, so the seed lands every time.
-    @State
-    private var openSection: FindOnlineSection
-
-    /// `initialSection` seeds `openSection` and is not kept: which section is
-    /// open afterwards is the person's, not the caller's.
     init(
         state: ImportSearchState,
         onBack: (() -> Void)?,
@@ -66,11 +61,12 @@ struct ImportSearchPane: View {
         onOpenSettings: @escaping () -> Void,
         onToggleLookup: @escaping (LookupToggle) -> Void,
         onToggleCatalogAgreement: @escaping (String) -> Void,
-        initialSection: FindOnlineSection,
         onRetryFailed: @escaping () -> Void,
         onEditTitleSearch:
             @escaping (_ album: String, _ artist: String) -> Void,
-        onSelect: @escaping (Pressing) -> Void
+        onSelect: @escaping (Pressing) -> Void,
+        openSection: BridgeFindOnlineSection,
+        onOpenSection: @escaping (BridgeFindOnlineSection) -> Void
     ) {
         self.state = state
         self.onBack = onBack
@@ -84,7 +80,8 @@ struct ImportSearchPane: View {
         self.onRetryFailed = onRetryFailed
         self.onEditTitleSearch = onEditTitleSearch
         self.onSelect = onSelect
-        _openSection = State(initialValue: initialSection)
+        self.openSection = openSection
+        self.onOpenSection = onOpenSection
     }
 
     /// The form's first field takes the keyboard on every new value: Search
@@ -109,7 +106,7 @@ struct ImportSearchPane: View {
                 glyph: FindOnlineSectionGlyph(
                     identifyState: state.identifyState
                 ),
-                onOpen: { openSection = .automatic }
+                onOpen: { onOpenSection(.automatic) }
             )
             if openSection == .automatic {
                 FindOnlineAutomaticSection(
@@ -134,7 +131,7 @@ struct ImportSearchPane: View {
                 section: .search,
                 isOpen: openSection == .search,
                 glyph: FindOnlineSectionGlyph(search: state.search),
-                onOpen: { openSection = .search }
+                onOpen: { onOpenSection(.search) }
             )
             if openSection == .search {
                 searchContent
@@ -143,11 +140,6 @@ struct ImportSearchPane: View {
                         maxHeight: .infinity,
                         alignment: .top
                     )
-            }
-        }
-        .onAppear {
-            if state.search != nil {
-                openSection = .search
             }
         }
     }
@@ -185,7 +177,7 @@ struct ImportSearchPane: View {
     /// read off the folder — only when the fields are untouched, never over
     /// typing.
     private func searchManually() {
-        openSection = .search
+        onOpenSection(.search)
         formFocusRequest += 1
         guard form.searchArtist.isEmpty, form.searchAlbum.isEmpty else {
             return
@@ -239,7 +231,7 @@ struct ImportSearchPane: View {
             state: ImportSearchState,
             searchArtist: String = "",
             searchAlbum: String = "",
-            initialSection: FindOnlineSection = .automatic,
+            openSection: BridgeFindOnlineSection = .automatic,
             onRetryFailed: @escaping () -> Void = {},
         ) -> ImportSearchPane {
             ImportSearchPane(
@@ -255,10 +247,11 @@ struct ImportSearchPane: View {
                 onOpenSettings: {},
                 onToggleLookup: { _ in },
                 onToggleCatalogAgreement: { _ in },
-                initialSection: initialSection,
                 onRetryFailed: onRetryFailed,
                 onEditTitleSearch: { _, _ in },
                 onSelect: { _ in },
+                openSection: openSection,
+                onOpenSection: { _ in }
             )
         }
     }

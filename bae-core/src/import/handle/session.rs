@@ -2,36 +2,55 @@
 
 use super::ImportServiceHandle;
 use crate::import::{
-    CandidateSession, MetadataPresentation, PaneCommand, PaneFailure, PaneOutcome, SearchForm,
+    CandidateSession, PaneCommand, PaneFailure, PaneMove, PaneOutcome, SearchForm,
 };
 
 impl ImportServiceHandle {
-    /// Which surface the pane's metadata slot shows for this candidate.
-    pub async fn set_candidate_presentation(
+    /// Move this candidate's pane by the one rule every move follows,
+    /// [`CandidateSession::moved`].
+    pub async fn move_candidate_pane(
         &self,
         candidate_key: &str,
-        presentation: MetadataPresentation,
+        pane_move: PaneMove,
     ) -> Result<(), crate::import::ImportError> {
         self.update_candidate_session(candidate_key, move |session| {
-            session.presentation = presentation;
+            *session = session.clone().moved(pane_move);
         })
         .await
     }
 
-    /// Open the pane on Find online for every candidate whose identification
-    /// was just admitted — the page its run reports on, so a person who opens
-    /// the candidate while it is being identified, or after, is on the answer.
+    /// Open the pane on identification's results for the person, and say
+    /// whether a run is owed: none when a verdict is stored for the
+    /// candidate's current files, which the pane shows as it stood — picked
+    /// row and all — rather than asking again.
+    pub async fn open_automatic(
+        &self,
+        candidate_key: &str,
+    ) -> Result<bool, crate::import::ImportError> {
+        self.move_candidate_pane(candidate_key, PaneMove::Automatic)
+            .await?;
+        let stored = self
+            .library_manager
+            .load_import_candidate(candidate_key)
+            .await?
+            .is_some_and(|projection| projection.verdict.is_some());
+        Ok(!stored)
+    }
+
+    /// Move the pane of every candidate whose identification was just
+    /// admitted: to the page its run reports on, so a person who opens the
+    /// candidate while it is being identified, or after, is on the answer.
     ///
     /// Under the commit lock like every other session write, so a
     /// read-modify-write of the rest of a session in flight cannot put the
     /// draft back over this.
-    pub(crate) async fn open_find_online_for_admitted(
+    pub(crate) async fn move_admitted_panes(
         &self,
         content_hashes: Vec<String>,
     ) -> Result<(), crate::import::ImportError> {
         let _commit = self.folder_state_commit.lock("open panes on Find online").await;
         self.library_manager
-            .open_import_candidate_sessions_on_find_online(content_hashes)
+            .move_import_candidate_panes(content_hashes, PaneMove::Admitted)
             .await?;
         Ok(())
     }

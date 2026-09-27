@@ -34,10 +34,8 @@ struct ImportMappingPane: View {
     var storagePinned: Bool
     let mappingActions: ImportMappingActions
     let commitActions: ImportCommitActions
-    let onPresentMetadata: (CandidateMetadataPresentation) -> Void
-    /// Which section the Find online page opens on, as the entry that opened
-    /// it said.
-    let initialSection: FindOnlineSection
+    /// Move the pane as the person asked.
+    let onMovePane: (BridgePaneMove) -> Void
     let onIdentify: () -> Void
     let onSearchForRelease: () -> Void
     let onReset: () -> Void
@@ -125,7 +123,6 @@ struct ImportMappingPane: View {
             candidate: candidate,
             actionable: candidate.detail?.actionable == true,
             runtime: runtime,
-            initialSection: initialSection,
             isReading: isApplyingMetadata,
             coverContent: coverContent,
             hasCoverOptions: hasCoverOptions,
@@ -133,7 +130,7 @@ struct ImportMappingPane: View {
             editingCommands: editingCommands,
             endEditing: endEditing,
             commit: commitControls,
-            onPresent: onPresentMetadata,
+            onMovePane: onMovePane,
             onIdentify: onIdentify,
             onSearchForRelease: onSearchForRelease,
             onReset: onReset,

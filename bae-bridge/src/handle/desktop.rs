@@ -422,15 +422,25 @@ forward! {
                 .await?)
         }
 
-        /// Record which surface the pane's metadata slot shows for a candidate,
-        /// so clicking away and back lands on the same one.
-        fn set_candidate_presentation(
+        /// Move the candidate's pane as the person asked, by the rule core
+        /// moves every pane by, so clicking away and back lands where it was.
+        fn move_candidate_pane(
             candidate_key: String,
-            presentation: crate::types::BridgeMetadataPresentation,
+            pane_move: crate::types::BridgePaneMove,
         ) -> () {
             Ok(this
                 .services
-                .import_set_candidate_presentation(&candidate_key, presentation.into_core())
+                .import_move_candidate_pane(&candidate_key, pane_move.into_core())
+                .await?)
+        }
+
+        /// Show identification's results for the candidate: its stored verdict
+        /// as it stood, picked row and all, when there is one, and a run
+        /// started when there is none.
+        fn identify_automatically(candidate_key: String) -> () {
+            Ok(this
+                .services
+                .pane_identify_automatically(candidate_key)
                 .await?)
         }
 

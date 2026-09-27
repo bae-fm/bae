@@ -351,8 +351,8 @@ class ImportStore {
         guard metadataApplicationSession(forKey: key) === session else {
             return
         }
+        // Core moved the pane to the draft the pick landed on.
         picks.removeValue(forKey: key)
-        presentMetadata(.draft, forKey: key)
     }
 
     /// End only the session that raised this failure. A replacement choice may
@@ -423,20 +423,24 @@ extension ImportStore {
         }
     }
 
-    /// Put the draft or one source browser in the metadata slot. A folder
-    /// candidate's choice is stored with it and comes back on its next detail;
-    /// a re-identify session's is kept here.
-    func presentMetadata(
-        _ presentation: CandidateMetadataPresentation,
-        forKey key: String
-    ) {
-        updateSession(
-            forKey: key,
-            memory: { $0.presentation = presentation },
-            stored: { writer in
-                try await writer.setPresentation(key, presentation.bridge)
+    /// Move a folder candidate's pane as the person asked. Core moves it by
+    /// the rule it moves every pane by, and the next detail carries it back.
+    /// A re-identify session has no pane to move: its sheet shows only the
+    /// search page.
+    func movePane(_ paneMove: BridgePaneMove, forKey key: String) {
+        guard !key.hasPrefix("reidentify:") else { return }
+        let writer = sessionWriter
+        Task {
+            do {
+                try await writer.movePane(key, paneMove)
             }
-        )
+            catch {
+                importStoreLogger.error(
+                    "pane move for \(key) failed: \(String(describing: error))"
+                )
+                await writer.reportFailure(error)
+            }
+        }
     }
 
     /// The typed-search form as the person left it.

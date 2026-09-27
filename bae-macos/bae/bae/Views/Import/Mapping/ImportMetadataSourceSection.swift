@@ -10,8 +10,6 @@ struct ImportMetadataSourceSection: View {
     /// edit, so those stay live while everything else in the slot waits.
     let actionable: Bool
     let runtime: BridgeCandidateRuntimeSnapshot?
-    /// Which section the pane opens on, as the entry that opened it said.
-    let initialSection: FindOnlineSection
     let isReading: Bool
     let coverContent: ImageContent?
     let hasCoverOptions: Bool
@@ -19,8 +17,9 @@ struct ImportMetadataSourceSection: View {
     let editingCommands: EditingCommitCommands
     let endEditing: @MainActor () async -> Void
     let commit: ImportCommitControls?
-    let onPresent: (CandidateMetadataPresentation) -> Void
-    /// Open the pane and start a fresh run for this candidate.
+    /// Move the pane as the person asked.
+    let onMovePane: (BridgePaneMove) -> Void
+    /// Show identification's results for this candidate, as core decides.
     let onIdentify: () -> Void
     /// Open the pane on its typed search, starting nothing.
     let onSearchForRelease: () -> Void
@@ -39,9 +38,8 @@ struct ImportMetadataSourceSection: View {
                 ImportOnlineMetadataBrowser(
                     candidateKey: candidate.key,
                     runtime: runtime,
-                    initialSection: initialSection,
                     endEditing: endEditing,
-                    onBack: { onPresent(.draft) }
+                    onMovePane: onMovePane
                 )
                 .disabled(!actionable)
             }
@@ -90,9 +88,8 @@ struct ImportMetadataSourceSection: View {
 private struct ImportOnlineMetadataBrowser: View {
     let candidateKey: String
     let runtime: BridgeCandidateRuntimeSnapshot?
-    let initialSection: FindOnlineSection
     let endEditing: @MainActor () async -> Void
-    let onBack: () -> Void
+    let onMovePane: (BridgePaneMove) -> Void
 
     @Environment(Importer.self)
     private var importer
@@ -116,7 +113,10 @@ private struct ImportOnlineMetadataBrowser: View {
                         key: candidateKey,
                         selectedReleaseId: candidate.pickedRelease?.key,
                         runtime: runtime,
-                        initialSection: initialSection,
+                        openSection: candidate.session.findOnlineSection,
+                        onOpenSection: {
+                            onMovePane(.openSection(section: $0))
+                        },
                         liveSignals: signals
                     ),
                     openSettings: {
@@ -125,7 +125,7 @@ private struct ImportOnlineMetadataBrowser: View {
                             present: { openSettings() }
                         )
                     },
-                    onBack: onBack,
+                    onBack: { onMovePane(.back) },
                     onSelect: { pressing in
                         ImportSearchFlow.applyMetadata(
                             importer: importer,

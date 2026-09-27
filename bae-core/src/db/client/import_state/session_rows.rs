@@ -3,7 +3,8 @@
 
 use super::*;
 use crate::import::{
-    CandidateSession, MetadataPresentation, PaneCommand, PaneFailure, SearchForm, SearchTab,
+    CandidateSession, FindOnlineSection, MetadataPresentation, PaneCommand, PaneFailure,
+    PaneMove, SearchForm, SearchTab,
 };
 use crate::ui::{GroupingBlockReason, UiError, UiErrorCategory};
 
@@ -20,6 +21,23 @@ fn presentation_of(column: &str) -> Result<MetadataPresentation, DbError> {
         "find_online" => Ok(MetadataPresentation::FindOnline),
         other => Err(DbError::Message(format!(
             "unreadable session presentation {other:?}"
+        ))),
+    }
+}
+
+fn section_column(section: FindOnlineSection) -> &'static str {
+    match section {
+        FindOnlineSection::Automatic => "automatic",
+        FindOnlineSection::Search => "search",
+    }
+}
+
+fn section_of(column: &str) -> Result<FindOnlineSection, DbError> {
+    match column {
+        "automatic" => Ok(FindOnlineSection::Automatic),
+        "search" => Ok(FindOnlineSection::Search),
+        other => Err(DbError::Message(format!(
+            "unreadable Find online section {other:?}"
         ))),
     }
 }
@@ -188,117 +206,188 @@ fn category_of(column: &str) -> Result<UiErrorCategory, DbError> {
     })
 }
 
+/// The stored session's columns, as one read gives them.
+type SessionRow = (
+    String,
+    String,
+    String,
+    String,
+    String,
+    String,
+    Option<String>,
+    Option<String>,
+    Option<String>,
+    String,
+);
+
+const SESSION_SELECT: &str = "SELECT presentation, search_tab, search_artist, search_album, \
+            search_catalog, search_barcode, \
+            error_command, error_category, error_detail, find_online_section \
+     FROM import_candidate_session WHERE content_hash = ?";
+
+fn session_row(row: &coven::rusqlite::Row<'_>) -> coven::rusqlite::Result<SessionRow> {
+    Ok((
+        row.get(0)?,
+        row.get(1)?,
+        row.get(2)?,
+        row.get(3)?,
+        row.get(4)?,
+        row.get(5)?,
+        row.get(6)?,
+        row.get(7)?,
+        row.get(8)?,
+        row.get(9)?,
+    ))
+}
+
+fn session_of(row: SessionRow) -> Result<CandidateSession, DbError> {
+    let (presentation, tab, artist, album, catalog, barcode, command, category, detail, section) =
+        row;
+    let error = match (command, category, detail) {
+        (Some(command), Some(category), Some(detail)) => Some(PaneFailure {
+            command: command_of(&command)?,
+            error: UiError::Diagnostic {
+                category: category_of(&category)?,
+                detail,
+            },
+        }),
+        (None, None, None) => None,
+        _ => {
+            return Err(DbError::Message(
+                "a pane failure is stored in part".to_string(),
+            ))
+        }
+    };
+    Ok(CandidateSession {
+        presentation: presentation_of(&presentation)?,
+        find_online_section: section_of(&section)?,
+        search: SearchForm {
+            tab: tab_of(&tab)?,
+            artist,
+            album,
+            catalog,
+            barcode,
+        },
+        error,
+    })
+}
+
 /// The session the pane left for `content_hash`, or `None` before it has
 /// touched the candidate.
 pub(super) fn load_session_on(
     sql: &SqlReadContext<'_>,
     content_hash: &str,
 ) -> Result<Option<CandidateSession>, DbError> {
-    let row = sql
-        .query_row(
-            "SELECT presentation, search_tab, search_artist, search_album, \
-                    search_catalog, search_barcode, \
-                    error_command, error_category, error_detail \
-             FROM import_candidate_session WHERE content_hash = ?",
-            [content_hash],
-            |row| {
-                Ok((
-                    row.get::<_, String>(0)?,
-                    row.get::<_, String>(1)?,
-                    row.get::<_, String>(2)?,
-                    row.get::<_, String>(3)?,
-                    row.get::<_, String>(4)?,
-                    row.get::<_, String>(5)?,
-                    row.get::<_, Option<String>>(6)?,
-                    row.get::<_, Option<String>>(7)?,
-                    row.get::<_, Option<String>>(8)?,
-                ))
-            },
-        )
-        .optional()?;
-    row.map(
-        |(presentation, tab, artist, album, catalog, barcode, command, category, detail)| {
-            let error = match (command, category, detail) {
-                (Some(command), Some(category), Some(detail)) => Some(PaneFailure {
-                    command: command_of(&command)?,
-                    error: UiError::Diagnostic {
-                        category: category_of(&category)?,
-                        detail,
-                    },
-                }),
-                (None, None, None) => None,
-                _ => {
-                    return Err(DbError::Message(
-                        "a pane failure is stored in part".to_string(),
-                    ))
-                }
-            };
-            Ok(CandidateSession {
-                presentation: presentation_of(&presentation)?,
-                search: SearchForm {
-                    tab: tab_of(&tab)?,
-                    artist,
-                    album,
-                    catalog,
-                    barcode,
-                },
-                error,
-            })
-        },
-    )
-    .transpose()
+    sql.query_row(SESSION_SELECT, [content_hash], session_row)
+        .optional()?
+        .map(session_of)
+        .transpose()
 }
 
-/// Show `presentation` in the candidate's pane, leaving the rest of its
-/// session as it is. A candidate with no session yet gets a fresh one with
-/// this surface showing; one with no state row gets nothing.
-pub(super) fn present_on(
+/// Store `session` whole for `content_hash`, inside the caller's write.
+fn save_session_on(
     sql: &SqlContext<'_, '_>,
     content_hash: &str,
-    presentation: MetadataPresentation,
+    session: &CandidateSession,
 ) -> Result<(), DbError> {
-    let search = SearchForm::default();
-    sql.execute(
+    let (error_command, error_category, error_detail) = match &session.error {
+        Some(failure) => {
+            let UiError::Diagnostic { category, detail } = &failure.error;
+            (
+                Some(command_column(failure.command)),
+                Some(category_column(*category)),
+                Some(detail.clone()),
+            )
+        }
+        None => (None, None, None),
+    };
+    let affected = sql.execute(
         "INSERT INTO import_candidate_session (\
-             content_hash, presentation, search_tab, search_artist, \
-             search_album, search_catalog, search_barcode, \
+             content_hash, presentation, find_online_section, search_tab, \
+             search_artist, search_album, search_catalog, search_barcode, \
              error_command, error_category, error_detail) \
-         SELECT ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL \
+         SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? \
          WHERE EXISTS (SELECT 1 FROM import_candidate_state WHERE content_hash = ?) \
          ON CONFLICT (content_hash) DO UPDATE SET \
-             presentation = excluded.presentation",
+             presentation = excluded.presentation, \
+             find_online_section = excluded.find_online_section, \
+             search_tab = excluded.search_tab, \
+             search_artist = excluded.search_artist, \
+             search_album = excluded.search_album, \
+             search_catalog = excluded.search_catalog, \
+             search_barcode = excluded.search_barcode, \
+             error_command = excluded.error_command, \
+             error_category = excluded.error_category, \
+             error_detail = excluded.error_detail",
         params![
             content_hash,
-            presentation_column(presentation),
-            tab_column(search.tab),
-            search.artist,
-            search.album,
-            search.catalog,
-            search.barcode,
+            presentation_column(session.presentation),
+            section_column(session.find_online_section),
+            tab_column(session.search.tab),
+            session.search.artist,
+            session.search.album,
+            session.search.catalog,
+            session.search.barcode,
+            error_command,
+            error_category,
+            error_detail,
             content_hash,
         ],
     )?;
+    if affected == 0 {
+        return Err(DbError::Message(
+            "the pane's session has no candidate state row to hang off".to_string(),
+        ));
+    }
     Ok(())
 }
 
+/// Move the candidate's pane by the one rule, [`CandidateSession::moved`],
+/// leaving the rest of its session as it is. A candidate with no session yet
+/// gets a fresh one moved the same way; one with no state row gets nothing.
+pub(super) fn move_pane_on(
+    sql: &SqlContext<'_, '_>,
+    content_hash: &str,
+    pane_move: PaneMove,
+) -> Result<(), DbError> {
+    let has_state = sql
+        .query_row(
+            "SELECT 1 FROM import_candidate_state WHERE content_hash = ?",
+            [content_hash],
+            |_| Ok(()),
+        )
+        .optional()?
+        .is_some();
+    if !has_state {
+        return Ok(());
+    }
+    // Every move names where the pane goes, so a session nobody has touched
+    // moves the same from any starting surface.
+    let session = sql
+        .query_row(SESSION_SELECT, [content_hash], session_row)
+        .optional()?
+        .map(session_of)
+        .transpose()?
+        .unwrap_or_else(|| CandidateSession::initial(None, false))
+        .moved(pane_move);
+    save_session_on(sql, content_hash, &session)
+}
+
 impl Database {
-    /// Open the pane on Find online for every one of these candidates, leaving
-    /// the rest of each session as it is. A candidate with no session yet gets
-    /// the one its pane opens on, with this surface showing.
-    ///
-    /// One statement per candidate in one call, so an admission is one act
-    /// and the pane of a candidate a person is looking at follows it in the
-    /// same read as the rest.
-    pub async fn open_import_candidate_sessions_on_find_online(
+    /// Move the pane of every one of these candidates by `pane_move`, in one
+    /// call, so an admission is one act and the pane of a candidate a person
+    /// is looking at follows it in the same read as the rest.
+    pub async fn move_import_candidate_panes(
         &self,
         content_hashes: Vec<String>,
+        pane_move: PaneMove,
     ) -> Result<(), DbError> {
         if content_hashes.is_empty() {
             return Ok(());
         }
         self.call(move |sql| {
             for content_hash in &content_hashes {
-                present_on(sql, content_hash, MetadataPresentation::FindOnline)?;
+                move_pane_on(sql, content_hash, pane_move)?;
             }
             Ok(())
         })
@@ -314,58 +403,8 @@ impl Database {
     ) -> Result<(), DbError> {
         let content_hash = content_hash.to_string();
         let session = session.clone();
-        let error = session.error.as_ref().map(|failure| {
-            let UiError::Diagnostic { category, detail } = &failure.error;
-            (
-                command_column(failure.command),
-                category_column(*category),
-                detail.clone(),
-            )
-        });
-        let (error_command, error_category, error_detail) = match error {
-            Some((command, category, detail)) => (Some(command), Some(category), Some(detail)),
-            None => (None, None, None),
-        };
-        self.call(move |sql| {
-            let affected = sql.execute(
-                "INSERT INTO import_candidate_session (\
-                     content_hash, presentation, search_tab, search_artist, \
-                     search_album, search_catalog, search_barcode, \
-                     error_command, error_category, error_detail) \
-                 SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ? \
-                 WHERE EXISTS (SELECT 1 FROM import_candidate_state WHERE content_hash = ?) \
-                 ON CONFLICT (content_hash) DO UPDATE SET \
-                     presentation = excluded.presentation, \
-                     search_tab = excluded.search_tab, \
-                     search_artist = excluded.search_artist, \
-                     search_album = excluded.search_album, \
-                     search_catalog = excluded.search_catalog, \
-                     search_barcode = excluded.search_barcode, \
-                     error_command = excluded.error_command, \
-                     error_category = excluded.error_category, \
-                     error_detail = excluded.error_detail",
-                params![
-                    content_hash,
-                    presentation_column(session.presentation),
-                    tab_column(session.search.tab),
-                    session.search.artist,
-                    session.search.album,
-                    session.search.catalog,
-                    session.search.barcode,
-                    error_command,
-                    error_category,
-                    error_detail,
-                    content_hash,
-                ],
-            )?;
-            if affected == 0 {
-                return Err(DbError::Message(
-                    "the pane's session has no candidate state row to hang off".to_string(),
-                ));
-            }
-            Ok(())
-        })
-        .await
+        self.call(move |sql| save_session_on(sql, &content_hash, &session))
+            .await
     }
 }
 

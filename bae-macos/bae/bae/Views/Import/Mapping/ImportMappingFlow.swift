@@ -27,32 +27,30 @@ struct ImportMappingServices {
 /// leaves behind, what naming a row changes, what assigning a cue to a disc
 /// re-reads — is exercised without a view hierarchy.
 enum ImportMappingFlow {
-    /// Put the draft, or the Find online page, in the metadata slot. Opening
-    /// a page starts nothing: whether a run happens is asked for by the entry
-    /// that opened it, never derived here.
+    /// Move the pane as the person asked; core moves it by the rule it moves
+    /// every pane by. Moving starts nothing.
     @MainActor
-    static func presentMetadata(
-        _ presentation: CandidateMetadataPresentation,
+    static func movePane(
+        _ paneMove: BridgePaneMove,
         for candidate: Candidate,
         services: ImportMappingServices
     ) {
-        services.importStore.presentMetadata(
-            presentation,
-            forKey: candidate.key
-        )
+        services.importStore.movePane(paneMove, forKey: candidate.key)
     }
 
-    /// Identify this candidate now: open the page its run reports on, and ask
-    /// core for a fresh run. Core cancels whatever it had going and starts, so
-    /// pressing again is pressing again — there is no state here that decides
-    /// whether a press counts.
+    /// Show identification's results for this candidate. Core decides what
+    /// that takes: the stored verdict as it stood, picked row and all, when
+    /// there is one, and a run started when there is none.
     @MainActor
     static func identify(
         _ candidate: Candidate,
         services: ImportMappingServices
     ) {
-        presentMetadata(.findOnline, for: candidate, services: services)
-        services.importer.rerunIdentifyForCandidate(candidate.key)
+        let key = candidate.key
+        Task { @MainActor in
+            do { try await services.importer.identifyAutomatically(key) }
+            catch { services.importStore.reportFailure(error) }
+        }
     }
 
     /// Replace the draft with what the candidate's own files say. The tags are

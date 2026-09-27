@@ -1,15 +1,6 @@
 import BaeKit
 import SwiftUI
 
-/// The two sections of the Find online accordion. One is open at a time;
-/// each section's results render under the header that produced them.
-enum FindOnlineSection: Equatable {
-    /// Identification: the run's ledger and what it matched.
-    case automatic
-    /// The typed search: its form and what it turned up.
-    case search
-}
-
 /// The one status glyph a section header carries, open or collapsed.
 enum FindOnlineSectionGlyph: Equatable {
     /// Nothing to report: nothing has run yet, or it ran and found
@@ -72,7 +63,7 @@ enum FindOnlineSectionGlyph: Equatable {
 /// section's name in caps, and its status glyph at the right edge. Clicking
 /// a collapsed header opens the section and collapses the other.
 struct FindOnlineSectionHeader: View {
-    let section: FindOnlineSection
+    let section: BridgeFindOnlineSection
     let isOpen: Bool
     let glyph: FindOnlineSectionGlyph
     let onOpen: () -> Void

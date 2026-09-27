@@ -22,9 +22,11 @@ extension ImportSearchFlow {
         /// What is in flight for this key: the run whose verdict and ledger
         /// the pane shows. `nil` when nothing is running for it.
         let runtime: BridgeCandidateRuntimeSnapshot?
-        /// Which section the pane opens on: the entry that asked for a run
-        /// opens on the run, the one that did not opens on the typed search.
-        let initialSection: FindOnlineSection
+        /// Which section is open: a folder candidate's as core's session
+        /// says, the re-identify sheet's own.
+        let openSection: BridgeFindOnlineSection
+        /// Open one section: for a folder candidate, a move core makes.
+        let onOpenSection: (BridgeFindOnlineSection) -> Void
         /// What extraction has found for this key so far, feeding the form's
         /// suggestion pools and its scanning indicator. `nil` before
         /// extraction has reported any, and for a candidate whose run settled
@@ -68,16 +70,14 @@ extension ImportSearchFlow {
             },
             onRetrySearch: { services.importer.retryCandidateSearch(key) },
             onOpenSettings: openSettings,
-            // The chip acts on one identifier; what goes back is the whole
-            // value of what this candidate's identification asks about, and
-            // the run that reads it starts from there.
+            // The chip acts on one identifier; that change goes to core, and
+            // the run that reads the changed choices starts from there.
             onToggleLookup: { toggle in
                 toggleLookup(toggle, services: services, input: input)
             },
             onToggleCatalogAgreement: { value in
                 toggleCatalogAgreement(value, services: services, input: input)
             },
-            initialSection: input.initialSection,
             // Re-asking what failed is asking for the run again: it reads
             // its inputs afresh, and the response cache answers the lookups
             // that had already succeeded. Where those inputs live is what
@@ -85,9 +85,9 @@ extension ImportSearchFlow {
             onRetryFailed: {
                 rerunIdentification(services: services, input: input)
             },
-            // The words go back as part of the whole value of what the
-            // candidate's identification asks about, and the run that reads
-            // them starts from there.
+            // The words go to core as a change to what the candidate's
+            // identification searches by, and the run that reads them starts
+            // from there.
             onEditTitleSearch: { album, artist in
                 editTitleSearch(
                     album: album,
@@ -97,9 +97,11 @@ extension ImportSearchFlow {
                 )
             },
             onSelect: onSelect,
+            openSection: input.openSection,
+            onOpenSection: input.onOpenSection,
         )
-        // Which section is open is this candidate's: another candidate's
-        // pane starts on its own.
+        // The pane's own view state — the form's focus, the set-aside rows —
+        // is this candidate's: another candidate's pane starts on its own.
         .id(key)
         // Every release the pane is offering is watched for library membership
         // while it is open: each provider lands its own part, so the set they

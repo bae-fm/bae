@@ -70,10 +70,49 @@ pub enum PaneOutcome {
     Failed,
 }
 
+/// Which section of the Find online page is open.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum FindOnlineSection {
+    /// Identification: the run's ledger and what it matched.
+    #[default]
+    Automatic,
+    /// The typed search: its form and what it turned up.
+    Search,
+}
+
+/// Every way the pane moves between the draft and the Find online page,
+/// automatic or asked for. [`CandidateSession::moved`] is the one rule for
+/// where each puts it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PaneMove {
+    /// Identification was admitted for the candidate: the page its run reports
+    /// on.
+    Admitted,
+    /// A run applied its own pick and the release passed every check against
+    /// the folder: only the draft and its Import are left to see.
+    SettledOnPick,
+    /// The person picked a source for the draft.
+    Picked,
+    /// The person asked for identification's results.
+    Automatic,
+    /// The person asked for the typed search.
+    Search,
+    /// The person opened one section of the Find online page.
+    OpenSection(FindOnlineSection),
+    /// The person asked for Find online without naming a section: it opens on
+    /// the one last open.
+    FindOnline,
+    /// The person went back to the draft.
+    Back,
+}
+
 /// The pane's per-candidate state between visits.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CandidateSession {
     pub presentation: MetadataPresentation,
+    /// The section of the Find online page open when it shows, kept while the
+    /// draft does.
+    pub find_online_section: FindOnlineSection,
     pub search: SearchForm,
     /// The last command the pane ran for this candidate, when it failed —
     /// shown in the banner until the next command clears it.
@@ -92,9 +131,28 @@ impl CandidateSession {
         };
         Self {
             presentation,
+            find_online_section: FindOnlineSection::Automatic,
             search: SearchForm::default(),
             error: None,
         }
+    }
+
+    /// This session after `pane_move`: the one rule for where the pane goes.
+    pub fn moved(mut self, pane_move: PaneMove) -> Self {
+        use FindOnlineSection as S;
+        use MetadataPresentation as P;
+        let (presentation, section) = match pane_move {
+            PaneMove::Admitted | PaneMove::Automatic => (P::FindOnline, Some(S::Automatic)),
+            PaneMove::Search => (P::FindOnline, Some(S::Search)),
+            PaneMove::OpenSection(section) => (P::FindOnline, Some(section)),
+            PaneMove::FindOnline => (P::FindOnline, None),
+            PaneMove::SettledOnPick | PaneMove::Picked | PaneMove::Back => (P::Draft, None),
+        };
+        self.presentation = presentation;
+        if let Some(section) = section {
+            self.find_online_section = section;
+        }
+        self
     }
 }
 
@@ -133,5 +191,32 @@ mod tests {
             CandidateSession::initial(None, true).presentation,
             MetadataPresentation::FindOnline
         );
+    }
+
+    /// Each move puts the pane where it says; a move to the draft keeps the
+    /// section Find online opens on, and naming no section opens the last one.
+    #[test]
+    fn each_move_puts_the_pane_where_it_says() {
+        let session = CandidateSession::initial(None, false);
+        let searched = session.clone().moved(PaneMove::Search);
+        assert_eq!(searched.presentation, MetadataPresentation::FindOnline);
+        assert_eq!(searched.find_online_section, FindOnlineSection::Search);
+        let back = searched.moved(PaneMove::Back);
+        assert_eq!(back.presentation, MetadataPresentation::Draft);
+        assert_eq!(back.find_online_section, FindOnlineSection::Search);
+        let reopened = back.moved(PaneMove::FindOnline);
+        assert_eq!(reopened.presentation, MetadataPresentation::FindOnline);
+        assert_eq!(reopened.find_online_section, FindOnlineSection::Search);
+        for pane_move in [PaneMove::Admitted, PaneMove::Automatic] {
+            let moved = reopened.clone().moved(pane_move);
+            assert_eq!(moved.presentation, MetadataPresentation::FindOnline);
+            assert_eq!(moved.find_online_section, FindOnlineSection::Automatic);
+        }
+        for pane_move in [PaneMove::SettledOnPick, PaneMove::Picked, PaneMove::Back] {
+            assert_eq!(
+                reopened.clone().moved(pane_move).presentation,
+                MetadataPresentation::Draft
+            );
+        }
     }
 }

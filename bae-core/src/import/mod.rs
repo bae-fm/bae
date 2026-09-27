@@ -219,8 +219,8 @@ desktop_only! {
 }
 pub use lookup_choices::{ChoiceChange, LookupChoiceEdit, LookupChoices, SearchWords};
 pub use session::{
-    CandidateSession, MetadataPresentation, PaneCommand, PaneFailure, PaneOutcome, SearchForm,
-    SearchTab,
+    CandidateSession, FindOnlineSection, MetadataPresentation, PaneCommand, PaneFailure, PaneMove,
+    PaneOutcome, SearchForm, SearchTab,
 };
 desktop_only! {
     pub use identification::IdentificationHandle;

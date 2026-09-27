@@ -98,13 +98,6 @@ enum CandidateMetadataPresentation: Equatable {
         case .findOnline: self = .findOnline
         }
     }
-
-    var bridge: BridgeMetadataPresentation {
-        switch self {
-        case .draft: .draft
-        case .findOnline: .findOnline
-        }
-    }
 }
 
 /// One metadata application, from its click until the read it dispatched
@@ -204,6 +197,8 @@ struct CandidateSearchState: Equatable {
 /// which has no stored candidate, keeps its own in memory.
 struct CandidateSessionState: Equatable {
     var presentation: CandidateMetadataPresentation = .draft
+    /// The section of the Find online page open when it shows.
+    var findOnlineSection: BridgeFindOnlineSection = .automatic
     var search = CandidateSearchState()
     /// The last command this pane ran, when it failed, as core stored it.
     /// Shown in the banner until the pane's next command clears it.
@@ -215,6 +210,7 @@ struct CandidateSessionState: Equatable {
         presentation = CandidateMetadataPresentation(
             bridge: bridge.presentation
         )
+        findOnlineSection = bridge.findOnlineSection
         search = CandidateSearchState(bridge: bridge.search)
         failure = bridge.error
     }

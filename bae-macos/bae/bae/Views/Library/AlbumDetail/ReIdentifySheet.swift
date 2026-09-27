@@ -42,6 +42,10 @@ struct ReIdentifySheet: View {
 
     @State
     private var phase: Phase = .identifying
+    /// Which section of the search page is open. The sheet's own: a library
+    /// release has no stored pane to keep it.
+    @State
+    private var openSection: BridgeFindOnlineSection = .automatic
     @State
     private var commitTask: Task<Void, Never>?
     @State
@@ -173,7 +177,8 @@ struct ReIdentifySheet: View {
                     key: key,
                     selectedReleaseId: selectedPressing?.lead.releaseId,
                     runtime: runtime,
-                    initialSection: .automatic,
+                    openSection: openSection,
+                    onOpenSection: { openSection = $0 },
                     liveSignals: signals
                 ),
                 openSettings: {
