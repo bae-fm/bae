@@ -72,12 +72,12 @@ struct AlbumGridSelectionTests {
         #expect(selection.anchorId == "c")
     }
 
-    @Test("selectAll selects every id and anchors the last; clear empties")
-    func selectAllAndClear() {
+    @Test("clear empties the selection and its anchor")
+    func clearEmpties() {
         let selection = AlbumGridSelection()
-        selection.selectAll(["a", "b", "c"])
-        #expect(selection.selectedIds == ["a", "b", "c"])
-        #expect(selection.anchorId == "c")
+        selection.toggle("a")
+        selection.toggle("b")
+        #expect(selection.anchorId == "b")
 
         selection.clear()
         #expect(selection.selectedIds.isEmpty)
@@ -136,7 +136,9 @@ struct AlbumGridSelectionTests {
     @Test("remove drops only the missing ids and clears a removed anchor")
     func pruneRemovesOnlyMissing() {
         let selection = AlbumGridSelection()
-        selection.selectAll(["a", "b", "c"])
+        selection.toggle("a")
+        selection.toggle("b")
+        selection.toggle("c")
         selection.remove(["b"])
         #expect(selection.selectedIds == ["a", "c"])
         // The anchor (c) survives when it isn't among the removed ids.

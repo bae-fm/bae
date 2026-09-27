@@ -169,13 +169,6 @@ struct AlbumGridView<ExpansionContent: View>: View {
                     selection.clear()
                     return .handled
                 }
-                .onKeyPress(keys: ["a"]) { keyPress in
-                    guard keyPress.modifiers.contains(.command) else {
-                        return .ignored
-                    }
-                    selection.selectAll(list.allLoadedIds)
-                    return .handled
-                }
                 .task(id: uiStore.pendingAlbumReveal?.seq) {
                     guard let reveal = uiStore.pendingAlbumReveal else {
                         return

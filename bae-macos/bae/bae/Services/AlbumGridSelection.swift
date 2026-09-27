@@ -71,13 +71,6 @@ final class AlbumGridSelection {
         onSelectionChanged(selectedIds)
     }
 
-    /// cmd-A: select every loaded album id, anchored on the last.
-    func selectAll(_ ids: [String]) {
-        selectedIds = Set(ids)
-        anchorId = ids.last
-        onSelectionChanged(selectedIds)
-    }
-
     func clear() {
         selectedIds = []
         anchorId = nil
