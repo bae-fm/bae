@@ -417,7 +417,7 @@ async fn reset_setup_invalidates_prepared_metadata_and_refuses_claimed_candidate
         preparation(&handle, &candidate.files.content_hash()).await,
         reset
     );
-    handle.claim_candidate_for_import(&key).await;
+    handle.claim_candidate_for_import(&key, "import-1").await;
     assert!(matches!(
         handle.reset_candidate_setup(&key).await,
         Err(crate::import::ImportError::CandidateImportInProgress)
@@ -426,7 +426,7 @@ async fn reset_setup_invalidates_prepared_metadata_and_refuses_claimed_candidate
         preparation(&handle, &candidate.files.content_hash()).await,
         reset
     );
-    handle.runtime.release_import_claim(&key);
+    handle.runtime.release_import_claim(&key, "import-1");
     shut_down(handle).await;
 }
 

@@ -1,6 +1,52 @@
 use super::*;
 
 impl Database {
+    /// Every row of every table bae can read, rendered, by table name: what
+    /// a test compares to show an operation left the store as it found it.
+    /// Coven's own tables are closed to bae's connections and are left out;
+    /// the blobs coven keeps for bae are files under the library directory.
+    pub async fn every_row_for_test(
+        &self,
+    ) -> Result<std::collections::BTreeMap<String, Vec<String>>, DbError> {
+        self.read(|sql| {
+            let tables: Vec<String> = sql.query(
+                "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name",
+                [],
+                |row| row.get(0),
+            )?;
+            let mut every_row = std::collections::BTreeMap::new();
+            for table in tables {
+                let rows = sql.query(&format!("SELECT * FROM \"{table}\""), [], |row| {
+                    (0..row.as_ref().column_count())
+                        .map(|column| {
+                            row.get_ref(column).map(|value| match value {
+                                coven::rusqlite::types::ValueRef::Text(text) => {
+                                    String::from_utf8_lossy(text).into_owned()
+                                }
+                                other => format!("{other:?}"),
+                            })
+                        })
+                        .collect::<Result<Vec<_>, _>>()
+                        .map(|values| values.join(" | "))
+                });
+                let mut rows = match rows {
+                    Ok(rows) => rows,
+                    Err(coven::rusqlite::Error::SqliteFailure(error, _))
+                        if error.code
+                            == coven::rusqlite::ErrorCode::AuthorizationForStatementDenied =>
+                    {
+                        continue
+                    }
+                    Err(error) => return Err(error.into()),
+                };
+                rows.sort();
+                every_row.insert(table, rows);
+            }
+            Ok(every_row)
+        })
+        .await
+    }
+
     pub async fn local_blob_cleanup_intent_count_for_test(
         &self,
         namespace: &str,

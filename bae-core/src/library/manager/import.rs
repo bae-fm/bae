@@ -670,16 +670,6 @@ impl LibraryManager {
             .await?)
     }
 
-    pub async fn clear_import_candidate_failure(
-        &self,
-        content_hash: &str,
-    ) -> Result<(), LibraryError> {
-        Ok(self
-            .database
-            .clear_import_candidate_failure(content_hash)
-            .await?)
-    }
-
     /// Every candidate's user-set file decisions, keyed by content hash — what
     /// a folder scan needs so the roles it reports are the ones the user
     /// settled, not only the ones its filenames propose.

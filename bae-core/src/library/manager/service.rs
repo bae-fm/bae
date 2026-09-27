@@ -389,6 +389,14 @@ impl LibraryManager {
         }
     }
 
+    /// Every row of every table the library holds, rendered, by table name.
+    #[cfg(test)]
+    pub(crate) async fn every_row_for_test(
+        &self,
+    ) -> std::collections::BTreeMap<String, Vec<String>> {
+        self.database.every_row_for_test().await.unwrap()
+    }
+
     #[cfg(test)]
     pub(crate) fn local_blob_exists_for_test(
         &self,

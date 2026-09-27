@@ -132,8 +132,9 @@ pub fn ready_check(placement: &TriagePlacement) -> Option<NeedsYou> {
 /// What the last import of a candidate left in the tables.
 ///
 /// The release wins: the failure row is written when an attempt fails and
-/// cleared when the next one is queued, so a release for this hash means an
-/// attempt already succeeded and any leftover error is behind it.
+/// cleared by the commit of the next one that lands, so a release for this
+/// hash means an attempt already succeeded and any leftover error is behind
+/// it.
 ///
 /// The stored failure is here rather than only in the pane because a row has
 /// to say it too. Without it, quitting after a failed import brings the

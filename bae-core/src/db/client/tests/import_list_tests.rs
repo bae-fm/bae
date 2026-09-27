@@ -847,7 +847,6 @@ async fn the_list_projects_the_persisted_embedded_file_metadata_cover() {
 /// it: after a relaunch, with nothing running, the row that failed is still on
 /// Pending — the folder is not in the library and the work is waiting on
 /// another attempt — but saying what went wrong rather than looking untried.
-/// Queueing the next attempt clears the row and it goes back to plain pending.
 #[tokio::test]
 async fn a_stored_failure_keeps_the_row_pending_saying_why() {
     let (db, _tmp, root) = watched_root().await;
@@ -889,10 +888,4 @@ async fn a_stored_failure_keeps_the_row_pending_saying_why() {
         }),
         "with no runtime entry of its own"
     );
-
-    db.clear_import_candidate_failure(&hash).await.unwrap();
-
-    let pending = tab(&db, TriageTab::Pending).await;
-    assert_eq!(pending.len(), 1, "queueing the next attempt puts it back");
-    assert!(pending[0].import_status.is_none());
 }

@@ -109,7 +109,7 @@ async fn a_claimed_candidate_refuses_sheet_and_role_decisions() {
         .store_settled_verdict(&dir, "mb-claimed-1", "rg-claimed-1", 1_000)
         .await;
     let key = dir.to_string_lossy().into_owned();
-    fixture.import.claim_candidate_for_import(&key).await;
+    fixture.import.claim_candidate_for_import(&key, "import-1").await;
 
     for result in [
         fixture

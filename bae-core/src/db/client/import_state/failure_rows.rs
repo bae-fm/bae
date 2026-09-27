@@ -64,6 +64,16 @@ pub(super) fn load_failure_on(
     .map_err(DbError::from)
 }
 
+/// Drop the failure the last import of `content_hash` left, and the artist
+/// conflict that hangs off it.
+pub(super) fn delete_failure_on(sql: &SqlContext<'_, '_>, content_hash: &str) -> Result<(), DbError> {
+    sql.execute(
+        "DELETE FROM import_candidate_failure WHERE content_hash = ?",
+        [content_hash],
+    )?;
+    Ok(())
+}
+
 impl Database {
     /// Record that an import of this candidate failed, so the pane still
     /// offers Retry after a relaunch.

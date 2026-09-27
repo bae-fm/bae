@@ -324,7 +324,7 @@ async fn an_automatic_import_behind_another_import_records_no_failure() {
     let dir = fixture.disc_id_candidate("Album");
     let key = dir.to_string_lossy().into_owned();
     fixture.identify_ready(&dir, "mb-behind", "rg-behind").await;
-    fixture.import.claim_candidate_for_import(&key).await;
+    fixture.import.claim_candidate_for_import(&key, "import-1").await;
 
     let error = fixture
         .import

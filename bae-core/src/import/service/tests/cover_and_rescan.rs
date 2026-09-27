@@ -159,7 +159,7 @@ async fn retained_unsupported_embedded_cover_is_only_used_when_explicitly_select
         let result = test
             .service
             .prepare_and_run_folder_import(
-                test.service.ids.new_id(),
+                "import-cover".to_string(),
                 key,
                 candidate.source(),
                 super::ImportExpectation {

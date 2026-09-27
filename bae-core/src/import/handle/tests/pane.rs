@@ -838,7 +838,7 @@ async fn a_bulk_import_skips_a_row_being_identified_and_says_so() {
     assert!(runtime.queued.is_some(), "and its run is not cancelled");
 
     handle.withdraw_identification(&key);
-    handle.claim_candidate_for_import(&key).await;
+    handle.claim_candidate_for_import(&key, "import-1").await;
     assert!(matches!(
         handle
             .import_ready(&key, crate::import::StorageMode::Local, false)

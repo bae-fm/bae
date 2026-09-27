@@ -43,6 +43,32 @@ mod tests;
 pub struct ImportEventBus {
     sender: broadcast::Sender<ImportEvent>,
     runtime: CandidateRuntime,
+    /// Holds the thread that sends one chosen progress event until a test
+    /// lets it through: the test's window to act while that thread is part
+    /// way through an import's work.
+    #[cfg(test)]
+    progress_hold: Arc<ProgressHold>,
+}
+
+/// Where [`ImportEventBus::hold_progress_at`] stops a sender.
+#[cfg(test)]
+#[derive(Default)]
+struct ProgressHold {
+    state: std::sync::Mutex<HoldState>,
+    changed: std::sync::Condvar,
+}
+
+#[cfg(test)]
+#[derive(Default, Clone, Copy, PartialEq)]
+enum HoldState {
+    #[default]
+    Off,
+    /// The next measured percent of this phase stops its sender.
+    Armed(crate::import::ImportPhase),
+    /// A sender is stopped, its event neither recorded nor broadcast.
+    Held,
+    /// The stopped sender was let go.
+    Released,
 }
 
 impl ImportEventBus {
@@ -55,12 +81,19 @@ impl ImportEventBus {
     pub fn new(capacity: usize, runtime: CandidateRuntime) -> Self {
         let (sender, _) = broadcast::channel(capacity);
         runtime.announce_on(sender.clone());
-        Self { sender, runtime }
+        Self {
+            sender,
+            runtime,
+            #[cfg(test)]
+            progress_hold: Arc::default(),
+        }
     }
 
     /// Record `event` in the runtime, then broadcast it. The bus lives as
     /// long as the app, so having no subscriber is odd enough to warn about.
     pub fn send(&self, event: ImportEvent) {
+        #[cfg(test)]
+        self.wait_if_held(&event);
         self.runtime.record_event(&event);
         if let Err(error) = self.sender.send(event) {
             warn!("import event broadcast had no subscribers: {error}");
@@ -69,6 +102,66 @@ impl ImportEventBus {
 
     pub fn subscribe(&self) -> broadcast::Receiver<ImportEvent> {
         self.sender.subscribe()
+    }
+
+    /// Stop the first thread that sends a measured percent of `phase` before
+    /// its event is recorded or broadcast, until [`Self::release_progress`].
+    ///
+    /// A measured percent above zero, because the running phases report
+    /// their fractions from the threads doing the work, and a zero goes out
+    /// from the worker itself, which must stay free to hear a cancel.
+    #[cfg(test)]
+    pub(crate) fn hold_progress_at(&self, phase: crate::import::ImportPhase) {
+        *self.progress_hold.state.lock().unwrap() = HoldState::Armed(phase);
+    }
+
+    /// Wait until a sender is stopped where [`Self::hold_progress_at`] said.
+    #[cfg(test)]
+    pub(crate) async fn progress_held(&self) {
+        let hold = self.progress_hold.clone();
+        tokio::task::spawn_blocking(move || {
+            let state = hold.state.lock().unwrap();
+            let _held = hold
+                .changed
+                .wait_while(state, |state| *state != HoldState::Held)
+                .unwrap();
+        })
+        .await
+        .unwrap();
+    }
+
+    /// Let the stopped sender go on.
+    #[cfg(test)]
+    pub(crate) fn release_progress(&self) {
+        *self.progress_hold.state.lock().unwrap() = HoldState::Released;
+        self.progress_hold.changed.notify_all();
+    }
+
+    #[cfg(test)]
+    fn wait_if_held(&self, event: &ImportEvent) {
+        let ImportEvent::ImportProgress {
+            progress:
+                ImportProgress::Progress {
+                    phase,
+                    percent: Some(percent),
+                    ..
+                },
+            ..
+        } = event
+        else {
+            return;
+        };
+        let mut state = self.progress_hold.state.lock().unwrap();
+        if *state != HoldState::Armed(*phase) || *percent == 0 {
+            return;
+        }
+        *state = HoldState::Held;
+        self.progress_hold.changed.notify_all();
+        let _released = self
+            .progress_hold
+            .changed
+            .wait_while(state, |state| *state == HoldState::Held)
+            .unwrap();
     }
 }
 
@@ -385,8 +478,8 @@ impl ImportServiceHandle {
     /// worker behind it. The claim is the only runtime a durable write gates
     /// on, so a test about what a claim does has to make a real one.
     #[cfg(any(test, feature = "test-utils"))]
-    pub async fn claim_candidate_for_import_for_test(&self, candidate_key: &str) {
-        self.claim_candidate_for_import(candidate_key).await;
+    pub async fn claim_candidate_for_import_for_test(&self, candidate_key: &str, import_id: &str) {
+        self.claim_candidate_for_import(candidate_key, import_id).await;
     }
 
     /// Every key with something in flight right now.
@@ -607,7 +700,8 @@ impl ImportServiceHandle {
         Ok(commit)
     }
 
-    /// Claim `candidate_key` for an import that is about to be queued.
+    /// Claim `candidate_key` for the test import `import_id`, about to be
+    /// queued.
     ///
     /// Takes the folder-state commit lock, which
     /// [`Self::save_candidate_verdict_if_current`] holds across *both* its
@@ -616,16 +710,16 @@ impl ImportServiceHandle {
     /// claimed — there is no interval in which a verdict is stored for a
     /// candidate whose import has been committed to.
     #[cfg(any(test, feature = "test-utils"))]
-    pub(crate) async fn claim_candidate_for_import(&self, candidate_key: &str) {
+    pub(crate) async fn claim_candidate_for_import(&self, candidate_key: &str, import_id: &str) {
         let _commit = self.folder_state_commit.lock("claim a candidate for a test").await;
         self.runtime
-            .claim_for_import(candidate_key)
+            .claim_for_import(candidate_key, import_id)
             .expect("a test claims a candidate no import owns");
     }
 
-    async fn release_import_claim(&self, candidate_key: &str) {
+    async fn release_import_claim(&self, candidate_key: &str, import_id: &str) {
         let _commit = self.folder_state_commit.lock("release an import claim").await;
-        self.runtime.release_import_claim(candidate_key);
+        self.runtime.release_import_claim(candidate_key, import_id);
     }
 
     /// Run a durable write to completion once it has been asked for.

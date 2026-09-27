@@ -323,7 +323,7 @@ async fn claimed_candidates_refuse_restoration_and_already_included_noops() {
         }
         let offer = as_read(&pane(&handle, &key).await);
         let before = preparation(&handle, &hash).await;
-        handle.claim_candidate_for_import_for_test(&key).await;
+        handle.claim_candidate_for_import_for_test(&key, "import-1").await;
         assert!(matches!(
             handle
                 .add_candidate_track(&key, row.file.unwrap(), offer)

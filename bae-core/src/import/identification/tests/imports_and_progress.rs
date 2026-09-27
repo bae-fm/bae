@@ -6,7 +6,7 @@ async fn start_import_for(fixture: &Fixture, candidate: &Path) {
     let candidate_key = candidate.to_string_lossy().into_owned();
     fixture
         .import
-        .claim_candidate_for_import(&candidate_key)
+        .claim_candidate_for_import(&candidate_key, "import-running")
         .await;
     fixture
         .import
@@ -30,7 +30,7 @@ async fn claiming_an_import_publishes_queued_status_immediately() {
 
     fixture
         .import
-        .claim_candidate_for_import(&candidate.to_string_lossy())
+        .claim_candidate_for_import(&candidate.to_string_lossy(), "import-1")
         .await;
 
     let change = tokio::time::timeout(Duration::from_secs(1), changes.recv())

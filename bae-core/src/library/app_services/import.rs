@@ -174,10 +174,10 @@ impl AppServices {
     /// Claim a candidate the way committing an import does, for a test with
     /// no worker behind it.
     #[cfg(any(test, feature = "test-utils"))]
-    pub async fn claim_candidate_for_import_for_test(&self, candidate_key: &str) {
+    pub async fn claim_candidate_for_import_for_test(&self, candidate_key: &str, import_id: &str) {
         self.inner
             .import
-            .claim_candidate_for_import_for_test(candidate_key)
+            .claim_candidate_for_import_for_test(candidate_key, import_id)
             .await;
     }
 

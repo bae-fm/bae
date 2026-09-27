@@ -128,10 +128,4 @@ async fn pure_reads_use_the_read_connection() {
         .await
         .unwrap()
         .is_none());
-
-    // Clearing a failure nothing stored still names a DELETE, so coven takes
-    // the write callback rather than rejecting it as a disguised read.
-    db.clear_import_candidate_failure("hash-that-never-failed")
-        .await
-        .unwrap();
 }

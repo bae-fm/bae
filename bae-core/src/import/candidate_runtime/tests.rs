@@ -46,6 +46,12 @@ fn progress(key: &str, percent: u8) -> ImportEvent {
     }
 }
 
+/// Claim `key` for the import every [`progress`] reports on, as queueing
+/// that import does before anything reports.
+fn claim(runtime: &CandidateRuntime, key: &str) {
+    runtime.claim_for_import(key, "imp-1").unwrap();
+}
+
 fn signals_context(track_count: u32) -> crate::identify::state::SignalsContext {
     crate::identify::state::SignalsContext {
         rip: crate::signals::RipEvidence::Unproven,
@@ -133,6 +139,9 @@ fn import_progress_is_recorded_per_key_and_published_for_that_key_only() {
     let runtime = CandidateRuntime::default();
     let mut changes = runtime.subscribe();
     let key = "/watch/a/rel1";
+    claim(&runtime, key);
+    claim(&runtime, "/watch/a/rel2");
+    drain(&mut changes);
 
     runtime.record_event(&progress(key, 42));
 
@@ -188,6 +197,7 @@ fn a_finished_import_leaves_the_map() {
     for ending in endings {
         let runtime = CandidateRuntime::default();
         let mut changes = runtime.subscribe();
+        claim(&runtime, key);
         runtime.record_event(&progress(key, 42));
         drain(&mut changes);
 
@@ -215,6 +225,7 @@ fn a_finished_import_keeps_a_key_whose_verdict_is_still_being_saved() {
     let mut changes = runtime.subscribe();
     let key = "/watch/a/rel1";
     runtime.record_event(&identify(key, 1, manual_only()));
+    claim(&runtime, key);
     runtime.record_event(&progress(key, 42));
     drain(&mut changes);
 
@@ -243,8 +254,9 @@ fn a_finished_import_keeps_a_key_whose_verdict_is_still_being_saved() {
 #[test]
 fn a_late_subscriber_reads_every_running_key() {
     let runtime = CandidateRuntime::default();
+    claim(&runtime, "/watch/a/rel1");
     runtime.record_event(&progress("/watch/a/rel1", 10));
-    runtime.claim_for_import("/watch/a/rel2").unwrap();
+    claim(&runtime, "/watch/a/rel2");
 
     let mut changes = runtime.subscribe();
     let running = runtime.all();
@@ -258,7 +270,7 @@ fn a_late_subscriber_reads_every_running_key() {
     );
     assert!(running["/watch/a/rel2"].import.is_some());
 
-    runtime.record_event(&progress("/watch/a/rel3", 5));
+    claim(&runtime, "/watch/a/rel3");
     assert!(matches!(
         drain(&mut changes).as_slice(),
         [CandidateRuntimeChange::Updated { key, .. }] if key == "/watch/a/rel3"
@@ -269,6 +281,7 @@ fn a_late_subscriber_reads_every_running_key() {
 fn a_preparing_step_has_no_progress_fraction() {
     let runtime = CandidateRuntime::default();
     let key = "/watch/a/rel1";
+    claim(&runtime, key);
 
     runtime.record_event(&ImportEvent::ImportProgress {
         candidate_key: key.to_string(),
@@ -339,6 +352,7 @@ fn an_admission_is_published_as_one_current_runtime_snapshot() {
 fn runtime_recorded_before_the_scan_survives_the_scan_reporting_the_key() {
     let runtime = CandidateRuntime::default();
     let key = "/watch/a/rel1";
+    claim(&runtime, key);
     runtime.record_event(&progress(key, 42));
 
     runtime.record_event(&scanned(folder_candidate(key, "/watch/a")));
@@ -354,6 +368,7 @@ fn a_rescan_reporting_the_same_shape_keeps_the_runtime_and_a_new_shape_drops_it(
     let mut changes = runtime.subscribe();
     let key = "/watch/a/rel1";
     runtime.record_event(&scanned(folder_candidate(key, "/watch/a")));
+    claim(&runtime, key);
     runtime.record_event(&progress(key, 42));
     drain(&mut changes);
 
@@ -385,8 +400,8 @@ fn a_rescan_reporting_the_same_shape_keeps_the_runtime_and_a_new_shape_drops_it(
 fn removal_and_invalidation_drop_the_runtime() {
     let runtime = CandidateRuntime::default();
     let mut changes = runtime.subscribe();
-    runtime.record_event(&progress("/watch/a/rel1", 1));
-    runtime.record_event(&progress("/watch/a/rel2", 1));
+    claim(&runtime, "/watch/a/rel1");
+    claim(&runtime, "/watch/a/rel2");
     drain(&mut changes);
 
     runtime.record_event(&ImportEvent::Scan(ScanEvent::CandidateRemoved {
@@ -583,7 +598,7 @@ fn a_finished_save_keeps_a_key_whose_import_is_running() {
     let runtime = CandidateRuntime::default();
     let key = "/watch/a/rel1";
     runtime.record_event(&identify(key, 1, manual_only()));
-    runtime.claim_for_import(key).unwrap();
+    claim(&runtime, key);
 
     runtime.end_identification_answer(key, run(1));
 
@@ -912,7 +927,7 @@ fn switching_a_source_off_closes_its_part_of_every_live_search() {
         searching,
         CandidateSearch::started(search_query(), &every_source_on()),
     );
-    runtime.claim_for_import(importing).unwrap();
+    claim(&runtime, importing);
     let mut changes = runtime.subscribe();
 
     runtime.switch_source_off(Catalog::MusicBrainz);

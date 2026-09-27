@@ -157,7 +157,7 @@ async fn a_verdict_is_refused_for_a_claimed_candidate() {
         "an unclaimed candidate still takes its verdict"
     );
 
-    fixture.import.claim_candidate_for_import(&key).await;
+    fixture.import.claim_candidate_for_import(&key, "import-1").await;
 
     assert!(
         !fixture
@@ -190,16 +190,20 @@ async fn an_ending_ends_the_run_it_names_and_not_the_answer_being_saved() {
         state,
         priority: CallPriority::Background,
     };
-    let mut changes = fixture.import.subscribe_candidate_runtime().1;
     // The recorder publishes one change per event it records, and a torn-down
     // `Idle` after a terminal state records nothing. The bus is ordered, so an
     // unrelated event that does record marks that the `Idle` before it has
-    // been seen.
+    // been seen: the next step of an import claimed for the marker key.
+    fixture
+        .import
+        .claim_candidate_for_import("reidentify:marker", "marker")
+        .await;
+    let mut changes = fixture.import.subscribe_candidate_runtime().1;
     let marker = || ImportEvent::ImportProgress {
         candidate_key: "reidentify:marker".to_string(),
         progress: crate::import::ImportProgress::Preparing {
             import_id: "marker".to_string(),
-            step: crate::import::PrepareStep::Queued,
+            step: crate::import::PrepareStep::ValidatingSourceFiles,
             album_title: String::new(),
             artist_name: String::new(),
         },

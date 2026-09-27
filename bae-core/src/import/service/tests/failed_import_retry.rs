@@ -15,49 +15,6 @@ fn local_import_command(import_id: &str, candidate_key: &str, folder: &Path) -> 
     }
 }
 
-/// Keeps `path` from opening until dropped, without touching its size or
-/// modification time: no permission to read it on Unix, an exclusive handle
-/// on Windows.
-struct UnopenableFile {
-    #[cfg(unix)]
-    path: std::path::PathBuf,
-    #[cfg(windows)]
-    _exclusive: std::fs::File,
-}
-
-impl UnopenableFile {
-    fn block(path: &Path) -> Self {
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o000)).unwrap();
-            Self {
-                path: path.to_path_buf(),
-            }
-        }
-        #[cfg(windows)]
-        {
-            use std::os::windows::fs::OpenOptionsExt;
-            let exclusive = std::fs::OpenOptions::new()
-                .read(true)
-                .share_mode(0)
-                .open(path)
-                .unwrap();
-            Self {
-                _exclusive: exclusive,
-            }
-        }
-    }
-}
-
-#[cfg(unix)]
-impl Drop for UnopenableFile {
-    fn drop(&mut self) {
-        use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(&self.path, std::fs::Permissions::from_mode(0o600)).unwrap();
-    }
-}
-
 /// A source file that cannot be opened mid-import fails the import with the
 /// open's own error and leaves nothing of the release behind: no album, no
 /// release, and the candidate's failure recorded for its pane. Importing the
@@ -91,7 +48,7 @@ async fn an_import_that_cannot_open_a_source_writes_nothing_and_a_retry_lands_it
     // modification time are unchanged, so the import's identity check passes
     // and the failure is the open itself.
     let blocked_name = Path::new("CD2").join("02 Track 2.flac");
-    let blocked = UnopenableFile::block(&folder.join(&blocked_name));
+    let blocked = crate::test_files::UnopenableFile::block(&folder.join(&blocked_name));
     test.service
         .import_cancels
         .register(&candidate_key, "import-blocked");

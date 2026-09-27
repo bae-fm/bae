@@ -112,6 +112,7 @@ impl ImportService {
             .import_cancels
             .run(
                 &candidate_key,
+                &import_id,
                 self.prepare_and_run_folder_import(
                     import_id.clone(),
                     candidate_key.clone(),
@@ -809,7 +810,7 @@ impl ImportService {
 
         // Past here the release is written in one transaction, which a cancel
         // no longer interrupts; one that came first stops the import here.
-        self.import_cancels.begin_writing(candidate_key)?;
+        self.import_cancels.begin_writing(candidate_key, import_id)?;
         self.emit_phase_progress(run, &db_release.id, None, ImportPhase::Finalizing);
 
         let remote_intent = matches!(storage_mode, StorageMode::Remote);

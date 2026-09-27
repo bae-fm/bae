@@ -946,9 +946,11 @@ mod candidate_runtime {
         let key = "/watch/Album Title".to_string();
         let (_watching, mut watching_changes) = subscribe(&handle);
 
-        handle
-            .runtime
-            .block_on(handle.services.claim_candidate_for_import_for_test(&key));
+        handle.runtime.block_on(
+            handle
+                .services
+                .claim_candidate_for_import_for_test(&key, "import-1"),
+        );
 
         let claimed = wait_in_flight(&handle, &mut watching_changes, &key);
         let import = claimed

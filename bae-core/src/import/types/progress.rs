@@ -76,6 +76,21 @@ pub enum ImportProgress {
     },
 }
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+impl ImportProgress {
+    /// The import this reports on.
+    pub fn import_id(&self) -> &str {
+        match self {
+            Self::Preparing { import_id, .. }
+            | Self::Progress { import_id, .. }
+            | Self::Complete { import_id, .. }
+            | Self::RemoteUploadQueued { import_id, .. }
+            | Self::Failed { import_id, .. }
+            | Self::Cancelled { import_id } => import_id,
+        }
+    }
+}
+
 /// The running phase of an import, after phase-0 preparation. Emitted as each
 /// transition begins so the UI can name the work in progress. Every import is
 /// local-in-place: the source files are read and hashed where they sit, then

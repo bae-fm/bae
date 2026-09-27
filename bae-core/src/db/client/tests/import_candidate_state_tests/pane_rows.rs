@@ -499,14 +499,6 @@ async fn a_failure_on_a_discovered_candidate_is_replaced_then_cleared() {
         "the disc would not read",
         "the second failure replaces the first"
     );
-
-    db.clear_import_candidate_failure(&hash).await.unwrap();
-    assert!(db
-        .load_import_candidate_pane_rows(&hash)
-        .await
-        .unwrap()
-        .failure
-        .is_none());
 }
 
 #[tokio::test]

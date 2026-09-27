@@ -65,7 +65,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, OnceLock};
 use tokio::sync::broadcast;
-use tracing::info;
+use tracing::{debug, info};
 
 mod batch;
 
@@ -130,6 +130,16 @@ struct RunState {
     state: IdentifyState,
 }
 
+/// The import that owns a key and how far it has got. The import id tells
+/// this import's reports from those of one that already ended: work an ended
+/// import left running can still report, and what it says is about nothing
+/// the key shows any more.
+#[derive(Clone, PartialEq)]
+struct ClaimedImport {
+    import_id: String,
+    in_flight: ImportInFlight,
+}
+
 /// The run whose durable write did not land, and what stopped it.
 #[derive(Clone, PartialEq)]
 struct FailedSave {
@@ -161,7 +171,9 @@ struct CandidateRuntimeState {
     /// Written when a write of an answer fails, cleared by the next run of this
     /// key.
     save_failed: Option<FailedSave>,
-    import: Option<ImportInFlight>,
+    /// Written by the claim when an import is queued, advanced by that
+    /// import's own reports, and ended by its ending.
+    import: Option<ClaimedImport>,
     search: Option<RunningSearch>,
 }
 
@@ -211,7 +223,7 @@ impl CandidateRuntimeState {
             running: self.running.as_ref().map(|run| run.state.clone()),
             saving: self.answered.as_ref().map(|run| run.state.clone()),
             save_failed: self.save_failed.as_ref().map(|failed| failed.error.clone()),
-            import: self.import.clone(),
+            import: self.import.as_ref().map(|claimed| claimed.in_flight.clone()),
             search: self.search.as_ref().map(|running| running.search.clone()),
         }
     }
@@ -224,6 +236,14 @@ fn answered_on(runtime: &CandidateRuntimeState, run: IdentifyRunId) -> bool {
         .answered
         .as_ref()
         .is_some_and(|answered| answered.run == run)
+}
+
+/// Whether `import_id` is the import that holds the key.
+fn claimed_by(runtime: &CandidateRuntimeState, import_id: &str) -> bool {
+    runtime
+        .import
+        .as_ref()
+        .is_some_and(|claimed| claimed.import_id == import_id)
 }
 
 fn snapshots(
@@ -769,17 +789,25 @@ impl CandidateRuntime {
     ///
     /// One import owns a candidate at a time: a claim on a candidate an import
     /// already owns — queued or running — is refused, and changes nothing.
+    ///
+    /// A claim starts from the queue with no progress, whatever an earlier
+    /// import of the candidate had reached: only `import_id`'s own reports
+    /// move it on from there.
     pub(super) fn claim_for_import(
         &self,
         candidate_key: &str,
+        import_id: &str,
     ) -> Result<(), crate::import::ImportError> {
         self.set(candidate_key, |_, runtime| {
             if runtime.import.is_some() {
                 return Err(crate::import::ImportError::CandidateImportInProgress);
             }
-            runtime.import = Some(ImportInFlight {
-                progress_percent: None,
-                step: Some(ImportStep::Preparing(PrepareStep::Queued)),
+            runtime.import = Some(ClaimedImport {
+                import_id: import_id.to_string(),
+                in_flight: ImportInFlight {
+                    progress_percent: None,
+                    step: Some(ImportStep::Preparing(PrepareStep::Queued)),
+                },
             });
             Ok(())
         })
@@ -787,8 +815,12 @@ impl CandidateRuntime {
 
     /// Undo [`Self::claim_for_import`] for a command that never made it onto
     /// the worker's queue.
-    pub(super) fn release_import_claim(&self, candidate_key: &str) {
-        self.set(candidate_key, |_, runtime| runtime.import = None);
+    pub(super) fn release_import_claim(&self, candidate_key: &str, import_id: &str) {
+        self.set(candidate_key, |_, runtime| {
+            if claimed_by(runtime, import_id) {
+                runtime.import = None;
+            }
+        });
     }
 
     /// A scan reported `candidate`. A first report or a repeat of the recorded
@@ -815,8 +847,9 @@ impl CandidateRuntime {
                 // Every way an import ends leaves the map, because every one
                 // of them has already written its row: the worker commits the
                 // release before `Complete` and `RemoteUploadQueued`, and the
-                // failure row before `Failed`. What the row says is what the
-                // candidate is once nothing is running.
+                // failure row before `Failed`, and a cancel writes nothing.
+                // What the row says is what the candidate is once nothing is
+                // running.
                 let in_flight = match progress {
                     ImportProgress::Preparing { step, .. } => Some(ImportInFlight {
                         progress_percent: None,
@@ -831,7 +864,21 @@ impl CandidateRuntime {
                     | ImportProgress::Failed { .. }
                     | ImportProgress::Cancelled { .. } => None,
                 };
-                self.set(candidate_key, |_, runtime| runtime.import = in_flight);
+                let import_id = progress.import_id();
+                // Only the import that holds the claim moves it. A report
+                // from any other — one that ended, whose measuring threads
+                // were still finishing a track — would put an import back on
+                // a candidate nothing is importing.
+                self.set(candidate_key, |_, runtime| {
+                    if !claimed_by(runtime, import_id) {
+                        debug!("{candidate_key}: dropped a report of import {import_id}, which does not hold it");
+                        return;
+                    }
+                    runtime.import = in_flight.map(|in_flight| ClaimedImport {
+                        import_id: import_id.to_string(),
+                        in_flight,
+                    });
+                });
             }
             ImportEvent::IdentifyStateChanged {
                 candidate_key,

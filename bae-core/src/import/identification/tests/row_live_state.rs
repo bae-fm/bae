@@ -82,7 +82,7 @@ async fn a_claimed_import_reaches_its_row_and_not_the_list() {
     assert!(!idle.facts.importing);
     assert!(!idle.actions.is_empty(), "an idle row offers its commands");
 
-    fixture.import.claim_candidate_for_import(&key).await;
+    fixture.import.claim_candidate_for_import(&key, "import-1").await;
 
     let claimed = next_live_state(&mut live).await;
     assert!(claimed.facts.importing);

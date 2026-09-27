@@ -25,9 +25,24 @@ use crate::playback::SharedSparseBuffer;
 
 /// One source file open for the tracks reading it: the buffer its bytes
 /// stream through and the fill task that holds the file.
+///
+/// Dropped without being closed — the pass it belongs to was itself dropped,
+/// as a cancelled import's is — it stops the stream all the same. The tracks
+/// decoding it run on blocking threads that nothing can abort, and what stops
+/// them is their next read finding the stream stopped; left running, they
+/// would go on decoding, and reporting, for a pass that no longer exists.
 pub(crate) struct SourceStream {
-    buffer: SharedSparseBuffer,
+    buffer: StopOnDrop,
     fill: FillTask,
+}
+
+/// A stream's buffer, stopped when the stream lets go of it.
+struct StopOnDrop(SharedSparseBuffer);
+
+impl Drop for StopOnDrop {
+    fn drop(&mut self) {
+        self.0.cancel();
+    }
 }
 
 impl SourceStream {
@@ -39,14 +54,16 @@ impl SourceStream {
     ) -> Self {
         let buffer = create_sparse_buffer(size);
         let fill = reader.start_reading(buffer.clone(), on_error);
-        Self { buffer, fill }
+        Self {
+            buffer: StopOnDrop(buffer),
+            fill,
+        }
     }
 
     /// Stop the stream and wait for its fill to end, so the file is closed
     /// when this returns.
     async fn close(self) {
         let Self { buffer, fill } = self;
-        buffer.cancel();
         drop(buffer);
         fill.ended().await;
     }
@@ -113,7 +130,7 @@ where
                     .entry(file.clone())
                     .or_insert_with(|| (open(file), 0));
                 *readers += 1;
-                streams.insert(file.clone(), stream.buffer.clone());
+                streams.insert(file.clone(), stream.buffer.0.clone());
             }
             let task = work(track, streams);
             running.spawn(async move { (index, files, task.await) });

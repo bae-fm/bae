@@ -264,3 +264,74 @@ async fn a_failed_track_stops_the_run_and_closes_every_file() {
     );
     coven::assert_no_open_files_under(dir.path());
 }
+
+/// A pass dropped part way — the import it measured for was cancelled —
+/// stops the streams its tracks read. A track decoding on a blocking thread,
+/// which nothing aborts, finds its next read stopped and ends, instead of
+/// decoding on for a pass that no longer exists.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_dropped_pass_stops_the_streams_its_tracks_read() {
+    let dir = tempfile::tempdir().unwrap();
+    let tracks = file_per_track(dir.path(), 1);
+    let (reading_tx, reading) = tokio::sync::oneshot::channel();
+    let (pass_dropped, pass_dropped_rx) = std::sync::mpsc::channel::<()>();
+    let (next_read_tx, next_read) = tokio::sync::oneshot::channel();
+    let track_ends = Arc::new(Mutex::new(Some((
+        reading_tx,
+        pass_dropped_rx,
+        next_read_tx,
+    ))));
+
+    let mut pass = Box::pin(run_tracks_over_sources(
+        tracks,
+        NonZeroUsize::MIN,
+        |track: &Track| track.files.clone(),
+        |path: &PathBuf| {
+            SourceStream::start(
+                Box::new(LocalReader::new(path)),
+                FILE_BYTES as u64,
+                Box::new(|_| {}),
+            )
+        },
+        |_track, streams| {
+            let (reading_tx, pass_dropped_rx, next_read_tx) =
+                track_ends.lock().unwrap().take().expect("one track runs");
+            async move {
+                let stream = streams
+                    .into_values()
+                    .next()
+                    .expect("the track reads its file");
+                tokio::task::spawn_blocking(move || {
+                    let mut reader = stream.new_reader();
+                    let mut bytes = vec![0u8; 1024];
+                    reader.read(&mut bytes).expect("the stream serves its file");
+                    reading_tx.send(()).unwrap();
+                    pass_dropped_rx.recv().unwrap();
+                    next_read_tx.send(reader.read(&mut bytes)).unwrap();
+                })
+                .await
+                .unwrap();
+                Ok::<_, String>(())
+            }
+        },
+    ));
+    tokio::select! {
+        _ = &mut pass => panic!("the track is still reading"),
+        started = reading => started.unwrap(),
+    }
+
+    drop(pass);
+    pass_dropped.send(()).unwrap();
+
+    let next_read = tokio::time::timeout(Duration::from_secs(10), next_read)
+        .await
+        .expect("the track reads again")
+        .unwrap();
+    assert!(
+        matches!(
+            next_read,
+            Err(crate::playback::sparse_buffer::BufferStop::Cancelled)
+        ),
+        "the dropped pass stopped its stream: {next_read:?}"
+    );
+}

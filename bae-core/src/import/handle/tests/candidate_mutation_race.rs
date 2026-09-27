@@ -21,7 +21,7 @@ async fn an_edit_prepared_before_a_claim_cannot_land_after_the_claim() {
         }
     });
     tokio::task::yield_now().await;
-    handle.runtime.claim_for_import(&key).unwrap();
+    handle.runtime.claim_for_import(&key, "import-1").unwrap();
     drop(commit);
 
     assert!(matches!(

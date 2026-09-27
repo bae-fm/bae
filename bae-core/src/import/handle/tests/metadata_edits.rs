@@ -539,7 +539,7 @@ async fn a_claimed_candidate_refuses_every_preparation_mutation() {
         .cover
         .expect("the fixture has a selected cover")
         .selection;
-    handle.claim_candidate_for_import_for_test(&key).await;
+    handle.claim_candidate_for_import_for_test(&key, "import-1").await;
 
     assert_every_mutation_refused(
         &handle,

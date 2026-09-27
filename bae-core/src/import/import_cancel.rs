@@ -2,12 +2,20 @@
 //! while it runs.
 //!
 //! An import writes nothing durable until its last step, which writes the
-//! whole release in one transaction. So everything before that step can be
-//! dropped and leaves the library as it was — and that step, once begun, is
-//! not interrupted: a cancel that arrives then is refused and the import
+//! whole release in one transaction — and with it clears the failure an
+//! earlier attempt left. So everything before that step can be dropped and
+//! leaves the library as it was — and that step, once begun, is not
+//! interrupted: a cancel that arrives then is refused and the import
 //! completes. The registry is where the two sides agree which of those an
 //! import is in, under one lock, so a cancel and the start of the write can
 //! never both win.
+//!
+//! Dropping the work is not quite the end of it. Tracks being measured decode
+//! on blocking threads that nothing aborts; the streams they read stop when
+//! the dropped work lets go of them, so each ends at its next read, and what
+//! one reports on its way out names an import that no longer holds the
+//! candidate, which the candidate's runtime does not record. The next import
+//! starts from the queue.
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -56,6 +64,12 @@ pub(crate) enum ImportRunEnd<T> {
 
 /// Every import between its claim and its end, by candidate key. One per
 /// candidate: a candidate is claimed by one import at a time.
+///
+/// Each entry is its import's own, by import id. An import cancelled while it
+/// waited is gone from here at once, and the candidate can be imported again
+/// before the worker reaches the command it left in the queue; that command
+/// must find nothing of its own and be skipped, not take up the entry of the
+/// import that followed it.
 #[derive(Clone, Default)]
 pub(crate) struct ImportCancels {
     entries: Arc<Mutex<HashMap<String, Entry>>>,
@@ -79,23 +93,30 @@ impl ImportCancels {
         );
     }
 
-    /// The import never reached the worker.
-    pub(crate) fn forget(&self, candidate_key: &str) {
-        self.entries.lock().unwrap().remove(candidate_key);
+    /// The import `import_id` of `candidate_key` never reached the worker.
+    pub(crate) fn forget(&self, candidate_key: &str, import_id: &str) {
+        let mut entries = self.entries.lock().unwrap();
+        if entries
+            .get(candidate_key)
+            .is_some_and(|entry| entry.import_id == import_id)
+        {
+            entries.remove(candidate_key);
+        }
     }
 
-    /// Run the worker's `work` for `candidate_key`'s import: skipped when it
-    /// was cancelled while it waited, and dropped when it is cancelled before
-    /// it begins writing. Its entry ends with it.
+    /// Run the worker's `work` for the import `import_id` of `candidate_key`:
+    /// skipped when it was cancelled while it waited, and dropped when it is
+    /// cancelled before it begins writing. Its entry ends with it.
     pub(crate) async fn run<T>(
         &self,
         candidate_key: &str,
+        import_id: &str,
         work: impl std::future::Future<Output = T>,
     ) -> ImportRunEnd<T> {
         let token = {
             let mut entries = self.entries.lock().unwrap();
             match entries.get_mut(candidate_key) {
-                Some(entry) if !entry.token.is_cancelled() => {
+                Some(entry) if entry.import_id == import_id && !entry.token.is_cancelled() => {
                     entry.stage = Stage::Running;
                     entry.token.clone()
                 }
@@ -117,16 +138,20 @@ impl ImportCancels {
             _ = token.cancelled() => ImportRunEnd::CancelledRunning,
             result = work => ImportRunEnd::Ran(result),
         };
-        self.forget(candidate_key);
+        self.forget(candidate_key, import_id);
         end
     }
 
-    /// The import is about to write its release. Refused when it was
-    /// cancelled first; after this, a cancel is.
-    pub(crate) fn begin_writing(&self, candidate_key: &str) -> Result<(), crate::import::ImportError> {
+    /// The import `import_id` is about to write its release. Refused when it
+    /// was cancelled first; after this, a cancel is.
+    pub(crate) fn begin_writing(
+        &self,
+        candidate_key: &str,
+        import_id: &str,
+    ) -> Result<(), crate::import::ImportError> {
         let mut entries = self.entries.lock().unwrap();
         match entries.get_mut(candidate_key) {
-            Some(entry) if !entry.token.is_cancelled() => {
+            Some(entry) if entry.import_id == import_id && !entry.token.is_cancelled() => {
                 entry.stage = Stage::Writing;
                 Ok(())
             }
@@ -202,7 +227,9 @@ mod tests {
             }
         );
         let end = cancels
-            .run("Album", async { panic!("a cancelled import never runs") })
+            .run("Album", "import-1", async {
+                panic!("a cancelled import never runs")
+            })
             .await;
         assert!(matches!(end, ImportRunEnd::<()>::CancelledWaiting));
         assert_eq!(cancels.cancel("Album"), CancelOutcome::NotImporting);
@@ -217,7 +244,7 @@ mod tests {
             let cancels = cancels.clone();
             tokio::spawn(async move {
                 cancels
-                    .run("Album", async {
+                    .run("Album", "import-1", async {
                         started_tx.send(()).unwrap();
                         std::future::pending::<()>().await
                     })
@@ -240,8 +267,8 @@ mod tests {
         cancels.register("Album", "import-1");
         let writing = cancels.clone();
         let end = cancels
-            .run("Album", async move {
-                writing.begin_writing("Album").unwrap();
+            .run("Album", "import-1", async move {
+                writing.begin_writing("Album", "import-1").unwrap();
                 writing.cancel("Album")
             })
             .await;
@@ -256,7 +283,7 @@ mod tests {
         cancels.entries.lock().unwrap().get_mut("Album").unwrap().stage = Stage::Running;
 
         assert_eq!(cancels.cancel("Album"), CancelOutcome::CancelledRunning);
-        assert!(cancels.begin_writing("Album").is_err());
+        assert!(cancels.begin_writing("Album", "import-1").is_err());
     }
 
     #[test]
@@ -273,6 +300,29 @@ mod tests {
             vec![("Album 1".to_string(), "import-1".to_string())]
         );
         assert_eq!(cancels.cancel("Album 3"), CancelOutcome::Writing);
-        assert!(cancels.begin_writing("Album 2").is_err());
+        assert!(cancels.begin_writing("Album 2", "import-2").is_err());
+    }
+
+    /// A command cancelled while it waited finds the entry of the import that
+    /// followed it and leaves it alone: it is skipped, and the import that
+    /// holds the candidate now runs when the worker reaches it.
+    #[tokio::test]
+    async fn a_command_cancelled_while_waiting_leaves_the_next_import_alone() {
+        let cancels = ImportCancels::default();
+        cancels.register("Album", "import-1");
+        cancels.cancel("Album");
+        cancels.register("Album", "import-2");
+
+        let end = cancels
+            .run("Album", "import-1", async {
+                panic!("the cancelled command never runs")
+            })
+            .await;
+        assert!(matches!(end, ImportRunEnd::<()>::CancelledWaiting));
+        assert!(cancels.begin_writing("Album", "import-1").is_err());
+        cancels.forget("Album", "import-1");
+
+        let end = cancels.run("Album", "import-2", async { "ran" }).await;
+        assert!(matches!(end, ImportRunEnd::Ran("ran")));
     }
 }

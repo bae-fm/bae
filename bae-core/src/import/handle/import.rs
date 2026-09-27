@@ -403,15 +403,7 @@ impl ImportServiceHandle {
 
         // The claim is taken under the commit lock the standing was read
         // under, so no second import of these files can be claimed between.
-        self.runtime.claim_for_import(candidate_key)?;
-        if let Err(error) = self
-            .library_manager
-            .clear_import_candidate_failure(&expectation.candidate.content_hash)
-            .await
-        {
-            self.runtime.release_import_claim(candidate_key);
-            return Err(error.into());
-        }
+        self.runtime.claim_for_import(candidate_key, &import_id)?;
         // The claim is the point the candidate stops being identification's to
         // answer, so the run it had going ends here.
         self.cancel_identification(candidate_key);
@@ -698,12 +690,7 @@ impl ImportServiceHandle {
         let import_id = command.import_id.clone();
         let candidate_key = command.candidate_key.clone();
         let commit = self.folder_state_commit.lock("queue a test import").await;
-        // Whatever the last attempt left is about to be answered by this one,
-        // so the pane stops offering Retry the moment the work is queued.
-        self.library_manager
-            .clear_import_candidate_failure(&expectation.candidate.content_hash)
-            .await?;
-        self.runtime.claim_for_import(&candidate_key)?;
+        self.runtime.claim_for_import(&candidate_key, &import_id)?;
         drop(commit);
         self.send_claimed_command(command, expectation).await?;
         Ok(import_id)
@@ -715,8 +702,8 @@ impl ImportServiceHandle {
         expectation: crate::import::service::ImportExpectation,
     ) -> Result<(), crate::import::ImportError> {
         let candidate_key = command.candidate_key.clone();
-        self.import_cancels
-            .register(&candidate_key, &command.import_id);
+        let import_id = command.import_id.clone();
+        self.import_cancels.register(&candidate_key, &import_id);
         if self
             .worker
             .send(crate::import::service::ImportWorkerMessage::Import {
@@ -725,8 +712,8 @@ impl ImportServiceHandle {
             })
             .is_err()
         {
-            self.import_cancels.forget(&candidate_key);
-            self.release_import_claim(&candidate_key).await;
+            self.import_cancels.forget(&candidate_key, &import_id);
+            self.release_import_claim(&candidate_key, &import_id).await;
             return Err(crate::import::ImportError::Internal {
                 detail: "Failed to queue import command".to_string(),
             });
@@ -751,15 +738,7 @@ impl ImportServiceHandle {
                         if tx.is_closed() {
                             break;
                         }
-                        let matches = match &progress {
-                            ImportProgress::Preparing { import_id: iid, .. }
-                            | ImportProgress::Progress { import_id: iid, .. }
-                            | ImportProgress::Complete { import_id: iid, .. }
-                            | ImportProgress::RemoteUploadQueued { import_id: iid, .. }
-                            | ImportProgress::Failed { import_id: iid, .. }
-                            | ImportProgress::Cancelled { import_id: iid } => *iid == import_id,
-                        };
-                        if matches && tx.send(progress).is_err() {
+                        if progress.import_id() == import_id && tx.send(progress).is_err() {
                             break;
                         }
                     }

@@ -65,6 +65,8 @@ pub mod signals;
 pub mod storage;
 pub mod sync;
 #[cfg(test)]
+pub(crate) mod test_files;
+#[cfg(test)]
 pub(crate) mod test_logs;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod text_encoding;
