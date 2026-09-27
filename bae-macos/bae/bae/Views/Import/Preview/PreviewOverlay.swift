@@ -14,7 +14,7 @@ struct PreviewOverlay: View {
                 previewAudio.previewStop()
             },
             content: {
-                VStack(spacing: 12) {
+                VStack(spacing: ThemeSpace.group) {
                     HStack {
                         Text(URL(fileURLWithPath: path).lastPathComponent)
                             .themeText(.body)
@@ -25,7 +25,7 @@ struct PreviewOverlay: View {
                             previewAudio.previewStop()
                         } label: {
                             Image(systemName: "xmark")
-                                .font(.body)
+                                .themeIcon(.medium)
                                 .foregroundStyle(.secondary)
                         }
                         .buttonStyle(.plain)
@@ -38,7 +38,7 @@ struct PreviewOverlay: View {
                                 systemName: isPlaying
                                     ? "pause.fill" : "play.fill"
                             )
-                            .font(.body)
+                            .themeIcon(.medium)
                         }
                         .buttonStyle(.plain)
                         PreviewProgressView(

@@ -10,10 +10,10 @@ struct LibrarySearchField: View {
     var onEscape: () -> Void
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: ThemeSpace.related) {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(.tertiary)
-                .font(.system(size: 13, weight: .semibold))
+                .themeIcon(.medium)
             TextField(prompt, text: $text)
                 .textFieldStyle(.plain)
                 .themeText(.body)
@@ -25,7 +25,7 @@ struct LibrarySearchField: View {
             if !text.isEmpty {
                 Button(action: { text = "" }) {
                     Image(systemName: "xmark")
-                        .font(.system(size: 9, weight: .bold))
+                        .themeIcon(.badge)
                         .foregroundStyle(.secondary)
                         .frame(width: 20, height: 20)
                         .background(
@@ -36,7 +36,7 @@ struct LibrarySearchField: View {
                 .buttonStyle(.plain)
             }
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, ThemeSpace.group)
         .frame(height: 36)
         // A sunken well like the section control's.
         .background(

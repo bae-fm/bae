@@ -58,7 +58,9 @@ import fm.bae.app.sideHeaderText
 import fm.bae.app.text
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeRadius
+import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CoverImage
 import fm.bae.app.ui.components.Eyebrow
@@ -129,7 +131,7 @@ fun AlbumDetailScreen(
                     Text(
                         text = it,
                         color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.align(Alignment.TopCenter).padding(8.dp),
+                        modifier = Modifier.align(Alignment.TopCenter).padding(ThemeSpace.related),
                     )
                 }
                 // Derived rather than stored, so a release list that arrives
@@ -170,7 +172,7 @@ private fun BoxScope.AlbumDetailLoadingBox(
 ) {
     if (loadError != null) {
         Column(
-            modifier = Modifier.align(Alignment.Center).padding(32.dp),
+            modifier = Modifier.align(Alignment.Center).padding(ThemeSpace.page),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(text = loadError, color = MaterialTheme.colorScheme.error)
@@ -185,7 +187,7 @@ private fun BoxScope.AlbumDetailLoadingBox(
 private fun AlbumDetailTopBar(onBack: () -> Unit) {
     Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
+            modifier = Modifier.fillMaxWidth().padding(ThemeSpace.related),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onBack) {
@@ -297,8 +299,8 @@ internal fun AlbumDetailContent(
     }
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxSize().padding(ThemeSpace.edge),
+        verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
     ) {
         item {
             AlbumDetailHeader(
@@ -312,7 +314,7 @@ internal fun AlbumDetailContent(
 
         if (detail.releases.size > 1) {
             item {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
                     detail.releases.forEach { rel ->
                         FilterChip(
                             selected = rel.id == selectedRelease?.id,
@@ -348,14 +350,14 @@ private fun AlbumDetailHeader(
         CoverImage(
             cover = cover,
             cornerRadius = ThemeRadius.cover,
-            iconPadding = 32.dp,
+            iconPadding = ThemeSpace.page,
             modifier =
                 Modifier
                     .size(140.dp)
                     .clickable(enabled = galleryItems.isNotEmpty(), onClick = onShowGallery),
             contentDescription = album.title,
         )
-        Spacer(modifier = Modifier.width(16.dp))
+        Spacer(modifier = Modifier.width(ThemeSpace.edge))
         Column(modifier = Modifier.weight(1f)) {
             Text(text = album.title, style = ThemeText.hero.style)
             Text(
@@ -372,7 +374,7 @@ private fun AlbumDetailHeader(
             }
             val meta = compactMeta()
             if (meta.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(ThemeSpace.inline))
                 Text(
                     text = meta,
                     style = ThemeText.detail.style,
@@ -385,28 +387,32 @@ private fun AlbumDetailHeader(
 
 @Composable
 private fun AlbumActionButtons(callbacks: AlbumDetailCallbacks) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
             PrimaryButton(onClick = callbacks.onPlayRelease) {
-                Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(8.dp))
+                Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(ThemeIcon.medium))
+                Spacer(modifier = Modifier.width(ThemeSpace.related))
                 Text(stringResource(R.string.play))
             }
             OutlinedButton(onClick = callbacks.onShuffleRelease) {
-                Icon(Icons.Filled.Shuffle, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(8.dp))
+                Icon(Icons.Filled.Shuffle, contentDescription = null, modifier = Modifier.size(ThemeIcon.medium))
+                Spacer(modifier = Modifier.width(ThemeSpace.related))
                 Text(stringResource(R.string.shuffle))
             }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
             OutlinedButton(onClick = callbacks.onPlayReleaseNext) {
-                Icon(Icons.AutoMirrored.Filled.PlaylistPlay, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(8.dp))
+                Icon(
+                    Icons.AutoMirrored.Filled.PlaylistPlay,
+                    contentDescription = null,
+                    modifier = Modifier.size(ThemeIcon.medium),
+                )
+                Spacer(modifier = Modifier.width(ThemeSpace.related))
                 Text(stringResource(R.string.play_next))
             }
             OutlinedButton(onClick = callbacks.onAddReleaseToQueue) {
-                Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(8.dp))
+                Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(ThemeIcon.medium))
+                Spacer(modifier = Modifier.width(ThemeSpace.related))
                 Text(stringResource(R.string.add_to_queue))
             }
         }
@@ -425,7 +431,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.albumTrackGroups(
         val header = group.sideHeaderText(context)
         if (header.isNotEmpty()) {
             item {
-                Eyebrow(text = header, modifier = Modifier.padding(top = 8.dp))
+                Eyebrow(text = header, modifier = Modifier.padding(top = ThemeSpace.related))
             }
         }
         val groupOffset = runningIndex
@@ -465,7 +471,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.albumTrackGroups(
                     text = groupDurationLabel,
                     style = ThemeText.detail.style,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 8.dp),
+                    modifier = Modifier.padding(top = ThemeSpace.related),
                 )
             }
         }

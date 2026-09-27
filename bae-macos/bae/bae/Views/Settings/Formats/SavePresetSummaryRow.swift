@@ -7,7 +7,7 @@ struct SavePresetSummaryRow: View {
 
     var body: some View {
         HStack(alignment: .center) {
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: ThemeSpace.line) {
                 Text(preset.name)
                     .themeText(.rowTitle)
                 Text(summary)

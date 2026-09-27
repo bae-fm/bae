@@ -11,27 +11,36 @@ func releaseGroupDisclosureID(
 /// rail that runs down the members.
 enum ImportListHierarchyLayout {
     /// The horizontal padding every list row carries, member or not.
-    static let rowEdgePadding: CGFloat = 12
-    /// Where the rail runs, from the list edge — under the header's chevron.
-    static let railInset: CGFloat = 17
-    /// Where a member row's content starts, from the list edge.
-    static let memberContentInset: CGFloat = 28
+    static let rowEdgePadding = ThemeSpace.group
+    /// The folder header's disclosure chevron.
+    static let headerChevron = ThemeIcon.small
+    /// The gap between the header's chevron and its name.
+    static let headerSpacing = ThemeSpace.compact
+    static let railWidth: CGFloat = 1
+    /// Where the rail runs, from the list edge: centred under the chevron.
+    static var railInset: CGFloat {
+        rowEdgePadding + (headerChevron.size - railWidth) / 2
+    }
+    /// Where a member row's content starts, from the list edge: under the
+    /// header's name.
+    static var memberContentInset: CGFloat {
+        rowEdgePadding + headerChevron.size + headerSpacing
+    }
     /// The leading padding a member row adds on top of its own edge padding
     /// so its content lands at `memberContentInset`.
     static var memberInset: CGFloat { memberContentInset - rowEdgePadding }
     /// Air over a group boundary, drawn as its own spacer row so every real
     /// row keeps a symmetric box for the selection highlight.
-    static let groupBoundaryAir: CGFloat = 7
+    static let groupBoundaryAir = ThemeSpace.related
 }
 
-/// The filter row's geometry: one hit box and one glyph size for every
-/// control at its end.
+/// The filter row's geometry: one hit box and one glyph for every control at
+/// its end.
 enum ImportFilterBarLayout {
     /// The clickable square each trailing control occupies.
-    static let controlHitSize: CGFloat = 24
+    static let controlHitSize = ThemeSize.hitTarget
     /// The glyph drawn inside that square.
-    static let glyphSize: CGFloat = 14
-    /// The row's height.
+    static let glyph = ThemeIcon.medium
     static let rowHeight: CGFloat = 36
 }
 
@@ -54,7 +63,7 @@ extension View {
             if isGroupMember {
                 Rectangle()
                     .fill(Theme.hairline)
-                    .frame(width: 1)
+                    .frame(width: ImportListHierarchyLayout.railWidth)
                     .padding(.leading, ImportListHierarchyLayout.railInset)
             }
         }
@@ -285,16 +294,14 @@ struct ImportCandidateListContent: View {
                         activeTab: activeTabBinding,
                         counts: summary.counts
                     )
-                    .padding(.horizontal, 10)
-                    .padding(.top, 10)
-                    .padding(.bottom, 10)
+                    .padding(ThemeSpace.related)
 
                     // Separates choosing the tab from filtering it.
                     Divider()
 
-                    HStack(spacing: 8) {
+                    HStack(spacing: ThemeSpace.related) {
                         Image(systemName: "magnifyingglass")
-                            .font(.system(size: 13))
+                            .themeIcon(ImportFilterBarLayout.glyph)
                             .foregroundStyle(.tertiary)
                         TextField("Filter...", text: filterTextBinding)
                             .textFieldStyle(.plain)
@@ -306,12 +313,7 @@ struct ImportCandidateListContent: View {
                                 listSlot.setFilterText("")
                             } label: {
                                 Image(systemName: "xmark.circle.fill")
-                                    .font(
-                                        .system(
-                                            size: ImportFilterBarLayout
-                                                .glyphSize
-                                        )
-                                    )
+                                    .themeIcon(ImportFilterBarLayout.glyph)
                                     .foregroundStyle(.tertiary)
                                     .filterBarControl()
                             }
@@ -369,7 +371,7 @@ struct ImportCandidateListContent: View {
                         )
                         .equatable()
                     }
-                    .padding(.horizontal, 14)
+                    .padding(.horizontal, ThemeSpace.group)
                     .frame(height: ImportFilterBarLayout.rowHeight)
                     // A click anywhere on the row puts the caret in the
                     // field; the controls at the end keep their own clicks.
@@ -613,11 +615,11 @@ extension ImportCandidateListContent {
                 !expanded
             )
         } label: {
-            HStack(spacing: 7) {
+            HStack(spacing: ImportListHierarchyLayout.headerSpacing) {
                 Image(systemName: expanded ? "chevron.down" : "chevron.right")
-                    .font(.system(size: 9, weight: .semibold))
+                    .themeIcon(ImportListHierarchyLayout.headerChevron)
                     .foregroundStyle(.tertiary)
-                    .frame(width: 9)
+                    .frame(width: ImportListHierarchyLayout.headerChevron.size)
                 Text(group.name)
                     .themeText(.strong)
                     .foregroundStyle(.secondary)
@@ -626,7 +628,7 @@ extension ImportCandidateListContent {
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, ImportListHierarchyLayout.rowEdgePadding)
-            .padding(.vertical, 4)
+            .padding(.vertical, ThemeSpace.inline)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

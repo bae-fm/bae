@@ -22,6 +22,9 @@ struct ImportedReleasePane: View {
     let onOpenDocument: (String, String) -> Void
     let onPlayTrack: (Int) -> Void
 
+    /// The height the loading and failed states hold.
+    private static let placeholderHeight: CGFloat = 280
+
     @State
     private var session: ReleaseMetadataEditSession?
     @State
@@ -32,7 +35,7 @@ struct ImportedReleasePane: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: ThemeSpace.section) {
                 CandidateFolderLine(
                     tab: candidate.tab,
                     folderName: candidate.displayName,
@@ -57,16 +60,22 @@ struct ImportedReleasePane: View {
                     LoadFailureView(line: loadError) {
                         Task { await load() }
                     }
-                    .frame(maxWidth: .infinity, minHeight: 280)
+                    .frame(
+                        maxWidth: .infinity,
+                        minHeight: Self.placeholderHeight
+                    )
                 }
                 else {
                     ProgressView("Loading")
-                        .frame(maxWidth: .infinity, minHeight: 280)
+                        .frame(
+                            maxWidth: .infinity,
+                            minHeight: Self.placeholderHeight
+                        )
                 }
             }
-            .padding(.horizontal, 24)
-            .padding(.top, 20)
-            .padding(.bottom, 32)
+            .padding(.horizontal, ThemeSpace.section)
+            .padding(.top, ThemeSpace.section)
+            .padding(.bottom, ThemeSpace.page)
         }
         .task(id: releaseId) { await load() }
         .onDisappear {
@@ -75,13 +84,13 @@ struct ImportedReleasePane: View {
     }
 
     private func actionBar(_ session: ReleaseMetadataEditSession) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 10) {
+        VStack(alignment: .leading, spacing: ThemeSpace.related) {
+            HStack(spacing: ThemeSpace.related) {
                 Label("Imported", systemImage: "checkmark.circle.fill")
                     .foregroundStyle(Theme.success)
                 Button("View in Library") { onViewInLibrary(albumId) }
                     .buttonStyle(.link)
-                Spacer(minLength: 12)
+                Spacer(minLength: ThemeSpace.group)
                 Button("Reset to Source") { session.resetToSource() }
                     .opacity(session.canResetToSource ? 1 : 0)
                     .allowsHitTesting(session.canResetToSource)
@@ -110,7 +119,7 @@ struct ImportedReleasePane: View {
     }
 
     private var imagesSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: ThemeSpace.related) {
             FormSectionHeader(title: String(localized: "Images"), ruled: true)
             ImportMappingGallery(
                 images: candidate.mapping.images,
@@ -123,11 +132,11 @@ struct ImportedReleasePane: View {
     private var filesSection: some View {
         VStack(alignment: .leading, spacing: 0) {
             FormSectionHeader(title: String(localized: "Files"), ruled: true)
-                .padding(.bottom, 6)
+                .padding(.bottom, ThemeSpace.compact)
             ForEach(candidate.mapping.files, id: \.rowId) { row in
                 completedFileRow(row)
-                    .padding(.horizontal, 2)
-                    .padding(.vertical, 10)
+                    .padding(.horizontal, ThemeSpace.line)
+                    .padding(.vertical, ThemeSpace.related)
                     .overlay(alignment: .top) {
                         Rectangle().fill(Theme.hairline).frame(height: 1)
                     }
@@ -154,7 +163,7 @@ struct ImportedReleasePane: View {
             Button {
                 onOpenDocument(sheet.name, sheet.localPath)
             } label: {
-                HStack(spacing: 12) {
+                HStack(spacing: ThemeSpace.group) {
                     Text(sheet.name)
                         .themeText(.mono)
                         .lineLimit(1)
@@ -171,7 +180,7 @@ struct ImportedReleasePane: View {
     }
 
     private func completedFileLine(name: String, size: String) -> some View {
-        HStack(spacing: 12) {
+        HStack(spacing: ThemeSpace.group) {
             Text(name)
                 .themeText(.mono)
                 .lineLimit(1)
@@ -237,9 +246,11 @@ struct ImportingCandidatePane: View {
     let onStopPreview: () -> Void
     let previewingTarget: BridgePreviewTarget?
 
+    private static let coverSize: CGFloat = 200
+
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: ThemeSpace.section) {
                 CandidateFolderLine(
                     tab: candidate.tab,
                     folderName: candidate.displayName,
@@ -254,9 +265,9 @@ struct ImportingCandidatePane: View {
                             Double($0) / 100
                         }
                 )
-                HStack(alignment: .top, spacing: 24) {
-                    ImageView(content: coverContent, pointSize: 200)
-                        .frame(width: 200, height: 200)
+                HStack(alignment: .top, spacing: ThemeSpace.section) {
+                    ImageView(content: coverContent, pointSize: Self.coverSize)
+                        .frame(width: Self.coverSize, height: Self.coverSize)
                         .clipShape(
                             RoundedRectangle(cornerRadius: ThemeRadius.artwork)
                         )
@@ -271,7 +282,7 @@ struct ImportingCandidatePane: View {
                     }
                 }
                 if !candidate.mapping.images.isEmpty {
-                    VStack(alignment: .leading, spacing: 10) {
+                    VStack(alignment: .leading, spacing: ThemeSpace.related) {
                         FormSectionHeader(
                             title: String(localized: "Images"),
                             ruled: true
@@ -291,9 +302,9 @@ struct ImportingCandidatePane: View {
                     onStopPreview: onStopPreview
                 )
             }
-            .padding(.horizontal, 24)
-            .padding(.top, 20)
-            .padding(.bottom, 32)
+            .padding(.horizontal, ThemeSpace.section)
+            .padding(.top, ThemeSpace.section)
+            .padding(.bottom, ThemeSpace.page)
         }
     }
 }
@@ -317,7 +328,7 @@ private struct ReadOnlyCandidateMappingTable: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: ThemeSpace.edge) {
             ScrollView(.horizontal) {
                 VStack(spacing: 0) {
                     header
@@ -330,7 +341,7 @@ private struct ReadOnlyCandidateMappingTable: View {
                         if !section.sideHeaderText.isEmpty {
                             Eyebrow(verbatim: section.sideHeaderText)
                                 .frame(width: tableWidth, alignment: .leading)
-                                .padding(.top, 12)
+                                .padding(.top, ThemeSpace.group)
                         }
                         if case .sheet(let sheet, _) = section.content {
                             sourceCaption(sheet.name)
@@ -366,7 +377,7 @@ private struct ReadOnlyCandidateMappingTable: View {
                 .frame(width: ReleaseMetadataTrackColumns.length)
             Color.clear.frame(width: ReleaseMetadataTrackColumns.action)
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, ThemeSpace.compact)
     }
 
     @ViewBuilder
@@ -408,14 +419,14 @@ private struct ReadOnlyCandidateMappingTable: View {
             Color.clear.frame(width: ReleaseMetadataTrackColumns.action)
         }
         .themeText(.body)
-        .padding(.vertical, 10)
+        .padding(.vertical, ThemeSpace.related)
         .overlay(alignment: .top) {
             Rectangle().fill(Theme.hairline).frame(height: 1)
         }
     }
 
     private func readOnlySource(_ source: BridgeMappingSource) -> some View {
-        HStack(spacing: 6) {
+        HStack(spacing: ThemeSpace.compact) {
             if let target = source.previewTarget {
                 Button {
                     target == previewingTarget
@@ -458,7 +469,7 @@ private struct ReadOnlyCandidateMappingTable: View {
             .themeText(.mono)
             .foregroundStyle(.secondary)
             .frame(width: tableWidth, alignment: .leading)
-            .padding(.vertical, 6)
+            .padding(.vertical, ThemeSpace.compact)
     }
 
     private var readOnlyFiles: some View {
@@ -488,7 +499,7 @@ private struct ReadOnlyCandidateMappingTable: View {
                 }
             }
             .themeText(.mono)
-            .padding(.vertical, 10)
+            .padding(.vertical, ThemeSpace.related)
         }
     }
 }

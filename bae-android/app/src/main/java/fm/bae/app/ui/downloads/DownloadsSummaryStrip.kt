@@ -25,6 +25,7 @@ import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import uniffi.bae_bridge.BridgeDownloadSnapshot
 import uniffi.bae_bridge.BridgeDownloadState
@@ -47,8 +48,8 @@ internal fun DownloadsSummaryStrip(
         onClick = onTap,
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
+            verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(

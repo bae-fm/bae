@@ -11,7 +11,7 @@ struct ImportCombinedSourceView: View {
     private var confirming = false
 
     var body: some View {
-        HStack(alignment: .top, spacing: 16) {
+        HStack(alignment: .top, spacing: ThemeSpace.edge) {
             Label("Combined folders", systemImage: "square.stack.3d.up")
                 .themeText(.heading)
             Spacer()
@@ -26,7 +26,7 @@ struct ImportCombinedSourceView: View {
             Button("Keep as Separate Releases") { confirming = true }
                 .disabled(!canSeparate)
         }
-        .padding(16)
+        .padding(ThemeSpace.edge)
         .background(Theme.surfaceElevated)
         .alert("Keep as Separate Releases", isPresented: $confirming) {
             Button(

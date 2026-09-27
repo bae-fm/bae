@@ -21,21 +21,21 @@ struct CandidateFolderLine: View {
     }
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: ThemeSpace.related) {
             if let tab {
                 Button(action: onNavigateToPlacement) {
                     Text(Self.label(for: tab))
                         .themeText(.chip)
                         .lineLimit(1)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
+                        .padding(.horizontal, ThemeSpace.related)
+                        .padding(.vertical, ThemeSpace.line)
                         .background(Theme.accentSoft, in: Capsule())
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(Theme.accent)
                 .fixedSize()
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 9, weight: .semibold))
+                    .themeIcon(.small)
                     .foregroundStyle(.tertiary)
             }
             Button {
@@ -44,7 +44,7 @@ struct CandidateFolderLine: View {
                 }
             } label: {
                 Image(systemName: "folder")
-                    .font(.system(size: 14))
+                    .themeIcon(.medium)
                     .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)

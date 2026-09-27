@@ -20,13 +20,14 @@ struct QueueRow<Content: View, Badge: View>: View {
     let badge: () -> Badge
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .top, spacing: 12) {
+        VStack(alignment: .leading, spacing: ThemeSpace.compact) {
+            HStack(alignment: .top, spacing: ThemeSpace.group) {
                 Image(systemName: icon)
+                    .themeIcon(.medium)
                     .foregroundStyle(.secondary)
-                    .frame(width: 16)
+                    .frame(width: ThemeIcon.medium.size)
 
-                VStack(alignment: .leading, spacing: 3) {
+                VStack(alignment: .leading, spacing: ThemeSpace.line) {
                     content()
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -48,10 +49,11 @@ struct QueueRow<Content: View, Badge: View>: View {
             badge()
                 .themeText(.detail)
                 .lineLimit(1)
-                .padding(.leading, 28)
+                // Under the content, past the icon column.
+                .padding(.leading, ThemeIcon.medium.size + ThemeSpace.group)
         }
         .padding(.horizontal)
-        .padding(.vertical, 8)
+        .padding(.vertical, ThemeSpace.related)
     }
 }
 

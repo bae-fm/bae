@@ -275,10 +275,10 @@ private struct DownloadsStrip: View {
         let snapshot = downloadStore.snapshot
         if !snapshot.downloads.isEmpty {
             Button(action: onTap) {
-                HStack(spacing: 12) {
+                HStack(spacing: ThemeSpace.group) {
                     Image(systemName: "arrow.down.circle")
                         .foregroundStyle(.secondary)
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: ThemeSpace.inline) {
                         DownloadQueueSummaryLine(snapshot: snapshot, compact: true)
                         if let progress = activeProgress(snapshot) {
                             ProgressView(value: progress.fraction)
@@ -286,11 +286,11 @@ private struct DownloadsStrip: View {
                         }
                     }
                     Image(systemName: "chevron.right")
-                        .font(.caption)
+                        .themeIcon(.small)
                         .foregroundStyle(.secondary)
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
+                .padding(.horizontal, ThemeSpace.edge)
+                .padding(.vertical, ThemeSpace.related)
                 .contentShape(Rectangle())
                 .background(Theme.surface)
             }
@@ -328,7 +328,7 @@ private struct LibraryBanner: View {
                     configStore.clearError()
                 } label: {
                     Image(systemName: "xmark")
-                        .font(.caption.bold())
+                        .themeIcon(.small)
                         .foregroundStyle(Theme.onFill)
                 }
                 .accessibilityLabel("Dismiss")
@@ -377,7 +377,7 @@ private struct LibraryBanner: View {
         @ViewBuilder trailing: () -> Trailing
     ) -> some View {
         HStack {
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: ThemeSpace.line) {
                 Text(message)
                     .themeText(.detail)
                     .foregroundStyle(Theme.onFill)
@@ -392,8 +392,8 @@ private struct LibraryBanner: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             trailing()
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
+        .padding(.horizontal, ThemeSpace.edge)
+        .padding(.vertical, ThemeSpace.related)
         .background(Theme.danger)
     }
 }
@@ -409,8 +409,8 @@ private struct LibraryModePicker: View {
             Text("Artists").tag(LibraryBrowserMode.artists)
         }
         .pickerStyle(.segmented)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
+        .padding(.horizontal, ThemeSpace.edge)
+        .padding(.vertical, ThemeSpace.related)
     }
 }
 

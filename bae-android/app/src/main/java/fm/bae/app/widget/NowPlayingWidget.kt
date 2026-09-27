@@ -3,7 +3,6 @@ package fm.bae.app.widget
 import android.content.Context
 import android.graphics.drawable.Icon
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.unit.dp
 import androidx.glance.ColorFilter
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
@@ -35,7 +34,10 @@ import androidx.glance.unit.ColorProvider
 import fm.bae.app.R
 import fm.bae.app.mainActivityIntent
 import fm.bae.app.playback.ArtworkContentProvider
+import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeRadius
+import fm.bae.app.ui.appearance.ThemeSize
+import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import uniffi.bae_bridge.BridgeImageRef
 import androidx.compose.ui.text.font.FontWeight as ComposeFontWeight
@@ -68,12 +70,12 @@ private fun NowPlayingWidgetContent(snapshot: WidgetSnapshot) {
             GlanceModifier
                 .fillMaxSize()
                 .background(GlanceTheme.colors.surface)
-                .padding(12.dp)
+                .padding(ThemeSpace.group)
                 .clickable(actionStartActivity(mainActivityIntent(context))),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Cover(track?.coverImage)
-        Spacer(GlanceModifier.width(12.dp))
+        Spacer(GlanceModifier.width(ThemeSpace.group))
         Column(modifier = GlanceModifier.defaultWeight()) {
             Text(
                 text = track?.title ?: context.getString(R.string.widget_nothing_playing),
@@ -89,13 +91,13 @@ private fun NowPlayingWidgetContent(snapshot: WidgetSnapshot) {
             }
         }
         if (track != null) {
-            Spacer(GlanceModifier.width(8.dp))
+            Spacer(GlanceModifier.width(ThemeSpace.related))
             TransportButton(
                 iconRes = if (snapshot.isPlaying) R.drawable.ic_widget_pause else R.drawable.ic_widget_play,
                 descriptionRes = if (snapshot.isPlaying) R.string.pause else R.string.play,
                 command = COMMAND_TOGGLE,
             )
-            Spacer(GlanceModifier.width(4.dp))
+            Spacer(GlanceModifier.width(ThemeSpace.inline))
             TransportButton(
                 iconRes = R.drawable.ic_widget_next,
                 descriptionRes = R.string.next_track,
@@ -108,7 +110,7 @@ private fun NowPlayingWidgetContent(snapshot: WidgetSnapshot) {
 @Composable
 private fun Cover(coverImage: BridgeImageRef?) {
     val context = LocalContext.current
-    val coverSize = 56.dp
+    val coverSize = ThemeSize.barArtwork
     if (coverImage == null) {
         Box(
             modifier =
@@ -121,7 +123,7 @@ private fun Cover(coverImage: BridgeImageRef?) {
             Image(
                 provider = ImageProvider(R.drawable.ic_widget_music_note),
                 contentDescription = null,
-                modifier = GlanceModifier.size(28.dp),
+                modifier = GlanceModifier.size(ThemeIcon.large),
                 colorFilter = ColorFilter.tint(GlanceTheme.colors.onSecondaryContainer),
             )
         }
@@ -137,9 +139,6 @@ private fun Cover(coverImage: BridgeImageRef?) {
     }
 }
 
-/** A transport button is a circle this wide. */
-private val TRANSPORT_BUTTON_SIZE = 44.dp
-
 @Composable
 private fun TransportButton(
     iconRes: Int,
@@ -150,15 +149,15 @@ private fun TransportButton(
     Box(
         modifier =
             GlanceModifier
-                .size(TRANSPORT_BUTTON_SIZE)
-                .cornerRadius(TRANSPORT_BUTTON_SIZE / 2)
+                .size(ThemeSize.hitTarget)
+                .cornerRadius(ThemeSize.hitTarget / 2)
                 .clickable(actionRunCallback<NowPlayingWidgetTransportAction>(widgetCommand(command))),
         contentAlignment = Alignment.Center,
     ) {
         Image(
             provider = ImageProvider(iconRes),
             contentDescription = context.getString(descriptionRes),
-            modifier = GlanceModifier.size(26.dp),
+            modifier = GlanceModifier.size(ThemeIcon.large),
             colorFilter = ColorFilter.tint(GlanceTheme.colors.onSurface),
         )
     }

@@ -18,10 +18,7 @@ struct LibraryView: View {
     var configStore
     @Environment(LibraryProjectionStore.self)
     private var libraryProjections
-    /// Collapse kinematics for the header, fed by the panes' scroll reports
-    /// (`reportsHeaderScroll`). The header scrubs between its full and
-    /// compact metrics off `headerCollapse.progress`, reclaiming the
-    /// vertical room the full-size heading occupies at rest.
+    /// The header's collapse, fed by the panes' `reportsHeaderScroll`.
     @State
     private var headerCollapse = HeaderCollapse()
 
@@ -109,8 +106,7 @@ struct LibraryView: View {
             applyLibraryNavigation(request.target)
             uiStore.consumeLibraryNavigation(seq: request.seq)
         }
-        // Opening a detail expansion (plain click, search, external navigation)
-        // clears the multi-selection — the same semantics as a plain grid click.
+        // Opening an album's detail clears the multi-selection.
         .onChange(of: uiStore.selectedAlbumId) { _, selected in
             if selected != nil {
                 session.albumSelection.clear()
@@ -120,27 +116,30 @@ struct LibraryView: View {
 }
 
 extension LibraryView {
+    /// The split view's widths: the master list's least and ideal, and the
+    /// detail pane's least.
+    private static let listMinWidth: CGFloat = 260
+    private static let listIdealWidth: CGFloat = 320
+    private static let detailMinWidth: CGFloat = 420
+
     private var queueActions: QueueActions {
         QueueActions(library: library, queue: queue, uiStore: uiStore)
     }
 
-    /// The primary release id of each album, in the album order given. The grid's
-    /// bulk Play and Pin act on releases; a selected album is loaded (its summary
-    /// is interned), so the lookup resolves.
+    /// Each album's primary release id, in the given order; a selected album
+    /// is loaded, so its summary is there.
     private func primaryReleaseIds(for albumIds: [String]) -> [String] {
         albumIds.compactMap {
             libraryStore.albumSummaries[$0]?.primaryReleaseId
         }
     }
 
-    /// Whether the page spans the window instead of centering in the shared
-    /// capped column — the user's `libraryFullWidth` setting.
+    /// Whether the page spans the window instead of the capped column.
     private var fullWidth: Bool {
         configStore.config.libraryFullWidth
     }
 
-    /// Pinned above the content, fixed across mode switches. The heading *is*
-    /// the mode switcher; the trailing controls are mode-specific.
+    /// The header above every mode; its heading switches modes.
     private var libraryHeader: some View {
         LibraryHeader(
             collapseProgress: headerCollapse.progress,
@@ -230,9 +229,12 @@ extension LibraryView {
                         BrowseList(list: composerList) { index in
                             composerRow(at: index, list: composerList)
                         }
-                        .frame(minWidth: 260, idealWidth: 320)
+                        .frame(
+                            minWidth: Self.listMinWidth,
+                            idealWidth: Self.listIdealWidth
+                        )
                         ComposerDetailPane(paneDetail: composerPaneDetail)
-                            .frame(minWidth: 420)
+                            .frame(minWidth: Self.detailMinWidth)
                     }
                     .libraryContentContainer(fullWidth: fullWidth)
                 }
@@ -262,9 +264,12 @@ extension LibraryView {
                         BrowseList(list: artistList) { index in
                             artistRow(at: index, list: artistList)
                         }
-                        .frame(minWidth: 260, idealWidth: 320)
+                        .frame(
+                            minWidth: Self.listMinWidth,
+                            idealWidth: Self.listIdealWidth
+                        )
                         ArtistDetailPane(detail: selectedArtistDetail)
-                            .frame(minWidth: 420)
+                            .frame(minWidth: Self.detailMinWidth)
                     }
                     .libraryContentContainer(fullWidth: fullWidth)
                 }
@@ -419,8 +424,7 @@ extension LibraryView {
             .frame(width: 1500, height: 700)
     }
 
-    /// The same populated grid with the width cap lifted
-    /// (`libraryFullWidth`): header and grid span the window edge to edge.
+    /// The grid with the width cap lifted.
     #Preview("Albums \u{2014} Grid, full width") {
         let uiStore = UiStore()
         let libraryStore = LibraryStore()

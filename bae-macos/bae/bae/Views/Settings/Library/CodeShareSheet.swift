@@ -29,7 +29,7 @@ struct CodeShareSheet: View {
                     Spacer()
                 }
             case .success(let code):
-                VStack(spacing: 16) {
+                VStack(spacing: ThemeSpace.edge) {
                     Spacer()
 
                     CodeDisplay(code: code, qrSize: 200)

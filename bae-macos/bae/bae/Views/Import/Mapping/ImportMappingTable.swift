@@ -26,7 +26,7 @@ struct ImportMappingTable: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: ThemeSpace.edge) {
             tracksSection
             if !table.files.isEmpty {
                 section {
@@ -116,15 +116,15 @@ struct ImportMappingTable: View {
         Eyebrow(verbatim: text)
             .padding(.horizontal, ImportMappingColumns.rowPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.top, index == 0 ? 2 : 18)
-            .padding(.bottom, 6)
+            .padding(.top, index == 0 ? ThemeSpace.line : ThemeSpace.edge)
+            .padding(.bottom, ThemeSpace.compact)
     }
 
     private func sheetCaption(_ sheet: BridgeSheetGroup) -> some View {
         sheetCaptionRow(sheet)
             .padding(.horizontal, ImportMappingColumns.rowPadding)
-            .padding(.top, 2)
-            .padding(.bottom, 10)
+            .padding(.top, ThemeSpace.line)
+            .padding(.bottom, ThemeSpace.related)
     }
 
     private func sheetCaptionRow(_ sheet: BridgeSheetGroup) -> some View {
@@ -156,7 +156,7 @@ struct ImportMappingTable: View {
     // release disagree about the track count, when they do.
     private var trackHeaderRow: some View {
         headerRow {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
+            HStack(alignment: .firstTextBaseline, spacing: ThemeSpace.related) {
                 Eyebrow("Source")
                 if let reconciliation = table.reconciliation
                     .flatMap(bridgeSlotReconciliationText)
@@ -232,8 +232,8 @@ struct ImportMappingTable: View {
             content()
         }
         .padding(.horizontal, ImportMappingColumns.rowPadding)
-        .padding(.top, 4)
-        .padding(.bottom, 6)
+        .padding(.top, ThemeSpace.inline)
+        .padding(.bottom, ThemeSpace.compact)
     }
 
     private func evidenceFor(_ mapping: BridgeTrackMapping)
@@ -249,7 +249,7 @@ extension View {
     /// height, and a hairline over it.
     fileprivate func rowChrome(background: Color = .clear) -> some View {
         padding(.horizontal, ImportMappingColumns.rowPadding)
-            .padding(.vertical, 6)
+            .padding(.vertical, ThemeSpace.compact)
             .frame(minHeight: 40)
             .background(background)
             .overlay(alignment: .top) {

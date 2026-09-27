@@ -20,14 +20,27 @@ struct LibraryHeader<Trailing: View>: View {
         // Lines up with the album art: container padding plus the card's inset.
         .padding(
             .horizontal,
-            LibraryContentContainer.horizontalPadding + 6
+            LibraryContentContainer.horizontalPadding + ThemeSpace.compact
         )
-        .padding(.top, 66 - 52 * collapseProgress)
+        .padding(
+            .top,
+            collapsing(from: 2 * ThemeSpace.page, to: ThemeSpace.group)
+        )
         // Shrinks on collapse so the compact heading sits low in the band.
-        .padding(.bottom, 32 - 20 * collapseProgress)
+        .padding(
+            .bottom,
+            collapsing(from: ThemeSpace.page, to: ThemeSpace.group)
+        )
         // The content's container, so the header lines up with it at any width.
         .libraryContentContainer(fullWidth: fullWidth)
         .animation(.easeOut(duration: 0.15), value: collapseProgress)
+    }
+
+    /// A length from its full-size value to its collapsed one.
+    private func collapsing(from full: CGFloat, to collapsed: CGFloat)
+        -> CGFloat
+    {
+        full + (collapsed - full) * collapseProgress
     }
 }
 
@@ -52,7 +65,7 @@ struct LibraryHeader<Trailing: View>: View {
                 )
             }
             ScrollView {
-                LazyVStack(spacing: 12) {
+                LazyVStack(spacing: ThemeSpace.group) {
                     ForEach(0..<80, id: \.self) { index in
                         RoundedRectangle(cornerRadius: ThemeRadius.control)
                             .fill(Theme.surface)
@@ -60,11 +73,11 @@ struct LibraryHeader<Trailing: View>: View {
                             .overlay(alignment: .leading) {
                                 Text(verbatim: "Row \(index)")
                                     .foregroundStyle(.secondary)
-                                    .padding(.leading, 16)
+                                    .padding(.leading, ThemeSpace.edge)
                             }
                     }
                 }
-                .padding(.horizontal, 40)
+                .padding(.horizontal, ThemeSpace.page)
                 .padding(.bottom)
             }
             .reportsHeaderScroll(id: "preview")

@@ -9,11 +9,14 @@ struct DetailMediaRow: View {
     let subtitle: String?
 
     var body: some View {
-        HStack(spacing: 12) {
-            ImageView(imageRef: image, pointSize: 42)
-                .frame(width: 42, height: 42)
+        HStack(spacing: ThemeSpace.group) {
+            ImageView(imageRef: image, pointSize: ThemeSize.rowArtwork)
+                .frame(
+                    width: ThemeSize.rowArtwork,
+                    height: ThemeSize.rowArtwork
+                )
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: ThemeSpace.line) {
                 Text(title)
                     .themeText(.rowTitle)
                     .lineLimit(1)
@@ -32,7 +35,7 @@ struct DetailMediaRow: View {
 
 #if DEBUG
     #Preview("Detail Media Row") {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: ThemeSpace.related) {
             DetailMediaRow(
                 image: nil,
                 title: "Work Title",

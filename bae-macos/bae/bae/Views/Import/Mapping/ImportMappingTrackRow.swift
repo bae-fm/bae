@@ -126,7 +126,7 @@ struct ImportMappingTrackRow: View {
                     actions.addTrack(audio, candidate)
                 } label: {
                     Image(systemName: "plus")
-                        .font(.system(size: 10, weight: .semibold))
+                        .themeIcon(.small)
                         .foregroundStyle(Theme.accent)
                         .frame(
                             width: ImportMappingColumns.action,

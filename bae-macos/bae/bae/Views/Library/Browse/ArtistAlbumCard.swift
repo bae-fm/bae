@@ -8,7 +8,7 @@ struct ArtistAlbumCard: View {
 
     var body: some View {
         Button(action: onTap) {
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: ThemeSpace.compact) {
                 ImageView(imageRef: album.cover, pointSize: 140)
                     .aspectRatio(1, contentMode: .fit)
                     .clipShape(

@@ -13,8 +13,8 @@ struct DownloadRow: View {
             createdAt: op.createdAt,
             cancel: .init(help: "Cancel this download", action: onCancel)
         ) {
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: ThemeSpace.line) {
+                HStack(spacing: ThemeSpace.related) {
                     Text(op.title)
                         .lineLimit(1)
 

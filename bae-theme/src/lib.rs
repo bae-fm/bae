@@ -69,6 +69,28 @@ pub struct Theme {
     pub radius: BTreeMap<String, f64>,
     /// Text styles, by role.
     pub text: BTreeMap<String, TextRole>,
+    /// Gaps and insets, in points and dp, by role.
+    pub space: BTreeMap<String, f64>,
+    /// Glyph sizes, by role.
+    pub icon: BTreeMap<String, IconRole>,
+    /// Recurring element sizes, by role.
+    pub size: BTreeMap<String, PlatformLengths>,
+}
+
+/// A length each platform sets by its own convention: points on macOS and
+/// iOS, dp on Android.
+#[derive(Debug, Clone, Copy)]
+pub struct PlatformLengths {
+    pub macos: f64,
+    pub ios: f64,
+    pub android: f64,
+}
+
+/// A glyph size, and on Apple the weight SF Symbols draw it at.
+#[derive(Debug)]
+pub struct IconRole {
+    pub weight: Weight,
+    pub sizes: PlatformLengths,
 }
 
 /// A text role: weight, tracking, case and monospacing shared by every
@@ -91,6 +113,7 @@ pub struct TextRole {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Weight {
+    Thin,
     Regular,
     Medium,
     Semibold,
@@ -101,6 +124,7 @@ pub enum Weight {
 impl Weight {
     pub fn swift(self) -> &'static str {
         match self {
+            Self::Thin => ".thin",
             Self::Regular => ".regular",
             Self::Medium => ".medium",
             Self::Semibold => ".semibold",
@@ -111,6 +135,7 @@ impl Weight {
 
     pub fn kotlin(self) -> &'static str {
         match self {
+            Self::Thin => "FontWeight.Thin",
             Self::Regular => "FontWeight.Normal",
             Self::Medium => "FontWeight.Medium",
             Self::Semibold => "FontWeight.SemiBold",
@@ -144,6 +169,51 @@ struct RawTheme {
     opacity: BTreeMap<String, f64>,
     radius: BTreeMap<String, f64>,
     text: BTreeMap<String, RawTextRole>,
+    space: BTreeMap<String, f64>,
+    icon: BTreeMap<String, RawIconRole>,
+    size: BTreeMap<String, RawPlatformLengths>,
+}
+
+/// Lengths as written; a platform left out is reported rather than defaulted.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RawPlatformLengths {
+    macos: Option<f64>,
+    ios: Option<f64>,
+    android: Option<f64>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RawIconRole {
+    weight: Weight,
+    macos: Option<f64>,
+    ios: Option<f64>,
+    android: Option<f64>,
+}
+
+impl RawPlatformLengths {
+    /// Every platform's length, or a problem naming each one missing.
+    fn check(&self, context: &str, problems: &mut Vec<String>) -> PlatformLengths {
+        let mut length = |platform: &str, value: Option<f64>| match value {
+            Some(value) if value >= 0.0 => value,
+            Some(value) => {
+                problems.push(format!(
+                    "{context}: the {platform} length {value} is negative"
+                ));
+                0.0
+            }
+            None => {
+                problems.push(format!("{context} has no {platform} length"));
+                0.0
+            }
+        };
+        PlatformLengths {
+            macos: length("macos", self.macos),
+            ios: length("ios", self.ios),
+            android: length("android", self.android),
+        }
+    }
 }
 
 /// A text role as written; a platform left out is reported rather than
@@ -277,12 +347,49 @@ impl Theme {
         }
         check_role_names(raw.radius.keys(), &mut problems);
         check_role_names(raw.text.keys(), &mut problems);
+        for (name, value) in &raw.space {
+            if *value < 0.0 {
+                problems.push(format!("space {name}: {value} is negative"));
+            }
+        }
+        check_role_names(raw.space.keys(), &mut problems);
+        check_role_names(raw.icon.keys(), &mut problems);
+        let icon = raw
+            .icon
+            .iter()
+            .map(|(name, role)| {
+                let lengths = RawPlatformLengths {
+                    macos: role.macos,
+                    ios: role.ios,
+                    android: role.android,
+                };
+                let sizes = lengths.check(&format!("icon {name}"), &mut problems);
+                (
+                    name.clone(),
+                    IconRole {
+                        weight: role.weight,
+                        sizes,
+                    },
+                )
+            })
+            .collect();
+        check_role_names(raw.size.keys(), &mut problems);
+        let size = raw
+            .size
+            .iter()
+            .map(|(name, lengths)| {
+                (
+                    name.clone(),
+                    lengths.check(&format!("size {name}"), &mut problems),
+                )
+            })
+            .collect();
         let text = raw
             .text
             .iter()
             .map(|(name, role)| {
                 let mut lacks =
-                    |platform: &str| problems.push(format!("text {name} lacks a {platform} size"));
+                    |platform: &str| problems.push(format!("text {name} has no {platform} size"));
                 let macos = role.macos.unwrap_or_else(|| {
                     lacks("macos");
                     0.0
@@ -321,6 +428,9 @@ impl Theme {
                 opacity: raw.opacity,
                 radius: raw.radius,
                 text,
+                space: raw.space,
+                icon,
+                size,
             })
         } else {
             Err(problems)

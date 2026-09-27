@@ -1,12 +1,17 @@
 import BaeKit
 import SwiftUI
 
+/// The narrowest a grid cell gets, and the size its cover is decoded at.
+private let cellWidth: CGFloat = 150
+
 /// The paged album grid: one cell per slot, each loading its own page.
 struct AlbumGrid: View {
     let list: AlbumList
     let onSelect: (String) -> Void
 
-    private let columns = [GridItem(.adaptive(minimum: 150), spacing: 12)]
+    private let columns = [
+        GridItem(.adaptive(minimum: cellWidth), spacing: ThemeSpace.group)
+    ]
 
     var body: some View {
         if let error = list.initialLoadError {
@@ -22,12 +27,12 @@ struct AlbumGrid: View {
                     .themeText(.body)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
-                    .padding(32)
+                    .padding(ThemeSpace.page)
             }
         }
         else {
             ScrollView {
-                LazyVGrid(columns: columns, spacing: 12) {
+                LazyVGrid(columns: columns, spacing: ThemeSpace.group) {
                     ForEach(0..<list.totalCount, id: \.self) { position in
                         AlbumCell(
                             list: list,
@@ -36,7 +41,7 @@ struct AlbumGrid: View {
                         )
                     }
                 }
-                .padding(12)
+                .padding(ThemeSpace.group)
             }
         }
     }
@@ -81,8 +86,8 @@ private struct AlbumCard: View {
 
     var body: some View {
         Button(action: onTap) {
-            VStack(alignment: .leading, spacing: 6) {
-                ImageView(imageRef: summary.cover, pointSize: 150)
+            VStack(alignment: .leading, spacing: ThemeSpace.compact) {
+                ImageView(imageRef: summary.cover, pointSize: cellWidth)
                     .aspectRatio(1, contentMode: .fit)
                     .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.cover))
                 Text(summary.title)

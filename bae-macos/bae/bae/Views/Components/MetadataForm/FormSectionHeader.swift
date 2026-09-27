@@ -1,17 +1,18 @@
 import BaeKit
 import SwiftUI
 
-/// A section header: the eyebrow and an optional right-aligned note.
-///
-/// `ruled` draws a hairline to the far edge, for headers over borderless
-/// content.
+/// A section header: the eyebrow, an optional right-aligned note, and with
+/// `ruled` a hairline to the far edge for headers over borderless content.
 struct FormSectionHeader: View {
     let title: String
     var trailing: String?
     var ruled = false
 
     var body: some View {
-        HStack(alignment: ruled ? .center : .firstTextBaseline, spacing: 8) {
+        HStack(
+            alignment: ruled ? .center : .firstTextBaseline,
+            spacing: ThemeSpace.related
+        ) {
             Eyebrow(verbatim: title)
             if ruled {
                 Rectangle()
@@ -28,7 +29,7 @@ struct FormSectionHeader: View {
                     .foregroundStyle(.tertiary)
             }
         }
-        .padding(.horizontal, 2)
+        .padding(.horizontal, ThemeSpace.line)
     }
 }
 

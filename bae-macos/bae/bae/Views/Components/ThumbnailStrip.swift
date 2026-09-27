@@ -1,6 +1,12 @@
 import BaeKit
 import SwiftUI
 
+/// A strip's sizes, outside the generic view so callers can read them.
+enum ThumbnailStripLayout {
+    /// Each thumbnail's side, which callers also decode their images at.
+    static let thumbnailSize: CGFloat = 56
+}
+
 /// A horizontal strip of thumbnails over a `Cursor` that keeps the current
 /// item centered; the caller supplies each item's image view and stroke.
 struct ThumbnailStrip<Item: Identifiable & Equatable, Content: View>: View {
@@ -31,13 +37,13 @@ struct ThumbnailStrip<Item: Identifiable & Equatable, Content: View>: View {
     private func strip(minWidth: CGFloat?) -> some View {
         ScrollViewReader { scrollProxy in
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
+                HStack(spacing: ThemeSpace.compact) {
                     ForEach(cursor.items) { item in
                         cell(item)
                             .id(item.id)
                     }
                 }
-                .padding(.horizontal, 8)
+                .padding(.horizontal, ThemeSpace.related)
                 .frame(minWidth: minWidth)
             }
             .onAppear {
@@ -59,7 +65,10 @@ struct ThumbnailStrip<Item: Identifiable & Equatable, Content: View>: View {
             onSelect(item.id)
         } label: {
             content(item)
-                .frame(width: 56, height: 56)
+                .frame(
+                    width: ThumbnailStripLayout.thumbnailSize,
+                    height: ThumbnailStripLayout.thumbnailSize
+                )
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
                 .overlay(
                     RoundedRectangle(cornerRadius: ThemeRadius.artwork)
@@ -97,7 +106,7 @@ struct ThumbnailStrip<Item: Identifiable & Equatable, Content: View>: View {
                 },
                 content: { item in item.color }
             )
-            .padding(24)
+            .padding(ThemeSpace.section)
             .frame(width: 400)
             .background(Theme.background)
             .preferredColorScheme(.dark)

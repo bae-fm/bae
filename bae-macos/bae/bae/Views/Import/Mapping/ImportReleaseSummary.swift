@@ -95,7 +95,7 @@ struct ImportReleaseSummaryView<TitleAccessory: View>: View {
     let titleAccessory: () -> TitleAccessory
 
     var body: some View {
-        VStack(alignment: .leading, spacing: style.stackSpacing) {
+        VStack(alignment: .leading, spacing: ThemeSpace.line) {
             titleLine
             artistLine
             Text(summary.factsLine)
@@ -114,7 +114,7 @@ struct ImportReleaseSummaryView<TitleAccessory: View>: View {
 
     /// The title and the caller's accessory; the title truncates first.
     private var titleLine: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: ThemeSpace.compact) {
             Text(summary.title)
                 .themeText(style.titleText)
                 .foregroundStyle(
@@ -147,13 +147,6 @@ extension ImportReleaseSummaryView where TitleAccessory == EmptyView {
 }
 
 extension ImportReleaseSummaryView.Style {
-    fileprivate var stackSpacing: CGFloat {
-        switch self {
-        case .sidebar: 3
-        case .card: 2
-        }
-    }
-
     fileprivate var titleText: ThemeText {
         switch self {
         case .sidebar: .rowTitle
@@ -170,8 +163,8 @@ extension ImportReleaseSummaryView.Style {
 
     fileprivate var factsTopPadding: CGFloat {
         switch self {
-        case .sidebar: 1
-        case .card: 4
+        case .sidebar: ThemeSpace.hairline
+        case .card: ThemeSpace.inline
         }
     }
 

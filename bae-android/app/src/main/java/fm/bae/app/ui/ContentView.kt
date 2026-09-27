@@ -24,7 +24,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import fm.bae.app.AppScreen
 import fm.bae.app.AppSessionHolder
 import fm.bae.app.OAuthLinker
@@ -32,6 +31,7 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.ShortcutAction
 import fm.bae.app.data.LocalImageStore
+import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.library.ArtworkLoadingBanner
 import fm.bae.app.ui.library.LibraryScreen
 import fm.bae.app.ui.onboarding.OnboardingScreen
@@ -41,11 +41,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeLibrary
 
-/**
- * App root. Drives the [AppScreen] lifecycle: discover an existing library and
- * open it, or onboard. After onboarding restores a library it opens it; an
- * unlocked library shows the real library UI.
- */
+/** App root: opens an existing library or onboards, then shows the library once unlocked. */
 @Composable
 fun ContentView(
     oauthLinking: OAuthLinker?,
@@ -62,9 +58,7 @@ fun ContentView(
         )
     }
 
-    // On launch, go straight to an already-open session (e.g. after the
-    // composition is recreated), else open the first discovered library or fall
-    // through to onboarding.
+    // Reuse a session that is already open, else open the first discovered library or onboard.
     LaunchedEffect(startupError) {
         if (startupError != null) return@LaunchedEffect
         val open = AppSessionHolder.currentSession()
@@ -87,12 +81,7 @@ fun ContentView(
     }
 }
 
-/**
- * The app's root chrome: theme, the full-size background surface, and the
- * safe-drawing inset padding every screen sits inside. Screen bodies render
- * inside this. Screenshot captures render a scene inside the same chrome so a
- * captured screen looks exactly like the shipped one.
- */
+/** Theme, background and safe-drawing inset every screen sits in; screenshot captures use it too. */
 @Composable
 internal fun BaeAppChrome(content: @Composable () -> Unit) {
     BaeTheme {
@@ -171,12 +160,8 @@ private fun AppScreenRouter(
 }
 
 /**
- * The unlocked library UI plus the app-level snackbar host. Play Next / Add to
- * Queue confirm here with a transient "+N added" snackbar, surfaced wherever the
- * action was triggered — the now-playing bar that carries the queue button is
- * hidden while nothing plays, so a badge there would give no feedback when
- * building a queue from an idle state. collectLatest replaces a still-showing
- * confirmation with the newer count rather than queuing them.
+ * The unlocked library UI plus the snackbar that confirms Play Next and Add to
+ * Queue, since the now-playing bar is hidden while nothing plays.
  */
 @Composable
 private fun LibraryOpenScreen(
@@ -196,21 +181,14 @@ private fun LibraryOpenScreen(
             )
         }
     }
-    // The Resume shortcut opens the app straight into playback. Opening the
-    // library already restored the queue paused at the saved position, so this
-    // is the explicit resume that turns that restore into audio. The resulting
-    // retained playing value brings the foreground playback service up (the app
-    // is foregrounded by the launch), the same path an on-screen play uses. Keyed on
-    // the session + action so it fires once and re-arms only for a fresh request;
-    // the Search shortcut seeds the browser through LibraryScreen instead.
+    // The Resume shortcut plays the queue that opening the library restored paused.
     LaunchedEffect(session, shortcutAction) {
         if (shortcutAction == ShortcutAction.RESUME) {
             session.appHandle.resume()
             onShortcutHandled()
         }
     }
-    // The image store is the open library's: its cache entries are keyed on that
-    // library's image ids, so it is scoped to the session, not the process.
+    // Scoped to the session because the cache is keyed on that library's image ids.
     CompositionLocalProvider(LocalImageStore provides session.imageStore) {
         Column(modifier = Modifier.fillMaxSize()) {
             ArtworkLoadingBanner(session.artworkLoadingStore)
@@ -244,7 +222,7 @@ private fun LoadingScreen() {
 @Composable
 private fun FailedScreen(message: String) {
     Box(
-        modifier = Modifier.fillMaxSize().padding(32.dp),
+        modifier = Modifier.fillMaxSize().padding(ThemeSpace.page),
         contentAlignment = Alignment.Center,
     ) {
         Text(text = message, color = MaterialTheme.colorScheme.error)

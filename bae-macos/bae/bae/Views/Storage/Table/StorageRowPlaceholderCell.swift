@@ -18,7 +18,7 @@ struct StorageRowPlaceholderCell: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 4)
+        .padding(.horizontal, ThemeSpace.inline)
     }
 }
 

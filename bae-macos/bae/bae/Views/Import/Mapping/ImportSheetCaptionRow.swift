@@ -17,10 +17,10 @@ struct ImportSheetCaptionRow: View {
     private var hoveringBound = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: ThemeSpace.compact) {
             caption
             ForEach(unbound, id: \.fileReference) { reference in
-                HStack(spacing: 8) {
+                HStack(spacing: ThemeSpace.related) {
                     Text(verbatim: reference.fileReference)
                         .themeText(.mono)
                         .lineLimit(1)
@@ -56,7 +56,7 @@ struct ImportSheetCaptionRow: View {
     }
 
     private var caption: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: ThemeSpace.related) {
             if showsDiscMenu {
                 ImportSheetDiscMenu(
                     sheet: sheet,
@@ -118,8 +118,8 @@ struct ImportSheetCaptionRow: View {
             }
         } label: {
             boundText
-                .padding(.horizontal, 5)
-                .padding(.vertical, 2)
+                .padding(.horizontal, ThemeSpace.compact)
+                .padding(.vertical, ThemeSpace.line)
                 .background(
                     hoveringBound ? Theme.hover : Color.clear,
                     in: RoundedRectangle(cornerRadius: ThemeRadius.control)
@@ -127,7 +127,7 @@ struct ImportSheetCaptionRow: View {
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
-        .frame(minWidth: 24)
+        .frame(minWidth: ThemeSize.hitTarget)
         .onHover { hoveringBound = $0 }
     }
 
@@ -144,8 +144,8 @@ struct ImportSheetCaptionRow: View {
         Text(verbatim: "CUE")
             .themeText(.chip)
             .foregroundStyle(Theme.accent)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
+            .padding(.horizontal, ThemeSpace.compact)
+            .padding(.vertical, ThemeSpace.line)
             .background(
                 Theme.accentSoft,
                 in: RoundedRectangle(cornerRadius: ThemeRadius.chip)
@@ -203,15 +203,15 @@ struct ImportSheetDiscMenu: View {
                 )
             }
         } label: {
-            HStack(spacing: 5) {
+            HStack(spacing: ThemeSpace.inline) {
                 Text(assignmentText)
                     .themeText(.strong)
                 Image(systemName: "chevron.down")
-                    .font(.system(size: 8, weight: .bold))
+                    .themeIcon(.small)
                     .foregroundStyle(.secondary)
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 3)
+            .padding(.horizontal, ThemeSpace.related)
+            .padding(.vertical, ThemeSpace.line)
             .background(
                 hovering ? Theme.pressed : Theme.hover,
                 in: RoundedRectangle(cornerRadius: ThemeRadius.control)

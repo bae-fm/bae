@@ -8,7 +8,7 @@ struct FilenameTokenEditor: View {
     let setTokens: ([BridgeSaveFilenameToken]) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: ThemeSpace.related) {
             chipField
             if !availableTokens.isEmpty {
                 addRow
@@ -17,7 +17,7 @@ struct FilenameTokenEditor: View {
     }
 
     private var chipField: some View {
-        FlowLayout(spacing: 5) {
+        FlowLayout(spacing: ThemeSpace.compact) {
             ForEach(tokens, id: \.self) { token in
                 TokenChip(token: token) {
                     setTokens(tokens.filter { $0 != token })
@@ -29,7 +29,7 @@ struct FilenameTokenEditor: View {
             }
         }
         .frame(maxWidth: .infinity, minHeight: 24, alignment: .leading)
-        .padding(6)
+        .padding(ThemeSpace.compact)
         .background(
             // A text field's fill, so the pattern reads as an input.
             RoundedRectangle(cornerRadius: ThemeRadius.control)
@@ -42,7 +42,7 @@ struct FilenameTokenEditor: View {
     }
 
     private var addRow: some View {
-        FlowLayout(spacing: 5) {
+        FlowLayout(spacing: ThemeSpace.compact) {
             Text("Add:")
                 .themeText(.detail)
                 .foregroundStyle(.secondary)
@@ -53,8 +53,8 @@ struct FilenameTokenEditor: View {
                 .buttonStyle(.plain)
                 .themeText(.chip)
                 .foregroundStyle(.secondary)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 2)
+                .padding(.horizontal, ThemeSpace.related)
+                .padding(.vertical, ThemeSpace.line)
                 .overlay(
                     RoundedRectangle(cornerRadius: ThemeRadius.chip)
                         .stroke(
@@ -99,19 +99,19 @@ private struct TokenChip: View {
     let remove: () -> Void
 
     var body: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: ThemeSpace.inline) {
             Text(token.label)
                 .themeText(.chip)
             Button(action: remove) {
                 Image(systemName: "xmark")
-                    .font(.system(size: 8, weight: .semibold))
+                    .themeIcon(.badge)
                     .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
             .accessibilityLabel(Text("Remove \(token.label)"))
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 3)
+        .padding(.horizontal, ThemeSpace.related)
+        .padding(.vertical, ThemeSpace.line)
         .background(
             RoundedRectangle(cornerRadius: ThemeRadius.chip)
                 .fill(.quaternary)

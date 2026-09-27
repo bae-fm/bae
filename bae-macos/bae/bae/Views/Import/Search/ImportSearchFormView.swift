@@ -103,8 +103,8 @@ struct ImportSearchFormView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: ThemeSpace.compact) {
+            HStack(spacing: ThemeSpace.related) {
                 Picker(
                     "Search by",
                     selection: Binding(
@@ -139,9 +139,9 @@ struct ImportSearchFormView: View {
                 .foregroundStyle(Theme.warning)
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.top, 2)
-        .padding(.bottom, 10)
+        .padding(.horizontal, ThemeSpace.group)
+        .padding(.top, ThemeSpace.line)
+        .padding(.bottom, ThemeSpace.related)
         .animation(nil, value: activeTab)
         .onChange(of: form, initial: true) { _, stored in
             if !isEditing {

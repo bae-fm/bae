@@ -40,6 +40,12 @@ Dynamic Type style so text follows the person's text size. Apple views set a
 role with `.themeText(_:)`, and the section labels on every platform are one
 `Eyebrow`.
 
+Spacing is one shared scale named by meaning: hairline, line, inline, compact,
+related, group, edge, section and page. Glyph sizes (badge, small, medium,
+large, hero) and a few recurring sizes (row and now-playing bar artwork, the
+least an icon button takes to press) are roles whose values each platform sets
+by its own convention.
+
 Apple views use `Theme`, `ThemeOpacity`, `PrimaryButtonStyle`, and
 `.appAppearance()` at every scene root; Apple's hierarchical label styles stay
 native. Native controls retain their platform geometry and interaction.

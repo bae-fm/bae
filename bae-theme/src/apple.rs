@@ -122,6 +122,37 @@ pub fn swift(theme: &Theme) -> String {
     out.push_str("}\n");
     out.push_str(FONT_INITIALIZER);
 
+    out.push_str("\n/// Gaps and insets.\npublic enum ThemeSpace {\n");
+    for (role, value) in &theme.space {
+        let _ = writeln!(out, "    public static let {role}: CGFloat = {value}");
+    }
+    out.push_str(
+        "}\n\n/// A glyph's size and the weight it is drawn at.\npublic struct ThemeIcon: Sendable {\n    \
+         public let size: CGFloat\n    public let weight: Font.Weight\n\n    \
+         public var font: Font {\n        .system(size: size, weight: weight)\n    }\n}\n\n\
+         extension ThemeIcon {\n",
+    );
+    for (role, icon) in &theme.icon {
+        let _ = writeln!(
+            out,
+            "    public static let {role} = ThemeIcon(\n        size: .platform(macOS: {}, iOS: {}),\n        \
+             weight: {}\n    )",
+            icon.sizes.macos,
+            icon.sizes.ios,
+            icon.weight.swift()
+        );
+    }
+    out.push_str("}\n\n/// Sizes that recur across screens.\npublic enum ThemeSize {\n");
+    for (role, lengths) in &theme.size {
+        let _ = writeln!(
+            out,
+            "    public static let {role}: CGFloat = .platform(\n        macOS: {},\n        iOS: {}\n    )",
+            lengths.macos, lengths.ios
+        );
+    }
+    out.push_str("}\n");
+    out.push_str(PLATFORM_LENGTH);
+
     out.push_str(COLOR_INITIALIZERS);
     out
 }
@@ -139,6 +170,19 @@ extension Font {
             .system(size: size, weight: weight, design: design)
         #else
             .system(style, design: design, weight: weight)
+        #endif
+    }
+}
+";
+
+/// A length that differs between macOS and iOS.
+const PLATFORM_LENGTH: &str = "
+extension CGFloat {
+    fileprivate static func platform(macOS: CGFloat, iOS: CGFloat) -> CGFloat {
+        #if os(macOS)
+            macOS
+        #else
+            iOS
         #endif
     }
 }

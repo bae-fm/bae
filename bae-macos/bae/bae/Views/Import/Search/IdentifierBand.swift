@@ -23,7 +23,7 @@ struct IdentifierBand: View {
     private var showsCatalogCandidates = false
 
     var body: some View {
-        FlowLayout(spacing: 6) {
+        FlowLayout(spacing: ThemeSpace.compact) {
             discIdChip
             barcodeChips
             catalogChips
@@ -54,8 +54,8 @@ struct IdentifierBand: View {
                 ScanningChip()
             }
         }
-        .padding(.vertical, 9)
-        .padding(.horizontal, 14)
+        .padding(.vertical, ThemeSpace.related)
+        .padding(.horizontal, ThemeSpace.group)
     }
 
     // MARK: - Disc ID
@@ -314,8 +314,8 @@ private struct CatalogCandidatesDisclosure: View {
             )
             .themeText(.chip)
             .foregroundStyle(.secondary)
-            .padding(.horizontal, 7)
-            .padding(.vertical, 3)
+            .padding(.horizontal, ThemeSpace.compact)
+            .padding(.vertical, ThemeSpace.line)
             .background(
                 Theme.hover,
                 in: RoundedRectangle(cornerRadius: ThemeRadius.chip)

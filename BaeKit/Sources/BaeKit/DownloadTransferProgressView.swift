@@ -8,7 +8,7 @@ public struct DownloadTransferProgressView: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: ThemeSpace.inline) {
             ProgressView(value: progress.fraction)
                 .progressViewStyle(.linear)
             Text(progress.bytesText)

@@ -185,7 +185,7 @@ private struct PresetRow: View {
     private var confirmingDelete = false
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: ThemeSpace.group) {
             Button(action: edit) {
                 SavePresetSummaryRow(preset: preset)
                     .contentShape(Rectangle())
@@ -212,7 +212,7 @@ private struct PresetRow: View {
     /// The Track and Release scope toggles, locked for a single-file+CUE
     /// preset, which is always a whole-release export.
     private var scopeToggles: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: ThemeSpace.related) {
             Toggle("Track", isOn: trackScopeBinding)
             Toggle("Release", isOn: releaseScopeBinding)
         }

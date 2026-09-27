@@ -17,7 +17,7 @@ public struct DeviceJoinProgressView: View {
     }
 
     public var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: ThemeSpace.related) {
             transferIndicator
             Text(title)
                 .themeText(.body)

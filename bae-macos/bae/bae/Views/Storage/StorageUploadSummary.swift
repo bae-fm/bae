@@ -7,7 +7,7 @@ struct StorageUploadSummary: View {
     let onCancel: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: ThemeSpace.compact) {
             HStack {
                 UploadActivityLabel(progress: group.progress)
                 Spacer()
@@ -42,6 +42,6 @@ struct StorageUploadSummary: View {
         }
         .themeText(.detail)
         .padding(.horizontal)
-        .padding(.vertical, 8)
+        .padding(.vertical, ThemeSpace.related)
     }
 }

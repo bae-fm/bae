@@ -21,8 +21,8 @@ struct CountCapsule: View {
             .themeText(.chip)
             .monospacedDigit()
             .foregroundStyle(matched ? Theme.success : Color.secondary)
-            .padding(.horizontal, 5)
-            .padding(.vertical, 1)
+            .padding(.horizontal, ThemeSpace.compact)
+            .padding(.vertical, ThemeSpace.hairline)
             .background(
                 matched
                     ? Theme.success.opacity(ThemeOpacity.tint) : Theme.hover,

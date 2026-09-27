@@ -1,9 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// A user-facing error: the localized line, the concrete fault beneath it with
-/// a copy action, and a disclosure for the rest of the chain. The fault stays
-/// outside the disclosure because core's line names only a category.
+/// A user-facing error: the localized line, the concrete fault with a copy
+/// action, and a disclosure for the rest of the chain.
 struct ErrorDetailDisclosure: View {
     let error: DisplayError?
     /// Tint for the line and icon: `Theme.danger` or `Theme.warning`.
@@ -14,8 +13,8 @@ struct ErrorDetailDisclosure: View {
     private var detailExpanded = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: ThemeSpace.compact) {
+            HStack(spacing: ThemeSpace.related) {
                 if showIcon {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundStyle(tint)
@@ -26,7 +25,7 @@ struct ErrorDetailDisclosure: View {
             }
 
             if let detail = error?.detail {
-                HStack(alignment: .top, spacing: 6) {
+                HStack(alignment: .top, spacing: ThemeSpace.compact) {
                     Text(error?.detailSummary ?? "")
                         .themeText(.mono)
                         .foregroundStyle(.secondary)
@@ -52,9 +51,9 @@ struct ErrorDetailDisclosure: View {
                 Button {
                     detailExpanded = !detailExpanded
                 } label: {
-                    HStack(spacing: 5) {
+                    HStack(spacing: ThemeSpace.inline) {
                         Image(systemName: "chevron.right")
-                            .font(.caption.weight(.semibold))
+                            .themeIcon(.small)
                             .rotationEffect(.degrees(detailExpanded ? 90 : 0))
                         Text("Details")
                             .themeText(.detail)
@@ -81,7 +80,7 @@ struct ErrorDetailDisclosure: View {
 
 #if DEBUG
     #Preview("Error Detail Disclosure") {
-        VStack(alignment: .leading, spacing: 22) {
+        VStack(alignment: .leading, spacing: ThemeSpace.section) {
             // Hard failure carrying opaque detail — the disclosure row shows.
             ErrorDetailDisclosure(error: PreviewData.displayErrorWithDetail)
             // Warning tint, no detail — line only.
@@ -95,7 +94,7 @@ struct ErrorDetailDisclosure: View {
                 showIcon: false
             )
         }
-        .padding(24)
+        .padding(ThemeSpace.section)
         .frame(width: 440)
         .background(Theme.background)
         .preferredColorScheme(.dark)

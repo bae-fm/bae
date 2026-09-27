@@ -31,9 +31,8 @@ enum ProgressTrackDrawing {
     }
 }
 
-/// The shared progress bar. `progress` in 0...1 draws a determinate fill;
-/// `nil` runs an indeterminate marching pill, animated by Core Animation so
-/// nothing ticks the view hierarchy.
+/// The shared progress bar: a fill for 0...1, or for `nil` a marching pill
+/// animated by Core Animation so nothing ticks the view hierarchy.
 final class ProgressTrackNSView: NSView {
     /// Height of the drawn track and of the view.
     static let trackHeight: CGFloat = 4
@@ -178,7 +177,7 @@ struct ProgressTrackBar: NSViewRepresentable {
 
 #if DEBUG
     #Preview("Progress Track") {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: ThemeSpace.group) {
             ProgressTrackBar(progress: 0)
             ProgressTrackBar(progress: 0.01)
             ProgressTrackBar(progress: 0.4)

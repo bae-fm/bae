@@ -52,7 +52,7 @@ struct ImportMappingPane: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: ThemeSpace.section) {
                 CandidateFolderLine(
                     tab: candidate.tab,
                     folderName: candidate.displayName,
@@ -77,9 +77,9 @@ struct ImportMappingPane: View {
                     .disabled(candidate.detail?.actionable != true)
                 }
             }
-            .padding(.horizontal, 24)
-            .padding(.top, 20)
-            .padding(.bottom, 32)
+            .padding(.horizontal, ThemeSpace.section)
+            .padding(.top, ThemeSpace.section)
+            .padding(.bottom, ThemeSpace.page)
         }
         .environment(
             \.artistResolutions,
@@ -90,7 +90,7 @@ struct ImportMappingPane: View {
     /// The folder's images under their own ruled heading, level with the
     /// Tracks heading the table draws beneath them.
     private var imagesSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: ThemeSpace.related) {
             FormSectionHeader(title: String(localized: "Images"), ruled: true)
             ImportMappingGallery(
                 images: mapping.images,

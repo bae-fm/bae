@@ -31,6 +31,7 @@ import fm.bae.app.ui.BaeAppChrome
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeRadius
+import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CoverImage
 import uniffi.bae_bridge.BridgeAlbum
@@ -73,9 +74,9 @@ private fun LibraryGridBacking(
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 150.dp),
         state = gridState,
-        contentPadding = PaddingValues(12.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(ThemeSpace.group),
+        horizontalArrangement = Arrangement.spacedBy(ThemeSpace.group),
+        verticalArrangement = Arrangement.spacedBy(ThemeSpace.group),
         modifier = Modifier.fillMaxSize(),
     ) {
         items(count, key = { index -> albumAt(index)?.id ?: "album-slot-$index" }) { index ->
@@ -126,7 +127,7 @@ private fun AlbumGridCard(
             modifier = Modifier.fillMaxWidth().aspectRatio(1f),
             contentDescription = album.title,
         )
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(modifier = Modifier.height(ThemeSpace.compact))
         Text(
             text = album.title,
             style = ThemeText.rowTitle.style,

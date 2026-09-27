@@ -14,13 +14,13 @@ struct FindOnlineDiscogsBar: View {
     }
 
     var body: some View {
-        HStack(alignment: .center, spacing: 10) {
-            HStack(alignment: .top, spacing: 8) {
+        HStack(alignment: .center, spacing: ThemeSpace.related) {
+            HStack(alignment: .top, spacing: ThemeSpace.related) {
                 Image(systemName: "info.circle.fill")
-                    .font(.system(size: 13))
+                    .themeIcon(.medium)
                     .foregroundStyle(NoticeTone.info.tint)
-                    .padding(.top, 1)
-                VStack(alignment: .leading, spacing: 3) {
+                    .padding(.top, ThemeSpace.hairline)
+                VStack(alignment: .leading, spacing: ThemeSpace.line) {
                     Text("Add \(discogs) to find more pressings")
                         .themeText(.strong)
                     Text(
@@ -31,22 +31,25 @@ struct FindOnlineDiscogsBar: View {
                     .fixedSize(horizontal: false, vertical: true)
                 }
             }
-            Spacer(minLength: 12)
+            Spacer(minLength: ThemeSpace.group)
             Button("Open Settings", action: onOpenSettings)
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
             Button(action: onDismiss) {
                 Image(systemName: "xmark")
-                    .font(.system(size: 9, weight: .semibold))
+                    .themeIcon(.small)
                     .foregroundStyle(.secondary)
-                    .frame(width: 16, height: 16)
+                    .frame(
+                        width: ThemeSize.hitTarget,
+                        height: ThemeSize.hitTarget
+                    )
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel(Text("Dismiss"))
         }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 14)
+        .padding(.horizontal, ThemeSpace.edge)
+        .padding(.vertical, ThemeSpace.group)
         .background(NoticeTone.info.fill)
     }
 }

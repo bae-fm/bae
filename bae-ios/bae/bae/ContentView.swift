@@ -93,9 +93,9 @@ struct ContentView: View {
                 case .keychainLocked:
                     // The open retries on scene activation; the button covers
                     // any other change that unlocked the keychain.
-                    VStack(spacing: 16) {
+                    VStack(spacing: ThemeSpace.edge) {
                         Image(systemName: "lock.fill")
-                            .font(.system(size: 40))
+                            .themeIcon(.hero)
                             .foregroundStyle(.secondary)
                         Text("Library Locked")
                             .themeText(.title)
@@ -157,7 +157,7 @@ struct ContentView: View {
     private func errorView(_ message: String) -> some View {
         Text(message)
             .foregroundStyle(Theme.danger)
-            .padding(32)
+            .padding(ThemeSpace.page)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

@@ -17,7 +17,7 @@ struct JoinPairingOffer: View {
                     .themeText(.detail)
                     .foregroundStyle(.secondary)
 
-                HStack(spacing: 8) {
+                HStack(spacing: ThemeSpace.related) {
                     TextField("Paste pairing code", text: $pairingCode)
                         .themeText(.mono)
                         .textInputAutocapitalization(.never)

@@ -17,17 +17,17 @@ struct ImportActivityIndicator: View {
             detailsShown = true
         } label: {
             Image(systemName: "square.and.arrow.down")
-                .font(.system(size: ImportFilterBarLayout.glyphSize))
+                .themeIcon(ImportFilterBarLayout.glyph)
                 .foregroundStyle(.secondary)
                 .filterBarControl()
         }
         .buttonStyle(.plain)
         .help(String(localized: "Importing\u{2026}"))
         .popover(isPresented: $detailsShown, arrowEdge: .bottom) {
-            VStack(alignment: .trailing, spacing: 8) {
+            VStack(alignment: .trailing, spacing: ThemeSpace.related) {
                 HStack {
                     Text("Importing\u{2026}")
-                    Spacer(minLength: 12)
+                    Spacer(minLength: ThemeSpace.group)
                     Text(verbatim: count.formatted())
                         .monospacedDigit()
                         .foregroundStyle(.secondary)
@@ -43,7 +43,7 @@ struct ImportActivityIndicator: View {
             }
             .themeText(.body)
             .frame(width: 220)
-            .padding(12)
+            .padding(ThemeSpace.group)
             .background { PopoverBehavior() }
         }
     }

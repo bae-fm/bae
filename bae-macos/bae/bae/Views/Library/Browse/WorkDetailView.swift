@@ -9,13 +9,13 @@ struct WorkDetailView: View {
     let openAlbum: (String, String) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: ThemeSpace.group) {
             Text(detail.work.title)
                 .themeText(.title)
                 .lineLimit(2)
             if !detail.childWorks.isEmpty {
                 SectionHeader(title: String(localized: "Works"))
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: ThemeSpace.hairline) {
                     ForEach(detail.childWorks, id: \.workId) { work in
                         Button(action: { openWork(work.workId) }) {
                             DetailMediaRow(
@@ -30,7 +30,7 @@ struct WorkDetailView: View {
             }
             if !detail.releases.isEmpty {
                 SectionHeader(title: String(localized: "Releases"))
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: ThemeSpace.hairline) {
                     ForEach(detail.releases, id: \.releaseId) { release in
                         Button(action: {
                             openAlbum(release.albumId, release.releaseId)
@@ -47,7 +47,7 @@ struct WorkDetailView: View {
             }
             if !detail.tracks.isEmpty {
                 SectionHeader(title: String(localized: "Recordings"))
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: ThemeSpace.hairline) {
                     ForEach(detail.tracks, id: \.trackId) { track in
                         CreditRow(
                             title: track.trackTitle,
@@ -74,7 +74,7 @@ struct WorkDetailView: View {
                 openWork: { _ in },
                 openAlbum: { _, _ in }
             )
-            .padding(24)
+            .padding(ThemeSpace.section)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(width: 560, height: 640)

@@ -32,6 +32,13 @@ public struct Eyebrow: View {
     }
 }
 
+extension View {
+    /// Sizes an SF Symbol to a theme icon role.
+    public func themeIcon(_ icon: ThemeIcon) -> some View {
+        font(icon.font)
+    }
+}
+
 #if os(macOS)
     import AppKit
 

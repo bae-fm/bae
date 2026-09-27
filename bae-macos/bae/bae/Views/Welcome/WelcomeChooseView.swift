@@ -105,7 +105,7 @@ struct WelcomeChooseView: View {
     }
 
     private var content: some View {
-        VStack(spacing: 32) {
+        VStack(spacing: ThemeSpace.page) {
             Spacer()
             Text(verbatim: "bae")
                 .themeText(.wordmark)
@@ -190,21 +190,24 @@ struct WelcomeChooseView: View {
         }
     }
 
+    /// The width the first-run buttons share.
+    private static let firstRunButtonWidth: CGFloat = 240
+
     /// First run: three stacked buttons with Create as the default action.
     private var firstRunActions: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: ThemeSpace.group) {
             Button(action: doCreate) { createButtonLabel }
                 .buttonStyle(PrimaryButtonStyle())
-                .frame(width: 240)
+                .frame(width: Self.firstRunButtonWidth)
                 .disabled(isCreating || isRestoring)
                 .keyboardShortcut(.defaultAction)
             Button("Join a library", action: onJoin)
                 .buttonStyle(.bordered)
-                .frame(width: 240)
+                .frame(width: Self.firstRunButtonWidth)
                 .disabled(isCreating || isRestoring)
             Button("Restore from cloud", action: onRestore)
                 .buttonStyle(.bordered)
-                .frame(width: 240)
+                .frame(width: Self.firstRunButtonWidth)
                 .disabled(isCreating || isRestoring)
         }
     }
@@ -212,10 +215,10 @@ struct WelcomeChooseView: View {
     /// With a library or restore code present, the actions become a row of
     /// smaller buttons under a divider.
     private var populatedActions: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: ThemeSpace.group) {
             Divider()
                 .frame(maxWidth: WelcomeLayout.columnWidth)
-            HStack(spacing: 12) {
+            HStack(spacing: ThemeSpace.group) {
                 Button(action: doCreate) { createButtonLabel }
                     .disabled(isCreating || isRestoring)
                 Button("Join a library", action: onJoin)
@@ -449,10 +452,10 @@ private struct WelcomeLoadErrorCallout: View {
     var guidance: LocalizedStringKey?
 
     var body: some View {
-        HStack(alignment: .top, spacing: 10) {
+        HStack(alignment: .top, spacing: ThemeSpace.related) {
             Image(systemName: "exclamationmark.triangle.fill")
                 .foregroundStyle(NoticeTone.error.tint)
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: ThemeSpace.inline) {
                 Text(title)
                     .themeText(.heading)
                 ErrorDetailDisclosure(error: error, showIcon: false)
@@ -464,7 +467,7 @@ private struct WelcomeLoadErrorCallout: View {
             }
             Spacer(minLength: 0)
         }
-        .padding(12)
+        .padding(ThemeSpace.group)
         .frame(maxWidth: WelcomeLayout.columnWidth, alignment: .leading)
         .noticeBackground(.error)
         .overlay(

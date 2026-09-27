@@ -39,7 +39,7 @@ private struct ReleaseRecordLink: View {
     }
 
     private var name: some View {
-        HStack(spacing: 3) {
+        HStack(spacing: ThemeSpace.inline) {
             Text(verbatim: bridgeCatalogName(catalog: record.catalog))
             Image(systemName: "arrow.up.right")
                 .imageScale(.small)
@@ -53,17 +53,19 @@ private struct ReleaseRecordLink: View {
 
     // MARK: - Previews
 
+    private let previewWidth: CGFloat = 420
+
     #Preview("Two catalogs") {
         ReleaseRecordsRow(records: PreviewData.releaseRecordsPair)
             .padding()
-            .frame(width: 420)
+            .frame(width: previewWidth)
             .background(Theme.surfaceElevated)
     }
 
     #Preview("Every catalog") {
         ReleaseRecordsRow(records: PreviewData.releaseRecordsEveryCatalog)
             .padding()
-            .frame(width: 420)
+            .frame(width: previewWidth)
             .background(Theme.surfaceElevated)
     }
 #endif

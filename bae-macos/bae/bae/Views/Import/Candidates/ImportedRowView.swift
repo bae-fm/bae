@@ -32,7 +32,7 @@ struct ImportedRowContent: View {
     let onReveal: () -> Void
 
     var body: some View {
-        HStack(alignment: .center, spacing: 10) {
+        HStack(alignment: .center, spacing: ThemeSpace.related) {
             ImageView(
                 imageRef: row.release.cover,
                 pointSize: TriageRowView.coverPointSize
@@ -43,10 +43,10 @@ struct ImportedRowContent: View {
             )
             .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
             meta
-            Spacer(minLength: 4)
+            Spacer(minLength: ThemeSpace.inline)
             trailing
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, ThemeSpace.compact)
         .padding(.horizontal, ImportListHierarchyLayout.rowEdgePadding)
         .contentShape(Rectangle())
         .contextMenu {
@@ -82,7 +82,7 @@ struct ImportedRowContent: View {
     private var trailing: some View {
         if !importing, case .active = uploadObservation {
             Image(systemName: "arrow.up.circle")
-                .font(.caption)
+                .themeIcon(.small)
                 .foregroundStyle(.secondary)
                 .fixedSize()
         }

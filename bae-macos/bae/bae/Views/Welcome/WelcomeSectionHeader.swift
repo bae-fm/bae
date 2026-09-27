@@ -8,7 +8,7 @@ struct WelcomeSectionHeader: View {
     var infoTip: InfoTip?
 
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: ThemeSpace.inline) {
             Eyebrow(title)
             infoTip
         }
@@ -19,7 +19,7 @@ struct WelcomeSectionHeader: View {
 #if DEBUG
     #Preview("Plain") {
         WelcomeSectionHeader(title: "On this device")
-            .frame(width: 400)
+            .frame(width: WelcomeLayout.columnWidth)
             .padding()
     }
 
@@ -31,7 +31,7 @@ struct WelcomeSectionHeader: View {
                     "Libraries whose restore codes are saved in your keychain."
             ),
         )
-        .frame(width: 400)
+        .frame(width: WelcomeLayout.columnWidth)
         .padding()
     }
 #endif

@@ -7,6 +7,12 @@ struct LibraryModeHeading: View {
     /// 0 at full size, 1 collapsed into the strip, as the content scrolls.
     let collapseProgress: Double
 
+    /// The chevron's size, its lift towards the cap height, and the descender
+    /// space trimmed under the heading, each a fraction of the heading's size.
+    private static let chevronScale: CGFloat = 1 / 3
+    private static let chevronLift: CGFloat = 0.23
+    private static let descenderTrim: CGFloat = 0.22
+
     @Environment(UiStore.self)
     private var uiStore
 
@@ -16,28 +22,22 @@ struct LibraryModeHeading: View {
                 uiStore.setLibraryBrowserMode(mode)
             }
         } label: {
+            let size = between(\.macOSSize)
             // The chevron is part of the heading's text, so it scales with it
             // and follows the word in either reading direction.
             (Text(uiStore.libraryBrowserMode.displayName)
-                .font(
-                    .system(
-                        size: between(\.macOSSize),
-                        weight: ThemeText.display.weight
-                    )
-                )
+                .font(.system(size: size, weight: ThemeText.display.weight))
                 .tracking(between(\.tracking))
                 + Text(verbatim: " ")
                 + Text(Image(systemName: "chevron.down"))
-                .font(
-                    .system(size: 14 - 5 * collapseProgress, weight: .bold)
-                )
+                .font(.system(size: size * Self.chevronScale, weight: .bold))
                 // Centered on the heading's cap height.
-                .baselineOffset(11 - 6 * collapseProgress)
+                .baselineOffset(size * Self.chevronLift)
                 .foregroundColor(.secondary))
                 .contentTransition(.interpolate)
                 // Trims the unused descender space so the menu opens near the
                 // text.
-                .padding(.bottom, -(12 - 8 * collapseProgress))
+                .padding(.bottom, -size * Self.descenderTrim)
         }
         .menuStyle(.button)
         .buttonStyle(StaticLabelButtonStyle())
@@ -63,7 +63,7 @@ private struct StaticLabelButtonStyle: ButtonStyle {
 
 #if DEBUG
     #Preview {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: ThemeSpace.section) {
             LibraryModeHeading(collapseProgress: 0)
             LibraryModeHeading(collapseProgress: 0.5)
             LibraryModeHeading(collapseProgress: 1)

@@ -7,6 +7,9 @@ struct SlimSlider: View {
     let value: Float
     let onChange: (Float) -> Void
 
+    /// The track's thickness.
+    private static let trackHeight: CGFloat = 5
+
     private var clamped: Float { max(0, min(1, value)) }
 
     var body: some View {
@@ -15,10 +18,13 @@ struct SlimSlider: View {
             ZStack(alignment: .leading) {
                 Capsule()
                     .fill(Theme.hairline)
-                    .frame(height: 5)
+                    .frame(height: Self.trackHeight)
                 Capsule()
                     .fill(Theme.accent)
-                    .frame(width: CGFloat(clamped) * width, height: 5)
+                    .frame(
+                        width: CGFloat(clamped) * width,
+                        height: Self.trackHeight
+                    )
             }
             .frame(
                 maxWidth: .infinity,

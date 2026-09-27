@@ -14,8 +14,8 @@ struct SearchManuallyButton: View {
             Text("Search manually")
                 .themeText(.strong)
                 .foregroundStyle(.primary)
-                .padding(.horizontal, 14)
-                .frame(height: 26)
+                .padding(.horizontal, ThemeSpace.group)
+                .frame(height: ThemeSize.hitTarget)
                 .background(
                     isHovered ? Theme.pressed : Theme.hover,
                     in: RoundedRectangle(cornerRadius: ThemeRadius.control)

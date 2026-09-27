@@ -59,6 +59,8 @@ public struct SidePausePromptAlert: ViewModifier {
 }
 
 private struct SidePausePromptCard: View {
+    private static let width: CGFloat = 500
+
     let prompt: BridgeSidePausePrompt
     let showError: @MainActor (any Error) -> Void
 
@@ -89,7 +91,7 @@ private struct SidePausePromptCard: View {
     }
 
     private var card: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: ThemeSpace.group) {
             Text(verbatim: prompt.title())
                 .themeText(.heading)
             Text(verbatim: localizedCoreString("core.playback.pause.message"))
@@ -100,7 +102,7 @@ private struct SidePausePromptCard: View {
                 SidePauseCountdownLine(prompt: prompt, countdown: countdown)
             }
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: ThemeSpace.inline) {
                 Toggle(isOn: $keepPausing) {
                     Text(verbatim: prompt.keepPausingLabel())
                 }
@@ -117,7 +119,7 @@ private struct SidePausePromptCard: View {
                 }
             }
 
-            HStack(spacing: 10) {
+            HStack(spacing: ThemeSpace.related) {
                 Spacer()
                 Button("Close") { answer(play: false) }
                     .buttonStyle(.bordered)
@@ -127,13 +129,13 @@ private struct SidePausePromptCard: View {
                     .buttonStyle(PrimaryButtonStyle())
                     .keyboardShortcut(.defaultAction)
             }
-            .padding(.top, 8)
+            .padding(.top, ThemeSpace.related)
         }
-        .padding(28)
+        .padding(ThemeSpace.section)
         #if os(macOS)
-            .frame(width: 500, alignment: .leading)
+            .frame(width: Self.width, alignment: .leading)
         #else
-            .frame(maxWidth: 500, alignment: .leading)
+            .frame(maxWidth: Self.width, alignment: .leading)
         #endif
         .background(Theme.surfaceElevated)
         .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.panel))
@@ -152,7 +154,7 @@ private struct SidePausePromptCard: View {
             }
             .onAppear { focused = true }
         #else
-            .padding(.horizontal, 16)
+            .padding(.horizontal, ThemeSpace.edge)
         #endif
     }
 

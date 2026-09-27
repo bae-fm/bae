@@ -22,7 +22,7 @@ struct CoverGalleryView: View {
 
     private var gallery: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 12) {
+            HStack(spacing: ThemeSpace.group) {
                 Text(initialLayout == .lightbox ? "Images" : "Change Cover")
                     .themeText(.title)
                 Spacer()
@@ -36,11 +36,11 @@ struct CoverGalleryView: View {
                     .keyboardShortcut(.cancelAction)
                     .disabled(isSaving)
             }
-            .padding(24)
+            .padding(ThemeSpace.section)
             Divider()
             HStack(spacing: 0) {
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 28) {
+                    VStack(alignment: .leading, spacing: ThemeSpace.section) {
                         Picker(
                             "Source",
                             selection: Binding(
@@ -79,17 +79,17 @@ struct CoverGalleryView: View {
                             )
                         }
                     }
-                    .padding(24)
+                    .padding(ThemeSpace.section)
                 }
                 .frame(maxWidth: .infinity)
                 Divider()
                 preview
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding(24)
+                    .padding(ThemeSpace.section)
                     .background(Theme.well)
             }
             Divider()
-            HStack(spacing: 16) {
+            HStack(spacing: ThemeSpace.edge) {
                 if let errorMessage = errorMessage ?? remoteItems.failureMessage
                 {
                     Label(errorMessage, systemImage: "exclamationmark.triangle")
@@ -97,7 +97,7 @@ struct CoverGalleryView: View {
                         .foregroundStyle(Theme.danger)
                         .textSelection(.enabled)
                 }
-                Spacer(minLength: 12)
+                Spacer(minLength: ThemeSpace.group)
                 ProgressView().controlSize(.small).opacity(isSaving ? 1 : 0)
                 Button("Use This Cover") {
                     if let cursor = browser.cursor { onSelect(cursor.current) }
@@ -110,7 +110,7 @@ struct CoverGalleryView: View {
                         || isSaving
                 )
             }
-            .padding(24)
+            .padding(ThemeSpace.section)
         }
         .background(Theme.background)
     }
@@ -207,7 +207,7 @@ struct CoverGalleryView: View {
 
     @ViewBuilder
     private var lightboxStatus: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: ThemeSpace.related) {
             if browser.cursor != nil || !remoteItems.isLoading { remoteStatus }
             if let errorMessage {
                 Text(errorMessage).foregroundStyle(Theme.danger)
@@ -220,7 +220,7 @@ struct CoverGalleryView: View {
             }
         }
         .themeText(.body)
-        .padding(12)
+        .padding(ThemeSpace.group)
     }
 
 }
@@ -231,7 +231,7 @@ extension CoverGalleryView {
         icon: String,
         items: [CoverItem]
     ) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: ThemeSpace.edge) {
             HStack {
                 Label(title, systemImage: icon)
                     .themeText(.heading)
@@ -241,8 +241,13 @@ extension CoverGalleryView {
                     .foregroundStyle(.secondary)
             }
             LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: 130), spacing: 16)],
-                spacing: 20
+                columns: [
+                    GridItem(
+                        .adaptive(minimum: 130),
+                        spacing: ThemeSpace.edge
+                    )
+                ],
+                spacing: ThemeSpace.section
             ) {
                 ForEach(items) { item in
                     tile(for: item)
@@ -255,7 +260,7 @@ extension CoverGalleryView {
         Button {
             browser.cursor?.select(id: item.id)
         } label: {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: ThemeSpace.related) {
                 ImageView(
                     content: item.image,
                     contentMode: .fit,
@@ -263,7 +268,7 @@ extension CoverGalleryView {
                 )
                 .frame(height: 138)
                 .frame(maxWidth: .infinity)
-                .padding(8)
+                .padding(ThemeSpace.related)
                 .background(Theme.hover)
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
                 .overlay {
@@ -278,7 +283,7 @@ extension CoverGalleryView {
                     Image(systemName: "checkmark.circle.fill")
                         .symbolRenderingMode(.palette)
                         .foregroundStyle(Theme.onFill, Theme.accent)
-                        .padding(8)
+                        .padding(ThemeSpace.related)
                         .opacity(
                             item.id == .currentCover
                                 || item.selection == selectedCover ? 1 : 0
@@ -320,7 +325,7 @@ extension CoverGalleryView {
         case .loading:
             ProgressView("Fetching covers...").controlSize(.small)
         case .unlinked:
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: ThemeSpace.related) {
                 Text("No linked release")
                     .themeText(.heading)
                 Text(
@@ -343,7 +348,7 @@ extension CoverGalleryView {
     @ViewBuilder
     private var preview: some View {
         if let cursor = browser.cursor {
-            VStack(spacing: 20) {
+            VStack(spacing: ThemeSpace.section) {
                 Button {
                     browser.layout = .lightbox
                 } label: {
@@ -357,9 +362,9 @@ extension CoverGalleryView {
                     .contentShape(Rectangle())
                     .overlay(alignment: .topTrailing) {
                         Image(systemName: "arrow.up.left.and.arrow.down.right")
-                            .padding(10)
+                            .padding(ThemeSpace.related)
                             .background(.regularMaterial, in: Circle())
-                            .padding(8)
+                            .padding(ThemeSpace.related)
                     }
                 }
                 .buttonStyle(.plain)
@@ -378,7 +383,7 @@ extension CoverGalleryView {
                 Text(verbatim: cursor.current.sourceLabel)
                     .themeText(.detail)
                     .foregroundStyle(.secondary)
-                HStack(spacing: 20) {
+                HStack(spacing: ThemeSpace.section) {
                     Button {
                         browser.cursor?.goToPrevious()
                     } label: {
@@ -409,6 +414,9 @@ extension CoverGalleryView {
 
 /// Bounds cover browsers to the available modal host, including short windows.
 struct CoverPickerFrame<Content: View>: View {
+    /// The space left around the browser, both sides together.
+    private let margins = 2 * ThemeSpace.section
+
     @ViewBuilder
     let content: () -> Content
 
@@ -416,8 +424,8 @@ struct CoverPickerFrame<Content: View>: View {
         GeometryReader { geometry in
             content()
                 .frame(
-                    width: min(1_100, max(0, geometry.size.width - 48)),
-                    height: min(820, max(0, geometry.size.height - 48))
+                    width: min(1_100, max(0, geometry.size.width - margins)),
+                    height: min(820, max(0, geometry.size.height - margins))
                 )
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.card))
                 .frame(maxWidth: .infinity, maxHeight: .infinity)

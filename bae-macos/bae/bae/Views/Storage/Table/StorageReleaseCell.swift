@@ -8,16 +8,22 @@ struct StorageReleaseCell: View {
     let album: AlbumSummary
     let column: StorageTableColumn
 
+    /// The album column's cover side.
+    private static let coverSize: CGFloat = 24
+
     var body: some View {
         Group {
             switch column {
             case .album:
-                HStack(spacing: 8) {
-                    ImageView(imageRef: release.cover, pointSize: 24)
-                        .frame(width: 24, height: 24)
-                        .clipShape(
-                            RoundedRectangle(cornerRadius: ThemeRadius.artwork)
-                        )
+                HStack(spacing: ThemeSpace.related) {
+                    ImageView(
+                        imageRef: release.cover,
+                        pointSize: Self.coverSize
+                    )
+                    .frame(width: Self.coverSize, height: Self.coverSize)
+                    .clipShape(
+                        RoundedRectangle(cornerRadius: ThemeRadius.artwork)
+                    )
                     Text(album.title).lineLimit(1)
                 }
             case .artist:
@@ -37,7 +43,7 @@ struct StorageReleaseCell: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: cellAlignment(column))
-        .padding(.horizontal, 4)
+        .padding(.horizontal, ThemeSpace.inline)
     }
 }
 

@@ -30,14 +30,14 @@ struct ImportSidebarList<Header: View, Content: View>: View {
                 Spacer()
                 Image(systemName: "plus")
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
+            .padding(.horizontal, ThemeSpace.group)
+            .padding(.vertical, ThemeSpace.related)
         } content: {
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: ThemeSpace.compact) {
                 ForEach(0..<5) { index in
                     Text(verbatim: "Row \(index + 1)")
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 4)
+                        .padding(.horizontal, ThemeSpace.group)
+                        .padding(.vertical, ThemeSpace.inline)
                 }
                 Spacer()
             }

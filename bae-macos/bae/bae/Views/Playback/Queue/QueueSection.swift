@@ -26,11 +26,13 @@ private struct QueueRowSlot: Identifiable {
 /// section of reorderable rows. `itemAt` returns `nil` for an unloaded context
 /// row, which shows a placeholder and calls `loadRange`.
 struct QueueSection: View {
-    /// Every row's height (48pt art, 6pt padding and 1pt spacing either side),
-    /// declared rather than measured because the lazy stack only estimates rows
-    /// it hasn't built, and `QueueDragCoordinator` divides cursor positions by
-    /// it.
-    static let rowHeight: CGFloat = 62
+    /// A row's inset from the lane's edges, and the gap either side of it.
+    private static let rowInset = ThemeSpace.related
+    private static let rowGap = ThemeSpace.hairline
+    /// Every row's height, declared rather than measured because the lazy stack
+    /// only estimates unbuilt rows and `QueueDragCoordinator` divides by it.
+    static let rowHeight =
+        QueueItemRow.artworkSize + 2 * (QueueItemRow.verticalInset + rowGap)
 
     /// `nil` hides the header label, for when only one list is visible.
     let title: String?
@@ -92,9 +94,8 @@ struct QueueSection: View {
         VStack(spacing: 0) {
             sectionHeader
 
-            // Lazy because the context lane can span the whole library. An
-            // explicit zero-spacing stack, not `Group`, which would add default
-            // spacing between rows.
+            // Lazy because the context lane can span the whole library; rows
+            // set their own gap.
             LazyVStack(spacing: 0) {
                 ForEach(rowSlots) { slot in
                     let item = itemAt(slot.sourceIndex)
@@ -104,8 +105,8 @@ struct QueueSection: View {
                     let isRemoving =
                         item.map { removingEntryIds.contains($0.id) } ?? false
                     queueRow(item, index: slot.displaySlot)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 1)
+                        .padding(.horizontal, Self.rowInset)
+                        .padding(.vertical, Self.rowGap)
                         // Loaded or placeholder, every row takes the pitch the
                         // coordinator's slot math assumes.
                         .frame(height: Self.rowHeight)
@@ -190,7 +191,10 @@ struct QueueSection: View {
             // The manual lane's append drop zone and cross-lane append target;
             // a thin spacer on the context lane.
             Color.clear
-                .frame(height: acceptsExternalDrops ? 18 : 8)
+                .frame(
+                    height: acceptsExternalDrops
+                        ? ThemeSpace.edge : ThemeSpace.related
+                )
                 .onGeometryChange(for: CGRect.self) { proxy in
                     proxy.frame(in: .named("queuePane"))
                 } action: { frame in
@@ -282,7 +286,7 @@ extension QueueSection {
     @ViewBuilder
     private var sectionHeader: some View {
         if title != nil || onSetShuffle != nil || count > 0 {
-            HStack(spacing: 6) {
+            HStack(spacing: ThemeSpace.compact) {
                 if let title {
                     Eyebrow(verbatim: title)
                         .lineLimit(1)
@@ -295,9 +299,14 @@ extension QueueSection {
                     shuffleToggle(onSetShuffle)
                 }
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 12)
-            .padding(.bottom, 4)
+            // In line with the rows' content, so Clear and shuffle sit over the
+            // remove buttons.
+            .padding(
+                .horizontal,
+                Self.rowInset + QueueItemRow.horizontalInset
+            )
+            .padding(.top, ThemeSpace.group)
+            .padding(.bottom, ThemeSpace.inline)
         }
     }
 
@@ -329,10 +338,10 @@ extension QueueSection {
             onSetShuffle(!shuffled)
         } label: {
             Image(systemName: "shuffle")
-                .font(.system(size: 11, weight: .semibold))
+                .themeIcon(.small)
                 .foregroundStyle(shuffled ? Theme.accent : .secondary)
-                // Same 28pt slot as the rows' remove button, so they line up.
-                .frame(width: 28, height: 28)
+                // The same slot as the rows' remove button, so they line up.
+                .frame(width: ThemeSize.hitTarget, height: ThemeSize.hitTarget)
                 .background(
                     RoundedRectangle(cornerRadius: ThemeRadius.control)
                         .fill(shuffled ? Theme.accentSoft : .clear)
@@ -348,7 +357,7 @@ extension QueueSection {
         Rectangle()
             .fill(Color.accentColor)
             .frame(height: 2)
-            .padding(.horizontal, 8)
+            .padding(.horizontal, ThemeSpace.related)
     }
 
     /// The dragged row drawn at the cursor, then gliding into its slot. A copy,
@@ -367,8 +376,8 @@ extension QueueSection {
                 onSkipTo: { _ in },
                 onRemove: { _ in },
             )
-            .padding(.horizontal, 10)
-            .padding(.vertical, 1)
+            .padding(.horizontal, Self.rowInset)
+            .padding(.vertical, Self.rowGap)
             .frame(height: Self.rowHeight)
             .shadow(
                 color: isDragging ? Theme.shadow : Color.clear,

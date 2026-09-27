@@ -21,10 +21,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.data.WindowedBrowserPageStore
+import fm.bae.app.ui.appearance.ThemeSpace
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -33,14 +33,8 @@ import kotlinx.coroutines.launch
 private const val PULL_REFRESH_SETTLE_MS = 900L
 
 /**
- * The body of a library browse tab: pull-to-refresh over the four states a
- * windowed page store can be in — load failure, first-page spinner, empty
- * message, rows.
- *
- * Every one of those states renders inside a scrollable. Compose delivers the
- * pull gesture to [PullToRefreshBox] through nested scroll, and only a
- * scrollable child dispatches it, so a plain centered `Box` swallows the drag
- * and the tab refuses to refresh whenever it has no rows.
+ * A library browse tab's body: pull-to-refresh over load failure, spinner, empty
+ * message or rows, each inside a scrollable so the pull reaches [PullToRefreshBox].
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -95,17 +89,13 @@ internal fun LibraryPageContent(
     }
 }
 
-/**
- * The full-height area a browse tab shows in place of rows: one viewport-sized
- * item in a [LazyColumn], so the pull gesture still reaches the enclosing
- * [PullToRefreshBox].
- */
+/** Stands in for rows as one viewport-sized [LazyColumn] item, so the pull still reaches [PullToRefreshBox]. */
 @Composable
 private fun ListPlaceholder(content: @Composable () -> Unit) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         item {
             Box(
-                modifier = Modifier.fillParentMaxSize().padding(32.dp),
+                modifier = Modifier.fillParentMaxSize().padding(ThemeSpace.page),
                 contentAlignment = Alignment.Center,
             ) {
                 content()

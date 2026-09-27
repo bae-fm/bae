@@ -7,6 +7,8 @@ import SwiftUI
 /// `Import` is never disabled; an edit core cannot save is refused at commit
 /// and the pane states why.
 struct ImportConfirmationCardAction: View {
+    private static let progressWidth: CGFloat = 200
+
     /// Where the candidate's import stands, as its row places it.
     let importStatus: BridgeCandidateImportStatus?
     /// Routes the running import's progress to the leaf line that draws it.
@@ -65,13 +67,13 @@ struct ImportConfirmationCardAction: View {
 
     var body: some View {
         if isComplete {
-            VStack(alignment: .trailing, spacing: 2) {
+            VStack(alignment: .trailing, spacing: ThemeSpace.line) {
                 if case .active(let progress) = uploadObservation {
                     ProgressLine(progress: progress.bar?.fraction) {
                         UploadActivityLabel(progress: progress)
                     }
                     .themeText(.body)
-                    .frame(width: 200)
+                    .frame(width: Self.progressWidth)
                 }
                 else {
                     Label("Imported", systemImage: "checkmark.circle.fill")
@@ -90,9 +92,9 @@ struct ImportConfirmationCardAction: View {
             case .importing:
                 // The same progress line the candidate's row draws, from the
                 // same signal, so the two cannot disagree.
-                HStack(spacing: 12) {
+                HStack(spacing: ThemeSpace.group) {
                     ImportProgressLine(key: candidateKey)
-                        .frame(width: 200)
+                        .frame(width: Self.progressWidth)
                     cancelButton
                 }
             case .error:

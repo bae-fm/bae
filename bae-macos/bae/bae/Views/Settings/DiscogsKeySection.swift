@@ -158,7 +158,7 @@ struct DiscogsSettingsContent: View {
     private var keyFieldIsFocused: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: ThemeSpace.related) {
             statusRow
             if let saveError {
                 Text(saveError)
@@ -170,7 +170,7 @@ struct DiscogsSettingsContent: View {
                     .foregroundStyle(Theme.danger)
                     .themeText(.body)
             }
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: ThemeSpace.related) {
                 Text(
                     "[Discogs](https://www.discogs.com) is a music database with detailed release info: labels, catalog numbers, pressing variants, and more. bae can use it as a metadata source when importing albums."
                 )
@@ -198,7 +198,7 @@ struct DiscogsSettingsContent: View {
 
     /// Key field and Save, for the not-configured and rejected states.
     private var keyInput: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: ThemeSpace.compact) {
             TextField(
                 "API key",
                 text: $draft,
@@ -219,7 +219,7 @@ struct DiscogsSettingsContent: View {
     }
 
     private var connectedRow: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: ThemeSpace.compact) {
             Image(systemName: "checkmark.circle.fill")
                 .foregroundStyle(Theme.success)
             Text("Connected")
@@ -230,7 +230,7 @@ struct DiscogsSettingsContent: View {
     }
 
     private var unvalidatedRow: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: ThemeSpace.compact) {
             if isValidating {
                 ProgressView().controlSize(.small)
             }

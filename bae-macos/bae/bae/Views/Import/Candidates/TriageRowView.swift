@@ -7,7 +7,7 @@ import SwiftUI
 struct TriageRowView: View {
     /// The cover's edge in points; the sidebar preloads Pending's covers at
     /// this size, so it must match for the cached image to be used.
-    static let coverPointSize: CGFloat = 50
+    static let coverPointSize = ThemeSize.rowArtwork
 
     let row: BridgeTriageRow
     let coverContent: ImageContent?
@@ -74,13 +74,13 @@ struct TriageRowContent: View {
     }
 
     private var rowContent: some View {
-        HStack(alignment: .center, spacing: 10) {
+        HStack(alignment: .center, spacing: ThemeSpace.related) {
             cover
             meta
-            Spacer(minLength: 4)
+            Spacer(minLength: ThemeSpace.inline)
             trailing
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, ThemeSpace.compact)
         .padding(.horizontal, ImportListHierarchyLayout.rowEdgePadding)
     }
 
@@ -127,9 +127,9 @@ struct TriageRowContent: View {
 
     /// An unidentified row names its folder, as the main pane's heading does.
     private var folderLine: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: ThemeSpace.compact) {
             Image(systemName: "folder")
-                .font(.system(size: 13))
+                .themeIcon(.medium)
                 .foregroundStyle(.secondary)
             Text(row.folderName)
                 .themeText(.mono)
@@ -155,7 +155,6 @@ struct TriageRowContent: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .truncationMode(.middle)
-                .padding(.top, 0)
         }
     }
 
@@ -261,7 +260,7 @@ extension TriageRowContent {
         -> some View
     {
         Image(systemName: systemName)
-            .font(.caption)
+            .themeIcon(.small)
             .foregroundStyle(tint)
     }
 
@@ -269,8 +268,8 @@ extension TriageRowContent {
         Text(text)
             .themeText(.chip)
             .foregroundStyle(tint)
-            .padding(.horizontal, 7)
-            .padding(.vertical, 3)
+            .padding(.horizontal, ThemeSpace.compact)
+            .padding(.vertical, ThemeSpace.line)
             .background(
                 RoundedRectangle(cornerRadius: ThemeRadius.chip)
                     .fill(tint.opacity(ThemeOpacity.tint))

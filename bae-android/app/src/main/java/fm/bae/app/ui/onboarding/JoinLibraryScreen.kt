@@ -26,9 +26,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import fm.bae.app.OAuthLinker
 import fm.bae.app.R
+import fm.bae.app.ui.appearance.ThemeIcon
+import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.PrimaryButton
 import uniffi.bae_bridge.BridgeCloudProvider
+
+private val actionButtonWidth = 220.dp
 
 /** Join by scanning the one pairing code displayed on an existing device. */
 @Composable
@@ -40,38 +44,38 @@ fun JoinLibraryScreen(
     onBack: () -> Unit,
 ) {
     Column(
-        modifier = Modifier.fillMaxSize().padding(32.dp).verticalScroll(rememberScrollState()),
+        modifier = Modifier.fillMaxSize().padding(ThemeSpace.page).verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
             text = stringResource(R.string.onboarding_join_title),
             style = ThemeText.title.style,
         )
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(ThemeSpace.related))
         Text(
             text = stringResource(R.string.onboarding_join_pairing_instructions),
             style = ThemeText.body.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(ThemeSpace.section))
         PairingCodeEntry(joinLauncher, oauthLinking, oauthLinkingError, onRequestScan)
         PairingOfferPreview(joinLauncher)
         PairingActivity(joinLauncher)
         joinLauncher.error?.let {
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(ThemeSpace.group))
             Text(text = it, color = MaterialTheme.colorScheme.error)
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(ThemeSpace.section))
         PrimaryButton(
             onClick = joinLauncher::join,
             enabled = joinLauncher.joinReady,
-            modifier = Modifier.width(220.dp),
+            modifier = Modifier.width(actionButtonWidth),
         ) {
             Text(stringResource(R.string.onboarding_join_action))
         }
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(ThemeSpace.related))
         TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
     }
 }
@@ -97,10 +101,10 @@ private fun PairingCodeEntry(
         maxLines = 5,
         enabled = !joinLauncher.hasPendingPairing,
     )
-    Spacer(modifier = Modifier.height(8.dp))
+    Spacer(modifier = Modifier.height(ThemeSpace.related))
     OutlinedButton(
         onClick = onRequestScan,
-        modifier = Modifier.width(220.dp),
+        modifier = Modifier.width(actionButtonWidth),
         enabled = !joinLauncher.hasPendingPairing,
     ) {
         Text(stringResource(R.string.pairing_scan_code))
@@ -110,7 +114,7 @@ private fun PairingCodeEntry(
 @Composable
 private fun PairingOfferPreview(joinLauncher: JoinLauncher) {
     val decoded = joinLauncher.decodedOffer ?: return
-    Spacer(modifier = Modifier.height(20.dp))
+    Spacer(modifier = Modifier.height(ThemeSpace.section))
     decoded.fold(
         onSuccess = { offer ->
             PairingOfferRow(
@@ -134,18 +138,18 @@ private fun PairingOfferPreview(joinLauncher: JoinLauncher) {
 @Composable
 private fun PairingActivity(joinLauncher: JoinLauncher) {
     if (joinLauncher.isAuthorizing) {
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(ThemeSpace.edge))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            CircularProgressIndicator(modifier = Modifier.width(20.dp))
-            Spacer(modifier = Modifier.width(12.dp))
+            CircularProgressIndicator(modifier = Modifier.width(ThemeIcon.medium))
+            Spacer(modifier = Modifier.width(ThemeSpace.group))
             Text(stringResource(R.string.pairing_authorizing))
         }
     }
     if (joinLauncher.isJoining) {
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(ThemeSpace.edge))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            CircularProgressIndicator(modifier = Modifier.width(20.dp))
-            Spacer(modifier = Modifier.width(12.dp))
+            CircularProgressIndicator(modifier = Modifier.width(ThemeIcon.medium))
+            Spacer(modifier = Modifier.width(ThemeSpace.group))
             Text(
                 stringResource(
                     if (joinLauncher.joiningFingerprint == null) {
@@ -170,12 +174,12 @@ private fun PairingOfferRow(
     label: String,
     value: String,
 ) {
-    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
+    Row(modifier = Modifier.fillMaxWidth().padding(vertical = ThemeSpace.line)) {
         Text(
             text = label,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Spacer(modifier = Modifier.width(16.dp))
+        Spacer(modifier = Modifier.width(ThemeSpace.edge))
         Text(text = value, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
     }
 }

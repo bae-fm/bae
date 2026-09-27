@@ -8,13 +8,12 @@ struct FindOnlineEmptyZone<Content: View>: View {
     let content: Content
 
     var body: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: ThemeSpace.related) {
             content
         }
         .themeText(.body)
-        .padding(.horizontal, 18)
-        .padding(.top, 22)
-        .padding(.bottom, 26)
+        .padding(.horizontal, ThemeSpace.edge)
+        .padding(.vertical, ThemeSpace.section)
         .frame(maxWidth: .infinity)
     }
 }

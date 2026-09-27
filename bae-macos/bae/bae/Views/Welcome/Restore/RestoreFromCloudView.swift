@@ -34,12 +34,12 @@ struct RestoreFromCloudView: View {
         VStack(spacing: 0) {
             Text("Restore from cloud")
                 .themeText(.title)
-                .padding(.top, 24)
-                .padding(.bottom, 4)
+                .padding(.top, ThemeSpace.section)
+                .padding(.bottom, ThemeSpace.line)
             Text("Paste your restore code.")
                 .themeText(.body)
                 .foregroundStyle(.secondary)
-                .padding(.bottom, 16)
+                .padding(.bottom, ThemeSpace.edge)
             Form {
                 Section("Restore code") {
                     TextField("Paste restore code", text: $restoreCodeInput)
@@ -93,19 +93,19 @@ struct RestoreFromCloudView: View {
                     .foregroundStyle(Theme.danger)
                     .themeText(.body)
                     .padding(.horizontal)
-                    .padding(.bottom, 8)
+                    .padding(.bottom, ThemeSpace.related)
             }
             if isRestoring {
-                HStack(spacing: 8) {
+                HStack(spacing: ThemeSpace.related) {
                     ProgressView()
                         .controlSize(.small)
                     Text("Restoring library...")
                         .themeText(.body)
                         .foregroundStyle(.secondary)
                 }
-                .padding(.bottom, 12)
+                .padding(.bottom, ThemeSpace.group)
             }
-            HStack(spacing: 12) {
+            HStack(spacing: ThemeSpace.group) {
                 Button("Back") {
                     onBack()
                 }
@@ -118,7 +118,7 @@ struct RestoreFromCloudView: View {
                 .disabled(isRestoring || !restoreReady)
                 .keyboardShortcut(.defaultAction)
             }
-            .padding(.bottom, 24)
+            .padding(.bottom, ThemeSpace.section)
         }
         .padding(.horizontal)
         .onDisappear { restoreTask?.cancel() }

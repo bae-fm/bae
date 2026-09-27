@@ -168,15 +168,15 @@ struct QueueView: View {
     // MARK: - Header
 
     private var header: some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .top, spacing: ThemeSpace.group) {
             Text("Queue")
                 .themeText(.title)
             Spacer(minLength: 0)
             PanelCloseButton(onClose: onClose)
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 18)
-        .padding(.bottom, 12)
+        .padding(.horizontal, ThemeSpace.edge)
+        .padding(.top, ThemeSpace.edge)
+        .padding(.bottom, ThemeSpace.group)
     }
 
     // MARK: - Now Playing
@@ -184,14 +184,17 @@ struct QueueView: View {
     /// The now-playing card: cover, title, artist, and a progress strip on an
     /// elevated surface.
     private var nowPlayingCard: some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .top, spacing: ThemeSpace.group) {
             nowPlayingArt
-                .frame(width: 56, height: 56)
+                .frame(
+                    width: ThemeSize.barArtwork,
+                    height: ThemeSize.barArtwork
+                )
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
                 .shadow(color: Theme.shadow, radius: 8, y: 4)
                 .allowsHitTesting(false)
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: ThemeSpace.line) {
                 // Not `Eyebrow`: this label is accent, not secondary.
                 Text("Now Playing")
                     .themeText(.eyebrow)
@@ -209,7 +212,7 @@ struct QueueView: View {
                 }
                 ProgressStripRepresentable()
                     .frame(height: 10)
-                    .padding(.top, 6)
+                    .padding(.top, ThemeSpace.compact)
             }
             .allowsHitTesting(false)
 
@@ -218,9 +221,9 @@ struct QueueView: View {
             PlayPauseControl(
                 isPlaying: isPlaying,
                 isLoading: isLoading,
-                glyphFont: .system(size: 12, weight: .semibold),
+                glyphFont: ThemeIcon.medium.font,
                 spinnerControlSize: .small,
-                targetSize: 30,
+                targetSize: ThemeSize.hitTarget,
                 onToggle: onPlayPause
             )
             .foregroundStyle(.secondary)
@@ -229,7 +232,7 @@ struct QueueView: View {
                 in: RoundedRectangle(cornerRadius: ThemeRadius.control)
             )
         }
-        .padding(12)
+        .padding(ThemeSpace.group)
         .background {
             Button {
                 onGoToNowPlaying?()
@@ -250,12 +253,12 @@ struct QueueView: View {
                 .stroke(Theme.hairline, lineWidth: 1)
                 .allowsHitTesting(false)
         )
-        .padding(.horizontal, 14)
-        .padding(.bottom, 6)
+        .padding(.horizontal, ThemeSpace.group)
+        .padding(.bottom, ThemeSpace.compact)
     }
 
     private var nowPlayingArt: some View {
-        ImageView(content: nowPlayingCover, pointSize: 56)
+        ImageView(content: nowPlayingCover, pointSize: ThemeSize.barArtwork)
     }
 }
 

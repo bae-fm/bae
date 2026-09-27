@@ -7,7 +7,7 @@ struct TwoLineRow: View {
     let subtitle: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: ThemeSpace.line) {
             Text(title)
                 .themeText(.rowTitle)
                 .lineLimit(1)

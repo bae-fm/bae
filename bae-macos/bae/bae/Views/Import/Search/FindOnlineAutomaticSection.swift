@@ -92,7 +92,7 @@ struct FindOnlineAutomaticSection: View {
                             onEditTitleSearch: onEditTitleSearch
                         )
                         Divider()
-                            .padding(.horizontal, 14)
+                            .padding(.horizontal, ThemeSpace.group)
                     }
                     belowBand
                 }

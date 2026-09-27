@@ -28,7 +28,7 @@ struct ReleaseMetadataEditorContent: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: ThemeSpace.section) {
             ReleaseMetadataHeader(
                 values: session.form,
                 writer: session.fieldWriter,
@@ -69,12 +69,12 @@ struct ReleaseMetadataEditorContent: View {
             .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
             .overlay(alignment: .topTrailing) {
                 Image(systemName: "pencil")
-                    .font(.caption2)
+                    .themeIcon(.badge)
                     .foregroundStyle(Theme.onFill)
-                    .padding(3)
+                    .padding(ThemeSpace.inline)
                     .background(Theme.scrim)
                     .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.chip))
-                    .padding(4)
+                    .padding(ThemeSpace.inline)
                     .opacity(onEditCover == nil ? 0 : 1)
                     .allowsHitTesting(false)
             }
@@ -93,7 +93,7 @@ struct ReleaseMetadataEditorContent: View {
     }
 
     private var trackTable: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: ThemeSpace.related) {
             FormSectionHeader(title: String(localized: "Tracks"), ruled: true)
             ScrollView(.horizontal) {
                 VStack(spacing: 0) {
@@ -103,7 +103,7 @@ struct ReleaseMetadataEditorContent: View {
                             .themeText(.body)
                             .foregroundStyle(.secondary)
                             .frame(width: tableWidth)
-                            .padding(.vertical, 16)
+                            .padding(.vertical, ThemeSpace.edge)
                     }
                     else {
                         ForEach(
@@ -158,8 +158,11 @@ struct ReleaseMetadataEditorContent: View {
         Eyebrow(verbatim: text)
             .padding(.horizontal, ReleaseMetadataTrackColumns.rowPadding)
             .frame(width: tableWidth, alignment: .leading)
-            .padding(.top, index == 0 ? 2 : 18)
-            .padding(.bottom, 6)
+            .padding(
+                .top,
+                index == 0 ? ThemeSpace.line : ThemeSpace.section
+            )
+            .padding(.bottom, ThemeSpace.compact)
     }
 
     private var headerRow: some View {
@@ -185,8 +188,8 @@ struct ReleaseMetadataEditorContent: View {
             Color.clear.frame(width: ReleaseMetadataTrackColumns.action)
         }
         .padding(.horizontal, ReleaseMetadataTrackColumns.rowPadding)
-        .padding(.top, 4)
-        .padding(.bottom, 6)
+        .padding(.top, ThemeSpace.inline)
+        .padding(.bottom, ThemeSpace.compact)
     }
 
     private func trackRow(
@@ -206,7 +209,7 @@ struct ReleaseMetadataEditorContent: View {
             Color.clear.frame(width: ReleaseMetadataTrackColumns.action)
         }
         .padding(.horizontal, ReleaseMetadataTrackColumns.rowPadding)
-        .padding(.vertical, 6)
+        .padding(.vertical, ThemeSpace.compact)
         .frame(minHeight: 40)
         .overlay(alignment: .top) {
             Rectangle().fill(Theme.hairline).frame(height: 1)
@@ -217,12 +220,12 @@ struct ReleaseMetadataEditorContent: View {
         _ item: ReleaseMetadataTrackItem,
         sourceIsInCaption: Bool
     ) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: ThemeSpace.related) {
             Button {
                 onPlayTrack?(item.index)
             } label: {
                 Image(systemName: "play.fill")
-                    .font(.system(size: 10))
+                    .themeIcon(.small)
             }
             .buttonStyle(.plain)
             .foregroundStyle(.secondary)
@@ -244,7 +247,7 @@ struct ReleaseMetadataEditorContent: View {
     private func sharedSourceCaption(
         _ source: BridgeReleaseEditTrackSource
     ) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: ThemeSpace.related) {
             Image(systemName: "list.bullet.rectangle")
                 .foregroundStyle(.tertiary)
             Text(source.name)
@@ -254,8 +257,8 @@ struct ReleaseMetadataEditorContent: View {
                 .help(source.name)
         }
         .padding(.horizontal, ReleaseMetadataTrackColumns.rowPadding)
-        .padding(.top, 8)
-        .padding(.bottom, 6)
+        .padding(.top, ThemeSpace.related)
+        .padding(.bottom, ThemeSpace.compact)
         .frame(width: tableWidth, alignment: .leading)
     }
 

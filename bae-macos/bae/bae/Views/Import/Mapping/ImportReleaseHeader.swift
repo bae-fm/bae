@@ -108,8 +108,8 @@ struct ImportReleaseHeader: View {
                 }
             }
         }
-        .padding(.vertical, 16)
-        .padding(.horizontal, 20)
+        .padding(.vertical, ThemeSpace.edge)
+        .padding(.horizontal, ThemeSpace.section)
         .formGroupCard()
         .confirmationDialog(
             "Clear metadata?",
@@ -159,8 +159,8 @@ struct ImportReleaseHeader: View {
     /// controls on the right once there is something to commit. Both entries
     /// open the same pane; only Automatic starts a run.
     private var actionRow: some View {
-        HStack(alignment: .center, spacing: 16) {
-            HStack(spacing: 8) {
+        HStack(alignment: .center, spacing: ThemeSpace.edge) {
+            HStack(spacing: ThemeSpace.related) {
                 Text("Identify")
                     .themeText(.strong)
                     .foregroundStyle(.secondary)
@@ -175,7 +175,7 @@ struct ImportReleaseHeader: View {
                 candidateMenu
             }
             .disabled(isReading)
-            Spacer(minLength: 12)
+            Spacer(minLength: ThemeSpace.group)
             if let commit {
                 if let folderCheck = commit.folderCheck?.localizedText {
                     Text(folderCheck)
@@ -196,7 +196,7 @@ struct ImportReleaseHeader: View {
                     .foregroundStyle(Theme.warning)
                 }
                 if !commitSettled(commit), configStore.config.hasCloudHome {
-                    HStack(spacing: 10) {
+                    HStack(spacing: ThemeSpace.related) {
                         ImportCheckboxToggle(
                             "Cloud",
                             isOn: commit.storageCloud
@@ -285,12 +285,12 @@ struct ImportCoverWell: View {
         .overlay(alignment: .topTrailing) {
             if coverContent != nil, hasCoverOptions {
                 Image(systemName: "pencil")
-                    .font(.caption2)
+                    .themeIcon(.badge)
                     .foregroundStyle(Theme.onFill)
-                    .padding(3)
+                    .padding(ThemeSpace.line)
                     .background(Theme.scrim)
                     .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.chip))
-                    .padding(4)
+                    .padding(ThemeSpace.inline)
             }
         }
         .contentShape(Rectangle())
@@ -320,7 +320,7 @@ struct ImportCoverWell: View {
 
     private var artworkWell: some View {
         let inviting = hasCoverOptions && hovering
-        return VStack(spacing: 4) {
+        return VStack(spacing: ThemeSpace.inline) {
             if hasCoverOptions {
                 Text("Add artwork")
                     .themeText(.strong)
@@ -336,7 +336,7 @@ struct ImportCoverWell: View {
             }
         }
         // The hint wraps to two lines in the width the cover leaves it.
-        .padding(10)
+        .padding(ThemeSpace.related)
         .frame(width: Self.coverSize, height: Self.coverSize)
         .background(
             inviting ? Theme.accentSoft : Theme.hover
@@ -381,7 +381,7 @@ struct ImportCoverWell: View {
             onEditCover: {},
             onSelectCover: { _ in },
         )
-        .padding(24)
+        .padding(ThemeSpace.section)
         .frame(width: 900, height: 620)
         .importPreviewEnvironment()
         .environment(Library.stub())

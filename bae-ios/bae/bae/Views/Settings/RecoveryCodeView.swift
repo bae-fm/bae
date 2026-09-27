@@ -40,7 +40,7 @@ struct RecoveryCodeView: View {
                 Spacer()
             }
         case .success(let code):
-            VStack(spacing: 16) {
+            VStack(spacing: ThemeSpace.edge) {
                 Spacer()
 
                 CodeShareBlock(

@@ -40,7 +40,7 @@ struct OnboardingLinkingScreen: View {
                 onCancel()
             }
             .buttonStyle(.bordered)
-            .padding(.top, 8)
+            .padding(.top, ThemeSpace.related)
         }
     }
 

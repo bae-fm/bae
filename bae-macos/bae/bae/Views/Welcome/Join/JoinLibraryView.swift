@@ -56,14 +56,14 @@ struct JoinLibraryView: View {
         VStack(spacing: 0) {
             Text("Join a library")
                 .themeText(.title)
-                .padding(.top, 24)
-                .padding(.bottom, 4)
+                .padding(.top, ThemeSpace.section)
+                .padding(.bottom, ThemeSpace.line)
             Text(
                 "Scan the pairing code shown on a device already in your library."
             )
             .themeText(.body)
             .foregroundStyle(.secondary)
-            .padding(.bottom, 16)
+            .padding(.bottom, ThemeSpace.edge)
 
             JoinPairingOffer(
                 pairingCodeInput: $pairingCodeInput,

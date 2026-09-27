@@ -22,12 +22,12 @@ struct ArtistDetailScreen: View {
                 ArtistDetailContent(detail: detail, openAlbum: openAlbum)
                     .overlay(alignment: .top) {
                         if let error {
-                            Text(error).foregroundStyle(Theme.danger).padding(12)
+                            Text(error).foregroundStyle(Theme.danger).padding(ThemeSpace.group)
                         }
                     }
             }
             else if let error {
-                Text(error).foregroundStyle(Theme.danger).padding(32)
+                Text(error).foregroundStyle(Theme.danger).padding(ThemeSpace.page)
             }
             else {
                 ProgressView()
@@ -67,9 +67,12 @@ private struct ArtistDetailContent: View {
                         Button {
                             openAlbum(album.id)
                         } label: {
-                            HStack(spacing: 12) {
-                                ImageView(imageRef: album.cover, pointSize: 48)
-                                    .frame(width: 48, height: 48)
+                            HStack(spacing: ThemeSpace.group) {
+                                ImageView(imageRef: album.cover, pointSize: ThemeSize.rowArtwork)
+                                    .frame(
+                                        width: ThemeSize.rowArtwork,
+                                        height: ThemeSize.rowArtwork
+                                    )
                                     .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
                                 TwoLineRow(
                                     title: album.title,

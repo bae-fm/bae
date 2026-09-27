@@ -7,10 +7,10 @@ struct KeychainLockedView: View {
     let onRetry: () -> Void
 
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: ThemeSpace.edge) {
             Spacer()
             Image(systemName: "lock.fill")
-                .font(.system(size: 40))
+                .themeIcon(.hero)
                 .foregroundStyle(.secondary)
             Text("Library Locked")
                 .themeText(.title)

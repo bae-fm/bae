@@ -60,7 +60,10 @@ import fm.bae.app.performBridgeAction
 import fm.bae.app.playback.NowPlaying
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeRadius
+import fm.bae.app.ui.appearance.ThemeSize
+import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CoverImage
 import fm.bae.app.ui.components.PrimaryButton
@@ -105,7 +108,12 @@ fun NowPlayingBar(session: OpenLibrary) {
     SidePauseAlert(session = session, track = track)
 
     Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 3.dp) {
-        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = ThemeSpace.group, vertical = ThemeSpace.related),
+        ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 NowPlayingTrackInfo(
                     track = track,
@@ -146,10 +154,10 @@ private fun RowScope.NowPlayingTrackInfo(
         CoverImage(
             cover = track.coverImage,
             cornerRadius = ThemeRadius.artwork,
-            iconPadding = 12.dp,
-            modifier = Modifier.size(48.dp),
+            iconPadding = ThemeSpace.group,
+            modifier = Modifier.size(ThemeSize.barArtwork),
         )
-        Spacer(modifier = Modifier.width(12.dp))
+        Spacer(modifier = Modifier.width(ThemeSpace.group))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = track.title,
@@ -231,7 +239,7 @@ fun SidePauseAlert(
                 )
             },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
                     Text(context.coreString("core.playback.pause.message"))
                     prompt.countdown?.let { countdown ->
                         SidePauseCountdownLine(
@@ -280,7 +288,7 @@ private fun KeepPausingCheckbox(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Checkbox(checked = checked, onCheckedChange = null)
-        Spacer(modifier = Modifier.width(8.dp))
+        Spacer(modifier = Modifier.width(ThemeSpace.related))
         Text(LocalContext.current.coreString(labelKey))
     }
 }
@@ -340,7 +348,7 @@ private fun NowPlayingTransportButtons(
     PlayPauseControl(
         isPlaying = isPlaying,
         isLoading = isLoading,
-        sizes = PlayPauseControlSizes(iconSize = 24.dp, spinnerSize = 24.dp, spinnerStroke = 2.dp),
+        sizes = PlayPauseControlSizes(iconSize = ThemeIcon.large, spinnerSize = ThemeIcon.large, spinnerStroke = 2.dp),
         onToggle = { player.togglePlayPause() },
     )
     IconButton(onClick = { player.seekToNextMediaItem() }) {

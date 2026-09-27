@@ -29,7 +29,7 @@ struct ProgressLine<Label: View>: View {
     }
 
     private func line(detail: String?) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: ThemeSpace.related) {
             label
                 .lineLimit(1)
                 .foregroundStyle(.secondary)
@@ -57,7 +57,7 @@ extension ProgressLine where Label == Text {
 
 #if DEBUG
     #Preview("Progress Line") {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: ThemeSpace.group) {
             ProgressLine("Reading files", progress: 0.42, detail: "42%")
             ProgressLine("Importing…", progress: nil)
             ProgressLine(

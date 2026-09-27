@@ -1,10 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// The now-playing bar's Cast control: a speaker glyph that opens the device
-/// picker. Browsing runs only while the picker is up. Active (accent) while
-/// casting. Absent entirely when casting is turned off — core browses nothing
-/// then and refuses a session, so there is nothing for the control to do.
+/// The now-playing bar's Cast control, which opens the device picker and is
+/// absent while casting is turned off.
 struct CastButton: View {
     @Environment(Cast.self)
     private var cast
@@ -47,9 +45,8 @@ struct CastButton: View {
                 )
                 .presentationDetents([.medium, .large])
             }
-            // Browsing is not always-on: it runs with the picker. Core clears
-            // the list as it starts, so the sheet opens on what this browse
-            // finds, not what the last one did.
+            // Browsing runs only while the picker is up; core clears the list as
+            // it starts, so the sheet shows only this browse's devices.
             .onChange(of: showPicker) { _, isOpen in
                 if isOpen {
                     cast.startDiscovery()
@@ -129,7 +126,7 @@ private struct CastPickerView: View {
                 .foregroundStyle(Theme.accent)
             Text("Casting to \(name)")
                 .lineLimit(1)
-            Spacer(minLength: 8)
+            Spacer(minLength: ThemeSpace.related)
             Button("Disconnect", action: onDisconnect)
                 .buttonStyle(.borderless)
         }
@@ -144,7 +141,7 @@ private struct CastPickerView: View {
                     .foregroundStyle(.secondary)
                 Text(device.name)
                     .lineLimit(1)
-                Spacer(minLength: 8)
+                Spacer(minLength: ThemeSpace.related)
                 Image(systemName: "checkmark")
                     .foregroundStyle(Theme.accent)
                     .opacity(device.name == castingDeviceName ? 1 : 0)
@@ -154,11 +151,8 @@ private struct CastPickerView: View {
         .foregroundStyle(.primary)
     }
 
-    /// A flavor hint for a row: a speaker for Cast, the AirPlay glyph for an
-    /// AirPlay receiver, a TV for a UPnP renderer (commonly a TV or AV
-    /// receiver). The list itself isn't segregated by protocol — a speaker is a
-    /// speaker. UPnP is found over SSDP, which iOS does not let bae send, so
-    /// that row only appears on a platform that browses for itself.
+    /// The row's glyph for the device's protocol; iOS cannot send SSDP, so UPnP
+    /// rows appear only on platforms that browse for themselves.
     private static func deviceIcon(_ kind: BridgeRendererKind) -> String {
         switch kind {
         case .cast: "hifispeaker"

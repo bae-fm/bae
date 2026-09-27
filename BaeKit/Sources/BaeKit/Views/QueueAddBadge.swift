@@ -2,19 +2,10 @@ import Combine
 import SwiftUI
 
 public struct QueueAddBadgeStyle {
-    fileprivate let symbolFont: Font
-    fileprivate let padding: EdgeInsets
     fileprivate let fill: Color
     fileprivate let offset: CGSize
 
-    public init(
-        symbolFont: Font,
-        padding: EdgeInsets,
-        fill: Color,
-        offset: CGSize
-    ) {
-        self.symbolFont = symbolFont
-        self.padding = padding
+    public init(fill: Color, offset: CGSize) {
         self.fill = fill
         self.offset = offset
     }
@@ -56,9 +47,9 @@ public struct QueueAddBadge: View {
     @ViewBuilder
     private var badge: some View {
         if let displayedCount {
-            HStack(spacing: 1) {
+            HStack(spacing: ThemeSpace.hairline) {
                 Image(systemName: "plus")
-                    .font(style.symbolFont)
+                    .themeIcon(.badge)
                     .accessibilityHidden(true)
                 Text(displayedCount, format: .number)
             }
@@ -66,7 +57,8 @@ public struct QueueAddBadge: View {
             .foregroundStyle(Theme.onFill)
             .lineLimit(1)
             .fixedSize()
-            .padding(style.padding)
+            .padding(.horizontal, ThemeSpace.compact)
+            .padding(.vertical, ThemeSpace.line)
             .background(
                 Capsule(style: .continuous)
                     .fill(style.fill)

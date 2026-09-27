@@ -9,13 +9,13 @@ struct SectionHeader: View {
     var body: some View {
         Text(title)
             .themeText(.heading)
-            .padding(.top, 4)
+            .padding(.top, ThemeSpace.inline)
     }
 }
 
 #if DEBUG
     #Preview("Section Header") {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: ThemeSpace.group) {
             SectionHeader(title: "Works")
             SectionHeader(title: "Releases")
             SectionHeader(title: "Recordings")

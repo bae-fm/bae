@@ -39,7 +39,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.data.ArtistPageStore
@@ -48,6 +47,8 @@ import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeRadius
+import fm.bae.app.ui.appearance.ThemeSize
+import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CoverImage
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -167,17 +168,17 @@ internal fun ArtistSummaryRow(
             Modifier
                 .fillMaxWidth()
                 .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         CoverImage(
             cover = artist.image,
             cornerRadius = ThemeRadius.artwork,
-            iconPadding = 12.dp,
-            modifier = Modifier.size(48.dp),
+            iconPadding = ThemeSpace.group,
+            modifier = Modifier.size(ThemeSize.rowArtwork),
             contentDescription = artist.name,
         )
-        Spacer(modifier = Modifier.width(12.dp))
+        Spacer(modifier = Modifier.width(ThemeSpace.group))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = artist.name,

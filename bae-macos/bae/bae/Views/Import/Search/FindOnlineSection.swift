@@ -76,17 +76,17 @@ struct FindOnlineSectionHeader: View {
         // The open section's header is not a control: clicking it changes
         // nothing, and it stays fully drawn rather than dimming as disabled.
         Button(action: { if !isOpen { onOpen() } }) {
-            HStack(spacing: 8) {
+            HStack(spacing: ThemeSpace.related) {
                 Image(systemName: isOpen ? "chevron.down" : "chevron.right")
-                    .font(.system(size: 8, weight: .semibold))
+                    .themeIcon(.small)
                     .foregroundStyle(dimmed ? .quaternary : .tertiary)
-                    .frame(width: 8)
+                    .frame(width: ThemeIcon.small.size)
                 Eyebrow(section == .automatic ? "Automatic" : "Search")
                     .opacity(dimmed ? 0.55 : 1)
-                Spacer(minLength: 8)
+                Spacer(minLength: ThemeSpace.related)
                 FindOnlineSectionGlyphView(glyph: glyph)
             }
-            .padding(.horizontal, 14)
+            .padding(.horizontal, ThemeSpace.group)
             .frame(height: 32)
             .background(
                 isHovered && !isOpen ? Theme.hover : Color.clear
@@ -103,8 +103,8 @@ struct FindOnlineSectionHeader: View {
     }
 }
 
-/// The status glyph, at least 12 points square so the header holds still as
-/// it changes.
+/// The status glyph, at least a small glyph's square so the header holds still
+/// as it changes.
 struct FindOnlineSectionGlyphView: View {
     let glyph: FindOnlineSectionGlyph
 
@@ -121,15 +121,16 @@ struct FindOnlineSectionGlyphView: View {
                 CountCapsule(count: 0)
             case .failed:
                 Image(systemName: "exclamationmark.triangle")
-                    .font(.system(size: 11))
+                    .themeIcon(.small)
                     .foregroundStyle(Theme.warning)
             case .nothing:
-                RoundedRectangle(cornerRadius: ThemeRadius.bar)
-                    .fill(Theme.hairlineStrong)
-                    .frame(width: 8, height: 1.5)
+                IdentifierDash()
             }
         }
-        .frame(minWidth: 12, minHeight: 12)
+        .frame(
+            minWidth: ThemeIcon.small.size,
+            minHeight: ThemeIcon.small.size
+        )
     }
 }
 

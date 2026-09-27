@@ -19,6 +19,9 @@ struct ReIdentifySheet: View {
     let displayName: String
     let onClose: () -> Void
 
+    /// The widest a prompt's or failure's message runs.
+    private static let messageWidth: CGFloat = 420
+
     @Environment(Importer.self)
     private var importer
     @Environment(ReleaseEditor.self)
@@ -87,7 +90,7 @@ struct ReIdentifySheet: View {
 
     private var header: some View {
         HStack {
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: ThemeSpace.line) {
                 Text("Re-identify")
                     .themeText(.heading)
                 Text(displayName)
@@ -191,15 +194,15 @@ struct ReIdentifySheet: View {
     private func selectionFooter(
         for pressing: Pressing
     ) -> some View {
-        HStack(alignment: .center, spacing: 12) {
+        HStack(alignment: .center, spacing: ThemeSpace.group) {
             Spacer(minLength: 0)
             Button("Set identity") {
                 commit(pressing.reseed)
             }
             .buttonStyle(PrimaryButtonStyle())
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .padding(.horizontal, ThemeSpace.edge)
+        .padding(.vertical, ThemeSpace.related)
         .background(Theme.surface)
         .overlay(alignment: .top) {
             Rectangle().fill(Theme.hairline).frame(height: 1)
@@ -210,9 +213,9 @@ struct ReIdentifySheet: View {
 
     // Only reachable after a source-backed commit.
     private var refreshPrompt: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: ThemeSpace.edge) {
             Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 48))
+                .themeIcon(.hero)
                 .foregroundStyle(Theme.success)
             Text("Identity updated.")
                 .themeText(.heading)
@@ -222,8 +225,8 @@ struct ReIdentifySheet: View {
             .themeText(.body)
             .foregroundStyle(.secondary)
             .multilineTextAlignment(.center)
-            .frame(maxWidth: 420)
-            HStack(spacing: 12) {
+            .frame(maxWidth: Self.messageWidth)
+            HStack(spacing: ThemeSpace.group) {
                 Button("Keep current metadata") { finish() }
                 Button("Refresh from new source") {
                     refreshMetadata()
@@ -248,9 +251,9 @@ struct ReIdentifySheet: View {
     // MARK: - Error banner
 
     private func errorBanner(message: String) -> some View {
-        VStack(spacing: 12) {
+        VStack(spacing: ThemeSpace.group) {
             Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 48))
+                .themeIcon(.hero)
                 .foregroundStyle(Theme.danger)
             Text("Re-identify failed.")
                 .themeText(.heading)
@@ -258,7 +261,7 @@ struct ReIdentifySheet: View {
                 .themeText(.body)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
-                .frame(maxWidth: 420)
+                .frame(maxWidth: Self.messageWidth)
             // Still navigates when the commit landed and only the refresh
             // failed.
             Button("Close") { closeAndNavigate() }

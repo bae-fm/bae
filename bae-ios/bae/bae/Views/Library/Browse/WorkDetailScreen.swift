@@ -27,12 +27,12 @@ struct WorkDetailScreen: View {
                 )
                 .overlay(alignment: .top) {
                     if let error {
-                        Text(error).foregroundStyle(Theme.danger).padding(12)
+                        Text(error).foregroundStyle(Theme.danger).padding(ThemeSpace.group)
                     }
                 }
             }
             else if let error {
-                Text(error).foregroundStyle(Theme.danger).padding(32)
+                Text(error).foregroundStyle(Theme.danger).padding(ThemeSpace.page)
             }
             else {
                 ProgressView()
@@ -80,9 +80,12 @@ private struct WorkDetailContent: View {
                         Button {
                             openAlbum(release)
                         } label: {
-                            HStack(spacing: 12) {
-                                ImageView(imageRef: release.cover, pointSize: 42)
-                                    .frame(width: 42, height: 42)
+                            HStack(spacing: ThemeSpace.group) {
+                                ImageView(imageRef: release.cover, pointSize: ThemeSize.rowArtwork)
+                                    .frame(
+                                        width: ThemeSize.rowArtwork,
+                                        height: ThemeSize.rowArtwork
+                                    )
                                     .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
                                 TwoLineRow(
                                     title: release.albumTitle,
@@ -132,13 +135,13 @@ private struct WorkSummaryRow: View {
     let summary: BridgeWorkSummary
 
     var body: some View {
-        HStack(spacing: 12) {
-            ImageView(imageRef: summary.representativeCover, pointSize: 42)
-                .frame(width: 42, height: 42)
+        HStack(spacing: ThemeSpace.group) {
+            ImageView(imageRef: summary.representativeCover, pointSize: ThemeSize.rowArtwork)
+                .frame(width: ThemeSize.rowArtwork, height: ThemeSize.rowArtwork)
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
             TwoLineRow(title: summary.title, subtitle: summary.composerNames)
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, ThemeSpace.inline)
     }
 }
 

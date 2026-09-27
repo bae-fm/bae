@@ -51,8 +51,8 @@ struct ReleaseStorageSheet: View {
                 Spacer()
             }
             .padding(.horizontal)
-            .padding(.top, 8)
-            .padding(.bottom, 4)
+            .padding(.top, ThemeSpace.related)
+            .padding(.bottom, ThemeSpace.inline)
 
             Table(release.files.sorted(using: sortOrder), sortOrder: $sortOrder)
             {

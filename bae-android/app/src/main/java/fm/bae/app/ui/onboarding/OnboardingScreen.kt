@@ -41,6 +41,7 @@ import fm.bae.app.OAuthLinker
 import fm.bae.app.R
 import fm.bae.app.ui.BaeAppChrome
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.QRScannerScreen
@@ -254,30 +255,30 @@ private fun OnboardingIdleContent(
             contentDescription = stringResource(R.string.onboarding_icon_description),
             modifier = Modifier.size(120.dp),
         )
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(ThemeSpace.related))
         Text(text = "bae", style = ThemeText.wordmark.style)
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(ThemeSpace.group))
         Text(
             text = stringResource(R.string.onboarding_tagline),
             style = ThemeText.body.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(ThemeSpace.page))
         val buttonWidth = Modifier.width(200.dp)
         PrimaryButton(onClick = callbacks.onJoinLibrary, modifier = buttonWidth) {
             Text(stringResource(R.string.onboarding_join_library))
         }
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(ThemeSpace.related))
         OutlinedButton(onClick = callbacks.onScanQR, modifier = buttonWidth) {
             Text(stringResource(R.string.pairing_scan_code))
         }
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(ThemeSpace.related))
         OutlinedButton(onClick = callbacks.onShowPasteDialog, modifier = buttonWidth) {
             Text(stringResource(R.string.onboarding_paste_code))
         }
         if (error != null) {
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(ThemeSpace.related))
             Text(text = error, color = MaterialTheme.colorScheme.error, style = ThemeText.body.style)
         }
         Spacer(modifier = Modifier.weight(1f))
@@ -323,7 +324,7 @@ internal fun OnboardingProgress(
                 JoiningDeviceProgress(joinProgress)
             } else {
                 CircularProgressIndicator()
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(ThemeSpace.section))
                 Text(
                     text = stringResource(R.string.onboarding_joining_title),
                     style = ThemeText.heading.style,
@@ -331,14 +332,14 @@ internal fun OnboardingProgress(
                 )
             }
             joiningFingerprint?.let {
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(ThemeSpace.group))
                 Text(
                     text = stringResource(R.string.onboarding_join_fingerprint, it),
                     style = ThemeText.mono.style,
                     textAlign = TextAlign.Center,
                 )
             }
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(ThemeSpace.section))
             OutlinedButton(onClick = onCancel) { Text(stringResource(R.string.cancel)) }
         }
     }
@@ -353,13 +354,13 @@ private fun ProgressScreen(
 ) {
     OnboardingContainer {
         CircularProgressIndicator()
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(ThemeSpace.section))
         Text(
             text = stringResource(titleRes),
             style = ThemeText.heading.style,
             textAlign = TextAlign.Center,
         )
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(ThemeSpace.related))
         Text(
             text = stringResource(bodyRes),
             style = ThemeText.body.style,
@@ -367,14 +368,14 @@ private fun ProgressScreen(
             textAlign = TextAlign.Center,
         )
         joiningFingerprint?.let {
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(ThemeSpace.group))
             Text(
                 text = stringResource(R.string.onboarding_join_fingerprint, it),
                 style = ThemeText.mono.style,
                 textAlign = TextAlign.Center,
             )
         }
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(ThemeSpace.section))
         OutlinedButton(onClick = onCancel) { Text(stringResource(R.string.cancel)) }
     }
 }
@@ -382,7 +383,7 @@ private fun ProgressScreen(
 @Composable
 private fun OnboardingContainer(content: @Composable ColumnScope.() -> Unit) {
     Column(
-        modifier = Modifier.fillMaxSize().padding(32.dp),
+        modifier = Modifier.fillMaxSize().padding(ThemeSpace.page),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
         content = content,

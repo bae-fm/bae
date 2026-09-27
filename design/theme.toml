@@ -343,3 +343,69 @@ tracking = -1.1
 macos = 46
 ios = "largeTitle"
 android = 32
+
+# Gaps and insets, the same on every platform (points on Apple, dp on
+# Android): `line` between the lines of one text block, `inline` between a
+# glyph and its text, `related` between related items, `group` between groups,
+# `edge` from a container's edge to its content, `section` between sections
+# and `page` around a page.
+[space]
+hairline = 1
+line = 2
+inline = 4
+compact = 6
+related = 8
+group = 12
+edge = 16
+section = 24
+page = 32
+
+# Glyph sizes, which each platform sets by its own convention: SF Symbols in
+# points on macOS and iOS, Material icons in dp. `hero` marks an empty or
+# failed state.
+[icon.badge]
+weight = "bold"
+macos = 8.5
+ios = 9
+android = 12
+
+[icon.small]
+weight = "semibold"
+macos = 11
+ios = 13
+android = 16
+
+[icon.medium]
+weight = "semibold"
+macos = 13
+ios = 17
+android = 20
+
+[icon.large]
+weight = "medium"
+macos = 17
+ios = 22
+android = 24
+
+[icon.hero]
+weight = "thin"
+macos = 44
+ios = 56
+android = 56
+
+# Sizes that recur across screens: cover art in a list row and in the
+# now-playing bar, and the least an icon button takes to press.
+[size.rowArtwork]
+macos = 44
+ios = 44
+android = 48
+
+[size.barArtwork]
+macos = 56
+ios = 44
+android = 48
+
+[size.hitTarget]
+macos = 28
+ios = 44
+android = 44

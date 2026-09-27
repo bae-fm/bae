@@ -1,9 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// The shared text-field chrome: `.boxed` for grouped cards, `.inline` for
-/// fields set into running text or table cells. Padding stays the same in
-/// every state so the text never moves.
+/// The shared text-field chrome, `.boxed` for grouped cards and `.inline` for
+/// running text or table cells, with the same padding in every state.
 struct FieldChrome: ViewModifier {
     enum Style {
         case boxed
@@ -14,8 +13,8 @@ struct FieldChrome: ViewModifier {
     let style: Style
 
     /// How far an inline field's text sits inside its chrome.
-    static let inlineHorizontalPadding: CGFloat = 7
-    static let inlineVerticalPadding: CGFloat = 3
+    static let inlineHorizontalPadding = ThemeSpace.compact
+    static let inlineVerticalPadding = ThemeSpace.line
 
     @State
     private var hovering = false
@@ -56,14 +55,14 @@ struct FieldChrome: ViewModifier {
 
     private var horizontalPadding: CGFloat {
         switch style {
-        case .boxed: 10
+        case .boxed: ThemeSpace.related
         case .inline: Self.inlineHorizontalPadding
         }
     }
 
     private var verticalPadding: CGFloat {
         switch style {
-        case .boxed: 6
+        case .boxed: ThemeSpace.compact
         case .inline: Self.inlineVerticalPadding
         }
     }
@@ -111,7 +110,7 @@ struct FieldChrome: ViewModifier {
 
 #if DEBUG
     #Preview("Field Chrome") {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: ThemeSpace.group) {
             Text(verbatim: "Boxed · resting")
                 .modifier(FieldChrome(focused: false, style: .boxed))
             Text(verbatim: "Boxed · focused")
@@ -122,7 +121,7 @@ struct FieldChrome: ViewModifier {
                 .modifier(FieldChrome(focused: true, style: .inline))
         }
         .themeText(.body)
-        .padding(24)
+        .padding(ThemeSpace.section)
         .frame(width: 300, alignment: .leading)
         .background(Theme.background)
         .preferredColorScheme(.dark)

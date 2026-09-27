@@ -14,21 +14,21 @@ struct CatalogAgreementChip: View {
 
     var body: some View {
         Button(action: onToggle) {
-            HStack(spacing: 5) {
+            HStack(spacing: ThemeSpace.inline) {
                 Image(
                     systemName: counted
                         ? "checkmark.circle.fill" : "circle.dashed"
                 )
-                .font(.system(size: 10, weight: .semibold))
+                .themeIcon(.small)
                 Text(agreement.value)
                     .themeText(.mono)
                     .strikethrough(!counted)
                     .lineLimit(1)
             }
             .foregroundStyle(foreground)
-            .padding(.leading, 6)
-            .padding(.trailing, 9)
-            .padding(.vertical, 4)
+            .padding(.leading, ThemeSpace.compact)
+            .padding(.trailing, ThemeSpace.related)
+            .padding(.vertical, ThemeSpace.inline)
             .background(
                 background,
                 in: RoundedRectangle(cornerRadius: ThemeRadius.chip)
@@ -69,7 +69,7 @@ struct CatalogAgreementChip: View {
     // MARK: - Previews
 
     #Preview("Catalog agreement chips") {
-        FlowLayout(spacing: 6) {
+        FlowLayout(spacing: ThemeSpace.compact) {
             CatalogAgreementChip(
                 agreement: BridgeCatalogAgreement(
                     value: "16033-2",

@@ -39,18 +39,14 @@ struct MainAppView: View {
 
     var body: some View {
         ZStack {
-            // Main layout: title bar, active section + docked queue, now
-            // playing bar
+            // Title bar, the active section beside the queue, now playing bar.
             VStack(spacing: 0) {
                 TitleBar(searchText: $searchText)
                 ArtworkLoadingBanner()
 
                 HStack(spacing: 0) {
-                    // Only the active section is in the view tree: SwiftUI's
-                    // .onHover is backed by AppKit tracking areas, which ignore
-                    // both opacity and hit-testing, so a permanently-mounted
-                    // inactive section leaks its hover chrome (popovers,
-                    // tooltips) through to whichever section is showing.
+                    // Only the active section is mounted: `.onHover` tracking
+                    // areas ignore opacity, so a hidden one would leak hover.
                     Group {
                         if uiStore.activeSection == .library {
                             LibraryView()
@@ -61,10 +57,7 @@ struct MainAppView: View {
                     }
                     .frame(maxWidth: .infinity)
 
-                    // Queue — docked as a sidebar, so the content reflows
-                    // beside it and nothing is ever occluded while dragging
-                    // albums or tracks into its drop sites. Toggled by the
-                    // queue button or the menu; no click-away.
+                    // Docked so the content reflows beside it during drags.
                     if uiStore.showQueue {
                         QueuePanel(
                             onClose: {
@@ -122,11 +115,8 @@ struct MainAppView: View {
                 GeometryReader { proxy in
                     let rect = proxy[anchor]
 
-                    // Anchored by its top edge 5pt under the field, trailing
-                    // edges aligned, so the card can be content-sized and grow
-                    // downward. Dismissal is the event monitor below, not a
-                    // click-swallowing scrim: an outside click closes the
-                    // dropdown AND still lands on its target.
+                    // Hangs under the field, trailing edges aligned; the
+                    // monitor below dismisses it and lets the click through.
                     SearchView(
                         results: uiStore.searchResults,
                         onSelectAlbum: selectAlbum,
@@ -140,7 +130,7 @@ struct MainAppView: View {
                         searchCardFrame = $0
                     }
                     .padding(.leading, rect.maxX - SearchView.width)
-                    .padding(.top, rect.maxY + 5)
+                    .padding(.top, rect.maxY + ThemeSpace.inline)
                     .frame(
                         maxWidth: .infinity,
                         maxHeight: .infinity,
@@ -182,12 +172,7 @@ struct MainAppView: View {
         .modifier(TrafficLightOffset(xOffset: 6, yOffset: 7))
         .onDrop(of: [.fileURL], isTargeted: nil, perform: handleDrop)
         .sidePausePromptAlert(showError: { uiStore.showError($0) })
-        // A running import-audio preview is scoped to this library session, so
-        // it ends when this view leaves the tree — closing, switching, or
-        // locking the library. Not a tab switch: MainAppView stays mounted
-        // across those; only its active child section unmounts. (The preview
-        // overlay is a sibling here, not inside the section, so switching tabs
-        // must NOT stop it.)
+        // An import-audio preview ends with the library session, not a tab.
         .onDisappear { previewAudio.previewStop() }
     }
 
@@ -264,17 +249,8 @@ struct MainAppView: View {
 }
 
 #if DEBUG
-    /// The full main window against stub services: title bar, library grid
-    /// over the canned 40-album session, and the now-playing bar with an
-    /// empty transport. Scrolling the grid drives the header collapse; the
-    /// queue and import sections mount on their normal toggles.
-    ///
-    /// The canvas's simulated window adds fake chrome with a top safe-area
-    /// inset, and the view's own `ignoresSafeArea` (correct in the real
-    /// chromeless window) slides the top bar underneath that chrome when the
-    /// view sits flush against the safe-area boundary. One point of top
-    /// padding keeps it off the boundary — the ignore has nothing adjacent
-    /// to extend into, and the bar stays visible.
+    /// The main window against stub services. The point of top padding keeps
+    /// `ignoresSafeArea` from sliding the bar under the canvas's fake chrome.
     #Preview("Main app") {
         let uiStore = UiStore()
         let libraryStore = LibraryStore()

@@ -20,7 +20,7 @@ struct ImportConfirmationBanners: View {
     var body: some View {
         if let libStatus = libraryStatus {
             if libStatus.releaseInLibrary {
-                HStack(spacing: 8) {
+                HStack(spacing: ThemeSpace.related) {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundStyle(NoticeTone.warning.tint)
                     Text("This release is already in your library")
@@ -34,11 +34,11 @@ struct ImportConfirmationBanners: View {
                         .controlSize(.small)
                     }
                 }
-                .padding(10)
+                .padding(ThemeSpace.group)
                 .noticeBackground(.warning)
             }
             else if libStatus.albumInLibrary {
-                HStack(spacing: 8) {
+                HStack(spacing: ThemeSpace.related) {
                     Image(systemName: "info.circle.fill")
                         .foregroundStyle(NoticeTone.info.tint)
                     Text(
@@ -53,7 +53,7 @@ struct ImportConfirmationBanners: View {
                         .controlSize(.small)
                     }
                 }
-                .padding(10)
+                .padding(ThemeSpace.group)
                 .noticeBackground(.info)
             }
         }
@@ -61,14 +61,14 @@ struct ImportConfirmationBanners: View {
         importFailureBanner
 
         if let error {
-            HStack(spacing: 8) {
+            HStack(spacing: ThemeSpace.related) {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundStyle(NoticeTone.error.tint)
                 Text(error)
                     .themeText(.body)
                     .foregroundStyle(NoticeTone.error.tint)
             }
-            .padding(10)
+            .padding(ThemeSpace.group)
             .noticeBackground(.error)
         }
     }
@@ -87,20 +87,20 @@ struct ImportConfirmationBanners: View {
             let displayed = DisplayError(bridgeError)
         {
             ErrorDetailDisclosure(error: displayed)
-                .padding(10)
+                .padding(ThemeSpace.group)
                 .noticeBackground(.error)
         }
     }
 
     private func persistedFailure(_ error: DisplayError) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: ThemeSpace.related) {
             ErrorDetailDisclosure(error: error)
             Spacer()
             Button("Retry") { onRetry() }
                 .controlSize(.small)
                 .disabled(!canEdit)
         }
-        .padding(10)
+        .padding(ThemeSpace.group)
         .noticeBackground(.error)
     }
 
@@ -108,11 +108,14 @@ struct ImportConfirmationBanners: View {
         _ conflict: BridgeArtistIdentityConflict,
         error: DisplayError
     ) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
+        VStack(alignment: .leading, spacing: ThemeSpace.related) {
+            HStack(
+                alignment: .firstTextBaseline,
+                spacing: ThemeSpace.related
+            ) {
                 Image(systemName: "person.2.badge.gearshape.fill")
                     .foregroundStyle(NoticeTone.warning.tint)
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: ThemeSpace.line) {
                     Text(conflict.incomingArtistName)
                         .themeText(.strong)
                     Text(
@@ -124,7 +127,7 @@ struct ImportConfirmationBanners: View {
                 .themeText(.body)
                 .foregroundStyle(NoticeTone.warning.tint)
             }
-            HStack(spacing: 8) {
+            HStack(spacing: ThemeSpace.related) {
                 artistChoiceButton(
                     titleKey:
                         "ui.import.artist_identity_conflict.keep_discogs",
@@ -144,7 +147,7 @@ struct ImportConfirmationBanners: View {
                 showIcon: false
             )
         }
-        .padding(10)
+        .padding(ThemeSpace.group)
         .noticeBackground(.warning)
     }
 
@@ -155,7 +158,7 @@ struct ImportConfirmationBanners: View {
         Button {
             onMergeArtists(artist.artistId)
         } label: {
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: ThemeSpace.hairline) {
                 Text(verbatim: coreString(titleKey))
                 Text(verbatim: artist.name)
                     .themeText(.detail)
@@ -166,7 +169,7 @@ struct ImportConfirmationBanners: View {
 
 #if DEBUG
     #Preview("Confirmation banners") {
-        VStack(spacing: 12) {
+        VStack(spacing: ThemeSpace.group) {
             ImportConfirmationBanners(
                 libraryStatus: BridgeLibraryStatus(
                     releaseId: "rel-123",

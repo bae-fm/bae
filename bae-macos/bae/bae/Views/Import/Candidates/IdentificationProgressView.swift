@@ -17,7 +17,7 @@ struct IdentificationProgressView: View {
     }
 
     var body: some View {
-        VStack(alignment: .trailing, spacing: 8) {
+        VStack(alignment: .trailing, spacing: ThemeSpace.related) {
             Button {
                 onGoToUnidentified()
             } label: {
@@ -76,7 +76,7 @@ struct IdentificationProgressIndicator: View {
                 }
             )
             .frame(width: 220)
-            .padding(12)
+            .padding(ThemeSpace.group)
             .background { PopoverBehavior() }
         }
     }
@@ -94,8 +94,8 @@ struct IdentificationProgressIndicator: View {
                 .rotationEffect(.degrees(-90))
         }
         .frame(
-            width: ImportFilterBarLayout.glyphSize,
-            height: ImportFilterBarLayout.glyphSize
+            width: ImportFilterBarLayout.glyph.size,
+            height: ImportFilterBarLayout.glyph.size
         )
     }
 }
@@ -115,8 +115,8 @@ struct FolderScanProgressIndicator: View {
             ProgressView()
                 .controlSize(.small)
                 .frame(
-                    width: ImportFilterBarLayout.glyphSize,
-                    height: ImportFilterBarLayout.glyphSize
+                    width: ImportFilterBarLayout.glyph.size,
+                    height: ImportFilterBarLayout.glyph.size
                 )
                 .foregroundStyle(.secondary)
                 .filterBarControl()
@@ -124,12 +124,12 @@ struct FolderScanProgressIndicator: View {
         .buttonStyle(.plain)
         .help(coreString("ui.import.scan.activity"))
         .popover(isPresented: $detailsShown, arrowEdge: .bottom) {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: ThemeSpace.related) {
                 ForEach(activity.folders, id: \.watchedFolderPath) { folder in
-                    HStack(spacing: 12) {
+                    HStack(spacing: ThemeSpace.group) {
                         Text(verbatim: folder.watchedFolderName)
                             .lineLimit(1)
-                        Spacer(minLength: 12)
+                        Spacer(minLength: ThemeSpace.group)
                         Text(
                             verbatim: coreString(
                                 "ui.import.scan.found",
@@ -143,7 +143,7 @@ struct FolderScanProgressIndicator: View {
             }
             .themeText(.body)
             .frame(width: 240)
-            .padding(12)
+            .padding(ThemeSpace.group)
             .background { PopoverBehavior() }
         }
     }

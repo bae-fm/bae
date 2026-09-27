@@ -12,7 +12,7 @@ struct RecordArrow: View {
 
     var body: some View {
         Image(systemName: "arrow.up.right")
-            .font(.system(size: 11))
+            .themeIcon(.small)
             .foregroundStyle(.secondary)
             .accessibilityIdentifier("identified-glyph")
             .accessibilityLabel(coreString("core.identity.identified"))
@@ -43,7 +43,7 @@ extension BridgeImportedReleaseSummary {
     // MARK: - Previews
 
     #Preview("Read from a record, and not") {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: ThemeSpace.related) {
             RecordArrow(readFromRecord: true)
             RecordArrow(readFromRecord: false)
         }

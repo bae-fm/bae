@@ -63,6 +63,36 @@ private let providerDisplay: [BridgeCloudProvider: ProviderOption] = [
 private let providerOptions: [ProviderOption] = availableCloudProviders()
     .compactMap { providerDisplay[$0] }
 
+/// A provider in the wizard's list: its icon, name and blurb.
+private struct ProviderRow: View {
+    let option: ProviderOption
+
+    var body: some View {
+        HStack(spacing: ThemeSpace.group) {
+            Image(systemName: option.icon)
+                .frame(width: 24)
+                .foregroundStyle(.secondary)
+
+            VStack(alignment: .leading, spacing: ThemeSpace.line) {
+                Text(option.name)
+                    .themeText(.rowTitle)
+                Text(option.description)
+                    .themeText(.detail)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .themeIcon(.small)
+                .foregroundStyle(.tertiary)
+        }
+        .contentShape(Rectangle())
+        .padding(.horizontal, ThemeSpace.edge)
+        .padding(.vertical, ThemeSpace.related)
+    }
+}
+
 // MARK: - SyncSetupWizard (pure leaf)
 
 struct SyncSetupWizard: View {
@@ -166,7 +196,7 @@ struct SyncSetupWizard: View {
 
     private var providerList: some View {
         ScrollView {
-            VStack(spacing: 1) {
+            VStack(spacing: ThemeSpace.hairline) {
                 ForEach(providerOptions) { option in
                     Button {
                         withAnimation(.easeInOut(duration: 0.15)) {
@@ -174,33 +204,12 @@ struct SyncSetupWizard: View {
                             error = nil
                         }
                     } label: {
-                        HStack(spacing: 12) {
-                            Image(systemName: option.icon)
-                                .frame(width: 24)
-                                .foregroundStyle(.secondary)
-
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(option.name)
-                                    .themeText(.rowTitle)
-                                Text(option.description)
-                                    .themeText(.detail)
-                                    .foregroundStyle(.secondary)
-                            }
-
-                            Spacer()
-
-                            Image(systemName: "chevron.right")
-                                .font(.caption)
-                                .foregroundStyle(.tertiary)
-                        }
-                        .contentShape(Rectangle())
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 10)
+                        ProviderRow(option: option)
                     }
                     .buttonStyle(.plain)
                 }
             }
-            .padding(.vertical, 8)
+            .padding(.vertical, ThemeSpace.related)
         }
     }
 
@@ -236,12 +245,12 @@ struct SyncSetupWizard: View {
             if let error {
                 ErrorDetailDisclosure(error: error)
                     .padding(.horizontal)
-                    .padding(.bottom, 10)
+                    .padding(.bottom, ThemeSpace.related)
             }
 
             connectRow(for: provider)
                 .padding(.horizontal)
-                .padding(.bottom, 20)
+                .padding(.bottom, ThemeSpace.section)
         }
     }
 
@@ -249,7 +258,7 @@ struct SyncSetupWizard: View {
 
     /// The configure step's one action.
     private func connectRow(for provider: BridgeCloudProvider) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: ThemeSpace.related) {
             if isWorking {
                 ProgressView()
                     .controlSize(.small)

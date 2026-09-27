@@ -47,7 +47,7 @@ struct EditMetadataSheet: View {
                         session: session,
                         onEditCover: { showingCoverPicker = true }
                     )
-                    .padding(24)
+                    .padding(ThemeSpace.section)
                 }
                 footer
             }
@@ -84,10 +84,19 @@ struct EditMetadataSheet: View {
         .onDisappear { session.cancelTasks() }
     }
 
+    /// How much narrower and shorter than its host the sheet sits.
+    private static let hostMargin: CGFloat = 80
+
     static func modalSize(in host: CGSize) -> CGSize {
         CGSize(
-            width: min(host.width, min(1_200, max(760, host.width - 80))),
-            height: min(host.height, min(860, max(600, host.height - 80)))
+            width: min(
+                host.width,
+                min(1_200, max(760, host.width - hostMargin))
+            ),
+            height: min(
+                host.height,
+                min(860, max(600, host.height - hostMargin))
+            )
         )
     }
 
@@ -107,11 +116,11 @@ struct EditMetadataSheet: View {
     }
 
     private var footer: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: ThemeSpace.related) {
             if let message = session.validationMessage
                 ?? session.failureMessage
             {
-                HStack(spacing: 6) {
+                HStack(spacing: ThemeSpace.inline) {
                     Image(systemName: "exclamationmark.triangle.fill")
                     Text(message)
                 }
@@ -119,7 +128,7 @@ struct EditMetadataSheet: View {
                 .foregroundStyle(Theme.danger)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
-            HStack(spacing: 12) {
+            HStack(spacing: ThemeSpace.group) {
                 Button("Reset to Source") { session.resetToSource() }
                     .disabled(session.isBusy)
                     .opacity(resetButtonIsVisible ? 1 : 0)

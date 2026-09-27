@@ -88,7 +88,7 @@ private struct DownloadConcurrencyControl: View {
     private var downloads
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: ThemeSpace.compact) {
             Text("Simultaneous downloads")
                 .themeText(.detail)
                 .foregroundStyle(.secondary)
@@ -101,7 +101,7 @@ private struct DownloadConcurrencyControl: View {
             .labelsHidden()
         }
         .padding(.horizontal)
-        .padding(.vertical, 10)
+        .padding(.vertical, ThemeSpace.related)
         .background(.bar)
     }
 }
@@ -111,7 +111,7 @@ private struct DownloadQueueRow: View {
     let op: BridgeDownloadOp
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: ThemeSpace.compact) {
             Text(op.title)
                 .themeText(.rowTitle)
                 .lineLimit(1)
@@ -121,7 +121,7 @@ private struct DownloadQueueRow: View {
                 .foregroundStyle(.secondary)
             stateView
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, ThemeSpace.inline)
     }
 
     @ViewBuilder

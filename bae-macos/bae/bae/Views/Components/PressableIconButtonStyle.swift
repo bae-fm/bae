@@ -13,7 +13,7 @@ struct PressableIconButtonStyle: ButtonStyle {
                     .fill(
                         configuration.isPressed ? Theme.pressed : Color.clear
                     )
-                    .padding(4)
+                    .padding(ThemeSpace.inline)
             )
             .scaleEffect(configuration.isPressed ? 0.96 : 1)
             // Instant on press, since an ease there reads as a missed click;

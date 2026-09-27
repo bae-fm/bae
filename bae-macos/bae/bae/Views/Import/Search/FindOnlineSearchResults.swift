@@ -46,21 +46,24 @@ struct FindOnlineSearchResults: View {
 
     /// A line per source still searching, or failed with its Retry.
     private var sourceLines: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: ThemeSpace.inline) {
             ForEach(search.sources, id: \.source) { entry in
                 let name = bridgeCatalogName(catalog: entry.source)
                 switch entry.state {
                 case .searching:
-                    HStack(spacing: 6) {
+                    HStack(spacing: ThemeSpace.compact) {
                         ProgressView()
                             .controlSize(.small)
                             .scaleEffect(0.6)
-                            .frame(width: 11, height: 11)
+                            .frame(
+                                width: ThemeIcon.small.size,
+                                height: ThemeIcon.small.size
+                            )
                         Text(name)
                             .foregroundStyle(.tertiary)
                     }
                 case .failed(let failure):
-                    HStack(spacing: 6) {
+                    HStack(spacing: ThemeSpace.compact) {
                         Image(systemName: "exclamationmark.triangle")
                             .foregroundStyle(Theme.warning)
                         Text(name)
@@ -77,7 +80,7 @@ struct FindOnlineSearchResults: View {
         }
         .themeText(.detail)
         .foregroundStyle(.secondary)
-        .padding(.leading, 28)
+        .padding(.leading, ReleaseGroupSection.rowTextInset)
     }
 }
 

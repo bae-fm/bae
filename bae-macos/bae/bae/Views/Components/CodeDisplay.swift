@@ -6,9 +6,8 @@ import SwiftUI
 struct CodeDisplay: View {
     let code: String
     let qrSize: CGFloat
-    /// This device's public-key fingerprint, rendered between the code and
-    /// the copy button. The approving device shows the same fingerprint;
-    /// matching them confirms the right device is being added.
+    /// This device's public-key fingerprint, which the approving device shows
+    /// too so the person can confirm the right device is being added.
     let deviceFingerprint: String?
 
     init(code: String, qrSize: CGFloat, deviceFingerprint: String? = nil) {
@@ -47,22 +46,23 @@ struct CodeDisplay: View {
 
 #if DEBUG
     #Preview("Code Display") {
-        VStack(spacing: 28) {
+        let qrSize: CGFloat = 160
+        VStack(spacing: ThemeSpace.section) {
             // Bare cluster: QR + code + copy button.
-            VStack(spacing: 12) {
-                CodeDisplay(code: "BAE-4F2A-9C81-7D30", qrSize: 160)
+            VStack(spacing: ThemeSpace.group) {
+                CodeDisplay(code: "BAE-4F2A-9C81-7D30", qrSize: qrSize)
             }
             Divider()
             // With this device's fingerprint line between code and copy button.
-            VStack(spacing: 12) {
+            VStack(spacing: ThemeSpace.group) {
                 CodeDisplay(
                     code: "BAE-4F2A-9C81-7D30",
-                    qrSize: 160,
+                    qrSize: qrSize,
                     deviceFingerprint: "AB12 CD34 EF56 7890"
                 )
             }
         }
-        .padding(28)
+        .padding(ThemeSpace.section)
         .frame(width: 320)
         .background(Theme.background)
         .preferredColorScheme(.dark)

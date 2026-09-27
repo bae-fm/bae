@@ -10,7 +10,7 @@ struct FindOnlineHeader: View {
         ZStack {
             Text("Identify")
                 .themeText(.strong)
-            HStack(spacing: 12) {
+            HStack(spacing: ThemeSpace.group) {
                 if let onBack {
                     Button(action: onBack) {
                         Label("Back", systemImage: "chevron.left")
@@ -18,10 +18,10 @@ struct FindOnlineHeader: View {
                     .buttonStyle(.link)
                     .themeText(.body)
                 }
-                Spacer(minLength: 12)
+                Spacer(minLength: ThemeSpace.group)
             }
         }
-        .padding(.horizontal, 14)
+        .padding(.horizontal, ThemeSpace.group)
         .frame(height: 42)
     }
 }

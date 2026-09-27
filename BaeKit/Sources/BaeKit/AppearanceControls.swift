@@ -17,7 +17,7 @@ public struct AppearanceControls: View {
         .pickerStyle(.segmented)
         .tint(preferences.accent.buttonColor)
 
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: ThemeSpace.related) {
             Text("Accent color", tableName: "Appearance", bundle: .module)
             HStack(spacing: 0) {
                 ForEach(AccentChoice.allCases, id: \.self) { accent in
@@ -29,13 +29,16 @@ public struct AppearanceControls: View {
                             .frame(width: 22, height: 22)
                             .overlay {
                                 Image(systemName: "checkmark")
-                                    .font(.system(size: 11, weight: .bold))
+                                    .themeIcon(.small)
                                     .foregroundStyle(Theme.onFill)
                                     .opacity(
                                         preferences.accent == accent ? 1 : 0
                                     )
                             }
-                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .frame(
+                                maxWidth: .infinity,
+                                minHeight: ThemeSize.hitTarget
+                            )
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)

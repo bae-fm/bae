@@ -132,12 +132,12 @@ struct ImportView: View {
     // MARK: - Empty state
 
     private var emptyState: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: ThemeSpace.group) {
             Button(action: {
                 uiStore.setImportFolderPickerPresented(true)
             }) {
                 Image(systemName: "plus.circle")
-                    .font(.system(size: 48, weight: .thin))
+                    .themeIcon(.hero)
             }
             .buttonStyle(.plain)
             .foregroundStyle(.secondary)
@@ -151,9 +151,9 @@ struct ImportView: View {
     /// Shown when the list could not be read, instead of an empty state that
     /// would wrongly say no folder is watched.
     private func failedState(_ failure: DisplayError) -> some View {
-        VStack(spacing: 12) {
+        VStack(spacing: ThemeSpace.group) {
             Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 40, weight: .thin))
+                .themeIcon(.hero)
                 .foregroundStyle(Theme.danger)
             Text("The import list couldn't be read")
                 .themeText(.body)
@@ -168,7 +168,7 @@ struct ImportView: View {
                 listSlot.startLoad()
             }
         }
-        .padding(40)
+        .padding(ThemeSpace.page)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 

@@ -34,25 +34,28 @@ struct AlbumExpansionContent: View {
     let onDeleteRelease: () -> Void
     let onExportTrack: (String) -> Void
 
+    /// The album cover's side.
+    private static let coverSize: CGFloat = 340
+
     @Environment(LibraryStore.self)
     private var libraryStore
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .top, spacing: 36) {
+            HStack(alignment: .top, spacing: ThemeSpace.page) {
                 albumArt
-                    .frame(width: 340, height: 340)
+                    .frame(width: Self.coverSize, height: Self.coverSize)
                     .clipShape(
                         RoundedRectangle(cornerRadius: ThemeRadius.cover)
                     )
                     .shadow(color: Theme.shadow, radius: 20, y: 12)
                     .contentShape(Rectangle())
                     .onTapGesture(perform: onBrowseImages)
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: ThemeSpace.inline) {
                     Text(summary.title)
                         .themeText(.hero)
                         .lineLimit(1)
-                    HStack(spacing: 8) {
+                    HStack(spacing: ThemeSpace.related) {
                         Text(summary.artistNames)
                             .foregroundStyle(.secondary)
                         if let year = summary.year {
@@ -71,16 +74,14 @@ struct AlbumExpansionContent: View {
                         facts: selectedRelease.compactMetadata,
                         records: selectedRelease.records
                     )
-                    HStack(spacing: 10) {
+                    HStack(spacing: ThemeSpace.related) {
                         Button(action: onPlay) {
                             Label("Play", systemImage: "play.fill")
                         }
                         .buttonStyle(PrimaryButtonStyle())
                         albumMenu
                     }
-                    .padding(
-                        EdgeInsets(top: 12, leading: 0, bottom: 0, trailing: 0)
-                    )
+                    .padding(.top, ThemeSpace.group)
                     AlbumTrackListView(
                         release: selectedRelease,
                         isCompilation: summary.isCompilation,
@@ -93,11 +94,11 @@ struct AlbumExpansionContent: View {
                         onAddToQueue: onAddToQueue,
                         onExportTrack: onExportTrack,
                     )
-                    .padding(.top, 18)
+                    .padding(.top, ThemeSpace.edge)
                 }
             }
         }
-        .padding(32)
+        .padding(ThemeSpace.page)
         .background(
             Theme.surfaceElevated,
             in: RoundedRectangle(cornerRadius: ThemeRadius.panel)
@@ -109,7 +110,7 @@ struct AlbumExpansionContent: View {
         .shadow(color: Theme.shadow, radius: 28, y: 18)
         .overlay(alignment: .topTrailing) {
             PanelCloseButton(onClose: onClose)
-                .padding(16)
+                .padding(ThemeSpace.edge)
         }
     }
 
@@ -152,9 +153,9 @@ struct AlbumExpansionContent: View {
             }
         } label: {
             Image(systemName: "ellipsis")
-                .font(.system(size: 15, weight: .semibold))
+                .themeIcon(.medium)
                 .foregroundStyle(.secondary)
-                .frame(width: 36, height: 36)
+                .frame(width: ThemeSize.hitTarget, height: ThemeSize.hitTarget)
                 .background(
                     Theme.hover,
                     in: RoundedRectangle(cornerRadius: ThemeRadius.control)
@@ -166,7 +167,10 @@ struct AlbumExpansionContent: View {
     }
 
     private var albumArt: some View {
-        ImageView(imageRef: selectedRelease.summary.cover, pointSize: 340)
+        ImageView(
+            imageRef: selectedRelease.summary.cover,
+            pointSize: Self.coverSize
+        )
     }
 
     private var releasePicker: some View {
@@ -192,7 +196,8 @@ struct AlbumExpansionContent: View {
                     )
                 },
         )
-        .padding(EdgeInsets(top: 4, leading: 0, bottom: 2, trailing: 0))
+        .padding(.top, ThemeSpace.inline)
+        .padding(.bottom, ThemeSpace.line)
     }
 
     private func releaseContainsCurrentTrack(id: String) -> Bool {
@@ -206,17 +211,14 @@ struct AlbumExpansionContent: View {
     }
 }
 
-/// The release's facts; when a catalog describes the release, an arrow marks
-/// the line and a click toggles a card naming the catalogs.
-///
-/// The card is drawn in the window rather than as a popover, so it carries its
-/// own monitor that closes it on a click away or Escape.
+/// The release's facts; with catalog records, a click toggles a card naming
+/// them, drawn in the window with its own dismiss monitor.
 private struct ReleaseFactsLine: View {
     let facts: String
     let records: [BridgeReleaseRecord]
 
     /// How far under the line the card's top sits.
-    private static let cardOffset: CGFloat = 8
+    private static let cardOffset = ThemeSpace.related
 
     @State
     private var isHovering = false
@@ -236,25 +238,25 @@ private struct ReleaseFactsLine: View {
             Button {
                 isShowingCard.toggle()
             } label: {
-                HStack(spacing: 6) {
+                HStack(spacing: ThemeSpace.inline) {
                     factsText
                     Image(systemName: "arrow.up.right")
-                        .font(.system(size: 11))
+                        .themeText(.detail)
                         .foregroundStyle(.secondary)
                         .allowsHitTesting(false)
                         .accessibilityLabel(
                             coreString("core.identity.identified")
                         )
                 }
-                .padding(.horizontal, 5)
-                .padding(.vertical, 2)
+                .padding(.horizontal, ThemeSpace.compact)
+                .padding(.vertical, ThemeSpace.line)
                 .background(
                     RoundedRectangle(cornerRadius: ThemeRadius.chip)
                         .fill(isHovering ? Theme.hover : Color.clear)
                 )
                 // The fill bleeds outward without moving the text.
-                .padding(.horizontal, -5)
-                .padding(.vertical, -2)
+                .padding(.horizontal, -ThemeSpace.compact)
+                .padding(.vertical, -ThemeSpace.line)
             }
             .buttonStyle(.plain)
             .background { OverlayTrigger(anchor: trigger) }

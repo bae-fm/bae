@@ -26,7 +26,7 @@ struct TrackRowView: View {
 
     var body: some View {
         let isCurrentPlaying = isCurrent && isPlaying
-        HStack(spacing: 14) {
+        HStack(spacing: ThemeSpace.group) {
             // Every leading-slot state stays in the layout, opacity-toggled,
             // so the row's size never changes.
             ZStack {
@@ -41,14 +41,14 @@ struct TrackRowView: View {
                         systemName: isCurrentPlaying
                             ? "pause.fill" : "play.fill"
                     )
-                    .font(.system(size: 12, weight: .semibold))
+                    .themeIcon(.medium)
                 }
                 .buttonStyle(.plain)
                 .opacity(isHovered && !isLoading ? 1 : 0)
                 .allowsHitTesting(isHovered && !isLoading)
 
                 Image(systemName: "speaker.wave.2.fill")
-                    .font(.system(size: 11))
+                    .themeIcon(.small)
                     .foregroundStyle(Theme.accent)
                     .opacity(isCurrent && !isHovered && !isLoading ? 1 : 0)
 
@@ -58,7 +58,7 @@ struct TrackRowView: View {
                     .allowsHitTesting(isLoading)
             }
             .frame(width: 22)
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: ThemeSpace.line) {
                 Text(track.title)
                     .themeText(.rowTitle)
                     .foregroundStyle(isCurrent ? Theme.accent : .primary)
@@ -78,7 +78,7 @@ struct TrackRowView: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .padding(.horizontal, 10)
+        .padding(.horizontal, ThemeSpace.related)
         .frame(maxHeight: .infinity)
         .background(
             ZStack {
@@ -90,7 +90,7 @@ struct TrackRowView: View {
         )
         // The hover fill bleeds past the text column so the text stays aligned
         // with the header above the list.
-        .padding(.horizontal, -10)
+        .padding(.horizontal, -ThemeSpace.related)
         // Keyed on the flash's `seq` so a remounted row still sees the flash
         // and a repeat navigation fires it again.
         .task(id: uiStore.pendingTrackFlash?.seq) {
@@ -209,7 +209,7 @@ struct TrackRowView: View {
             )
             .frame(height: 52)
         }
-        .padding(24)
+        .padding(ThemeSpace.section)
         .frame(width: 460)
         .background(Theme.background)
         .environment(UiStore())

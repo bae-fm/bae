@@ -8,16 +8,19 @@ struct ReleaseGroupCard: View {
     let group: ReleaseGroup
 
     var body: some View {
-        HStack(spacing: 12) {
-            ImageView(content: group.coverImageContent, pointSize: 48)
-                .frame(width: 48, height: 48)
-                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
-                .overlay(
-                    RoundedRectangle(cornerRadius: ThemeRadius.artwork)
-                        .strokeBorder(Theme.hairline, lineWidth: 1)
-                )
+        HStack(spacing: ThemeSpace.group) {
+            ImageView(
+                content: group.coverImageContent,
+                pointSize: ThemeSize.rowArtwork
+            )
+            .frame(width: ThemeSize.rowArtwork, height: ThemeSize.rowArtwork)
+            .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
+            .overlay(
+                RoundedRectangle(cornerRadius: ThemeRadius.artwork)
+                    .strokeBorder(Theme.hairline, lineWidth: 1)
+            )
 
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: ThemeSpace.hairline) {
                 Text(group.title)
                     .themeText(.heading)
                     .lineLimit(1)
@@ -43,9 +46,9 @@ struct ReleaseGroupCard: View {
                 }
             }
 
-            Spacer(minLength: 8)
+            Spacer(minLength: ThemeSpace.related)
 
-            HStack(spacing: 10) {
+            HStack(spacing: ThemeSpace.related) {
                 // A card can carry two albums of one catalog, so a source is
                 // told apart by its place rather than its catalog.
                 ForEach(Array(group.sources.enumerated()), id: \.offset) {
@@ -75,10 +78,10 @@ struct AlbumSourceLink: View {
             Button {
                 NSWorkspace.shared.open(url)
             } label: {
-                HStack(spacing: 4) {
+                HStack(spacing: ThemeSpace.inline) {
                     Text(name)
                     Image(systemName: "arrow.up.right")
-                        .font(.system(size: 9, weight: .semibold))
+                        .themeIcon(.small)
                         .foregroundStyle(.tertiary)
                 }
                 .themeText(.chip)
@@ -99,7 +102,7 @@ struct AlbumSourceLink: View {
     // MARK: - Previews
 
     #Preview("Release group card") {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: ThemeSpace.edge) {
             ReleaseGroupCard(group: PreviewData.searchGroupExact)
             ReleaseGroupCard(group: PreviewData.searchGroupsManual[1])
             ReleaseGroupCard(group: PreviewData.searchGroupLinksUnread)

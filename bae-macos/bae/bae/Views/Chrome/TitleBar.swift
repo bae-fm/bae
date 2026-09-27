@@ -7,7 +7,7 @@ extension FocusedValues {
 }
 
 private let titleBarLeadingPadding: CGFloat = 80
-private let titleBarTrailingPadding: CGFloat = 16
+private let titleBarTrailingPadding = ThemeSpace.edge
 
 struct TitleBar: View {
     @Environment(LibraryProjectionStore.self)
@@ -32,7 +32,7 @@ struct TitleBar: View {
             )
             .offset(x: -(titleBarLeadingPadding - titleBarTrailingPadding) / 2)
 
-            HStack(spacing: 12) {
+            HStack(spacing: ThemeSpace.group) {
                 Spacer()
                 LibrarySearchField(
                     text: $searchText,
@@ -51,8 +51,11 @@ struct TitleBar: View {
 
                 Button(action: { openSettings() }) {
                     Image(systemName: "gearshape")
-                        .font(.system(size: 17, weight: .medium))
-                        .frame(width: 34, height: 34)
+                        .themeIcon(.large)
+                        .frame(
+                            width: ThemeSize.hitTarget,
+                            height: ThemeSize.hitTarget
+                        )
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(IconHoverButtonStyle())
@@ -122,7 +125,7 @@ private struct SectionSegmentedControl: View {
             segment("Library", section: .library)
             segment("Import", section: .importing)
         }
-        .padding(3)
+        .padding(ThemeSpace.inline)
         .background(
             RoundedRectangle(cornerRadius: ThemeRadius.control)
                 .fill(Theme.well)
@@ -141,17 +144,20 @@ private struct SectionSegmentedControl: View {
             Text(title)
                 .themeText(.strong)
                 .foregroundStyle(active ? Color.primary : Color.secondary)
-                .padding(.horizontal, 18)
-                .padding(.vertical, 6)
+                .padding(.horizontal, ThemeSpace.edge)
+                .padding(.vertical, ThemeSpace.compact)
                 .background(
-                    RoundedRectangle(cornerRadius: ThemeRadius.control - 3)
-                        .fill(Theme.tile)
-                        .opacity(active ? 1 : 0)
-                        .shadow(
-                            color: active ? Theme.shadow : Color.clear,
-                            radius: 1.5,
-                            y: 1
-                        )
+                    // Concentric with the well around it.
+                    RoundedRectangle(
+                        cornerRadius: ThemeRadius.control - ThemeSpace.inline
+                    )
+                    .fill(Theme.tile)
+                    .opacity(active ? 1 : 0)
+                    .shadow(
+                        color: active ? Theme.shadow : Color.clear,
+                        radius: 1.5,
+                        y: 1
+                    )
                 )
                 .contentShape(Rectangle())
         }

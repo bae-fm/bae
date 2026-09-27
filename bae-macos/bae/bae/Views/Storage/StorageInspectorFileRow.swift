@@ -4,24 +4,28 @@ import SwiftUI
 struct StorageInspectorFileRow: View {
     let row: BridgeStorageInspectorFile
 
+    /// The lines under the name start under it, past the icon column.
+    private static let detailIndent = ThemeIcon.medium.size + ThemeSpace.related
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: ThemeSpace.inline) {
+            HStack(spacing: ThemeSpace.related) {
                 Image(systemName: row.uploadSymbol)
+                    .themeIcon(.medium)
                     .foregroundStyle(row.uploadTint)
-                    .frame(width: 16)
+                    .frame(width: ThemeIcon.medium.size)
                     .help(row.uploadStatus)
                     .accessibilityLabel(row.uploadStatus)
                 Text(row.name)
                     .lineLimit(1)
                     .truncationMode(.middle)
                     .help(row.name)
-                Spacer(minLength: 8)
+                Spacer(minLength: ThemeSpace.related)
                 Text(row.sizeText)
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
             }
-            HStack(spacing: 8) {
+            HStack(spacing: ThemeSpace.related) {
                 Text(row.file?.audioFormat?.text ?? "")
                     .lineLimit(1)
                 Spacer(minLength: 0)
@@ -35,13 +39,13 @@ struct StorageInspectorFileRow: View {
             }
             .themeText(.detail)
             .foregroundStyle(.secondary)
-            .padding(.leading, 24)
+            .padding(.leading, Self.detailIndent)
             ProgressTrackBar(progress: row.upload?.bar?.fraction ?? 0)
                 .opacity(row.upload?.bar == nil ? 0 : 1)
                 .accessibilityHidden(row.upload?.bar == nil)
-                .padding(.leading, 24)
+                .padding(.leading, Self.detailIndent)
         }
-        .padding(.vertical, 3)
+        .padding(.vertical, ThemeSpace.line)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(row.identity)
     }

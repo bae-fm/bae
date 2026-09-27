@@ -66,14 +66,12 @@ struct ReleaseFieldWriter {
 enum ReleaseMetadataLayout {
     /// The cover beside the album identity.
     static let coverSize: CGFloat = 132
-    /// Between the cover and the identity column.
-    static let coverSpacing: CGFloat = 16
     /// Between the header's blocks.
-    static let blockSpacing: CGFloat = 14
+    static let blockSpacing = ThemeSpace.group
 }
 
-/// The shared editable release header: the cover beside the album identity,
-/// then the release facts. Callers supply the cover and the audio facts.
+/// The shared editable release header: the caller's cover beside the album
+/// identity, then the release facts.
 struct ReleaseMetadataHeader<Cover: View, AudioFacts: View>:
     View
 {
@@ -90,8 +88,7 @@ struct ReleaseMetadataHeader<Cover: View, AudioFacts: View>:
     var body: some View {
         VStack(alignment: .leading, spacing: ReleaseMetadataLayout.blockSpacing)
         {
-            HStack(alignment: .top, spacing: ReleaseMetadataLayout.coverSpacing)
-            {
+            HStack(alignment: .top, spacing: ThemeSpace.group) {
                 // Clipped here so a non-square cover never spills over the
                 // identity column.
                 cover()
@@ -128,7 +125,7 @@ struct ReleaseAlbumIdentityEditor<AudioFacts: View>: View {
     let audioFacts: () -> AudioFacts
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
+        VStack(alignment: .leading, spacing: ThemeSpace.inline) {
             CommittedTextField(
                 placeholder: String(localized: "Album title"),
                 value: values.albumTitle,
@@ -172,15 +169,15 @@ struct ReleasePressingFieldsGrid: View {
     let editingCommands: EditingCommitCommands
 
     static let labelWidth: CGFloat = 64
-    static let labelGap: CGFloat = 14
+    static let labelGap = ThemeSpace.group
     /// Between one row's text and the next, counting the fields' own inline
     /// padding.
-    static let rowSpacing: CGFloat = 8
+    static let rowSpacing = ThemeSpace.related
     /// An empty field's width, so there is something to click into.
     static let emptyValueWidth: CGFloat = 96
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: ThemeSpace.related) {
             FormSectionHeader(title: String(localized: "Release"), ruled: true)
             Grid(
                 alignment: .leadingFirstTextBaseline,
@@ -254,7 +251,7 @@ struct ReleasePressingFieldsGrid: View {
         ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
             GridRow {
                 rowLabel(index == 0 ? String(localized: "Label") : "")
-                HStack(spacing: 6) {
+                HStack(spacing: ThemeSpace.compact) {
                     valueText(
                         row.name,
                         placeholder: "\u{2014}",
@@ -310,7 +307,7 @@ struct ReleasePressingFieldsGrid: View {
                         .accessibilityLabel(String(localized: "Add label"))
                     }
                 }
-                .font(.system(size: 11))
+                .themeIcon(.small)
             }
         }
     }
@@ -444,8 +441,8 @@ struct ArtistIdentityBadge: View {
         Text(label)
             .themeText(.chip)
             .foregroundStyle(.secondary)
-            .padding(.horizontal, 5)
-            .padding(.vertical, 2)
+            .padding(.horizontal, ThemeSpace.compact)
+            .padding(.vertical, ThemeSpace.line)
             .background(.quaternary, in: Capsule())
             .fixedSize()
     }
@@ -456,7 +453,7 @@ struct ArtistAssignmentLabel: View {
     let standing: BridgeArtistStanding?
 
     var body: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: ThemeSpace.inline) {
             Text(assignment.displayName)
                 .lineLimit(1)
                 .truncationMode(.middle)
@@ -512,13 +509,13 @@ struct ArtistAssignmentsField: View {
         Button {
             isPresented = true
         } label: {
-            HStack(spacing: 6) {
+            HStack(spacing: ThemeSpace.compact) {
                 fieldValue
                 if width == .column {
                     Spacer(minLength: 0)
                 }
                 Image(systemName: "chevron.down")
-                    .font(.system(size: 9, weight: .semibold))
+                    .themeIcon(.badge)
                     .foregroundStyle(.tertiary)
             }
             .contentShape(Rectangle())
@@ -528,7 +525,7 @@ struct ArtistAssignmentsField: View {
         .popover(isPresented: $isPresented, arrowEdge: .bottom) {
             editor
                 .frame(width: 320)
-                .padding(12)
+                .padding(ThemeSpace.group)
                 .background { PopoverBehavior() }
         }
     }
@@ -542,7 +539,7 @@ struct ArtistAssignmentsField: View {
             assignments: assignments,
             resolutions: resolutions
         ) {
-            HStack(spacing: 5) {
+            HStack(spacing: ThemeSpace.inline) {
                 Text(summary.names)
                     .lineLimit(1)
                     .truncationMode(.tail)
@@ -557,7 +554,7 @@ struct ArtistAssignmentsField: View {
     }
 
     private var editor: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: ThemeSpace.related) {
             if let onUseAlbumArtists {
                 Button("Album artist", action: onUseAlbumArtists)
                     .buttonStyle(.link)
@@ -569,8 +566,8 @@ struct ArtistAssignmentsField: View {
                     assignment: assignment,
                     resolutions: resolutions
                 )
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: ThemeSpace.inline) {
+                    HStack(spacing: ThemeSpace.related) {
                         ArtistAssignmentLabel(
                             assignment: assignment,
                             standing: standing
@@ -591,7 +588,7 @@ struct ArtistAssignmentsField: View {
                     }
                 }
             }
-            HStack(spacing: 8) {
+            HStack(spacing: ThemeSpace.related) {
                 TextField("Search", text: $query)
                     .textFieldStyle(.roundedBorder)
                     .onSubmit(addTypedArtist)
@@ -607,7 +604,7 @@ struct ArtistAssignmentsField: View {
                     .foregroundStyle(Theme.danger)
             }
             ForEach(results, id: \.artist.artistId) { result in
-                VStack(alignment: .leading, spacing: 1) {
+                VStack(alignment: .leading, spacing: ThemeSpace.hairline) {
                     Button {
                         onChange(
                             assignments + [.picked(artist: result.artist)]
@@ -635,7 +632,7 @@ struct ArtistAssignmentsField: View {
         _ choices: [BridgeExistingArtist],
         replacing index: Int
     ) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: ThemeSpace.line) {
             Text("Which one?")
                 .themeText(.detail)
                 .foregroundStyle(.secondary)
@@ -650,7 +647,7 @@ struct ArtistAssignmentsField: View {
                 .buttonStyle(.plain)
             }
         }
-        .padding(.leading, 12)
+        .padding(.leading, ThemeSpace.group)
     }
 
     private var trimmedQuery: String {
@@ -700,6 +697,8 @@ struct ArtistAssignmentsField: View {
 }
 
 #if DEBUG
+    private let previewSize = CGSize(width: 900, height: 480)
+
     #Preview("Release metadata header") {
         @Previewable
         @State
@@ -717,8 +716,8 @@ struct ArtistAssignmentsField: View {
             },
             audioFacts: { EmptyView() }
         )
-        .padding(24)
-        .frame(width: 900, height: 480)
+        .padding(ThemeSpace.section)
+        .frame(width: previewSize.width, height: previewSize.height)
         .background(Theme.background)
         .environment(PreviewData.artistAssignmentsLibrary())
         .environment(ImageStore.stub())
@@ -742,8 +741,8 @@ struct ArtistAssignmentsField: View {
             },
             audioFacts: { EmptyView() }
         )
-        .padding(24)
-        .frame(width: 900, height: 480)
+        .padding(ThemeSpace.section)
+        .frame(width: previewSize.width, height: previewSize.height)
         .background(Theme.background)
         .environment(PreviewData.artistAssignmentsLibrary())
         .environment(ImageStore.stub())

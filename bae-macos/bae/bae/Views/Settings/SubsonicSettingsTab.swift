@@ -61,6 +61,9 @@ struct SubsonicSettingsContent: View {
         }
     }
 
+    /// The username and password fields' width.
+    private static let credentialFieldWidth: CGFloat = 180
+
     private var isWorking: Bool { mutationTask != nil }
 
     var body: some View {
@@ -74,7 +77,7 @@ struct SubsonicSettingsContent: View {
                     )
                 )
                 LabeledContent("Port") {
-                    HStack(spacing: 8) {
+                    HStack(spacing: ThemeSpace.related) {
                         TextField("Port", text: $portText)
                             .frame(width: 88)
                             .textFieldStyle(.roundedBorder)
@@ -84,9 +87,9 @@ struct SubsonicSettingsContent: View {
                     }
                 }
                 LabeledContent("Username") {
-                    HStack(spacing: 8) {
+                    HStack(spacing: ThemeSpace.related) {
                         TextField("Username", text: $username)
-                            .frame(width: 180)
+                            .frame(width: Self.credentialFieldWidth)
                             .textFieldStyle(.roundedBorder)
                             .onSubmit(applyConfig)
                         Button("Save", action: applyConfig)
@@ -109,9 +112,9 @@ struct SubsonicSettingsContent: View {
             }
             Section {
                 LabeledContent("Password") {
-                    HStack(spacing: 8) {
+                    HStack(spacing: ThemeSpace.related) {
                         SecureField("Password", text: $password)
-                            .frame(width: 180)
+                            .frame(width: Self.credentialFieldWidth)
                             .textFieldStyle(.roundedBorder)
                             .onSubmit(savePassword)
                         Button("Save", action: savePassword)
@@ -145,7 +148,7 @@ struct SubsonicSettingsContent: View {
     @ViewBuilder
     private var statusRow: some View {
         LabeledContent("Status") {
-            HStack(spacing: 8) {
+            HStack(spacing: ThemeSpace.related) {
                 switch status {
                 case .disabled:
                     Text("Disabled")
@@ -154,7 +157,7 @@ struct SubsonicSettingsContent: View {
                     Text(url)
                         .textSelection(.enabled)
                 case .error(let error):
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: ThemeSpace.line) {
                         Text(error.localizedSummary)
                             .foregroundStyle(Theme.danger)
                         Text(error.detail)

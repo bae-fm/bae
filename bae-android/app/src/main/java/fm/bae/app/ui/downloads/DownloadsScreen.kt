@@ -38,6 +38,7 @@ import fm.bae.app.formatFileSize
 import fm.bae.app.requireDisplayableByteCount
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import uniffi.bae_bridge.BridgeDownloadOp
 import uniffi.bae_bridge.BridgeDownloadSnapshot
@@ -71,7 +72,7 @@ internal fun DownloadsScreen(
                 Text(
                     text = stringResource(R.string.downloads_empty),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.align(Alignment.Center).padding(32.dp),
+                    modifier = Modifier.align(Alignment.Center).padding(ThemeSpace.page),
                 )
             } else {
                 DownloadsList(
@@ -94,7 +95,7 @@ private fun DownloadsTopBar(
 ) {
     Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
+            modifier = Modifier.fillMaxWidth().padding(ThemeSpace.related),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onBack) {
@@ -129,7 +130,7 @@ private fun DownloadsList(
                     text = summary,
                     style = ThemeText.detail.style,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
                 )
             }
         }
@@ -147,10 +148,13 @@ private fun DownloadQueueRow(
 ) {
     val context = LocalContext.current
     Row(
-        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, top = 8.dp, bottom = 8.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(start = ThemeSpace.edge, top = ThemeSpace.related, bottom = ThemeSpace.related),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline)) {
             Text(
                 text = op.title,
                 style = ThemeText.rowTitle.style,
@@ -205,7 +209,7 @@ internal fun WaitingToDownloadText() {
 @Composable
 internal fun DownloadProgressBytes(progress: BridgeDownloadTransferProgress) {
     val context = LocalContext.current
-    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline)) {
         LinearProgressIndicator(
             progress = { progress.fraction.toFloat() },
             modifier = Modifier.fillMaxWidth(),

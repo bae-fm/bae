@@ -1,9 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// The full-height area a library list shows in place of rows: its empty
-/// message, its load failure, or a spinner. It sits in an always-bouncing
-/// scroll view because `.refreshable` needs one underneath to pull on.
+/// A library list's full-height empty, failed or loading state, in an
+/// always-bouncing scroll view so `.refreshable` has something to pull.
 struct ListPlaceholder<Content: View>: View {
     @ViewBuilder
     var content: Content
@@ -25,7 +24,7 @@ struct ListPlaceholder<Content: View>: View {
         Text(verbatim: "No albums yet.")
             .themeText(.body)
             .foregroundStyle(.secondary)
-            .padding(32)
+            .padding(ThemeSpace.page)
     }
 }
 #endif

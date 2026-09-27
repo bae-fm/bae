@@ -15,7 +15,7 @@ struct SortCriterionPill<Criterion: SortCriterionRepresentable>: View {
     let onRemove: () -> Void
 
     var body: some View {
-        HStack(spacing: 7) {
+        HStack(spacing: ThemeSpace.compact) {
             fieldMenu
             Button {
                 criterion.direction =
@@ -25,7 +25,7 @@ struct SortCriterionPill<Criterion: SortCriterionRepresentable>: View {
                     systemName: criterion.direction == .ascending
                         ? "arrow.up" : "arrow.down"
                 )
-                .font(.system(size: 10, weight: .bold))
+                .themeIcon(.small)
                 .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
@@ -34,7 +34,7 @@ struct SortCriterionPill<Criterion: SortCriterionRepresentable>: View {
             if canRemove {
                 Button(action: onRemove) {
                     Image(systemName: "xmark")
-                        .font(.system(size: 9, weight: .bold))
+                        .themeIcon(.badge)
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
@@ -42,8 +42,8 @@ struct SortCriterionPill<Criterion: SortCriterionRepresentable>: View {
                 .help("Remove sort criterion")
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 7)
+        .padding(.horizontal, ThemeSpace.group)
+        .padding(.vertical, ThemeSpace.compact)
         .background(
             Theme.placeholder,
             in: RoundedRectangle(cornerRadius: ThemeRadius.control)
@@ -70,7 +70,7 @@ struct SortCriterionPill<Criterion: SortCriterionRepresentable>: View {
                 .font(ThemeText.strong.font)
                 + Text(verbatim: " ")
                 + Text(Image(systemName: "chevron.down"))
-                .font(.system(size: 9, weight: .bold))
+                .font(ThemeIcon.badge.font)
                 .foregroundStyle(.secondary)
         }
         .menuStyle(.borderlessButton)
@@ -101,7 +101,7 @@ struct SortCriterionPill<Criterion: SortCriterionRepresentable>: View {
             field: .dateAdded,
             direction: .descending
         )
-        HStack(spacing: 8) {
+        HStack(spacing: ThemeSpace.related) {
             SortCriterionPill(
                 criterion: $ascending,
                 takenFields: [.dateAdded],

@@ -16,8 +16,10 @@ struct AlbumDetailHeader: View {
     @Environment(Queue.self)
     private var queue
 
+    private static let coverSize: CGFloat = 140
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: ThemeSpace.group) {
             metadata
             playButtons
             queueButtons
@@ -25,15 +27,15 @@ struct AlbumDetailHeader: View {
     }
 
     private var metadata: some View {
-        HStack(alignment: .top, spacing: 16) {
-            ImageView(imageRef: detail.summary.cover, pointSize: 140)
-                .frame(width: 140, height: 140)
+        HStack(alignment: .top, spacing: ThemeSpace.edge) {
+            ImageView(imageRef: detail.summary.cover, pointSize: Self.coverSize)
+                .frame(width: Self.coverSize, height: Self.coverSize)
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.cover))
                 .contentShape(Rectangle())
                 .onTapGesture {
                     if !detail.galleryItems.isEmpty { showGallery = true }
                 }
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: ThemeSpace.inline) {
                 Text(display.title)
                     .themeText(.hero)
                 if let metadata = display.albumMetadata,
@@ -52,7 +54,7 @@ struct AlbumDetailHeader: View {
                     Text(detail.compactMetadata)
                         .themeText(.detail)
                         .foregroundStyle(.secondary)
-                        .padding(.top, 4)
+                        .padding(.top, ThemeSpace.inline)
                 }
             }
             Spacer(minLength: 0)
@@ -103,8 +105,8 @@ private struct AlbumActionRow<Content: View>: View {
 
     var body: some View {
         ViewThatFits(in: .horizontal) {
-            HStack(spacing: 8) { content }.fixedSize()
-            VStack(alignment: .leading, spacing: 8) { content }
+            HStack(spacing: ThemeSpace.related) { content }.fixedSize()
+            VStack(alignment: .leading, spacing: ThemeSpace.related) { content }
         }
     }
 }

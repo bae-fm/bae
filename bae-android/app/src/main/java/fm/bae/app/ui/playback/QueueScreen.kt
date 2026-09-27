@@ -39,6 +39,8 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.playback.QueueItem
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.appearance.ThemeIcon
+import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.Eyebrow
 import sh.calvin.reorderable.ReorderableItem
@@ -68,7 +70,7 @@ fun QueueScreen(
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(bottom = 24.dp),
+        contentPadding = PaddingValues(bottom = ThemeSpace.section),
     ) {
         // Each lane's Clear sits in its own section label; this header only names the sheet.
         item(key = "header") { QueueHeader() }
@@ -76,7 +78,10 @@ fun QueueScreen(
             item(key = "nowplaying") {
                 Eyebrow(
                     text = stringResource(R.string.queue_section_now_playing),
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.inline),
                 )
                 NowPlayingRow(np)
             }
@@ -193,7 +198,7 @@ internal fun LazyListScope.queueContent(
             Text(
                 text = stringResource(if (hasNowPlaying) R.string.queue_nothing_up_next else R.string.queue_empty),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.fillMaxWidth().padding(32.dp),
+                modifier = Modifier.fillMaxWidth().padding(ThemeSpace.page),
             )
         }
         return
@@ -294,7 +299,7 @@ private fun QueueHeader() {
     Text(
         text = stringResource(R.string.queue),
         style = ThemeText.heading.style,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.group),
     )
 }
 
@@ -305,7 +310,7 @@ private fun SectionLabelRow(
     trailing: @Composable () -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp),
+        modifier = Modifier.fillMaxWidth().padding(start = ThemeSpace.edge, end = ThemeSpace.related),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Eyebrow(text = text, modifier = Modifier.weight(1f))
@@ -378,7 +383,7 @@ private fun ContextSectionLabel(
                     } else {
                         MaterialTheme.colorScheme.onSurfaceVariant
                     },
-                modifier = Modifier.size(20.dp),
+                modifier = Modifier.size(ThemeIcon.medium),
             )
         }
     }

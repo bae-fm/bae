@@ -151,8 +151,8 @@ private struct MemberRow: View {
     let onRemove: () -> Void
 
     var body: some View {
-        HStack(spacing: 8) {
-            VStack(alignment: .leading, spacing: 2) {
+        HStack(spacing: ThemeSpace.related) {
+            VStack(alignment: .leading, spacing: ThemeSpace.line) {
                 Text(member.fingerprint)
                     .themeText(.mono)
                 // Hidden rather than removed so every row has the same height.
@@ -168,7 +168,7 @@ private struct MemberRow: View {
                 onRemove()
             } label: {
                 Image(systemName: "trash")
-                    .font(.callout)
+                    .themeIcon(.medium)
             }
             .buttonStyle(.borderless)
             .opacity(member.canRemove ? 1 : 0)
@@ -183,8 +183,8 @@ private struct RoleBadge: View {
     var body: some View {
         Text(label)
             .themeText(.chip)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 2)
+            .padding(.horizontal, ThemeSpace.related)
+            .padding(.vertical, ThemeSpace.line)
             .background(Color.secondary.opacity(ThemeOpacity.tint))
             .clipShape(Capsule())
             .foregroundStyle(.secondary)

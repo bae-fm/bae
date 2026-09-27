@@ -14,9 +14,9 @@ struct CardMenuButton: View {
     var body: some View {
         Button(action: presentMenu) {
             Image(systemName: "ellipsis")
-                .font(.system(size: 13, weight: .semibold))
+                .themeIcon(.medium)
                 .foregroundStyle(Theme.onFill)
-                .frame(width: 30, height: 30)
+                .frame(width: ThemeSize.hitTarget, height: ThemeSize.hitTarget)
                 .background(
                     isHovered ? Theme.accent : Theme.scrim
                 )

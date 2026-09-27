@@ -72,15 +72,15 @@ struct ImportEvidenceChip: View {
 
     var body: some View {
         let kind = ImportEvidence.kind(signal)
-        HStack(spacing: 3) {
+        HStack(spacing: ThemeSpace.inline) {
             Image(systemName: SignalBadgeStyle.icon(for: kind))
             Text(SignalBadgeStyle.label(for: kind))
                 .lineLimit(1)
                 .truncationMode(.tail)
         }
         .themeText(.chip)
-        .padding(.horizontal, 5)
-        .padding(.vertical, 2)
+        .padding(.horizontal, ThemeSpace.compact)
+        .padding(.vertical, ThemeSpace.line)
         .background(fill, in: Capsule())
         .foregroundStyle(onImage ? Theme.onFill : Theme.accent)
     }

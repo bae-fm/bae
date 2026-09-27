@@ -7,13 +7,13 @@ struct OnboardingScreen<Content: View>: View {
     let content: Content
 
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: ThemeSpace.edge) {
             Spacer()
             content
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(32)
+        .padding(ThemeSpace.page)
     }
 }
 

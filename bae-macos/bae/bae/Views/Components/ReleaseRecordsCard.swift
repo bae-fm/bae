@@ -10,8 +10,7 @@ struct ReleaseRecordsCard: View {
 
     var body: some View {
         ReleaseRecordsRow(records: records, scale: .card)
-            .padding(.vertical, 10)
-            .padding(.horizontal, 12)
+            .padding(ThemeSpace.group)
             .frame(width: Self.width, alignment: .leading)
     }
 }

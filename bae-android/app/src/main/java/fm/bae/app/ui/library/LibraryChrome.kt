@@ -49,6 +49,7 @@ import fm.bae.app.data.AlbumPageStore
 import fm.bae.app.data.SyncFailure
 import fm.bae.app.reconnectFailedSync
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeArtistSortCriterion
@@ -116,7 +117,7 @@ internal fun LibraryTopBar(
 ) {
     Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.group),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(text = "bae", style = ThemeText.wordmarkBar.style)
@@ -162,8 +163,8 @@ internal fun LibraryModeBar(
     onModeChange: (LibraryBrowserMode) -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
+        horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
     ) {
         TextButton(onClick = { onModeChange(LibraryBrowserMode.ALBUMS) }) {
             Text(
@@ -196,7 +197,7 @@ internal fun LibrarySearchBar(
     LaunchedEffect(Unit) { focusRequester.requestFocus() }
     Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
+            modifier = Modifier.fillMaxWidth().padding(ThemeSpace.related),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onClose) {

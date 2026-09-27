@@ -26,7 +26,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.data.ImageStore
@@ -35,6 +34,8 @@ import fm.bae.app.durationClockLabel
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeRadius
+import fm.bae.app.ui.appearance.ThemeSize
+import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CoverImage
 import uniffi.bae_bridge.BridgeAlbumSearchResult
@@ -83,7 +84,7 @@ fun SearchResultsScreen(
                 Text(
                     text = currentError,
                     color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.align(Alignment.Center).padding(32.dp),
+                    modifier = Modifier.align(Alignment.Center).padding(ThemeSpace.page),
                 )
             }
 
@@ -96,14 +97,18 @@ fun SearchResultsScreen(
                 Text(
                     text = stringResource(R.string.search_no_results, query),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.align(Alignment.Center).padding(32.dp),
+                    modifier = Modifier.align(Alignment.Center).padding(ThemeSpace.page),
                 )
             }
 
             current != null -> {
                 Column {
                     currentError?.let {
-                        Text(text = it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(8.dp))
+                        Text(
+                            text = it,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(ThemeSpace.related),
+                        )
                     }
                     SearchResultsList(
                         results = current,
@@ -185,17 +190,17 @@ private fun AlbumResultRow(
             Modifier
                 .fillMaxWidth()
                 .clickable(onClick = onClick)
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         CoverImage(
             cover = album.cover,
             cornerRadius = ThemeRadius.artwork,
-            iconPadding = 12.dp,
-            modifier = Modifier.size(48.dp),
+            iconPadding = ThemeSpace.group,
+            modifier = Modifier.size(ThemeSize.rowArtwork),
             contentDescription = album.title,
         )
-        Spacer(modifier = Modifier.width(12.dp))
+        Spacer(modifier = Modifier.width(ThemeSpace.group))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = album.title,
@@ -222,7 +227,7 @@ private fun TrackResultRow(
             Modifier
                 .fillMaxWidth()
                 .clickable(onClick = onClick)
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
@@ -240,7 +245,7 @@ private fun TrackResultRow(
         }
         val durationLabel = LocalContext.current.durationClockLabel(track.durationClock)
         if (durationLabel.isNotEmpty()) {
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(ThemeSpace.group))
             Text(
                 text = durationLabel,
                 style = ThemeText.detail.style,
@@ -260,17 +265,17 @@ private fun ComposerResultRow(
             Modifier
                 .fillMaxWidth()
                 .clickable(onClick = onClick)
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         CoverImage(
             cover = composer.image,
             cornerRadius = ThemeRadius.artwork,
-            iconPadding = 12.dp,
-            modifier = Modifier.size(48.dp),
+            iconPadding = ThemeSpace.group,
+            modifier = Modifier.size(ThemeSize.rowArtwork),
             contentDescription = composer.name,
         )
-        Spacer(modifier = Modifier.width(12.dp))
+        Spacer(modifier = Modifier.width(ThemeSpace.group))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = composer.name,
@@ -297,17 +302,17 @@ private fun WorkResultRow(
             Modifier
                 .fillMaxWidth()
                 .clickable(onClick = onClick)
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         CoverImage(
             cover = work.representativeCover,
             cornerRadius = ThemeRadius.artwork,
-            iconPadding = 12.dp,
-            modifier = Modifier.size(48.dp),
+            iconPadding = ThemeSpace.group,
+            modifier = Modifier.size(ThemeSize.rowArtwork),
             contentDescription = work.title,
         )
-        Spacer(modifier = Modifier.width(12.dp))
+        Spacer(modifier = Modifier.width(ThemeSpace.group))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = work.title,

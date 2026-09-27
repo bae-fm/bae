@@ -6,7 +6,7 @@ struct AboutSettingsTab: View {
     let onCheckForUpdates: () -> Void
 
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: ThemeSpace.edge) {
             Spacer()
             Text(verbatim: "bae")
                 .themeText(.wordmark)

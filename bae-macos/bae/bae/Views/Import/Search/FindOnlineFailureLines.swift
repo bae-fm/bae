@@ -9,9 +9,9 @@ struct FindOnlineFailureLines: View {
     let onRetry: (() -> Void)?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: ThemeSpace.compact) {
             ForEach(failures, id: \.badgeLine) { failure in
-                HStack(alignment: .top, spacing: 8) {
+                HStack(alignment: .top, spacing: ThemeSpace.related) {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundStyle(Theme.warning)
                     Text(failure.badgeLine)
@@ -24,8 +24,8 @@ struct FindOnlineFailureLines: View {
             }
         }
         .themeText(.body)
-        .padding(.horizontal, 18)
-        .padding(.vertical, 22)
+        .padding(.horizontal, ThemeSpace.edge)
+        .padding(.vertical, ThemeSpace.section)
         .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 }

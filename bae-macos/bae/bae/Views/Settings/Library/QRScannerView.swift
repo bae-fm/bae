@@ -56,9 +56,9 @@ struct QRScannerView: View {
         systemImage: String,
         message: String
     ) -> some View {
-        VStack(spacing: 8) {
+        VStack(spacing: ThemeSpace.related) {
             Image(systemName: systemImage)
-                .font(.largeTitle)
+                .themeIcon(.hero)
                 .foregroundStyle(.secondary)
             Text(message)
                 .themeText(.body)

@@ -45,22 +45,21 @@ struct MetadataField: View {
         @Previewable
         @State
         var borderless = ""
-        VStack(spacing: 12) {
+        VStack(spacing: ThemeSpace.group) {
             MetadataField(placeholder: "Album title", text: $albumTitle)
             MetadataField(
                 placeholder: "Catalog number",
                 text: $catalogNumber,
                 monospaced: true
             )
-            // Inline cell: transparent until hovered or focused. Empty shows
-            // the placeholder.
+            // Inline cell: transparent until hovered or focused.
             MetadataField(
                 placeholder: "Track title",
                 text: $borderless,
                 chrome: .inline
             )
         }
-        .padding(24)
+        .padding(ThemeSpace.section)
         .frame(width: 300)
         .background(Theme.background)
         .preferredColorScheme(.dark)

@@ -19,7 +19,7 @@ struct ScannerSheet: View {
                 onClose()
             } label: {
                 Image(systemName: "xmark.circle.fill")
-                    .font(.title)
+                    .themeIcon(.large)
                     .foregroundStyle(Theme.onFill)
                     .padding()
             }

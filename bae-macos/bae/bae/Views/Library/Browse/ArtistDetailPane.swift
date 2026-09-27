@@ -1,9 +1,7 @@
 import BaeKit
 import SwiftUI
 
-/// The artist browse mode's detail pane: the artist header over a grid of their
-/// albums. Shows a placeholder before an artist is picked and a spinner while
-/// the picked artist's detail loads.
+/// The artist mode's detail pane: the artist's header over their albums.
 struct ArtistDetailPane: View {
     let detail: BridgeArtistDetail?
     @Environment(LibraryBrowseSession.self)
@@ -13,15 +11,18 @@ struct ArtistDetailPane: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: ThemeSpace.section) {
                 if let detail {
                     BrowseDetailHeader(summary: detail.artist)
                     LazyVGrid(
                         columns: [
-                            GridItem(.adaptive(minimum: 140), spacing: 12)
+                            GridItem(
+                                .adaptive(minimum: 140),
+                                spacing: ThemeSpace.group
+                            )
                         ],
                         alignment: .leading,
-                        spacing: 12
+                        spacing: ThemeSpace.group
                     ) {
                         ForEach(detail.albums) { album in
                             ArtistAlbumCard(album: album) {
@@ -40,7 +41,7 @@ struct ArtistDetailPane: View {
                     ProgressView()
                 }
             }
-            .padding(24)
+            .padding(ThemeSpace.section)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .reportsHeaderScroll(id: "artistDetail")

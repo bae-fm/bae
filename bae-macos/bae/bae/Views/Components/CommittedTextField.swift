@@ -3,9 +3,8 @@ import BaeKit
 import Combine
 import SwiftUI
 
-/// One request to finish every field edit currently active in a view tree.
-/// Subscribers add the write represented by their focused draft; the sender
-/// waits for those writes before it replaces the values underneath them.
+/// One request to finish every active field edit in a view tree; the sender
+/// waits for the writes subscribers add before replacing the values.
 @MainActor
 final class EditingCommitRequest {
     private var writes: [@MainActor () async -> Void] = []
@@ -21,9 +20,8 @@ final class EditingCommitRequest {
     }
 }
 
-/// Publishes the one-shot command that commits and unfocuses active fields.
-/// The request carries acknowledgements, so replacing metadata waits for the
-/// field writes rather than relying on SwiftUI's focus-change delivery order.
+/// Commits and unfocuses active fields, waiting for their writes rather than
+/// relying on SwiftUI's focus-change order.
 @MainActor
 final class EditingCommitCommands {
     fileprivate let requests = PassthroughSubject<EditingCommitRequest, Never>()
@@ -35,11 +33,8 @@ final class EditingCommitCommands {
     }
 }
 
-/// A text field for a value stored elsewhere, which commits its draft when
-/// the person leaves the field, presses Return, or pauses typing.
-///
-/// The draft exists only while the field is focused, so a value that changes
-/// underneath an unfocused field replaces what is on screen.
+/// A text field for a value stored elsewhere, whose draft exists only while
+/// focused and commits on blur, Return, or a pause in typing.
 struct CommittedTextField: View {
     /// What the placeholder is for.
     enum PlaceholderRole {
@@ -61,8 +56,8 @@ struct CommittedTextField: View {
     /// The typed value's color. The placeholder takes its own, by role.
     var textColor: NSColor = .controlTextColor
     var placeholderRole: PlaceholderRole = .hint
-    /// Present on surfaces that can replace the stored value while this field
-    /// is focused. Other editors commit through focus, Return, and pause only.
+    /// Set on surfaces that can replace the stored value while this field is
+    /// focused.
     var editingCommands: EditingCommitCommands?
     /// Send the typed value to wherever it lives.
     let onCommit: @MainActor (String) async -> Void
@@ -74,8 +69,7 @@ struct CommittedTextField: View {
     private var draft: String = ""
     @State
     private var pending: Task<Void, Never>?
-    /// Whether the field is being edited: AppKit's answer, reported by the
-    /// field as it gains and loses its field editor. Setting it false ends
+    /// Whether AppKit's field editor is in the field; setting it false ends
     /// the editing.
     @State
     private var focused = false
@@ -134,12 +128,8 @@ struct CommittedTextField: View {
     /// across both sides for every font the fields use.
     private static let cellInset: CGFloat = 2
 
-    /// The field, laid out by a hidden Text of the same font and content and
-    /// drawn in exactly the frame that Text takes.
-    ///
-    /// A SwiftUI `TextField` sometimes sizes its `NSTextField` to a
-    /// neighbouring field's height, which offsets or clips the text; a Text
-    /// always measures from its own font.
+    /// The field, drawn in the frame of a hidden Text of the same font and
+    /// content, since a `TextField` can take a neighbour's height and clip.
     private var field: some View {
         Text(verbatim: draft.isEmpty ? placeholder : draft)
             .font(Font(draft.isEmpty ? font : valueFont))
@@ -252,9 +242,7 @@ private struct CommittedTextEditor: NSViewRepresentable {
         }
     }
 
-    /// Exactly the proposed size: the field fills the frame the Text laid
-    /// out, and never reports a height of its own. As an overlay it is
-    /// always proposed that frame; it has no other size to offer.
+    /// Exactly the proposed size: the frame the Text laid out.
     func sizeThatFits(
         _ proposal: ProposedViewSize,
         nsView: EditorField,
@@ -278,9 +266,8 @@ private struct CommittedTextEditor: NSViewRepresentable {
             parent.text = field.stringValue
         }
 
-        /// Return commits and the field stays in editing. AppKit's own
-        /// Return ends the editing and begins it again, which would report
-        /// a blur between the two and send the value twice.
+        /// Return commits and keeps editing, since AppKit's own Return
+        /// reports a blur and would send the value twice.
         func control(
             _ control: NSControl,
             textView: NSTextView,
@@ -325,7 +312,7 @@ private struct CommittedTextEditor: NSViewRepresentable {
         @Previewable
         @State
         var stored = "Album Title"
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: ThemeSpace.group) {
             CommittedTextField(
                 placeholder: "Album title",
                 value: stored,
@@ -335,7 +322,7 @@ private struct CommittedTextEditor: NSViewRepresentable {
                 .themeText(.detail)
                 .foregroundStyle(.secondary)
         }
-        .padding(24)
+        .padding(ThemeSpace.section)
         .frame(width: 320)
         .background(Theme.background)
         .preferredColorScheme(.dark)

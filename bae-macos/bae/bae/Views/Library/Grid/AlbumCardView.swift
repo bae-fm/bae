@@ -24,7 +24,7 @@ struct AlbumCardView: View {
     private static let ringOutset: CGFloat = 4.5
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: ThemeSpace.line) {
             albumArt
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.cover))
                 .shadow(color: Theme.shadow, radius: 14, y: 9)
@@ -40,12 +40,12 @@ struct AlbumCardView: View {
                 )
                 .overlay(alignment: .topTrailing) {
                     CardMenuButton(menu: menu, showMenu: $showMenu)
-                        .padding(6)
+                        .padding(ThemeSpace.compact)
                         .opacity(isHovered || showMenu ? 1 : 0)
                         .allowsHitTesting(isHovered || showMenu)
                 }
                 .onHover { isHovered = $0 }
-                .padding(.bottom, 10)
+                .padding(.bottom, ThemeSpace.related)
             Text(title)
                 .themeText(.rowTitle)
                 .lineLimit(1)
@@ -60,7 +60,7 @@ struct AlbumCardView: View {
                 lineHeight: 14
             )
         }
-        .padding(6)
+        .padding(ThemeSpace.compact)
         .background(
             RoundedRectangle(cornerRadius: ThemeRadius.card)
                 .fill(Theme.accentSoft)
@@ -87,7 +87,7 @@ struct AlbumCardView: View {
             onAddToQueue: {},
             onAddNext: {}
         )
-        HStack(spacing: 20) {
+        HStack(spacing: ThemeSpace.section) {
             AlbumCardView(
                 title: album.title,
                 artistNames: album.artistNames,

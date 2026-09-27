@@ -55,7 +55,7 @@ struct StorageStateLabel: View {
 
 #if DEBUG
     #Preview("Storage states") {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: ThemeSpace.related) {
             // Resting states: local, cloud, pinned.
             StorageStateLabel(
                 release: PreviewData.storageRelease(

@@ -28,7 +28,7 @@ struct IconHoverButtonStyle: ButtonStyle {
 
 #if DEBUG
     #Preview("Icon Hover Button Style") {
-        HStack(spacing: 16) {
+        HStack(spacing: ThemeSpace.group) {
             Button {
             } label: {
                 Image(systemName: "backward.fill")
@@ -47,8 +47,8 @@ struct IconHoverButtonStyle: ButtonStyle {
             }
         }
         .buttonStyle(IconHoverButtonStyle())
-        .font(.system(size: 16, weight: .semibold))
-        .padding(28)
+        .themeIcon(.large)
+        .padding(ThemeSpace.section)
         .background(Theme.background)
         .preferredColorScheme(.dark)
     }

@@ -19,7 +19,7 @@ struct ComposerListView: View {
                 Text("No composers")
                     .themeText(.body)
                     .foregroundStyle(.secondary)
-                    .padding(32)
+                    .padding(ThemeSpace.page)
             }
         }
         else {
@@ -73,11 +73,11 @@ struct ComposerSummaryRow: View {
     let summary: BridgeComposerSummary
 
     var body: some View {
-        HStack(spacing: 12) {
-            ImageView(imageRef: summary.image, pointSize: 48)
-                .frame(width: 48, height: 48)
+        HStack(spacing: ThemeSpace.group) {
+            ImageView(imageRef: summary.image, pointSize: ThemeSize.rowArtwork)
+                .frame(width: ThemeSize.rowArtwork, height: ThemeSize.rowArtwork)
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: ThemeSpace.line) {
                 Text(summary.name)
                     .themeText(.rowTitle)
                     .lineLimit(1)
@@ -88,7 +88,7 @@ struct ComposerSummaryRow: View {
             }
             Spacer()
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, ThemeSpace.inline)
     }
 }
 

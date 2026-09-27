@@ -4,7 +4,7 @@ import os.log
 
 private let albumGridLogger = Logger.bae("AlbumGridView")
 private let albumCardSize: CGFloat = 200
-private let gridSpacing: CGFloat = 30
+private let gridSpacing = ThemeSpace.page
 
 struct AlbumGridView<ExpansionContent: View>: View {
     @Environment(UiStore.self)
@@ -14,28 +14,21 @@ struct AlbumGridView<ExpansionContent: View>: View {
     @Environment(Library.self)
     private var library
     let list: AlbumList
-    /// The active sort, owned by `LibraryView`. Read-only here: the grid needs
-    /// it to resolve an album's index for `revealAlbum`; the sort *controls*
-    /// live in `LibraryView`'s pinned header.
+    /// The active sort, which `revealAlbum` needs to resolve an album's index.
     let sortCriteria: [BridgeSortCriterion]
-    /// Span the window instead of centering in the shared capped column
-    /// (`Config.libraryFullWidth`). Feeds the column-count math, so the cap
-    /// must be inside the ScrollView rather than wrapped around it.
+    /// Span the window instead of the capped column; it feeds the column
+    /// count, so the cap sits inside the ScrollView.
     let fullWidth: Bool
-    /// Multi-selection state, owned by `LibraryView`. The grid reads it to render
-    /// the selection tint and build bulk-action targets, and mutates it on
-    /// modifier clicks / Esc / cmd-A.
+    /// The multi-selection, which modifier clicks and Esc change.
     let selection: AlbumGridSelection
-    /// Bulk-action closures. Each takes the album ids to act on, in visible grid
-    /// order — one album for a plain card, the whole selection for a selected one.
+    /// Bulk actions, each given the target album ids in grid order.
     let onPlay: ([String]) -> Void
     let onAddToQueue: ([String]) -> Void
     let onAddNext: ([String]) -> Void
     @ViewBuilder
     let expansionContent: (_ albumId: String) -> ExpansionContent
 
-    /// Focus lands on the grid the moment a selection interaction happens, so Esc
-    /// (clear) and cmd-A (select all loaded) work immediately after a click.
+    /// Focused on a selection click, so Esc works right after it.
     @FocusState
     private var gridFocused: Bool
 
@@ -62,7 +55,7 @@ struct AlbumGridView<ExpansionContent: View>: View {
 
             ScrollViewReader { scrollProxy in
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 34) {
+                    LazyVStack(alignment: .leading, spacing: ThemeSpace.page) {
                         ForEach(0..<rowCount, id: \.self) { rowIndex in
                             HStack(spacing: gridSpacing) {
                                 ForEach(0..<columnCount, id: \.self) {
@@ -149,8 +142,7 @@ struct AlbumGridView<ExpansionContent: View>: View {
                     )
                     .padding(.bottom)
                     .libraryContentContainer(fullWidth: fullWidth)
-                    // A click on the empty grid background (not on a card, whose
-                    // own tap wins) clears the multi-selection.
+                    // A click on the empty background clears the selection.
                     .contentShape(Rectangle())
                     .onTapGesture {
                         if !selection.isEmpty {
@@ -186,18 +178,8 @@ struct AlbumGridView<ExpansionContent: View>: View {
 }
 
 extension AlbumGridView {
-    /// Scroll the grid to `albumId`, resolving its row deterministically.
-    ///
-    /// The album's page may never have been fetched, so `list.position(of:)`
-    /// can't be trusted. Ask the core for the album's index under the current
-    /// sort (off the main actor), load the page that contains it, then scroll.
-    /// Each async stage checks `Task.isCancelled`, and the scroll — the only
-    /// durable effect — commits last, so a cancel (a newer reveal, or the grid
-    /// disappearing) before that point changes nothing — the pending reveal
-    /// stays set and a later remount retries it. SwiftUI drives the
-    /// cancellation by keying the calling `.task` on `pendingAlbumReveal.seq`;
-    /// the caller consumes (clears) the reveal only after this returns, so a
-    /// cancelled attempt never marks an unfinished reveal as done.
+    /// Scrolls to `albumId` by asking core for its index and loading its page;
+    /// the scroll comes last, so a cancelled reveal changes nothing.
     private func revealAlbum(
         _ albumId: String,
         columnCount: Int,
@@ -217,7 +199,7 @@ extension AlbumGridView {
                 return
             }
 
-            // Load the page that holds the target so its row exists to scroll to.
+            // Load the target's page so its row exists to scroll to.
             await list.loadPage(containing: index)
             if Task.isCancelled {
                 return
@@ -233,11 +215,8 @@ extension AlbumGridView {
         }
     }
 
-    /// Dispatch a click by its modifiers (read at tap time): cmd toggles the
-    /// clicked album in the selection, shift extends the range from the anchor,
-    /// and a plain click clears the multi-selection and toggles the detail
-    /// expansion (the pre-existing behavior). Modifier clicks focus the grid so
-    /// Esc / cmd-A work immediately.
+    /// Cmd toggles the album in the selection, shift extends the range, and a
+    /// plain click clears the selection and toggles the album's detail.
     private func handleTap(on albumId: String) {
         let modifiers = NSEvent.modifierFlags
         if modifiers.contains(.command) {
@@ -262,9 +241,7 @@ extension AlbumGridView {
         }
     }
 
-    /// The bulk-action menu for a card, bound to the album ids the click targets:
-    /// the whole selection (visible order) when the card is part of a
-    /// multi-selection, else just this album.
+    /// The card's menu, acting on the whole selection when the card is in it.
     private func cardMenu(for albumId: String) -> AlbumCardMenu {
         let targets = selection.orderedTargets(
             for: albumId,
@@ -278,8 +255,7 @@ extension AlbumGridView {
         )
     }
 
-    /// The drag payload for a card: the whole ordered selection when the card is
-    /// part of it, else just this album id.
+    /// The card's drag payload: the whole selection when the card is in it.
     private func dragPayload(for albumId: String) -> String {
         AlbumDragPayload.encode(
             selection.orderedTargets(
@@ -308,10 +284,8 @@ extension AlbumGridView {
     private struct GridPreview: View {
         let width: CGFloat
         let height: CGFloat
-        /// The seeded store the grid interns its list into. Shared with the
-        /// `#Preview` root, which injects the same instance via
-        /// `albumDetailPreviewEnvironment` so the audit resolves the
-        /// `AlbumDetailView` chain's environment from one place.
+        /// The seeded store, which the `#Preview` root also injects so the
+        /// preview audit resolves the detail view's environment there.
         let store: LibraryStore
         private let sortCriteria: [BridgeSortCriterion] = [
             BridgeSortCriterion(field: .dateAdded, direction: .descending)

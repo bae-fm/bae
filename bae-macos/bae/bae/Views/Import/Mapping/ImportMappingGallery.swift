@@ -19,12 +19,12 @@ struct ImportMappingGallery: View {
                         minimum: Self.tileSize,
                         maximum: Self.tileSize
                     ),
-                    spacing: 10,
+                    spacing: ThemeSpace.related,
                     alignment: .top
                 )
             ],
             alignment: .leading,
-            spacing: 10
+            spacing: ThemeSpace.related
         ) {
             ForEach(images, id: \.fileId) { image in
                 ImportMappingGalleryTile(
@@ -57,7 +57,7 @@ struct ImportMappingGalleryTile: View {
         Button {
             onOpen(images, image.localPath)
         } label: {
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: ThemeSpace.compact) {
                 ImageView(
                     content: .localFile(path: image.localPath),
                     pointSize: tileSize
@@ -72,7 +72,7 @@ struct ImportMappingGalleryTile: View {
                         )
                 }
                 .overlay(alignment: .bottomLeading) {
-                    HStack(spacing: 3) {
+                    HStack(spacing: ThemeSpace.inline) {
                         ForEach(ImportEvidence.badges(evidence)) { badge in
                             ImportEvidenceChip(
                                 signal: badge.signal,
@@ -80,7 +80,7 @@ struct ImportMappingGalleryTile: View {
                             )
                         }
                     }
-                    .padding(4)
+                    .padding(ThemeSpace.inline)
                 }
                 Text(image.name)
                     .themeText(.mono)

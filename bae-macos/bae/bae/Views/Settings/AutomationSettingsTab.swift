@@ -82,7 +82,7 @@ struct AutomationSettingsContent: View {
                     )
                 )
                 LabeledContent("Port") {
-                    HStack(spacing: 8) {
+                    HStack(spacing: ThemeSpace.related) {
                         TextField("Port", text: $portText)
                             .frame(width: 88)
                             .textFieldStyle(.roundedBorder)
@@ -125,7 +125,7 @@ struct AutomationSettingsContent: View {
     @ViewBuilder
     private var statusRow: some View {
         LabeledContent("Status") {
-            HStack(spacing: 8) {
+            HStack(spacing: ThemeSpace.related) {
                 switch status {
                 case .disabled:
                     Text("Disabled")
@@ -134,7 +134,7 @@ struct AutomationSettingsContent: View {
                     Text(url)
                         .textSelection(.enabled)
                 case .error(let error):
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: ThemeSpace.line) {
                         Text(error.localizedSummary)
                             .foregroundStyle(Theme.danger)
                         Text(error.detail)

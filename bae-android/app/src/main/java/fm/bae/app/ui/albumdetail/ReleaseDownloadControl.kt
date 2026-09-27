@@ -40,6 +40,8 @@ import fm.bae.app.localizedLine
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.appearance.ThemeIcon
+import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.downloads.DownloadProgressBytes
 import fm.bae.app.ui.downloads.WaitingToDownloadText
@@ -71,7 +73,7 @@ internal fun ReleaseDownloadControl(
     var unpinning by remember(release.id) { mutableStateOf(false) }
     var unpinError by remember(release.id) { mutableStateOf<String?>(null) }
 
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.compact)) {
         DownloadControlBody(
             status = status,
             unpinning = unpinning,
@@ -139,7 +141,10 @@ private fun DownloadControlBody(
         }
 
         BridgeReleaseDownloadStatus.Queued -> {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 WaitingToDownloadText()
                 DownloadActionButton(stringResource(R.string.cancel), Icons.Filled.Close, onCancel)
             }
@@ -167,7 +172,7 @@ private fun DownloadFailedControl(
     onCancel: () -> Unit,
 ) {
     Text(text = error, style = ThemeText.body.style, color = MaterialTheme.colorScheme.error)
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
         // Core has no per-item retry: retryDownloads re-queues every failed entry.
         DownloadActionButton(stringResource(R.string.retry), Icons.Filled.Refresh, onRetry)
         DownloadActionButton(stringResource(R.string.cancel), Icons.Filled.Close, onCancel)
@@ -179,12 +184,15 @@ private fun DownloadedControl(
     unpinning: Boolean,
     onRemove: () -> Unit,
 ) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         Icon(
             imageVector = Icons.Filled.DownloadDone,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(18.dp),
+            modifier = Modifier.size(ThemeIcon.small),
         )
         Text(
             text = stringResource(R.string.download_downloaded),
@@ -192,7 +200,7 @@ private fun DownloadedControl(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         if (unpinning) {
-            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+            CircularProgressIndicator(modifier = Modifier.size(ThemeIcon.medium), strokeWidth = 2.dp)
         } else {
             DownloadActionButton(stringResource(R.string.download_remove), Icons.Filled.Delete, onRemove)
         }
@@ -207,8 +215,8 @@ private fun DownloadActionButton(
     onClick: () -> Unit,
 ) {
     OutlinedButton(onClick = onClick) {
-        Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
-        Spacer(modifier = Modifier.width(8.dp))
+        Icon(icon, contentDescription = null, modifier = Modifier.size(ThemeIcon.medium))
+        Spacer(modifier = Modifier.width(ThemeSpace.related))
         Text(text)
     }
 }

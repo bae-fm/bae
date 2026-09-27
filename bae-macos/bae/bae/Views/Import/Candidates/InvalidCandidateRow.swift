@@ -10,11 +10,12 @@ struct InvalidCandidateRow: View {
     let revealPath: String
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: ThemeSpace.related) {
             Image(systemName: "exclamationmark.triangle")
+                .themeIcon(.medium)
                 .foregroundStyle(Theme.warning)
-                .frame(width: 16)
-            VStack(alignment: .leading, spacing: 2) {
+                .frame(width: ThemeIcon.medium.size)
+            VStack(alignment: .leading, spacing: ThemeSpace.line) {
                 Text(displayName)
                     .themeText(.rowTitle)
                     .lineLimit(1)
@@ -27,7 +28,7 @@ struct InvalidCandidateRow: View {
             }
             Spacer()
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, ThemeSpace.inline)
         .padding(.horizontal, ImportListHierarchyLayout.rowEdgePadding)
         .contentShape(Rectangle())
         .help(reason.localizedText)

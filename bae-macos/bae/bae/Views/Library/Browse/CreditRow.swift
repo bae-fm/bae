@@ -8,7 +8,7 @@ struct CreditRow: View {
     let subtitle: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: ThemeSpace.line) {
             Text(title)
                 .themeText(.rowTitle)
                 .lineLimit(1)
@@ -20,13 +20,13 @@ struct CreditRow: View {
                 lineLimit: 1
             )
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, ThemeSpace.inline)
     }
 }
 
 #if DEBUG
     #Preview("Credit Row") {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: ThemeSpace.related) {
             CreditRow(title: "Album Title", subtitle: "Arranger")
             CreditRow(title: "Track Title", subtitle: nil)
         }

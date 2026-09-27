@@ -11,10 +11,10 @@ struct InfoTip: View {
 
     var body: some View {
         Image(systemName: "questionmark.circle")
-            .font(.callout)
+            .themeIcon(.small)
             .foregroundStyle(.tertiary)
             .hoverPopover(arrowEdge: arrowEdge) {
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: ThemeSpace.compact) {
                     Text(text)
                         .themeText(.body)
                     if let url = learnMoreURL {
@@ -22,7 +22,7 @@ struct InfoTip: View {
                             .themeText(.body)
                     }
                 }
-                .padding(10)
+                .padding(ThemeSpace.group)
                 .frame(width: width)
                 .popoverEntrance(anchor: entranceAnchor)
                 .background { PopoverBehavior() }
@@ -43,19 +43,18 @@ struct InfoTip: View {
 }
 
 #if DEBUG
-    // Hovering the "?" in the live preview opens the popover. Sample copy goes
-    // through String values so the string extractor skips it.
+    // Sample copy goes through String values so the string extractor skips it.
     #Preview("Info Tip") {
         let encryptionTip =
             "Your library is encrypted with a key only this device holds."
         let watchedFolderTip =
             "New rips dropped here are picked up automatically."
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: ThemeSpace.group) {
+            HStack(spacing: ThemeSpace.related) {
                 Text(verbatim: "Encryption key")
                 InfoTip(text: LocalizedStringKey(encryptionTip))
             }
-            HStack(spacing: 8) {
+            HStack(spacing: ThemeSpace.related) {
                 Text(verbatim: "Watched folder")
                 InfoTip(
                     text: LocalizedStringKey(watchedFolderTip),
@@ -64,7 +63,7 @@ struct InfoTip: View {
                 )
             }
         }
-        .padding(28)
+        .padding(ThemeSpace.section)
         .background(Theme.background)
         .preferredColorScheme(.dark)
     }

@@ -11,7 +11,7 @@ struct PasteRecoveryCodeSheet: View {
 
     var body: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: ThemeSpace.edge) {
                 Text(
                     "Paste your recovery code. Use this only when you have no other device available to approve this one."
                 )

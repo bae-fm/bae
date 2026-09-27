@@ -100,7 +100,7 @@ struct SearchResultsView: View {
     private func centered(_ view: some View) -> some View {
         view
             .multilineTextAlignment(.center)
-            .padding(32)
+            .padding(ThemeSpace.page)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
@@ -109,11 +109,11 @@ private struct AlbumResultRow: View {
     let album: AlbumSearchResult
 
     var body: some View {
-        HStack(spacing: 12) {
-            ImageView(imageRef: album.cover, pointSize: 48)
-                .frame(width: 48, height: 48)
+        HStack(spacing: ThemeSpace.group) {
+            ImageView(imageRef: album.cover, pointSize: ThemeSize.rowArtwork)
+                .frame(width: ThemeSize.rowArtwork, height: ThemeSize.rowArtwork)
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: ThemeSpace.line) {
                 Text(album.title)
                     .themeText(.rowTitle)
                     .lineLimit(1)
@@ -131,11 +131,11 @@ private struct ArtistResultRow: View {
     let artist: BridgeArtistSummary
 
     var body: some View {
-        HStack(spacing: 12) {
-            ImageView(imageRef: artist.image, pointSize: 48)
-                .frame(width: 48, height: 48)
+        HStack(spacing: ThemeSpace.group) {
+            ImageView(imageRef: artist.image, pointSize: ThemeSize.rowArtwork)
+                .frame(width: ThemeSize.rowArtwork, height: ThemeSize.rowArtwork)
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: ThemeSpace.line) {
                 Text(artist.name)
                     .themeText(.rowTitle)
                     .lineLimit(1)
@@ -153,8 +153,8 @@ private struct TrackResultRow: View {
     let track: TrackSearchResult
 
     var body: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
+        HStack(spacing: ThemeSpace.group) {
+            VStack(alignment: .leading, spacing: ThemeSpace.line) {
                 Text(track.title)
                     .themeText(.rowTitle)
                     .lineLimit(1)
@@ -177,11 +177,11 @@ private struct ComposerResultRow: View {
     let composer: BridgeComposerSummary
 
     var body: some View {
-        HStack(spacing: 12) {
-            ImageView(imageRef: composer.image, pointSize: 48)
-                .frame(width: 48, height: 48)
+        HStack(spacing: ThemeSpace.group) {
+            ImageView(imageRef: composer.image, pointSize: ThemeSize.rowArtwork)
+                .frame(width: ThemeSize.rowArtwork, height: ThemeSize.rowArtwork)
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: ThemeSpace.line) {
                 Text(composer.name)
                     .themeText(.rowTitle)
                     .lineLimit(1)
@@ -199,11 +199,11 @@ private struct WorkResultRow: View {
     let work: BridgeWorkSummary
 
     var body: some View {
-        HStack(spacing: 12) {
-            ImageView(imageRef: work.representativeCover, pointSize: 48)
-                .frame(width: 48, height: 48)
+        HStack(spacing: ThemeSpace.group) {
+            ImageView(imageRef: work.representativeCover, pointSize: ThemeSize.rowArtwork)
+                .frame(width: ThemeSize.rowArtwork, height: ThemeSize.rowArtwork)
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: ThemeSpace.line) {
                 Text(work.title)
                     .themeText(.rowTitle)
                     .lineLimit(1)

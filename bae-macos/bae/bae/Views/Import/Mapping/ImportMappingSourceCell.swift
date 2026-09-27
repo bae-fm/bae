@@ -5,7 +5,7 @@ import SwiftUI
 /// whole, one entry of a track sheet, or nothing at all where the release names
 /// a track this folder has no audio for.
 struct ImportMappingSourceCell: View {
-    static let auditionTargetSize: CGFloat = 24
+    static let auditionTargetSize = ThemeSize.hitTarget
 
     let source: BridgeMappingSource
     let previewingTarget: BridgePreviewTarget?
@@ -31,8 +31,8 @@ struct ImportMappingSourceCell: View {
                 Text(coreString("ui.import.slots.no_file"))
                     .themeText(.body)
                     .foregroundStyle(.quaternary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
+                    .padding(.horizontal, ThemeSpace.related)
+                    .padding(.vertical, ThemeSpace.line)
                     .overlay {
                         RoundedRectangle(cornerRadius: ThemeRadius.chip)
                             .strokeBorder(
@@ -46,7 +46,7 @@ struct ImportMappingSourceCell: View {
     }
 
     private func fileCell(_ file: BridgeMappingFile) -> some View {
-        HStack(spacing: 6) {
+        HStack(spacing: ThemeSpace.compact) {
             if let previewTarget = source.previewTarget {
                 auditionButton(target: previewTarget)
             }
@@ -97,7 +97,7 @@ struct ImportMappingSourceCell: View {
     /// One track sheet entry's title and play button; its number is in the
     /// `#` column.
     private func entryCell(_ entry: BridgeMappingEntry) -> some View {
-        HStack(spacing: 6) {
+        HStack(spacing: ThemeSpace.compact) {
             if let previewTarget = source.previewTarget {
                 auditionButton(target: previewTarget)
             }
@@ -114,7 +114,7 @@ struct ImportMappingSourceCell: View {
             isPreviewing ? actions.stopPreview() : actions.preview(target)
         } label: {
             Image(systemName: isPreviewing ? "stop.fill" : "play.fill")
-                .font(.system(size: 11, weight: .semibold))
+                .themeIcon(.small)
                 .foregroundStyle(
                     isPreviewing
                         ? AnyShapeStyle(Theme.accent)

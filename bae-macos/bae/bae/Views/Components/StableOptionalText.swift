@@ -75,17 +75,18 @@ struct StableOptionalText: View {
 #if DEBUG
     #Preview("Stable Optional Text") {
         // The nil row keeps the same line height as the rows with text.
-        VStack(alignment: .leading, spacing: 8) {
+        let titleLineHeight: CGFloat = 18
+        VStack(alignment: .leading, spacing: ThemeSpace.related) {
             StableOptionalText(
                 text: "Track Title",
                 font: ThemeText.rowTitle.font,
-                lineHeight: 18
+                lineHeight: titleLineHeight
             )
             StableOptionalText(
                 text: nil,
                 font: ThemeText.rowTitle.font,
                 foreground: .secondary,
-                lineHeight: 18
+                lineHeight: titleLineHeight
             )
             StableOptionalText(
                 text: "Artist Name",
@@ -94,7 +95,7 @@ struct StableOptionalText: View {
                 lineHeight: 16
             )
         }
-        .padding(24)
+        .padding(ThemeSpace.section)
         .frame(width: 240, alignment: .leading)
         .background(Theme.background)
         .preferredColorScheme(.dark)

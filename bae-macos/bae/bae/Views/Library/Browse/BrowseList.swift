@@ -13,7 +13,12 @@ where Row.ID: Sendable {
             ForEach(0..<list.totalCount, id: \.self) { index in
                 row(index)
                     .listRowInsets(
-                        EdgeInsets(top: 0, leading: 10, bottom: 2, trailing: 10)
+                        EdgeInsets(
+                            top: 0,
+                            leading: ThemeSpace.related,
+                            bottom: ThemeSpace.hairline,
+                            trailing: ThemeSpace.related
+                        )
                     )
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
@@ -24,8 +29,8 @@ where Row.ID: Sendable {
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
-        .contentMargins(.top, 4, for: .scrollContent)
-        .contentMargins(.bottom, 20, for: .scrollContent)
+        .contentMargins(.top, ThemeSpace.inline, for: .scrollContent)
+        .contentMargins(.bottom, ThemeSpace.section, for: .scrollContent)
         .reportsHeaderScroll(id: "browseList")
         .background(Theme.background)
     }

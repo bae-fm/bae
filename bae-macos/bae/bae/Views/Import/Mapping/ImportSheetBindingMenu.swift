@@ -24,8 +24,8 @@ struct ImportSheetBindingMenu: View {
             )
             .lineLimit(1)
             .truncationMode(.middle)
-            .padding(.horizontal, 5)
-            .padding(.vertical, 2)
+            .padding(.horizontal, ThemeSpace.compact)
+            .padding(.vertical, ThemeSpace.line)
             .background(
                 hovering ? Theme.hover : Color.clear,
                 in: RoundedRectangle(cornerRadius: ThemeRadius.control)
@@ -33,7 +33,7 @@ struct ImportSheetBindingMenu: View {
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
-        .frame(minWidth: 24)
+        .frame(minWidth: ThemeSize.hitTarget)
         .onHover { hovering = $0 }
     }
 }

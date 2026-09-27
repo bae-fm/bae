@@ -49,7 +49,7 @@ struct QueueView: View {
                     )
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.vertical, 24)
+                    .padding(.vertical, ThemeSpace.section)
                 }
             }
         }
@@ -109,7 +109,7 @@ struct QueueView: View {
 @MainActor
 @ViewBuilder
 func upNextHeader(queue: Queue) -> some View {
-    HStack(spacing: 6) {
+    HStack(spacing: ThemeSpace.compact) {
         Text("Up Next")
         Spacer()
         clearLaneButton(label: Text("Clear Up Next")) { queue.clearUpNext() }
@@ -125,7 +125,7 @@ func playingFromHeader(
     shuffled: Bool,
     queue: Queue
 ) -> some View {
-    HStack(spacing: 6) {
+    HStack(spacing: ThemeSpace.compact) {
         Text(contextSectionTitle(kind))
         Spacer()
         clearLaneButton(label: Text("Clear Playing From")) {
@@ -171,11 +171,11 @@ private struct NowPlayingRow: View {
     let track: NowPlayingTrack
 
     var body: some View {
-        HStack(spacing: 12) {
-            ImageView(imageRef: track.coverImage, pointSize: 44)
-                .frame(width: 44, height: 44)
+        HStack(spacing: ThemeSpace.group) {
+            ImageView(imageRef: track.coverImage, pointSize: ThemeSize.rowArtwork)
+                .frame(width: ThemeSize.rowArtwork, height: ThemeSize.rowArtwork)
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: ThemeSpace.line) {
                 Text(track.trackTitle)
                     .themeText(.rowTitle)
                     .foregroundStyle(Theme.accent)

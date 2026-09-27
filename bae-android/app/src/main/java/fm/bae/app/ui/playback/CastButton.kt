@@ -38,12 +38,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.data.castingDeviceName
 import fm.bae.app.localizedLine
+import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -118,12 +118,12 @@ private fun CastPickerSheet(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(PaddingValues(bottom = bottomInset + 16.dp)),
+                    .padding(PaddingValues(bottom = bottomInset + ThemeSpace.edge)),
         ) {
             Text(
                 text = stringResource(R.string.cast),
                 style = ThemeText.heading.style,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.group),
             )
             CastDeviceRows(
                 devices = devices,
@@ -165,7 +165,7 @@ private fun CastDeviceRows(
             text = stringResource(R.string.cast_no_devices),
             style = ThemeText.body.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.group),
         )
     } else {
         devices.forEach { device ->
@@ -184,7 +184,10 @@ private fun CastingRow(
     onDisconnect: () -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 4.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(start = ThemeSpace.edge, end = ThemeSpace.related, top = ThemeSpace.inline),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
@@ -192,7 +195,7 @@ private fun CastingRow(
             contentDescription = null,
             tint = MaterialTheme.colorScheme.primary,
         )
-        Spacer(modifier = Modifier.width(12.dp))
+        Spacer(modifier = Modifier.width(ThemeSpace.group))
         Text(
             text = stringResource(R.string.cast_casting_to, deviceName),
             style = ThemeText.rowTitle.style,
@@ -216,7 +219,7 @@ private fun DeviceRow(
             Modifier
                 .fillMaxWidth()
                 .clickable(onClick = onCast)
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.group),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
@@ -224,7 +227,7 @@ private fun DeviceRow(
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Spacer(modifier = Modifier.width(12.dp))
+        Spacer(modifier = Modifier.width(ThemeSpace.group))
         Text(
             text = device.name,
             style = ThemeText.rowTitle.style,

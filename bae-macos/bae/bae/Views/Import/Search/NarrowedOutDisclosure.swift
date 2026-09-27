@@ -20,13 +20,13 @@ struct NarrowedOutDisclosure: View {
     let onSelect: (Pressing) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: ThemeSpace.group) {
             Button {
                 isExpanded.toggle()
             } label: {
-                HStack(spacing: 5) {
+                HStack(spacing: ThemeSpace.inline) {
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 9, weight: .semibold))
+                        .themeIcon(.small)
                         .rotationEffect(.degrees(isExpanded ? 90 : 0))
                     Text("\(Int(narrowedOut.count)) more releases")
                 }

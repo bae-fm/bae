@@ -26,8 +26,8 @@ struct TrackList: View {
                 let groupOffset = offsets[groupIndex]
                 if !group.sideHeaderText.isEmpty {
                     Eyebrow(verbatim: group.sideHeaderText)
-                        .padding(.top, 12)
-                        .padding(.bottom, 4)
+                        .padding(.top, ThemeSpace.group)
+                        .padding(.bottom, ThemeSpace.inline)
                 }
                 ForEach(Array(group.tracks.enumerated()), id: \.element.id) {
                     localIndex,
@@ -46,7 +46,7 @@ struct TrackList: View {
                     Text(group.totalDurationText)
                         .themeText(.detail)
                         .foregroundStyle(.secondary)
-                        .padding(.top, 8)
+                        .padding(.top, ThemeSpace.related)
                 }
             }
         }
@@ -82,7 +82,7 @@ private struct TrackRow: View {
                 onPlay()
             }
         } label: {
-            HStack(spacing: 12) {
+            HStack(spacing: ThemeSpace.group) {
                 // Both stay in the layout tree, toggled by opacity, so swapping
                 // the current row in/out never re-measures the stack.
                 ZStack(alignment: .leading) {
@@ -95,12 +95,12 @@ private struct TrackRow: View {
                         systemName: playbackStore.nowPlaying.isPlaying
                             ? "speaker.wave.2.fill" : "speaker.fill"
                     )
-                    .font(.callout)
+                    .themeIcon(.medium)
                     .foregroundStyle(Theme.accent)
                     .opacity(isCurrent ? 1 : 0)
                 }
                 .frame(width: 36, alignment: .leading)
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: ThemeSpace.line) {
                     Text(track.title)
                         .themeText(.rowTitle)
                         .foregroundStyle(isCurrent ? Theme.accent : .primary)
@@ -121,7 +121,7 @@ private struct TrackRow: View {
                 }
             }
             .contentShape(Rectangle())
-            .padding(.vertical, 8)
+            .padding(.vertical, ThemeSpace.related)
         }
         .buttonStyle(.plain)
         .contextMenu {

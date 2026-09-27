@@ -15,7 +15,7 @@ struct SyncErrorBanner: View {
     // Nothing when healthy: an empty container would still take row spacing.
     var body: some View {
         if syncStatusStore.error != nil || !syncStatusStore.blocked.isEmpty {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: ThemeSpace.group) {
                 if let syncError = syncStatusStore.error {
                     failingCycle(syncError)
                 }
@@ -27,8 +27,8 @@ struct SyncErrorBanner: View {
     }
 
     private func failingCycle(_ syncError: DisplayError) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
+        VStack(alignment: .leading, spacing: ThemeSpace.related) {
+            HStack(spacing: ThemeSpace.inline) {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundStyle(Theme.warning)
                 Text("Sync is failing")
@@ -40,7 +40,7 @@ struct SyncErrorBanner: View {
                 showIcon: false
             )
             if syncStatusStore.canReconnect {
-                HStack(spacing: 8) {
+                HStack(spacing: ThemeSpace.related) {
                     Button("Reconnect") {
                         Task {
                             reconnecting = true
@@ -61,8 +61,8 @@ struct SyncErrorBanner: View {
     /// The operations sync stopped on, each with its own Retry, since later
     /// cycles skip them.
     private var blockedOperations: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 6) {
+        VStack(alignment: .leading, spacing: ThemeSpace.related) {
+            HStack(spacing: ThemeSpace.inline) {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundStyle(Theme.warning)
                 Text("Sync is waiting on you")
@@ -89,7 +89,7 @@ private struct BlockedSyncOperationRow: View {
     private var retryError: DisplayError?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: ThemeSpace.compact) {
             Text(operation.kind.localizedName)
                 .themeText(.rowTitle)
             ErrorDetailDisclosure(
@@ -103,7 +103,7 @@ private struct BlockedSyncOperationRow: View {
             if let retryError {
                 ErrorDetailDisclosure(error: retryError)
             }
-            HStack(spacing: 8) {
+            HStack(spacing: ThemeSpace.related) {
                 Button("Retry") { retry() }
                     .disabled(retrying)
                 if retrying {
@@ -132,6 +132,9 @@ private struct BlockedSyncOperationRow: View {
 }
 
 #if DEBUG
+    /// The settings window's width the previews draw in.
+    private let previewWidth: CGFloat = 500
+
     #Preview("Sync failing") {
         Form {
             Section("Sync") {
@@ -139,7 +142,7 @@ private struct BlockedSyncOperationRow: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 500)
+        .frame(width: previewWidth)
         .environment(
             SyncStatusStore(
                 snapshot: BridgeSyncStatusSnapshot(
@@ -165,7 +168,7 @@ private struct BlockedSyncOperationRow: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 500)
+        .frame(width: previewWidth)
         .environment(
             SyncStatusStore(
                 snapshot: BridgeSyncStatusSnapshot(

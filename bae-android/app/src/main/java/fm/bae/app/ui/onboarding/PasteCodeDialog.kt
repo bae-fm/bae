@@ -15,9 +15,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 
 /** The fixed wording of a [PasteCodeDialog], distinct per code it accepts. */
@@ -46,7 +46,7 @@ fun PasteCodeDialog(
                     style = ThemeText.body.style,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(ThemeSpace.group))
                 OutlinedTextField(
                     value = pasteInput,
                     onValueChange = onInputChange,

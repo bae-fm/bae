@@ -6,11 +6,11 @@ struct QueueRow: View {
     let item: QueueItem
 
     var body: some View {
-        HStack(spacing: 12) {
-            ImageView(imageRef: item.coverImage, pointSize: 56)
-                .frame(width: 56, height: 56)
+        HStack(spacing: ThemeSpace.group) {
+            ImageView(imageRef: item.coverImage, pointSize: ThemeSize.rowArtwork)
+                .frame(width: ThemeSize.rowArtwork, height: ThemeSize.rowArtwork)
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: ThemeSpace.line) {
                 Text(item.title)
                     .themeText(.rowTitle)
                     .lineLimit(1)
@@ -32,31 +32,33 @@ struct QueueRow: View {
             }
         }
         .contentShape(Rectangle())
-        .padding(.vertical, 4)
+        .padding(.vertical, ThemeSpace.inline)
     }
 }
 
 /// A skeleton for a queue row whose item is still loading.
 struct QueueRowPlaceholder: View {
+    private static let detailBarHeight: CGFloat = 10
+
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: ThemeSpace.group) {
             RoundedRectangle(cornerRadius: ThemeRadius.artwork)
                 .fill(Theme.placeholder)
-                .frame(width: 56, height: 56)
-            VStack(alignment: .leading, spacing: 6) {
+                .frame(width: ThemeSize.rowArtwork, height: ThemeSize.rowArtwork)
+            VStack(alignment: .leading, spacing: ThemeSpace.compact) {
                 RoundedRectangle(cornerRadius: ThemeRadius.bar)
                     .fill(Theme.placeholder)
                     .frame(width: 160, height: 12)
                 RoundedRectangle(cornerRadius: ThemeRadius.bar)
                     .fill(Theme.placeholder)
-                    .frame(width: 100, height: 10)
+                    .frame(width: 100, height: Self.detailBarHeight)
                 RoundedRectangle(cornerRadius: ThemeRadius.bar)
                     .fill(Theme.placeholder)
-                    .frame(width: 120, height: 10)
+                    .frame(width: 120, height: Self.detailBarHeight)
             }
             Spacer(minLength: 0)
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, ThemeSpace.inline)
     }
 }
 

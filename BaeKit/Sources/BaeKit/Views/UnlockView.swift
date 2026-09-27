@@ -16,6 +16,9 @@ public struct UnlockView: View {
         self.onCancel = onCancel
     }
 
+    /// The widest the explanation and the key field grow.
+    private static let contentWidth: CGFloat = 400
+
     @State
     private var keyHex: String = ""
     @State
@@ -28,12 +31,12 @@ public struct UnlockView: View {
     }
 
     public var body: some View {
-        VStack(spacing: 32) {
+        VStack(spacing: ThemeSpace.page) {
             Spacer()
             Image(systemName: "lock.fill")
-                .font(.system(size: 48))
+                .themeIcon(.hero)
                 .foregroundStyle(.secondary)
-            VStack(spacing: 8) {
+            VStack(spacing: ThemeSpace.line) {
                 Text("Library Locked")
                     .themeText(.title)
                 Text(libraryName)
@@ -46,13 +49,13 @@ public struct UnlockView: View {
             .themeText(.body)
             .foregroundStyle(.secondary)
             .multilineTextAlignment(.center)
-            .frame(maxWidth: 400)
-            VStack(spacing: 16) {
+            .frame(maxWidth: Self.contentWidth)
+            VStack(spacing: ThemeSpace.group) {
                 SecureField("Encryption key (64 hex characters)", text: $keyHex)
                     .textFieldStyle(.roundedBorder)
-                    .frame(maxWidth: 400)
+                    .frame(maxWidth: Self.contentWidth)
                     .themeText(.mono)
-                HStack(spacing: 12) {
+                HStack(spacing: ThemeSpace.group) {
                     Button("Cancel", action: onCancel)
                         .buttonStyle(.bordered)
                         .disabled(isUnlocking)

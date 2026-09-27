@@ -1,11 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// The composer browse mode's detail pane: a composer's works and credits,
-/// plus an inline or standalone work detail.
-///
-/// A composer's works and credits are unbounded, so their rows sit in lazy
-/// stacks.
+/// The composer mode's detail pane: a composer's works and credits, in lazy
+/// stacks since they are unbounded, and a work's detail.
 struct ComposerDetailPane: View {
     let paneDetail: ComposerPaneDetail
     @Environment(LibraryBrowseSession.self)
@@ -15,7 +12,7 @@ struct ComposerDetailPane: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: ThemeSpace.section) {
                 if case .composer(let composerDetail, let loadedWorkDetail) =
                     paneDetail
                 {
@@ -23,14 +20,18 @@ struct ComposerDetailPane: View {
                     if !composerDetail.workGroups.isEmpty {
                         SectionHeader(title: String(localized: "Works"))
                         // Every row is a child of this one stack so each row
-                        // loads lazily; 18pt above a group's first row sets
+                        // loads lazily; a gap above a group's first row sets
                         // the groups apart.
-                        LazyVStack(alignment: .leading, spacing: 2) {
+                        LazyVStack(
+                            alignment: .leading,
+                            spacing: ThemeSpace.hairline
+                        ) {
                             ForEach(
                                 Array(composerDetail.workGroups.enumerated()),
                                 id: \.element.id
                             ) { groupIndex, group in
-                                let groupGap: CGFloat = groupIndex == 0 ? 0 : 18
+                                let groupGap =
+                                    groupIndex == 0 ? 0 : ThemeSpace.edge
                                 if let parent = group.parent {
                                     workRow(parent)
                                         .padding(.top, groupGap)
@@ -46,7 +47,8 @@ struct ComposerDetailPane: View {
                                     workRow(work)
                                         .padding(
                                             .leading,
-                                            group.parent == nil ? 0 : 18
+                                            group.parent == nil
+                                                ? 0 : ThemeSpace.edge
                                         )
                                         .padding(
                                             .top,
@@ -58,7 +60,10 @@ struct ComposerDetailPane: View {
                     }
                     if !composerDetail.unlinkedReleaseRoles.isEmpty {
                         SectionHeader(title: String(localized: "Credits"))
-                        LazyVStack(alignment: .leading, spacing: 20) {
+                        LazyVStack(
+                            alignment: .leading,
+                            spacing: ThemeSpace.section
+                        ) {
                             ForEach(
                                 composerDetail.unlinkedReleaseRoles,
                                 id: \.releaseId
@@ -71,7 +76,10 @@ struct ComposerDetailPane: View {
                         }
                     }
                     if !composerDetail.unlinkedTrackRoles.isEmpty {
-                        LazyVStack(alignment: .leading, spacing: 20) {
+                        LazyVStack(
+                            alignment: .leading,
+                            spacing: ThemeSpace.section
+                        ) {
                             ForEach(
                                 composerDetail.unlinkedTrackRoles,
                                 id: \.trackId
@@ -129,7 +137,7 @@ struct ComposerDetailPane: View {
                     )
                 }
             }
-            .padding(24)
+            .padding(ThemeSpace.section)
             .frame(maxWidth: 900, alignment: .leading)
             .frame(maxWidth: .infinity, alignment: .leading)
         }

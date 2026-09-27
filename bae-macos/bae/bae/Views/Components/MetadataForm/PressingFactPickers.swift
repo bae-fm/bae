@@ -58,7 +58,7 @@ struct MediaCountsEditor: View {
     let write: @MainActor (BridgePressingFactEdit) async -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: ThemeSpace.group) {
             ForEach(media, id: \.medium) { counted in
                 MediumCountRow(
                     counted: counted,
@@ -109,10 +109,8 @@ struct MediaCountsEditor: View {
     }
 }
 
-/// One carrier of the pressing: its name, how many of it — shown whatever
-/// the count, one included — with a stepper, and a button taking it out.
-/// Removing is its own control rather than stepping to zero, which nobody
-/// looks for.
+/// One carrier of the pressing: its name, its count with a stepper, and its
+/// own remove button, since nobody looks for removal at a count of zero.
 private struct MediumCountRow: View {
     let counted: BridgeMediaCount
     let setCount: (UInt32) -> Void
@@ -123,7 +121,7 @@ private struct MediumCountRow: View {
     }
 
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: ThemeSpace.inline) {
             Text(name)
             Text(verbatim: "\u{00D7}\(counted.count)")
                 .monospacedDigit()
@@ -217,9 +215,9 @@ struct DiscogsDetailsEditor: View {
     let write: @MainActor (BridgePressingFactEdit) async -> Void
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: ThemeSpace.compact) {
             ForEach(details, id: \.self) { detail in
-                HStack(spacing: 3) {
+                HStack(spacing: ThemeSpace.inline) {
                     Text(bridgeDiscogsDetailLabel(detail: detail).text)
                         .themeText(.body)
                     Button {
@@ -263,7 +261,7 @@ private struct FactMenuLabel: View {
     var systemImage: String?
 
     var body: some View {
-        HStack(spacing: 3) {
+        HStack(spacing: ThemeSpace.inline) {
             if let systemImage {
                 Image(systemName: systemImage)
             }

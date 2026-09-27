@@ -33,14 +33,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.data.ArtworkLoadingStore
 import fm.bae.app.formatFileSize
 import fm.bae.app.requireDisplayableByteCount
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeOpacity
+import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import uniffi.bae_bridge.BridgeEagerCacheFillProgress
 import uniffi.bae_bridge.BridgeEagerCacheFillStatus
@@ -89,9 +90,9 @@ private fun ArtworkScanningStatus(
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
         ) {
-            CircularProgressIndicator(modifier = Modifier.size(18.dp))
+            CircularProgressIndicator(modifier = Modifier.size(ThemeIcon.medium))
             Text(
                 LocalContext.current.coreString(titleKey),
                 modifier = Modifier.weight(1f),
@@ -127,8 +128,8 @@ private fun ArtworkDownloadingStatus(
 private fun ArtworkStatusSurface(content: @Composable ColumnScope.() -> Unit) {
     Surface(color = MaterialTheme.colorScheme.surfaceVariant) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
+            verticalArrangement = Arrangement.spacedBy(ThemeSpace.compact),
             content = content,
         )
     }
@@ -143,7 +144,7 @@ private fun ArtworkStatusLine(
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
     ) {
         Text(title, modifier = Modifier.weight(1f))
         ArtworkByteProgress(progress)
@@ -167,15 +168,15 @@ private fun ArtworkFailureStatus(
     val title = LocalContext.current.coreString(status.titleKey)
     Surface(color = BaeTheme.colors.warning.copy(alpha = ThemeOpacity.tint)) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp),
+            modifier = Modifier.fillMaxWidth().padding(start = ThemeSpace.edge, end = ThemeSpace.inline),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
         ) {
             Icon(
                 Icons.Filled.WarningAmber,
                 contentDescription = null,
                 tint = BaeTheme.colors.warning,
-                modifier = Modifier.size(18.dp),
+                modifier = Modifier.size(ThemeIcon.medium),
             )
             Text(
                 text = title,
@@ -193,7 +194,7 @@ private fun ArtworkFailureStatus(
             onDismissRequest = { detailsVisible = false },
             title = { Text(title) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.group)) {
                     ArtworkByteProgress(status.progress)
                     SelectionContainer {
                         Text(

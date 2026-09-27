@@ -3,14 +3,12 @@ import Combine
 import SwiftUI
 import UIKit
 
-/// UIKit-backed playback progress leaf. The compact and expanded players pass
-/// the high-frequency position publisher here so ticks mutate UIKit controls
-/// directly instead of invalidating SwiftUI view state.
+/// Playback progress in UIKit, so position ticks update the controls directly
+/// instead of invalidating SwiftUI state.
 struct ProgressBar: UIViewRepresentable {
     let positionPublisher: AnyPublisher<PlaybackPositionEvent, Never>
-    /// The user's elapsed-vs-remaining choice, from the config. Tapping the
-    /// leading label writes the config; its subscription lands the new value
-    /// back here, which is what re-renders the bar.
+    /// The elapsed-vs-remaining setting; tapping the leading label writes the
+    /// config, which sends the new value back here.
     let showRemainingTime: Bool
     let onSeek: (Double) -> Void
     let onToggleRemainingTime: () -> Void
@@ -93,7 +91,7 @@ final class PlaybackProgressUIView: UIView {
         ])
         stack.axis = .horizontal
         stack.alignment = .center
-        stack.spacing = 8
+        stack.spacing = ThemeSpace.related
         stack.translatesAutoresizingMaskIntoConstraints = false
         addSubview(stack)
 

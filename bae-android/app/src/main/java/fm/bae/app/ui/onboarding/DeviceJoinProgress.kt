@@ -18,11 +18,14 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.coreString
 import fm.bae.app.formatFileSize
 import fm.bae.app.requireDisplayableByteCount
+import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import uniffi.bae_bridge.BridgeAdmittingDeviceJoinProgress
 import uniffi.bae_bridge.BridgeJoiningDeviceJoinProgress
 import uniffi.bae_bridge.bridgeAdmittingDeviceJoinProgressKey
 import uniffi.bae_bridge.bridgeJoiningDeviceJoinProgressKey
+
+private val spinnerSize = 32.dp
 
 @Composable
 internal fun JoiningDeviceProgress(progress: BridgeJoiningDeviceJoinProgress) {
@@ -40,9 +43,9 @@ internal fun JoiningDeviceProgress(progress: BridgeJoiningDeviceJoinProgress) {
                 modifier = Modifier.fillMaxWidth(),
             )
         } else {
-            CircularProgressIndicator(modifier = Modifier.width(32.dp))
+            CircularProgressIndicator(modifier = Modifier.width(spinnerSize))
         }
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(ThemeSpace.group))
         Text(
             text = context.coreString(bridgeJoiningDeviceJoinProgressKey(progress)),
             style = ThemeText.heading.style,
@@ -64,8 +67,8 @@ internal fun JoiningDeviceProgress(progress: BridgeJoiningDeviceJoinProgress) {
 internal fun AdmittingDeviceProgress(progress: BridgeAdmittingDeviceJoinProgress) {
     val context = LocalContext.current
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        CircularProgressIndicator(modifier = Modifier.width(32.dp))
-        Spacer(modifier = Modifier.height(12.dp))
+        CircularProgressIndicator(modifier = Modifier.width(spinnerSize))
+        Spacer(modifier = Modifier.height(ThemeSpace.group))
         Text(
             text = context.coreString(bridgeAdmittingDeviceJoinProgressKey(progress)),
             style = ThemeText.heading.style,

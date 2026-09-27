@@ -5,6 +5,9 @@ import SwiftUI
 /// named it, and every source that lists it. A row already in the library is
 /// dimmed but can still be picked.
 struct ImportSearchResultRow: View {
+    /// The inset from the row's box to its text.
+    static let horizontalPadding = ThemeSpace.related
+
     let pressing: Pressing
     let isImporting: Bool
     let libraryStatus: BridgeLibraryStatus?
@@ -50,13 +53,13 @@ struct ImportSearchResultRow: View {
             .buttonStyle(.plain)
             .disabled(!isPickable)
 
-            HStack(spacing: 8) {
+            HStack(spacing: ThemeSpace.related) {
                 facts
                     .opacity(isInLibrary ? 0.55 : 1)
                     .allowsHitTesting(false)
                 signalBadges
                     .allowsHitTesting(false)
-                Spacer(minLength: 8)
+                Spacer(minLength: ThemeSpace.related)
                 libraryMarker
                     .allowsHitTesting(false)
                 sourceTags
@@ -65,8 +68,8 @@ struct ImportSearchResultRow: View {
                     .allowsHitTesting(false)
             }
         }
-        .padding(.vertical, 6)
-        .padding(.horizontal, 10)
+        .padding(.vertical, ThemeSpace.compact)
+        .padding(.horizontal, Self.horizontalPadding)
     }
 
     /// The row's failure and its retry: picking it again when loading the pick
@@ -84,17 +87,17 @@ struct ImportSearchResultRow: View {
     }
 
     private var failureLine: some View {
-        HStack(alignment: .top, spacing: 8) {
+        HStack(alignment: .top, spacing: ThemeSpace.related) {
             ErrorDetailDisclosure(error: rowFailure?.error)
                 .fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 8)
+            Spacer(minLength: ThemeSpace.related)
             Button("Retry") { rowFailure?.retry() }
                 .buttonStyle(.link)
                 .disabled(!isPickable)
         }
         .themeText(.body)
-        .padding(.horizontal, 10)
-        .padding(.bottom, 8)
+        .padding(.horizontal, Self.horizontalPadding)
+        .padding(.bottom, ThemeSpace.related)
         .frame(height: rowFailure == nil ? 0 : nil, alignment: .top)
         .clipped()
         .opacity(rowFailure == nil ? 0 : 1)
@@ -121,7 +124,7 @@ struct ImportSearchResultRow: View {
     // MARK: - What the pressing is
 
     private var facts: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: ThemeSpace.related) {
             if let year = pressing.lead.year {
                 Text(String(year))
                     .themeText(.strong)
@@ -146,8 +149,8 @@ struct ImportSearchResultRow: View {
                     Text(catalogNumber)
                         .themeText(.chip)
                         .foregroundStyle(.secondary)
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 1)
+                        .padding(.horizontal, ThemeSpace.compact)
+                        .padding(.vertical, ThemeSpace.hairline)
                         .background(
                             Theme.hover,
                             in: RoundedRectangle(cornerRadius: ThemeRadius.chip)
@@ -182,7 +185,7 @@ struct ImportSearchResultRow: View {
     @ViewBuilder
     private var signalBadges: some View {
         if let agreements {
-            HStack(spacing: 4) {
+            HStack(spacing: ThemeSpace.inline) {
                 agreementBadge(.discId, on: agreements.discId)
                 agreementBadge(.barcode, on: agreements.barcode)
                 agreementBadge(.catalog, on: agreements.catalog)
@@ -213,8 +216,8 @@ struct ImportSearchResultRow: View {
             // A badge is one word; the row's pressing text truncates instead.
             .lineLimit(1)
             .fixedSize()
-            .padding(.horizontal, 7)
-            .padding(.vertical, 2)
+            .padding(.horizontal, ThemeSpace.compact)
+            .padding(.vertical, ThemeSpace.line)
             .background(Theme.accentSoft, in: Capsule())
             .foregroundStyle(Color.accentColor)
     }
@@ -224,7 +227,7 @@ struct ImportSearchResultRow: View {
     /// Every source listing this pressing, in core's order; picking the row
     /// takes all of them.
     private var sourceTags: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: ThemeSpace.inline) {
             ForEach(Array(pressing.sources.enumerated()), id: \.element) {
                 at,
                 source in
@@ -242,7 +245,7 @@ struct ImportSearchResultRow: View {
 
     /// The "In library" tag, hidden by opacity so the column keeps its width.
     private var libraryMarker: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: ThemeSpace.inline) {
             Image(systemName: "checkmark.circle.fill")
                 .foregroundStyle(Theme.success)
             Text("In library")
@@ -262,13 +265,13 @@ struct ImportSearchResultRow: View {
                 .scaleEffect(0.7)
                 .opacity(isLoading ? 1 : 0)
             Image(systemName: "chevron.right")
-                .font(.system(size: 10, weight: .semibold))
+                .themeIcon(.small)
                 .foregroundStyle(
                     isSelected ? Theme.accent : Theme.hairlineStrong
                 )
                 .opacity(isLoading ? 0 : 1)
         }
-        .frame(width: 12)
+        .frame(width: ThemeIcon.small.size)
     }
 }
 
@@ -276,7 +279,7 @@ struct ImportSearchResultRow: View {
     // MARK: - Preview
 
     #Preview("Pressing rows") {
-        VStack(spacing: 1) {
+        VStack(spacing: ThemeSpace.hairline) {
             ImportSearchResultRow(
                 pressing: PreviewData.searchGroupExact.pressings[0],
                 isImporting: false,

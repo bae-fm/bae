@@ -35,7 +35,7 @@ extension View {
 
 #if DEBUG
     #Preview("Popover Entrance") {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: ThemeSpace.line) {
             Text(verbatim: "Add to queue")
                 .themeText(.heading)
             Text(
@@ -44,14 +44,14 @@ extension View {
             .themeText(.body)
             .foregroundStyle(.secondary)
         }
-        .padding(16)
+        .padding(ThemeSpace.edge)
         .frame(width: 240)
         .background(
             Theme.surface,
             in: RoundedRectangle(cornerRadius: ThemeRadius.card)
         )
         .popoverEntrance(anchor: .top)
-        .padding(48)
+        .padding(ThemeSpace.page)
         .background(Theme.background)
         .preferredColorScheme(.dark)
     }

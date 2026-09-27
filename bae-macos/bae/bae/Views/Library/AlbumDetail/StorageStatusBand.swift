@@ -19,7 +19,7 @@ struct StorageStatusBand: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: ThemeSpace.group) {
             // A cloud transition in flight is the release's storage state
             // while it runs: its phase, bar, and count are one line.
             if let observation = uploadObservation {
@@ -73,7 +73,7 @@ struct StorageStatusBand: View {
 
     /// The resting storage state.
     private var storageStatus: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: ThemeSpace.inline) {
             switch release.summary.storageState {
             case .local:
                 Image(systemName: "folder")

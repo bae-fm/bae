@@ -15,7 +15,7 @@ struct MoveToCloudConfirmSheet: View {
     private var uiStore
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: ThemeSpace.group) {
             Text("Move to Cloud")
                 .themeText(.heading)
             Toggle("Pinned", isOn: pinned)

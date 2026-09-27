@@ -49,8 +49,8 @@ struct NowPlayingBar: View {
             trailingControls
                 .frame(maxWidth: .infinity, alignment: .trailing)
         }
-        .padding(.vertical, 14)
-        .padding(.horizontal, 22)
+        .padding(.vertical, ThemeSpace.group)
+        .padding(.horizontal, ThemeSpace.section)
         // Docked in the window's bottom row, so a flat surface with no card
         // chrome.
         .background(Theme.surface)
@@ -59,11 +59,14 @@ struct NowPlayingBar: View {
     // MARK: - Left: track info
 
     private var trackInfo: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: ThemeSpace.group) {
             if trackTitle != nil {
                 Button(action: onNavigateToAlbum) {
                     albumArt
-                        .frame(width: 54, height: 54)
+                        .frame(
+                            width: ThemeSize.barArtwork,
+                            height: ThemeSize.barArtwork
+                        )
                         .clipShape(
                             RoundedRectangle(cornerRadius: ThemeRadius.artwork)
                         )
@@ -73,7 +76,7 @@ struct NowPlayingBar: View {
                 .buttonStyle(.plain)
             }
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: ThemeSpace.line) {
                 if let title = trackTitle {
                     Button(action: onNavigateToAlbum) {
                         Text(title)
@@ -94,14 +97,14 @@ struct NowPlayingBar: View {
     }
 
     private var albumArt: some View {
-        ImageView(content: cover, pointSize: 54)
+        ImageView(content: cover, pointSize: ThemeSize.barArtwork)
     }
 
     // MARK: - Center: transport controls + progress
 
     private var centerColumn: some View {
-        VStack(spacing: 10) {
-            HStack(spacing: 22) {
+        VStack(spacing: ThemeSpace.related) {
+            HStack(spacing: ThemeSpace.section) {
                 shuffleButton
 
                 navButton(
@@ -156,7 +159,7 @@ struct NowPlayingBar: View {
     @ViewBuilder
     private func toggleLabel(_ systemName: String, active: Bool) -> some View {
         let glyph = Image(systemName: systemName)
-            .font(.system(size: 16, weight: .semibold))
+            .themeIcon(.large)
         Group {
             if active {
                 glyph.foregroundStyle(Theme.accent)
@@ -165,7 +168,7 @@ struct NowPlayingBar: View {
                 glyph
             }
         }
-        .frame(width: 30, height: 30)
+        .frame(width: ThemeSize.hitTarget, height: ThemeSize.hitTarget)
         .background(
             RoundedRectangle(cornerRadius: ThemeRadius.control)
                 .fill(active ? Theme.accentSoft : Color.clear),
@@ -180,8 +183,8 @@ struct NowPlayingBar: View {
     ) -> some View {
         Button(action: action) {
             Image(systemName: systemName)
-                .font(.system(size: 20, weight: .medium))
-                .frame(width: 34, height: 34)
+                .themeIcon(.large)
+                .frame(width: ThemeSize.hitTarget, height: ThemeSize.hitTarget)
                 .contentShape(Rectangle())
         }
         .buttonStyle(IconHoverButtonStyle())
@@ -193,7 +196,7 @@ struct NowPlayingBar: View {
         PlayPauseControl(
             isPlaying: isPlaying,
             isLoading: isLoading,
-            glyphFont: .system(size: 18, weight: .medium),
+            glyphFont: ThemeIcon.large.font,
             spinnerControlSize: .small,
             targetSize: 48,
             onToggle: onPlayPause,
@@ -229,7 +232,7 @@ struct NowPlayingBar: View {
 
 extension NowPlayingBar {
     fileprivate var trailingControls: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: ThemeSpace.group) {
             castControl
 
             queueButton
@@ -245,7 +248,7 @@ extension NowPlayingBar {
     fileprivate var queueButton: some View {
         Button(action: { onSetQueuePresented(!showQueue) }) {
             queueGlyph
-                .frame(width: 32, height: 32)
+                .frame(width: ThemeSize.hitTarget, height: ThemeSize.hitTarget)
                 .contentShape(Rectangle())
         }
         .buttonStyle(IconHoverButtonStyle())
@@ -278,15 +281,11 @@ extension NowPlayingBar {
                 events: queueAddPublisher,
                 scheduler: .main,
                 style: QueueAddBadgeStyle(
-                    symbolFont: .system(size: 8.5, weight: .bold),
-                    padding: EdgeInsets(
-                        top: 1,
-                        leading: 5,
-                        bottom: 1,
-                        trailing: 5
-                    ),
                     fill: Theme.accent,
-                    offset: CGSize(width: 6, height: -6)
+                    offset: CGSize(
+                        width: ThemeSpace.compact,
+                        height: -ThemeSpace.compact
+                    )
                 )
             )
         }
@@ -295,7 +294,7 @@ extension NowPlayingBar {
     @ViewBuilder
     fileprivate var queueGlyph: some View {
         let glyph = Image(systemName: "list.bullet")
-            .font(.system(size: 17, weight: .medium))
+            .themeIcon(.large)
         if showQueue {
             glyph.foregroundStyle(Theme.accent)
         }
@@ -307,8 +306,8 @@ extension NowPlayingBar {
     fileprivate var muteButton: some View {
         Button(action: onToggleMute) {
             Image(systemName: muteIconName)
-                .font(.system(size: 15, weight: .medium))
-                .frame(width: 30, height: 30)
+                .themeIcon(.large)
+                .frame(width: ThemeSize.hitTarget, height: ThemeSize.hitTarget)
                 .contentShape(Rectangle())
         }
         .buttonStyle(IconHoverButtonStyle())

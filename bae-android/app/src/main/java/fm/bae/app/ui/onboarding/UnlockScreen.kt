@@ -28,9 +28,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.appearance.ThemeIcon
+import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.PrimaryButton
 import kotlinx.coroutines.launch
@@ -92,25 +93,25 @@ private fun UnlockForm(
 ) {
     val isValidHex = keyHex.length == HEX_KEY_LENGTH && keyHex.all { it.isDigit() || it in 'a'..'f' || it in 'A'..'F' }
     Column(
-        modifier = Modifier.fillMaxSize().padding(32.dp),
+        modifier = Modifier.fillMaxSize().padding(ThemeSpace.page),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
         Text(stringResource(R.string.unlock_title), style = ThemeText.title.style)
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(ThemeSpace.related))
         Text(
             libraryName,
             style = ThemeText.heading.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(ThemeSpace.section))
         Text(
             text = stringResource(R.string.unlock_explanation),
             style = ThemeText.body.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(ThemeSpace.section))
         OutlinedTextField(
             value = keyHex,
             onValueChange = callbacks.onKeyHexChange,
@@ -120,20 +121,20 @@ private fun UnlockForm(
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false),
         )
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(ThemeSpace.edge))
         PrimaryButton(onClick = callbacks.onUnlock, enabled = isValidHex && !isUnlocking) {
             if (isUnlocking) {
-                CircularProgressIndicator(modifier = Modifier.height(20.dp))
+                CircularProgressIndicator(modifier = Modifier.height(ThemeIcon.medium))
             } else {
                 Text(stringResource(R.string.unlock_action))
             }
         }
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(ThemeSpace.related))
         TextButton(onClick = callbacks.onCancel) {
             Text(stringResource(R.string.cancel))
         }
         if (error != null) {
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(ThemeSpace.edge))
             Text(text = error, color = MaterialTheme.colorScheme.error, style = ThemeText.body.style)
         }
     }

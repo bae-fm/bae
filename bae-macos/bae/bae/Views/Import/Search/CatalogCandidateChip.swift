@@ -25,7 +25,7 @@ struct CatalogCandidateChip: View {
     // MARK: - Previews
 
     #Preview("Catalog numbers waiting to be used") {
-        FlowLayout(spacing: 6) {
+        FlowLayout(spacing: ThemeSpace.compact) {
             ForEach(PreviewData.catalogCandidates, id: \.value) { candidate in
                 CatalogCandidateChip(candidate: candidate, onActivate: {})
             }

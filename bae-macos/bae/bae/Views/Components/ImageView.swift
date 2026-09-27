@@ -214,7 +214,7 @@ struct ImagePlaceholderView: View {
     }
 
     private var iconFont: Font {
-        .system(size: usesCompactChrome ? 17 : 22, weight: .medium)
+        (usesCompactChrome ? ThemeIcon.medium : ThemeIcon.large).font
     }
 
     private func icon<S: ShapeStyle>(
@@ -245,9 +245,10 @@ extension ImageView {
 #if DEBUG
     #Preview("Image View") {
         // The stub store resolves no bytes, so every slot shows a placeholder.
-        HStack(alignment: .top, spacing: 16) {
-            ImageView(imageRef: nil, pointSize: 120)
-                .frame(width: 120, height: 120)
+        let coverSide: CGFloat = 120
+        HStack(alignment: .top, spacing: ThemeSpace.group) {
+            ImageView(imageRef: nil, pointSize: coverSide)
+                .frame(width: coverSide, height: coverSide)
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.cover))
             ImageView(
                 imageRef: BridgeImageRef(
@@ -255,15 +256,18 @@ extension ImageView {
                     version: "1",
                     imageType: .cover
                 ),
-                pointSize: 120
+                pointSize: coverSide
             )
-            .frame(width: 120, height: 120)
+            .frame(width: coverSide, height: coverSide)
             .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.cover))
-            ImageView(content: nil, pointSize: 44)
-                .frame(width: 44, height: 44)
+            ImageView(content: nil, pointSize: ThemeSize.rowArtwork)
+                .frame(
+                    width: ThemeSize.rowArtwork,
+                    height: ThemeSize.rowArtwork
+                )
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
         }
-        .padding(28)
+        .padding(ThemeSpace.section)
         .background(Theme.background)
         .environment(ImageStore.stub())
         .preferredColorScheme(.dark)

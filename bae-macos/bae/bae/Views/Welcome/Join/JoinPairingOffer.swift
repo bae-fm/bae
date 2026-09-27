@@ -36,7 +36,7 @@ struct JoinPairingOffer: View {
                     .foregroundStyle(Theme.danger)
                     .themeText(.body)
                     .padding(.horizontal)
-                    .padding(.bottom, 8)
+                    .padding(.bottom, ThemeSpace.related)
             }
 
             if isAuthorizing {
@@ -45,14 +45,14 @@ struct JoinPairingOffer: View {
             else if isJoining {
                 if let joinProgress {
                     DeviceJoinProgressView(joining: joinProgress)
-                        .padding(.bottom, 12)
+                        .padding(.bottom, ThemeSpace.group)
                 }
                 else {
                     progress("Starting pairing...")
                 }
             }
 
-            HStack(spacing: 12) {
+            HStack(spacing: ThemeSpace.group) {
                 Button(isAuthorizing || isJoining ? "Cancel" : "Back") {
                     onBack()
                 }
@@ -62,7 +62,7 @@ struct JoinPairingOffer: View {
                     .disabled(isJoining || !joinReady)
                     .keyboardShortcut(.defaultAction)
             }
-            .padding(.bottom, 24)
+            .padding(.bottom, ThemeSpace.section)
         }
     }
 
@@ -101,13 +101,13 @@ struct JoinPairingOffer: View {
     }
 
     private func progress(_ title: LocalizedStringKey) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: ThemeSpace.related) {
             ProgressView()
                 .controlSize(.small)
             Text(title)
                 .themeText(.body)
                 .foregroundStyle(.secondary)
         }
-        .padding(.bottom, 12)
+        .padding(.bottom, ThemeSpace.group)
     }
 }

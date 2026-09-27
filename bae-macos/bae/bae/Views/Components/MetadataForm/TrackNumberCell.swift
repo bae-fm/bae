@@ -28,12 +28,13 @@ struct TrackNumberCell: View {
         @Previewable
         @State
         var blank: Int32?
-        HStack(spacing: 12) {
-            TrackNumberCell(value: $number).frame(width: 60)
+        let cellWidth: CGFloat = 60
+        HStack(spacing: ThemeSpace.group) {
+            TrackNumberCell(value: $number).frame(width: cellWidth)
             // Unset — renders blank.
-            TrackNumberCell(value: $blank).frame(width: 60)
+            TrackNumberCell(value: $blank).frame(width: cellWidth)
         }
-        .padding(24)
+        .padding(ThemeSpace.section)
         .background(Theme.background)
         .preferredColorScheme(.dark)
     }

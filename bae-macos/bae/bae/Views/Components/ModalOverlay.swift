@@ -31,7 +31,7 @@ struct ModalOverlay<Content: View>: View {
 #if DEBUG
     #Preview("Modal Overlay") {
         ModalOverlay(onDismiss: {}) {
-            VStack(spacing: 12) {
+            VStack(spacing: ThemeSpace.group) {
                 Text(verbatim: "Sample Modal")
                     .themeText(.heading)
                 Text(
@@ -44,7 +44,7 @@ struct ModalOverlay<Content: View>: View {
                 Button("Done") {}
                     .buttonStyle(PrimaryButtonStyle())
             }
-            .padding(32)
+            .padding(ThemeSpace.section)
             .frame(width: 320)
             .background(Theme.surface)
         }

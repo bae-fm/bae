@@ -5,6 +5,7 @@ import SwiftUI
 import VisionKit
 
 private let logger = Logger.bae("LightboxView")
+private let navButtonDiameter: CGFloat = 48
 
 /// An image the lightbox shows; the strip and the stage each draw it at their
 /// own size.
@@ -120,9 +121,12 @@ struct LightboxView<Item: LightboxImage>: View {
                             )
                         }
                     ) { item in
-                        ImageView(content: item.image, pointSize: 56)
+                        ImageView(
+                            content: item.image,
+                            pointSize: ThumbnailStripLayout.thumbnailSize
+                        )
                     }
-                    .padding(.bottom, 12)
+                    .padding(.bottom, ThemeSpace.group)
                     .fadesWhenZoomed(at: magnification)
                 }
             }
@@ -276,9 +280,9 @@ struct LightboxView<Item: LightboxImage>: View {
                         }
                     },
             )
-            .padding(.horizontal, 40)
-            .padding(.top, 40)
-            .padding(.bottom, 16)
+            .padding(.horizontal, ThemeSpace.page)
+            .padding(.top, ThemeSpace.page)
+            .padding(.bottom, ThemeSpace.edge)
             .shadow(color: Theme.shadow, radius: 20)
     }
 
@@ -300,7 +304,7 @@ extension LightboxView {
     }
 
     fileprivate var labelView: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: ThemeSpace.line) {
             Text(verbatim: cursor.current.label)
                 .themeText(.body)
                 .foregroundStyle(Theme.onFill)
@@ -310,8 +314,8 @@ extension LightboxView {
                 .foregroundStyle(Theme.onFillSecondary)
         }
         .multilineTextAlignment(.center)
-        .padding(.horizontal, 24)
-        .padding(.bottom, 8)
+        .padding(.horizontal, ThemeSpace.section)
+        .padding(.bottom, ThemeSpace.related)
         .fadesWhenZoomed(at: magnification)
     }
 
@@ -319,19 +323,19 @@ extension LightboxView {
         HStack {
             circleIconButton(
                 systemName: "chevron.left",
-                diameter: 48,
-                iconFont: .title2.weight(.medium),
+                diameter: navButtonDiameter,
+                icon: .large,
                 action: goPrevious
             )
             Spacer()
             circleIconButton(
                 systemName: "chevron.right",
-                diameter: 48,
-                iconFont: .title2.weight(.medium),
+                diameter: navButtonDiameter,
+                icon: .large,
                 action: goNext
             )
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, ThemeSpace.edge)
         .fadesWhenZoomed(at: magnification)
     }
 
@@ -347,19 +351,19 @@ extension LightboxView {
                     }
                     .buttonStyle(.borderless)
                     .foregroundStyle(Theme.onFill)
-                    .padding(10)
+                    .padding(ThemeSpace.related)
                     .background(Theme.scrim, in: Capsule())
-                    .padding(12)
+                    .padding(ThemeSpace.group)
                 }
                 Spacer()
                 circleIconButton(
                     systemName: "xmark",
                     diameter: 36,
-                    iconFont: .body.weight(.semibold)
+                    icon: .medium
                 ) {
                     onDismiss()
                 }
-                .padding(12)
+                .padding(ThemeSpace.group)
             }
             Spacer()
         }
@@ -369,7 +373,7 @@ extension LightboxView {
     fileprivate func circleIconButton(
         systemName: String,
         diameter: CGFloat,
-        iconFont: Font,
+        icon: ThemeIcon,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
@@ -378,7 +382,7 @@ extension LightboxView {
                     .fill(Theme.scrim)
                     .frame(width: diameter, height: diameter)
                 Image(systemName: systemName)
-                    .font(iconFont)
+                    .themeIcon(icon)
                     .foregroundStyle(Theme.onFillSecondary)
             }
         }
@@ -420,9 +424,9 @@ extension LightboxView {
 
     /// The failed-load state, with a retry.
     fileprivate var loadFailedView: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: ThemeSpace.related) {
             Image(systemName: "exclamationmark.triangle")
-                .font(.largeTitle)
+                .themeIcon(.hero)
                 .foregroundStyle(Theme.onFillSecondary)
             Text("Couldn't load image")
                 .themeText(.body)

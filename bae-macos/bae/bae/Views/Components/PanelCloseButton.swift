@@ -12,9 +12,9 @@ struct PanelCloseButton: View {
             }
         } label: {
             Image(systemName: "xmark")
-                .font(.system(size: 13, weight: .semibold))
+                .themeIcon(.medium)
                 .foregroundStyle(.secondary)
-                .frame(width: 30, height: 30)
+                .frame(width: ThemeSize.hitTarget, height: ThemeSize.hitTarget)
                 .background(
                     Theme.hover,
                     in: RoundedRectangle(cornerRadius: ThemeRadius.control)

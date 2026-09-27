@@ -56,7 +56,7 @@ struct StorageTransferControls: View {
             }
             .foregroundStyle(.secondary)
             .padding(.horizontal)
-            .padding(.vertical, 8)
+            .padding(.vertical, ThemeSpace.related)
             Divider()
 
             switch item {

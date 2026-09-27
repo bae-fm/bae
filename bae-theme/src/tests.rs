@@ -20,7 +20,8 @@ fn colours_read_with_and_without_alpha() {
 
 fn theme_with(tones: &str, semantics: &str) -> Result<Theme, Vec<String>> {
     Theme::from_toml(&format!(
-        "[opacity]\ntint = 0.14\n\n[radius]\nchip = 5\n\n{TEXT}\n{tones}\n[[accents]]\nname = \"blue\"\nlight = \"#000000\"\ndark = \"#000000\"\nfill = \"#000000\"\n\n{semantics}"
+        "[opacity]\ntint = 0.14\n\n[radius]\nchip = 5\n\n[space]\nrelated = 8\n\n[icon.small]\nweight = \"semibold\"\nmacos = 11\nios = 13\nandroid = 16\n\n\
+         [size.hitTarget]\nmacos = 28\nios = 44\nandroid = 44\n\n{TEXT}\n{tones}\n[[accents]]\nname = \"blue\"\nlight = \"#000000\"\ndark = \"#000000\"\nfill = \"#000000\"\n\n{semantics}"
     ))
 }
 
@@ -131,7 +132,7 @@ fn a_text_role_needs_every_platforms_size() {
         "[text.body]\nweight = \"regular\"\nmacos = 13\n",
         "[text.body]\nweight = \"regular\"\n",
     ));
-    assert_eq!(theme.unwrap_err(), ["text body lacks a macos size"]);
+    assert_eq!(theme.unwrap_err(), ["text body has no macos size"]);
 }
 
 #[test]
@@ -154,6 +155,38 @@ fn both_platforms_carry_every_text_role() {
     for role in theme.text.keys() {
         assert!(swift.contains(&format!("    public static let {role} = ThemeText(\n")));
         assert!(kotlin.contains(&format!("        val {role} =\n")));
+    }
+}
+
+#[test]
+fn an_icon_needs_every_platforms_size() {
+    let theme = Theme::from_toml(&THEME.replace(
+        "[icon.small]\nweight = \"semibold\"\nmacos = 11\nios = 13\nandroid = 16\n",
+        "[icon.small]\nweight = \"semibold\"\nmacos = 11\nios = 13\n",
+    ));
+    assert_eq!(theme.unwrap_err(), ["icon small has no android length"]);
+}
+
+#[test]
+fn both_platforms_carry_every_space_icon_and_size() {
+    let theme = Theme::from_toml(THEME).unwrap();
+    let swift = apple::swift(&theme);
+    let kotlin = android::kotlin(&theme);
+    for (role, value) in &theme.space {
+        assert!(swift.contains(&format!(
+            "    public static let {role}: CGFloat = {value}\n"
+        )));
+        assert!(kotlin.contains(&format!("    val {role} = {value}.dp\n")));
+    }
+    for (role, icon) in &theme.icon {
+        assert!(swift.contains(&format!("    public static let {role} = ThemeIcon(\n")));
+        assert!(kotlin.contains(&format!("    val {role} = {}.dp\n", icon.sizes.android)));
+    }
+    for (role, lengths) in &theme.size {
+        assert!(swift.contains(&format!(
+            "    public static let {role}: CGFloat = .platform(\n"
+        )));
+        assert!(kotlin.contains(&format!("    val {role} = {}.dp\n", lengths.android)));
     }
 }
 

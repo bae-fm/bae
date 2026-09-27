@@ -1,4 +1,5 @@
 import AppKit
+import BaeKit
 import SwiftUI
 
 /// Plain text field with inline prefix completion — no dropdown.
@@ -39,7 +40,7 @@ struct AutocompleteTextField: View {
             if isLoading {
                 ProgressView()
                     .controlSize(.small)
-                    .padding(.trailing, 6)
+                    .padding(.trailing, ThemeSpace.compact)
                     .allowsHitTesting(false)
             }
         }

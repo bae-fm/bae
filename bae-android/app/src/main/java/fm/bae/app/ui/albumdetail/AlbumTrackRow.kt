@@ -29,7 +29,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+
+private val positionColumnWidth = 40.dp
 
 internal data class TrackRowData(
     val positionLabel: String,
@@ -57,7 +60,7 @@ internal fun TrackRow(
             Modifier
                 .fillMaxWidth()
                 .clickable(onClick = callbacks.onClick)
-                .padding(vertical = 8.dp),
+                .padding(vertical = ThemeSpace.related),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         TrackPositionIndicator(data.isCurrent, data.isPlaying, data.positionLabel)
@@ -106,7 +109,7 @@ private fun TrackPositionIndicator(
     positionLabel: String,
 ) {
     if (isCurrent) {
-        Box(modifier = Modifier.width(40.dp), contentAlignment = Alignment.CenterStart) {
+        Box(modifier = Modifier.width(positionColumnWidth), contentAlignment = Alignment.CenterStart) {
             Icon(
                 imageVector =
                     if (isPlaying) Icons.AutoMirrored.Filled.VolumeUp else Icons.Filled.PlayArrow,
@@ -120,7 +123,7 @@ private fun TrackPositionIndicator(
             text = positionLabel,
             style = ThemeText.body.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.width(40.dp),
+            modifier = Modifier.width(positionColumnWidth),
         )
     }
 }

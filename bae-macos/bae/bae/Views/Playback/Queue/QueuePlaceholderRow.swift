@@ -3,26 +3,32 @@ import SwiftUI
 
 /// A skeleton row shown while its queue entry loads.
 struct QueuePlaceholderRow: View {
+    /// The height of a detail line's bar.
+    private static let detailBarHeight: CGFloat = 10
+
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: ThemeSpace.group) {
             RoundedRectangle(cornerRadius: ThemeRadius.artwork)
                 .fill(Theme.placeholder)
-                .frame(width: 48, height: 48)
-            VStack(alignment: .leading, spacing: 4) {
+                .frame(
+                    width: QueueItemRow.artworkSize,
+                    height: QueueItemRow.artworkSize
+                )
+            VStack(alignment: .leading, spacing: ThemeSpace.inline) {
                 RoundedRectangle(cornerRadius: ThemeRadius.bar)
                     .fill(Theme.placeholder)
                     .frame(width: 140, height: 12)
                 RoundedRectangle(cornerRadius: ThemeRadius.bar)
                     .fill(Theme.placeholder)
-                    .frame(width: 90, height: 10)
+                    .frame(width: 90, height: Self.detailBarHeight)
                 RoundedRectangle(cornerRadius: ThemeRadius.bar)
                     .fill(Theme.placeholder)
-                    .frame(width: 120, height: 10)
+                    .frame(width: 120, height: Self.detailBarHeight)
             }
             Spacer()
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
+        .padding(.horizontal, QueueItemRow.horizontalInset)
+        .padding(.vertical, QueueItemRow.verticalInset)
     }
 }
 

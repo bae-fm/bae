@@ -48,7 +48,7 @@ struct SettingsView: View {
                                 holder.openLibrary(library)
                             } label: {
                                 HStack {
-                                    VStack(alignment: .leading, spacing: 2) {
+                                    VStack(alignment: .leading, spacing: ThemeSpace.line) {
                                         Text(library.name)
                                         // A library whose config won't load
                                         // stays listed with its error.
@@ -268,9 +268,8 @@ struct SettingsView: View {
     }
 }
 
-/// The Sync section's controls for a connected provider, in its own view so its
-/// init can seed `DisconnectSyncFlow` from values the parent reads from the
-/// environment.
+/// The Sync section's controls for a connected provider; its own view so its
+/// init can seed `DisconnectSyncFlow`.
 private struct SyncConnectedControls: View {
     let config: BridgeSyncConfig
 

@@ -17,7 +17,7 @@ struct KeychainRestoreSection: View {
     private var deleteConfirmCode: String?
 
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: ThemeSpace.group) {
             WelcomeSectionHeader(
                 title: "Restore from this Mac's keychain",
                 infoTip: InfoTip(
@@ -28,9 +28,9 @@ struct KeychainRestoreSection: View {
             ForEach(Array(entries.enumerated()), id: \.offset) {
                 _,
                 entry in
-                VStack(spacing: 8) {
-                    HStack(spacing: 8) {
-                        VStack(alignment: .leading, spacing: 2) {
+                VStack(spacing: ThemeSpace.related) {
+                    HStack(spacing: ThemeSpace.related) {
+                        VStack(alignment: .leading, spacing: ThemeSpace.line) {
                             Text(entry.info.libraryName)
                                 .themeText(.rowTitle)
                             Text(entry.info.cloudProvider.displayName)
@@ -49,7 +49,7 @@ struct KeychainRestoreSection: View {
                                 .opacity(isRestoring ? 1 : 0)
                                 .allowsHitTesting(false)
 
-                            HStack(spacing: 8) {
+                            HStack(spacing: ThemeSpace.related) {
                                 ProgressView()
                                     .controlSize(.small)
                                 Button("Cancel") {
@@ -61,7 +61,7 @@ struct KeychainRestoreSection: View {
                             .opacity(isAuthorizing ? 1 : 0)
                             .allowsHitTesting(isAuthorizing)
 
-                            HStack(spacing: 8) {
+                            HStack(spacing: ThemeSpace.related) {
                                 ZStack(alignment: .trailing) {
                                     Button("Connect") {
                                         onConnect(entry.info)
@@ -87,7 +87,7 @@ struct KeychainRestoreSection: View {
                                     deleteConfirmCode = entry.code
                                 } label: {
                                     Image(systemName: "xmark")
-                                        .font(.callout)
+                                        .themeIcon(.medium)
                                 }
                                 .buttonStyle(.borderless)
                             }
@@ -96,8 +96,8 @@ struct KeychainRestoreSection: View {
                         }
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
+                .padding(.horizontal, ThemeSpace.edge)
+                .padding(.vertical, ThemeSpace.related)
                 .background(Color.secondary.opacity(ThemeOpacity.tint))
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.control))
             }

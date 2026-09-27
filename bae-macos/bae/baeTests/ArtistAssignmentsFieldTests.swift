@@ -54,7 +54,7 @@ struct ArtistAssignmentsFieldTests {
     @MainActor
     @Test("a compilation's artists stay inside the header")
     func manyArtistsStayInsideTheHeader() async throws {
-        let size = NSSize(width: 900, height: 360)
+        let size = NSSize(width: 900, height: 400)
         let draft = PreviewData.manyAlbumArtistsDraft()
         try await withHostedHeader(values: draft, size: size) { _, host in
 

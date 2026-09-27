@@ -1,8 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// The library's allowed range and preferred size drive the primary window.
-/// The same window contracts to `WelcomeWindow.size` when the library closes.
+/// The primary window's sizes while a library is open; it contracts to
+/// `WelcomeWindow.size` when the library closes.
 enum MainWindow {
     static let sceneID = "main"
     static let minSize = CGSize(width: 900, height: 600)
@@ -35,8 +35,7 @@ struct MainWindowChrome<Content: View>: View {
     }
 }
 
-/// Bootstrap content fixes the primary window to its current setup size.
-/// Library-open errors remain inline in the chooser.
+/// Fixes the primary window to the setup size while bootstrap shows.
 struct WelcomeWindowChrome<Content: View>: View {
     var size = WelcomeWindow.size
     @ViewBuilder
@@ -70,9 +69,9 @@ private struct LoadErrorLine: View {
     /// Stand-in shell content for the chrome to frame.
     private struct ChromeSampleContent: View {
         var body: some View {
-            VStack(spacing: 12) {
+            VStack(spacing: ThemeSpace.group) {
                 Image(systemName: "music.note.list")
-                    .font(.system(size: 48))
+                    .themeIcon(.hero)
                     .foregroundStyle(.secondary)
                 Text(verbatim: "Shell content")
                     .themeText(.title)

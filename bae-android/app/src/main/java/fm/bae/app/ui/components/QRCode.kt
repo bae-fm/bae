@@ -24,10 +24,8 @@ private val logger = BaeLogger(TAG)
 private const val QR_SIZE_PX = 512
 
 /**
- * Render [text] as a QR code square. The same image is shown wherever a device
- * presents its pairing offer for a joining device's camera. Returns
- * null only if ZXing rejects the payload (e.g. too long to encode), which the
- * caller renders around — the copyable text is always shown alongside.
+ * [text] as a QR code square, or nothing when ZXing rejects the payload; callers
+ * always show the copyable text alongside.
  */
 @Composable
 fun QRCodeImage(

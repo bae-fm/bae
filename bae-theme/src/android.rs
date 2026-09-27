@@ -137,6 +137,20 @@ pub fn kotlin(theme: &Theme) -> String {
     }
     out.push_str("    }\n}\n");
 
+    out.push_str("\n/** Gaps and insets. */\nobject ThemeSpace {\n");
+    for (role, value) in &theme.space {
+        let _ = writeln!(out, "    val {role} = {value}.dp");
+    }
+    out.push_str("}\n\n/** Glyph sizes. */\nobject ThemeIcon {\n");
+    for (role, icon) in &theme.icon {
+        let _ = writeln!(out, "    val {role} = {}.dp", icon.sizes.android);
+    }
+    out.push_str("}\n\n/** Sizes that recur across screens. */\nobject ThemeSize {\n");
+    for (role, lengths) in &theme.size {
+        let _ = writeln!(out, "    val {role} = {}.dp", lengths.android);
+    }
+    out.push_str("}\n");
+
     out.push_str("\n/** Corner radii. */\nobject ThemeRadius {\n");
     for (role, value) in &theme.radius {
         let _ = writeln!(out, "    val {role} = {value}.dp");

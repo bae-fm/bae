@@ -37,15 +37,15 @@ struct AlbumTrackListView: View {
                 let globalOffset = offsets[groupIndex]
                 if !group.sideHeaderText.isEmpty {
                     Eyebrow(verbatim: group.sideHeaderText)
-                        .padding(.top, groupIndex == 0 ? 0 : 18)
-                        .padding(.bottom, 6)
+                        .padding(.top, groupIndex == 0 ? 0 : ThemeSpace.edge)
+                        .padding(.bottom, ThemeSpace.compact)
                 }
                 let mid =
                     group.tracks.count > 8
                     ? (group.tracks.count + 1) / 2 : group.tracks.count
                 let left = Array(group.tracks.prefix(mid))
                 let right = Array(group.tracks.dropFirst(mid))
-                HStack(alignment: .top, spacing: 40) {
+                HStack(alignment: .top, spacing: ThemeSpace.page) {
                     trackColumn(tracks: left, globalOffset: globalOffset)
                     if right.isEmpty {
                         // Not a `Spacer`: its default minimum length would
@@ -66,7 +66,7 @@ struct AlbumTrackListView: View {
                     Text(group.totalDurationText)
                         .themeText(.fine)
                         .foregroundStyle(.tertiary)
-                        .padding(.top, 8)
+                        .padding(.top, ThemeSpace.related)
                 }
             }
         }
@@ -117,7 +117,7 @@ struct AlbumTrackListView: View {
             onAddToQueue: { _ in },
             onExportTrack: { _ in },
         )
-        .padding(24)
+        .padding(ThemeSpace.section)
         .frame(width: 540)
         .background(Theme.background)
         .environment(UiStore())

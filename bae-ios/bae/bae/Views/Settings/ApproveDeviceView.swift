@@ -60,7 +60,7 @@ struct ApproveDeviceView: View {
         case .confirm(let session, let device):
             confirmStep(session, device)
         case .approving(_, _, let progress):
-            VStack(spacing: 12) {
+            VStack(spacing: ThemeSpace.group) {
                 DeviceJoinProgressView(admitting: progress)
                 if let error {
                     Text(error)
@@ -83,7 +83,7 @@ struct ApproveDeviceView: View {
     }
 
     private func waitingStep(_ session: BridgeDevicePairingSession) -> some View {
-        VStack(spacing: 16) {
+        VStack(spacing: ThemeSpace.edge) {
             Text("Scan this code on the device joining your library.")
                 .themeText(.body)
                 .foregroundStyle(.secondary)
@@ -95,7 +95,7 @@ struct ApproveDeviceView: View {
                 qrSize: 240
             )
 
-            HStack(spacing: 8) {
+            HStack(spacing: ThemeSpace.related) {
                 ProgressView()
                 Text("Waiting for the device...")
                     .themeText(.detail)
@@ -119,10 +119,10 @@ struct ApproveDeviceView: View {
         _ session: BridgeDevicePairingSession,
         _ device: BridgePairingDevice
     ) -> some View {
-        VStack(spacing: 16) {
+        VStack(spacing: ThemeSpace.edge) {
             Spacer()
             Image(systemName: "iphone.and.arrow.forward")
-                .font(.largeTitle)
+                .themeIcon(.hero)
                 .foregroundStyle(.secondary)
             Text("Approve this device?")
                 .themeText(.heading)
@@ -146,7 +146,7 @@ struct ApproveDeviceView: View {
                     .themeText(.detail)
             }
 
-            HStack(spacing: 12) {
+            HStack(spacing: ThemeSpace.group) {
                 Button("Cancel") { Task { await dismissPairing() } }
                     .buttonStyle(.bordered)
                 Button("Approve") { approve(session, device) }

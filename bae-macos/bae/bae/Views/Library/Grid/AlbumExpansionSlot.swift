@@ -24,7 +24,7 @@ struct AlbumExpansionSlot<ExpansionContent: View>: View {
             .fill(Theme.surface)
             .frame(height: 120)
             .overlay(Text(verbatim: "Expansion for \(id)"))
-            .padding(.vertical, 8)
+            .padding(.vertical, ThemeSpace.related)
     }
 
     #Preview("Album Expansion Slot") {

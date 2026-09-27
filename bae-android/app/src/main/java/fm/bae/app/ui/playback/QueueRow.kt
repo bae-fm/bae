@@ -37,7 +37,10 @@ import fm.bae.app.playback.NowPlaying
 import fm.bae.app.playback.QueueItem
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeRadius
+import fm.bae.app.ui.appearance.ThemeSize
+import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CoverImage
 import uniffi.bae_bridge.BridgeDurationClock
@@ -50,16 +53,16 @@ internal fun NowPlayingRow(np: NowPlaying) {
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                .padding(horizontal = ThemeSpace.group, vertical = ThemeSpace.related),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         CoverImage(
             cover = np.coverImage,
             cornerRadius = ThemeRadius.artwork,
-            iconPadding = 12.dp,
-            modifier = Modifier.size(48.dp),
+            iconPadding = ThemeSpace.group,
+            modifier = Modifier.size(ThemeSize.rowArtwork),
         )
-        Spacer(modifier = Modifier.width(12.dp))
+        Spacer(modifier = Modifier.width(ThemeSpace.group))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = np.title,
@@ -89,16 +92,16 @@ internal fun QueueRow(
             Modifier
                 .fillMaxWidth()
                 .clickable(onClick = onClick)
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                .padding(horizontal = ThemeSpace.group, vertical = ThemeSpace.related),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         CoverImage(
             cover = item.coverImage,
             cornerRadius = ThemeRadius.artwork,
-            iconPadding = 12.dp,
-            modifier = Modifier.size(56.dp),
+            iconPadding = ThemeSpace.group,
+            modifier = Modifier.size(ThemeSize.rowArtwork),
         )
-        Spacer(modifier = Modifier.width(12.dp))
+        Spacer(modifier = Modifier.width(ThemeSpace.group))
         QueueItemText(item, modifier = Modifier.weight(1f))
         // Hidden rather than removed when there is no duration, so rows align.
         val durationLabel = LocalContext.current.durationClockLabel(item.durationClock)
@@ -108,7 +111,7 @@ internal fun QueueRow(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier =
                 Modifier
-                    .padding(horizontal = 8.dp)
+                    .padding(horizontal = ThemeSpace.related)
                     .alpha(if (durationLabel.isEmpty()) 0f else 1f),
         )
         IconButton(onClick = onRemove) {
@@ -122,7 +125,7 @@ internal fun QueueRow(
             imageVector = Icons.Filled.DragHandle,
             contentDescription = stringResource(R.string.queue_drag_to_reorder),
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = dragHandleModifier.size(24.dp),
+            modifier = dragHandleModifier.size(ThemeIcon.medium),
         )
     }
 }
@@ -132,17 +135,17 @@ internal fun QueueRow(
 internal fun QueueRowPlaceholder() {
     val placeholderColor = BaeTheme.surfaces.placeholder
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = ThemeSpace.group, vertical = ThemeSpace.related),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
             modifier =
                 Modifier
-                    .size(56.dp)
+                    .size(ThemeSize.rowArtwork)
                     .clip(RoundedCornerShape(ThemeRadius.artwork))
                     .background(placeholderColor),
         )
-        Spacer(modifier = Modifier.width(12.dp))
+        Spacer(modifier = Modifier.width(ThemeSpace.group))
         Column(modifier = Modifier.weight(1f)) {
             Box(
                 modifier =
@@ -151,7 +154,7 @@ internal fun QueueRowPlaceholder() {
                         .clip(RoundedCornerShape(ThemeRadius.bar))
                         .background(placeholderColor),
             )
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(ThemeSpace.compact))
             Box(
                 modifier =
                     Modifier
@@ -159,7 +162,7 @@ internal fun QueueRowPlaceholder() {
                         .clip(RoundedCornerShape(ThemeRadius.bar))
                         .background(placeholderColor),
             )
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(ThemeSpace.compact))
             Box(
                 modifier =
                     Modifier

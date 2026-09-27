@@ -41,13 +41,13 @@ struct ExpandedNowPlayingView: View {
     }
 
     private func player(track: NowPlayingTrack) -> some View {
-        VStack(spacing: 24) {
+        VStack(spacing: ThemeSpace.section) {
             HStack {
                 Button {
                     dismiss()
                 } label: {
                     Image(systemName: "chevron.down")
-                        .font(.title3)
+                        .themeIcon(.large)
                 }
                 .accessibilityLabel("Collapse")
                 Spacer(minLength: 0)
@@ -58,7 +58,7 @@ struct ExpandedNowPlayingView: View {
                 .frame(maxWidth: .infinity)
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.cover))
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: ThemeSpace.inline) {
                 Text(track.trackTitle)
                     .themeText(.hero)
                     .lineLimit(1)
@@ -97,23 +97,23 @@ struct ExpandedNowPlayingView: View {
 
             volume
         }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 16)
+        .padding(.horizontal, ThemeSpace.section)
+        .padding(.vertical, ThemeSpace.edge)
     }
 
     private var transport: some View {
-        HStack(spacing: 48) {
+        HStack(spacing: ThemeSpace.page) {
             Button {
                 playback.previousTrack()
             } label: {
                 Image(systemName: "backward.fill")
-                    .font(.title)
+                    .themeIcon(.large)
             }
             .accessibilityLabel("Previous track")
             PlayPauseControl(
                 isPlaying: playbackStore.nowPlaying.isPlaying,
                 isLoading: playbackStore.nowPlaying.loadingTrackId != nil,
-                glyphFont: .largeTitle,
+                glyphFont: ThemeIcon.large.font,
                 spinnerControlSize: .large,
                 onToggle: { playback.playPause(for: playbackStore.nowPlaying) }
             )
@@ -121,7 +121,7 @@ struct ExpandedNowPlayingView: View {
                 playback.nextTrack()
             } label: {
                 Image(systemName: "forward.fill")
-                    .font(.title)
+                    .themeIcon(.large)
             }
             .accessibilityLabel("Next track")
         }
@@ -146,7 +146,7 @@ struct ExpandedNowPlayingView: View {
     }
 
     private var volume: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: ThemeSpace.group) {
             Button {
                 playback.setMuted(!playbackStore.isMuted)
             } label: {

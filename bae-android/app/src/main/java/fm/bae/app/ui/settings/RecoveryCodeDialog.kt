@@ -27,11 +27,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.appearance.ThemeIcon
+import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import kotlinx.coroutines.CancellationException
 
@@ -82,7 +83,7 @@ private fun RecoveryCodeDialogContent(
                     style = ThemeText.body.style,
                     color = BaeTheme.colors.warning,
                 )
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(ThemeSpace.group))
                 val current = code
                 when {
                     current != null -> {
@@ -97,7 +98,7 @@ private fun RecoveryCodeDialogContent(
                     }
 
                     else -> {
-                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                        CircularProgressIndicator(modifier = Modifier.size(ThemeIcon.large))
                     }
                 }
             }
@@ -106,8 +107,12 @@ private fun RecoveryCodeDialogContent(
             val current = code
             if (current != null) {
                 TextButton(onClick = { clipboard.setText(AnnotatedString(current)) }) {
-                    Icon(Icons.Filled.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
+                    Icon(
+                        Icons.Filled.ContentCopy,
+                        contentDescription = null,
+                        modifier = Modifier.size(ThemeIcon.medium),
+                    )
+                    Spacer(modifier = Modifier.width(ThemeSpace.compact))
                     Text(stringResource(R.string.settings_copy_recovery_code))
                 }
             }

@@ -31,7 +31,7 @@ private struct BlockedSyncOperationRow: View {
     private var retryError: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: ThemeSpace.inline) {
             Text(operation.kind.localizedName)
             Text(operation.description)
                 .themeText(.detail)

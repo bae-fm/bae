@@ -22,7 +22,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import com.google.common.util.concurrent.ListenableFuture
@@ -37,6 +36,7 @@ import fm.bae.app.BaeLogger
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeRadius
+import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import java.util.concurrent.ExecutorService
 
@@ -200,7 +200,7 @@ private fun QRScannerOverlay(
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = modifier.padding(32.dp),
+        modifier = modifier.padding(ThemeSpace.page),
     ) {
         if (instructions != null) {
             Text(
@@ -210,10 +210,10 @@ private fun QRScannerOverlay(
                 modifier =
                     Modifier
                         .background(BaeTheme.colors.scrim, RoundedCornerShape(ThemeRadius.control))
-                        .padding(8.dp),
+                        .padding(ThemeSpace.related),
             )
         }
-        PrimaryButton(onClick = onDismiss, modifier = Modifier.padding(top = 16.dp)) {
+        PrimaryButton(onClick = onDismiss, modifier = Modifier.padding(top = ThemeSpace.edge)) {
             Text(stringResource(R.string.cancel))
         }
     }

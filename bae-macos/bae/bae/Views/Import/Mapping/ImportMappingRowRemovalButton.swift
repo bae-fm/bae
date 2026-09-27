@@ -22,7 +22,7 @@ struct ImportMappingRowRemovalButton: View {
     var body: some View {
         Button(action: removal.perform) {
             Image(systemName: "xmark")
-                .font(.system(size: 10, weight: .semibold))
+                .themeIcon(.small)
                 .foregroundStyle(
                     hovering
                         ? AnyShapeStyle(Theme.accent)

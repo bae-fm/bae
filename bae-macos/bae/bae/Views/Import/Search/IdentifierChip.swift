@@ -24,7 +24,7 @@ struct IdentifierChip<Trailing: View>: View {
     private var isHovered = false
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: ThemeSpace.compact) {
             IdentifierLabel(text: label)
             if let value {
                 Text(value)
@@ -36,9 +36,8 @@ struct IdentifierChip<Trailing: View>: View {
             }
             trailing
         }
-        .padding(.leading, 7)
-        .padding(.trailing, 6)
-        .padding(.vertical, 3)
+        .padding(.horizontal, ThemeSpace.compact)
+        .padding(.vertical, ThemeSpace.line)
         .background(fill, in: RoundedRectangle(cornerRadius: ThemeRadius.chip))
         .overlay {
             if style == .outlined {
@@ -87,15 +86,15 @@ struct ProviderCapsule: View {
     let onRetry: () -> Void
 
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: ThemeSpace.inline) {
             Text(bridgeCatalogName(catalog: source))
                 .themeText(.chip)
                 .foregroundStyle(.secondary)
                 .fixedSize()
             LookupCellView(lookup: lookup, onRetry: onRetry)
         }
-        .padding(.horizontal, 5)
-        .padding(.vertical, 1)
+        .padding(.horizontal, ThemeSpace.compact)
+        .padding(.vertical, ThemeSpace.hairline)
         .background(
             Theme.hover,
             in: RoundedRectangle(cornerRadius: ThemeRadius.chip)
@@ -126,7 +125,7 @@ struct IdentifierOff: View {
 struct IdentifierWarning: View {
     var body: some View {
         Image(systemName: "exclamationmark.triangle")
-            .font(.system(size: 11))
+            .themeIcon(.small)
             .foregroundStyle(Theme.warning)
     }
 }
@@ -137,7 +136,7 @@ struct ChipSpinner: View {
         ProgressView()
             .controlSize(.small)
             .scaleEffect(0.55)
-            .frame(width: 10, height: 10)
+            .frame(width: ThemeIcon.small.size, height: ThemeIcon.small.size)
     }
 }
 
@@ -145,8 +144,8 @@ struct ChipSpinner: View {
 struct ScanningChip: View {
     var body: some View {
         ChipSpinner()
-            .padding(.horizontal, 7)
-            .padding(.vertical, 3)
+            .padding(.horizontal, ThemeSpace.compact)
+            .padding(.vertical, ThemeSpace.line)
             .background(
                 Theme.hover,
                 in: RoundedRectangle(cornerRadius: ThemeRadius.chip)
@@ -174,18 +173,21 @@ struct LookupCellView: View {
             ProgressView()
                 .controlSize(.small)
                 .scaleEffect(0.6)
-                .frame(width: 11, height: 11)
+                .frame(
+                    width: ThemeIcon.small.size,
+                    height: ThemeIcon.small.size
+                )
         case .found(let count, let groups):
             LookupCountView(count: Int(count), groups: groups)
         case .noMatch:
             CountCapsule(count: 0)
         case .failed(let failure):
-            HStack(spacing: 6) {
+            HStack(spacing: ThemeSpace.compact) {
                 IdentifierWarning()
                     .help(failure.badgeLine)
                 Button(action: onRetry) {
                     Image(systemName: "arrow.clockwise")
-                        .font(.system(size: 10, weight: .semibold))
+                        .themeIcon(.small)
                         .foregroundStyle(Color.accentColor)
                 }
                 .buttonStyle(.plain)
@@ -216,8 +218,10 @@ struct LookupCountView: View {
 struct LookupReleasesPopover: View {
     let groups: [ReleaseGroup]
 
+    private static let thumbnailSize: CGFloat = 16
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 1) {
+        VStack(alignment: .leading, spacing: ThemeSpace.hairline) {
             if groups.count == 1, let group = groups.first {
                 ForEach(group.pressings) { pressing in
                     LookupReleaseLine(pressing: pressing)
@@ -231,15 +235,18 @@ struct LookupReleasesPopover: View {
                         Rectangle()
                             .fill(Theme.hairline)
                             .frame(height: 1)
-                            .padding(.horizontal, 2)
-                            .padding(.vertical, 4)
+                            .padding(.horizontal, ThemeSpace.line)
+                            .padding(.vertical, ThemeSpace.inline)
                     }
-                    HStack(spacing: 6) {
+                    HStack(spacing: ThemeSpace.compact) {
                         ImageView(
                             content: group.coverImageContent,
-                            pointSize: 16
+                            pointSize: Self.thumbnailSize
                         )
-                        .frame(width: 16, height: 16)
+                        .frame(
+                            width: Self.thumbnailSize,
+                            height: Self.thumbnailSize
+                        )
                         .clipShape(
                             RoundedRectangle(cornerRadius: ThemeRadius.artwork)
                         )
@@ -253,17 +260,21 @@ struct LookupReleasesPopover: View {
                                 .lineLimit(1)
                         }
                     }
-                    .padding(.horizontal, 6)
-                    .padding(.top, 4)
-                    .padding(.bottom, 2)
+                    .padding(.horizontal, ThemeSpace.compact)
+                    .padding(.top, ThemeSpace.inline)
+                    .padding(.bottom, ThemeSpace.line)
                     ForEach(group.pressings) { pressing in
+                        // Under the album's title, past its thumbnail.
                         LookupReleaseLine(pressing: pressing)
-                            .padding(.leading, 22)
+                            .padding(
+                                .leading,
+                                Self.thumbnailSize + ThemeSpace.compact
+                            )
                     }
                 }
             }
         }
-        .padding(6)
+        .padding(ThemeSpace.compact)
         .frame(width: 264)
     }
 }
@@ -278,7 +289,7 @@ struct LookupReleaseLine: View {
     }
 
     var body: some View {
-        HStack(spacing: 7) {
+        HStack(spacing: ThemeSpace.compact) {
             if let year = pressing.lead.year {
                 Text(String(year))
                     .themeText(.strong)
@@ -297,7 +308,7 @@ struct LookupReleaseLine: View {
                     Text(catalogNumber)
                         .themeText(.chip)
                         .foregroundStyle(.secondary)
-                        .padding(.horizontal, 4)
+                        .padding(.horizontal, ThemeSpace.inline)
                         .background(
                             Theme.hover,
                             in: RoundedRectangle(cornerRadius: ThemeRadius.chip)
@@ -313,8 +324,8 @@ struct LookupReleaseLine: View {
             }
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 3)
+        .padding(.horizontal, ThemeSpace.compact)
+        .padding(.vertical, ThemeSpace.line)
     }
 }
 

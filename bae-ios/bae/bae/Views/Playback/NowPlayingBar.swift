@@ -17,7 +17,7 @@ struct NowPlayingBar: View {
 
     var body: some View {
         if let track = playbackStore.nowPlaying.track {
-            VStack(spacing: 6) {
+            VStack(spacing: ThemeSpace.compact) {
                 transport(track: track)
                 ProgressBar(
                     positionPublisher: playbackStore.playbackPositionPublisher,
@@ -43,8 +43,8 @@ struct NowPlayingBar: View {
                     }
                 )
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .padding(.horizontal, ThemeSpace.group)
+            .padding(.vertical, ThemeSpace.related)
             .background(Theme.surface)
             .sheet(isPresented: $showQueue) {
                 QueueView()
@@ -60,7 +60,7 @@ struct NowPlayingBar: View {
     }
 
     private func transport(track: NowPlayingTrack) -> some View {
-        HStack(spacing: 12) {
+        HStack(spacing: ThemeSpace.group) {
             trackInfoButton(
                 track: track,
                 secondaryLine: playbackStore.nowPlaying.secondaryLine
@@ -80,11 +80,14 @@ struct NowPlayingBar: View {
         Button {
             showExpanded = true
         } label: {
-            HStack(spacing: 12) {
-                ImageView(imageRef: track.coverImage, pointSize: 48)
-                    .frame(width: 48, height: 48)
+            HStack(spacing: ThemeSpace.group) {
+                ImageView(imageRef: track.coverImage, pointSize: ThemeSize.barArtwork)
+                    .frame(
+                        width: ThemeSize.barArtwork,
+                        height: ThemeSize.barArtwork
+                    )
                     .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: ThemeSpace.line) {
                     Text(track.trackTitle)
                         .themeText(.rowTitle)
                         .lineLimit(1)
@@ -113,7 +116,7 @@ struct NowPlayingBar: View {
         PlayPauseControl(
             isPlaying: playbackStore.nowPlaying.isPlaying,
             isLoading: playbackStore.nowPlaying.loadingTrackId != nil,
-            glyphFont: .title3,
+            glyphFont: ThemeIcon.large.font,
             spinnerControlSize: .regular,
             onToggle: { playback.playPause(for: playbackStore.nowPlaying) }
         )
@@ -135,13 +138,6 @@ struct NowPlayingBar: View {
                 events: playbackStore.queueItemsAddedPublisher,
                 scheduler: .main,
                 style: QueueAddBadgeStyle(
-                    symbolFont: .system(size: 9, weight: .bold),
-                    padding: EdgeInsets(
-                        top: 3,
-                        leading: 7,
-                        bottom: 3,
-                        trailing: 7
-                    ),
                     fill: Theme.accent,
                     offset: CGSize(width: 10, height: -10)
                 )

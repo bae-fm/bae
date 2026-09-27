@@ -111,7 +111,7 @@ struct AlbumDetailView: View {
         detail: ReleaseDetail
     ) -> some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: ThemeSpace.group) {
                 AlbumDetailHeader(
                     display: display,
                     releaseId: releaseId,
@@ -134,7 +134,7 @@ struct AlbumDetailView: View {
                     onAddToQueue: { trackId in queue.addToQueue([trackId]) }
                 )
             }
-            .padding(16)
+            .padding(ThemeSpace.edge)
         }
         .fullScreenCover(isPresented: $showGallery) {
             GalleryView(
@@ -155,7 +155,7 @@ struct AlbumDetailView: View {
 
     private func releasePicker(summary: AlbumSummary) -> some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
+            HStack(spacing: ThemeSpace.related) {
                 ForEach(summary.releaseIds, id: \.self) { id in
                     Button {
                         selectedReleaseId = id
@@ -171,8 +171,8 @@ struct AlbumDetailView: View {
                                     .controlSize(.small)
                             }
                         }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
+                        .padding(.horizontal, ThemeSpace.group)
+                        .padding(.vertical, ThemeSpace.compact)
                         .background(
                             Capsule()
                                 .fill(

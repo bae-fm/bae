@@ -23,7 +23,7 @@ struct CodeShareBlock: View {
     }
 
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: ThemeSpace.group) {
             if let qrImage {
                 Image(uiImage: qrImage)
                     .interpolation(.none)

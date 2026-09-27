@@ -21,8 +21,8 @@ struct CastButton: View {
         let active = castingName != nil
         return Button(action: { showPicker.toggle() }) {
             Image(systemName: active ? "hifispeaker.fill" : "hifispeaker")
-                .font(.system(size: 15, weight: .medium))
-                .frame(width: 30, height: 30)
+                .themeIcon(.large)
+                .frame(width: ThemeSize.hitTarget, height: ThemeSize.hitTarget)
                 .foregroundStyle(active ? Theme.accent : Color.primary)
                 .contentShape(Rectangle())
         }
@@ -39,10 +39,8 @@ struct CastButton: View {
                     showPicker = false
                 }
             )
-            // The device list grows while the popover is open (discovery runs
-            // only then), and NSPopover's animated resize spins a nested run
-            // loop that can fire a torn-down observer and crash. The popover
-            // sits above the bar, so its visual anchor is its bottom edge.
+            // Discovery grows the list while open, and NSPopover's animated
+            // resize can crash; the popover grows up from the bar.
             .popoverEntrance(anchor: .bottom)
             .background { PopoverBehavior() }
         }
@@ -89,7 +87,7 @@ private struct CastPickerPopover: View {
     let onDisconnect: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: ThemeSpace.compact) {
             if let castingDeviceName {
                 castingRow(castingDeviceName)
                 Divider()
@@ -98,8 +96,8 @@ private struct CastPickerPopover: View {
                 Text("No Cast devices found")
                     .themeText(.body)
                     .foregroundStyle(.secondary)
-                    .padding(.vertical, 6)
-                    .padding(.horizontal, 4)
+                    .padding(.vertical, ThemeSpace.compact)
+                    .padding(.horizontal, ThemeSpace.inline)
             }
             else {
                 ForEach(devices, id: \.id) { device in
@@ -107,15 +105,15 @@ private struct CastPickerPopover: View {
                 }
             }
         }
-        .padding(10)
+        .padding(ThemeSpace.group)
         .frame(width: 260)
     }
 
     private func castingRow(_ name: String) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: ThemeSpace.inline) {
             Image(systemName: "hifispeaker.fill")
                 .foregroundStyle(Theme.accent)
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: ThemeSpace.hairline) {
                 Text("Casting to \(name)")
                     .themeText(.strong)
                     .lineLimit(1)
@@ -125,13 +123,13 @@ private struct CastPickerPopover: View {
                 .buttonStyle(.borderless)
                 .themeText(.body)
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, ThemeSpace.line)
     }
 
     private func deviceRow(_ device: BridgeCastDevice) -> some View {
         let isActive = device.name == castingDeviceName
         return Button(action: { onCast(device.id) }) {
-            HStack(spacing: 8) {
+            HStack(spacing: ThemeSpace.inline) {
                 Image(systemName: deviceIcon(device.kind))
                     .foregroundStyle(.secondary)
                 Text(device.name)
@@ -144,8 +142,8 @@ private struct CastPickerPopover: View {
                 }
             }
             .contentShape(Rectangle())
-            .padding(.vertical, 4)
-            .padding(.horizontal, 4)
+            .padding(.vertical, ThemeSpace.inline)
+            .padding(.horizontal, ThemeSpace.inline)
         }
         .buttonStyle(.plain)
     }

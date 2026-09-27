@@ -4,11 +4,8 @@ import os.log
 
 private let logger = Logger.bae("ImageView")
 
-/// Renders one image slot over `ImageStore`: the already-decoded bitmap on the
-/// first frame when the store holds one, the theme placeholder until the async
-/// load lands, and the placeholder again when there is no such image. A load
-/// that failed offers another try. Fetching, decoding, and caching are the
-/// store's; this view only draws.
+/// Draws one image slot from `ImageStore`: its bitmap once decoded, else the
+/// theme placeholder, with a retry button when the load failed.
 struct ImageView: View {
     let content: ImageContent?
     /// Target point size for the thumbnail; pixels decoded are
@@ -20,20 +17,17 @@ struct ImageView: View {
     private var imageStore
     @Environment(\.displayScale)
     private var displayScale
-    /// The last load's outcome, with the content it was for. A slot whose
-    /// content has since changed — a list row reused for another item — reads
-    /// as not loaded yet rather than showing the previous item's image.
+    /// The last load's outcome, which counts only while its content is still
+    /// the slot's, so a reused row never shows the previous item's image.
     @State
     private var lastLoad: SlotLoad?
-    /// How many times the person asked for a failed load again. Part of the
-    /// load's identity, so asking restarts it; the store caches no failure,
-    /// so the restarted load goes back to the source.
+    /// Retries of a failed load; part of the load's identity, so a tap restarts
+    /// it.
     @State
     private var attempt = 0
 
-    /// The bitmap to draw this frame: the completed load, else whatever the
-    /// store already has decoded at this size, so a remounting row draws its art
-    /// immediately instead of flashing the placeholder.
+    /// The completed load, else the store's cached bitmap, so a remounted row
+    /// draws its art without flashing the placeholder.
     private var displayedImage: UIImage? {
         if let lastLoad, lastLoad.content == content, let image = lastLoad.image {
             return image
@@ -62,7 +56,7 @@ struct ImageView: View {
                     Rectangle().fill(Theme.placeholder)
                         .overlay {
                             Image(systemName: "arrow.clockwise.circle.fill")
-                                .font(.title2)
+                                .themeIcon(.medium)
                                 .foregroundStyle(.secondary)
                         }
                 }

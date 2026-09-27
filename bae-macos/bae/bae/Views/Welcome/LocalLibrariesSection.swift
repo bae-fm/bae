@@ -13,7 +13,7 @@ struct LocalLibrariesSection: View {
     let onRemove: (BridgeLibrary) -> Void
 
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: ThemeSpace.group) {
             WelcomeSectionHeader(title: "Your libraries")
             ForEach(libraries, id: \.id) { library in
                 LibraryRow(
@@ -43,12 +43,12 @@ private struct LibraryRow: View {
     let onRemove: (BridgeLibrary) -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: ThemeSpace.group) {
             if library.error != nil {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundStyle(Theme.warning)
             }
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: ThemeSpace.line) {
                 Text(library.name)
                     .themeText(.rowTitle)
                 if let error = library.error {
@@ -63,7 +63,7 @@ private struct LibraryRow: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            Spacer(minLength: 12)
+            Spacer(minLength: ThemeSpace.group)
             if library.error != nil {
                 Button("Show in Finder") { onShowInFinder(library) }
                     .buttonStyle(.bordered)
@@ -85,8 +85,8 @@ private struct LibraryRow: View {
                     .opacity(isRemoving ? 1 : 0)
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .padding(.horizontal, ThemeSpace.edge)
+        .padding(.vertical, ThemeSpace.related)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             (library.error != nil ? Theme.warning : Color.secondary)

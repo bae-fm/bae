@@ -30,7 +30,7 @@ struct BrowseListRow<Summary: BrowseSummaryDisplay>: View {
                     .opacity(summary == nil ? 0 : 1)
                     .allowsHitTesting(summary != nil)
             }
-            .padding(8)
+            .padding(ThemeSpace.related)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: ThemeRadius.control)
@@ -56,11 +56,14 @@ private struct BrowseSummaryRow<Summary: BrowseSummaryDisplay>: View {
     let summary: Summary?
 
     var body: some View {
-        HStack(spacing: 12) {
-            ImageView(imageRef: summary?.image, pointSize: 40)
-                .frame(width: 40, height: 40)
+        HStack(spacing: ThemeSpace.group) {
+            ImageView(imageRef: summary?.image, pointSize: ThemeSize.rowArtwork)
+                .frame(
+                    width: ThemeSize.rowArtwork,
+                    height: ThemeSize.rowArtwork
+                )
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: ThemeSpace.line) {
                 StableOptionalText(
                     text: summary?.name,
                     font: ThemeText.rowTitle.font,
@@ -83,11 +86,14 @@ private struct BrowseSummaryRow<Summary: BrowseSummaryDisplay>: View {
 
 private struct SummaryRowPlaceholder: View {
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: ThemeSpace.group) {
             RoundedRectangle(cornerRadius: ThemeRadius.artwork)
                 .fill(Theme.placeholder)
-                .frame(width: 40, height: 40)
-            VStack(alignment: .leading, spacing: 5) {
+                .frame(
+                    width: ThemeSize.rowArtwork,
+                    height: ThemeSize.rowArtwork
+                )
+            VStack(alignment: .leading, spacing: ThemeSpace.inline) {
                 RoundedRectangle(cornerRadius: ThemeRadius.bar)
                     .fill(Theme.placeholder)
                     .frame(width: 140, height: 11)
@@ -103,7 +109,7 @@ private struct SummaryRowPlaceholder: View {
 #if DEBUG
     #Preview("Browse List Row") {
         let libraryStore = PreviewData.seededComposerStore()
-        return VStack(spacing: 4) {
+        return VStack(spacing: ThemeSpace.inline) {
             BrowseListRow(
                 id: "composer-0",
                 isSelected: false,

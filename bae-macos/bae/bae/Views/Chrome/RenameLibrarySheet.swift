@@ -48,7 +48,7 @@ struct RenameLibrarySheet: View {
             .formStyle(.grouped)
             .scrollDisabled(true)
 
-            HStack(spacing: 12) {
+            HStack(spacing: ThemeSpace.group) {
                 Spacer()
                 Button("Cancel") { onCancel() }
                     .keyboardShortcut(.cancelAction)

@@ -48,11 +48,14 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeRadius
+import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CoverImage
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeRepeatMode
 import uniffi.bae_bridge.bridgeNextRepeatMode
+
+private val skipGlyphSize = 36.dp
 
 /**
  * Full-screen player in a [ModalBottomSheet] opened from [NowPlayingBar], with
@@ -83,7 +86,7 @@ fun ExpandedNowPlayingScreen(
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(bottom = bottomInset + 16.dp),
+            contentPadding = PaddingValues(bottom = bottomInset + ThemeSpace.edge),
         ) {
             item(key = "player") {
                 ExpandedPlayer(
@@ -115,12 +118,12 @@ private fun ExpandedPlayer(
     track: fm.bae.app.playback.NowPlaying,
     onCollapse: () -> Unit,
 ) {
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp)) {
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = ThemeSpace.section, vertical = ThemeSpace.related)) {
         IconButton(onClick = onCollapse) {
             Icon(Icons.Filled.ExpandMore, contentDescription = stringResource(R.string.collapse))
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(ThemeSpace.related))
 
         CoverImage(
             cover = track.coverImage,
@@ -129,23 +132,23 @@ private fun ExpandedPlayer(
             modifier = Modifier.fillMaxWidth().aspectRatio(1f),
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(ThemeSpace.section))
 
         ExpandedTrackInfo(title = track.title, artist = track.artist)
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(ThemeSpace.section))
 
         ExpandedSeekSection(session = session, player = session.playback)
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(ThemeSpace.edge))
 
         ExpandedTransportRow(player = session.playback)
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(ThemeSpace.edge))
 
         ExpandedSecondaryControls(session = session)
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(ThemeSpace.related))
 
         ExpandedVolumeRow(session = session)
     }
@@ -199,22 +202,22 @@ private fun ExpandedTransportRow(player: fm.bae.app.playback.BaeCorePlayer) {
             Icon(
                 Icons.Filled.SkipPrevious,
                 contentDescription = stringResource(R.string.previous_track),
-                modifier = Modifier.size(36.dp),
+                modifier = Modifier.size(skipGlyphSize),
             )
         }
-        Spacer(modifier = Modifier.width(24.dp))
+        Spacer(modifier = Modifier.width(ThemeSpace.section))
         PlayPauseControl(
             isPlaying = isPlaying,
             isLoading = isLoading,
             sizes = PlayPauseControlSizes(iconSize = 48.dp, spinnerSize = 36.dp, spinnerStroke = 3.dp),
             onToggle = { player.togglePlayPause() },
         )
-        Spacer(modifier = Modifier.width(24.dp))
+        Spacer(modifier = Modifier.width(ThemeSpace.section))
         IconButton(onClick = { player.seekToNextMediaItem() }) {
             Icon(
                 Icons.Filled.SkipNext,
                 contentDescription = stringResource(R.string.next_track),
-                modifier = Modifier.size(36.dp),
+                modifier = Modifier.size(skipGlyphSize),
             )
         }
     }
@@ -266,7 +269,7 @@ private fun ExpandedVolumeRow(session: OpenLibrary) {
             },
             onValueChangeFinished = { dragVolume = null },
             valueRange = 0f..1f,
-            modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
+            modifier = Modifier.weight(1f).padding(horizontal = ThemeSpace.related),
         )
     }
 }

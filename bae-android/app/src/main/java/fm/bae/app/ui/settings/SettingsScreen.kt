@@ -43,6 +43,7 @@ import fm.bae.app.R
 import fm.bae.app.data.SyncFailure
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.components.PrimaryButton
@@ -129,14 +130,14 @@ private fun SettingsSections(
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         SettingsTopBar(onBack = onBack)
         AppearanceSection()
-        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+        HorizontalDivider(modifier = Modifier.padding(horizontal = ThemeSpace.edge))
         if (libraries.size > 1) {
             SettingsLibrarySection(
                 libraries = libraries,
                 activeLibraryId = session.libraryId,
                 onSwitchLibrary = onSwitchLibrary,
             )
-            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+            HorizontalDivider(modifier = Modifier.padding(horizontal = ThemeSpace.edge))
         }
         SettingsConfigSection(
             session = session,
@@ -145,13 +146,13 @@ private fun SettingsSections(
             syncError = syncError,
             syncBlocked = syncBlocked,
         )
-        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+        HorizontalDivider(modifier = Modifier.padding(horizontal = ThemeSpace.edge))
         SettingsPlaybackSection(
             session = session,
             config = config,
             ioDispatcher = ioDispatcher,
         )
-        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+        HorizontalDivider(modifier = Modifier.padding(horizontal = ThemeSpace.edge))
         SettingsCastSection(
             session = session,
             config = config,
@@ -159,15 +160,15 @@ private fun SettingsSections(
         )
         // Devices and the recovery code read the membership chain from cloud storage, so they need sync running now.
         if (syncReady) {
-            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+            HorizontalDivider(modifier = Modifier.padding(horizontal = ThemeSpace.edge))
             SettingsDevicesSection(
                 onManageDevices = onManageDevices,
                 onRevealRecoveryCode = onRevealRecoveryCode,
             )
         }
-        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+        HorizontalDivider(modifier = Modifier.padding(horizontal = ThemeSpace.edge))
         SettingsLeaveSection(onRequestLeave = onRequestLeave)
-        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+        HorizontalDivider(modifier = Modifier.padding(horizontal = ThemeSpace.edge))
         SettingsAboutSection()
     }
 }
@@ -207,7 +208,7 @@ private fun LeaveLibraryConfirmDialog(
 private fun SettingsTopBar(onBack: () -> Unit) {
     Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
+            modifier = Modifier.fillMaxWidth().padding(ThemeSpace.related),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onBack) {
@@ -228,8 +229,8 @@ private fun SettingsLibrarySection(
     onSwitchLibrary: (BridgeLibrary) -> Unit,
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge),
+        verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
     ) {
         Eyebrow(text = stringResource(R.string.settings_library))
         libraries.forEach { library ->
@@ -276,8 +277,8 @@ private fun SettingsConfigSection(
     syncBlocked: List<BridgeBlockedSyncOperation>,
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge),
+        verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
     ) {
         Eyebrow(text = stringResource(R.string.settings_sync))
         Text(stringResource(if (config.sync != null) R.string.settings_cloud_sync_on else R.string.settings_local_only))
@@ -304,8 +305,8 @@ private fun SettingsAboutSection() {
             }
         }
     Column(
-        modifier = Modifier.fillMaxWidth().padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge),
+        verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
     ) {
         Eyebrow(text = stringResource(R.string.settings_about))
         Row(modifier = Modifier.fillMaxWidth()) {
@@ -327,14 +328,14 @@ private fun SettingsDevicesSection(
     onRevealRecoveryCode: () -> Unit,
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge),
+        verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
     ) {
         Eyebrow(text = stringResource(R.string.settings_devices))
         PrimaryButton(onClick = onManageDevices) {
             Text(stringResource(R.string.settings_manage_devices))
         }
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(ThemeSpace.related))
         Eyebrow(text = stringResource(R.string.settings_recovery_code))
         Text(
             text = stringResource(R.string.settings_recovery_code_explanation),
@@ -350,8 +351,8 @@ private fun SettingsDevicesSection(
 @Composable
 private fun SettingsLeaveSection(onRequestLeave: () -> Unit) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge),
+        verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
     ) {
         PrimaryButton(
             onClick = onRequestLeave,

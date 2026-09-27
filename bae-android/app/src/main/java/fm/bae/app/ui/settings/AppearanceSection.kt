@@ -41,6 +41,9 @@ import fm.bae.app.ui.appearance.AccentChoice
 import fm.bae.app.ui.appearance.AppearanceMode
 import fm.bae.app.ui.appearance.LocalAppearanceStore
 import fm.bae.app.ui.appearance.SurfaceTone
+import fm.bae.app.ui.appearance.ThemeIcon
+import fm.bae.app.ui.appearance.ThemeSize
+import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.appearance.colors
 import fm.bae.app.ui.components.Eyebrow
@@ -64,8 +67,8 @@ internal fun AppearanceSection() {
         }
     }
     Column(
-        modifier = Modifier.fillMaxWidth().padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge),
+        verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
     ) {
         Eyebrow(text = stringResource(R.string.appearance_title))
         AppearancePicker(
@@ -106,7 +109,7 @@ private fun AccentPicker(
                 modifier =
                     Modifier
                         .weight(1f)
-                        .size(44.dp)
+                        .size(ThemeSize.hitTarget)
                         .selectable(selected, role = Role.RadioButton) { onSelect(accent) }
                         .semantics { contentDescription = label },
                 contentAlignment = Alignment.Center,
@@ -119,7 +122,7 @@ private fun AccentPicker(
                         Icons.Default.Check,
                         contentDescription = null,
                         tint = BaeTheme.colors.onFill,
-                        modifier = Modifier.size(14.dp).alpha(if (selected) 1f else 0f),
+                        modifier = Modifier.size(ThemeIcon.badge).alpha(if (selected) 1f else 0f),
                     )
                 }
             }

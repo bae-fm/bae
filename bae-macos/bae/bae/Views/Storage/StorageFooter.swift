@@ -31,17 +31,20 @@ struct StorageFooter: View {
         }
         .themeText(.body)
         .padding(.horizontal)
-        .padding(.vertical, 8)
+        .padding(.vertical, ThemeSpace.related)
     }
 }
 
 #if DEBUG
+    /// The storage table's width the previews draw in.
+    private let previewWidth: CGFloat = 700
+
     #Preview("With total") {
         StorageFooter(
             list: PreviewData.storageList(store: LibraryStore()),
             totalSize: 857_000_000
         )
-        .frame(width: 700)
+        .frame(width: previewWidth)
         .environment(PreviewData.outboxStore())
     }
 
@@ -50,7 +53,7 @@ struct StorageFooter: View {
             list: PreviewData.storageList(store: LibraryStore()),
             totalSize: nil
         )
-        .frame(width: 700)
+        .frame(width: previewWidth)
         .environment(PreviewData.outboxStore())
     }
 #endif

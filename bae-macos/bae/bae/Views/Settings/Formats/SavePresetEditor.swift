@@ -59,7 +59,7 @@ struct SavePresetEditor: View {
                     .keyboardShortcut(.defaultAction)
                     .disabled(!nameValid || !bitrateValid)
             }
-            .padding([.horizontal, .bottom], 16)
+            .padding([.horizontal, .bottom], ThemeSpace.edge)
         }
         .frame(width: 480, height: 540)
         .task(id: preset.name) {
@@ -177,7 +177,7 @@ struct SavePresetEditor: View {
     }
 
     private var filenameGroup: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: ThemeSpace.related) {
             FilenameTokenEditor(
                 tokens: preset.filenameTokens,
                 setTokens: { tokens in
@@ -198,7 +198,7 @@ struct SavePresetEditor: View {
 
     private var scopeRow: some View {
         LabeledContent("Show in Save As… for") {
-            HStack(spacing: 16) {
+            HStack(spacing: ThemeSpace.edge) {
                 Toggle("Track", isOn: appliesToTrackBinding)
                 Toggle("Release", isOn: appliesToReleaseBinding)
             }

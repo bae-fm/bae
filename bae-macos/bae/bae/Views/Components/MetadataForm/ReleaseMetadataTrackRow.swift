@@ -116,8 +116,8 @@ struct ReleaseMetadataTrackColumns {
     static let track: CGFloat = 52
     static let length: CGFloat = 88
     static let action: CGFloat = 24
-    static let spacing: CGFloat = 10
-    static let rowPadding: CGFloat = 2
+    static let spacing = ThemeSpace.related
+    static let rowPadding = ThemeSpace.line
 
     private static let idealTitle: CGFloat = 220
     private static let floorTitle: CGFloat = 120
@@ -195,7 +195,7 @@ func releaseDurationText(_ milliseconds: Int64?) -> String {
             editingCommands: EditingCommitCommands(),
             onChange: { track = $0 }
         )
-        .padding(24)
+        .padding(ThemeSpace.section)
         .frame(width: 960)
         .background(Theme.background)
         .environment(PreviewData.artistAssignmentsLibrary())

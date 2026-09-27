@@ -21,7 +21,7 @@ struct ImportCandidateBulkSelectionPane: View {
         // the minimum: short content centers and tall content scrolls.
         GeometryReader { pane in
             ScrollView {
-                VStack(spacing: 16) {
+                VStack(spacing: ThemeSpace.edge) {
                     ImportCandidateBulkSelectionCard(
                         selectedCount: Int(selection.summary.count),
                         offers: ImportCandidateActionOffer.selection(
@@ -58,7 +58,7 @@ struct ImportCandidateBulkSelectionCard: View {
     /// The width the pane centers the card at.
     static let width: CGFloat = 440
     /// The inset from the card's edge to its content.
-    static let padding: CGFloat = 24
+    static let padding = ThemeSpace.section
 
     let selectedCount: Int
     let offers: [ImportCandidateActionOffer]
@@ -73,8 +73,8 @@ struct ImportCandidateBulkSelectionCard: View {
     let onPerform: (ImportCandidateActionOffer) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: ThemeSpace.edge) {
+            VStack(alignment: .leading, spacing: ThemeSpace.related) {
                 Text("\(selectedCount) selected")
                     .themeText(.title)
                 Text("Each action applies only to eligible selected folders.")
@@ -104,12 +104,12 @@ struct ImportCandidateBulkSelectionCard: View {
                 }
                 if let title = group.title {
                     Eyebrow(title)
-                        .padding(.top, 8)
+                        .padding(.top, ThemeSpace.related)
                         .padding(
                             .horizontal,
                             ImportBulkActionRowMetrics.horizontal
                         )
-                        .padding(.bottom, 4)
+                        .padding(.bottom, ThemeSpace.inline)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 ForEach(rows(in: group)) { offer in
@@ -131,7 +131,7 @@ struct ImportCandidateBulkSelectionCard: View {
 
     /// The import's storage choices, lined up under the Import row's label.
     private var storageChoices: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: ThemeSpace.group) {
             ImportCheckboxToggle("Cloud", isOn: $storageCloud)
             if storageCloud {
                 ImportCheckboxToggle("Pinned", isOn: $storagePinned)
@@ -195,12 +195,13 @@ enum ImportBulkActionGroup: CaseIterable, Identifiable {
 /// The rows' geometry, shared by the rows themselves and by what lines up under
 /// a row's label.
 enum ImportBulkActionRowMetrics {
-    static let horizontal: CGFloat = 14
-    static let vertical: CGFloat = 10
-    static let spacing: CGFloat = 11
+    static let horizontal = ThemeSpace.group
+    static let vertical = ThemeSpace.related
+    static let spacing = ThemeSpace.group
+    static let icon = ThemeIcon.medium
     /// Fixed, so every row's label starts at the same place whatever its
     /// symbol measures.
-    static let iconWidth: CGFloat = 17
+    static let iconWidth = icon.size
     /// Where a row's label starts, from the group's leading edge.
     static let labelInset = horizontal + iconWidth + spacing
 }
@@ -217,7 +218,7 @@ private struct BulkActionRow: View {
         Button(action: action) {
             HStack(spacing: ImportBulkActionRowMetrics.spacing) {
                 Image(systemName: offer.action.symbol)
-                    .font(.system(size: 15))
+                    .themeIcon(ImportBulkActionRowMetrics.icon)
                     .foregroundStyle(
                         isConstructive ? Theme.accent : Color.secondary
                     )
@@ -235,8 +236,8 @@ private struct BulkActionRow: View {
                         .foregroundStyle(
                             isConstructive ? Theme.accent : Color.secondary
                         )
-                        .padding(.vertical, 2)
-                        .padding(.horizontal, 8)
+                        .padding(.vertical, ThemeSpace.line)
+                        .padding(.horizontal, ThemeSpace.related)
                         .background(
                             Capsule()
                                 .fill(

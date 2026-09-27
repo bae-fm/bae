@@ -9,7 +9,7 @@ struct TriageTabBar: View {
     let counts: BridgeTriageTabCounts
 
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: ThemeSpace.inline) {
             segment(.pending, Int(counts.pending))
             segment(.done, Int(counts.done))
             segment(.skipped, Int(counts.skipped))
@@ -24,7 +24,7 @@ struct TriageTabBar: View {
         return Button {
             activeTab = tab
         } label: {
-            HStack(spacing: 4) {
+            HStack(spacing: ThemeSpace.inline) {
                 Text(verbatim: CandidateFolderLine.label(for: tab))
                     .themeText(.strong)
                     .lineLimit(1)
@@ -34,8 +34,8 @@ struct TriageTabBar: View {
                     .monospacedDigit()
                     // A squeezed badge must overflow, never stack its digits.
                     .fixedSize()
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 1)
+                    .padding(.horizontal, ThemeSpace.compact)
+                    .padding(.vertical, ThemeSpace.hairline)
                     .background(
                         Capsule()
                             .fill(
@@ -47,8 +47,8 @@ struct TriageTabBar: View {
             }
             .foregroundStyle(isActive ? Theme.accent : Color.secondary)
             .frame(maxWidth: .infinity)
-            .padding(.horizontal, 9)
-            .padding(.vertical, 5)
+            .padding(.horizontal, ThemeSpace.related)
+            .padding(.vertical, ThemeSpace.compact)
             .background(
                 RoundedRectangle(cornerRadius: ThemeRadius.control)
                     .fill(isActive ? Theme.accentSoft : Color.clear)

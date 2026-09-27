@@ -16,9 +16,7 @@ struct StorageManagerView: View {
     private var outputs
     @Environment(ConfigStore.self)
     private var configStore
-    // The inspector reads transfer stores at the leaf; uiStore is read here to
-    // surface transfer and storage-action errors in this window (it's a
-    // separate scene from MainAppView, which owns the other error alert).
+    // This window is its own scene, so it shows its own errors.
     @Environment(UiStore.self)
     private var uiStore
 
@@ -33,10 +31,13 @@ struct StorageManagerView: View {
     private var selection: Set<String> = []
     @State
     private var inspectorPresented: Bool
-    /// Runs row context-menu transitions; built lazily once the services are
-    /// available from the environment.
+    /// Runs row context-menu transitions, built once the environment is up.
     @State
     private var runner: StorageActionRunner?
+
+    /// The smallest window the list and its filter bar fit.
+    fileprivate static let minimumWidth: CGFloat = 700
+    fileprivate static let minimumHeight: CGFloat = 400
 
     init(
         initialSelection: Set<String> = [],
@@ -59,7 +60,10 @@ struct StorageManagerView: View {
                 )
             }
         }
-        .frame(minWidth: 700, minHeight: 400)
+        .frame(
+            minWidth: Self.minimumWidth,
+            minHeight: Self.minimumHeight
+        )
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Toggle(isOn: $inspectorPresented) {
@@ -97,9 +101,7 @@ struct StorageManagerView: View {
         .errorAlert(uiStore)
         .task { updateQuery() }
         .onChange(of: filter) { _, _ in
-            // Selection is scoped to the visible tab; switching tabs would
-            // otherwise carry releases from the old filter into the new tab's
-            // multi-select actions.
+            // Selection is scoped to the visible tab.
             selection = []
             updateQuery()
         }
@@ -198,6 +200,12 @@ struct StorageManagerView: View {
         }
     }
 
+    /// The window most previews draw in.
+    private enum PreviewWindow {
+        static let width: CGFloat = 940
+        static let height: CGFloat = 600
+    }
+
     // Keep every dependency on each #Preview root: the environment audit reads
     // the preview closure's modifier chain rather than following fixture views.
     #Preview("Dense — wide, inspector open") {
@@ -272,7 +280,10 @@ struct StorageManagerView: View {
         .environment(fixture.downloadStore)
         .environment(fixture.outputStore)
         .environment(fixture.outboxStore)
-        .frame(width: 700, height: 400)
+        .frame(
+            width: StorageManagerView.minimumWidth,
+            height: StorageManagerView.minimumHeight
+        )
     }
 
     #Preview("Dense — compact, selected") {
@@ -300,7 +311,10 @@ struct StorageManagerView: View {
         .environment(fixture.downloadStore)
         .environment(fixture.outputStore)
         .environment(fixture.outboxStore)
-        .frame(width: 700, height: 400)
+        .frame(
+            width: StorageManagerView.minimumWidth,
+            height: StorageManagerView.minimumHeight
+        )
     }
 
     #Preview("Empty") {
@@ -323,7 +337,7 @@ struct StorageManagerView: View {
         .environment(fixture.downloadStore)
         .environment(fixture.outputStore)
         .environment(fixture.outboxStore)
-        .frame(width: 940, height: 600)
+        .frame(width: PreviewWindow.width, height: PreviewWindow.height)
     }
 
     #Preview("Empty-ish") {
@@ -348,7 +362,7 @@ struct StorageManagerView: View {
         .environment(fixture.downloadStore)
         .environment(fixture.outputStore)
         .environment(fixture.outboxStore)
-        .frame(width: 940, height: 600)
+        .frame(width: PreviewWindow.width, height: PreviewWindow.height)
     }
 
     #Preview("Empty-ish — inspector open") {
@@ -374,7 +388,7 @@ struct StorageManagerView: View {
         .environment(fixture.downloadStore)
         .environment(fixture.outputStore)
         .environment(fixture.outboxStore)
-        .frame(width: 940, height: 600)
+        .frame(width: PreviewWindow.width, height: PreviewWindow.height)
     }
 
     #Preview("One sync upload — inspector open") {
@@ -406,12 +420,11 @@ struct StorageManagerView: View {
         .environment(fixture.downloadStore)
         .environment(fixture.outputStore)
         .environment(fixture.outboxStore)
-        .frame(width: 940, height: 600)
+        .frame(width: PreviewWindow.width, height: PreviewWindow.height)
     }
 
-    /// An upload retrying because the file it would send is not where the
-    /// library left it. The inspector is where that reason is readable — the
-    /// row carries the message in place of its progress.
+    /// An upload retrying because its source file is missing, with the reason
+    /// in the inspector.
     #Preview("A retrying upload — inspector open") {
         let fixture = StorageManagerPreviewFixture(
             rows: Array(PreviewData.storageRows.prefix(3)),
@@ -441,6 +454,6 @@ struct StorageManagerView: View {
         .environment(fixture.downloadStore)
         .environment(fixture.outputStore)
         .environment(fixture.outboxStore)
-        .frame(width: 940, height: 600)
+        .frame(width: PreviewWindow.width, height: PreviewWindow.height)
     }
 #endif

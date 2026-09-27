@@ -12,14 +12,14 @@ public struct LoadFailureView: View {
     }
 
     public var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: ThemeSpace.group) {
             Text(line)
                 .themeText(.body)
                 .foregroundStyle(Theme.danger)
                 .multilineTextAlignment(.center)
             Button("Retry", action: onRetry)
         }
-        .padding(32)
+        .padding(ThemeSpace.page)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

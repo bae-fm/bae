@@ -18,7 +18,7 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
 
-/** Size parameters for [PlayPauseControl]. Compact bar and expanded player use different sizes. */
+/** Glyph and spinner sizes for [PlayPauseControl], which differ between the bar and the expanded player. */
 data class PlayPauseControlSizes(
     val iconSize: Dp,
     val spinnerSize: Dp,
@@ -26,11 +26,8 @@ data class PlayPauseControlSizes(
 )
 
 /**
- * Play/pause toggle, replaced by a spinner while core is preparing or buffering
- * the track (initial load, or a seek to a position not yet downloaded). Shared
- * by the compact [NowPlayingBar] and the full-screen [ExpandedNowPlayingScreen],
- * which differ only in icon/spinner size. The spinner sits in a 48dp box (the
- * IconButton footprint) so swapping it in doesn't reflow the transport row.
+ * Play/pause toggle, replaced by a spinner while core prepares or buffers the
+ * track; the spinner's box matches the IconButton footprint so the row doesn't reflow.
  */
 @Composable
 fun PlayPauseControl(

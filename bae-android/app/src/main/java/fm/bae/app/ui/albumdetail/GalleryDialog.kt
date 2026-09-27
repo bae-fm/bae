@@ -65,6 +65,7 @@ import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.appearance.ThemeSpace
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeGalleryItem
@@ -194,7 +195,7 @@ private fun BoxScope.GalleryCloseButton(onDismiss: () -> Unit) {
                 .align(Alignment.TopEnd)
                 .windowInsetsPadding(
                     WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
-                ).padding(8.dp),
+                ).padding(ThemeSpace.related),
     ) {
         Icon(
             imageVector = Icons.Filled.Close,
@@ -220,7 +221,7 @@ private fun BoxScope.GalleryCaption(
                 .align(Alignment.BottomCenter)
                 .windowInsetsPadding(
                     WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
-                ).padding(16.dp),
+                ).padding(ThemeSpace.edge),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         // Core always sets a non-empty label.
@@ -282,7 +283,7 @@ private fun GalleryImage(
                 Text(
                     text = stringResource(R.string.gallery_load_failed),
                     color = BaeTheme.colors.onFill,
-                    modifier = Modifier.padding(24.dp),
+                    modifier = Modifier.padding(ThemeSpace.section),
                 )
             }
 

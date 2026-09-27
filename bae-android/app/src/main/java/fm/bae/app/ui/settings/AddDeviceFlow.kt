@@ -37,6 +37,8 @@ import fm.bae.app.BaeLogger
 import fm.bae.app.ConflatedProgressDelivery
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.ui.appearance.ThemeIcon
+import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.QRCodeImage
 import fm.bae.app.ui.onboarding.AdmittingDeviceProgress
@@ -239,7 +241,7 @@ private fun AddDeviceContent(
             AddDeviceStep.Cancelling -> PairingProgress(R.string.core_pairing_cancelling)
         }
         error?.let {
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(ThemeSpace.related))
             Text(text = it, color = MaterialTheme.colorScheme.error)
             if (step is AddDeviceStep.Waiting) {
                 TextButton(onClick = onRetry) { Text(stringResource(R.string.retry)) }
@@ -253,8 +255,8 @@ private fun PairingProgress(
     @StringRes label: Int,
 ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        CircularProgressIndicator(modifier = Modifier.size(20.dp))
-        Spacer(modifier = Modifier.width(12.dp))
+        CircularProgressIndicator(modifier = Modifier.size(ThemeIcon.medium))
+        Spacer(modifier = Modifier.width(ThemeSpace.group))
         Text(stringResource(label))
     }
 }
@@ -266,7 +268,7 @@ private fun PairingCode(code: String) {
         text = stringResource(R.string.members_pairing_scan_instructions),
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
-    Spacer(modifier = Modifier.height(12.dp))
+    Spacer(modifier = Modifier.height(ThemeSpace.group))
     Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
         QRCodeImage(
             text = code,
@@ -274,8 +276,8 @@ private fun PairingCode(code: String) {
             modifier = Modifier.size(220.dp),
         )
         TextButton(onClick = { clipboard.setText(AnnotatedString(code)) }) {
-            Icon(Icons.Filled.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
-            Spacer(modifier = Modifier.width(6.dp))
+            Icon(Icons.Filled.ContentCopy, contentDescription = null, modifier = Modifier.size(ThemeIcon.medium))
+            Spacer(modifier = Modifier.width(ThemeSpace.compact))
             Text(stringResource(R.string.pairing_copy_code))
         }
         PairingProgress(R.string.members_pairing_waiting)
@@ -285,10 +287,10 @@ private fun PairingCode(code: String) {
 @Composable
 private fun PairingDevice(device: BridgePairingDevice) {
     Text(stringResource(R.string.members_pairing_confirm))
-    Spacer(modifier = Modifier.height(12.dp))
+    Spacer(modifier = Modifier.height(ThemeSpace.group))
     Text(device.fingerprint, style = ThemeText.mono.style)
     device.email?.let {
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(ThemeSpace.inline))
         Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

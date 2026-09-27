@@ -9,10 +9,12 @@ struct OnboardingEntryScreen: View {
     let onScanRecovery: () -> Void
     let onPasteRecovery: () -> Void
 
+    private static let buttonWidth: CGFloat = 240
+
     var body: some View {
         OnboardingScreen {
             Image(systemName: "music.note.house.fill")
-                .font(.system(size: 72))
+                .themeIcon(.hero)
                 .foregroundStyle(Theme.accent)
             Text("bae")
                 .themeText(.wordmark)
@@ -20,26 +22,26 @@ struct OnboardingEntryScreen: View {
                 "Add this device to a library you already have on another device."
             )
 
-            VStack(spacing: 12) {
+            VStack(spacing: ThemeSpace.group) {
                 Button(action: onJoin) {
                     Text("Join a library")
-                        .frame(maxWidth: 240)
+                        .frame(maxWidth: Self.buttonWidth)
                 }
                 .buttonStyle(PrimaryButtonStyle())
 
                 Button(action: onScanRecovery) {
                     Text("Scan recovery code")
-                        .frame(maxWidth: 240)
+                        .frame(maxWidth: Self.buttonWidth)
                 }
                 .buttonStyle(.bordered)
 
                 Button(action: onPasteRecovery) {
                     Text("Paste recovery code")
-                        .frame(maxWidth: 240)
+                        .frame(maxWidth: Self.buttonWidth)
                 }
                 .buttonStyle(.bordered)
             }
-            .padding(.top, 16)
+            .padding(.top, ThemeSpace.edge)
 
             if let error {
                 Text(error)

@@ -37,7 +37,7 @@ struct GalleryView: View {
             .tabViewStyle(.page(indexDisplayMode: .never))
             .ignoresSafeArea()
             // The current item's label and, with several items, its position.
-            VStack(spacing: 2) {
+            VStack(spacing: ThemeSpace.line) {
                 if let selectedItem {
                     Text(selectedItem.label)
                         .themeText(.detail)
@@ -53,13 +53,13 @@ struct GalleryView: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-            .padding(.bottom, 24)
+            .padding(.bottom, ThemeSpace.section)
             .allowsHitTesting(false)
             Button {
                 dismiss()
             } label: {
                 Image(systemName: "xmark.circle.fill")
-                    .font(.title)
+                    .themeIcon(.large)
                     .foregroundStyle(Theme.onFill)
                     .padding()
             }
@@ -290,7 +290,7 @@ private struct ZoomableGalleryImage: View {
 private struct GalleryFailedView: View {
     var body: some View {
         Image(systemName: "exclamationmark.triangle")
-            .font(.largeTitle)
+            .themeIcon(.hero)
             .foregroundStyle(Theme.onFillSecondary)
     }
 }

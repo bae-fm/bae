@@ -28,7 +28,7 @@ struct ImportSettingsTab: View {
             } header: {
                 Text("Metadata")
             } footer: {
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: ThemeSpace.compact) {
                     Text(
                         "New candidates start from a draft read from their files, sheets and folder name."
                     )
@@ -203,13 +203,19 @@ struct ImportSettingsTab: View {
 }
 
 #if DEBUG
+    /// The settings window the previews draw in.
+    private enum PreviewWindow {
+        static let width: CGFloat = 500
+        static let height: CGFloat = 500
+    }
+
     #Preview("Import Settings") {
         ImportSettingsTab()
             .environment(PreviewData.configStore())
             .environment(Discogs.stub())
             .environment(PreviewData.importTabImporter())
             .environment(UiStore())
-            .frame(width: 500, height: 500)
+            .frame(width: PreviewWindow.width, height: PreviewWindow.height)
     }
 
     #Preview("Import Settings, no Discogs key") {
@@ -223,7 +229,7 @@ struct ImportSettingsTab: View {
             .environment(Discogs.stub())
             .environment(PreviewData.importTabImporter())
             .environment(UiStore())
-            .frame(width: 500, height: 500)
+            .frame(width: PreviewWindow.width, height: PreviewWindow.height)
     }
 #endif
 

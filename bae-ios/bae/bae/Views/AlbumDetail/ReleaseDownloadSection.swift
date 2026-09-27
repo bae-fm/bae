@@ -24,7 +24,7 @@ struct ReleaseDownloadSection: View {
             downloads: downloadStore.snapshot,
             releaseId: releaseId
         )
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: ThemeSpace.compact) {
             control(status)
             if let unpinError {
                 Text(unpinError)
@@ -47,21 +47,21 @@ struct ReleaseDownloadSection: View {
                 Task { try await downloads.queuePins([releaseId]) }
             }
         case .queued:
-            HStack(spacing: 8) {
+            HStack(spacing: ThemeSpace.related) {
                 WaitingToDownloadLabel()
                 cancelButton
             }
         case .downloading(let progress):
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: ThemeSpace.compact) {
                 DownloadTransferProgressView(progress: progress)
                 cancelButton
             }
         case .failed(let message):
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: ThemeSpace.compact) {
                 Text(message)
                     .themeText(.detail)
                     .foregroundStyle(Theme.danger)
-                HStack(spacing: 8) {
+                HStack(spacing: ThemeSpace.related) {
                     // Core has no per-item retry; this requeues every failed
                     // download.
                     actionButton("Retry", systemImage: "arrow.clockwise") {
@@ -99,7 +99,7 @@ struct ReleaseDownloadSection: View {
 
     @ViewBuilder
     private var downloadedControl: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: ThemeSpace.related) {
             Label("Downloaded", systemImage: "arrow.down.circle.fill")
                 .themeText(.detail)
                 .foregroundStyle(.secondary)

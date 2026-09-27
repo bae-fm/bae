@@ -11,15 +11,21 @@ struct QueueItemRow: View {
     let onSkipTo: (String) -> Void
     let onRemove: (String) -> Void
 
+    /// The cover's side, which the row's three lines of text also fill.
+    static let artworkSize: CGFloat = 48
+    /// The row's inset from its hover fill.
+    static let horizontalInset = ThemeSpace.related
+    static let verticalInset = ThemeSpace.compact
+
     /// The remove button's own hover, which fills its background.
     @State
     private var removeHovered = false
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: ThemeSpace.group) {
             artWithHoverOverlay
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: ThemeSpace.line) {
                 Text(item.title)
                     .themeText(.rowTitle)
                     .lineLimit(1)
@@ -45,12 +51,15 @@ struct QueueItemRow: View {
                     .opacity(isHovered ? 0 : 1)
                 Button(action: { onRemove(item.id) }) {
                     Image(systemName: "xmark")
-                        .font(.caption)
+                        .themeIcon(.small)
                         .foregroundStyle(
                             removeHovered ? Theme.accent : .secondary
                         )
                         // A larger click target than the glyph.
-                        .frame(width: 28, height: 28)
+                        .frame(
+                            width: ThemeSize.hitTarget,
+                            height: ThemeSize.hitTarget
+                        )
                         .background(
                             RoundedRectangle(cornerRadius: ThemeRadius.control)
                                 .fill(
@@ -68,8 +77,8 @@ struct QueueItemRow: View {
                 .allowsHitTesting(isHovered)
             }
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
+        .padding(.horizontal, Self.horizontalInset)
+        .padding(.vertical, Self.verticalInset)
         // Hover toggles only the fill: the drag coordinator's slot math needs
         // every row at the same height.
         .background(
@@ -91,20 +100,20 @@ struct QueueItemRow: View {
     // The play overlay toggles by opacity so showing it doesn't resize the row.
     private var artWithHoverOverlay: some View {
         ZStack {
-            ImageView(imageRef: item.coverImage, pointSize: 48)
-                .frame(width: 48, height: 48)
+            ImageView(imageRef: item.coverImage, pointSize: Self.artworkSize)
+                .frame(width: Self.artworkSize, height: Self.artworkSize)
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
 
             RoundedRectangle(cornerRadius: ThemeRadius.artwork)
                 .fill(Theme.scrim)
-                .frame(width: 48, height: 48)
+                .frame(width: Self.artworkSize, height: Self.artworkSize)
                 .opacity(isHovered ? 1 : 0)
             Button(action: { onSkipTo(item.id) }) {
                 Image(systemName: "play.fill")
-                    .font(.caption)
+                    .themeIcon(.small)
                     .foregroundStyle(Theme.onFill)
                     // The whole hovered cover is the target, not the glyph.
-                    .frame(width: 48, height: 48)
+                    .frame(width: Self.artworkSize, height: Self.artworkSize)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)

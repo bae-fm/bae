@@ -25,6 +25,8 @@ import fm.bae.app.BaeLogger
 import fm.bae.app.R
 import fm.bae.app.localizedLine
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.appearance.ThemeIcon
+import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -62,7 +64,7 @@ private fun BlockedSyncOperationRow(
     var retrying by remember(operation.id) { mutableStateOf(false) }
     var retryError by remember(operation.id) { mutableStateOf<String?>(null) }
 
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline)) {
         Text(text = blockedSyncOperationKindLabel(operation.kind))
         Text(
             text = operation.description,
@@ -83,7 +85,7 @@ private fun BlockedSyncOperationRow(
             )
         }
         Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             OutlinedButton(
@@ -100,7 +102,7 @@ private fun BlockedSyncOperationRow(
                 Text(stringResource(R.string.settings_retry))
             }
             if (retrying) {
-                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                CircularProgressIndicator(modifier = Modifier.size(ThemeIcon.medium), strokeWidth = 2.dp)
             }
         }
     }
@@ -140,7 +142,7 @@ private fun blockedSyncOperationKindLabel(kind: BridgeBlockedSyncOperationKind):
 @Composable
 private fun BlockedSyncOperationsPreview() {
     BaeTheme {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
             BlockedSyncOperations(
                 operations =
                     listOf(

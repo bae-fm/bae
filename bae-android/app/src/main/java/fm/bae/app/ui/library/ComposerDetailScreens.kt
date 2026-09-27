@@ -38,6 +38,8 @@ import fm.bae.app.metadataText
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeRadius
+import fm.bae.app.ui.appearance.ThemeSize
+import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CoverImage
 import fm.bae.app.ui.playback.NowPlayingBar
@@ -78,7 +80,7 @@ internal fun ComposerDetailScreen(
                 Text(
                     text = error,
                     color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(32.dp),
+                    modifier = Modifier.padding(ThemeSpace.page),
                 )
             }
 
@@ -90,7 +92,11 @@ internal fun ComposerDetailScreen(
 
             else -> {
                 error?.let {
-                    Text(text = it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(8.dp))
+                    Text(
+                        text = it,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(ThemeSpace.related),
+                    )
                 }
                 ComposerDetailContent(
                     detail = loaded,
@@ -144,7 +150,7 @@ private fun ComposerDetailContent(
                         Modifier
                             .fillMaxWidth()
                             .clickable { onSelectAlbum(role.albumId, role.releaseId) }
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                            .padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
                     style = ThemeText.rowTitle.style,
                     maxLines = 1,
                 )
@@ -192,7 +198,7 @@ internal fun WorkDetailScreen(
                 Text(
                     text = error,
                     color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(32.dp),
+                    modifier = Modifier.padding(ThemeSpace.page),
                 )
             }
 
@@ -204,7 +210,11 @@ internal fun WorkDetailScreen(
 
             else -> {
                 error?.let {
-                    Text(text = it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(8.dp))
+                    Text(
+                        text = it,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(ThemeSpace.related),
+                    )
                 }
                 WorkDetailContent(
                     detail = loaded,
@@ -243,17 +253,17 @@ private fun WorkDetailContent(
                         Modifier
                             .fillMaxWidth()
                             .clickable { onSelectAlbum(release.albumId, release.releaseId) }
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                            .padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     CoverImage(
                         cover = release.cover,
                         cornerRadius = ThemeRadius.artwork,
-                        iconPadding = 12.dp,
-                        modifier = Modifier.size(48.dp),
+                        iconPadding = ThemeSpace.group,
+                        modifier = Modifier.size(ThemeSize.rowArtwork),
                         contentDescription = release.albumTitle,
                     )
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(ThemeSpace.group))
                     TwoLineText(title = release.albumTitle, subtitle = release.metadataText(context))
                 }
             }
@@ -277,17 +287,17 @@ private fun WorkSummaryRow(
             Modifier
                 .fillMaxWidth()
                 .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         CoverImage(
             cover = work.representativeCover,
             cornerRadius = ThemeRadius.artwork,
-            iconPadding = 12.dp,
-            modifier = Modifier.size(48.dp),
+            iconPadding = ThemeSpace.group,
+            modifier = Modifier.size(ThemeSize.rowArtwork),
             contentDescription = work.title,
         )
-        Spacer(modifier = Modifier.width(12.dp))
+        Spacer(modifier = Modifier.width(ThemeSpace.group))
         TwoLineText(title = work.title, subtitle = work.composerNames)
     }
 }
@@ -297,7 +307,7 @@ internal fun TwoLineText(
     title: String,
     subtitle: String?,
 ) {
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related)) {
         Text(text = title, style = ThemeText.rowTitle.style, maxLines = 1)
         if (!subtitle.isNullOrBlank()) {
             Text(
@@ -314,7 +324,7 @@ internal fun TwoLineText(
 internal fun LibraryDetailTopBar(onBack: () -> Unit) {
     Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
+            modifier = Modifier.fillMaxWidth().padding(ThemeSpace.related),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onBack) {
@@ -331,7 +341,7 @@ internal fun LibrarySectionHeader(title: String) {
         text = title,
         style = ThemeText.heading.style,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
     )
 }
 

@@ -131,7 +131,7 @@ struct CandidateListMenu: View, Equatable {
             }
         } label: {
             Image(systemName: "ellipsis.circle")
-                .font(.system(size: ImportFilterBarLayout.glyphSize))
+                .themeIcon(ImportFilterBarLayout.glyph)
                 .overlay(alignment: .topTrailing) {
                     // A filter hiding Pending rows marks the trigger, so a
                     // short list never reads as a short queue.
@@ -143,7 +143,7 @@ struct CandidateListMenu: View, Equatable {
                     }
                     if hasFailedScan {
                         Image(systemName: "exclamationmark.triangle.fill")
-                            .font(.system(size: 8))
+                            .themeIcon(.badge)
                             .foregroundStyle(Theme.danger)
                             .offset(x: 3, y: -3)
                     }

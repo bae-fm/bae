@@ -17,8 +17,8 @@ struct DocumentViewerView: View {
                 Button("Done") { onClose() }
                     .keyboardShortcut(.cancelAction)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
+            .padding(.horizontal, ThemeSpace.edge)
+            .padding(.vertical, ThemeSpace.related)
             Divider()
             ScrollView {
                 Text(text)

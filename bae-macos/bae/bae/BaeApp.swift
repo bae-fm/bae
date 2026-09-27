@@ -85,10 +85,8 @@ private func discoverInitialLibraries(
     return libraries
 }
 
-/// bae's directory, under the home directory the process was launched with.
-/// `HOME` is what names it — a UI test launches the app with its own `HOME`
-/// to get a fresh directory — so it is read from the environment rather than
-/// from the account record.
+/// bae's directory under the launch environment's `HOME`, which a UI test
+/// sets to get a fresh one.
 private func baeAppDir(environment: [String: String]) -> BridgeAppDir {
     guard let home = environment["HOME"], !home.isEmpty else {
         preconditionFailure("HOME is unset, so bae's directory has no location")
@@ -104,10 +102,8 @@ enum AppScreen {
     case library
 }
 
-/// Dependencies owned by the installed application rather than the SwiftUI
-/// preview or unit-test host. Keeping them together makes host construction an
-/// all-or-nothing decision: an inert host cannot accidentally start one of the
-/// process-wide services while skipping another.
+/// The installed application's process-wide services, built together so an
+/// inert preview or test host starts none of them.
 @MainActor
 final class ApplicationServices {
     let diagnostics: BridgeDiagnostics
@@ -154,9 +150,7 @@ struct BaeApp: App {
         appDelegate.requiredApplicationServices
     }
 
-    /// Window title — the active library's name if one is loaded, else
-    /// just "bae". With multiple libraries on one device the title
-    /// disambiguates which one the main window currently shows.
+    /// The active library's name, else "bae".
     private var windowTitle: String {
         if let name = appDelegate.appService?.libraryName, !name.isEmpty {
             return String(localized: "\(name) - bae")
@@ -164,14 +158,9 @@ struct BaeApp: App {
         return "bae"
     }
 
-    /// WelcomeView constructed with the deep-link mode if a menu item
-    /// requested one (Restore from Code), else the default chooser. Bound
-    /// to the same callback for both paths, over the live pre-library
-    /// operations — previews inject stubs through the same seam. The caller
-    /// names the load error to surface: the bootstrap window passes the
-    /// delegate's (a failed open belongs on the chooser), while the shell's
-    /// Add Library sheet passes nil — a failed *switch* is the shell
-    /// chrome's story, not the sheet's.
+    /// The welcome flow in the mode a menu item asked for, showing
+    /// `loadError` (nil in the Add Library sheet, whose failures the shell
+    /// shows).
     private func welcomeView(loadError: DisplayError?) -> some View {
         Group {
             if let mode = appDelegate.welcomeInitialMode {
@@ -192,9 +181,7 @@ struct BaeApp: App {
         .environment(applicationServices.librarySetup)
     }
 
-    /// Main-window content once the first library has opened. Switching
-    /// libraries flips `screen` to `.loading` briefly; we render a
-    /// ProgressView so the window shows progress across the swap.
+    /// Main-window content once the first library has opened.
     @ViewBuilder
     private var detailContent: some View {
         switch appDelegate.screen {
@@ -217,10 +204,7 @@ struct BaeApp: App {
         }
     }
 
-    /// Modal hosts attached to the main window: the welcome flow (New
-    /// Library / Restore from Code), the rename sheet, and the lock
-    /// confirmation. Each is driven by `AppDelegate` trigger state set from
-    /// the File menu and acts through the active `AppService`.
+    /// The welcome, rename and lock modals the File menu presents.
     private func libraryModals<Content: View>(
         _ content: Content
     ) -> some View {
@@ -240,10 +224,7 @@ struct BaeApp: App {
                 )
             ) { sheet in
                 RenameLibrarySheet(
-                    // `sheet` is the item `.sheet(item:)` already unwrapped; use
-                    // it as the fallback so the dismissal frame (when
-                    // `renameLibrarySheet` has gone back to nil) shows the last
-                    // real value rather than an empty-string sentinel.
+                    // The dismissal frame shows the last real value.
                     state: Binding(
                         get: { appDelegate.renameLibrarySheet ?? sheet },
                         set: { appDelegate.renameLibrarySheet = $0 }
@@ -270,8 +251,7 @@ struct BaeApp: App {
             }
     }
 
-    /// Confirmation body for locking the active library, naming it so the
-    /// user knows which one they're locking.
+    /// The lock confirmation's body, naming the library.
     private var lockConfirmMessage: String {
         let name =
             appDelegate.appService?.libraryName
@@ -282,10 +262,7 @@ struct BaeApp: App {
         )
     }
 
-    /// Pre-shell content: shown before any library has been opened.
-    /// Loading spinner first, then `WelcomeView` if no libraries are
-    /// discovered, then `UnlockView` if the auto-opened library is
-    /// locked.
+    /// Content shown before any library has opened.
     @ViewBuilder
     private var bootstrapContent: some View {
         switch appDelegate.screen {
@@ -306,16 +283,15 @@ struct BaeApp: App {
         case .keychainLocked:
             KeychainLockedView(onRetry: appDelegate.retryKeychainOpen)
         case .library:
-            // The service environment arrives with the library branch;
-            // bootstrap content must remain independent of it.
+            // Bootstrap content stays independent of the service environment.
             Spacer()
             ProgressView()
             Spacer()
         }
     }
 
-    /// Opening adopts the library's preferred size before its shell mounts.
-    /// The chooser and unlock flow use the fixed welcome size.
+    /// Loading takes the library window's size; everything else the welcome
+    /// size.
     private var bootstrapWindowSize: CGSize {
         if case .loading = appDelegate.screen {
             return MainWindow.defaultSize
@@ -424,18 +400,12 @@ extension BaeApp {
             }
         }
         .defaultSize(width: 800, height: 500)
-        // Never restored: a restored auxiliary window marks the session as
-        // "already presented", which suppresses the primary window's launch
-        // presentation — the app then opens with only this window, and every
-        // quit re-saves that session. The primary window is the launch
-        // surface; this one exists only through View → Storage Manager.
+        // A restored auxiliary window suppresses the primary window's launch.
         .restorationBehavior(.disabled)
     }
 
-    /// The Storage Manager window's root. A real `View` whose `body` does the
-    /// `appService` read, so Observation tracks it: a window opened (or
-    /// restored) before the library lands re-renders into the manager the
-    /// moment the open completes, instead of freezing on the placeholder.
+    /// A `View` so Observation tracks its `appService` read and it re-renders
+    /// once the library opens.
     private struct StorageManagerWindowRoot: View {
         let appDelegate: AppDelegate
 
@@ -449,7 +419,10 @@ extension BaeApp {
                     systemImage: "internaldrive",
                     description: Text("Open a library first")
                 )
-                .frame(width: 300, height: 200)
+                .frame(
+                    width: NoLibraryPlaceholder.width,
+                    height: NoLibraryPlaceholder.height
+                )
             }
         }
     }
@@ -463,22 +436,12 @@ extension BaeApp {
             )
             .appAppearance()
         }
-        // Never restored, for the reason the Storage Manager window is not:
-        // a restored auxiliary window marks the session as already presented
-        // and suppresses the primary window. It is worse here — the settings
-        // window is restored before the library opens, so it comes back
-        // holding the no-library placeholder for a session that then has a
-        // library, and Cmd+, just brings that stale window forward.
+        // A restored auxiliary window suppresses the primary window's launch.
         .restorationBehavior(.disabled)
     }
 
-    /// The settings window's root. A real `View` whose `body` does the
-    /// `appService` read, so Observation tracks it — the same shape
-    /// `StorageManagerWindowRoot` uses, and for the same reason. Read inline in
-    /// the `Settings` scene builder instead, the read is not tracked: a window
-    /// built before the library lands keeps the "No library loaded"
-    /// placeholder for the rest of the run, while the menu bar and the title
-    /// bar's gear open the very same scene and appear to disagree with it.
+    /// A `View` so Observation tracks its `appService` read and it re-renders
+    /// once the library opens.
     private struct SettingsWindowRoot: View {
         let appDelegate: AppDelegate
         let checkForUpdatesViewModel: CheckForUpdatesViewModel?
@@ -507,10 +470,19 @@ extension BaeApp {
                         "Open a library first to access settings"
                     )
                 )
-                .frame(width: 300, height: 200)
+                .frame(
+                    width: NoLibraryPlaceholder.width,
+                    height: NoLibraryPlaceholder.height
+                )
             }
         }
     }
+}
+
+/// A window's "No library loaded" placeholder.
+private enum NoLibraryPlaceholder {
+    static let width: CGFloat = 300
+    static let height: CGFloat = 200
 }
 
 // MARK: - AppDelegate
@@ -532,48 +504,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var uiStore = UiStore()
     var screen: AppScreen = .loading
     var loadError: DisplayError?
-    /// When a menu item deep-links into a specific welcome flow (Restore
-    /// from Code), this holds the requested initial mode for the welcome
-    /// view about to be presented. `nil` lands on the default chooser.
+    /// The welcome mode a menu item asked for; nil is the chooser.
     var welcomeInitialMode: WelcomeView.Mode?
-    /// True once the first library has opened; the main window content
-    /// replaces the bootstrap (loading / welcome / unlock) screens and stays
-    /// up across switches.
+    /// True once the first library has opened and replaced the bootstrap
+    /// screens.
     var hasShell: Bool = false
-    /// Drives the welcome sheet presented by the New Library / Restore from
-    /// Code menu items. Distinct from `.welcome` screen state, which only
-    /// applies before any library has been opened.
+    /// Presents the welcome sheet over an open library.
     var showAddLibrarySheet: Bool = false
-    /// Every library discovered on this device, kept current so the File →
-    /// Open Library submenu (and its ⌘⇧1–9 switch shortcuts) always have the
-    /// list without a view having to load it.
+    /// Every library on this device, for the File → Open Library submenu.
     var libraries: [BridgeLibrary] = []
-    /// Non-nil while the Rename Library sheet is open; carries the target
-    /// library id, the in-progress name, and any rename error.
+    /// The Rename Library sheet's state while it is open.
     var renameLibrarySheet: RenameLibrarySheetState?
     /// Drives the Lock Library confirmation alert.
     var confirmLockLibrary: Bool = false
-    /// The platform-shared open sequence. The factory reads `uiStore` fresh at
-    /// build time (a close replaces it) and threads in the shared
-    /// `mediaControlService`; the opener owns the supersede-cancel slot and maps
-    /// each open to an `Outcome` this delegate lands on `screen`/`appService`.
+    /// The shared open sequence; each open ends in an `Outcome` this delegate
+    /// applies.
     @ObservationIgnored
     private lazy var opener = LibrarySessionOpener<AppHandle, AppService>(
-        // Capture the host by value so the `@Sendable` makeHandle doesn't read
-        // the main-actor property from off the main actor.
+        // Captured so the `@Sendable` closure reads no main-actor state.
         makeHandle: {
             [host = requiredApplicationServices.host] libraryId in
             try initApp(
                 libraryId: libraryId,
                 positionUpdateIntervalMs: 200,
-                // The "Restore on launch" preference: off starts with nothing
-                // in playback; the core keeps the resume row current either way.
+                // The "Restore on launch" preference.
                 restorePlayback: UserDefaults.standard.bool(
                     forKey: "persistPlayback"
                 ),
-                // The host built at launch around the telemetry sink; `init_app`
-                // requires it, so telemetry is guaranteed up before the library
-                // opens.
+                // Telemetry is up before the library opens.
                 host: host
             )
         },
@@ -596,8 +554,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let lockSlot = CancellableTaskSlot()
     /// In-flight forget, cancelled on library close.
     private let forgetSlot = CancellableTaskSlot()
-    /// The one graceful shutdown for the open library. Close and Quit share
-    /// its result instead of starting competing shutdowns.
+    /// The one graceful shutdown that Close and Quit share.
     @ObservationIgnored
     private let shutdownCoordinator =
         LibraryShutdownCoordinator<AppService>()
@@ -672,13 +629,8 @@ extension AppDelegate {
         SystemActions.copyToPasteboard(appService.libraryId)
     }
 
-    /// Discover what is on this Mac and land on a screen.
-    ///
-    /// `canOpenLibraries` is false when launch already failed at something every
-    /// open depends on (the keyring): discovery still runs — it reads config.yaml
-    /// and needs no keychain — so the welcome screen lists the libraries that are
-    /// here, but auto-opening one would only replace the recorded cause with the
-    /// failure it produces.
+    /// Discover this Mac's libraries and land on a screen, auto-opening one
+    /// only when `canOpenLibraries`.
     func loadInitialState(canOpenLibraries: Bool) {
         do {
             let libraries = try discoverInitialLibraries(
@@ -686,10 +638,7 @@ extension AppDelegate {
                 environment: baeAppProcessEnvironment
             )
             self.libraries = libraries
-            // Auto-open only a library whose config loaded. A broken one
-            // (unreadable config.yaml) can't open — auto-trying it would just
-            // strand its failure banner under the welcome screen, where the
-            // chooser already shows the library with its error.
+            // Auto-open only a library whose config loaded.
             guard canOpenLibraries,
                 let openable = libraries.first(where: { $0.error == nil })
             else {
@@ -699,9 +648,7 @@ extension AppDelegate {
             openLibrary(openable)
         }
         catch {
-            // The welcome screen is where a launch with no library lands, and
-            // it renders `loadError` as a callout. Staying on `.loading` left
-            // the failure recorded and the user watching a spinner forever.
+            // The welcome screen shows `loadError`.
             loadError = DisplayError(error)
             screen = .welcome
         }
@@ -724,18 +671,13 @@ extension AppDelegate {
             case .keychainLocked:
                 self.deferOpenForLockedKeychain(libraryId: libraryId)
             case .superseded:
-                // Superseded by a newer open (or a close); that call owns
-                // screen/appService.
+                // The newer open or close owns the screen.
                 baeAppLogger.debug(
                     "Library open superseded before it could land; skipping"
                 )
             case .failed(let error):
                 self.loadError = DisplayError(error)
-                // A bootstrap open (first launch, or reopening from the welcome
-                // chooser after a close) that fails must return to the welcome
-                // so the user can retry or pick another, rather than strand on
-                // the loading spinner. A switch failure keeps the shell mounted
-                // and its own state.
+                // A failed bootstrap open returns to the welcome.
                 if !self.hasShell {
                     self.screen = .welcome
                 }
@@ -785,9 +727,8 @@ extension AppDelegate {
         return service
     }
 
-    /// Close the open library and return to the welcome chooser after its
-    /// graceful shutdown completes. A failure leaves the live service and
-    /// shell in place so the user can see the error and retry.
+    /// Close the open library and return to the welcome once it has shut
+    /// down.
     func closeLibrary() {
         guard let service = appService else { return }
         prepareForLibraryShutdown()
@@ -832,8 +773,7 @@ extension AppDelegate {
     }
 
     func prepareForLibraryShutdown() {
-        // Cancel any open still in flight so a parked `initApp` can't resume
-        // past its post-await cancellation check and replace this session.
+        // An open still in flight must not replace this session.
         opener.cancel()
         renameSlot.cancel()
         lockSlot.cancel()
@@ -853,9 +793,7 @@ extension AppDelegate {
         hasShell = false
     }
 
-    /// Reload the device's library list off the main actor and publish it for
-    /// the Open Library submenu. A newer reload cancels an in-flight one; on
-    /// failure we log and keep the last good list rather than blanking the menu.
+    /// Reload the library list, keeping the last good one on failure.
     func reloadLibraries() {
         let host = requiredApplicationServices.host
         reloadSlot.replace(
@@ -870,11 +808,8 @@ extension AppDelegate {
         )
     }
 
-    /// Switch to the library `offset` positions from the active one in the
-    /// discovered list, wrapping around the ends. No-op with one (or no)
-    /// library or no active library.
-    /// Cycle to the next library. Broken ones are skipped: this opens without
-    /// asking, and a library whose config won't load cannot be opened.
+    /// Open the library `offset` places from the active one, wrapping and
+    /// skipping broken ones.
     func switchLibrary(byOffset offset: Int) {
         let openable = libraries.filter { $0.error == nil }
         guard openable.count > 1,
@@ -887,10 +822,7 @@ extension AppDelegate {
         openLibrary(openable[next])
     }
 
-    /// Rename a library off the main actor, then refresh the list (and the
-    /// window title, which reads the active library's name). On failure the
-    /// error is written back into the open sheet; the sheet stays up so the
-    /// user can retry.
+    /// Rename a library, showing a failure in the open sheet.
     func renameLibrary(_ libraryId: String, to newName: String) {
         guard let appService else { return }
         let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -912,9 +844,7 @@ extension AppDelegate {
         )
     }
 
-    /// Lock the active library off the main actor: drop its encryption key from
-    /// the keychain. The current session keeps working; the key is needed again
-    /// on next launch. Errors surface through `loadError`.
+    /// Remove the active library's key from the keychain.
     func lockActiveLibrary() {
         guard let appService else { return }
         lockSlot.replace(
@@ -932,14 +862,7 @@ extension AppDelegate {
 }
 
 extension AppDelegate {
-    /// Remove the active library from this device. Its handle is closed first,
-    /// so nothing of this process holds its store; the open service is then
-    /// released and the window returns to the welcome chooser, and the host
-    /// removes the library — its data directory, active-library pointer, and
-    /// every keyring entry coven and bae keep for it (the cloud copy, if the
-    /// library syncs, is untouched). A failure to close leaves the library
-    /// open behind the global error alert; a failure to remove is shown on the
-    /// welcome screen, and the library stays listed there.
+    /// Close the active library, then remove it from this device.
     func forgetActiveLibrary() {
         guard let service = appService else {
             baeAppLogger.warning(
@@ -970,9 +893,7 @@ extension AppDelegate {
         )
     }
 
-    /// Remove a library this process has closed. Started in a slot run of its
-    /// own, so the closing run — and the service it held — is gone first: the
-    /// host refuses while anything still holds the store.
+    /// Remove a closed library once nothing holds its store.
     private func removeClosedLibrary(_ libraryId: String) {
         let host = requiredApplicationServices.host
         forgetSlot.replace(

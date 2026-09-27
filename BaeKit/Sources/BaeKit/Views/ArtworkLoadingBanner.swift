@@ -24,7 +24,7 @@ public struct ArtworkLoadingBanner: View {
             }
         case .downloading(let titleKey, let progress):
             surface {
-                VStack(spacing: 6) {
+                VStack(spacing: ThemeSpace.compact) {
                     statusLine {
                         Text(localizedCoreString(titleKey))
                         Spacer()
@@ -55,7 +55,7 @@ public struct ArtworkLoadingBanner: View {
             }
         case .failed(let titleKey, let progress, let error):
             surface {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: ThemeSpace.line) {
                     statusLine {
                         Image(systemName: "exclamationmark.triangle")
                             .foregroundStyle(Theme.warning)
@@ -78,7 +78,7 @@ public struct ArtworkLoadingBanner: View {
     private func statusLine<Content: View>(
         @ViewBuilder content: () -> Content
     ) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: ThemeSpace.related) {
             content()
         }
     }
@@ -87,8 +87,8 @@ public struct ArtworkLoadingBanner: View {
         @ViewBuilder content: () -> Content
     ) -> some View {
         content()
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
+            .padding(.horizontal, ThemeSpace.edge)
+            .padding(.vertical, ThemeSpace.related)
             .background(.bar)
     }
 

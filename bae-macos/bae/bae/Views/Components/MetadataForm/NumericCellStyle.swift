@@ -19,12 +19,12 @@ struct NumericCellStyle: ViewModifier {
 #if DEBUG
     #Preview("Numeric Cell Style") {
         // Resting and focused cells.
-        HStack(spacing: 12) {
+        HStack(spacing: ThemeSpace.group) {
             Text(verbatim: "1").modifier(NumericCellStyle(focused: false))
             Text(verbatim: "2").modifier(NumericCellStyle(focused: true))
             Text(verbatim: "12").modifier(NumericCellStyle(focused: false))
         }
-        .padding(24)
+        .padding(ThemeSpace.section)
         .frame(width: 220)
         .background(Theme.background)
         .preferredColorScheme(.dark)

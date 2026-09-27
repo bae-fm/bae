@@ -63,7 +63,7 @@ struct SearchView: View {
     }
 
     private func resultsList(_ results: SearchResults) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: ThemeSpace.hairline) {
             resultsSection("Albums", results.albums, id: \.id) { album in
                 SearchResultRow(
                     leading: .picture(album.cover),
@@ -111,7 +111,7 @@ struct SearchView: View {
                 )
             }
         }
-        .padding(8)
+        .padding(ThemeSpace.related)
     }
 
     /// A header and a row per item, omitted when there are no items.
@@ -131,9 +131,9 @@ struct SearchView: View {
     private func sectionHeader(_ title: LocalizedStringKey) -> some View {
         Eyebrow(title)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 12)
-            .padding(.top, 14)
-            .padding(.bottom, 8)
+            .padding(.horizontal, ThemeSpace.group)
+            .padding(.top, ThemeSpace.group)
+            .padding(.bottom, ThemeSpace.related)
     }
 
     private func albumSubtitle(_ album: AlbumSearchResult) -> String {
@@ -174,22 +174,25 @@ private struct SearchResultRow: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 14) {
+            HStack(spacing: ThemeSpace.group) {
                 switch leading {
                 case .picture(let cover):
-                    ImageView(imageRef: cover, pointSize: 46)
-                        .frame(width: 46, height: 46)
+                    ImageView(imageRef: cover, pointSize: ThemeSize.rowArtwork)
+                        .frame(
+                            width: ThemeSize.rowArtwork,
+                            height: ThemeSize.rowArtwork
+                        )
                         .clipShape(
                             RoundedRectangle(cornerRadius: ThemeRadius.artwork)
                         )
                 case .waveform:
                     Image(systemName: "waveform")
-                        .font(.system(size: 18, weight: .regular))
+                        .themeIcon(.medium)
                         .foregroundStyle(.secondary)
-                        .frame(width: 20)
+                        .frame(width: ThemeIcon.medium.size)
                 }
 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: ThemeSpace.line) {
                     Text(title)
                         .themeText(.rowTitle)
                         .lineLimit(1)
@@ -202,7 +205,7 @@ private struct SearchResultRow: View {
                     )
                 }
 
-                Spacer(minLength: 8)
+                Spacer(minLength: ThemeSpace.related)
 
                 if let trailing {
                     Text(trailing)
@@ -211,8 +214,8 @@ private struct SearchResultRow: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 9)
+            .padding(.horizontal, ThemeSpace.group)
+            .padding(.vertical, ThemeSpace.related)
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
             .background(

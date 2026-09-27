@@ -56,7 +56,7 @@ struct ReleaseGroupListContent<Trailing: View>: View {
     let trailing: () -> Trailing
 
     var body: some View {
-        LazyVStack(alignment: .leading, spacing: 14) {
+        LazyVStack(alignment: .leading, spacing: ThemeSpace.group) {
             ForEach(groups) { group in
                 ReleaseGroupSection(
                     group: group,
@@ -73,7 +73,7 @@ struct ReleaseGroupListContent<Trailing: View>: View {
             }
             trailing()
         }
-        .padding(14)
+        .padding(ThemeSpace.group)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
@@ -84,16 +84,16 @@ struct AlbumSectionHeading: View {
     let album: BridgeAlbumHeading
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: ThemeSpace.related) {
             Text(album.title)
                 .themeText(.strong)
                 .lineLimit(1)
                 .truncationMode(.tail)
             AlbumSourceLink(source: album.source)
         }
-        .padding(.top, 8)
-        .padding(.bottom, 2)
-        .padding(.leading, 8)
+        .padding(.top, ThemeSpace.related)
+        .padding(.bottom, ThemeSpace.line)
+        .padding(.leading, ThemeSpace.related)
     }
 }
 
@@ -106,13 +106,23 @@ struct MissingSourceNote: View {
         Text(text)
             .themeText(.detail)
             .foregroundStyle(.tertiary)
-            .padding(.leading, 28)
+            .padding(.leading, ReleaseGroupSection.rowTextInset)
     }
 }
 
 /// One release group: its card with the pressing rows hanging beneath on a
 /// connecting rule.
 struct ReleaseGroupSection: View {
+    /// How far the rule sits in from the card's leading edge.
+    private static let ruleInset = ThemeSpace.edge
+    private static let ruleWidth: CGFloat = 1
+    /// The gap between the rule and the rows.
+    private static let ruleGap = ThemeSpace.compact
+    /// Where a pressing row's text starts, from the card's leading edge.
+    static let rowTextInset =
+        ruleInset + ruleWidth + ruleGap
+        + ImportSearchResultRow.horizontalPadding
+
     let group: ReleaseGroup
     /// Whether the rows a run's agreement set aside show beneath the offered
     /// ones.
@@ -130,7 +140,7 @@ struct ReleaseGroupSection: View {
     let onSelect: (Pressing) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: ThemeSpace.related) {
             ReleaseGroupCard(group: group)
             pressings
         }
@@ -142,8 +152,8 @@ struct ReleaseGroupSection: View {
         HStack(spacing: 0) {
             Rectangle()
                 .fill(Theme.hairline)
-                .frame(width: 1)
-            VStack(alignment: .leading, spacing: 1) {
+                .frame(width: Self.ruleWidth)
+            VStack(alignment: .leading, spacing: ThemeSpace.hairline) {
                 ForEach(Array(group.sections.enumerated()), id: \.offset) {
                     _,
                     section in
@@ -169,9 +179,9 @@ struct ReleaseGroupSection: View {
                     }
                 }
             }
-            .padding(.leading, 6)
+            .padding(.leading, Self.ruleGap)
         }
-        .padding(.leading, 16)
+        .padding(.leading, Self.ruleInset)
     }
 
     /// Whether any of the pressing's releases is the one the draft carries.
