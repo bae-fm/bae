@@ -403,7 +403,6 @@ async fn a_verdict_with_no_signals_reports_a_finalization_failure() {
         candidate_identity(&candidate),
         candidate,
         IdentifyRunId::for_test(1),
-        0,
         TerminalVerdict::NotFoundAnywhere { ledger: None }.resume_state(
             &|_| unreachable!("a no-match verdict names no release"),
             Default::default(),
@@ -434,11 +433,8 @@ async fn a_verdict_write_ends_its_own_save_when_its_caller_is_torn_down() {
     let key = dir.to_string_lossy().into_owned();
     let run = IdentifyRunId::for_test(1);
     let row = NewImportCandidateVerdict {
-        candidate: crate::import::CandidateAsRead {
-            content_hash: fixture.content_hash(&dir),
-            file_edit_revision: 0,
-            metadata_revision: 0,
-        },
+        content_hash: fixture.content_hash(&dir),
+        file_edit_revision: 0,
         folder_path: key.clone(),
         verdict: multi_match_verdict(&["mb-torn-1", "mb-torn-2"], "rg-torn-1"),
         signals: settled_signals(fixture.probed_durations(&dir)),

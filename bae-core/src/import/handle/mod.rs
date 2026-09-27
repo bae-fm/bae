@@ -764,25 +764,10 @@ impl ImportServiceHandle {
         self.runtime_handle.spawn(write).await?
     }
 
-    /// Store the verdict `run` reached for one candidate, unless the candidate
-    /// has moved on from the shape the verdict describes — its files were
-    /// re-decided, it was skipped, it is already in the library, or an import
-    /// has claimed it.
-    ///
-    /// **The write owns what it leaves in the runtime.** Runs to completion
-    /// once asked for, see [`Self::committed`], and inside that task ends
-    /// `run`'s pending save: cleared when the row lands or is refused, and
-    /// replaced by the failure when the write itself fails. So a caller torn
-    /// down the instant it has asked still leaves the key stating what
-    /// happened rather than a commit that never resolves.
-    ///
-    /// The commit lock spans the check and the write, and everything that can
-    /// invalidate a verdict — a scan, a file re-decision, a skip, an import
-    /// claim — is written under the same lock, so a `true` return means the row
-    /// describes the candidate as it was at the moment it landed. The check
-    /// reads the stored entry rather than waiting on the list, which is a
-    /// query that lands after the commit it reflects, and this has to see the
-    /// commit.
+    /// Store the verdict `run` reached, unless the candidate can no longer be
+    /// answered or its files are not the ones the verdict answers. The check
+    /// and the write share the commit lock, and the write ends `run`'s pending
+    /// save itself, so a caller torn down mid-write leaves nothing pending.
     pub(crate) async fn save_candidate_verdict_if_current(
         &self,
         candidate_key: &str,
@@ -820,8 +805,10 @@ impl ImportServiceHandle {
         let Some(candidate) = self.answerable_candidate(candidate_key).await? else {
             return Ok(false);
         };
-        if candidate.files.content_hash() != row.candidate.content_hash
-            || candidate.file_edit_revision != row.candidate.file_edit_revision
+        // A verdict on other files than the candidate has now would describe
+        // a shape it no longer has.
+        if candidate.files.content_hash() != row.content_hash
+            || candidate.file_edit_revision != row.file_edit_revision
         {
             return Ok(false);
         }

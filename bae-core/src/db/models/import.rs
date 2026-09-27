@@ -21,19 +21,16 @@ pub(crate) struct DbCandidateFileTagSnapshot {
 /// is stamped by the write path from the injected clock, the same convention as
 /// `created_at` in `db/client/identity.rs`/`release.rs`: a timestamp that
 /// records "when this write happened" is the DB layer's to assign, not data a
-/// caller hands in — carrying it here would let a caller lie about it, and
-/// would mean the sweep reaching for the ambient wall clock instead of the
-/// fake-able one already threaded through `Database`.
+/// caller hands in.
 ///
 /// It carries no file decisions: those are the user's half of the row and the
 /// verdict write leaves them alone.
 #[derive(Debug, Clone)]
 pub struct NewImportCandidateVerdict {
-    /// The candidate identification read before its run: the row this verdict
-    /// addresses, the file shape it was derived from, and the metadata
-    /// revision it began from. The write refuses a result whose candidate
-    /// moved past either revision while the run was in flight.
-    pub candidate: crate::import::CandidateAsRead,
+    /// The files the verdict answers: the row it addresses, and the
+    /// file-decision revision it was derived from.
+    pub content_hash: String,
+    pub file_edit_revision: u64,
     /// Where the candidate was last seen on disk. Not identity — the hash is —
     /// so a moved folder keeps reading the same row under its unchanged hash.
     pub folder_path: String,
@@ -44,11 +41,8 @@ pub struct NewImportCandidateVerdict {
     /// instead of extracting them again.
     pub signals: crate::signals::Signals,
     /// The draft this verdict concludes, or `None` where it concludes no
-    /// draft at all. Only a run that settled on one release concludes one:
-    /// nothing found, several offered, and a failure say what the candidate
-    /// is not, which is no reason to touch what its draft holds. A concluded
-    /// draft replaces whatever stands — pre-filled, edited or picked — while
-    /// a person's newer edit wins through `candidate`'s metadata revision.
+    /// draft at all. Only a run that settled on one release concludes one,
+    /// and it replaces whatever draft stands.
     pub metadata: Option<crate::import::CandidateMetadataDraft>,
 }
 

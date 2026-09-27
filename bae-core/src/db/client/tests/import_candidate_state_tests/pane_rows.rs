@@ -66,7 +66,8 @@ fn signals_with(durations: SourceDurations) -> Signals {
 async fn store_verdict(db: &Database, hash: &str, signals: Signals) -> bool {
     crate::import::CandidatePreparations::new(db.clone())
         .store_verdict(&NewImportCandidateVerdict {
-            candidate: as_read(hash, 0),
+            content_hash: hash.to_string(),
+file_edit_revision: 0,
             folder_path: pane_candidate_path(),
             verdict: sample_verdict(),
             signals,
@@ -426,7 +427,8 @@ async fn a_scanning_signal_is_refused_and_writes_nothing() {
 
         let error = crate::import::CandidatePreparations::new(db.clone())
             .store_verdict(&NewImportCandidateVerdict {
-                candidate: as_read(&hash, 0),
+                content_hash: hash.to_string(),
+file_edit_revision: 0,
                 folder_path: pane_candidate_path(),
                 verdict: sample_verdict(),
                 signals: scanning,

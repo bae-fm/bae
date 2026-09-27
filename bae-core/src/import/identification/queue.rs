@@ -31,9 +31,6 @@ enum JobState {
     Running {
         representative: String,
         run: IdentifyRunId,
-        /// Editable metadata revision this run began from. A later edit makes
-        /// the terminal result stale even when the files did not change.
-        expected_metadata_revision: u64,
     },
     Settling {
         representative: String,
@@ -98,6 +95,14 @@ impl Job {
     }
 }
 
+/// How the queue holds one key.
+struct Held {
+    admission: Admission,
+    identity: CandidateIdentity,
+    /// Whether a run of this key's own is answering or being written.
+    running: bool,
+}
+
 /// Every identification that is waiting, running, or being written.
 #[derive(Default)]
 pub(super) struct Queue {
@@ -115,15 +120,24 @@ impl Queue {
         self.jobs.iter().position(|job| &job.identity == identity)
     }
 
-    /// The admission and identity `key` is held under, if the queue holds it.
-    fn held(&self, key: &str) -> Option<(Admission, &CandidateIdentity)> {
+    /// How the queue holds `key`, if it does.
+    fn held(&self, key: &str) -> Option<Held> {
         let job = &self.jobs[self.index_of_key(key)?];
         let member = job
             .members
             .iter()
             .find(|member| member.candidate.key() == key)
             .expect("the located job holds the key");
-        Some((member.admission, &job.identity))
+        let running = match &job.state {
+            JobState::Waiting => false,
+            JobState::Running { representative, .. }
+            | JobState::Settling { representative, .. } => representative == key,
+        };
+        Some(Held {
+            admission: member.admission,
+            identity: job.identity.clone(),
+            running,
+        })
     }
 
     /// Whether no automatic job is left.
@@ -509,7 +523,6 @@ async fn fill_slots(context: &Context, queue: &mut Queue) {
             }
         };
         let CandidateRunStart {
-            metadata_revision: expected_metadata_revision,
             choices,
             title_search,
         } = start;
@@ -539,7 +552,6 @@ async fn fill_slots(context: &Context, queue: &mut Queue) {
         queue.jobs[index].state = JobState::Running {
             representative: key,
             run,
-            expected_metadata_revision,
         };
     }
 }

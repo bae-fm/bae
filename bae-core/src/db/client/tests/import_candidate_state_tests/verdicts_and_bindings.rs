@@ -137,7 +137,8 @@ fn new_candidate_row(
     verdict: &TerminalVerdict,
 ) -> NewImportCandidateVerdict {
     NewImportCandidateVerdict {
-        candidate: as_read(content_hash, 0),
+        content_hash: content_hash.to_string(),
+file_edit_revision: 0,
         folder_path: folder_path.to_string(),
         verdict: verdict.clone(),
         signals: sample_signals(),
@@ -688,8 +689,7 @@ async fn a_re_run_that_finds_nothing_leaves_the_draft_an_earlier_run_wrote() {
         .await
         .unwrap();
 
-    let mut re_run = new_candidate_row(&hash, &host_root("/music/Album"), &found_nothing());
-    re_run.candidate.metadata_revision = 1;
+    let re_run = new_candidate_row(&hash, &host_root("/music/Album"), &found_nothing());
     assert!(re_run.metadata.is_none(), "nothing was found to pick");
     crate::import::CandidatePreparations::new(db.clone())
         .store_verdict(&re_run)
@@ -732,8 +732,7 @@ async fn a_re_run_that_finds_nothing_leaves_a_person_s_pick_alone() {
         .await
         .unwrap();
 
-    let mut re_run = new_candidate_row(&hash, &host_root("/music/Album"), &found_nothing());
-    re_run.candidate.metadata_revision = 2;
+    let re_run = new_candidate_row(&hash, &host_root("/music/Album"), &found_nothing());
     crate::import::CandidatePreparations::new(db.clone())
         .store_verdict(&re_run)
         .await
@@ -769,11 +768,10 @@ async fn a_re_run_that_settles_elsewhere_replaces_the_pick_it_made() {
         .await
         .unwrap();
 
-    let mut second = concluding(
+    let second = concluding(
         new_candidate_row(&hash, &host_root("/music/Album"), &sample_verdict()),
         "mb-rel-second",
     );
-    second.candidate.metadata_revision = 1;
     crate::import::CandidatePreparations::new(db.clone())
         .store_verdict(&second)
         .await

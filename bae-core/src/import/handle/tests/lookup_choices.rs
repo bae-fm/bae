@@ -203,11 +203,8 @@ async fn store_settled_text(handle: &ImportServiceHandle, hash: &str, printed: &
     let stored = handle
         .preparations
         .store_verdict(&crate::db::NewImportCandidateVerdict {
-            candidate: crate::import::CandidateAsRead {
-                content_hash: hash.to_string(),
-                file_edit_revision: prep.file_edit_revision,
-                metadata_revision: prep.metadata_revision,
-            },
+            content_hash: hash.to_string(),
+            file_edit_revision: prep.file_edit_revision,
             folder_path: String::new(),
             verdict: crate::identify::TerminalVerdict::ManualOnly {
                 track_count: 1,

@@ -1,27 +1,21 @@
 //! Turning one run's terminal answer into a stored row: the documents of the
 //! pressing it matched, the draft they project into, and the write.
-//!
-//! One shape for both admissions. What differs between a candidate a person
-//! asked for and one the automatic admission picked up is the priority its
-//! lookups are dispatched at, and that is a parameter.
 
 use super::*;
 
 /// What became of one run's answer.
 #[derive(Debug)]
 pub(super) enum Settled {
-    /// The write ran and the row landed, saying what the Ready rule makes of
-    /// the verdict it stored.
+    /// The row landed, classified by the Ready rule.
     Stored {
         classification: crate::identify::QueueClassification,
     },
-    /// The write ran and refused the answer: the candidate has moved on from
-    /// the shape the answer describes.
+    /// The write ran and refused the answer: the candidate can no longer be
+    /// answered, or its files are not the ones the run read.
     Refused,
     /// The write ran and did not land.
     WriteFailed { error: String },
-    /// No write was asked for: the queue gave the answer up before one could
-    /// be.
+    /// No write was asked for: the answer was given up.
     Abandoned,
     /// No write was asked for: the answer could not be turned into a row.
     Unwritable { error: String },
@@ -29,11 +23,10 @@ pub(super) enum Settled {
 
 /// What one settled answer reports back to the driver loop.
 pub(super) struct Finished {
-    /// The identity the answer covers — every member of the job it settles.
+    /// The identity of the job the answer settles.
     pub(super) identity: CandidateIdentity,
     pub(super) representative_key: String,
-    /// The run whose answer this is. What the write it asked for leaves in the
-    /// candidate runtime is recorded against it.
+    /// The run whose answer this is.
     pub(super) run: IdentifyRunId,
     pub(super) settled: Settled,
 }
@@ -52,18 +45,13 @@ enum SettledLead {
     },
 }
 
-/// Settle one run's terminal answer and say what became of it.
-///
-/// The one place an answer that never reached a write ends: the write ends the
-/// ones it ran for, and a run left saying a commit is still coming would say it
-/// for good.
-#[allow(clippy::too_many_arguments)]
+/// Settle one run's terminal answer and say what became of it, ending the
+/// runtime's pending save for an answer that never reached a write.
 pub(super) async fn settle_answer(
     context: Context,
     identity: CandidateIdentity,
     candidate: FolderCandidate,
     run: IdentifyRunId,
-    expected_metadata_revision: u64,
     state: IdentifyState,
     priority: CallPriority,
     token: CancellationToken,
@@ -73,14 +61,13 @@ pub(super) async fn settle_answer(
         &context,
         &candidate,
         run,
-        expected_metadata_revision,
         state,
         priority,
         &token,
     )
     .await;
     match &settled {
-        // The write ran, and what it left in the runtime is its own to end.
+        // A write that ran ended its own pending save.
         Settled::Stored { .. } | Settled::Refused | Settled::WriteFailed { .. } => {}
         Settled::Abandoned => context
             .import
@@ -99,14 +86,11 @@ pub(super) async fn settle_answer(
     }
 }
 
-/// Turn one candidate's terminal state into a stored row, a refused answer, or
-/// an answer that never reached a write.
-#[allow(clippy::too_many_arguments)]
+/// Turn one candidate's terminal state into a write, or say why none ran.
 async fn settle_verdict(
     context: &Context,
     candidate: &FolderCandidate,
     run: IdentifyRunId,
-    expected_metadata_revision: u64,
     state: IdentifyState,
     priority: CallPriority,
     token: &CancellationToken,
@@ -115,9 +99,7 @@ async fn settle_verdict(
     let mut verdict = TerminalVerdict::try_from(state)
         .expect("the queue settles only terminal identify states");
 
-    // The snapshot the run was judged against, taken by run rather than by key:
-    // a snapshot of another run of the same candidate answers a different
-    // question.
+    // This run's own snapshot, not another run's of the same candidate.
     let Some(signals) = context
         .import
         .candidate_run_signals(&candidate.key(), run)
@@ -153,22 +135,7 @@ async fn settle_verdict(
         &mut verdict,
     )
     .await;
-    save(
-        context,
-        token,
-        &candidate.key(),
-        run,
-        crate::import::CandidateAsRead {
-            content_hash: candidate.files.content_hash(),
-            file_edit_revision: candidate.file_edit_revision,
-            metadata_revision: expected_metadata_revision,
-        },
-        &candidate.key(),
-        &verdict,
-        signals,
-        metadata,
-    )
-    .await
+    save(context, token, run, candidate, &verdict, signals, metadata).await
 }
 
 async fn metadata_for_settled_lead(
@@ -215,11 +182,7 @@ async fn metadata_or_failed_verdict(
                 "identification: could not project metadata for {} ({error}); storing the failure",
                 candidate.key()
             );
-            // The lookups ran and showed what they showed; what could not be
-            // fetched is the release detail behind the match they settled on.
-            // So what they found and the ledger they recorded carry onto the
-            // failure that replaces the verdict, rather than the pane losing
-            // the run it just watched.
+            // The failure keeps what the lookups found and their ledger.
             verdict.fail(crate::identify::IdentifyFailure::ReleaseDetails(
                 crate::signals::LookupFailure::Diagnostic {
                     detail: error.to_string(),
@@ -230,18 +193,12 @@ async fn metadata_or_failed_verdict(
     }
 }
 
-/// Write one row. Cancellation is re-checked immediately before the write, not
-/// only before the lookup that precedes it: teardown during that lookup must
-/// leave nothing behind, and "a cancelled candidate writes no row" is only true
-/// if the last thing checked before writing is the token.
-#[allow(clippy::too_many_arguments)]
+/// Write one row, unless the answer was given up right before the write.
 pub(super) async fn save(
     context: &Context,
     token: &CancellationToken,
-    candidate_key: &str,
     run: IdentifyRunId,
-    candidate: crate::import::CandidateAsRead,
-    folder_path: &str,
+    candidate: &FolderCandidate,
     verdict: &TerminalVerdict,
     signals: crate::signals::Signals,
     metadata: Option<crate::import::CandidateMetadataDraft>,
@@ -249,16 +206,18 @@ pub(super) async fn save(
     if token.is_cancelled() {
         return Settled::Abandoned;
     }
+    let candidate_key = candidate.key();
     let row = NewImportCandidateVerdict {
-        candidate,
-        folder_path: folder_path.to_string(),
+        content_hash: candidate.files.content_hash(),
+        file_edit_revision: candidate.file_edit_revision,
+        folder_path: candidate_key.clone(),
         verdict: verdict.clone(),
         signals,
         metadata,
     };
     let wrote = match context
         .import
-        .save_candidate_verdict_if_current(candidate_key, run, &row)
+        .save_candidate_verdict_if_current(&candidate_key, run, &row)
         .await
     {
         Ok(wrote) => wrote,
@@ -269,11 +228,9 @@ pub(super) async fn save(
         }
     };
     if !wrote {
-        // Info rather than debug: a candidate whose answer is refused is run
-        // again, so a queue that never finishes reads as this line repeating.
         info!(
-            "identification: discarded stale verdict for {} at file-edit revision {} and metadata revision {}",
-            row.folder_path, row.candidate.file_edit_revision, row.candidate.metadata_revision
+            "identification: refused the verdict for {candidate_key}: it can no longer be \
+             answered, or its files are not the ones the run read"
         );
         return Settled::Refused;
     }
@@ -283,18 +240,9 @@ pub(super) async fn save(
 }
 
 /// The one pressing a verdict's matches describe, or `None` when they describe
-/// several.
-///
-/// The rows are the run's own — `pressings` says which row each match belongs
-/// to — so "how many pressings did this candidate match" is what that run
-/// answered rather than a count of result rows, and rather than a grouping of
-/// this list alone. A MusicBrainz release and a Discogs release agreeing on a
-/// barcode are one row a person picks whole — an answer, not a question.
-///
-/// The matches are judged against the candidate's own text here, exactly as
-/// the pane judges them, because which record of the row leads it is decided
-/// by that evidence: the record whose document fills the draft has to be the
-/// one a person sees leading the row.
+/// several. Rows come from the run's own `pressings`, so two catalogs' records
+/// of one pressing are one row, and the row's lead is judged against the
+/// candidate's text as the pane judges it.
 fn sole_pressing(
     findings: &crate::identify::Findings,
     text: &crate::identify::CandidateText,
@@ -309,30 +257,13 @@ fn sole_pressing(
     rows.next().is_none().then_some(only)
 }
 
-/// Settle a candidate's lead: fetch the releases that describe the pressing it
-/// matched — the primary and every partner — store them, and read the
-/// primary's own tracklist out of what came back. Returns whether the verdict
-/// may now be stored.
+/// Settle a candidate's lead: fetch and store the releases of the one pressing
+/// it matched, primary and partners, and read the primary's tracklist.
 ///
-/// **The releases land before the verdict does.** A stored verdict whose lead
-/// carries a tracklist is the queue's promise that opening that candidate needs
-/// no network, and that promise covers every source the pick claims, so a
-/// partner that will not prepare fails the lead exactly as the primary does:
-/// the candidate stores an explicit failure and no verdict names the pressing.
-///
-/// Only a `Found` that groups into one pressing has a lead, whichever lookup
-/// found it: a lone row from the title search is applied like any other.
-/// Several pressings and a conflict
-/// are questions for a person, answered from the result rows the verdict
-/// already carries, and a full fetch of every pressing on the list would buy a
-/// classification that cannot change.
-///
-/// A release some other candidate already settled costs nothing: its stored
-/// release is read back and the tracklist re-derived from it.
-///
-/// `priority` is the run's own: a candidate a person asked for fetches its lead
-/// ahead of the queue's background calls, so the verdict they are watching for
-/// does not wait behind a queue nobody is watching.
+/// The releases land before the verdict, so a stored lead opens with no
+/// network; a partner that cannot be fetched fails the lead like the primary.
+/// Only a `Found` that groups into one pressing has a lead. A release already
+/// stored is read back rather than fetched, and `priority` is the run's own.
 async fn settle_lead(
     context: &Context,
     verdict: &mut TerminalVerdict,
@@ -394,12 +325,8 @@ async fn settle_lead(
                 return Err(FinalizationError::Failed(error.to_string()));
             }
         };
-    // `SourceTracks::Nothing` is an answer — this release states no
-    // tracklist — so the verdict stores with the match unverifiable, and the
-    // Ready rule lands it in Needs you rather than admitting it.
-    //
-    // The tracklist belongs to the primary's own match row: it is read from
-    // the primary's release, and a partner states its own.
+    // `SourceTracks::Nothing` is an answer: the release states no tracklist,
+    // which the Ready rule sends to Needs you. The primary's row carries it.
     findings
         .matches
         .iter_mut()

@@ -82,11 +82,8 @@ async fn pure_reads_use_the_read_connection() {
         .is_none());
     assert!(!bae_core::import::CandidatePreparations::new(db.clone())
         .store_verdict(&bae_core::db::NewImportCandidateVerdict {
-            candidate: bae_core::import::CandidateAsRead {
-                content_hash: "hash-with-no-row".to_string(),
-                file_edit_revision: 7,
-                metadata_revision: 7,
-            },
+            content_hash: "hash-with-no-row".to_string(),
+            file_edit_revision: 7,
             folder_path: format!("{root}/Album"),
             verdict: bae_core::identify::TerminalVerdict::NotFoundAnywhere { ledger: None },
             signals: bae_core::signals::Signals {

@@ -97,13 +97,6 @@ async fn advance(
     let job = &mut queue.jobs[index];
     let identity = job.identity.clone();
     let priority = job.priority();
-    let JobState::Running {
-        expected_metadata_revision,
-        ..
-    } = job.state
-    else {
-        unreachable!("the job this run was located by is the running one");
-    };
     let candidate = job
         .members
         .iter()
@@ -125,7 +118,6 @@ async fn advance(
             identity,
             candidate,
             run,
-            expected_metadata_revision,
             state,
             priority,
             settle_token,
@@ -150,33 +142,27 @@ pub(super) async fn finish(
     };
     let job = queue.jobs.remove(index).expect("the located job exists");
     let keys = job.keys();
+    for key in &keys {
+        context.import.withdraw_identification(key);
+    }
     match done.settled {
         Settled::Stored { classification } => {
             info!(
                 "identification: stored the verdict for {}",
                 done.representative_key
             );
-            for key in &keys {
-                context.import.withdraw_identification(key);
-            }
             if job.admission() == Admission::Automatic
                 && classification == crate::identify::QueueClassification::Ready
             {
                 import_when_identified(context, config, &done.representative_key).await;
             }
         }
-        // Nothing was stored: every member goes back on the queue as it now is.
+        // Nothing was stored, and nothing runs again on its own.
         Settled::Refused | Settled::Abandoned => {
             info!(
-                "identification: {} stored no answer; re-reading {} candidate(s) for it",
-                done.representative_key,
-                keys.len()
+                "identification: {} stored no answer; its job is over",
+                done.representative_key
             );
-            for member in &job.members {
-                let key = member.candidate.key();
-                context.import.withdraw_identification(&key);
-                readmit(context, queue, &key, member.admission).await;
-            }
         }
         Settled::WriteFailed { error } | Settled::Unwritable { error } => {
             warn!(
@@ -184,7 +170,6 @@ pub(super) async fn finish(
                 done.representative_key
             );
             for key in &keys {
-                context.import.withdraw_identification(key);
                 context
                     .import
                     .fail_identification(key, done.run, error.clone());
@@ -217,28 +202,19 @@ async fn import_when_identified(
 }
 
 /// Follow a candidate the queue holds to what is stored for it now: off the
-/// queue when it can no longer be answered, and placed again on its admission
-/// when its files changed.
+/// queue when it can no longer be answered, and placed again as its new files
+/// when they changed while it waited. A run already reading the old files is
+/// left to finish; its write refuses an answer for files the candidate no
+/// longer has.
 async fn follow(context: &Context, queue: &mut Queue, key: &str) {
-    let Some((admission, held_as)) = queue
-        .held(key)
-        .map(|(admission, identity)| (admission, identity.clone()))
-    else {
+    let Some(held) = queue.held(key) else {
         return;
     };
     let Some(candidate) = answerable_candidate(context, key).await else {
         queue.withdraw(context, key);
         return;
     };
-    if candidate_identity(&candidate) != held_as {
-        admit(context, queue, vec![candidate], admission).await;
+    if !held.running && candidate_identity(&candidate) != held.identity {
+        admit(context, queue, vec![candidate], held.admission).await;
     }
-}
-
-/// Put `key` back on the queue as it now is, if it can still be answered.
-async fn readmit(context: &Context, queue: &mut Queue, key: &str, admission: Admission) {
-    let Some(candidate) = answerable_candidate(context, key).await else {
-        return;
-    };
-    admit(context, queue, vec![candidate], admission).await;
 }

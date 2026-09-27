@@ -786,7 +786,8 @@ async fn a_verdict_replaces_a_person_s_pick_and_their_edits() {
 
     assert!(crate::import::CandidatePreparations::new(db.clone())
         .store_verdict(&NewImportCandidateVerdict {
-            candidate: as_read(&hash, 2),
+            content_hash: hash.to_string(),
+file_edit_revision: 0,
             folder_path: pane_candidate_path(),
             verdict: sample_verdict(),
             signals: signals_with(SourceDurations::default()),
@@ -817,11 +818,10 @@ async fn a_verdict_replaces_a_person_s_pick_and_their_edits() {
     );
 }
 
-/// A field edit made while identification is running wins even when the
-/// current source was chosen by identification. The result was derived from
-/// the older draft revision and therefore cannot replace the newer text.
+/// A verdict written after a field edit replaces the edit: the later write
+/// wins.
 #[tokio::test]
-async fn a_stale_verdict_cannot_overwrite_a_newer_metadata_edit() {
+async fn a_verdict_after_a_metadata_edit_replaces_it() {
     let (db, _tmp) = empty_db().await;
     fetched(&db, "rel-first").await;
     fetched(&db, "rel-second").await;
@@ -829,7 +829,8 @@ async fn a_stale_verdict_cannot_overwrite_a_newer_metadata_edit() {
     let first_pick = release_pick("rel-first");
     assert!(crate::import::CandidatePreparations::new(db.clone())
         .store_verdict(&NewImportCandidateVerdict {
-            candidate: as_read(&hash, 0),
+            content_hash: hash.to_string(),
+file_edit_revision: 0,
             folder_path: pane_candidate_path(),
             verdict: sample_verdict(),
             signals: signals_with(SourceDurations::default()),
@@ -848,9 +849,10 @@ async fn a_stale_verdict_cannot_overwrite_a_newer_metadata_edit() {
         .await
         .unwrap();
 
-    assert!(!crate::import::CandidatePreparations::new(db.clone())
+    assert!(crate::import::CandidatePreparations::new(db.clone())
         .store_verdict(&NewImportCandidateVerdict {
-            candidate: as_read(&hash, 1),
+            content_hash: hash.to_string(),
+file_edit_revision: 0,
             folder_path: pane_candidate_path(),
             verdict: sample_verdict(),
             signals: signals_with(SourceDurations::default()),
@@ -870,15 +872,15 @@ async fn a_stale_verdict_cannot_overwrite_a_newer_metadata_edit() {
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(state.metadata_revision, 2);
-    assert_eq!(state.metadata_provenance, Some(first_pick));
+    assert_eq!(state.metadata_revision, 3);
+    assert_eq!(state.metadata_provenance, Some(release_pick("rel-second")));
     assert_eq!(
         db.load_import_candidate_pane_rows(&hash)
             .await
             .unwrap()
             .draft
             .album_title,
-        "Person's title"
+        "Second album"
     );
 }
 

@@ -403,11 +403,8 @@ async fn explicit_lookup_for_an_answered_candidate_runs_it_again() {
             &dir.to_string_lossy(),
             IdentifyRunId::for_test(1),
             &NewImportCandidateVerdict {
-                candidate: crate::import::CandidateAsRead {
-                    content_hash: fixture.content_hash(&dir),
-                    file_edit_revision: 0,
-                    metadata_revision: 0,
-                },
+                content_hash: fixture.content_hash(&dir),
+                file_edit_revision: 0,
                 folder_path: dir.to_string_lossy().into_owned(),
                 verdict,
                 signals: settled_signals(fixture.probed_durations(&dir)),
@@ -696,13 +693,12 @@ async fn changing_the_choices_supersedes_the_run_and_frees_its_slot() {
     );
 }
 
-/// A run a person asked for whose answer is refused — they edited the
-/// candidate while it was being written — is asked for again straight away,
-/// with automatic identification off: the person is still owed an answer, and
-/// nothing else would come to give one.
+/// An edit made while a run is going does not refuse its answer: the run's
+/// result is written when it finishes, over the edit, and no second run
+/// starts.
 #[tokio::test(flavor = "multi_thread")]
-async fn a_requested_answer_refused_by_an_edit_is_asked_for_again() {
-    let fixture = Fixture::new("requested-refused-asks-again").await;
+async fn an_edit_during_a_run_leaves_its_answer_to_land() {
+    let fixture = Fixture::new("edit-during-run").await;
     let dir = fixture.disc_id_candidate("Album");
     let key = dir.to_string_lossy().into_owned();
     let probed = fixture.probed_total_ms(&dir);
@@ -738,9 +734,21 @@ async fn a_requested_answer_refused_by_an_edit_is_asked_for_again() {
         .unwrap();
     fixture.provider.release();
 
-    tokio::time::timeout(Duration::from_secs(20), fixture.await_identified_row(&dir))
+    let row = tokio::time::timeout(Duration::from_secs(20), fixture.await_identified_row(&dir))
         .await
-        .expect("the refused request is asked for again and stores its answer");
+        .expect("the run's answer lands");
+    assert_eq!(row.metadata_author, crate::import::MetadataAuthor::Identification);
+    assert_eq!(
+        fixture
+            .manager
+            .load_import_candidate_pane_rows(&fixture.content_hash(&dir))
+            .await
+            .unwrap()
+            .draft
+            .album_title,
+        "Album",
+        "the later write, the run's, wins"
+    );
     let runs: std::collections::HashSet<IdentifyRunId> = drain_events(&mut events)
         .into_iter()
         .filter_map(|event| match event {
@@ -750,5 +758,5 @@ async fn a_requested_answer_refused_by_an_edit_is_asked_for_again() {
             _ => None,
         })
         .collect();
-    assert_eq!(runs.len(), 2, "the refused answer's run, then the one asked again");
+    assert_eq!(runs.len(), 1, "one run, and no second one");
 }

@@ -48,13 +48,6 @@ pub(crate) enum CandidateWrite {
 }
 
 impl CandidateAsRead {
-    /// Whether the candidate stored under this content hash still stands at
-    /// both revisions this read.
-    pub(crate) fn is_current(&self, prep: &CandidatePreparation) -> bool {
-        prep.file_edits.revision == self.file_edit_revision
-            && prep.metadata_revision == self.metadata_revision
-    }
-
     /// `Ok` while the stored candidate still stands at both revisions this
     /// read, otherwise the refusal naming which one moved.
     pub(crate) fn verify(

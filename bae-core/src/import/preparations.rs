@@ -34,36 +34,25 @@ impl CandidatePreparations {
         Self { database }
     }
 
-    /// Record one candidate's terminal identify verdict, keyed by the
-    /// candidate's content hash. Never synced. `identified_at` is stamped here from the
-    /// injected clock, not taken from `verdict` — see
-    /// [`NewImportCandidateVerdict`]'s doc.
+    /// Record one candidate's terminal verdict under its content hash, stamped
+    /// from the injected clock. A verdict that settled on one release replaces
+    /// the draft; one that settled on none leaves the draft alone.
     ///
-    /// The candidate's file decisions are left as they are. Discovery creates
-    /// the candidate row; a verdict lands on that row, so it cannot recreate
-    /// a candidate removed while identification ran.
-    ///
-    /// A run that settled on one release replaces the draft this write lands
-    /// on, whatever it held and whoever wrote it. A run that settled on no
-    /// release — nothing found, several offered, a failure — stores its
-    /// result and leaves the draft exactly as it is: it says what the
-    /// candidate is not, which is no reason to unmake anyone's work.
-    ///
-    /// `false` when the row has moved past the file decisions or the draft
-    /// this verdict was derived from, or when it names a candidate no row
-    /// holds: either way there is nothing to write.
+    /// `false` when the row's file decisions moved past the ones the verdict
+    /// answers, or no row holds the candidate. A draft edited since the run
+    /// began is replaced like any other: the later write wins.
     pub async fn store_verdict(
         &self,
         verdict: &NewImportCandidateVerdict,
     ) -> Result<bool, LibraryError> {
         let Some(mut prep) = self
             .database
-            .load_candidate_preparation(&verdict.candidate.content_hash)
+            .load_candidate_preparation(&verdict.content_hash)
             .await?
         else {
             return Ok(false);
         };
-        if !verdict.candidate.is_current(&prep) {
+        if prep.file_edits.revision != verdict.file_edit_revision {
             return Ok(false);
         }
         let expected = CandidateSaveExpectation {

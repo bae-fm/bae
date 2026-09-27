@@ -103,9 +103,6 @@ pub(super) async fn answerable_candidate(context: &Context, key: &str) -> Option
 
 /// What one run of a candidate begins from.
 pub(super) struct CandidateRunStart {
-    /// The editable metadata revision the run answers. A later edit makes its
-    /// terminal result stale even when the candidate's files did not change.
-    pub(super) metadata_revision: u64,
     /// What the person decided this candidate's identification asks about.
     pub(super) choices: LookupChoices,
     /// The title to search by when the identifiers name nothing: the person's
@@ -144,7 +141,6 @@ pub(super) async fn candidate_run_start(
         None => TitleSearch::of_draft(&draft.album_title, artist),
     };
     Ok(CandidateRunStart {
-        metadata_revision: state.metadata_revision,
         choices: state.lookup_choices,
         title_search,
     })

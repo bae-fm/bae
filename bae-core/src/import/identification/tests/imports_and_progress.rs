@@ -519,18 +519,18 @@ async fn a_cancelled_candidate_writes_no_row() {
     let verdict = TerminalVerdict::NotFoundAnywhere { ledger: None };
     let cancelled = CancellationToken::new();
     cancelled.cancel();
+    let candidate = fixture
+        .import
+        .answerable_candidate(&dir.to_string_lossy())
+        .await
+        .unwrap()
+        .expect("the scanned candidate is answerable");
     assert!(matches!(
         save(
             &fixture.context(),
             &cancelled,
-            "/x",
             IdentifyRunId::for_test(1),
-            crate::import::CandidateAsRead {
-                content_hash: "hash-x".to_string(),
-                file_edit_revision: 0,
-                metadata_revision: 0,
-            },
-            "/x",
+            &candidate,
             &verdict,
             crate::signals::Signals {
                 rip: crate::signals::RipEvidence::Unproven,
@@ -549,13 +549,8 @@ async fn a_cancelled_candidate_writes_no_row() {
         .await,
         Settled::Abandoned
     ));
-    let stored = fixture.stored().await;
     assert!(
-        stored.values().all(|row| row.identify.is_none()),
+        fixture.stored().await.values().all(|row| row.identify.is_none()),
         "cancellation preserves the discovered draft without writing an identification result"
-    );
-    assert!(
-        !stored.contains_key("hash-x"),
-        "the already-cancelled write creates no candidate state"
     );
 }

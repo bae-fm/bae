@@ -855,11 +855,8 @@ impl Fixture {
                 &dir.to_string_lossy(),
                 IdentifyRunId::for_test(1),
                 &NewImportCandidateVerdict {
-                    candidate: crate::import::CandidateAsRead {
-                        content_hash: self.content_hash(dir),
-                        file_edit_revision: 0,
-                        metadata_revision: 0,
-                    },
+                    content_hash: self.content_hash(dir),
+                    file_edit_revision: 0,
                     folder_path: dir.to_string_lossy().into_owned(),
                     verdict,
                     // A computed disc ID that names the log it came from, so

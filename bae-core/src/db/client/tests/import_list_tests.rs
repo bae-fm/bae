@@ -87,11 +87,8 @@ async fn save_verdict_with_ledger(
 ) {
     assert!(crate::import::CandidatePreparations::new(db.clone())
         .store_verdict(&NewImportCandidateVerdict {
-            candidate: crate::import::CandidateAsRead {
-                content_hash: candidate.files.content_hash(),
-                file_edit_revision: 0,
-                metadata_revision: 0,
-            },
+            content_hash: candidate.files.content_hash(),
+            file_edit_revision: 0,
             folder_path: candidate.path.to_string_lossy().into_owned(),
             verdict: verdict(release_id, ledger),
             signals: crate::signals::Signals {
@@ -316,11 +313,8 @@ async fn a_verdict_the_folder_rules_out_reads_back_as_its_question() {
     };
     assert!(crate::import::CandidatePreparations::new(db.clone())
         .store_verdict(&NewImportCandidateVerdict {
-            candidate: crate::import::CandidateAsRead {
-                content_hash: candidate.files.content_hash(),
-                file_edit_revision: 0,
-                metadata_revision: 0,
-            },
+            content_hash: candidate.files.content_hash(),
+            file_edit_revision: 0,
             folder_path: candidate.path.to_string_lossy().into_owned(),
             verdict: stored.clone(),
             signals: crate::signals::Signals {
