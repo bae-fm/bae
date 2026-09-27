@@ -35,7 +35,7 @@ pub(super) struct StoredReleaseCandidate {
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct GroupingChanges {
     pub written: Vec<ScanItem>,
-    /// The keys of `written` stored for the first time.
+    /// The keys of `written` that are new releases: only a combine makes one.
     pub found: Vec<String>,
     pub removed: Vec<String>,
 }
@@ -318,10 +318,7 @@ fn rebuild_grouping(
         observed_at,
         EntrySource::Grouping,
     )?;
-    if let folder_scans::EntryWrite::Stored { found, .. } = written {
-        if found {
-            changes.found.push(key.to_string());
-        }
+    if let folder_scans::EntryWrite::Stored { .. } = written {
         changes.written.push(item);
     }
     Ok(changes)
@@ -741,7 +738,12 @@ impl Database {
                     ],
                 )?;
             }
-            let changes = rebuild_grouping(sql, &key, observed_at)?;
+            let mut changes = rebuild_grouping(sql, &key, observed_at)?;
+            if changes.written.iter().any(
+                |item| matches!(item, ScanItem::Valid(release) if release.key() == key),
+            ) {
+                changes.found.push(key.clone());
+            }
             if changes.written.is_empty() {
                 // Nothing of it is kept: the whole write rolls back.
                 return match load_block_on(sql, &key)? {

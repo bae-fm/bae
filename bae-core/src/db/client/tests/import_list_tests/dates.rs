@@ -3,10 +3,17 @@ use crate::import::{folder_scanner::FolderDate, ImportListOrder};
 use coven::FixedClock;
 
 async fn dates(db: &Database) -> Vec<(String, i64, Option<i64>, Option<String>)> {
-    db.read(|sql| Ok(sql.query(
-        "SELECT name, first_seen_at, source_date, source_date_kind FROM scan_candidate ORDER BY name",
-        [], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
-    )?)).await.unwrap()
+    db.read(|sql| {
+        Ok(sql.query(
+            "SELECT c.name, d.first_seen_at, d.source_date, d.source_date_kind \
+         FROM scan_candidate AS c JOIN folder_discovery AS d ON d.folder = c.folder \
+         ORDER BY c.name",
+            [],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+        )?)
+    })
+    .await
+    .unwrap()
 }
 
 #[tokio::test]
@@ -75,8 +82,8 @@ async fn stored_dates_order_the_list_and_survive_candidate_replacement() {
         .unwrap();
     for name in ["A", "B", "C"] {
         let original = candidate(&root, name);
-        // Both the no-op/discovered path and a file-shape replacement retain
-        // discovery, even when this observation supplies no filesystem date.
+        // A tentative write and a rewrite with new files both keep the
+        // dates, even with no filesystem date this time.
         later
             .save_folder_scan_item(&root, generation, &ScanItem::Discovered(original.clone()))
             .await
@@ -114,13 +121,6 @@ async fn stored_dates_order_the_list_and_survive_candidate_replacement() {
 async fn a_rescan_captures_dates_even_when_the_candidate_files_are_unchanged() {
     let (db, _tmp, root) = watched_root().await;
     let item = scanned(&db, &root, "Album").await;
-    // The explicit pre-date-tracking shape retained by the migration.
-    db.call(|sql| {
-        sql.execute("UPDATE scan_candidate SET first_seen_at = NULL", [])?;
-        Ok(())
-    })
-    .await
-    .unwrap();
     let generation = db
         .begin_folder_scan(&root, crate::import::VolumeKind::Local)
         .await

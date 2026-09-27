@@ -584,8 +584,9 @@ pub(super) enum EntryWrite {
     Stored {
         /// The keys of the entries it replaced.
         replaced: Vec<String>,
-        /// Whether this is a valid release under a key that held nothing
-        /// settled before; new files under a known key are not a new release.
+        /// Whether a scan read a valid release in a folder no scan had read
+        /// as a release or as broken; new files in a known folder are not a
+        /// new release.
         found: bool,
     },
 }
@@ -613,21 +614,28 @@ pub(super) fn write_entry(
         EntrySource::Scanned => RowSources::Scanned,
         EntrySource::Grouping => RowSources::Any,
     };
-    let discovery = dates::CandidateDiscovery::observe(
-        sql,
-        watched_folder_path,
-        &entry_key,
-        *folder_date,
-        observed_at,
-    )?;
+    let folder = match item {
+        ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => candidate.path.as_path(),
+        ScanItem::Invalid(candidate) => candidate.path.as_path(),
+        ScanItem::Decided { .. } | ScanItem::Sidecar(_) => {
+            return Err(DbError::Message(format!(
+                "{entry_key} is not a release, so it is not stored as a scan entry"
+            )))
+        }
+    };
+    let discovery = dates::FolderDiscovery::observe(sql, folder, *folder_date, observed_at)?;
+    // A grouping's release is found when it is combined, not by the folder
+    // it is listed at.
+    let settles = source == EntrySource::Scanned && !matches!(item, ScanItem::Discovered(_));
     // A rescan reports every candidate tentative before it reports it settled.
     // A settled row keeps standing through that, taking only this
     // generation's stamp, so it does not swing out of the list; the settled
     // write that follows replaces it.
-    let settled_before = read::settled_entry_is_stored(sql, watched_folder_path, &entry_key)?;
-    if matches!(item, ScanItem::Discovered(_)) && settled_before {
+    if matches!(item, ScanItem::Discovered(_))
+        && read::settled_entry_is_stored(sql, watched_folder_path, &entry_key)?
+    {
         write::touch_candidate(sql, watched_folder_path, &entry_key, generation)?;
-        discovery.store(sql, watched_folder_path, &entry_key)?;
+        discovery.store(sql, settles)?;
         return Ok(EntryWrite::Unchanged);
     }
     // An unchanged row only takes the stamp, so an untouched folder
@@ -635,7 +643,7 @@ pub(super) fn write_entry(
     let stored_item = read::load_item_by_key(sql, &entry_key, sources)?.map(|(_, stored)| stored.item);
     if stored_item.as_ref() == Some(item) {
         write::touch_candidate(sql, watched_folder_path, &entry_key, generation)?;
-        discovery.store(sql, watched_folder_path, &entry_key)?;
+        discovery.store(sql, settles)?;
         return Ok(EntryWrite::Unchanged);
     }
     // Rewriting the row deletes its file-tag reading; a write with no
@@ -670,10 +678,10 @@ pub(super) fn write_entry(
             &snapshot,
         )?;
     }
-    discovery.store(sql, watched_folder_path, &entry_key)?;
+    discovery.store(sql, settles)?;
     Ok(EntryWrite::Stored {
         replaced: removed_keys,
-        found: matches!(item, ScanItem::Valid(_)) && !settled_before,
+        found: settles && matches!(item, ScanItem::Valid(_)) && !discovery.settled(),
     })
 }
 

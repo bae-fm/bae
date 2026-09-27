@@ -29,9 +29,10 @@ async fn rows_in(db: &Database, table: &'static str) -> i64 {
     .unwrap()
 }
 
-/// The tables holding folder decisions and candidate state.
-const FOLDER_DECISION_TABLES: [&str; 5] = [
+/// The tables holding what is known about folders, and candidate state.
+const FOLDER_TABLES: [&str; 6] = [
     "skipped_import_candidates",
+    "folder_discovery",
     "release_grouping",
     "release_grouping_member",
     "import_candidate_folder",
@@ -136,7 +137,7 @@ async fn removing_a_watched_folder_forgets_what_was_decided_under_it() {
         .await
         .unwrap()
         .is_empty());
-    for table in FOLDER_DECISION_TABLES {
+    for table in FOLDER_TABLES {
         assert_eq!(rows_in(&db, table).await, 0, "{table} still holds rows");
     }
     assert_eq!(
@@ -208,7 +209,7 @@ async fn a_folder_taking_over_the_watched_folders_inside_it_keeps_what_was_decid
         .await
         .unwrap();
     let mut decided = Vec::new();
-    for table in FOLDER_DECISION_TABLES {
+    for table in FOLDER_TABLES {
         decided.push(rows_in(&db, table).await);
     }
 
@@ -231,7 +232,7 @@ async fn a_folder_taking_over_the_watched_folders_inside_it_keeps_what_was_decid
         vec![crate::import::WatchedFolder::from_path(music.clone())]
     );
     assert!(db.load_folder_scan_snapshots().await.unwrap().is_empty());
-    for (table, before) in FOLDER_DECISION_TABLES.into_iter().zip(decided) {
+    for (table, before) in FOLDER_TABLES.into_iter().zip(decided) {
         assert_eq!(rows_in(&db, table).await, before, "{table} lost rows");
     }
     assert_eq!(

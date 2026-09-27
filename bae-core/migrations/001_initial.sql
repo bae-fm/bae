@@ -495,7 +495,9 @@ CREATE TABLE IF NOT EXISTS playback_state (
 
 -- The folders the desktop app watches for releases to import, in the user's
 -- order. Scan results belong to one watched folder (`folder_scan_roots` and
--- below); the user's decisions about a folder are keyed by its path on disk.
+-- below). What is known about a folder under one — the user's decisions, and
+-- when it was found — is keyed by its path on disk, so it outlives a takeover
+-- and goes when no watched folder covers the folder.
 CREATE TABLE IF NOT EXISTS watched_import_folders (
     path      TEXT PRIMARY KEY,
     position  INTEGER NOT NULL UNIQUE CHECK (position >= 0)
@@ -572,6 +574,19 @@ CREATE TABLE IF NOT EXISTS skipped_import_candidates (
     candidate_path TEXT PRIMARY KEY
 ) STRICT;
 
+-- When the scans first saw each folder, the date the folder carries, and
+-- whether a scan has read it as a release or as broken: a valid release read
+-- where it has not is newly found.
+CREATE TABLE IF NOT EXISTS folder_discovery (
+    folder           TEXT PRIMARY KEY,
+    first_seen_at    INTEGER NOT NULL,
+    settled          INTEGER NOT NULL CHECK (settled IN (0, 1)),
+    source_date      INTEGER,
+    source_date_kind TEXT CHECK ((source_date IS NULL AND source_date_kind IS NULL)
+        OR (source_date IS NOT NULL AND source_date_kind IS NOT NULL
+            AND source_date_kind IN ('added_to_directory', 'created')))
+) STRICT;
+
 -- The one row handing out scan generations, so each root's generation is
 -- stored before its scan begins.
 CREATE TABLE IF NOT EXISTS folder_scan_generation_sequence (
@@ -632,11 +647,6 @@ CREATE TABLE IF NOT EXISTS scan_candidate (
     grouping_key                   TEXT CHECK (grouping_key IS NULL OR grouping_key = path),
     invalid_reason                 TEXT CHECK (invalid_reason IS NULL OR invalid_reason IN ('corrupt_audio', 'corrupt_image', 'no_valid_audio')),
     invalid_reason_path            TEXT,
-    first_seen_at                  INTEGER,
-    source_date                    INTEGER,
-    source_date_kind               TEXT CHECK ((source_date IS NULL AND source_date_kind IS NULL)
-        OR (source_date IS NOT NULL AND source_date_kind IS NOT NULL
-            AND source_date_kind IN ('added_to_directory', 'created'))),
     -- 'grouping' for a release a grouping with no anchor builds from its
     -- members.
     source_kind                    TEXT NOT NULL DEFAULT 'folder' CHECK (source_kind IN ('folder', 'grouping')),

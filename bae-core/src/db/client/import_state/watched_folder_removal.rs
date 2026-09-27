@@ -5,9 +5,10 @@ impl Database {
     /// when given. Returns the keys of the releases that left the queue, or
     /// `None` when none of `roots` is watched and `parent`, if given, is.
     ///
-    /// Each root's scan rows go with it. What was decided about the folders
-    /// under the roots stays when `parent` takes them over, since the same
-    /// folders are still watched, and goes otherwise.
+    /// Each root's scan rows go with it. What is known about the folders under
+    /// the roots — what was decided, and when each was found — stays when
+    /// `parent` takes them over, since the same folders are still watched, and
+    /// goes otherwise.
     ///
     /// `parent` must hold exactly `roots` among the watched folders, checked
     /// inside the write.
@@ -115,7 +116,7 @@ fn watch_in_place_of(
     Ok(())
 }
 
-/// Delete what was decided about the folders under `roots` and the state of
+/// Delete what is known about the folders under `roots` and the state of
 /// every candidate found only there. Returns the keys of the grouping
 /// releases that went with their groupings.
 fn forget_folders_under(
@@ -127,16 +128,18 @@ fn forget_folders_under(
             .iter()
             .any(|root| std::path::Path::new(folder).starts_with(root))
     };
-    let skipped: Vec<String> = sql.query(
-        "SELECT candidate_path FROM skipped_import_candidates",
-        [],
-        |row| row.get(0),
-    )?;
-    for path in skipped.iter().filter(|path| under(path)) {
-        sql.execute(
-            "DELETE FROM skipped_import_candidates WHERE candidate_path = ?",
-            [path],
-        )?;
+    for (table, column) in [
+        ("skipped_import_candidates", "candidate_path"),
+        ("folder_discovery", "folder"),
+    ] {
+        let folders: Vec<String> =
+            sql.query(&format!("SELECT {column} FROM {table}"), [], |row| row.get(0))?;
+        for folder in folders.iter().filter(|folder| under(folder)) {
+            sql.execute(
+                &format!("DELETE FROM {table} WHERE {column} = ?"),
+                [folder],
+            )?;
+        }
     }
     // A grouping goes with its anchor folder or any folder it takes a
     // release from.

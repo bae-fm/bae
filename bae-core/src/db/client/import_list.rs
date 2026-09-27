@@ -267,9 +267,10 @@ fn candidate_rows(sql: &SqlReadContext<'_>) -> Result<Vec<ScanCandidateListRow>,
     sql.query(
         "SELECT c.watched_folder_path, c.path, c.folder, c.kind, c.name, c.display_path, \
                 c.content_hash, c.file_edit_revision, c.invalid_reason, c.invalid_reason_path, \
-                COALESCE(c.source_date, c.first_seen_at), c.grouping_key, g.skipped, \
+                COALESCE(d.source_date, d.first_seen_at), c.grouping_key, g.skipped, \
                 g.blocked, g.blocked_subject, g.blocked_holder \
          FROM scan_candidate AS c \
+         LEFT JOIN folder_discovery AS d ON d.folder = c.folder \
          LEFT JOIN release_grouping AS g ON g.key = c.grouping_key \
          WHERE NOT EXISTS \
              (SELECT 1 FROM release_grouping_member WHERE member_key = c.path)",
