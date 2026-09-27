@@ -194,7 +194,7 @@ async fn an_automatic_run_that_settles_needing_you_imports_nothing() {
 
     assert_eq!(
         fixture.classification_for(&dir).await,
-        QueueClassification::NeedsYou(NeedsYou::SeveralMatches { count: 2 })
+        QueueClassification::NeedsYou(None)
     );
     assert_no_import(&mut events, &key, "the run settled needing a person").await;
 }
@@ -221,9 +221,9 @@ async fn a_release_the_folder_rules_out_is_neither_applied_nor_imported() {
 
     assert_eq!(
         fixture.classification_for(&dir).await,
-        QueueClassification::NeedsYou(NeedsYou::MediumDisagrees {
+        QueueClassification::NeedsYou(Some(FolderCheck::MediumDisagrees {
             folder: crate::identify::MediumConflict::CdRip
-        })
+        }))
     );
     let row = fixture
         .stored_for(&dir)

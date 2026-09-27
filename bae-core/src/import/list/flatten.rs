@@ -14,8 +14,9 @@
 //! nothing.
 
 use super::{
-    GroupHeaderRow, ImportCandidateListLocation, ImportListItem, ImportListOrder,
-    ImportListRequest, ImportListView, ImportQueueSummary, PlacedRow, ReadyRowRef, UploadStanding,
+    GroupHeaderRow, IdentificationOutcome, ImportCandidateListLocation, ImportListItem,
+    ImportListOrder, ImportListRequest, ImportListView, ImportQueueSummary, PlacedRow,
+    ReadyRowRef, UploadStanding,
 };
 use crate::db::{ImportQueueRows, ScanCandidateKind, ScanCandidateListRow};
 use crate::identify::classify_summary;
@@ -150,10 +151,10 @@ fn order(rows: &ImportQueueRows, request: &ImportListRequest) -> Result<Ordered,
             // it belongs to.
             ScanCandidateKind::Tentative => {}
             ScanCandidateKind::Valid => {
-                let triage_row = place_row(rows, row)?;
+                let (triage_row, identification) = place_row(rows, row)?;
                 let tab = triage_row.placement.tab();
                 counts.bump(tab);
-                let matches_filter = view.placement.keeps(&triage_row.placement)
+                let matches_filter = view.keeps_identification(tab, identification)
                     && filter.keeps(|| shown_text(rows, &triage_row))?;
                 ordered.push(OrderedEntry {
                     watched_folder_path: row.watched_folder_path.clone(),
@@ -347,16 +348,17 @@ pub(crate) fn locate_candidate(
 fn unfiltered(request: &ImportListRequest) -> ImportListRequest {
     let mut request = request.clone();
     request.view.filter_text.clear();
-    request.view.placement = super::PlacementFilter::Any;
+    request.view.identification = None;
     request
 }
 
-/// One settled candidate's row, as the tables place it. `matched` is the
+/// One settled candidate's row, as the tables place it, and what its stored
+/// lookup result reads as for the Identification filter. `matched` is the
 /// verdict's lead — the window fills it in for the items it materialises.
 pub(super) fn place_row(
     rows: &ImportQueueRows,
     row: &ScanCandidateListRow,
-) -> Result<TriageRow, LibraryError> {
+) -> Result<(TriageRow, IdentificationOutcome), LibraryError> {
     let content_hash = row.content_hash.as_deref().ok_or_else(|| {
         LibraryError::Internal(format!(
             "scanned candidate {} states no content hash",
@@ -397,9 +399,13 @@ pub(super) fn place_row(
     // Every row the list holds is a settled release: a tentative candidate
     // never becomes one.
     let actionable = row.error().is_none();
-    let action_basis =
-        CandidateActionBasis::of(actionable, &placement, answer.as_ref(), row.grouping.is_some());
-    Ok(TriageRow {
+    let action_basis = CandidateActionBasis::of(
+        actionable,
+        &placement,
+        verdict.map(|verdict| verdict.kind),
+        row.grouping.is_some(),
+    );
+    let triage_row = TriageRow {
         candidate_key: row.path.clone(),
         folder_name: row.name.clone(),
         watched_folder_path: row.watched_folder_path.clone(),
@@ -419,11 +425,11 @@ pub(super) fn place_row(
         ),
         metadata_summary: state.and_then(|state| state.metadata_summary.clone()),
         cover: None,
-        ready_check: crate::import::triage::ready_check(&placement),
         placement,
         import_status,
         metadata_provenance,
-    })
+    };
+    Ok((triage_row, IdentificationOutcome::of(verdict)))
 }
 
 /// Which run of the sorted vector a tab's entries form. Only the grouping

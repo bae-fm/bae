@@ -29,13 +29,13 @@ use super::search::ImportSearchReleaseDetail;
 use super::triage::{
     import_status_of, place, CandidateActionBasis, CandidateLiveState, ImportedRow,
     TriageGroup, TriageImportStatus, TriageMetadataSummary, TriageRow,
-    TriagePlacement, TriageRuntimeFacts, TriageTabCounts,
+    TriageRuntimeFacts, TriageTabCounts,
 };
 use super::types::{MetadataProvenance, RawReleaseEdit};
 use super::watched_folder::WatchedFolder;
 use super::{FileEvidence, ImportFailure, ImportedRelease, WatchedFolderScanStatus};
 use crate::db::LibraryStatus;
-use crate::identify::{IdentifyState, QueueClassification};
+use crate::identify::{classify_summary, IdentifyState, VerdictKind, VerdictSummary};
 use crate::import::CandidateSession;
 use crate::library::{LibraryPageWindow, LibraryPageWindows};
 use crate::signals::Signals;
@@ -62,10 +62,10 @@ pub use super::triage::TriageTab;
 pub struct ImportListView {
     pub tab: TriageTab,
     pub filter_text: String,
-    /// Which of Pending's rows the list shows, by where the tables place
-    /// them. Done and Skipped have no placements within them, so it leaves
-    /// their rows alone.
-    pub placement: PlacementFilter,
+    /// Which of Pending's rows the list shows, by what each one's stored
+    /// lookup result says; `None` shows every row. Done and Skipped rows are
+    /// past identification, so it leaves them alone.
+    pub identification: Option<IdentificationOutcome>,
     pub collapsed_groups: BTreeSet<FolderReleaseDecisionKey>,
     pub order: ImportListOrder,
 }
@@ -76,6 +76,19 @@ impl ImportListView {
     pub(crate) fn filters(&self) -> bool {
         !self.filter_text.is_empty()
     }
+
+    /// Whether the Identification filter keeps a row in `tab` whose stored
+    /// lookup result reads `outcome`.
+    pub(crate) fn keeps_identification(
+        &self,
+        tab: TriageTab,
+        outcome: IdentificationOutcome,
+    ) -> bool {
+        match tab {
+            TriageTab::Pending => self.identification.is_none_or(|wanted| wanted == outcome),
+            TriageTab::Done | TriageTab::Skipped => true,
+        }
+    }
 }
 
 impl Default for ImportListView {
@@ -83,53 +96,55 @@ impl Default for ImportListView {
         Self {
             tab: TriageTab::Pending,
             filter_text: String::new(),
-            placement: PlacementFilter::Any,
+            identification: None,
             collapsed_groups: BTreeSet::new(),
             order: ImportListOrder::NewestFirst,
         }
     }
 }
 
-/// Which of Pending's rows a list shows, by the placement the tables give each
-/// one — the same placement its section, its commands and the Ready set are
-/// read from, so a filter never disagrees with what a row says it is.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum PlacementFilter {
-    /// Every row.
-    #[default]
-    Any,
-    /// Ready to import.
-    Ready,
-    /// Asking a question — any of them, or only the one named.
-    NeedsYou(Option<crate::identify::NeedsYouKind>),
-    /// Whose last import failed.
-    Failed,
-    /// With nothing to import and nothing to ask yet: not identified, or
-    /// identified over a draft that would not import.
-    Unanswered,
+/// What a candidate's stored lookup result says, as the list's Identification
+/// filter names it. Read off the stored verdict rather than the Ready rule: the
+/// question is what identification found, not whether that may be imported
+/// unattended.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IdentificationOutcome {
+    /// No lookup has finished: never identified, or waiting or running for
+    /// its first result.
+    NotIdentified,
+    /// The lookups found exactly one pressing.
+    OneRelease,
+    /// The lookups found more than one pressing.
+    SeveralReleases,
+    /// The lookups finished and matched nothing, or there was nothing to look
+    /// up. Either way the person searches by hand.
+    NoMatch,
+    /// A lookup failed.
+    LookupFailed,
 }
 
-impl PlacementFilter {
-    /// Whether a row placed `placement` stays in the list.
-    pub(crate) fn keeps(self, placement: &TriagePlacement) -> bool {
-        match (self, placement) {
-            (Self::Any, _) => true,
-            // Only Pending holds placements to choose between.
-            (_, TriagePlacement::Done | TriagePlacement::Skipped) => true,
-            (Self::Ready, TriagePlacement::Ready) => true,
-            (Self::NeedsYou(None), TriagePlacement::NeedsYou { .. }) => true,
-            (Self::NeedsYou(Some(kind)), TriagePlacement::NeedsYou { reason }) => {
-                reason.kind() == kind
-            }
-            (Self::Failed, TriagePlacement::Failed) => true,
-            (Self::Unanswered, TriagePlacement::Pending) => true,
-            (
-                Self::Ready | Self::NeedsYou(_) | Self::Failed | Self::Unanswered,
-                TriagePlacement::Pending
-                | TriagePlacement::Ready
-                | TriagePlacement::NeedsYou { .. }
-                | TriagePlacement::Failed,
-            ) => false,
+impl IdentificationOutcome {
+    /// Every outcome, in the order a filter lists them.
+    pub const ALL: [Self; 5] = [
+        Self::NotIdentified,
+        Self::OneRelease,
+        Self::SeveralReleases,
+        Self::NoMatch,
+        Self::LookupFailed,
+    ];
+
+    /// The outcome a candidate's stored verdict reads as, or `NotIdentified`
+    /// with none. A failed verdict reads as the failure whatever its
+    /// answering lookups found: the one that failed may have named more.
+    pub(crate) fn of(verdict: Option<&VerdictSummary>) -> Self {
+        let Some(verdict) = verdict else {
+            return Self::NotIdentified;
+        };
+        match verdict.kind {
+            VerdictKind::Found if verdict.pressing_count == 1 => Self::OneRelease,
+            VerdictKind::Found => Self::SeveralReleases,
+            VerdictKind::NotFound | VerdictKind::ManualOnly => Self::NoMatch,
+            VerdictKind::Failed => Self::LookupFailed,
         }
     }
 }
@@ -411,9 +426,9 @@ pub struct ImportCandidateDetailProjection {
     /// The identify state the stored verdict stands back up as — the answer a
     /// row shows when no run is in flight.
     pub resumed_identify_state: IdentifyState,
-    /// What the stored verdict classified to. `None` with no stored verdict
-    /// for the candidate's current file shape.
-    pub answer: Option<QueueClassification>,
+    /// The stored verdict's columns, as the list reads them. `None` with no
+    /// stored verdict for the candidate's current file shape.
+    pub verdict: Option<VerdictSummary>,
     pub metadata_provenance: Option<MetadataProvenance>,
     /// Who wrote the draft, which decides whether a valid one is the answer.
     pub metadata_author: crate::import::MetadataAuthor,
@@ -457,7 +472,7 @@ impl ImportCandidateDetailProjection {
     /// a candidate nobody has touched.
     pub fn session_or_initial(&self) -> CandidateSession {
         self.session.clone().unwrap_or_else(|| {
-            CandidateSession::initial(self.metadata_provenance.as_ref(), self.answer.is_some())
+            CandidateSession::initial(self.metadata_provenance.as_ref(), self.verdict.is_some())
         })
     }
 
@@ -471,7 +486,7 @@ impl ImportCandidateDetailProjection {
             skipped,
             is_added,
             resumed_identify_state,
-            answer,
+            verdict,
             metadata_provenance,
             metadata_author,
             metadata_revision,
@@ -509,19 +524,19 @@ impl ImportCandidateDetailProjection {
         } else {
             failure
         };
-        let classification = answer.as_ref().filter(|_| actionable);
+        let verdict = verdict.as_ref().filter(|_| actionable);
         let placement = place(
             skipped,
             is_added,
             import_status.as_ref(),
             metadata_author,
             metadata_draft.clone().shape().is_ok(),
-            classification,
+            verdict.map(classify_summary).as_ref(),
         );
         let action_basis = CandidateActionBasis::of(
             actionable,
             &placement,
-            classification,
+            verdict.map(|verdict| verdict.kind),
             candidate.grouping.is_some(),
         );
         let live = CandidateLiveState::of(&action_basis, facts.clone());
@@ -541,7 +556,7 @@ impl ImportCandidateDetailProjection {
         };
         let pane_placement = match placement.tab() {
             TriageTab::Pending => CandidatePanePlacement::Pending {
-                ready_check: super::triage::ready_check(&placement),
+                folder_check: placement.folder_check().cloned(),
                 records: draft_records(),
             },
             TriageTab::Skipped => CandidatePanePlacement::Skipped {
@@ -586,15 +601,16 @@ impl ImportCandidateDetailProjection {
 
 /// Where the queue places the candidate a pane shows, with what the pane
 /// states beside it. A Done candidate's pane is the library release it became,
-/// so it carries nothing the candidate's draft says: the Ready check and the
+/// so it carries nothing the candidate's draft says: the folder check and the
 /// catalogs the draft was read from are a queued candidate's alone.
 #[derive(Debug, Clone, PartialEq)]
 pub enum CandidatePanePlacement {
     /// In Pending.
     Pending {
-        /// The Ready check the candidate did not pass, stated beside its
-        /// Import: [`crate::import::triage::ready_check`] of its placement.
-        ready_check: Option<crate::identify::NeedsYou>,
+        /// The check against the folder the candidate's found release did
+        /// not pass, stated beside its Import: its placement's
+        /// [`crate::import::TriagePlacement::folder_check`].
+        folder_check: Option<crate::identify::FolderCheck>,
         /// Every catalog the draft was read from, in the order surfaces list
         /// catalogs. Empty for a draft read from the files' tags, typed in,
         /// or not there yet.

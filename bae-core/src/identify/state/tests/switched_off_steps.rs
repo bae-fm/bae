@@ -136,7 +136,7 @@ fn a_run_whose_lookups_are_all_off_offers_manual_search() {
     );
     assert_eq!(
         crate::identify::classify(&crate::identify::TerminalVerdict::try_from(state).unwrap()),
-        crate::identify::QueueClassification::NeedsYou(crate::identify::NeedsYou::NothingToLookUp)
+        crate::identify::QueueClassification::NeedsYou(None)
     );
 }
 

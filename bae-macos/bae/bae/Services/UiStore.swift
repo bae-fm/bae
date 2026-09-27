@@ -143,7 +143,7 @@ class UiStore: @unchecked Sendable {
     /// rows would read as rows gone missing.
     var importCandidateTab: BridgeTriageTab = .pending
     var importCandidateFilterText: String = ""
-    var importCandidatePlacementFilter: BridgePlacementFilter = .any
+    var importCandidateIdentificationFilter: BridgeIdentificationOutcome?
 
     let candidateActionRun = ImportCandidateActionRun()
     private var releaseGroupDisclosureState: [ReleaseGroupDisclosureID: Bool] =
@@ -345,8 +345,10 @@ class UiStore: @unchecked Sendable {
         importCandidateFilterText = text
     }
 
-    func setImportCandidatePlacementFilter(_ filter: BridgePlacementFilter) {
-        importCandidatePlacementFilter = filter
+    func setImportCandidateIdentificationFilter(
+        _ filter: BridgeIdentificationOutcome?
+    ) {
+        importCandidateIdentificationFilter = filter
     }
 
     /// The groups folded shut, as the list request names them. A group with no

@@ -258,28 +258,24 @@ fn produced_keys() -> Vec<String> {
         keys.push(bridge_invalid_reason_key(r));
     }
 
-    // bridge_needs_you_key — every variant carries a key.
-    for needs_you in [
-        BridgeNeedsYou::SeveralMatches { count: 0 },
-        BridgeNeedsYou::NoMatch,
-        BridgeNeedsYou::NothingToLookUp,
-        BridgeNeedsYou::LookupFailed,
-        BridgeNeedsYou::TrackCountDisagrees {
+    // bridge_folder_check_key — every variant carries a key.
+    for folder_check in [
+        BridgeFolderCheck::TrackCountDisagrees {
             local: 0,
             source: 0,
         },
-        BridgeNeedsYou::SourceTracksUnknown,
-        BridgeNeedsYou::MediumDisagrees {
+        BridgeFolderCheck::SourceTracksUnknown,
+        BridgeFolderCheck::MediumDisagrees {
             folder: BridgeMediumConflict::CdRip,
         },
-        BridgeNeedsYou::MediumDisagrees {
+        BridgeFolderCheck::MediumDisagrees {
             folder: BridgeMediumConflict::NotCdAudio { sample_rate_hz: 0 },
         },
-        BridgeNeedsYou::MediumDisagrees {
+        BridgeFolderCheck::MediumDisagrees {
             folder: BridgeMediumConflict::MonoAudio,
         },
     ] {
-        keys.push(bridge_needs_you_key(&needs_you));
+        keys.push(bridge_folder_check_key(&folder_check));
     }
 
     // bridge_prepare_step_key — every variant carries a key.

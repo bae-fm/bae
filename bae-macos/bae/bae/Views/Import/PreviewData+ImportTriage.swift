@@ -44,7 +44,6 @@
         static func triageRow(
             for candidate: Candidate,
             placement: BridgeTriagePlacement,
-            readyCheck: BridgeNeedsYou? = nil,
             selectable: Bool = false,
             matched: BridgeMatchedRelease?,
             metadataSummary: BridgeTriageMetadataSummary? = nil,
@@ -61,7 +60,6 @@
                 separable: false,
                 actionable: true,
                 placement: placement,
-                readyCheck: readyCheck,
                 actionBasis: BridgeCandidateActionBasis(
                     actionable: true,
                     placement: placement,
@@ -352,9 +350,7 @@
         /// the row names its sources and carries the question at once.
         static let triageRowIdentifiedSeveralMatches = triageRow(
             for: importTabIdentifiedSeveralMatchesCandidate,
-            placement: .needsYou(
-                reason: .severalMatches(count: 2)
-            ),
+            placement: .needsYou(folderCheck: nil),
             matched: nil,
             metadataSummary: BridgeTriageMetadataSummary(
                 albumTitle: "Album Title Fourteen",
@@ -401,9 +397,7 @@
 
         static let triageRowPickAPressing = triageRow(
             for: importTabSeveralMatchesCandidate,
-            placement: .needsYou(
-                reason: .severalMatches(count: 2)
-            ),
+            placement: .needsYou(folderCheck: nil),
             // Several matches — the pressing is exactly what's unsettled, so
             // there is no `pressing` to show yet, only the lead's title and
             // artist.
@@ -426,9 +420,7 @@
         /// question any multi-match does.
         static let triageRowSeveralMatchesFromSignals = triageRow(
             for: importTabDisagreementCandidate,
-            placement: .needsYou(
-                reason: .severalMatches(count: 2)
-            ),
+            placement: .needsYou(folderCheck: nil),
             matched: nil,
             metadataSummary: nil
         )
@@ -436,7 +428,7 @@
         static let triageRowTrackMismatch = triageRow(
             for: importTabTrackMismatchCandidate,
             placement: .needsYou(
-                reason: .trackCountDisagrees(local: 1, source: 10)
+                folderCheck: .trackCountDisagrees(local: 1, source: 10)
             ),
             matched: triageMatch(
                 releaseId: "rel-track-mismatch",
@@ -473,9 +465,7 @@
 
         static let triageRowNoMatch = triageRow(
             for: importTabNoMatchCandidate,
-            placement: .needsYou(
-                reason: .noMatch
-            ),
+            placement: .needsYou(folderCheck: nil),
             matched: nil,
             metadataSummary: nil
         )
@@ -624,9 +614,7 @@
             ),
             triageRow(
                 for: importTabGroupedCandidates[1],
-                placement: .needsYou(
-                    reason: .noMatch
-                ),
+                placement: .needsYou(folderCheck: nil),
                 matched: nil,
                 metadataSummary: nil
             ),
@@ -804,8 +792,10 @@
                 if case .identified(let records) = row.reading { records }
                 else { [] }
             return switch row.placement {
-            case .pending, .ready, .needsYou, .failed:
-                .pending(readyCheck: row.readyCheck, records: records)
+            case .needsYou(let folderCheck):
+                .pending(folderCheck: folderCheck, records: records)
+            case .pending, .ready, .failed:
+                .pending(folderCheck: nil, records: records)
             case .skipped: .skipped(records: records)
             case .done: .done
             }

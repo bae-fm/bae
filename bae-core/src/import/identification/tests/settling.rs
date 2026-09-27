@@ -671,7 +671,7 @@ async fn two_distinct_pressings_do_not_settle() {
     );
     assert_eq!(
         fixture.classification_for(&dir).await,
-        QueueClassification::NeedsYou(NeedsYou::SeveralMatches { count: 2 })
+        QueueClassification::NeedsYou(None)
     );
 }
 

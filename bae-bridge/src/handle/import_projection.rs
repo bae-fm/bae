@@ -182,7 +182,6 @@ impl crate::types::BridgeTriageRow {
             separable,
             actionable,
             placement,
-            ready_check,
             action_basis,
             matched,
             metadata_summary,
@@ -200,7 +199,6 @@ impl crate::types::BridgeTriageRow {
             separable,
             actionable,
             placement: crate::types::BridgeTriagePlacement::from_core(placement),
-            ready_check: ready_check.map(crate::types::BridgeNeedsYou::from_core),
             action_basis: crate::types::BridgeCandidateActionBasis::from_core(action_basis),
             matched: matched.map(crate::types::BridgeMatchedRelease::from_core),
             metadata_summary: metadata_summary
@@ -274,7 +272,7 @@ mirror_enum! {
     variants: {
         Pending,
         Ready,
-        NeedsYou { reason: (crate::types::BridgeNeedsYou) },
+        NeedsYou { folder_check: (opt crate::types::BridgeFolderCheck) },
         Failed,
         Done,
         Skipped,
@@ -327,14 +325,10 @@ impl crate::types::BridgeIdentificationStatus {
 }
 
 mirror_enum! {
-    crate::types::BridgeNeedsYou = bae_core::identify::NeedsYou,
+    crate::types::BridgeFolderCheck = bae_core::identify::FolderCheck,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     variants: {
-        SeveralMatches { count },
-        NoMatch,
-        NothingToLookUp,
-        LookupFailed,
         TrackCountDisagrees { local, source },
         SourceTracksUnknown,
         MediumDisagrees { folder: (crate::types::BridgeMediumConflict) },
@@ -404,32 +398,10 @@ mirror_enum! {
 }
 
 mirror_enum! {
-    crate::types::BridgeNeedsYouKind = bae_core::identify::NeedsYouKind,
+    crate::types::BridgeIdentificationOutcome = bae_core::import::IdentificationOutcome,
+    from_core: pub(crate) fn,
     into_core: fn,
-    variants: {
-        SeveralMatches,
-        NoMatch,
-        NothingToLookUp,
-        LookupFailed,
-        TrackCountDisagrees,
-        SourceTracksUnknown,
-        MediumDisagrees,
-    },
-}
-
-impl crate::types::BridgePlacementFilter {
-    fn into_core(self) -> bae_core::import::PlacementFilter {
-        use bae_core::import::PlacementFilter;
-        match self {
-            Self::Any => PlacementFilter::Any,
-            Self::Ready => PlacementFilter::Ready,
-            Self::NeedsYou { kind } => {
-                PlacementFilter::NeedsYou(kind.map(crate::types::BridgeNeedsYouKind::into_core))
-            }
-            Self::Failed => PlacementFilter::Failed,
-            Self::Unanswered => PlacementFilter::Unanswered,
-        }
-    }
+    variants: { NotIdentified, OneRelease, SeveralReleases, NoMatch, LookupFailed },
 }
 
 mirror_struct! {
@@ -438,7 +410,7 @@ mirror_struct! {
     fields: {
         tab: (crate::types::BridgeTriageTab),
         filter_text,
-        placement: (crate::types::BridgePlacementFilter),
+        identification: (opt crate::types::BridgeIdentificationOutcome),
         collapsed_groups: (each crate::types::BridgeFolderReleaseDecisionKey),
         order: (crate::types::BridgeImportListOrder),
     },
@@ -601,7 +573,7 @@ mirror_enum! {
     from_core: fn,
     variants: {
         Pending {
-            ready_check: (opt crate::types::BridgeNeedsYou),
+            folder_check: (opt crate::types::BridgeFolderCheck),
             records: (each crate::types::BridgeReleaseRecord),
         },
         Skipped { records: (each crate::types::BridgeReleaseRecord) },

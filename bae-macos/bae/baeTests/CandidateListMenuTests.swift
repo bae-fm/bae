@@ -24,7 +24,7 @@ final class CandidateListMenuTests: XCTestCase {
     private func menu(
         status: BridgeFolderScanStatus,
         sortOrder: BridgeImportListOrder = .newestFirst,
-        placementFilter: BridgePlacementFilter = .any
+        identificationFilter: BridgeIdentificationOutcome? = nil
     ) -> CandidateListMenu {
         CandidateListMenu(
             watchedFolders: [
@@ -36,9 +36,9 @@ final class CandidateListMenuTests: XCTestCase {
             hasGroups: false,
             sortOrder: sortOrder,
             onSetSortOrder: { _ in },
-            placementFilter: placementFilter,
-            placementFilterApplies: true,
-            onSetPlacementFilter: { _ in },
+            identificationFilter: identificationFilter,
+            identificationFilterApplies: true,
+            onSetIdentificationFilter: { _ in },
             onAddFolder: {},
             onSetAllGroupsExpanded: { _ in },
             onRefreshFolder: { _ in },
@@ -55,17 +55,14 @@ final class CandidateListMenuTests: XCTestCase {
     }
 
     @MainActor
-    func testChangedPlacementFilterReplacesTheMenuCheckmark() {
+    func testChangedIdentificationFilterReplacesTheMenuCheckmark() {
         XCTAssertNotEqual(
             menu(status: .complete),
-            menu(status: .complete, placementFilter: .ready)
+            menu(status: .complete, identificationFilter: .oneRelease)
         )
         XCTAssertNotEqual(
-            menu(status: .complete, placementFilter: .needsYou(kind: nil)),
-            menu(
-                status: .complete,
-                placementFilter: .needsYou(kind: .noMatch)
-            )
+            menu(status: .complete, identificationFilter: .severalReleases),
+            menu(status: .complete, identificationFilter: .noMatch)
         )
     }
 }

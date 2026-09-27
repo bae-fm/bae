@@ -378,7 +378,7 @@ async fn a_verdict_the_folder_rules_out_reads_back_as_its_question() {
     assert_eq!(
         rows(&projection)[0].placement,
         crate::import::TriagePlacement::NeedsYou {
-            reason: crate::identify::NeedsYou::MediumDisagrees { folder: conflict }
+            folder_check: Some(crate::identify::FolderCheck::MediumDisagrees { folder: conflict })
         }
     );
 }
@@ -545,7 +545,7 @@ async fn a_verdict_from_another_revision_does_not_resume() {
         detail.resumed_identify_state,
         crate::identify::IdentifyState::Idle
     ));
-    assert!(detail.answer.is_none());
+    assert!(detail.verdict.is_none());
 }
 
 /// The sidebar owns the compact applied-draft projection. Closing the detail

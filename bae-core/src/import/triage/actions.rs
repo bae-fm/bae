@@ -1,7 +1,7 @@
 use super::{
-    IdentificationStatus, ImportStanding, NeedsYou, QueueClassification, TriagePlacement,
-    TriageRuntimeFacts, TriageSkipAction,
+    IdentificationStatus, ImportStanding, TriagePlacement, TriageRuntimeFacts, TriageSkipAction,
 };
+use crate::identify::VerdictKind;
 
 /// Commands offered for a candidate at its current lifecycle position —
 /// every one a candidate can take, so every surface that acts on candidates
@@ -65,19 +65,18 @@ pub struct CandidateActionBasis {
 }
 
 impl CandidateActionBasis {
+    /// `lookup` is the shape of the candidate's stored lookup result, or
+    /// `None` with none.
     pub(crate) fn of(
         actionable: bool,
         placement: &TriagePlacement,
-        answer: Option<&QueueClassification>,
+        lookup: Option<VerdictKind>,
         separable: bool,
     ) -> Self {
         Self {
             actionable,
             placement: placement.clone(),
-            lookup_failed: matches!(
-                answer,
-                Some(QueueClassification::NeedsYou(NeedsYou::LookupFailed))
-            ),
+            lookup_failed: lookup == Some(VerdictKind::Failed),
             separable,
         }
     }
@@ -190,11 +189,8 @@ impl CandidateLiveState {
 mod tests {
     use super::*;
 
-    fn basis(
-        placement: TriagePlacement,
-        answer: Option<&QueueClassification>,
-    ) -> CandidateActionBasis {
-        CandidateActionBasis::of(true, &placement, answer, false)
+    fn basis(placement: TriagePlacement, lookup: Option<VerdictKind>) -> CandidateActionBasis {
+        CandidateActionBasis::of(true, &placement, lookup, false)
     }
 
     fn identifying(status: IdentificationStatus) -> TriageRuntimeFacts {
@@ -276,7 +272,7 @@ mod tests {
             IdentificationStatus::Finalizing,
         ] {
             assert_eq!(
-                basis(TriagePlacement::Ready, Some(&QueueClassification::Ready))
+                basis(TriagePlacement::Ready, Some(VerdictKind::Found))
                     .actions(&identifying(status)),
                 vec![
                     CandidateAction::CancelIdentification,
@@ -323,7 +319,7 @@ mod tests {
             blocked.actions(&rest),
             vec![CandidateAction::Separate, CandidateAction::RevealFolder]
         );
-        let lone = basis(TriagePlacement::Ready, Some(&QueueClassification::Ready));
+        let lone = basis(TriagePlacement::Ready, Some(VerdictKind::Found));
         assert!(lone.actions(&rest).contains(&CandidateAction::Combine));
         let done = CandidateActionBasis::of(true, &TriagePlacement::Done, None, true);
         assert_eq!(done.actions(&rest), vec![CandidateAction::RevealFolder]);
@@ -336,14 +332,11 @@ mod tests {
 
     #[test]
     fn lookup_and_finalization_failures_offer_retry() {
-        let failed_lookup = QueueClassification::NeedsYou(NeedsYou::LookupFailed);
         for placement in [
-            TriagePlacement::NeedsYou {
-                reason: NeedsYou::LookupFailed,
-            },
+            TriagePlacement::NeedsYou { folder_check: None },
             TriagePlacement::Ready,
         ] {
-            assert!(basis(placement, Some(&failed_lookup))
+            assert!(basis(placement, Some(VerdictKind::Failed))
                 .actions(&TriageRuntimeFacts::default())
                 .contains(&CandidateAction::RetryIdentification));
         }
@@ -356,5 +349,13 @@ mod tests {
         assert!(!basis(TriagePlacement::Pending, None)
             .actions(&TriageRuntimeFacts::default())
             .contains(&CandidateAction::RetryIdentification));
+        for lookup in [VerdictKind::Found, VerdictKind::NotFound, VerdictKind::ManualOnly] {
+            assert!(
+                !basis(TriagePlacement::NeedsYou { folder_check: None }, Some(lookup))
+                    .actions(&TriageRuntimeFacts::default())
+                    .contains(&CandidateAction::RetryIdentification),
+                "{lookup:?} is a lookup that finished"
+            );
+        }
     }
 }

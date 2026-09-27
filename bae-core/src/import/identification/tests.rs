@@ -13,7 +13,7 @@ use crate::config::{Config, ConfigHandle};
 use crate::db::{
     Database, DbCandidateIdentifyResult, DbImportCandidateState, NewImportCandidateVerdict,
 };
-use crate::identify::ready::{classify, NeedsYou, QueueClassification};
+use crate::identify::ready::{classify, FolderCheck, QueueClassification};
 use crate::import::search::{MetadataResult, SourceTracks};
 use crate::import::{FolderCandidate, ImportCandidateSnapshot};
 use crate::library::LibraryManager;

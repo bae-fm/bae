@@ -428,7 +428,7 @@
                     candidate: folder,
                     actionable: true,
                     resumedIdentifyState: .idle,
-                    placement: .pending(readyCheck: nil, records: []),
+                    placement: .pending(folderCheck: nil, records: []),
                     live: BridgeCandidateLiveState(
                         identification: nil,
                         importing: false,

@@ -78,10 +78,7 @@ fn failed_with_findings(matches: Vec<MetadataResult>, track_count: u32) -> Termi
 #[test]
 fn a_failed_verdict_is_never_ready_whatever_it_found() {
     let verdict = failed_with_findings(vec![result("rel-a", listing(11))], 11);
-    assert_eq!(
-        classify(&verdict),
-        QueueClassification::NeedsYou(NeedsYou::LookupFailed)
-    );
+    assert_eq!(classify(&verdict), QueueClassification::NeedsYou(None));
 }
 
 /// The barcode printed on the sleeve, which both sources state.
@@ -231,10 +228,7 @@ fn the_pressing_count_is_the_rows_the_run_recorded() {
         ledger: None,
     };
     assert_eq!(VerdictSummary::of(&verdict).pressing_count, 2);
-    assert_eq!(
-        classify(&verdict),
-        QueueClassification::NeedsYou(NeedsYou::SeveralMatches { count: 2 })
-    );
+    assert_eq!(classify(&verdict), QueueClassification::NeedsYou(None));
 }
 
 /// Two sources naming *different* pressings is still the user's choice, and
@@ -248,10 +242,7 @@ fn two_sources_naming_different_pressings_stay_a_choice() {
         ],
         11,
     );
-    assert_eq!(
-        classify(&verdict),
-        QueueClassification::NeedsYou(NeedsYou::SeveralMatches { count: 2 })
-    );
+    assert_eq!(classify(&verdict), QueueClassification::NeedsYou(None));
 }
 
 /// An exact signal is not a unique result: a disc ID routinely returns several
@@ -263,10 +254,7 @@ fn several_matches_are_a_choice_for_the_user() {
         vec![result("mb-1", listing(11)), result("mb-2", listing(11))],
         11,
     );
-    assert_eq!(
-        classify(&verdict),
-        QueueClassification::NeedsYou(NeedsYou::SeveralMatches { count: 2 })
-    );
+    assert_eq!(classify(&verdict), QueueClassification::NeedsYou(None));
 }
 
 /// A release that lists no tracks has no count to check the folder's against,
@@ -278,7 +266,7 @@ fn a_match_listing_no_tracks_is_never_admitted() {
     for source_tracks in [None, Some(SourceTracks::Nothing)] {
         assert_eq!(
             classify(&found(vec![result("mb-1", source_tracks.clone())], 11)),
-            QueueClassification::NeedsYou(NeedsYou::SourceTracksUnknown),
+            QueueClassification::NeedsYou(Some(FolderCheck::SourceTracksUnknown)),
             "{source_tracks:?}"
         );
     }
@@ -290,27 +278,28 @@ fn a_match_listing_no_tracks_is_never_admitted() {
 fn a_count_mismatch_names_both_counts() {
     assert_eq!(
         classify(&found(vec![result("mb-1", listing(12))], 11)),
-        QueueClassification::NeedsYou(NeedsYou::TrackCountDisagrees {
+        QueueClassification::NeedsYou(Some(FolderCheck::TrackCountDisagrees {
             local: 11,
             source: 12
-        })
+        }))
     );
 }
 
-/// The other two terminal verdicts each ask their own question; neither can be
-/// Ready, and neither collapses into the other.
+/// A verdict that found nothing to check the folder against is never Ready,
+/// and names no folder check: the lookup result is the whole story, and the
+/// identify steps already state it.
 #[test]
-fn every_other_verdict_names_its_own_question() {
+fn a_verdict_that_found_nothing_fails_no_folder_check() {
     assert_eq!(
         classify(&TerminalVerdict::NotFoundAnywhere { ledger: None }),
-        QueueClassification::NeedsYou(NeedsYou::NoMatch)
+        QueueClassification::NeedsYou(None)
     );
     assert_eq!(
         classify(&TerminalVerdict::ManualOnly {
             track_count: 11,
             ledger: None,
         },),
-        QueueClassification::NeedsYou(NeedsYou::NothingToLookUp)
+        QueueClassification::NeedsYou(None)
     );
 }
 
@@ -415,28 +404,50 @@ fn a_summary_keeps_every_fact_the_rule_consults() {
 /// folder's own files rule it out: the person picks, or does not.
 #[test]
 fn a_release_the_folder_rules_out_needs_you() {
+    assert_eq!(
+        classify(&ruled_out_by_the_folder(vec![result("mb-1", listing(11))])),
+        QueueClassification::NeedsYou(Some(FolderCheck::MediumDisagrees {
+            folder: crate::identify::MediumConflict::NotCdAudio {
+                sample_rate_hz: 96_000
+            }
+        }))
+    );
+}
+
+/// The medium is checked before the pressing count, so a folder that rules
+/// out every one of several pressings names that, rather than leaving the
+/// choice between them unexplained.
+#[test]
+fn a_medium_the_folder_rules_out_is_named_over_several_pressings() {
+    assert_eq!(
+        classify(&ruled_out_by_the_folder(vec![
+            result("mb-1", listing(11)),
+            result("mb-2", listing(11)),
+        ])),
+        QueueClassification::NeedsYou(Some(FolderCheck::MediumDisagrees {
+            folder: crate::identify::MediumConflict::NotCdAudio {
+                sample_rate_hz: 96_000
+            }
+        }))
+    );
+}
+
+/// `found`, with the folder's 96 kHz audio ruling out every match as a CD.
+fn ruled_out_by_the_folder(matches: Vec<MetadataResult>) -> TerminalVerdict {
     let TerminalVerdict::Found {
         mut findings,
         track_count,
         ledger,
-    } = found(vec![result("mb-1", listing(11))], 11)
+    } = found(matches, 11)
     else {
         unreachable!("found builds a found verdict");
     };
     findings.medium_conflict = Some(crate::identify::MediumConflict::NotCdAudio {
         sample_rate_hz: 96_000,
     });
-    let verdict = TerminalVerdict::Found {
+    TerminalVerdict::Found {
         findings,
         track_count,
         ledger,
-    };
-    assert_eq!(
-        classify(&verdict),
-        QueueClassification::NeedsYou(NeedsYou::MediumDisagrees {
-            folder: crate::identify::MediumConflict::NotCdAudio {
-                sample_rate_hz: 96_000
-            }
-        })
-    );
+    }
 }

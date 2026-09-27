@@ -7,11 +7,12 @@ import SwiftUI
 /// in the whole import is audio that will not decode, which core raises.
 struct ImportCommitControls {
     let unansweredCount: Int
-    /// What the Ready rule found that keeps this candidate out of a bulk
+    /// The check against the folder that keeps this candidate out of a bulk
     /// import — the release listing a different number of tracks than the
-    /// folder holds, or none at all. Stated beside the Import it bears on,
-    /// which stays available: importing it anyway is the person's call.
-    let readyCheck: BridgeNeedsYou?
+    /// folder holds, none at all, or a medium the folder's files rule out.
+    /// Stated beside the Import it bears on, which stays available:
+    /// importing it anyway is the person's call.
+    let folderCheck: BridgeFolderCheck?
     /// Routes the running import's progress to the leaf line that draws it.
     let candidateKey: String
     /// Where the candidate's import stands: running now, or what the last
@@ -197,13 +198,13 @@ struct ImportReleaseHeader: View {
             .disabled(isReading)
             Spacer(minLength: 12)
             if let commit {
-                if let readyCheck = commit.readyCheck {
-                    Text(readyCheck.localizedText)
+                if let folderCheck = commit.folderCheck {
+                    Text(folderCheck.localizedText)
                         .font(.system(size: 11.5))
                         .foregroundStyle(.orange)
                         .lineLimit(1)
                         .truncationMode(.tail)
-                        .help(readyCheck.localizedText)
+                        .help(folderCheck.localizedText)
                 }
                 if commit.unansweredCount > 0 {
                     Text(

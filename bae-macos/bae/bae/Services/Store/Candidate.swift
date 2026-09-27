@@ -533,10 +533,11 @@ struct Candidate: Equatable, Identifiable {
         }
     }
 
-    /// The Ready check this candidate did not pass, stated beside its Import.
-    var readyCheck: BridgeNeedsYou? {
-        guard case .pending(let readyCheck, _) = placement else { return nil }
-        return readyCheck
+    /// The check against the folder this candidate's found release did not
+    /// pass, stated beside its Import.
+    var folderCheck: BridgeFolderCheck? {
+        guard case .pending(let folderCheck, _) = placement else { return nil }
+        return folderCheck
     }
 
     var metadataDraftIsBlank: Bool {

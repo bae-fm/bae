@@ -6,8 +6,9 @@
 //! it — importing a second copy is the person's to moderate.
 //!
 //! Nothing here blocks an import. Failing the rule means the candidate lands in
-//! Needs you *with the disagreement named*, and importing it from there is one
-//! click; the rule only decides what may be imported unattended.
+//! Needs you — with the check against the folder it failed named, when that is
+//! why — and importing it from there is one click; the rule only decides what
+//! may be imported unattended.
 
 use super::combine::LookupProvenance;
 use super::verdict::TerminalVerdict;
@@ -16,33 +17,24 @@ use crate::import::cover_art::RemoteCover;
 use crate::import::search::{MetadataResult, SourceTracks};
 use crate::import::Catalog;
 
-/// What the queue needs from the user for one candidate, derived from its
-/// stored verdict. `Ready` is the only bulk-importable answer; every other
-/// variant names the question being asked, which is what the sidebar groups by.
+/// Whether the queue may import one candidate unattended, derived from its
+/// stored verdict. `Ready` is the only bulk-importable answer.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum QueueClassification {
     /// Exactly one pressing, and the source lists as many tracks as the
     /// folder holds.
     Ready,
-    NeedsYou(NeedsYou),
+    /// Not Ready. Carries the check against the folder the found release did
+    /// not pass, when that is why; `None` when the lookup result itself is —
+    /// nothing matched, nothing to look up, a lookup failed, or several
+    /// pressings to choose between — which the identify steps already show.
+    NeedsYou(Option<FolderCheck>),
 }
 
-/// Why a candidate is not Ready — one variant per question the user is being
-/// asked, carrying what it takes to state the disagreement on the row.
+/// A check of the found release against the folder that did not pass,
+/// carrying what it takes to state the disagreement beside Import.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum NeedsYou {
-    /// Several pressings matched; which one is on disk is the user's call.
-    /// `count` is pressings, not result rows — the number of rows the list
-    /// shows.
-    SeveralMatches { count: u32 },
-    /// Signals ran and matched nothing anywhere.
-    NoMatch,
-    /// Nothing to look up: no disc-ID artifact and no barcode source, or the
-    /// lookups there were are switched off. Manual search is the only way
-    /// forward.
-    NothingToLookUp,
-    /// An automatic provider lookup failed. A person may retry it explicitly.
-    LookupFailed,
+pub enum FolderCheck {
     /// The source's track count differs from the folder's.
     TrackCountDisagrees { local: u32, source: u32 },
     /// The release lists no tracks, so its count cannot be checked against
@@ -53,33 +45,6 @@ pub enum NeedsYou {
     /// prove. The releases are offered for a person to pick; none is picked
     /// for them.
     MediumDisagrees { folder: MediumConflict },
-}
-
-/// Which question a [`NeedsYou`] asks, without what it carries to state it:
-/// what a list is filtered by, where the row's operands do not matter.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum NeedsYouKind {
-    SeveralMatches,
-    NoMatch,
-    NothingToLookUp,
-    LookupFailed,
-    TrackCountDisagrees,
-    SourceTracksUnknown,
-    MediumDisagrees,
-}
-
-impl NeedsYou {
-    pub fn kind(&self) -> NeedsYouKind {
-        match self {
-            NeedsYou::SeveralMatches { .. } => NeedsYouKind::SeveralMatches,
-            NeedsYou::NoMatch => NeedsYouKind::NoMatch,
-            NeedsYou::NothingToLookUp => NeedsYouKind::NothingToLookUp,
-            NeedsYou::LookupFailed => NeedsYouKind::LookupFailed,
-            NeedsYou::TrackCountDisagrees { .. } => NeedsYouKind::TrackCountDisagrees,
-            NeedsYou::SourceTracksUnknown => NeedsYouKind::SourceTracksUnknown,
-            NeedsYou::MediumDisagrees { .. } => NeedsYouKind::MediumDisagrees,
-        }
-    }
 }
 
 /// Which shape a stored verdict has. The first three mirror the normal verdict
@@ -211,16 +176,17 @@ pub fn classify(verdict: &TerminalVerdict) -> QueueClassification {
 pub fn classify_summary(summary: &VerdictSummary) -> QueueClassification {
     let track_count = match summary.kind {
         VerdictKind::Found => summary.track_count.unwrap_or_default(),
-        VerdictKind::NotFound => return QueueClassification::NeedsYou(NeedsYou::NoMatch),
-        VerdictKind::ManualOnly => return QueueClassification::NeedsYou(NeedsYou::NothingToLookUp),
-        VerdictKind::Failed => return QueueClassification::NeedsYou(NeedsYou::LookupFailed),
+        VerdictKind::NotFound | VerdictKind::ManualOnly | VerdictKind::Failed => {
+            return QueueClassification::NeedsYou(None)
+        }
     };
 
     // A release the folder's own files rule out is never picked unattended,
     // however well the lookups agree on it: the person reads the evidence and
-    // picks, or does not.
+    // picks, or does not. Checked before the pressing count, so it is named
+    // over several pressings too.
     if let Some(folder) = summary.medium_conflict {
-        return QueueClassification::NeedsYou(NeedsYou::MediumDisagrees { folder });
+        return QueueClassification::NeedsYou(Some(FolderCheck::MediumDisagrees { folder }));
     }
 
     // "An exact signal is not the same as a unique result" — a disc ID or a
@@ -229,9 +195,7 @@ pub fn classify_summary(summary: &VerdictSummary) -> QueueClassification {
     // pressing are not that choice: they are one row on the list, picked whole,
     // so they count once here and the candidate is still answered.
     let (Some(lead), 1) = (summary.lead.as_ref(), summary.pressing_count) else {
-        return QueueClassification::NeedsYou(NeedsYou::SeveralMatches {
-            count: summary.pressing_count,
-        });
+        return QueueClassification::NeedsYou(None);
     };
 
     // `None` (nobody has asked the source yet) and `Nothing` (it answered and
@@ -239,7 +203,7 @@ pub fn classify_summary(summary: &VerdictSummary) -> QueueClassification {
     // a lookup, the other is finished — but they ask the user the same
     // question, so they classify alike.
     let Some(SourceTracks::Listed { count }) = &lead.source_tracks else {
-        return QueueClassification::NeedsYou(NeedsYou::SourceTracksUnknown);
+        return QueueClassification::NeedsYou(Some(FolderCheck::SourceTracksUnknown));
     };
 
     // The count, never the lengths. A source's lengths are whatever it
@@ -248,10 +212,10 @@ pub fn classify_summary(summary: &VerdictSummary) -> QueueClassification {
     // the source than about the match. The mapping pane shows both durations
     // per row for a person who wants to read them.
     if *count != track_count {
-        return QueueClassification::NeedsYou(NeedsYou::TrackCountDisagrees {
+        return QueueClassification::NeedsYou(Some(FolderCheck::TrackCountDisagrees {
             local: track_count,
             source: *count,
-        });
+        }));
     }
 
     QueueClassification::Ready

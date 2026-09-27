@@ -27,13 +27,15 @@ pub enum TriagePlacement {
     /// for what is running for it, which can keep a bulk import off it for a
     /// while — see [`CandidateActionBasis::actions`].
     Ready,
+    /// A verdict classified short of Ready, with the check against the folder
+    /// its found release did not pass when that is why.
     NeedsYou {
-        reason: NeedsYou,
+        folder_check: Option<FolderCheck>,
     },
     /// The last attempt to import this candidate failed and nothing has been
     /// attempted since. Pending, not Done: the folder is not in the library
     /// and the work is waiting on another attempt. Its own variant rather than
-    /// a Needs-you group because nothing about the release is in question —
+    /// Needs you because nothing about the release is in question —
     /// the pick stands, the attempt did not. What went wrong is the row's
     /// [`TriageImportStatus::Error`] — or, for a release read from several
     /// folders that cannot be worked on, its [`TriageImportStatus::Blocked`] —
@@ -52,6 +54,15 @@ impl TriagePlacement {
             | Self::Failed => TriageTab::Pending,
             Self::Done => TriageTab::Done,
             Self::Skipped => TriageTab::Skipped,
+        }
+    }
+
+    /// The check against the folder this row's found release did not pass,
+    /// stated beside the Import it bears on. Only a Needs-you row has one.
+    pub fn folder_check(&self) -> Option<&FolderCheck> {
+        match self {
+            Self::NeedsYou { folder_check } => folder_check.as_ref(),
+            Self::Pending | Self::Ready | Self::Failed | Self::Done | Self::Skipped => None,
         }
     }
 
@@ -361,9 +372,6 @@ pub struct TriageRow {
     pub separable: bool,
     pub actionable: bool,
     pub placement: TriagePlacement,
-    /// The Ready check this row did not pass, stated beside its Import:
-    /// [`crate::import::triage::ready_check`] of its placement.
-    pub ready_check: Option<NeedsYou>,
     /// What the row's commands are decided from in the tables. The commands
     /// themselves depend on what is running for the candidate too, so they
     /// are its [`CandidateLiveState`], read with this.

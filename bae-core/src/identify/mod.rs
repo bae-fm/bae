@@ -46,8 +46,8 @@ pub use agreements::{agreements_of, judged_results, Agreements, CandidateText};
 pub use combine::{Findings, LibraryStatuses, LookupProvenance, NarrowedOut};
 pub use medium::MediumConflict;
 pub use ready::{
-    classify, classify_summary, LeadMatch, NeedsYou, NeedsYouKind, QueueClassification,
-    VerdictKind, VerdictSummary,
+    classify, classify_summary, FolderCheck, LeadMatch, QueueClassification, VerdictKind,
+    VerdictSummary,
 };
 pub use service::{IdentifyRunId, IdentifyServiceHandle};
 pub use state::{

@@ -1,7 +1,7 @@
 //! The import sidebar's rows, decided once in core.
 //!
 //! The sidebar asks the same questions of every candidate — which tab it
-//! belongs to, which Needs-you group it joins, what it leads with, and which
+//! belongs to, whether it is Ready, what it leads with, and which
 //! commands it offers — and every one of them is a rule rather
 //! than a rendering. [`crate::identify::view`] is the precedent: shape the
 //! state for the surfaces once, here, so both desktop UIs render the same
@@ -10,9 +10,9 @@
 //! [`TerminalVerdict`](crate::identify::TerminalVerdict).
 //!
 //! **Nothing here formats text.** Years, counts, durations and byte sizes cross
-//! as numbers, and a disagreement crosses as its own [`NeedsYou`] variant
-//! carrying its operands, so each platform builds the sentence in its own
-//! locale.
+//! as numbers, and a failed check against the folder crosses as its own
+//! [`FolderCheck`] variant carrying its operands, so each platform builds the
+//! sentence in its own locale.
 //!
 //! **Nothing here re-classifies.** [`crate::identify::ready::classify`] already
 //! answers what the queue needs from the user; this module decides where that
@@ -24,7 +24,7 @@ use super::search::{ImportSearchReleaseDetail, SourceTracks};
 use super::types::{Catalog, MetadataProvenance};
 use super::MetadataAuthor;
 use super::{CandidateRuntimeSnapshot, ImportedRelease};
-use crate::identify::{LeadMatch, NeedsYou, QueueClassification, VerdictSummary};
+use crate::identify::{FolderCheck, LeadMatch, QueueClassification, VerdictSummary};
 
 mod actions;
 mod model;
@@ -55,7 +55,7 @@ pub use selection::{selection_offers, SelectionMember, SelectionOffer};
 /// 5. **Then what its stored verdict classified to.** This is where a draft
 ///    identification wrote lands: a run applying its own pick is not an
 ///    answer, so the Ready rule's checks — which pressing, the track count —
-///    decide whether it is Ready or which question it asks.
+///    decide whether it is Ready or Needs you.
 ///
 /// An invalid draft is never Ready, whoever wrote it and whatever the verdict
 /// says: Ready means a bulk import can commit it. With no verdict, or with one
@@ -104,28 +104,9 @@ pub fn place(
     match answer {
         Some(QueueClassification::Ready) if draft_valid => TriagePlacement::Ready,
         Some(QueueClassification::Ready) | None => TriagePlacement::Pending,
-        Some(QueueClassification::NeedsYou(reason)) => TriagePlacement::NeedsYou {
-            reason: reason.clone(),
+        Some(QueueClassification::NeedsYou(folder_check)) => TriagePlacement::NeedsYou {
+            folder_check: folder_check.clone(),
         },
-    }
-}
-
-/// The Ready check a row waits on the person for: its release's tracklist
-/// disagrees with the folder, or there is no tracklist to compare. Stated
-/// beside the Import it bears on; the other questions a row can ask — which
-/// release, whether to retry a lookup — are answered in Find online.
-pub fn ready_check(placement: &TriagePlacement) -> Option<NeedsYou> {
-    let TriagePlacement::NeedsYou { reason } = placement else {
-        return None;
-    };
-    match reason {
-        NeedsYou::TrackCountDisagrees { .. }
-        | NeedsYou::SourceTracksUnknown
-        | NeedsYou::MediumDisagrees { .. } => Some(reason.clone()),
-        NeedsYou::SeveralMatches { .. }
-        | NeedsYou::NoMatch
-        | NeedsYou::NothingToLookUp
-        | NeedsYou::LookupFailed => None,
     }
 }
 
@@ -247,27 +228,27 @@ mod tests {
         );
     }
 
-    /// Only a tracklist that disagrees with the folder, or is missing, is a
-    /// Ready check stated beside Import; which release, or retrying a lookup,
-    /// is Find online's question.
+    /// A classification that names a failed folder check places the row in
+    /// Needs you with that check, which is what the pane states beside
+    /// Import; one that names none places it there with nothing to state.
     #[test]
-    fn a_ready_check_is_a_tracklist_question() {
-        let waiting = |reason| TriagePlacement::NeedsYou { reason };
-        let disagrees = NeedsYou::TrackCountDisagrees {
+    fn needs_you_carries_the_folder_check_it_failed() {
+        let disagrees = FolderCheck::TrackCountDisagrees {
             local: 13,
             source: 12,
         };
-        assert_eq!(ready_check(&waiting(disagrees.clone())), Some(disagrees));
-        assert_eq!(
-            ready_check(&waiting(NeedsYou::SourceTracksUnknown)),
-            Some(NeedsYou::SourceTracksUnknown)
-        );
-        assert_eq!(
-            ready_check(&waiting(NeedsYou::SeveralMatches { count: 2 })),
-            None
-        );
-        assert_eq!(ready_check(&waiting(NeedsYou::LookupFailed)), None);
-        assert_eq!(ready_check(&TriagePlacement::Ready), None);
+        for folder_check in [Some(disagrees), None] {
+            let placement = place(
+                false,
+                false,
+                None,
+                MetadataAuthor::Identification,
+                true,
+                Some(&QueueClassification::NeedsYou(folder_check.clone())),
+            );
+            assert_eq!(placement.folder_check(), folder_check.as_ref());
+        }
+        assert_eq!(TriagePlacement::Ready.folder_check(), None);
     }
 
     fn a_draft() -> TriageMetadataSummary {

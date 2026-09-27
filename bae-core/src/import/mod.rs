@@ -195,12 +195,12 @@ desktop_only! {
     pub use list::{
         ActiveFolderScan, CandidateImportStatus, CandidatePanePlacement,
         FolderScanActivity,
-        FolderScanProgress,
+        FolderScanProgress, IdentificationOutcome,
         ImportCandidateDetail,
         ImportCandidateDetailProjection, ImportCandidateListLocation, ImportListItem,
         ImportListOrder, ImportListProjection, ImportListRequest, ImportListSnapshot,
         ImportListSubscription, ImportListSubscriptionError, ImportListView, ImportListWindow,
-        ImportQueueSummary, PlacementFilter, ReadyRowRef,
+        ImportQueueSummary, ReadyRowRef,
     };
     pub use mapping::{
         mapping_table, mapping_tracks, MappingBecomes,

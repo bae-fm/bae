@@ -10,7 +10,7 @@ use super::super::import_state::{load_pane_rows_on, load_states_on};
 use super::super::source_releases::load_source_release_on;
 use super::super::records::check_releases_in_library_on;
 use super::*;
-use crate::identify::{classify, TerminalVerdict};
+use crate::identify::{TerminalVerdict, VerdictSummary};
 use crate::import::cover_art::CoverChoice;
 use crate::import::folder_scanner::{CategorizedFiles, InvalidCandidate};
 use crate::import::list::{window_refs, Flattened, ImportListItem, ItemRef};
@@ -490,7 +490,7 @@ pub(super) fn load_candidate_detail_on(
                     .map_err(|error| DbError::Message(error.to_string()))
             })
             .transpose()?;
-        let mut answer = None;
+        let mut verdict = None;
         let mut resumed_identify_state = crate::identify::IdentifyState::Idle;
         let identify = current.as_ref().and_then(|state| state.identify.as_ref());
         if let Some(identify) = identify {
@@ -507,7 +507,7 @@ pub(super) fn load_candidate_detail_on(
                     .expect("the library check covers every release the verdict names")
                     .clone()
             };
-            answer = Some(classify(&identify.verdict));
+            verdict = Some(VerdictSummary::of(&identify.verdict));
             // The candidate's own text is what the rows are judged and ordered
             // against, live or resumed, with the numbers the person struck out
             // of it. Both are the candidate's rather than the run's, so the
@@ -554,7 +554,7 @@ pub(super) fn load_candidate_detail_on(
             actionable,
             skipped,
             resumed_identify_state,
-            answer,
+            verdict,
             metadata_provenance: picked,
             metadata_author,
             metadata_revision,

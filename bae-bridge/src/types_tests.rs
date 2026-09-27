@@ -340,10 +340,10 @@ mod conversion_roundtrip {
         let core = bae_core::import::CandidateActionBasis {
             actionable: true,
             placement: bae_core::import::TriagePlacement::NeedsYou {
-                reason: bae_core::identify::NeedsYou::TrackCountDisagrees {
+                folder_check: Some(bae_core::identify::FolderCheck::TrackCountDisagrees {
                     local: 13,
                     source: 12,
-                },
+                }),
             },
             lookup_failed: true,
             separable: true,

@@ -459,7 +459,7 @@ extension MappingFixtures {
             candidate: folder,
             actionable: true,
             resumedIdentifyState: .idle,
-            placement: .pending(readyCheck: nil, records: records),
+            placement: .pending(folderCheck: nil, records: records),
             live: BridgeCandidateLiveState(
                 identification: nil,
                 importing: false,

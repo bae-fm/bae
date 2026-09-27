@@ -109,7 +109,7 @@ struct ImportMappingPane: View {
         }
         return ImportCommitControls(
             unansweredCount: mapping.unansweredCount,
-            readyCheck: candidate.readyCheck,
+            folderCheck: candidate.folderCheck,
             candidateKey: candidate.key,
             importStatus: candidate.importStatus,
             canCancelImport: candidate.live?.actions.contains(.cancelImport)

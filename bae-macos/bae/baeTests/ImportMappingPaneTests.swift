@@ -770,18 +770,18 @@ extension ImportMappingPaneTests {
 /// What the pane states beside Import.
 @Suite("Import commit controls")
 struct ImportCommitControlsTests {
-    // What a Ready check found is stated beside the Import it bears on, and
-    // only when the candidate failed one: a Ready candidate states nothing.
+    // A folder check the found release failed is stated beside the Import it
+    // bears on, and only then: a candidate that failed none states nothing.
     @MainActor
-    @Test("the Ready check a candidate failed is stated beside Import")
-    func theFailedReadyCheckIsStatedBesideImport() async throws {
+    @Test("the folder check a candidate failed is stated beside Import")
+    func theFailedFolderCheckIsStatedBesideImport() async throws {
         var candidate = Candidate(
             detail: MappingFixtures.detail(
                 mapping: MappingFixtures.thirteenFileTable
             )
         )
         candidate.placement = .pending(
-            readyCheck: .trackCountDisagrees(local: 13, source: 12),
+            folderCheck: .trackCountDisagrees(local: 13, source: 12),
             records: []
         )
         let disagreeing =
@@ -792,7 +792,7 @@ struct ImportCommitControlsTests {
             .map(\.text)
         #expect(disagreeing.carrying("13 in the folder, 12 on the release"))
 
-        candidate.placement = .pending(readyCheck: nil, records: [])
+        candidate.placement = .pending(folderCheck: nil, records: [])
         let ready =
             try await SnapshotTestSupport.recognizedText(
                 in: captureMappingPane(candidate: candidate, runtime: nil),

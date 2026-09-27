@@ -156,7 +156,6 @@ private func readyRow(
         separable: false,
         actionable: true,
         placement: .ready,
-        readyCheck: nil,
         actionBasis: BridgeCandidateActionBasis(
             actionable: true,
             placement: .ready,
@@ -196,7 +195,6 @@ private func skippedRow(_ key: String, title: String) -> BridgeTriageRow {
         separable: false,
         actionable: true,
         placement: .skipped,
-        readyCheck: nil,
         actionBasis: BridgeCandidateActionBasis(
             actionable: true,
             placement: .skipped,
@@ -232,7 +230,7 @@ private func detail(
         ),
         actionable: true,
         resumedIdentifyState: resumedIdentifyState,
-        placement: .pending(readyCheck: nil, records: []),
+        placement: .pending(folderCheck: nil, records: []),
         live: BridgeCandidateLiveState(
             identification: nil,
             importing: false,
@@ -286,7 +284,7 @@ struct ImportStoreCandidateDetailTests {
         #expect(read.displayName == "A")
         // With no run live the resumed state is what the pane shows.
         #expect(read.resumedIdentifyState == .notFoundAnywhere(run: nil))
-        #expect(read.placement == .pending(readyCheck: nil, records: []))
+        #expect(read.placement == .pending(folderCheck: nil, records: []))
         #expect(read.importStatus == nil)
     }
 
@@ -605,7 +603,7 @@ extension ImportListPageSourceTests {
         let view = BridgeImportListView(
             tab: .pending,
             filterText: "",
-            placement: .any,
+            identification: nil,
             collapsedGroups: [],
             order: .pathAscending
         )
@@ -653,7 +651,7 @@ extension ImportListPageSourceTests {
                 BridgeImportListView(
                     tab: .pending,
                     filterText: "",
-                    placement: .any,
+                    identification: nil,
                     collapsedGroups: [],
                     order: .pathAscending
                 )
@@ -685,7 +683,7 @@ extension ImportListPageSourceTests {
                 BridgeImportListView(
                     tab: .pending,
                     filterText: "",
-                    placement: .any,
+                    identification: nil,
                     collapsedGroups: [],
                     order: .pathAscending
                 )
@@ -729,7 +727,7 @@ extension ImportListPageSourceTests {
                 BridgeImportListView(
                     tab: .pending,
                     filterText: "",
-                    placement: .any,
+                    identification: nil,
                     collapsedGroups: [],
                     order: .pathAscending
                 )

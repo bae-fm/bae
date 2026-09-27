@@ -393,10 +393,10 @@ fn the_lengths_a_source_states_do_not_decide() {
 fn a_count_disagreement_is_named_as_one() {
     assert_eq!(
         classify(&found_verdict(11, Some(SourceTracks::Listed { count: 12 })),),
-        QueueClassification::NeedsYou(NeedsYou::TrackCountDisagrees {
+        QueueClassification::NeedsYou(Some(FolderCheck::TrackCountDisagrees {
             local: 11,
             source: 12
-        })
+        }))
     );
 }
 

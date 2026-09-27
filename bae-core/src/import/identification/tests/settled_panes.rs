@@ -68,10 +68,10 @@ async fn a_settled_pick_that_asks_something_leaves_the_pane_where_it_was() {
 
     assert_eq!(
         fixture.classification_for(&dir).await,
-        QueueClassification::NeedsYou(crate::identify::NeedsYou::TrackCountDisagrees {
+        QueueClassification::NeedsYou(Some(crate::identify::FolderCheck::TrackCountDisagrees {
             local: 2,
             source: 3
-        })
+        }))
     );
     assert_eq!(
         fixture

@@ -242,7 +242,6 @@
                 separable: separable,
                 actionable: true,
                 placement: .ready,
-                readyCheck: nil,
                 actionBasis: BridgeCandidateActionBasis(
                     actionable: true,
                     placement: .ready,

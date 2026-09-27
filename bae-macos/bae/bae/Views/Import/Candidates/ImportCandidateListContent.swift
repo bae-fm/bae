@@ -364,13 +364,13 @@ struct ImportCandidateListContent: View {
                                 cancelReveal()
                                 listSlot.setSortOrder(order)
                             },
-                            placementFilter: uiStore
-                                .importCandidatePlacementFilter,
-                            placementFilterApplies: uiStore.importCandidateTab
-                                == .pending,
-                            onSetPlacementFilter: { filter in
+                            identificationFilter: uiStore
+                                .importCandidateIdentificationFilter,
+                            identificationFilterApplies: uiStore
+                                .importCandidateTab == .pending,
+                            onSetIdentificationFilter: { filter in
                                 cancelReveal()
-                                listSlot.setPlacementFilter(filter)
+                                listSlot.setIdentificationFilter(filter)
                             },
                             onAddFolder: onAddFolder,
                             onSetAllGroupsExpanded: { expanded in

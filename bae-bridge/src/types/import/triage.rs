@@ -214,9 +214,9 @@ pub enum BridgeTriageTab {
     Skipped,
 }
 
-/// Where a row sits, including why a Pending row still needs input. One value
-/// rather than a tab plus an optional group, so a surface cannot read half of
-/// it.
+/// Where a row sits within Pending, or which terminal tab it belongs to. One
+/// value rather than a tab plus optional status fields, so a surface cannot
+/// read half of it.
 ///
 /// Read from the tables alone. A run or an import is true of a candidate
 /// wherever its row sits, so both are its `BridgeCandidateLiveState` instead.
@@ -224,8 +224,10 @@ pub enum BridgeTriageTab {
 pub enum BridgeTriagePlacement {
     Pending,
     Ready,
+    /// Classified short of Ready, with the check against the folder its found
+    /// release did not pass when that is why.
     NeedsYou {
-        reason: BridgeNeedsYou,
+        folder_check: Option<BridgeFolderCheck>,
     },
     /// The last attempt failed and nothing has been attempted since. Pending,
     /// not Done: the folder is not in the library and the work is waiting on
@@ -343,18 +345,13 @@ pub enum BridgeIdentificationStatus {
     FinalizationFailed { error: BridgeError },
 }
 
-/// Mirror of bae-core's `identify::NeedsYou`: one variant per question the user
-/// is being asked, carrying the operands the row's line is built from. Every
-/// number crosses raw — the UI formats it for its own locale and interpolates
-/// it into the variant's `core.*` message (`bridge_needs_you_key`).
+/// Mirror of bae-core's `identify::FolderCheck`: a check of the found release
+/// against the folder that did not pass, carrying the operands the line beside
+/// Import is built from. Every number crosses raw — the UI formats it for its
+/// own locale and interpolates it into the variant's `core.*` message
+/// (`bridge_folder_check_key`).
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeNeedsYou {
-    SeveralMatches {
-        count: u32,
-    },
-    NoMatch,
-    NothingToLookUp,
-    LookupFailed,
+pub enum BridgeFolderCheck {
     TrackCountDisagrees {
         local: u32,
         source: u32,
@@ -380,13 +377,9 @@ pub enum BridgeMediumConflict {
     MonoAudio,
 }
 
-impl BridgeNeedsYou {
+impl BridgeFolderCheck {
     pub(crate) fn loc_key(&self) -> &'static str {
         match self {
-            Self::SeveralMatches { .. } => "core.import.triage.several_matches",
-            Self::NoMatch => "core.import.triage.no_match",
-            Self::NothingToLookUp => "core.import.triage.nothing_to_look_up",
-            Self::LookupFailed => "core.import.triage.lookup_failed",
             Self::TrackCountDisagrees { .. } => "core.import.triage.track_count_disagrees",
             Self::SourceTracksUnknown => "core.import.triage.source_tracks_unknown",
             Self::MediumDisagrees {
@@ -402,12 +395,12 @@ impl BridgeNeedsYou {
     }
 }
 
-/// Localization key for the line a Needs-you row states its disagreement with —
+/// Localization key for the line stating a failed folder check beside Import —
 /// resolved by the UI against the `Core` string table, which interpolates the
 /// variant's own operands.
 #[uniffi::export]
-pub fn bridge_needs_you_key(needs_you: &BridgeNeedsYou) -> String {
-    needs_you.loc_key().to_string()
+pub fn bridge_folder_check_key(folder_check: &BridgeFolderCheck) -> String {
+    folder_check.loc_key().to_string()
 }
 
 /// Which signal produced a match.
@@ -560,9 +553,6 @@ pub struct BridgeTriageRow {
     pub separable: bool,
     pub actionable: bool,
     pub placement: BridgeTriagePlacement,
-    /// The Ready check this row did not pass — its release's tracklist
-    /// disagrees with the folder, or there is none — stated beside Import.
-    pub ready_check: Option<BridgeNeedsYou>,
     /// What the row's commands are decided from in the tables. Handed back
     /// with the row's live-state subscription, which answers with the commands
     /// themselves.

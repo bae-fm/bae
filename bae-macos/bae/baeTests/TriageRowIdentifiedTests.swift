@@ -63,42 +63,47 @@ struct TriageRowIdentifiedTests {
         )
     }
 
-    /// What a result asks is the pane's to state: a row draws the same
-    /// whichever question its placement carries, and the same as a row that
-    /// asks nothing.
+    /// A failed folder check is the pane's to state: a Needs-you row draws
+    /// the same whichever check it carries, or none, and the same as a Ready
+    /// row.
     @MainActor
     @Test(
-        "a row draws no badge for what its result asks",
+        "a row draws no badge for the folder check it failed",
         arguments: [
-            BridgeNeedsYou.severalMatches(count: 2), .noMatch,
-            .nothingToLookUp, .lookupFailed,
-            .trackCountDisagrees(local: 13, source: 12), .sourceTracksUnknown,
+            nil,
+            BridgeFolderCheck.trackCountDisagrees(local: 13, source: 12),
+            .sourceTracksUnknown,
+            .mediumDisagrees(folder: .cdRip),
         ]
     )
-    func aRowDrawsNoBadgeForWhatItsResultAsks(_ reason: BridgeNeedsYou)
-        async throws
-    {
+    func aRowDrawsNoBadgeForTheFolderCheckItFailed(
+        _ folderCheck: BridgeFolderCheck?
+    ) async throws {
         var ready = PreviewData.triageRowReadFromRecord
         ready.placement = .ready
-        var asking = ready
-        asking.placement = .needsYou(reason: reason)
-        #expect(try await pixels(of: asking) == pixels(of: ready))
+        var needsYou = ready
+        needsYou.placement = .needsYou(folderCheck: folderCheck)
+        #expect(try await pixels(of: needsYou) == pixels(of: ready))
     }
 
-    /// Every question a row can ask resolves to a sentence from the app's
-    /// `Core` table rather than falling back to its key.
+    /// Every folder check resolves to a sentence from the app's `Core` table
+    /// rather than falling back to its key.
     @Test(
-        "every question resolves to its own sentence",
+        "every folder check resolves to its own sentence",
         arguments: [
-            BridgeNeedsYou.severalMatches(count: 2), .noMatch,
-            .nothingToLookUp, .lookupFailed,
-            .trackCountDisagrees(local: 13, source: 12), .sourceTracksUnknown,
+            BridgeFolderCheck.trackCountDisagrees(local: 13, source: 12),
+            .sourceTracksUnknown,
+            .mediumDisagrees(folder: .cdRip),
+            .mediumDisagrees(folder: .notCdAudio(sampleRateHz: 96_000)),
+            .mediumDisagrees(folder: .monoAudio),
         ]
     )
-    func everyQuestionResolvesToItsOwnSentence(_ reason: BridgeNeedsYou) {
-        let text = reason.localizedText
+    func everyFolderCheckResolvesToItsOwnSentence(
+        _ folderCheck: BridgeFolderCheck
+    ) {
+        let text = folderCheck.localizedText
         #expect(!text.isEmpty)
-        #expect(text != bridgeNeedsYouKey(needsYou: reason))
+        #expect(text != bridgeFolderCheckKey(folderCheck: folderCheck))
     }
 
     /// On a selected row the whole text column goes white, and the arrow

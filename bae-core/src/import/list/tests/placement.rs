@@ -7,7 +7,7 @@
 //! the row's live state.
 
 use super::*;
-use crate::identify::NeedsYou;
+use crate::identify::FolderCheck;
 use crate::import::MetadataAuthor;
 
 #[test]
@@ -302,8 +302,8 @@ fn a_person_s_pick_answers_whatever_the_verdict_asked() {
 }
 
 /// Identification applying its own pick is not an answer: the Ready rule's
-/// checks decide the row, so every disagreement they find lands it in Needs
-/// you with that disagreement as its reason.
+/// checks decide the row, so every check against the folder they fail lands
+/// it in Needs you with that check named.
 #[test]
 fn identification_s_own_pick_is_judged_by_the_ready_rule() {
     let cases = [
@@ -312,7 +312,7 @@ fn identification_s_own_pick_is_judged_by_the_ready_rule() {
             with_verdict(ready_state("mb-1"), |verdict| {
                 verdict.track_count = Some(10);
             }),
-            NeedsYou::TrackCountDisagrees {
+            FolderCheck::TrackCountDisagrees {
                 local: 10,
                 source: 11,
             },
@@ -325,7 +325,7 @@ fn identification_s_own_pick_is_judged_by_the_ready_rule() {
                     ..lead("mb-1")
                 });
             }),
-            NeedsYou::SourceTracksUnknown,
+            FolderCheck::SourceTracksUnknown,
         ),
         (
             queue(),
@@ -335,10 +335,10 @@ fn identification_s_own_pick_is_judged_by_the_ready_rule() {
                     ..lead("mb-1")
                 });
             }),
-            NeedsYou::SourceTracksUnknown,
+            FolderCheck::SourceTracksUnknown,
         ),
     ];
-    for (mut rows, state, reason) in cases {
+    for (mut rows, state, check) in cases {
         assert_eq!(state.metadata_author, MetadataAuthor::Identification);
         assert!(state.metadata_draft_valid);
         rows.candidates = vec![candidate("Release")];
@@ -349,12 +349,12 @@ fn identification_s_own_pick_is_judged_by_the_ready_rule() {
         assert_eq!(
             row.placement,
             TriagePlacement::NeedsYou {
-                reason: reason.clone()
+                folder_check: Some(check.clone())
             },
-            "{reason:?}"
+            "{check:?}"
         );
-        assert!(!row.selectable, "{reason:?}: a question is not swept up");
-        assert!(flat.summary.ready.is_empty(), "{reason:?}");
+        assert!(!row.selectable, "{check:?}: a question is not swept up");
+        assert!(flat.summary.ready.is_empty(), "{check:?}");
     }
 }
 
@@ -398,9 +398,7 @@ fn a_draft_the_tags_seeded_that_would_not_import_is_not_ready() {
     let cases = [
         (
             invalid.clone(),
-            TriagePlacement::NeedsYou {
-                reason: NeedsYou::SeveralMatches { count: 3 },
-            },
+            TriagePlacement::NeedsYou { folder_check: None },
         ),
         (
             CandidateStateListRow {

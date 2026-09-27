@@ -22,41 +22,35 @@ pub enum BridgeImportListOrder {
 pub struct BridgeImportListView {
     pub tab: BridgeTriageTab,
     pub filter_text: String,
-    /// Which of Pending's rows the list shows, by where the tables place them.
-    pub placement: BridgePlacementFilter,
+    /// Which of Pending's rows the list shows, by what each one's stored
+    /// lookup result says; `None` shows every row.
+    pub identification: Option<BridgeIdentificationOutcome>,
     /// The groups folded shut. Their entries are not in the list at all, which
     /// is why this is part of the request rather than a rendering decision.
     pub collapsed_groups: Vec<BridgeFolderReleaseDecisionKey>,
     pub order: BridgeImportListOrder,
 }
 
-/// Which of Pending's rows a list shows, by the placement the tables give each
-/// one. Mirrors `bae_core::import::PlacementFilter`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgePlacementFilter {
-    /// Every row.
-    Any,
-    /// Ready to import.
-    Ready,
-    /// Asking a question — any of them, or only the one named.
-    NeedsYou { kind: Option<BridgeNeedsYouKind> },
-    /// Whose last import failed.
-    Failed,
-    /// With nothing to import and nothing to ask yet.
-    Unanswered,
+/// What a candidate's stored lookup result says, as the list's Identification
+/// filter names it. Mirrors `bae_core::import::IdentificationOutcome`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, uniffi::Enum)]
+pub enum BridgeIdentificationOutcome {
+    /// No lookup has finished: never identified, or waiting or running.
+    NotIdentified,
+    OneRelease,
+    SeveralReleases,
+    /// Matched nothing, or there was nothing to look up.
+    NoMatch,
+    LookupFailed,
 }
 
-/// Which question a Needs-you row asks, without its operands. Mirrors
-/// `bae_core::identify::NeedsYouKind`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, uniffi::Enum)]
-pub enum BridgeNeedsYouKind {
-    SeveralMatches,
-    NoMatch,
-    NothingToLookUp,
-    LookupFailed,
-    TrackCountDisagrees,
-    SourceTracksUnknown,
-    MediumDisagrees,
+/// Every outcome, in the order the Identification filter lists them.
+#[cfg(feature = "desktop")]
+#[uniffi::export]
+pub fn bridge_identification_outcomes() -> Vec<BridgeIdentificationOutcome> {
+    bae_core::import::IdentificationOutcome::ALL
+        .map(BridgeIdentificationOutcome::from_core)
+        .to_vec()
 }
 
 /// One item at one offset. `stable_key` identifies it across reruns — the id a
@@ -232,9 +226,9 @@ pub struct BridgeImportCandidateDetail {
 pub enum BridgeCandidatePanePlacement {
     /// In Pending.
     Pending {
-        /// The Ready check the candidate did not pass, stated beside its
-        /// Import.
-        ready_check: Option<crate::types::BridgeNeedsYou>,
+        /// The check against the folder the candidate's found release did
+        /// not pass, stated beside its Import.
+        folder_check: Option<crate::types::BridgeFolderCheck>,
         /// Every catalog the draft was read from, in the order surfaces list
         /// catalogs. Empty for a draft read from the files' tags, typed in, or
         /// not there yet.

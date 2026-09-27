@@ -410,7 +410,6 @@ extension ImportCandidateViewportTests {
                 separable: false,
                 actionable: true,
                 placement: .skipped,
-                readyCheck: nil,
                 actionBasis: BridgeCandidateActionBasis(
                     actionable: true,
                     placement: .skipped,

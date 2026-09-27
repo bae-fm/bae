@@ -93,7 +93,6 @@ private func candidateItem(_ index: Int) -> BridgeImportListItem {
             separable: false,
             actionable: true,
             placement: .skipped,
-            readyCheck: nil,
             actionBasis: BridgeCandidateActionBasis(
                 actionable: true,
                 placement: .skipped,

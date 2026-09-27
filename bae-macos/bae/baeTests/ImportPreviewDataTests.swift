@@ -188,25 +188,12 @@ struct ImportPreviewDataTests {
             }
         )
         #expect(rows.contains { $0.placement == .skipped })
-        #expect(
-            rows.contains { row in
-                if case .needsYou(.severalMatches) = row.placement {
-                    return true
-                }
-                return false
-            }
-        )
+        #expect(rows.contains { $0.placement == .needsYou(folderCheck: nil) })
         #expect(
             rows.contains { row in
                 if case .needsYou(.trackCountDisagrees) = row.placement {
                     return true
                 }
-                return false
-            }
-        )
-        #expect(
-            rows.contains { row in
-                if case .needsYou(.noMatch) = row.placement { return true }
                 return false
             }
         )
