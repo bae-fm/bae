@@ -27,7 +27,7 @@ fn a_ready_candidate_under_identification_stays_in_the_ready_set() {
             &row.action_basis,
             TriageRuntimeFacts {
                 identification: Some(status),
-                importing: false,
+                import: None,
             },
         );
         assert_eq!(

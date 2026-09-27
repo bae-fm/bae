@@ -521,10 +521,10 @@ async fn an_active_import_omits_its_previous_persisted_failure_from_the_detail()
         .expect("the stored candidate has a detail")
         .resolve(&crate::import::TriageRuntimeFacts {
             identification: None,
-            importing: true,
+            import: Some(crate::import::ImportStanding::Cancellable),
         });
 
-    assert!(detail.live.facts.importing);
+    assert!(detail.live.facts.importing());
     assert_eq!(
         detail.live.actions,
         vec![

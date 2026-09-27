@@ -53,6 +53,7 @@
                 mappingActions: inertMappingActions(),
                 commitActions: ImportCommitActions(
                     confirmImport: {},
+                    cancelImport: {},
                     mergeArtists: { _ in },
                     viewInLibrary: { _ in },
                 ),

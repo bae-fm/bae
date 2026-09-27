@@ -296,9 +296,10 @@ mirror_struct! {
 impl crate::types::BridgeCandidateLiveState {
     pub(crate) fn from_core(live: bae_core::import::CandidateLiveState) -> Self {
         let bae_core::import::CandidateLiveState { facts, actions } = live;
+        let importing = facts.importing();
         let bae_core::import::TriageRuntimeFacts {
             identification,
-            importing,
+            import: _,
         } = facts;
         Self {
             identification: identification.map(crate::types::BridgeIdentificationStatus::from_core),

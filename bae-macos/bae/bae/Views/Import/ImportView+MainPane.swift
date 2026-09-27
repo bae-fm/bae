@@ -163,6 +163,7 @@ extension ImportView {
     {
         ImportCommitActions(
             confirmImport: { commitConfirmedImport(candidate: candidate) },
+            cancelImport: { cancelImport(candidate: candidate) },
             mergeArtists: {
                 mergeArtistIdentityConflict(candidate: candidate, keeping: $0)
             },

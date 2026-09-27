@@ -1,6 +1,6 @@
 use super::{
-    IdentificationStatus, NeedsYou, QueueClassification, TriagePlacement, TriageRuntimeFacts,
-    TriageSkipAction,
+    IdentificationStatus, ImportStanding, NeedsYou, QueueClassification, TriagePlacement,
+    TriageRuntimeFacts, TriageSkipAction,
 };
 
 /// Commands offered for a candidate at its current lifecycle position —
@@ -105,7 +105,7 @@ impl CandidateActionBasis {
         use CandidateAction as A;
         let mut actions = self.commands(live);
         let settled = matches!(self.placement, TriagePlacement::Done)
-            || live.importing
+            || live.importing()
             || live.identifying();
         if !settled {
             if self.separable {
@@ -126,8 +126,12 @@ impl CandidateActionBasis {
         if !self.actionable {
             return Vec::new();
         }
-        if live.importing {
-            return vec![A::CancelImport];
+        // A running import can be cancelled; one writing its release
+        // completes, so nothing is offered for it.
+        match live.import {
+            Some(ImportStanding::Cancellable) => return vec![A::CancelImport],
+            Some(ImportStanding::Writing) => return Vec::new(),
+            None => {}
         }
         let identifying = live.identifying();
         let placement = &self.placement;
@@ -196,7 +200,7 @@ mod tests {
     fn identifying(status: IdentificationStatus) -> TriageRuntimeFacts {
         TriageRuntimeFacts {
             identification: Some(status),
-            importing: false,
+            import: None,
         }
     }
 
@@ -240,7 +244,7 @@ mod tests {
     fn a_running_import_offers_only_its_cancel() {
         let importing = TriageRuntimeFacts {
             identification: None,
-            importing: true,
+            import: Some(ImportStanding::Cancellable),
         };
         for placement in [TriagePlacement::Ready, TriagePlacement::Pending] {
             assert_eq!(
@@ -248,6 +252,20 @@ mod tests {
                 vec![CandidateAction::CancelImport, CandidateAction::RevealFolder]
             );
         }
+    }
+
+    /// An import writing its release completes whatever is asked, so it is
+    /// not offered a cancel it would refuse.
+    #[test]
+    fn an_import_writing_its_release_offers_no_cancel() {
+        let writing = TriageRuntimeFacts {
+            identification: None,
+            import: Some(ImportStanding::Writing),
+        };
+        assert_eq!(
+            basis(TriagePlacement::Ready, None).actions(&writing),
+            vec![CandidateAction::RevealFolder]
+        );
     }
 
     #[test]
@@ -311,7 +329,7 @@ mod tests {
         assert_eq!(done.actions(&rest), vec![CandidateAction::RevealFolder]);
         let importing = TriageRuntimeFacts {
             identification: None,
-            importing: true,
+            import: Some(ImportStanding::Cancellable),
         };
         assert!(!grouped.actions(&importing).contains(&CandidateAction::Separate));
     }

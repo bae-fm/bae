@@ -112,6 +112,8 @@ struct ImportMappingPane: View {
             readyCheck: candidate.readyCheck,
             candidateKey: candidate.key,
             importStatus: candidate.importStatus,
+            canCancelImport: candidate.live?.actions.contains(.cancelImport)
+                == true,
             storageCloud: $storageCloud,
             storagePinned: $storagePinned,
             actions: commitActions,

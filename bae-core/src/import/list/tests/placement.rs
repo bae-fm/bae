@@ -107,7 +107,7 @@ fn a_claimed_import_leaves_the_row_where_its_draft_puts_it() {
         &row.action_basis,
         TriageRuntimeFacts {
             identification: None,
-            importing: true,
+            import: Some(crate::import::ImportStanding::Cancellable),
         },
     );
     assert_eq!(

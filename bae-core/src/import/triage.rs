@@ -168,9 +168,20 @@ pub fn import_status_of(
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct TriageRuntimeFacts {
     pub identification: Option<IdentificationStatus>,
-    /// Whether an import owns this candidate right now. How far it has got is
-    /// the runtime's, read by the leaf that draws the bar.
-    pub importing: bool,
+    /// Where the import that owns this candidate right now stands, or `None`
+    /// when no import does. How far it has got is the runtime's, read by the
+    /// leaf that draws the bar.
+    pub import: Option<ImportStanding>,
+}
+
+/// Where an import that owns a candidate stands, as far as what can be asked
+/// of it goes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ImportStanding {
+    /// Waiting for the worker or running: a cancel still drops it.
+    Cancellable,
+    /// Writing its release, which completes whatever is asked of it.
+    Writing,
 }
 
 impl TriageRuntimeFacts {
@@ -189,10 +200,22 @@ impl TriageRuntimeFacts {
         } else {
             runtime.queued.map(|_| IdentificationStatus::Queued)
         };
+        let import = runtime.import.as_ref().map(|import| match import.step {
+            Some(crate::import::ImportStep::Running(crate::import::ImportPhase::Finalizing)) => {
+                ImportStanding::Writing
+            }
+            Some(crate::import::ImportStep::Preparing(_) | crate::import::ImportStep::Running(_))
+            | None => ImportStanding::Cancellable,
+        });
         Self {
             identification,
-            importing: runtime.import.is_some(),
+            import,
         }
+    }
+
+    /// An import owns the candidate, whatever it has reached.
+    pub fn importing(&self) -> bool {
+        self.import.is_some()
     }
 
     /// A run for the candidate is queued, running, or having its answer

@@ -500,7 +500,7 @@ impl ImportCandidateDetailProjection {
         );
         // The attempt running now, or the one that completed, is what the pane
         // shows; an earlier failure is behind either.
-        let failure = if facts.importing
+        let failure = if facts.importing()
             || matches!(
                 import_status.as_ref(),
                 Some(TriageImportStatus::Complete { .. })
@@ -550,7 +550,7 @@ impl ImportCandidateDetailProjection {
             TriageTab::Done => CandidatePanePlacement::Done,
         };
         let metadata_draft_is_blank = metadata_draft.is_blank();
-        let import_status = if facts.importing {
+        let import_status = if facts.importing() {
             Some(CandidateImportStatus::Importing)
         } else {
             import_status.map(CandidateImportStatus::of)

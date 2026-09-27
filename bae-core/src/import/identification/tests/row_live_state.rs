@@ -79,13 +79,13 @@ async fn a_claimed_import_reaches_its_row_and_not_the_list() {
         .import
         .subscribe_candidate_live_state(key.clone(), row.action_basis.clone());
     let idle = next_live_state(&mut live).await;
-    assert!(!idle.facts.importing);
+    assert!(!idle.facts.importing());
     assert!(!idle.actions.is_empty(), "an idle row offers its commands");
 
     fixture.import.claim_candidate_for_import(&key, "import-1").await;
 
     let claimed = next_live_state(&mut live).await;
-    assert!(claimed.facts.importing);
+    assert!(claimed.facts.importing());
     assert_eq!(
         claimed.actions,
         vec![
@@ -93,6 +93,25 @@ async fn a_claimed_import_reaches_its_row_and_not_the_list() {
             crate::import::CandidateAction::RevealFolder
         ],
         "a claimed import offers only its cancel, beside showing its folder"
+    );
+
+    fixture
+        .import
+        .emit_event_for_test(ImportEvent::ImportProgress {
+            candidate_key: key.clone(),
+            progress: crate::import::ImportProgress::Progress {
+                id: "release-1".to_string(),
+                percent: None,
+                phase: crate::import::ImportPhase::Finalizing,
+                import_id: "import-1".to_string(),
+            },
+        });
+    let writing = next_live_state(&mut live).await;
+    assert!(writing.facts.importing());
+    assert_eq!(
+        writing.actions,
+        vec![crate::import::CandidateAction::RevealFolder],
+        "an import writing its release offers no cancel it would refuse"
     );
     assert!(
         tokio::time::timeout(Duration::from_millis(500), list.next())

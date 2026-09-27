@@ -2,11 +2,11 @@ import BaeKit
 import SwiftUI
 
 /// The trailing action cell of the commit bar: the `Import` button before
-/// commit, the running import's step, percent and bar while importing, a `Retry
-/// Import` button on error, and the `Imported` / cloud-upload state once
-/// complete.
+/// commit; while importing, the running import's step and bar with the cancel
+/// where `Import` was; a `Retry Import` button on error; and the `Imported` /
+/// cloud-upload state once complete.
 ///
-/// The button is never disabled. An edit bae-core cannot shape into a savable
+/// `Import` is never disabled. An edit bae-core cannot shape into a savable
 /// release is refused at commit and the reason is stated on the pane — a
 /// disabled button that says nothing is the thing that redesign removed.
 struct ImportConfirmationCardAction: View {
@@ -14,7 +14,11 @@ struct ImportConfirmationCardAction: View {
     let importStatus: BridgeCandidateImportStatus?
     /// Routes the running import's progress to the leaf line that draws it.
     let candidateKey: String
+    /// Whether core offers to cancel the running import — until it begins
+    /// writing its release, the same answer the row's menu offers from.
+    let canCancelImport: Bool
     let onConfirmImport: () -> Void
+    let onCancelImport: () -> Void
     let onViewInLibrary: (String) -> Void
 
     @Environment(OutboxStore.self)
@@ -42,6 +46,26 @@ struct ImportConfirmationCardAction: View {
             return nil
         }
         return outboxStore.persistedUploadObservation(forRelease: releaseId)
+    }
+
+    /// The running import's cancel, in the place `Import` held. An import
+    /// writing its release can no longer be cancelled, and the button says
+    /// so instead of offering a cancel core would refuse.
+    @ViewBuilder
+    private var cancelButton: some View {
+        if canCancelImport {
+            Button("Cancel Import") { onCancelImport() }
+        }
+        else {
+            Button("Finishing\u{2026}") {}
+                .disabled(true)
+                .help(
+                    String(
+                        localized:
+                            "The release is being written and can no longer be cancelled."
+                    )
+                )
+        }
     }
 
     var body: some View {
@@ -73,8 +97,11 @@ struct ImportConfirmationCardAction: View {
                 // bar — the same component the candidate's row draws, off the
                 // same signal, so the two surfaces cannot come to disagree
                 // about one run.
-                ImportProgressLine(key: candidateKey)
-                    .frame(width: 200)
+                HStack(spacing: 12) {
+                    ImportProgressLine(key: candidateKey)
+                        .frame(width: 200)
+                    cancelButton
+                }
             case .error:
                 Button("Retry Import") { onConfirmImport() }
                     .buttonStyle(PrimaryButtonStyle())
@@ -94,7 +121,9 @@ struct ImportConfirmationCardAction: View {
         ImportConfirmationCardAction(
             importStatus: nil,
             candidateKey: "preview-candidate",
+            canCancelImport: false,
             onConfirmImport: {},
+            onCancelImport: {},
             onViewInLibrary: { _ in },
         )
         .padding()

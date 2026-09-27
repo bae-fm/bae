@@ -17,6 +17,9 @@ struct ImportCommitControls {
     /// Where the candidate's import stands: running now, or what the last
     /// one left.
     let importStatus: BridgeCandidateImportStatus?
+    /// Whether the running import can still be cancelled: core offers the
+    /// cancel until the import begins writing its release.
+    let canCancelImport: Bool
     let storageCloud: Binding<Bool>
     let storagePinned: Binding<Bool>
     let actions: ImportCommitActions
@@ -230,7 +233,9 @@ struct ImportReleaseHeader: View {
                 ImportConfirmationCardAction(
                     importStatus: commit.importStatus,
                     candidateKey: commit.candidateKey,
+                    canCancelImport: commit.canCancelImport,
                     onConfirmImport: commit.actions.confirmImport,
+                    onCancelImport: commit.actions.cancelImport,
                     onViewInLibrary: commit.actions.viewInLibrary,
                 )
             }
