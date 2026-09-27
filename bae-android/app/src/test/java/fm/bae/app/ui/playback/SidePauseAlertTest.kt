@@ -7,6 +7,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import fm.bae.app.R
 import fm.bae.app.playback.NowPlaying
+import fm.bae.app.playback.SidePausePrompt
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import org.junit.Assert.assertEquals
@@ -16,9 +17,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
-import uniffi.bae_bridge.BridgePauseBoundary
 import uniffi.bae_bridge.BridgeSideCountdown
-import uniffi.bae_bridge.BridgeSidePausePrompt
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
@@ -38,7 +37,7 @@ class SidePauseAlertTest {
     }
 
     private fun show(
-        prompt: BridgeSidePausePrompt = PreviewData.sidePausePrompt(),
+        prompt: SidePausePrompt = PreviewData.sidePausePrompt(),
         nowMs: () -> Long = { 0L },
     ): Answers {
         val answers = Answers()
@@ -109,10 +108,10 @@ class SidePauseAlertTest {
 
     @Test
     fun aRunningCountdownShowsTheSecondsLeftToCoresDeadline() {
+        val side = PreviewData.sidePausePrompt()
         val prompt =
-            PreviewData.sidePausePrompt().copy(
-                countdown =
-                    BridgeSideCountdown(resumesAtMs = 15_000L),
+            side.copy(
+                prompt = side.prompt.copy(countdown = BridgeSideCountdown(resumesAtMs = 15_000L)),
             )
         show(prompt = prompt, nowMs = { 900L })
 
@@ -122,7 +121,7 @@ class SidePauseAlertTest {
 
     @Test
     fun aDiscPauseNamesDiscsInItsCheckbox() {
-        show(prompt = PreviewData.sidePausePrompt().copy(boundary = BridgePauseBoundary.DISC))
+        show(prompt = PreviewData.discPausePrompt())
 
         compose.onNodeWithText("Pause between discs").assertIsOn()
         compose.onNodeWithText(checkboxLabel).assertDoesNotExist()

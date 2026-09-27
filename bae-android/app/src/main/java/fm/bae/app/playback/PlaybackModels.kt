@@ -6,6 +6,9 @@ import uniffi.bae_bridge.BridgePlaybackContext
 import uniffi.bae_bridge.BridgePlaybackSourceKind
 import uniffi.bae_bridge.BridgeQueueEntry
 import uniffi.bae_bridge.BridgeSidePausePrompt
+import uniffi.bae_bridge.bridgePauseBoundaryCountdownKey
+import uniffi.bae_bridge.bridgePauseBoundaryKeepPausingKey
+import uniffi.bae_bridge.bridgePauseBoundaryTitleKey
 
 data class NowPlaying(
     val trackId: String,
@@ -13,14 +16,35 @@ data class NowPlaying(
     val artist: String,
     /** The cover the bar fetches bytes for, or null when there is none. */
     val coverImage: BridgeImageRef?,
-    val sidePausePrompt: BridgeSidePausePrompt?,
+    val sidePausePrompt: SidePausePrompt?,
 )
 
 /**
- * Live playback position for the seek bar. [progress] is the bridge's [0,1]
- * fraction for the slider; [positionMs] and [durationMs] are raw milliseconds,
- * which the seek bar turns into clock labels through core's projection. Null
- * means there is no label: nothing is playing, or the track's length is unknown.
+ * A side-pause prompt with the catalog keys its title, countdown and checkbox
+ * are worded from, looked up from the kind of boundary that ended when the
+ * player receives it, so the dialog renders without calling the bridge.
+ */
+data class SidePausePrompt(
+    val prompt: BridgeSidePausePrompt,
+    val titleKey: String,
+    val countdownKey: String,
+    val keepPausingKey: String,
+) {
+    companion object {
+        fun of(prompt: BridgeSidePausePrompt): SidePausePrompt =
+            SidePausePrompt(
+                prompt = prompt,
+                titleKey = bridgePauseBoundaryTitleKey(prompt.boundary),
+                countdownKey = bridgePauseBoundaryCountdownKey(prompt.boundary),
+                keepPausingKey = bridgePauseBoundaryKeepPausingKey(prompt.boundary),
+            )
+    }
+}
+
+/**
+ * The seek bar's position: [progress] in [0,1] for the slider, and milliseconds
+ * the bar turns into clock labels through the bridge. [positionMs] is null when
+ * nothing is playing; [durationMs] is null when the length is unknown.
  */
 data class PlaybackPosition(
     val progress: Double,
@@ -28,12 +52,9 @@ data class PlaybackPosition(
     val durationMs: Long?,
 )
 
-/** One queue entry the [fm.bae.app.ui.playback.QueueScreen] renders. The UI projection
- *  of the player's internal queue metadata: [durationClock] is the track length
- *  as a clock label's fields (null when core reports none), which the row renders
- *  directly; [coverImage] is the cover the row fetches bytes for. [entryId] is the
- *  per-instance id the row keys on and that remove/reorder/skip target — unique
- *  even when the same track is queued twice. */
+/** One row of the [fm.bae.app.ui.playback.QueueScreen]. [entryId] identifies this
+ *  queue entry, so it differs when the same track is queued twice; [durationClock]
+ *  is null when core reports no length. */
 data class QueueItem(
     val entryId: String,
     val trackId: String,
@@ -44,15 +65,10 @@ data class QueueItem(
     val coverImage: BridgeImageRef?,
 )
 
-/** The context lane (the release being played from): the first page of its
- *  not-yet-played tail, the tail's full length, further pages fetched via
- *  [fm.bae.app.playback.BaeCorePlayer.loadUpcomingRange], plus whether it was
- *  ordered by shuffle (the UI shows a shuffle indicator when so). Rendered as a
- *  section distinct from the manual lane.
- *
- *  [upcoming] is only the initial window core resolved eagerly — the tail is
- *  library-scaled. [pagedUpcoming] holds indices fetched past that window,
- *  keyed by absolute index; [itemAt] reads either uniformly. */
+/** The release or library the queue plays from, and the not-yet-played tracks
+ *  after the current one. [upcoming] is only the first page of [upcomingTotal];
+ *  [pagedUpcoming] holds later tracks read through
+ *  [BaeCorePlayer.loadUpcomingRange], keyed by index in the whole tail. */
 data class QueueContext(
     val kind: BridgePlaybackSourceKind,
     val shuffled: Boolean,
@@ -63,12 +79,9 @@ data class QueueContext(
     fun itemAt(index: Int): QueueItem? = upcoming.getOrNull(index) ?: pagedUpcoming[index]
 }
 
-/** The queue's two lanes the [fm.bae.app.ui.playback.QueueScreen] renders as distinct
- *  sections: the manual lane ("Up Next") and the [context] (or null when nothing
- *  plays from a release). Kept separate, not flattened. [revision] is the queue
- *  revision this projection was built from — a UI stamps its
- *  [BaeCorePlayer.loadUpcomingRange] fetches against it and drops a reply
- *  computed under a since-superseded revision. */
+/** The queue as two sections: tracks added by hand ([manual]) and the
+ *  [context] played from, or null when there is none. [revision] is the queue
+ *  revision it was built from. */
 data class QueueProjection(
     val manual: List<QueueItem>,
     val context: QueueContext?,
@@ -79,11 +92,7 @@ data class QueueProjection(
     }
 }
 
-/**
- * The transient playback-event intake [BaeCorePlayer] exposes to
- * [fm.bae.app.data.UiEventAdapter]. Retained playback and queue values arrive
- * through their typed subscriptions.
- */
+/** Playback events [fm.bae.app.data.UiEventAdapter] passes to [BaeCorePlayer]. */
 interface PlaybackEventSink {
     fun onQueueItemsAdded(count: Int)
 }

@@ -33,29 +33,15 @@ import uniffi.bae_bridge.BridgePlaybackValueState
 import uniffi.bae_bridge.BridgePlaybackValues
 import uniffi.bae_bridge.BridgeQueueEntry
 import uniffi.bae_bridge.BridgeRepeatMode
-import uniffi.bae_bridge.BridgeSidePausePrompt
 
-/** Now-playing snapshot the [fm.bae.app.ui.playback.NowPlayingBar] renders. */
 private const val TAG = "bae.BaeCorePlayer"
 private val logger = BaeLogger(TAG)
 
 /**
- * Media3 [Player] that is a pure projection of bae-core's playback state.
- *
- * bae-core owns playback: it decodes audio (FFmpeg → AAudio) and publishes
- * retained values through `subscribePlaybackValues`. This player holds no audio;
- * it mirrors those values into a Media3 [State] so
- * the [androidx.media3.session.MediaSession] (and through it the notification,
- * lock screen, and in-app UI) reflects what core is doing.
- *
- * Single source of truth is core. Transport commands ([handleSetPlayWhenReady],
- * [handleSeekTo], …) forward to the bridge and make NO local state change; the
- * resulting retained value is what updates [State]. This avoids the optimistic
- * local mutation a normal [SimpleBasePlayer] does, which would fight core.
- *
- * Audio focus and becoming-noisy aren't handled by a custom [SimpleBasePlayer],
- * so this requests focus when playback starts and pauses core on focus loss /
- * unplug — the retained playback value reflects that pause back.
+ * Media3 [Player] that mirrors bae-core's playback, which plays the audio itself,
+ * so the [androidx.media3.session.MediaSession] and the in-app UI show what core
+ * is doing. Transport commands go to core, and the value core publishes back
+ * updates [State]; only an in-track seek shows its target before core confirms.
  */
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 class BaeCorePlayer(
@@ -64,12 +50,8 @@ class BaeCorePlayer(
     private val context: Context,
     private val scope: CoroutineScope,
     private val queueUpcomingSource: QueueUpcomingSource = QueueUpcomingSource(appHandle),
-    /**
-     * Whether the app currently has a foreground (started) Activity. Android
-     * forbids starting a service from the background, so [ensurePlaybackService]
-     * only starts the service when this is true. Injected (not read from a global)
-     * so the service-start decision is unit-testable.
-     */
+    /** Whether the app has a started Activity; Android refuses to start a service
+     *  from the background, so [PlaybackSystemHooks] starts one only then. */
     private val isAppForeground: () -> Boolean,
 ) : SimpleBasePlayer(applicationLooper),
     PlaybackEventSink {
@@ -82,54 +64,34 @@ class BaeCorePlayer(
             hasCurrentTrack = { currentMeta != null },
         )
 
-    /**
-     * Display metadata for one track. Queue entries carry it from
-     * `getQueueItems`; the current track's is overridden by the
-     * playback-value payload (the authoritative source for
-     * what's playing, and resilient to queue/playback event ordering).
-     */
+    /** Display metadata for one track, from a queue entry or, for the current
+     *  track, from the playback value. */
     internal data class Meta(
-        /** The queue entry's per-instance id, or null for the current-track
-         *  override (which is not a queue entry — see [orderedMetas]). */
+        /** Null for the current track's metadata, which is not a queue entry. */
         val entryId: String?,
         val trackId: String,
         val title: String,
         val artist: String,
         val albumTitle: String,
-        /** The track length as a clock label's fields, or null when core reports
-         *  none. Carried by queue entries; the Playing/Paused payload has no
-         *  duration, so the current-track override leaves it null (the queue
-         *  projection reads the duration off the queue entry, not this
-         *  override). */
+        /** Null when core reports no length, and for the current track's metadata. */
         val durationClock: BridgeDurationClock?,
-        /** The cover whose bytes the now-playing artwork and the in-app rows
-         *  fetch, or null when the track has no cover. */
         val coverImage: BridgeImageRef?,
     )
 
-    /** The context lane (what the queue plays from): the [kind] it plays from
-     *  (release vs library), whether it was ordered by shuffle, and its mapped
-     *  not-yet-played tail. Held as one value so the whole lane is present or
-     *  absent together — the bridge's nullable context maps straight onto it,
-     *  with no discriminator re-derived from parallel fields. */
+    /** The release or library the queue plays from, and its not-yet-played tracks. */
     internal data class ContextLane(
         val kind: BridgePlaybackSourceKind,
         val shuffled: Boolean,
-        /** The initial window resolved eagerly by core — not the whole
-         *  (library-scaled) tail. See [upcomingTotal]. */
+        /** Only the first page of the [upcomingTotal] tracks. */
         val entries: List<Meta>,
         val upcomingTotal: Int,
     )
 
     internal companion object {
         /**
-         * The MediaSession playlist projection: the now-playing track followed
-         * by the up-next queue. `entries` is core's up-next queue and EXCLUDES
-         * the current track, so [current] is prepended (unless the queue somehow
-         * already contains it); without this the session would render the first
-         * up-next track as now-playing on the lock screen / notification / Auto.
-         * Any queue entry matching the current id is substituted with [current]
-         * so its display comes from the authoritative Playing/Paused payload.
+         * The MediaSession playlist: the current track, then [entries], which
+         * exclude it. A queue entry with the current track's id is replaced by
+         * [current] instead.
          */
         fun orderedMetas(
             entries: List<Meta>,
@@ -144,12 +106,9 @@ class BaeCorePlayer(
         }
 
         /**
-         * Map the transport state to a Media3 [Player] playback state. An empty
-         * playlist is forced to [Player.STATE_IDLE]: Media3's [SimpleBasePlayer]
-         * asserts an empty playlist may only be STATE_IDLE or STATE_ENDED, and
-         * during load (or a failed load) the transport is BUFFERING before the
-         * first track's metadata hydrates the playlist. Without this guard that
-         * empty-but-BUFFERING window crashes the app.
+         * An empty playlist is always [Player.STATE_IDLE]: [SimpleBasePlayer]
+         * crashes on an empty playlist in STATE_BUFFERING, which is where a load
+         * sits before the track's metadata arrives.
          */
         fun playbackStateFor(
             transport: Transport,
@@ -219,9 +178,7 @@ class BaeCorePlayer(
                     .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
                     .setIsPlayable(true)
                     .setIsBrowsable(false)
-            // The cover is host-provided image bytes, not a file URI; Media3 decodes
-            // the embedded artwork for the notification and lock screen. Only the
-            // current track carries bytes (see getState), so queue items have none.
+            // Only the current track has artwork bytes (see getState).
             artwork?.let {
                 metadataBuilder.setArtworkData(it, MediaMetadata.PICTURE_TYPE_FRONT_COVER)
             }
@@ -234,28 +191,21 @@ class BaeCorePlayer(
     private var transport: Transport = Transport.IDLE
     private var playWhenReady: Boolean = false
 
-    /** The flat up-next playlist (manual lane then the context tail), hydrated
-     *  from the latest queue value. This is the linear order the Media3
-     *  session and skip-by-index need; the in-app two-section projection reads
-     *  [manualEntries] / [contextLane] separately. */
+    /** The up-next tracks in play order ([manualEntries] then the context's), for
+     *  the Media3 playlist. */
     private var entries: List<Meta> = emptyList()
 
-    /** The manual lane and the context lane, kept separate for the in-app
-     *  two-section projection (`publish` builds `_queue` from these). The context
-     *  lane is null when nothing plays from a release/library. */
+    /** The queue's two sections, kept apart for the in-app queue. */
     private var manualEntries: List<Meta> = emptyList()
     private var contextLane: ContextLane? = null
 
-    /** Context-tail entries read past [ContextLane.entries]'s initial window, keyed by absolute
-     *  index: the latest upcoming value whose revision matches [queueRevision], and empty while
-     *  none does. */
+    /** Context tracks read past [ContextLane.entries], keyed by index in the whole tail; empty
+     *  until a read for [queueRevision] arrives. */
     private var pagedUpcoming: Map<Int, QueueItem> = emptyMap()
 
-    /** The queue revision the current [manualEntries]/[contextLane] were built from. Upcoming
-     *  values sliced from any other revision are not shown. */
+    /** The revision [manualEntries] and [contextLane] came from. */
     private var queueRevision: ULong = 0u
 
-    /** The context tail's windows past the initial one, read through one live query. */
     private val upcoming =
         QueueUpcomingWindows(queueUpcomingSource, scope) { revision ->
             if (revision == queueRevision) {
@@ -264,79 +214,54 @@ class BaeCorePlayer(
             }
         }
 
-    /** Authoritative now-playing metadata from the latest Playing/Paused payload. */
+    /** The current track's metadata, from the latest playback value. */
     private var currentMeta: Meta? = null
 
-    /** The cover image id the current artwork was (or is being) fetched for, and
-     *  the fetched bytes once they arrive. The session embeds [currentArtwork] in
-     *  the now-playing item's metadata (the notification/lock-screen art); only
-     *  the current track's bytes are loaded, since that's the only art the system
-     *  shows. Fetching is async, so getState renders without art until the bytes
-     *  land and [refreshArtwork] republishes. */
+    /** The cover the current track's artwork is fetched for, and its bytes once
+     *  they arrive. */
     private var currentArtworkCover: BridgeImageRef? = null
     private var currentArtwork: ByteArray? = null
 
-    private var sidePausePrompt: BridgeSidePausePrompt? = null
+    private var sidePausePrompt: SidePausePrompt? = null
 
-    /** Id of the now-playing track, or null when stopped. Mirrored into the
-     *  [currentTrackId] StateFlow by [publish] for the in-app queue screen. */
+    /** Null when stopped. */
     private var playingTrackId: String? = null
     private var lastSeekRevision: ULong = 0u
     private var hasNext: Boolean = false
     private var hasPrevious: Boolean = false
     private var media3RepeatMode: Int = Player.REPEAT_MODE_OFF
 
-    /** Anchor/duration/progress/pending-seek transition state and the position and
-     *  ratio derivations, kept as a pure unit the player feeds events and reads
-     *  outputs from (the Media3 state and the position StateFlow). */
     private val positionModel = PlaybackPositionModel()
 
-    // Compose-facing projection of the same state, for the in-app NowPlayingBar
-    // (read directly off this player — no second MediaController transport).
     private val _nowPlaying = MutableStateFlow<NowPlaying?>(null)
     val nowPlaying: StateFlow<NowPlaying?> = _nowPlaying.asStateFlow()
 
     private val _isPlaying = MutableStateFlow(false)
     val isPlaying: StateFlow<Boolean> = _isPlaying.asStateFlow()
 
-    // True while core is preparing or buffering a track (transport BUFFERING):
-    // an initial load, or a seek to a position not yet downloaded. The in-app
-    // bars swap the play/pause control for a spinner while this holds.
+    // True while core is loading or buffering a track.
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
     private val _position = MutableStateFlow(PlaybackPosition(0.0, null, null))
     val position: StateFlow<PlaybackPosition> = _position.asStateFlow()
 
-    // The two-lane queue projection the in-app QueueScreen renders as distinct
-    // sections, derived in publish() from the same lanes the flat Media3 `entries`
-    // are built from so the two can't drift. (The currently-playing track is not
-    // in this projection — it rides `nowPlaying` — matching core's queue, which
-    // holds only what's next.)
+    // The in-app queue; the current track is not in it.
     private val _queue = MutableStateFlow(QueueProjection.EMPTY)
     val queue: StateFlow<QueueProjection> = _queue.asStateFlow()
 
-    // Repeat mode for the in-app now-playing control. Driven by core's retained
-    // playback value (which also sets Media3 `repeatMode`), so
-    // the in-app button and the system controls reflect one source.
     private val _repeatMode = MutableStateFlow(BridgeRepeatMode.OFF)
     val repeatMode: StateFlow<BridgeRepeatMode> = _repeatMode.asStateFlow()
 
-    // Output volume [0,1] and mute, for the expanded now-playing controls.
-    // Driven by core's retained playback value, so the in-app slider/mute button
-    // reflects core.
-    // Independent of the Media3 State like _queue/_repeatMode — no publish().
+    // Volume in [0,1].
     private val _volume = MutableStateFlow(1f)
     val volume: StateFlow<Float> = _volume.asStateFlow()
 
     private val _isMuted = MutableStateFlow(false)
     val isMuted: StateFlow<Boolean> = _isMuted.asStateFlow()
 
-    // One-shot "+N added to queue" confirmations for the in-app root to surface
-    // (a snackbar). A transient event, not projection state: replay = 0 so a
-    // collector that resubscribes after the add — a recomposition, a screen
-    // change — never re-shows a stale confirmation. Rapid adds drop the oldest
-    // rather than backlog.
+    // "N added to queue" events. No replay, so a collector that resubscribes
+    // never shows an old one again.
     private val _queueItemsAdded =
         MutableSharedFlow<Int>(
             replay = 0,
@@ -349,16 +274,11 @@ class BaeCorePlayer(
         systemHooks.attach()
     }
 
-    /**
-     * Toggle play/pause for a single tap (now-playing bar, expanded player,
-     * track list). Reads the live play state so the call sites don't each
-     * re-derive the same `if (isPlaying) pause() else play()` branch.
-     */
     fun togglePlayPause() {
         if (_isPlaying.value) pause() else play()
     }
 
-    // ── Event intake (called from UiEventAdapter on the application looper) ──
+    // ── Values and events from core, on the main thread ──
 
     fun applyValues(values: BridgePlaybackValues) {
         when (val state = values.state) {
@@ -414,15 +334,10 @@ class BaeCorePlayer(
         trackId: String,
         track: BridgeLoadingTrackInfo?,
     ) {
-        // Once core resolves the target's metadata, project it as the current
-        // track so the player has a non-empty timeline in STATE_BUFFERING — which
-        // is what lets Media3 post the media notification and take the service
-        // foreground while the track is still loading and the app is on screen,
-        // instead of after the audio downloads (by when the screen may be locked
-        // and a service start refused). The bare loading event (track == null)
-        // passes no metadata, holding the prior track on screen with a spinner
-        // until the swap — matching macOS. (Projecting a track that isn't in the
-        // playlist yet would leave the current index unset.)
+        // Showing the loading track right away lets Media3 post the notification
+        // and start the service while the app is still on screen; once the screen
+        // locks, Android may refuse the start. Without metadata, the prior track
+        // stays on screen.
         val current =
             track?.let {
                 Current(
@@ -433,22 +348,13 @@ class BaeCorePlayer(
         activate(Transport.BUFFERING, current)
     }
 
-    /** The resolved current track an activation swaps in: its display [meta] and
-     *  core-reported raw [durationMs] (0 when unknown). The two always move
-     *  together, so they're one payload — the bare loading event carries no
-     *  [Current] at all and keeps the prior track. */
+    /** The track an activation makes current. [durationMs] is 0 when unknown. */
     private data class Current(
         val meta: Meta,
         val durationMs: Long,
     )
 
-    /**
-     * Enter an active (play-when-ready) state for [transport]. When core has
-     * resolved the current track, [current] swaps in its metadata and duration;
-     * the bare loading event passes null, keeping the prior track on screen so
-     * the timeline never blinks empty mid-playback. Requests audio focus,
-     * republishes the projection, and brings up the playback service.
-     */
+    /** Enter play-when-ready for [transport]; a null [current] keeps the prior track. */
     private fun activate(
         transport: Transport,
         current: Current?,
@@ -470,12 +376,8 @@ class BaeCorePlayer(
     }
 
     /**
-     * Load the now-playing artwork bytes for [coverImage] and republish once they
-     * land, so the session embeds them in the notification / lock-screen art. A
-     * no-op when the cover hasn't changed (a pause on the same track keeps the
-     * loaded bytes) — the reference pins the content version, so replacing a
-     * release's cover does reload. A null reference, an absent image, or a fetch
-     * failure clears the art (the loss is logged, not masked).
+     * Fetch the artwork bytes for [coverImage] unless they are already loaded. The
+     * reference includes the image's version, so a replaced cover is fetched again.
      */
     private fun refreshArtwork(coverImage: BridgeImageRef?) {
         if (coverImage == currentArtworkCover) return
@@ -495,8 +397,7 @@ class BaeCorePlayer(
                     logger.error("Failed to load now-playing artwork ${coverImage.id}", e)
                     null
                 }
-            // A later track change supersedes this fetch; only apply if the cover
-            // is still current.
+            // The track may have changed while this fetched.
             if (currentArtworkCover == coverImage) {
                 if (bytes == null) {
                     logger.warning("now-playing artwork bytes absent for ${coverImage.id}")
@@ -527,7 +428,7 @@ class BaeCorePlayer(
         sidePausePrompt =
             when (val reason = state.reason) {
                 BridgePlaybackPauseReason.Manual -> null
-                is BridgePlaybackPauseReason.SideEnded -> reason.prompt
+                is BridgePlaybackPauseReason.SideEnded -> SidePausePrompt.of(reason.prompt)
             }
         publish()
     }
@@ -552,7 +453,6 @@ class BaeCorePlayer(
         coverImage: BridgeImageRef?,
     ): Meta =
         Meta(
-            // The current-track override is not a queue entry, so it has no id.
             entryId = null,
             trackId = trackId,
             title = title,
@@ -586,8 +486,6 @@ class BaeCorePlayer(
         )
     }
 
-    /** Republish when the position advanced; log a stale-track position; leave a
-     *  projection held by a pending seek untouched. */
     private fun applyPositionUpdate(
         update: PositionUpdate,
         trackId: String,
@@ -607,13 +505,6 @@ class BaeCorePlayer(
         _queueItemsAdded.tryEmit(count)
     }
 
-    /**
-     * Apply the latest queue value. Core resolves each item's metadata
-     * (including its cover image id) before delivery, so map both
-     * lanes straight to entries. The flat [entries] (manual lane then the context
-     * tail) drives the Media3 session and skip-by-index; the two lanes are also
-     * kept apart for the in-app two-section projection.
-     */
     fun onQueueValue(
         manual: List<BridgeQueueEntry>,
         context: BridgePlaybackContext?,
@@ -647,10 +538,7 @@ class BaeCorePlayer(
         publish()
     }
 
-    /**
-     * Read `[offset, offset + limit)` of the context's upcoming tail through the player's one
-     * upcoming read. See [QueueUpcomingWindows.load].
-     */
+    /** Read `[offset, offset + limit)` of the context's tail. See [QueueUpcomingWindows.load]. */
     fun loadUpcomingRange(
         offset: Int,
         limit: Int,
@@ -659,18 +547,14 @@ class BaeCorePlayer(
         upcoming.load(offset until minOf(offset + limit, lane.upcomingTotal))
     }
 
-    /** The upcoming entries read for the queue revision on screen, by absolute tail index. */
+    /** The context tracks read for [queueRevision], by index in the whole tail. */
     private fun upcomingItems(): Map<Int, QueueItem> =
         upcoming
             .entriesAt(queueRevision)
             .mapNotNull { (index, entry) -> entry.toEntry().toQueueItem()?.let { index to it } }
             .toMap()
 
-    /**
-     * Push the rebuilt projection: refresh the Media3 [State] for the session,
-     * and the Compose [StateFlow]s the in-app bar reads. Both render the same
-     * single source — written here so they can't drift.
-     */
+    /** Refresh the Media3 [State] and the in-app flows from the same fields. */
     private fun publish() {
         invalidateState()
         val meta = currentMeta
@@ -699,9 +583,7 @@ class BaeCorePlayer(
     }
 
     private fun Meta.toQueueItem(): QueueItem? {
-        // Only the current-track override has a null entryId, and it never sits
-        // in the up-next `entries` this maps over; a null here means a queue
-        // entry arrived without its id.
+        // Only the current track's metadata lacks an entryId, and it is never here.
         val entryId = entryId
         if (entryId == null) {
             logger.warning("queue entry $trackId has no entryId; dropping from projection")
@@ -729,16 +611,11 @@ class BaeCorePlayer(
             coverImage = coverImage,
         )
 
-    // ── State projection ─────────────────────────────────────────────────
+    // ── Media3 state ─────────────────────────────────────────────────────
 
     override fun getState(): State {
-        // Now-playing first, then the up-next queue (see orderedMetas). entries
-        // excludes the current track, so it must be prepended — otherwise the
-        // session shows the first up-next track as now-playing.
         val metas = orderedMetas(entries, currentMeta)
-        // Only the current track carries artwork bytes; the notification/lock
-        // screen show that one cover, and fetching every queue item's would be
-        // wasteful.
+        // The notification and lock screen show only the current track's cover.
         val playlist =
             metas.map { meta ->
                 val artwork = if (meta.trackId == playingTrackId) currentArtwork else null
@@ -786,14 +663,13 @@ class BaeCorePlayer(
             ).build()
     }
 
-    // ── Transport commands (forward to core; no local state change) ──────────
+    // ── Transport commands, forwarded to core ────────────────────────────────
 
     override fun handleSetPlayWhenReady(playWhenReady: Boolean): ListenableFuture<*> {
         if (playWhenReady) {
             appHandle.resume()
         } else {
-            // An explicit user pause must survive a later focus regain (e.g. a
-            // dictation session ending), so disarm any transient-loss resume.
+            // A user pause must not be undone when audio focus comes back.
             systemHooks.disarmResumeOnFocusGain()
             appHandle.pause()
         }
@@ -828,10 +704,7 @@ class BaeCorePlayer(
             }
 
             Player.COMMAND_SEEK_TO_MEDIA_ITEM -> {
-                // The Media3 playlist is the now-playing track followed by the
-                // up-next entries (orderedMetas). Resolve the tapped index to its
-                // queue-entry id; the current-track slot has none, so seeking to
-                // it is a no-op.
+                // The current track's slot has no entry id, so seeking to it does nothing.
                 val entryId = orderedMetas(entries, currentMeta).getOrNull(mediaItemIndex)?.entryId
                 if (entryId != null) {
                     positionModel.clearPendingSeek()
@@ -842,9 +715,8 @@ class BaeCorePlayer(
             }
 
             else -> {
-                // In-track seek: COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM. Core seeks by
-                // ratio; the model derives it from the requested position and known
-                // duration, and projects the dropped position until core confirms.
+                // COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM. Core seeks by ratio; the
+                // requested position shows until core confirms it.
                 val ratio = positionModel.beginInTrackSeek(playingTrackId, positionMs)
                 if (ratio != null) {
                     appHandle.seekByRatio(ratio)
@@ -857,15 +729,7 @@ class BaeCorePlayer(
         return Futures.immediateVoidFuture()
     }
 
-    /**
-     * Play a library item chosen from the browse tree (Android Auto, a Bluetooth
-     * head unit). The item carries a browse media id — not audio this player
-     * decodes — so resolve the tapped id to a play-by-id command and forward it
-     * to core, exactly as the in-app album detail plays a track. No local state
-     * change: the resulting retained value updates [State], like every other
-     * transport command here. Reached via COMMAND_SET_MEDIA_ITEM (a browse play
-     * resolves to a single-item setMediaItem).
-     */
+    /** Play a track chosen from the browse tree (Android Auto, a Bluetooth head unit). */
     override fun handleSetMediaItems(
         mediaItems: MutableList<MediaItem>,
         startIndex: Int,

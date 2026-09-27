@@ -1,5 +1,6 @@
 package fm.bae.app.ui
 
+import fm.bae.app.playback.SidePausePrompt
 import uniffi.bae_bridge.BridgeAlbum
 import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeAlbumSearchResult
@@ -297,12 +298,34 @@ object PreviewData {
             fraction = fraction,
         )
 
-    fun sidePausePrompt(): BridgeSidePausePrompt =
-        BridgeSidePausePrompt(
-            id = "prompt-1",
-            boundary = BridgePauseBoundary.SIDE,
-            sideLabel = "B",
-            countdown = null,
+    /** The prompt after side B of a record ends, with the keys the bridge gives a side. */
+    fun sidePausePrompt(): SidePausePrompt =
+        SidePausePrompt(
+            prompt =
+                BridgeSidePausePrompt(
+                    id = "prompt-1",
+                    boundary = BridgePauseBoundary.SIDE,
+                    sideLabel = "B",
+                    countdown = null,
+                ),
+            titleKey = "core.playback.pause.side_ended.title",
+            countdownKey = "core.playback.pause.side_ended.countdown",
+            keepPausingKey = "core.playback.pause.side_ended.keep_pausing",
+        )
+
+    /** The prompt after disc 1 of a CD ends, with the keys the bridge gives a disc. */
+    fun discPausePrompt(): SidePausePrompt =
+        SidePausePrompt(
+            prompt =
+                BridgeSidePausePrompt(
+                    id = "prompt-2",
+                    boundary = BridgePauseBoundary.DISC,
+                    sideLabel = "1",
+                    countdown = null,
+                ),
+            titleKey = "core.playback.pause.disc_ended.title",
+            countdownKey = "core.playback.pause.disc_ended.countdown",
+            keepPausingKey = "core.playback.pause.disc_ended.keep_pausing",
         )
 
     fun galleryItem(

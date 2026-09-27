@@ -67,13 +67,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import uniffi.bae_bridge.BridgePauseBoundary
 import uniffi.bae_bridge.BridgeRepeatMode
 import uniffi.bae_bridge.BridgeSideCountdown
 import uniffi.bae_bridge.bridgeNextRepeatMode
-import uniffi.bae_bridge.bridgePauseBoundaryCountdownKey
-import uniffi.bae_bridge.bridgePauseBoundaryKeepPausingKey
-import uniffi.bae_bridge.bridgePauseBoundaryTitleKey
 
 private val logger = BaeLogger("bae.NowPlayingBar")
 
@@ -226,8 +222,9 @@ fun SidePauseAlert(
 ) {
     val context = LocalContext.current
     var dismissedPromptId by remember { mutableStateOf<String?>(null) }
-    val prompt = track.sidePausePrompt
-    if (prompt != null && dismissedPromptId != prompt.id) {
+    val wording = track.sidePausePrompt
+    if (wording != null && dismissedPromptId != wording.prompt.id) {
+        val prompt = wording.prompt
         var keepPausing by remember(prompt.id) { mutableStateOf(true) }
         val answer = { play: Boolean ->
             dismissedPromptId = prompt.id
@@ -239,7 +236,7 @@ fun SidePauseAlert(
             title = {
                 Text(
                     context.coreString(
-                        bridgePauseBoundaryTitleKey(prompt.boundary),
+                        wording.titleKey,
                         mapOf("label" to prompt.sideLabel),
                     ),
                 )
@@ -249,13 +246,13 @@ fun SidePauseAlert(
                     Text(context.coreString("core.playback.pause.message"))
                     prompt.countdown?.let { countdown ->
                         SidePauseCountdownLine(
-                            boundary = prompt.boundary,
+                            messageKey = wording.countdownKey,
                             countdown = countdown,
                             nowMs = nowMs,
                         )
                     }
                     KeepPausingCheckbox(
-                        boundary = prompt.boundary,
+                        labelKey = wording.keepPausingKey,
                         checked = keepPausing,
                         onCheckedChange = { keepPausing = it },
                     )
@@ -278,7 +275,7 @@ fun SidePauseAlert(
 /** The checkbox that keeps pausing at the kind of boundary that ended. */
 @Composable
 private fun KeepPausingCheckbox(
-    boundary: BridgePauseBoundary,
+    labelKey: String,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
 ) {
@@ -295,7 +292,7 @@ private fun KeepPausingCheckbox(
     ) {
         Checkbox(checked = checked, onCheckedChange = null)
         Spacer(modifier = Modifier.width(8.dp))
-        Text(LocalContext.current.coreString(bridgePauseBoundaryKeepPausingKey(boundary)))
+        Text(LocalContext.current.coreString(labelKey))
     }
 }
 
@@ -306,7 +303,7 @@ private fun KeepPausingCheckbox(
  */
 @Composable
 private fun SidePauseCountdownLine(
-    boundary: BridgePauseBoundary,
+    messageKey: String,
     countdown: BridgeSideCountdown,
     nowMs: () -> Long,
 ) {
@@ -323,7 +320,7 @@ private fun SidePauseCountdownLine(
     Text(
         text =
             context.coreString(
-                bridgePauseBoundaryCountdownKey(boundary),
+                messageKey,
                 mapOf("seconds" to sideCountdownSecondsLeft(countdown.resumesAtMs, now)),
             ),
         style = MaterialTheme.typography.bodyLarge,
