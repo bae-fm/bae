@@ -605,7 +605,10 @@ mod tests {
     }
 
     /// The platform's own watch reaches the batches: a file written into a
-    /// watched folder arrives once that folder has gone quiet, naming it.
+    /// watched folder arrives once that folder has gone quiet, in a batch
+    /// naming nothing outside it but the root. FSEvents can report the root's
+    /// own creation, made just before the watch, after the watch starts; a
+    /// report of the root reads it whole and takes the folder's events along.
     #[tokio::test]
     async fn a_written_file_arrives_as_its_folders_batch() {
         let temp = tempfile::tempdir().unwrap();
@@ -631,10 +634,13 @@ mod tests {
                 .flat_map(|event| &event.paths)
                 .any(|path| path.ends_with("01.flac"))
             {
-                assert!(events
-                    .iter()
-                    .flat_map(|event| &event.paths)
-                    .all(|path| path.starts_with(&album)));
+                assert!(
+                    events
+                        .iter()
+                        .flat_map(|event| &event.paths)
+                        .all(|path| path.starts_with(&album) || *path == root),
+                    "{events:?}"
+                );
                 break;
             }
         }
