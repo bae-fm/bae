@@ -676,7 +676,7 @@ async fn reset_setup_updates_compatible_folder_and_combination_identities_togeth
             .drop_candidate_track(key, before.draft.tracks[1].edit.id.clone())
             .await
             .unwrap();
-        let mut events = handle.every_event_for_test();
+        let mut events = handle.every_event();
         handle.reset_candidate_setup(key).await.unwrap();
         let after = preparation(&handle, &folder.files.content_hash()).await;
         assert_eq!(after.draft.tracks.len(), 4);

@@ -389,7 +389,7 @@ async fn numeric_vinyl_import_preserves_unknown_sides_and_track_order() {
             .collect::<Vec<_>>(),
         [9, 3]
     );
-    let mut events = handle.every_event_for_test();
+    let mut events = handle.every_event();
     let import_id = handle.start_import(&key).await.unwrap();
     let (release_id, _) = await_import_outcome(&mut events, &import_id).await.unwrap();
     let tracks = handle
@@ -472,7 +472,7 @@ async fn an_import_commits_what_its_picked_releases_store_now() {
         )
         .await
         .unwrap();
-    let mut events = handle.every_event_for_test();
+    let mut events = handle.every_event();
     let import_id = handle.start_import(&key).await.unwrap();
     let (release_id, _) = await_import_outcome(&mut events, &import_id).await.unwrap();
     let records = handle

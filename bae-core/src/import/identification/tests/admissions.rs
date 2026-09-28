@@ -41,7 +41,7 @@ async fn a_request_on_a_waiting_candidate_takes_the_next_slot() {
     let waiting_key = waiting.to_string_lossy().into_owned();
     // Read from here, so the first state the waiting candidate reports is the
     // requested run's.
-    let mut events = fixture.import.every_event_for_test();
+    let mut events = fixture.import.every_event();
 
     fixture.start_explicit_lookup(&waiting);
 
@@ -255,7 +255,7 @@ async fn a_requested_run_is_counted() {
         .unwrap();
     fixture.scan(1).await;
 
-    let mut events = fixture.import.every_event_for_test();
+    let mut events = fixture.import.every_event();
     fixture.start_explicit_lookup(&dir);
     fixture.await_identified_row(&dir).await;
 

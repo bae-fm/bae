@@ -28,7 +28,7 @@ async fn repeated_imports_of_one_candidate_make_one_release() {
         )
         .await
         .unwrap();
-    let mut events = handle.every_event_for_test();
+    let mut events = handle.every_event();
 
     let presses = (0..5).map(|_| {
         let handle = handle.clone();

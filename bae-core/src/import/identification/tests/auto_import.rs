@@ -123,7 +123,7 @@ async fn an_automatic_run_that_settles_auto_importable_imports_its_candidate_onc
     let key = dir.to_string_lossy().into_owned();
     fixture.route_disc_id_match(&dir, "mb-auto", "rg-auto", 2);
     fixture.scan(1).await;
-    let mut events = fixture.import.every_event_for_test();
+    let mut events = fixture.import.every_event();
 
     fixture.drain_automatic().await;
     assert_eq!(
@@ -148,7 +148,7 @@ async fn an_automatic_run_that_settles_auto_importable_with_the_setting_off_impo
     let key = dir.to_string_lossy().into_owned();
     fixture.route_disc_id_match(&dir, "mb-setting-off", "rg-setting-off", 2);
     fixture.scan(1).await;
-    let mut events = fixture.import.every_event_for_test();
+    let mut events = fixture.import.every_event();
 
     fixture.drain_automatic().await;
 
@@ -180,7 +180,7 @@ async fn an_automatic_run_that_settles_needing_you_imports_nothing() {
         ]),
     );
     fixture.scan(1).await;
-    let mut events = fixture.import.every_event_for_test();
+    let mut events = fixture.import.every_event();
 
     fixture.drain_automatic().await;
 
@@ -214,7 +214,7 @@ async fn a_release_the_folder_rules_out_is_neither_applied_nor_imported() {
         .provider
         .route("/release/mb-vinyl?", 200, document.to_string());
     fixture.scan(1).await;
-    let mut events = fixture.import.every_event_for_test();
+    let mut events = fixture.import.every_event();
 
     fixture.drain_automatic().await;
 
@@ -249,7 +249,7 @@ async fn a_candidate_auto_importable_before_the_setting_was_on_is_not_imported()
     let dir = fixture.disc_id_candidate("Album");
     let key = dir.to_string_lossy().into_owned();
     fixture.identify_ready(&dir, "mb-earlier", "rg-earlier").await;
-    let mut events = fixture.import.every_event_for_test();
+    let mut events = fixture.import.every_event();
 
     fixture.manager.set_import_when_identified(true).await.unwrap();
     fixture.rescan(&fixture.import, 1).await;
@@ -272,7 +272,7 @@ async fn a_run_a_person_asked_for_imports_nothing() {
     fixture.manager.set_identify_automatically(false).await.unwrap();
     fixture.scan(1).await;
     fixture.manager.set_identify_automatically(true).await.unwrap();
-    let mut events = fixture.import.every_event_for_test();
+    let mut events = fixture.import.every_event();
 
     fixture.start_explicit_lookup(&dir);
     fixture.await_identified_row(&dir).await;

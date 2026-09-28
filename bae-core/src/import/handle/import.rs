@@ -733,9 +733,9 @@ impl ImportServiceHandle {
         self.event_tx.subscribe()
     }
 
-    /// Every import event from now on, none dropped, for a test to wait on.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub fn every_event_for_test(&self) -> mpsc::UnboundedReceiver<ImportEvent> {
+    /// Every import event from now on, none dropped, each on the reader
+    /// before its send returns (see [`super::ImportEventBus::every_event`]).
+    pub fn every_event(&self) -> mpsc::UnboundedReceiver<ImportEvent> {
         self.event_tx.every_event()
     }
 

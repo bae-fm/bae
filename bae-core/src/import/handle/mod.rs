@@ -89,18 +89,17 @@ enum HoldState {
 #[derive(Clone)]
 pub(crate) struct EventDelivery {
     sender: broadcast::Sender<ImportEvent>,
-    #[cfg(any(test, feature = "test-utils"))]
     every_event: Arc<std::sync::Mutex<EveryEvent>>,
 }
 
-/// Every event delivered so far and the test readers that hear each one,
-/// under one lock so a reader from the start misses nothing and hears nothing
-/// twice.
-#[cfg(any(test, feature = "test-utils"))]
+/// The readers that hear every event, and — for a test reader from the start
+/// — every event delivered so far, under one lock so a reader misses nothing
+/// and hears nothing twice.
 #[derive(Default)]
 struct EveryEvent {
-    delivered: Vec<ImportEvent>,
     readers: Vec<mpsc::UnboundedSender<ImportEvent>>,
+    #[cfg(any(test, feature = "test-utils"))]
+    delivered: Vec<ImportEvent>,
 }
 
 impl EventDelivery {
@@ -108,22 +107,22 @@ impl EventDelivery {
         let (sender, _) = broadcast::channel(capacity);
         Self {
             sender,
-            #[cfg(any(test, feature = "test-utils"))]
             every_event: Arc::default(),
         }
     }
 
-    /// Hand `event` to every reader; `false` when no subscriber heard it.
+    /// Hand `event` to every reader; `false` when no reader heard it.
     pub(crate) fn deliver(&self, event: ImportEvent) -> bool {
-        #[cfg(any(test, feature = "test-utils"))]
-        {
+        let heard_every_event = {
             let mut every_event = self.every_event.lock().unwrap();
+            #[cfg(any(test, feature = "test-utils"))]
             every_event.delivered.push(event.clone());
             every_event
                 .readers
                 .retain(|reader| reader.send(event.clone()).is_ok());
-        }
-        self.sender.send(event).is_ok()
+            !every_event.readers.is_empty()
+        };
+        self.sender.send(event).is_ok() || heard_every_event
     }
 }
 
@@ -170,28 +169,24 @@ impl ImportEventBus {
         self.delivery.sender.subscribe()
     }
 
-    /// Every event sent from now on, none dropped — what a test waits on,
-    /// since [`Self::subscribe`] drops what a slow reader falls behind on.
-    #[cfg(any(test, feature = "test-utils"))]
+    /// Every event sent from now on, none dropped, each on the reader before
+    /// its send returns — where [`Self::subscribe`] drops what a slow reader
+    /// falls behind on. A reader that also takes commands hears every event
+    /// sent before a command was before the command itself.
     pub fn every_event(&self) -> mpsc::UnboundedReceiver<ImportEvent> {
-        self.reader(false)
+        let (reader, events) = mpsc::unbounded_channel();
+        self.delivery.every_event.lock().unwrap().readers.push(reader);
+        events
     }
 
     /// Every event this bus has delivered and will deliver, none dropped —
     /// for a test that starts reading after the work it waits on began.
     #[cfg(any(test, feature = "test-utils"))]
     pub fn every_event_from_start(&self) -> mpsc::UnboundedReceiver<ImportEvent> {
-        self.reader(true)
-    }
-
-    #[cfg(any(test, feature = "test-utils"))]
-    fn reader(&self, from_start: bool) -> mpsc::UnboundedReceiver<ImportEvent> {
         let (reader, events) = mpsc::unbounded_channel();
         let mut every_event = self.delivery.every_event.lock().unwrap();
-        if from_start {
-            for event in &every_event.delivered {
-                let _ = reader.send(event.clone());
-            }
+        for event in &every_event.delivered {
+            let _ = reader.send(event.clone());
         }
         every_event.readers.push(reader);
         events

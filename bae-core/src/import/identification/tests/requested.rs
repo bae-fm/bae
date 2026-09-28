@@ -23,7 +23,7 @@ async fn a_rerun_after_a_verdict_is_a_run_of_its_own() {
         .set_routes(vec![("/discid/", 400, "{}".to_string())]);
     fixture.scan(1).await;
 
-    let mut events = fixture.import.every_event_for_test();
+    let mut events = fixture.import.every_event();
     fixture.drain_automatic().await;
     assert!(matches!(
         fixture.identified_for(&dir).await.map(|row| row.verdict),
@@ -136,7 +136,7 @@ async fn a_run_restarted_over_a_shorter_provider_list_asks_only_what_is_left() {
         .unwrap();
     fixture.scan(1).await;
 
-    let mut events = fixture.import.every_event_for_test();
+    let mut events = fixture.import.every_event();
     fixture.start_explicit_lookup_and_await_run(&dir).await;
     let asked_both = await_run_state(&mut events, &key, |_, _| true).await;
     wait_for_request(&fixture.provider, "/database/search", 1).await;
@@ -449,7 +449,7 @@ async fn explicit_lookup_during_an_active_run_supersedes_it() {
         .await
         .unwrap();
     fixture.scan(1).await;
-    let mut events = fixture.import.every_event_for_test();
+    let mut events = fixture.import.every_event();
 
     fixture.start_explicit_lookup_and_await_run(&dir).await;
     wait_for_request(&fixture.provider, "/discid/", 1).await;
@@ -559,7 +559,7 @@ async fn a_pick_during_an_explicit_lookup_stores_no_verdict() {
         .unwrap();
     fixture.scan(1).await;
 
-    let mut events = fixture.import.every_event_for_test();
+    let mut events = fixture.import.every_event();
     fixture.start_explicit_lookup_and_await_run(&dir).await;
     wait_for_request(&fixture.provider, "/discid/", 1).await;
 
@@ -623,8 +623,8 @@ async fn changing_the_choices_supersedes_the_run_and_frees_its_slot() {
     );
     fixture.provider.hold("/discid/");
     fixture.scan(1).await;
-    let mut events = fixture.import.every_event_for_test();
-    let mut restart = fixture.import.every_event_for_test();
+    let mut events = fixture.import.every_event();
+    let mut restart = fixture.import.every_event();
 
     let pass = fixture.drain_automatic_task();
     wait_for_request(&fixture.provider, "/discid/", 1).await;
@@ -718,7 +718,7 @@ async fn an_edit_during_a_run_leaves_its_answer_to_land() {
         .unwrap();
     fixture.scan(1).await;
     fixture.provider.hold("/release/mb-1?");
-    let mut events = fixture.import.every_event_for_test();
+    let mut events = fixture.import.every_event();
 
     fixture.start_explicit_lookup(&dir);
     wait_for_request(&fixture.provider, "/release/mb-1?", 1).await;

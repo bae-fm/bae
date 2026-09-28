@@ -690,7 +690,7 @@ async fn import_refuses_audio_changed_after_the_file_tags_pane_was_read() {
         )
         .unwrap();
 
-    let mut events = handle.every_event_for_test();
+    let mut events = handle.every_event();
     let import_id = handle
         .start_import(&key)
         .await
@@ -783,7 +783,7 @@ async fn a_pick_lands_and_is_announced_when_its_caller_is_torn_down() {
         tmp: _tmp,
         ..
     } = stored_candidate().await;
-    let mut events = handle.every_event_for_test();
+    let mut events = handle.every_event();
 
     // One poll asks for the pick; dropping the future at the end of the block
     // is the caller being torn down.

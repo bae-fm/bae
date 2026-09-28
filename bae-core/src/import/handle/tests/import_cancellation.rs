@@ -85,7 +85,7 @@ async fn assert_left_as_it_stood(handle: &ImportServiceHandle, key: &str) {
 
 /// The candidate imports once more, now that nothing holds it.
 async fn assert_imports_again(handle: &ImportServiceHandle, key: &str) {
-    let mut events = handle.every_event_for_test();
+    let mut events = handle.every_event();
     let import_id = handle
         .start_import(key)
         .await
@@ -103,7 +103,7 @@ async fn album_count(handle: &ImportServiceHandle) -> usize {
 async fn a_running_import_cancelled_writes_nothing() {
     let (handle, _tmp, key, _) = two_importable().await;
     handle.import_cancels.hold_runs();
-    let mut events = handle.every_event_for_test();
+    let mut events = handle.every_event();
     let import_id = handle.start_import(&key).await.unwrap();
 
     handle.cancel_import(&key).unwrap();
@@ -122,7 +122,7 @@ async fn a_running_import_cancelled_writes_nothing() {
 async fn a_waiting_import_cancelled_ends_at_once_and_never_runs() {
     let (handle, _tmp, running, waiting) = two_importable().await;
     handle.import_cancels.hold_runs();
-    let mut events = handle.every_event_for_test();
+    let mut events = handle.every_event();
     let running_id = handle.start_import(&running).await.unwrap();
     let waiting_id = handle.start_import(&waiting).await.unwrap();
 
@@ -142,7 +142,7 @@ async fn a_waiting_import_cancelled_ends_at_once_and_never_runs() {
 async fn cancelling_every_import_ends_the_running_and_the_waiting() {
     let (handle, _tmp, running, waiting) = two_importable().await;
     handle.import_cancels.hold_runs();
-    let mut events = handle.every_event_for_test();
+    let mut events = handle.every_event();
     let running_id = handle.start_import(&running).await.unwrap();
     let waiting_id = handle.start_import(&waiting).await.unwrap();
 
@@ -264,7 +264,7 @@ fn import_position(import: &crate::import::candidates::ImportInFlight) -> (u8, u
 /// it starts from the queue with no progress, only ever moves forward, and
 /// the release lands.
 async fn assert_imports_again_from_the_start(handle: &ImportServiceHandle, key: &str) {
-    let mut events = handle.every_event_for_test();
+    let mut events = handle.every_event();
     let mut changes = handle.runtime.every_change();
     let import_id = handle
         .start_import(key)
@@ -311,7 +311,7 @@ async fn cancelled_mid_run_leaves_the_store_as_it_was_and_starts_over() {
     let library_dir = tmp[0].path().to_path_buf();
     let before = store_state(&handle, &library_dir).await;
     let held = HeldProgress::at(&handle.event_tx, crate::import::ImportPhase::MeasuringLoudness);
-    let mut events = handle.every_event_for_test();
+    let mut events = handle.every_event();
     let import_id = handle.start_import(&key).await.unwrap();
     tokio::time::timeout(
         std::time::Duration::from_secs(10),
@@ -350,7 +350,7 @@ async fn a_failed_import_leaves_only_its_failure_and_starts_over() {
     let mut before = store_state(&handle, &library_dir).await;
     let blocked =
         crate::test_files::UnopenableFile::block(&Path::new(&key).join("02 Track.flac"));
-    let mut events = handle.every_event_for_test();
+    let mut events = handle.every_event();
     let import_id = handle.start_import(&key).await.unwrap();
     await_import_outcome(&mut events, &import_id)
         .await
@@ -390,7 +390,7 @@ async fn a_cancelled_retry_leaves_the_failure_it_retried() {
     let library_dir = tmp[0].path().to_path_buf();
     let blocked =
         crate::test_files::UnopenableFile::block(&Path::new(&key).join("02 Track.flac"));
-    let mut events = handle.every_event_for_test();
+    let mut events = handle.every_event();
     let failed = handle.start_import(&key).await.unwrap();
     let error = await_import_outcome(&mut events, &failed)
         .await
@@ -425,7 +425,7 @@ async fn a_cancelled_retry_leaves_the_failure_it_retried() {
 async fn an_import_asked_for_again_after_a_waiting_cancel_is_the_one_that_runs() {
     let (handle, _tmp, running, waiting) = two_importable().await;
     handle.import_cancels.hold_runs();
-    let mut events = handle.every_event_for_test();
+    let mut events = handle.every_event();
     let running_id = handle.start_import(&running).await.unwrap();
     let cancelled_id = handle.start_import(&waiting).await.unwrap();
     handle.cancel_import(&waiting).unwrap();

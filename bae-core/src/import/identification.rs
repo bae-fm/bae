@@ -30,7 +30,7 @@ use crate::library::LibraryManager;
 use crate::signals::ExtractionSource;
 use crate::util::rate_limiter::CallPriority;
 use std::sync::{Arc, Mutex};
-use tokio::sync::{broadcast, mpsc, watch};
+use tokio::sync::{mpsc, watch};
 use tokio_util::sync::CancellationToken;
 use tokio_util::task::TaskTracker;
 use tracing::{debug, info, warn};
@@ -112,32 +112,15 @@ pub fn start(import: ImportServiceHandle, library_manager: LibraryManager) -> Id
         .import
         .take_automatic_admissions()
         .expect("one identification queue per import service");
-    // Subscribed before the loop is spawned, so it misses no event.
-    let mut bus = context.import.subscribe_events();
+    // Read before the loop is spawned, so it misses no event.
+    let mut bus = context.import.every_event();
     let config = context.library_manager.subscribe_config_changes();
-    let (event_tx, mut event_rx) = mpsc::unbounded_channel();
     let (command_tx, mut command_rx) = mpsc::unbounded_channel();
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
         .expect("identification queue runtime");
     let runtime_handle = runtime.handle().clone();
-    let relay_token = token.clone();
-    tasks.spawn_on(
-        async move {
-            loop {
-                let event = tokio::select! {
-                    biased;
-                    _ = relay_token.cancelled() => return,
-                    event = bus.recv() => event,
-                };
-                if event_tx.send(event).is_err() {
-                    return;
-                }
-            }
-        },
-        &runtime_handle,
-    );
     let loop_token = token.clone();
     let loop_context = context.clone();
     tasks.spawn_on(
@@ -145,7 +128,7 @@ pub fn start(import: ImportServiceHandle, library_manager: LibraryManager) -> Id
             queue::run(
                 &loop_context,
                 &loop_token,
-                &mut event_rx,
+                &mut bus,
                 &mut command_rx,
                 &mut found,
                 &config,

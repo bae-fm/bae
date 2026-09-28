@@ -55,7 +55,7 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
     });
     import_handle.register_artwork_analyzer(analyzer.clone());
 
-    let mut events = import_handle.every_event_for_test();
+    let mut events = import_handle.every_event();
     import_handle
         .add_watched_folder(root.to_string_lossy().to_string())
         .await

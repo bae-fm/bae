@@ -66,7 +66,7 @@ async fn import_progress_names_every_operation_before_loudness() {
     support::tracing_init();
 
     let f = ImportFixture::new().await;
-    let mut events = f.handle.every_event_for_test();
+    let mut events = f.handle.every_event();
 
     let album_dir = f.temp_path().join("album");
     let expected_candidate_key = album_dir.to_string_lossy().into_owned();
@@ -439,7 +439,7 @@ async fn loudness_pass_advances_the_candidate_rows_percent() {
     let release = discogs_release("Loudness Album", &["Track One", "Track Two", "Track Three"]);
     let release_id_key = seed_discogs_test_release(f.library_manager.providers(), release);
 
-    let mut event_rx = f.handle.every_event_for_test();
+    let mut event_rx = f.handle.every_event();
 
     let album_dir = f.temp_path().join("album");
     let expected_candidate_key = album_dir.to_string_lossy().into_owned();

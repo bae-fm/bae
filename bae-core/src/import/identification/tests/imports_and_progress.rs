@@ -72,7 +72,7 @@ async fn an_import_start_takes_a_queued_candidate_out_of_work_and_progress() {
     fixture.scan(2).await;
     fixture.provider.hold("/discid/");
 
-    let mut events = fixture.import.every_event_for_test();
+    let mut events = fixture.import.every_event();
     let pass = fixture.drain_automatic_task();
     wait_for_request(&fixture.provider, "/discid/", 1).await;
     start_import_for(&fixture, &importing).await;
@@ -130,7 +130,7 @@ async fn a_rescan_does_not_count_back_a_candidate_an_import_owns() {
     fixture.scan(2).await;
     fixture.provider.hold("/discid/");
 
-    let mut events = fixture.import.every_event_for_test();
+    let mut events = fixture.import.every_event();
     let pass = fixture.drain_automatic_task();
     wait_for_request(&fixture.provider, "/discid/", 1).await;
     start_import_for(&fixture, &importing).await;
@@ -244,7 +244,7 @@ async fn progress_carries_both_counts() {
     );
     fixture.scan(2).await;
 
-    let mut events = fixture.import.every_event_for_test();
+    let mut events = fixture.import.every_event();
     fixture.drain_automatic().await;
     let mut progress = Vec::new();
     for event in drain_events(&mut events) {
@@ -267,7 +267,7 @@ async fn progress_carries_both_counts() {
         "the batch is over once both have their answers: {progress:?}"
     );
 
-    let mut events = fixture.import.every_event_for_test();
+    let mut events = fixture.import.every_event();
     fixture.drain_automatic().await;
     let replanned: Vec<_> = drain_events(&mut events)
         .into_iter()
@@ -299,7 +299,7 @@ async fn identified_progress_is_emitted_after_the_verdict_is_committed() {
     );
     fixture.scan(1).await;
 
-    let mut events = fixture.import.every_event_for_test();
+    let mut events = fixture.import.every_event();
     let pass = fixture.drain_automatic_task();
 
     let mut opened = false;

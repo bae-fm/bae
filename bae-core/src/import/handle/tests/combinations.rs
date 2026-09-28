@@ -100,7 +100,7 @@ async fn selected_folders_from_different_roots_import_as_one_release() {
             .collect::<Vec<_>>(),
         [Some(1), Some(1), Some(2), Some(2)]
     );
-    let mut events = handle.every_event_for_test();
+    let mut events = handle.every_event();
     let import_id = handle.start_import(&key).await.unwrap();
     let (release_id, _) = await_import_outcome(&mut events, &import_id)
         .await

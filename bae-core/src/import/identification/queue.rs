@@ -344,19 +344,6 @@ impl Queue {
         }
     }
 
-    /// Run every running job again from the start; nothing durable was written
-    /// yet.
-    fn replay_running(&mut self, context: &Context) {
-        for job in &mut self.jobs {
-            let Some(representative) = job.running_representative() else {
-                continue;
-            };
-            context.import.cancel_identification(&representative);
-            job.state = JobState::Waiting;
-            job.mark_waiting(context);
-        }
-    }
-
     /// The running job whose representative is `key` on `run`; a superseded
     /// run matches none.
     fn running_job(&self, key: &str, run: IdentifyRunId) -> Option<usize> {
@@ -392,7 +379,7 @@ impl Queue {
 pub(super) async fn run(
     context: &Context,
     token: &CancellationToken,
-    bus: &mut mpsc::UnboundedReceiver<Result<ImportEvent, broadcast::error::RecvError>>,
+    bus: &mut mpsc::UnboundedReceiver<ImportEvent>,
     commands: &mut mpsc::UnboundedReceiver<Command>,
     found: &mut mpsc::UnboundedReceiver<String>,
     config: &watch::Receiver<crate::config::Config>,
@@ -435,45 +422,55 @@ pub(super) async fn run(
                 let keys = std::iter::once(key).chain(pending(found)).collect();
                 admit_found(context, &mut queue, keys).await;
             }
-            Some(command) = commands.recv() => match command {
-                Command::Request { candidate_key } => {
-                    request(context, &mut queue, candidate_key).await;
+            Some(command) = commands.recv() => {
+                // Every event sent before the command is on the bus by now, and
+                // is heard first: a decision announced before a request must
+                // not take off the queue the job the request puts on it.
+                while let Ok(event) = bus.try_recv() {
+                    handle_event(context, &mut queue, &settle_token, &mut settling, event).await;
                 }
-                Command::Cancel { candidate_keys, done } => {
-                    for key in &candidate_keys {
-                        queue.cancel(context, key);
+                match command {
+                    Command::Request { candidate_key } => {
+                        request(context, &mut queue, candidate_key).await;
                     }
-                    if done.send(()).is_err() {
-                        debug!("identification: the cancel's caller left before it ended");
+                    Command::Cancel { candidate_keys, done } => {
+                        for key in &candidate_keys {
+                            queue.cancel(context, key);
+                        }
+                        if done.send(()).is_err() {
+                            debug!("identification: the cancel's caller left before it ended");
+                        }
+                    }
+                    Command::CancelAll { done } => {
+                        let keys: Vec<String> = queue.jobs.iter().flat_map(Job::keys).collect();
+                        for key in &keys {
+                            queue.cancel(context, key);
+                        }
+                        if done.send(()).is_err() {
+                            debug!("identification: the cancel's caller left before it ended");
+                        }
+                    }
+                    #[cfg(any(test, feature = "test-utils"))]
+                    Command::AwaitDrained { drain, drained } => {
+                        admit_found(context, &mut queue, pending(found).collect()).await;
+                        waiting_for_drain.push((drain, drained));
+                    }
+                    #[cfg(any(test, feature = "test-utils"))]
+                    Command::AwaitCommandsTaken { taken } => {
+                        let _ = taken.send(());
                     }
                 }
-                Command::CancelAll { done } => {
-                    let keys: Vec<String> = queue.jobs.iter().flat_map(Job::keys).collect();
-                    for key in &keys {
-                        queue.cancel(context, key);
-                    }
-                    if done.send(()).is_err() {
-                        debug!("identification: the cancel's caller left before it ended");
-                    }
-                }
-                #[cfg(any(test, feature = "test-utils"))]
-                Command::AwaitDrained { drain, drained } => {
-                    admit_found(context, &mut queue, pending(found).collect()).await;
-                    waiting_for_drain.push((drain, drained));
-                }
-                #[cfg(any(test, feature = "test-utils"))]
-                Command::AwaitCommandsTaken { taken } => {
-                    let _ = taken.send(());
-                }
-            },
+            }
             Some(result) = settling.join_next() => match result {
                 Ok(done) => finish(context, &mut queue, config, done).await,
                 Err(error) => warn!("identification: a settle task failed: {error}"),
             },
             event = bus.recv() => {
-                if !handle_event(context, &mut queue, &settle_token, &mut settling, event).await {
+                let Some(event) = event else {
+                    info!("identification: the import event stream closed");
                     return;
-                }
+                };
+                handle_event(context, &mut queue, &settle_token, &mut settling, event).await;
             }
         }
     }

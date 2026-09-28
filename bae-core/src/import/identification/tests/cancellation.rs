@@ -32,7 +32,7 @@ async fn a_pick_ends_only_the_picked_candidates_run() {
     let other_key = other.to_string_lossy().into_owned();
     let pass = fixture.drain_automatic_task();
     wait_for_request(&fixture.provider, "/discid/", 1).await;
-    let mut events = fixture.import.every_event_for_test();
+    let mut events = fixture.import.every_event();
 
     fixture
         .import
@@ -167,7 +167,7 @@ async fn clearing_a_candidates_metadata_ends_its_run_and_announces_the_change() 
         .unwrap();
     fixture.scan(1).await;
 
-    let mut events = fixture.import.every_event_for_test();
+    let mut events = fixture.import.every_event();
     fixture.start_explicit_lookup_and_await_run(&dir).await;
     wait_for_request(&fixture.provider, "/discid/", 1).await;
 
@@ -249,6 +249,92 @@ async fn clearing_a_candidates_metadata_takes_it_off_the_queue() {
 
     fixture.start_explicit_lookup(&dir);
     fixture.await_identified_row(&dir).await;
+}
+
+/// A decision already announced when a person asks is heard before the ask:
+/// the clear's announcement takes nothing off the queue the request then puts
+/// on it, and the run asked for stores its answer.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_decision_announced_before_a_request_leaves_the_requested_run_going() {
+    let fixture = Fixture::new("decision-then-request").await;
+    let dir = fixture.disc_id_candidate("Candidate");
+    let key = dir.to_string_lossy().into_owned();
+    let probed = fixture.probed_total_ms(&dir);
+    fixture.provider.route(
+        "/discid/",
+        200,
+        discid_json("mb-asked", "rg-asked", &[probed, 0]),
+    );
+    fixture.provider.route(
+        "/release/mb-asked?",
+        200,
+        release_json("mb-asked", "rg-asked", &[probed, 0]),
+    );
+    fixture
+        .manager
+        .set_identify_automatically(false)
+        .await
+        .unwrap();
+    fixture.scan(1).await;
+
+    // The loop is handed both before it first looks: the announcement, then
+    // the request, with every later event behind them.
+    let (events, mut bus) = tokio::sync::mpsc::unbounded_channel();
+    events
+        .send(ImportEvent::Scan(ScanEvent::CandidateMetadataChanged {
+            candidate_key: key.clone(),
+        }))
+        .unwrap();
+    let mut later = fixture.import.every_event();
+    tokio::spawn(async move {
+        while let Some(event) = later.recv().await {
+            if events.send(event).is_err() {
+                return;
+            }
+        }
+    });
+    let (commands, mut asked) = tokio::sync::mpsc::unbounded_channel();
+    commands
+        .send(Command::Request {
+            candidate_key: key.clone(),
+        })
+        .unwrap();
+    let (drained, answered) = tokio::sync::oneshot::channel();
+    commands
+        .send(Command::AwaitDrained {
+            drain: Drain::Every,
+            drained,
+        })
+        .unwrap();
+
+    let context = fixture.context();
+    let token = CancellationToken::new();
+    let loop_token = token.clone();
+    let queue = tokio::spawn(async move {
+        let (_found, mut found) = tokio::sync::mpsc::unbounded_channel();
+        let config = context.library_manager.subscribe_config_changes();
+        super::queue::run(
+            &context,
+            &loop_token,
+            &mut bus,
+            &mut asked,
+            &mut found,
+            &config,
+        )
+        .await;
+    });
+    tokio::time::timeout(Duration::from_secs(30), answered)
+        .await
+        .expect("the requested job ends")
+        .expect("the queue says so");
+
+    assert!(
+        fixture.identified_for(&dir).await.is_some(),
+        "the run asked for after the clear was announced stored its answer; requests: {:?}",
+        fixture.provider.requests()
+    );
+    token.cancel();
+    queue.await.unwrap();
 }
 
 /// An import claims the candidate, so nothing is left for identification to

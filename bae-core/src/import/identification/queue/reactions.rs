@@ -3,21 +3,21 @@
 
 use super::*;
 
-/// Apply one import event. Reports whether the loop carries on.
+/// Apply one import event.
 pub(super) async fn handle_event(
     context: &Context,
     queue: &mut Queue,
     settle_token: &CancellationToken,
     settling: &mut JoinSet<Finished>,
-    event: Option<Result<ImportEvent, broadcast::error::RecvError>>,
-) -> bool {
+    event: ImportEvent,
+) {
     match event {
-        Some(Ok(ImportEvent::IdentifyStateChanged {
+        ImportEvent::IdentifyStateChanged {
             candidate_key,
             run,
             state,
             ..
-        })) => {
+        } => {
             advance(
                 context,
                 queue,
@@ -29,47 +29,29 @@ pub(super) async fn handle_event(
             )
             .await;
         }
-        Some(Ok(ImportEvent::Scan(ScanEvent::FolderCandidate { candidate, .. }))) => {
+        ImportEvent::Scan(ScanEvent::FolderCandidate { candidate, .. }) => {
             follow(context, queue, &candidate.key()).await;
         }
         // A person's decision about the candidate ends its identification.
-        Some(Ok(ImportEvent::Scan(ScanEvent::CandidateBindingChanged { candidate }))) => {
+        ImportEvent::Scan(ScanEvent::CandidateBindingChanged { candidate }) => {
             queue.withdraw(context, &candidate.key());
         }
-        Some(Ok(ImportEvent::Scan(ScanEvent::CandidateMetadataChanged { candidate_key }))) => {
+        ImportEvent::Scan(ScanEvent::CandidateMetadataChanged { candidate_key }) => {
             queue.withdraw(context, &candidate_key);
         }
-        Some(Ok(ImportEvent::Scan(ScanEvent::CandidateSkipChanged {
+        ImportEvent::Scan(ScanEvent::CandidateSkipChanged {
             candidate_key,
-            skipped,
-        }))) => {
-            if skipped {
-                queue.withdraw(context, &candidate_key);
-            }
+            skipped: true,
+        }) => {
+            queue.withdraw(context, &candidate_key);
         }
         // Gone, or taken by an import: a run left going would never finish.
-        Some(Ok(ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key })))
-        | Some(Ok(ImportEvent::ImportProgress { candidate_key, .. })) => {
+        ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key })
+        | ImportEvent::ImportProgress { candidate_key, .. } => {
             queue.withdraw(context, &candidate_key);
         }
-        Some(Ok(_)) => {}
-        Some(Err(broadcast::error::RecvError::Lagged(n))) => {
-            // A dropped run state would hold its slot forever, so every running
-            // job starts over.
-            warn!("identification: import bus lagged by {n} events; replaying what was running");
-            context
-                .library_manager
-                .record_telemetry(crate::diagnostics::TelemetryEvent::Anomaly {
-                    kind: crate::diagnostics::AnomalyKind::EventBusLagged,
-                });
-            queue.replay_running(context);
-        }
-        Some(Err(broadcast::error::RecvError::Closed)) | None => {
-            info!("identification: the import event stream closed");
-            return false;
-        }
+        _ => {}
     }
-    true
 }
 
 /// One state of the run answering a job.
