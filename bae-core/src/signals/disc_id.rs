@@ -20,7 +20,7 @@ pub enum DiscIdSignal {
     /// No LOG/CUE artifact to derive one from.
     Absent,
     /// A track sheet was there, and the audio it lays out is sampled at a
-    /// rate a CD does not play at (see [`super::RipEvidence::NotCd`]), so no
+    /// rate a CD does not play at (see [`super::AudioOrigin::not_cd_rate`]), so no
     /// disc could have had the layout the sheet describes and none is hashed
     /// to ask about.
     NotCdAudio,

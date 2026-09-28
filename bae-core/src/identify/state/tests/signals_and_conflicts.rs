@@ -167,7 +167,7 @@ fn signals_with_catalogs(
     catalogs: Vec<String>,
 ) -> Signals {
     Signals {
-        rip: crate::signals::RipEvidence::Unproven,
+        origin: crate::signals::AudioOrigin::default(),
         disc_id,
         barcode,
         text: TextSignal::Settled {
@@ -264,7 +264,7 @@ fn no_disc_no_barcode_is_manual_only() {
 #[test]
 fn nothing_to_run_waits_for_the_settled_text() {
     let scanning = Signals {
-        rip: crate::signals::RipEvidence::Unproven,
+        origin: crate::signals::AudioOrigin::default(),
         disc_id: DiscIdSignal::Absent,
         barcode: BarcodeSignal::Absent,
         text: TextSignal::Scanning {
@@ -303,7 +303,7 @@ fn an_aborted_extraction_settles_the_run_as_failed() {
         detail: "fast-pass spawn_blocking failed: task panicked".to_string(),
     };
     let aborted = Signals {
-        rip: crate::signals::RipEvidence::Unproven,
+        origin: crate::signals::AudioOrigin::default(),
         disc_id: DiscIdSignal::Failed {
             failure: failure.clone(),
         },

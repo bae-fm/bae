@@ -7,7 +7,7 @@
 //! rather than dropped — see [`super::combine`].
 
 use crate::pressing::{CdAudio, DiscogsDetail, StatedMedia};
-use crate::signals::RipEvidence;
+use crate::signals::AudioOrigin;
 
 /// What the folder's own files say about its audio, as combine reads it: the
 /// rip evidence, which speaks to its medium; and whether the audio is one
@@ -15,7 +15,7 @@ use crate::signals::RipEvidence;
 /// registered, which only tell otherwise tied rows apart.
 #[derive(Debug, Clone, Copy)]
 pub struct FolderAudio<'a> {
-    pub rip: &'a RipEvidence,
+    pub origin: &'a AudioOrigin,
     /// Every audio file carries one channel.
     pub mono: bool,
     pub track_count: u32,
@@ -28,7 +28,10 @@ impl FolderAudio<'static> {
     /// Files that prove nothing about their medium, and hold no tracks a
     /// tracklist could count.
     pub const UNPROVEN: Self = Self {
-        rip: &RipEvidence::Unproven,
+        origin: &AudioOrigin {
+            source: None,
+            not_cd_rate: None,
+        },
         mono: false,
         track_count: 0,
         registered_in: None,
@@ -85,14 +88,17 @@ impl RippedFrom {
     /// A disc ID hashes a CD's table of contents, and one a catalog knows is
     /// a disc that was pressed: a folder whose track layout matches one to
     /// the frame was copied from it.
-    pub(crate) fn of(rip: &RipEvidence, disc_id_matched: bool) -> Self {
-        match rip {
-            RipEvidence::Cd { .. } => Self::Cd,
+    pub(crate) fn of(origin: &AudioOrigin, disc_id_matched: bool) -> Self {
+        if origin.is_cd_rip() {
+            Self::Cd
+        } else if origin.not_cd_rate.is_some() {
             // The disc ID is not computed from a sheet whose audio rules a
             // CD out, so it cannot have matched here.
-            RipEvidence::NotCd => Self::NotCd,
-            RipEvidence::Unproven if disc_id_matched => Self::Cd,
-            RipEvidence::Unproven => Self::Unknown,
+            Self::NotCd
+        } else if disc_id_matched {
+            Self::Cd
+        } else {
+            Self::Unknown
         }
     }
 
@@ -153,23 +159,53 @@ mod tests {
         )
     }
 
-    const CD_RIP: RipEvidence = RipEvidence::Cd {
-        proof: CdProof::RipLog,
-        file: None,
-    };
+    fn cd_rip() -> AudioOrigin {
+        AudioOrigin {
+            source: Some(crate::signals::AudioSource::CdRip {
+                proof: CdProof::RipLog,
+                file: None,
+            }),
+            not_cd_rate: None,
+        }
+    }
+
+    fn not_cd_rate() -> AudioOrigin {
+        AudioOrigin {
+            source: None,
+            not_cd_rate: Some(96_000),
+        }
+    }
 
     #[test]
     fn a_rip_the_files_prove_or_a_matched_disc_id_is_a_cd() {
-        assert_eq!(RippedFrom::of(&CD_RIP, false), RippedFrom::Cd);
-        assert_eq!(RippedFrom::of(&RipEvidence::Unproven, true), RippedFrom::Cd);
+        assert_eq!(RippedFrom::of(&cd_rip(), false), RippedFrom::Cd);
         assert_eq!(
-            RippedFrom::of(&RipEvidence::Unproven, false),
+            RippedFrom::of(&AudioOrigin::default(), true),
+            RippedFrom::Cd
+        );
+        assert_eq!(
+            RippedFrom::of(&AudioOrigin::default(), false),
             RippedFrom::Unknown
         );
-        assert_eq!(
-            RippedFrom::of(&RipEvidence::NotCd, false),
-            RippedFrom::NotCd
-        );
+        assert_eq!(RippedFrom::of(&not_cd_rate(), false), RippedFrom::NotCd);
+    }
+
+    /// A download at a rate no CD plays at is not CD audio; one at a CD's
+    /// rate proves nothing about a disc.
+    #[test]
+    fn a_download_is_not_cd_audio_only_by_its_rate() {
+        let download =
+            crate::signals::AudioSource::Download(crate::signals::DownloadProof::DeliverySet);
+        let at_cd_rate = AudioOrigin {
+            source: Some(download.clone()),
+            not_cd_rate: None,
+        };
+        let at_96k = AudioOrigin {
+            source: Some(download),
+            not_cd_rate: Some(96_000),
+        };
+        assert_eq!(RippedFrom::of(&at_cd_rate, false), RippedFrom::Unknown);
+        assert_eq!(RippedFrom::of(&at_96k, false), RippedFrom::NotCd);
     }
 
     /// A CD rip rules out a row made only of carriers that play no CD audio,

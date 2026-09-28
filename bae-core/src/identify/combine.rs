@@ -130,7 +130,7 @@ pub fn combine_results(
     text: &CandidateText,
     folder: FolderAudio<'_>,
 ) -> (Findings, LibraryStatuses) {
-    let ripped_from = RippedFrom::of(folder.rip, !discid_results.is_empty());
+    let ripped_from = RippedFrom::of(folder.origin, !discid_results.is_empty());
     let by_signal = [
         &discid_results,
         &barcode_results,

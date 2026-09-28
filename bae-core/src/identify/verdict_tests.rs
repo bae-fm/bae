@@ -16,7 +16,7 @@ fn mk_result(release_id: &str) -> MetadataResult {
 /// A bare context for `track_count` tracks.
 fn mk_context(track_count: u32) -> SignalsContext {
     SignalsContext {
-        rip: crate::signals::RipEvidence::Unproven,
+        origin: crate::signals::AudioOrigin::default(),
         providers: Vec::new(),
         steps: crate::config::IdentificationSteps::default(),
         artwork: crate::signals::ArtworkScan::Absent,

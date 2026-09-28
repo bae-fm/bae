@@ -73,7 +73,7 @@ fn read_folder(sheet: &CueSheet, format: &AudioFormat, documents: &[(&Path, &str
 #[test]
 fn a_bare_sheet_over_audio_at_a_cds_rate_proves_nothing_and_is_hashed() {
     let reading = read_folder(&sheet(None), &lossless(44_100, 16, 2), &[]);
-    assert_eq!(reading.evidence, RipEvidence::Unproven);
+    assert_eq!(reading.origin, AudioOrigin::default());
     assert!(matches!(reading.disc_id, DiscIdReading::Computed(_)));
 }
 
@@ -84,13 +84,13 @@ fn a_bare_sheet_over_audio_at_a_cds_rate_proves_nothing_and_is_hashed() {
 fn a_sheet_over_audio_at_another_rate_is_not_a_cd_and_is_not_hashed() {
     let reading = read_folder(&sheet(None), &lossless(96_000, 24, 1), &[]);
     assert_eq!(
-        reading.evidence,
-        RipEvidence::NotCd
+        reading.origin,
+        AudioOrigin {
+            source: None,
+            not_cd_rate: Some(96_000),
+        }
     );
-    assert_eq!(
-        reading.disc_id,
-        DiscIdReading::NotCdAudio
-    );
+    assert_eq!(reading.disc_id, DiscIdReading::NotCdAudio);
 }
 
 /// A sheet a CD ripper wrote proves a CD rip, and is hashed.
@@ -102,11 +102,11 @@ fn a_sheet_a_cd_ripper_wrote_proves_a_cd() {
         &[],
     );
     assert_eq!(
-        reading.evidence,
-        RipEvidence::Cd {
+        reading.origin.source,
+        Some(AudioSource::CdRip {
             proof: CdProof::RipperSheet,
             file: Some("Album.cue".to_string()),
-        }
+        })
     );
     assert!(matches!(reading.disc_id, DiscIdReading::Computed(_)));
 }
@@ -137,18 +137,18 @@ fn an_accuraterip_report_that_found_the_disc_proves_a_cd() {
         &[(&found, "found.accurip")],
     );
     assert_eq!(
-        reading.evidence,
-        RipEvidence::Cd {
+        reading.origin.source,
+        Some(AudioSource::CdRip {
             proof: CdProof::AccurateRipReport,
             file: Some("found.accurip".to_string()),
-        }
+        })
     );
     let reading = read_folder(
         &sheet(None),
         &lossless(44_100, 16, 2),
         &[(&absent, "absent.accurip")],
     );
-    assert_eq!(reading.evidence, RipEvidence::Unproven);
+    assert_eq!(reading.origin, AudioOrigin::default());
 }
 
 /// A rip log whose table of contents reads is the proof and the disc ID
@@ -162,11 +162,15 @@ fn a_rip_log_proves_a_cd_and_is_the_disc_id() {
         &[(&log, "Album.log")],
     );
     assert_eq!(
-        reading.evidence,
-        RipEvidence::Cd {
-            proof: CdProof::RipLog,
-            file: Some("Album.log".to_string()),
-        }
+        reading.origin,
+        AudioOrigin {
+            source: Some(AudioSource::CdRip {
+                proof: CdProof::RipLog,
+                file: Some("Album.log".to_string()),
+            }),
+            not_cd_rate: Some(96_000),
+        },
+        "the rate is read beside the proof"
     );
     let DiscIdReading::Computed(computed) = reading.disc_id else {
         panic!("the log's table of contents hashes to a disc ID");
@@ -184,9 +188,6 @@ fn audio_off_a_cds_rate_with_no_sheet_is_absent() {
         sheets: Vec::new(),
         audio: vec![&format],
     });
-    assert_eq!(
-        reading.evidence,
-        RipEvidence::NotCd
-    );
+    assert_eq!(reading.origin.not_cd_rate, Some(96_000));
     assert_eq!(reading.disc_id, DiscIdReading::Absent);
 }

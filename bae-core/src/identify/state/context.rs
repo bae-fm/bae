@@ -14,7 +14,7 @@ use crate::identify::{IdentifyFailure, NotAskedReason};
 use crate::import::album_links::{self, GroupReading, Twin};
 use crate::import::{Catalog, LookupChoices};
 use crate::signals::{
-    ArtworkScan, AudioFacts, BarcodeSignal, DiscIdSignal, LookupFailure, RipEvidence, Signals,
+    ArtworkScan, AudioFacts, AudioOrigin, BarcodeSignal, DiscIdSignal, LookupFailure, Signals,
     SourcedValue, TextSignal,
 };
 
@@ -303,9 +303,8 @@ pub struct SignalsContext {
     pub steps: IdentificationSteps,
     /// Where the artwork pass has got to, from the latest snapshot.
     pub artwork: ArtworkScan,
-    /// What the candidate's files say about the medium its audio was ripped
-    /// from.
-    pub rip: RipEvidence,
+    /// What the candidate's files say about where its audio came from.
+    pub origin: AudioOrigin,
     /// The audio being identified, read off its files.
     pub audio: AudioFacts,
     /// Where most of the audio's recordings were registered, as the ISRCs
@@ -351,7 +350,7 @@ impl Default for SignalsContext {
             providers: Vec::new(),
             steps: IdentificationSteps::default(),
             artwork: ArtworkScan::Absent,
-            rip: RipEvidence::Unproven,
+            origin: AudioOrigin::default(),
             audio: AudioFacts::default(),
             registered_in: None,
             disc: DiscIdEvidence::default(),
@@ -370,7 +369,7 @@ impl SignalsContext {
     /// What the folder's files say about its audio, as combine reads it.
     pub(crate) fn folder_audio(&self) -> crate::identify::medium::FolderAudio<'_> {
         crate::identify::medium::FolderAudio {
-            rip: &self.rip,
+            origin: &self.origin,
             mono: self.audio.mono,
             track_count: self.audio.track_count,
             registered_in: self.registered_in,
@@ -427,7 +426,7 @@ impl SignalsContext {
         artwork: ArtworkScan,
     ) {
         self.artwork = artwork;
-        self.rip = signals.rip.clone();
+        self.origin = signals.origin.clone();
         self.registered_in = signals.registered_in;
         self.audio = audio;
         self.disc.refresh_input(&signals.disc_id);

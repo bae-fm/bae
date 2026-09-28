@@ -30,7 +30,7 @@ desktop_only! {
     pub use audio::AudioFacts;
     pub use barcode::BarcodeSignal;
     pub use disc_id::DiscIdSignal;
-    pub use rip::{CdProof, RipEvidence};
+    pub use rip::{AudioOrigin, AudioSource, CdProof, DownloadProof, StoreMarker};
     pub use service::{
         ExtractionService, ExtractionServiceHandle, ExtractionSource, ExtractionWatch,
         SignalsSnapshot,
@@ -43,9 +43,9 @@ desktop_only! {
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Signals {
-    /// What the files say about the medium the audio was ripped from; it
-    /// decides whether a sheet is hashed and sets aside rows it contradicts.
-    pub rip: RipEvidence,
+    /// What the files say about where the audio came from; it decides
+    /// whether a sheet is hashed and sets aside rows it contradicts.
+    pub origin: AudioOrigin,
     pub disc_id: DiscIdSignal,
     pub barcode: BarcodeSignal,
     pub text: TextSignal,

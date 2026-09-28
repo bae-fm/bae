@@ -619,7 +619,7 @@ mod tests {
     /// without touching MB or Discogs.
     fn absent_signals() -> Signals {
         Signals {
-            rip: crate::signals::RipEvidence::Unproven,
+            origin: crate::signals::AudioOrigin::default(),
             disc_id: DiscIdSignal::Absent,
             barcode: BarcodeSignal::Absent,
             text: TextSignal::Settled {

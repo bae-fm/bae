@@ -5,7 +5,7 @@ use super::candidate_text::{extract_folder_brackets, parse_filename_stem, Source
 use crate::barcode::Barcode;
 use crate::import::discid::read_rip_artifacts;
 use crate::import::folder_scanner::CategorizedFiles;
-use crate::signals::{AudioFacts, DiscIdSignal, RipEvidence, SourcedValue};
+use crate::signals::{AudioFacts, AudioOrigin, AudioSource, DiscIdSignal, DownloadProof, SourcedValue};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use tracing::{debug, warn};
@@ -26,7 +26,7 @@ pub(super) struct FastPass {
     pub(super) lines: Vec<SourcedLine>,
     pub(super) bracket_catalogs: Vec<String>,
     pub(super) artwork: Vec<ArtworkImage>,
-    pub(super) rip: RipEvidence,
+    pub(super) origin: AudioOrigin,
     pub(super) disc_id: DiscIdSignal,
     pub(super) cue_barcodes: Vec<SourcedValue>,
     pub(super) audio: AudioFacts,
@@ -42,7 +42,7 @@ impl FastPass {
             lines: Vec::new(),
             bracket_catalogs: Vec::new(),
             artwork: Vec::new(),
-            rip: RipEvidence::Unproven,
+            origin: AudioOrigin::default(),
             disc_id: DiscIdSignal::Absent,
             cue_barcodes: Vec::new(),
             audio: AudioFacts::default(),
@@ -112,7 +112,7 @@ pub(super) fn gather_non_ocr_sources(
     // one scan.
     pass.audio = AudioFacts::of_files(categorized)?;
     let rip = read_rip_artifacts(categorized);
-    pass.rip = rip.evidence;
+    pass.origin = rip.origin;
     pass.disc_id = rip.disc_id.into_signal();
     pass.cue_barcodes = cue_barcodes(categorized);
 
@@ -150,6 +150,12 @@ pub(super) fn gather_non_ocr_sources(
     ) {
         Ok(tags) => {
             pass.registered_in = tags.registered_in();
+            // A file a ripper made reading a disc outweighs a tag, which can
+            // be copied.
+            if pass.origin.source.is_none() {
+                pass.origin.source =
+                    download_proof(&tags, categorized).map(AudioSource::Download);
+            }
             let mut seen = HashSet::new();
             for fact in &tags.files {
                 for value in [
@@ -273,6 +279,36 @@ fn read_capped_text(path: &Path) -> Option<String> {
         return None;
     }
     Some(crate::text_encoding::decode_text(&buf).text)
+}
+
+/// What proves the audio a download, from its tags: a store's own marker on a
+/// track, or on every track what a label delivers with a download — an ISRC,
+/// a phonographic copyright line and the label — where no rip document or
+/// track sheet says a disc was read.
+fn download_proof(
+    tags: &crate::import::file_tag_snapshot::FileTagSnapshot,
+    categorized: &CategorizedFiles,
+) -> Option<DownloadProof> {
+    if let Some((marker, file)) = tags.files.iter().find_map(|fact| {
+        fact.store
+            .map(|marker| (marker, fact.observation.relative_path.clone()))
+    }) {
+        return Some(DownloadProof::Store { marker, file });
+    }
+    let read_off_a_disc = categorized.files.iter().any(|entry| {
+        crate::import::discid::is_rip_document(&entry.file.path)
+            || has_ext(&entry.file.path, "cue")
+    });
+    let delivered = !tags.files.is_empty()
+        && tags.files.iter().all(|fact| {
+            fact.isrc.is_some()
+                && fact.label.is_some()
+                && fact
+                    .copyright
+                    .as_deref()
+                    .is_some_and(super::rip::states_phonographic_copyright)
+        });
+    (delivered && !read_off_a_disc).then_some(DownloadProof::DeliverySet)
 }
 
 #[cfg(test)]

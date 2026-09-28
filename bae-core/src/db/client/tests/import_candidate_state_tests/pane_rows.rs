@@ -25,7 +25,7 @@ fn pane_candidate_path() -> String {
 
 fn settled_signals() -> Signals {
     Signals {
-        rip: crate::signals::RipEvidence::Unproven,
+        origin: crate::signals::AudioOrigin::default(),
         disc_id: DiscIdSignal::Absent,
         barcode: BarcodeSignal::Absent,
         text: TextSignal::Settled {
@@ -185,14 +185,18 @@ async fn a_verdict_cannot_create_state_for_an_absent_candidate() {
 /// each way a lookup can fail.
 #[tokio::test]
 async fn every_settled_signal_shape_round_trips() {
-    use crate::signals::{CdProof, RipEvidence};
-    let cases: Vec<(&str, RipEvidence, DiscIdSignal, BarcodeSignal, TextSignal)> = vec![
+    use crate::signals::{AudioOrigin, AudioSource, CdProof, DownloadProof, StoreMarker};
+    let cd_rip = |proof, file: Option<&str>| AudioOrigin {
+        source: Some(AudioSource::CdRip {
+            proof,
+            file: file.map(str::to_string),
+        }),
+        not_cd_rate: None,
+    };
+    let cases: Vec<(&str, AudioOrigin, DiscIdSignal, BarcodeSignal, TextSignal)> = vec![
         (
             "computed disc ID, settled barcodes and text",
-            RipEvidence::Cd {
-                proof: CdProof::RipLog,
-                file: Some("rip.log".to_string()),
-            },
+            cd_rip(CdProof::RipLog, Some("rip.log")),
             DiscIdSignal::Computed {
                 disc_id: "disc-hash".to_string(),
                 source_file: Some("rip.log".to_string()),
@@ -211,7 +215,7 @@ async fn every_settled_signal_shape_round_trips() {
         ),
         (
             "absent everywhere",
-            RipEvidence::Unproven,
+            AudioOrigin::default(),
             DiscIdSignal::Absent,
             BarcodeSignal::Absent,
             TextSignal::Settled {
@@ -221,10 +225,7 @@ async fn every_settled_signal_shape_round_trips() {
         ),
         (
             "a network failure and a provider one",
-            RipEvidence::Cd {
-                proof: CdProof::AccurateRipReport,
-                file: None,
-            },
+            cd_rip(CdProof::AccurateRipReport, None),
             DiscIdSignal::Failed {
                 failure: LookupFailure::Network,
             },
@@ -240,10 +241,7 @@ async fn every_settled_signal_shape_round_trips() {
         ),
         (
             "a sheet a CD ripper wrote",
-            RipEvidence::Cd {
-                proof: CdProof::RipperSheet,
-                file: Some("Album.cue".to_string()),
-            },
+            cd_rip(CdProof::RipperSheet, Some("Album.cue")),
             DiscIdSignal::Absent,
             BarcodeSignal::Absent,
             TextSignal::Settled {
@@ -253,7 +251,10 @@ async fn every_settled_signal_shape_round_trips() {
         ),
         (
             "a sheet left unhashed over audio no CD holds",
-            RipEvidence::NotCd,
+            AudioOrigin {
+                source: None,
+                not_cd_rate: Some(96_000),
+            },
             DiscIdSignal::NotCdAudio,
             BarcodeSignal::Absent,
             TextSignal::Settled {
@@ -263,7 +264,7 @@ async fn every_settled_signal_shape_round_trips() {
         ),
         (
             "a diagnostic, an artwork failure, and a provider with no status",
-            RipEvidence::Unproven,
+            AudioOrigin::default(),
             DiscIdSignal::Failed {
                 failure: LookupFailure::Diagnostic {
                     detail: "the release was not found".to_string(),
@@ -279,6 +280,35 @@ async fn every_settled_signal_shape_round_trips() {
                 free_text: Vec::new(),
             },
         ),
+        (
+            "a store's download at a rate no CD plays at",
+            AudioOrigin {
+                source: Some(AudioSource::Download(DownloadProof::Store {
+                    marker: StoreMarker::ITunesPurchase,
+                    file: "01.m4a".to_string(),
+                })),
+                not_cd_rate: Some(96_000),
+            },
+            DiscIdSignal::Absent,
+            BarcodeSignal::Absent,
+            TextSignal::Settled {
+                catalogs: Vec::new(),
+                free_text: Vec::new(),
+            },
+        ),
+        (
+            "a label's delivered download",
+            AudioOrigin {
+                source: Some(AudioSource::Download(DownloadProof::DeliverySet)),
+                not_cd_rate: None,
+            },
+            DiscIdSignal::Absent,
+            BarcodeSignal::Absent,
+            TextSignal::Settled {
+                catalogs: Vec::new(),
+                free_text: Vec::new(),
+            },
+        ),
     ];
 
     // Where the recordings were registered rides along: a country, a region,
@@ -290,11 +320,11 @@ async fn every_settled_signal_shape_round_trips() {
         )),
         None,
     ];
-    for (at, (what, rip, disc_id, barcode, text)) in cases.into_iter().enumerate() {
+    for (at, (what, origin, disc_id, barcode, text)) in cases.into_iter().enumerate() {
         let (db, _tmp) = empty_db().await;
         let (_, hash) = stored_pane_candidate(&db).await;
         let signals = Signals {
-            rip,
+            origin,
             disc_id,
             barcode,
             text,
@@ -328,7 +358,7 @@ async fn every_settled_signal_shape_round_trips() {
 async fn a_scanning_signal_is_refused_and_writes_nothing() {
     for scanning in [
         Signals {
-            rip: crate::signals::RipEvidence::Unproven,
+            origin: crate::signals::AudioOrigin::default(),
             disc_id: DiscIdSignal::Absent,
             barcode: BarcodeSignal::Scanning { codes: Vec::new() },
             text: TextSignal::Settled {
@@ -339,7 +369,7 @@ async fn a_scanning_signal_is_refused_and_writes_nothing() {
             registered_in: None,
         },
         Signals {
-            rip: crate::signals::RipEvidence::Unproven,
+            origin: crate::signals::AudioOrigin::default(),
             disc_id: DiscIdSignal::Absent,
             barcode: BarcodeSignal::Absent,
             text: TextSignal::Scanning {

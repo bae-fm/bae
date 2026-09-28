@@ -202,16 +202,43 @@ pub enum AutomationCdProof {
     RipperSheet,
 }
 
-/// Mirrors bae-core's `signals::RipEvidence`.
+/// Mirrors bae-core's `signals::StoreMarker`.
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AutomationStoreMarker {
+    ITunesPurchase,
+    Bandcamp,
+}
+
+/// Mirrors bae-core's `signals::DownloadProof`.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
-pub enum AutomationRipEvidence {
-    Cd {
+pub enum AutomationDownloadProof {
+    Store {
+        marker: AutomationStoreMarker,
+        file: String,
+    },
+    DeliverySet,
+}
+
+/// Mirrors bae-core's `signals::AudioSource`.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case", tag = "kind")]
+pub enum AutomationAudioSource {
+    CdRip {
         proof: AutomationCdProof,
         file: Option<String>,
     },
-    NotCd,
-    Unproven,
+    Download {
+        proof: AutomationDownloadProof,
+    },
+}
+
+/// Mirrors bae-core's `signals::AudioOrigin`.
+#[derive(Debug, Clone, Serialize)]
+pub struct AutomationAudioOrigin {
+    pub source: Option<AutomationAudioSource>,
+    pub not_cd_rate: Option<u32>,
 }
 
 /// Mirrors bae-core's `signals::BarcodeSignal`, each code once.
@@ -253,7 +280,7 @@ pub enum AutomationTextSignal {
 /// Mirrors bae-core's `signals::Signals`.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationSignals {
-    pub rip: AutomationRipEvidence,
+    pub origin: AutomationAudioOrigin,
     pub disc_id: AutomationDiscIdSignal,
     pub barcode: AutomationBarcodeSignal,
     pub text: AutomationTextSignal,

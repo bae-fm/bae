@@ -88,7 +88,7 @@ async fn save_verdict_with_ledger(
             folder_path: candidate.path.to_string_lossy().into_owned(),
             verdict: verdict(release_id, ledger),
             signals: crate::signals::Signals {
-                rip: crate::signals::RipEvidence::Unproven,
+                origin: crate::signals::AudioOrigin::default(),
                 disc_id: crate::signals::DiscIdSignal::Absent,
                 barcode: crate::signals::BarcodeSignal::Absent,
                 text: crate::signals::TextSignal::Settled {
@@ -326,7 +326,10 @@ async fn a_verdict_the_folder_rules_out_reads_back_as_its_failed_check() {
             folder_path: candidate.path.to_string_lossy().into_owned(),
             verdict: stored.clone(),
             signals: crate::signals::Signals {
-                rip: crate::signals::RipEvidence::NotCd,
+                origin: crate::signals::AudioOrigin {
+                    source: None,
+                    not_cd_rate: Some(96_000),
+                },
                 disc_id: crate::signals::DiscIdSignal::Absent,
                 barcode: crate::signals::BarcodeSignal::Absent,
                 text: crate::signals::TextSignal::Settled {

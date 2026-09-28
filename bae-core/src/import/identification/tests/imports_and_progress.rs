@@ -465,7 +465,7 @@ async fn a_cancelled_candidate_writes_no_row() {
             &candidate,
             &verdict,
             crate::signals::Signals {
-                rip: crate::signals::RipEvidence::Unproven,
+                origin: crate::signals::AudioOrigin::default(),
                 disc_id: crate::signals::DiscIdSignal::Absent,
                 barcode: crate::signals::BarcodeSignal::Absent,
                 text: crate::signals::TextSignal::Settled {

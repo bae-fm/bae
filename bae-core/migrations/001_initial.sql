@@ -1273,12 +1273,17 @@ CREATE TABLE IF NOT EXISTS import_candidate_artist_identity_conflict (
 -- settled or failed.
 CREATE TABLE IF NOT EXISTS import_candidate_signals (
     content_hash           TEXT PRIMARY KEY,
-    -- A file proves a CD rip, the audio rules one out, or nothing says.
-    rip                    TEXT NOT NULL CHECK (rip IN ('cd', 'not_cd', 'unproven')),
-    rip_proof              TEXT CHECK (rip_proof IS NULL OR rip_proof IN ('rip_log', 'accurate_rip_report', 'ripper_sheet')),
-    -- The candidate-relative path of the file that proves it; NULL when
-    -- re-identifying a library release.
-    rip_file               TEXT,
+    -- Where a file proves the audio came from: a CD rip or a download, or NULL
+    -- when nothing proves either.
+    audio_source           TEXT CHECK (audio_source IS NULL OR audio_source IN ('cd_rip', 'download')),
+    cd_rip_proof           TEXT CHECK (cd_rip_proof IS NULL OR cd_rip_proof IN ('rip_log', 'accurate_rip_report', 'ripper_sheet')),
+    download_proof         TEXT CHECK (download_proof IS NULL OR download_proof IN ('itunes_purchase', 'bandcamp', 'delivery_set')),
+    -- The candidate-relative path of the file that proves the source: the rip
+    -- file, or the track a store marked. NULL for a label's delivery set, and
+    -- when re-identifying a library release.
+    audio_source_file      TEXT,
+    -- The lossless rate, off a CD's, that rules a CD out.
+    not_cd_rate            INTEGER CHECK (not_cd_rate IS NULL OR not_cd_rate > 0),
     disc_id_state          TEXT NOT NULL CHECK (disc_id_state IN ('computed', 'absent', 'not_cd_audio', 'failed')),
     disc_id                TEXT,
     -- The candidate-relative path of the LOG or CUE the disc ID came from, so a
@@ -1302,10 +1307,15 @@ CREATE TABLE IF NOT EXISTS import_candidate_signals (
     registered_in_region   TEXT CHECK (registered_in_region IS NULL OR registered_in_region <> ''),
     FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE,
     CHECK (registered_in_country IS NULL OR registered_in_region IS NULL),
-    CHECK ((rip = 'cd') = (rip_proof IS NOT NULL)),
-    CHECK (rip_file IS NULL OR rip = 'cd'),
-    -- A sheet goes unhashed only when the audio rules a CD out.
-    CHECK (disc_id_state <> 'not_cd_audio' OR rip = 'not_cd'),
+    CHECK ((audio_source IS 'cd_rip') = (cd_rip_proof IS NOT NULL)),
+    CHECK ((audio_source IS 'download') = (download_proof IS NOT NULL)),
+    CHECK (download_proof IS NOT 'delivery_set' OR audio_source_file IS NULL),
+    CHECK (download_proof NOT IN ('itunes_purchase', 'bandcamp') OR audio_source_file IS NOT NULL),
+    CHECK (audio_source IS NOT NULL OR audio_source_file IS NULL),
+    -- A sheet goes unhashed only when the audio rules a CD out and nothing
+    -- proves a CD rip.
+    CHECK (disc_id_state <> 'not_cd_audio'
+        OR (not_cd_rate IS NOT NULL AND audio_source IS NOT 'cd_rip')),
     CHECK ((disc_id_state = 'computed') = (disc_id IS NOT NULL)),
     CHECK (disc_id_source_file IS NULL OR disc_id_state = 'computed'),
     CHECK ((disc_id_state = 'failed') = (disc_id_failure IS NOT NULL)),

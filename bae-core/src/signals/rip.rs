@@ -1,5 +1,5 @@
-//! The rip signal: what a candidate's own files say about the medium its audio
-//! was ripped from.
+//! Where a candidate's audio came from, as its own files say: ripped off a CD,
+//! bought as a download, or sampled at a rate no CD plays at.
 //!
 //! A folder states its medium the way nothing else in it can: a CD ripper
 //! leaves files behind that only a disc it read produces, and audio sampled at
@@ -12,6 +12,12 @@
 //! rip as readily as for a CD; and a folder at a CD's rate, which a
 //! transfer from any source can be. Those say nothing, and a folder that says
 //! nothing has no row set aside for its medium.
+//!
+//! A download is proven by what a store writes into the files it sells, or by
+//! the set of tags a label delivers with every track — an ISRC, a phonographic
+//! copyright line and the label — where no rip log, AccurateRip report or
+//! track sheet says a disc was read. The encoder, genre and date prove
+//! nothing: rips carry them too.
 
 /// A file only a CD rip leaves behind.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -43,22 +49,87 @@ impl CdProof {
     }
 }
 
-/// What the candidate's files say about the medium its audio was ripped from.
+/// A store the tags say a file was bought from — only what a store itself
+/// writes into the files it delivers, never what a tagger may.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StoreMarker {
+    /// An iTunes Store purchase: the MP4 atoms iTunes writes only into a
+    /// purchased file — the purchase date (`purd`), the buyer's account
+    /// (`apID`) or name (`ownr`). The catalog ids beside them (`cnID`,
+    /// `plID`, `atID`, `sfID`) are also on iTunes Match and Apple Music
+    /// copies, so they do not say it was bought.
+    ITunesPurchase,
+    /// A Bandcamp download: its comment reads
+    /// `Visit https://<artist>.bandcamp.com`.
+    Bandcamp,
+}
+
+impl StoreMarker {
+    /// The word a stored reading keeps it as.
+    pub fn key(self) -> &'static str {
+        match self {
+            Self::ITunesPurchase => "itunes_purchase",
+            Self::Bandcamp => "bandcamp",
+        }
+    }
+
+    pub fn from_key(key: &str) -> Option<Self> {
+        [Self::ITunesPurchase, Self::Bandcamp]
+            .into_iter()
+            .find(|marker| marker.key() == key)
+    }
+}
+
+/// What proves the audio was bought as a download.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum RipEvidence {
-    /// A file proves a CD rip.
-    Cd {
+pub enum DownloadProof {
+    /// A store's own marker, on the file at this candidate-relative path.
+    Store { marker: StoreMarker, file: String },
+    /// Every track carries what a label delivers with a download: an ISRC,
+    /// a phonographic copyright line, and the label.
+    DeliverySet,
+}
+
+/// Where the audio came from, as a file proves it. A CD rip and a download
+/// exclude each other.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AudioSource {
+    /// A file only a CD rip leaves behind.
+    CdRip {
         proof: CdProof,
         /// The candidate-relative path of the file that proves it. `None` for
         /// a re-identify pass over a library release, whose files are its
         /// own rather than files of a scanned folder.
         file: Option<String>,
     },
-    /// Every audio file is lossless and sampled at a rate other than a CD's
-    /// 44.1 kHz, so none of it can have come off a CD as it is.
-    NotCd,
-    /// Nothing either way.
-    Unproven,
+    Download(DownloadProof),
+}
+
+/// What the candidate's files say about where its audio came from.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct AudioOrigin {
+    /// What a file proves the audio was taken from, when one does.
+    pub source: Option<AudioSource>,
+    /// The rate the audio is sampled at, when every file is lossless and none
+    /// is at a CD's 44.1 kHz — so none of it came off a CD as it is.
+    pub not_cd_rate: Option<u32>,
+}
+
+impl AudioOrigin {
+    /// Whether a file proves a CD rip.
+    pub fn is_cd_rip(&self) -> bool {
+        matches!(self.source, Some(AudioSource::CdRip { .. }))
+    }
+
+    /// Whether a file proves a download.
+    pub fn is_download(&self) -> bool {
+        matches!(self.source, Some(AudioSource::Download(_)))
+    }
+}
+
+/// Whether a copyright line states a phonographic copyright: "℗" or "(P)".
+pub(crate) fn states_phonographic_copyright(line: &str) -> bool {
+    line.contains('℗') || line.to_ascii_uppercase().contains("(P)")
 }
 
 /// A CD plays 44,100 samples a second.

@@ -2,6 +2,7 @@
 
 use super::folder_scanner::ScannedFile;
 use super::ImportError;
+use crate::signals::StoreMarker;
 use crate::util::content_type::ContentType;
 use lofty::config::ParseOptions;
 use lofty::file::{AudioFile, FileType};
@@ -44,36 +45,6 @@ pub(crate) struct FileTagFact {
     pub store: Option<StoreMarker>,
 }
 
-/// A store the tags say a file was bought from — only what a store itself
-/// writes into the files it delivers, never what a tagger may.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum StoreMarker {
-    /// An iTunes Store purchase: the MP4 atoms iTunes writes only into a
-    /// purchased file — the purchase date (`purd`), the buyer's account
-    /// (`apID`) or name (`ownr`). The catalog ids beside them (`cnID`,
-    /// `plID`, `atID`, `sfID`) are also on iTunes Match and Apple Music
-    /// copies, so they do not say it was bought.
-    ITunesPurchase,
-    /// A Bandcamp download: its comment reads "Visit
-    /// https://<artist>.bandcamp.com".
-    Bandcamp,
-}
-
-impl StoreMarker {
-    /// The word a stored reading keeps it as.
-    pub(crate) fn key(self) -> &'static str {
-        match self {
-            Self::ITunesPurchase => "itunes_purchase",
-            Self::Bandcamp => "bandcamp",
-        }
-    }
-
-    pub(crate) fn from_key(key: &str) -> Option<Self> {
-        [Self::ITunesPurchase, Self::Bandcamp]
-            .into_iter()
-            .find(|marker| marker.key() == key)
-    }
-}
 
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct EmbeddedCoverFact {

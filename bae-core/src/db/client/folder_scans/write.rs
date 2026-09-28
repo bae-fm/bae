@@ -96,7 +96,7 @@ pub(crate) fn replace_candidate_file_tag_snapshot(
                 fact.isrc,
                 fact.label,
                 fact.copyright,
-                fact.store.map(crate::import::file_tag_snapshot::StoreMarker::key),
+                fact.store.map(crate::signals::StoreMarker::key),
             ],
         )?;
     }

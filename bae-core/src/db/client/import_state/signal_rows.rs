@@ -7,16 +7,22 @@ use super::lookup_failure_columns::{failure_columns, failure_of};
 use super::verdict_rows::unreadable;
 use super::*;
 use crate::signals::{
-    BarcodeSignal, CdProof, DiscIdSignal, RipEvidence, Signals, SourcedValue,
+    AudioOrigin, AudioSource, BarcodeSignal, CdProof, DiscIdSignal, DownloadProof, Signals,
+    SourcedValue, StoreMarker,
     TextLine, TextSignal,
 };
 
-const SIGNALS_COLUMNS: &str = "content_hash, rip, rip_proof, rip_file, \
+const SIGNALS_COLUMNS: &str = "content_hash, audio_source, cd_rip_proof, download_proof, \
+     audio_source_file, not_cd_rate, \
      disc_id_state, disc_id, disc_id_source_file, \
      disc_id_failure, disc_id_failure_status, disc_id_failure_detail, \
      barcode_state, barcode_failure, barcode_failure_status, barcode_failure_detail, \
      text_state, text_failure, text_failure_status, text_failure_detail, \
      registered_in_country, registered_in_region";
+
+/// The stored `download_proof` of a label's delivery set; a store's marker is
+/// stored as its own key.
+const DELIVERY_SET: &str = "delivery_set";
 
 const SIGNAL_VALUE_COLUMNS: &str = "content_hash, list, position, value, origin_path";
 
@@ -53,11 +59,22 @@ pub(super) fn insert_signals(
         DiscIdSignal::NotCdAudio => ("not_cd_audio", None, None, None),
         DiscIdSignal::Failed { failure } => ("failed", None, None, Some(failure)),
     };
-    let (rip, rip_proof, rip_file) = match &signals.rip {
-        RipEvidence::Cd { proof, file } => ("cd", Some(proof.key()), file.clone()),
-        RipEvidence::NotCd => ("not_cd", None, None),
-        RipEvidence::Unproven => ("unproven", None, None),
-    };
+    let (audio_source, cd_rip_proof, download_proof, audio_source_file) =
+        match &signals.origin.source {
+            Some(AudioSource::CdRip { proof, file }) => {
+                (Some("cd_rip"), Some(proof.key()), None, file.clone())
+            }
+            Some(AudioSource::Download(DownloadProof::Store { marker, file })) => (
+                Some("download"),
+                None,
+                Some(marker.key()),
+                Some(file.clone()),
+            ),
+            Some(AudioSource::Download(DownloadProof::DeliverySet)) => {
+                (Some("download"), None, Some(DELIVERY_SET), None)
+            }
+            None => (None, None, None, None),
+        };
     let (barcode_state, barcode_failure) = match &signals.barcode {
         BarcodeSignal::Settled { .. } => ("settled", None),
         BarcodeSignal::Absent => ("absent", None),
@@ -86,13 +103,15 @@ pub(super) fn insert_signals(
     sql.execute(
         &format!(
             "INSERT INTO import_candidate_signals ({SIGNALS_COLUMNS}) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         ),
         params![
             content_hash,
-            rip,
-            rip_proof,
-            rip_file,
+            audio_source,
+            cd_rip_proof,
+            download_proof,
+            audio_source_file,
+            signals.origin.not_cd_rate,
             disc_id_state,
             disc_id,
             disc_id_source_file,
@@ -207,9 +226,11 @@ pub(super) fn load_signals_on(
             Ok((
                 row.get::<_, String>("content_hash")?,
                 (
-                    row.get::<_, String>("rip")?,
-                    row.get::<_, Option<String>>("rip_proof")?,
-                    row.get::<_, Option<String>>("rip_file")?,
+                    row.get::<_, Option<String>>("audio_source")?,
+                    row.get::<_, Option<String>>("cd_rip_proof")?,
+                    row.get::<_, Option<String>>("download_proof")?,
+                    row.get::<_, Option<String>>("audio_source_file")?,
+                    row.get::<_, Option<u32>>("not_cd_rate")?,
                 ),
                 row.get::<_, String>("disc_id_state")?,
                 row.get::<_, Option<String>>("disc_id")?,
@@ -256,7 +277,7 @@ pub(super) fn load_signals_on(
         for row in rows {
             let (
                 content_hash,
-                (rip, rip_proof, rip_file),
+                (audio_source, cd_rip_proof, download_proof, audio_source_file, not_cd_rate),
                 disc_id_state,
                 disc_id,
                 disc_id_source_file,
@@ -279,20 +300,31 @@ pub(super) fn load_signals_on(
             )
             .map_err(|detail| DbError::Message(format!("a stored registration: {detail}")))?;
             let values = lists.remove(&content_hash).unwrap_or_default();
-            let rip = match rip.as_str() {
-                "cd" => {
-                    let proof = rip_proof.ok_or_else(|| {
-                        DbError::Message("a stored CD rip states no proof".into())
-                    })?;
-                    RipEvidence::Cd {
-                        proof: CdProof::from_key(&proof)
-                            .ok_or_else(|| unreadable("rip_proof", &proof))?,
-                        file: rip_file,
-                    }
+            let source = match (audio_source.as_deref(), cd_rip_proof, download_proof) {
+                (None, None, None) => None,
+                (Some("cd_rip"), Some(proof), None) => Some(AudioSource::CdRip {
+                    proof: CdProof::from_key(&proof)
+                        .ok_or_else(|| unreadable("cd_rip_proof", &proof))?,
+                    file: audio_source_file,
+                }),
+                (Some("download"), None, Some(proof)) if proof == DELIVERY_SET => {
+                    Some(AudioSource::Download(DownloadProof::DeliverySet))
                 }
-                "not_cd" => RipEvidence::NotCd,
-                "unproven" => RipEvidence::Unproven,
-                other => return Err(unreadable("rip", other)),
+                (Some("download"), None, Some(proof)) => {
+                    let marker = StoreMarker::from_key(&proof)
+                        .ok_or_else(|| unreadable("download_proof", &proof))?;
+                    let file = audio_source_file.ok_or_else(|| {
+                        DbError::Message("a stored store download names no file".into())
+                    })?;
+                    Some(AudioSource::Download(DownloadProof::Store { marker, file }))
+                }
+                (source, ..) => {
+                    return Err(unreadable("audio_source", source.unwrap_or("NULL")))
+                }
+            };
+            let origin = AudioOrigin {
+                source,
+                not_cd_rate,
             };
             let disc_id = match disc_id_state.as_str() {
                 "computed" => DiscIdSignal::Computed {
@@ -346,7 +378,7 @@ pub(super) fn load_signals_on(
             out.insert(
                 content_hash,
                 Signals {
-                    rip,
+                    origin,
                     disc_id,
                     barcode,
                     text,

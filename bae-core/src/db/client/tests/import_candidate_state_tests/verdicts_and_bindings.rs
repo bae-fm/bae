@@ -95,7 +95,7 @@ fn sample_findings() -> Findings {
 /// Settled signals with nothing found.
 fn sample_signals() -> crate::signals::Signals {
     crate::signals::Signals {
-        rip: crate::signals::RipEvidence::Unproven,
+        origin: crate::signals::AudioOrigin::default(),
         disc_id: crate::signals::DiscIdSignal::Absent,
         barcode: crate::signals::BarcodeSignal::Absent,
         text: crate::signals::TextSignal::Settled {
@@ -901,7 +901,7 @@ async fn a_transport_failure_round_trips_as_a_failed_verdict() {
         state,
         IdentifyEvent::SignalsUpdated {
             signals: Signals {
-                rip: crate::signals::RipEvidence::Unproven,
+                origin: crate::signals::AudioOrigin::default(),
                 disc_id: DiscIdSignal::Computed {
                     disc_id: "disc-hash".to_string(),
                     source_file: None,

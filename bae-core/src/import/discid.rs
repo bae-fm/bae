@@ -2,7 +2,7 @@ use crate::album_detail::AudioFormat;
 use crate::cue_flac::CueSheet;
 use crate::import::folder_scanner::resolve_cue_audio_paths;
 use crate::signals::rip::rate_ruling_out_cd;
-use crate::signals::{CdProof, DiscIdSignal, RipEvidence};
+use crate::signals::{AudioOrigin, AudioSource, CdProof, DiscIdSignal};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use tracing::{debug, trace, warn};
@@ -281,13 +281,14 @@ pub struct ComputedDiscId {
     pub source_file: Option<String>,
 }
 
-/// What a candidate's rip artifacts say: the medium they prove or rule out,
-/// and the disc they hash to. One reading, because the first decides the
-/// second — a track sheet laying out audio no CD could hold hashes to a disc
-/// that never existed, and is not asked about.
+/// What a candidate's rip artifacts say: the CD rip they prove and the rate
+/// that rules one out, and the disc they hash to. One reading, because the
+/// first decides the second — a track sheet laying out audio no CD could hold
+/// hashes to a disc that never existed, and is not asked about. A download is
+/// read with the tags, and is never a source this sets.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RipReading {
-    pub evidence: RipEvidence,
+    pub origin: AudioOrigin,
     pub disc_id: DiscIdReading,
 }
 
@@ -298,7 +299,7 @@ pub enum DiscIdReading {
     /// No log or sheet hashes to one.
     Absent,
     /// A sheet was there and the audio rules a CD out (see
-    /// [`RipEvidence::NotCd`]), so it was not hashed.
+    /// [`AudioOrigin::not_cd_rate`]), so it was not hashed.
     NotCdAudio,
 }
 
@@ -370,10 +371,12 @@ pub(crate) fn is_rip_document(path: &Path) -> bool {
 /// Read the artifacts. A log whose table of contents reads is both the proof
 /// and the disc ID, and is read first — most accurate, since EAC and XLD put
 /// the disc's sector offsets in it directly. Otherwise the proof is an
-/// AccurateRip report or a sheet a CD ripper wrote, or the audio's rate rules
-/// a CD out; and the sheets are hashed unless it does. Failures along the
-/// way log at `debug!` so the chain shows up in traces.
+/// AccurateRip report or a sheet a CD ripper wrote. The audio's rate is read
+/// whatever proves a rip, and the sheets are hashed unless the rate rules a
+/// CD out and nothing proves one. Failures along the way log at `debug!` so
+/// the chain shows up in traces.
 fn read(mut artifacts: RipArtifacts<'_>) -> RipReading {
+    let not_cd_rate = rate_ruling_out_cd(artifacts.audio.iter().copied());
     // Logs first: a log's table of contents is the disc ID as well as the
     // proof, which a report is not.
     artifacts.documents.sort_by_key(|document| !document.is_log());
@@ -388,9 +391,12 @@ fn read(mut artifacts: RipArtifacts<'_>) -> RipReading {
                 Ok(disc_id) => {
                     let file = document.file.map(str::to_string);
                     return RipReading {
-                        evidence: RipEvidence::Cd {
-                            proof: CdProof::RipLog,
-                            file: file.clone(),
+                        origin: AudioOrigin {
+                            source: Some(AudioSource::CdRip {
+                                proof: CdProof::RipLog,
+                                file: file.clone(),
+                            }),
+                            not_cd_rate,
                         },
                         disc_id: DiscIdReading::Computed(ComputedDiscId {
                             disc_id,
@@ -406,34 +412,34 @@ fn read(mut artifacts: RipArtifacts<'_>) -> RipReading {
         }
     }
 
-    let evidence = match report {
-        Some(file) => RipEvidence::Cd {
+    let source = match report {
+        Some(file) => Some(AudioSource::CdRip {
             proof: CdProof::AccurateRipReport,
             file: file.map(str::to_string),
-        },
-        None => match artifacts
+        }),
+        None => artifacts
             .sheets
             .iter()
             .find(|sheet| sheet.sheet.ripper.is_some())
-        {
-            Some(sheet) => RipEvidence::Cd {
+            .map(|sheet| AudioSource::CdRip {
                 proof: CdProof::RipperSheet,
                 file: sheet.file.map(str::to_string),
-            },
-            None => match rate_ruling_out_cd(artifacts.audio.iter().copied()) {
-                Some(_) => RipEvidence::NotCd,
-                None => RipEvidence::Unproven,
-            },
-        },
+            }),
+    };
+    let origin = AudioOrigin {
+        source,
+        not_cd_rate,
     };
 
-    let disc_id = match evidence {
-        RipEvidence::NotCd if !artifacts.sheets.is_empty() => {
+    let disc_id = if origin.not_cd_rate.is_some() && !origin.is_cd_rip() {
+        if artifacts.sheets.is_empty() {
+            DiscIdReading::Absent
+        } else {
             debug!("not hashing a track sheet whose audio no CD holds");
             DiscIdReading::NotCdAudio
         }
-        RipEvidence::NotCd => DiscIdReading::Absent,
-        RipEvidence::Cd { .. } | RipEvidence::Unproven => artifacts
+    } else {
+        artifacts
             .sheets
             .iter()
             .find_map(|sheet| {
@@ -444,9 +450,9 @@ fn read(mut artifacts: RipArtifacts<'_>) -> RipReading {
                     })
                 })
             })
-            .unwrap_or(DiscIdReading::Absent),
+            .unwrap_or(DiscIdReading::Absent)
     };
-    RipReading { evidence, disc_id }
+    RipReading { origin, disc_id }
 }
 
 /// One of a library release's audio files: where it is, how long it plays,

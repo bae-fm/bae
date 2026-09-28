@@ -46,7 +46,7 @@ fn copy_fixture(source: &Path, target: &Path) {
 /// Settled signals that found nothing.
 fn settled_signals() -> Signals {
     Signals {
-        rip: crate::signals::RipEvidence::Unproven,
+        origin: crate::signals::AudioOrigin::default(),
         disc_id: DiscIdSignal::Absent,
         barcode: BarcodeSignal::Absent,
         text: TextSignal::Settled {

@@ -54,7 +54,7 @@ fn claim(runtime: &CandidateRuntime, key: &str) {
 
 pub(crate) fn signals_context(track_count: u32) -> crate::identify::state::SignalsContext {
     crate::identify::state::SignalsContext {
-        rip: crate::signals::RipEvidence::Unproven,
+        origin: crate::signals::AudioOrigin::default(),
         providers: Vec::new(),
         steps: crate::config::IdentificationSteps::default(),
         artwork: crate::signals::ArtworkScan::Absent,
@@ -126,7 +126,7 @@ fn drain(changes: &mut broadcast::Receiver<CandidateRuntimeChange>) -> Vec<Candi
 
 fn extracted_signals() -> crate::signals::Signals {
     crate::signals::Signals {
-        rip: crate::signals::RipEvidence::Unproven,
+        origin: crate::signals::AudioOrigin::default(),
         disc_id: crate::signals::DiscIdSignal::Absent,
         barcode: crate::signals::BarcodeSignal::Settled { codes: Vec::new() },
         text: crate::signals::TextSignal::Settled {

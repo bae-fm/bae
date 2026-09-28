@@ -5,7 +5,7 @@
 use super::*;
 use crate::identify::MediumConflict;
 use crate::pressing::{DiscogsDetail, Medium, StatedMedia};
-use crate::signals::{CdProof, RipEvidence, TextLine, TextOrigin};
+use crate::signals::{AudioOrigin, AudioSource, CdProof, TextLine, TextOrigin};
 
 type Outcome = (Findings, LibraryStatuses);
 type Found = (MetadataResult, LibraryStatus);
@@ -41,15 +41,26 @@ fn made_of(media: &[Medium]) -> StatedMedia {
     StatedMedia::PerMedium(media.iter().copied().map(Some).collect())
 }
 
-const CD_RIP: RipEvidence = RipEvidence::Cd {
-    proof: CdProof::RipLog,
-    file: None,
+const CD_RIP: AudioOrigin = AudioOrigin {
+    source: Some(AudioSource::CdRip {
+        proof: CdProof::RipLog,
+        file: None,
+    }),
+    not_cd_rate: None,
 };
 
-const NOT_CD: RipEvidence = RipEvidence::NotCd;
+const NOT_CD: AudioOrigin = AudioOrigin {
+    source: None,
+    not_cd_rate: Some(96_000),
+};
 
-/// The catalog lookup returned `rows`, and the folder's files say `rip`.
-fn by_catalog(rows: Vec<Found>, rip: &RipEvidence) -> Outcome {
+const UNPROVEN: AudioOrigin = AudioOrigin {
+    source: None,
+    not_cd_rate: None,
+};
+
+/// The catalog lookup returned `rows`, and the folder's files say `origin`.
+fn by_catalog(rows: Vec<Found>, origin: &AudioOrigin) -> Outcome {
     combine_results(
         Vec::new(),
         Vec::new(),
@@ -58,7 +69,7 @@ fn by_catalog(rows: Vec<Found>, rip: &RipEvidence) -> Outcome {
         Vec::new(),
         &folder(),
         FolderAudio {
-            rip,
+            origin,
             ..FolderAudio::UNPROVEN
         },
     )
@@ -125,7 +136,7 @@ fn a_folder_that_proves_nothing_sets_nothing_aside() {
             pressing("rel-vinyl", made_of(&[Medium::Vinyl])),
             pressing("rel-cd", made_of(&[Medium::Cd])),
         ],
-        &RipEvidence::Unproven,
+        &UNPROVEN,
     );
     assert_eq!(offered(&outcome), vec!["rel-vinyl", "rel-cd"]);
     assert!(set_aside(&outcome).is_empty());
@@ -199,7 +210,7 @@ fn the_pressing_the_barcode_and_catalog_number_name_outranks_the_disc_id_s() {
         Vec::new(),
         &folder(),
         FolderAudio {
-            rip: &CD_RIP,
+            origin: &CD_RIP,
             mono: false,
             track_count: 0,
             registered_in: None,
@@ -376,7 +387,7 @@ fn stated_stereo(release_id: &str, media: StatedMedia) -> Found {
 }
 
 const MONO_FILES: FolderAudio<'static> = FolderAudio {
-    rip: &RipEvidence::Unproven,
+    origin: &UNPROVEN,
     mono: true,
     track_count: 0,
     registered_in: None,

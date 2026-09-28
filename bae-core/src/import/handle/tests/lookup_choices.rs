@@ -228,7 +228,7 @@ async fn store_settled_text(handle: &ImportServiceHandle, hash: &str, printed: &
                 ledger: None,
             },
             signals: crate::signals::Signals {
-                rip: crate::signals::RipEvidence::Unproven,
+                origin: crate::signals::AudioOrigin::default(),
                 disc_id: crate::signals::DiscIdSignal::Absent,
                 barcode: crate::signals::BarcodeSignal::Absent,
                 text: crate::signals::TextSignal::Settled {

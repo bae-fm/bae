@@ -209,7 +209,7 @@ fn a_chosen_number_survives_a_snapshot_still_being_read() {
         state,
         IdentifyEvent::SignalsUpdated {
             signals: Signals {
-                rip: crate::signals::RipEvidence::Unproven,
+                origin: crate::signals::AudioOrigin::default(),
                 disc_id: DiscIdSignal::Absent,
                 barcode: BarcodeSignal::Scanning { codes: Vec::new() },
                 text: TextSignal::Scanning {

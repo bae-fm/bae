@@ -407,7 +407,7 @@ mirror_enum! {
 impl BridgeSignals {
     pub(crate) fn from_core(s: bae_core::signals::Signals) -> Self {
         let bae_core::signals::Signals {
-            rip: _,
+            origin: _,
             disc_id: _,
             barcode: _,
             text,
@@ -597,7 +597,7 @@ mod tests {
                 providers: vec![Catalog::MusicBrainz, Catalog::Discogs],
                 steps: bae_core::config::IdentificationSteps::default(),
                 artwork: bae_core::signals::ArtworkScan::Absent,
-                rip: bae_core::signals::RipEvidence::Unproven,
+                origin: bae_core::signals::AudioOrigin::default(),
                 disc: DiscIdEvidence {
                     signal: DiscIdSignal::Absent,
                     ..Default::default()
@@ -749,7 +749,7 @@ mod tests {
         let IdentifyState::Triangulating { context, .. } = &mut state else {
             panic!("a run in flight");
         };
-        context.rip = bae_core::signals::RipEvidence::NotCd;
+        context.origin.not_cd_rate = Some(96_000);
         context.disc.signal = DiscIdSignal::NotCdAudio;
         context.audio.rate_ruling_out_cd = Some(96_000);
         match BridgeIdentifyState::from_core(state) {

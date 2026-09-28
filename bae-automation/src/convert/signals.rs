@@ -75,13 +75,44 @@ mirror_enum! {
 
 mirror_enum! {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    AutomationRipEvidence = bae_core::signals::RipEvidence,
+    AutomationStoreMarker = bae_core::signals::StoreMarker,
+    from_core: pub(crate) fn,
+    variants: { ITunesPurchase, Bandcamp },
+}
+
+mirror_enum! {
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    AutomationDownloadProof = bae_core::signals::DownloadProof,
     from_core: pub(crate) fn,
     variants: {
-        Cd { proof: (AutomationCdProof), file },
-        NotCd,
-        Unproven,
+        Store { marker: (AutomationStoreMarker), file },
+        DeliverySet,
     },
+}
+
+impl AutomationAudioSource {
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) fn from_core(source: bae_core::signals::AudioSource) -> Self {
+        match source {
+            bae_core::signals::AudioSource::CdRip { proof, file } => Self::CdRip {
+                proof: AutomationCdProof::from_core(proof),
+                file,
+            },
+            bae_core::signals::AudioSource::Download(proof) => Self::Download {
+                proof: AutomationDownloadProof::from_core(proof),
+            },
+        }
+    }
+}
+
+impl AutomationAudioOrigin {
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) fn from_core(origin: bae_core::signals::AudioOrigin) -> Self {
+        Self {
+            source: origin.source.map(AutomationAudioSource::from_core),
+            not_cd_rate: origin.not_cd_rate,
+        }
+    }
 }
 
 impl AutomationSignals {
@@ -89,7 +120,7 @@ impl AutomationSignals {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) fn from_core(signals: bae_core::signals::Signals) -> Self {
         Self {
-            rip: AutomationRipEvidence::from_core(signals.rip),
+            origin: AutomationAudioOrigin::from_core(signals.origin),
             disc_id: AutomationDiscIdSignal::from_core(signals.disc_id),
             barcode: AutomationBarcodeSignal::from_core(signals.barcode),
             text: AutomationTextSignal::from_core(signals.text),

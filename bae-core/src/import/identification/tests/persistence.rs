@@ -245,7 +245,7 @@ async fn an_ending_ends_the_run_it_names_and_not_the_answer_being_saved() {
         catalog: crate::identify::CatalogProgress::Skipped,
         search: crate::identify::SearchProgress::Pending,
         context: crate::identify::state::SignalsContext {
-            rip: crate::signals::RipEvidence::Unproven,
+            origin: crate::signals::AudioOrigin::default(),
             providers: Vec::new(),
             steps: crate::config::IdentificationSteps::default(),
             artwork: crate::signals::ArtworkScan::Absent,

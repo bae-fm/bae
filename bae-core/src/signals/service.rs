@@ -21,7 +21,7 @@ use crate::import::{ImportEvent, ImportEventBus};
 use crate::library::LibraryManager;
 use crate::signals::{
     AudioFacts,
-    ArtworkScan, BarcodeSignal, DiscIdSignal, LookupFailure, RipEvidence, Signals, SourcedValue,
+    ArtworkScan, AudioOrigin, BarcodeSignal, DiscIdSignal, LookupFailure, Signals, SourcedValue,
     TextSignal,
 };
 use crate::util::rate_limiter::CallPriority;
@@ -276,7 +276,7 @@ async fn run_extraction(
                 token,
                 ExtractionInputs {
                     gathered: Gathered {
-                        rip: fast.rip,
+                        origin: fast.origin,
                         disc_id: fast.disc_id,
                         barcodes: fast.cue_barcodes,
                         pool,
@@ -295,15 +295,15 @@ async fn run_extraction(
         // A library release has no folder text; its rip files and artwork come
         // from the library.
         ExtractionSource::Release { release_id } => {
-            let (rip, audio, disc_id) =
+            let (origin, audio, disc_id) =
                 match resolve_release_identity(&inner.library_manager, &release_id).await {
                     Ok(identity) => (
-                        identity.rip.evidence,
+                        identity.rip.origin,
                         identity.audio,
                         identity.rip.disc_id.into_signal(),
                     ),
                     Err(detail) => (
-                        RipEvidence::Unproven,
+                        AudioOrigin::default(),
                         AudioFacts::default(),
                         DiscIdSignal::Failed {
                             failure: crate::signals::LookupFailure::Diagnostic { detail },
@@ -354,7 +354,7 @@ async fn run_extraction(
                 token,
                 ExtractionInputs {
                     gathered: Gathered {
-                        rip,
+                        origin,
                         disc_id,
                         barcodes: Vec::new(),
                         pool: Pool::default(),
@@ -405,7 +405,7 @@ where
 /// What the pass has gathered so far, which every snapshot is built from.
 /// Barcodes are the CUE's first, then each image's.
 struct Gathered {
-    rip: RipEvidence,
+    origin: AudioOrigin,
     disc_id: DiscIdSignal,
     barcodes: Vec<SourcedValue>,
     pool: Pool,
@@ -612,7 +612,7 @@ async fn stream_extraction(
     };
     let settled = SignalsSnapshot {
         signals: Signals {
-            rip: gathered.rip,
+            origin: gathered.origin,
             disc_id: gathered.disc_id,
             barcode,
             text: TextSignal::Settled {
@@ -646,7 +646,7 @@ fn emit_failed_ocr_signals(
         extraction,
         SignalsSnapshot {
             signals: Signals {
-                rip: gathered.rip,
+                origin: gathered.origin,
                 disc_id: gathered.disc_id,
                 barcode,
                 text: TextSignal::Failed {
@@ -677,7 +677,7 @@ fn emit_aborted_signals(
         extraction,
         SignalsSnapshot {
             signals: Signals {
-                rip: RipEvidence::Unproven,
+                origin: AudioOrigin::default(),
                 disc_id,
                 barcode: BarcodeSignal::Failed {
                     failure: failure.clone(),
@@ -709,7 +709,7 @@ fn scanning_signals(
 ) -> Signals {
     let text_pool = gathered.pool.text_lines();
     Signals {
-        rip: gathered.rip.clone(),
+        origin: gathered.origin.clone(),
         disc_id: gathered.disc_id.clone(),
         barcode: BarcodeSignal::Scanning {
             codes: gathered.barcodes.clone(),

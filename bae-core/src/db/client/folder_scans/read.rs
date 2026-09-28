@@ -331,7 +331,7 @@ fn load_file_tag_facts(
                     copyright,
                     store: store
                         .map(|key| {
-                            crate::import::file_tag_snapshot::StoreMarker::from_key(&key)
+                            crate::signals::StoreMarker::from_key(&key)
                                 .ok_or_else(|| {
                                     DbError::Message(format!(
                                         "a file-tag store {key:?} is no store bae reads"
