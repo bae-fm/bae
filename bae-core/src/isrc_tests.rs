@@ -8,8 +8,8 @@ fn country(code: &str) -> Option<ReleaseArea> {
 /// is not always the ISO code of that territory.
 #[test]
 fn an_agency_code_names_its_territory() {
-    assert_eq!(territory("IT00G9170501"), country("IT"));
-    assert_eq!(territory("it-00g-91-70501"), country("IT"));
+    assert_eq!(territory("IT00A0000001"), country("IT"));
+    assert_eq!(territory("it-00a-00-00001"), country("IT"));
     assert_eq!(territory("QM0000000001"), country("US"));
     assert_eq!(territory("FX0000000001"), country("FR"));
     assert_eq!(territory("UK0000000001"), country("GB"));
@@ -29,9 +29,9 @@ fn a_code_naming_no_territory_names_none() {
         "QN0000000001",
         "TC0000000001",
         "AQ0000000001",
-        "IT00G917050",
-        "IT00G91705X1",
-        "1T00G9170501",
+        "IT00A000000",
+        "IT00A00000X1",
+        "1T00A0000001",
     ] {
         assert_eq!(territory(code), None, "{code}");
     }
