@@ -57,7 +57,8 @@ final class ProgressTrackNSView: NSView {
         }
     }
 
-    init(accent: NSColor) {
+    init(progress: Double?, accent: NSColor) {
+        self.progress = progress
         self.accent = accent
         super.init(frame: .zero)
         wantsLayer = true
@@ -95,28 +96,25 @@ final class ProgressTrackNSView: NSView {
 
     override func layout() {
         super.layout()
-        layoutIndeterminateLayer()
+        updateIndeterminateLayer()
     }
 
     // MARK: - Indeterminate marching pill
 
+    /// Puts the pill in the layer tree exactly while `progress` is nil,
+    /// including a view made with nil, whose `didSet` never runs.
     private func updateIndeterminateLayer() {
-        if progress == nil {
-            if indeterminateClip.superlayer == nil {
-                layer?.addSublayer(indeterminateClip)
-            }
-            layoutIndeterminateLayer()
-        }
-        else {
+        guard progress == nil else {
             indeterminatePill.removeAnimation(
                 forKey: Self.marchAnimationKey
             )
             indeterminateClip.removeFromSuperlayer()
+            return
         }
-    }
-
-    private func layoutIndeterminateLayer() {
-        guard progress == nil, bounds.width > 0 else {
+        if indeterminateClip.superlayer == nil {
+            layer?.addSublayer(indeterminateClip)
+        }
+        guard bounds.width > 0 else {
             return
         }
         let track = trackRect
@@ -151,11 +149,10 @@ struct ProgressTrackBar: NSViewRepresentable {
     var progress: Double?
 
     func makeNSView(context _: Context) -> ProgressTrackNSView {
-        let view = ProgressTrackNSView(
+        ProgressTrackNSView(
+            progress: progress,
             accent: NSColor(accent.color(in: colorScheme))
         )
-        view.progress = progress
-        return view
     }
 
     func updateNSView(_ view: ProgressTrackNSView, context _: Context) {

@@ -22,7 +22,7 @@ final class ProgressStripNSView: NSView {
     private var durationMs: UInt64?
 
     init(accent: NSColor) {
-        bar = ProgressTrackNSView(accent: accent)
+        bar = ProgressTrackNSView(progress: 0, accent: accent)
         elapsedField = NSTextField(labelWithString: "")
         elapsedField.font = .monospacedDigitSystemFont(
             ofSize: 10,
