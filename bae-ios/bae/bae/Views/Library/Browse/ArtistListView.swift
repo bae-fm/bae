@@ -77,15 +77,10 @@ struct ArtistSummaryRow: View {
             ImageView(imageRef: summary.image, pointSize: ThemeSize.rowArtwork)
                 .frame(width: ThemeSize.rowArtwork, height: ThemeSize.rowArtwork)
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
-            VStack(alignment: .leading, spacing: ThemeSpace.line) {
-                Text(summary.name)
-                    .themeText(.rowTitle)
-                    .lineLimit(1)
-                Text("\(summary.albumCount) albums")
-                    .themeText(.detail)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
+            TwoLineRow(
+                title: summary.name,
+                subtitle: String(localized: "\(summary.albumCount) albums")
+            )
             Spacer()
         }
         .padding(.vertical, ThemeSpace.inline)

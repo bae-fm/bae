@@ -45,7 +45,7 @@ struct SearchResultsView: View {
                                 Button {
                                     onSelectArtist(artist.artistId)
                                 } label: {
-                                    ArtistResultRow(artist: artist)
+                                    ArtistSummaryRow(summary: artist)
                                 }
                                 .buttonStyle(.plain)
                             }
@@ -70,7 +70,7 @@ struct SearchResultsView: View {
                                 Button {
                                     onSelectComposer(composer.artistId)
                                 } label: {
-                                    ComposerResultRow(composer: composer)
+                                    ComposerSummaryRow(summary: composer)
                                 }
                                 .buttonStyle(.plain)
                             }
@@ -113,37 +113,11 @@ private struct AlbumResultRow: View {
             ImageView(imageRef: album.cover, pointSize: ThemeSize.rowArtwork)
                 .frame(width: ThemeSize.rowArtwork, height: ThemeSize.rowArtwork)
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
-            VStack(alignment: .leading, spacing: ThemeSpace.line) {
-                Text(album.title)
-                    .themeText(.rowTitle)
-                    .lineLimit(1)
-                Text(album.year.map { "\(album.artistName) \u{00B7} \($0)" } ?? album.artistName)
-                    .themeText(.detail)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-            Spacer()
-        }
-    }
-}
-
-private struct ArtistResultRow: View {
-    let artist: BridgeArtistSummary
-
-    var body: some View {
-        HStack(spacing: ThemeSpace.group) {
-            ImageView(imageRef: artist.image, pointSize: ThemeSize.rowArtwork)
-                .frame(width: ThemeSize.rowArtwork, height: ThemeSize.rowArtwork)
-                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
-            VStack(alignment: .leading, spacing: ThemeSpace.line) {
-                Text(artist.name)
-                    .themeText(.rowTitle)
-                    .lineLimit(1)
-                Text("\(artist.albumCount) albums")
-                    .themeText(.detail)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
+            TwoLineRow(
+                title: album.title,
+                subtitle: album.year.map { "\(album.artistName) \u{00B7} \($0)" }
+                    ?? album.artistName
+            )
             Spacer()
         }
     }
@@ -154,43 +128,18 @@ private struct TrackResultRow: View {
 
     var body: some View {
         HStack(spacing: ThemeSpace.group) {
-            VStack(alignment: .leading, spacing: ThemeSpace.line) {
-                Text(track.title)
-                    .themeText(.rowTitle)
-                    .lineLimit(1)
-                Text("\(track.artistName), \(track.albumTitle)")
-                    .themeText(.detail)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
+            TwoLineRow(
+                title: track.title,
+                subtitle: String(
+                    localized: "\(track.artistName), \(track.albumTitle)"
+                )
+            )
             Spacer()
             if !track.durationLabel.isEmpty {
                 Text(track.durationLabel)
                     .themeText(.detail)
                     .foregroundStyle(.secondary)
             }
-        }
-    }
-}
-
-private struct ComposerResultRow: View {
-    let composer: BridgeComposerSummary
-
-    var body: some View {
-        HStack(spacing: ThemeSpace.group) {
-            ImageView(imageRef: composer.image, pointSize: ThemeSize.rowArtwork)
-                .frame(width: ThemeSize.rowArtwork, height: ThemeSize.rowArtwork)
-                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
-            VStack(alignment: .leading, spacing: ThemeSpace.line) {
-                Text(composer.name)
-                    .themeText(.rowTitle)
-                    .lineLimit(1)
-                Text("\(composer.workCount) works")
-                    .themeText(.detail)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-            Spacer()
         }
     }
 }
@@ -203,17 +152,7 @@ private struct WorkResultRow: View {
             ImageView(imageRef: work.representativeCover, pointSize: ThemeSize.rowArtwork)
                 .frame(width: ThemeSize.rowArtwork, height: ThemeSize.rowArtwork)
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
-            VStack(alignment: .leading, spacing: ThemeSpace.line) {
-                Text(work.title)
-                    .themeText(.rowTitle)
-                    .lineLimit(1)
-                if let composers = work.composerNames {
-                    Text(composers)
-                        .themeText(.detail)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-            }
+            TwoLineRow(title: work.title, subtitle: work.composerNames)
             Spacer()
         }
     }
