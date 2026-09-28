@@ -109,7 +109,10 @@ final class PlaybackProgressUIView: UIView {
     }
 
     private func configureTimeLabel(_ label: UILabel) {
-        label.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
+        label.font = .monospacedDigitSystemFont(
+            ofSize: ThemeText.fine.uiFont.pointSize,
+            weight: ThemeText.fine.uiWeight
+        )
         label.textColor = .secondaryLabel
         label.textAlignment = .center
         label.translatesAutoresizingMaskIntoConstraints = false

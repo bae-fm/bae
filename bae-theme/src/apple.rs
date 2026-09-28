@@ -91,10 +91,11 @@ pub fn swift(theme: &Theme) -> String {
     out.push_str("}\n");
 
     out.push_str(
-        "\n/// A text style: its font, letter spacing and case, and on macOS the\n\
-         /// size, weight and design AppKit text draws it with.\npublic struct ThemeText: Sendable {\n    \
+        "\n/// A text style: its font, letter spacing and case, and the size, style,\n\
+         /// weight and design AppKit and UIKit text draw it with.\npublic struct ThemeText: Sendable {\n    \
          public let font: Font\n    public let tracking: CGFloat\n    public let uppercase: Bool\n    \
-         public let macOSSize: CGFloat\n    public let weight: Font.Weight\n    public let monospaced: Bool\n}\n\n\
+         public let macOSSize: CGFloat\n    public let iOSStyle: Font.TextStyle\n    public let weight: Font.Weight\n    \
+         public let monospaced: Bool\n}\n\n\
          extension ThemeText {\n",
     );
     for (role, text) in &theme.text {
@@ -107,7 +108,7 @@ pub fn swift(theme: &Theme) -> String {
             out,
             "    public static let {role} = ThemeText(\n        font: .theme(\n            macOS: {},\n            \
              iOS: .{},\n            weight: {},\n            design: {design}\n        ),\n        \
-             tracking: {},\n        uppercase: {},\n        macOSSize: {},\n        weight: {},\n        \
+             tracking: {},\n        uppercase: {},\n        macOSSize: {},\n        iOSStyle: .{},\n        weight: {},\n        \
              monospaced: {}\n    )",
             text.macos,
             text.ios,
@@ -115,6 +116,7 @@ pub fn swift(theme: &Theme) -> String {
             text.tracking,
             text.uppercase,
             text.macos,
+            text.ios,
             text.weight.swift(),
             text.monospaced
         );

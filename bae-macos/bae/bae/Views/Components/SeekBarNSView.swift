@@ -1,21 +1,14 @@
 import AppKit
 import BaeKit
 
-/// AppKit view for a seek slider flanked by elapsed/duration time labels,
-/// updated imperatively (direct method calls from a Combine subscription)
-/// rather than through SwiftUI observation — position ticks arrive at
-/// display rate and would thrash the view tree (~15-20% CPU in NSHostingView
-/// constraint recalculation when this went through SwiftUI).
-///
-/// `SeekBarRepresentable` supplies complete timeline updates for library
-/// playback and import audition.
+/// A seek slider between its time labels, updated by direct calls rather than
+/// SwiftUI observation, since position ticks arrive at display rate.
 final class SeekBarNSView: NSView {
     private let elapsedField: NSTextField
     private let slider: SeekSlider
     private let durationField: NSTextField
     /// Whether clicking the leading label switches it between elapsed and
-    /// remaining time. Also widens that label (48pt vs 40pt) to fit the
-    /// minus-prefixed countdown. The preview player has no such choice.
+    /// remaining time, which widens it to fit the minus sign.
     private let showsRemainingTimeToggle: Bool
 
     var accent: NSColor {
@@ -24,13 +17,11 @@ final class SeekBarNSView: NSView {
     }
 
     var onSeek: ((Double) -> Void)?
-    /// Called when the user clicks the leading label. The owner writes the new
-    /// value to the config; its subscription sets `showRemainingTime`
-    /// back on this view, which is what re-renders it.
+    /// Called on a click on the leading label; the owner writes the config,
+    /// which sets `showRemainingTime` back here.
     var onToggleRemainingTime: (() -> Void)?
 
-    /// The rendered preference follows config updates; clicks write through
-    /// `onToggleRemainingTime` rather than changing this value locally.
+    /// Follows the config; clicks go through `onToggleRemainingTime`.
     var showRemainingTime = false {
         didSet {
             if showRemainingTime != oldValue {
@@ -48,8 +39,8 @@ final class SeekBarNSView: NSView {
         self.showsRemainingTimeToggle = showsRemainingTimeToggle
 
         let font = NSFont.monospacedDigitSystemFont(
-            ofSize: ThemeText.chip.macOSSize,
-            weight: ThemeText.chip.nsWeight
+            ofSize: ThemeText.fine.macOSSize,
+            weight: ThemeText.fine.nsWeight
         )
         let color = NSColor.secondaryLabelColor
 
@@ -109,7 +100,7 @@ final class SeekBarNSView: NSView {
         fatalError()
     }
 
-    // MARK: - Direct position updates (called from a Combine subscription)
+    // MARK: - Position updates
 
     /// Position, duration, and progress always belong to the same update.
     func apply(_ position: PlaybackPositionEvent) {
@@ -127,10 +118,8 @@ final class SeekBarNSView: NSView {
 
     // MARK: - Internal
 
-    /// Both labels come from one core projection, so the leading one can never
-    /// disagree with the trailing one about which clock it is showing. While the
-    /// user drags, the leading label reads the dropped position instead of the
-    /// playing one.
+    /// Both labels come from one core projection, so they agree on which clock
+    /// they show; during a drag the leading one reads the dropped position.
     private func updateLabels() {
         guard case .position(_, let positionMs, let durationMs) = position
         else {
