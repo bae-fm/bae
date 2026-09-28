@@ -32,6 +32,9 @@ fn a_code_naming_no_territory_names_none() {
         "IT00A000000",
         "IT00A00000X1",
         "1T00A0000001",
+        // Twelve bytes, not twelve characters.
+        "Aé000000001",
+        "IT00é0000001",
     ] {
         assert_eq!(territory(code), None, "{code}");
     }

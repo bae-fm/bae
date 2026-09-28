@@ -23,7 +23,8 @@ pub fn territory(isrc: &str) -> Option<ReleaseArea> {
         .filter(|c| !matches!(c, '-' | ' '))
         .map(|c| c.to_ascii_uppercase())
         .collect();
-    let well_formed = code.len() == 12
+    let well_formed = code.is_ascii()
+        && code.len() == 12
         && code[..2].chars().all(|c| c.is_ascii_uppercase())
         && code[2..5].chars().all(|c| c.is_ascii_alphanumeric())
         && code[5..].chars().all(|c| c.is_ascii_digit());
