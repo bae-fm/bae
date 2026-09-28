@@ -303,6 +303,8 @@ extension FocusedValues {
 }
 
 struct MainAppMenuCommands: Commands {
+    /// What the first responder can do with the clipboard items.
+    let responderActions: FirstResponderActions
     @FocusedValue(\.mainAppMenuTarget)
     private var target
     @FocusedValue(\.focusSearch)
@@ -317,25 +319,21 @@ struct MainAppMenuCommands: Commands {
     var body: some Commands {
         // The Edit menu's clipboard items, owned so Select All reaches a list
         // whose table holds only its loaded rows. Each other item sends its
-        // standard action to the first responder, as AppKit's own does.
+        // standard action to the first responder and is enabled while that
+        // responder can take it, as AppKit's own are.
         CommandGroup(replacing: .pasteboard) {
-            Button("Cut") { sendToFirstResponder(#selector(NSText.cut(_:))) }
+            responderButton("Cut", #selector(NSText.cut(_:)))
                 .keyboardShortcut("x")
-            Button("Copy") { sendToFirstResponder(#selector(NSText.copy(_:))) }
+            responderButton("Copy", #selector(NSText.copy(_:)))
                 .keyboardShortcut("c")
-            Button("Paste") {
-                sendToFirstResponder(#selector(NSText.paste(_:)))
-            }
-            .keyboardShortcut("v")
-            Button("Paste and Match Style") {
-                sendToFirstResponder(
-                    #selector(NSTextView.pasteAsPlainText(_:))
-                )
-            }
+            responderButton("Paste", #selector(NSText.paste(_:)))
+                .keyboardShortcut("v")
+            responderButton(
+                "Paste and Match Style",
+                #selector(NSTextView.pasteAsPlainText(_:))
+            )
             .keyboardShortcut("v", modifiers: [.command, .option, .shift])
-            Button("Delete") {
-                sendToFirstResponder(#selector(NSText.delete(_:)))
-            }
+            responderButton("Delete", #selector(NSText.delete(_:)))
             Button("Select All") {
                 if let selectAllShownRows {
                     selectAllShownRows()
@@ -345,6 +343,12 @@ struct MainAppMenuCommands: Commands {
                 }
             }
             .keyboardShortcut("a")
+            .disabled(
+                selectAllShownRows == nil
+                    && !responderActions.canPerform(
+                        #selector(NSText.selectAll(_:))
+                    )
+            )
         }
 
         CommandGroup(before: .toolbar) {
@@ -486,6 +490,16 @@ struct MainAppMenuCommands: Commands {
             }
             .disabled(!canShuffleLibrary)
         }
+    }
+
+    /// An item that sends `action` to the first responder, enabled while the
+    /// responder can take it.
+    private func responderButton(
+        _ title: LocalizedStringKey,
+        _ action: Selector
+    ) -> some View {
+        Button(title) { sendToFirstResponder(action) }
+            .disabled(!responderActions.canPerform(action))
     }
 
     private func requireTarget() -> MainAppMenuTarget {

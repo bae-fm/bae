@@ -112,6 +112,7 @@ final class ApplicationServices {
     let librarySetup: LibrarySetup
     let updaterController: SPUStandardUpdaterController
     let checkForUpdatesViewModel: CheckForUpdatesViewModel
+    let firstResponderActions = FirstResponderActions()
 
     init() {
         let appDir = baeAppDir(environment: baeAppProcessEnvironment)
@@ -329,7 +330,9 @@ extension BaeApp {
                 onCopyLibraryId: { appDelegate.copyLibraryId() },
                 onCloseLibrary: { appDelegate.closeLibrary() }
             )
-            MainAppMenuCommands()
+            MainAppMenuCommands(
+                responderActions: applicationServices.firstResponderActions
+            )
         }
     }
 
