@@ -161,7 +161,7 @@ private fun SearchResultsList(
         if (results.composers.isNotEmpty()) {
             item { LibrarySectionHeader(stringResource(R.string.search_section_composers)) }
             items(results.composers, key = { "composer:${it.artistId}" }) { composer ->
-                ComposerResultRow(
+                ComposerSummaryRow(
                     composer = composer,
                     onClick = { onSelectComposer(composer.artistId) },
                 )
@@ -249,43 +249,6 @@ private fun TrackResultRow(
                 text = durationLabel,
                 style = ThemeText.detail.style,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
-
-@Composable
-private fun ComposerResultRow(
-    composer: BridgeComposerSummary,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onClick)
-                .padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        CoverImage(
-            cover = composer.image,
-            cornerRadius = ThemeRadius.artwork,
-            iconPadding = ThemeSpace.group,
-            modifier = Modifier.size(ThemeSize.rowArtwork),
-            contentDescription = composer.name,
-        )
-        Spacer(modifier = Modifier.width(ThemeSpace.group))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = composer.name,
-                style = ThemeText.rowTitle.style,
-                maxLines = 1,
-            )
-            Text(
-                text = stringResource(R.string.work_count, composer.workCount.toLong()),
-                style = ThemeText.detail.style,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
             )
         }
     }
