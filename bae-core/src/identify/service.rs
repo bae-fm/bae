@@ -63,6 +63,9 @@ struct IdentifyServiceInner {
     /// Source of [`IdentifyRunId`]s: every run this service starts is told
     /// apart from every other, including earlier runs of the same candidate.
     next_run: std::sync::atomic::AtomicU64,
+    /// Every driver task, for a test to wait until they have all returned.
+    #[cfg(test)]
+    driver_tasks: tokio_util::task::TaskTracker,
 }
 
 /// One identify run of one candidate. A candidate is identified once at a
@@ -102,6 +105,8 @@ impl IdentifyServiceHandle {
             event_tx,
             drivers: Mutex::new(HashMap::new()),
             next_run: std::sync::atomic::AtomicU64::new(1),
+            #[cfg(test)]
+            driver_tasks: tokio_util::task::TaskTracker::new(),
         });
         // A candidate that vanished or was reshaped cannot be answered by the
         // run in flight, and storing its answer would put back the stale
@@ -191,7 +196,7 @@ impl IdentifyServiceHandle {
         );
 
         let inner = self.inner.clone();
-        self.inner.runtime_handle.spawn(async move {
+        let driver = async move {
             run_driver(
                 inner,
                 run,
@@ -205,7 +210,10 @@ impl IdentifyServiceHandle {
                 snapshots,
             )
             .await;
-        });
+        };
+        #[cfg(test)]
+        let driver = self.inner.driver_tasks.track_future(driver);
+        self.inner.runtime_handle.spawn(driver);
         true
     }
 
@@ -534,7 +542,7 @@ mod tests {
     use crate::identify::IdentifyState;
     use crate::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
     use std::time::Duration;
-    use tokio::sync::broadcast;
+    use tokio::sync::mpsc::UnboundedReceiver;
 
     async fn setup_inner() -> (Arc<IdentifyServiceInner>, tempfile::TempDir) {
         let temp_dir = tempfile::TempDir::new().unwrap();
@@ -658,44 +666,54 @@ mod tests {
         assert!(!inner.drivers.lock().unwrap().contains_key("k"));
     }
 
-    /// Wait for `k`'s driver to leave the registry, so a test asserts against
-    /// the state a returned driver left rather than racing it.
-    async fn await_deregistered(inner: &Arc<IdentifyServiceInner>) {
-        tokio::time::timeout(Duration::from_secs(5), async {
-            while inner.drivers.lock().unwrap().contains_key("k") {
-                tokio::time::sleep(Duration::from_millis(5)).await;
-            }
-        })
-        .await
-        .expect("the driver deregisters itself");
+    /// Wait until every driver task has returned, so everything they report
+    /// is already on the bus.
+    async fn drivers_ended(inner: &Arc<IdentifyServiceInner>) {
+        inner.driver_tasks.close();
+        tokio::time::timeout(Duration::from_secs(30), inner.driver_tasks.wait())
+            .await
+            .expect("every driver returns");
     }
 
-    /// Read `k`'s broadcast states until `wanted` answers one, or the wait
-    /// runs out.
+    /// Read `k`'s states until `wanted` answers one, or the wait runs out.
     async fn await_state<T>(
-        bus_rx: &mut broadcast::Receiver<ImportEvent>,
+        events: &mut UnboundedReceiver<ImportEvent>,
         wanted: impl Fn(&IdentifyState) -> Option<T>,
     ) -> Option<T> {
         tokio::time::timeout(Duration::from_secs(5), async {
-            loop {
-                match bus_rx.recv().await {
-                    Ok(ImportEvent::IdentifyStateChanged {
-                        candidate_key,
-                        state,
-                        ..
-                    }) if candidate_key == "k" => {
+            while let Some(event) = events.recv().await {
+                if let ImportEvent::IdentifyStateChanged {
+                    candidate_key,
+                    state,
+                    ..
+                } = event
+                {
+                    if candidate_key == "k" {
                         if let Some(found) = wanted(&state) {
                             return Some(found);
                         }
                     }
-                    Ok(_) | Err(broadcast::error::RecvError::Lagged(_)) => continue,
-                    Err(broadcast::error::RecvError::Closed) => return None,
                 }
             }
+            None
         })
         .await
         .ok()
         .flatten()
+    }
+
+    /// `k`'s states already reported.
+    fn reported_states(events: &mut UnboundedReceiver<ImportEvent>) -> Vec<IdentifyState> {
+        std::iter::from_fn(|| events.try_recv().ok())
+            .filter_map(|event| match event {
+                ImportEvent::IdentifyStateChanged {
+                    candidate_key,
+                    state,
+                    ..
+                } if candidate_key == "k" => Some(state),
+                _ => None,
+            })
+            .collect()
     }
 
     fn settled_snapshot() -> SignalsSnapshot {
@@ -736,7 +754,7 @@ mod tests {
         let handle = IdentifyServiceHandle {
             inner: inner.clone(),
         };
-        let mut bus_rx = inner.event_tx.subscribe();
+        let mut bus_rx = inner.event_tx.every_event();
 
         let (snapshots, watch) = tokio::sync::watch::channel(None);
         assert!(handle.start(
@@ -758,23 +776,20 @@ mod tests {
             })
             .await
             .is_some(),
-            "the run broadcasts its terminal ManualOnly state"
+            "the run reports its terminal ManualOnly state"
         );
-        await_deregistered(&inner).await;
+        drivers_ended(&inner).await;
         assert!(
             !handle.is_running("k"),
             "the run that answered is not still in flight"
         );
 
         // And nothing follows it: a terminal state is not chased by the `Idle`
-        // a teardown would broadcast.
+        // a teardown would report.
+        let after = reported_states(&mut bus_rx);
         assert!(
-            await_state(&mut bus_rx, |state| {
-                matches!(state, IdentifyState::Idle).then_some(())
-            })
-            .await
-            .is_none(),
-            "the settled run broadcast nothing after its verdict"
+            after.is_empty(),
+            "the settled run reported nothing after its verdict: {after:?}"
         );
     }
 
@@ -788,7 +803,7 @@ mod tests {
         let handle = IdentifyServiceHandle {
             inner: inner.clone(),
         };
-        let mut bus_rx = inner.event_tx.subscribe();
+        let mut bus_rx = inner.event_tx.every_event();
 
         let (snapshots, watch) = tokio::sync::watch::channel(None);
         snapshots.send_replace(Some(scanning_snapshot()));
@@ -823,7 +838,7 @@ mod tests {
         let handle = IdentifyServiceHandle {
             inner: inner.clone(),
         };
-        let mut bus_rx = inner.event_tx.subscribe();
+        let mut bus_rx = inner.event_tx.every_event();
 
         let (snapshots, watch) = tokio::sync::watch::channel(None);
         assert!(handle.start(
@@ -848,12 +863,11 @@ mod tests {
         assert!(handle.is_running("k"), "the run is still in flight");
 
         handle.cancel("k");
+        drivers_ended(&inner).await;
         assert!(
-            await_state(&mut bus_rx, |state| {
-                matches!(state, IdentifyState::Idle).then_some(())
-            })
-            .await
-            .is_some(),
+            reported_states(&mut bus_rx)
+                .iter()
+                .any(|state| matches!(state, IdentifyState::Idle)),
             "and its cancel still lands"
         );
     }
@@ -866,7 +880,7 @@ mod tests {
         let handle = IdentifyServiceHandle {
             inner: inner.clone(),
         };
-        let mut bus_rx = inner.event_tx.subscribe();
+        let mut bus_rx = inner.event_tx.every_event();
 
         let (_snapshots, watch) = tokio::sync::watch::channel(None);
         assert!(handle.start(
@@ -885,15 +899,13 @@ mod tests {
         // No signals: the run sits in `Triangulating` until the cancel lands.
         handle.cancel("k");
 
+        drivers_ended(&inner).await;
         assert!(
-            await_state(&mut bus_rx, |state| {
-                matches!(state, IdentifyState::Idle).then_some(())
-            })
-            .await
-            .is_some(),
-            "the cancelled run broadcasts Idle"
+            reported_states(&mut bus_rx)
+                .iter()
+                .any(|state| matches!(state, IdentifyState::Idle)),
+            "the cancelled run reports Idle"
         );
-        await_deregistered(&inner).await;
         assert!(handle.running_keys().is_empty());
     }
 
