@@ -43,6 +43,7 @@ import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.downloads.DownloadProgressBytes
 import fm.bae.app.ui.downloads.WaitingToDownloadText
 import kotlinx.coroutines.CancellationException
@@ -99,7 +100,7 @@ internal fun ReleaseDownloadControl(
             },
         )
         unpinError?.let { message ->
-            Text(text = message, style = ThemeText.body.style, color = MaterialTheme.colorScheme.error)
+            ErrorText(message)
         }
     }
 }
@@ -171,7 +172,7 @@ private fun DownloadFailedControl(
     onRetry: () -> Unit,
     onCancel: () -> Unit,
 ) {
-    Text(text = error, style = ThemeText.body.style, color = MaterialTheme.colorScheme.error)
+    ErrorText(error)
     Row(horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
         // Core has no per-item retry: retryDownloads re-queues every failed entry.
         DownloadActionButton(stringResource(R.string.retry), Icons.Filled.Refresh, onRetry)

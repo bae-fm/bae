@@ -21,11 +21,10 @@ struct ImportConfirmationBanners: View {
         if let libStatus = libraryStatus {
             if libStatus.releaseInLibrary {
                 HStack(spacing: ThemeSpace.related) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundStyle(NoticeTone.warning.tint)
+                    glyph(.warning)
                     Text("This release is already in your library")
                         .themeText(.body)
-                        .foregroundStyle(NoticeTone.warning.tint)
+                        .foregroundStyle(StatusTone.warning.color)
                     Spacer()
                     if let albumId = libStatus.albumId {
                         Button("View in Library") {
@@ -34,13 +33,11 @@ struct ImportConfirmationBanners: View {
                         .controlSize(.small)
                     }
                 }
-                .padding(ThemeSpace.group)
-                .noticeBackground(.warning)
+                .notice(.warning)
             }
             else if libStatus.albumInLibrary {
                 HStack(spacing: ThemeSpace.related) {
-                    Image(systemName: "info.circle.fill")
-                        .foregroundStyle(NoticeTone.info.tint)
+                    glyph(.info)
                     Text(
                         "Another release of this album is in your library"
                     )
@@ -53,23 +50,24 @@ struct ImportConfirmationBanners: View {
                         .controlSize(.small)
                     }
                 }
-                .padding(ThemeSpace.group)
-                .noticeBackground(.info)
+                .notice(.info)
             }
         }
 
         importFailureBanner
 
         if let error {
-            HStack(spacing: ThemeSpace.related) {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(NoticeTone.error.tint)
-                Text(error)
-                    .themeText(.body)
-                    .foregroundStyle(NoticeTone.error.tint)
-            }
-            .padding(ThemeSpace.group)
-            .noticeBackground(.error)
+            ErrorDetailDisclosure(error: DisplayError(line: error))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .notice(.danger)
+        }
+    }
+
+    @ViewBuilder
+    private func glyph(_ tone: StatusTone) -> some View {
+        if let symbol = tone.symbol {
+            Image(systemName: symbol)
+                .foregroundStyle(tone.color)
         }
     }
 
@@ -87,8 +85,7 @@ struct ImportConfirmationBanners: View {
             let displayed = DisplayError(bridgeError)
         {
             ErrorDetailDisclosure(error: displayed)
-                .padding(ThemeSpace.group)
-                .noticeBackground(.error)
+                .notice(.danger)
         }
     }
 
@@ -100,8 +97,7 @@ struct ImportConfirmationBanners: View {
                 .controlSize(.small)
                 .disabled(!canEdit)
         }
-        .padding(ThemeSpace.group)
-        .noticeBackground(.error)
+        .notice(.danger)
     }
 
     private func artistIdentityConflict(
@@ -114,7 +110,7 @@ struct ImportConfirmationBanners: View {
                 spacing: ThemeSpace.related
             ) {
                 Image(systemName: "person.2.badge.gearshape.fill")
-                    .foregroundStyle(NoticeTone.warning.tint)
+                    .foregroundStyle(StatusTone.warning.color)
                 VStack(alignment: .leading, spacing: ThemeSpace.line) {
                     Text(conflict.incomingArtistName)
                         .themeText(.strong)
@@ -125,7 +121,7 @@ struct ImportConfirmationBanners: View {
                     )
                 }
                 .themeText(.body)
-                .foregroundStyle(NoticeTone.warning.tint)
+                .foregroundStyle(StatusTone.warning.color)
             }
             HStack(spacing: ThemeSpace.related) {
                 artistChoiceButton(
@@ -143,12 +139,11 @@ struct ImportConfirmationBanners: View {
             .disabled(!canEdit)
             ErrorDetailDisclosure(
                 error: error,
-                tint: NoticeTone.warning.tint,
+                tone: .warning,
                 showIcon: false
             )
         }
-        .padding(ThemeSpace.group)
-        .noticeBackground(.warning)
+        .notice(.warning)
     }
 
     private func artistChoiceButton(

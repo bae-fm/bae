@@ -237,8 +237,7 @@ struct QueueView: View {
             Button {
                 onGoToNowPlaying?()
             } label: {
-                RoundedRectangle(cornerRadius: ThemeRadius.card)
-                    .fill(Theme.surfaceElevated)
+                Color.clear
                     .contentShape(
                         RoundedRectangle(cornerRadius: ThemeRadius.card)
                     )
@@ -248,11 +247,7 @@ struct QueueView: View {
             .help("Go to Now Playing")
             .accessibilityLabel("Go to Now Playing")
         }
-        .overlay(
-            RoundedRectangle(cornerRadius: ThemeRadius.card)
-                .stroke(Theme.hairline, lineWidth: 1)
-                .allowsHitTesting(false)
-        )
+        .card(elevated: true)
         .padding(.horizontal, ThemeSpace.group)
         .padding(.bottom, ThemeSpace.compact)
     }

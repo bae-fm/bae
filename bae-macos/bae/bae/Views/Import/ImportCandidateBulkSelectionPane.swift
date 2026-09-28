@@ -85,12 +85,7 @@ struct ImportCandidateBulkSelectionCard: View {
         }
         .padding(Self.padding)
         .frame(width: Self.width)
-        .background(Theme.surface)
-        .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.card))
-        .overlay {
-            RoundedRectangle(cornerRadius: ThemeRadius.card)
-                .strokeBorder(Theme.hairline, lineWidth: 1)
-        }
+        .card()
     }
 
     private var groupedList: some View {
@@ -230,22 +225,10 @@ private struct BulkActionRow: View {
                     )
                     .frame(maxWidth: .infinity, alignment: .leading)
                 if let count = offer.count {
-                    Text(verbatim: count.formatted())
-                        .themeText(.chip)
-                        .monospacedDigit()
-                        .foregroundStyle(
-                            isConstructive ? Theme.accent : Color.secondary
-                        )
-                        .padding(.vertical, ThemeSpace.line)
-                        .padding(.horizontal, ThemeSpace.related)
-                        .background(
-                            Capsule()
-                                .fill(
-                                    isConstructive
-                                        ? Theme.accentSoft
-                                        : Theme.pressed
-                                )
-                        )
+                    StatusChip(
+                        Text(verbatim: count.formatted()).monospacedDigit(),
+                        tone: isConstructive ? .accent : .neutral
+                    )
                 }
             }
         }

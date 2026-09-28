@@ -32,19 +32,20 @@ struct JoinPairingOffer: View {
                     LabeledContent("Library", value: offer.libraryName)
                     LabeledContent("Provider", value: offer.cloudProvider.displayName)
                     if offer.needsOauth && !oauthProvidersAvailable {
-                        Text("This library uses a provider this build can't connect to.")
-                            .foregroundStyle(Theme.danger)
-                            .themeText(.body)
+                        ErrorText(
+                            String(
+                                localized:
+                                    "This library uses a provider this build can't connect to."
+                            )
+                        )
                     }
                 }
-                // A decode never reports a cancellation, so a line is always
-                // there; if not, this shows nothing instead of a blank error.
+                // A decode never reports a cancellation, so this always has a
+                // line; if not, it shows nothing instead of a blank error.
                 else if case .failure(let decodeError) = decodedOffer,
-                    let line = decodeError.displayLine
+                    let displayed = DisplayError(decodeError)
                 {
-                    Text(line)
-                        .foregroundStyle(Theme.danger)
-                        .themeText(.body)
+                    ErrorDetailDisclosure(error: displayed)
                 }
             }
 
@@ -55,9 +56,7 @@ struct JoinPairingOffer: View {
             }
             if let error {
                 Section {
-                    Text(error)
-                        .foregroundStyle(Theme.danger)
-                        .themeText(.body)
+                    ErrorText(error)
                 }
             }
         }

@@ -17,7 +17,6 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -46,6 +45,7 @@ import fm.bae.app.ui.appearance.ThemeSize
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.appearance.colors
+import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.Eyebrow
 import kotlinx.coroutines.launch
 import java.io.IOException
@@ -88,10 +88,7 @@ internal fun AppearanceSection() {
             onSelect = { save { store.setTone(it) } },
         )
         error?.let {
-            Text(
-                stringResource(R.string.appearance_save_failed, it),
-                color = MaterialTheme.colorScheme.error,
-            )
+            ErrorText(stringResource(R.string.appearance_save_failed, it))
         }
     }
 }

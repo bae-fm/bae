@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -45,7 +44,9 @@ import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.PrimaryButton
+import fm.bae.app.ui.components.StatusChip
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeMember
@@ -67,7 +68,7 @@ private class MembersModel(
     var error by mutableStateOf<String?>(null)
         private set
 
-    // A remove failure, shown above the list (the list stays visible).
+    // A remove failure, shown above the list.
     var actionError by mutableStateOf<String?>(null)
         private set
 
@@ -120,9 +121,8 @@ fun MembersScreen(
     Column(modifier = Modifier.fillMaxSize()) {
         MembersTopBar(onBack = onBack)
         model.actionError?.let { msg ->
-            Text(
-                text = msg,
-                color = MaterialTheme.colorScheme.error,
+            ErrorText(
+                message = msg,
                 modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
             )
         }
@@ -175,7 +175,7 @@ private fun MembersBody(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
             ) {
-                Text(text = model.error!!, color = MaterialTheme.colorScheme.error)
+                ErrorText(model.error!!)
                 TextButton(onClick = onReload) {
                     Text(stringResource(R.string.retry))
                 }
@@ -263,7 +263,7 @@ private fun MemberRow(
                     text = member.fingerprint,
                     style = ThemeText.mono.style,
                 )
-                AssistChip(onClick = {}, enabled = false, label = { Text(stringResource(member.role.labelRes())) })
+                StatusChip(stringResource(member.role.labelRes()))
             }
             if (member.isSelf) {
                 Text(

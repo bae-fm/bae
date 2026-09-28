@@ -1,27 +1,42 @@
-import BaeKit
 import SwiftUI
+
+#if canImport(AppKit)
+    import AppKit
+#else
+    import UIKit
+#endif
 
 /// A user-facing error: the localized line, the concrete fault with a copy
 /// action, and a disclosure for the rest of the chain.
-struct ErrorDetailDisclosure: View {
-    let error: DisplayError?
-    /// Tint for the line and icon: `Theme.danger` or `Theme.warning`.
-    var tint: Color = Theme.danger
-    var showIcon: Bool = true
+public struct ErrorDetailDisclosure: View {
+    private let error: DisplayError?
+    /// The line's and glyph's colour; the glyph is the tone's.
+    private let tone: StatusTone
+    private let showIcon: Bool
+
+    public init(
+        error: DisplayError?,
+        tone: StatusTone = .danger,
+        showIcon: Bool = true
+    ) {
+        self.error = error
+        self.tone = tone
+        self.showIcon = showIcon
+    }
 
     @State
     private var detailExpanded = false
 
-    var body: some View {
+    public var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.compact) {
             HStack(spacing: ThemeSpace.related) {
-                if showIcon {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundStyle(tint)
+                if showIcon, let symbol = tone.symbol {
+                    Image(systemName: symbol)
+                        .foregroundStyle(tone.color)
                 }
                 Text(error?.line ?? "")
                     .themeText(.body)
-                    .foregroundStyle(tint)
+                    .foregroundStyle(tone.color)
             }
 
             if let detail = error?.detail {
@@ -34,7 +49,7 @@ struct ErrorDetailDisclosure: View {
                         .textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     Button {
-                        SystemActions.copyToPasteboard(detail)
+                        copyToPasteboard(detail)
                     } label: {
                         Label("Copy details", systemImage: "doc.on.doc")
                     }
@@ -78,25 +93,11 @@ struct ErrorDetailDisclosure: View {
     }
 }
 
-#if DEBUG
-    #Preview("Error Detail Disclosure") {
-        VStack(alignment: .leading, spacing: ThemeSpace.section) {
-            // Hard failure carrying opaque detail — the disclosure row shows.
-            ErrorDetailDisclosure(error: PreviewData.displayErrorWithDetail)
-            // Warning tint, no detail — line only.
-            ErrorDetailDisclosure(
-                error: PreviewData.displayErrorSimple,
-                tint: Theme.warning
-            )
-            // Icon suppressed (inline banner variant).
-            ErrorDetailDisclosure(
-                error: PreviewData.displayErrorSimple,
-                showIcon: false
-            )
-        }
-        .padding(ThemeSpace.section)
-        .frame(width: 440)
-        .background(Theme.background)
-        .preferredColorScheme(.dark)
-    }
-#endif
+private func copyToPasteboard(_ value: String) {
+    #if canImport(AppKit)
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(value, forType: .string)
+    #else
+        UIPasteboard.general.string = value
+    #endif
+}

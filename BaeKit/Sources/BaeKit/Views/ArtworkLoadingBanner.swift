@@ -54,24 +54,28 @@ public struct ArtworkLoadingBanner: View {
                 }
             }
         case .failed(let titleKey, let progress, let error):
-            surface {
-                VStack(alignment: .leading, spacing: ThemeSpace.line) {
-                    statusLine {
-                        Image(systemName: "exclamationmark.triangle")
-                            .foregroundStyle(Theme.warning)
-                        Text(localizedCoreString(titleKey))
-                        Spacer()
-                        Text(progress.bytesText)
-                            .themeText(.detail)
-                            .monospacedDigit()
-                            .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: ThemeSpace.line) {
+                statusLine {
+                    if let symbol = StatusTone.warning.symbol {
+                        Image(systemName: symbol)
+                            .foregroundStyle(StatusTone.warning.color)
                     }
-                    Text(error)
-                        .themeText(.mono)
+                    Text(localizedCoreString(titleKey))
+                    Spacer()
+                    Text(progress.bytesText)
+                        .themeText(.detail)
+                        .monospacedDigit()
                         .foregroundStyle(.secondary)
-                        .textSelection(.enabled)
                 }
+                Text(error)
+                    .themeText(.mono)
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .notice(.warning)
+            .padding(.horizontal, ThemeSpace.edge)
+            .padding(.vertical, ThemeSpace.related)
         }
     }
 

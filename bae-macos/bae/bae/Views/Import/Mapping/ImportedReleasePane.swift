@@ -111,9 +111,7 @@ struct ImportedReleasePane: View {
             if let message = session.validationMessage
                 ?? session.failureMessage
             {
-                Label(message, systemImage: "exclamationmark.triangle.fill")
-                    .themeText(.body)
-                    .foregroundStyle(Theme.danger)
+                ErrorText(message)
             }
         }
     }

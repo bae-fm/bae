@@ -224,7 +224,7 @@ extension LibraryView {
             composerList: libraryLists.composers,
             artistList: libraryLists.artists,
             searchResults: libraryProjections.search.value,
-            searchError: libraryProjections.search.error?.line,
+            searchError: libraryProjections.search.error,
             sync: sync,
             onSelectAlbum: {
                 routePath.appendAlbum(
@@ -318,46 +318,41 @@ private struct LibraryBanner: View {
     @Environment(Sync.self)
     private var sync
 
-    @State
-    private var reconnecting = false
-
     var body: some View {
-        if let error = configStore.lastError {
-            banner(message: error.line) {
-                Button {
-                    configStore.clearError()
-                } label: {
-                    Image(systemName: "xmark")
-                        .themeIcon(.small)
-                        .foregroundStyle(Theme.onFill)
+        Group {
+            if let error = configStore.lastError {
+                HStack(alignment: .top, spacing: ThemeSpace.related) {
+                    ErrorDetailDisclosure(error: error)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Button {
+                        configStore.clearError()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .themeIcon(.small)
+                    }
+                    .accessibilityLabel("Dismiss")
                 }
-                .accessibilityLabel("Dismiss")
+                .notice(.danger)
+            }
+            // Disconnecting leaves the recorded sync error behind, so show it
+            // only while a provider is configured.
+            else if let error = syncStatusStore.error,
+                configStore.config.sync != nil
+            {
+                SyncFailureNotice(
+                    error: error,
+                    canReconnect: syncStatusStore.canReconnect,
+                    onReconnect: reconnect
+                )
             }
         }
-        // Disconnecting leaves the recorded sync error behind, so show it only
-        // while a provider is configured.
-        else if let error = syncStatusStore.error, configStore.config.sync != nil {
-            banner(message: error.line, detail: error.detailSummary) {
-                if syncStatusStore.canReconnect {
-                    if reconnecting {
-                        ProgressView()
-                            .controlSize(.small)
-                            .tint(Theme.onFill)
-                    }
-                    else {
-                        Button("Retry") { Task { await reconnect() } }
-                            .themeText(.strong)
-                            .foregroundStyle(Theme.onFill)
-                    }
-                }
-            }
-        }
+        .padding(.horizontal, ThemeSpace.edge)
+        .padding(.vertical, ThemeSpace.related)
     }
 
     /// Retry the configured provider, connecting if a failed launch left no
-    /// connection; a failed retry keeps the banner up with the new reason.
+    /// connection; a failed retry keeps the notice up with the new reason.
     private func reconnect() async {
-        reconnecting = true
         do {
             try await sync.reconnectSync()
         }
@@ -366,35 +361,6 @@ private struct LibraryBanner: View {
                 "Sync reconnect failed: \(error.localizedDescription)"
             )
         }
-        reconnecting = false
-    }
-
-    /// `detail` is the untranslated fault shown under the localized `message`,
-    /// so the banner names something a person or bug report can act on.
-    private func banner<Trailing: View>(
-        message: String,
-        detail: String? = nil,
-        @ViewBuilder trailing: () -> Trailing
-    ) -> some View {
-        HStack {
-            VStack(alignment: .leading, spacing: ThemeSpace.line) {
-                Text(message)
-                    .themeText(.detail)
-                    .foregroundStyle(Theme.onFill)
-                if let detail {
-                    Text(detail)
-                        .themeText(.mono)
-                        .foregroundStyle(Theme.onFillSecondary)
-                        .lineLimit(2)
-                        .truncationMode(.tail)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            trailing()
-        }
-        .padding(.horizontal, ThemeSpace.edge)
-        .padding(.vertical, ThemeSpace.related)
-        .background(Theme.danger)
     }
 }
 

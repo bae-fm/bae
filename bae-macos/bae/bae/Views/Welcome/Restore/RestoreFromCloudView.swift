@@ -80,18 +80,14 @@ struct RestoreFromCloudView: View {
                     else if case .failure(let decodeError) = decodedRestore,
                         let line = decodeError.displayLine
                     {
-                        Text(line)
-                            .foregroundStyle(Theme.danger)
-                            .themeText(.body)
+                        ErrorText(line)
                     }
                 }
             }
             .formStyle(.grouped)
             .scrollDisabled(true)
             if let error {
-                Text(error)
-                    .foregroundStyle(Theme.danger)
-                    .themeText(.body)
+                ErrorText(error)
                     .padding(.horizontal)
                     .padding(.bottom, ThemeSpace.related)
             }

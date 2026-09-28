@@ -6096,178 +6096,6 @@
         }
       }
     },
-    "Disconnected": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Disconnected"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Desconectado"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Déconnecté"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Getrennt"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Desconectado"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "切断済み"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "已断开连接"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "غير متصل"
-          }
-        },
-        "he": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "מנותק"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Відключено"
-          }
-        },
-        "bg": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Прекъсната връзка"
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Rozłączono"
-          }
-        },
-        "cs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Odpojeno"
-          }
-        },
-        "hr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Veza prekinuta"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "연결 해제됨"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "已中斷連線"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Disconnesso"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Bağlantı kesildi"
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Niet verbonden"
-          }
-        },
-        "sk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Odpojené"
-          }
-        },
-        "hu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Leválasztva"
-          }
-        },
-        "ro": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Deconectat"
-          }
-        },
-        "el": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Αποσυνδεδεμένο"
-          }
-        },
-        "pt-PT": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Desligado"
-          }
-        },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Frånkopplad"
-          }
-        },
-        "da": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Forbindelsen er afbrudt"
-          }
-        },
-        "nb": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Frakoblet"
-          }
-        },
-        "fi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Yhteys katkaistu"
-          }
-        }
-      }
-    },
     "Dismiss": {
       "localizations": {
         "en": {
@@ -26444,176 +26272,176 @@
         }
       }
     },
-    "You can turn this back on in Settings › Playback." : {
-      "comment" : "Pause-between-sides prompt: shown under the checkbox once it is unchecked; names where the setting lives",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "You can turn this back on in Settings › Playback."
+    "You can turn this back on in Settings › Playback.": {
+      "comment": "Pause-between-sides prompt: shown under the checkbox once it is unchecked; names where the setting lives",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You can turn this back on in Settings › Playback."
           }
         },
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "يمكنك إعادة تفعيل هذا من الإعدادات › التشغيل."
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يمكنك إعادة تفعيل هذا من الإعدادات › التشغيل."
           }
         },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Можете да включите това отново от Настройки › Възпроизвеждане."
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Можете да включите това отново от Настройки › Възпроизвеждане."
           }
         },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Znovu to můžete zapnout v Nastavení › Přehrávání."
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Znovu to můžete zapnout v Nastavení › Přehrávání."
           }
         },
-        "da" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Du kan slå det til igen under Indstillinger › Afspilning."
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Du kan slå det til igen under Indstillinger › Afspilning."
           }
         },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Du kannst das unter Einstellungen › Wiedergabe wieder einschalten."
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Du kannst das unter Einstellungen › Wiedergabe wieder einschalten."
           }
         },
-        "el" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Μπορείτε να το ενεργοποιήσετε ξανά από Ρυθμίσεις › Αναπαραγωγή."
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Μπορείτε να το ενεργοποιήσετε ξανά από Ρυθμίσεις › Αναπαραγωγή."
           }
         },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Puedes volver a activarlo en Ajustes › Reproducción."
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Puedes volver a activarlo en Ajustes › Reproducción."
           }
         },
-        "fi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Voit ottaa tämän uudelleen käyttöön kohdassa Asetukset › Toisto."
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voit ottaa tämän uudelleen käyttöön kohdassa Asetukset › Toisto."
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vous pouvez le réactiver dans Réglages › Lecture."
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous pouvez le réactiver dans Réglages › Lecture."
           }
         },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "אפשר להפעיל זאת שוב בהגדרות › השמעה."
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אפשר להפעיל זאת שוב בהגדרות › השמעה."
           }
         },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ovo možete ponovno uključiti u Postavke › Reprodukcija."
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ovo možete ponovno uključiti u Postavke › Reprodukcija."
           }
         },
-        "hu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ezt újra bekapcsolhatod itt: Beállítások › Lejátszás."
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ezt újra bekapcsolhatod itt: Beállítások › Lejátszás."
           }
         },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Puoi riattivarlo in Impostazioni › Riproduzione."
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Puoi riattivarlo in Impostazioni › Riproduzione."
           }
         },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "「設定 › 再生」でもう一度オンにできます。"
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「設定 › 再生」でもう一度オンにできます。"
           }
         },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "설정 › 재생에서 다시 켤 수 있습니다."
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "설정 › 재생에서 다시 켤 수 있습니다."
           }
         },
-        "nb" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Du kan slå dette på igjen under Innstillinger › Avspilling."
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Du kan slå dette på igjen under Innstillinger › Avspilling."
           }
         },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Je kunt dit weer aanzetten via Instellingen › Afspelen."
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Je kunt dit weer aanzetten via Instellingen › Afspelen."
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Możesz to ponownie włączyć w Ustawienia › Odtwarzanie."
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Możesz to ponownie włączyć w Ustawienia › Odtwarzanie."
           }
         },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Você pode reativar isso em Configurações › Reprodução."
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Você pode reativar isso em Configurações › Reprodução."
           }
         },
-        "pt-PT" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pode voltar a ativar isto em Definições › Reprodução."
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pode voltar a ativar isto em Definições › Reprodução."
           }
         },
-        "ro" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Poți reactiva asta din Setări › Redare."
+        "ro": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poți reactiva asta din Setări › Redare."
           }
         },
-        "sk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Znova to môžeš zapnúť v Nastavenia › Prehrávanie."
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Znova to môžeš zapnúť v Nastavenia › Prehrávanie."
           }
         },
-        "sv" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Du kan slå på det igen under Inställningar › Uppspelning."
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Du kan slå på det igen under Inställningar › Uppspelning."
           }
         },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bunu Ayarlar › Çalma bölümünden yeniden açabilirsiniz."
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bunu Ayarlar › Çalma bölümünden yeniden açabilirsiniz."
           }
         },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ви можете знову ввімкнути це в Налаштування › Відтворення."
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ви можете знову ввімкнути це в Налаштування › Відтворення."
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "你可以在“设置 › 播放”中重新打开此选项。"
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你可以在“设置 › 播放”中重新打开此选项。"
           }
         },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "你可以在「設定 › 播放」中重新開啟此選項。"
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你可以在「設定 › 播放」中重新開啟此選項。"
           }
         }
       }
@@ -34415,6 +34243,525 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pilven siivous"
+          }
+        }
+      }
+    },
+    "Sync is failing": {
+      "comment": "Library settings: sync-error banner heading",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تفشل المزامنة"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Синхронизирането е неуспешно"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synchronizace selhává"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synkroniseringen fejler"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sync is failing"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sync schlägt fehl"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ο συγχρονισμός αποτυγχάνει"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La sincronización está fallando"
+          }
+        },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synkronointi epäonnistuu"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La synchronisation échoue"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "הסנכרון נכשל"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sinkronizacija ne uspijeva"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A szinkronizálás hibázik"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La sincronizzazione non riesce"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "同期が失敗しています"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "동기화 실패 중"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synkroniseringen feiler"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synchronisatie mislukt"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synchronizacja zawodzi"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A sincronização está falhando"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A sincronização está a falhar"
+          }
+        },
+        "ro": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sincronizarea eșuează"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synchronizácia zlyháva"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synkroniseringen misslyckas"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eşzamanlama başarısız oluyor"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Синхронізація не вдається"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "同步失败"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "同步失敗"
+          }
+        }
+      }
+    },
+    "Copy details": {
+      "comment": "Error disclosure: tooltip for the copy button",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نسخ التفاصيل"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Копиране на детайлите"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kopírovat podrobnosti"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kopier detaljer"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy details"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Details kopieren"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Αντιγραφή λεπτομερειών"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar detalles"
+          }
+        },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kopioi tiedot"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copier les détails"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "העתק פרטים"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kopiraj pojedinosti"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Részletek másolása"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copia dettagli"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "詳細をコピー"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "세부 정보 복사"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kopier detaljer"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Details kopiëren"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kopiuj szczegóły"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar detalhes"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar detalhes"
+          }
+        },
+        "ro": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiază detaliile"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kopírovať podrobnosti"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kopiera detaljer"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayrıntıları kopyala"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скопіювати деталі"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "复制详情"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "複製詳細資料"
+          }
+        }
+      }
+    },
+    "Details": {
+      "comment": "Error disclosure: label for the collapsible diagnostic detail",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "التفاصيل"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Детайли"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Podrobnosti"
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detaljer"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Details"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Details"
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Λεπτομέρειες"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detalles"
+          }
+        },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tiedot"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Détails"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "פרטים"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pojedinosti"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Részletek"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dettagli"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "詳細"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "세부 정보"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detaljer"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Details"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Szczegóły"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detalhes"
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detalhes"
+          }
+        },
+        "ro": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detalii"
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Podrobnosti"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detaljer"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayrıntılar"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Деталі"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "详情"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "詳細資料"
           }
         }
       }

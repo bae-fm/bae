@@ -89,14 +89,14 @@ struct ProviderCapsule: View {
         HStack(spacing: ThemeSpace.inline) {
             Text(bridgeCatalogName(catalog: source))
                 .themeText(.chip)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(StatusTone.neutral.color)
                 .fixedSize()
             LookupCellView(lookup: lookup, onRetry: onRetry)
         }
         .padding(.horizontal, ThemeSpace.compact)
-        .padding(.vertical, ThemeSpace.hairline)
+        .padding(.vertical, ThemeSpace.line)
         .background(
-            Theme.hover,
+            StatusTone.neutral.fill,
             in: RoundedRectangle(cornerRadius: ThemeRadius.chip)
         )
     }
@@ -180,7 +180,7 @@ struct LookupCellView: View {
         case .found(let count, let groups):
             LookupCountView(count: Int(count), groups: groups)
         case .noMatch:
-            CountCapsule(count: 0)
+            StatusChip(verbatim: 0.formatted())
         case .failed(let failure):
             HStack(spacing: ThemeSpace.compact) {
                 IdentifierWarning()
@@ -203,14 +203,17 @@ struct LookupCountView: View {
     let groups: [BridgeReleaseGroup]
 
     var body: some View {
-        CountCapsule(count: count)
-            .hoverPopover(arrowEdge: .bottom) {
-                LookupReleasesPopover(
-                    groups: groups.map(ReleaseGroup.init(bridge:))
-                )
-                .popoverEntrance(anchor: .top)
-                .background { PopoverBehavior() }
-            }
+        StatusChip(
+            verbatim: count.formatted(),
+            tone: count > 0 ? .success : .neutral
+        )
+        .hoverPopover(arrowEdge: .bottom) {
+            LookupReleasesPopover(
+                groups: groups.map(ReleaseGroup.init(bridge:))
+            )
+            .popoverEntrance(anchor: .top)
+            .background { PopoverBehavior() }
+        }
     }
 }
 
@@ -305,15 +308,7 @@ struct LookupReleaseLine: View {
                         .lineLimit(1)
                 }
                 ForEach(label.catalogNumbers, id: \.self) { catalogNumber in
-                    Text(catalogNumber)
-                        .themeText(.chip)
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, ThemeSpace.inline)
-                        .background(
-                            Theme.hover,
-                            in: RoundedRectangle(cornerRadius: ThemeRadius.chip)
-                        )
-                        .lineLimit(1)
+                    StatusChip(verbatim: catalogNumber)
                 }
             }
             if !pressed.isEmpty {

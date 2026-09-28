@@ -33,6 +33,7 @@ import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.PrimaryButton
 import kotlinx.coroutines.launch
 
@@ -135,7 +136,7 @@ private fun UnlockForm(
         }
         if (error != null) {
             Spacer(modifier = Modifier.height(ThemeSpace.edge))
-            Text(text = error, color = MaterialTheme.colorScheme.error, style = ThemeText.body.style)
+            ErrorText(error)
         }
     }
 }

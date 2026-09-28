@@ -27,9 +27,7 @@ struct ReleaseDownloadSection: View {
         VStack(alignment: .leading, spacing: ThemeSpace.compact) {
             control(status)
             if let unpinError {
-                Text(unpinError)
-                    .themeText(.detail)
-                    .foregroundStyle(Theme.danger)
+                ErrorText(unpinError)
             }
         }
         .onDisappear { unpinTask?.cancel() }
@@ -58,9 +56,7 @@ struct ReleaseDownloadSection: View {
             }
         case .failed(let message):
             VStack(alignment: .leading, spacing: ThemeSpace.compact) {
-                Text(message)
-                    .themeText(.detail)
-                    .foregroundStyle(Theme.danger)
+                ErrorText(message)
                 HStack(spacing: ThemeSpace.related) {
                     // Core has no per-item retry; this requeues every failed
                     // download.

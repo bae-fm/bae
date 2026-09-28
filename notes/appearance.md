@@ -46,6 +46,12 @@ large, hero) and a few recurring sizes (row and now-playing bar artwork, the
 least an icon button takes to press) are roles whose values each platform sets
 by its own convention.
 
+The shared components are defined once per platform: `StatusTone` (neutral,
+accent, info, success, warning, danger, activity), a `StatusChip` for short
+labels on a tone's fill, a notice (`.notice(_:)` on Apple, `Notice` on Android)
+for a message in a tone, `.card(elevated:)` on Apple, and `ErrorText` for a
+failure line. A failing sync cycle is one `SyncFailureNotice` on macOS and iOS.
+
 Apple views use `Theme`, `ThemeOpacity`, `PrimaryButtonStyle`, and
 `.appAppearance()` at every scene root; Apple's hierarchical label styles stay
 native. Native controls retain their platform geometry and interaction.

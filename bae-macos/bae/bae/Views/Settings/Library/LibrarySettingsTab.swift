@@ -257,9 +257,7 @@ private struct ConnectedProviderControls: View {
             )
 
             if let error = flow.error {
-                Text(error)
-                    .foregroundStyle(Theme.danger)
-                    .themeText(.body)
+                ErrorText(error)
             }
         }
         .alert("Disconnect sync?", isPresented: $flow.showConfirm) {

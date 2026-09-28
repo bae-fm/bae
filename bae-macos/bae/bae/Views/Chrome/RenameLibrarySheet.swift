@@ -39,9 +39,7 @@ struct RenameLibrarySheet: View {
                 }
                 if let error = state.error {
                     Section {
-                        Text(error)
-                            .foregroundStyle(Theme.danger)
-                            .themeText(.body)
+                        ErrorText(error)
                     }
                 }
             }

@@ -13,10 +13,10 @@ struct ComposerDetailScreen: View {
     private var detail: BridgeComposerDetail? {
         libraryProjections.composer.value
     }
-    private var error: String? {
-        libraryProjections.composer.error?.line
+    private var error: DisplayError? {
+        libraryProjections.composer.error
             ?? (libraryProjections.composer.delivered && detail == nil
-                ? String(localized: "Composer detail not found") : nil)
+                ? DisplayError(line: String(localized: "Composer detail not found")) : nil)
     }
 
     var body: some View {
@@ -29,12 +29,12 @@ struct ComposerDetailScreen: View {
                 )
                 .overlay(alignment: .top) {
                     if let error {
-                        Text(error).foregroundStyle(Theme.danger).padding(ThemeSpace.group)
+                        ErrorDetailDisclosure(error: error).padding(ThemeSpace.group)
                     }
                 }
             }
             else if let error {
-                Text(error).foregroundStyle(Theme.danger).padding(ThemeSpace.page)
+                ErrorDetailDisclosure(error: error).padding(ThemeSpace.page)
             }
             else {
                 ProgressView()

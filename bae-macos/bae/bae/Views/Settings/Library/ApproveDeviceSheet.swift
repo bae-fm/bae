@@ -69,9 +69,7 @@ struct ApproveDeviceSheet: View {
             VStack(spacing: ThemeSpace.group) {
                 DeviceJoinProgressView(admitting: progress)
                 if let error {
-                    Text(error)
-                        .foregroundStyle(Theme.danger)
-                        .themeText(.body)
+                    ErrorText(error)
                 }
             }
         case .cancelling:
@@ -107,9 +105,7 @@ struct ApproveDeviceSheet: View {
             }
 
             if let error {
-                Text(error)
-                    .foregroundStyle(Theme.danger)
-                    .themeText(.body)
+                ErrorText(error)
                 Button("Try again") {
                     self.error = nil
                     pairingTask?.cancel()
@@ -146,9 +142,7 @@ struct ApproveDeviceSheet: View {
             .multilineTextAlignment(.center)
 
             if let error {
-                Text(error)
-                    .foregroundStyle(Theme.danger)
-                    .themeText(.body)
+                ErrorText(error)
             }
 
             HStack(spacing: ThemeSpace.group) {

@@ -49,9 +49,7 @@ struct CodeShareSheet: View {
                     Spacer()
                     // The presenter only records failures that have a line.
                     if let line = error.displayLine {
-                        Text(line)
-                            .foregroundStyle(Theme.danger)
-                            .themeText(.body)
+                        ErrorText(line)
                     }
                     Spacer()
                 }

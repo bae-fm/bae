@@ -155,8 +155,7 @@ struct ContentView: View {
     }
 
     private func errorView(_ message: String) -> some View {
-        Text(message)
-            .foregroundStyle(Theme.danger)
+        ErrorText(message)
             .padding(ThemeSpace.page)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

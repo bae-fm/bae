@@ -30,9 +30,7 @@ struct MembersSection: View {
             switch membership {
             case nil:
                 if let loadError {
-                    Text(loadError)
-                        .foregroundStyle(Theme.danger)
-                        .themeText(.body)
+                    ErrorText(loadError)
                 }
                 else {
                     ProgressView()
@@ -80,9 +78,7 @@ struct MembersSection: View {
         }
 
         if let actionError {
-            Text(actionError)
-                .foregroundStyle(Theme.danger)
-                .themeText(.body)
+            ErrorText(actionError)
         }
 
         if membership?.selfIsOwner == true {
@@ -162,7 +158,7 @@ private struct MemberRow: View {
                     .opacity(member.isSelf ? 1 : 0)
             }
             Spacer()
-            RoleBadge(role: member.role)
+            StatusChip(verbatim: member.role.label)
             // Hidden rather than removed so rows keep the same layout.
             Button(role: .destructive) {
                 onRemove()
@@ -177,21 +173,9 @@ private struct MemberRow: View {
     }
 }
 
-private struct RoleBadge: View {
-    let role: BridgeMemberRole
-
-    var body: some View {
-        Text(label)
-            .themeText(.chip)
-            .padding(.horizontal, ThemeSpace.related)
-            .padding(.vertical, ThemeSpace.line)
-            .background(Color.secondary.opacity(ThemeOpacity.tint))
-            .clipShape(Capsule())
-            .foregroundStyle(.secondary)
-    }
-
-    private var label: String {
-        switch role {
+extension BridgeMemberRole {
+    fileprivate var label: String {
+        switch self {
         case .owner:
             String(localized: "Owner")
         case .member:

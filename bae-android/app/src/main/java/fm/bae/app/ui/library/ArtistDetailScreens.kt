@@ -13,8 +13,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -34,6 +32,7 @@ import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSize
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.components.CoverImage
+import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.playback.NowPlayingBar
 import uniffi.bae_bridge.BridgeArtistDetail
 
@@ -66,9 +65,8 @@ internal fun ArtistDetailScreen(
         val error = loadError
         when {
             error != null && loaded == null -> {
-                Text(
-                    text = error,
-                    color = MaterialTheme.colorScheme.error,
+                ErrorText(
+                    message = error,
                     modifier = Modifier.padding(ThemeSpace.page),
                 )
             }
@@ -81,9 +79,8 @@ internal fun ArtistDetailScreen(
 
             else -> {
                 error?.let {
-                    Text(
-                        text = it,
-                        color = MaterialTheme.colorScheme.error,
+                    ErrorText(
+                        message = it,
                         modifier = Modifier.padding(ThemeSpace.related),
                     )
                 }

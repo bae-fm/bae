@@ -38,6 +38,7 @@ import fm.bae.app.ui.appearance.ThemeSize
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CoverImage
+import fm.bae.app.ui.components.ErrorText
 import uniffi.bae_bridge.BridgeAlbumSearchResult
 import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeSearchResults
@@ -81,9 +82,8 @@ fun SearchResultsScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         when {
             currentError != null && current == null -> {
-                Text(
-                    text = currentError,
-                    color = MaterialTheme.colorScheme.error,
+                ErrorText(
+                    message = currentError,
                     modifier = Modifier.align(Alignment.Center).padding(ThemeSpace.page),
                 )
             }
@@ -104,9 +104,8 @@ fun SearchResultsScreen(
             current != null -> {
                 Column {
                     currentError?.let {
-                        Text(
-                            text = it,
-                            color = MaterialTheme.colorScheme.error,
+                        ErrorText(
+                            message = it,
                             modifier = Modifier.padding(ThemeSpace.related),
                         )
                     }

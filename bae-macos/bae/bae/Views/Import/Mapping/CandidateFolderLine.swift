@@ -24,15 +24,9 @@ struct CandidateFolderLine: View {
         HStack(spacing: ThemeSpace.related) {
             if let tab {
                 Button(action: onNavigateToPlacement) {
-                    Text(Self.label(for: tab))
-                        .themeText(.chip)
-                        .lineLimit(1)
-                        .padding(.horizontal, ThemeSpace.related)
-                        .padding(.vertical, ThemeSpace.line)
-                        .background(Theme.accentSoft, in: Capsule())
+                    StatusChip(verbatim: Self.label(for: tab), tone: .accent)
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(Theme.accent)
                 .fixedSize()
                 Image(systemName: "chevron.right")
                     .themeIcon(.small)

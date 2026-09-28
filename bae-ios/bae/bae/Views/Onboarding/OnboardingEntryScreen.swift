@@ -44,9 +44,7 @@ struct OnboardingEntryScreen: View {
             .padding(.top, ThemeSpace.edge)
 
             if let error {
-                Text(error)
-                    .themeText(.body)
-                    .foregroundStyle(Theme.danger)
+                ErrorText(error)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: 320)
             }

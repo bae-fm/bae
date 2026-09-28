@@ -29,21 +29,12 @@ struct TriageTabBar: View {
                     .themeText(.strong)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
-                Text(verbatim: count.formatted())
-                    .themeText(.chip)
-                    .monospacedDigit()
-                    // A squeezed badge must overflow, never stack its digits.
-                    .fixedSize()
-                    .padding(.horizontal, ThemeSpace.compact)
-                    .padding(.vertical, ThemeSpace.hairline)
-                    .background(
-                        Capsule()
-                            .fill(
-                                isActive
-                                    ? Theme.accentStrong
-                                    : Color.secondary.opacity(ThemeOpacity.tint)
-                            )
-                    )
+                StatusChip(
+                    Text(verbatim: count.formatted()).monospacedDigit(),
+                    tone: isActive ? .accent : .neutral
+                )
+                // A squeezed badge must overflow, never stack its digits.
+                .fixedSize()
             }
             .foregroundStyle(isActive ? Theme.accent : Color.secondary)
             .frame(maxWidth: .infinity)

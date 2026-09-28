@@ -32,9 +32,7 @@ struct MembersView: View {
                 case nil:
                     if let loadError {
                         VStack(alignment: .leading, spacing: ThemeSpace.related) {
-                            Text(loadError)
-                                .foregroundStyle(Theme.danger)
-                                .themeText(.body)
+                            ErrorText(loadError)
                             Button("Retry") { load() }
                         }
                     }
@@ -54,9 +52,7 @@ struct MembersView: View {
 
             if let actionError {
                 Section {
-                    Text(actionError)
-                        .foregroundStyle(Theme.danger)
-                        .themeText(.body)
+                    ErrorText(actionError)
                 }
             }
 
@@ -172,7 +168,7 @@ private struct MemberRow: View {
                     .opacity(member.isSelf ? 1 : 0)
             }
             Spacer()
-            RoleBadge(role: member.role)
+            RoleChip(role: member.role)
             // Hidden, not removed, so every row keeps the same layout.
             Button(role: .destructive) {
                 onRemove()
@@ -187,27 +183,21 @@ private struct MemberRow: View {
     }
 }
 
-private struct RoleBadge: View {
+private struct RoleChip: View {
     let role: BridgeMemberRole
 
     var body: some View {
-        Text(label)
-            .themeText(.chip)
-            .padding(.horizontal, ThemeSpace.related)
-            .padding(.vertical, ThemeSpace.line)
-            .background(Color.secondary.opacity(ThemeOpacity.tint))
-            .clipShape(Capsule())
-            .foregroundStyle(.secondary)
+        StatusChip(label)
     }
 
-    private var label: String {
+    private var label: LocalizedStringKey {
         switch role {
         case .owner:
-            String(localized: "Owner")
+            "Owner"
         case .member:
-            String(localized: "Member")
+            "Member"
         case .follower:
-            String(localized: "Follower")
+            "Follower"
         }
     }
 }

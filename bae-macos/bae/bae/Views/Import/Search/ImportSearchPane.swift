@@ -146,15 +146,10 @@ struct ImportSearchPane: View {
     @ViewBuilder
     private var errorLine: some View {
         if let error = state.error {
-            HStack(spacing: ThemeSpace.compact) {
-                Image(systemName: "exclamationmark.triangle.fill")
-                Text(error)
-                Spacer()
-            }
-            .themeText(.body)
-            .foregroundStyle(Theme.danger)
-            .padding(.horizontal, ThemeSpace.group)
-            .padding(.vertical, ThemeSpace.compact)
+            ErrorText(error)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, ThemeSpace.group)
+                .padding(.vertical, ThemeSpace.compact)
             Divider()
         }
     }

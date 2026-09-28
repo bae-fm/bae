@@ -92,9 +92,7 @@ struct CoverGalleryView: View {
             HStack(spacing: ThemeSpace.edge) {
                 if let errorMessage = errorMessage ?? remoteItems.failureMessage
                 {
-                    Label(errorMessage, systemImage: "exclamationmark.triangle")
-                        .themeText(.body)
-                        .foregroundStyle(Theme.danger)
+                    ErrorText(errorMessage)
                         .textSelection(.enabled)
                 }
                 Spacer(minLength: ThemeSpace.group)
@@ -210,11 +208,11 @@ struct CoverGalleryView: View {
         VStack(spacing: ThemeSpace.related) {
             if browser.cursor != nil || !remoteItems.isLoading { remoteStatus }
             if let errorMessage {
-                Text(errorMessage).foregroundStyle(Theme.danger)
+                ErrorText(errorMessage)
                     .textSelection(.enabled)
             }
             if let message = remoteItems.failureMessage {
-                Text(message).foregroundStyle(Theme.danger)
+                ErrorText(message)
                     .textSelection(.enabled)
                 if let onRefresh { Button("Retry", action: onRefresh) }
             }

@@ -110,7 +110,7 @@ struct ImportReleaseHeader: View {
         }
         .padding(.vertical, ThemeSpace.edge)
         .padding(.horizontal, ThemeSpace.section)
-        .formGroupCard()
+        .card()
         .confirmationDialog(
             "Clear metadata?",
             isPresented: $confirmsClear,
@@ -155,9 +155,8 @@ struct ImportReleaseHeader: View {
         }
     }
 
-    /// The identify entries and metadata menu on the left, and the commit
-    /// controls on the right once there is something to commit. Both entries
-    /// open the same pane; only Automatic starts a run.
+    /// The identify entries and metadata menu, then the commit controls once
+    /// there is something to commit; only Automatic starts a run.
     private var actionRow: some View {
         HStack(alignment: .center, spacing: ThemeSpace.edge) {
             HStack(spacing: ThemeSpace.related) {

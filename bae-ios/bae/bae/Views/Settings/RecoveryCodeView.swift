@@ -62,11 +62,8 @@ struct RecoveryCodeView: View {
             VStack {
                 Spacer()
                 // `runGenerate` only records failures core gave a line for.
-                if let line = error.displayLine {
-                    Text(line)
-                        .foregroundStyle(Theme.danger)
-                        .themeText(.body)
-                        .multilineTextAlignment(.center)
+                if let displayed = DisplayError(error) {
+                    ErrorDetailDisclosure(error: displayed)
                 }
                 Spacer()
             }

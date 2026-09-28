@@ -40,6 +40,7 @@ import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.ErrorText
 import uniffi.bae_bridge.BridgeDownloadOp
 import uniffi.bae_bridge.BridgeDownloadSnapshot
 import uniffi.bae_bridge.BridgeDownloadState
@@ -186,11 +187,7 @@ private fun DownloadRowState(state: BridgeDownloadState) {
         }
 
         is BridgeDownloadState.Failed -> {
-            Text(
-                text = state.error,
-                style = ThemeText.body.style,
-                color = MaterialTheme.colorScheme.error,
-            )
+            ErrorText(state.error)
         }
     }
 }

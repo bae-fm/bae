@@ -63,6 +63,7 @@ import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CoverImage
+import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.playback.NowPlayingBar
@@ -128,9 +129,8 @@ fun AlbumDetailScreen(
                 AlbumDetailLoadingBox(loadError, onRetry = session.libraryQueries.album::retry)
             } else {
                 loadError?.let {
-                    Text(
-                        text = it,
-                        color = MaterialTheme.colorScheme.error,
+                    ErrorText(
+                        message = it,
                         modifier = Modifier.align(Alignment.TopCenter).padding(ThemeSpace.related),
                     )
                 }
@@ -175,7 +175,7 @@ private fun BoxScope.AlbumDetailLoadingBox(
             modifier = Modifier.align(Alignment.Center).padding(ThemeSpace.page),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(text = loadError, color = MaterialTheme.colorScheme.error)
+            ErrorText(loadError)
             TextButton(onClick = onRetry) { Text(stringResource(R.string.retry)) }
         }
     } else {

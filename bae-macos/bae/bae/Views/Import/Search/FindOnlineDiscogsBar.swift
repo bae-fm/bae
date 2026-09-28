@@ -16,10 +16,12 @@ struct FindOnlineDiscogsBar: View {
     var body: some View {
         HStack(alignment: .center, spacing: ThemeSpace.related) {
             HStack(alignment: .top, spacing: ThemeSpace.related) {
-                Image(systemName: "info.circle.fill")
-                    .themeIcon(.medium)
-                    .foregroundStyle(NoticeTone.info.tint)
-                    .padding(.top, ThemeSpace.hairline)
+                if let symbol = StatusTone.info.symbol {
+                    Image(systemName: symbol)
+                        .themeIcon(.medium)
+                        .foregroundStyle(StatusTone.info.color)
+                        .padding(.top, ThemeSpace.hairline)
+                }
                 VStack(alignment: .leading, spacing: ThemeSpace.line) {
                     Text("Add \(discogs) to find more pressings")
                         .themeText(.strong)
@@ -48,9 +50,9 @@ struct FindOnlineDiscogsBar: View {
             .buttonStyle(.plain)
             .accessibilityLabel(Text("Dismiss"))
         }
+        .notice(.info)
         .padding(.horizontal, ThemeSpace.edge)
-        .padding(.vertical, ThemeSpace.group)
-        .background(NoticeTone.info.fill)
+        .padding(.vertical, ThemeSpace.related)
     }
 }
 

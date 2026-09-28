@@ -118,7 +118,7 @@ struct FindOnlineSectionGlyphView: View {
                     .controlSize(.small)
                     .scaleEffect(0.6)
             case .empty:
-                CountCapsule(count: 0)
+                StatusChip(verbatim: 0.formatted())
             case .failed:
                 Image(systemName: "exclamationmark.triangle")
                     .themeIcon(.small)

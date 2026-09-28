@@ -2,20 +2,16 @@
     import BaeKit
     import SwiftUI
 
-    // Fixtures for the Components leaf previews. Extends the shared `PreviewData`
-    // namespace so the component previews draw their sample values from one place.
+    // Fixtures for the component previews.
     @MainActor
     extension PreviewData {
-        /// A UI-originated failure — prose the UI already localized, with no opaque
-        /// detail to disclose. Renders the plain line with no disclosure row.
+        /// A failure the UI worded itself, with no detail to disclose.
         static let displayErrorSimple = DisplayError(
             line:
                 "Couldn't reach the sync service. Check your connection and try again."
         )
 
-        /// A core diagnostic crossing the bridge: its category renders the generic
-        /// line and the opaque Rust error chain rides along as copyable `detail`, so
-        /// the disclosure row appears.
+        /// A core diagnostic: a generic line and a copyable detail.
         static let displayErrorWithDetail: DisplayError = {
             guard
                 let error = DisplayError(
@@ -64,5 +60,22 @@
                 url: "https://example.test/\(key)"
             )
         }
+    }
+
+    #Preview("Error Detail Disclosure") {
+        VStack(alignment: .leading, spacing: ThemeSpace.section) {
+            ErrorDetailDisclosure(error: PreviewData.displayErrorWithDetail)
+            ErrorDetailDisclosure(
+                error: PreviewData.displayErrorSimple,
+                tone: .warning
+            )
+            ErrorDetailDisclosure(
+                error: PreviewData.displayErrorSimple,
+                showIcon: false
+            )
+        }
+        .padding(ThemeSpace.section)
+        .frame(width: 440)
+        .background(Theme.background)
     }
 #endif

@@ -40,6 +40,7 @@ import fm.bae.app.R
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.QRCodeImage
 import fm.bae.app.ui.onboarding.AdmittingDeviceProgress
 import kotlinx.coroutines.CancellationException
@@ -242,7 +243,7 @@ private fun AddDeviceContent(
         }
         error?.let {
             Spacer(modifier = Modifier.height(ThemeSpace.related))
-            Text(text = it, color = MaterialTheme.colorScheme.error)
+            ErrorText(it)
             if (step is AddDeviceStep.Waiting) {
                 TextButton(onClick = onRetry) { Text(stringResource(R.string.retry)) }
             }

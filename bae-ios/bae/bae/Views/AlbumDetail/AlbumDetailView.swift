@@ -157,6 +157,9 @@ struct AlbumDetailView: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: ThemeSpace.related) {
                 ForEach(summary.releaseIds, id: \.self) { id in
+                    let tone: StatusTone =
+                        id == activeReleaseId(summary: summary)
+                        ? .accent : .neutral
                     Button {
                         selectedReleaseId = id
                     } label: {
@@ -171,15 +174,12 @@ struct AlbumDetailView: View {
                                     .controlSize(.small)
                             }
                         }
-                        .padding(.horizontal, ThemeSpace.group)
-                        .padding(.vertical, ThemeSpace.compact)
+                        .foregroundStyle(tone.color)
+                        .padding(.horizontal, ThemeSpace.compact)
+                        .padding(.vertical, ThemeSpace.line)
                         .background(
-                            Capsule()
-                                .fill(
-                                    id == activeReleaseId(summary: summary)
-                                        ? AnyShapeStyle(Theme.accentSoft)
-                                        : AnyShapeStyle(Theme.surfaceElevated)
-                                )
+                            tone.fill,
+                            in: RoundedRectangle(cornerRadius: ThemeRadius.chip)
                         )
                     }
                     .buttonStyle(.plain)

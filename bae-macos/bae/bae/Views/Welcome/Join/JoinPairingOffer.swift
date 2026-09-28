@@ -32,9 +32,7 @@ struct JoinPairingOffer: View {
             .scrollDisabled(true)
 
             if let error {
-                Text(error)
-                    .foregroundStyle(Theme.danger)
-                    .themeText(.body)
+                ErrorText(error)
                     .padding(.horizontal)
                     .padding(.bottom, ThemeSpace.related)
             }
@@ -72,11 +70,12 @@ struct JoinPairingOffer: View {
             LabeledContent("Library", value: offer.libraryName)
             LabeledContent("Provider", value: offer.cloudProvider.displayName)
             if offer.needsOauth && !oauthProvidersAvailable {
-                Text(
-                    "This library uses a provider this build can't connect to."
+                ErrorText(
+                    String(
+                        localized:
+                            "This library uses a provider this build can't connect to."
+                    )
                 )
-                .foregroundStyle(Theme.danger)
-                .themeText(.body)
             }
             if let joiningFingerprint {
                 LabeledContent("This device", value: joiningFingerprint)
@@ -86,9 +85,7 @@ struct JoinPairingOffer: View {
         else if case .failure(let decodeError) = decodedOffer,
             let line = decodeError.displayLine
         {
-            Text(line)
-                .foregroundStyle(Theme.danger)
-                .themeText(.body)
+            ErrorText(line)
         }
     }
 

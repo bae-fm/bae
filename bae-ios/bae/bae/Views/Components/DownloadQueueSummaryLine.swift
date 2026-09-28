@@ -1,7 +1,7 @@
 import BaeKit
 import SwiftUI
 
-/// One line summarizing the download queue: "Paused", or its counts.
+/// One line summarizing the download queue: a Paused chip, or its counts.
 struct DownloadQueueSummaryLine: View {
     let snapshot: BridgeDownloadSnapshot
     let compact: Bool
@@ -9,8 +9,11 @@ struct DownloadQueueSummaryLine: View {
     var body: some View {
         Group {
             if snapshot.paused {
-                Label("Paused", systemImage: "pause.circle.fill")
-                    .foregroundStyle(Theme.activity)
+                StatusChip(
+                    "Paused",
+                    tone: .activity,
+                    symbol: "pause.circle.fill"
+                )
             }
             else if !snapshot.summaryText.isEmpty {
                 Text(snapshot.summaryText)

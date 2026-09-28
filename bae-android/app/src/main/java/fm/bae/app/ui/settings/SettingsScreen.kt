@@ -45,6 +45,7 @@ import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.components.PrimaryButton
 import kotlinx.coroutines.CoroutineDispatcher
@@ -248,12 +249,7 @@ private fun SettingsLibrarySection(
                     Text(text = library.name)
                     // A library whose config won't load stays listed.
                     if (error != null) {
-                        Text(
-                            text = error,
-                            style = ThemeText.body.style,
-                            color = MaterialTheme.colorScheme.error,
-                            maxLines = 2,
-                        )
+                        ErrorText(error, maxLines = 2)
                     }
                 }
                 // Always present but alpha-toggled so switching the active row

@@ -2,8 +2,8 @@ package fm.bae.app.ui.library
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -12,14 +12,12 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -38,11 +36,11 @@ import fm.bae.app.coreString
 import fm.bae.app.data.ArtworkLoadingStore
 import fm.bae.app.formatFileSize
 import fm.bae.app.requireDisplayableByteCount
-import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeIcon
-import fm.bae.app.ui.appearance.ThemeOpacity
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.Notice
+import fm.bae.app.ui.components.StatusTone
 import uniffi.bae_bridge.BridgeEagerCacheFillProgress
 import uniffi.bae_bridge.BridgeEagerCacheFillStatus
 
@@ -66,7 +64,7 @@ internal fun ArtworkLoadingBanner(store: ArtworkLoadingStore) {
         }
 
         is BridgeEagerCacheFillStatus.Cancelled -> {
-            ArtworkStatusSurface {
+            ArtworkNotice {
                 ArtworkStatusLine(
                     title = LocalContext.current.coreString(current.titleKey),
                     progress = current.progress,
@@ -86,19 +84,13 @@ private fun ArtworkScanningStatus(
     titleKey: String,
     onCancel: () -> Unit,
 ) {
-    ArtworkStatusSurface {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
-        ) {
-            CircularProgressIndicator(modifier = Modifier.size(ThemeIcon.medium))
-            Text(
-                LocalContext.current.coreString(titleKey),
-                modifier = Modifier.weight(1f),
-            )
-            CancelArtworkButton(onCancel)
-        }
+    ArtworkNotice {
+        CircularProgressIndicator(modifier = Modifier.size(ThemeIcon.medium))
+        Text(
+            LocalContext.current.coreString(titleKey),
+            modifier = Modifier.weight(1f),
+        )
+        CancelArtworkButton(onCancel)
     }
 }
 
@@ -109,30 +101,34 @@ private fun ArtworkDownloadingStatus(
 ) {
     val progress = status.progress
     require(progress.bytesTotal > 0uL) { "downloading artwork has no byte total" }
-    ArtworkStatusSurface {
-        ArtworkStatusLine(
-            title = LocalContext.current.coreString(status.titleKey),
-            progress = progress,
-            trailing = { CancelArtworkButton(onCancel) },
-        )
-        LinearProgressIndicator(
-            progress = {
-                (progress.bytesDone.toDouble() / progress.bytesTotal.toDouble()).toFloat()
-            },
-            modifier = Modifier.fillMaxWidth(),
-        )
+    ArtworkNotice {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(ThemeSpace.compact)) {
+            ArtworkStatusLine(
+                title = LocalContext.current.coreString(status.titleKey),
+                progress = progress,
+                trailing = { CancelArtworkButton(onCancel) },
+            )
+            LinearProgressIndicator(
+                progress = {
+                    (progress.bytesDone.toDouble() / progress.bytesTotal.toDouble()).toFloat()
+                },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
     }
 }
 
+/** The artwork status as a full-width notice in its tone. */
 @Composable
-private fun ArtworkStatusSurface(content: @Composable ColumnScope.() -> Unit) {
-    Surface(color = MaterialTheme.colorScheme.surfaceVariant) {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
-            verticalArrangement = Arrangement.spacedBy(ThemeSpace.compact),
-            content = content,
-        )
-    }
+private fun ArtworkNotice(
+    tone: StatusTone = StatusTone.NEUTRAL,
+    content: @Composable RowScope.() -> Unit,
+) {
+    Notice(
+        tone = tone,
+        modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
+        content = content,
+    )
 }
 
 @Composable
@@ -166,28 +162,16 @@ private fun ArtworkFailureStatus(
 ) {
     var detailsVisible by rememberSaveable(status) { mutableStateOf(false) }
     val title = LocalContext.current.coreString(status.titleKey)
-    Surface(color = BaeTheme.colors.warning.copy(alpha = ThemeOpacity.tint)) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(start = ThemeSpace.edge, end = ThemeSpace.inline),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),
-        ) {
-            Icon(
-                Icons.Filled.WarningAmber,
-                contentDescription = null,
-                tint = BaeTheme.colors.warning,
-                modifier = Modifier.size(ThemeIcon.medium),
-            )
-            Text(
-                text = title,
-                modifier = Modifier.weight(1f),
-                style = ThemeText.body.style,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            TextButton(onClick = { detailsVisible = true }) { Text(stringResource(R.string.details)) }
-            DismissArtworkButton(onDismiss)
-        }
+    ArtworkNotice(StatusTone.WARNING) {
+        Text(
+            text = title,
+            modifier = Modifier.weight(1f),
+            style = ThemeText.body.style,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        TextButton(onClick = { detailsVisible = true }) { Text(stringResource(R.string.details)) }
+        DismissArtworkButton(onDismiss)
     }
     if (detailsVisible) {
         AlertDialog(

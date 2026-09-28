@@ -11,10 +11,10 @@ struct WorkDetailScreen: View {
     private var libraryProjections
 
     private var detail: BridgeWorkDetail? { libraryProjections.work.value }
-    private var error: String? {
-        libraryProjections.work.error?.line
+    private var error: DisplayError? {
+        libraryProjections.work.error
             ?? (libraryProjections.work.delivered && detail == nil
-                ? String(localized: "Work detail not found") : nil)
+                ? DisplayError(line: String(localized: "Work detail not found")) : nil)
     }
 
     var body: some View {
@@ -27,12 +27,12 @@ struct WorkDetailScreen: View {
                 )
                 .overlay(alignment: .top) {
                     if let error {
-                        Text(error).foregroundStyle(Theme.danger).padding(ThemeSpace.group)
+                        ErrorDetailDisclosure(error: error).padding(ThemeSpace.group)
                     }
                 }
             }
             else if let error {
-                Text(error).foregroundStyle(Theme.danger).padding(ThemeSpace.page)
+                ErrorDetailDisclosure(error: error).padding(ThemeSpace.page)
             }
             else {
                 ProgressView()

@@ -120,13 +120,8 @@ struct EditMetadataSheet: View {
             if let message = session.validationMessage
                 ?? session.failureMessage
             {
-                HStack(spacing: ThemeSpace.inline) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                    Text(message)
-                }
-                .themeText(.body)
-                .foregroundStyle(Theme.danger)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                ErrorText(message)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
             HStack(spacing: ThemeSpace.group) {
                 Button("Reset to Source") { session.resetToSource() }

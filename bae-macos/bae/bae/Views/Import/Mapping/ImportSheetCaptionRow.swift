@@ -93,9 +93,8 @@ struct ImportSheetCaptionRow: View {
             .help(sheet.bound.descriptionText)
     }
 
-    /// The summary as a menu, where a bound reference's audio is changed: one
-    /// reference's choices directly, or a submenu per reference when the
-    /// sheet names several files.
+    /// The summary as a menu for changing a bound reference's audio, with a
+    /// submenu per reference when the sheet names several files.
     private var boundMenu: some View {
         Menu {
             if bound.count == 1, let only = bound.first {
@@ -141,15 +140,7 @@ struct ImportSheetCaptionRow: View {
 
     /// What kind of sheet this is; a format name, so it is not translated.
     private var formatTag: some View {
-        Text(verbatim: "CUE")
-            .themeText(.chip)
-            .foregroundStyle(Theme.accent)
-            .padding(.horizontal, ThemeSpace.compact)
-            .padding(.vertical, ThemeSpace.line)
-            .background(
-                Theme.accentSoft,
-                in: RoundedRectangle(cornerRadius: ThemeRadius.chip)
-            )
+        StatusChip(verbatim: "CUE", tone: .accent)
             .fixedSize()
     }
 

@@ -5,9 +5,8 @@ import SwiftUI
 /// page a person opens to identify it.
 struct ImportMetadataSourceSection: View {
     let candidate: Candidate
-    /// Whether the candidate can be edited and identified now. A candidate
-    /// that cannot still has its records: a link to a catalog page is not an
-    /// edit, so those stay live while everything else in the slot waits.
+    /// Whether the candidate can be edited and identified now; its catalog
+    /// links stay live either way.
     let actionable: Bool
     let runtime: BridgeCandidateRuntimeSnapshot?
     let isReading: Bool
@@ -82,9 +81,8 @@ struct ImportMetadataSourceSection: View {
     }
 }
 
-/// The online browser reads its candidate from the store because its form
-/// bindings and result application write that same candidate. The pane carries
-/// its own title row, so the slot mounts it whole.
+/// Find online for the candidate, read from the store that its form and picks
+/// write.
 private struct ImportOnlineMetadataBrowser: View {
     let candidateKey: String
     let runtime: BridgeCandidateRuntimeSnapshot?
@@ -138,7 +136,7 @@ private struct ImportOnlineMetadataBrowser: View {
                 )
             }
             .frame(maxWidth: .infinity)
-            .formGroupCard()
+            .card()
         }
     }
 }

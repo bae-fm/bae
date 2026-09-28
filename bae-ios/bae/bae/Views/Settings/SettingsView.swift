@@ -53,9 +53,7 @@ struct SettingsView: View {
                                         // A library whose config won't load
                                         // stays listed with its error.
                                         if let error = library.error {
-                                            Text(error)
-                                                .themeText(.detail)
-                                                .foregroundStyle(Theme.danger)
+                                            ErrorText(error)
                                                 .lineLimit(2)
                                         }
                                     }
@@ -280,8 +278,6 @@ private struct SyncConnectedControls: View {
 
     @State
     private var flow: DisconnectSyncFlow
-    @State
-    private var reconnecting = false
 
     private let sync: Sync
 
@@ -346,30 +342,13 @@ private struct SyncConnectedControls: View {
             )
 
             if let syncError = syncStatusStore.error {
-                if syncStatusStore.canReconnect {
-                    LabeledContent(
-                        "Status",
-                        value: String(localized: "Disconnected")
-                    )
-                }
-                Text(syncError.line)
-                    .themeText(.detail)
-                    .foregroundStyle(.secondary)
-                // The fault behind the category line above.
-                if let fault = syncError.detailSummary {
-                    Text(fault)
-                        .themeText(.mono)
-                        .foregroundStyle(.secondary)
-                        .textSelection(.enabled)
-                }
-                if syncStatusStore.canReconnect {
-                    if reconnecting {
-                        ProgressView()
-                    }
-                    else {
-                        Button("Reconnect") { Task { await reconnect() } }
-                    }
-                }
+                SyncFailureNotice(
+                    error: syncError,
+                    canReconnect: syncStatusStore.canReconnect,
+                    onReconnect: reconnect
+                )
+                // Reconnect takes only its own taps, not the whole list row's.
+                .buttonStyle(.borderless)
             }
             else {
                 LabeledContent(
@@ -391,9 +370,7 @@ private struct SyncConnectedControls: View {
             )
 
             if let error = flow.error {
-                Text(error)
-                    .foregroundStyle(Theme.danger)
-                    .themeText(.body)
+                ErrorText(error)
             }
         }
         .confirmationDialog(
@@ -412,9 +389,8 @@ private struct SyncConnectedControls: View {
     }
 
     /// Retry the configured provider, connecting if a failed launch left no
-    /// connection; a failed retry shows its reason in the status line above.
+    /// connection; a failed retry keeps the notice up with the new reason.
     private func reconnect() async {
-        reconnecting = true
         do {
             try await sync.reconnectSync()
         }
@@ -423,7 +399,6 @@ private struct SyncConnectedControls: View {
                 "Sync reconnect failed: \(error.localizedDescription)"
             )
         }
-        reconnecting = false
     }
 }
 

@@ -5,7 +5,7 @@ import SwiftUI
 /// other rows open their own screens.
 struct SearchResultsView: View {
     let results: SearchResults?
-    let error: String?
+    let error: DisplayError?
     let onSelectAlbum: (String) -> Void
     let onSelectArtist: (String) -> Void
     let onSelectComposer: (String) -> Void
@@ -13,7 +13,7 @@ struct SearchResultsView: View {
 
     var body: some View {
         if let error {
-            centered(Text(error).foregroundStyle(Theme.danger))
+            centered(ErrorDetailDisclosure(error: error))
         }
         else if let results {
             if results.albums.isEmpty, results.artists.isEmpty,

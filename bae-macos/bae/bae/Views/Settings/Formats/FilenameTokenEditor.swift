@@ -52,8 +52,8 @@ struct FilenameTokenEditor: View {
                 }
                 .buttonStyle(.plain)
                 .themeText(.chip)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, ThemeSpace.related)
+                .foregroundStyle(StatusTone.neutral.color)
+                .padding(.horizontal, ThemeSpace.compact)
                 .padding(.vertical, ThemeSpace.line)
                 .overlay(
                     RoundedRectangle(cornerRadius: ThemeRadius.chip)
@@ -110,11 +110,11 @@ private struct TokenChip: View {
             .buttonStyle(.plain)
             .accessibilityLabel(Text("Remove \(token.label)"))
         }
-        .padding(.horizontal, ThemeSpace.related)
+        .padding(.horizontal, ThemeSpace.compact)
         .padding(.vertical, ThemeSpace.line)
         .background(
-            RoundedRectangle(cornerRadius: ThemeRadius.chip)
-                .fill(.quaternary)
+            StatusTone.neutral.fill,
+            in: RoundedRectangle(cornerRadius: ThemeRadius.chip)
         )
     }
 }

@@ -9,50 +9,19 @@ struct SyncErrorBanner: View {
     let onReconnect: () async -> Void
     let onRetryBlocked: (String) async throws -> Void
 
-    @State
-    private var reconnecting = false
-
     // Nothing when healthy: an empty container would still take row spacing.
     var body: some View {
         if syncStatusStore.error != nil || !syncStatusStore.blocked.isEmpty {
             VStack(alignment: .leading, spacing: ThemeSpace.group) {
                 if let syncError = syncStatusStore.error {
-                    failingCycle(syncError)
+                    SyncFailureNotice(
+                        error: syncError,
+                        canReconnect: syncStatusStore.canReconnect,
+                        onReconnect: onReconnect
+                    )
                 }
                 if !syncStatusStore.blocked.isEmpty {
                     blockedOperations
-                }
-            }
-        }
-    }
-
-    private func failingCycle(_ syncError: DisplayError) -> some View {
-        VStack(alignment: .leading, spacing: ThemeSpace.related) {
-            HStack(spacing: ThemeSpace.inline) {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(Theme.warning)
-                Text("Sync is failing")
-                    .themeText(.strong)
-            }
-            ErrorDetailDisclosure(
-                error: syncError,
-                tint: .secondary,
-                showIcon: false
-            )
-            if syncStatusStore.canReconnect {
-                HStack(spacing: ThemeSpace.related) {
-                    Button("Reconnect") {
-                        Task {
-                            reconnecting = true
-                            await onReconnect()
-                            reconnecting = false
-                        }
-                    }
-                    .disabled(reconnecting)
-                    if reconnecting {
-                        ProgressView()
-                            .controlSize(.small)
-                    }
                 }
             }
         }
@@ -62,11 +31,14 @@ struct SyncErrorBanner: View {
     /// cycles skip them.
     private var blockedOperations: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
-            HStack(spacing: ThemeSpace.inline) {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(Theme.warning)
+            Label {
                 Text("Sync is waiting on you")
                     .themeText(.strong)
+            } icon: {
+                if let symbol = StatusTone.warning.symbol {
+                    Image(systemName: symbol)
+                        .foregroundStyle(StatusTone.warning.color)
+                }
             }
             ForEach(syncStatusStore.blocked, id: \.id) { operation in
                 BlockedSyncOperationRow(
@@ -75,6 +47,8 @@ struct SyncErrorBanner: View {
                 )
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .notice(.warning)
     }
 }
 
@@ -97,7 +71,7 @@ private struct BlockedSyncOperationRow: View {
                     line: operation.description,
                     detail: operation.error
                 ),
-                tint: .secondary,
+                tone: .neutral,
                 showIcon: false
             )
             if let retryError {

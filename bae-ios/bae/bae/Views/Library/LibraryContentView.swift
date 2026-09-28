@@ -12,7 +12,7 @@ struct LibraryContentView: View {
     let composerList: ComposerList?
     let artistList: ArtistList?
     let searchResults: SearchResults?
-    let searchError: String?
+    let searchError: DisplayError?
     let sync: Sync
     let onSelectAlbum: (String) -> Void
     let onSelectComposer: (String) -> Void

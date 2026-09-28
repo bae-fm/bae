@@ -58,30 +58,34 @@ enum ImportEvidence {
     }
 }
 
-/// The chip: the signal's glyph and name. `onImage` fills it with the accent
-/// so it reads on a thumbnail.
+/// The chip: the signal's glyph and name. `onImage` fills it solid with the
+/// accent so it reads on a thumbnail.
 struct ImportEvidenceChip: View {
     let signal: BridgeEvidenceSignal
     var onImage: Bool = false
 
-    private var fill: AnyShapeStyle {
-        onImage
-            ? AnyShapeStyle(Color.accentColor)
-            : AnyShapeStyle(Theme.accentSoft)
-    }
-
     var body: some View {
         let kind = ImportEvidence.kind(signal)
-        HStack(spacing: ThemeSpace.inline) {
-            Image(systemName: SignalBadgeStyle.icon(for: kind))
-            Text(SignalBadgeStyle.label(for: kind))
-                .lineLimit(1)
-                .truncationMode(.tail)
+        let label = SignalBadgeStyle.label(for: kind)
+        let symbol = SignalBadgeStyle.icon(for: kind)
+        if onImage {
+            HStack(spacing: ThemeSpace.inline) {
+                Image(systemName: symbol)
+                    .themeIcon(.badge)
+                Text(label)
+            }
+            .themeText(.chip)
+            .lineLimit(1)
+            .foregroundStyle(Theme.onFill)
+            .padding(.horizontal, ThemeSpace.compact)
+            .padding(.vertical, ThemeSpace.line)
+            .background(
+                StatusTone.accent.color,
+                in: RoundedRectangle(cornerRadius: ThemeRadius.chip)
+            )
         }
-        .themeText(.chip)
-        .padding(.horizontal, ThemeSpace.compact)
-        .padding(.vertical, ThemeSpace.line)
-        .background(fill, in: Capsule())
-        .foregroundStyle(onImage ? Theme.onFill : Theme.accent)
+        else {
+            StatusChip(verbatim: label, tone: .accent, symbol: symbol)
+        }
     }
 }

@@ -10,10 +10,10 @@ struct ArtistDetailScreen: View {
     private var libraryProjections
 
     private var detail: BridgeArtistDetail? { libraryProjections.artist.value }
-    private var error: String? {
-        libraryProjections.artist.error?.line
+    private var error: DisplayError? {
+        libraryProjections.artist.error
             ?? (libraryProjections.artist.delivered && detail == nil
-                ? String(localized: "Artist detail not found") : nil)
+                ? DisplayError(line: String(localized: "Artist detail not found")) : nil)
     }
 
     var body: some View {
@@ -22,12 +22,12 @@ struct ArtistDetailScreen: View {
                 ArtistDetailContent(detail: detail, openAlbum: openAlbum)
                     .overlay(alignment: .top) {
                         if let error {
-                            Text(error).foregroundStyle(Theme.danger).padding(ThemeSpace.group)
+                            ErrorDetailDisclosure(error: error).padding(ThemeSpace.group)
                         }
                     }
             }
             else if let error {
-                Text(error).foregroundStyle(Theme.danger).padding(ThemeSpace.page)
+                ErrorDetailDisclosure(error: error).padding(ThemeSpace.page)
             }
             else {
                 ProgressView()

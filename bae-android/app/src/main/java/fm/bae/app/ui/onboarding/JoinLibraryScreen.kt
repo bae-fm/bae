@@ -29,6 +29,7 @@ import fm.bae.app.R
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.PrimaryButton
 import uniffi.bae_bridge.BridgeCloudProvider
 
@@ -64,7 +65,7 @@ fun JoinLibraryScreen(
         PairingActivity(joinLauncher)
         joinLauncher.error?.let {
             Spacer(modifier = Modifier.height(ThemeSpace.group))
-            Text(text = it, color = MaterialTheme.colorScheme.error)
+            ErrorText(it)
         }
 
         Spacer(modifier = Modifier.height(ThemeSpace.section))
@@ -127,10 +128,7 @@ private fun PairingOfferPreview(joinLauncher: JoinLauncher) {
             )
         },
         onFailure = {
-            Text(
-                text = stringResource(R.string.pairing_code_invalid),
-                color = MaterialTheme.colorScheme.error,
-            )
+            ErrorText(stringResource(R.string.pairing_code_invalid))
         },
     )
 }

@@ -43,6 +43,7 @@ import fm.bae.app.ui.BaeAppChrome
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.QRScannerScreen
 import kotlinx.coroutines.launch
@@ -279,7 +280,7 @@ private fun OnboardingIdleContent(
         }
         if (error != null) {
             Spacer(modifier = Modifier.height(ThemeSpace.related))
-            Text(text = error, color = MaterialTheme.colorScheme.error, style = ThemeText.body.style)
+            ErrorText(error)
         }
         Spacer(modifier = Modifier.weight(1f))
     }

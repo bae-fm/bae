@@ -38,16 +38,7 @@ struct SearchView: View {
             }
         }
         .frame(width: Self.width)
-        .background(
-            RoundedRectangle(cornerRadius: ThemeRadius.card)
-                .fill(Theme.surfaceElevated)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.card))
-        .overlay(
-            RoundedRectangle(cornerRadius: ThemeRadius.card)
-                .strokeBorder(Theme.hairline, lineWidth: 1)
-        )
-        .shadow(color: Theme.shadow, radius: 18, y: 8)
+        .card(elevated: true)
         // Hidden until the list is measured, so it never shows as a sliver.
         .opacity(showsEmptyState || contentHeight > 0 ? 1 : 0)
     }

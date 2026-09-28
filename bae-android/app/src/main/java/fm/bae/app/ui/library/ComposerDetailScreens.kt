@@ -42,6 +42,7 @@ import fm.bae.app.ui.appearance.ThemeSize
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CoverImage
+import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.playback.NowPlayingBar
 import uniffi.bae_bridge.BridgeComposerDetail
 import uniffi.bae_bridge.BridgeWorkDetail
@@ -77,9 +78,8 @@ internal fun ComposerDetailScreen(
         val error = loadError
         when {
             error != null && loaded == null -> {
-                Text(
-                    text = error,
-                    color = MaterialTheme.colorScheme.error,
+                ErrorText(
+                    message = error,
                     modifier = Modifier.padding(ThemeSpace.page),
                 )
             }
@@ -92,9 +92,8 @@ internal fun ComposerDetailScreen(
 
             else -> {
                 error?.let {
-                    Text(
-                        text = it,
-                        color = MaterialTheme.colorScheme.error,
+                    ErrorText(
+                        message = it,
                         modifier = Modifier.padding(ThemeSpace.related),
                     )
                 }
@@ -195,9 +194,8 @@ internal fun WorkDetailScreen(
         val error = loadError
         when {
             error != null && loaded == null -> {
-                Text(
-                    text = error,
-                    color = MaterialTheme.colorScheme.error,
+                ErrorText(
+                    message = error,
                     modifier = Modifier.padding(ThemeSpace.page),
                 )
             }
@@ -210,9 +208,8 @@ internal fun WorkDetailScreen(
 
             else -> {
                 error?.let {
-                    Text(
-                        text = it,
-                        color = MaterialTheme.colorScheme.error,
+                    ErrorText(
+                        message = it,
                         modifier = Modifier.padding(ThemeSpace.related),
                     )
                 }

@@ -313,11 +313,11 @@ private struct CatalogCandidatesDisclosure: View {
                     : String(localized: "+\(count) more")
             )
             .themeText(.chip)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(StatusTone.neutral.color)
             .padding(.horizontal, ThemeSpace.compact)
             .padding(.vertical, ThemeSpace.line)
             .background(
-                Theme.hover,
+                StatusTone.neutral.fill,
                 in: RoundedRectangle(cornerRadius: ThemeRadius.chip)
             )
         }

@@ -29,7 +29,11 @@ import fm.bae.app.localizedLine
 import fm.bae.app.reconnectFailedSync
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.ErrorText
+import fm.bae.app.ui.components.Notice
+import fm.bae.app.ui.components.StatusTone
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeBlockedSyncOperation
 import uniffi.bae_bridge.BridgeException
@@ -93,11 +97,7 @@ internal fun SyncConnectedControls(
     SyncUploadPauseControl(session)
 
     flowState.error?.let { error ->
-        Text(
-            text = error,
-            style = ThemeText.body.style,
-            color = MaterialTheme.colorScheme.error,
-        )
+        ErrorText(error)
     }
 
     OutlinedButton(
@@ -131,17 +131,20 @@ internal fun SettingsSyncStatusRow(
     when (val status = settingsSyncStatus(indicator, syncError)) {
         is SettingsSyncStatus.Failed -> {
             status.error?.let { error ->
-                if (error.canReconnect) {
-                    Text(
-                        text = stringResource(R.string.settings_sync_disconnected),
-                        style = ThemeText.body.style,
-                        color = BaeTheme.colors.warning,
-                    )
-                }
-                SyncStatusDetail(error.message)
-                if (error.canReconnect) {
-                    OutlinedButton(onClick = onReconnect) {
-                        Text(stringResource(R.string.settings_reconnect))
+                Notice(StatusTone.WARNING) {
+                    Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.related)) {
+                        if (error.canReconnect) {
+                            Text(
+                                text = stringResource(R.string.settings_sync_disconnected),
+                                style = ThemeText.strong.style,
+                            )
+                        }
+                        SyncStatusDetail(error.message)
+                        if (error.canReconnect) {
+                            OutlinedButton(onClick = onReconnect) {
+                                Text(stringResource(R.string.settings_reconnect))
+                            }
+                        }
                     }
                 }
             }

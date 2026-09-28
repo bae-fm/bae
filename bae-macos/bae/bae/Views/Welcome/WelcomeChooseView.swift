@@ -443,8 +443,8 @@ enum WelcomeLayout {
     static let columnWidth: CGFloat = 400
 }
 
-/// An error callout for a failed open or lookup: a title naming what failed,
-/// the error, and optional guidance, on the error notice background.
+/// A danger notice for a failed open or lookup: a title naming what failed,
+/// the error, and optional guidance.
 private struct WelcomeLoadErrorCallout: View {
     let title: LocalizedStringKey
     let error: DisplayError
@@ -453,8 +453,10 @@ private struct WelcomeLoadErrorCallout: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: ThemeSpace.related) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundStyle(NoticeTone.error.tint)
+            if let symbol = StatusTone.danger.symbol {
+                Image(systemName: symbol)
+                    .foregroundStyle(StatusTone.danger.color)
+            }
             VStack(alignment: .leading, spacing: ThemeSpace.inline) {
                 Text(title)
                     .themeText(.heading)
@@ -467,15 +469,8 @@ private struct WelcomeLoadErrorCallout: View {
             }
             Spacer(minLength: 0)
         }
-        .padding(ThemeSpace.group)
+        .notice(.danger)
         .frame(maxWidth: WelcomeLayout.columnWidth, alignment: .leading)
-        .noticeBackground(.error)
-        .overlay(
-            RoundedRectangle(cornerRadius: ThemeRadius.control)
-                .strokeBorder(
-                    NoticeTone.error.tint.opacity(ThemeOpacity.tintStrong)
-                )
-        )
     }
 }
 

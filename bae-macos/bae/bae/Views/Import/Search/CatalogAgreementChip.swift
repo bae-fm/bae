@@ -26,9 +26,8 @@ struct CatalogAgreementChip: View {
                     .lineLimit(1)
             }
             .foregroundStyle(foreground)
-            .padding(.leading, ThemeSpace.compact)
-            .padding(.trailing, ThemeSpace.related)
-            .padding(.vertical, ThemeSpace.inline)
+            .padding(.horizontal, ThemeSpace.compact)
+            .padding(.vertical, ThemeSpace.line)
             .background(
                 background,
                 in: RoundedRectangle(cornerRadius: ThemeRadius.chip)
@@ -49,12 +48,13 @@ struct CatalogAgreementChip: View {
     }
 
     private var foreground: AnyShapeStyle {
-        counted ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.tertiary)
+        counted
+            ? AnyShapeStyle(StatusTone.accent.color) : AnyShapeStyle(.tertiary)
     }
 
     private var background: Color {
         counted
-            ? (isHovered ? Theme.accentStrong : Theme.accentSoft)
+            ? (isHovered ? Theme.accentStrong : StatusTone.accent.fill)
             : (isHovered ? Theme.hover : Color.clear)
     }
 

@@ -250,7 +250,7 @@ extension TriageRowContent {
     private var importTrailing: some View {
         switch row.importStatus {
         case .error:
-            chip(String(localized: "Failed"), tint: Theme.danger)
+            StatusChip("Failed", tone: .danger)
         case .complete, nil:
             EmptyView()
         }
@@ -262,18 +262,6 @@ extension TriageRowContent {
         Image(systemName: systemName)
             .themeIcon(.small)
             .foregroundStyle(tint)
-    }
-
-    private func chip(_ text: String, tint: Color) -> some View {
-        Text(text)
-            .themeText(.chip)
-            .foregroundStyle(tint)
-            .padding(.horizontal, ThemeSpace.compact)
-            .padding(.vertical, ThemeSpace.line)
-            .background(
-                RoundedRectangle(cornerRadius: ThemeRadius.chip)
-                    .fill(tint.opacity(ThemeOpacity.tint))
-            )
     }
 }
 

@@ -28,6 +28,7 @@ import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.ErrorText
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeBlockedSyncOperation
@@ -78,11 +79,7 @@ private fun BlockedSyncOperationRow(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         retryError?.let { message ->
-            Text(
-                text = message,
-                style = ThemeText.body.style,
-                color = MaterialTheme.colorScheme.error,
-            )
+            ErrorText(message)
         }
         Row(
             horizontalArrangement = Arrangement.spacedBy(ThemeSpace.related),

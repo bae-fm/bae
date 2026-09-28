@@ -46,19 +46,6 @@ struct SubsonicSettingsContent: View {
     private enum SubsonicSettingsMessage {
         case feedback(String)
         case error(String)
-
-        var text: String {
-            switch self {
-            case .feedback(let text), .error(let text): text
-            }
-        }
-
-        var style: Color {
-            switch self {
-            case .feedback: .secondary
-            case .error: Theme.danger
-            }
-        }
     }
 
     /// The username and password fields' width.
@@ -104,10 +91,15 @@ struct SubsonicSettingsContent: View {
                     )
                 )
                 statusRow
-                if let message {
-                    Text(message.text)
+                switch message {
+                case .feedback(let text):
+                    Text(text)
                         .themeText(.body)
-                        .foregroundStyle(message.style)
+                        .foregroundStyle(.secondary)
+                case .error(let text):
+                    ErrorText(text)
+                case nil:
+                    EmptyView()
                 }
             }
             Section {
@@ -158,8 +150,7 @@ struct SubsonicSettingsContent: View {
                         .textSelection(.enabled)
                 case .error(let error):
                     VStack(alignment: .leading, spacing: ThemeSpace.line) {
-                        Text(error.localizedSummary)
-                            .foregroundStyle(Theme.danger)
+                        ErrorText(error.localizedSummary)
                         Text(error.detail)
                             .themeText(.mono)
                             .foregroundStyle(.secondary)

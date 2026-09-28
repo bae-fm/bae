@@ -11,11 +11,24 @@ struct BlockedSyncOperationRows: View {
 
     var body: some View {
         if !syncStatusStore.blocked.isEmpty {
-            Text("Sync is waiting on you")
-                .themeText(.strong)
-        }
-        ForEach(syncStatusStore.blocked, id: \.id) { operation in
-            BlockedSyncOperationRow(operation: operation, retry: retry)
+            VStack(alignment: .leading, spacing: ThemeSpace.related) {
+                Label {
+                    Text("Sync is waiting on you")
+                        .themeText(.strong)
+                } icon: {
+                    if let symbol = StatusTone.warning.symbol {
+                        Image(systemName: symbol)
+                            .foregroundStyle(StatusTone.warning.color)
+                    }
+                }
+                ForEach(syncStatusStore.blocked, id: \.id) { operation in
+                    BlockedSyncOperationRow(operation: operation, retry: retry)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .notice(.warning)
+            // Each Retry takes only its own taps, not the whole list row's.
+            .buttonStyle(.borderless)
         }
     }
 }
@@ -28,24 +41,22 @@ private struct BlockedSyncOperationRow: View {
     @State
     private var retrying = false
     @State
-    private var retryError: String?
+    private var retryError: DisplayError?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: ThemeSpace.inline) {
+        VStack(alignment: .leading, spacing: ThemeSpace.compact) {
             Text(operation.kind.localizedName)
-            Text(operation.description)
-                .themeText(.detail)
-                .foregroundStyle(.secondary)
-            // coven's untranslated reason, for a person to act on or paste into
-            // a report.
-            Text(operation.error)
-                .themeText(.mono)
-                .foregroundStyle(.secondary)
-                .textSelection(.enabled)
+                .themeText(.rowTitle)
+            ErrorDetailDisclosure(
+                error: DisplayError(
+                    line: operation.description,
+                    detail: operation.error
+                ),
+                tone: .neutral,
+                showIcon: false
+            )
             if let retryError {
-                Text(retryError)
-                    .themeText(.detail)
-                    .foregroundStyle(Theme.danger)
+                ErrorDetailDisclosure(error: retryError)
             }
             if retrying {
                 ProgressView()
@@ -56,8 +67,7 @@ private struct BlockedSyncOperationRow: View {
         }
     }
 
-    /// A refused retry shows its reason here instead of leaving the button
-    /// looking inert.
+    /// A refused retry shows its error here; one that works drops the row.
     private func run() {
         retryError = nil
         retrying = true
@@ -67,7 +77,7 @@ private struct BlockedSyncOperationRow: View {
                 try await retry(id)
             }
             catch {
-                retryError = error.displayLine
+                retryError = DisplayError(error)
             }
             retrying = false
         }

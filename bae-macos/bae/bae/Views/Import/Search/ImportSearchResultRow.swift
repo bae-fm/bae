@@ -1,9 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// One pressing row beneath a release-group card: its facts, which signals
-/// named it, and every source that lists it. A row already in the library is
-/// dimmed but can still be picked.
+/// One pressing under a release-group card: its facts, the signals that named
+/// it and the sources that list it; one already in the library is dimmed.
 struct ImportSearchResultRow: View {
     /// The inset from the row's box to its text.
     static let horizontalPadding = ThemeSpace.related
@@ -146,17 +145,7 @@ struct ImportSearchResultRow: View {
                         .truncationMode(.tail)
                 }
                 ForEach(label.catalogNumbers, id: \.self) { catalogNumber in
-                    Text(catalogNumber)
-                        .themeText(.chip)
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, ThemeSpace.compact)
-                        .padding(.vertical, ThemeSpace.hairline)
-                        .background(
-                            Theme.hover,
-                            in: RoundedRectangle(cornerRadius: ThemeRadius.chip)
-                        )
-                        .lineLimit(1)
-                        .truncationMode(.tail)
+                    StatusChip(verbatim: catalogNumber)
                 }
             }
             let summary = pressing.summaryText
@@ -211,15 +200,12 @@ struct ImportSearchResultRow: View {
     private func agreementChip(_ agreement: SignalBadgeStyle.Agreement)
         -> some View
     {
-        Text(SignalBadgeStyle.label(for: agreement))
-            .themeText(.chip)
-            // A badge is one word; the row's pressing text truncates instead.
-            .lineLimit(1)
-            .fixedSize()
-            .padding(.horizontal, ThemeSpace.compact)
-            .padding(.vertical, ThemeSpace.line)
-            .background(Theme.accentSoft, in: Capsule())
-            .foregroundStyle(Color.accentColor)
+        StatusChip(
+            verbatim: SignalBadgeStyle.label(for: agreement),
+            tone: .accent
+        )
+        // A badge is one word; the row's pressing text truncates instead.
+        .fixedSize()
     }
 
     // MARK: - Trailing

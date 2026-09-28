@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -27,6 +28,8 @@ import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.StatusChip
+import fm.bae.app.ui.components.StatusTone
 import uniffi.bae_bridge.BridgeDownloadSnapshot
 import uniffi.bae_bridge.BridgeDownloadState
 import uniffi.bae_bridge.BridgeDownloadTransferProgress
@@ -52,24 +55,19 @@ internal fun DownloadsSummaryStrip(
             verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text =
-                        if (snapshot.paused) {
-                            stringResource(R.string.paused)
-                        } else {
-                            downloadQueueSummaryText(context, snapshot)
-                        },
-                    style = ThemeText.detail.style,
-                    color =
-                        if (snapshot.paused) {
-                            BaeTheme.colors.activity
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
+                if (snapshot.paused) {
+                    StatusChip(text = stringResource(R.string.paused), tone = StatusTone.ACTIVITY)
+                    Spacer(modifier = Modifier.weight(1f))
+                } else {
+                    Text(
+                        text = downloadQueueSummaryText(context, snapshot),
+                        style = ThemeText.detail.style,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                     contentDescription = null,

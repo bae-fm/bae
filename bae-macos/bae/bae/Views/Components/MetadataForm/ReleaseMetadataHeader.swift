@@ -432,22 +432,6 @@ struct ArtistAssignmentsSummary: Equatable {
     }
 }
 
-/// The capsule naming how a name — or a whole field's worth of them — stands
-/// to the library.
-struct ArtistIdentityBadge: View {
-    let label: String
-
-    var body: some View {
-        Text(label)
-            .themeText(.chip)
-            .foregroundStyle(.secondary)
-            .padding(.horizontal, ThemeSpace.compact)
-            .padding(.vertical, ThemeSpace.line)
-            .background(.quaternary, in: Capsule())
-            .fixedSize()
-    }
-}
-
 struct ArtistAssignmentLabel: View {
     let assignment: BridgeArtistAssignment
     let standing: BridgeArtistStanding?
@@ -458,7 +442,8 @@ struct ArtistAssignmentLabel: View {
                 .lineLimit(1)
                 .truncationMode(.middle)
             if let standing {
-                ArtistIdentityBadge(label: standing.label)
+                StatusChip(verbatim: standing.label)
+                    .fixedSize()
             }
         }
     }
@@ -544,7 +529,8 @@ struct ArtistAssignmentsField: View {
                     .lineLimit(1)
                     .truncationMode(.tail)
                 if let label = summary.identityLabel {
-                    ArtistIdentityBadge(label: label)
+                    StatusChip(verbatim: label)
+                        .fixedSize()
                 }
             }
         }
@@ -599,9 +585,7 @@ struct ArtistAssignmentsField: View {
                 ProgressView().controlSize(.small)
             }
             if let errorMessage {
-                Text(errorMessage)
-                    .themeText(.body)
-                    .foregroundStyle(Theme.danger)
+                ErrorText(errorMessage)
             }
             ForEach(results, id: \.artist.artistId) { result in
                 VStack(alignment: .leading, spacing: ThemeSpace.hairline) {

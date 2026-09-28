@@ -74,9 +74,7 @@ public struct UnlockView: View {
                 }
             }
             if let error {
-                Text(error)
-                    .foregroundStyle(Theme.danger)
-                    .themeText(.body)
+                ErrorText(error)
             }
             Spacer()
         }

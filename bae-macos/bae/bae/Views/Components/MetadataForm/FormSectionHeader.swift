@@ -32,16 +32,3 @@ struct FormSectionHeader: View {
         .padding(.horizontal, ThemeSpace.line)
     }
 }
-
-extension View {
-    /// The bordered card that metadata field groups and tables sit in.
-    func formGroupCard() -> some View {
-        self
-            .background(Theme.surface)
-            .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.card))
-            .overlay {
-                RoundedRectangle(cornerRadius: ThemeRadius.card)
-                    .strokeBorder(Theme.hairline, lineWidth: 1)
-            }
-    }
-}

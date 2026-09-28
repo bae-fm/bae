@@ -132,9 +132,7 @@ private struct DownloadQueueRow: View {
         case .active(let progress):
             DownloadTransferProgressView(progress: progress)
         case .failed(let error):
-            Text(error)
-                .themeText(.detail)
-                .foregroundStyle(Theme.danger)
+            ErrorText(error)
         }
     }
 }

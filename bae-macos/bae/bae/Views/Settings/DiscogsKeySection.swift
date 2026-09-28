@@ -161,14 +161,10 @@ struct DiscogsSettingsContent: View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
             statusRow
             if let saveError {
-                Text(saveError)
-                    .foregroundStyle(Theme.danger)
-                    .themeText(.body)
+                ErrorText(saveError)
             }
             if let readError {
-                Text(readError)
-                    .foregroundStyle(Theme.danger)
-                    .themeText(.body)
+                ErrorText(readError)
             }
             VStack(alignment: .leading, spacing: ThemeSpace.related) {
                 Text(

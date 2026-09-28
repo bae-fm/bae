@@ -46,10 +46,7 @@ extension View {
         }
         .padding(ThemeSpace.edge)
         .frame(width: 240)
-        .background(
-            Theme.surface,
-            in: RoundedRectangle(cornerRadius: ThemeRadius.card)
-        )
+        .card()
         .popoverEntrance(anchor: .top)
         .padding(ThemeSpace.page)
         .background(Theme.background)

@@ -11,7 +11,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -32,6 +31,7 @@ import fm.bae.app.R
 import fm.bae.app.ShortcutAction
 import fm.bae.app.data.LocalImageStore
 import fm.bae.app.ui.appearance.ThemeSpace
+import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.library.ArtworkLoadingBanner
 import fm.bae.app.ui.library.LibraryScreen
 import fm.bae.app.ui.onboarding.OnboardingScreen
@@ -225,7 +225,7 @@ private fun FailedScreen(message: String) {
         modifier = Modifier.fillMaxSize().padding(ThemeSpace.page),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text = message, color = MaterialTheme.colorScheme.error)
+        ErrorText(message)
     }
 }
 
