@@ -49,15 +49,17 @@ forward! { async this => {
             .map_err(BridgeError::from)
     }
 
-    /// Run `action` on every selected candidate that offers it, reporting how
-    /// far it has got, and answer with the candidates it failed on.
+    /// Run `action` on every selected candidate that offers it, in the order
+    /// the list shows them under `view`, reporting how far it has got, and
+    /// answer with the candidates it failed on.
     fn run_import_selection_action(
+        view: crate::types::BridgeImportListView,
         action: crate::types::BridgeCandidateAction,
         progress: Box<dyn crate::types::SelectionActionProgressCallback>,
     ) -> Vec<crate::types::BridgeSelectionActionFailure> {
         let failures = this
             .services
-            .run_import_selection_action(action.into_core(), |completed, total| {
+            .run_import_selection_action(view.into_core(), action.into_core(), |completed, total| {
                 progress.on_progress(crate::types::BridgeSelectionActionProgress {
                     completed,
                     total,

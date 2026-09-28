@@ -135,6 +135,16 @@ impl LibraryManager {
         Ok(self.database.load_selected_candidates().await?)
     }
 
+    pub(crate) async fn load_selected_candidates_in_view_order(
+        &self,
+        request: crate::import::ImportListRequest,
+    ) -> Result<Vec<crate::import::selection::SelectedCandidate>, LibraryError> {
+        Ok(self
+            .database
+            .load_selected_candidates_in_view_order(request)
+            .await?)
+    }
+
     pub(crate) async fn first_import_candidate_among(
         &self,
         request: crate::import::ImportListRequest,

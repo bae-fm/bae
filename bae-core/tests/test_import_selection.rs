@@ -1,10 +1,14 @@
 #![cfg(feature = "test-utils")]
 //! The import list's selection through the app: a bulk action runs in core
-//! over the selected keys, and a library reopens with nothing selected.
+//! over the selected keys in the order the list shows them, and a library
+//! reopens with nothing selected.
 
-use bae_core::import::selection::SelectionSummary;
-use bae_core::import::{CandidateAction, ImportListView};
-use bae_core::library::AppServices;
+use bae_core::import::selection::{SelectionChange, SelectionSummary};
+use bae_core::import::{
+    Admission, ArtistAssignment, CandidateAction, CandidateRuntimeChange, CandidateRuntimeSnapshot,
+    ImportListItem, ImportListOrder, ImportListView, MetadataProvenance,
+};
+use bae_core::library::{AppServices, LibraryPageWindow};
 use bae_test_support as support;
 use std::path::Path;
 use tempfile::TempDir;
@@ -17,7 +21,8 @@ async fn open(dir: &Path) -> AppServices {
     AppServices::for_test(manager).await.unwrap()
 }
 
-/// `count` one-track albums under `collection`, watched and scanned.
+/// `count` one-track albums under `collection`, watched and scanned. Each
+/// track has its own name, so no two albums are the same files.
 async fn scan_albums(services: &AppServices, collection: &Path, count: usize) {
     let flac = std::fs::read(bae_test_support::fixture_dir!(
         "flac",
@@ -27,7 +32,7 @@ async fn scan_albums(services: &AppServices, collection: &Path, count: usize) {
     for n in 0..count {
         let album = collection.join(format!("Album {n}"));
         std::fs::create_dir_all(&album).unwrap();
-        std::fs::write(album.join("01 Track.flac"), &flac).unwrap();
+        std::fs::write(album.join(format!("01 Track {n}.flac")), &flac).unwrap();
     }
     services
         .import_add_watched_folder(collection.to_string_lossy().into_owned())
@@ -73,7 +78,7 @@ async fn a_bulk_action_runs_over_every_selected_row() {
     assert_eq!(summary(&services).await.count, 3);
 
     let failures = services
-        .run_import_selection_action(CandidateAction::Skip, |_, _| {})
+        .run_import_selection_action(ImportListView::default(), CandidateAction::Skip, |_, _| {})
         .await
         .unwrap();
 
@@ -106,4 +111,160 @@ async fn a_reopened_library_has_nothing_selected() {
     let reopened = open(&db_dir).await;
     assert_eq!(summary(&reopened).await.count, 0);
     reopened.close().await;
+}
+
+/// The list sorted by path, last to first, so the order it shows is the
+/// reverse of the keys' own.
+fn descending() -> ImportListView {
+    ImportListView {
+        order: ImportListOrder::PathDescending,
+        ..ImportListView::default()
+    }
+}
+
+/// The candidate keys `view` shows, top to bottom.
+async fn shown_keys(services: &AppServices, view: ImportListView) -> Vec<String> {
+    let list = services
+        .load_import_list(
+            view,
+            std::iter::once(LibraryPageWindow {
+                offset: 0,
+                limit: 50,
+            })
+            .collect(),
+        )
+        .await
+        .unwrap();
+    list.windows
+        .into_iter()
+        .flat_map(|window| window.items)
+        .filter_map(|item| match item {
+            ImportListItem::Candidate { row, .. } => Some(row.candidate_key),
+            _ => None,
+        })
+        .collect()
+}
+
+/// Select the shown rows `picks` names, by their place in the list and out of
+/// order, and return the selected keys in the order the list shows them.
+async fn select_out_of_order(
+    services: &AppServices,
+    view: ImportListView,
+    picks: &[usize],
+) -> Vec<String> {
+    let shown = shown_keys(services, view.clone()).await;
+    services
+        .change_import_selection(
+            view,
+            SelectionChange::Toggle {
+                add: picks.iter().map(|&pick| shown[pick].clone()).collect(),
+                remove: Vec::new(),
+            },
+        )
+        .await
+        .unwrap();
+    let mut in_view_order = picks.to_vec();
+    in_view_order.sort_unstable();
+    in_view_order
+        .into_iter()
+        .map(|pick| shown[pick].clone())
+        .collect()
+}
+
+/// The keys the runtime's changes bring to `reached`, in the order they get
+/// there, until `count` have.
+async fn reached_in_order(
+    changes: &mut tokio::sync::broadcast::Receiver<CandidateRuntimeChange>,
+    count: usize,
+    reached: impl Fn(&CandidateRuntimeSnapshot) -> bool,
+) -> Vec<String> {
+    let mut order: Vec<String> = Vec::new();
+    tokio::time::timeout(std::time::Duration::from_secs(20), async {
+        while order.len() < count {
+            let arrivals: Vec<String> = match changes.recv().await.expect("the runtime answers") {
+                CandidateRuntimeChange::Updated { key, runtime } => (reached(&runtime)
+                    && !order.contains(&key))
+                .then_some(key)
+                .into_iter()
+                .collect(),
+                CandidateRuntimeChange::Reset { runtimes } => runtimes
+                    .into_iter()
+                    .filter(|(key, runtime)| reached(runtime) && !order.contains(key))
+                    .map(|(key, _)| key)
+                    .collect(),
+                CandidateRuntimeChange::Removed { .. } => Vec::new(),
+            };
+            assert!(
+                arrivals.len() <= 1,
+                "one change brings one candidate at a time: {arrivals:?}"
+            );
+            order.extend(arrivals);
+        }
+    })
+    .await
+    .expect("every candidate gets there");
+    order
+}
+
+/// A bulk Identify over rows selected out of order admits them in the order
+/// the list shows them, not the keys' own order, so the top rows start first.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_bulk_identify_admits_the_rows_as_the_list_shows_them() {
+    support::tracing_init();
+    let tmp = TempDir::new().unwrap();
+    let services = open(&tmp.path().join("db")).await;
+    scan_albums(&services, &tmp.path().join("Collection"), 4).await;
+    let expected = select_out_of_order(&services, descending(), &[3, 0, 2]).await;
+
+    let (_, mut changes) = services.subscribe_candidate_runtime();
+    let failures = services
+        .run_import_selection_action(descending(), CandidateAction::Identify, |_, _| {})
+        .await
+        .unwrap();
+    assert!(failures.is_empty(), "{failures:?}");
+
+    let admitted = reached_in_order(&mut changes, expected.len(), |runtime| {
+        runtime.queued == Some(Admission::Requested)
+    })
+    .await;
+    assert_eq!(admitted, expected);
+    services.close().await;
+}
+
+/// A bulk Import over rows selected out of order starts them in the order the
+/// list shows them.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_bulk_import_starts_the_rows_as_the_list_shows_them() {
+    support::tracing_init();
+    let tmp = TempDir::new().unwrap();
+    let services = open(&tmp.path().join("db")).await;
+    scan_albums(&services, &tmp.path().join("Collection"), 4).await;
+    for key in shown_keys(&services, descending()).await {
+        services
+            .import_select_candidate_metadata_provenance(
+                key.clone(),
+                MetadataProvenance::FileMetadata,
+            )
+            .await
+            .unwrap();
+        services
+            .import_set_candidate_album_artists(&key, vec![ArtistAssignment::named("Artist Name")])
+            .await
+            .unwrap();
+    }
+    let expected = select_out_of_order(&services, descending(), &[3, 0, 2]).await;
+
+    let (_, mut changes) = services.subscribe_candidate_runtime();
+    let failures = services
+        .run_import_selection_action(descending(), CandidateAction::Import, |_, _| {})
+        .await
+        .unwrap();
+    assert!(failures.is_empty(), "{failures:?}");
+
+    let started = reached_in_order(&mut changes, expected.len(), |runtime| {
+        runtime.import.is_some()
+    })
+    .await;
+    assert_eq!(started, expected);
+    services.close().await;
 }

@@ -25,6 +25,7 @@ struct ImportSelectionOperations: Sendable {
     let combine: @Sendable () async throws -> String
     let run:
         @Sendable (
+            BridgeImportListView,
             BridgeCandidateAction,
             @escaping @Sendable (BridgeSelectionActionProgress) -> Void
         ) async throws -> [BridgeSelectionActionFailure]
@@ -45,8 +46,9 @@ struct ImportSelectionOperations: Sendable {
                 try await handle.importSelectionSourceFolders()
             },
             combine: { try await handle.combineImportSelection() },
-            run: { action, progress in
+            run: { view, action, progress in
                 try await handle.runImportSelectionAction(
+                    view: view,
                     action: action,
                     progress: SelectionActionProgressSink(apply: progress)
                 )
@@ -62,7 +64,7 @@ struct ImportSelectionOperations: Sendable {
         keepShown: { _ in },
         sourceFolders: { [] },
         combine: { throw StubError.notImplemented },
-        run: { _, _ in [] }
+        run: { _, _, _ in [] }
     )
 }
 
@@ -146,11 +148,13 @@ final class ImportSelection {
         try await operations.combine()
     }
 
-    /// Run `action` over every selected row that offers it, after `before`;
-    /// the rows it fails on are reported together once it ends.
+    /// Run `action` over every selected row that offers it, in the order
+    /// `view` shows them, after `before`; the rows it fails on are reported
+    /// together once it ends.
     @discardableResult
     func start(
         _ action: BridgeCandidateAction,
+        in view: BridgeImportListView,
         uiStore: UiStore,
         before: @escaping @MainActor () async -> Void
     ) -> Task<Void, Never>? {
@@ -159,14 +163,18 @@ final class ImportSelection {
             defer { task = nil }
             await before()
             guard !Task.isCancelled else { return }
-            await perform(action, uiStore: uiStore)
+            await perform(action, in: view, uiStore: uiStore)
         }
         return task
     }
 
     func cancel() { task?.cancel() }
 
-    func perform(_ action: BridgeCandidateAction, uiStore: UiStore) async {
+    func perform(
+        _ action: BridgeCandidateAction,
+        in view: BridgeImportListView,
+        uiStore: UiStore
+    ) async {
         let run = UUID()
         currentRun = run
         progress = ImportCandidateActionProgress(
@@ -180,7 +188,7 @@ final class ImportSelection {
         }
         let failures: [BridgeSelectionActionFailure]
         do {
-            failures = try await operations.run(action) { reported in
+            failures = try await operations.run(view, action) { reported in
                 Task { @MainActor [weak self] in
                     guard let self, self.currentRun == run,
                         Int(reported.completed)

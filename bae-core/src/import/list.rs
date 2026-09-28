@@ -49,8 +49,8 @@ mod subscription;
 mod tests;
 
 pub(crate) use flatten::{
-    first_candidate_among, flatten, locate_candidate, selected_candidates, shown_candidate_keys,
-    Flattened, ItemRef,
+    first_candidate_among, flatten, locate_candidate, selected_candidates,
+    selected_candidates_in_view_order, shown_candidate_keys, Flattened, ItemRef,
 };
 pub use subscription::{ImportListSubscription, ImportListSubscriptionError};
 

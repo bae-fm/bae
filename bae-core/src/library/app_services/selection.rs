@@ -112,14 +112,23 @@ impl AppServices {
     }
 
     /// Run `action` on every selected candidate that offers it now, one at a
-    /// time, telling `progress` how many are done of how many. A candidate the
-    /// action fails on is reported and the rest go on.
+    /// time in the order the list shows them under `view`, telling `progress`
+    /// how many are done of how many. The identification and import queues
+    /// take what they are handed first to first, so the top rows start first.
+    /// A candidate the action fails on is reported and the rest go on.
     pub async fn run_import_selection_action(
         &self,
+        view: ImportListView,
         action: CandidateAction,
         progress: impl Fn(u64, u64),
     ) -> Result<Vec<SelectionActionFailure>, ImportError> {
-        let selected = self.inner.manager.load_selected_candidates().await?;
+        let selected = self
+            .inner
+            .manager
+            .load_selected_candidates_in_view_order(
+                self.import_list_request(view, crate::library::LibraryPageWindows::new()),
+            )
+            .await?;
         let members = crate::import::selection::members(&selected, &self.runtime_facts());
         let keys = keys_for(&members, action);
         let total = keys.len() as u64;

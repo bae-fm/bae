@@ -39,9 +39,10 @@ extension ImportSelectionOperations {
         },
         run:
             @escaping @Sendable (
+                BridgeImportListView,
                 BridgeCandidateAction,
                 @escaping @Sendable (BridgeSelectionActionProgress) -> Void
-            ) async throws -> [BridgeSelectionActionFailure] = { _, _ in [] }
+            ) async throws -> [BridgeSelectionActionFailure] = { _, _, _ in [] }
     ) -> ImportSelectionOperations {
         ImportSelectionOperations(
             change: change,
@@ -54,24 +55,45 @@ extension ImportSelectionOperations {
     }
 }
 
+extension BridgeImportListView {
+    /// Pending, unfiltered, sorted by path.
+    static let sortedByPath = BridgeImportListView(
+        tab: .pending,
+        filterText: "",
+        pendingFilter: nil,
+        collapsedGroups: [],
+        order: .pathAscending
+    )
+}
+
 @MainActor
 struct ImportSelectionTests {
     @Test("A running action can be cancelled and rejects a second one")
     func cancelRunningAction() async throws {
         let entered = AsyncStream<Void>.makeStream()
         let selection = ImportSelection(
-            operations: .stub(run: { _, _ in
+            operations: .stub(run: { _, _, _ in
                 entered.continuation.yield(())
                 try await Task.sleep(for: .seconds(30))
                 return []
             })
         )
         let uiStore = UiStore()
-        let started = selection.start(.skip, uiStore: uiStore, before: {})
+        let started = selection.start(
+            .skip,
+            in: .sortedByPath,
+            uiStore: uiStore,
+            before: {}
+        )
         let task = try #require(started)
         var iterator = entered.stream.makeAsyncIterator()
         await iterator.next()
-        let second = selection.start(.skip, uiStore: uiStore, before: {})
+        let second = selection.start(
+            .skip,
+            in: .sortedByPath,
+            uiStore: uiStore,
+            before: {}
+        )
         #expect(second == nil)
         selection.cancel()
         await task.value
@@ -80,12 +102,16 @@ struct ImportSelectionTests {
         #expect(uiStore.lastError == nil)
     }
 
-    @Test("The action runs in core, and each row it failed on is named")
+    @Test(
+        "The action runs in core in the list's order, and each row it failed on is named"
+    )
     func failuresNameEachRow() async {
         let requested = CallLog<BridgeCandidateAction>()
+        let views = CallLog<BridgeImportListView>()
         let selection = ImportSelection(
-            operations: .stub(run: { action, _ in
+            operations: .stub(run: { view, action, _ in
                 requested.record(action)
+                views.record(view)
                 return [
                     BridgeSelectionActionFailure(
                         candidateKey: "/music/Album",
@@ -107,9 +133,10 @@ struct ImportSelectionTests {
             })
         )
         let uiStore = UiStore()
-        await selection.perform(.import, uiStore: uiStore)
+        await selection.perform(.import, in: .sortedByPath, uiStore: uiStore)
 
         #expect(requested.all == [.import])
+        #expect(views.all == [.sortedByPath])
         let line = uiStore.lastError?.line ?? ""
         #expect(line.contains("Album"))
         #expect(line.contains("Other Album"))
@@ -125,13 +152,18 @@ struct ImportSelectionTests {
     func progressFollowsCore() async throws {
         let release = AsyncStream<Void>.makeStream()
         let selection = ImportSelection(
-            operations: .stub(run: { _, progress in
+            operations: .stub(run: { _, _, progress in
                 progress(BridgeSelectionActionProgress(completed: 1, total: 3))
                 for await _ in release.stream { break }
                 return []
             })
         )
-        let started = selection.start(.skip, uiStore: UiStore(), before: {})
+        let started = selection.start(
+            .skip,
+            in: .sortedByPath,
+            uiStore: UiStore(),
+            before: {}
+        )
         let task = try #require(started)
         try await Wait.until { selection.progress?.completed == 1 }
         #expect(selection.progress?.total == 3)

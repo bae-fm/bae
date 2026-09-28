@@ -26,8 +26,10 @@ final class ImportListSlot {
     private let defaults: UserDefaults
     private static let sortPreferenceKey = "importCandidateSortOrder"
 
+    /// The view core answers the list for, which a bulk action runs over the
+    /// selection in the order of.
     @ObservationIgnored
-    private var view: BridgeImportListView
+    private(set) var view: BridgeImportListView
     @ObservationIgnored
     private let makeSource: (BridgeImportListView) -> ImportListPages
     @ObservationIgnored

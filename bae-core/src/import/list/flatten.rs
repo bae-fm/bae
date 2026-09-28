@@ -143,6 +143,33 @@ pub(crate) fn selected_candidates(
     Ok(selected)
 }
 
+/// The selected candidates in the order the list places them under `request`
+/// — its tab, sort and grouping, the one ordering every list read uses — so
+/// a bulk action reaches the rows top to bottom as the person sees them. A
+/// folded group's members sit where the group does, and a selected row the
+/// view leaves out sits where the same ordering puts it.
+pub(crate) fn selected_candidates_in_view_order(
+    rows: &ImportQueueRows,
+    request: &ImportListRequest,
+) -> Result<Vec<crate::import::selection::SelectedCandidate>, LibraryError> {
+    let Ordered {
+        entries, placed, ..
+    } = order(rows, request)?;
+    Ok(entries
+        .iter()
+        .filter_map(|entry| match entry.item {
+            ItemRef::Candidate { index, .. } => Some(&placed[index].row),
+            ItemRef::Header(_) | ItemRef::Invalid { .. } => None,
+        })
+        .filter(|row| rows.selected.contains(&row.candidate_key))
+        .map(|row| crate::import::selection::SelectedCandidate {
+            candidate_key: row.candidate_key.clone(),
+            name: row.folder_name.clone(),
+            basis: row.action_basis.clone(),
+        })
+        .collect())
+}
+
 fn order(rows: &ImportQueueRows, request: &ImportListRequest) -> Result<Ordered, LibraryError> {
     let view = &request.view;
     let filter = TextFilter::of(view);

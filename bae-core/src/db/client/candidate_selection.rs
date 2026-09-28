@@ -46,6 +46,21 @@ impl Database {
             .await
     }
 
+    /// The selected candidates in the order the list places them under
+    /// `request`, which a bulk action runs over them in.
+    pub(crate) async fn load_selected_candidates_in_view_order(
+        &self,
+        request: ImportListRequest,
+    ) -> Result<Vec<SelectedCandidate>, DbError> {
+        let done_row_text = DoneRowText::of(&request.view);
+        self.read(move |sql| load_import_queue_on(&sql, done_row_text))
+            .process(move |rows| {
+                crate::import::list::selected_candidates_in_view_order(&rows, &request)
+                    .map_err(|error| DbError::Message(error.to_string()))
+            })
+            .await
+    }
+
     /// Apply one change a person made by pointing at rows of the list
     /// `request` shows, and say the selection revision a list read that
     /// reflects it carries.
