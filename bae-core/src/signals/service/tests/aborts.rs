@@ -6,12 +6,8 @@ use crate::test_logs::capture_warn_logs;
 
 #[tokio::test(flavor = "multi_thread")]
 async fn emit_signals_warns_when_broadcast_has_no_subscribers() {
-    // Build the inner directly, because a *started* service always holds a receiver
-    // (its own candidate-removal listener). The no-subscriber state this warn guards
-    // therefore only exists at app shutdown.
+    // Built directly: a started service always holds its own receiver.
     let tx = ImportEventBus::new(64, crate::import::CandidateRuntime::default());
-        let rx = tx.subscribe();
-    drop(rx);
     let (library_manager, _lib_tmp) = make_library_manager().await;
     let inner = ExtractionServiceInner {
         runtime_handle: tokio::runtime::Handle::current(),
@@ -89,7 +85,7 @@ async fn fast_pass_join_error_reports_why_there_is_no_pass() {
 #[tokio::test(flavor = "multi_thread")]
 async fn an_aborted_extraction_fails_every_signal_in_one_snapshot() {
     let tx = ImportEventBus::new(64, crate::import::CandidateRuntime::default());
-        let mut rx = tx.subscribe();
+    let mut rx = tx.every_event();
     let (library_manager, _lib_tmp) = make_library_manager().await;
     let inner = ExtractionServiceInner {
         runtime_handle: tokio::runtime::Handle::current(),
@@ -144,7 +140,7 @@ async fn an_aborted_extraction_fails_every_signal_in_one_snapshot() {
         matches!(artwork, ArtworkScan::Failed { read: 0, total: 0, .. }),
         "the artwork pass failed before reading anything, got {artwork:?}"
     );
-    assert_no_more_snapshots(&mut rx, "the aborted extraction's one snapshot").await;
+    assert_no_more_snapshots(&mut rx, "the aborted extraction's one snapshot");
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -153,7 +149,7 @@ async fn ocr_join_error_aborts_without_settled_snapshot() {
     let folder = build_release(&tmp, "Some Folder", &["cover.jpg"], &[]);
 
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(PanicAnalyzer);
-    let (_handle, mut rx, _lib_tmp) = start_signals(folder, analyzer).await;
+    let (_handle, mut rx, _run, _lib_tmp) = start_signals(folder, analyzer).await;
 
     let signals = collect_signals(&mut rx, 2).await;
     assert!(matches!(signals[0].text, TextSignal::Scanning { .. }));

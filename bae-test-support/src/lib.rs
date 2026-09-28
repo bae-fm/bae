@@ -48,7 +48,7 @@ pub use files::{
 pub use import::{
     configure_test_discogs, discogs_release, folder_import, import_folder_and_wait,
     imported_release_setup, start_test_import, try_wait_for_import_complete,
-    wait_for_import_complete, ImportedRelease,
+    wait_for_import_complete, wait_for_import_end, ImportedRelease,
 };
 pub use library::{
     multi_thread_runtime, open_test_library, open_test_library_with, runtime_with_services,

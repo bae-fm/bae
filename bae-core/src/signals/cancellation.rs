@@ -70,6 +70,20 @@ impl CancellationRegistry {
         }
     }
 
+    /// What ends once `key`'s extraction in flight is cancelled.
+    #[cfg(test)]
+    pub(super) fn cancelled_for_test(
+        &self,
+        key: &str,
+    ) -> Option<impl std::future::Future<Output = ()> + Send + 'static> {
+        self.state
+            .lock()
+            .unwrap()
+            .cancel_tokens
+            .get(key)
+            .map(|(_, token)| token.clone().cancelled_owned())
+    }
+
     pub(super) fn cancel(&self, key: &str) {
         let entry = self.state.lock().unwrap().cancel_tokens.remove(key);
         if let Some((_, token)) = entry {

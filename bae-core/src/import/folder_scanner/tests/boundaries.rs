@@ -19,16 +19,10 @@ fn scan_with_reader<R: DirectoryReader, F: FnMut(ScanItem)>(
     )
 }
 
-/// Held closed until a test opens it, which is what lets one directory read
-/// stay suspended while the walk's other work is observed.
-type ScanGate = std::sync::Arc<(std::sync::Mutex<bool>, std::sync::Condvar)>;
-
-/// Reads directories normally, except inside `blocked`: there it announces
-/// itself on `entered` and waits for `gate` to open.
+/// Reads directories normally, except inside `blocked`, where it is held.
 struct BlockingReader {
     blocked: PathBuf,
-    entered: std::sync::mpsc::Sender<()>,
-    gate: ScanGate,
+    held: crate::test_gate::Held,
 }
 
 impl DirectoryReader for BlockingReader {
@@ -39,12 +33,7 @@ impl DirectoryReader for BlockingReader {
         cancellation: &ScanCancellation,
     ) -> Result<DirectoryListing, FolderScanError> {
         if directory == self.blocked {
-            self.entered.send(()).expect("announce blocked directory");
-            let (lock, condition) = &*self.gate;
-            let mut open = lock.lock().unwrap();
-            while !*open {
-                open = condition.wait(open).unwrap();
-            }
+            self.held.pass();
         }
         OsDirectoryReader.read(root, directory, cancellation)
     }
@@ -53,7 +42,7 @@ impl DirectoryReader for BlockingReader {
 /// A scan of `root` running on its own thread, suspended inside `blocked`
 /// until [`SuspendedScan::finish`] opens the gate.
 struct SuspendedScan {
-    gate: ScanGate,
+    gate: crate::test_gate::Gate,
     /// Announces that the walk reached the blocked directory.
     entered: std::sync::mpsc::Receiver<()>,
     items: std::sync::mpsc::Receiver<ScanItem>,
@@ -62,14 +51,11 @@ struct SuspendedScan {
 
 impl SuspendedScan {
     fn spawn(root: PathBuf, blocked: &str) -> Self {
-        let (entered_tx, entered) = std::sync::mpsc::channel();
+        let (gate, held, entered) = crate::test_gate::closed();
         let (item_tx, items) = std::sync::mpsc::channel();
-        let gate: ScanGate =
-            std::sync::Arc::new((std::sync::Mutex::new(false), std::sync::Condvar::new()));
         let reader = BlockingReader {
             blocked: PathBuf::from(blocked),
-            entered: entered_tx,
-            gate: gate.clone(),
+            held,
         };
         let thread = std::thread::spawn(move || {
             scan_with_reader(&reader, root, |item| {
@@ -86,9 +72,7 @@ impl SuspendedScan {
 
     /// Let the blocked read proceed, and require the walk to finish cleanly.
     fn finish(self) {
-        let (lock, condition) = &*self.gate;
-        *lock.lock().unwrap() = true;
-        condition.notify_all();
+        self.gate.open();
         self.thread.join().unwrap().unwrap();
     }
 }

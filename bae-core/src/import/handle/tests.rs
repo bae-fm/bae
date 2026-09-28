@@ -1,9 +1,7 @@
-// Fixture row ids. coven validates every synced row's primary key as a
-// canonical v4 UUID (`RowIdentity::IndependentUuid`), which is what bae's
-// real ids are, so these fixtures carry UUIDs too. Each constant is named
-// for the moniker it replaced, so assertions still read by name.
-const REL_1: &str = "cccb6034-5922-40d2-8d0b-d94619230882"; // was "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e"
-const TRACK_1: &str = "f2f77437-aa03-4583-8b1c-d12bcf984967"; // was "track-1"
+// Fixture row ids are v4 UUIDs because coven checks every synced row's
+// primary key is one.
+const REL_1: &str = "cccb6034-5922-40d2-8d0b-d94619230882";
+const TRACK_1: &str = "f2f77437-aa03-4583-8b1c-d12bcf984967";
 
 use super::*;
 use crate::db::{Database, DbArtist};
@@ -72,15 +70,15 @@ fn make_artist(name: &str, discogs_id: Option<&str>, mb_id: Option<&str>) -> DbA
 /// What the import `import_id` reported: the release and album it created, or
 /// the error it failed with. Every other event on the stream is skipped.
 async fn await_import_outcome(
-    events: &mut tokio::sync::broadcast::Receiver<crate::import::handle::ImportEvent>,
+    events: &mut tokio::sync::mpsc::UnboundedReceiver<ImportEvent>,
     import_id: &str,
 ) -> Result<(String, String), String> {
     loop {
-        let event = tokio::time::timeout(std::time::Duration::from_secs(10), events.recv())
+        let event = tokio::time::timeout(std::time::Duration::from_secs(30), events.recv())
             .await
             .expect("the import reports its result")
             .expect("the import event stream remains open");
-        let crate::import::handle::ImportEvent::ImportProgress { progress, .. } = event else {
+        let ImportEvent::ImportProgress { progress, .. } = event else {
             continue;
         };
         match progress {

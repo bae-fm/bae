@@ -100,34 +100,11 @@ async fn selected_folders_from_different_roots_import_as_one_release() {
             .collect::<Vec<_>>(),
         [Some(1), Some(1), Some(2), Some(2)]
     );
-    let mut events = handle.subscribe_events();
+    let mut events = handle.every_event_for_test();
     let import_id = handle.start_import(&key).await.unwrap();
-    let release_id = tokio::time::timeout(std::time::Duration::from_secs(30), async {
-        loop {
-            match events.recv().await.unwrap() {
-                ImportEvent::ImportProgress {
-                    progress:
-                        ImportProgress::Complete {
-                            import_id: completed,
-                            id,
-                            ..
-                        },
-                    ..
-                } if completed == import_id => break id,
-                ImportEvent::ImportProgress {
-                    progress:
-                        ImportProgress::Failed {
-                            import_id: failed,
-                            error,
-                        },
-                    ..
-                } if failed == import_id => panic!("combined import failed: {error}"),
-                _ => {}
-            }
-        }
-    })
-    .await
-    .expect("combined import reports a terminal result");
+    let (release_id, _) = await_import_outcome(&mut events, &import_id)
+        .await
+        .unwrap_or_else(|error| panic!("combined import failed: {error}"));
     let imported = handle
         .library_manager
         .release_edit_seed(&release_id)

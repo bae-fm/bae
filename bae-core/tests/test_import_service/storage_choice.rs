@@ -1,6 +1,5 @@
-/// A person's Import goes where the stored storage choice says at the moment
-/// it starts: to the cloud home while the choice is the cloud, locally once it
-/// is changed. The caller names only the candidate.
+/// An import goes where the stored storage choice says when it starts; the
+/// caller names only the candidate.
 #[tokio::test]
 async fn an_import_goes_where_the_stored_choice_says_as_it_starts() {
     support::tracing_init();
@@ -28,7 +27,7 @@ async fn an_import_goes_where_the_stored_choice_says_as_it_starts() {
         );
         keys.push(album.to_string_lossy().into_owned());
     }
-    let mut scan_rx = f.handle.subscribe_folder_scan_events();
+    let mut scan_rx = f.handle.every_scan_event_for_test();
     f.handle
         .add_watched_folder(collection.to_string_lossy().into_owned())
         .await
@@ -63,19 +62,14 @@ async fn an_import_goes_where_the_stored_choice_says_as_it_starts() {
     );
 }
 
-/// Start `key`'s import and return the progress that ended it.
+/// Start `key`'s import and return its first `Complete` or `RemoteUploadQueued`.
 async fn import_outcome(f: &ImportFixture, key: &str) -> bae_core::import::ImportProgress {
     let import_id = f.handle.start_import(key).await.unwrap();
     let mut progress_rx = f.handle.subscribe_import(import_id);
-    while let Some(progress) = progress_rx.recv().await {
-        match progress {
-            bae_core::import::ImportProgress::Complete { .. }
-            | bae_core::import::ImportProgress::RemoteUploadQueued { .. } => return progress,
-            bae_core::import::ImportProgress::Failed { error, .. } => {
-                panic!("the import of {key} failed: {error}")
-            }
-            _ => {}
+    match support::wait_for_import_end(&mut progress_rx).await {
+        bae_core::import::ImportProgress::Failed { error, .. } => {
+            panic!("the import of {key} failed: {error}")
         }
+        outcome => outcome,
     }
-    panic!("the import of {key} ended without an outcome");
 }

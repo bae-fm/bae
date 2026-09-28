@@ -1,14 +1,8 @@
-/// Truncate a FLAC's body on disk while keeping its header and tags: a valid
-/// STREAMINFO (declaring the full sample count) over a short audio body. Kept
-/// size stays above the scanner's gross-size floor (10% of the raw PCM size, ~44
-/// KB for the 5s mono fixture) so the file passes scan and reaches the loudness
-/// loop, but far too little audio to decode the declared samples -- the
-/// decode-verify shortfall signature.
+/// Cut a FLAC's audio short, keeping its header and tags, so it decodes far
+/// fewer samples than its STREAMINFO declares.
 fn truncate_flac_body(path: &Path) {
     let bytes = fs::read(path).expect("read flac to truncate");
-    // The 5s/44.1k/mono/16-bit fixture declares 220_500 samples => 441_000 raw
-    // bytes; the scan rejects below 44_100. 46_000 clears that while cutting the
-    // bulk of the ~68 KB audio body.
+    // Keeps the header and tags and cuts most of the audio.
     let keep = 46_000usize.min(bytes.len());
     assert!(
         bytes.len() > keep,
@@ -18,8 +12,8 @@ fn truncate_flac_body(path: &Path) {
     fs::write(path, &bytes[..keep]).expect("write truncated flac");
 }
 
-/// Import a one-track album whose FLAC is truncated (valid header, short body),
-/// with `verify_decode_on_import` set to `verify`. Returns the import outcome.
+/// Import a one-track album whose FLAC is truncated, with
+/// `verify_decode_on_import` set to `verify`.
 async fn import_truncated_album(verify: bool) -> Result<(String, String), String> {
     let temp = TempDir::new().unwrap();
     let db_dir = temp.path().join("db");
@@ -78,28 +72,24 @@ async fn import_truncated_album(verify: bool) -> Result<(String, String), String
         .unwrap();
     let mut progress_rx = handle.subscribe_import(import_id);
     let result = support::try_wait_for_import_complete(&mut progress_rx).await;
-    // Keep the temp dir (and its files) alive until the import has finished.
+    // The files must outlive the import.
     drop(temp);
     result
 }
 
-/// `verify_decode_on_import` gates a broken track end to end: a truncated FLAC
-/// (valid header, short body) that decodes short imports fine with the flag off,
-/// and fails at the decode-verify gate -- before finalize commits anything -- with
-/// the flag on. Proves the flag drives the outcome, not the fixture.
+/// The same truncated FLAC imports with `verify_decode_on_import` off and fails
+/// decode verification with it on, so the flag decides the outcome.
 #[tokio::test]
 async fn verify_decode_on_import_gates_a_broken_track() {
     support::tracing_init();
 
-    // Flag off: the import does not assert on decode integrity, so the broken
-    // album still imports.
     let off = import_truncated_album(false).await;
     assert!(
         off.is_ok(),
         "with verify_decode_on_import off, a broken album must still import, got: {off:?}",
     );
 
-    // Flag on (the default): the same album fails at the decode-verify gate.
+    // On is the default.
     let on = import_truncated_album(true).await;
     let err = on.expect_err("with verify_decode_on_import on, a broken album must fail the import");
     assert!(
@@ -139,32 +129,22 @@ fn seed_two_credit_mb_release(
     mb_release_id
 }
 
-/// A release credited to two artists keeps both through the confirmation editor:
-/// the primary on `albums.artist_id`, the second as an `album_artists` junction
-/// row still carrying its MusicBrainz id.
-///
-/// The editor seeds from the same projection the commit worker maps, so a user
-/// who changes nothing sends back the artist list the mapper produced, and the
-/// commit's artist comparison sees no edit. Seeding it from the picker's display
-/// shape — which collapses the credits to one name — read as "the user deleted
-/// artist B" and destroyed her junction row on every such import.
+/// A two-artist release imported unedited keeps both album artists, the second
+/// with its MusicBrainz id: an unedited pick must not read as removing one.
 #[tokio::test]
 async fn two_credit_mb_release_keeps_both_album_artists() {
     support::tracing_init();
     let f = ImportFixture::new().await;
     let mb_id = seed_two_credit_mb_release(&f, "two-credit-mb-rel", "two-credit-mb-group");
 
-    // Scan the album in so the prefetch runs against a candidate key the
-    // service actually knows — the key is what core reads the identify evidence
-    // behind the claim from, so a made-up one would exercise a path no surface
-    // takes.
+    // Scan the album in, since an import starts from a scanned candidate.
     let collection = f.temp_path().join("two-credit-collection");
     let album_dir = collection.join("two-credit");
     fs::create_dir_all(&album_dir).unwrap();
     generate_album_files(&album_dir, &["01 Track One.flac"]);
     let candidate_key = album_dir.to_string_lossy().into_owned();
 
-    let mut scan_rx = f.handle.subscribe_folder_scan_events();
+    let mut scan_rx = f.handle.every_scan_event_for_test();
     f.handle
         .add_watched_folder(collection.to_string_lossy().into_owned())
         .await
@@ -176,8 +156,7 @@ async fn two_credit_mb_release_keeps_both_album_artists() {
     )
     .await;
 
-    // The confirmation pane's form, unedited: what the commit reads back off
-    // the pick when the user touches nothing.
+    // Pick the release and change nothing.
     f.handle
         .select_candidate_metadata_provenance(
             candidate_key.clone(),
@@ -250,7 +229,7 @@ async fn committed_track_files(f: &ImportFixture, release_id: &str) -> Vec<(Stri
 }
 
 /// Scan `album_dir` in and pick `mb_id` for it, returning the candidate key and
-/// the mapping the pick produced. The path both desktop surfaces take.
+/// its pane after the pick.
 async fn pick_release_for_folder(
     f: &ImportFixture,
     collection: &Path,
@@ -258,7 +237,7 @@ async fn pick_release_for_folder(
     mb_id: &str,
 ) -> (String, bae_core::import::ImportCandidateDetail) {
     let candidate_key = album_dir.to_string_lossy().into_owned();
-    let mut scan_rx = f.handle.subscribe_folder_scan_events();
+    let mut scan_rx = f.handle.every_scan_event_for_test();
     f.handle
         .add_watched_folder(collection.to_string_lossy().into_owned())
         .await
@@ -290,7 +269,8 @@ async fn pick_release_for_folder(
     (candidate_key, pane)
 }
 
-/// A source with fewer or more tracks cannot partially overwrite the draft.
+/// A source with fewer or more tracks than the audio is refused and leaves the
+/// draft as it was.
 #[tokio::test]
 async fn incompatible_source_counts_preserve_every_audio_backed_track() {
     support::tracing_init();
@@ -310,7 +290,7 @@ async fn incompatible_source_counts_preserve_every_audio_backed_track() {
             &names.iter().map(String::as_str).collect::<Vec<_>>(),
         );
         let candidate_key = album_dir.to_string_lossy().into_owned();
-        let mut scan_rx = f.handle.subscribe_folder_scan_events();
+        let mut scan_rx = f.handle.every_scan_event_for_test();
         f.handle
             .add_watched_folder(collection.to_string_lossy().into_owned())
             .await
@@ -401,11 +381,10 @@ async fn a_corrected_pairing_survives_the_commit() {
         ],
     );
 }
-// ── Task 2: the commit derives the cover from the picked release ────────────
+// ── the commit takes the cover from the picked release ─────────────────────
 
-/// Seed a MusicBrainz release whose document says the Cover Art Archive holds a
-/// front image for it, so the commit has an address to fetch and a statement
-/// that there is something at it.
+/// Seed a MusicBrainz release whose document says the Cover Art Archive holds
+/// its front image.
 fn seed_mb_release_with_front_cover(
     f: &ImportFixture,
     mb_release_id: &str, mb_group_id: &str, title: &str) -> String {
@@ -431,11 +410,8 @@ fn seed_mb_release_with_front_cover(
     support::seed_mb_release(f.library_manager.providers().musicbrainz(), response, mb_group_id)
 }
 
-/// A commit that carries no cover pick lands the cover the confirmation pane
-/// offered. The pane seeds its selection from the release's own cover options,
-/// so "the command names no cover" means the user changed nothing — not that
-/// they want none. Reading it as the latter is what imported releases bare
-/// whenever the pane's cover options came up empty.
+/// An import with no cover pick takes the release's own cover: no pick means
+/// the user changed nothing, not that they want no cover.
 #[tokio::test]
 async fn an_import_with_no_cover_pick_takes_the_release_s_own_cover() {
     support::tracing_init();
@@ -482,9 +458,8 @@ async fn an_import_with_no_cover_pick_takes_the_release_s_own_cover() {
         .ends_with(&format!("/release/{mb_id}/front")));
 }
 
-/// And when that cover will not download, the import fails instead of quietly
-/// landing without one. A transient archive failure is exactly the case that
-/// used to produce a coverless release with no error anywhere.
+/// When the release's own cover will not download, the import fails rather
+/// than landing without it.
 #[tokio::test]
 async fn an_import_fails_when_the_release_s_own_cover_will_not_download() {
     support::tracing_init();

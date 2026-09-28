@@ -387,9 +387,8 @@ async fn changes_during_a_folder_reading_are_read_once_afterwards() {
     harness.fs_events.send(change("One", "01.flac")).unwrap();
     harness.scans.wait_for_count(1).await;
     for (folder, file) in [("Two", "01.flac"), ("Two", "02.flac"), ("One", "03.flac")] {
-        harness.fs_events.send(change(folder, file)).unwrap();
+        harness.watch_report(change(folder, file)).await;
     }
-    tokio::time::sleep(Duration::from_millis(20)).await;
     assert_eq!(harness.scans.scans.lock().unwrap().len(), 1);
 
     harness.scans.complete(0);
@@ -511,7 +510,7 @@ async fn cancelled_scan_task_does_not_begin_a_durable_generation() {
     let (watch_tx, _watch_rx) = tokio::sync::mpsc::unbounded_channel();
     let watcher = Arc::new(FolderWatcher::new(watch_tx));
     let (completion_tx, mut completion_rx) = tokio::sync::mpsc::unbounded_channel();
-    let mut events = service.event_tx.subscribe();
+    let mut events = service.event_tx.every_event();
 
     let scan = spawn_root_scan(
         1,
@@ -541,7 +540,7 @@ async fn cancelled_scan_task_does_not_begin_a_durable_generation() {
         .is_empty());
     assert!(matches!(
         events.try_recv(),
-        Err(tokio::sync::broadcast::error::TryRecvError::Empty)
+        Err(tokio::sync::mpsc::error::TryRecvError::Empty)
     ));
 }
 

@@ -4,15 +4,17 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::time::Duration;
 
-    // Counts calls and sleeps each one, so a cancel lands mid-pass.
-    struct DelayedAnalyzer {
+    // Counts calls and holds the first until the gate opens, so the removal
+    // lands mid-pass.
+    struct HeldAnalyzer {
         calls: AtomicUsize,
-        delay: Duration,
+        held: crate::test_gate::Held,
     }
-    impl ArtworkAnalyzer for DelayedAnalyzer {
+    impl ArtworkAnalyzer for HeldAnalyzer {
         fn analyze(&self, _path: &Path) -> ArtworkAnalysis {
-            self.calls.fetch_add(1, Ordering::SeqCst);
-            std::thread::sleep(self.delay);
+            if self.calls.fetch_add(1, Ordering::SeqCst) == 0 {
+                self.held.pass();
+            }
             ArtworkAnalysis {
                 barcodes: Vec::new(),
                 text_lines: vec!["Line".to_string()],
@@ -46,33 +48,33 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
         .start_import_service(tokio::runtime::Handle::current())
         .await
         .unwrap();
-    let analyzer = std::sync::Arc::new(DelayedAnalyzer {
+    let (gate, held, reached) = crate::test_gate::closed();
+    let analyzer = std::sync::Arc::new(HeldAnalyzer {
         calls: AtomicUsize::new(0),
-        delay: Duration::from_millis(200),
+        held,
     });
     import_handle.register_artwork_analyzer(analyzer.clone());
 
-    let mut events = import_handle.subscribe_events();
+    let mut events = import_handle.every_event_for_test();
     import_handle
         .add_watched_folder(root.to_string_lossy().to_string())
         .await
         .unwrap();
 
     // Take the key from the scanned candidate's path, however it is canonicalized.
-    let deadline = tokio::time::Instant::now() + Duration::from_secs(5);
-    let candidate_path = loop {
-        let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
-        let event = tokio::time::timeout(remaining, events.recv())
-            .await
-            .expect("timed out waiting for the folder candidate")
-            .expect("event channel closed");
-        if let ImportEvent::Scan(ScanEvent::FolderCandidate { candidate, .. }) = event {
-            break candidate.path;
+    let candidate_path = tokio::time::timeout(Duration::from_secs(10), async {
+        loop {
+            let event = events.recv().await.expect("event channel closed");
+            if let ImportEvent::Scan(ScanEvent::FolderCandidate { candidate, .. }) = event {
+                break candidate.path;
+            }
         }
-    };
+    })
+    .await
+    .expect("timed out waiting for the folder candidate");
     let key = candidate_path.to_string_lossy().to_string();
     tokio::time::timeout(
-        Duration::from_secs(5),
+        Duration::from_secs(10),
         import_handle.wait_for_list(crate::import::ImportListView::default(), |projection| {
             projection.windows.iter().any(|window| {
                 window.items.iter().any(|item| match item {
@@ -93,35 +95,42 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
         .expect("the accepted list holds the candidate");
 
     // Extraction alone, without a run that would ask the providers.
-    import_handle.extraction.start(
+    let mut extraction = import_handle.extraction.start(
         import_handle.new_identification_run(),
         key.clone(),
         ExtractionSource::Candidate { candidate },
         crate::util::rate_limiter::CallPriority::Interactive,
         crate::config::IdentificationSteps::default(),
     );
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    reached
+        .recv_timeout(Duration::from_secs(10))
+        .expect("the OCR pass reaches its first image");
     import_handle
         .remove_watched_folder(root.to_string_lossy().to_string())
         .await
         .unwrap();
+    gate.open();
+    // The extraction drops its end of the watch when it stops.
+    tokio::time::timeout(Duration::from_secs(10), async {
+        while extraction.changed().await.is_ok() {}
+    })
+    .await
+    .expect("the cancelled extraction stops");
 
-    // Drain this key's SignalsUpdated until quiet: the cancelled run never settles.
-    loop {
-        match tokio::time::timeout(Duration::from_millis(500), events.recv()).await {
-            Ok(Ok(ImportEvent::SignalsUpdated {
-                candidate_key,
-                signals,
-                ..
-            })) if candidate_key == key => {
+    while let Ok(event) = events.try_recv() {
+        if let ImportEvent::SignalsUpdated {
+            candidate_key,
+            signals,
+            ..
+        } = event
+        {
+            if candidate_key == key {
                 assert!(
                     !matches!(signals.text, TextSignal::Settled { .. }),
                     "extraction for a removed folder must not settle, got {:?}",
                     signals.text,
                 );
             }
-            Ok(Ok(_)) => continue,
-            _ => break,
         }
     }
     assert!(
@@ -187,7 +196,7 @@ async fn removing_a_root_queued_behind_a_decision_does_not_deadlock() {
         .unwrap();
 
     let removal = handle.remove_watched_folder(root.to_string_lossy().into_owned());
-    let (decision, removal) = tokio::time::timeout(std::time::Duration::from_secs(2), async {
+    let (decision, removal) = tokio::time::timeout(std::time::Duration::from_secs(10), async {
         tokio::join!(decision_result, removal)
     })
     .await

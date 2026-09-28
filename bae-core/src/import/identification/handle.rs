@@ -110,15 +110,42 @@ impl IdentificationHandle {
     /// automatic job has ended.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn automatic_drained_for_test(&self) {
+        self.drained(super::Drain::Automatic).await;
+    }
+
+    /// Wait until every release found so far has been admitted and every job,
+    /// automatic or asked for, has ended.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn drained_for_test(&self) {
+        self.drained(super::Drain::Every).await;
+    }
+
+    #[cfg(any(test, feature = "test-utils"))]
+    async fn drained(&self, drain: super::Drain) {
         let (drained, wait) = tokio::sync::oneshot::channel();
         if self
             .commands
-            .send(Command::AwaitAutomaticDrained { drained })
+            .send(Command::AwaitDrained { drain, drained })
             .is_err()
         {
             return;
         }
         // A stopped queue ends the wait too.
+        let _ = wait.await;
+    }
+
+    /// Wait until the queue has handled every command sent before this call
+    /// and started what it has room for.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn commands_taken_for_test(&self) {
+        let (taken, wait) = tokio::sync::oneshot::channel();
+        if self
+            .commands
+            .send(Command::AwaitCommandsTaken { taken })
+            .is_err()
+        {
+            return;
+        }
         let _ = wait.await;
     }
 }

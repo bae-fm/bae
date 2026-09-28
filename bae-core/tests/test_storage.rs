@@ -1,13 +1,8 @@
 #![cfg(feature = "test-utils")]
-//! Integration tests for import storage.
-//!
-//! Tests:
-//! - Import with cover selection: verifies cover, audio formats, progress events
-//! - Local import: files stay in original location
-//! - Local delete preserves files on disk
+//! Where an import keeps its files, and what deleting a release leaves.
 use bae_core::db::LibraryImageType;
 use bae_core::discogs::models::DiscogsRelease;
-use bae_core::import::{CoverSelection, ImportCommand, ImportProgress};
+use bae_core::import::{CoverSelection, ImportCommand};
 use bae_core::util::content_type::ContentType;
 use bae_test_support as support;
 use std::fs;
@@ -18,15 +13,15 @@ use support::{open_test_library, seed_discogs_test_release, wait_for_import_comp
 use tempfile::TempDir;
 use tracing::info;
 
-/// Test import with cover selection: files stay in place (no cloud home),
-/// but cover selection, audio format records, and progress events all work.
+/// With no cloud home the files stay in place, and the chosen cover and audio
+/// format records still land.
 #[tokio::test]
 async fn test_import_with_cover_selection() {
     tracing_init();
     run_import_with_cover_test().await;
 }
 
-/// Test local import: files stay in original location.
+/// A local import leaves its files where they were.
 #[tokio::test]
 async fn test_local_import() {
     tracing_init();
@@ -47,7 +42,6 @@ async fn test_local_import() {
     .map(|f| album_dir.join(f))
     .collect();
 
-    // Verify files exist before import
     for path in &original_files {
         assert!(path.exists(), "Test file should exist: {:?}", path);
     }
@@ -73,7 +67,6 @@ async fn test_local_import() {
 
     info!("Import completed, release_id: {}", release_id);
 
-    // Verify tracks created
     let tracks = library_manager
         .get_tracks_for_release(&release_id)
         .await
@@ -82,7 +75,6 @@ async fn test_local_import() {
 
     info!("All {} tracks created", tracks.len());
 
-    // Verify audio_format records exist with segment file linkage
     for track in &tracks {
         let audio_format = library_manager
             .get_audio_format_by_track_id(&track.id)
@@ -110,15 +102,13 @@ async fn test_local_import() {
 
     info!("All tracks have audio_format records with segment file links");
 
-    // Verify release is local with this device's in-place local copy.
     let release = database
         .find_release_by_id(&release_id)
         .await
         .expect("query")
         .expect("release should exist");
     assert!(!release.remote, "Local import should not be remote");
-    // A Local release's files are coven user-provided external refs at their
-    // in-place location; that external ref IS the local state.
+    // A local release's files are external refs at their own location.
     let files = library_manager
         .get_files_for_release(&release_id)
         .await
@@ -135,7 +125,6 @@ async fn test_local_import() {
 
     info!("Release is correctly local");
 
-    // Verify original files still exist in place
     for path in &original_files {
         assert!(
             path.exists(),
@@ -147,10 +136,7 @@ async fn test_local_import() {
     info!("Original files preserved in place");
 }
 
-/// Test that deleting a local release preserves the original files on disk.
-///
-/// When a release is local, the files live at their original location.
-/// Deleting the release should only remove database records, NOT the actual files.
+/// Deleting a local release removes its records and leaves its files on disk.
 #[tokio::test]
 async fn test_local_delete_preserves_files() {
     tracing_init();
@@ -171,7 +157,6 @@ async fn test_local_delete_preserves_files() {
     .map(|f| album_dir.join(f))
     .collect();
 
-    // Verify files exist before import
     for path in &original_files {
         assert!(path.exists(), "Test file should exist: {:?}", path);
     }
@@ -197,21 +182,18 @@ async fn test_local_delete_preserves_files() {
 
     info!("Import completed, release_id: {}", release_id);
 
-    // Verify import succeeded
     let tracks = library_manager
         .get_tracks_for_release(&release_id)
         .await
         .expect("get tracks");
     assert_eq!(tracks.len(), 3, "Should have 3 tracks after import");
 
-    // Now delete the release
     info!("Deleting release {}", release_id);
     library_manager
         .delete_release(&release_id)
         .await
         .expect("delete release");
 
-    // Verify database records are gone
     let tracks_after = library_manager
         .get_tracks_for_release(&release_id)
         .await
@@ -230,7 +212,6 @@ async fn test_local_delete_preserves_files() {
         "Album should no longer be shown (was last release)"
     );
 
-    // THE KEY ASSERTION: Original files must still exist on disk
     for path in &original_files {
         assert!(
             path.exists(),
@@ -270,25 +251,9 @@ async fn run_import_with_cover_test() {
         .await
         .expect("send command");
     let mut progress_rx = import_handle.subscribe_import(import_id);
-    let mut release_id = String::new();
-    while let Some(progress) = progress_rx.recv().await {
-        info!("Progress: {:?}", progress);
-        match &progress {
-            ImportProgress::Complete { id, .. } => {
-                release_id = id.clone();
-                info!("Release completion event received!");
-                break;
-            }
-            ImportProgress::Failed { error, .. } => {
-                panic!("Import failed: {}", error);
-            }
-            _ => {}
-        }
-    }
-    assert!(!release_id.is_empty(), "Should receive release completion");
+    let (release_id, _album_id) = wait_for_import_complete(&mut progress_rx).await;
 
-    // Verify release storage state — without cloud home, this is a local
-    // (local) import, so it's not remote and records an in-place local copy.
+    // With no cloud home the import is local and keeps the files in place.
     let release = database
         .find_release_by_id(&release_id)
         .await
@@ -327,7 +292,6 @@ async fn run_import_with_cover_test() {
         .expect("Failed to get files");
     assert!(!files.is_empty(), "Should have file records");
 
-    // Verify original files still exist (local import keeps files in place)
     for file in &files {
         let original_path = album_dir.join(&file.original_filename);
         assert!(
@@ -342,7 +306,6 @@ async fn run_import_with_cover_test() {
         files.len()
     );
 
-    // Verify audio format records for tracks
     for track in &tracks {
         let audio_format = library_manager
             .get_audio_format_by_track_id(&track.id)

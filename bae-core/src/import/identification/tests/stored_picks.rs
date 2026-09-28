@@ -134,7 +134,7 @@ async fn a_picked_release_is_what_the_row_leads_with() {
 
     // Read the queue on the event the surfaces refresh on, not after the pick
     // has finished settling: the row has to be right the moment it lands.
-    let mut events = fixture.import.subscribe_events();
+    let mut events = fixture.import.every_event_for_test();
     let picking = {
         let import = fixture.import.clone();
         let key = key.clone();

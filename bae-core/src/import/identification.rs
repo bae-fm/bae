@@ -75,12 +75,27 @@ enum Command {
     CancelAll {
         done: tokio::sync::oneshot::Sender<()>,
     },
-    /// Say when every release found so far has been admitted and every
-    /// automatic job has ended.
+    /// Say when every release found so far has been admitted and every job
+    /// `drain` names has ended.
     #[cfg(any(test, feature = "test-utils"))]
-    AwaitAutomaticDrained {
+    AwaitDrained {
+        drain: Drain,
         drained: tokio::sync::oneshot::Sender<()>,
     },
+    /// Say when every command sent before this one has been handled and the
+    /// queue has started what it has room for.
+    #[cfg(any(test, feature = "test-utils"))]
+    AwaitCommandsTaken {
+        taken: tokio::sync::oneshot::Sender<()>,
+    },
+}
+
+/// Which jobs a test waits to see end.
+#[cfg(any(test, feature = "test-utils"))]
+#[derive(Clone, Copy)]
+enum Drain {
+    Automatic,
+    Every,
 }
 
 /// Start the identification queue over `import`. There is one per import

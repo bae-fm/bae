@@ -649,9 +649,8 @@ async fn restoration_prepared_before_a_newer_edit_cannot_overwrite_it() {
     handle.drop_candidate_track(&key, removed.id).await.unwrap();
     let offer = as_read(&pane(&handle, &key).await);
     manager.set_prefill_with_file_metadata(true).await.unwrap();
-    let (entered_tx, entered_rx) = std::sync::mpsc::sync_channel(1);
-    let resume = Arc::new(std::sync::Barrier::new(2));
-    handle.file_tags = Arc::new(CountingFileTagReader::blocking(entered_tx, resume.clone()));
+    let (reader, reached, gate) = CountingFileTagReader::held();
+    handle.file_tags = Arc::new(reader);
     let restoring = tokio::spawn({
         let handle = handle.clone();
         let key = key.clone();
@@ -661,11 +660,11 @@ async fn restoration_prepared_before_a_newer_edit_cannot_overwrite_it() {
                 .await
         }
     });
-    entered_rx
-        .recv_timeout(std::time::Duration::from_secs(2))
+    reached
+        .recv_timeout(std::time::Duration::from_secs(10))
         .expect("restoration reached tag reading");
     let edit = tokio::time::timeout(
-        std::time::Duration::from_secs(2),
+        std::time::Duration::from_secs(10),
         handle.set_candidate_edit_field(
             &key,
             crate::import::DraftFieldEdit::Text {
@@ -675,7 +674,7 @@ async fn restoration_prepared_before_a_newer_edit_cannot_overwrite_it() {
         ),
     )
     .await;
-    resume.wait();
+    gate.open();
     edit.expect("tag reading does not hold the candidate commit lock")
         .unwrap();
     let before = preparation(&handle, &candidate.files.content_hash()).await;

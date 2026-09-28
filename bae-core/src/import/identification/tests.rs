@@ -141,10 +141,9 @@ impl FakeProvider {
     }
 }
 
-/// The id of the next run of `key` whose broadcast state `accept` answers —
-/// what a test waits on so a replacement run exists before it acts.
+/// The id of the next run of `key` whose reported state `accept` answers.
 async fn await_run_state(
-    events: &mut tokio::sync::broadcast::Receiver<ImportEvent>,
+    events: &mut tokio::sync::mpsc::UnboundedReceiver<ImportEvent>,
     key: &str,
     accept: impl Fn(IdentifyRunId, &IdentifyState) -> bool,
 ) -> IdentifyRunId {
@@ -166,7 +165,23 @@ async fn await_run_state(
         }
     })
     .await
-    .expect("a run of the candidate broadcasts the awaited state")
+    .expect("a run of the candidate reports the awaited state")
+}
+
+/// Every event `events` holds so far.
+fn drain_events(
+    events: &mut tokio::sync::mpsc::UnboundedReceiver<ImportEvent>,
+) -> Vec<ImportEvent> {
+    let mut drained = Vec::new();
+    loop {
+        match events.try_recv() {
+            Ok(event) => drained.push(event),
+            Err(tokio::sync::mpsc::error::TryRecvError::Empty) => return drained,
+            Err(tokio::sync::mpsc::error::TryRecvError::Disconnected) => {
+                panic!("the import event bus closed while draining ready events")
+            }
+        }
+    }
 }
 
 async fn wait_for_request(provider: &FakeProvider, needle: &str, count: usize) {
@@ -230,47 +245,8 @@ impl ArtworkAnalyzer for PerFolderBarcodeAnalyzer {
     }
 }
 
-/// An analyzer held between entry and completion, so a test can act
-/// mid-extraction. It reports entering on `started` and waits for `gate`.
-struct GatedAnalyzer {
-    started: std::sync::mpsc::Sender<()>,
-    gate: Arc<(Mutex<bool>, std::sync::Condvar)>,
-}
-
-/// What holds a [`GatedAnalyzer`] mid-extraction. Dropping it opens it too,
-/// so a test that fails before opening it still lets extraction end rather
-/// than leaving the test runtime waiting on it forever.
-struct AnalyzerGate(Arc<(Mutex<bool>, std::sync::Condvar)>);
-
-impl AnalyzerGate {
-    fn open(&self) {
-        let (open, opened) = &*self.0;
-        *open.lock().unwrap() = true;
-        opened.notify_all();
-    }
-}
-
-impl Drop for AnalyzerGate {
-    fn drop(&mut self) {
-        self.open();
-    }
-}
-
-impl GatedAnalyzer {
-    /// The analyzer, what reports its entering, and the gate holding it.
-    fn new() -> (Self, std::sync::mpsc::Receiver<()>, AnalyzerGate) {
-        let (started, entered) = std::sync::mpsc::channel();
-        let gate = Arc::new((Mutex::new(false), std::sync::Condvar::new()));
-        (
-            Self {
-                started,
-                gate: gate.clone(),
-            },
-            entered,
-            AnalyzerGate(gate),
-        )
-    }
-}
+/// An analyzer held at each image behind a [`crate::test_gate::Gate`].
+struct GatedAnalyzer(crate::test_gate::Held);
 
 struct CountingAnalyzer {
     calls: Arc<AtomicUsize>,
@@ -285,11 +261,7 @@ impl ArtworkAnalyzer for CountingAnalyzer {
 
 impl ArtworkAnalyzer for GatedAnalyzer {
     fn analyze(&self, _path: &Path) -> ArtworkAnalysis {
-        let _ = self.started.send(());
-        let (open, opened) = &*self.gate;
-        let _held = opened
-            .wait_while(open.lock().unwrap(), |open| !*open)
-            .unwrap();
+        self.0.pass();
         ArtworkAnalysis::empty()
     }
 }

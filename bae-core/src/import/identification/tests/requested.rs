@@ -10,8 +10,7 @@
 /// a failure, not how many times the client repeats one.
 /// A verdict is where its run ends, and a re-run afterwards is a run of its
 /// own: its own id, its own inputs, its own answer. The run it replaces says
-/// nothing further — no driver lingers to re-broadcast the terminal state it
-/// already reached, so nothing a later watcher hears can be mistaken for the
+/// nothing further, so nothing a later watcher hears can be mistaken for the
 /// re-run's answer.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_rerun_after_a_verdict_is_a_run_of_its_own() {
@@ -24,7 +23,7 @@ async fn a_rerun_after_a_verdict_is_a_run_of_its_own() {
         .set_routes(vec![("/discid/", 400, "{}".to_string())]);
     fixture.scan(1).await;
 
-    let mut events = fixture.import.subscribe_events();
+    let mut events = fixture.import.every_event_for_test();
     fixture.drain_automatic().await;
     assert!(matches!(
         fixture.identified_for(&dir).await.map(|row| row.verdict),
@@ -43,7 +42,7 @@ async fn a_rerun_after_a_verdict_is_a_run_of_its_own() {
             _ => None,
         })
         .next_back()
-        .expect("the failed run broadcast its states");
+        .expect("the failed run reported its states");
 
     fixture.provider.set_routes(vec![
         (
@@ -82,7 +81,7 @@ async fn a_rerun_after_a_verdict_is_a_run_of_its_own() {
         .collect();
     assert!(
         !runs.is_empty() && runs.iter().all(|run| *run != failed_run),
-        "the run that already answered broadcast nothing further: {runs:?}"
+        "the run that already answered reported nothing further: {runs:?}"
     );
 }
 
@@ -137,7 +136,7 @@ async fn a_run_restarted_over_a_shorter_provider_list_asks_only_what_is_left() {
         .unwrap();
     fixture.scan(1).await;
 
-    let mut events = fixture.import.subscribe_events();
+    let mut events = fixture.import.every_event_for_test();
     fixture.start_explicit_lookup_and_await_run(&dir).await;
     let asked_both = await_run_state(&mut events, &key, |_, _| true).await;
     wait_for_request(&fixture.provider, "/database/search", 1).await;
@@ -450,14 +449,14 @@ async fn explicit_lookup_during_an_active_run_supersedes_it() {
         .await
         .unwrap();
     fixture.scan(1).await;
-    let mut events = fixture.import.subscribe_events();
+    let mut events = fixture.import.every_event_for_test();
 
     fixture.start_explicit_lookup_and_await_run(&dir).await;
     wait_for_request(&fixture.provider, "/discid/", 1).await;
     let first_run = loop {
         let event = tokio::time::timeout(Duration::from_secs(10), events.recv())
             .await
-            .expect("the active run broadcasts its state")
+            .expect("the active run reports its state")
             .expect("the import event bus remains open");
         if let ImportEvent::IdentifyStateChanged {
             candidate_key, run, ..
@@ -560,7 +559,7 @@ async fn a_pick_during_an_explicit_lookup_stores_no_verdict() {
         .unwrap();
     fixture.scan(1).await;
 
-    let mut events = fixture.import.subscribe_events();
+    let mut events = fixture.import.every_event_for_test();
     fixture.start_explicit_lookup_and_await_run(&dir).await;
     wait_for_request(&fixture.provider, "/discid/", 1).await;
 
@@ -624,8 +623,8 @@ async fn changing_the_choices_supersedes_the_run_and_frees_its_slot() {
     );
     fixture.provider.hold("/discid/");
     fixture.scan(1).await;
-    let mut events = fixture.import.subscribe_events();
-    let mut restart = fixture.import.subscribe_events();
+    let mut events = fixture.import.every_event_for_test();
+    let mut restart = fixture.import.every_event_for_test();
 
     let pass = fixture.drain_automatic_task();
     wait_for_request(&fixture.provider, "/discid/", 1).await;
@@ -654,6 +653,12 @@ async fn changing_the_choices_supersedes_the_run_and_frees_its_slot() {
         .unwrap();
 
     fixture.await_identified_row(&dir).await;
+    tokio::time::timeout(
+        Duration::from_secs(30),
+        fixture.identification().drained_for_test(),
+    )
+    .await
+    .expect("the queue lets go of the answered job");
     let runs: Vec<(IdentifyRunId, IdentifyState)> = drain_events(&mut events)
         .into_iter()
         .filter_map(|event| match event {
@@ -713,7 +718,7 @@ async fn an_edit_during_a_run_leaves_its_answer_to_land() {
         .unwrap();
     fixture.scan(1).await;
     fixture.provider.hold("/release/mb-1?");
-    let mut events = fixture.import.subscribe_events();
+    let mut events = fixture.import.every_event_for_test();
 
     fixture.start_explicit_lookup(&dir);
     wait_for_request(&fixture.provider, "/release/mb-1?", 1).await;

@@ -32,7 +32,7 @@ async fn a_pick_ends_only_the_picked_candidates_run() {
     let other_key = other.to_string_lossy().into_owned();
     let pass = fixture.drain_automatic_task();
     wait_for_request(&fixture.provider, "/discid/", 1).await;
-    let mut events = fixture.import.subscribe_events();
+    let mut events = fixture.import.every_event_for_test();
 
     fixture
         .import
@@ -167,7 +167,7 @@ async fn clearing_a_candidates_metadata_ends_its_run_and_announces_the_change() 
         .unwrap();
     fixture.scan(1).await;
 
-    let mut events = fixture.import.subscribe_events();
+    let mut events = fixture.import.every_event_for_test();
     fixture.start_explicit_lookup_and_await_run(&dir).await;
     wait_for_request(&fixture.provider, "/discid/", 1).await;
 

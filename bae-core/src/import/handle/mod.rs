@@ -38,7 +38,7 @@ mod tests;
 /// effect already there.
 #[derive(Clone)]
 pub struct ImportEventBus {
-    sender: broadcast::Sender<ImportEvent>,
+    delivery: EventDelivery,
     runtime: CandidateRuntime,
     /// Stops the thread sending one chosen progress event until a test lets
     /// it through, so the test can act partway through an import.
@@ -48,10 +48,22 @@ pub struct ImportEventBus {
 
 /// Where [`ImportEventBus::hold_progress_at`] stops a sender.
 #[cfg(test)]
-#[derive(Default)]
 struct ProgressHold {
     state: std::sync::Mutex<HoldState>,
     changed: std::sync::Condvar,
+    /// Set once a sender is stopped, for a test to await.
+    held: tokio::sync::watch::Sender<bool>,
+}
+
+#[cfg(test)]
+impl Default for ProgressHold {
+    fn default() -> Self {
+        Self {
+            state: Default::default(),
+            changed: Default::default(),
+            held: tokio::sync::watch::Sender::new(false),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -67,14 +79,57 @@ enum HoldState {
     Released,
 }
 
+/// The one way an event reaches the bus's readers. The runtime announces
+/// through it directly, since its announcements come from inside recording.
+#[derive(Clone)]
+pub(crate) struct EventDelivery {
+    sender: broadcast::Sender<ImportEvent>,
+    #[cfg(any(test, feature = "test-utils"))]
+    every_event: Arc<std::sync::Mutex<EveryEvent>>,
+}
+
+/// Every event delivered so far and the test readers that hear each one,
+/// under one lock so a reader from the start misses nothing and hears nothing
+/// twice.
+#[cfg(any(test, feature = "test-utils"))]
+#[derive(Default)]
+struct EveryEvent {
+    delivered: Vec<ImportEvent>,
+    readers: Vec<mpsc::UnboundedSender<ImportEvent>>,
+}
+
+impl EventDelivery {
+    fn new(capacity: usize) -> Self {
+        let (sender, _) = broadcast::channel(capacity);
+        Self {
+            sender,
+            #[cfg(any(test, feature = "test-utils"))]
+            every_event: Arc::default(),
+        }
+    }
+
+    /// Hand `event` to every reader; `false` when no subscriber heard it.
+    pub(crate) fn deliver(&self, event: ImportEvent) -> bool {
+        #[cfg(any(test, feature = "test-utils"))]
+        {
+            let mut every_event = self.every_event.lock().unwrap();
+            every_event.delivered.push(event.clone());
+            every_event
+                .readers
+                .retain(|reader| reader.send(event.clone()).is_ok());
+        }
+        self.sender.send(event).is_ok()
+    }
+}
+
 impl ImportEventBus {
     /// A bus whose subscribers may fall `capacity` events behind, recording
     /// into `runtime`, which announces its identification count on this bus.
     pub fn new(capacity: usize, runtime: CandidateRuntime) -> Self {
-        let (sender, _) = broadcast::channel(capacity);
-        runtime.announce_on(sender.clone());
+        let delivery = EventDelivery::new(capacity);
+        runtime.announce_on(delivery.clone());
         Self {
-            sender,
+            delivery,
             runtime,
             #[cfg(test)]
             progress_hold: Arc::default(),
@@ -87,13 +142,40 @@ impl ImportEventBus {
         #[cfg(test)]
         self.wait_if_held(&event);
         self.runtime.record_event(&event);
-        if let Err(error) = self.sender.send(event) {
-            warn!("import event broadcast had no subscribers: {error}");
+        if !self.delivery.deliver(event) {
+            warn!("import event broadcast had no subscribers");
         }
     }
 
     pub fn subscribe(&self) -> broadcast::Receiver<ImportEvent> {
-        self.sender.subscribe()
+        self.delivery.sender.subscribe()
+    }
+
+    /// Every event sent from now on, none dropped — what a test waits on,
+    /// since [`Self::subscribe`] drops what a slow reader falls behind on.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn every_event(&self) -> mpsc::UnboundedReceiver<ImportEvent> {
+        self.reader(false)
+    }
+
+    /// Every event this bus has delivered and will deliver, none dropped —
+    /// for a test that starts reading after the work it waits on began.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn every_event_from_start(&self) -> mpsc::UnboundedReceiver<ImportEvent> {
+        self.reader(true)
+    }
+
+    #[cfg(any(test, feature = "test-utils"))]
+    fn reader(&self, from_start: bool) -> mpsc::UnboundedReceiver<ImportEvent> {
+        let (reader, events) = mpsc::unbounded_channel();
+        let mut every_event = self.delivery.every_event.lock().unwrap();
+        if from_start {
+            for event in &every_event.delivered {
+                let _ = reader.send(event.clone());
+            }
+        }
+        every_event.readers.push(reader);
+        events
     }
 
     /// Stop the first thread that sends a measured percent of `phase` before
@@ -110,16 +192,12 @@ impl ImportEventBus {
     /// Wait until a sender is stopped where [`Self::hold_progress_at`] said.
     #[cfg(test)]
     pub(crate) async fn progress_held(&self) {
-        let hold = self.progress_hold.clone();
-        tokio::task::spawn_blocking(move || {
-            let state = hold.state.lock().unwrap();
-            let _held = hold
-                .changed
-                .wait_while(state, |state| *state != HoldState::Held)
-                .unwrap();
-        })
-        .await
-        .unwrap();
+        let _ = self
+            .progress_hold
+            .held
+            .subscribe()
+            .wait_for(|held| *held)
+            .await;
     }
 
     /// Let the stopped sender go on.
@@ -148,7 +226,7 @@ impl ImportEventBus {
             return;
         }
         *state = HoldState::Held;
-        self.progress_hold.changed.notify_all();
+        self.progress_hold.held.send_replace(true);
         let _released = self
             .progress_hold
             .changed
@@ -332,6 +410,13 @@ pub(crate) enum WatcherCommand {
         roots: Vec<std::path::PathBuf>,
         parent: Option<std::path::PathBuf>,
         completion: tokio::sync::oneshot::Sender<Result<(), String>>,
+    },
+    /// Take `report` as if the filesystem watch had sent it; `taken` hears
+    /// once the reads it calls for are asked for.
+    #[cfg(test)]
+    WatchReport {
+        report: crate::import::service::WatchReport,
+        taken: tokio::sync::oneshot::Sender<()>,
     },
     Shutdown {
         completion: std::sync::mpsc::Sender<()>,

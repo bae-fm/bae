@@ -335,19 +335,18 @@ async fn reset_setup_prepared_before_an_edit_cannot_replace_it_or_its_snapshot()
         tmp: _tmp,
     } = stored_candidate().await;
     manager.set_prefill_with_file_metadata(true).await.unwrap();
-    let (entered_tx, entered_rx) = std::sync::mpsc::sync_channel(1);
-    let resume = Arc::new(std::sync::Barrier::new(2));
-    handle.file_tags = Arc::new(CountingFileTagReader::blocking(entered_tx, resume.clone()));
+    let (reader, reached, gate) = CountingFileTagReader::held();
+    handle.file_tags = Arc::new(reader);
     let resetting = tokio::spawn({
         let handle = handle.clone();
         let key = key.clone();
         async move { handle.reset_candidate_setup(&key).await }
     });
-    entered_rx
-        .recv_timeout(std::time::Duration::from_secs(2))
+    reached
+        .recv_timeout(std::time::Duration::from_secs(10))
         .expect("reset reads tags");
     let editing = tokio::time::timeout(
-        std::time::Duration::from_secs(2),
+        std::time::Duration::from_secs(10),
         handle.set_candidate_edit_field(
             &key,
             crate::import::DraftFieldEdit::Text {
@@ -357,7 +356,7 @@ async fn reset_setup_prepared_before_an_edit_cannot_replace_it_or_its_snapshot()
         ),
     )
     .await;
-    resume.wait();
+    gate.open();
     editing
         .expect("reset preparation releases the commit lock")
         .unwrap();
@@ -677,7 +676,7 @@ async fn reset_setup_updates_compatible_folder_and_combination_identities_togeth
             .drop_candidate_track(key, before.draft.tracks[1].edit.id.clone())
             .await
             .unwrap();
-        let mut events = handle.subscribe_events();
+        let mut events = handle.every_event_for_test();
         handle.reset_candidate_setup(key).await.unwrap();
         let after = preparation(&handle, &folder.files.content_hash()).await;
         assert_eq!(after.draft.tracks.len(), 4);
@@ -830,27 +829,26 @@ async fn reset_setup_prepared_before_a_lookup_choice_cannot_erase_it() {
         tmp: _tmp,
     } = stored_candidate().await;
     manager.set_prefill_with_file_metadata(true).await.unwrap();
-    let (entered_tx, entered_rx) = std::sync::mpsc::sync_channel(1);
-    let resume = Arc::new(std::sync::Barrier::new(2));
-    handle.file_tags = Arc::new(CountingFileTagReader::blocking(entered_tx, resume.clone()));
+    let (reader, reached, gate) = CountingFileTagReader::held();
+    handle.file_tags = Arc::new(reader);
     let resetting = tokio::spawn({
         let handle = handle.clone();
         let key = key.clone();
         async move { handle.reset_candidate_setup(&key).await }
     });
-    entered_rx
-        .recv_timeout(std::time::Duration::from_secs(2))
+    reached
+        .recv_timeout(std::time::Duration::from_secs(10))
         .expect("reset reads tags");
     let choices = crate::import::LookupChoices {
         disc_id_excluded: true,
         ..crate::import::LookupChoices::default()
     };
     let editing = tokio::time::timeout(
-        std::time::Duration::from_secs(2),
+        std::time::Duration::from_secs(10),
         handle.edit_candidate_lookup_choices(&key, crate::import::LookupChoiceEdit::ToggleDiscId),
     )
     .await;
-    resume.wait();
+    gate.open();
     editing
         .expect("reset preparation releases the commit lock")
         .unwrap();

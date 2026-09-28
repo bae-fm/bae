@@ -41,7 +41,6 @@ struct DecisionFixture {
     scan: TestScan,
     listing: Arc<RecordingListing>,
     root: PathBuf,
-    _events: tokio::sync::broadcast::Receiver<crate::import::handle::ImportEvent>,
 }
 
 impl DecisionFixture {
@@ -62,7 +61,7 @@ impl DecisionFixture {
             .await
             .unwrap();
         let listing = Arc::new(RecordingListing::default());
-        let (scan, events) = test.scan_with(
+        let (scan, _) = test.scan_with(
             Arc::new(crate::import::file_tag_snapshot::LoftyFileTagReader),
             listing.clone(),
         );
@@ -73,7 +72,6 @@ impl DecisionFixture {
             scan,
             listing,
             root,
-            _events: events,
         }
     }
 

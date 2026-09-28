@@ -3,178 +3,157 @@
 
 use super::*;
 
+/// Start an extraction over `folder` as `"cand-1"` and return the watch its
+/// run holds open until it ends.
+fn start(handle: &ExtractionServiceHandle, folder: PathBuf) -> crate::signals::ExtractionWatch {
+    handle.start(
+        IdentifyRunId::for_test(1),
+        "cand-1".to_string(),
+        folder_source(folder),
+        CallPriority::Interactive,
+        crate::config::IdentificationSteps::default(),
+    )
+}
+
+/// Wait until the gated analyzer has entered an image.
+async fn ocr_entered(entries: std::sync::mpsc::Receiver<()>) {
+    tokio::task::spawn_blocking(move || entries.recv_timeout(Duration::from_secs(30)))
+        .await
+        .unwrap()
+        .expect("the OCR pass reaches an image");
+}
+
+/// Every `SignalsUpdated` delivered so far.
+fn delivered_signals(rx: &mut UnboundedReceiver<ImportEvent>) -> Vec<Signals> {
+    std::iter::from_fn(|| rx.try_recv().ok())
+        .filter_map(|event| match event {
+            ImportEvent::SignalsUpdated { signals, .. } => Some(signals),
+            _ => None,
+        })
+        .collect()
+}
+
+fn settled(signals: &Signals) -> bool {
+    matches!(signals.text, TextSignal::Settled { .. })
+}
+
+/// A run cancelled mid-OCR never reaches its `Settled` snapshot.
 #[tokio::test(flavor = "multi_thread")]
 async fn cancelled_ocr_run_does_not_settle() {
-    // A cancelled run tears down without reaching its final `Settled` snapshot: three
-    // delayed images, cancelled mid-OCR, must emit no `Settled` for that key.
     let tmp = TempDir::new().unwrap();
     let folder = build_release(&tmp, "Some Folder", &["p1.jpg", "p2.jpg", "p3.jpg"], &[]);
-
+    let (gate, held, entries) = crate::test_gate::closed();
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(
         StubAnalyzer::new()
             .with("p1.jpg", vec!["Artist A".to_string()])
             .with("p2.jpg", vec!["Artist B".to_string()])
             .with("p3.jpg", vec!["Artist C".to_string()])
-            .with_delay(Duration::from_millis(100)),
+            .gated(held),
     );
-    let (handle, mut rx, _lib_tmp) = start_signals(folder, analyzer).await;
+    let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
+    handle.register_analyzer(analyzer);
+    let mut watch = start(&handle, folder);
 
-    tokio::time::sleep(Duration::from_millis(50)).await;
+    ocr_entered(entries).await;
     handle.cancel("cand-1");
+    gate.open();
+    run_ended(&mut watch).await;
 
-    loop {
-        match tokio::time::timeout(Duration::from_millis(500), rx.recv()).await {
-            Ok(Ok(ImportEvent::SignalsUpdated { signals, .. })) => {
-                assert!(
-                    !matches!(signals.text, TextSignal::Settled { .. }),
-                    "cancelled OCR run must not emit a Settled snapshot, got {:?}",
-                    signals.text,
-                );
-            }
-            Ok(Ok(_)) => continue,
-            _ => break,
-        }
-    }
+    let settled: Vec<Signals> = delivered_signals(&mut rx)
+        .into_iter()
+        .filter(settled)
+        .collect();
+    assert!(
+        settled.is_empty(),
+        "cancelled OCR run must not emit a Settled snapshot, got {settled:?}"
+    );
 }
 
+/// A `CandidateRemoved` landing mid-OCR cancels the run: it never settles, and
+/// it stops short of analyzing every image, since the token is checked between
+/// images.
 #[tokio::test(flavor = "multi_thread")]
 async fn candidate_removed_event_cancels_in_flight_extraction() {
-    // Three images at 200ms of OCR each, with a `CandidateRemoved` landing during the
-    // first. The service's bus listener cancels the run, so it never settles and stops
-    // short of analyzing every image.
     let tmp = TempDir::new().unwrap();
     let folder = build_release(&tmp, "Some Folder", &["p1.jpg", "p2.jpg", "p3.jpg"], &[]);
+    let (gate, held, entries) = crate::test_gate::closed();
     let analyzer = Arc::new(
         StubAnalyzer::new()
             .with("p1.jpg", vec!["Line A".to_string()])
             .with("p2.jpg", vec!["Line B".to_string()])
             .with("p3.jpg", vec!["Line C".to_string()])
-            .with_delay(Duration::from_millis(200)),
+            .gated(held),
     );
     let (handle, tx, mut rx, _lib_tmp) = make_service().await;
     handle.register_analyzer(analyzer.clone());
+    let mut watch = start(&handle, folder);
 
-    handle.start(
-        IdentifyRunId::for_test(1),
-        "cand-1".to_string(),
-        folder_source(folder),
-        CallPriority::Interactive,
-        crate::config::IdentificationSteps::default(),
-    );
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    ocr_entered(entries).await;
+    let cancelled = handle
+        .cancelled_for_test("cand-1")
+        .expect("the extraction is in flight");
     tx.send(ImportEvent::Scan(ScanEvent::CandidateRemoved {
         candidate_key: "cand-1".to_string(),
     }));
+    tokio::time::timeout(Duration::from_secs(30), cancelled)
+        .await
+        .expect("the removal cancels the extraction");
+    gate.open();
+    run_ended(&mut watch).await;
 
-    loop {
-        match tokio::time::timeout(Duration::from_millis(500), rx.recv()).await {
-            Ok(Ok(ImportEvent::SignalsUpdated { signals, .. })) => {
-                assert!(
-                    !matches!(signals.text, TextSignal::Settled { .. }),
-                    "extraction for a removed candidate must not settle, got {:?}",
-                    signals.text,
-                );
-            }
-            Ok(Ok(_)) => continue,
-            _ => break,
-        }
-    }
-    // The token is checked between images, so the pass stops before the third.
+    assert!(
+        !delivered_signals(&mut rx).iter().any(settled),
+        "extraction for a removed candidate must not settle"
+    );
     assert!(analyzer.calls() < 3, "cancel must stop the OCR pass early");
 }
 
+/// A second `start` for a key cancels the first, and the run it started
+/// completes: only a completed run settles, so its `Settled` snapshot proves
+/// the replacement neither deadlocked nor panicked.
 #[tokio::test(flavor = "multi_thread")]
 async fn restart_for_same_key_cancels_prior_then_starts_fresh() {
-    // The second `start` for a key cancels the first. Only a completed run settles, so
-    // seeing a `Settled` snapshot proves the surviving run finished — and that the
-    // generation-guarded teardown neither deadlocked nor panicked.
     let tmp = TempDir::new().unwrap();
     let folder = build_release(&tmp, "Some Folder", &["p1.jpg"], &[]);
-
-    let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(
-        StubAnalyzer::new()
-            .with("p1.jpg", vec!["Artist A".to_string()])
-            .with_delay(Duration::from_millis(100)),
-    );
-    let (handle, mut rx, _lib_tmp) = start_signals(folder.clone(), analyzer).await;
-    handle.start(
-        IdentifyRunId::for_test(1),
-        "cand-1".to_string(),
-        folder_source(folder),
-        CallPriority::Interactive,
-        crate::config::IdentificationSteps::default(),
-    );
-
-    let mut saw_settled = false;
-    loop {
-        match tokio::time::timeout(Duration::from_millis(500), rx.recv()).await {
-            Ok(Ok(ImportEvent::SignalsUpdated { signals, .. })) => {
-                if matches!(signals.text, TextSignal::Settled { .. }) {
-                    saw_settled = true;
-                }
-            }
-            Ok(Ok(_)) => continue,
-            _ => break,
-        }
-    }
+    let analyzer: Arc<dyn ArtworkAnalyzer> =
+        Arc::new(StubAnalyzer::new().with("p1.jpg", vec!["Artist A".to_string()]));
+    let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
+    handle.register_analyzer(analyzer);
+    let _first = start(&handle, folder.clone());
+    let mut second = start(&handle, folder);
+    run_ended(&mut second).await;
 
     assert!(
-        saw_settled,
-        "expected a Settled snapshot from the completed run",
+        delivered_signals(&mut rx).iter().any(settled),
+        "expected a Settled snapshot from the completed run"
     );
 }
 
-/// Three consecutive `start`s for one key. Without per-task generations, the first
-/// task's teardown could fire *after* the second `start` inserted its token and
-/// remove it, leaving the third `start` nothing to cancel.
-///
-/// OCR is held long enough that the first task is still alive at the third `start`. A
-/// cancelled run emits no final snapshot, so they can't be counted directly; instead
-/// the completed run must settle, and the `(generation, token)` guard must neither
-/// deadlock nor panic under the interleaving.
+/// Three `start`s for one key while the first is still inside OCR: each
+/// cancels its predecessor, and the per-task generation keeps a cancelled
+/// task's teardown from removing a newer task's entry, so the last run still
+/// settles.
 #[tokio::test(flavor = "multi_thread")]
 async fn three_starts_cancel_each_predecessor() {
     let tmp = TempDir::new().unwrap();
     let folder = build_release(&tmp, "Some Folder", &["p1.jpg"], &[]);
-
+    let (gate, held, entries) = crate::test_gate::closed();
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(
         StubAnalyzer::new()
             .with("p1.jpg", vec!["Artist A".to_string()])
-            .with_delay(Duration::from_millis(200)),
+            .gated(held),
     );
-    let (handle, mut rx, _lib_tmp) = start_signals(folder.clone(), analyzer).await;
-    tokio::time::sleep(Duration::from_millis(40)).await;
-    handle.start(
-        IdentifyRunId::for_test(1),
-        "cand-1".to_string(),
-        folder_source(folder.clone()),
-        CallPriority::Interactive,
-        crate::config::IdentificationSteps::default(),
-    );
-    tokio::time::sleep(Duration::from_millis(40)).await;
-    handle.start(
-        IdentifyRunId::for_test(1),
-        "cand-1".to_string(),
-        folder_source(folder),
-        CallPriority::Interactive,
-        crate::config::IdentificationSteps::default(),
-    );
-
-    let mut saw_settled = false;
-    loop {
-        match tokio::time::timeout(Duration::from_millis(500), rx.recv()).await {
-            Ok(Ok(ImportEvent::SignalsUpdated { signals, .. })) => {
-                if matches!(signals.text, TextSignal::Settled { .. }) {
-                    saw_settled = true;
-                }
-            }
-            Ok(Ok(_)) => continue,
-            _ => break,
-        }
-    }
+    let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
+    handle.register_analyzer(analyzer);
+    let _first = start(&handle, folder.clone());
+    ocr_entered(entries).await;
+    let _second = start(&handle, folder.clone());
+    let mut third = start(&handle, folder);
+    gate.open();
+    run_ended(&mut third).await;
 
     assert!(
-        saw_settled,
-        "expected a Settled snapshot from the completed run",
+        delivered_signals(&mut rx).iter().any(settled),
+        "expected a Settled snapshot from the completed run"
     );
 }

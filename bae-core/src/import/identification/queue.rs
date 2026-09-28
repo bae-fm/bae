@@ -140,13 +140,16 @@ impl Queue {
         })
     }
 
-    /// Whether no automatic job is left.
+    /// Whether no job `drain` names is left.
     #[cfg(any(test, feature = "test-utils"))]
-    fn automatic_is_drained(&self) -> bool {
-        !self
-            .jobs
-            .iter()
-            .any(|job| job.admission() == Admission::Automatic)
+    fn is_drained(&self, drain: super::Drain) -> bool {
+        match drain {
+            super::Drain::Automatic => !self
+                .jobs
+                .iter()
+                .any(|job| job.admission() == Admission::Automatic),
+            super::Drain::Every => self.jobs.is_empty(),
+        }
     }
 
     /// How many jobs hold a slot; a settling job holds one too.
@@ -396,7 +399,7 @@ pub(super) async fn run(
 ) {
     let mut queue = Queue::default();
     #[cfg(any(test, feature = "test-utils"))]
-    let mut waiting_for_drain: Vec<tokio::sync::oneshot::Sender<()>> = Vec::new();
+    let mut waiting_for_drain: Vec<(super::Drain, tokio::sync::oneshot::Sender<()>)> = Vec::new();
     let mut settling = JoinSet::<Finished>::new();
     // Shutdown cancels the settles and waits for them rather than aborting a
     // durable write.
@@ -405,8 +408,12 @@ pub(super) async fn run(
     loop {
         fill_slots(context, &mut queue).await;
         #[cfg(any(test, feature = "test-utils"))]
-        if queue.automatic_is_drained() {
-            for drained in waiting_for_drain.drain(..) {
+        {
+            let (done, waiting) = std::mem::take(&mut waiting_for_drain)
+                .into_iter()
+                .partition(|(drain, _)| queue.is_drained(*drain));
+            waiting_for_drain = waiting;
+            for (_, drained) in done {
                 let _ = drained.send(());
             }
         }
@@ -450,9 +457,13 @@ pub(super) async fn run(
                     }
                 }
                 #[cfg(any(test, feature = "test-utils"))]
-                Command::AwaitAutomaticDrained { drained } => {
+                Command::AwaitDrained { drain, drained } => {
                     admit_found(context, &mut queue, pending(found).collect()).await;
-                    waiting_for_drain.push(drained);
+                    waiting_for_drain.push((drain, drained));
+                }
+                #[cfg(any(test, feature = "test-utils"))]
+                Command::AwaitCommandsTaken { taken } => {
+                    let _ = taken.send(());
                 }
             },
             Some(result) = settling.join_next() => match result {

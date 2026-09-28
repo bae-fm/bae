@@ -3,14 +3,17 @@
 // What the count does over the queue operations this map already exposes.
 
 /// A runtime and the bus its identification count is announced on.
-fn counted_runtime() -> (CandidateRuntime, broadcast::Receiver<ImportEvent>) {
+fn counted_runtime() -> (
+    CandidateRuntime,
+    tokio::sync::mpsc::UnboundedReceiver<ImportEvent>,
+) {
     let runtime = CandidateRuntime::default();
     let bus = crate::import::ImportEventBus::new(64, runtime.clone());
-    (runtime, bus.subscribe())
+    (runtime, bus.every_event())
 }
 
 /// Every count announced since the last read, in order.
-fn counts(events: &mut broadcast::Receiver<ImportEvent>) -> Vec<(u32, u32)> {
+fn counts(events: &mut tokio::sync::mpsc::UnboundedReceiver<ImportEvent>) -> Vec<(u32, u32)> {
     let mut counts = Vec::new();
     loop {
         match events.try_recv() {
@@ -18,7 +21,7 @@ fn counts(events: &mut broadcast::Receiver<ImportEvent>) -> Vec<(u32, u32)> {
                 counts.push((identified, total));
             }
             Ok(_) => continue,
-            Err(broadcast::error::TryRecvError::Empty) => return counts,
+            Err(tokio::sync::mpsc::error::TryRecvError::Empty) => return counts,
             Err(error) => panic!("the import bus failed while draining: {error}"),
         }
     }

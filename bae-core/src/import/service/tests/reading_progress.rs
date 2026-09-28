@@ -1,8 +1,6 @@
 #[tokio::test]
 async fn reading_progress_advances_while_coven_prepares_a_dominant_file() {
-    let mut test = setup_import_service().await;
-    test.service.event_tx =
-        crate::import::ImportEventBus::new(1024, crate::import::CandidateRuntime::default());
+    let test = setup_import_service().await;
     // The import under test commits a draft it was handed, not one the folder's
     // tags wrote: the pre-fill would give the candidate a file-metadata draft whose
     // stored reading this import is not carrying.
@@ -22,7 +20,7 @@ async fn reading_progress_advances_while_coven_prepares_a_dominant_file() {
         store_scanned_candidate(&test, &folder, "Reading Progress Candidate").await;
     let service = &test.service;
 
-    let mut events = service.event_tx.subscribe();
+    let mut events = service.event_tx.every_event();
     service
         .import_cancels
         .register(&candidate_key, "import-reading-progress");
@@ -56,7 +54,7 @@ async fn reading_progress_advances_while_coven_prepares_a_dominant_file() {
                 ..
             }) => reading_percents.push(percent),
             Ok(_) => {}
-            Err(tokio::sync::broadcast::error::TryRecvError::Empty) => break,
+            Err(tokio::sync::mpsc::error::TryRecvError::Empty) => break,
             Err(error) => panic!("import progress event stream failed: {error}"),
         }
     }

@@ -39,13 +39,19 @@ async fn a_request_on_a_waiting_candidate_takes_the_next_slot() {
         .expect("one candidate is over the cap and waiting")
         .clone();
     let waiting_key = waiting.to_string_lossy().into_owned();
-    // Subscribed here, so the only states this reads are the requested run's.
-    let mut events = fixture.import.subscribe_events();
+    // Read from here, so the first state the waiting candidate reports is the
+    // requested run's.
+    let mut events = fixture.import.every_event_for_test();
 
     fixture.start_explicit_lookup(&waiting);
 
     // Still waiting: every slot is held, and a request is not a fifth one.
-    tokio::time::sleep(Duration::from_millis(300)).await;
+    tokio::time::timeout(
+        Duration::from_secs(20),
+        fixture.identification().commands_taken_for_test(),
+    )
+    .await
+    .expect("the queue takes the request");
     assert_eq!(
         fixture.identification_status(&waiting_key),
         Some(crate::import::IdentificationStatus::Queued),
@@ -80,7 +86,7 @@ async fn a_request_on_a_waiting_candidate_takes_the_next_slot() {
 
 /// The priority the next run of `key` reports.
 async fn await_run_priority(
-    events: &mut tokio::sync::broadcast::Receiver<ImportEvent>,
+    events: &mut tokio::sync::mpsc::UnboundedReceiver<ImportEvent>,
     key: &str,
 ) -> CallPriority {
     tokio::time::timeout(Duration::from_secs(20), async {
@@ -101,7 +107,7 @@ async fn await_run_priority(
         }
     })
     .await
-    .expect("a run of the candidate broadcasts a state")
+    .expect("a run of the candidate reports a state")
 }
 
 /// A request that supersedes an automatic run keeps the rest of the identity
@@ -249,7 +255,7 @@ async fn a_requested_run_is_counted() {
         .unwrap();
     fixture.scan(1).await;
 
-    let mut events = fixture.import.subscribe_events();
+    let mut events = fixture.import.every_event_for_test();
     fixture.start_explicit_lookup(&dir);
     fixture.await_identified_row(&dir).await;
 

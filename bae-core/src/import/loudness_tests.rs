@@ -16,7 +16,7 @@ fn sink_with(total: Option<u64>, done: u64, errors: u32) -> LoudnessProgressSink
 #[test]
 fn measured_frames_control_progress_value_and_determinacy() {
     let event_tx = crate::import::ImportEventBus::new(16, crate::import::CandidateRuntime::default());
-    let mut rx = event_tx.subscribe();
+    let mut rx = event_tx.every_event();
 
     // 100 frames of earlier tracks are done; this track has measured 450 of
     // its 900.
@@ -216,7 +216,7 @@ fn standalone_track(track_id: &str, path: &std::path::Path) -> TrackFile {
 
 /// The whole-percent moves one loudness pass reported, in order.
 fn loudness_percents(
-    rx: &mut tokio::sync::broadcast::Receiver<crate::import::handle::ImportEvent>,
+    rx: &mut tokio::sync::mpsc::UnboundedReceiver<crate::import::handle::ImportEvent>,
 ) -> Vec<u8> {
     let mut percents = Vec::new();
     while let Ok(event) = rx.try_recv() {
@@ -427,7 +427,7 @@ async fn measure_loudness_computes_track_and_album_values() {
 async fn measure_loudness_progress_weights_tracks_by_frames() {
     crate::audio_codec::init();
     let event_tx = crate::import::ImportEventBus::new(32, crate::import::CandidateRuntime::default());
-    let mut rx = event_tx.subscribe();
+    let mut rx = event_tx.every_event();
     let path = cue_flac_fixture("03 Test Artist - Track Three (Brown Noise).flac");
     let mut audio_formats = vec![
         audio_format("track-0", "af-0"),

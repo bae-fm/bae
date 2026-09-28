@@ -275,10 +275,9 @@ async fn wait_for_multi_disc_cue_ape_import_ready(
     match destination {
         ImportDestination::Local => wait_for_import_complete(progress_rx).await,
         ImportDestination::Remote { .. } => {
-            let (release_id, album_id) = wait_for_remote_upload_queued(progress_rx).await;
-            // The connected store may still be completing its initial snapshot.
-            // Bound a stuck transition without imposing a latency guarantee on
-            // that cycle plus the import's publication.
+            let (release_id, album_id) = wait_for_import_complete(progress_rx).await;
+            // The store may still be finishing its first snapshot; the guard
+            // fails a stuck upload rather than timing one.
             timeout(Duration::from_secs(60), async {
                 loop {
                     let release = library_manager
@@ -310,23 +309,6 @@ async fn wait_for_multi_disc_cue_ape_import_ready(
             (release_id, album_id)
         }
     }
-}
-
-async fn wait_for_remote_upload_queued(
-    progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<bae_core::import::ImportProgress>,
-) -> (String, String) {
-    while let Some(progress) = progress_rx.recv().await {
-        match progress {
-            bae_core::import::ImportProgress::RemoteUploadQueued { id, album_id, .. } => {
-                return (id, album_id)
-            }
-            bae_core::import::ImportProgress::Failed { error, .. } => {
-                panic!("Import failed: {}", error);
-            }
-            _ => {}
-        }
-    }
-    panic!("Progress channel closed without remote upload being queued");
 }
 
 /// Regression: multi-disc CUE/APE imports must link each track to its OWN disc's

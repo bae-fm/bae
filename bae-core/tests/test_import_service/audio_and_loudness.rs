@@ -1,4 +1,5 @@
-/// 3. Local folder import: album, release, tracks all in DB, files stay in place.
+/// A folder import stores a local release and its tracks and leaves the files
+/// where they were.
 #[tokio::test]
 async fn local_folder_import() {
     support::tracing_init();
@@ -32,8 +33,7 @@ async fn local_folder_import() {
     let mut progress_rx = f.handle.subscribe_import(import_id);
     let (release_id, _album_id) = support::wait_for_import_complete(&mut progress_rx).await;
 
-    // Verify release in DB: local (not remote), with its files registered as
-    // coven external refs at their in-place import location.
+    // The release's files resolve to the folder they were imported from.
     let release = f.db.find_release_by_id(&release_id).await.unwrap().unwrap();
     assert!(!release.remote);
     let files = f.db.get_files_for_release(&release_id).await.unwrap();
@@ -45,18 +45,15 @@ async fn local_folder_import() {
         .unwrap();
     assert_eq!(local_path.parent().unwrap(), album_dir);
 
-    // Verify tracks
     let tracks = f.db.get_tracks_for_release(&release_id).await.unwrap();
     assert_eq!(tracks.len(), 3);
     assert_eq!(tracks[0].title, "Track One");
     assert_eq!(tracks[1].title, "Track Two");
     assert_eq!(tracks[2].title, "Track Three");
 
-    // Verify files
     let files = f.db.get_files_for_release(&release_id).await.unwrap();
     assert_eq!(files.len(), 3);
 
-    // Original files still in place (local)
     assert!(album_dir.join("01 Track One.flac").exists());
     assert!(album_dir.join("02 Track Two.flac").exists());
     assert!(album_dir.join("03 Track Three.flac").exists());
@@ -69,7 +66,7 @@ async fn import_progress_names_every_operation_before_loudness() {
     support::tracing_init();
 
     let f = ImportFixture::new().await;
-    let mut events = f.handle.subscribe_events();
+    let mut events = f.handle.every_event_for_test();
 
     let album_dir = f.temp_path().join("album");
     let expected_candidate_key = album_dir.to_string_lossy().into_owned();
@@ -148,7 +145,6 @@ async fn import_progress_names_every_operation_before_loudness() {
     );
 }
 
-/// 4. Import produces correct audio format records.
 #[tokio::test]
 async fn import_produces_audio_format_records() {
     support::tracing_init();
@@ -178,7 +174,6 @@ async fn import_produces_audio_format_records() {
     let tracks = f.db.get_tracks_for_release(&release_id).await.unwrap();
     assert_eq!(tracks.len(), 1);
 
-    // Check audio format was recorded for the track
     let format =
         f.db.find_audio_format_by_track_id(&tracks[0].id)
             .await
@@ -247,9 +242,8 @@ async fn exact_metadata_import_stores_dsd_audio_format() {
     }
 }
 
-/// With every track length known, the loudness pass reports a continuous
-/// percent (0 → 100) as it scans, moving ~0.1s of audio at a time rather than
-/// once per track, so the import UI bar advances during a track's measure span.
+/// With every track length known, the loudness pass reports its percent
+/// several times within each track, rising to 100.
 #[tokio::test]
 async fn loudness_pass_emits_within_track_progress() {
     let f = ImportFixture::new().await;
@@ -262,9 +256,8 @@ async fn loudness_pass_emits_within_track_progress() {
     let release = discogs_release("Loudness Album", &["Track One", "Track Two", "Track Three"]);
     let release_id_key = seed_discogs_test_release(f.library_manager.providers(), release);
 
-    // Subscribe to the full import event stream before the import runs; the
-    // 1024-slot broadcast buffer holds every tick until we drain it below.
-    let mut event_rx = f.handle.subscribe_events();
+    // Read from before the import starts, so no percent is missed.
+    let mut event_rx = f.handle.every_event_for_test();
 
     let album_dir = f.temp_path().join("album");
     let expected_candidate_key = album_dir.to_string_lossy().into_owned();
@@ -291,8 +284,6 @@ async fn loudness_pass_emits_within_track_progress() {
     let mut progress_rx = f.handle.subscribe_import(import_id);
     let _ = support::wait_for_import_complete(&mut progress_rx).await;
 
-    // Drain the buffered events; keep our candidate's loudness percents in
-    // arrival order.
     let mut percents: Vec<u8> = Vec::new();
     while let Ok(event) = event_rx.try_recv() {
         if let ImportEvent::ImportProgress {
@@ -306,10 +297,7 @@ async fn loudness_pass_emits_within_track_progress() {
         }
     }
 
-    // Three tracks measured ~0.1s at a time → far more moves than one per
-    // track, so the bar creeps within each track instead of stepping. The
-    // percent is the overall scan: monotonic, and reaching 100 so the bar always
-    // completes.
+    // More reports than tracks means the percent moves within a track.
     assert!(
         percents.len() > 4,
         "within-track measurement moves the percent more than once per track: {percents:?}",
@@ -323,17 +311,13 @@ async fn loudness_pass_emits_within_track_progress() {
 
 /// Interleaved-stereo 1 kHz sine at `amplitude` (fraction of full scale).
 ///
-/// When `spikes` is set, a single full-scale sample is injected every 0.1 s.
-/// These raise the measured true peak to ~1.0 without moving the integrated
-/// loudness (they're far too sparse to form a gating block), which is exactly
-/// the high-crest-factor signal needed to make the playback peak clamp engage:
-/// a quiet track that nonetheless can't be boosted past full scale. A pure sine
-/// can never demonstrate the clamp, because its peak and RMS scale together.
+/// `spikes` adds one full-scale sample every 0.1 s: too sparse to move the
+/// loudness, but it raises the peak to ~1.0, so a quiet track still cannot be
+/// boosted past full scale. A pure sine cannot show the playback peak clamp,
+/// because its peak and loudness scale together.
 ///
-/// Samples are full-range i32 PCM; the FLAC encoder writes their high 16 bits.
-/// A small deterministic dither keeps the stream from compressing below the
-/// import's FLAC truncation check (file must be >= 10% of raw PCM); the dither
-/// sits ~60 dB down, moving neither the loudness nor the peak.
+/// The FLAC encoder keeps each sample's high 16 bits. The dither sits ~60 dB
+/// down, moving neither the loudness nor the peak.
 fn sine(amplitude: f64, sample_rate: u32, secs: f64, spikes: bool) -> Vec<i32> {
     use std::f64::consts::PI;
     let n = (sample_rate as f64 * secs) as usize;
@@ -372,15 +356,9 @@ fn write_flac(path: &Path, samples: &[i32], sample_rate: u32) {
     fs::write(path, bytes).unwrap();
 }
 
-/// Loudness normalization, end to end: import two tracks of deliberately
-/// different loudness, confirm the stored per-track measurements differ, and
-/// confirm the gain each track derives at playback reflects its own loudness
-/// (the quieter track is boosted more) with the peak clamp engaging on a quiet
-/// track that nonetheless peaks near full scale.
-///
-/// This is the load-bearing test for the feature: it exercises the real import
-/// measurement path (`ImportService` → `measure_loudness`) and the real playback
-/// derivation (`ResolvedTrackAudio::replay_gain_linear`), not reconstructions.
+/// Two tracks of different loudness are measured at import, and at playback the
+/// quieter one gets more gain, capped by the peak clamp because it peaks near
+/// full scale. Runs the real import measurement and the real playback gain.
 #[tokio::test]
 async fn loudness_measured_at_import_drives_playback_gain() {
     let f = ImportFixture::new().await;
@@ -395,10 +373,8 @@ async fn loudness_measured_at_import_drives_playback_gain() {
     let album_dir = f.temp_path().join("album");
     fs::create_dir_all(&album_dir).unwrap();
     let sr = 44_100;
-    // Quiet track: a low-amplitude sine (so it wants a boost toward the target)
-    // with sparse full-scale spikes that push its true peak to ~1.0 — the
-    // crest factor that makes the playback clamp engage. Loud track: a steady
-    // half-scale sine, clearly louder and pulled down toward the target.
+    // Quiet track: a low sine with full-scale spikes, so it wants a boost but
+    // peaks near full scale. Loud track: a steady half-scale sine.
     write_flac(
         &album_dir.join("01 Quiet Track.flac"),
         &sine(0.03, sr, 4.0, true),
@@ -423,7 +399,7 @@ async fn loudness_measured_at_import_drives_playback_gain() {
     let mut progress_rx = f.handle.subscribe_import(import_id);
     let (release_id, _) = support::wait_for_import_complete(&mut progress_rx).await;
 
-    // ── Stored measurements differ and reflect the two tracks' loudness ──
+    // ── Stored measurements ──
     let tracks = f.db.get_tracks_for_release(&release_id).await.unwrap();
     assert_eq!(tracks.len(), 2);
     let quiet = tracks.iter().find(|t| t.title == "Quiet Track").unwrap();
@@ -450,8 +426,7 @@ async fn loudness_measured_at_import_drives_playback_gain() {
         loud_lufs > quiet_lufs + 10.0,
         "loud track ({loud_lufs} LUFS) should be clearly louder than quiet ({quiet_lufs} LUFS)"
     );
-    // The quiet track's late full-scale burst pushes its peak near 1.0; the
-    // steady half-scale loud track peaks near 0.5.
+    // The quiet track's spikes put its peak near 1.0; the loud track's near 0.5.
     let quiet_peak = quiet_fmt
         .track_peak_linear
         .expect("quiet track measured a peak");
@@ -467,10 +442,8 @@ async fn loudness_measured_at_import_drives_playback_gain() {
         "loud track's steady sine should peak near 0.5: {loud_peak}"
     );
 
-    // Album loudness was written to the release row from the combined meters.
-    // EBU R128 album loudness is the gated integration over both tracks, so the
-    // louder track dominates: the album sits in [quiet, loud] and lands near the
-    // loud track, never below the quiet one.
+    // Album loudness is measured over both tracks together, so it falls between
+    // the two track loudnesses.
     let release = f.db.find_release_by_id(&release_id).await.unwrap().unwrap();
     let album_lufs = release
         .album_loudness_lufs
@@ -485,7 +458,7 @@ async fn loudness_measured_at_import_drives_playback_gain() {
         "album peak {album_peak} should be the max of the tracks' peaks ({quiet_peak})"
     );
 
-    // ── Playback gain reflects each track's own loudness (mode = Track) ──
+    // ── Playback gain per track ──
     let quiet_audio = f
         .library_manager
         .resolve_track_audio(&quiet.id)
@@ -500,25 +473,21 @@ async fn loudness_measured_at_import_drives_playback_gain() {
     let quiet_gain = quiet_audio.replay_gain_linear(ReplayGainMode::Track);
     let loud_gain = loud_audio.replay_gain_linear(ReplayGainMode::Track);
 
-    // Off is always unity, regardless of measurements.
     assert_eq!(quiet_audio.replay_gain_linear(ReplayGainMode::Off), 1.0);
 
-    // The quieter track wants more boost; the louder track is attenuated toward
-    // the target. So the quiet track's gain exceeds the loud track's.
     assert!(
         quiet_gain > loud_gain,
         "quiet track gain {quiet_gain} should exceed loud track gain {loud_gain}"
     );
-    // The loud track at ~-9 LUFS is pulled DOWN toward -18 (gain < 1, no clamp).
+    // The loud track is above the -18 LUFS target, so it is turned down.
     assert!(
         loud_gain < 1.0,
         "loud track should be attenuated toward the target: {loud_gain}"
     );
 
-    // ── Peak clamp engages for the quiet, near-full-scale track ──
-    // Unclamped, the quiet track's gain would be 10^((-18 - L)/20), a large
-    // boost. With a peak ~1.0 the clamp caps it at ~1/peak ≈ 1.0, so the applied
-    // gain must equal the clamp, NOT the (much larger) loudness-only gain.
+    // ── Peak clamp ──
+    // The quiet track's gain is capped at 1/peak, well below the boost its
+    // loudness alone asks for.
     let unclamped = 10f64.powf((-18.0 - quiet_lufs) / 20.0) as f32;
     let clamp = (1.0 / quiet_peak) as f32;
     assert!(
@@ -531,10 +500,9 @@ async fn loudness_measured_at_import_drives_playback_gain() {
     );
 }
 
-/// The loudness pass is the longest phase of an import, and the candidate row
-/// renders `ImportProgress::Progress`'s percent. So the pass reports its scan
-/// on that channel too — coarsely, on whole-percent moves — and the row's bar
-/// advances instead of sitting at 0 until the phase ends.
+/// The candidate row shows `ImportProgress::Progress`'s percent, so the
+/// loudness pass, an import's longest phase, reports each whole-percent move
+/// rather than leaving the bar at 0 until it ends.
 #[tokio::test]
 async fn loudness_pass_advances_the_candidate_rows_percent() {
     let f = ImportFixture::new().await;
@@ -546,7 +514,7 @@ async fn loudness_pass_advances_the_candidate_rows_percent() {
     let release = discogs_release("Loudness Album", &["Track One", "Track Two", "Track Three"]);
     let release_id_key = seed_discogs_test_release(f.library_manager.providers(), release);
 
-    let mut event_rx = f.handle.subscribe_events();
+    let mut event_rx = f.handle.every_event_for_test();
 
     let album_dir = f.temp_path().join("album");
     let expected_candidate_key = album_dir.to_string_lossy().into_owned();

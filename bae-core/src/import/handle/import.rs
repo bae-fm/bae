@@ -100,10 +100,9 @@ impl ImportServiceHandle {
         Ok((read.candidate, read.snapshot))
     }
 
-    /// The candidate's file tags as its files hold them now: the stored
-    /// reading when every audio file is still the one it was read from, a new
-    /// reading otherwise. Nothing is stored — the caller decides whether and
-    /// under which check the reading lands.
+    /// The stored reading while the candidate and its audio files are unchanged,
+    /// a new reading otherwise. Stores nothing; the caller decides whether the
+    /// reading is kept.
     pub(super) async fn read_file_tag_snapshot(
         &self,
         candidate_key: &str,
@@ -164,8 +163,7 @@ impl ImportServiceHandle {
         })
     }
 
-    /// Enqueue an import of what the candidate stores, to where the stored
-    /// storage choice says, ending the candidate's identification.
+    /// Queue an import of the candidate as stored, ending its identification.
     pub async fn start_import(
         &self,
         candidate_key: &str,
@@ -179,9 +177,8 @@ impl ImportServiceHandle {
         .await
     }
 
-    /// Import one row of a bulk import of a selection: the same import as
-    /// [`Self::start_import`], refused for a candidate identification is still
-    /// answering, checked under the claim's lock as the row is reached.
+    /// [`Self::start_import`] for one row of a bulk import, refused while that
+    /// row is being identified.
     pub async fn import_selected(
         &self,
         candidate_key: &str,
@@ -196,8 +193,8 @@ impl ImportServiceHandle {
     }
 
     /// [`Self::start_import`] for a candidate its automatic run just settled as
-    /// auto-importable. Nobody sees the refusal, so it is recorded as the candidate's
-    /// failed import, unless another import already owns the candidate.
+    /// auto-importable. Nobody sees a refusal, so it is recorded as the
+    /// candidate's failed import.
     pub(crate) async fn import_identified(
         &self,
         candidate_key: &str,
@@ -210,8 +207,8 @@ impl ImportServiceHandle {
                 .await;
             match &started {
                 Ok(_) => {}
-                // Another import owns the candidate, or already made it a
-                // release: nothing failed, and that import says how it went.
+                // Another import owns the candidate or already made it a
+                // release; that import reports how it went.
                 Err(
                     crate::import::ImportError::CandidateImportInProgress
                     | crate::import::ImportError::CandidateAlreadyImported,
@@ -223,8 +220,7 @@ impl ImportServiceHandle {
         .await
     }
 
-    /// Record a refused start as `candidate_key`'s failed import. A candidate
-    /// the scan no longer lists has no row to show it on.
+    /// Record a refused start as `candidate_key`'s failed import.
     async fn record_failed_start(&self, candidate_key: &str, error: &crate::import::ImportError) {
         let candidate = match self.get_release_candidate(candidate_key).await {
             Ok(Some(candidate)) => candidate,
@@ -279,8 +275,8 @@ impl ImportServiceHandle {
                 detail: format!("{candidate_key} is not a scanned folder candidate"),
             });
         };
-        // Whoever asks, a candidate an import already owns, or whose files are
-        // already a release, is not imported again.
+        // Refused for every request kind: an import owns it or its files are
+        // already a release.
         self.candidate_standing(candidate_key, &candidate)
             .await?
             .editable()?;
@@ -369,11 +365,10 @@ impl ImportServiceHandle {
             user_edit: None,
         };
 
-        // The claim is taken under the commit lock the standing was read
-        // under, so no second import of these files can be claimed between.
+        // Claimed under the lock the standing was read under, so no second
+        // import can claim these files in between.
         self.runtime.claim_for_import(candidate_key, &import_id)?;
-        // The claim is the point the candidate stops being identification's to
-        // answer, so the run it had going ends here.
+        // Once claimed, the candidate is not identification's to answer.
         self.cancel_identification(candidate_key);
         drop(commit);
         self.send_claimed_command(command, expectation).await?;
@@ -401,10 +396,9 @@ impl ImportServiceHandle {
         Ok(())
     }
 
-    /// Validate a submitted Discogs key against Discogs, then persist it only if
-    /// it isn't outright rejected. Validating first means a typo (401) never
-    /// stores a bad key, while an offline/rate-limited save still stores the key
-    /// optimistically so the user isn't blocked. See `DiscogsSaveOutcome`.
+    /// Check a submitted Discogs key against Discogs and store it unless
+    /// Discogs rejects it; a key that could not be checked is stored as
+    /// unvalidated.
     pub async fn save_discogs_token(
         &self,
         token: &str,
@@ -428,9 +422,7 @@ impl ImportServiceHandle {
         }
     }
 
-    /// Write the key to the keyring and record its validation in config, as one
-    /// atomic operation. The shared persist path for the two outcomes that keep
-    /// the key.
+    /// Store the key and record its validation.
     async fn persist_discogs_key(
         &self,
         token: &str,
@@ -444,10 +436,8 @@ impl ImportServiceHandle {
             })
     }
 
-    /// Re-check a stored `Unvalidated` key when possible (app launch,
-    /// settings-tab open). No-op when no key is stored or the key is already
-    /// settled `Valid`/`Rejected`. A 401 marks it `Rejected`; success confirms
-    /// it `Valid`; network/rate-limit leaves it `Unvalidated` to retry later.
+    /// Check a stored `Unvalidated` key against Discogs again; any other
+    /// state, or no key, is left alone.
     pub async fn revalidate_discogs_token(&self) -> Result<(), crate::import::ImportError> {
         use crate::config::DiscogsValidation;
 
@@ -460,8 +450,7 @@ impl ImportServiceHandle {
             .map_err(Into::into)
     }
 
-    /// Remove the Discogs API token from the OS keyring and clear the
-    /// stored-key hint.
+    /// Remove the stored Discogs key and its validation.
     pub async fn remove_discogs_token(&self) -> Result<(), crate::import::ImportError> {
         self.library_manager
             .clear_discogs_key()
@@ -471,8 +460,8 @@ impl ImportServiceHandle {
             })
     }
 
-    /// Test helper that stores the scanned candidate an import requires, queues
-    /// the command, and returns its import ID for progress tracking.
+    /// Store `command`'s folder as a scanned candidate carrying the command's
+    /// metadata and cover, then queue its import and return the import ID.
     #[cfg(all(
         any(test, feature = "test-utils"),
         not(any(target_os = "ios", target_os = "android"))
@@ -640,15 +629,9 @@ impl ImportServiceHandle {
             .await
     }
 
-    /// The one way an import command reaches the worker, and so the one place
-    /// the candidate is claimed for it.
-    ///
-    /// The claim goes first and is the reason this is async: it is taken under
-    /// the folder-state commit lock, so an identification verdict for this
-    /// candidate either landed before the user committed to importing it or is
-    /// refused. A command that never reaches the worker releases the claim
-    /// again rather than leaving a candidate owned by an import that does not
-    /// exist.
+    /// Claim the candidate under the folder-state commit lock, so an
+    /// identification verdict for it either landed first or is refused, then
+    /// queue the import.
     #[cfg(any(test, feature = "test-utils"))]
     async fn send_command_with_expectation(
         &self,
@@ -664,6 +647,8 @@ impl ImportServiceHandle {
         Ok(import_id)
     }
 
+    /// A command the worker cannot take releases its claim, so no candidate is
+    /// left owned by an import that does not exist.
     async fn send_claimed_command(
         &self,
         command: ImportCommand,
@@ -689,48 +674,32 @@ impl ImportServiceHandle {
         Ok(())
     }
 
-    /// Test helper: yield every `ImportProgress` whose `import_id` matches, for a
-    /// test that drives one import and asserts on its progress sequence.
-    /// Production consumers read the unified stream via `subscribe_events`.
+    /// Every `ImportProgress` of `import_id` from its start, none dropped.
     #[cfg(any(test, feature = "test-utils"))]
     pub fn subscribe_import(
         &self,
         import_id: String,
     ) -> tokio::sync::mpsc::UnboundedReceiver<ImportProgress> {
-        let mut event_rx = self.event_tx.subscribe();
+        let mut events = self.event_tx.every_event_from_start();
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         self.runtime_handle.spawn(async move {
-            loop {
-                match event_rx.recv().await {
-                    Ok(ImportEvent::ImportProgress { progress, .. }) => {
-                        if tx.is_closed() {
-                            break;
-                        }
-                        if progress.import_id() == import_id && tx.send(progress).is_err() {
-                            break;
-                        }
+            while let Some(event) = events.recv().await {
+                if tx.is_closed() {
+                    break;
+                }
+                if let ImportEvent::ImportProgress { progress, .. } = event {
+                    if progress.import_id() == import_id && tx.send(progress).is_err() {
+                        break;
                     }
-                    Ok(_) => {
-                        if tx.is_closed() {
-                            break;
-                        }
-                    }
-                    Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
-                        warn!("Import progress lagged by {n} events");
-                        continue;
-                    }
-                    Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
                 }
             }
         });
         rx
     }
 
-    /// Cancel the import of `candidate_key`, waiting or running. It writes
-    /// nothing and records no failure: the candidate is left as it stood
-    /// before the import was asked for. An import already writing its release
-    /// completes, and saying so is the error. Nothing importing the candidate
-    /// is nothing to cancel.
+    /// Cancel the waiting or running import of `candidate_key`, leaving the
+    /// candidate as it stood before the import was asked for. An import already
+    /// writing its release finishes, and that is the error.
     pub fn cancel_import(&self, candidate_key: &str) -> Result<(), crate::import::ImportError> {
         match self.import_cancels.cancel(candidate_key) {
             CancelOutcome::NotImporting | CancelOutcome::CancelledRunning => Ok(()),
@@ -749,8 +718,8 @@ impl ImportServiceHandle {
         }
     }
 
-    /// Say an import that never reached the worker ended: the worker skips it
-    /// and so never will.
+    /// Announce the end of an import cancelled while waiting: the worker skips
+    /// it, so it never will.
     fn announce_cancelled_import(&self, candidate_key: &str, import_id: String) {
         info!("Import of {candidate_key} was cancelled before it started");
         self.event_tx.send(ImportEvent::ImportProgress {
@@ -759,8 +728,31 @@ impl ImportServiceHandle {
         });
     }
 
-    /// Subscribe to the unified event channel.
+    /// Import events from now on; a reader that falls behind misses some.
     pub fn subscribe_events(&self) -> broadcast::Receiver<ImportEvent> {
         self.event_tx.subscribe()
+    }
+
+    /// Every import event from now on, none dropped, for a test to wait on.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn every_event_for_test(&self) -> mpsc::UnboundedReceiver<ImportEvent> {
+        self.event_tx.every_event()
+    }
+
+    /// Every scan event from now on, none dropped, for a test to wait on.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn every_scan_event_for_test(&self) -> mpsc::UnboundedReceiver<ScanEvent> {
+        let mut events = self.event_tx.every_event();
+        let (reader, scan_events) = mpsc::unbounded_channel();
+        self.runtime_handle.spawn(async move {
+            while let Some(event) = events.recv().await {
+                if let ImportEvent::Scan(event) = event {
+                    if reader.send(event).is_err() {
+                        break;
+                    }
+                }
+            }
+        });
+        scan_events
     }
 }

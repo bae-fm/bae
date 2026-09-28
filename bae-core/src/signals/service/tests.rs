@@ -8,16 +8,17 @@ use std::sync::Arc;
 use std::sync::Mutex as StdMutex;
 use std::time::Duration;
 use tempfile::TempDir;
+use tokio::sync::mpsc::UnboundedReceiver;
 
 mod aborts;
 mod cancellation;
 mod cover_art_off;
 
-/// Canned text lines keyed by file name; the optional delay lets a test cancel
-/// mid-OCR.
+/// Canned text lines keyed by file name; the optional gate holds each image
+/// until the test opens it, so a test can act mid-OCR.
 struct StubAnalyzer {
     responses: StdMutex<HashMap<String, Vec<String>>>,
-    delay: Option<Duration>,
+    gate: Option<crate::test_gate::Held>,
     calls: std::sync::atomic::AtomicUsize,
 }
 
@@ -25,7 +26,7 @@ impl StubAnalyzer {
     fn new() -> Self {
         Self {
             responses: StdMutex::new(HashMap::new()),
-            delay: None,
+            gate: None,
             calls: std::sync::atomic::AtomicUsize::new(0),
         }
     }
@@ -38,8 +39,8 @@ impl StubAnalyzer {
         self
     }
 
-    fn with_delay(mut self, delay: Duration) -> Self {
-        self.delay = Some(delay);
+    fn gated(mut self, gate: crate::test_gate::Held) -> Self {
+        self.gate = Some(gate);
         self
     }
 
@@ -52,8 +53,8 @@ impl StubAnalyzer {
 impl ArtworkAnalyzer for StubAnalyzer {
     fn analyze(&self, path: &Path) -> ArtworkAnalysis {
         self.calls.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-        if let Some(delay) = self.delay {
-            std::thread::sleep(delay);
+        if let Some(gate) = &self.gate {
+            gate.pass();
         }
         let filename = path
             .file_name()
@@ -84,7 +85,7 @@ impl ArtworkAnalyzer for PanicAnalyzer {
 
 /// Drain `SignalsUpdated` events until `expected` of them arrive, or time out.
 async fn collect_signals(
-    rx: &mut broadcast::Receiver<ImportEvent>,
+    rx: &mut UnboundedReceiver<ImportEvent>,
     expected: usize,
 ) -> Vec<Signals> {
     collect_snapshots(rx, expected)
@@ -94,31 +95,33 @@ async fn collect_signals(
         .collect()
 }
 
-/// The bus carries no further `SignalsUpdated` for a while: the extraction
-/// said everything it had to say.
-async fn assert_no_more_snapshots(rx: &mut broadcast::Receiver<ImportEvent>, after: &str) {
-    let deadline = tokio::time::Instant::now() + Duration::from_millis(300);
-    loop {
-        match tokio::time::timeout_at(deadline, rx.recv()).await {
-            Err(_) => return,
-            Ok(Ok(ImportEvent::SignalsUpdated { signals, .. })) => {
-                panic!("no snapshot follows {after}, got {signals:?}")
-            }
-            Ok(Ok(_)) => continue,
-            Ok(Err(broadcast::error::RecvError::Closed)) => return,
-            Ok(Err(broadcast::error::RecvError::Lagged(_))) => continue,
+/// Wait until the run behind `watch` has ended, which drops its end.
+async fn run_ended(watch: &mut crate::signals::ExtractionWatch) {
+    tokio::time::timeout(Duration::from_secs(30), async {
+        while watch.changed().await.is_ok() {}
+    })
+    .await
+    .expect("the extraction ends");
+}
+
+/// No `SignalsUpdated` is left on `rx`: once the run has ended, the
+/// extraction said everything it had to say.
+fn assert_no_more_snapshots(rx: &mut UnboundedReceiver<ImportEvent>, after: &str) {
+    while let Ok(event) = rx.try_recv() {
+        if let ImportEvent::SignalsUpdated { signals, .. } = event {
+            panic!("no snapshot follows {after}, got {signals:?}")
         }
     }
 }
 
 /// Every snapshot with where the artwork pass was when it went out.
 async fn collect_snapshots(
-    rx: &mut broadcast::Receiver<ImportEvent>,
+    rx: &mut UnboundedReceiver<ImportEvent>,
     expected: usize,
 ) -> Vec<(Signals, ArtworkScan)> {
     let mut out = Vec::new();
     while out.len() < expected {
-        let event = tokio::time::timeout(Duration::from_secs(2), rx.recv())
+        let event = tokio::time::timeout(Duration::from_secs(30), rx.recv())
             .await
             .expect("timed out collecting events")
             .expect("channel closed");
@@ -169,11 +172,11 @@ async fn make_library_manager() -> (crate::library::LibraryManager, TempDir) {
 async fn make_service() -> (
     ExtractionServiceHandle,
     ImportEventBus,
-    broadcast::Receiver<ImportEvent>,
+    UnboundedReceiver<ImportEvent>,
     TempDir,
 ) {
     let tx = ImportEventBus::new(64, crate::import::CandidateRuntime::default());
-    let rx = tx.subscribe();
+    let rx = tx.every_event();
     let (library_manager, lib_tmp) = make_library_manager().await;
     let handle = ExtractionService::start(
         tokio::runtime::Handle::current(),
@@ -184,25 +187,27 @@ async fn make_service() -> (
 }
 
 /// Start a service with `analyzer` registered and an extraction running over
-/// `folder` as `"cand-1"`. The `TempDir` must outlive the service.
+/// `folder` as `"cand-1"`, with the watch its run holds open until it ends.
+/// The `TempDir` must outlive the service.
 async fn start_signals(
     folder: PathBuf,
     analyzer: Arc<dyn ArtworkAnalyzer>,
 ) -> (
     ExtractionServiceHandle,
-    broadcast::Receiver<ImportEvent>,
+    UnboundedReceiver<ImportEvent>,
+    crate::signals::ExtractionWatch,
     TempDir,
 ) {
     let (handle, _tx, rx, lib_tmp) = make_service().await;
     handle.register_analyzer(analyzer);
-    handle.start(
+    let run = handle.start(
         IdentifyRunId::for_test(1),
         "cand-1".to_string(),
         folder_source(folder),
         CallPriority::Interactive,
         crate::config::IdentificationSteps::default(),
     );
-    (handle, rx, lib_tmp)
+    (handle, rx, run, lib_tmp)
 }
 
 fn fixture_flac() -> Vec<u8> {
@@ -276,7 +281,7 @@ async fn emits_fast_pass_then_ocr_then_settled() {
             .with("Cover.jpg", vec!["WPCR-80001".to_string()])
             .with("Back.jpg", vec!["Extra Line".to_string()]),
     );
-    let (_handle, mut rx, _lib_tmp) = start_signals(folder.clone(), analyzer).await;
+    let (_handle, mut rx, _run, _lib_tmp) = start_signals(folder.clone(), analyzer).await;
 
     // The fast pass, one per image but the last, then the settled snapshot.
     let snapshots = collect_snapshots(&mut rx, 3).await;
@@ -355,7 +360,7 @@ async fn no_artwork_emits_one_settled_snapshot() {
     let folder = build_release(&tmp, "Artist Name - Album Title", &[], &[]);
 
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(StubAnalyzer::new());
-    let (_handle, mut rx, _lib_tmp) = start_signals(folder, analyzer).await;
+    let (_handle, mut rx, mut run, _lib_tmp) = start_signals(folder, analyzer).await;
 
     // Nothing is scanned, so the settled snapshot is the only one.
     let signals = collect_signals(&mut rx, 1).await;
@@ -370,7 +375,8 @@ async fn no_artwork_emits_one_settled_snapshot() {
         .free_text()
         .iter()
         .any(|s| s.contains("Artist Name") || s.contains("Album Title")));
-    assert_no_more_snapshots(&mut rx, "a folder with nothing to scan").await;
+    run_ended(&mut run).await;
+    assert_no_more_snapshots(&mut rx, "a folder with nothing to scan");
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -390,7 +396,7 @@ FILE "audio.flac" WAVE
     fs::write(folder.join("Album.cue"), cue).unwrap();
 
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(StubAnalyzer::new());
-    let (_handle, mut rx, _lib_tmp) = start_signals(folder, analyzer).await;
+    let (_handle, mut rx, _run, _lib_tmp) = start_signals(folder, analyzer).await;
 
     // No artwork, so the settled snapshot is the only one.
     let signals = collect_signals(&mut rx, 1).await;
@@ -426,7 +432,7 @@ FILE \"audio.flac\" WAVE\n  \
     fs::write(folder.join("Album.cue"), cue).unwrap();
 
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(StubAnalyzer::new());
-    let (_handle, mut rx, _lib_tmp) = start_signals(folder, analyzer).await;
+    let (_handle, mut rx, _run, _lib_tmp) = start_signals(folder, analyzer).await;
 
     let signals = collect_signals(&mut rx, 1).await;
     let final_signals = &signals[signals.len() - 1];
@@ -458,7 +464,7 @@ FILE \"audio.flac\" WAVE\n  \
     fs::write(folder.join("Album.cue"), cue).unwrap();
 
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(StubAnalyzer::new());
-    let (_handle, mut rx, _lib_tmp) = start_signals(folder, analyzer).await;
+    let (_handle, mut rx, _run, _lib_tmp) = start_signals(folder, analyzer).await;
 
     let signals = collect_signals(&mut rx, 1).await;
     let final_signals = &signals[signals.len() - 1];
@@ -483,7 +489,7 @@ FILE \"audio.flac\" WAVE\n  \
     fs::write(folder.join("Album.cue"), cue).unwrap();
 
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(StubAnalyzer::new());
-    let (_handle, mut rx, _lib_tmp) = start_signals(folder, analyzer).await;
+    let (_handle, mut rx, _run, _lib_tmp) = start_signals(folder, analyzer).await;
 
     let signals = collect_signals(&mut rx, 1).await;
     assert_eq!(
@@ -517,7 +523,7 @@ FILE \"audio.flac\" WAVE\n  \
             "5 012345 678901".to_string(),
         ],
     ));
-    let (_handle, mut rx, _lib_tmp) = start_signals(folder, analyzer).await;
+    let (_handle, mut rx, _run, _lib_tmp) = start_signals(folder, analyzer).await;
 
     // The fast pass, then the settled snapshot after the one image.
     let signals = collect_signals(&mut rx, 2).await;
@@ -560,7 +566,7 @@ async fn the_bars_and_their_printed_digits_are_one_sighting() {
     fs::write(folder.join("audio.flac"), fixture_flac()).unwrap();
     fs::write(folder.join("Back.jpg"), minimal_jpeg()).unwrap();
 
-    let (_handle, mut rx, _lib_tmp) = start_signals(folder, Arc::new(BarsAndDigits)).await;
+    let (_handle, mut rx, _run, _lib_tmp) = start_signals(folder, Arc::new(BarsAndDigits)).await;
 
     let signals = collect_signals(&mut rx, 2).await;
     assert_eq!(
@@ -629,7 +635,7 @@ async fn text_files_feed_free_text() {
     );
 
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(StubAnalyzer::new());
-    let (_handle, mut rx, _lib_tmp) = start_signals(folder, analyzer).await;
+    let (_handle, mut rx, _run, _lib_tmp) = start_signals(folder, analyzer).await;
 
     let signals = collect_signals(&mut rx, 1).await;
     let final_free_text = signals[signals.len() - 1].text.free_text();
@@ -651,7 +657,7 @@ async fn no_analyzer_leaves_artwork_absent_rather_than_scanned() {
     // No `register_analyzer` — this is Windows and Linux today.
     let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
 
-    handle.start(
+    let mut run = handle.start(
         IdentifyRunId::for_test(1),
         "cand-1".to_string(),
         folder_source(folder),
@@ -667,7 +673,8 @@ async fn no_analyzer_leaves_artwork_absent_rather_than_scanned() {
         BarcodeSignal::Absent,
         "artwork is not a barcode source without an analyzer",
     );
-    assert_no_more_snapshots(&mut rx, "a scan that never ran").await;
+    run_ended(&mut run).await;
+    assert_no_more_snapshots(&mut rx, "a scan that never ran");
 }
 
 /// A CUE `CATALOG` barcode needs no analyzer and settles without one.
@@ -731,7 +738,7 @@ FILE "01 - Track.flac" WAVE
         "Artist Alpha - Back Cover.jpg",
         vec!["Made in US · 1976".to_string()],
     ));
-    let (_handle, mut rx, _lib_tmp) = start_signals(folder, analyzer).await;
+    let (_handle, mut rx, _run, _lib_tmp) = start_signals(folder, analyzer).await;
 
     let signals = collect_signals(&mut rx, 2).await;
     let pool = &signals[signals.len() - 1].text_pool;
@@ -770,7 +777,7 @@ async fn a_line_read_twice_off_one_surface_is_pooled_once() {
             "Atlantic Records".to_string(),
         ],
     ));
-    let (_handle, mut rx, _lib_tmp) = start_signals(folder, analyzer).await;
+    let (_handle, mut rx, _run, _lib_tmp) = start_signals(folder, analyzer).await;
 
     let signals = collect_signals(&mut rx, 2).await;
     let pool = &signals[signals.len() - 1].text_pool;
@@ -790,12 +797,12 @@ async fn an_unchanged_folder_is_not_read_again() {
     let tmp = TempDir::new().unwrap();
     let folder = build_release(&tmp, "Album Title [XX34b]", &["Cover.jpg"], &[]);
     let analyzer = Arc::new(StubAnalyzer::new().with("Cover.jpg", vec!["Line One".to_string()]));
-    let (handle, mut rx, _lib_tmp) = start_signals(folder.clone(), analyzer.clone()).await;
+    let (handle, mut rx, mut first_run, _lib_tmp) = start_signals(folder.clone(), analyzer.clone()).await;
     let first = collect_snapshots(&mut rx, 2).await;
     assert!(matches!(first[1].1, ArtworkScan::Done { total: 1 }));
     assert_eq!(analyzer.calls(), 1);
 
-    handle.start(
+    let mut second_run = handle.start(
         IdentifyRunId::for_test(2),
         "cand-1".to_string(),
         folder_source(folder),
@@ -805,6 +812,8 @@ async fn an_unchanged_folder_is_not_read_again() {
     let second = collect_snapshots(&mut rx, 1).await;
     assert_eq!(second[0].0, first[1].0);
     assert!(matches!(second[0].1, ArtworkScan::Done { total: 1 }));
-    assert_no_more_snapshots(&mut rx, "the reused reading").await;
+    run_ended(&mut first_run).await;
+    run_ended(&mut second_run).await;
+    assert_no_more_snapshots(&mut rx, "the reused reading");
     assert_eq!(analyzer.calls(), 1, "no image is read again");
 }

@@ -120,6 +120,12 @@ impl ImportService {
                             } => {
                                 active_roots.remove(roots, parent, completion);
                             }
+                            #[cfg(test)]
+                            WatcherCommand::WatchReport { report, taken } => {
+                                take_watch_report(report, &library_manager, &mut active_roots)
+                                    .await;
+                                let _ = taken.send(());
+                            }
                             WatcherCommand::Shutdown { completion } => {
                                 active_roots.shutdown().await;
                                 if completion.send(()).is_err() {
@@ -182,77 +188,7 @@ impl ImportService {
                         active_roots.finish_scan(completion).await;
                     }
                     Some(result) = fs_rx.recv() => {
-                        let events = match result {
-                            Ok(events) => events,
-                            Err(errors) => {
-                                let roots = watched_roots(&library_manager).await;
-                                let mut error_paths = Vec::new();
-                                for e in errors {
-                                    error_paths.extend(e.paths.iter().cloned());
-                                    warn!("folder watcher error: {e}");
-                                }
-                                let affected = roots_for_watch_error(&error_paths, &roots);
-                                for root in affected {
-                                    active_roots.request_scan(
-                                        root,
-                                        RootScanCause::WatchError,
-                                        None,
-                                    );
-                                }
-                                continue;
-                            }
-                        };
-                        // A watch that lost track names where to start: no path,
-                        // or one holding a root, reads the whole root; one inside
-                        // a root reads that folder again.
-                        let roots = watched_roots(&library_manager).await;
-                        let mut whole: HashSet<PathBuf> = HashSet::new();
-                        for event in events.iter().filter(|event| event.need_rescan()) {
-                            if event.paths.is_empty() {
-                                whole.extend(roots.iter().cloned());
-                            }
-                            for path in &event.paths {
-                                whole.extend(
-                                    roots.iter().filter(|root| root.starts_with(path)).cloned(),
-                                );
-                            }
-                        }
-                        for root in &whole {
-                            active_roots.request_scan(
-                                root.clone(),
-                                RootScanCause::EventsDropped,
-                                None,
-                            );
-                        }
-                        let changed = changed_paths(&events);
-                        let affected = affected_roots(&changed, &roots);
-                        let summary = changed_events_summary(&events);
-                        for root in affected {
-                            if whole.contains(&root) {
-                                continue;
-                            }
-                            let under: Vec<&Path> = changed
-                                .iter()
-                                .copied()
-                                .filter(|path| path.starts_with(&root))
-                                .collect();
-                            let lost_track = events.iter().any(|event| {
-                                event.need_rescan()
-                                    && event.paths.iter().any(|path| path.starts_with(&root))
-                            });
-                            let holds = holds_its_own_release(&library_manager, &root).await;
-                            let change = root_change_of(&root, &under, holds).await;
-                            request_change(
-                                &mut active_roots,
-                                root.clone(),
-                                change,
-                                if lost_track {
-                                    RootScanCause::EventsDropped
-                                } else {
-                                    RootScanCause::FsChange(summary.clone())
-                                },
-                            );
-                        }
+                        take_watch_report(result, &library_manager, &mut active_roots).await;
                     }
                     Some((root, changes)) = checked_rx.recv() => {
                         checking.remove(&root);
@@ -329,6 +265,85 @@ impl ImportService {
             }
             });
         })
+    }
+}
+
+/// Ask for the reads a filesystem watch's report calls for.
+async fn take_watch_report(
+    report: WatchReport,
+    library_manager: &LibraryManager,
+    active_roots: &mut ActiveRoots,
+) {
+    let events = match report {
+        Ok(events) => events,
+        Err(errors) => {
+            let roots = watched_roots(library_manager).await;
+            let mut error_paths = Vec::new();
+            for e in errors {
+                error_paths.extend(e.paths.iter().cloned());
+                warn!("folder watcher error: {e}");
+            }
+            let affected = roots_for_watch_error(&error_paths, &roots);
+            for root in affected {
+                active_roots.request_scan(
+                    root,
+                    RootScanCause::WatchError,
+                    None,
+                );
+            }
+            return;
+        }
+    };
+    // A watch that lost track names where to start: no path,
+    // or one holding a root, reads the whole root; one inside
+    // a root reads that folder again.
+    let roots = watched_roots(library_manager).await;
+    let mut whole: HashSet<PathBuf> = HashSet::new();
+    for event in events.iter().filter(|event| event.need_rescan()) {
+        if event.paths.is_empty() {
+            whole.extend(roots.iter().cloned());
+        }
+        for path in &event.paths {
+            whole.extend(
+                roots.iter().filter(|root| root.starts_with(path)).cloned(),
+            );
+        }
+    }
+    for root in &whole {
+        active_roots.request_scan(
+            root.clone(),
+            RootScanCause::EventsDropped,
+            None,
+        );
+    }
+    let changed = changed_paths(&events);
+    let affected = affected_roots(&changed, &roots);
+    let summary = changed_events_summary(&events);
+    for root in affected {
+        if whole.contains(&root) {
+            continue;
+        }
+        let under: Vec<&Path> = changed
+            .iter()
+            .copied()
+            .filter(|path| path.starts_with(&root))
+            .collect();
+        let lost_track = events.iter().any(|event| {
+            event.need_rescan()
+                && event.paths.iter().any(|path| path.starts_with(&root))
+        });
+        let holds = holds_its_own_release(library_manager, &root).await;
+        let change = root_change_of(&root, &under, holds).await;
+        request_change(
+            active_roots,
+            root.clone(),
+            change,
+            if lost_track {
+                RootScanCause::EventsDropped
+            } else {
+                RootScanCause::FsChange(summary.clone())
+            },
+        );
     }
 }
 

@@ -12,7 +12,7 @@ async fn folder_scan_produces_candidates() {
     generate_album_files(&album1, &["01 Track.flac", "02 Track.flac"]);
     generate_album_files(&album2, &["01 Track.flac"]);
 
-    let mut scan_rx = f.handle.subscribe_folder_scan_events();
+    let mut scan_rx = f.handle.every_scan_event_for_test();
     f.handle
         .add_watched_folder(collection.to_string_lossy().into_owned())
         .await
@@ -55,7 +55,7 @@ async fn watcher_reconciles_added_and_removed_candidates() {
     generate_album_files(&album1, &["01 Track.flac"]);
     let album1_key = album1.to_string_lossy().into_owned();
 
-    let mut scan_rx = f.handle.subscribe_folder_scan_events();
+    let mut scan_rx = f.handle.every_scan_event_for_test();
     f.handle
         .add_watched_folder(collection.to_string_lossy().into_owned())
         .await
@@ -221,7 +221,7 @@ async fn remove_watched_folder_drops_folder_and_candidates() {
     let album_key = album.to_string_lossy().into_owned();
     let collection_key = collection.to_string_lossy().into_owned();
 
-    let mut scan_rx = f.handle.subscribe_folder_scan_events();
+    let mut scan_rx = f.handle.every_scan_event_for_test();
     f.handle
         .add_watched_folder(collection_key.clone())
         .await
@@ -385,7 +385,7 @@ async fn adding_an_already_watched_folder_reads_it_again() {
     })
     .await;
 
-    let mut scan_rx = f.handle.subscribe_folder_scan_events();
+    let mut scan_rx = f.handle.every_scan_event_for_test();
     f.handle.add_watched_folder(root_key.clone()).await.unwrap();
     wait_for_scan_event(
         &mut scan_rx,
@@ -427,7 +427,7 @@ async fn adding_a_folder_inside_a_watched_one_reads_the_watched_one_again() {
     })
     .await;
 
-    let mut scan_rx = f.handle.subscribe_folder_scan_events();
+    let mut scan_rx = f.handle.every_scan_event_for_test();
     f.handle
         .add_watched_folder(album.to_string_lossy().into_owned())
         .await
@@ -665,7 +665,7 @@ async fn set_candidate_skipped_flips_flag_and_is_idempotent() {
     generate_album_files(&album, &["01 Track.flac"]);
     let album_key = album.to_string_lossy().into_owned();
 
-    let mut scan_rx = f.handle.subscribe_folder_scan_events();
+    let mut scan_rx = f.handle.every_scan_event_for_test();
     f.handle
         .add_watched_folder(collection.to_string_lossy().into_owned())
         .await
@@ -754,7 +754,7 @@ async fn a_done_row_follows_the_library_release_it_became() {
     );
     let album_key = album.to_string_lossy().into_owned();
 
-    let mut scan_rx = f.handle.subscribe_folder_scan_events();
+    let mut scan_rx = f.handle.every_scan_event_for_test();
     f.handle
         .add_watched_folder(collection.to_string_lossy().into_owned())
         .await

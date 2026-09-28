@@ -16,7 +16,7 @@ async fn a_run_that_leaves_the_cover_art_unread_reads_no_image() {
     let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
     handle.register_analyzer(analyzer.clone());
 
-    handle.start(
+    let mut run = handle.start(
         IdentifyRunId::for_test(1),
         "cand-1".to_string(),
         folder_source(folder.clone()),
@@ -42,7 +42,8 @@ async fn a_run_that_leaves_the_cover_art_unread_reads_no_image() {
         "the folder's own text is still read: {:?}",
         signals.text.catalogs()
     );
-    assert_no_more_snapshots(&mut rx, "the only snapshot").await;
+    run_ended(&mut run).await;
+    assert_no_more_snapshots(&mut rx, "the only snapshot");
     assert_eq!(analyzer.calls(), 0, "no image reached the analyzer");
 
     // A run that reads the art does not reuse the reading taken without it.
@@ -65,7 +66,7 @@ async fn a_re_identify_that_leaves_the_cover_art_unread_resolves_no_image() {
     let (handle, _tx, mut rx, _lib_tmp) = make_service().await;
     handle.register_analyzer(analyzer.clone());
 
-    handle.start(
+    let mut run = handle.start(
         IdentifyRunId::for_test(1),
         "release-1".to_string(),
         ExtractionSource::Release {
@@ -77,6 +78,7 @@ async fn a_re_identify_that_leaves_the_cover_art_unread_resolves_no_image() {
 
     let snapshots = collect_snapshots(&mut rx, 1).await;
     assert_eq!(snapshots[0].1, ArtworkScan::Off);
-    assert_no_more_snapshots(&mut rx, "the only snapshot").await;
+    run_ended(&mut run).await;
+    assert_no_more_snapshots(&mut rx, "the only snapshot");
     assert_eq!(analyzer.calls(), 0, "no image reached the analyzer");
 }

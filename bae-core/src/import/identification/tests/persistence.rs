@@ -314,7 +314,7 @@ async fn restating_a_file_decision_changes_nothing() {
         .store_settled_verdict(&dir, "mb-noop-1", "rg-noop-1",)
         .await;
     let key = dir.to_string_lossy().into_owned();
-    let mut events = fixture.import.subscribe_events();
+    let mut events = fixture.import.every_event_for_test();
 
     // The sheet already carves disc one, the loose file is already audio, and
     // the sheet already binds its own container.

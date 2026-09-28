@@ -451,7 +451,7 @@ async fn discogs_artist_image_is_prepared_with_the_candidate_and_materialized_by
             },
         }));
 
-    let mut events = handle.subscribe_events();
+    let mut events = handle.every_event_for_test();
     let import_id = handle.start_import(&key).await.unwrap();
     let (release_id, _album_id) = await_import_outcome(&mut events, &import_id)
         .await
@@ -560,7 +560,7 @@ async fn a_claimed_candidate_refuses_every_preparation_mutation() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn an_imported_candidate_refuses_metadata_edits() {
-    let (handle, _tmp, key, _hash) = pane_fixture().await;
+    let (handle, _tmp, key, hash) = pane_fixture().await;
     handle
         .set_candidate_album_artists(
             &key,
@@ -574,7 +574,7 @@ async fn an_imported_candidate_refuses_metadata_edits() {
         .cover
         .expect("the fixture has a selected cover")
         .selection;
-    let mut events = handle.subscribe_events();
+    let mut events = handle.every_event_for_test();
     let import_id = handle
         .start_import(&key)
         .await
@@ -584,7 +584,7 @@ async fn an_imported_candidate_refuses_metadata_edits() {
         .unwrap_or_else(|error| panic!("import failed: {error}"));
     let candidate_before = handle
         .library_manager
-        .load_import_candidate_preparation(&_hash)
+        .load_import_candidate_preparation(&hash)
         .await
         .unwrap()
         .expect("the imported candidate preparation remains stored");
@@ -607,7 +607,7 @@ async fn an_imported_candidate_refuses_metadata_edits() {
     assert_eq!(
         handle
             .library_manager
-            .load_import_candidate_preparation(&_hash)
+            .load_import_candidate_preparation(&hash)
             .await
             .unwrap()
             .expect("the imported candidate preparation remains stored"),
@@ -632,7 +632,7 @@ async fn an_imported_candidate_refuses_metadata_edits() {
     assert_eq!(
         handle
             .library_manager
-            .load_import_candidate_preparation(&_hash)
+            .load_import_candidate_preparation(&hash)
             .await
             .unwrap()
             .expect("the persisted release edit leaves candidate preparation alone"),
@@ -660,7 +660,7 @@ async fn import_worker_refuses_a_prepared_but_invalid_metadata_draft() {
         ..
     } = stored_candidate().await;
 
-    let mut events = handle.subscribe_events();
+    let mut events = handle.every_event_for_test();
     let import_id = handle
         .start_import(&key)
         .await

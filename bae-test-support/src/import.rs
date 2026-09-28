@@ -42,41 +42,53 @@ pub async fn configure_test_discogs(library_manager: &bae_core::library::Library
         .expect("test Discogs key is stored through the library manager");
 }
 
+/// How long a test waits for an import to end before failing instead of hanging.
+const IMPORT_END_GUARD: std::time::Duration = std::time::Duration::from_secs(300);
+
 /// Wait for the import worker to finish, returning (release_id, album_id).
 ///
-/// Local imports emit `Complete`. Remote imports emit `RemoteUploadQueued`: the
-/// import worker is finished, while remote completion waits for coven upload
-/// confirmation. Panics on failure.
+/// Local imports emit `Complete`; remote imports emit `RemoteUploadQueued`,
+/// since remote completion waits on the upload. Panics on failure.
 pub async fn wait_for_import_complete(
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<bae_core::import::ImportProgress>,
 ) -> (String, String) {
-    while let Some(progress) = progress_rx.recv().await {
-        if let Some(ids) = import_terminal_ids(&progress) {
-            return ids;
-        }
-        if let bae_core::import::ImportProgress::Failed { error, .. } = &progress {
-            panic!("Import failed: {}", error);
-        }
-    }
-    panic!("Progress channel closed without completion");
+    try_wait_for_import_complete(progress_rx)
+        .await
+        .unwrap_or_else(|error| panic!("Import failed: {error}"))
 }
 
-/// Like `wait_for_import_complete` but returns Result instead of panicking.
-///
-/// Used by test fixtures that catch setup errors gracefully (e.g., returning
-/// early from a test when a fixture file fails validation).
+/// Like [`wait_for_import_complete`], returning the failure instead of panicking.
 pub async fn try_wait_for_import_complete(
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<bae_core::import::ImportProgress>,
 ) -> Result<(String, String), String> {
-    while let Some(progress) = progress_rx.recv().await {
-        if let Some(ids) = import_terminal_ids(&progress) {
-            return Ok(ids);
-        }
-        if let bae_core::import::ImportProgress::Failed { error, .. } = &progress {
-            return Err(error.clone());
-        }
+    let end = wait_for_import_end(progress_rx).await;
+    match import_terminal_ids(&end) {
+        Some(ids) => Ok(ids),
+        None => match end {
+            bae_core::import::ImportProgress::Failed { error, .. } => Err(error),
+            _ => unreachable!("an import ends complete, queued for upload, or failed"),
+        },
     }
-    Err("Progress channel closed without completion".to_string())
+}
+
+/// The import's first `Complete`, `RemoteUploadQueued` or `Failed`. Panics if
+/// the progress ends without one or none comes within five minutes.
+pub async fn wait_for_import_end(
+    progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<bae_core::import::ImportProgress>,
+) -> bae_core::import::ImportProgress {
+    let ended = async {
+        while let Some(progress) = progress_rx.recv().await {
+            if import_terminal_ids(&progress).is_some()
+                || matches!(progress, bae_core::import::ImportProgress::Failed { .. })
+            {
+                return progress;
+            }
+        }
+        panic!("Progress channel closed without completion");
+    };
+    tokio::time::timeout(IMPORT_END_GUARD, ended)
+        .await
+        .unwrap_or_else(|_| panic!("import did not end within {IMPORT_END_GUARD:?}"))
 }
 
 /// The provenance of an import identified by a Discogs release, with no

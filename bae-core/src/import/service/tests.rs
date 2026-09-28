@@ -441,6 +441,19 @@ impl CoordinatorHarness {
         }
     }
 
+    /// Hand the coordinator `report` as its watch would, and wait until it
+    /// has asked for the reads the report calls for.
+    async fn watch_report(&self, report: WatchReport) {
+        let (taken, wait) = tokio::sync::oneshot::channel();
+        self.commands
+            .send(WatcherCommand::WatchReport { report, taken })
+            .unwrap();
+        tokio::time::timeout(Duration::from_secs(10), wait)
+            .await
+            .expect("the coordinator takes the watch report")
+            .expect("the coordinator is running");
+    }
+
     async fn shutdown(&self) {
         let (completion, done) = std::sync::mpsc::channel();
         self.commands
@@ -547,7 +560,7 @@ impl TestService {
         &self,
     ) -> (
         TestScan,
-        tokio::sync::broadcast::Receiver<crate::import::handle::ImportEvent>,
+        tokio::sync::mpsc::UnboundedReceiver<crate::import::handle::ImportEvent>,
     ) {
         self.scan_with(
             Arc::new(crate::import::file_tag_snapshot::LoftyFileTagReader),
@@ -563,10 +576,10 @@ impl TestService {
         directories: Arc<dyn crate::import::folder_scanner::DirectoryReader>,
     ) -> (
         TestScan,
-        tokio::sync::broadcast::Receiver<crate::import::handle::ImportEvent>,
+        tokio::sync::mpsc::UnboundedReceiver<crate::import::handle::ImportEvent>,
     ) {
         let event_tx = crate::import::ImportEventBus::new(256, crate::import::CandidateRuntime::default());
-        let events = event_tx.subscribe();
+        let events = event_tx.every_event();
         let (fs_tx, fs_rx) = tokio::sync::mpsc::unbounded_channel();
         let scan = TestScan {
             services: test_scan_services(

@@ -154,7 +154,7 @@ async fn retained_unsupported_embedded_cover_is_only_used_when_explicitly_select
             snapshot.embedded_cover.as_ref().unwrap().content_type,
             crate::util::content_type::ContentType::Bmp
         );
-        let mut events = test.service.event_tx.subscribe();
+        let mut events = test.service.event_tx.every_event();
         test.service.import_cancels.register(&key, "import-cover");
         let result = test
             .service
@@ -187,7 +187,7 @@ async fn retained_unsupported_embedded_cover_is_only_used_when_explicitly_select
                         progress: ImportProgress::Complete { id, .. },
                         ..
                     }) => break id,
-                    Ok(_) | Err(tokio::sync::broadcast::error::TryRecvError::Lagged(_)) => {}
+                    Ok(_) => {}
                     Err(error) => panic!("import completed without its completion event: {error}"),
                 }
             };
@@ -394,7 +394,7 @@ async fn rescan_seeded_root(
     test: &TestService,
     root: &Path,
 ) -> (
-    tokio::sync::broadcast::Receiver<crate::import::handle::ImportEvent>,
+    tokio::sync::mpsc::UnboundedReceiver<crate::import::handle::ImportEvent>,
     Result<(), crate::import::ImportError>,
 ) {
     let service = &test.service;
@@ -452,7 +452,10 @@ async fn rescan_missing_root_fails_and_preserves_previous_candidates() {
     assert!(result.is_err());
 
     let failed = loop {
-        match events.recv().await.unwrap() {
+        match events
+            .try_recv()
+            .expect("the failed pass announced its failure")
+        {
             crate::import::handle::ImportEvent::Scan(ScanEvent::FolderScanStatusChanged {
                 status:
                     crate::import::WatchedFolderScanStatus {
@@ -486,7 +489,10 @@ async fn rescan_non_directory_root_keeps_previous_candidates() {
     assert!(result.is_err(), "a non-directory root must fail its scan");
 
     loop {
-        match events.recv().await.unwrap() {
+        match events
+            .try_recv()
+            .expect("the failed pass announced its failure")
+        {
             crate::import::handle::ImportEvent::Scan(ScanEvent::FolderScanStatusChanged {
                 status:
                     crate::import::WatchedFolderScanStatus {
@@ -850,7 +856,7 @@ fn flac() -> Vec<u8> {
 
 /// The candidates a pass told anyone about, in the order it did.
 fn announced_candidates(
-    events: &mut tokio::sync::broadcast::Receiver<crate::import::handle::ImportEvent>,
+    events: &mut tokio::sync::mpsc::UnboundedReceiver<crate::import::handle::ImportEvent>,
 ) -> Vec<String> {
     let mut announced = Vec::new();
     while let Ok(event) = events.try_recv() {

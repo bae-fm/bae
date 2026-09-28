@@ -223,6 +223,15 @@ impl ExtractionServiceHandle {
     pub fn cancel(&self, key: &str) {
         self.inner.cancellation.cancel(key);
     }
+
+    /// What ends once `key`'s extraction in flight is cancelled.
+    #[cfg(test)]
+    pub(crate) fn cancelled_for_test(
+        &self,
+        key: &str,
+    ) -> Option<impl std::future::Future<Output = ()> + Send + 'static> {
+        self.inner.cancellation.cancelled_for_test(key)
+    }
 }
 
 /// Drive extraction for one candidate from its source.

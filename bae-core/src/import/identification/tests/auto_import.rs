@@ -7,17 +7,13 @@
 /// Every import the worker reports on for `key` until one ends: the ids it
 /// reported under, and the error the ending one failed with, if it failed.
 async fn await_import_ending(
-    events: &mut tokio::sync::broadcast::Receiver<ImportEvent>,
+    events: &mut tokio::sync::mpsc::UnboundedReceiver<ImportEvent>,
     key: &str,
 ) -> (std::collections::BTreeSet<String>, Option<String>) {
     let mut ids = std::collections::BTreeSet::new();
     tokio::time::timeout(Duration::from_secs(30), async {
         loop {
-            let event = match events.recv().await {
-                Ok(event) => event,
-                Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => continue,
-                Err(error) => panic!("the import event bus closed: {error}"),
-            };
+            let event = events.recv().await.expect("the import event bus stays open");
             let ImportEvent::ImportProgress {
                 candidate_key,
                 progress,
@@ -54,24 +50,29 @@ async fn await_import_ending(
     .expect("an import of the candidate ends")
 }
 
-/// No import of `key` is reported on for a second after `after`.
+/// Nothing imported `key`, asked once the queue is done with it: the worker
+/// runs every import it was handed before it stops, so `events` then holds
+/// every report there will be.
 async fn assert_no_import(
-    events: &mut tokio::sync::broadcast::Receiver<ImportEvent>,
+    fixture: &Fixture,
+    events: &mut tokio::sync::mpsc::UnboundedReceiver<ImportEvent>,
     key: &str,
     after: &str,
 ) {
-    let deadline = tokio::time::Instant::now() + Duration::from_secs(1);
-    loop {
-        match tokio::time::timeout_at(deadline, events.recv()).await {
-            Err(_) => return,
-            Ok(Ok(ImportEvent::ImportProgress {
-                candidate_key,
-                progress,
-            })) if candidate_key == key => {
-                panic!("nothing imports {key} after {after}, got {progress:?}")
-            }
-            Ok(Ok(_)) | Ok(Err(tokio::sync::broadcast::error::RecvError::Lagged(_))) => continue,
-            Ok(Err(tokio::sync::broadcast::error::RecvError::Closed)) => return,
+    let import = fixture.import.clone();
+    tokio::task::spawn_blocking(move || import.stop_and_join())
+        .await
+        .expect("the import worker stops");
+    for event in drain_events(events) {
+        if let ImportEvent::ImportProgress {
+            candidate_key,
+            progress,
+        } = event
+        {
+            assert_ne!(
+                candidate_key, key,
+                "nothing imports {key} after {after}, got {progress:?}"
+            );
         }
     }
 }
@@ -122,7 +123,7 @@ async fn an_automatic_run_that_settles_auto_importable_imports_its_candidate_onc
     let key = dir.to_string_lossy().into_owned();
     fixture.route_disc_id_match(&dir, "mb-auto", "rg-auto", 2);
     fixture.scan(1).await;
-    let mut events = fixture.import.subscribe_events();
+    let mut events = fixture.import.every_event_for_test();
 
     fixture.drain_automatic().await;
     assert_eq!(
@@ -136,7 +137,7 @@ async fn an_automatic_run_that_settles_auto_importable_imports_its_candidate_onc
 
     fixture.rescan(&fixture.import, 1).await;
     fixture.drain_automatic().await;
-    assert_no_import(&mut events, &key, "the watched folder was read again").await;
+    assert_no_import(&fixture, &mut events, &key, "the watched folder was read again").await;
 }
 
 /// With the setting off, an auto-importable verdict waits for a person.
@@ -147,7 +148,7 @@ async fn an_automatic_run_that_settles_auto_importable_with_the_setting_off_impo
     let key = dir.to_string_lossy().into_owned();
     fixture.route_disc_id_match(&dir, "mb-setting-off", "rg-setting-off", 2);
     fixture.scan(1).await;
-    let mut events = fixture.import.subscribe_events();
+    let mut events = fixture.import.every_event_for_test();
 
     fixture.drain_automatic().await;
 
@@ -155,7 +156,7 @@ async fn an_automatic_run_that_settles_auto_importable_with_the_setting_off_impo
         fixture.judgement_for(&dir).await,
         (true, None)
     );
-    assert_no_import(&mut events, &key, "the run settled with the setting off").await;
+    assert_no_import(&fixture, &mut events, &key, "the run settled with the setting off").await;
 }
 
 /// Two pressings are a question for the person, so nothing is imported.
@@ -179,7 +180,7 @@ async fn an_automatic_run_that_settles_needing_you_imports_nothing() {
         ]),
     );
     fixture.scan(1).await;
-    let mut events = fixture.import.subscribe_events();
+    let mut events = fixture.import.every_event_for_test();
 
     fixture.drain_automatic().await;
 
@@ -187,7 +188,7 @@ async fn an_automatic_run_that_settles_needing_you_imports_nothing() {
         fixture.judgement_for(&dir).await,
         (false, None)
     );
-    assert_no_import(&mut events, &key, "the run settled needing a person").await;
+    assert_no_import(&fixture, &mut events, &key, "the run settled needing a person").await;
 }
 
 /// A folder its rip log proves is a CD rip, and a disc ID answered by a
@@ -213,7 +214,7 @@ async fn a_release_the_folder_rules_out_is_neither_applied_nor_imported() {
         .provider
         .route("/release/mb-vinyl?", 200, document.to_string());
     fixture.scan(1).await;
-    let mut events = fixture.import.subscribe_events();
+    let mut events = fixture.import.every_event_for_test();
 
     fixture.drain_automatic().await;
 
@@ -237,7 +238,7 @@ async fn a_release_the_folder_rules_out_is_neither_applied_nor_imported() {
         1,
         "the offered row was read in full once, like any other"
     );
-    assert_no_import(&mut events, &key, "the folder ruled the release out").await;
+    assert_no_import(&fixture, &mut events, &key, "the folder ruled the release out").await;
 }
 
 /// Turning the setting on imports only what settles from then on: a candidate
@@ -248,13 +249,13 @@ async fn a_candidate_auto_importable_before_the_setting_was_on_is_not_imported()
     let dir = fixture.disc_id_candidate("Album");
     let key = dir.to_string_lossy().into_owned();
     fixture.identify_ready(&dir, "mb-earlier", "rg-earlier").await;
-    let mut events = fixture.import.subscribe_events();
+    let mut events = fixture.import.every_event_for_test();
 
     fixture.manager.set_import_when_identified(true).await.unwrap();
     fixture.rescan(&fixture.import, 1).await;
     fixture.drain_automatic().await;
 
-    assert_no_import(&mut events, &key, "the setting was turned on").await;
+    assert_no_import(&fixture, &mut events, &key, "the setting was turned on").await;
 }
 
 /// A run a person asked for is theirs to act on, whatever the setting says.
@@ -271,16 +272,26 @@ async fn a_run_a_person_asked_for_imports_nothing() {
     fixture.manager.set_identify_automatically(false).await.unwrap();
     fixture.scan(1).await;
     fixture.manager.set_identify_automatically(true).await.unwrap();
-    let mut events = fixture.import.subscribe_events();
+    let mut events = fixture.import.every_event_for_test();
 
     fixture.start_explicit_lookup(&dir);
     fixture.await_identified_row(&dir).await;
+    // The queue takes the job off before it would start an import, and
+    // answers an empty cancel only once it is past that.
+    tokio::time::timeout(Duration::from_secs(10), async {
+        while fixture.identification_status(&key).is_some() {
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .expect("the person's run leaves the queue");
+    fixture.identification().cancel(Vec::new()).await.unwrap();
 
     assert_eq!(
         fixture.judgement_for(&dir).await,
         (true, None)
     );
-    assert_no_import(&mut events, &key, "the person's run settled").await;
+    assert_no_import(&fixture, &mut events, &key, "the person's run settled").await;
 }
 
 /// An automatic start the import path refuses is the candidate's failed

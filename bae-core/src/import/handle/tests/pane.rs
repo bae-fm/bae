@@ -284,10 +284,8 @@ async fn cover_gallery_reports_unconfigured_discogs_as_failure() {
 struct CountingFileTagReader {
     reads: std::sync::atomic::AtomicUsize,
     fail_on_read: Option<usize>,
-    first_read: Option<(
-        std::sync::mpsc::SyncSender<()>,
-        std::sync::Arc<std::sync::Barrier>,
-    )>,
+    /// Run as the first file is read, before its tags are.
+    first_read: Option<Box<dyn Fn() + Send + Sync>>,
     embedded_cover: Option<Vec<u8>>,
 }
 
@@ -310,16 +308,21 @@ impl CountingFileTagReader {
         }
     }
 
-    fn blocking(
-        entered: std::sync::mpsc::SyncSender<()>,
-        resume: std::sync::Arc<std::sync::Barrier>,
-    ) -> Self {
-        Self {
+    /// A reader held at its first file until the gate opens, and what hears
+    /// that it got there.
+    fn held() -> (
+        Self,
+        std::sync::mpsc::Receiver<()>,
+        crate::test_gate::Gate,
+    ) {
+        let (gate, held, reached) = crate::test_gate::closed();
+        let reader = Self {
             reads: std::sync::atomic::AtomicUsize::new(0),
             fail_on_read: None,
-            first_read: Some((entered, resume)),
+            first_read: Some(Box::new(move || held.pass())),
             embedded_cover: None,
-        }
+        };
+        (reader, reached, gate)
     }
 
     fn with_embedded_cover(data: Vec<u8>) -> Self {
@@ -343,9 +346,8 @@ impl crate::import::file_tag_snapshot::FileTagReader for CountingFileTagReader {
     ) -> Result<crate::import::file_tag_snapshot::FileTagRead, crate::import::ImportError> {
         let index = self.reads.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         if index == 0 {
-            if let Some((entered, resume)) = &self.first_read {
-                entered.send(()).unwrap();
-                resume.wait();
+            if let Some(first_read) = &self.first_read {
+                first_read();
             }
         }
         if self.fail_on_read == Some(index) {
@@ -685,7 +687,7 @@ async fn import_refuses_audio_changed_after_the_file_tags_pane_was_read() {
         )
         .unwrap();
 
-    let mut events = handle.subscribe_events();
+    let mut events = handle.every_event_for_test();
     let import_id = handle
         .start_import(&key)
         .await
@@ -722,20 +724,19 @@ async fn a_scan_that_moves_during_tag_reading_refuses_the_snapshot() {
         key,
         tmp: _tmp,
     } = stored_candidate().await;
-    let (entered_tx, entered_rx) = std::sync::mpsc::sync_channel(1);
-    let resume = std::sync::Arc::new(std::sync::Barrier::new(2));
-    let reader = std::sync::Arc::new(CountingFileTagReader::blocking(entered_tx, resume.clone()));
+    let (reader, reached, gate) = CountingFileTagReader::held();
+    let reader = std::sync::Arc::new(reader);
     let operation = tokio::spawn({
         let handle = handle.clone();
         let key = key.clone();
         async move { handle.file_tag_snapshot_with_reader(&key, reader).await }
     });
-    entered_rx
-        .recv_timeout(std::time::Duration::from_secs(2))
+    reached
+        .recv_timeout(std::time::Duration::from_secs(10))
         .expect("the tag reader reached the first audio file");
 
     rescan_into(&manager, candidate).await;
-    resume.wait();
+    gate.open();
 
     let error = operation
         .await
@@ -779,7 +780,7 @@ async fn a_pick_lands_and_is_announced_when_its_caller_is_torn_down() {
         tmp: _tmp,
         ..
     } = stored_candidate().await;
-    let mut events = handle.subscribe_events();
+    let mut events = handle.every_event_for_test();
 
     // One poll asks for the pick; dropping the future at the end of the block
     // is the caller being torn down.
@@ -799,13 +800,13 @@ async fn a_pick_lands_and_is_announced_when_its_caller_is_torn_down() {
     tokio::time::timeout(std::time::Duration::from_secs(10), async {
         loop {
             match events.recv().await {
-                Ok(ImportEvent::Scan(ScanEvent::CandidateMetadataChanged { candidate_key }))
+                Some(ImportEvent::Scan(ScanEvent::CandidateMetadataChanged { candidate_key }))
                     if candidate_key == key =>
                 {
                     break;
                 }
-                Ok(_) | Err(broadcast::error::RecvError::Lagged(_)) => continue,
-                Err(broadcast::error::RecvError::Closed) => panic!("the import bus closed"),
+                Some(_) => continue,
+                None => panic!("the import bus closed"),
             }
         }
     })

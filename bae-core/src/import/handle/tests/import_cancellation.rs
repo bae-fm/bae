@@ -38,7 +38,7 @@ async fn two_importable() -> (ImportServiceHandle, [TempDir; 2], String, String)
 /// Wait for every one of `import_ids` to end cancelled, in whatever order
 /// they end.
 async fn await_cancelled(
-    events: &mut tokio::sync::broadcast::Receiver<ImportEvent>,
+    events: &mut tokio::sync::mpsc::UnboundedReceiver<ImportEvent>,
     import_ids: &[&str],
 ) {
     let mut pending: std::collections::HashSet<String> =
@@ -85,7 +85,7 @@ async fn assert_left_as_it_stood(handle: &ImportServiceHandle, key: &str) {
 
 /// The candidate imports once more, now that nothing holds it.
 async fn assert_imports_again(handle: &ImportServiceHandle, key: &str) {
-    let mut events = handle.subscribe_events();
+    let mut events = handle.every_event_for_test();
     let import_id = handle
         .start_import(key)
         .await
@@ -103,7 +103,7 @@ async fn album_count(handle: &ImportServiceHandle) -> usize {
 async fn a_running_import_cancelled_writes_nothing() {
     let (handle, _tmp, key, _) = two_importable().await;
     handle.import_cancels.hold_runs();
-    let mut events = handle.subscribe_events();
+    let mut events = handle.every_event_for_test();
     let import_id = handle.start_import(&key).await.unwrap();
 
     handle.cancel_import(&key).unwrap();
@@ -122,7 +122,7 @@ async fn a_running_import_cancelled_writes_nothing() {
 async fn a_waiting_import_cancelled_ends_at_once_and_never_runs() {
     let (handle, _tmp, running, waiting) = two_importable().await;
     handle.import_cancels.hold_runs();
-    let mut events = handle.subscribe_events();
+    let mut events = handle.every_event_for_test();
     let running_id = handle.start_import(&running).await.unwrap();
     let waiting_id = handle.start_import(&waiting).await.unwrap();
 
@@ -142,7 +142,7 @@ async fn a_waiting_import_cancelled_ends_at_once_and_never_runs() {
 async fn cancelling_every_import_ends_the_running_and_the_waiting() {
     let (handle, _tmp, running, waiting) = two_importable().await;
     handle.import_cancels.hold_runs();
-    let mut events = handle.subscribe_events();
+    let mut events = handle.every_event_for_test();
     let running_id = handle.start_import(&running).await.unwrap();
     let waiting_id = handle.start_import(&waiting).await.unwrap();
 
@@ -201,7 +201,7 @@ async fn store_state(handle: &ImportServiceHandle, library_dir: &Path) -> StoreS
 
 /// The next `phase` percent `import_id` reports on the stream.
 async fn await_progress_of(
-    events: &mut tokio::sync::broadcast::Receiver<ImportEvent>,
+    events: &mut tokio::sync::mpsc::UnboundedReceiver<ImportEvent>,
     import_id: &str,
     phase: crate::import::ImportPhase,
 ) {
@@ -227,6 +227,26 @@ async fn await_progress_of(
     }
 }
 
+/// A measuring thread held by [`ImportEventBus::hold_progress_at`], let go on
+/// [`Self::release`] or on drop, so a test that fails first does not leave it
+/// waiting.
+struct HeldProgress<'a>(&'a ImportEventBus);
+
+impl<'a> HeldProgress<'a> {
+    fn at(bus: &'a ImportEventBus, phase: crate::import::ImportPhase) -> Self {
+        bus.hold_progress_at(phase);
+        Self(bus)
+    }
+
+    fn release(self) {}
+}
+
+impl Drop for HeldProgress<'_> {
+    fn drop(&mut self) {
+        self.0.release_progress();
+    }
+}
+
 /// How far along an import's step is, in the order an import takes them.
 fn import_position(import: &crate::import::candidates::ImportInFlight) -> (u8, u32) {
     use crate::import::{ImportPhase, ImportStep, PrepareStep};
@@ -244,7 +264,7 @@ fn import_position(import: &crate::import::candidates::ImportInFlight) -> (u8, u
 /// it starts from the queue with no progress, only ever moves forward, and
 /// the release lands.
 async fn assert_imports_again_from_the_start(handle: &ImportServiceHandle, key: &str) {
-    let mut events = handle.subscribe_events();
+    let mut events = handle.every_event_for_test();
     let mut changes = handle.runtime.subscribe();
     let import_id = handle
         .start_import(key)
@@ -290,10 +310,8 @@ async fn cancelled_mid_run_leaves_the_store_as_it_was_and_starts_over() {
     let (handle, tmp, key, _) = two_importable().await;
     let library_dir = tmp[0].path().to_path_buf();
     let before = store_state(&handle, &library_dir).await;
-    handle
-        .event_tx
-        .hold_progress_at(crate::import::ImportPhase::MeasuringLoudness);
-    let mut events = handle.subscribe_events();
+    let held = HeldProgress::at(&handle.event_tx, crate::import::ImportPhase::MeasuringLoudness);
+    let mut events = handle.every_event_for_test();
     let import_id = handle.start_import(&key).await.unwrap();
     tokio::time::timeout(
         std::time::Duration::from_secs(10),
@@ -305,7 +323,7 @@ async fn cancelled_mid_run_leaves_the_store_as_it_was_and_starts_over() {
     handle.cancel_import(&key).unwrap();
     await_cancelled(&mut events, &[&import_id]).await;
     // The measuring thread says where it had got after the import ended.
-    handle.event_tx.release_progress();
+    held.release();
     await_progress_of(
         &mut events,
         &import_id,
@@ -332,7 +350,7 @@ async fn a_failed_import_leaves_only_its_failure_and_starts_over() {
     let mut before = store_state(&handle, &library_dir).await;
     let blocked =
         crate::test_files::UnopenableFile::block(&Path::new(&key).join("02 Track.flac"));
-    let mut events = handle.subscribe_events();
+    let mut events = handle.every_event_for_test();
     let import_id = handle.start_import(&key).await.unwrap();
     await_import_outcome(&mut events, &import_id)
         .await
@@ -372,7 +390,7 @@ async fn a_cancelled_retry_leaves_the_failure_it_retried() {
     let library_dir = tmp[0].path().to_path_buf();
     let blocked =
         crate::test_files::UnopenableFile::block(&Path::new(&key).join("02 Track.flac"));
-    let mut events = handle.subscribe_events();
+    let mut events = handle.every_event_for_test();
     let failed = handle.start_import(&key).await.unwrap();
     let error = await_import_outcome(&mut events, &failed)
         .await
@@ -407,7 +425,7 @@ async fn a_cancelled_retry_leaves_the_failure_it_retried() {
 async fn an_import_asked_for_again_after_a_waiting_cancel_is_the_one_that_runs() {
     let (handle, _tmp, running, waiting) = two_importable().await;
     handle.import_cancels.hold_runs();
-    let mut events = handle.subscribe_events();
+    let mut events = handle.every_event_for_test();
     let running_id = handle.start_import(&running).await.unwrap();
     let cancelled_id = handle.start_import(&waiting).await.unwrap();
     handle.cancel_import(&waiting).unwrap();
@@ -421,7 +439,7 @@ async fn an_import_asked_for_again_after_a_waiting_cancel_is_the_one_that_runs()
 
     let mut outcomes = std::collections::HashMap::new();
     while !(outcomes.contains_key(&running_id) && outcomes.contains_key(&again_id)) {
-        let event = tokio::time::timeout(std::time::Duration::from_secs(10), events.recv())
+        let event = tokio::time::timeout(std::time::Duration::from_secs(30), events.recv())
             .await
             .expect("both imports end")
             .expect("the import event stream remains open");

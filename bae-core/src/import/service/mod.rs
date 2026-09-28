@@ -42,7 +42,7 @@ use active_roots::{ActiveRoots, FolderReadingRequest, RemovalOutcome, RootPass};
 use folder_watcher::FolderWatchSnapshot;
 use root_backend::{RootRemovalBackend, ServiceRootRemovalBackend};
 use root_scan_cause::RootScanCause;
-use watch_batches::WatchReport;
+pub(crate) use watch_batches::WatchReport;
 mod coordinator;
 use crate::import::volume::{changed_directories, directory_modified_at, volume_kind, VolumeKind};
 pub(crate) use folder_watcher::FolderWatcher;
