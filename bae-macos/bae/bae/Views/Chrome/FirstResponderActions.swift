@@ -27,8 +27,6 @@ final class FirstResponderActions {
 
     /// The responder an action reaches, where one does.
     private let target: @MainActor (Selector) -> Any?
-    @ObservationIgnored
-    private var updates: (any NSObjectProtocol)?
 
     init(
         target: @escaping @MainActor (Selector) -> Any? = {
@@ -37,7 +35,8 @@ final class FirstResponderActions {
         notifications: NotificationCenter = .default
     ) {
         self.target = target
-        updates = notifications.addObserver(
+        // Never removed: the app holds one of these for its whole life.
+        _ = notifications.addObserver(
             forName: NSApplication.didUpdateNotification,
             object: nil,
             queue: .main
