@@ -226,8 +226,6 @@ struct Inner {
     next_search_run: u64,
     /// The identifications in flight.
     batch: IdentificationBatch,
-    /// How many keys an import owns right now.
-    importing: u32,
 }
 
 impl Inner {
@@ -342,7 +340,13 @@ impl CandidateRuntime {
 
     /// How many keys an import owns right now.
     pub(crate) fn imports_in_flight(&self) -> u32 {
-        self.inner.lock().unwrap().importing
+        self.inner
+            .lock()
+            .unwrap()
+            .runtime
+            .values()
+            .filter(|state| state.import.is_some())
+            .count() as u32
     }
 
     /// The latest signals extraction reported for every key.
@@ -405,16 +409,14 @@ impl CandidateRuntime {
         key: &str,
         mutate: impl FnOnce(&mut Inner, &mut CandidateRuntimeState) -> R,
     ) -> R {
-        let (result, change, counts_moved, count) = {
+        let (result, change, count) = {
             let mut inner = self.inner.lock().unwrap();
             let entry = inner.runtime.get(key);
             let previous = entry.map(CandidateRuntimeState::snapshot);
             let was_identifying = entry.map(Identifying::of).unwrap_or_default();
-            let was_importing = entry.is_some_and(|entry| entry.import.is_some());
             let mut next = entry.cloned().unwrap_or_default();
             let result = mutate(&mut inner, &mut next);
             let is_identifying = Identifying::of(&next);
-            let is_importing = next.import.is_some();
             let change = if next.is_idle() {
                 inner.runtime.remove(key);
                 previous.is_some().then(|| CandidateRuntimeChange::Removed {
@@ -431,15 +433,9 @@ impl CandidateRuntime {
             let count = inner
                 .count_identification(key, was_identifying, is_identifying)
                 .then(|| inner.batch.progress());
-            match (was_importing, is_importing) {
-                (false, true) => inner.importing += 1,
-                (true, false) => inner.importing -= 1,
-                _ => {}
-            }
-            let counts_moved = count.is_some() || was_importing != is_importing;
-            (result, change, counts_moved, count)
+            (result, change, count)
         };
-        if change.is_some() || counts_moved {
+        if change.is_some() || count.is_some() {
             self.runtime_changed(change, count);
         }
         result
@@ -564,30 +560,16 @@ impl CandidateRuntime {
         })
     }
 
-    /// Drop everything held for a key, its signals too.
+    /// The scan dropped the key: everything held for it goes, its signals
+    /// too, except an import's claim, which only that import's ending clears.
     fn remove(&self, key: &str) {
-        let (removed, count, signals_removed) = {
-            let mut inner = self.inner.lock().unwrap();
-            let signals_removed = inner.signals.remove(key).is_some();
-            let was_identifying = inner
-                .runtime
-                .get(key)
-                .map(Identifying::of)
-                .unwrap_or_default();
-            let removed = inner.runtime.remove(key).is_some();
-            let count = inner
-                .count_identification(key, was_identifying, Identifying::default())
-                .then(|| inner.batch.progress());
-            (removed, count, signals_removed)
-        };
-        if removed || count.is_some() {
-            self.runtime_changed(
-                removed.then(|| CandidateRuntimeChange::Removed {
-                    key: key.to_string(),
-                }),
-                count,
-            );
-        }
+        let signals_removed = self.inner.lock().unwrap().signals.remove(key).is_some();
+        self.set(key, |_, runtime| {
+            *runtime = CandidateRuntimeState {
+                import: runtime.import.take(),
+                ..CandidateRuntimeState::default()
+            };
+        });
         if signals_removed {
             self.revisions.send_modify(|revisions| revisions.signals += 1);
         }

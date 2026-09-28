@@ -93,3 +93,54 @@ fn only_the_claiming_imports_reports_move_its_claim() {
         "nor does releasing the ended import's claim"
     );
 }
+
+/// The scan dropping a candidate an import holds — the folder removed, read
+/// with other files, or found invalid — does not end the import. The claim
+/// stays until the import's own ending, so no second import takes the key
+/// meanwhile, and the count of imports comes down with that ending.
+#[test]
+fn an_import_outlives_its_candidate_leaving_the_scan() {
+    let key = "/watch/a/rel1";
+    let mut reshaped = folder_candidate(key, "/watch/a");
+    reshaped.file_edit_revision = 1;
+    let departures = [
+        ImportEvent::Scan(ScanEvent::CandidateRemoved {
+            candidate_key: key.to_string(),
+        }),
+        scanned(reshaped),
+        ImportEvent::Scan(ScanEvent::InvalidCandidate(InvalidCandidate {
+            path: PathBuf::from(key),
+            name: "rel1".to_string(),
+            watched_folder_path: "/watch/a".to_string(),
+            display_path: "rel1".to_string(),
+            grouping: None,
+            reason: InvalidReason::NoValidAudio,
+        })),
+    ];
+    for departure in departures {
+        let runtime = CandidateRuntime::default();
+        runtime.record_event(&scanned(folder_candidate(key, "/watch/a")));
+        claim(&runtime, key);
+        runtime.record_event(&progress(key, 42));
+
+        runtime.record_event(&departure);
+        assert_eq!(runtime.imports_in_flight(), 1, "{departure:?}");
+        assert!(
+            matches!(
+                runtime.claim_for_import(key, "imp-2"),
+                Err(crate::import::ImportError::CandidateImportInProgress)
+            ),
+            "{departure:?} let a second import claim the key"
+        );
+
+        runtime.record_event(&ImportEvent::ImportProgress {
+            candidate_key: key.to_string(),
+            progress: ImportProgress::Failed {
+                error: "the files changed".to_string(),
+                import_id: "imp-1".to_string(),
+            },
+        });
+        assert_eq!(runtime.imports_in_flight(), 0, "{departure:?}");
+        assert!(runtime.get(key).is_none(), "{departure:?}");
+    }
+}

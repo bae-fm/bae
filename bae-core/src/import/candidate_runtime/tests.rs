@@ -377,8 +377,7 @@ fn a_rescan_reporting_the_same_shape_keeps_the_runtime_and_a_new_shape_drops_it(
     let mut changes = runtime.every_change();
     let key = "/watch/a/rel1";
     runtime.record_event(&scanned(folder_candidate(key, "/watch/a")));
-    claim(&runtime, key);
-    runtime.record_event(&progress(key, 42));
+    runtime.record_event(&identify(key, 1, triangulating()));
     drain(&mut changes);
 
     runtime.record_event(&scanned(folder_candidate(key, "/watch/a")));
@@ -409,8 +408,8 @@ fn a_rescan_reporting_the_same_shape_keeps_the_runtime_and_a_new_shape_drops_it(
 fn removal_and_invalidation_drop_the_runtime() {
     let runtime = CandidateRuntime::default();
     let mut changes = runtime.every_change();
-    claim(&runtime, "/watch/a/rel1");
-    claim(&runtime, "/watch/a/rel2");
+    runtime.record_event(&identify("/watch/a/rel1", 1, triangulating()));
+    runtime.record_event(&identify("/watch/a/rel2", 2, triangulating()));
     drain(&mut changes);
 
     runtime.record_event(&ImportEvent::Scan(ScanEvent::CandidateRemoved {
