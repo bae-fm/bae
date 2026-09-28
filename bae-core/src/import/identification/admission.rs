@@ -108,10 +108,6 @@ pub(super) struct CandidateRunStart {
     /// The title to search by when the identifiers name nothing: the person's
     /// words, else the draft's.
     pub(super) title_search: Option<TitleSearch>,
-    /// Where most of the candidate's recordings were registered, as the
-    /// ISRCs in its stored file-tag reading say. `None` when no reading of
-    /// its current audio is stored.
-    pub(super) registered_in: Option<crate::pressing::ReleaseArea>,
 }
 
 /// Read what a run begins from. The draft comes from the pane's rows, because
@@ -144,27 +140,8 @@ pub(super) async fn candidate_run_start(
         Some(words) => TitleSearch::of(&words.album, &words.artist),
         None => TitleSearch::of_draft(&draft.album_title, artist),
     };
-    let stored = context
-        .library_manager
-        .load_candidate_file_tag_snapshot(&candidate.watched_folder_path, &candidate.key())
-        .await?
-        .and_then(|stored| stored.snapshot);
-    let registered_in = registered_in(stored.as_ref(), candidate);
     Ok(CandidateRunStart {
         choices: state.lookup_choices,
         title_search,
-        registered_in,
     })
-}
-
-/// Where most of `candidate`'s recordings were registered, as the ISRCs of
-/// its stored tag reading say — only when that reading was taken from the
-/// audio the candidate holds now.
-pub(super) fn registered_in(
-    stored: Option<&crate::import::file_tag_snapshot::FileTagSnapshot>,
-    candidate: &FolderCandidate,
-) -> Option<crate::pressing::ReleaseArea> {
-    stored
-        .filter(|snapshot| snapshot.was_read_from(candidate.files.audio()))
-        .and_then(|snapshot| snapshot.registered_in())
 }

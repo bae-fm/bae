@@ -103,6 +103,7 @@ fn sample_signals() -> crate::signals::Signals {
             free_text: Vec::new(),
         },
         text_pool: Vec::new(),
+        registered_in: None,
     }
 }
 
@@ -894,7 +895,6 @@ async fn a_transport_failure_round_trips_as_a_failed_verdict() {
             steps: crate::config::IdentificationSteps::default(),
             choices: crate::import::LookupChoices::default(),
             title_search: None,
-            registered_in: None,
         },
     );
     let (state, _) = identify_step(
@@ -912,6 +912,7 @@ async fn a_transport_failure_round_trips_as_a_failed_verdict() {
                     free_text: vec![],
                 },
                 text_pool: Vec::new(),
+                registered_in: None,
             },
             audio: crate::signals::AudioFacts::default(),
             artwork: crate::signals::ArtworkScan::Absent,

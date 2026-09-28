@@ -412,6 +412,7 @@ impl BridgeSignals {
             barcode: _,
             text,
             text_pool: _,
+            registered_in: _,
         } = s;
         BridgeSignals {
             text: BridgeTextSignal::from_core(text),

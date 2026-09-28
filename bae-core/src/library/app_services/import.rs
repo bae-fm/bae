@@ -142,8 +142,6 @@ impl AppServices {
             crate::util::rate_limiter::CallPriority::Interactive,
             choices,
             title_search,
-            // A library release's tracks keep no ISRCs to read.
-            None,
         ) {
             tracing::warn!("re-identify for {candidate_key} has no source to ask; no run started");
         }

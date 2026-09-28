@@ -371,6 +371,9 @@ impl crate::import::file_tag_snapshot::FileTagReader for CountingFileTagReader {
                 None
             },
             isrc: None,
+            copyright: None,
+            label: None,
+            store: None,
         })
     }
 }

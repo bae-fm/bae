@@ -24,13 +24,39 @@ pub(super) struct FactColumns {
     pub(super) discogs_details: String,
 }
 
+/// An area as the `country` and `region` columns that keep it: at most one
+/// of them set.
+pub(super) fn area_columns(
+    area: Option<ReleaseArea>,
+) -> (Option<&'static str>, Option<&'static str>) {
+    match area {
+        Some(ReleaseArea::Country(country)) => (Some(country.code()), None),
+        Some(ReleaseArea::Region(region)) => (None, Some(region.key())),
+        None => (None, None),
+    }
+}
+
+/// The area a `country` and a `region` column hold, or why they hold none a
+/// vocabulary names.
+pub(super) fn area_of(
+    country: Option<String>,
+    region: Option<String>,
+) -> Result<Option<ReleaseArea>, String> {
+    match (country, region) {
+        (Some(code), None) => Country::from_code(&code)
+            .map(|country| Some(ReleaseArea::Country(country)))
+            .ok_or_else(|| format!("country {code:?}")),
+        (None, Some(key)) => Region::from_key(&key)
+            .map(|region| Some(ReleaseArea::Region(region)))
+            .ok_or_else(|| format!("region {key:?}")),
+        (None, None) => Ok(None),
+        (Some(_), Some(_)) => Err("a row states both a country and a region".to_string()),
+    }
+}
+
 impl FactColumns {
     pub(super) fn of(facts: &PressingFacts) -> Self {
-        let (country, region) = match facts.area {
-            Some(ReleaseArea::Country(country)) => (Some(country.code()), None),
-            Some(ReleaseArea::Region(region)) => (None, Some(region.key())),
-            None => (None, None),
-        };
+        let (country, region) = area_columns(facts.area);
         Self {
             country,
             region,
@@ -80,22 +106,8 @@ pub(super) fn read_facts_without_media(
     let column = |name: &str| format!("{prefix}{name}");
     let country: Option<String> = row.get(column("country").as_str())?;
     let region: Option<String> = row.get(column("region").as_str())?;
-    let area = match (country, region) {
-        (Some(code), None) => Some(ReleaseArea::Country(Country::from_code(&code).ok_or_else(
-            || column_conversion_error(row, &column("country"), format!("country {code:?}")),
-        )?)),
-        (None, Some(key)) => Some(ReleaseArea::Region(Region::from_key(&key).ok_or_else(
-            || column_conversion_error(row, &column("region"), format!("region {key:?}")),
-        )?)),
-        (None, None) => None,
-        (Some(_), Some(_)) => {
-            return Err(column_conversion_error(
-                row,
-                &column("region"),
-                "a row states both a country and a region".to_string(),
-            ))
-        }
-    };
+    let area = area_of(country, region)
+        .map_err(|detail| column_conversion_error(row, &column("region"), detail))?;
     let status = keyed(row, &column("status"), ReleaseStatus::from_key)?;
     let packaging = keyed(row, &column("packaging"), Packaging::from_key)?;
     let details_column = column("discogs_details");

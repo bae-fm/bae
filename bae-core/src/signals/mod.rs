@@ -52,4 +52,7 @@ pub struct Signals {
     /// Every line of the candidate's own text, in reading order, which
     /// results are ranked against.
     pub text_pool: Vec<TextLine>,
+    /// Where most of the audio's recordings were registered, as the ISRCs its
+    /// tags carry say — see [`crate::isrc::registered_in`].
+    pub registered_in: Option<crate::pressing::ReleaseArea>,
 }

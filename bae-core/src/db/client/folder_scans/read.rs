@@ -253,7 +253,8 @@ fn load_file_tag_facts(
     let rows = sql.query(
         "SELECT tags.relative_path, tags.file_size, tags.modified_at_ns, \
                 tags.title, tags.track_artist, tags.album_title, tags.album_artist, \
-                tags.year, tags.track_number, tags.disc_number, tags.isrc \
+                tags.year, tags.track_number, tags.disc_number, tags.isrc, \
+                tags.label, tags.copyright, tags.store \
          FROM scan_candidate_file_tag AS tags \
          INNER JOIN scan_candidate_file AS files \
              ON files.watched_folder_path = tags.watched_folder_path \
@@ -275,6 +276,9 @@ fn load_file_tag_facts(
                 row.get::<_, Option<i64>>(8)?,
                 row.get::<_, Option<i64>>(9)?,
                 row.get::<_, Option<String>>(10)?,
+                row.get::<_, Option<String>>(11)?,
+                row.get::<_, Option<String>>(12)?,
+                row.get::<_, Option<String>>(13)?,
             ))
         },
     )?;
@@ -292,6 +296,9 @@ fn load_file_tag_facts(
                 track_number,
                 disc_number,
                 isrc,
+                label,
+                copyright,
+                store,
             )| {
                 Ok(FileTagFact {
                     observation: FileObservation {
@@ -320,6 +327,18 @@ fn load_file_tag_facts(
                         .map(|value| to_u32(value, "a file-tag disc number"))
                         .transpose()?,
                     isrc,
+                    label,
+                    copyright,
+                    store: store
+                        .map(|key| {
+                            crate::import::file_tag_snapshot::StoreMarker::from_key(&key)
+                                .ok_or_else(|| {
+                                    DbError::Message(format!(
+                                        "a file-tag store {key:?} is no store bae reads"
+                                    ))
+                                })
+                        })
+                        .transpose()?,
                 })
             },
         )

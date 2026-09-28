@@ -754,6 +754,11 @@ CREATE TABLE IF NOT EXISTS scan_candidate_file_tag (
     disc_number         INTEGER,
     -- The ISRC the file's recording is registered under, as its tag writes it.
     isrc                TEXT CHECK (isrc IS NULL OR isrc <> ''),
+    label               TEXT CHECK (label IS NULL OR label <> ''),
+    copyright           TEXT CHECK (copyright IS NULL OR copyright <> ''),
+    -- The store the tags say sold the file: 'itunes_purchase', the atoms iTunes
+    -- writes only into a purchase; 'bandcamp', Bandcamp's "Visit" comment.
+    store               TEXT CHECK (store IS NULL OR store IN ('itunes_purchase', 'bandcamp')),
     PRIMARY KEY (watched_folder_path, candidate_path, relative_path),
     FOREIGN KEY (watched_folder_path, candidate_path)
         REFERENCES scan_candidate_tag_snapshot (watched_folder_path, candidate_path) ON DELETE CASCADE,
@@ -1286,7 +1291,12 @@ CREATE TABLE IF NOT EXISTS import_candidate_signals (
     text_failure           TEXT CHECK (text_failure IS NULL OR text_failure IN ('network', 'provider', 'timeout', 'artwork_analysis', 'diagnostic')),
     text_failure_status    INTEGER,
     text_failure_detail    TEXT,
+    -- Where most of the audio's recordings were registered, as the ISRCs its
+    -- tags carry say: a country's code or a region's key.
+    registered_in_country  TEXT CHECK (registered_in_country IS NULL OR registered_in_country <> ''),
+    registered_in_region   TEXT CHECK (registered_in_region IS NULL OR registered_in_region <> ''),
     FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE,
+    CHECK (registered_in_country IS NULL OR registered_in_region IS NULL),
     CHECK ((rip = 'cd') = (rip_proof IS NOT NULL)),
     CHECK (rip_file IS NULL OR rip = 'cd'),
     -- A sheet goes unhashed only when the audio rules a CD out.
@@ -1325,7 +1335,8 @@ CREATE TABLE IF NOT EXISTS import_candidate_text_line (
     position      INTEGER NOT NULL CHECK (position >= 0),
     text          TEXT NOT NULL,
     origin        TEXT NOT NULL
-        CHECK (origin IN ('cue_sheet', 'artwork', 'folder_name', 'filename', 'text_file')),
+        CHECK (origin IN ('cue_sheet', 'artwork', 'folder_name', 'filename', 'text_file',
+                          'file_tag')),
     PRIMARY KEY (content_hash, position),
     FOREIGN KEY (content_hash) REFERENCES import_candidate_signals (content_hash) ON DELETE CASCADE
 ) STRICT;

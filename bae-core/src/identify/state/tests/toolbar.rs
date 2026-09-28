@@ -217,6 +217,7 @@ fn a_chosen_number_survives_a_snapshot_still_being_read() {
                     free_text: Vec::new(),
                 },
                 text_pool: Vec::new(),
+                registered_in: None,
             },
             audio: crate::signals::AudioFacts::default(),
             artwork: crate::signals::ArtworkScan::Absent,

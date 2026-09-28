@@ -14,7 +14,6 @@ fn started_without(providers: Vec<Catalog>, off: crate::config::IdentificationSt
             steps,
             choices: LookupChoices::default(),
             title_search: TitleSearch::of("Album", "Artist"),
-            registered_in: None,
         },
     );
     assert!(effects.is_empty());
@@ -76,7 +75,6 @@ fn a_left_out_disc_id_says_it_was_left_out_whatever_its_step() {
             steps,
             choices: excluding(true, &[]),
             title_search: None,
-            registered_in: None,
         },
     );
     let (state, effects) = update(state, disc_only(&[]));
@@ -177,7 +175,6 @@ fn a_run_whose_lookups_are_all_off_offers_manual_search() {
             steps,
             choices: LookupChoices::default(),
             title_search: TitleSearch::of("Album", "Artist"),
-            registered_in: None,
         },
     );
     let (state, effects) = update(state, disc_only(&[]));

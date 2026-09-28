@@ -33,6 +33,7 @@ fn settled_signals() -> Signals {
             free_text: Vec::new(),
         },
         text_pool: Vec::new(),
+        registered_in: None,
     }
 }
 
@@ -280,7 +281,16 @@ async fn every_settled_signal_shape_round_trips() {
         ),
     ];
 
-    for (what, rip, disc_id, barcode, text) in cases {
+    // Where the recordings were registered rides along: a country, a region,
+    // and nowhere.
+    let registrations = [
+        crate::pressing::Country::from_code("IT").map(crate::pressing::ReleaseArea::Country),
+        Some(crate::pressing::ReleaseArea::Region(
+            crate::pressing::Region::Yugoslavia,
+        )),
+        None,
+    ];
+    for (at, (what, rip, disc_id, barcode, text)) in cases.into_iter().enumerate() {
         let (db, _tmp) = empty_db().await;
         let (_, hash) = stored_pane_candidate(&db).await;
         let signals = Signals {
@@ -289,6 +299,7 @@ async fn every_settled_signal_shape_round_trips() {
             barcode,
             text,
             text_pool: Vec::new(),
+            registered_in: registrations[at % registrations.len()],
         };
 
         assert!(store_verdict(&db, &hash, signals.clone()).await, "{what}");
@@ -325,6 +336,7 @@ async fn a_scanning_signal_is_refused_and_writes_nothing() {
                 free_text: Vec::new(),
             },
             text_pool: Vec::new(),
+            registered_in: None,
         },
         Signals {
             rip: crate::signals::RipEvidence::Unproven,
@@ -335,6 +347,7 @@ async fn a_scanning_signal_is_refused_and_writes_nothing() {
                 free_text: Vec::new(),
             },
             text_pool: Vec::new(),
+            registered_in: None,
         },
     ] {
         let (db, _tmp) = empty_db().await;

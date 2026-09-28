@@ -77,8 +77,9 @@ pub(crate) fn replace_candidate_file_tag_snapshot(
             "INSERT INTO scan_candidate_file_tag \
                  (watched_folder_path, candidate_path, relative_path, file_size, \
                   modified_at_ns, title, track_artist, album_title, \
-                  album_artist, year, track_number, disc_number, isrc) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                  album_artist, year, track_number, disc_number, isrc, label, \
+                  copyright, store) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             params![
                 watched_folder_path,
                 candidate_path,
@@ -93,6 +94,9 @@ pub(crate) fn replace_candidate_file_tag_snapshot(
                 fact.track_number.map(i64::from),
                 fact.disc_number.map(i64::from),
                 fact.isrc,
+                fact.label,
+                fact.copyright,
+                fact.store.map(crate::import::file_tag_snapshot::StoreMarker::key),
             ],
         )?;
     }

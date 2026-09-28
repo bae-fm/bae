@@ -203,9 +203,6 @@ pub enum IdentifyEvent {
         steps: IdentificationSteps,
         choices: LookupChoices,
         title_search: Option<TitleSearch>,
-        /// Where most of the candidate's recordings were registered, as the
-        /// ISRCs its files' tags carry say.
-        registered_in: Option<crate::pressing::ReleaseArea>,
     },
     Cancelled,
 
@@ -307,11 +304,9 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                 steps,
                 choices,
                 title_search,
-                registered_in,
             },
         ) => {
-            let context =
-                SignalsContext::started(providers, steps, choices, title_search, registered_in);
+            let context = SignalsContext::started(providers, steps, choices, title_search);
             // Chosen numbers are looked up at once, without waiting for a
             // snapshot to offer them again.
             let mut effects = Vec::new();

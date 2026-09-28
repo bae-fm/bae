@@ -225,7 +225,6 @@ async fn a_run_the_queue_did_not_start_ends_through_the_same_cancel() {
         CallPriority::Interactive,
         LookupChoices::default(),
         None,
-        None,
     ));
     wait_for_request(&fixture.provider, "/discid/", 1).await;
     assert!(fixture.import.is_identifying(&key));

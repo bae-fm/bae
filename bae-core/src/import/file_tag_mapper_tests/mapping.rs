@@ -69,6 +69,9 @@ fn cue_and_loose_audio_both_keep_their_metadata_in_playback_order() {
                 track_number: None,
                 disc_number: None,
                 isrc: None,
+                copyright: None,
+                label: None,
+                store: None,
             })
             .collect(),
     };
@@ -150,6 +153,9 @@ fn stored_file_tag_facts_project_without_opening_the_source_file() {
             track_number: Some(1),
             disc_number: None,
             isrc: None,
+            copyright: None,
+            label: None,
+            store: None,
         }],
         embedded_cover: None,
     };

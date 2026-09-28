@@ -85,6 +85,7 @@ async fn pure_reads_use_the_read_connection() {
                     free_text: Vec::new(),
                 },
                 text_pool: Vec::new(),
+                registered_in: None,
             },
             metadata: Some(bae_core::import::CandidateMetadataDraft {
                 draft: bae_core::import::CandidateDraft {

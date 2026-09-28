@@ -587,6 +587,7 @@ mod identify_mirrors {
                 free_text: vec!["Album Title".to_string()],
             },
             text_pool: Vec::new(),
+            registered_in: None,
         };
 
         let json = serde_json::to_value(AutomationSignals::from_core(signals)).unwrap();

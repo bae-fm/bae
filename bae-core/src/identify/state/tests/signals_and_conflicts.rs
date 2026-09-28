@@ -57,7 +57,6 @@ fn started_with_choices(
             steps: crate::config::IdentificationSteps::default(),
             choices,
             title_search: None,
-            registered_in: None,
         },
     )
 }
@@ -176,6 +175,7 @@ fn signals_with_catalogs(
             free_text: vec![],
         },
         text_pool: Vec::new(),
+        registered_in: None,
     }
 }
 
@@ -272,6 +272,7 @@ fn nothing_to_run_waits_for_the_settled_text() {
             free_text: vec![],
         },
         text_pool: Vec::new(),
+        registered_in: None,
     };
     let (state, effects) = update(started(), scanning);
     assert!(effects.is_empty());
@@ -316,6 +317,7 @@ fn an_aborted_extraction_settles_the_run_as_failed() {
             free_text: vec![],
         },
         text_pool: Vec::new(),
+        registered_in: None,
     };
     let (state, effects) = update(started(), aborted);
     assert!(effects.is_empty(), "nothing is asked, got {effects:?}");

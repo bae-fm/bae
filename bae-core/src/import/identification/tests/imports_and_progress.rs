@@ -473,6 +473,7 @@ async fn a_cancelled_candidate_writes_no_row() {
                     free_text: Vec::new(),
                 },
                 text_pool: Vec::new(),
+                registered_in: None,
             },
             None,
         )

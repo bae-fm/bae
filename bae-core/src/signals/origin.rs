@@ -18,15 +18,18 @@ pub enum TextOrigin {
     Filename,
     /// A `.txt` document.
     TextFile,
+    /// An audio file's tag: its album, artist or label.
+    FileTag,
 }
 
 impl TextOrigin {
-    const ALL: [TextOrigin; 5] = [
+    const ALL: [TextOrigin; 6] = [
         Self::CueSheet,
         Self::Artwork,
         Self::FolderName,
         Self::Filename,
         Self::TextFile,
+        Self::FileTag,
     ];
 
     /// The stored `origin` column value of a text line.
@@ -37,6 +40,7 @@ impl TextOrigin {
             Self::FolderName => "folder_name",
             Self::Filename => "filename",
             Self::TextFile => "text_file",
+            Self::FileTag => "file_tag",
         }
     }
 }
@@ -63,6 +67,7 @@ impl TextOrigin {
             Source::FilenameGeneric { .. } => Self::Filename,
             Source::CueField { .. } => Self::CueSheet,
             Source::TextFile { .. } => Self::TextFile,
+            Source::FileTag { .. } => Self::FileTag,
         }
     }
 }

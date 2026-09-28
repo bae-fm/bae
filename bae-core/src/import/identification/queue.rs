@@ -536,7 +536,6 @@ async fn fill_slots(context: &Context, queue: &mut Queue) {
         let CandidateRunStart {
             choices,
             title_search,
-            registered_in,
         } = start;
         info!(
             "identification: identifying {key} at {priority:?} ({} job(s) on the queue)",
@@ -552,7 +551,6 @@ async fn fill_slots(context: &Context, queue: &mut Queue) {
             priority,
             choices,
             title_search,
-            registered_in,
         ) {
             // No source to ask: no run will report, so the job cannot hold a slot.
             warn!("identification: no source to ask about {key}; leaving its job unanswered");

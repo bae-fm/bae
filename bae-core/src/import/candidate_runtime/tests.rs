@@ -134,6 +134,7 @@ fn extracted_signals() -> crate::signals::Signals {
             free_text: Vec::new(),
         },
         text_pool: Vec::new(),
+        registered_in: None,
     }
 }
 

@@ -75,6 +75,9 @@ fn snapshot(generation: u64, revision: u64) -> FileTagSnapshot {
                 track_number: Some(1),
                 disc_number: Some(1),
                 isrc: Some("IT0000000001".to_string()),
+                copyright: None,
+                label: None,
+                store: None,
             },
             FileTagFact {
                 observation: FileObservation {
@@ -90,6 +93,9 @@ fn snapshot(generation: u64, revision: u64) -> FileTagSnapshot {
                 track_number: Some(2),
                 disc_number: None,
                 isrc: None,
+                copyright: None,
+                label: None,
+                store: None,
             },
         ],
         embedded_cover: Some(EmbeddedCoverFact {
@@ -158,6 +164,9 @@ async fn replacement_removes_every_prior_file_and_embedded_cover() {
                 track_number: None,
                 disc_number: None,
                 isrc: None,
+                copyright: None,
+                label: None,
+                store: None,
             },
             FileTagFact {
                 observation: FileObservation {
@@ -173,6 +182,9 @@ async fn replacement_removes_every_prior_file_and_embedded_cover() {
                 track_number: None,
                 disc_number: None,
                 isrc: None,
+                copyright: None,
+                label: None,
+                store: None,
             },
         ],
         embedded_cover: None,

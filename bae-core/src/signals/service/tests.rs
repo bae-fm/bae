@@ -14,6 +14,7 @@ use tokio::sync::mpsc::UnboundedReceiver;
 mod aborts;
 mod cancellation;
 mod cover_art_off;
+mod tags;
 
 /// Canned text lines keyed by file name; the optional gate holds each image
 /// until the test opens it, so a test can act mid-OCR.

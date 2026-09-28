@@ -168,6 +168,9 @@ fn file_metadata_keeps_the_releases_numbering_instead_of_the_tags() {
                 track_number: Some(1),
                 disc_number: Some(7),
                 isrc: None,
+                copyright: None,
+                label: None,
+                store: None,
             })
             .collect(),
     };

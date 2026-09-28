@@ -15,7 +15,8 @@ const SIGNALS_COLUMNS: &str = "content_hash, rip, rip_proof, rip_file, \
      disc_id_state, disc_id, disc_id_source_file, \
      disc_id_failure, disc_id_failure_status, disc_id_failure_detail, \
      barcode_state, barcode_failure, barcode_failure_status, barcode_failure_detail, \
-     text_state, text_failure, text_failure_status, text_failure_detail";
+     text_state, text_failure, text_failure_status, text_failure_detail, \
+     registered_in_country, registered_in_region";
 
 const SIGNAL_VALUE_COLUMNS: &str = "content_hash, list, position, value, origin_path";
 
@@ -76,6 +77,8 @@ pub(super) fn insert_signals(
             ))
         }
     };
+    let (registered_in_country, registered_in_region) =
+        crate::db::client::pressing_columns::area_columns(signals.registered_in);
     let disc_id_failure = failure_columns(disc_id_failure);
     let barcode_failure = failure_columns(barcode_failure);
     let text_failure = failure_columns(text_failure);
@@ -83,7 +86,7 @@ pub(super) fn insert_signals(
     sql.execute(
         &format!(
             "INSERT INTO import_candidate_signals ({SIGNALS_COLUMNS}) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         ),
         params![
             content_hash,
@@ -104,6 +107,8 @@ pub(super) fn insert_signals(
             text_failure.kind,
             text_failure.status,
             text_failure.detail,
+            registered_in_country,
+            registered_in_region,
         ],
     )?;
 
@@ -220,6 +225,10 @@ pub(super) fn load_signals_on(
                 row.get::<_, Option<String>>("text_failure")?,
                 row.get::<_, Option<i64>>("text_failure_status")?,
                 row.get::<_, Option<String>>("text_failure_detail")?,
+                (
+                    row.get::<_, Option<String>>("registered_in_country")?,
+                    row.get::<_, Option<String>>("registered_in_region")?,
+                ),
             ))
         },
     )?;
@@ -262,7 +271,13 @@ pub(super) fn load_signals_on(
                 text_failure,
                 text_failure_status,
                 text_failure_detail,
+                (registered_in_country, registered_in_region),
             ) = row;
+            let registered_in = crate::db::client::pressing_columns::area_of(
+                registered_in_country,
+                registered_in_region,
+            )
+            .map_err(|detail| DbError::Message(format!("a stored registration: {detail}")))?;
             let values = lists.remove(&content_hash).unwrap_or_default();
             let rip = match rip.as_str() {
                 "cd" => {
@@ -336,6 +351,7 @@ pub(super) fn load_signals_on(
                     barcode,
                     text,
                     text_pool,
+                    registered_in,
                 },
             );
         }

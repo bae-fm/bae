@@ -336,6 +336,8 @@ pub enum Source {
     FilenameGeneric { path: PathBuf },
     CueField { file_id: String },
     TextFile { path: PathBuf },
+    /// An audio file's tag: its album, artist or label.
+    FileTag { file_id: String },
 }
 
 /// A candidate line and where it came from, verbatim.
@@ -414,12 +416,12 @@ impl Cluster {
     }
 }
 
-/// CUE fields and path components are curated by rippers and users, so they
-/// carry the strongest per-line signal; artwork OCR is weak per line but earns
-/// score by repeating across images.
+/// CUE fields, tags and path components are curated by rippers, stores and
+/// users, so they carry the strongest per-line signal; artwork OCR is weak per
+/// line but earns score by repeating across images.
 pub(crate) fn source_weight(source: &Source) -> usize {
     match source {
-        Source::CueField { .. } => 5,
+        Source::CueField { .. } | Source::FileTag { .. } => 5,
         Source::PathComponent => 3,
         Source::FilenameGeneric { .. } => 1,
         Source::Artwork { .. } => 1,

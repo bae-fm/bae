@@ -281,6 +281,7 @@ async fn run_extraction(
                         barcodes: fast.cue_barcodes,
                         pool,
                         audio: fast.audio,
+                        registered_in: fast.registered_in,
                     },
                     artwork,
                 },
@@ -358,6 +359,7 @@ async fn run_extraction(
                         barcodes: Vec::new(),
                         pool: Pool::default(),
                         audio,
+                        registered_in: None,
                     },
                     artwork,
                 },
@@ -408,6 +410,7 @@ struct Gathered {
     barcodes: Vec<SourcedValue>,
     pool: Pool,
     audio: AudioFacts,
+    registered_in: Option<crate::pressing::ReleaseArea>,
 }
 
 /// What the streaming pass consumes: what is already gathered, and the
@@ -617,6 +620,7 @@ async fn stream_extraction(
                 free_text: classification.free_text,
             },
             text_pool: gathered.pool.text_lines(),
+            registered_in: gathered.registered_in,
         },
         audio: gathered.audio,
         artwork: finished,
@@ -651,6 +655,7 @@ fn emit_failed_ocr_signals(
                     free_text: classification.free_text,
                 },
                 text_pool: gathered.pool.text_lines(),
+                registered_in: gathered.registered_in,
             },
             audio: gathered.audio,
             artwork,
@@ -684,6 +689,7 @@ fn emit_aborted_signals(
                     free_text: Vec::new(),
                 },
                 text_pool: Vec::new(),
+                registered_in: None,
             },
             audio: AudioFacts::default(),
             artwork: ArtworkScan::Failed {
@@ -713,6 +719,7 @@ fn scanning_signals(
             free_text,
         },
         text_pool,
+        registered_in: gathered.registered_in,
     }
 }
 

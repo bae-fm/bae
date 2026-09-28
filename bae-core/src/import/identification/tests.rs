@@ -54,6 +54,7 @@ fn settled_signals() -> Signals {
             free_text: Vec::new(),
         },
         text_pool: Vec::new(),
+        registered_in: None,
     }
 }
 

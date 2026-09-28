@@ -309,7 +309,7 @@ pub struct SignalsContext {
     /// The audio being identified, read off its files.
     pub audio: AudioFacts,
     /// Where most of the audio's recordings were registered, as the ISRCs
-    /// its files' tags carry say; fixed when the run starts.
+    /// its files' tags carry say.
     pub registered_in: Option<crate::pressing::ReleaseArea>,
     pub disc: DiscIdEvidence,
     pub barcode: BarcodeEvidence,
@@ -383,12 +383,10 @@ impl SignalsContext {
         steps: IdentificationSteps,
         choices: LookupChoices,
         title_search: Option<TitleSearch>,
-        registered_in: Option<crate::pressing::ReleaseArea>,
     ) -> Self {
         Self {
             providers,
             steps,
-            registered_in,
             album_links: if steps.follow_catalog_links {
                 AlbumLinkReading::Pending
             } else {
@@ -430,6 +428,7 @@ impl SignalsContext {
     ) {
         self.artwork = artwork;
         self.rip = signals.rip.clone();
+        self.registered_in = signals.registered_in;
         self.audio = audio;
         self.disc.refresh_input(&signals.disc_id);
         self.barcode.refresh_input(&signals.barcode);
