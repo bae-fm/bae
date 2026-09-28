@@ -60,13 +60,13 @@ struct LibraryArtworkBrowserTests {
                     window: window,
                     size: size
                 )
-                _ = try await text(in: host, size: size)
+                // Back in the grid, whose layout a reload would start from.
+                try await SnapshotTestSupport.settle(host)
                 #expect(lookups == 1)
                 #expect(!dismissed)
                 try HostedInput.keyEquivalent(.return, in: host)
-                _ = try await text(in: host, size: size)
+                try await Wait.until { dismissed }
                 #expect(saved == art.coverChoice.selection)
-                #expect(dismissed)
             }
         )
     }
@@ -197,10 +197,9 @@ struct LibraryArtworkBrowserTests {
             try view("v1"),
             size: size
         ) { _, host in
-            _ = try await text(in: host, size: size)
+            try await Wait.until { await reads.versions == ["v1"] }
             host.rootView = try view("v2")
-            _ = try await text(in: host, size: size)
-            #expect(await reads.versions == ["v1", "v2"])
+            try await Wait.until { await reads.versions == ["v1", "v2"] }
         }
     }
 
