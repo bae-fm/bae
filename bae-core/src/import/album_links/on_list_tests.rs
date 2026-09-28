@@ -136,6 +136,16 @@ fn a_catalog_number_is_compared_with_every_label_a_release_states() {
     assert_eq!(joined, vec![by_catalog_number("dg-1", "700")]);
 }
 
+/// A label written as its initials is the label they abbreviate.
+#[test]
+fn a_catalog_number_under_a_label_s_initials_joins_the_albums() {
+    let joined = albums_on(&[
+        ours("Album", &[], &[("Alpha Beta Corporation", "LB 100")]),
+        theirs("dg-1", "700", "Album", &[], &[("ABC", "LB-100")]),
+    ]);
+    assert_eq!(joined, vec![by_catalog_number("dg-1", "700")]);
+}
+
 /// The same number under another label is another label's numbering.
 #[test]
 fn one_catalog_number_under_two_labels_does_not_join() {

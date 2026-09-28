@@ -190,15 +190,16 @@ impl CandidateText {
     /// label written as its initials states the name they are the initials
     /// of, either way round: "DFC" and "Dance Floor Corporation".
     pub fn states_label(&self, value: &str) -> bool {
-        super::label::stated(value).is_some_and(|name| self.states_run(&name))
-            || super::label::initials_of(value).is_some_and(|initials| {
+        let Some(name) = super::label::LabelName::of(value) else {
+            return false;
+        };
+        self.states_run(name.stated())
+            || name.initials().is_some_and(|initials| {
                 let written = initials.to_uppercase();
                 self.lines.iter().any(|line| line.writes_code(&written))
             })
-            || super::label::written_initials(value).is_some_and(|initials| {
-                self.lines
-                    .iter()
-                    .any(|line| line.spells_initials(&initials))
+            || name.written_initials().is_some_and(|initials| {
+                self.lines.iter().any(|line| line.spells_initials(initials))
             })
     }
 

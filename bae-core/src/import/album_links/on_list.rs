@@ -22,9 +22,9 @@ use crate::import::types::{Catalog, MetadataRef};
 struct Printed {
     /// Its barcodes' comparison keys.
     barcodes: Vec<String>,
-    /// Each label it states both halves of: the label as the trade-word rule
-    /// reads its name, and the number's key.
-    numbers: Vec<(String, String)>,
+    /// Each label it states both halves of: the label's name, and the
+    /// number's key.
+    numbers: Vec<(crate::identify::label::LabelName, String)>,
     /// The words of its title that say which album it is: its bracketed
     /// tails and its stop words left out.
     title: Vec<String>,
@@ -43,7 +43,7 @@ impl Printed {
                 .iter()
                 .filter_map(|label| {
                     Some((
-                        crate::identify::label::stated(label.name()?)?,
+                        crate::identify::label::LabelName::of(label.name()?)?,
                         crate::util::text::catalog_key(label.catalog_number()?)?,
                     ))
                 })
@@ -58,7 +58,14 @@ impl Printed {
 
     /// Whether the two print one catalog number under one label.
     fn shares_catalog_number(&self, other: &Self) -> bool {
-        self.numbers.iter().any(|number| other.numbers.contains(number))
+        self.numbers.iter().any(|(label, number)| {
+            other
+                .numbers
+                .iter()
+                .any(|(other_label, other_number)| {
+                    number == other_number && label.same_label(other_label)
+                })
+        })
     }
 
     /// Whether the two titles share a word that says which album they are.

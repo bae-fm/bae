@@ -11,7 +11,7 @@
 //! supported that claim is.
 
 use crate::barcode::comparison_key;
-use crate::identify::label::stated;
+use crate::identify::label::LabelName;
 use crate::import::search::MetadataResult;
 use crate::import::types::{Catalog, MetadataRef};
 use crate::pressing::{Medium, ReleaseArea, ReleaseLabel, StatedMedia};
@@ -40,7 +40,7 @@ pub(crate) struct ComparedPressing<'a> {
     catalogs: Vec<String>,
     year: Option<i32>,
     area: Option<ReleaseArea>,
-    labels: Vec<String>,
+    labels: Vec<LabelName>,
     media: KnownMedia,
 }
 
@@ -66,7 +66,7 @@ impl<'a> ComparedPressing<'a> {
                 .labels
                 .iter()
                 .filter_map(ReleaseLabel::name)
-                .filter_map(stated)
+                .filter_map(LabelName::of)
                 .collect(),
             media: KnownMedia::of(&release.media),
         }
@@ -219,7 +219,15 @@ impl PressingEvidence {
             _ => Comparison::Unknown,
         };
         // Differently written names are inconclusive, not different labels.
-        let label = shared(&a.labels, &b.labels);
+        let label = if a
+            .labels
+            .iter()
+            .any(|name| b.labels.iter().any(|other| name.same_label(other)))
+        {
+            Comparison::Same
+        } else {
+            Comparison::Unknown
+        };
         Self {
             same_catalog: a.record.catalog == b.record.catalog,
             link: a.links.contains(&b.record) || b.links.contains(&a.record),

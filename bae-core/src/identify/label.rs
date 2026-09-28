@@ -8,44 +8,89 @@
 //!
 //! A name that is nothing but trade words — "Records" — names no label at all,
 //! and so states nothing about a result.
+//!
+//! A label may also be written as its initials — "DFC" for "Dance Floor
+//! Corporation" — and two names agree when one is the other's initials.
+//! [`LabelName::same_label`] is the one place two label names are compared.
 
 use std::sync::OnceLock;
 
-/// What `name` says about which label it is: its words, with the trade words
-/// it ends on dropped, run together the way the candidate's text is read.
-/// `None` when nothing of the name is left.
-pub(crate) fn stated(name: &str) -> Option<String> {
-    let mut words = super::agreements::words(name);
+/// One label's name, read into what the comparisons ask of it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct LabelName {
+    /// Its words, with the trade words it ends on dropped, run together the
+    /// way the candidate's text is read.
+    stated: String,
+    /// The first letters of those words, stop words left out, when they are
+    /// two to four — "dfc" for "The Dance Floor Corporation Records".
+    initials: Option<String>,
+    /// What it is when it is written as initials: once the trade words it
+    /// ends on are dropped, one word of two to four capitals — "DFC",
+    /// "D.F.C." — lowercased. A word in lowercase, or longer, is a name.
+    written_initials: Option<String>,
+}
+
+impl LabelName {
+    /// `None` when nothing of the name is left once its trade words are
+    /// dropped.
+    pub(crate) fn of(name: &str) -> Option<Self> {
+        let words = without_trade_words(super::agreements::words(name));
+        if words.is_empty() {
+            return None;
+        }
+        let initials: String = words
+            .iter()
+            .filter(|word| !crate::util::text::is_stop_word(word))
+            .filter_map(|word| word.chars().next())
+            .collect();
+        Some(Self {
+            stated: words.concat(),
+            initials: (2..=4)
+                .contains(&initials.chars().count())
+                .then_some(initials),
+            written_initials: written_initials(name),
+        })
+    }
+
+    /// Whether the two name one label: they read alike, or one is written as
+    /// the other's initials.
+    pub(crate) fn same_label(&self, other: &Self) -> bool {
+        self.stated == other.stated
+            || self.written_as_initials_of(other)
+            || other.written_as_initials_of(self)
+    }
+
+    fn written_as_initials_of(&self, other: &Self) -> bool {
+        self.written_initials.is_some() && self.written_initials == other.initials
+    }
+
+    /// Its words run together, as a line of text is searched for it.
+    pub(crate) fn stated(&self) -> &str {
+        &self.stated
+    }
+
+    /// Its initials, when its words make some.
+    pub(crate) fn initials(&self) -> Option<&str> {
+        self.initials.as_deref()
+    }
+
+    /// The initials it is written as, when it is.
+    pub(crate) fn written_initials(&self) -> Option<&str> {
+        self.written_initials.as_deref()
+    }
+}
+
+/// `words` without the trade words they end on.
+fn without_trade_words(mut words: Vec<String>) -> Vec<String> {
     while let Some(tail) = tails().iter().find(|tail| words.ends_with(tail)) {
         words.truncate(words.len() - tail.len());
     }
-    (!words.is_empty()).then(|| words.concat())
+    words
 }
 
-/// The initials `name`'s words are written as: the first letter of each of
-/// its words, its stop words and the trade words it ends on left out — "dfc"
-/// for "The Dance Floor Corporation Records". `None` unless that leaves two
-/// to four words, the most a label's initials run to.
-pub(crate) fn initials_of(name: &str) -> Option<String> {
-    let mut words = super::agreements::words(name);
-    while let Some(tail) = tails().iter().find(|tail| words.ends_with(tail)) {
-        words.truncate(words.len() - tail.len());
-    }
-    let initials: String = words
-        .iter()
-        .filter(|word| !crate::util::text::is_stop_word(word))
-        .filter_map(|word| word.chars().next())
-        .collect();
-    (2..=4)
-        .contains(&initials.chars().count())
-        .then_some(initials)
-}
-
-/// The initials `name` is, when it is written as initials: once the trade
-/// words it ends on are dropped, one word of two to four letters, every one
-/// a capital — "DFC", "D.F.C." — read the way [`initials_of`] reads a name's.
-/// A word in lowercase, or longer, is a name of its own.
-pub(crate) fn written_initials(name: &str) -> Option<String> {
+/// The initials `name` is written as, lowercased, when it is written as
+/// initials — see [`LabelName::written_initials`].
+fn written_initials(name: &str) -> Option<String> {
     let mut written: Vec<String> = name
         .split(|c: char| !c.is_alphanumeric() && c != '.')
         .map(|word| word.replace('.', ""))
@@ -113,6 +158,10 @@ mod tests {
         assert_eq!(tails().len(), TRADE_WORDS.len());
     }
 
+    fn stated(name: &str) -> Option<String> {
+        LabelName::of(name).map(|name| name.stated().to_string())
+    }
+
     /// A name is left with what names the label, however many trade words it
     /// trails and however they are punctuated.
     #[test]
@@ -133,5 +182,22 @@ mod tests {
         assert_eq!(stated("Music Entertainment"), None);
         assert_eq!(stated(""), None);
         assert_eq!(stated("···"), None);
+    }
+
+    /// Two names name one label when they read alike without their trade
+    /// words, or when one is written as the other's initials.
+    #[test]
+    fn two_names_name_one_label() {
+        let same = |a: &str, b: &str| {
+            LabelName::of(a)
+                .unwrap()
+                .same_label(&LabelName::of(b).unwrap())
+        };
+        assert!(same("Harbor Records", "Harbor"));
+        assert!(same("ABC", "Alpha Beta Corporation"));
+        assert!(same("Alpha Beta Corporation Records", "A.B.C."));
+        assert!(!same("abc", "Alpha Beta Corporation"));
+        assert!(!same("ABD", "Alpha Beta Corporation"));
+        assert!(!same("Harbor", "Summit"));
     }
 }

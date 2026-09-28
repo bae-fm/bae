@@ -64,7 +64,8 @@ fn countries_and_regions_compare_by_what_they_name() {
     assert_eq!(evidence(&a, &b).country, Comparison::Unknown);
 }
 
-/// The trade word a label trails is dropped; anything else different is
+/// The trade word a label trails is dropped, and a label written as its
+/// initials is the name they abbreviate; anything else different is
 /// inconclusive, never a different label.
 #[test]
 fn labels_agree_by_name_and_never_disagree() {
@@ -74,6 +75,8 @@ fn labels_agree_by_name_and_never_disagree() {
     b.labels = vec![crate::pressing::ReleaseLabel::of(Some("Label Name"), None)];
     assert_eq!(evidence(&a, &b).label, Comparison::Same);
     b.labels = vec![crate::pressing::ReleaseLabel::of(Some("LN"), None)];
+    assert_eq!(evidence(&a, &b).label, Comparison::Same);
+    b.labels = vec![crate::pressing::ReleaseLabel::of(Some("LM"), None)];
     assert_eq!(evidence(&a, &b).label, Comparison::Unknown);
     b.labels = Vec::new();
     assert_eq!(evidence(&a, &b).label, Comparison::Unknown);
