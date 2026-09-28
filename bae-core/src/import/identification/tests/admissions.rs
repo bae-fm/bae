@@ -323,3 +323,92 @@ async fn an_admitted_candidate_opens_on_find_online() {
     fixture.provider.release();
     let _ = tokio::time::timeout(Duration::from_secs(20), sweep).await;
 }
+
+/// A reading of `candidate`'s audio whose every track carries an Italian
+/// ISRC, taken from files the size `size_of` says each was.
+fn italian_isrcs(
+    candidate: &FolderCandidate,
+    scan_generation: u64,
+    size_of: impl Fn(&crate::import::folder_scanner::ScannedFile) -> u64,
+) -> crate::import::file_tag_snapshot::FileTagSnapshot {
+    crate::import::file_tag_snapshot::FileTagSnapshot {
+        scan_generation,
+        file_edit_revision: candidate.file_edit_revision,
+        files: candidate
+            .files
+            .audio()
+            .enumerate()
+            .map(|(at, file)| crate::import::file_tag_snapshot::FileTagFact {
+                observation: crate::import::file_tag_snapshot::FileObservation {
+                    relative_path: file.relative_path.clone(),
+                    size: size_of(file),
+                    modified_at_ns: 0,
+                },
+                title: None,
+                track_artist: None,
+                album_title: None,
+                album_artist: None,
+                year: None,
+                track_number: None,
+                disc_number: None,
+                isrc: Some(format!("IT00G9170{at:03}")),
+            })
+            .collect(),
+        embedded_cover: None,
+    }
+}
+
+/// A run starts knowing where most of the candidate's recordings were
+/// registered, as the ISRCs in its stored tag reading say.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_run_starts_from_the_isrcs_of_its_stored_tag_reading() {
+    let fixture = Fixture::new("isrc-admission").await;
+    let dir = fixture.candidate_dir("Album");
+    let key = dir.to_string_lossy().into_owned();
+    fixture.scan(1).await;
+    let candidate = fixture
+        .import
+        .answerable_candidate(&key)
+        .await
+        .unwrap()
+        .expect("the scanned candidate is answerable");
+    let stored = fixture
+        .manager
+        .load_candidate_file_tag_snapshot(&candidate.watched_folder_path, &key)
+        .await
+        .unwrap()
+        .expect("the scanned candidate is stored");
+    let reading = italian_isrcs(&candidate, stored.scan_generation, |file| file.size);
+    assert!(fixture
+        .manager
+        .replace_candidate_file_tag_snapshot(&candidate.watched_folder_path, &key, &reading)
+        .await
+        .unwrap());
+    let start = candidate_run_start(&fixture.context(), &candidate)
+        .await
+        .unwrap();
+    assert_eq!(
+        start.registered_in,
+        crate::pressing::Country::from_code("IT").map(crate::pressing::ReleaseArea::Country)
+    );
+}
+
+/// A tag reading taken from files the candidate no longer holds — a track has
+/// grown since — says nothing about where its recordings were registered.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_tag_reading_of_older_files_names_no_registration() {
+    let fixture = Fixture::new("isrc-admission-older").await;
+    let dir = fixture.candidate_dir("Album");
+    fixture.scan(1).await;
+    let candidate = fixture
+        .import
+        .answerable_candidate(&dir.to_string_lossy())
+        .await
+        .unwrap()
+        .expect("the scanned candidate is answerable");
+    let current = italian_isrcs(&candidate, 1, |file| file.size);
+    let older = italian_isrcs(&candidate, 1, |file| file.size - 1);
+    assert!(registered_in(Some(&current), &candidate).is_some());
+    assert_eq!(registered_in(Some(&older), &candidate), None);
+    assert_eq!(registered_in(None, &candidate), None);
+}
