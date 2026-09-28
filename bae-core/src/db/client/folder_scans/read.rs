@@ -253,7 +253,7 @@ fn load_file_tag_facts(
     let rows = sql.query(
         "SELECT tags.relative_path, tags.file_size, tags.modified_at_ns, \
                 tags.title, tags.track_artist, tags.album_title, tags.album_artist, \
-                tags.year, tags.track_number, tags.disc_number \
+                tags.year, tags.track_number, tags.disc_number, tags.isrc \
          FROM scan_candidate_file_tag AS tags \
          INNER JOIN scan_candidate_file AS files \
              ON files.watched_folder_path = tags.watched_folder_path \
@@ -274,6 +274,7 @@ fn load_file_tag_facts(
                 row.get::<_, Option<i64>>(7)?,
                 row.get::<_, Option<i64>>(8)?,
                 row.get::<_, Option<i64>>(9)?,
+                row.get::<_, Option<String>>(10)?,
             ))
         },
     )?;
@@ -290,6 +291,7 @@ fn load_file_tag_facts(
                 year,
                 track_number,
                 disc_number,
+                isrc,
             )| {
                 Ok(FileTagFact {
                     observation: FileObservation {
@@ -317,6 +319,7 @@ fn load_file_tag_facts(
                     disc_number: disc_number
                         .map(|value| to_u32(value, "a file-tag disc number"))
                         .transpose()?,
+                    isrc,
                 })
             },
         )

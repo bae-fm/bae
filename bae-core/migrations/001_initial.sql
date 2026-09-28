@@ -752,6 +752,8 @@ CREATE TABLE IF NOT EXISTS scan_candidate_file_tag (
     year                INTEGER,
     track_number        INTEGER,
     disc_number         INTEGER,
+    -- The ISRC the file's recording is registered under, as its tag writes it.
+    isrc                TEXT CHECK (isrc IS NULL OR isrc <> ''),
     PRIMARY KEY (watched_folder_path, candidate_path, relative_path),
     FOREIGN KEY (watched_folder_path, candidate_path)
         REFERENCES scan_candidate_tag_snapshot (watched_folder_path, candidate_path) ON DELETE CASCADE,

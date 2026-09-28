@@ -338,11 +338,7 @@ fn live_findings(
         // Album links are read only once every lookup has settled.
         Vec::new(),
         &context.text,
-        super::medium::FolderAudio {
-            rip: &context.rip,
-            mono: context.audio.mono,
-            track_count: context.audio.track_count,
-        },
+        context.folder_audio(),
     )
 }
 

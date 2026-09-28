@@ -32,6 +32,8 @@ pub mod dlna;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod identify;
 pub mod import;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub mod isrc;
 pub mod keys;
 pub mod library;
 pub mod library_name;

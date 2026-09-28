@@ -74,6 +74,7 @@ fn snapshot(generation: u64, revision: u64) -> FileTagSnapshot {
                 year: Some(2020),
                 track_number: Some(1),
                 disc_number: Some(1),
+                isrc: Some("IT0000000001".to_string()),
             },
             FileTagFact {
                 observation: FileObservation {
@@ -88,6 +89,7 @@ fn snapshot(generation: u64, revision: u64) -> FileTagSnapshot {
                 year: None,
                 track_number: Some(2),
                 disc_number: None,
+                isrc: None,
             },
         ],
         embedded_cover: Some(EmbeddedCoverFact {
@@ -155,6 +157,7 @@ async fn replacement_removes_every_prior_file_and_embedded_cover() {
                 year: None,
                 track_number: None,
                 disc_number: None,
+                isrc: None,
             },
             FileTagFact {
                 observation: FileObservation {
@@ -169,6 +172,7 @@ async fn replacement_removes_every_prior_file_and_embedded_cover() {
                 year: None,
                 track_number: None,
                 disc_number: None,
+                isrc: None,
             },
         ],
         embedded_cover: None,

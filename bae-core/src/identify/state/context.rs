@@ -308,6 +308,9 @@ pub struct SignalsContext {
     pub rip: RipEvidence,
     /// The audio being identified, read off its files.
     pub audio: AudioFacts,
+    /// Where most of the audio's recordings were registered, as the ISRCs
+    /// its files' tags carry say; fixed when the run starts.
+    pub registered_in: Option<crate::pressing::ReleaseArea>,
     pub disc: DiscIdEvidence,
     pub barcode: BarcodeEvidence,
     pub catalog: CatalogEvidence,
@@ -350,6 +353,7 @@ impl Default for SignalsContext {
             artwork: ArtworkScan::Absent,
             rip: RipEvidence::Unproven,
             audio: AudioFacts::default(),
+            registered_in: None,
             disc: DiscIdEvidence::default(),
             barcode: BarcodeEvidence::default(),
             catalog: CatalogEvidence::default(),
@@ -363,16 +367,28 @@ impl Default for SignalsContext {
 }
 
 impl SignalsContext {
+    /// What the folder's files say about its audio, as combine reads it.
+    pub(crate) fn folder_audio(&self) -> crate::identify::medium::FolderAudio<'_> {
+        crate::identify::medium::FolderAudio {
+            rip: &self.rip,
+            mono: self.audio.mono,
+            track_count: self.audio.track_count,
+            registered_in: self.registered_in,
+        }
+    }
+
     /// The context a run starts with, before its first snapshot.
     pub(super) fn started(
         providers: Vec<Catalog>,
         steps: IdentificationSteps,
         choices: LookupChoices,
         title_search: Option<TitleSearch>,
+        registered_in: Option<crate::pressing::ReleaseArea>,
     ) -> Self {
         Self {
             providers,
             steps,
+            registered_in,
             album_links: if steps.follow_catalog_links {
                 AlbumLinkReading::Pending
             } else {

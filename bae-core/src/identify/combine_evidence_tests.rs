@@ -202,6 +202,7 @@ fn the_pressing_the_barcode_and_catalog_number_name_outranks_the_disc_id_s() {
             rip: &CD_RIP,
             mono: false,
             track_count: 0,
+            registered_in: None,
         },
     );
     assert_eq!(offered(&outcome), vec!["rel-named"]);
@@ -378,6 +379,7 @@ const MONO_FILES: FolderAudio<'static> = FolderAudio {
     rip: &RipEvidence::Unproven,
     mono: true,
     track_count: 0,
+    registered_in: None,
 };
 
 /// Catalogs list mono pressings as stereo, so one-channel files rule no row
@@ -480,4 +482,83 @@ fn the_album_the_folder_names_outranks_another_on_the_same_label() {
     );
     assert_eq!(offered(&outcome), vec!["rel-named"]);
     assert_eq!(set_aside(&outcome), vec!["rel-other"]);
+}
+
+/// Three pressings of the album, tied on everything but the country each was
+/// released in.
+fn released_in(countries: &[(&str, &str)]) -> Vec<Found> {
+    countries
+        .iter()
+        .map(|(release_id, country)| {
+            let (result, status) = pressing(release_id, made_of(&[Medium::Cd]));
+            (
+                MetadataResult {
+                    area: Some(crate::pressing::area(country)),
+                    ..result
+                },
+                status,
+            )
+        })
+        .collect()
+}
+
+fn registered_in(country: Option<&str>) -> FolderAudio<'static> {
+    FolderAudio {
+        registered_in: country.map(crate::pressing::area),
+        ..FolderAudio::UNPROVEN
+    }
+}
+
+/// Where the tracks' recordings were registered breaks a tie between rows of
+/// different countries: the pressing released there ranks first.
+#[test]
+fn the_country_the_recordings_were_registered_in_breaks_a_tie() {
+    let outcome = combine_results(
+        Vec::new(),
+        released_in(&[("rel-de", "DE"), ("rel-it", "IT"), ("rel-fr", "FR")]),
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+        &folder(),
+        registered_in(Some("IT")),
+    );
+    assert_eq!(offered(&outcome), vec!["rel-it"]);
+    assert_eq!(set_aside(&outcome), vec!["rel-de", "rel-fr"]);
+}
+
+/// Recordings registered in no one country leave the tie standing.
+#[test]
+fn recordings_registered_nowhere_in_particular_break_no_tie() {
+    let outcome = combine_results(
+        Vec::new(),
+        released_in(&[("rel-de", "DE"), ("rel-it", "IT"), ("rel-fr", "FR")]),
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+        &folder(),
+        registered_in(None),
+    );
+    assert_eq!(offered(&outcome), vec!["rel-de", "rel-it", "rel-fr"]);
+}
+
+/// The folder naming a country outranks where the recordings were registered.
+#[test]
+fn the_folder_naming_a_country_outranks_where_the_recordings_were_registered() {
+    let text = CandidateText::of(
+        &[TextLine {
+            text: "Artist One - Album One [L1-100] (Germany)".to_string(),
+            origin: TextOrigin::FolderName,
+        }],
+        &[],
+    );
+    let outcome = combine_results(
+        Vec::new(),
+        released_in(&[("rel-de", "DE"), ("rel-it", "IT")]),
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+        &text,
+        registered_in(Some("IT")),
+    );
+    assert_eq!(offered(&outcome), vec!["rel-de"]);
 }

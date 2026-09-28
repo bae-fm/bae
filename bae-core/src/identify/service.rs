@@ -162,6 +162,10 @@ impl IdentifyServiceHandle {
     /// which the run asks every provider once its identifiers have named
     /// nothing. `None` where the draft states no title.
     ///
+    /// `registered_in` is where most of the candidate's recordings were
+    /// registered, as the ISRCs its files' tags carry say, which breaks ties
+    /// between rows released in different countries.
+    ///
     /// `snapshots` is the watch the extraction feeding this run handed out
     /// at its start. It holds the extraction's latest snapshot, so the driver
     /// reads what was last said whenever it looks — nothing is queued and
@@ -184,6 +188,7 @@ impl IdentifyServiceHandle {
         steps: IdentificationSteps,
         choices: LookupChoices,
         title_search: Option<TitleSearch>,
+        registered_in: Option<crate::pressing::ReleaseArea>,
         snapshots: ExtractionWatch,
     ) -> bool {
         // A restart (the user re-selects after a scan refresh, or changes what
@@ -215,6 +220,7 @@ impl IdentifyServiceHandle {
                 steps,
                 choices,
                 title_search,
+                registered_in,
                 token,
                 snapshots,
             )
@@ -277,6 +283,7 @@ async fn run_driver(
     steps: IdentificationSteps,
     choices: LookupChoices,
     title_search: Option<TitleSearch>,
+    registered_in: Option<crate::pressing::ReleaseArea>,
     token: CancellationToken,
     mut snapshots: ExtractionWatch,
 ) {
@@ -291,6 +298,7 @@ async fn run_driver(
         steps,
         choices,
         title_search,
+        registered_in,
     });
     // Whether the extraction is still going. Its sender goes with it, and
     // once that is gone its last snapshot has been read: there is nothing
@@ -712,6 +720,7 @@ mod tests {
             IdentificationSteps::default(),
             LookupChoices::default(),
             None,
+            None,
             watch,
         ));
         // Feed the signals over the watch, as the extraction service would.
@@ -765,6 +774,7 @@ mod tests {
             IdentificationSteps::default(),
             LookupChoices::default(),
             None,
+            None,
             watch,
         ));
 
@@ -796,6 +806,7 @@ mod tests {
             CallPriority::Interactive,
             IdentificationSteps::default(),
             LookupChoices::default(),
+            None,
             None,
             watch,
         ));
@@ -838,6 +849,7 @@ mod tests {
             CallPriority::Interactive,
             IdentificationSteps::default(),
             LookupChoices::default(),
+            None,
             None,
             watch,
         ));

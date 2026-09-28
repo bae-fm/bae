@@ -773,6 +773,7 @@ async fn the_list_projects_the_persisted_embedded_file_metadata_cover() {
             year: None,
             track_number: None,
             disc_number: None,
+            isrc: None,
         }],
         embedded_cover: Some(crate::import::file_tag_snapshot::EmbeddedCoverFact {
             source_relative_path: "01.flac".to_string(),

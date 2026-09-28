@@ -10,6 +10,7 @@ fn started_searching(providers: Vec<Catalog>, album: &str, artist: &str) -> Iden
             steps: crate::config::IdentificationSteps::default(),
             choices: LookupChoices::default(),
             title_search: TitleSearch::of(album, artist),
+            registered_in: None,
         },
     );
     assert!(

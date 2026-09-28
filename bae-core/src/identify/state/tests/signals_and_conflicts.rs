@@ -57,6 +57,7 @@ fn started_with_choices(
             steps: crate::config::IdentificationSteps::default(),
             choices,
             title_search: None,
+            registered_in: None,
         },
     )
 }

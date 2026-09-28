@@ -629,6 +629,7 @@ mod tests {
                     track_count: 9,
                     ..Default::default()
                 },
+                registered_in: None,
                 album_links: bae_core::identify::state::AlbumLinkReading::Pending,
                 documents: bae_core::identify::documents::DocumentReading::Pending,
             },

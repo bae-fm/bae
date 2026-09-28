@@ -894,6 +894,7 @@ async fn a_transport_failure_round_trips_as_a_failed_verdict() {
             steps: crate::config::IdentificationSteps::default(),
             choices: crate::import::LookupChoices::default(),
             title_search: None,
+            registered_in: None,
         },
     );
     let (state, _) = identify_step(

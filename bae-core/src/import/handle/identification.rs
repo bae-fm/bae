@@ -36,6 +36,7 @@ impl ImportServiceHandle {
         priority: crate::util::rate_limiter::CallPriority,
         choices: crate::import::LookupChoices,
         title_search: Option<crate::identify::TitleSearch>,
+        registered_in: Option<crate::pressing::ReleaseArea>,
     ) -> bool {
         // The steps are read once, here, for both halves: the extraction reads
         // the cover art or not by the same value the run asks by.
@@ -50,6 +51,7 @@ impl ImportServiceHandle {
             steps,
             choices,
             title_search,
+            registered_in,
             snapshots,
         ) {
             return true;

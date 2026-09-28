@@ -73,6 +73,7 @@ pub(crate) fn signals_context(track_count: u32) -> crate::identify::state::Signa
         },
         album_links: crate::identify::state::AlbumLinkReading::Pending,
         documents: crate::identify::documents::DocumentReading::Pending,
+        registered_in: None,
     }
 }
 

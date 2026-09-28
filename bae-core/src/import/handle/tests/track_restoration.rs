@@ -54,6 +54,7 @@ impl crate::import::file_tag_snapshot::FileTagReader for SourceTags {
             track_number: self.number,
             disc_number: Some(3),
             embedded_cover: None,
+            isrc: None,
         })
     }
 }

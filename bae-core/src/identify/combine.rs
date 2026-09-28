@@ -292,6 +292,11 @@ struct Support {
     /// the label count only toward `offered`: a folder's year is usually the
     /// album's, and a label is written too many ways.
     states_the_country: bool,
+    /// Whether the row was released where the folder's recordings were
+    /// registered, as their ISRCs say. Below the folder naming the country:
+    /// a recording is registered where its producer is, not where a copy was
+    /// pressed, so it only tells apart rows nothing else does.
+    released_where_registered: bool,
     /// Whether anything but a barcode stands behind the row — see
     /// [`super::agreements::Agreements::offered`]. One value, so a year one
     /// pressing states does not split it from its siblings.
@@ -350,6 +355,11 @@ fn support_of(
                 .flat_map(|release| &release.discogs_details),
         ),
         states_the_country: agreements.country,
+        released_where_registered: folder.registered_in.is_some_and(|registered| {
+            row.releases
+                .iter()
+                .any(|release| release.area == Some(registered))
+        }),
         offered,
     }
 }

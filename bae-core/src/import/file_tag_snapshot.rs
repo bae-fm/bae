@@ -32,6 +32,9 @@ pub(crate) struct FileTagFact {
     pub year: Option<u16>,
     pub track_number: Option<u32>,
     pub disc_number: Option<u32>,
+    /// The code the track's recording is registered under, as the tag writes
+    /// it.
+    pub isrc: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -71,6 +74,12 @@ impl FileTagSnapshot {
         }
         facts.next().is_none()
     }
+
+    /// Where most of the tracks' recordings were registered, as their ISRCs
+    /// say — see [`crate::isrc::registered_in`].
+    pub(crate) fn registered_in(&self) -> Option<crate::pressing::ReleaseArea> {
+        crate::isrc::registered_in(self.files.iter().filter_map(|fact| fact.isrc.as_deref()))
+    }
 }
 
 pub(crate) struct FileTagRead {
@@ -81,6 +90,7 @@ pub(crate) struct FileTagRead {
     pub year: Option<u16>,
     pub track_number: Option<u32>,
     pub disc_number: Option<u32>,
+    pub isrc: Option<String>,
     pub embedded_cover: Option<(Vec<u8>, ContentType)>,
 }
 
@@ -137,6 +147,7 @@ impl FileTagReader for LoftyFileTagReader {
             year,
             track_number,
             disc_number,
+            isrc: non_empty(tag.and_then(|tag| tag.get_string(ItemKey::Isrc).map(String::from))),
             embedded_cover: tag.and_then(embedded_cover_from_tag),
         })
     }
@@ -322,6 +333,7 @@ pub(crate) fn extract_file_tag_snapshot(
             year: read.year,
             track_number: read.track_number,
             disc_number: read.disc_number,
+            isrc: read.isrc,
         });
     }
     Ok(FileTagSnapshot {
@@ -633,8 +645,32 @@ mod tests {
                 track_number: Some(1),
                 disc_number: None,
                 embedded_cover: None,
+                isrc: None,
             })
         }
+    }
+
+    /// A track's ISRC is read off its tag as the tag writes it.
+    #[test]
+    fn a_tag_s_isrc_is_read() {
+        let mut frames = legacy_id3v23_frame(b"TIT2", "Track Alpha");
+        frames.extend(legacy_id3v23_frame(b"TSRC", "IT-00G-91-70501"));
+        let mut file = b"ID3\x03\x00\x00".to_vec();
+        file.extend_from_slice(&synchsafe(frames.len()));
+        file.extend(frames);
+        let existing_tag_size = 10
+            + PLACEHOLDER_MP3[6..10]
+                .iter()
+                .fold(0usize, |size, byte| (size << 7) | usize::from(*byte));
+        file.extend_from_slice(&PLACEHOLDER_MP3[existing_tag_size..]);
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("01.mp3");
+        std::fs::write(&path, file).unwrap();
+
+        assert_eq!(
+            LoftyFileTagReader.read(&path).unwrap().isrc.as_deref(),
+            Some("IT-00G-91-70501")
+        );
     }
 
     #[test]

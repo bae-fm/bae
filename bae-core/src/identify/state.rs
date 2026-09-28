@@ -203,6 +203,9 @@ pub enum IdentifyEvent {
         steps: IdentificationSteps,
         choices: LookupChoices,
         title_search: Option<TitleSearch>,
+        /// Where most of the candidate's recordings were registered, as the
+        /// ISRCs its files' tags carry say.
+        registered_in: Option<crate::pressing::ReleaseArea>,
     },
     Cancelled,
 
@@ -304,9 +307,11 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                 steps,
                 choices,
                 title_search,
+                registered_in,
             },
         ) => {
-            let context = SignalsContext::started(providers, steps, choices, title_search);
+            let context =
+                SignalsContext::started(providers, steps, choices, title_search, registered_in);
             // Chosen numbers are looked up at once, without waiting for a
             // snapshot to offer them again.
             let mut effects = Vec::new();
@@ -785,11 +790,7 @@ fn combined(context: &SignalsContext) -> (Findings, LibraryStatuses) {
         search_results,
         context.twins(),
         &context.text,
-        super::medium::FolderAudio {
-            rip: &context.rip,
-            mono: context.audio.mono,
-            track_count: context.audio.track_count,
-        },
+        context.folder_audio(),
     )
 }
 
