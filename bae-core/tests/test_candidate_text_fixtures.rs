@@ -4,7 +4,7 @@
 //! built into a temp folder, run through `ExtractionService` with a stub
 //! analyzer, and checked for which catalog numbers and free text survive.
 
-use bae_core::import::{ImportEvent, ImportEventBus};
+use bae_core::import::ImportEventBus;
 use bae_core::signals::service::{ExtractionService, ExtractionServiceHandle, ExtractionSource};
 use bae_core::signals::{ArtworkAnalysis, ArtworkAnalyzer, TextSignal};
 use bae_test_support as support;
@@ -201,7 +201,6 @@ async fn drive_fixture(
     ocr_map: HashMap<PathBuf, Vec<String>>,
 ) -> (Vec<String>, Vec<String>) {
     let tx = ImportEventBus::new(128, bae_core::import::CandidateRuntime::default());
-    let mut rx = tx.subscribe();
     let (library_manager, _lib_tmp) = make_library_manager().await;
     let handle: ExtractionServiceHandle =
         ExtractionService::start(tokio::runtime::Handle::current(), tx, library_manager);
@@ -215,7 +214,7 @@ async fn drive_fixture(
         &bae_core::import::folder_scanner::StoredCandidateEdits::none(),
     )
     .expect("fixture scan");
-    handle.start(
+    let mut run = handle.start(
         bae_core::identify::IdentifyRunId::for_test(1),
         key,
         ExtractionSource::Candidate {
@@ -235,20 +234,21 @@ async fn drive_fixture(
         bae_core::config::IdentificationSteps::default(),
     );
 
-    // Pull snapshots until the text signal settles.
-    let deadline = Duration::from_secs(10);
-    loop {
-        let event = tokio::time::timeout(deadline, rx.recv())
-            .await
-            .expect("timed out waiting for settled signals")
-            .expect("event channel closed unexpectedly");
-
-        if let ImportEvent::SignalsUpdated { signals, .. } = event {
-            if let TextSignal::Settled { free_text, .. } = &signals.text {
-                return (signals.text.catalogs().to_vec(), free_text.clone());
+    // The run's watch holds its latest snapshot until the text settles.
+    tokio::time::timeout(Duration::from_secs(10), async {
+        loop {
+            if let Some(snapshot) = run.borrow_and_update().as_ref() {
+                if let TextSignal::Settled { free_text, .. } = &snapshot.signals.text {
+                    return (snapshot.signals.text.catalogs().to_vec(), free_text.clone());
+                }
             }
+            run.changed()
+                .await
+                .expect("the extraction settles before it ends");
         }
-    }
+    })
+    .await
+    .expect("timed out waiting for settled signals")
 }
 
 async fn assert_fixture(fixture_path: &Path) {
