@@ -265,7 +265,7 @@ fn import_position(import: &crate::import::candidates::ImportInFlight) -> (u8, u
 /// the release lands.
 async fn assert_imports_again_from_the_start(handle: &ImportServiceHandle, key: &str) {
     let mut events = handle.every_event_for_test();
-    let mut changes = handle.runtime.subscribe();
+    let mut changes = handle.runtime.every_change();
     let import_id = handle
         .start_import(key)
         .await

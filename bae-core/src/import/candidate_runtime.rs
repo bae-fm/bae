@@ -247,6 +247,10 @@ impl Inner {
 pub struct CandidateRuntime {
     inner: Arc<Mutex<Inner>>,
     changes: broadcast::Sender<CandidateRuntimeChange>,
+    /// Test readers that hear every change, however far behind they read.
+    #[cfg(test)]
+    every_change:
+        Arc<Mutex<Vec<tokio::sync::mpsc::UnboundedSender<CandidateRuntimeChange>>>>,
     /// Where the identification count is announced: the delivery of the bus
     /// this runtime records into, set once by that bus. A runtime with no bus
     /// announces nothing.
@@ -259,6 +263,8 @@ impl Default for CandidateRuntime {
         Self {
             inner: Arc::new(Mutex::new(Inner::default())),
             changes,
+            #[cfg(test)]
+            every_change: Arc::default(),
             events: Arc::new(OnceLock::new()),
         }
     }
@@ -308,6 +314,17 @@ impl CandidateRuntime {
         self.changes.subscribe()
     }
 
+    /// Every change from now on, none dropped, since [`Self::subscribe`]
+    /// drops what a slow reader falls behind on.
+    #[cfg(test)]
+    pub(crate) fn every_change(
+        &self,
+    ) -> tokio::sync::mpsc::UnboundedReceiver<CandidateRuntimeChange> {
+        let (reader, changes) = tokio::sync::mpsc::unbounded_channel();
+        self.every_change.lock().unwrap().push(reader);
+        changes
+    }
+
     /// Take the delivery of the one bus this runtime records into, which
     /// calls this as it is built.
     pub(super) fn announce_on(&self, events: crate::import::handle::EventDelivery) {
@@ -318,6 +335,11 @@ impl CandidateRuntime {
     }
 
     fn publish(&self, change: CandidateRuntimeChange) {
+        #[cfg(test)]
+        self.every_change
+            .lock()
+            .unwrap()
+            .retain(|reader| reader.send(change.clone()).is_ok());
         // Nobody listening yet is not an error.
         let _ = self.changes.send(change);
     }
