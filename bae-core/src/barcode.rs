@@ -11,7 +11,8 @@
 //!   digit holds.
 //! * A catalog or a person writes it down — a provider record's barcode field,
 //!   a typed search. [`written_digits`] reads the digits out of the spacing,
-//!   and [`comparison_key`] is what two provider records are compared by.
+//!   and [`comparison_key`] is what two provider records are compared by, or
+//!   the [`Unusable`] reason what was written names no product.
 //!
 //! All three agree on one spelling: digits only, with a twelve-digit UPC-A
 //! written as the thirteen-digit EAN-13 that prefixes a zero — the one
@@ -114,7 +115,8 @@ pub fn written_digits(value: &str) -> Option<String> {
     (!digits.is_empty()).then_some(digits)
 }
 
-/// Why a provider's stated barcode is no key to compare by.
+/// Why a written-down barcode — a provider record's, a typed search's — names
+/// no product, and so is no key to compare by.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Unusable {
     /// Something other than a code was written in the barcode field.

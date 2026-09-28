@@ -625,6 +625,7 @@ struct ImportSearchFlowLibraryStatusTests {
             identifyState: .idle,
             search: BridgeCandidateSearch(
                 query: .general(artist: "Artist Name", album: "Album Title"),
+                unusableBarcode: nil,
                 sources: PreviewData.searchSources(
                     musicbrainz: .done(count: 1),
                     discogs: .notConfigured

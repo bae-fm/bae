@@ -47,6 +47,37 @@ mirror_enum! {
     },
 }
 
+/// Why a barcode search's value names no product. Mirrors
+/// `bae_core::barcode::Unusable`; the UI words it through
+/// `bridge_unusable_barcode_key`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeUnusableBarcode {
+    NotACode,
+    TooShort,
+    Placeholder,
+    StoreInternal,
+}
+
+mirror_enum! {
+    #[cfg(feature = "desktop")]
+    BridgeUnusableBarcode = bae_core::barcode::Unusable,
+    from_core: pub(crate) fn,
+    variants: { NotACode, TooShort, Placeholder, StoreInternal },
+}
+
+/// The `Core` string table key for why a barcode search's value names no
+/// product.
+#[uniffi::export]
+pub fn bridge_unusable_barcode_key(reason: BridgeUnusableBarcode) -> String {
+    match reason {
+        BridgeUnusableBarcode::NotACode => "core.import.search.barcode.not_a_code",
+        BridgeUnusableBarcode::TooShort => "core.import.search.barcode.too_short",
+        BridgeUnusableBarcode::Placeholder => "core.import.search.barcode.placeholder",
+        BridgeUnusableBarcode::StoreInternal => "core.import.search.barcode.store_internal",
+    }
+    .to_string()
+}
+
 /// An album, as one or both sources describe it, with the pressings they
 /// surfaced for it. Mirrors `bae_core::import::release_group::ReleaseGroup` —
 /// the grouping, the cross-source merge and the pressing pairing all happen in
@@ -219,6 +250,9 @@ pub struct BridgeSourceSearchEntry {
 pub struct BridgeCandidateSearch {
     /// What was asked — the line the result area heads itself with.
     pub query: BridgeSearchQuery,
+    /// Why the barcode asked for names no product; `None` for a code, and for
+    /// every other query.
+    pub unusable_barcode: Option<BridgeUnusableBarcode>,
     /// Each source's part, one entry per metadata source in core's order. A
     /// surface iterates this; no source is the main one.
     pub sources: Vec<BridgeSourceSearchEntry>,
@@ -234,6 +268,10 @@ pub struct BridgeCandidateSearch {
 impl BridgeCandidateSearch {
     pub(crate) fn from_core(search: bae_core::import::CandidateSearch) -> Self {
         let status = BridgeSearchStatus::from_core(search.status());
+        let unusable_barcode = search
+            .query
+            .unusable_barcode()
+            .map(BridgeUnusableBarcode::from_core);
         let bae_core::import::CandidateSearch {
             query,
             sources,
@@ -245,6 +283,7 @@ impl BridgeCandidateSearch {
         } = search;
         Self {
             status,
+            unusable_barcode,
             query: BridgeSearchQuery::from_core(query),
             sources: sources
                 .into_iter()

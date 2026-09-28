@@ -352,6 +352,28 @@ fn catalog_and_barcode_queries_fill_their_own_provider_fields() {
 }
 
 #[test]
+fn a_barcode_query_names_why_its_value_is_no_product_code() {
+    use crate::barcode::Unusable;
+    let unusable = |typed: &str| {
+        SearchQuery::Barcode {
+            barcode: typed.to_string(),
+        }
+        .unusable_barcode()
+    };
+    assert_eq!(unusable("CAT-719"), Some(Unusable::NotACode));
+    assert_eq!(unusable("12345"), Some(Unusable::TooShort));
+    assert_eq!(unusable("0000000000000"), Some(Unusable::Placeholder));
+    assert_eq!(unusable("2100000123457"), Some(Unusable::StoreInternal));
+    assert_eq!(unusable("0 12345 67890 5"), None);
+    assert_eq!(unusable("0 12345 67890 6"), None, "a check-digit slip is still a code");
+
+    let catalog = SearchQuery::CatalogNumber {
+        catalog_number: "CAT-719".to_string(),
+    };
+    assert_eq!(catalog.unusable_barcode(), None);
+}
+
+#[test]
 fn discogs_title_splits_into_artist_and_album() {
     let m = discogs_search_result_to_metadata(result_with_title("Artist Name - Album Title"));
     assert_eq!(m.artist.as_deref(), Some("Artist Name"));

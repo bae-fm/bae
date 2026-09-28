@@ -242,6 +242,16 @@ fn produced_keys() -> Vec<String> {
         keys.push(bridge_invalid_reason_key(r));
     }
 
+    // bridge_unusable_barcode_key — every variant carries a key.
+    for reason in [
+        BridgeUnusableBarcode::NotACode,
+        BridgeUnusableBarcode::TooShort,
+        BridgeUnusableBarcode::Placeholder,
+        BridgeUnusableBarcode::StoreInternal,
+    ] {
+        keys.push(bridge_unusable_barcode_key(reason));
+    }
+
     // bridge_folder_check_key — every variant carries a key.
     for folder_check in [
         BridgeFolderCheck::TrackCountDisagrees {

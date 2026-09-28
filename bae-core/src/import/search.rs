@@ -3,7 +3,7 @@
 //! fetching full release details for the import confirmation step.
 
 use crate::util::text::catalog_key;
-use crate::barcode::{written_digits, Barcode};
+use crate::barcode::{comparison_key, written_digits, Barcode, Unusable};
 use crate::discogs::client::{DiscogsClient, DiscogsError, DiscogsSearchParams};
 use crate::import::cover_art::RemoteCover;
 use crate::import::parse_year;
@@ -539,6 +539,16 @@ pub enum SearchQuery {
 }
 
 impl SearchQuery {
+    /// Why a barcode query's value names no product, which a surface states
+    /// beside what the search turned up. `None` for a code — one whose check
+    /// digit fails too — and for every other query.
+    pub fn unusable_barcode(&self) -> Option<Unusable> {
+        match self {
+            SearchQuery::Barcode { barcode } => comparison_key(barcode).err(),
+            SearchQuery::General { .. } | SearchQuery::CatalogNumber { .. } => None,
+        }
+    }
+
     /// Keep only what answers the query. Both catalogs match a catalog number
     /// loosely — asking for `CL 719` returns `CL 1719` and `WPCL-719` — so a
     /// release answers only when one of its labels' numbers is the asked one,

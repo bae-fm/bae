@@ -1,8 +1,9 @@
 import BaeKit
 import SwiftUI
 
-/// A typed search's results under its form: each source's album cards so far,
-/// then a line for each source still searching or failed.
+/// A typed search's results under its form: why a barcode asked for names no
+/// product, each source's album cards so far, then a line for each source
+/// still searching or failed.
 struct FindOnlineSearchResults: View {
     let search: BridgeCandidateSearch
     let isImporting: Bool
@@ -18,6 +19,22 @@ struct FindOnlineSearchResults: View {
     }
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if let unusable = search.unusableBarcode {
+                Label(
+                    coreString(bridgeUnusableBarcodeKey(reason: unusable)),
+                    systemImage: "info.circle"
+                )
+                .themeText(.body)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, ThemeSpace.group)
+                .padding(.top, ThemeSpace.group)
+            }
+            results
+        }
+    }
+
+    private var results: some View {
         // Source lines end the list, so they scroll with the results.
         ReleaseGroupListView(
             groups: groups,
@@ -118,6 +135,20 @@ struct FindOnlineSearchResults: View {
     #Preview("A source failed") {
         FindOnlineSearchResults(
             search: PreviewData.searchRunSourceFailed,
+            isImporting: false,
+            libraryStatuses: [:],
+            selectedReleaseId: nil,
+            loadingReleaseId: nil,
+            onRetry: {},
+            onSelect: { _ in },
+        )
+        .frame(width: 660, height: 460)
+        .importPreviewEnvironment()
+    }
+
+    #Preview("A shop's own number") {
+        FindOnlineSearchResults(
+            search: PreviewData.searchRunStoreInternalBarcode,
             isImporting: false,
             libraryStatuses: [:],
             selectedReleaseId: nil,

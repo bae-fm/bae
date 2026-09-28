@@ -511,6 +511,7 @@
         /// A settled search over both providers, with results.
         static let manualSearchRun = BridgeCandidateSearch(
             query: .general(artist: "Artist Name", album: "Album Title One"),
+            unusableBarcode: nil,
             sources: searchSources(
                 musicbrainz: .done(count: 3),
                 discogs: .done(count: 1)
@@ -523,6 +524,7 @@
         /// MusicBrainz has landed; Discogs is still out.
         static let searchRunInFlight = BridgeCandidateSearch(
             query: .general(artist: "Artist Name", album: "Album Title One"),
+            unusableBarcode: nil,
             sources: searchSources(
                 musicbrainz: .done(count: 3),
                 discogs: .searching
@@ -535,6 +537,7 @@
         /// One provider answered, the other dropped.
         static let searchRunSourceFailed = BridgeCandidateSearch(
             query: .catalogNumber(catalogNumber: "WPCR-80001"),
+            unusableBarcode: nil,
             sources: searchSources(
                 musicbrainz: .done(count: 1),
                 discogs: .failed(failure: .network)
@@ -547,6 +550,21 @@
         /// Both providers answered with nothing.
         static let searchRunEmpty = BridgeCandidateSearch(
             query: .general(artist: "Artist Name", album: "Album Title"),
+            unusableBarcode: nil,
+            sources: searchSources(
+                musicbrainz: .done(count: 0),
+                discogs: .done(count: 0)
+            ),
+            groups: [],
+            libraryStatuses: [:],
+            status: .noMatches
+        )
+
+        /// A shop's price-sticker number asked for as a barcode: neither
+        /// provider knows it.
+        static let searchRunStoreInternalBarcode = BridgeCandidateSearch(
+            query: .barcode(barcode: "2100000123457"),
+            unusableBarcode: .storeInternal,
             sources: searchSources(
                 musicbrainz: .done(count: 0),
                 discogs: .done(count: 0)
