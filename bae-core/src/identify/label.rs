@@ -22,6 +22,49 @@ pub(crate) fn stated(name: &str) -> Option<String> {
     (!words.is_empty()).then(|| words.concat())
 }
 
+/// The initials `name`'s words are written as: the first letter of each of
+/// its words, its stop words and the trade words it ends on left out — "dfc"
+/// for "The Dance Floor Corporation Records". `None` unless that leaves two
+/// to four words, the most a label's initials run to.
+pub(crate) fn initials_of(name: &str) -> Option<String> {
+    let mut words = super::agreements::words(name);
+    while let Some(tail) = tails().iter().find(|tail| words.ends_with(tail)) {
+        words.truncate(words.len() - tail.len());
+    }
+    let initials: String = words
+        .iter()
+        .filter(|word| !crate::util::text::is_stop_word(word))
+        .filter_map(|word| word.chars().next())
+        .collect();
+    (2..=4)
+        .contains(&initials.chars().count())
+        .then_some(initials)
+}
+
+/// The initials `name` is, when it is written as initials: once the trade
+/// words it ends on are dropped, one word of two to four letters, every one
+/// a capital — "DFC", "D.F.C." — read the way [`initials_of`] reads a name's.
+/// A word in lowercase, or longer, is a name of its own.
+pub(crate) fn written_initials(name: &str) -> Option<String> {
+    let mut written: Vec<String> = name
+        .split(|c: char| !c.is_alphanumeric() && c != '.')
+        .map(|word| word.replace('.', ""))
+        .filter(|word| !word.is_empty())
+        .collect();
+    loop {
+        let lowered: Vec<String> = written.iter().map(|word| word.to_lowercase()).collect();
+        let Some(tail) = tails().iter().find(|tail| lowered.ends_with(tail)) else {
+            break;
+        };
+        written.truncate(written.len() - tail.len());
+    }
+    let [word] = written.as_slice() else {
+        return None;
+    };
+    let initials = (2..=4).contains(&word.chars().count()) && word.chars().all(char::is_uppercase);
+    initials.then(|| word.to_lowercase())
+}
+
 /// Each trade word as the words it is written with, compared the way the
 /// candidate's text is read — case, spacing and punctuation dropped, so
 /// "Record Co." and "record co" are one entry. An entry that is written with

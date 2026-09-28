@@ -525,3 +525,48 @@ fn a_label_the_folder_does_not_name_is_no_agreement() {
         assert!(!judged.label, "{stated} against {folder}");
     }
 }
+
+fn label_agrees(stated: &str, folder: &str) -> bool {
+    agreements_of(
+        &MetadataResult {
+            labels: vec![ReleaseLabel::of(Some(stated), None)],
+            ..result()
+        },
+        &text(&[folder]),
+        &NO_LOOKUP,
+    )
+    .label
+}
+
+/// A label written as its initials agrees with the name they are the initials
+/// of, whichever side writes which, and whatever trade word either trails.
+#[test]
+fn a_label_agrees_with_its_initials() {
+    for (stated, folder) in [
+        ("ABC", "1979 - Album (Alpha Beta Corporation)"),
+        ("Alpha Beta Corporation", "1979 - Album (ABC, AB-1)"),
+        ("ABC Records", "Alpha Beta Corporation"),
+        ("Alpha Beta Corporation", "ABC Records"),
+        ("A.B.C.", "The Alpha and Beta Corporation"),
+        ("The Alpha Beta Records", "A.B."),
+    ] {
+        assert!(label_agrees(stated, folder), "{stated} against {folder}");
+    }
+}
+
+/// Only a short word written in capitals is read as initials, and only the
+/// initials of the other name's words agree with it.
+#[test]
+fn only_capital_initials_of_the_name_agree() {
+    for (stated, folder) in [
+        ("abc", "Alpha Beta Corporation"),
+        ("Alpha Beta Corporation", "abc"),
+        ("ABD", "Alpha Beta Corporation"),
+        ("Alpha Beta Corporation", "ABD"),
+        ("ABCDE", "Alpha Beta Corporation Delta Echo"),
+        ("Alpha Beta Corporation Delta Echo", "ABCDE"),
+        ("A", "Alpha"),
+    ] {
+        assert!(!label_agrees(stated, folder), "{stated} against {folder}");
+    }
+}

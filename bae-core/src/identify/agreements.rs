@@ -186,9 +186,20 @@ impl CandidateText {
     }
 
     /// Whether the text states `value` as a label name, without the trade
-    /// word it may trail: "Warner Bros." states "Warner Bros. Records".
+    /// word it may trail: "Warner Bros." states "Warner Bros. Records". A
+    /// label written as its initials states the name they are the initials
+    /// of, either way round: "DFC" and "Dance Floor Corporation".
     pub fn states_label(&self, value: &str) -> bool {
         super::label::stated(value).is_some_and(|name| self.states_run(&name))
+            || super::label::initials_of(value).is_some_and(|initials| {
+                let written = initials.to_uppercase();
+                self.lines.iter().any(|line| line.writes_code(&written))
+            })
+            || super::label::written_initials(value).is_some_and(|initials| {
+                self.lines
+                    .iter()
+                    .any(|line| line.spells_initials(&initials))
+            })
     }
 
     /// Whether the text writes `area` any way it is written — see
@@ -247,6 +258,36 @@ impl NormalizedLine {
     /// Whether this line writes `code` as a whole word in capitals.
     fn writes_code(&self, code: &str) -> bool {
         self.capitals.iter().any(|word| word == code)
+    }
+
+    /// Whether a run of this line's words has `initials` as the first letters
+    /// of its words, its stop words left out.
+    fn spells_initials(&self, initials: &str) -> bool {
+        let words: Vec<&str> = self
+            .starts
+            .iter()
+            .zip(&self.ends)
+            .map(|(&start, &end)| &self.run[start..end])
+            .collect();
+        (0..words.len()).any(|start| {
+            if crate::util::text::is_stop_word(words[start]) {
+                return false;
+            }
+            let mut spelled = String::new();
+            for word in &words[start..] {
+                if crate::util::text::is_stop_word(word) {
+                    continue;
+                }
+                spelled.extend(word.chars().next());
+                if !initials.starts_with(spelled.as_str()) {
+                    return false;
+                }
+                if spelled == initials {
+                    return true;
+                }
+            }
+            false
+        })
     }
 
     /// Whether every one of `words` — each squashed — is a word of this line.
