@@ -38,7 +38,8 @@ async fn next_live_state(
 
 /// An import claiming a candidate moves no row: the list delivers nothing and
 /// reads nothing again, and the row's own subscription is what says the import
-/// owns it — and that it offers no command while it does.
+/// owns it — waiting for the worker, then taken up, then writing — and what
+/// it offers at each.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_claimed_import_reaches_its_row_and_not_the_list() {
     let fixture = Fixture::new("live-state-not-the-list").await;
@@ -87,7 +88,10 @@ async fn a_claimed_import_reaches_its_row_and_not_the_list() {
     fixture.import.claim_candidate_for_import(&key, "import-1").await;
 
     let claimed = next_live_state(&mut live).await;
-    assert!(claimed.facts.importing());
+    assert_eq!(
+        claimed.facts.import,
+        Some(crate::import::ImportStanding::Queued)
+    );
     assert_eq!(
         claimed.actions,
         vec![
@@ -101,6 +105,25 @@ async fn a_claimed_import_reaches_its_row_and_not_the_list() {
         .import
         .emit_event_for_test(ImportEvent::ImportProgress {
             candidate_key: key.clone(),
+            progress: crate::import::ImportProgress::Preparing {
+                import_id: "import-1".to_string(),
+                step: crate::import::PrepareStep::ValidatingSourceFiles,
+                album_title: String::new(),
+                artist_name: String::new(),
+            },
+        });
+    let taken_up = next_live_state(&mut live).await;
+    assert_eq!(
+        taken_up.facts.import,
+        Some(crate::import::ImportStanding::Running),
+        "the worker's first report takes the import off the queue"
+    );
+    assert_eq!(taken_up.actions, claimed.actions);
+
+    fixture
+        .import
+        .emit_event_for_test(ImportEvent::ImportProgress {
+            candidate_key: key.clone(),
             progress: crate::import::ImportProgress::Progress {
                 id: "release-1".to_string(),
                 percent: None,
@@ -109,7 +132,10 @@ async fn a_claimed_import_reaches_its_row_and_not_the_list() {
             },
         });
     let writing = next_live_state(&mut live).await;
-    assert!(writing.facts.importing());
+    assert_eq!(
+        writing.facts.import,
+        Some(crate::import::ImportStanding::Writing)
+    );
     assert_eq!(
         writing.actions,
         vec![crate::import::CandidateAction::RevealFolder],

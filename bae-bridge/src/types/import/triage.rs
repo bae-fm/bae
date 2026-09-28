@@ -329,9 +329,20 @@ impl BridgeSelectionOffer {
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeCandidateLiveState {
     pub identification: Option<BridgeIdentificationStatus>,
-    /// Whether an import owns the candidate.
-    pub importing: bool,
+    /// Where the import that owns the candidate stands; `None` when none does.
+    pub import: Option<BridgeImportStanding>,
     pub actions: Vec<BridgeCandidateAction>,
+}
+
+/// Where the import that owns a candidate stands.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeImportStanding {
+    /// Waiting for the worker to take it up.
+    Queued,
+    /// Taken up and not yet writing its release.
+    Running,
+    /// Writing its release; it can no longer be cancelled.
+    Writing,
 }
 
 /// What identification is doing for a candidate right now.

@@ -133,12 +133,15 @@ pub struct TriageRuntimeFacts {
     pub import: Option<ImportStanding>,
 }
 
-/// Where an import that owns a candidate stands, as far as what can be asked
-/// of it goes.
+/// Where an import that owns a candidate stands: what a row draws for it and
+/// what can be asked of it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ImportStanding {
-    /// Waiting for the worker or running: a cancel still drops it.
-    Cancellable,
+    /// Claimed and waiting for the worker to take it up. A cancel drops it.
+    Queued,
+    /// Taken up by the worker and not yet writing its release. A cancel
+    /// drops it.
+    Running,
     /// Writing its release, which completes whatever is asked of it.
     Writing,
 }
@@ -159,12 +162,15 @@ impl TriageRuntimeFacts {
         } else {
             runtime.queued.map(|_| IdentificationStatus::Queued)
         };
-        let import = runtime.import.as_ref().map(|import| match import.step {
-            crate::import::ImportStep::Running(crate::import::ImportPhase::Finalizing) => {
-                ImportStanding::Writing
-            }
-            crate::import::ImportStep::Preparing(_) | crate::import::ImportStep::Running(_) => {
-                ImportStanding::Cancellable
+        let import = runtime.import.as_ref().map(|import| {
+            use crate::import::{ImportPhase, ImportStep, PrepareStep};
+            match import.step {
+                ImportStep::Preparing(PrepareStep::Queued) => ImportStanding::Queued,
+                ImportStep::Preparing(PrepareStep::ValidatingSourceFiles)
+                | ImportStep::Running(ImportPhase::ReadingFiles | ImportPhase::MeasuringLoudness) => {
+                    ImportStanding::Running
+                }
+                ImportStep::Running(ImportPhase::Finalizing) => ImportStanding::Writing,
             }
         });
         Self {

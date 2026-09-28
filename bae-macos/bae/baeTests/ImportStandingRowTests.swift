@@ -1,0 +1,115 @@
+import AppKit
+import BaeKit
+import SwiftUI
+import Testing
+
+@testable import bae
+
+/// What a row draws for the import that owns its candidate. Where the import
+/// stands is core's answer and core tests it; these are about what each
+/// standing draws.
+@Suite("Rows of an import in flight", .serialized)
+@MainActor
+struct ImportStandingRowTests {
+    private static let rowSize = NSSize(width: 340, height: 80)
+
+    @Test("a queued import's row keeps its two lines and draws no bar")
+    func queuedTriageRow() async throws {
+        let row = PreviewData.triageRowPrefilledFromTags
+        let idle = try await drawn(triage: row, standing: nil)
+        let queued = try await drawn(triage: row, standing: .queued)
+
+        #expect(queued.bars == 0)
+        #expect(queued.height == idle.height)
+        #expect(queued.pixels != idle.pixels, "the queued row draws its clock")
+    }
+
+    @Test(
+        "a running import's row draws its bar on a line of its own",
+        arguments: [BridgeImportStanding.running, .writing]
+    )
+    func runningTriageRow(standing: BridgeImportStanding) async throws {
+        let row = PreviewData.triageRowPrefilledFromTags
+        let idle = try await drawn(triage: row, standing: nil)
+        let running = try await drawn(triage: row, standing: standing)
+
+        #expect(running.bars == 1)
+        #expect(running.height > idle.height)
+    }
+
+    @Test("a queued import's Done row draws no bar")
+    func queuedDoneRow() async throws {
+        let row = PreviewData.importedRowFromTags
+        let idle = try await drawn(done: row, standing: nil)
+        let queued = try await drawn(done: row, standing: .queued)
+        let running = try await drawn(done: row, standing: .running)
+
+        #expect(queued.bars == 0)
+        #expect(queued.height == idle.height)
+        #expect(running.bars == 1)
+    }
+
+    private struct Drawn {
+        let bars: Int
+        let height: CGFloat
+        let pixels: Data
+    }
+
+    private func drawn(
+        triage row: BridgeTriageRow,
+        standing: BridgeImportStanding?
+    ) async throws -> Drawn {
+        try await drawn(
+            TriageRowContent(
+                row: row,
+                live: BridgeCandidateLiveState(
+                    identification: nil,
+                    import: standing,
+                    actions: []
+                ),
+                coverContent: nil,
+                isGroupMember: false,
+                menuOffers: .empty,
+                onPerform: { _ in }
+            )
+        )
+    }
+
+    private func drawn(
+        done row: BridgeImportedRow,
+        standing: BridgeImportStanding?
+    ) async throws -> Drawn {
+        try await drawn(
+            ImportedRowContent(
+                row: row,
+                importStanding: standing,
+                uploadObservation: nil,
+                onReveal: {}
+            )
+        )
+    }
+
+    private func drawn(_ row: some View) async throws -> Drawn {
+        try await SnapshotTestSupport.withHostedWindow(
+            row
+                .candidateReaderPreviewEnvironment()
+                .environment(ImageStore.stub())
+                .preferredColorScheme(.light)
+                .background(.white)
+                .frame(width: Self.rowSize.width),
+            size: Self.rowSize
+        ) { _, host in
+            try await SnapshotTestSupport.settle(host)
+            return Drawn(
+                bars: SnapshotTestSupport.descendants(of: host)
+                    .filter { $0 is ProgressTrackNSView }
+                    .count,
+                height: host.fittingSize.height,
+                pixels: try await SnapshotTestSupport.capturePNG(
+                    host,
+                    size: Self.rowSize
+                )
+            )
+        }
+    }
+}

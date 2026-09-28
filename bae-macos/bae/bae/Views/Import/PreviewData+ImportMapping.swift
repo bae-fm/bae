@@ -436,7 +436,7 @@
                     placement: .pending(folderCheck: nil, records: []),
                     live: BridgeCandidateLiveState(
                         identification: nil,
-                        importing: false,
+                        import: nil,
                         actions: (metadataProvenance == nil
                             && edit.albumTitle.isEmpty ? [] : [.import])
                             + [

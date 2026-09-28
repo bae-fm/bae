@@ -111,7 +111,7 @@ fn a_claimed_import_leaves_the_row_pending() {
         &row.action_basis,
         TriageRuntimeFacts {
             identification: None,
-            import: Some(crate::import::ImportStanding::Cancellable),
+            import: Some(crate::import::ImportStanding::Running),
         },
     );
     assert_eq!(

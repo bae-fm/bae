@@ -143,7 +143,9 @@ impl CandidateActionBasis {
         // A running import can be cancelled; one writing its release
         // completes, so nothing is offered for it.
         match live.import {
-            Some(ImportStanding::Cancellable) => return vec![A::CancelImport],
+            Some(ImportStanding::Queued | ImportStanding::Running) => {
+                return vec![A::CancelImport]
+            }
             Some(ImportStanding::Writing) => return Vec::new(),
             None => {}
         }
@@ -264,18 +266,22 @@ mod tests {
     }
 
     /// An import owning the candidate takes every command away but cancelling
-    /// it, the skip included, wherever the tables still place it.
+    /// it, the skip included, wherever the tables still place it — whether it
+    /// is still waiting for the worker or running.
     #[test]
-    fn a_running_import_offers_only_its_cancel() {
-        let importing = TriageRuntimeFacts {
-            identification: None,
-            import: Some(ImportStanding::Cancellable),
-        };
-        for placement in [TriagePlacement::Pending, TriagePlacement::Failed] {
-            assert_eq!(
-                basis(placement, None).actions(&importing),
-                vec![CandidateAction::CancelImport, CandidateAction::RevealFolder]
-            );
+    fn a_queued_or_running_import_offers_only_its_cancel() {
+        for standing in [ImportStanding::Queued, ImportStanding::Running] {
+            let importing = TriageRuntimeFacts {
+                identification: None,
+                import: Some(standing),
+            };
+            for placement in [TriagePlacement::Pending, TriagePlacement::Failed] {
+                assert_eq!(
+                    basis(placement, None).actions(&importing),
+                    vec![CandidateAction::CancelImport, CandidateAction::RevealFolder],
+                    "{standing:?}, {placement:?}"
+                );
+            }
         }
     }
 
@@ -354,7 +360,7 @@ mod tests {
         assert_eq!(done.actions(&rest), vec![CandidateAction::RevealFolder]);
         let importing = TriageRuntimeFacts {
             identification: None,
-            import: Some(ImportStanding::Cancellable),
+            import: Some(ImportStanding::Running),
         };
         assert!(!grouped.actions(&importing).contains(&CandidateAction::Separate));
     }

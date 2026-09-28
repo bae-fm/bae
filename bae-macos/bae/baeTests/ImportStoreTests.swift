@@ -231,7 +231,7 @@ private func detail(
         placement: .pending(folderCheck: nil, records: []),
         live: BridgeCandidateLiveState(
             identification: nil,
-            importing: false,
+            import: nil,
             actions: [
                 .import, .identify, .resetToFileMetadata, .clearMetadata,
                 .skip,

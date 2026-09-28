@@ -16,7 +16,7 @@ struct ImportedRowView: View {
         ) { live in
             ImportedRowContent(
                 row: row,
-                importing: live?.importing == true,
+                importStanding: live?.import,
                 uploadObservation: uploadObservation,
                 onReveal: onReveal
             )
@@ -27,7 +27,8 @@ struct ImportedRowView: View {
 /// A Done row drawn from its release and what is running for its candidate.
 struct ImportedRowContent: View {
     let row: BridgeImportedRow
-    let importing: Bool
+    /// Where an import of the candidate stands; `nil` when none owns it.
+    let importStanding: BridgeImportStanding?
     let uploadObservation: UploadObservation?
     let onReveal: () -> Void
 
@@ -62,29 +63,42 @@ struct ImportedRowContent: View {
             ) {
                 RecordArrow(readFromRecord: row.release.readFromRecord)
             }
-            if importing {
+            switch importStanding {
+            case .running, .writing:
                 // Subscribes to progress here because it changes every second.
                 ImportProgressLine(key: row.candidateKey)
                     .themeText(.detail)
-            }
-            else if let uploadObservation {
-                ProgressLine(
-                    uploadObservation.phaseText,
-                    progress: uploadObservation.progressBar.fraction
-                )
-                .themeText(.detail)
+            case .queued:
+                EmptyView()
+            case nil:
+                if let uploadObservation {
+                    ProgressLine(
+                        uploadObservation.phaseText,
+                        progress: uploadObservation.progressBar.fraction
+                    )
+                    .themeText(.detail)
+                }
             }
         }
     }
 
-    /// The storage queue's upload arrow while the release is still uploading.
+    /// A queued import's clock, or the storage queue's upload arrow while the
+    /// release is still uploading.
     @ViewBuilder
     private var trailing: some View {
-        if !importing, case .active = uploadObservation {
-            Image(systemName: "arrow.up.circle")
-                .themeIcon(.small)
-                .foregroundStyle(.secondary)
+        switch importStanding {
+        case .queued:
+            QueuedImportIcon()
                 .fixedSize()
+        case .running, .writing:
+            EmptyView()
+        case nil:
+            if case .active = uploadObservation {
+                Image(systemName: "arrow.up.circle")
+                    .themeIcon(.small)
+                    .foregroundStyle(.secondary)
+                    .fixedSize()
+            }
         }
     }
 }

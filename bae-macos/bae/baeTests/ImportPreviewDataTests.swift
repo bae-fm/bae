@@ -179,7 +179,7 @@ struct ImportPreviewDataTests {
         }
         let live = scene.store.selectedCandidates.values.compactMap(\.live)
         #expect(rows.contains { $0.placement == .pending })
-        #expect(live.contains { $0.importing })
+        #expect(live.contains { $0.import != nil })
         #expect(rows.contains { $0.placement == .failed })
         #expect(
             entries.contains { item in

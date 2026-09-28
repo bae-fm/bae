@@ -289,20 +289,25 @@ mirror_enum! {
 impl crate::types::BridgeCandidateLiveState {
     pub(crate) fn from_core(live: bae_core::import::CandidateLiveState) -> Self {
         let bae_core::import::CandidateLiveState { facts, actions } = live;
-        let importing = facts.importing();
         let bae_core::import::TriageRuntimeFacts {
             identification,
-            import: _,
+            import,
         } = facts;
         Self {
             identification: identification.map(crate::types::BridgeIdentificationStatus::from_core),
-            importing,
+            import: import.map(crate::types::BridgeImportStanding::from_core),
             actions: actions
                 .into_iter()
                 .map(crate::types::BridgeCandidateAction::from_core)
                 .collect(),
         }
     }
+}
+
+mirror_enum! {
+    crate::types::BridgeImportStanding = bae_core::import::ImportStanding,
+    from_core: fn,
+    variants: { Queued, Running, Writing },
 }
 
 impl crate::types::BridgeIdentificationStatus {

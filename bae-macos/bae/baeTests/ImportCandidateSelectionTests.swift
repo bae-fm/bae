@@ -73,7 +73,7 @@ struct ImportCandidateSelectionTests {
                 callback.onValue(
                     value: BridgeCandidateLiveState(
                         identification: .running,
-                        importing: false,
+                        import: nil,
                         actions: [.skip]
                     )
                 )

@@ -675,11 +675,11 @@
         static func triageLive(
             _ actions: [BridgeCandidateAction],
             identification: BridgeIdentificationStatus? = nil,
-            importing: Bool = false
+            importStanding: BridgeImportStanding? = nil
         ) -> BridgeCandidateLiveState {
             BridgeCandidateLiveState(
                 identification: identification,
-                importing: importing,
+                import: importStanding,
                 actions: actions
             )
         }
@@ -720,7 +720,10 @@
                     triageRowIdentifying,
                     triageLive([.skip], identification: .running)
                 ),
-                (triageRowImporting, triageLive([], importing: true)),
+                (
+                    triageRowImporting,
+                    triageLive([], importStanding: .running)
+                ),
                 (
                     triageRowFailed,
                     triageLive([.resetToFileMetadata, .clearMetadata])
