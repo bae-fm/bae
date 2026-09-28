@@ -287,6 +287,11 @@ struct Support {
     /// tracklist is a different edition, where those only say where or how
     /// one edition was cut.
     fits_the_tracks: bool,
+    /// Whether the row was released as a download, where the folder is one —
+    /// see [`super::medium::download`]. Above the edition year: a download is
+    /// a copy of one digital release, where a year a catalog states is often
+    /// the original's.
+    download: Fact,
     /// Whether the row was released in the year the folder names its edition
     /// by — see [`FolderFacts::edition_year`].
     edition_year: Fact,
@@ -363,6 +368,10 @@ fn support_of(
                 }
                 Some(crate::import::search::SourceTracks::Nothing) => false,
             }),
+        download: super::medium::download(
+            folder.origin,
+            row.releases.iter().map(|release| &release.media),
+        ),
         edition_year: facts.edition_year(&row.releases),
         states_the_channels: agrees_with_mono(
             folder.mono,

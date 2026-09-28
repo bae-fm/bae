@@ -162,6 +162,51 @@ fn audio_no_cd_holds_sets_aside_a_cd_pressing() {
     assert_eq!(set_aside(&outcome), vec!["rel-cd"]);
 }
 
+/// A download at a rate no CD plays at, the way a store delivers one.
+const HI_RES_DOWNLOAD: AudioOrigin = AudioOrigin {
+    source: Some(AudioSource::Download(
+        crate::signals::DownloadProof::DeliverySet,
+    )),
+    not_cd_rate: Some(96_000),
+};
+
+/// A download is a copy of the digital release, which is offered over a
+/// pressing naming no carrier and a physical one. A physical pressing is
+/// outranked, never ruled out by the rate, so no conflict is stated even when
+/// every pressing is a CD.
+#[test]
+fn a_download_offers_the_digital_release() {
+    let outcome = by_catalog(
+        vec![
+            pressing("rel-cd", made_of(&[Medium::Cd])),
+            pressing("rel-digital", made_of(&[Medium::Digital])),
+            pressing("rel-undescribed", StatedMedia::Undescribed),
+        ],
+        &HI_RES_DOWNLOAD,
+    );
+    assert_eq!(offered(&outcome), vec!["rel-digital"]);
+    assert_eq!(set_aside(&outcome), vec!["rel-cd", "rel-undescribed"]);
+
+    let outcome = by_catalog(
+        vec![
+            pressing("rel-cd", made_of(&[Medium::Cd])),
+            pressing("rel-undescribed", StatedMedia::Undescribed),
+        ],
+        &HI_RES_DOWNLOAD,
+    );
+    assert_eq!(offered(&outcome), vec!["rel-undescribed"]);
+
+    let outcome = by_catalog(
+        vec![
+            pressing("rel-cd", made_of(&[Medium::Cd])),
+            pressing("rel-cd-2", made_of(&[Medium::Cd])),
+        ],
+        &HI_RES_DOWNLOAD,
+    );
+    assert_eq!(offered(&outcome), vec!["rel-cd", "rel-cd-2"]);
+    assert_eq!(outcome.0.medium_conflict, None);
+}
+
 /// A matched disc ID proves a CD as surely as a rip log, so the vinyl
 /// pressing is set aside.
 #[test]

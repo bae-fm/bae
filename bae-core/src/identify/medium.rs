@@ -6,7 +6,8 @@
 //! object. Such a row is still an answer a lookup gave, so it is set aside
 //! rather than dropped — see [`super::combine`].
 
-use crate::pressing::{CdAudio, DiscogsDetail, StatedMedia};
+use super::row_facts::Fact;
+use crate::pressing::{CdAudio, DiscogsDetail, Medium, StatedMedia};
 use crate::signals::AudioOrigin;
 
 /// What the folder's own files say about its audio, as combine reads it: the
@@ -83,13 +84,42 @@ pub(crate) fn agrees_with_mono<'a>(
         })
 }
 
+/// Whether a row whose records state `media` was released as the download
+/// the folder is: a row stating a digital medium agrees, one stating only
+/// physical carriers disagrees, and one naming no carrier states nothing. A
+/// folder that is no download is weighed by [`RippedFrom`] instead.
+pub(crate) fn download<'a>(
+    origin: &AudioOrigin,
+    media: impl IntoIterator<Item = &'a StatedMedia>,
+) -> Fact {
+    if !origin.is_download() {
+        return Fact::StatesNothing;
+    }
+    let named: Vec<Medium> = media
+        .into_iter()
+        .flat_map(StatedMedia::entries)
+        .flatten()
+        .collect();
+    if named.contains(&Medium::Digital) {
+        Fact::Agrees
+    } else if named.is_empty() {
+        Fact::StatesNothing
+    } else {
+        Fact::Disagrees
+    }
+}
+
 impl RippedFrom {
     /// What the folder's files say, and whether its disc ID named a release.
     /// A disc ID hashes a CD's table of contents, and one a catalog knows is
     /// a disc that was pressed: a folder whose track layout matches one to
-    /// the frame was copied from it.
+    /// the frame was copied from it. A download proves no medium it was cut
+    /// from — whatever its rate, the release it is a copy of is a digital one,
+    /// which [`download`] weighs — so it sets no row aside.
     pub(crate) fn of(origin: &AudioOrigin, disc_id_matched: bool) -> Self {
-        if origin.is_cd_rip() {
+        if origin.is_download() {
+            Self::Unknown
+        } else if origin.is_cd_rip() {
             Self::Cd
         } else if origin.not_cd_rate.is_some() {
             // The disc ID is not computed from a sheet whose audio rules a
@@ -139,8 +169,9 @@ impl RippedFrom {
 
 #[cfg(test)]
 mod tests {
+    use super::download as download_fact;
     use super::*;
-    use crate::pressing::{Medium, StatedFormat};
+    use crate::pressing::StatedFormat;
     use crate::signals::CdProof;
 
     fn per_medium(media: &[Option<Medium>]) -> StatedMedia {
@@ -190,10 +221,9 @@ mod tests {
         assert_eq!(RippedFrom::of(&not_cd_rate(), false), RippedFrom::NotCd);
     }
 
-    /// A download at a rate no CD plays at is not CD audio; one at a CD's
-    /// rate proves nothing about a disc.
+    /// A download proves no carrier, at whatever rate.
     #[test]
-    fn a_download_is_not_cd_audio_only_by_its_rate() {
+    fn a_download_proves_no_carrier() {
         let download =
             crate::signals::AudioSource::Download(crate::signals::DownloadProof::DeliverySet);
         let at_cd_rate = AudioOrigin {
@@ -205,7 +235,42 @@ mod tests {
             not_cd_rate: Some(96_000),
         };
         assert_eq!(RippedFrom::of(&at_cd_rate, false), RippedFrom::Unknown);
-        assert_eq!(RippedFrom::of(&at_96k, false), RippedFrom::NotCd);
+        assert_eq!(RippedFrom::of(&at_96k, false), RippedFrom::Unknown);
+    }
+
+    /// A download agrees with a row stating a digital medium and disagrees
+    /// with one stating only carriers; a row naming none states nothing, and
+    /// a folder that is no download weighs no row this way.
+    #[test]
+    fn a_download_agrees_with_a_digital_release() {
+        let download = AudioOrigin {
+            source: Some(crate::signals::AudioSource::Download(
+                crate::signals::DownloadProof::DeliverySet,
+            )),
+            not_cd_rate: None,
+        };
+        let digital = per_medium(&[Some(Medium::Digital)]);
+        let cd = per_medium(&[Some(Medium::Cd)]);
+        assert_eq!(download_fact(&download, [&digital]), Fact::Agrees);
+        assert_eq!(download_fact(&download, [&cd, &digital]), Fact::Agrees);
+        assert_eq!(download_fact(&download, [&cd]), Fact::Disagrees);
+        assert_eq!(
+            download_fact(&download, [&formats(&[Some(Medium::Vinyl)])]),
+            Fact::Disagrees
+        );
+        assert_eq!(
+            download_fact(&download, [&StatedMedia::Undescribed]),
+            Fact::StatesNothing
+        );
+        assert_eq!(
+            download_fact(&download, [&per_medium(&[None])]),
+            Fact::StatesNothing
+        );
+        assert_eq!(download_fact(&cd_rip(), [&digital]), Fact::StatesNothing);
+        assert_eq!(
+            download_fact(&AudioOrigin::default(), [&cd]),
+            Fact::StatesNothing
+        );
     }
 
     /// A CD rip rules out a row made only of carriers that play no CD audio,
