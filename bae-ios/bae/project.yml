@@ -55,6 +55,10 @@ targets:
           if [ ! -f "$BINDINGS" ] || [ "$BINDINGS_SOURCE" -nt "$BINDINGS" ]; then
             ./bae-bridge/install-swift-bindings.sh ios
           fi
+          # The generators run from build-ios.sh's own target dir: `cargo run`
+          # executes the binary at a shared dir's top level, which another
+          # checkout's build can overwrite with an older generator.
+          export CARGO_TARGET_DIR=target-ios
           cargo run -q -p bae-loc --bin loc-gen -- emit --target apple --out-dir bae-ios/bae/bae
           cargo run -q -p bae-theme --bin theme-gen -- emit --target apple --out-dir BaeKit/Sources/BaeKit/Generated
     dependencies:
