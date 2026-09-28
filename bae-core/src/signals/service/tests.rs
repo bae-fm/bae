@@ -795,6 +795,44 @@ async fn a_line_read_twice_off_one_surface_is_pooled_once() {
     );
 }
 
+/// The settled reading is kept before it is announced, so a run started by
+/// anything that heard the settle reuses it.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_settled_reading_is_kept_before_it_is_announced() {
+    let tmp = TempDir::new().unwrap();
+    let folder = build_release(&tmp, "Album Title [XX34b]", &["Cover.jpg"], &[]);
+    let analyzer = Arc::new(StubAnalyzer::new().with("Cover.jpg", vec!["Line One".to_string()]));
+    let (handle, tx, _rx, _lib_tmp) = make_service().await;
+    handle.register_analyzer(analyzer);
+    let source = folder_source(folder);
+    let ExtractionSource::Candidate { candidate } = &source else {
+        unreachable!("a folder source is a candidate");
+    };
+    let key = settled_reading_key(&candidate.files.content_hash(), true);
+    tx.hold_send_where(|event| {
+        matches!(
+            event,
+            ImportEvent::SignalsUpdated { signals, .. }
+                if matches!(signals.text, TextSignal::Settled { .. })
+        )
+    });
+    let mut run = handle.start(
+        IdentifyRunId::for_test(1),
+        "cand-1".to_string(),
+        source,
+        CallPriority::Interactive,
+        crate::config::IdentificationSteps::default(),
+    );
+
+    tokio::time::timeout(Duration::from_secs(30), tx.send_held())
+        .await
+        .expect("the run announces its settled reading");
+    let kept = handle.inner.settled.get_cloned(&key).is_some();
+    tx.release_send();
+    run_ended(&mut run).await;
+    assert!(kept, "the settled reading is kept before it is announced");
+}
+
 /// A second run over an unchanged folder reuses the first run's settled
 /// reading and reads no image again.
 #[tokio::test(flavor = "multi_thread")]

@@ -243,7 +243,7 @@ impl<'a> HeldProgress<'a> {
 
 impl Drop for HeldProgress<'_> {
     fn drop(&mut self) {
-        self.0.release_progress();
+        self.0.release_send();
     }
 }
 
@@ -315,7 +315,7 @@ async fn cancelled_mid_run_leaves_the_store_as_it_was_and_starts_over() {
     let import_id = handle.start_import(&key).await.unwrap();
     tokio::time::timeout(
         std::time::Duration::from_secs(10),
-        handle.event_tx.progress_held(),
+        handle.event_tx.send_held(),
     )
     .await
     .expect("the import reaches its measurement");

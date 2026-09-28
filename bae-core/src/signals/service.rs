@@ -270,10 +270,11 @@ async fn run_extraction(
             }
             let artwork = Artwork::unread(extraction.read_cover_art, inner.has_artwork_analyzer())
                 .unwrap_or_else(|| Artwork::read(fast.artwork));
-            let settled = stream_extraction(
+            stream_extraction(
                 inner.clone(),
                 extraction,
                 token,
+                Some(settled_key),
                 ExtractionInputs {
                     gathered: Gathered {
                         origin: fast.origin,
@@ -288,9 +289,6 @@ async fn run_extraction(
                 },
             )
             .await;
-            if let Some(settled) = settled {
-                inner.settled.put(settled_key, settled);
-            }
         }
 
         // A library release has no folder text; its rip files and artwork come
@@ -353,6 +351,7 @@ async fn run_extraction(
                 inner,
                 extraction,
                 token,
+                None,
                 ExtractionInputs {
                     gathered: Gathered {
                         origin,
@@ -471,14 +470,15 @@ fn settled_reading_key(content_hash: &str, read_cover_art: bool) -> String {
 }
 
 /// Stream snapshots over the artwork pass — one before the first image and
-/// one after each image but the last — then send and return the settled one.
-/// `None` when the pass was cancelled or an image failed to read.
+/// one after each image but the last — then send the settled one, kept first
+/// under `settled_key` so a run started by anything that heard it reuses it.
 async fn stream_extraction(
     inner: Arc<ExtractionServiceInner>,
     extraction: RunningExtraction,
     token: CancellationToken,
+    settled_key: Option<String>,
     inputs: ExtractionInputs,
-) -> Option<SignalsSnapshot> {
+) {
     let ExtractionInputs {
         mut gathered,
         artwork,
@@ -503,7 +503,7 @@ async fn stream_extraction(
     };
 
     if token.is_cancelled() {
-        return None;
+        return;
     }
 
     // Without artwork the settled snapshot is the only one, so `Scanning`
@@ -529,7 +529,7 @@ async fn stream_extraction(
     if let Some(ArtworkPass { images }) = artwork {
         for (index, ArtworkImage { path, file_id }) in images.iter().enumerate() {
             if token.is_cancelled() {
-                return None;
+                return;
             }
 
             let analysis = match inner.analyze_artwork(path.clone()).await {
@@ -546,12 +546,12 @@ async fn stream_extraction(
                         },
                         failure,
                     );
-                    return None;
+                    return;
                 }
             };
 
             if token.is_cancelled() {
-                return None;
+                return;
             }
 
             // One sighting per image a code was read off.
@@ -580,7 +580,7 @@ async fn stream_extraction(
             }
 
             if token.is_cancelled() {
-                return None;
+                return;
             }
 
             // Every image read is a snapshot, whether or not it added anything.
@@ -602,7 +602,7 @@ async fn stream_extraction(
     }
 
     if token.is_cancelled() {
-        return None;
+        return;
     }
 
     let classification = gathered.pool.classify();
@@ -629,8 +629,10 @@ async fn stream_extraction(
         audio: gathered.audio,
         artwork: finished,
     };
-    emit_signals(&inner, &extraction, settled.clone());
-    Some(settled)
+    if let Some(key) = settled_key {
+        inner.settled.put(key, settled.clone());
+    }
+    emit_signals(&inner, &extraction, settled);
 }
 
 fn emit_failed_ocr_signals(

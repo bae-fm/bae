@@ -43,17 +43,17 @@ pub struct ImportEventBus {
     /// What ends a candidate's in-flight work, run inside the send that says
     /// the candidate was removed or rebound.
     candidate_endings: Arc<std::sync::Mutex<Vec<CandidateEnding>>>,
-    /// Stops the thread sending one chosen progress event until a test lets
-    /// it through, so the test can act partway through an import.
+    /// Stops the thread sending one chosen event until a test lets it
+    /// through, so the test can act partway through the work that sends it.
     #[cfg(test)]
-    progress_hold: Arc<ProgressHold>,
+    send_hold: Arc<SendHold>,
 }
 
 type CandidateEnding = Arc<dyn Fn(&str) + Send + Sync>;
 
-/// Where [`ImportEventBus::hold_progress_at`] stops a sender.
+/// Where [`ImportEventBus::hold_send_where`] stops a sender.
 #[cfg(test)]
-struct ProgressHold {
+struct SendHold {
     state: std::sync::Mutex<HoldState>,
     changed: std::sync::Condvar,
     /// Set once a sender is stopped, for a test to await.
@@ -61,7 +61,7 @@ struct ProgressHold {
 }
 
 #[cfg(test)]
-impl Default for ProgressHold {
+impl Default for SendHold {
     fn default() -> Self {
         Self {
             state: Default::default(),
@@ -72,13 +72,13 @@ impl Default for ProgressHold {
 }
 
 #[cfg(test)]
-#[derive(Default, Clone, Copy, PartialEq)]
+#[derive(Default)]
 enum HoldState {
     #[default]
     Off,
-    /// The next measured percent of this phase stops its sender.
-    Armed(crate::import::ImportPhase),
-    /// A sender is stopped, its event neither recorded nor broadcast.
+    /// The next event this matches stops its sender.
+    Armed(Box<dyn Fn(&ImportEvent) -> bool + Send>),
+    /// A sender is stopped, its event neither recorded nor delivered.
     Held,
     /// The stopped sender was let go.
     Released,
@@ -137,7 +137,7 @@ impl ImportEventBus {
             runtime,
             candidate_endings: Arc::default(),
             #[cfg(test)]
-            progress_hold: Arc::default(),
+            send_hold: Arc::default(),
         }
     }
 
@@ -192,22 +192,41 @@ impl ImportEventBus {
         events
     }
 
-    /// Stop the first thread that sends a measured percent of `phase` before
-    /// its event is recorded or broadcast, until [`Self::release_progress`].
-    ///
-    /// Only a percent above zero: those come from the threads doing the work,
-    /// while a zero comes from the worker, which must stay free to hear a
-    /// cancel.
+    /// Stop the first thread that sends an event `matches` takes, before the
+    /// event is recorded or delivered, until [`Self::release_send`].
     #[cfg(test)]
-    pub(crate) fn hold_progress_at(&self, phase: crate::import::ImportPhase) {
-        *self.progress_hold.state.lock().unwrap() = HoldState::Armed(phase);
+    pub(crate) fn hold_send_where(
+        &self,
+        matches: impl Fn(&ImportEvent) -> bool + Send + 'static,
+    ) {
+        *self.send_hold.state.lock().unwrap() = HoldState::Armed(Box::new(matches));
     }
 
-    /// Wait until a sender is stopped where [`Self::hold_progress_at`] said.
+    /// [`Self::hold_send_where`] a measured percent of `phase` above zero:
+    /// those come from the threads doing the work, while a zero comes from
+    /// the worker, which must stay free to hear a cancel.
     #[cfg(test)]
-    pub(crate) async fn progress_held(&self) {
+    pub(crate) fn hold_progress_at(&self, phase: crate::import::ImportPhase) {
+        self.hold_send_where(move |event| {
+            matches!(
+                event,
+                ImportEvent::ImportProgress {
+                    progress: ImportProgress::Progress {
+                        phase: sent,
+                        percent: Some(percent),
+                        ..
+                    },
+                    ..
+                } if *sent == phase && *percent > 0
+            )
+        });
+    }
+
+    /// Wait until a sender is stopped where [`Self::hold_send_where`] said.
+    #[cfg(test)]
+    pub(crate) async fn send_held(&self) {
         let _ = self
-            .progress_hold
+            .send_hold
             .held
             .subscribe()
             .wait_for(|held| *held)
@@ -216,35 +235,23 @@ impl ImportEventBus {
 
     /// Let the stopped sender go on.
     #[cfg(test)]
-    pub(crate) fn release_progress(&self) {
-        *self.progress_hold.state.lock().unwrap() = HoldState::Released;
-        self.progress_hold.changed.notify_all();
+    pub(crate) fn release_send(&self) {
+        *self.send_hold.state.lock().unwrap() = HoldState::Released;
+        self.send_hold.changed.notify_all();
     }
 
     #[cfg(test)]
     fn wait_if_held(&self, event: &ImportEvent) {
-        let ImportEvent::ImportProgress {
-            progress:
-                ImportProgress::Progress {
-                    phase,
-                    percent: Some(percent),
-                    ..
-                },
-            ..
-        } = event
-        else {
-            return;
-        };
-        let mut state = self.progress_hold.state.lock().unwrap();
-        if *state != HoldState::Armed(*phase) || *percent == 0 {
+        let mut state = self.send_hold.state.lock().unwrap();
+        if !matches!(&*state, HoldState::Armed(matches) if matches(event)) {
             return;
         }
         *state = HoldState::Held;
-        self.progress_hold.held.send_replace(true);
+        self.send_hold.held.send_replace(true);
         let _released = self
-            .progress_hold
+            .send_hold
             .changed
-            .wait_while(state, |state| *state == HoldState::Held)
+            .wait_while(state, |state| matches!(state, HoldState::Held))
             .unwrap();
     }
 }
