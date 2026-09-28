@@ -145,14 +145,15 @@ impl Pressing {
     /// One pressing's records, ordered by what the folder says about each.
     ///
     /// Every record describes the same physical object, and none of them is
-    /// the one the draft is read from by name. The record the candidate's own
-    /// text agrees with most is; among records it says as much about, the one
-    /// that states a tracklist, since the draft's rows and the settle's check
-    /// of them against the audio are read out of that tracklist. Where the
-    /// two are indistinguishable on both the source name decides, MusicBrainz
-    /// first; and between one catalog's two records of the object, the one
-    /// another record of the pressing names as the same release stands for
-    /// that catalog, over the one nothing names.
+    /// the one the draft is read from by name. The record whose tracklist fits
+    /// the folder's audio is, since the draft's rows are laid onto the audio
+    /// out of that tracklist and the verdict picks the row only when its lead
+    /// fits; then the record the candidate's own text agrees with most; among
+    /// records it says as much about, the one that states a tracklist. Where
+    /// they are indistinguishable on all of that the source name decides,
+    /// MusicBrainz first; and between one catalog's two records of the object,
+    /// the one another record of the pressing names as the same release stands
+    /// for that catalog, over the one nothing names.
     fn of(mut releases: Vec<MetadataResult>, judged: &Judgements) -> Self {
         let named: Vec<bool> = releases
             .iter()
@@ -166,6 +167,7 @@ impl Pressing {
         order.sort_by_key(|&at| {
             let release = &releases[at];
             (
+                judged.tracklist_rank(release),
                 std::cmp::Reverse(judged.of_release(release).count()),
                 !states_tracklist(release),
                 source_rank(release.source),
@@ -255,35 +257,51 @@ impl Pressing {
 }
 
 /// What the candidate's own text agrees with about each release, by the key
-/// that tells releases apart.
+/// that tells releases apart, and how many tracks the folder holds, which
+/// each release's tracklist is read against.
 ///
 /// Built once from the judged results, and read back after they have been
 /// paired: a pressing row is only known once pairing has run, and what the row
 /// agrees with is what its records agree with.
 #[derive(Debug, Clone, Default)]
-pub struct Judgements(std::collections::HashMap<(Catalog, String), Agreements>);
+pub struct Judgements {
+    agreements: std::collections::HashMap<(Catalog, String), Agreements>,
+    /// `None` where no folder is being identified: a typed search, one
+    /// lookup's own answer.
+    folder_track_count: Option<u32>,
+}
 
 impl Judgements {
     /// What was said about these results, ready to be asked release by
-    /// release.
-    pub fn of(results: &[Judged]) -> Self {
-        Self(
-            results
+    /// release, against a folder of `folder_track_count` tracks.
+    pub fn of(results: &[Judged], folder_track_count: Option<u32>) -> Self {
+        Self {
+            agreements: results
                 .iter()
                 .map(|(release, agreements)| {
                     ((release.source, release.release_id.clone()), *agreements)
                 })
                 .collect(),
-        )
+            folder_track_count,
+        }
     }
 
     /// What was said about one release. A release these were not built from
     /// was never judged, which is nothing agreeing.
     fn of_release(&self, release: &MetadataResult) -> Agreements {
-        self.0
+        self.agreements
             .get(&(release.source, release.release_id.clone()))
             .copied()
             .unwrap_or(Agreements::NONE)
+    }
+
+    /// Where a release's tracklist puts it among its pressing's records as
+    /// the one the draft is read from. Every record ranks alike where there
+    /// is no folder to read it against.
+    fn tracklist_rank(&self, release: &MetadataResult) -> u8 {
+        self.folder_track_count.map_or(0, |count| {
+            crate::identify::TracklistFit::of(release.source_tracks.as_ref(), count).lead_rank()
+        })
     }
 }
 
@@ -352,7 +370,7 @@ pub fn row_count(rows: &[u32]) -> usize {
 pub fn form_rows(results: &[MetadataResult]) -> Vec<u32> {
     let mut grouped: std::collections::HashMap<(Catalog, String), usize> =
         std::collections::HashMap::new();
-    for (row, pressing) in group_results(unranked(results.to_vec()))
+    for (row, pressing) in group_results(unranked(results.to_vec()), None)
         .iter()
         .flat_map(ReleaseGroup::pressings)
         .enumerate()
@@ -388,7 +406,7 @@ pub fn form_rows(results: &[MetadataResult]) -> Vec<u32> {
 #[cfg(test)]
 pub(crate) fn pressing_count(results: Vec<MetadataResult>) -> usize {
     // Counting is order-blind, so there is nothing to rank the rows by.
-    group_results(unranked(results))
+    group_results(unranked(results), None)
         .iter()
         .map(|group| group.pressings().count())
         .sum()
@@ -412,8 +430,8 @@ pub fn unranked(results: Vec<MetadataResult>) -> Vec<Judged> {
 /// pressing spans or an album link joins become one card. The rows are
 /// ordered by how much of the candidate's text agrees with them and then by
 /// pressing year, and the cards by their best row.
-pub fn group_results(results: Vec<Judged>) -> Vec<ReleaseGroup> {
-    let judgements = Judgements::of(&results);
+pub fn group_results(results: Vec<Judged>, folder_track_count: Option<u32>) -> Vec<ReleaseGroup> {
+    let judgements = Judgements::of(&results, folder_track_count);
     let releases: Vec<MetadataResult> = results.into_iter().map(|(release, _)| release).collect();
     let pressings = gather_pressings(&releases);
     let offered = releases.len();
@@ -436,6 +454,7 @@ pub fn group_formed_rows(
     offered_rows: &[u32],
     narrowed_out: Vec<Judged>,
     narrowed_out_rows: &[u32],
+    folder_track_count: Option<u32>,
 ) -> Vec<ReleaseGroup> {
     assert_eq!(
         offered.len(),
@@ -457,7 +476,7 @@ pub fn group_formed_rows(
         .collect();
     let offered_count = offered.len();
     let results: Vec<Judged> = offered.into_iter().chain(narrowed_out).collect();
-    let judgements = Judgements::of(&results);
+    let judgements = Judgements::of(&results, folder_track_count);
     let releases: Vec<MetadataResult> = results.into_iter().map(|(release, _)| release).collect();
     let pressings = formed_pressings(&rows);
     cards(releases, pressings, &judgements, offered_count)

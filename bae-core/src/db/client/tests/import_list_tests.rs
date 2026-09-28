@@ -499,6 +499,7 @@ async fn the_detail_resumes_the_ledger_the_run_recorded() {
                         "mb-verdict",
                         Some("group-1"),
                     )]),
+                    None,
                 ),
             },
         },

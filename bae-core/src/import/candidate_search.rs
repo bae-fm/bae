@@ -338,7 +338,7 @@ impl CandidateSearch {
         }
         // Typed search: nothing was judged against the candidate's own text,
         // so the rows keep the pressing-year order alone.
-        self.groups = group_results(crate::import::release_group::unranked(results));
+        self.groups = group_results(crate::import::release_group::unranked(results), None);
         self.library_statuses = statuses;
     }
 }

@@ -22,7 +22,7 @@ fn rows_the_text_says_most_about_lead() {
     let groups = group_results(vec![
         (mb("rel-early", Some("group-x"), Some(1976)), agreed(1)),
         (mb("rel-late", Some("group-x"), Some(2003)), agreed(4)),
-    ]);
+    ], None);
     assert_eq!(
         lead_ids(&groups[0]),
         vec![vec!["rel-late"], vec!["rel-early"]]
@@ -35,7 +35,7 @@ fn rows_the_text_says_as_much_about_keep_the_year_order() {
     let groups = group_results(vec![
         (mb("rel-late", Some("group-x"), Some(2003)), agreed(2)),
         (mb("rel-early", Some("group-x"), Some(1976)), agreed(2)),
-    ]);
+    ], None);
     assert_eq!(
         lead_ids(&groups[0]),
         vec![vec!["rel-early"], vec!["rel-late"]]
@@ -55,7 +55,7 @@ fn a_paired_row_ranks_by_its_records_together() {
         (mb("mb-other", Some("group-x"), Some(1976)), agreed(2)),
         (mb_release, Agreements::NONE),
         (dg_release, agreed(4)),
-    ]);
+    ], None);
     assert_eq!(
         lead_ids(&groups[0]),
         vec![vec!["dg-1", "mb-1"], vec!["mb-other"]],
@@ -85,7 +85,7 @@ fn a_row_outranks_by_what_its_records_add_up_to() {
         (mb_release, disc_id_only),
         (dg_release, catalog_only),
         (mb("mb-other", Some("group-x"), Some(1970)), disc_id_only),
-    ]);
+    ], None);
     assert_eq!(
         lead_ids(&groups[0]),
         vec![vec!["mb-1", "dg-1"], vec!["mb-other"]],
@@ -179,7 +179,7 @@ fn cards_are_ordered_by_their_best_row() {
     let groups = group_results(vec![
         (mb("rel-stranger", Some("group-stranger"), None), agreed(1)),
         (mb("rel-named", Some("group-named"), None), agreed(4)),
-    ]);
+    ], None);
     assert_eq!(
         groups
             .iter()
@@ -213,7 +213,7 @@ fn paired() -> (MetadataResult, MetadataResult) {
 fn the_record_the_text_says_most_about_leads_its_pressing() {
     let (mb_release, dg_release) = paired();
 
-    let groups = group_results(vec![(mb_release, agreed(1)), (dg_release, agreed(3))]);
+    let groups = group_results(vec![(mb_release, agreed(1)), (dg_release, agreed(3))], None);
 
     assert_eq!(lead_ids(&groups[0]), vec![vec!["dg-1", "mb-1"]]);
     assert_eq!(
@@ -238,7 +238,7 @@ fn a_stated_tracklist_leads_records_the_text_says_as_much_about() {
     mb_release.source_tracks = Some(crate::import::search::SourceTracks::Nothing);
     dg_release.source_tracks = Some(listed());
 
-    let groups = group_results(vec![(mb_release, agreed(2)), (dg_release, agreed(2))]);
+    let groups = group_results(vec![(mb_release, agreed(2)), (dg_release, agreed(2))], None);
 
     assert_eq!(lead_ids(&groups[0]), vec![vec!["dg-1", "mb-1"]]);
 }
@@ -251,7 +251,7 @@ fn records_nothing_tells_apart_lead_with_musicbrainz() {
     mb_release.source_tracks = Some(listed());
     dg_release.source_tracks = Some(listed());
 
-    let groups = group_results(vec![(dg_release, agreed(2)), (mb_release, agreed(2))]);
+    let groups = group_results(vec![(dg_release, agreed(2)), (mb_release, agreed(2))], None);
 
     assert_eq!(lead_ids(&groups[0]), vec![vec!["mb-1", "dg-1"]]);
 }
@@ -262,7 +262,7 @@ fn records_nothing_tells_apart_lead_with_musicbrainz() {
 fn the_card_names_its_sources_in_the_order_surfaces_list_them() {
     let (mb_release, dg_release) = paired();
 
-    let groups = group_results(vec![(mb_release, agreed(1)), (dg_release, agreed(3))]);
+    let groups = group_results(vec![(mb_release, agreed(1)), (dg_release, agreed(3))], None);
 
     assert_eq!(
         lead_ids(&groups[0]),

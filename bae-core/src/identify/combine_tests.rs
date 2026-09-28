@@ -521,8 +521,8 @@ fn rows(
             (result, agreements)
         })
         .collect();
-    let judgements = Judgements::of(&judged);
-    crate::import::release_group::group_formed_rows(judged, pressings, Vec::new(), &[])
+    let judgements = Judgements::of(&judged, None);
+    crate::import::release_group::group_formed_rows(judged, pressings, Vec::new(), &[], None)
         .into_iter()
         .flat_map(crate::import::release_group::ReleaseGroup::into_pressings)
         .map(|pressing| {
@@ -675,6 +675,46 @@ fn the_discogs_record_of_the_pressing_the_disc_id_named_is_offered_with_it() {
             ids(&pressing.releases)
         );
     }
+}
+
+/// Two catalogs' records of one pressing can list different tracklists. The
+/// record whose tracklist fits the folder is the one the row's draft is read
+/// from, however much more of the folder's text the other agrees with — so
+/// the row the ranking offers as fitting is the row the verdict picks.
+#[test]
+fn the_record_whose_tracklist_fits_the_folder_leads_its_pressing() {
+    let text = folder(&["1979 - Album Two (Label Two, L2-2031, Japan)"]);
+    let listing = |(mut result, status): (MetadataResult, LibraryStatus), count: u32| {
+        result.source_tracks = Some(crate::import::search::SourceTracks::Listed { count });
+        (result, status)
+    };
+    let outcome = combine_results(
+        LookupAnswers {
+            disc_id: vec![listing(album_two_musicbrainz(), 12)],
+            barcode: vec![
+                listing(album_two_musicbrainz(), 12),
+                listing(album_two_discogs("dg-1988", Some(1988)), 10),
+            ],
+            ..LookupAnswers::default()
+        },
+        Vec::new(),
+        &text,
+        FolderAudio {
+            track_count: 10,
+            ..FolderAudio::UNPROVEN
+        },
+    );
+    let (findings, _) = outcome;
+    assert_eq!(ids(&findings.matches), vec!["dg-1988", "mb-album-two"]);
+    let verdict = crate::identify::TerminalVerdict::Found {
+        findings,
+        track_count: 10,
+        ledger: None,
+    };
+    assert_eq!(
+        crate::identify::VerdictSummary::of(&verdict).judgement(),
+        (true, None)
+    );
 }
 
 /// A row is offered whole or set aside whole.

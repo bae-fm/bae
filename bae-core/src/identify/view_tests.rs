@@ -585,11 +585,10 @@ fn recorded_ledger() -> IdentifyRunView {
             disc_id: "disc-1".to_string(),
             lookup: LookupView::Found {
                 count: 1,
-                groups: group_results(unranked(vec![MetadataResult::for_test(
-                    MB,
-                    "mb-1",
-                    Some("g"),
-                )])),
+                groups: group_results(
+                    unranked(vec![MetadataResult::for_test(MB, "mb-1", Some("g"))]),
+                    None,
+                ),
             },
         },
         barcode: BarcodeStepView::Rows {
@@ -606,11 +605,10 @@ fn recorded_ledger() -> IdentifyRunView {
                         source: DG,
                         lookup: LookupView::Found {
                             count: 1,
-                            groups: group_results(unranked(vec![MetadataResult::for_test(
-                                DG,
-                                "dg-1",
-                                Some("g"),
-                            )])),
+                            groups: group_results(
+                                unranked(vec![MetadataResult::for_test(DG, "dg-1", Some("g"))]),
+                                None,
+                            ),
                         },
                     },
                 ],

@@ -38,6 +38,28 @@ impl TracklistFit {
             Some(SourceTracks::Listed { count }) => Self::Disagrees { source: *count },
         }
     }
+
+    /// Whether nothing read rules the record out. A record whose document is
+    /// not in stands beside one whose document fits: what is offered errs on
+    /// showing a release, and only a fit that was read is ever picked.
+    pub fn admits(self) -> bool {
+        match self {
+            Self::Fits | Self::Unread => true,
+            Self::Disagrees { .. } | Self::ListsNothing => false,
+        }
+    }
+
+    /// Where the record stands among its pressing's records as the one the
+    /// draft is read from: one that fits, then one not read yet, then one
+    /// that cannot be laid onto the folder's audio. A pressing whose lead is
+    /// ruled out has no record `admits`.
+    pub(crate) fn lead_rank(self) -> u8 {
+        match self {
+            Self::Fits => 0,
+            Self::Unread => 1,
+            Self::Disagrees { .. } | Self::ListsNothing => 2,
+        }
+    }
 }
 
 /// Why a found verdict picks none of its releases unattended.

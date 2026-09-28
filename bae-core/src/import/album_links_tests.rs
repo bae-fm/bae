@@ -667,7 +667,7 @@ async fn a_barcode_on_the_list_joins_albums_no_document_links() {
         apply(result, &read);
     }
     let cards = crate::import::release_group::group_results(
-        crate::import::release_group::unranked(results),
+        crate::import::release_group::unranked(results), None,
     );
     assert_eq!(cards.len(), 1, "one album");
     assert_eq!(cards[0].pressings().count(), 2, "two pressings");

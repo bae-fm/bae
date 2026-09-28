@@ -268,7 +268,12 @@ impl From<IdentifyState> for IdentifyStateView {
             } => {
                 let (findings, library_statuses) =
                     live_findings(&discid, &barcode, &catalog, &isrc, &search, &context);
-                let folded = fold(findings, library_statuses, &context.text);
+                let folded = fold(
+                    findings,
+                    library_statuses,
+                    &context.text,
+                    context.audio.track_count,
+                );
                 IdentifyStateView::Triangulating {
                     run: run_view(&discid, &barcode, &catalog, &isrc, &search, &context),
                     groups: folded.groups,
@@ -287,7 +292,7 @@ impl From<IdentifyState> for IdentifyStateView {
             } => {
                 let summary = super::VerdictSummary::of_found(&findings, track_count);
                 let catalog_agreements = catalog_agreements(&findings, &context.text);
-                let folded = fold(findings, library_statuses, &context.text);
+                let folded = fold(findings, library_statuses, &context.text, track_count);
                 IdentifyStateView::Found {
                     run: ledger.map(|run| without_chip_tiles(run, &catalog_agreements)),
                     groups: folded.groups,
@@ -318,12 +323,12 @@ impl From<IdentifyState> for IdentifyStateView {
                 failures,
                 findings,
                 library_statuses,
-                track_count: _,
+                track_count,
                 ledger,
                 context,
             } => {
                 let catalog_agreements = catalog_agreements(&findings, &context.text);
-                let folded = fold(findings, library_statuses, &context.text);
+                let folded = fold(findings, library_statuses, &context.text, track_count);
                 IdentifyStateView::Failed {
                     run: ledger.map(|run| without_chip_tiles(run, &catalog_agreements)),
                     failures,
@@ -375,7 +380,12 @@ struct Folded {
 /// fold both into album cards as one grouping, so an album is one card either
 /// way. Badges belong to a row, so every release id in a row answers with the
 /// row's badges.
-fn fold(findings: Findings, library_statuses: LibraryStatuses, text: &CandidateText) -> Folded {
+fn fold(
+    findings: Findings,
+    library_statuses: LibraryStatuses,
+    text: &CandidateText,
+    track_count: u32,
+) -> Folded {
     // The medium conflict is stated by the folder check, not here.
     let Findings {
         matches,
@@ -392,8 +402,15 @@ fn fold(findings: Findings, library_statuses: LibraryStatuses, text: &CandidateT
             .chain(&set_aside)
             .cloned()
             .collect::<Vec<_>>(),
+        Some(track_count),
     );
-    let cards = group_formed_rows(offered, &pressings, set_aside, &narrowed_out.pressings);
+    let cards = group_formed_rows(
+        offered,
+        &pressings,
+        set_aside,
+        &narrowed_out.pressings,
+        Some(track_count),
+    );
     let agreements = cards
         .iter()
         .flat_map(|group| group.pressings().chain(group.narrowed_out()))

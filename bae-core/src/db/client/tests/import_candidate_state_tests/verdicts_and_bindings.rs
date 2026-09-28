@@ -35,7 +35,7 @@ fn sample_ledger() -> IdentifyRunView {
             lookup: LookupView::Found {
                 count: 1,
                 groups: crate::import::release_group::group_results(
-                    crate::import::release_group::unranked(vec![sample_match()]),
+                    crate::import::release_group::unranked(vec![sample_match()]), None,
                 ),
             },
         },
@@ -330,9 +330,9 @@ async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
     };
     let live = crate::import::release_group::group_results(crate::import::release_group::unranked(
         matches.clone(),
-    ));
+    ), None);
     let replayed = crate::import::release_group::group_results(
-        crate::import::release_group::unranked(stored_matches.clone()),
+        crate::import::release_group::unranked(stored_matches.clone()), None,
     );
     assert_eq!(replayed, live);
     assert_eq!(

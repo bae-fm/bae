@@ -176,6 +176,7 @@ impl ImportServiceHandle {
         // rows keep the pressing-year order alone.
         let groups = crate::import::release_group::group_results(
             crate::import::release_group::unranked(results),
+            None,
         );
 
         Ok(GroupedSearchResults { groups, statuses })

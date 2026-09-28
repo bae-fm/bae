@@ -5,7 +5,7 @@ use crate::pressing::{Medium, StatedFormat, StatedMedia};
 /// The tests are about how results bucket, pair and order by year, none of
 /// which the candidate's text takes part in.
 pub(super) fn grouped(results: Vec<MetadataResult>) -> Vec<ReleaseGroup> {
-    group_results(unranked(results))
+    group_results(unranked(results), None)
 }
 
 pub(super) fn mb(release_id: &str, group_id: Option<&str>, year: Option<i32>) -> MetadataResult {
@@ -902,7 +902,7 @@ fn rows_either_side_of_the_disclosure_are_one_card() {
             mb("mb-2", Some("group-z"), None),
             discogs("dg-1", Some("master-7"), Some(1994)),
         ]),
-        &[0, 1],
+        &[0, 1], None,
     );
     assert_eq!(
         groups

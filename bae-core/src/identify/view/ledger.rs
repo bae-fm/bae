@@ -257,9 +257,12 @@ fn found_or_no_match(results: &LookupResults) -> LookupView {
     if results.is_empty() {
         return LookupView::NoMatch;
     }
-    let groups = group_results(crate::import::release_group::unranked(
-        results.iter().map(|(result, _)| result.clone()).collect(),
-    ));
+    let groups = group_results(
+        crate::import::release_group::unranked(
+            results.iter().map(|(result, _)| result.clone()).collect(),
+        ),
+        None,
+    );
     LookupView::Found {
         count: groups
             .iter()

@@ -214,7 +214,7 @@ pub fn combine_results(
             (result.clone(), agreements)
         })
         .collect();
-    let judgements = Judgements::of(&judged);
+    let judgements = Judgements::of(&judged, Some(folder.track_count));
     let returned_by: HashMap<ReleaseKey, LookupProvenance> = all
         .iter()
         .map(|(result, _)| {
@@ -224,7 +224,7 @@ pub fn combine_results(
             )
         })
         .collect();
-    let rows: Vec<Pressing> = group_results(judged)
+    let rows: Vec<Pressing> = group_results(judged, Some(folder.track_count))
         .into_iter()
         .flat_map(ReleaseGroup::into_pressings)
         .collect();
@@ -302,11 +302,11 @@ struct Support {
     /// say which of its lines is the title or the artist, so a row's title it
     /// does not write contradicts nothing.
     names_album: u32,
-    /// Whether nothing read says the row holds other tracks than the folder:
-    /// a record of it lists as many tracks as the folder holds, as its full
-    /// document reads against the folder's audio, or a record's tracklist is
-    /// not read — a row whose document is not in, or could not be had, never
-    /// loses to one whose is. Below the album's names, so a row for some
+    /// Whether nothing read says the row holds other tracks than the folder,
+    /// by [`super::fit::TracklistFit::admits`] of the row's lead — the record
+    /// that fits best, so a row one of whose records fits or is not read yet
+    /// is admitted. A row whose document is not in, or could not be had,
+    /// never loses to one whose is. Below the album's names, so a row for some
     /// other album that happens to hold as many tracks never passes the
     /// right album; above the channels and the country, because a different
     /// tracklist is a different edition, where those only say where or how
@@ -396,16 +396,11 @@ fn support_of(
         shares_toc: returned.by_disc_id,
         names_album: agreements.names_album()
             + u32::from(facts.names_the_album_year(&row.releases)),
-        fits_the_tracks: row
-            .releases
-            .iter()
-            .any(|release| match release.source_tracks {
-                None => true,
-                Some(crate::import::search::SourceTracks::Listed { count }) => {
-                    count == folder.track_count
-                }
-                Some(crate::import::search::SourceTracks::Nothing) => false,
-            }),
+        fits_the_tracks: super::fit::TracklistFit::of(
+            row.lead().source_tracks.as_ref(),
+            folder.track_count,
+        )
+        .admits(),
         track_titles: super::row_facts::track_titles(&row.releases, folder.track_titles),
         download: super::medium::download(
             folder.origin,

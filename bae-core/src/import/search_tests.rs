@@ -127,7 +127,7 @@ fn discogs_search_result_keeps_every_barcode_for_pairing() {
         crate::import::release_group::group_results(crate::import::release_group::unranked(vec![
             musicbrainz,
             discogs,
-        ]));
+        ]), None);
     assert_eq!(groups.len(), 1);
     assert_eq!(groups[0].pressings().count(), 1);
     assert_eq!(
@@ -158,7 +158,7 @@ fn a_zero_master_id_is_no_group() {
         .all(|result| result.source_group_id.is_none()));
 
     let groups = crate::import::release_group::group_results(
-        crate::import::release_group::unranked(converted),
+        crate::import::release_group::unranked(converted), None,
     );
     assert_eq!(groups.len(), 2);
     assert_eq!(groups[0].id, "11");
