@@ -560,9 +560,11 @@ impl CandidateRuntime {
         })
     }
 
-    /// The scan dropped the key: everything held for it goes, its signals
-    /// too, except an import's claim, which only that import's ending clears.
-    fn remove(&self, key: &str) {
+    /// The scan dropped or reshaped the key: its work in flight ends and
+    /// everything held for it goes, its signals too, except an import's
+    /// claim, which only that import's ending clears.
+    fn end_candidate(&self, key: &str) {
+        self.end_work(key);
         let signals_removed = self.inner.lock().unwrap().signals.remove(key).is_some();
         self.set(key, |_, runtime| {
             *runtime = CandidateRuntimeState {
@@ -719,9 +721,9 @@ impl CandidateRuntime {
     }
 
     /// A scan reported `candidate`. A first report or a repeat of the recorded
-    /// shape changes nothing; a different shape drops the key's runtime.
+    /// shape changes nothing; a different shape ends the key.
     fn observe_shape(&self, candidate: &FolderCandidate) {
-        let key = candidate.path.to_string_lossy().into_owned();
+        let key = candidate.key();
         let shape = CandidateShape::of(candidate);
         let reshaped = {
             let mut inner = self.inner.lock().unwrap();
@@ -729,8 +731,26 @@ impl CandidateRuntime {
             previous.is_some_and(|previous| previous != shape)
         };
         if reshaped {
-            self.remove(&key);
+            self.end_candidate(&key);
         }
+    }
+
+    /// `candidate` is read with other files whatever its recorded shape says,
+    /// so the key ends.
+    fn reshape(&self, candidate: &FolderCandidate) {
+        let key = candidate.key();
+        self.inner
+            .lock()
+            .unwrap()
+            .shapes
+            .insert(key.clone(), CandidateShape::of(candidate));
+        self.end_candidate(&key);
+    }
+
+    /// The scan no longer lists the key, so it ends.
+    fn forget(&self, key: &str) {
+        self.inner.lock().unwrap().shapes.remove(key);
+        self.end_candidate(key);
     }
 
     pub(super) fn record_event(&self, event: &ImportEvent) {
@@ -778,21 +798,15 @@ impl CandidateRuntime {
                 ScanEvent::FolderCandidate { candidate, .. }
                 | ScanEvent::CandidateDiscovered { candidate, .. },
             ) => self.observe_shape(candidate),
-            // A rebound sheet is a different disc, so its search and work go.
+            // A rebound sheet is a different disc.
             ImportEvent::Scan(ScanEvent::CandidateBindingChanged { candidate }) => {
-                self.end_work(&candidate.key());
-                self.clear_search(&candidate.path.to_string_lossy());
-                self.observe_shape(candidate);
+                self.reshape(candidate)
             }
             ImportEvent::Scan(ScanEvent::InvalidCandidate(candidate)) => {
-                let key = candidate.path.to_string_lossy().into_owned();
-                self.inner.lock().unwrap().shapes.remove(&key);
-                self.remove(&key);
+                self.forget(&candidate.key())
             }
             ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key }) => {
-                self.end_work(candidate_key);
-                self.inner.lock().unwrap().shapes.remove(candidate_key);
-                self.remove(candidate_key);
+                self.forget(candidate_key)
             }
             ImportEvent::SignalsUpdated {
                 candidate_key,

@@ -254,9 +254,10 @@ async fn import_when_identified(
 
 /// Follow a candidate the queue holds to what is stored for it now: off the
 /// queue when it can no longer be answered, and placed again as its new files
-/// when they changed while it waited. A run already reading the old files is
-/// left to finish; its write refuses an answer for files the candidate no
-/// longer has.
+/// when they changed while it waited. A run reading the old files was ended
+/// when the runtime recorded the change, and its ending takes the key off
+/// the queue; an answer already being written is refused for files the
+/// candidate no longer has.
 async fn follow(context: &Context, queue: &mut Queue, key: &str) {
     let Some(held) = queue.held(key) else {
         return;

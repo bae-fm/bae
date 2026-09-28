@@ -1,5 +1,5 @@
 //! The work in flight for each candidate: its extraction and its identify
-//! run. Recording the candidate's removal or rebinding ends it.
+//! run. The scan dropping or reshaping the candidate ends it.
 //!
 //! Each start for a key and kind gets a fresh generation and cancels the one
 //! before it; a finishing task releases its own entry only while its

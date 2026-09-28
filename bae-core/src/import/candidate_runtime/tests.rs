@@ -973,4 +973,5 @@ fn a_landing_for_a_switched_off_source_goes_nowhere() {
 
 include!("tests/claims.rs");
 include!("tests/counting.rs");
+include!("tests/departures.rs");
 include!("tests/watches.rs");
