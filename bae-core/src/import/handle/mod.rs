@@ -85,6 +85,8 @@ enum HoldState {
 pub(crate) struct EventDelivery {
     sender: broadcast::Sender<ImportEvent>,
     every_event: Arc<std::sync::Mutex<EveryEvent>>,
+    /// Whether the one reader in the app that hears every event was taken.
+    feed_taken: Arc<std::sync::atomic::AtomicBool>,
 }
 
 /// The readers that hear every event, and — for a test reader from the start
@@ -103,6 +105,7 @@ impl EventDelivery {
         Self {
             sender,
             every_event: Arc::default(),
+            feed_taken: Arc::default(),
         }
     }
 
@@ -150,10 +153,25 @@ impl ImportEventBus {
         self.delivery.sender.subscribe()
     }
 
-    /// Every event sent from now on, none dropped, each on the reader before
-    /// its send returns — where [`Self::subscribe`] drops what a slow reader
-    /// falls behind on. A reader that also takes commands hears every event
-    /// sent before a command was before the command itself.
+    /// Every event from now on, none dropped, each on the reader before its
+    /// send returns, for the one reader in the app that acts on every event.
+    /// A reader that also takes commands hears every event sent before a
+    /// command before the command itself. `None` once taken.
+    pub(crate) fn take_feed(&self) -> Option<mpsc::UnboundedReceiver<ImportEvent>> {
+        if self
+            .delivery
+            .feed_taken
+            .swap(true, std::sync::atomic::Ordering::SeqCst)
+        {
+            return None;
+        }
+        let (reader, events) = mpsc::unbounded_channel();
+        self.delivery.every_event.lock().unwrap().readers.push(reader);
+        Some(events)
+    }
+
+    /// Every event sent from now on, none dropped, for a test to wait on.
+    #[cfg(any(test, feature = "test-utils"))]
     pub fn every_event(&self) -> mpsc::UnboundedReceiver<ImportEvent> {
         let (reader, events) = mpsc::unbounded_channel();
         self.delivery.every_event.lock().unwrap().readers.push(reader);

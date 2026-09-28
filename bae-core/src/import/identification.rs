@@ -112,8 +112,10 @@ pub fn start(import: ImportServiceHandle, library_manager: LibraryManager) -> Id
         .import
         .take_automatic_admissions()
         .expect("one identification queue per import service");
-    // Read before the loop is spawned, so it misses no event.
-    let mut bus = context.import.every_event();
+    let mut bus = context
+        .import
+        .take_event_feed()
+        .expect("one identification queue per import service");
     let config = context.library_manager.subscribe_config_changes();
     let (command_tx, mut command_rx) = mpsc::unbounded_channel();
     let runtime = tokio::runtime::Builder::new_current_thread()

@@ -96,6 +96,23 @@ async fn await_import_outcome(
     }
 }
 
+/// The event feed holds every event sent after it was taken, however many,
+/// and only one reader takes it.
+#[test]
+fn the_event_feed_holds_every_event_and_is_taken_once() {
+    let bus = ImportEventBus::new(1, CandidateRuntime::default());
+    let mut feed = bus.take_feed().expect("the feed is there to take");
+    for _ in 0..3 {
+        bus.send(ImportEvent::Scan(ScanEvent::Finished));
+    }
+
+    let held = std::iter::from_fn(|| feed.try_recv().ok())
+        .filter(|event| matches!(event, ImportEvent::Scan(ScanEvent::Finished)))
+        .count();
+    assert_eq!(held, 3, "the feed dropped none of them");
+    assert!(bus.take_feed().is_none(), "the feed is taken once");
+}
+
 /// A subscriber that hears an import end and then asks the runtime finds the
 /// claim already released: the bus records an event before it broadcasts it.
 #[tokio::test]
