@@ -118,7 +118,9 @@ fn identification(
     crate::import::triage::TriageRuntimeFacts::of(&runtime.get(key)?).identification
 }
 
-fn drain(changes: &mut broadcast::Receiver<CandidateRuntimeChange>) -> Vec<CandidateRuntimeChange> {
+fn drain(
+    changes: &mut tokio::sync::mpsc::UnboundedReceiver<CandidateRuntimeChange>,
+) -> Vec<CandidateRuntimeChange> {
     let mut out = Vec::new();
     while let Ok(change) = changes.try_recv() {
         out.push(change);
@@ -144,7 +146,7 @@ fn extracted_signals() -> crate::signals::Signals {
 #[test]
 fn import_progress_is_recorded_per_key_and_published_for_that_key_only() {
     let runtime = CandidateRuntime::default();
-    let mut changes = runtime.subscribe();
+    let mut changes = runtime.every_change();
     let key = "/watch/a/rel1";
     claim(&runtime, key);
     claim(&runtime, "/watch/a/rel2");
@@ -203,7 +205,7 @@ fn a_finished_import_leaves_the_map() {
     ];
     for ending in endings {
         let runtime = CandidateRuntime::default();
-        let mut changes = runtime.subscribe();
+        let mut changes = runtime.every_change();
         claim(&runtime, key);
         runtime.record_event(&progress(key, 42));
         drain(&mut changes);
@@ -229,7 +231,7 @@ fn a_finished_import_leaves_the_map() {
 #[test]
 fn a_finished_import_keeps_a_key_whose_verdict_is_still_being_saved() {
     let runtime = CandidateRuntime::default();
-    let mut changes = runtime.subscribe();
+    let mut changes = runtime.every_change();
     let key = "/watch/a/rel1";
     runtime.record_event(&identify(key, 1, manual_only()));
     claim(&runtime, key);
@@ -265,7 +267,7 @@ fn a_late_subscriber_reads_every_running_key() {
     runtime.record_event(&progress("/watch/a/rel1", 10));
     claim(&runtime, "/watch/a/rel2");
 
-    let mut changes = runtime.subscribe();
+    let mut changes = runtime.every_change();
     let running = runtime.all();
     assert_eq!(running.len(), 2);
     assert_eq!(
@@ -316,7 +318,7 @@ fn a_preparing_step_has_no_progress_fraction() {
 #[test]
 fn an_admission_is_published_as_one_current_runtime_snapshot() {
     let runtime = CandidateRuntime::default();
-    let mut changes = runtime.subscribe();
+    let mut changes = runtime.every_change();
     let first = "/watch/a/rel1";
     let second = "/watch/a/rel2";
 
@@ -372,7 +374,7 @@ fn runtime_recorded_before_the_scan_survives_the_scan_reporting_the_key() {
 #[test]
 fn a_rescan_reporting_the_same_shape_keeps_the_runtime_and_a_new_shape_drops_it() {
     let runtime = CandidateRuntime::default();
-    let mut changes = runtime.subscribe();
+    let mut changes = runtime.every_change();
     let key = "/watch/a/rel1";
     runtime.record_event(&scanned(folder_candidate(key, "/watch/a")));
     claim(&runtime, key);
@@ -406,7 +408,7 @@ fn a_rescan_reporting_the_same_shape_keeps_the_runtime_and_a_new_shape_drops_it(
 #[test]
 fn removal_and_invalidation_drop_the_runtime() {
     let runtime = CandidateRuntime::default();
-    let mut changes = runtime.subscribe();
+    let mut changes = runtime.every_change();
     claim(&runtime, "/watch/a/rel1");
     claim(&runtime, "/watch/a/rel2");
     drain(&mut changes);
@@ -440,7 +442,7 @@ fn removal_and_invalidation_drop_the_runtime() {
 #[test]
 fn extracted_signals_are_retained_without_publishing_a_runtime() {
     let runtime = CandidateRuntime::default();
-    let mut changes = runtime.subscribe();
+    let mut changes = runtime.every_change();
     let key = "/watch/a/rel1";
 
     runtime.record_event(&ImportEvent::SignalsUpdated {
@@ -467,20 +469,6 @@ fn extracted_signals_are_retained_without_publishing_a_runtime() {
         candidate_key: key.to_string(),
     }));
     assert!(runtime.signals(key).is_none());
-}
-
-/// The identification count is about every key at once, not about any one
-/// candidate, so it changes no row when it comes back round.
-#[test]
-fn the_identification_count_never_touches_a_row() {
-    let runtime = CandidateRuntime::default();
-    let mut changes = runtime.subscribe();
-    runtime.record_event(&ImportEvent::IdentificationProgress {
-        identified: 1,
-        total: 9,
-    });
-    assert!(runtime.all().is_empty());
-    assert!(drain(&mut changes).is_empty());
 }
 
 /// A run's terminal state is its answer, and answering is not saving: the
@@ -716,7 +704,7 @@ fn search_result(
 }
 
 fn published_search(
-    changes: &mut broadcast::Receiver<CandidateRuntimeChange>,
+    changes: &mut tokio::sync::mpsc::UnboundedReceiver<CandidateRuntimeChange>,
 ) -> Vec<Option<CandidateSearch>> {
     drain(changes)
         .into_iter()
@@ -734,7 +722,7 @@ fn published_search(
 #[test]
 fn two_landings_on_one_run_both_stand() {
     let runtime = CandidateRuntime::default();
-    let mut changes = runtime.subscribe();
+    let mut changes = runtime.every_change();
     let key = "/watch/a/rel1";
     let run = runtime.start_search(
         key,
@@ -791,7 +779,7 @@ fn a_superseded_run_cannot_land() {
     assert!(!runtime.search_run_is_current(key, first));
     assert!(runtime.search_run_is_current(key, second));
 
-    let mut changes = runtime.subscribe();
+    let mut changes = runtime.every_change();
     assert!(!runtime.land_search(
         key,
         first,
@@ -921,7 +909,7 @@ fn switching_a_source_off_closes_its_part_of_every_live_search() {
         CandidateSearch::started(search_query(), &every_source_on()),
     );
     claim(&runtime, importing);
-    let mut changes = runtime.subscribe();
+    let mut changes = runtime.every_change();
 
     runtime.switch_source_off(Catalog::MusicBrainz);
 
@@ -985,3 +973,4 @@ fn a_landing_for_a_switched_off_source_goes_nowhere() {
 
 include!("tests/claims.rs");
 include!("tests/counting.rs");
+include!("tests/watches.rs");

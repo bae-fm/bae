@@ -77,8 +77,7 @@ pub struct BridgeInvalidCandidate {
     pub reason: BridgeInvalidReason,
 }
 
-/// A change to what one key has in flight, or every key in flight after a
-/// dropped delivery.
+/// A change to what one key has in flight, or every key in flight.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeCandidateRuntimeChange {
     Updated {

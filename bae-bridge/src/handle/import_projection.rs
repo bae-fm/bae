@@ -110,22 +110,15 @@ impl crate::types::BridgeCandidateRuntimeChange {
                 runtime: crate::types::BridgeCandidateRuntimeSnapshot::from_core(runtime),
             },
             bae_core::import::CandidateRuntimeChange::Removed { key } => Self::Removed { key },
-            bae_core::import::CandidateRuntimeChange::Reset { runtimes } => Self::reset(runtimes),
-        }
-    }
-
-    /// Every key in flight now, for a consumer that dropped deliveries.
-    pub(crate) fn reset(
-        runtimes: std::collections::HashMap<String, bae_core::import::CandidateRuntimeSnapshot>,
-    ) -> Self {
-        Self::Reset {
-            runtimes: runtimes
-                .into_iter()
-                .map(|(key, runtime)| crate::types::BridgeKeyedCandidateRuntime {
-                    key,
-                    runtime: crate::types::BridgeCandidateRuntimeSnapshot::from_core(runtime),
-                })
-                .collect(),
+            bae_core::import::CandidateRuntimeChange::Reset { runtimes } => Self::Reset {
+                runtimes: runtimes
+                    .into_iter()
+                    .map(|(key, runtime)| crate::types::BridgeKeyedCandidateRuntime {
+                        key,
+                        runtime: crate::types::BridgeCandidateRuntimeSnapshot::from_core(runtime),
+                    })
+                    .collect(),
+            },
         }
     }
 }

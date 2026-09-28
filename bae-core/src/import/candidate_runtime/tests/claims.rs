@@ -6,7 +6,7 @@ fn a_second_claim_on_an_owned_candidate_is_refused_and_changes_nothing() {
     let key = "/watch/a/rel1";
     runtime.claim_for_import(key, "imp-1").unwrap();
     let claimed = runtime.get(key);
-    let mut changes = runtime.subscribe();
+    let mut changes = runtime.every_change();
 
     assert!(matches!(
         runtime.claim_for_import(key, "imp-2"),
@@ -19,7 +19,7 @@ fn a_second_claim_on_an_owned_candidate_is_refused_and_changes_nothing() {
 #[test]
 fn a_claim_is_the_queued_step_until_the_worker_reports() {
     let runtime = CandidateRuntime::default();
-    let mut changes = runtime.subscribe();
+    let mut changes = runtime.every_change();
     let key = "/watch/a/rel1";
 
     runtime.claim_for_import(key, "imp-1").unwrap();
@@ -58,7 +58,7 @@ fn only_the_claiming_imports_reports_move_its_claim() {
             import_id: "imp-1".to_string(),
         },
     });
-    let mut changes = runtime.subscribe();
+    let mut changes = runtime.every_change();
 
     runtime.record_event(&progress(key, 70));
     assert!(

@@ -256,11 +256,6 @@ impl AppServices {
         self.inner.playback.subscribe_values()
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub(crate) fn record_telemetry(&self, event: crate::diagnostics::TelemetryEvent) {
-        self.inner.manager.record_telemetry(event);
-    }
-
     delegate_sync!(manager, get_config => get_config() -> crate::config::Config);
     delegate_async!(manager, ensure_mcp_token => ensure_mcp_token() -> Result<String, crate::library::LibraryError>);
     delegate_async!(manager, set_mcp_token => set_mcp_token(token: String) -> Result<(), crate::library::LibraryError>);

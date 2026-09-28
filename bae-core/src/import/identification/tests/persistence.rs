@@ -198,7 +198,7 @@ async fn an_ending_ends_the_run_it_names_and_not_the_answer_being_saved() {
         .import
         .claim_candidate_for_import("reidentify:marker", "marker")
         .await;
-    let mut changes = fixture.import.subscribe_candidate_runtime().1;
+    let mut changes = fixture.import.every_runtime_change_for_test();
     let marker = || ImportEvent::ImportProgress {
         candidate_key: "reidentify:marker".to_string(),
         progress: crate::import::ImportProgress::Preparing {
@@ -208,10 +208,7 @@ async fn an_ending_ends_the_run_it_names_and_not_the_answer_being_saved() {
             artist_name: String::new(),
         },
     };
-    let recorded = |change: Result<
-        crate::import::CandidateRuntimeChange,
-        tokio::sync::broadcast::error::RecvError,
-    >| {
+    let recorded = |change: Option<crate::import::CandidateRuntimeChange>| {
         let change = change.expect("runtime changes stay open");
         assert!(
             matches!(&change, crate::import::CandidateRuntimeChange::Updated { key, .. } if key == "reidentify:marker"),

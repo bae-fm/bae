@@ -73,8 +73,8 @@ struct CandidateRuntimeReader<Content: View>: View {
             guard changed == key else { return }
             runtime = nil
         case .reset(let runtimes):
-            // Deliveries were dropped, so this is the whole of what is running:
-            // a key it does not name has nothing running for it.
+            // The whole of what is running: a key it does not name has
+            // nothing running for it.
             runtime = runtimes.first { $0.key == key }?.runtime
         }
     }

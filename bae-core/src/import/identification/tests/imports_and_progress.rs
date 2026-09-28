@@ -24,7 +24,7 @@ async fn claiming_an_import_publishes_queued_status_immediately() {
     let fixture = Fixture::new("import-queued-status").await;
     let candidate = fixture.disc_id_candidate("Album Title");
     fixture.scan(1).await;
-    let mut changes = fixture.import.subscribe_candidate_runtime().1;
+    let mut changes = fixture.import.every_runtime_change_for_test();
 
     fixture
         .import
@@ -72,7 +72,7 @@ async fn an_import_start_takes_a_queued_candidate_out_of_work_and_progress() {
     fixture.scan(2).await;
     fixture.provider.hold("/discid/");
 
-    let mut events = fixture.import.every_event();
+    let mut counts = fixture.import.every_identification_count_for_test();
     let pass = fixture.drain_automatic_task();
     wait_for_request(&fixture.provider, "/discid/", 1).await;
     start_import_for(&fixture, &importing).await;
@@ -89,13 +89,7 @@ async fn an_import_start_takes_a_queued_candidate_out_of_work_and_progress() {
         .expect("the discovered draft remains available to the import");
     assert!(importing_state.identify.is_none());
     assert!(fixture.identified_for(&remaining).await.is_some());
-    let progress: Vec<_> = drain_events(&mut events)
-        .into_iter()
-        .filter_map(|event| match event {
-            ImportEvent::IdentificationProgress { identified, total } => Some((identified, total)),
-            _ => None,
-        })
-        .collect();
+    let progress: Vec<_> = std::iter::from_fn(|| counts.try_recv().ok()).collect();
     assert!(
         progress.contains(&(1, 2)),
         "the candidate the import took is no longer waited on: {progress:?}"
@@ -130,7 +124,7 @@ async fn a_rescan_does_not_count_back_a_candidate_an_import_owns() {
     fixture.scan(2).await;
     fixture.provider.hold("/discid/");
 
-    let mut events = fixture.import.every_event();
+    let mut counts = fixture.import.every_identification_count_for_test();
     let pass = fixture.drain_automatic_task();
     wait_for_request(&fixture.provider, "/discid/", 1).await;
     start_import_for(&fixture, &importing).await;
@@ -159,13 +153,7 @@ async fn a_rescan_does_not_count_back_a_candidate_an_import_owns() {
         .expect("pass finishes after the re-scan")
         .unwrap();
 
-    let progress: Vec<_> = drain_events(&mut events)
-        .into_iter()
-        .filter_map(|event| match event {
-            ImportEvent::IdentificationProgress { identified, total } => Some((identified, total)),
-            _ => None,
-        })
-        .collect();
+    let progress: Vec<_> = std::iter::from_fn(|| counts.try_recv().ok()).collect();
     assert!(
         progress.iter().all(|(_, total)| *total <= 2),
         "the re-scan does not put the importing candidate back in the batch: {progress:?}"
@@ -244,14 +232,9 @@ async fn progress_carries_both_counts() {
     );
     fixture.scan(2).await;
 
-    let mut events = fixture.import.every_event();
+    let mut counts = fixture.import.every_identification_count_for_test();
     fixture.drain_automatic().await;
-    let mut progress = Vec::new();
-    for event in drain_events(&mut events) {
-        if let ImportEvent::IdentificationProgress { identified, total } = event {
-            progress.push((identified, total));
-        }
-    }
+    let progress: Vec<_> = std::iter::from_fn(|| counts.try_recv().ok()).collect();
     assert_eq!(
         progress.first(),
         Some(&(0, 2)),
@@ -267,15 +250,9 @@ async fn progress_carries_both_counts() {
         "the batch is over once both have their answers: {progress:?}"
     );
 
-    let mut events = fixture.import.every_event();
+    let mut counts = fixture.import.every_identification_count_for_test();
     fixture.drain_automatic().await;
-    let replanned: Vec<_> = drain_events(&mut events)
-        .into_iter()
-        .filter_map(|event| match event {
-            ImportEvent::IdentificationProgress { identified, total } => Some((identified, total)),
-            _ => None,
-        })
-        .collect();
+    let replanned: Vec<_> = std::iter::from_fn(|| counts.try_recv().ok()).collect();
     assert!(
         replanned.is_empty(),
         "a pass over an answered queue identifies nothing, so there is no batch: {replanned:?}"
@@ -299,24 +276,18 @@ async fn identified_progress_is_emitted_after_the_verdict_is_committed() {
     );
     fixture.scan(1).await;
 
-    let mut events = fixture.import.every_event();
+    let mut counts = fixture.import.every_identification_count_for_test();
     let pass = fixture.drain_automatic_task();
 
     let mut opened = false;
     loop {
-        let event = tokio::time::timeout(Duration::from_secs(10), events.recv())
+        let count = tokio::time::timeout(Duration::from_secs(10), counts.recv())
             .await
             .expect("identification progress arrives")
-            .expect("event bus remains open");
-        match event {
-            ImportEvent::IdentificationProgress {
-                identified: 0,
-                total: 1,
-            } => opened = true,
-            ImportEvent::IdentificationProgress {
-                identified: 0,
-                total: 0,
-            } if opened => {
+            .expect("the count stays open");
+        match count {
+            (0, 1) => opened = true,
+            (0, 0) if opened => {
                 assert!(
                     fixture.identified_for(&dir).await.is_some(),
                     "the identification result must be readable before the batch ends"

@@ -2,29 +2,31 @@
 //
 // What the count does over the queue operations this map already exposes.
 
-/// A runtime and the bus its identification count is announced on.
-fn counted_runtime() -> (
-    CandidateRuntime,
-    tokio::sync::mpsc::UnboundedReceiver<ImportEvent>,
-) {
-    let runtime = CandidateRuntime::default();
-    let bus = crate::import::ImportEventBus::new(64, runtime.clone());
-    (runtime, bus.every_event())
+/// The count as the sidebar reads it.
+struct CountReader {
+    runtime: CandidateRuntime,
+    last: (u32, u32),
 }
 
-/// Every count announced since the last read, in order.
-fn counts(events: &mut tokio::sync::mpsc::UnboundedReceiver<ImportEvent>) -> Vec<(u32, u32)> {
-    let mut counts = Vec::new();
-    loop {
-        match events.try_recv() {
-            Ok(ImportEvent::IdentificationProgress { identified, total }) => {
-                counts.push((identified, total));
-            }
-            Ok(_) => continue,
-            Err(tokio::sync::mpsc::error::TryRecvError::Empty) => return counts,
-            Err(error) => panic!("the import bus failed while draining: {error}"),
-        }
+fn counted_runtime() -> (CandidateRuntime, CountReader) {
+    let runtime = CandidateRuntime::default();
+    (
+        runtime.clone(),
+        CountReader {
+            runtime,
+            last: (0, 0),
+        },
+    )
+}
+
+/// The count, if it moved since the last read.
+fn counts(reader: &mut CountReader) -> Vec<(u32, u32)> {
+    let now = reader.runtime.identification_progress();
+    if now == reader.last {
+        return Vec::new();
     }
+    reader.last = now;
+    vec![now]
 }
 
 /// A Lookup a person starts is an identification like any other: it opens a
@@ -130,8 +132,9 @@ fn a_lookup_that_never_ran_ends_when_its_mark_is_cleared() {
     let key = "/watch/a/rel1";
 
     runtime.admit(vec![key.to_string()], Admission::Requested);
+    assert_eq!(counts(&mut events), vec![(0, 1)]);
     runtime.withdraw(key);
-    assert_eq!(counts(&mut events), vec![(0, 1), (0, 0)]);
+    assert_eq!(counts(&mut events), vec![(0, 0)]);
 }
 
 /// A write that failed is a run that is over: the row says why, and nothing is
@@ -180,9 +183,11 @@ fn a_batch_after_a_drain_starts_from_zero() {
     let second = "/watch/a/rel2";
 
     runtime.admit(vec![first.to_string(), second.to_string()], Admission::Automatic);
+    assert_eq!(counts(&mut events), vec![(0, 2)]);
     runtime.withdraw(first);
+    assert_eq!(counts(&mut events), vec![(1, 2)]);
     runtime.withdraw(second);
-    assert_eq!(counts(&mut events), vec![(0, 2), (1, 2), (0, 0)]);
+    assert_eq!(counts(&mut events), vec![(0, 0)]);
 
     runtime.admit(vec![first.to_string()], Admission::Requested);
     assert_eq!(counts(&mut events), vec![(0, 1)]);

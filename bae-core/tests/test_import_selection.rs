@@ -174,7 +174,7 @@ async fn select_out_of_order(
 /// The keys the runtime's changes bring to `reached`, in the order they get
 /// there, until `count` have.
 async fn reached_in_order(
-    changes: &mut tokio::sync::broadcast::Receiver<CandidateRuntimeChange>,
+    changes: &mut tokio::sync::mpsc::UnboundedReceiver<CandidateRuntimeChange>,
     count: usize,
     reached: impl Fn(&CandidateRuntimeSnapshot) -> bool,
 ) -> Vec<String> {
@@ -216,7 +216,7 @@ async fn a_bulk_identify_admits_the_rows_as_the_list_shows_them() {
     scan_albums(&services, &tmp.path().join("Collection"), 4).await;
     let expected = select_out_of_order(&services, descending(), &[3, 0, 2]).await;
 
-    let (_, mut changes) = services.subscribe_candidate_runtime();
+    let mut changes = services.every_candidate_runtime_change_for_test();
     let failures = services
         .run_import_selection_action(descending(), CandidateAction::Identify, |_, _| {})
         .await
@@ -254,7 +254,7 @@ async fn a_bulk_import_starts_the_rows_as_the_list_shows_them() {
     }
     let expected = select_out_of_order(&services, descending(), &[3, 0, 2]).await;
 
-    let (_, mut changes) = services.subscribe_candidate_runtime();
+    let mut changes = services.every_candidate_runtime_change_for_test();
     let failures = services
         .run_import_selection_action(descending(), CandidateAction::Import, |_, _| {})
         .await

@@ -79,10 +79,9 @@ enum HoldState {
     Released,
 }
 
-/// The one way an event reaches the bus's readers. The runtime announces
-/// through it directly, since its announcements come from inside recording.
+/// The one way an event reaches the bus's readers.
 #[derive(Clone)]
-pub(crate) struct EventDelivery {
+struct EventDelivery {
     sender: broadcast::Sender<ImportEvent>,
     every_event: Arc<std::sync::Mutex<EveryEvent>>,
     /// Whether the one reader in the app that hears every event was taken.
@@ -110,7 +109,7 @@ impl EventDelivery {
     }
 
     /// Hand `event` to every reader; `false` when no reader heard it.
-    pub(crate) fn deliver(&self, event: ImportEvent) -> bool {
+    fn deliver(&self, event: ImportEvent) -> bool {
         let heard_every_event = {
             let mut every_event = self.every_event.lock().unwrap();
             #[cfg(any(test, feature = "test-utils"))]
@@ -126,12 +125,10 @@ impl EventDelivery {
 
 impl ImportEventBus {
     /// A bus whose subscribers may fall `capacity` events behind, recording
-    /// into `runtime`, which announces its identification count on this bus.
+    /// into `runtime`.
     pub fn new(capacity: usize, runtime: CandidateRuntime) -> Self {
-        let delivery = EventDelivery::new(capacity);
-        runtime.announce_on(delivery.clone());
         Self {
-            delivery,
+            delivery: EventDelivery::new(capacity),
             runtime,
             #[cfg(test)]
             send_hold: Arc::default(),
@@ -293,18 +290,6 @@ pub enum ImportEvent {
         /// The extraction's priority, as in
         /// [`ImportEvent::IdentifyStateChanged`].
         priority: crate::util::rate_limiter::CallPriority,
-    },
-    /// How many of the running batch of identifications have ended, out of how
-    /// many, whoever started them; `(0, 0)` is none running. Counted by the
-    /// candidate runtime, since a view's rows may be filtered.
-    IdentificationProgress {
-        identified: u32,
-        total: u32,
-    },
-    /// How many imports are waiting for the worker or running, announced by
-    /// the candidate runtime whenever one starts or ends.
-    ImportsInFlight {
-        count: u32,
     },
 }
 
@@ -565,17 +550,33 @@ impl ImportServiceHandle {
         self.runtime.get(key)
     }
 
-    /// Every key with something in flight right now, and one change per key
-    /// as runs advance. The subscription is taken before the read, so no
-    /// change lands between the two.
-    pub fn subscribe_candidate_runtime(
+    /// Every key with something in flight, and each key that changes after.
+    pub fn watch_candidate_runtimes(&self) -> super::RuntimeSnapshotsWatch {
+        super::RuntimeSnapshotsWatch::of(&self.runtime)
+    }
+
+    /// Every change to a key's runtime from now on, none coalesced, for a
+    /// test that checks the order they come in.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn every_runtime_change_for_test(
         &self,
-    ) -> (
-        HashMap<String, CandidateRuntimeSnapshot>,
-        broadcast::Receiver<super::CandidateRuntimeChange>,
-    ) {
-        let changes = self.runtime.subscribe();
-        (self.runtime.all(), changes)
+    ) -> tokio::sync::mpsc::UnboundedReceiver<super::CandidateRuntimeChange> {
+        self.runtime.every_change()
+    }
+
+    /// Every move of the identification count from now on, for a test.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn every_identification_count_for_test(
+        &self,
+    ) -> tokio::sync::mpsc::UnboundedReceiver<(u32, u32)> {
+        self.runtime.every_count()
+    }
+
+    /// Each candidate's signals and the two counts, as they change.
+    pub(crate) fn watch_runtime_values(
+        &self,
+    ) -> super::candidate_runtime::RuntimeValuesWatch {
+        super::candidate_runtime::RuntimeValuesWatch::of(&self.runtime)
     }
 
     /// One candidate's pane as it reads back from the tables, with this

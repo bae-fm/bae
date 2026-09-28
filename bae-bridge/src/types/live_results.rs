@@ -55,11 +55,9 @@ callbacks! {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     OutputCallback: on_value(value: BridgeOutputSnapshot);
 
-    /// What every candidate has in flight: one `Updated` per key already running
-    /// when the subscription opens, then one call per change — `Updated` as a key
-    /// advances, `Removed` once nothing is running for it, and `Reset` carrying
-    /// every running key after a dropped delivery, which a consumer holding a key
-    /// the reset does not list reads as that key's removal.
+    /// What every candidate has in flight: a `Reset` with every running key
+    /// when the subscription opens, then `Updated` as a key advances and
+    /// `Removed` once nothing is running for it.
     #[cfg(feature = "desktop")]
     CandidateRuntimeCallback: on_change(change: BridgeCandidateRuntimeChange);
     /// What is running for one candidate and the commands its row offers with

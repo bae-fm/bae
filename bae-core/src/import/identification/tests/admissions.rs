@@ -255,22 +255,16 @@ async fn a_requested_run_is_counted() {
         .unwrap();
     fixture.scan(1).await;
 
-    let mut events = fixture.import.every_event();
+    let mut counts = fixture.import.every_identification_count_for_test();
     fixture.start_explicit_lookup(&dir);
     fixture.await_identified_row(&dir).await;
 
     let progress = tokio::time::timeout(Duration::from_secs(10), async {
         let mut progress = Vec::new();
         loop {
-            if let ImportEvent::IdentificationProgress { identified, total } = events
-                .recv()
-                .await
-                .expect("the import event bus stays open")
-            {
-                progress.push((identified, total));
-                if progress.last() == Some(&(0, 0)) {
-                    return progress;
-                }
+            progress.push(counts.recv().await.expect("the count stays open"));
+            if progress.last() == Some(&(0, 0)) {
+                return progress;
             }
         }
     })

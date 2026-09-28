@@ -12,11 +12,10 @@
 //! (see [`batch::IdentificationBatch`]): a key joins when it is admitted and
 //! leaves when it is neither waiting nor holding a run.
 //!
-//! A key has an entry only while something is happening for it. Changes are
-//! published per key, so a consumer holding the list is not sent it again.
-//! The typed search and extraction's [`Signals`](crate::signals::Signals)
-//! live here too, beside the run they belong to, and are dropped with the
-//! rest of the key's entry; the signals are not in the published snapshot.
+//! A key has an entry only while something is happening for it. Readers wake
+//! on [`Revisions`] and read what they draw. The typed search and
+//! extraction's [`Signals`](crate::signals::Signals) live here too, beside the
+//! run they belong to, and are dropped with the rest of the key's entry.
 
 use super::candidate_search::CandidateSearch;
 use super::candidates::{Admission, CandidateRuntimeSnapshot, ImportInFlight};
@@ -29,14 +28,18 @@ use crate::identify::{IdentifyRunId, IdentifyState};
 use crate::signals::{LookupFailure, Signals};
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex, OnceLock};
-use tokio::sync::broadcast;
-use tracing::{debug, info};
+use std::sync::{Arc, Mutex};
+use tokio::sync::watch;
+use tracing::debug;
 
 mod batch;
 mod facts_watch;
+mod snapshots_watch;
+mod values_watch;
 mod work;
 pub(crate) use facts_watch::RuntimeFactsWatch;
+pub use snapshots_watch::RuntimeSnapshotsWatch;
+pub(crate) use values_watch::{RuntimeValue, RuntimeValuesWatch};
 pub(crate) use work::CandidateWork;
 
 #[cfg(test)]
@@ -53,10 +56,19 @@ pub enum CandidateRuntimeChange {
     },
     /// Nothing is running for the key any more.
     Removed { key: String },
-    /// The complete runtime after an atomic multi-key queue change.
+    /// Every key's runtime, as a reader first reads it.
     Reset {
         runtimes: HashMap<String, CandidateRuntimeSnapshot>,
     },
+}
+
+/// How many times each part of the runtime has changed. A reader wakes on
+/// either moving and reads the part it draws.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) struct Revisions {
+    /// Every key's runtime and the two counts, which move only with it.
+    pub(crate) runtime: u64,
+    pub(crate) signals: u64,
 }
 
 /// The files a candidate's runtime was recorded against; a scan reporting
@@ -251,27 +263,28 @@ pub struct CandidateRuntime {
     /// Its own lock: work emits through the bus while holding it, and the
     /// bus records into `inner`.
     work: Arc<Mutex<work::WorkInFlight>>,
-    changes: broadcast::Sender<CandidateRuntimeChange>,
-    /// Test readers that hear every change, however far behind they read.
-    #[cfg(test)]
-    every_change:
-        Arc<Mutex<Vec<tokio::sync::mpsc::UnboundedSender<CandidateRuntimeChange>>>>,
-    /// Where the identification count is announced: the delivery of the bus
-    /// this runtime records into, set once by that bus. A runtime with no bus
-    /// announces nothing.
-    events: Arc<OnceLock<crate::import::handle::EventDelivery>>,
+    revisions: Arc<watch::Sender<Revisions>>,
+    /// Test readers that hear every change to a key's runtime, and every
+    /// move of the identification count.
+    #[cfg(any(test, feature = "test-utils"))]
+    every_change: TestReaders<CandidateRuntimeChange>,
+    #[cfg(any(test, feature = "test-utils"))]
+    every_count: TestReaders<(u32, u32)>,
 }
+
+#[cfg(any(test, feature = "test-utils"))]
+type TestReaders<T> = Arc<Mutex<Vec<tokio::sync::mpsc::UnboundedSender<T>>>>;
 
 impl Default for CandidateRuntime {
     fn default() -> Self {
-        let (changes, _) = broadcast::channel(1024);
         Self {
             inner: Arc::new(Mutex::new(Inner::default())),
             work: Arc::default(),
-            changes,
-            #[cfg(test)]
+            revisions: Arc::new(watch::Sender::new(Revisions::default())),
+            #[cfg(any(test, feature = "test-utils"))]
             every_change: Arc::default(),
-            events: Arc::new(OnceLock::new()),
+            #[cfg(any(test, feature = "test-utils"))]
+            every_count: Arc::default(),
         }
     }
 }
@@ -316,13 +329,35 @@ impl CandidateRuntime {
             .map(|(_, signals)| signals.clone())
     }
 
-    pub fn subscribe(&self) -> broadcast::Receiver<CandidateRuntimeChange> {
-        self.changes.subscribe()
+    /// Wakes whenever a part of the runtime changes; a reader takes it before
+    /// its first read, so no change lands between the two.
+    pub(crate) fn watch_revisions(&self) -> watch::Receiver<Revisions> {
+        self.revisions.subscribe()
     }
 
-    /// Every change from now on, none dropped, since [`Self::subscribe`]
-    /// drops what a slow reader falls behind on.
-    #[cfg(test)]
+    /// How far the identifications in flight have got: ended of admitted.
+    pub(crate) fn identification_progress(&self) -> (u32, u32) {
+        self.inner.lock().unwrap().batch.progress()
+    }
+
+    /// How many keys an import owns right now.
+    pub(crate) fn imports_in_flight(&self) -> u32 {
+        self.inner.lock().unwrap().importing
+    }
+
+    /// The latest signals extraction reported for every key.
+    pub(crate) fn all_signals(&self) -> HashMap<String, Signals> {
+        self.inner
+            .lock()
+            .unwrap()
+            .signals
+            .iter()
+            .map(|(key, (_, signals))| (key.clone(), signals.clone()))
+            .collect()
+    }
+
+    /// Every change to a key's runtime from now on, for a test.
+    #[cfg(any(test, feature = "test-utils"))]
     pub(crate) fn every_change(
         &self,
     ) -> tokio::sync::mpsc::UnboundedReceiver<CandidateRuntimeChange> {
@@ -331,52 +366,46 @@ impl CandidateRuntime {
         changes
     }
 
-    /// Take the delivery of the one bus this runtime records into, which
-    /// calls this as it is built.
-    pub(super) fn announce_on(&self, events: crate::import::handle::EventDelivery) {
-        assert!(
-            self.events.set(events).is_ok(),
-            "a candidate runtime records into one import bus"
-        );
+    /// Every move of the identification count from now on, for a test.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub(crate) fn every_count(&self) -> tokio::sync::mpsc::UnboundedReceiver<(u32, u32)> {
+        let (reader, counts) = tokio::sync::mpsc::unbounded_channel();
+        self.every_count.lock().unwrap().push(reader);
+        counts
     }
 
-    fn publish(&self, change: CandidateRuntimeChange) {
-        #[cfg(test)]
-        self.every_change
-            .lock()
-            .unwrap()
-            .retain(|reader| reader.send(change.clone()).is_ok());
-        // Nobody listening yet is not an error.
-        let _ = self.changes.send(change);
-    }
-
-    /// Say how far the identifications in flight have got. Delivered rather
-    /// than sent through the bus, since this runs inside the bus's recording.
-    fn announce(&self, (identified, total): (u32, u32)) {
-        let Some(events) = self.events.get() else {
-            return;
-        };
-        info!("identification progress at {identified}/{total}");
-        events.deliver(ImportEvent::IdentificationProgress { identified, total });
-    }
-
-    /// Say how many imports are in flight, the same way as [`Self::announce`].
-    fn announce_imports(&self, count: u32) {
-        let Some(events) = self.events.get() else {
-            return;
-        };
-        events.deliver(ImportEvent::ImportsInFlight { count });
+    /// Say a key's runtime or the counts changed; `count` is the
+    /// identification count when it moved.
+    fn runtime_changed(&self, change: Option<CandidateRuntimeChange>, count: Option<(u32, u32)>) {
+        #[cfg(any(test, feature = "test-utils"))]
+        {
+            if let Some(change) = &change {
+                self.every_change
+                    .lock()
+                    .unwrap()
+                    .retain(|reader| reader.send(change.clone()).is_ok());
+            }
+            if let Some(count) = count {
+                self.every_count
+                    .lock()
+                    .unwrap()
+                    .retain(|reader| reader.send(count).is_ok());
+            }
+        }
+        #[cfg(not(any(test, feature = "test-utils")))]
+        let _ = (change, count);
+        self.revisions.send_modify(|revisions| revisions.runtime += 1);
     }
 
     /// Apply `mutate` to the key's entry under the map's lock, creating one if
-    /// needed, and publish the snapshot it left if that changed. An entry left
+    /// needed, and say so if its snapshot or the counts changed. An entry left
     /// idle is removed. Returns what `mutate` returned.
     fn set<R>(
         &self,
         key: &str,
         mutate: impl FnOnce(&mut Inner, &mut CandidateRuntimeState) -> R,
     ) -> R {
-        let (result, change, progress, importing) = {
+        let (result, change, counts_moved, count) = {
             let mut inner = self.inner.lock().unwrap();
             let entry = inner.runtime.get(key);
             let previous = entry.map(CandidateRuntimeState::snapshot);
@@ -399,30 +428,19 @@ impl CandidateRuntime {
                     runtime: snapshot,
                 })
             };
-            let progress = inner
+            let count = inner
                 .count_identification(key, was_identifying, is_identifying)
                 .then(|| inner.batch.progress());
-            let importing = match (was_importing, is_importing) {
-                (false, true) => {
-                    inner.importing += 1;
-                    Some(inner.importing)
-                }
-                (true, false) => {
-                    inner.importing -= 1;
-                    Some(inner.importing)
-                }
-                _ => None,
-            };
-            (result, change, progress, importing)
+            match (was_importing, is_importing) {
+                (false, true) => inner.importing += 1,
+                (true, false) => inner.importing -= 1,
+                _ => {}
+            }
+            let counts_moved = count.is_some() || was_importing != is_importing;
+            (result, change, counts_moved, count)
         };
-        if let Some(change) = change {
-            self.publish(change);
-        }
-        if let Some(progress) = progress {
-            self.announce(progress);
-        }
-        if let Some(count) = importing {
-            self.announce_imports(count);
+        if change.is_some() || counts_moved {
+            self.runtime_changed(change, count);
         }
         result
     }
@@ -548,37 +566,40 @@ impl CandidateRuntime {
 
     /// Drop everything held for a key, its signals too.
     fn remove(&self, key: &str) {
-        let (removed, progress) = {
+        let (removed, count, signals_removed) = {
             let mut inner = self.inner.lock().unwrap();
-            inner.signals.remove(key);
+            let signals_removed = inner.signals.remove(key).is_some();
             let was_identifying = inner
                 .runtime
                 .get(key)
                 .map(Identifying::of)
                 .unwrap_or_default();
             let removed = inner.runtime.remove(key).is_some();
-            let progress = inner
+            let count = inner
                 .count_identification(key, was_identifying, Identifying::default())
                 .then(|| inner.batch.progress());
-            (removed, progress)
+            (removed, count, signals_removed)
         };
-        if removed {
-            self.publish(CandidateRuntimeChange::Removed {
-                key: key.to_string(),
-            });
+        if removed || count.is_some() {
+            self.runtime_changed(
+                removed.then(|| CandidateRuntimeChange::Removed {
+                    key: key.to_string(),
+                }),
+                count,
+            );
         }
-        if let Some(progress) = progress {
-            self.announce(progress);
+        if signals_removed {
+            self.revisions.send_modify(|revisions| revisions.signals += 1);
         }
     }
 
-    /// Mark every one of `keys` as waiting on `admission`, published as one
-    /// change so the count opens at its total.
+    /// Mark every one of `keys` as waiting on `admission` as one change, so the
+    /// count opens at its total.
     pub(super) fn admit(&self, keys: Vec<String>, admission: Admission) {
         if keys.is_empty() {
             return;
         }
-        let (reset, progress) = {
+        let (reset, counted) = {
             let mut inner = self.inner.lock().unwrap();
             let previous = snapshots(&inner.runtime);
             let was_identifying = inner.identifying();
@@ -592,14 +613,13 @@ impl CandidateRuntime {
                     counted |= inner.batch.admit(key);
                 }
             }
-            let progress = counted.then(|| inner.batch.progress());
-            ((next != previous).then_some(next), progress)
+            ((next != previous).then_some(next), counted.then(|| inner.batch.progress()))
         };
-        if let Some(runtimes) = reset {
-            self.publish(CandidateRuntimeChange::Reset { runtimes });
-        }
-        if let Some(progress) = progress {
-            self.announce(progress);
+        if reset.is_some() || counted.is_some() {
+            self.runtime_changed(
+                reset.map(|runtimes| CandidateRuntimeChange::Reset { runtimes }),
+                counted,
+            );
         }
     }
 
@@ -792,7 +812,6 @@ impl CandidateRuntime {
                 self.inner.lock().unwrap().shapes.remove(candidate_key);
                 self.remove(candidate_key);
             }
-            // Kept but not published: no runtime consumer draws them.
             ImportEvent::SignalsUpdated {
                 candidate_key,
                 run,
@@ -800,23 +819,24 @@ impl CandidateRuntime {
                 artwork: _,
                 priority: _,
             } => {
-                self.inner
+                let previous = self
+                    .inner
                     .lock()
                     .unwrap()
                     .signals
                     .insert(candidate_key.clone(), (*run, signals.clone()));
+                if previous.is_none_or(|(_, previous)| previous != *signals) {
+                    self.revisions.send_modify(|revisions| revisions.signals += 1);
+                }
             }
-            // The counts are this map's own announcements, and these scan
-            // events change rows, not runtime.
+            // These change rows, not runtime.
             ImportEvent::Scan(
                 ScanEvent::WatchedFoldersChanged { .. }
                 | ScanEvent::CandidateSkipChanged { .. }
                 | ScanEvent::CandidateMetadataChanged { .. }
                 | ScanEvent::FolderScanStatusChanged { .. }
                 | ScanEvent::Finished,
-            )
-            | ImportEvent::IdentificationProgress { .. }
-            | ImportEvent::ImportsInFlight { .. } => {}
+            ) => {}
         }
     }
 }

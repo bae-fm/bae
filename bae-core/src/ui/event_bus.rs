@@ -60,79 +60,31 @@ impl UiEventBus {
         });
     }
 
-    /// Wire to the import event channel: scan events, import and loudness
-    /// progress, identify-state changes, and extracted signals.
+    /// Wire to the import runtime: each candidate's extracted signals and the
+    /// sidebar header's identification and import counts, as they change.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     fn wire_import(
         &self,
         app_services: &crate::library::AppServices,
         runtime_handle: &tokio::runtime::Handle,
     ) {
-        self.wire_import_events(
-            app_services.subscribe_import_events(),
-            app_services.clone(),
-            runtime_handle,
-        );
-    }
-
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    fn wire_import_events(
-        &self,
-        mut rx: broadcast::Receiver<crate::import::ImportEvent>,
-        services: crate::library::AppServices,
-        runtime_handle: &tokio::runtime::Handle,
-    ) {
+        use crate::import::candidate_runtime::RuntimeValue;
+        let mut values = app_services.watch_import_runtime_values();
         let bus = self.clone();
-
         runtime_handle.spawn(async move {
-            use crate::import::ImportEvent;
-
-            loop {
-                match rx.recv().await {
-                    Ok(event) => {
-                        match event {
-                            #[cfg(not(any(target_os = "ios", target_os = "android")))]
-                            ImportEvent::SignalsUpdated {
-                                artwork: _,
-                                candidate_key,
-                                run: _,
-                                signals,
-                                priority: _,
-                            } => {
-                                bus.emit(UiBusEvent::CandidateSignalsUpdated {
-                                    key: candidate_key,
-                                    signals,
-                                });
-                            }
-                            // The sidebar header's ring, line and bar. It
-                            // crosses as its own event rather than as a
-                            // catalog value: it is two numbers, it changes
-                            // once per identification started or ended, and
-                            // nothing about the row list changes with it.
-                            #[cfg(not(any(target_os = "ios", target_os = "android")))]
-                            ImportEvent::IdentificationProgress { identified, total } => {
-                                bus.emit(UiBusEvent::ImportIdentificationProgress {
-                                    identified,
-                                    total,
-                                });
-                            }
-                            // The sidebar header's import indicator, which
-                            // offers to cancel them all.
-                            #[cfg(not(any(target_os = "ios", target_os = "android")))]
-                            ImportEvent::ImportsInFlight { count } => {
-                                bus.emit(UiBusEvent::ImportsInFlight { count });
-                            }
-                            _ => {}
+            while let Some(changed) = values.next().await {
+                for value in changed {
+                    bus.emit(match value {
+                        RuntimeValue::Signals { key, signals } => {
+                            UiBusEvent::CandidateSignalsUpdated { key, signals }
                         }
-                    }
-                    Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
-                        tracing::warn!("Import event bus lagged by {n} events");
-                        services.record_telemetry(crate::diagnostics::TelemetryEvent::Anomaly {
-                            kind: crate::diagnostics::AnomalyKind::EventBusLagged,
-                        });
-                        continue;
-                    }
-                    Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
+                        RuntimeValue::IdentificationProgress { identified, total } => {
+                            UiBusEvent::ImportIdentificationProgress { identified, total }
+                        }
+                        RuntimeValue::ImportsInFlight { count } => {
+                            UiBusEvent::ImportsInFlight { count }
+                        }
+                    });
                 }
             }
         });

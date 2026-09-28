@@ -780,8 +780,7 @@ mod candidate_runtime {
     }
 
     /// What one change says about `key`. A `Reset` lists every key in flight,
-    /// so a key it leaves out is removed — under load it is the only thing
-    /// that says so, the `Removed` having been dropped.
+    /// so a key it leaves out is not in flight.
     enum SaysAbout {
         InFlight(Box<crate::types::BridgeCandidateRuntimeSnapshot>),
         Gone,

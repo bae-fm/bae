@@ -3,17 +3,17 @@
 
 use super::ImportServiceHandle;
 use crate::import::triage::{CandidateActionBasis, CandidateLiveState, TriageRuntimeFacts};
-use crate::import::CandidateRuntimeChange;
-use crate::import::candidate_runtime::RuntimeFactsWatch;
-use tokio::sync::broadcast;
+use crate::import::candidate_runtime::{Revisions, RuntimeFactsWatch};
+use tokio::sync::watch;
 
-/// One candidate's runtime facts, kept current from the runtime stream.
+/// One candidate's runtime facts, read again whenever the runtime changes.
 pub(crate) struct CandidateFactsWatch {
     key: String,
     /// The facts as they stand.
     facts: TriageRuntimeFacts,
-    changes: broadcast::Receiver<CandidateRuntimeChange>,
-    /// What a lagged stream re-reads the key's runtime from.
+    revisions: watch::Receiver<Revisions>,
+    /// The runtime revision the facts were last read at.
+    read_at: u64,
     import: ImportServiceHandle,
 }
 
@@ -22,51 +22,33 @@ impl CandidateFactsWatch {
         &self.facts
     }
 
-    /// Watch `key` from now on, its facts read as they stand. The runtime
-    /// stream stays the one taken at the start, so no change is missed.
+    /// Watch `key` from now on, its facts read as they stand.
     pub(crate) fn set_key(&mut self, key: String) {
-        self.facts = self
-            .import
-            .candidate_runtime(&key)
+        self.facts = self.read(&key);
+        self.key = key;
+    }
+
+    fn read(&self, key: &str) -> TriageRuntimeFacts {
+        self.import
+            .candidate_runtime(key)
             .as_ref()
             .map(TriageRuntimeFacts::of)
-            .unwrap_or_default();
-        self.key = key;
+            .unwrap_or_default()
     }
 
     /// Wait for the key's facts to change, and return them. A change to
     /// another key, or to a part of this key's runtime the facts do not read —
     /// a progress tick within a running import — is passed over. `None` once
-    /// the runtime stream has closed.
+    /// the runtime is gone.
     pub(crate) async fn changed(&mut self) -> Option<TriageRuntimeFacts> {
         loop {
-            let runtime = match self.changes.recv().await {
-                Ok(CandidateRuntimeChange::Updated { key, runtime }) => {
-                    if key != self.key {
-                        continue;
-                    }
-                    Some(runtime)
-                }
-                Ok(CandidateRuntimeChange::Removed { key }) => {
-                    if key != self.key {
-                        continue;
-                    }
-                    None
-                }
-                Ok(CandidateRuntimeChange::Reset { mut runtimes }) => runtimes.remove(&self.key),
-                Err(broadcast::error::RecvError::Lagged(count)) => {
-                    tracing::warn!(
-                        "{} dropped {count} runtime changes; re-reading its runtime",
-                        self.key
-                    );
-                    self.import.candidate_runtime(&self.key)
-                }
-                Err(broadcast::error::RecvError::Closed) => return None,
-            };
-            let next = runtime
-                .as_ref()
-                .map(TriageRuntimeFacts::of)
-                .unwrap_or_default();
+            self.revisions.changed().await.ok()?;
+            let revision = self.revisions.borrow_and_update().runtime;
+            if revision == self.read_at {
+                continue;
+            }
+            self.read_at = revision;
+            let next = self.read(&self.key);
             if next != self.facts {
                 self.facts = next.clone();
                 return Some(next);
@@ -85,16 +67,17 @@ impl ImportServiceHandle {
     /// runtime stream is taken before the facts are read, so no change lands
     /// between the two.
     pub(crate) fn watch_candidate_facts(&self, key: String) -> CandidateFactsWatch {
-        let (initial, changes) = self.subscribe_candidate_runtime();
-        CandidateFactsWatch {
-            facts: initial
-                .get(&key)
-                .map(TriageRuntimeFacts::of)
-                .unwrap_or_default(),
-            key,
-            changes,
+        let revisions = self.runtime.watch_revisions();
+        let read_at = revisions.borrow().runtime;
+        let mut watch = CandidateFactsWatch {
+            facts: TriageRuntimeFacts::default(),
+            key: String::new(),
+            revisions,
+            read_at,
             import: self.clone(),
-        }
+        };
+        watch.set_key(key);
+        watch
     }
 
     /// What is running for one candidate, and the commands its row offers

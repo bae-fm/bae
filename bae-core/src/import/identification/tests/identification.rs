@@ -59,7 +59,7 @@ async fn a_planned_candidate_is_queued_before_its_driver_reports() {
     fixture.provider.route("/discid/", 200, "{}");
     fixture.provider.hold("/discid/");
     fixture.scan(1).await;
-    let mut changes = fixture.import.subscribe_candidate_runtime().1;
+    let mut changes = fixture.import.every_runtime_change_for_test();
 
     let pass = fixture.drain_automatic_task();
 

@@ -168,7 +168,7 @@ impl ImportServices {
 }
 
 desktop_only! {
-    pub use candidate_runtime::{CandidateRuntime, CandidateRuntimeChange};
+    pub use candidate_runtime::{CandidateRuntime, CandidateRuntimeChange, RuntimeSnapshotsWatch};
     pub(crate) use candidate_runtime::CandidateWork;
     pub use candidate_search::{CandidateSearch, SearchStatus, SourceSearch};
     pub use candidates::{

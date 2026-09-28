@@ -208,28 +208,12 @@ impl AppHandle {
         callback: Box<dyn crate::types::CandidateRuntimeCallback>,
     ) -> std::sync::Arc<crate::LiveSubscription> {
         self.live_subscription(move |services, _| async move {
-            let (initial, mut changes) = services.subscribe_candidate_runtime();
-            for (key, runtime) in initial {
-                callback.on_change(crate::types::BridgeCandidateRuntimeChange::Updated {
-                    key,
-                    runtime: crate::types::BridgeCandidateRuntimeSnapshot::from_core(runtime),
-                });
-            }
-            loop {
-                match changes.recv().await {
-                    Ok(change) => callback.on_change(
-                        crate::types::BridgeCandidateRuntimeChange::from_core(change),
-                    ),
-                    Err(tokio::sync::broadcast::error::RecvError::Lagged(count)) => {
-                        tracing::warn!(
-                            "candidate runtime subscription dropped {count} changes; \
-                             re-stating every key in flight"
-                        );
-                        callback.on_change(crate::types::BridgeCandidateRuntimeChange::reset(
-                            services.candidate_runtimes(),
-                        ));
-                    }
-                    Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
+            let mut runtimes = services.watch_candidate_runtimes();
+            while let Some(changes) = runtimes.next().await {
+                for change in changes {
+                    callback.on_change(crate::types::BridgeCandidateRuntimeChange::from_core(
+                        change,
+                    ));
                 }
             }
         })

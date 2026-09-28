@@ -61,10 +61,10 @@ impl AppServices {
         self.inner.import.register_artwork_analyzer(analyzer);
     }
 
-    pub(crate) fn subscribe_import_events(
+    pub(crate) fn watch_import_runtime_values(
         &self,
-    ) -> tokio::sync::broadcast::Receiver<crate::import::ImportEvent> {
-        self.inner.import.subscribe_events()
+    ) -> crate::import::candidate_runtime::RuntimeValuesWatch {
+        self.inner.import.watch_runtime_values()
     }
 
     /// Identify an existing library release after the person opens the
@@ -212,15 +212,17 @@ impl AppServices {
         self.inner.import.candidate_signals(key)
     }
 
-    /// Every key with something in flight right now, and one change per key as
-    /// runs advance.
-    pub fn subscribe_candidate_runtime(
+    /// Every key with something in flight, and each key that changes after.
+    pub fn watch_candidate_runtimes(&self) -> crate::import::RuntimeSnapshotsWatch {
+        self.inner.import.watch_candidate_runtimes()
+    }
+
+    /// Every change to a key's runtime from now on, for a test.
+    #[cfg(feature = "test-utils")]
+    pub fn every_candidate_runtime_change_for_test(
         &self,
-    ) -> (
-        std::collections::HashMap<String, crate::import::CandidateRuntimeSnapshot>,
-        tokio::sync::broadcast::Receiver<crate::import::CandidateRuntimeChange>,
-    ) {
-        self.inner.import.subscribe_candidate_runtime()
+    ) -> tokio::sync::mpsc::UnboundedReceiver<crate::import::CandidateRuntimeChange> {
+        self.inner.import.every_runtime_change_for_test()
     }
 
     /// The import list, reconfigurable by view and by window.
