@@ -445,6 +445,9 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
             pressing_count,
             lead,
             medium_conflict: super::import_state::medium_conflict_of(medium_conflict)?,
+            unread_document: found
+                .iter()
+                .any(|stored| stored.result.document_failure.is_some()),
         };
         verdicts.insert(content_hash, summary);
     }

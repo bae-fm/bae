@@ -145,6 +145,25 @@ fn each_filter_keeps_exactly_its_own_rows() {
     }
 }
 
+/// A sole release that does not fit the folder is not picked for it, so the
+/// row waits on the person as several releases do.
+#[test]
+fn a_sole_release_that_does_not_fit_the_folder_needs_you() {
+    let mut rows = queue();
+    rows.candidates = vec![candidate("Unfit")];
+    rows.states.insert(
+        "hash-Unfit".to_string(),
+        with_verdict(several_matches_state(), |verdict| {
+            verdict.pressing_count = 1;
+            verdict.track_count = Some(10);
+        }),
+    );
+    assert_eq!(
+        shown(&rows, TriageTab::Pending, Some(PendingFilter::NeedsYou)),
+        vec!["candidate Unfit"]
+    );
+}
+
 /// Done and Skipped rows are past identification, so a filter chosen on
 /// Pending leaves them alone.
 #[test]

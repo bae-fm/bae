@@ -1,6 +1,8 @@
 //! What the queue reads of a stored verdict, and the two judgements made from
 //! it: which check against the folder the found release failed, which the pane
-//! states beside Import, and whether automatic import may take the candidate.
+//! states beside Import, and whether the verdict picks its one release
+//! unattended — applied to the draft as the run settles, and taken by
+//! automatic import.
 //!
 //! Derived on read, never stored: the verdict's own columns are the whole
 //! input. Whether the release is already in the library is not part of either —
@@ -43,10 +45,11 @@ pub enum VerdictKind {
 /// The match a verdict's findings lead with, as its own columns.
 ///
 /// One row of `import_candidate_match` at `list = 'found'`, `position = 0`.
-/// Everything the queue asks of a verdict's matches is asked of this one: the
-/// judgements consult the lead and nothing else (they only reach the
-/// tracklist comparison when the matches make a single pressing), and the row
-/// leads with the lead's title, artist and cover whatever the count.
+/// Everything the queue asks of a verdict's matches is asked of this one, but
+/// whether each was read in full: the judgements consult the lead (they only
+/// reach the tracklist comparison when the matches make a single pressing),
+/// and the row leads with the lead's title, artist and cover whatever the
+/// count.
 ///
 /// When they do make a single pressing this is also that pressing's own lead —
 /// the release the documents were settled from, and so the only one carrying a
@@ -116,6 +119,9 @@ pub struct VerdictSummary {
     pub lead: Option<LeadMatch>,
     /// The folder's own files rule out every release the verdict found.
     pub medium_conflict: Option<MediumConflict>,
+    /// A release the `found` list names whose full document could not be
+    /// read: what it states was never checked against the folder.
+    pub unread_document: bool,
 }
 
 impl VerdictSummary {
@@ -148,6 +154,12 @@ impl VerdictSummary {
                     .map(|result| LeadMatch::of(result, findings.provenance.first()))
             }),
             medium_conflict: findings.and_then(|findings| findings.medium_conflict),
+            unread_document: findings.is_some_and(|findings| {
+                findings
+                    .matches
+                    .iter()
+                    .any(|result| result.document_failure.is_some())
+            }),
         }
     }
 }
@@ -193,25 +205,29 @@ impl VerdictSummary {
         })
     }
 
-    /// Whether automatic import may take the candidate unattended. Auto-
-    /// importable means unambiguously identified given the information we
-    /// have: one pressing found, and no check against the folder failed.
+    /// Whether the verdict picks its one release without a person: the one
+    /// rule for both the settle applying it to the draft and automatic import
+    /// taking the candidate, so neither can act where the other would not.
+    /// It holds when the verdict is unambiguous given what we have: one
+    /// pressing found, every one of its documents read, and no check against
+    /// the folder failed.
     ///
     /// "An exact signal is not the same as a unique result" — a disc ID or a
     /// barcode routinely returns several pressings of one release group, and
     /// picking between them is the person's job. Two sources' records of the
     /// same pressing are not that choice: they are one row, so they count once.
-    pub fn auto_importable(&self) -> bool {
+    pub fn picks_unattended(&self) -> bool {
         self.kind == VerdictKind::Found
             && self.pressing_count == 1
             && self.lead.is_some()
+            && !self.unread_document
             && self.folder_check().is_none()
     }
 
     /// Both judgements at once, for a test to compare in one assertion.
     #[cfg(test)]
     pub(crate) fn judgement(&self) -> (bool, Option<FolderCheck>) {
-        (self.auto_importable(), self.folder_check())
+        (self.picks_unattended(), self.folder_check())
     }
 }
 

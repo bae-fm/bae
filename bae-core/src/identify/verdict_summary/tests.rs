@@ -292,6 +292,30 @@ fn a_count_mismatch_names_both_counts() {
     );
 }
 
+/// A pressing one of whose records' documents could not be read is not
+/// picked unattended, however its count reads: what the document states was
+/// never checked, and the pick cannot be applied without it.
+#[test]
+fn a_pressing_with_an_unread_document_is_not_picked_unattended() {
+    let unread = |mut result: MetadataResult| {
+        result.document_failure = Some(crate::signals::LookupFailure::Network);
+        result
+    };
+    for matches in [
+        vec![unread(result("mb-1", listing(11)))],
+        vec![
+            barcoded(result("mb-1", listing(11)), BARCODE),
+            unread(discogs("d-1", BARCODE)),
+        ],
+    ] {
+        assert_eq!(
+            VerdictSummary::of(&found(matches.clone(), 11)).judgement(),
+            (false, None),
+            "{matches:?}"
+        );
+    }
+}
+
 /// A verdict that found nothing to check the folder against is never
 /// auto-importable,
 /// and names no folder check: the lookup result is the whole story, and the

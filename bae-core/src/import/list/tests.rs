@@ -123,6 +123,7 @@ fn auto_importable_state(release_id: &str) -> CandidateStateListRow {
             pressing_count: 1,
             lead: Some(lead(release_id)),
             medium_conflict: None,
+            unread_document: false,
         }),
         metadata_provenance: Some(MetadataProvenance::ExternalRelease {
             record: crate::import::MetadataRef::new(Catalog::MusicBrainz, release_id.to_string()),
@@ -144,6 +145,7 @@ fn several_matches_state() -> CandidateStateListRow {
             pressing_count: 3,
             lead: Some(lead("mb-1")),
             medium_conflict: None,
+            unread_document: false,
         }),
         metadata_provenance: None,
         metadata_author: crate::import::MetadataAuthor::Nobody,
@@ -162,6 +164,7 @@ fn not_found_state() -> CandidateStateListRow {
             pressing_count: 0,
             lead: None,
             medium_conflict: None,
+            unread_document: false,
         }),
         metadata_provenance: None,
         metadata_author: crate::import::MetadataAuthor::Nobody,

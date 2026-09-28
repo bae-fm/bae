@@ -199,12 +199,12 @@ pub(super) async fn finish(
         context.import.withdraw_identification(key);
     }
     match done.settled {
-        Settled::Stored { auto_importable } => {
+        Settled::Stored { picked_unattended } => {
             info!(
                 "identification: stored the verdict for {}",
                 done.representative_key
             );
-            if job.admission() == Admission::Automatic && auto_importable {
+            if job.admission() == Admission::Automatic && picked_unattended {
                 import_when_identified(context, config, &done.representative_key).await;
             }
         }

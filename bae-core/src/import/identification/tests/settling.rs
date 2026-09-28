@@ -100,6 +100,11 @@ async fn an_unreadable_lead_is_stored_unsettled_without_partial_documents() {
         fixture.stored_release("mb-order-1").await.is_none(),
         "and nothing half-written is left behind"
     );
+    assert_eq!(
+        fixture.judgement_for(&dir).await,
+        (false, None),
+        "a lead not applied is not imported unattended either"
+    );
 }
 
 /// Explicitly applying a settled release whose group failed to fetch fetches
@@ -825,6 +830,59 @@ async fn the_pressing_whose_tracklist_fits_the_folder_is_offered() {
         "the one fitting pressing settles the draft"
     );
     assert_eq!(fixture.count_release_lookups("mb-fits"), 1);
+}
+
+/// A sole release listing more tracks than the folder holds is offered and
+/// not applied: the verdict stays Found with the release it found, and the
+/// failed check says why nothing was picked.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_sole_release_that_does_not_fit_the_folder_is_offered_unapplied() {
+    let fixture = Fixture::new("unfit-sole").await;
+    fixture
+        .import
+        .register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
+            barcode: PAIRED_BARCODE.to_string(),
+        }));
+    let dir = fixture.barcode_candidate("From Barcode");
+    let probed = fixture.probed_total_ms(&dir);
+    fixture.provider.route(
+        "/release/mb-long?",
+        200,
+        release_json("mb-long", "rg-long", &[probed, 0, 1_000]),
+    );
+    fixture.provider.route(
+        "/release?",
+        200,
+        barcode_search_json(&[("mb-long", "rg-long", PAIRED_BARCODE)]),
+    );
+    fixture.scan(1).await;
+
+    fixture.drain_automatic().await;
+
+    let row = fixture
+        .stored_for(&dir)
+        .await
+        .expect("the candidate stores a row");
+    let verdict = identify_result(&row).verdict.clone();
+    let TerminalVerdict::Found { findings, .. } = &verdict else {
+        panic!("a release that does not fit is still found, got {verdict:?}");
+    };
+    assert_eq!(findings.matches[0].release_id, "mb-long");
+    assert_ne!(
+        row.metadata_author,
+        crate::import::MetadataAuthor::Identification,
+        "the release is not applied"
+    );
+    assert_eq!(
+        fixture.judgement_for(&dir).await,
+        (
+            false,
+            Some(FolderCheck::TrackCountDisagrees {
+                local: 2,
+                source: 3
+            })
+        )
+    );
 }
 
 /// A settle writes the result, never what the next run asks: a disc-ID lead

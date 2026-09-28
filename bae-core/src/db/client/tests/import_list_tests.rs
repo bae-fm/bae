@@ -84,12 +84,17 @@ async fn save_verdict_with_ledger(
     release_id: &str,
     ledger: Option<crate::identify::IdentifyRunView>,
 ) {
+    store_verdict(db, candidate, verdict(release_id, ledger)).await;
+}
+
+/// Store `verdict` with settled signals and no pick.
+async fn store_verdict(db: &Database, candidate: &FolderCandidate, verdict: TerminalVerdict) {
     assert!(crate::import::CandidatePreparations::new(db.clone())
         .store_verdict(&NewImportCandidateVerdict {
             content_hash: candidate.files.content_hash(),
             file_edit_revision: 0,
             folder_path: candidate.path.to_string_lossy().into_owned(),
-            verdict: verdict(release_id, ledger),
+            verdict,
             signals: crate::signals::Signals {
                 origin: crate::signals::AudioOrigin::default(),
                 disc_id: crate::signals::DiscIdSignal::Absent,
@@ -282,6 +287,32 @@ async fn a_row_without_a_pick_leads_with_the_verdicts_lead_match() {
     assert_eq!(matched.release_id, "mb-verdict");
     assert_eq!(matched.title, "Verdict Album");
     assert_eq!(matched.artist.as_deref(), Some("Verdict Artist"));
+}
+
+/// A sole release whose document could not be read is not picked for the
+/// folder, and the stored rows the list reads say so: the row needs the
+/// person.
+#[tokio::test]
+async fn a_sole_release_with_an_unread_document_reads_back_as_needing_you() {
+    let (db, _tmp, root) = watched_root().await;
+    let candidate = scanned(&db, &root, "Album").await;
+    let mut unread = verdict("mb-verdict", None);
+    let TerminalVerdict::Found { findings, .. } = &mut unread else {
+        unreachable!("verdict builds a found verdict");
+    };
+    findings.matches[0].document_failure = Some(crate::signals::LookupFailure::Network);
+    store_verdict(&db, &candidate, unread).await;
+
+    let mut needs_you = request(TriageTab::Pending).await;
+    needs_you.view.pending_filter = Some(crate::import::PendingFilter::NeedsYou);
+    let projection = db.load_import_list(needs_you).await.unwrap();
+    assert_eq!(
+        rows(&projection)
+            .iter()
+            .map(|row| row.candidate_key.clone())
+            .collect::<Vec<_>>(),
+        vec![candidate.path.to_string_lossy().into_owned()]
+    );
 }
 
 /// A verdict whose releases the folder's files rule out reads back as the

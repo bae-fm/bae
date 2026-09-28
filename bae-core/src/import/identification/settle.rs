@@ -8,8 +8,9 @@ use super::*;
 pub(super) enum Settled {
     /// The row landed.
     Stored {
-        /// Whether automatic import may take the candidate unattended.
-        auto_importable: bool,
+        /// Whether the verdict picked its release unattended, which
+        /// automatic import takes.
+        picked_unattended: bool,
     },
     /// The write ran and refused the answer: the candidate can no longer be
     /// answered, or its files are not the ones the run read.
@@ -227,7 +228,7 @@ pub(super) async fn save(
         return Settled::Refused;
     }
     Settled::Stored {
-        auto_importable: crate::identify::VerdictSummary::of(verdict).auto_importable(),
+        picked_unattended: crate::identify::VerdictSummary::of(verdict).picks_unattended(),
     }
 }
 
@@ -251,8 +252,8 @@ fn sole_pressing(
 
 /// Settle a candidate's lead: the stored releases of the one pressing it
 /// matched, primary and partners, which the run already fetched and stored.
-/// Only a `Found` that groups into one pressing whose documents were all read
-/// has a lead.
+/// Only a verdict that picks its release unattended has a lead; any other
+/// stands as the run found it, for the person to pick from or not.
 async fn settle_lead(
     context: &Context,
     verdict: &mut TerminalVerdict,
@@ -260,22 +261,14 @@ async fn settle_lead(
     priority: CallPriority,
     token: &CancellationToken,
 ) -> Result<SettledLead, Superseded> {
+    if !crate::identify::VerdictSummary::of(verdict).picks_unattended() {
+        return Ok(SettledLead::NoExternalRelease);
+    }
     let TerminalVerdict::Found { findings, .. } = verdict else {
-        return Ok(SettledLead::NoExternalRelease);
+        unreachable!("only a found verdict picks unattended");
     };
-    // The folder's own files rule the releases out: none is applied to the
-    // draft, and the person picks from the list or does not.
-    if findings.medium_conflict.is_some() {
-        return Ok(SettledLead::NoExternalRelease);
-    }
-    let Some(pressing) = sole_pressing(findings, text) else {
-        return Ok(SettledLead::NoExternalRelease);
-    };
-    // A document the run could not read is not applied: the row stands as
-    // its search result stated it, for the person to pick or retry.
-    if pressing.document_failure().is_some() {
-        return Ok(SettledLead::NoExternalRelease);
-    }
+    let pressing = sole_pressing(findings, text)
+        .expect("a verdict that picks unattended names one pressing");
     let (primary, partners) = pressing.claims();
 
     let settle = async {

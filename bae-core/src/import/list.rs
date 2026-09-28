@@ -99,7 +99,8 @@ impl Default for ImportListView {
 pub enum PendingFilter {
     /// A catalog release is matched: the draft was read from one.
     Identified,
-    /// The lookup found several releases and none is picked yet.
+    /// The lookup found releases and none is picked yet, since the verdict
+    /// picks none unattended: several, or one that does not fit the folder.
     NeedsYou,
     /// An identification is queued, running, or writing its answer.
     Identifying,
@@ -156,7 +157,7 @@ impl PendingFilter {
             Self::NeedsYou => {
                 !identified
                     && verdict.is_some_and(|verdict| {
-                        verdict.kind == VerdictKind::Found && verdict.pressing_count > 1
+                        verdict.kind == VerdictKind::Found && !verdict.picks_unattended()
                     })
             }
             Self::LookupError => {
