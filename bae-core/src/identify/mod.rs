@@ -35,8 +35,7 @@ pub use verdict::{IdentifyFailure, TerminalVerdict};
 pub use verdict_summary::{FolderCheck, LeadMatch, VerdictKind, VerdictSummary};
 pub use view::{
     BarcodeStepView, CatalogAgreementView, CatalogCandidateView, CatalogStepView, DiscIdStepView,
-    IdentifyRunView, IdentifyStateView, LookupView, NarrowedOutView, ProviderCell, SearchStepView,
-    SignalValueRow,
+    IdentifyRunView, IdentifyStateView, LookupView, ProviderCell, SearchStepView, SignalValueRow,
 };
 
 use crate::db::{LibraryCheck, LibraryStatus};

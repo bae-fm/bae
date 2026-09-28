@@ -139,32 +139,48 @@ struct ReleaseGroupSection: View {
     var onRetryUnread: (() -> Void)?
     let onSelect: (Pressing) -> Void
 
+    /// Each section's rows as shown: the offered ones, then the ones set
+    /// aside while those show.
+    private var shownSections: [(album: BridgeAlbumHeading?, rows: [Pressing])]
+    {
+        group.sections.map { section in
+            (
+                section.album,
+                showsNarrowedOut
+                    ? section.pressings + section.narrowedOut
+                    : section.pressings
+            )
+        }
+    }
+
+    /// A card all of whose rows were set aside shows only while they do.
     var body: some View {
-        VStack(alignment: .leading, spacing: ThemeSpace.related) {
-            ReleaseGroupCard(group: group)
-            pressings
+        let sections = shownSections
+        if sections.contains(where: { !$0.rows.isEmpty }) {
+            VStack(alignment: .leading, spacing: ThemeSpace.related) {
+                ReleaseGroupCard(group: group)
+                pressings(sections)
+            }
         }
     }
 
     /// The group's pressing rows on a rule under the card, album by album,
     /// with the rows set aside after the offered ones.
-    private var pressings: some View {
+    private func pressings(
+        _ sections: [(album: BridgeAlbumHeading?, rows: [Pressing])]
+    ) -> some View {
         HStack(spacing: 0) {
             Rectangle()
                 .fill(Theme.hairline)
                 .frame(width: Self.ruleWidth)
             VStack(alignment: .leading, spacing: ThemeSpace.hairline) {
-                ForEach(Array(group.sections.enumerated()), id: \.offset) {
+                ForEach(Array(sections.enumerated()), id: \.offset) {
                     _,
                     section in
-                    let rows =
-                        showsNarrowedOut
-                        ? section.pressings + section.narrowedOut
-                        : section.pressings
-                    if let album = section.album, !rows.isEmpty {
+                    if let album = section.album, !section.rows.isEmpty {
                         AlbumSectionHeading(album: album)
                     }
-                    ForEach(rows) { pressing in
+                    ForEach(section.rows) { pressing in
                         ImportSearchResultRow(
                             pressing: pressing,
                             isImporting: isImporting,

@@ -185,15 +185,6 @@ pub enum AutomationIdentifyFailure {
     },
 }
 
-/// Mirrors `bae_core::identify::NarrowedOutView`.
-#[derive(Debug, Clone, Default, Serialize)]
-pub struct AutomationNarrowedOut {
-    /// The cards none of whose rows is offered.
-    pub groups: Vec<AutomationReleaseGroup>,
-    /// How many rows were set aside, on every card.
-    pub count: u32,
-}
-
 /// Mirrors bae-core's `identify::IdentifyStateView`.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
@@ -205,7 +196,7 @@ pub enum AutomationIdentifyState {
         groups: Vec<AutomationReleaseGroup>,
         library_statuses: Vec<AutomationLibraryStatus>,
         agreements: Vec<AutomationAgreements>,
-        narrowed_out: AutomationNarrowedOut,
+        narrowed_out_count: u32,
     },
     /// A settled state carries the run it settled as, or none when there was
     /// nothing to lay out.
@@ -215,7 +206,7 @@ pub enum AutomationIdentifyState {
         library_statuses: Vec<AutomationLibraryStatus>,
         track_count: u32,
         agreements: Vec<AutomationAgreements>,
-        narrowed_out: AutomationNarrowedOut,
+        narrowed_out_count: u32,
         catalog_agreements: Vec<AutomationCatalogAgreement>,
     },
     NotFoundAnywhere {
@@ -232,7 +223,7 @@ pub enum AutomationIdentifyState {
         groups: Vec<AutomationReleaseGroup>,
         library_statuses: Vec<AutomationLibraryStatus>,
         agreements: Vec<AutomationAgreements>,
-        narrowed_out: AutomationNarrowedOut,
+        narrowed_out_count: u32,
         catalog_agreements: Vec<AutomationCatalogAgreement>,
     },
 }

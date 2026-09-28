@@ -174,20 +174,31 @@ struct NarrowedOutDisclosureTests {
         )
     }
 
-    /// Closed, those releases are only a count; open, they are cards to pick
-    /// like any other.
-    @Test("opening it lists the releases the agreement discarded")
-    func openingItListsThem() async throws {
-        let closed = try await FindOnlineRendering.text(
-            disclosure(isExpanded: false),
-            size: Self.disclosureSize
+    /// Closed, those releases are only a count. Open, every one of them is on
+    /// its album's card above the line — the ones on a card the matches are
+    /// on and the ones on a card of their own alike — and the line offers to
+    /// put them away.
+    @Test("opening it lists every release set aside above the line")
+    func openingItListsThemAboveTheLine() async throws {
+        let setAside = ["1871-2", "AAA-001", "BBB-002"]
+        let closed = try await automaticSection(isExpanded: false)
+        #expect(closed.contains { $0.text.contains("3 more releases") })
+        #expect(
+            !closed.contains { line in
+                setAside.contains { line.text.contains($0) }
+            }
         )
-        let open = try await FindOnlineRendering.text(
-            disclosure(isExpanded: true),
-            size: Self.disclosureSize
+
+        let open = try await automaticSection(isExpanded: true)
+        let line = try #require(
+            open.first { $0.text.contains("Show fewer") }
         )
-        #expect(!closed.contains { $0.contains("Other Album Title") })
-        #expect(open.contains { $0.contains("Other Album Title") })
+        for number in setAside {
+            let row = try #require(open.first { $0.text.contains(number) })
+            // Vision measures from the bottom: above is a higher minY.
+            #expect(row.boundingBox.minY > line.boundingBox.maxY, "\(number)")
+        }
+        #expect(!open.contains { $0.text.contains("more releases") })
     }
 
     /// A row set aside of an album the matches are on shows on that album's
@@ -220,18 +231,29 @@ struct NarrowedOutDisclosureTests {
         .importPreviewEnvironment()
     }
 
-    private func disclosure(isExpanded: Bool) -> some View {
-        NarrowedOutDisclosure(
-            narrowedOut: PreviewData.searchStateNarrowedOut.narrowedOut,
-            isExpanded: .constant(isExpanded),
-            libraryStatuses: [:],
-            agreements: [:],
-            isImporting: false,
-            selectedReleaseId: nil,
-            loadingReleaseId: nil,
+    private func automaticSection(
+        isExpanded: Bool
+    ) async throws -> [SnapshotTestSupport.RecognizedLine] {
+        let size = NSSize(width: 660, height: 1_100)
+        let view = FindOnlineAutomaticSection(
+            state: PreviewData.searchStateNarrowedOut,
+            onOpenSettings: {},
+            onToggleLookup: { _ in },
+            onToggleCatalogAgreement: { _ in },
+            onRetryFailed: {},
+            onEditTitleSearch: { _, _ in },
             onSelect: { _ in },
+            onSearchManually: {},
+            narrowedOutExpanded: .constant(isExpanded)
         )
         .importPreviewEnvironment()
+        let png = try await FindOnlineRendering.withHosted(
+            view.windowBackground(),
+            size: size
+        ) { _, host in
+            try await SnapshotTestSupport.capturePNG(host, size: size)
+        }
+        return try await SnapshotTestSupport.recognizedText(in: png)
     }
 }
 
@@ -555,7 +577,7 @@ struct FindOnlineResultAreaTests {
                     groups: [],
                     libraryStatuses: [:],
                     agreements: [:],
-                    narrowedOut: .nothing
+                    narrowedOutCount: 0
                 )
             ) == .identifying
         )

@@ -28,7 +28,7 @@ struct ShownIdentifyStateTests {
                     groups: [],
                     libraryStatuses: [:],
                     agreements: [:],
-                    narrowedOut: BridgeNarrowedOut(groups: [], count: 0)
+                    narrowedOutCount: 0
                 )
             )
         )
@@ -39,7 +39,7 @@ struct ShownIdentifyStateTests {
                     groups: [],
                     libraryStatuses: [:],
                     agreements: [:],
-                    narrowedOut: .nothing
+                    narrowedOutCount: 0
                 )
         )
     }

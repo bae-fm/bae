@@ -202,7 +202,7 @@ pub(crate) fn automation_identify_state(
             groups,
             library_statuses,
             agreements,
-            narrowed_out,
+            narrowed_out_count,
         } => AutomationIdentifyState::Triangulating {
             run: AutomationIdentifyRun::from_core(run),
             groups: groups
@@ -214,7 +214,7 @@ pub(crate) fn automation_identify_state(
                 .map(AutomationLibraryStatus::from_core)
                 .collect(),
             agreements: automation_agreements(agreements),
-            narrowed_out: automation_narrowed_out(narrowed_out),
+            narrowed_out_count,
         },
         IdentifyStateView::Found {
             run,
@@ -222,7 +222,7 @@ pub(crate) fn automation_identify_state(
             library_statuses,
             track_count,
             agreements,
-            narrowed_out,
+            narrowed_out_count,
             catalog_agreements,
         } => AutomationIdentifyState::Found {
             run: run.map(AutomationIdentifyRun::from_core),
@@ -236,7 +236,7 @@ pub(crate) fn automation_identify_state(
                 .collect(),
             track_count,
             agreements: automation_agreements(agreements),
-            narrowed_out: automation_narrowed_out(narrowed_out),
+            narrowed_out_count,
             catalog_agreements: catalog_agreements
                 .into_iter()
                 .map(AutomationCatalogAgreement::from_core)
@@ -255,7 +255,7 @@ pub(crate) fn automation_identify_state(
             groups,
             library_statuses,
             agreements,
-            narrowed_out,
+            narrowed_out_count,
             catalog_agreements,
         } => AutomationIdentifyState::Failed {
             run: run.map(AutomationIdentifyRun::from_core),
@@ -272,25 +272,11 @@ pub(crate) fn automation_identify_state(
                 .map(AutomationLibraryStatus::from_core)
                 .collect(),
             agreements: automation_agreements(agreements),
-            narrowed_out: automation_narrowed_out(narrowed_out),
+            narrowed_out_count,
             catalog_agreements: catalog_agreements
                 .into_iter()
                 .map(AutomationCatalogAgreement::from_core)
                 .collect(),
         },
-    }
-}
-
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-fn automation_narrowed_out(
-    narrowed_out: bae_core::identify::NarrowedOutView,
-) -> AutomationNarrowedOut {
-    AutomationNarrowedOut {
-        groups: narrowed_out
-            .groups
-            .into_iter()
-            .map(AutomationReleaseGroup::from_core)
-            .collect(),
-        count: narrowed_out.count,
     }
 }

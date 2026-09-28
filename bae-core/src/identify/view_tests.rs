@@ -678,7 +678,8 @@ fn a_verdict_with_no_recorded_ledger_resumes_without_one() {
 // ── What agreement narrowed out ─────────────────────────────────────────────
 
 /// Rows agreement set aside stay on their album's card, badged and with a
-/// status; an album with no offered row is its own card behind the disclosure.
+/// status; an album with no offered row is a card of its own, after every card
+/// that offers one, in the same list.
 #[test]
 fn what_agreement_narrowed_out_stays_on_its_album_s_card() {
     let mut context = context();
@@ -702,16 +703,19 @@ fn what_agreement_narrowed_out_stays_on_its_album_s_card() {
         groups,
         library_statuses,
         agreements,
-        narrowed_out,
+        narrowed_out_count,
         ..
     } = IdentifyStateView::from(crate::identify::state::re_derive_for_tests(context))
     else {
         panic!("the signals agree on one release");
     };
     assert_eq!(
-        groups.len(),
-        1,
-        "the album is one card across the disclosure"
+        groups
+            .iter()
+            .map(|group| group.id.as_str())
+            .collect::<Vec<_>>(),
+        vec!["g", "g-other"],
+        "each album is one card across the disclosure, the offering one first"
     );
     assert_eq!(groups[0].sections.len(), 1);
     let rows = |pressings: &[crate::import::release_group::Pressing]| -> Vec<String> {
@@ -722,14 +726,9 @@ fn what_agreement_narrowed_out_stays_on_its_album_s_card() {
     };
     assert_eq!(rows(&groups[0].sections[0].pressings), vec!["mb-shared"]);
     assert_eq!(rows(&groups[0].sections[0].narrowed_out), vec!["mb-only"]);
-    assert_eq!(narrowed_out.count, 2);
-    assert_eq!(narrowed_out.groups.len(), 1);
-    assert_eq!(narrowed_out.groups[0].id, "g-other");
-    assert_eq!(narrowed_out.groups[0].pressings().count(), 0);
-    assert_eq!(
-        rows(&narrowed_out.groups[0].sections[0].narrowed_out),
-        vec!["mb-other"]
-    );
+    assert_eq!(narrowed_out_count, 2);
+    assert_eq!(groups[1].pressings().count(), 0);
+    assert_eq!(rows(&groups[1].sections[0].narrowed_out), vec!["mb-other"]);
     assert_eq!(
         library_statuses
             .iter()
@@ -760,7 +759,7 @@ fn the_disc_id_s_release_outranks_a_barcode_that_named_another() {
 
     let IdentifyStateView::Found {
         groups,
-        narrowed_out,
+        narrowed_out_count,
         ..
     } = IdentifyStateView::from(crate::identify::state::re_derive_for_tests(context))
     else {
@@ -768,5 +767,5 @@ fn the_disc_id_s_release_outranks_a_barcode_that_named_another() {
     };
     assert_eq!(groups[0].pressings().count(), 1);
     assert_eq!(groups[0].narrowed_out().count(), 1);
-    assert_eq!(narrowed_out.count, 1);
+    assert_eq!(narrowed_out_count, 1);
 }

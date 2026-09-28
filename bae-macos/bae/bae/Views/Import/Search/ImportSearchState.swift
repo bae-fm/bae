@@ -30,9 +30,9 @@ struct ImportSearchState {
         identifyState.run
     }
 
-    /// The album cards identification is offering. A run still going offers
-    /// what has landed so far; a failed run still carries whatever the
-    /// surviving source found.
+    /// The album cards identification is offering, then the cards all of whose
+    /// rows agreement set aside. A run still going offers what has landed so
+    /// far; a failed run still carries whatever the surviving source found.
     var identifiedGroups: [ReleaseGroup] {
         switch identifyState {
         case .found(_, let groups, _, _, _, _, _): groups
@@ -42,10 +42,10 @@ struct ImportSearchState {
         }
     }
 
-    /// The releases the signals' agreement left out of the offered ones —
-    /// what the AUTOMATIC section offers behind its disclosure.
-    var narrowedOut: NarrowedOut {
-        identifyState.narrowedOut
+    /// How many rows the signals' agreement left out of the offered ones —
+    /// what the AUTOMATIC section's disclosure counts.
+    var narrowedOutCount: UInt32 {
+        identifyState.narrowedOutCount
     }
 
     /// What the candidate's own text agrees with about each offered pressing,

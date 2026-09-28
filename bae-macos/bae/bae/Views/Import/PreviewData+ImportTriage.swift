@@ -104,7 +104,7 @@
                 libraryStatuses: [:],
                 trackCount: 12,
                 agreements: searchAgreementsExact,
-                narrowedOut: .nothing,
+                narrowedOutCount: 0,
                 catalogAgreements: catalogAgreements
             )
         )
@@ -153,7 +153,7 @@
                 libraryStatuses: [:],
                 trackCount: 1,
                 agreements: [:],
-                narrowedOut: .nothing,
+                narrowedOutCount: 0,
                 catalogAgreements: []
             )
         )
@@ -180,7 +180,7 @@
                 ],
                 trackCount: 14,
                 agreements: searchAgreementsExact,
-                narrowedOut: .nothing,
+                narrowedOutCount: 0,
                 catalogAgreements: catalogAgreements
             )
         )
@@ -254,7 +254,7 @@
                 libraryStatuses: [:],
                 trackCount: 9,
                 agreements: searchAgreementsExact,
-                narrowedOut: .nothing,
+                narrowedOutCount: 0,
                 catalogAgreements: catalogAgreements
             )
         )
@@ -269,7 +269,7 @@
                     libraryStatuses: [:],
                     trackCount: 9,
                     agreements: searchAgreementsExact,
-                    narrowedOut: .nothing,
+                    narrowedOutCount: 0,
                     catalogAgreements: catalogAgreements
                 )
             )

@@ -457,7 +457,7 @@ impl BridgeIdentifyState {
                 groups,
                 library_statuses,
                 agreements,
-                narrowed_out,
+                narrowed_out_count,
             } => BridgeIdentifyState::Triangulating {
                 run: BridgeIdentifyRun::from_core(run, rate),
                 groups: groups
@@ -469,7 +469,7 @@ impl BridgeIdentifyState {
                     .into_iter()
                     .map(|(release_id, a)| (release_id, BridgeAgreements::from_core(a)))
                     .collect(),
-                narrowed_out: BridgeNarrowedOut::from_core(narrowed_out),
+                narrowed_out_count,
             },
             IdentifyStateView::Found {
                 run,
@@ -477,7 +477,7 @@ impl BridgeIdentifyState {
                 library_statuses,
                 track_count,
                 agreements,
-                narrowed_out,
+                narrowed_out_count,
                 catalog_agreements,
             } => BridgeIdentifyState::Found {
                 run: run.map(|run| BridgeIdentifyRun::from_core(run, rate)),
@@ -491,7 +491,7 @@ impl BridgeIdentifyState {
                     .into_iter()
                     .map(|(release_id, a)| (release_id, BridgeAgreements::from_core(a)))
                     .collect(),
-                narrowed_out: BridgeNarrowedOut::from_core(narrowed_out),
+                narrowed_out_count,
                 catalog_agreements: catalog_agreements
                     .into_iter()
                     .map(BridgeCatalogAgreement::from_core)
@@ -510,7 +510,7 @@ impl BridgeIdentifyState {
                 groups,
                 library_statuses,
                 agreements,
-                narrowed_out,
+                narrowed_out_count,
                 catalog_agreements,
             } => BridgeIdentifyState::Failed {
                 run: run.map(|run| BridgeIdentifyRun::from_core(run, rate)),
@@ -524,7 +524,7 @@ impl BridgeIdentifyState {
                     .into_iter()
                     .map(|(release_id, a)| (release_id, BridgeAgreements::from_core(a)))
                     .collect(),
-                narrowed_out: BridgeNarrowedOut::from_core(narrowed_out),
+                narrowed_out_count,
                 catalog_agreements: catalog_agreements
                     .into_iter()
                     .map(BridgeCatalogAgreement::from_core)
@@ -532,12 +532,6 @@ impl BridgeIdentifyState {
             },
         }
     }
-}
-
-mirror_struct! {
-    BridgeNarrowedOut = bae_core::identify::NarrowedOutView,
-    from_core: fn,
-    fields: { groups: (each BridgeReleaseGroup), count },
 }
 
 fn identify_failure(

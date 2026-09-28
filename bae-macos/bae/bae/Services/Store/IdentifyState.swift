@@ -9,36 +9,15 @@ import Foundation
 /// beside the matches. It carries none when extraction handed the run nothing
 /// to lay out: a folder with no disc ID, no barcode source and no catalog
 /// number, or a verdict stood back up from the store.
-/// The rows agreement left out of the matches — real answers a lookup
-/// returned that the intersection discarded, and the ones the folder's own
-/// text says nothing about. Offered behind a disclosure rather than dropped.
-/// A card the matches are on carries its own rows set aside; only an album
-/// none of whose rows is offered is a card here. Their statuses and badges
-/// are in the state's own maps. Empty when nothing was narrowed.
-struct NarrowedOut: Equatable {
-    /// The cards none of whose rows is offered.
-    var groups: [ReleaseGroup]
-    /// How many rows are behind the disclosure, on every card — pressings,
-    /// not cards: two sources' records of one pressing are one release to
-    /// pick.
-    var count: UInt32
-}
-
-extension NarrowedOut {
-    /// Nothing was narrowed out — what a state carries when one signal
-    /// answered alone and the folder's text stands behind every answer.
-    static let nothing = NarrowedOut(groups: [], count: 0)
-
-    init(bridge: BridgeNarrowedOut) {
-        self.init(
-            groups: bridge.groups.map(ReleaseGroup.init(bridge:)),
-            count: bridge.count
-        )
-    }
-
-    var isEmpty: Bool { count == 0 }
-}
-
+///
+/// A state's `groups` are every card its answers make. The rows agreement left
+/// out — real answers a lookup returned that the intersection discarded, and
+/// the ones the folder's own text says nothing about — sit on their album's
+/// card as its sections' `narrowedOut`, offered behind a disclosure rather
+/// than dropped; a card all of whose rows were left out comes after every
+/// card that offers one. `narrowedOutCount` is how many rows are behind the
+/// disclosure, on every card — pressings, not cards: two sources' records of
+/// one pressing are one release to pick.
 enum IdentifyState: Equatable {
     case idle
     /// Lookups in flight, laid out as the run's ledger — one row per value
@@ -50,7 +29,7 @@ enum IdentifyState: Equatable {
         groups: [ReleaseGroup],
         libraryStatuses: [String: BridgeLibraryStatus],
         agreements: [String: BridgeAgreements],
-        narrowedOut: NarrowedOut,
+        narrowedOutCount: UInt32,
     )
     /// The matches as group cards, ranked — most agreed with first, rendered
     /// in the order they arrive. Usually one card; signals that named
@@ -64,7 +43,7 @@ enum IdentifyState: Equatable {
         /// What the candidate's own text agrees with about each pressing,
         /// keyed by release id — the per-row badges, and what ordered the rows.
         agreements: [String: BridgeAgreements],
-        narrowedOut: NarrowedOut,
+        narrowedOutCount: UInt32,
         /// The catalog numbers the folder states about the offered releases —
         /// the Catalog # row's chips. Striking one out re-ranks the list with
         /// nothing asked again.
@@ -86,7 +65,7 @@ enum IdentifyState: Equatable {
         groups: [ReleaseGroup],
         libraryStatuses: [String: BridgeLibraryStatus],
         agreements: [String: BridgeAgreements],
-        narrowedOut: NarrowedOut,
+        narrowedOutCount: UInt32,
         catalogAgreements: [BridgeCatalogAgreement],
     )
 
@@ -98,14 +77,14 @@ enum IdentifyState: Equatable {
             let groups,
             let libraryStatuses,
             let agreements,
-            let narrowedOut
+            let narrowedOutCount
         ):
             self = .triangulating(
                 run: run,
                 groups: groups.map(ReleaseGroup.init(bridge:)),
                 libraryStatuses: libraryStatuses,
                 agreements: agreements,
-                narrowedOut: NarrowedOut(bridge: narrowedOut),
+                narrowedOutCount: narrowedOutCount,
             )
         case .found(
             let run,
@@ -113,7 +92,7 @@ enum IdentifyState: Equatable {
             let libraryStatuses,
             let trackCount,
             let agreements,
-            let narrowedOut,
+            let narrowedOutCount,
             let catalogAgreements
         ):
             self = .found(
@@ -122,7 +101,7 @@ enum IdentifyState: Equatable {
                 libraryStatuses: libraryStatuses,
                 trackCount: trackCount,
                 agreements: agreements,
-                narrowedOut: NarrowedOut(bridge: narrowedOut),
+                narrowedOutCount: narrowedOutCount,
                 catalogAgreements: catalogAgreements,
             )
         case .notFoundAnywhere(let run): self = .notFoundAnywhere(run: run)
@@ -134,7 +113,7 @@ enum IdentifyState: Equatable {
             let groups,
             let libraryStatuses,
             let agreements,
-            let narrowedOut,
+            let narrowedOutCount,
             let catalogAgreements
         ):
             self = .failed(
@@ -143,7 +122,7 @@ enum IdentifyState: Equatable {
                 groups: groups.map(ReleaseGroup.init(bridge:)),
                 libraryStatuses: libraryStatuses,
                 agreements: agreements,
-                narrowedOut: NarrowedOut(bridge: narrowedOut),
+                narrowedOutCount: narrowedOutCount,
                 catalogAgreements: catalogAgreements,
             )
         }
@@ -160,14 +139,14 @@ enum IdentifyState: Equatable {
         }
     }
 
-    /// The releases the signals' agreement left out of the matches — what the
-    /// pane offers behind its disclosure.
-    var narrowedOut: NarrowedOut {
+    /// How many rows the signals' agreement left out of the matches — what
+    /// the pane's disclosure counts.
+    var narrowedOutCount: UInt32 {
         switch self {
-        case .found(_, _, _, _, _, let narrowedOut, _): narrowedOut
-        case .failed(_, _, _, _, _, let narrowedOut, _): narrowedOut
-        case .triangulating(_, _, _, _, let narrowedOut): narrowedOut
-        case .idle, .notFoundAnywhere, .manualOnly: .nothing
+        case .found(_, _, _, _, _, let count, _): count
+        case .failed(_, _, _, _, _, let count, _): count
+        case .triangulating(_, _, _, _, let count): count
+        case .idle, .notFoundAnywhere, .manualOnly: 0
         }
     }
 

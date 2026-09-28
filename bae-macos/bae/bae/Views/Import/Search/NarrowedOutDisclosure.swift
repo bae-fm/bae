@@ -1,57 +1,34 @@
 import BaeKit
 import SwiftUI
 
-/// The releases agreement left out, closed behind a line that says how many;
-/// each was a real answer and can still be picked.
+/// The line closing a list whose agreement set rows aside: closed, it counts
+/// them; open, every one of them is on its album's card above it, and it
+/// offers to put them away again.
 struct NarrowedOutDisclosure: View {
-    let narrowedOut: NarrowedOut
+    let count: UInt32
     @Binding
     var isExpanded: Bool
-    /// Library status and badges per release, keyed by release id.
-    let libraryStatuses: [String: BridgeLibraryStatus]
-    let agreements: [String: BridgeAgreements]
-    let isImporting: Bool
-    let selectedReleaseId: String?
-    let loadingReleaseId: String?
-    var releaseSelectionFailure: ReleaseSelectionFailure?
-    /// Identify the candidate again, reading once more the documents a run
-    /// could not; `nil` where no run read any, as for a typed search.
-    var onRetryUnread: (() -> Void)?
-    let onSelect: (Pressing) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: ThemeSpace.group) {
-            Button {
-                isExpanded.toggle()
-            } label: {
-                HStack(spacing: ThemeSpace.inline) {
-                    Image(systemName: "chevron.right")
-                        .themeIcon(.small)
-                        .rotationEffect(.degrees(isExpanded ? 90 : 0))
-                    Text("\(Int(narrowedOut.count)) more releases")
+        Button {
+            isExpanded = !isExpanded
+        } label: {
+            HStack(spacing: ThemeSpace.inline) {
+                Image(systemName: "chevron.right")
+                    .themeIcon(.small)
+                    .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                if isExpanded {
+                    Text("Show fewer")
                 }
-                .themeText(.body)
-                .foregroundStyle(.secondary)
-                .contentShape(.rect)
-            }
-            .buttonStyle(.plain)
-            if isExpanded {
-                ForEach(narrowedOut.groups) { group in
-                    ReleaseGroupSection(
-                        group: group,
-                        showsNarrowedOut: true,
-                        isImporting: isImporting,
-                        libraryStatuses: libraryStatuses,
-                        agreements: agreements,
-                        selectedReleaseId: selectedReleaseId,
-                        loadingReleaseId: loadingReleaseId,
-                        releaseSelectionFailure: releaseSelectionFailure,
-                        onRetryUnread: onRetryUnread,
-                        onSelect: onSelect,
-                    )
+                else {
+                    Text("\(Int(count)) more releases")
                 }
             }
+            .themeText(.body)
+            .foregroundStyle(.secondary)
+            .contentShape(.rect)
         }
+        .buttonStyle(.plain)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

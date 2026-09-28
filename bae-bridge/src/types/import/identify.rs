@@ -310,18 +310,14 @@ pub struct BridgeAgreements {
     pub country: bool,
 }
 
-/// The rows agreement set aside, offered behind the list's "more"
-/// disclosure. Mirrors `bae_core::identify::NarrowedOutView`.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeNarrowedOut {
-    /// The cards none of whose rows is offered.
-    pub groups: Vec<BridgeReleaseGroup>,
-    /// How many rows were set aside, on every card.
-    pub count: u32,
-}
-
 /// One candidate's identify state. A settled state carries the run it settled
 /// as, or none when there was nothing to lay out.
+///
+/// `groups` are every card, ranked: the rows agreement set aside sit on their
+/// album's card as its sections' `narrowed_out`, and the cards all of whose
+/// rows were set aside come after every card that offers one.
+/// `narrowed_out_count` is how many rows were set aside across every card —
+/// what the list's "more" disclosure counts.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeIdentifyState {
     Idle,
@@ -332,7 +328,7 @@ pub enum BridgeIdentifyState {
         groups: Vec<BridgeReleaseGroup>,
         library_statuses: std::collections::HashMap<String, BridgeLibraryStatus>,
         agreements: std::collections::HashMap<String, BridgeAgreements>,
-        narrowed_out: BridgeNarrowedOut,
+        narrowed_out_count: u32,
     },
     Found {
         run: Option<BridgeIdentifyRun>,
@@ -343,7 +339,7 @@ pub enum BridgeIdentifyState {
         track_count: u32,
         /// Agreements per release, offered or set aside, by release id.
         agreements: std::collections::HashMap<String, BridgeAgreements>,
-        narrowed_out: BridgeNarrowedOut,
+        narrowed_out_count: u32,
         /// The Catalog # row's chips.
         catalog_agreements: Vec<BridgeCatalogAgreement>,
     },
@@ -370,7 +366,7 @@ pub enum BridgeIdentifyState {
         groups: Vec<BridgeReleaseGroup>,
         library_statuses: std::collections::HashMap<String, BridgeLibraryStatus>,
         agreements: std::collections::HashMap<String, BridgeAgreements>,
-        narrowed_out: BridgeNarrowedOut,
+        narrowed_out_count: u32,
         catalog_agreements: Vec<BridgeCatalogAgreement>,
     },
 }

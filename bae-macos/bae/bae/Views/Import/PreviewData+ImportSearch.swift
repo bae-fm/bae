@@ -585,7 +585,7 @@
                 groups: [searchGroupExact],
                 libraryStatuses: [:],
                 agreements: searchAgreementsExact,
-                narrowedOut: .nothing
+                narrowedOutCount: 0
             ),
             signals: settledSignals
         )
@@ -598,7 +598,7 @@
                 libraryStatuses: [:],
                 trackCount: 11,
                 agreements: searchAgreementsExact,
-                narrowedOut: .nothing,
+                narrowedOutCount: 0,
                 catalogAgreements: catalogAgreements
             ),
             signals: settledSignals
@@ -635,18 +635,16 @@
         static let searchStateNarrowedOut = searchState(
             identifyState: .found(
                 run: identifyRunFound,
-                groups: [searchGroupExactWithSetAside],
+                groups: [searchGroupExactWithSetAside]
+                    + [discidOnlyGroup, barcodeOnlyGroup]
+                    .map(setAside)
+                    .map(ReleaseGroup.init(bridge:)),
                 libraryStatuses: [:],
                 trackCount: 11,
                 agreements: searchAgreementsExact.merging(
                     disagreementAgreements
                 ) { offered, _ in offered },
-                narrowedOut: NarrowedOut(
-                    groups: [discidOnlyGroup, barcodeOnlyGroup]
-                        .map(setAside)
-                        .map(ReleaseGroup.init(bridge:)),
-                    count: 3
-                ),
+                narrowedOutCount: 3,
                 catalogAgreements: catalogAgreements
             ),
             signals: settledSignals
@@ -664,7 +662,7 @@
             libraryStatuses: [:],
             trackCount: 11,
             agreements: disagreementAgreements,
-            narrowedOut: BridgeNarrowedOut(groups: [], count: 0),
+            narrowedOutCount: 0,
             catalogAgreements: catalogAgreements
         )
 
@@ -699,7 +697,7 @@
                 groups: [searchGroupExact],
                 libraryStatuses: [:],
                 agreements: searchAgreementsExact,
-                narrowedOut: .nothing,
+                narrowedOutCount: 0,
                 catalogAgreements: catalogAgreements
             )
         )
@@ -736,7 +734,7 @@
                 groups: [],
                 libraryStatuses: [:],
                 agreements: [:],
-                narrowedOut: .nothing,
+                narrowedOutCount: 0,
                 catalogAgreements: []
             )
         )
@@ -752,7 +750,7 @@
                 groups: [],
                 libraryStatuses: [:],
                 agreements: [:],
-                narrowedOut: .nothing,
+                narrowedOutCount: 0,
                 catalogAgreements: []
             )
         )
@@ -785,7 +783,7 @@
                 libraryStatuses: [:],
                 trackCount: 11,
                 agreements: searchAgreementsExact,
-                narrowedOut: .nothing,
+                narrowedOutCount: 0,
                 catalogAgreements: catalogAgreements
             ),
             signals: settledSignals,
@@ -800,7 +798,7 @@
                 libraryStatuses: [:],
                 trackCount: 11,
                 agreements: searchAgreementsExact,
-                narrowedOut: .nothing,
+                narrowedOutCount: 0,
                 catalogAgreements: catalogAgreements
             ),
             search: searchRunInFlight,
@@ -815,7 +813,7 @@
                 libraryStatuses: [:],
                 trackCount: 11,
                 agreements: searchAgreementsExact,
-                narrowedOut: .nothing,
+                narrowedOutCount: 0,
                 catalogAgreements: catalogAgreements
             ),
             search: manualSearchRun,
@@ -830,7 +828,7 @@
                 libraryStatuses: [:],
                 trackCount: 11,
                 agreements: searchAgreementsExact,
-                narrowedOut: .nothing,
+                narrowedOutCount: 0,
                 catalogAgreements: catalogAgreements
             ),
             search: searchRunSourceFailed,
@@ -845,7 +843,7 @@
                 libraryStatuses: [:],
                 trackCount: 11,
                 agreements: searchAgreementsExact,
-                narrowedOut: .nothing,
+                narrowedOutCount: 0,
                 catalogAgreements: catalogAgreements
             ),
             search: searchRunEmpty,

@@ -171,25 +171,15 @@ pub struct IdentifyRunView {
     pub search: SearchStepView,
 }
 
-/// The rows agreement set aside, offered behind a "more" disclosure. A card
-/// with offered rows carries its own set-aside rows; only cards with none
-/// offered are here.
-#[derive(Debug, Clone, Default, PartialEq)]
-pub struct NarrowedOutView {
-    pub groups: Vec<ReleaseGroup>,
-    /// How many rows were set aside across every card.
-    pub count: u32,
-}
-
-impl NarrowedOutView {
-    pub fn is_empty(&self) -> bool {
-        self.count == 0
-    }
-}
-
 /// One candidate's identify state as a surface renders it. A settled state
 /// carries the ledger its run recorded, or none when there was nothing to lay
 /// out.
+///
+/// Its `groups` are every card the answers make, the rows agreement set aside
+/// on their album's card beside the offered ones: the cards that offer a row
+/// first, then the cards whose rows were all set aside. `narrowed_out_count`
+/// is how many rows were set aside across every card — what a surface's
+/// "more" disclosure counts.
 #[derive(Debug, Clone, PartialEq)]
 pub enum IdentifyStateView {
     Idle,
@@ -200,7 +190,7 @@ pub enum IdentifyStateView {
         groups: Vec<ReleaseGroup>,
         library_statuses: Vec<LibraryStatus>,
         agreements: Vec<(String, Agreements)>,
-        narrowed_out: NarrowedOutView,
+        narrowed_out_count: u32,
     },
 
     /// The matches, one card per release group.
@@ -212,7 +202,7 @@ pub enum IdentifyStateView {
         track_count: u32,
         /// Each row's badges, keyed by release id.
         agreements: Vec<(String, Agreements)>,
-        narrowed_out: NarrowedOutView,
+        narrowed_out_count: u32,
         /// The Catalog # row's chips.
         catalog_agreements: Vec<CatalogAgreementView>,
     },
@@ -234,7 +224,7 @@ pub enum IdentifyStateView {
         groups: Vec<ReleaseGroup>,
         library_statuses: Vec<LibraryStatus>,
         agreements: Vec<(String, Agreements)>,
-        narrowed_out: NarrowedOutView,
+        narrowed_out_count: u32,
         /// The Catalog # row's chips.
         catalog_agreements: Vec<CatalogAgreementView>,
     },
@@ -260,7 +250,7 @@ impl From<IdentifyState> for IdentifyStateView {
                     groups: folded.groups,
                     library_statuses: folded.library_statuses,
                     agreements: folded.agreements,
-                    narrowed_out: folded.narrowed_out,
+                    narrowed_out_count: folded.narrowed_out_count,
                 }
             }
 
@@ -279,7 +269,7 @@ impl From<IdentifyState> for IdentifyStateView {
                     library_statuses: folded.library_statuses,
                     track_count,
                     agreements: folded.agreements,
-                    narrowed_out: folded.narrowed_out,
+                    narrowed_out_count: folded.narrowed_out_count,
                     catalog_agreements,
                 }
             }
@@ -313,7 +303,7 @@ impl From<IdentifyState> for IdentifyStateView {
                     groups: folded.groups,
                     library_statuses: folded.library_statuses,
                     agreements: folded.agreements,
-                    narrowed_out: folded.narrowed_out,
+                    narrowed_out_count: folded.narrowed_out_count,
                     catalog_agreements,
                 }
             }
@@ -347,7 +337,7 @@ struct Folded {
     groups: Vec<ReleaseGroup>,
     library_statuses: Vec<LibraryStatus>,
     agreements: Vec<(String, Agreements)>,
-    narrowed_out: NarrowedOutView,
+    narrowed_out_count: u32,
 }
 
 /// Judge the offered and set-aside releases against the candidate's text and
@@ -384,25 +374,19 @@ fn fold(findings: Findings, library_statuses: LibraryStatuses, text: &CandidateT
                 .map(move |release| (release.release_id.clone(), agreements))
         })
         .collect();
-    let count = cards
+    let narrowed_out_count = cards
         .iter()
         .map(|group| group.narrowed_out().count() as u32)
         .sum();
-    let (groups, set_aside_cards): (Vec<ReleaseGroup>, Vec<ReleaseGroup>) = cards
-        .into_iter()
-        .partition(|group| group.pressings().next().is_some());
     Folded {
-        groups,
+        groups: cards,
         library_statuses: library_statuses
             .matches
             .into_iter()
             .chain(library_statuses.narrowed_out)
             .collect(),
         agreements,
-        narrowed_out: NarrowedOutView {
-            groups: set_aside_cards,
-            count,
-        },
+        narrowed_out_count,
     }
 }
 

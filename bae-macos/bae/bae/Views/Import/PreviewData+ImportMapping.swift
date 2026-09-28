@@ -577,7 +577,7 @@
                 libraryStatuses: [:],
                 trackCount: 12,
                 agreements: searchAgreementsExact,
-                narrowedOut: .nothing,
+                narrowedOutCount: 0,
                 catalogAgreements: catalogAgreements
             )
             return candidate

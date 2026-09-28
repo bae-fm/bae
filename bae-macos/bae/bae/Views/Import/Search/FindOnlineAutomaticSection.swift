@@ -128,22 +128,15 @@ struct FindOnlineAutomaticSection: View {
         }
     }
 
-    /// What the signals agreed away, under the matches and above what the
-    /// list says about itself. Nothing narrowed, nothing to disclose.
+    /// Whether the rows the signals agreed away show on their cards, under
+    /// every card and above what the list says about itself. Nothing narrowed,
+    /// nothing to disclose.
     @ViewBuilder
     private var narrowedOut: some View {
-        if !state.narrowedOut.isEmpty {
+        if state.narrowedOutCount > 0 {
             NarrowedOutDisclosure(
-                narrowedOut: state.narrowedOut,
-                isExpanded: $narrowedOutExpanded,
-                libraryStatuses: state.libraryStatuses,
-                agreements: state.identifiedAgreements,
-                isImporting: state.isImporting,
-                selectedReleaseId: state.selectedReleaseId,
-                loadingReleaseId: state.loadingReleaseId,
-                releaseSelectionFailure: state.releaseSelectionFailure,
-                onRetryUnread: onRetryFailed,
-                onSelect: onSelect,
+                count: state.narrowedOutCount,
+                isExpanded: $narrowedOutExpanded
             )
         }
     }
