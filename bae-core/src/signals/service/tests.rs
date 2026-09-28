@@ -8,6 +8,7 @@ use std::sync::Arc;
 use std::sync::Mutex as StdMutex;
 use std::time::Duration;
 use tempfile::TempDir;
+use crate::import::ScanEvent;
 use tokio::sync::mpsc::UnboundedReceiver;
 
 mod aborts;
@@ -168,6 +169,9 @@ async fn make_library_manager() -> (crate::library::LibraryManager, TempDir) {
     (manager, tmp)
 }
 
+/// How far behind a reader of [`make_service`]'s bus may fall.
+const BUS_CAPACITY: usize = 64;
+
 /// Start a service; the bus sender comes back so a test can inject events.
 async fn make_service() -> (
     ExtractionServiceHandle,
@@ -175,7 +179,7 @@ async fn make_service() -> (
     UnboundedReceiver<ImportEvent>,
     TempDir,
 ) {
-    let tx = ImportEventBus::new(64, crate::import::CandidateRuntime::default());
+    let tx = ImportEventBus::new(BUS_CAPACITY, crate::import::CandidateRuntime::default());
     let rx = tx.every_event();
     let (library_manager, lib_tmp) = make_library_manager().await;
     let handle = ExtractionService::start(

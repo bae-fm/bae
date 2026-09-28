@@ -17,7 +17,7 @@ use super::fast_pass::{gather_non_ocr_sources, ArtworkImage, FastPass};
 use super::pool::Pool;
 use super::release::{resolve_release_artwork_paths, resolve_release_identity};
 use crate::identify::IdentifyRunId;
-use crate::import::{ImportEvent, ImportEventBus, ScanEvent};
+use crate::import::{ImportEvent, ImportEventBus};
 use crate::library::LibraryManager;
 use crate::signals::{
     AudioFacts,
@@ -29,9 +29,9 @@ use crate::util::session_cache::SessionCache;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use tokio::runtime::Handle;
-use tokio::sync::{broadcast, watch};
+use tokio::sync::watch;
 use tokio_util::sync::CancellationToken;
-use tracing::{debug, error, warn};
+use tracing::{debug, error};
 
 /// Where a candidate's signals come from: a folder on disk, or an existing
 /// library release being re-identified.
@@ -75,8 +75,8 @@ struct ExtractionServiceInner {
     /// Each folder's settled snapshot this session, so a later run over the
     /// same files does not read every image again.
     settled: SessionCache<SignalsSnapshot>,
-    /// Per-candidate cancellation; a removed or rebound candidate is cancelled
-    /// by the bus listener `ExtractionService::start` spawns.
+    /// Per-candidate cancellation; the bus cancels a removed or rebound
+    /// candidate's extraction in the send that says so.
     cancellation: CancellationRegistry,
 }
 
@@ -126,31 +126,10 @@ impl ExtractionService {
             cancellation: CancellationRegistry::default(),
         });
 
-        // Subscribed before any extraction can start, so no removal is missed.
-        let mut removal_rx = inner.event_tx.subscribe();
-        let removal_inner = inner.clone();
-        inner.runtime_handle.spawn(async move {
-            loop {
-                match removal_rx.recv().await {
-                    Ok(ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key })) => {
-                        removal_inner.cancellation.cancel(&candidate_key);
-                    }
-                    Ok(ImportEvent::Scan(ScanEvent::CandidateBindingChanged { candidate })) => {
-                        removal_inner
-                            .cancellation
-                            .cancel(candidate.path.to_string_lossy().as_ref());
-                    }
-                    Ok(_) => {}
-                    Err(broadcast::error::RecvError::Lagged(n)) => {
-                        warn!("signals: candidate-removal listener lagged by {n} import events; an extraction for a removed candidate may run to completion");
-                        removal_inner.library_manager.record_telemetry(
-                            crate::diagnostics::TelemetryEvent::Anomaly {
-                                kind: crate::diagnostics::AnomalyKind::EventBusLagged,
-                            },
-                        );
-                    }
-                    Err(broadcast::error::RecvError::Closed) => break,
-                }
+        let ending = Arc::downgrade(&inner);
+        inner.event_tx.on_candidate_ended(move |key| {
+            if let Some(inner) = ending.upgrade() {
+                inner.cancellation.cancel(key);
             }
         });
 

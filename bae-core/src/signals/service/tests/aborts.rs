@@ -6,7 +6,6 @@ use crate::test_logs::capture_warn_logs;
 
 #[tokio::test(flavor = "multi_thread")]
 async fn emit_signals_warns_when_broadcast_has_no_subscribers() {
-    // Built directly: a started service always holds its own receiver.
     let tx = ImportEventBus::new(64, crate::import::CandidateRuntime::default());
     let (library_manager, _lib_tmp) = make_library_manager().await;
     let inner = ExtractionServiceInner {

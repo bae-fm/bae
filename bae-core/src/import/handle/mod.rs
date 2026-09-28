@@ -40,11 +40,16 @@ mod tests;
 pub struct ImportEventBus {
     delivery: EventDelivery,
     runtime: CandidateRuntime,
+    /// What ends a candidate's in-flight work, run inside the send that says
+    /// the candidate was removed or rebound.
+    candidate_endings: Arc<std::sync::Mutex<Vec<CandidateEnding>>>,
     /// Stops the thread sending one chosen progress event until a test lets
     /// it through, so the test can act partway through an import.
     #[cfg(test)]
     progress_hold: Arc<ProgressHold>,
 }
+
+type CandidateEnding = Arc<dyn Fn(&str) + Send + Sync>;
 
 /// Where [`ImportEventBus::hold_progress_at`] stops a sender.
 #[cfg(test)]
@@ -131,17 +136,31 @@ impl ImportEventBus {
         Self {
             delivery,
             runtime,
+            candidate_endings: Arc::default(),
             #[cfg(test)]
             progress_hold: Arc::default(),
         }
     }
 
-    /// Record `event` in the runtime, then broadcast it. The bus lives as long
-    /// as the app, so having no subscriber is worth a warning.
+    /// Run `end` with the key of every candidate removed or rebound, inside
+    /// the send that says so, before any reader hears it.
+    pub(crate) fn on_candidate_ended(&self, end: impl Fn(&str) + Send + Sync + 'static) {
+        self.candidate_endings.lock().unwrap().push(Arc::new(end));
+    }
+
+    /// Record `event` in the runtime, end the work of a candidate it removes
+    /// or rebinds, then broadcast it. The bus lives as long as the app, so
+    /// having no subscriber is worth a warning.
     pub fn send(&self, event: ImportEvent) {
         #[cfg(test)]
         self.wait_if_held(&event);
         self.runtime.record_event(&event);
+        if let Some(key) = event.ended_candidate() {
+            let endings = self.candidate_endings.lock().unwrap().clone();
+            for end in endings {
+                end(&key);
+            }
+        }
         if !self.delivery.deliver(event) {
             warn!("import event broadcast had no subscribers");
         }
@@ -288,6 +307,22 @@ pub enum ImportEvent {
     },
 }
 
+impl ImportEvent {
+    /// The key of the candidate whose in-flight work this event ends: one
+    /// removed, or one whose sheet binding changed and so is another disc.
+    fn ended_candidate(&self) -> Option<String> {
+        match self {
+            ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key }) => {
+                Some(candidate_key.clone())
+            }
+            ImportEvent::Scan(ScanEvent::CandidateBindingChanged { candidate }) => {
+                Some(candidate.key())
+            }
+            _ => None,
+        }
+    }
+}
+
 /// Search results grouped by release group, with the per-release library dupe
 /// statuses the UI looks up by release id.
 #[derive(Debug, Clone)]
@@ -363,8 +398,7 @@ pub enum ScanEvent {
     /// its folder path.
     InvalidCandidate(InvalidCandidate),
     /// A candidate is gone: a rescan no longer finds it, or its watched folder
-    /// was removed (one event per candidate). The extraction service cancels
-    /// the key's running extraction on this event.
+    /// was removed (one event per candidate).
     CandidateRemoved {
         candidate_key: String,
     },

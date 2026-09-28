@@ -13,7 +13,6 @@ use crate::signals::{ExtractionWatch, SignalsSnapshot};
 use crate::util::rate_limiter::CallPriority;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use tokio::sync::broadcast;
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, warn};
@@ -105,33 +104,14 @@ impl IdentifyServiceHandle {
             next_run: std::sync::atomic::AtomicU64::new(1),
         });
         // A candidate that vanished or was reshaped cannot be answered by the
-        // run in flight: it is answering files the key no longer names, and
-        // storing that answer would put back exactly the stale verdict the
-        // reshape cleared. This is the one cancellation that is not a command
-        // — a reshape has no single decision point, so it is heard here — and
-        // every decision a person makes about a candidate instead ends its run
-        // at the command that decides, inside that command's own write.
-        let mut removal_rx = inner.event_tx.subscribe();
-        let removal_inner = inner.clone();
-        inner.runtime_handle.spawn(async move {
-            loop {
-                let key = match removal_rx.recv().await {
-                    Ok(ImportEvent::Scan(crate::import::ScanEvent::CandidateRemoved {
-                        candidate_key,
-                    })) => candidate_key,
-                    Ok(ImportEvent::Scan(crate::import::ScanEvent::CandidateBindingChanged {
-                        candidate,
-                    })) => candidate.path.to_string_lossy().into_owned(),
-                    Ok(_) => continue,
-                    Err(broadcast::error::RecvError::Lagged(n)) => {
-                        warn!("identify: candidate-removal listener lagged by {n} import events");
-                        continue;
-                    }
-                    Err(broadcast::error::RecvError::Closed) => return,
-                };
-                if let Some(driver) = removal_inner.drivers.lock().unwrap().remove(&key) {
-                    driver.token.cancel();
-                }
+        // run in flight, and storing its answer would put back the stale
+        // verdict the reshape cleared. The bus ends the run in the send that
+        // says so; every decision a person makes ends it inside that
+        // decision's own write instead.
+        let ending = Arc::downgrade(&inner);
+        inner.event_tx.on_candidate_ended(move |key| {
+            if let Some(inner) = ending.upgrade() {
+                inner.cancel(key);
             }
         });
         IdentifyServiceHandle { inner }
@@ -250,7 +230,13 @@ impl IdentifyServiceHandle {
     /// Cancel an in-flight identify. Drops the driver task on the next
     /// await point.
     pub fn cancel(&self, key: &str) {
-        let driver = self.inner.drivers.lock().unwrap().remove(key);
+        self.inner.cancel(key);
+    }
+}
+
+impl IdentifyServiceInner {
+    fn cancel(&self, key: &str) {
+        let driver = self.drivers.lock().unwrap().remove(key);
         if let Some(driver) = driver {
             driver.token.cancel();
         }
@@ -548,6 +534,7 @@ mod tests {
     use crate::identify::IdentifyState;
     use crate::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
     use std::time::Duration;
+    use tokio::sync::broadcast;
 
     async fn setup_inner() -> (Arc<IdentifyServiceInner>, tempfile::TempDir) {
         let temp_dir = tempfile::TempDir::new().unwrap();
@@ -577,15 +564,54 @@ mod tests {
             ),
             crate::providers::Providers::offline(),
         );
-        let event_tx = ImportEventBus::new(64, crate::import::CandidateRuntime::default());
-        let inner = Arc::new(IdentifyServiceInner {
-            library_manager: manager,
-            runtime_handle: tokio::runtime::Handle::current(),
-            event_tx,
-            drivers: Mutex::new(HashMap::new()),
-            next_run: std::sync::atomic::AtomicU64::new(1),
-        });
-        (inner, temp_dir)
+        let event_tx =
+            ImportEventBus::new(BUS_CAPACITY, crate::import::CandidateRuntime::default());
+        let handle =
+            IdentifyServiceHandle::new(manager, tokio::runtime::Handle::current(), event_tx);
+        (handle.inner, temp_dir)
+    }
+
+    /// How far behind a reader of the test service's bus may fall.
+    const BUS_CAPACITY: usize = 64;
+
+    /// A removal sent while a run is in flight ends it, even when more events
+    /// follow than a bus reader can fall behind by. On one thread, so no
+    /// reader runs between the sends.
+    #[tokio::test]
+    async fn a_removed_candidates_run_ends_however_far_behind_bus_readers_are() {
+        let (inner, _tmp) = setup_inner().await;
+        let token = CancellationToken::new();
+        inner.drivers.lock().unwrap().insert(
+            "k".to_string(),
+            CandidateDriver {
+                token: token.clone(),
+                run: IdentifyRunId(1),
+            },
+        );
+
+        inner.event_tx.send(ImportEvent::Scan(
+            crate::import::ScanEvent::CandidateRemoved {
+                candidate_key: "k".to_string(),
+            },
+        ));
+        for _ in 0..BUS_CAPACITY + 1 {
+            inner
+                .event_tx
+                .send(ImportEvent::Scan(crate::import::ScanEvent::Finished));
+        }
+        // Whatever reads the bus gets its turn before the check.
+        for _ in 0..16 {
+            tokio::task::yield_now().await;
+        }
+
+        assert!(
+            token.is_cancelled(),
+            "the removed candidate's run is cancelled"
+        );
+        assert!(
+            !inner.drivers.lock().unwrap().contains_key("k"),
+            "and no longer registered"
+        );
     }
 
     /// Neither a disc-ID artifact nor a barcode source, so the reducer settles on
