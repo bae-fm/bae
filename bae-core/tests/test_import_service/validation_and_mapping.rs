@@ -1,14 +1,18 @@
-/// Cut a FLAC's audio short, keeping its header and tags, so it decodes far
+/// Cut a FLAC's audio in half, keeping every metadata block, so it decodes far
 /// fewer samples than its STREAMINFO declares.
 fn truncate_flac_body(path: &Path) {
     let bytes = fs::read(path).expect("read flac to truncate");
-    // Keeps the header and tags and cuts most of the audio.
-    let keep = 46_000usize.min(bytes.len());
-    assert!(
-        bytes.len() > keep,
-        "fixture is smaller than the truncation target ({} bytes)",
-        bytes.len(),
-    );
+    assert_eq!(&bytes[..4], b"fLaC", "{} is a FLAC stream", path.display());
+    let mut audio_start = 4;
+    loop {
+        let header = &bytes[audio_start..audio_start + 4];
+        let length = u32::from_be_bytes([0, header[1], header[2], header[3]]) as usize;
+        audio_start += 4 + length;
+        if header[0] & 0x80 != 0 {
+            break;
+        }
+    }
+    let keep = audio_start + (bytes.len() - audio_start) / 2;
     fs::write(path, &bytes[..keep]).expect("write truncated flac");
 }
 

@@ -315,26 +315,18 @@ async fn loudness_pass_emits_within_track_progress() {
 /// loudness, but it raises the peak to ~1.0, so a quiet track still cannot be
 /// boosted past full scale. A pure sine cannot show the playback peak clamp,
 /// because its peak and loudness scale together.
-///
-/// The FLAC encoder keeps each sample's high 16 bits. The dither sits ~60 dB
-/// down, moving neither the loudness nor the peak.
 fn sine(amplitude: f64, sample_rate: u32, secs: f64, spikes: bool) -> Vec<i32> {
     use std::f64::consts::PI;
     let n = (sample_rate as f64 * secs) as usize;
     let spike_period = (sample_rate as f64 * 0.1) as usize;
     let full_scale = i32::MAX;
-    let mut rng: u32 = 0x1234_5678;
-    let mut dither = || {
-        rng = rng.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
-        (((rng >> 16) as i32 & 0x3F) - 32) << 16
-    };
     let mut out = Vec::with_capacity(n * 2);
     for i in 0..n {
         let s = if spikes && i % spike_period == 0 {
             full_scale
         } else {
             let t = i as f64 / sample_rate as f64;
-            ((2.0 * PI * 1000.0 * t).sin() * amplitude * i32::MAX as f64) as i32 + dither()
+            ((2.0 * PI * 1000.0 * t).sin() * amplitude * i32::MAX as f64) as i32
         };
         out.push(s);
         out.push(s);
