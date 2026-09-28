@@ -10,6 +10,19 @@ fn bae_core_fixtures() -> std::path::PathBuf {
         .join("bae-core/tests/fixtures")
 }
 
+/// A committed test fixture's bytes. Panics naming the file and how to get it
+/// back when the checkout lacks it.
+pub fn read_fixture(path: &std::path::Path) -> Vec<u8> {
+    std::fs::read(path).unwrap_or_else(|error| {
+        panic!(
+            "test fixture {} could not be read ({error}); it is committed under \
+             bae-core/tests/fixtures, so restore it with \
+             `git checkout -- bae-core/tests/fixtures`",
+            path.display()
+        )
+    })
+}
+
 /// Write one tagged FLAC into `dir` (copied from the test fixture) with the
 /// given `title`, so an Unknown-identity import can map it from file metadata.
 /// Returns the on-disk bytes after tagging.
@@ -19,7 +32,7 @@ pub fn write_tagged_flac(dir: &std::path::Path, filename: &str, title: &str) -> 
     use lofty::tag::{Tag, TagType};
 
     let fixture = bae_core_fixtures().join("flac/01 Test Track 1.flac");
-    let flac = std::fs::read(&fixture).expect("FLAC fixture missing");
+    let flac = read_fixture(&fixture);
 
     let dest = dir.join(filename);
     std::fs::write(&dest, &flac).unwrap();

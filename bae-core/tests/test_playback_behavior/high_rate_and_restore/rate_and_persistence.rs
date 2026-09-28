@@ -14,16 +14,10 @@ impl HighSampleRateTestFixture {
             support::setup_test_library_with_album_dir().await;
         let runtime_handle = tokio::runtime::Handle::current();
 
-        // Copy 96kHz fixture
         let fixture_path = bae_test_support::fixture_dir!("flac", "96khz_test.flac");
         let test_path = album_dir.join("01 96kHz Track.flac");
-        std::fs::copy(&fixture_path, &test_path).unwrap_or_else(|_| {
-            panic!(
-                "96kHz FLAC fixture not found: {}\n\
-                 Run: ./scripts/generate_high_sample_rate_flac.sh",
-                fixture_path.display()
-            );
-        });
+        std::fs::write(&test_path, bae_test_support::read_fixture(&fixture_path))
+            .expect("copy the 96 kHz FLAC fixture");
 
         // Create release with one track
         let discogs_release = DiscogsRelease {

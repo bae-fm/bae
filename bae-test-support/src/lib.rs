@@ -42,8 +42,8 @@ pub use discogs::{
     seed_discogs_test_release,
 };
 pub use files::{
-    copy_and_tag, cover_png, read_cover_image_blob, write_cover_png, write_tagged_flac,
-    RemoteImageHost, TEST_IMAGE_HOST,
+    copy_and_tag, cover_png, read_cover_image_blob, read_fixture, write_cover_png,
+    write_tagged_flac, RemoteImageHost, TEST_IMAGE_HOST,
 };
 pub use import::{
     configure_test_discogs, discogs_release, folder_import, import_folder_and_wait,

@@ -158,13 +158,7 @@ fn generate_test_flac_files(dir: &std::path::Path) -> Vec<Vec<u8>> {
     for fixture_name in fixture_files {
         let fixture_path = fixture_dir.join(fixture_name);
         let test_path = dir.join(fixture_name);
-        let data = fs::read(&fixture_path).unwrap_or_else(|_| {
-            panic!(
-                "FLAC fixture not found: {}\n\
-                     Run: ./scripts/generate_test_flac.sh",
-                fixture_path.display(),
-            );
-        });
+        let data = bae_test_support::read_fixture(&fixture_path);
         fs::write(&test_path, &data).expect("Failed to copy FLAC fixture");
         file_data.push(data);
     }
@@ -177,24 +171,12 @@ fn generate_cue_flac_files(dir: &std::path::Path) {
 
     let flac_src = fixture_dir.join("Test Album.flac");
     let flac_dst = dir.join("Test Album.flac");
-    let flac_data = fs::read(&flac_src).unwrap_or_else(|_| {
-        panic!(
-            "CUE/FLAC fixture not found: {}\n\
-             Run: ./scripts/generate_cue_flac_fixture.sh",
-            flac_src.display(),
-        );
-    });
+    let flac_data = bae_test_support::read_fixture(&flac_src);
     fs::write(&flac_dst, &flac_data).expect("Failed to copy FLAC fixture");
 
     let cue_src = fixture_dir.join("Test Album.cue");
     let cue_dst = dir.join("Test Album.cue");
-    let cue_data = fs::read(&cue_src).unwrap_or_else(|_| {
-        panic!(
-            "CUE fixture not found: {}\n\
-             Run: ./scripts/generate_cue_flac_fixture.sh",
-            cue_src.display(),
-        );
-    });
+    let cue_data = bae_test_support::read_fixture(&cue_src);
     fs::write(&cue_dst, &cue_data).expect("Failed to copy CUE fixture");
 }
 
