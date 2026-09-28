@@ -12,7 +12,7 @@ struct StorageInspectorFileRow: View {
             HStack(spacing: ThemeSpace.related) {
                 Image(systemName: row.uploadSymbol)
                     .themeIcon(.medium)
-                    .foregroundStyle(row.uploadTint)
+                    .foregroundStyle(row.uploadTone.color)
                     .frame(width: ThemeIcon.medium.size)
                     .help(row.uploadStatus)
                     .accessibilityLabel(row.uploadStatus)
@@ -29,10 +29,10 @@ struct StorageInspectorFileRow: View {
                 Text(row.file?.audioFormat?.text ?? "")
                     .lineLimit(1)
                 Spacer(minLength: 0)
-                Text(row.progressText)
-                    .foregroundStyle(row.uploadTint)
-                    .lineLimit(1)
-                    .help(row.progressText)
+                if !row.progressText.isEmpty {
+                    StatusChip(verbatim: row.progressText, tone: row.uploadTone)
+                        .help(row.progressText)
+                }
                 Text(row.throughputText)
                     .monospacedDigit()
                     .fixedSize()
@@ -107,12 +107,12 @@ extension BridgeStorageInspectorFile {
         }
     }
 
-    var uploadTint: Color {
+    var uploadTone: StatusTone {
         switch upload?.state {
-        case .preparing, .uploading: Theme.activity
-        case .retrying: Theme.danger
-        case .uploaded: Theme.info
-        case .queued, .prepared, nil: .secondary
+        case .preparing, .uploading: .activity
+        case .retrying: .danger
+        case .uploaded: .info
+        case .queued, .prepared, nil: .neutral
         }
     }
 

@@ -45,15 +45,16 @@ struct OutputRow: View {
     private var stateBadge: some View {
         switch op.state {
         case .queued:
-            Label("Queued", systemImage: "clock")
-                .foregroundStyle(.secondary)
+            StatusChip("Queued", symbol: "clock")
         case .active(let percent):
             activeBadge(percent: Int(percent))
-                .foregroundStyle(Theme.activity)
         case .failed(let error):
-            Label("Failed", systemImage: "exclamationmark.triangle.fill")
-                .foregroundStyle(Theme.danger)
-                .help(error)
+            StatusChip(
+                "Failed",
+                tone: .danger,
+                symbol: StatusTone.danger.symbol
+            )
+            .help(error)
         }
     }
 
@@ -61,14 +62,16 @@ struct OutputRow: View {
     private func activeBadge(percent: Int) -> some View {
         switch op.kind {
         case .export:
-            Label(
+            StatusChip(
                 "Exporting \(percent)%",
-                systemImage: "square.and.arrow.up.fill"
+                tone: .activity,
+                symbol: "square.and.arrow.up.fill"
             )
         case .save:
-            Label(
+            StatusChip(
                 "Saving \(percent)%",
-                systemImage: "square.and.arrow.down.fill"
+                tone: .activity,
+                symbol: "square.and.arrow.down.fill"
             )
         }
     }

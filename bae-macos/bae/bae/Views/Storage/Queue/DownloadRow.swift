@@ -34,18 +34,20 @@ struct DownloadRow: View {
     private var stateBadge: some View {
         switch op.state {
         case .queued:
-            Label("Queued", systemImage: "clock")
-                .foregroundStyle(.secondary)
+            StatusChip("Queued", symbol: "clock")
         case .active:
-            Label(
+            StatusChip(
                 "Downloading",
-                systemImage: "arrow.down.circle.fill"
+                tone: .activity,
+                symbol: "arrow.down.circle.fill"
             )
-            .foregroundStyle(Theme.activity)
         case .failed(let error):
-            Label("Failed", systemImage: "exclamationmark.triangle.fill")
-                .foregroundStyle(Theme.danger)
-                .help(error)
+            StatusChip(
+                "Failed",
+                tone: .danger,
+                symbol: StatusTone.danger.symbol
+            )
+            .help(error)
         }
     }
 

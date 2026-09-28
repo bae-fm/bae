@@ -3,7 +3,7 @@ import Foundation
 import SwiftUI
 
 /// The layout shared by the download and export queue rows: the content with
-/// its enqueue time and optional cancel button, then the state on its own line.
+/// its enqueue time and optional cancel button, then its state chip.
 struct QueueRow<Content: View, Badge: View>: View {
     /// The cancel button's action and the tooltip naming what it abandons.
     struct CancelAction {
@@ -47,8 +47,6 @@ struct QueueRow<Content: View, Badge: View>: View {
             }
 
             badge()
-                .themeText(.detail)
-                .lineLimit(1)
                 // Under the content, past the icon column.
                 .padding(.leading, ThemeIcon.medium.size + ThemeSpace.group)
         }
@@ -82,8 +80,7 @@ func queuedRelativeLabel(_ epochMs: Int64) -> String {
             Text("Album Title")
                 .lineLimit(1)
         } badge: {
-            Label("Queued", systemImage: "clock")
-                .foregroundStyle(.secondary)
+            StatusChip("Queued", symbol: "clock")
         }
         .frame(width: 640)
         .padding(.vertical)

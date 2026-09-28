@@ -1,8 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// The storage badge: an in-flight transfer or queued upload wins over the
-/// resting storage state.
+/// The storage state chip: an in-flight transfer or queued upload wins over
+/// the resting storage state.
 struct StorageStateLabel: View {
     let release: ReleaseSummary
     @Environment(OutboxStore.self)
@@ -10,9 +10,11 @@ struct StorageStateLabel: View {
 
     var body: some View {
         if let transfer = release.transfer {
-            Label(transfer.label, systemImage: "arrow.down.circle")
-                .foregroundStyle(Theme.activity)
-                .lineLimit(1)
+            StatusChip(
+                verbatim: transfer.label,
+                tone: .activity,
+                symbol: "arrow.down.circle"
+            )
         }
         else if let observation = outboxStore.storageUploadObservation(
             forRelease: release.id
@@ -29,24 +31,22 @@ struct StorageStateLabel: View {
                 .accessibilityLabel(observation.transitionStatusText)
                 .accessibilityValue(observation.throughputText ?? "")
             case .queueing, .awaiting:
-                Label(
-                    observation.transitionStatusText,
-                    systemImage: "icloud.and.arrow.up"
+                StatusChip(
+                    verbatim: observation.transitionStatusText,
+                    symbol: "icloud.and.arrow.up"
                 )
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
             }
         }
         else {
             switch release.storageState {
             case .local:
-                Label("Local", systemImage: "folder").lineLimit(1)
+                StatusChip("Local", symbol: "folder")
             case .remote:
                 if release.pinned {
-                    Label("Pinned", systemImage: "pin.fill").lineLimit(1)
+                    StatusChip("Pinned", symbol: "pin.fill")
                 }
                 else {
-                    Label("Cloud", systemImage: "cloud").lineLimit(1)
+                    StatusChip("Cloud", symbol: "cloud")
                 }
             }
         }

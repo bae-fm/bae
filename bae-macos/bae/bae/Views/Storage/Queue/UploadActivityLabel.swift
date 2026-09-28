@@ -1,15 +1,16 @@
 import BaeKit
 import SwiftUI
 
-/// Core's current cloud-upload phase as a label, shared by every storage and
-/// import screen so a phase looks the same everywhere.
+/// Core's current cloud-upload phase as a chip, the same on every screen.
 struct UploadActivityLabel: View {
     let progress: BridgeUploadProgress
 
     var body: some View {
-        Label(text, systemImage: activity.systemImage)
-            .foregroundStyle(activity.tint)
-            .lineLimit(1)
+        StatusChip(
+            verbatim: text,
+            tone: activity.tone,
+            symbol: activity.systemImage
+        )
     }
 
     private var activity: BridgeUploadActivity {
@@ -45,12 +46,12 @@ extension BridgeUploadActivity {
         }
     }
 
-    fileprivate var tint: Color {
+    fileprivate var tone: StatusTone {
         switch self {
-        case .uploading, .preparing: Theme.activity
-        case .retrying: Theme.danger
-        case .publishing, .uploaded: Theme.info
-        case .cancelling, .prepared, .queued: .secondary
+        case .uploading, .preparing: .activity
+        case .retrying: .danger
+        case .publishing, .uploaded: .info
+        case .cancelling, .prepared, .queued: .neutral
         }
     }
 }
