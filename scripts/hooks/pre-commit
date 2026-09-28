@@ -190,6 +190,16 @@ if [ "${#DIRECTLY_CHANGED_CRATES[@]}" -gt 0 ]; then
         echo "Fix the documentation errors above and try again"
         exit 1
     }
+
+    # The mobile apps build bae-core without its desktop-only modules, where
+    # anything only those modules use is dead code and fails the build.
+    if [ "$core_changed" -eq 1 ]; then
+        run_check "bae-core for iOS (desktop-only code)" \
+            cargo check -p bae-core --lib --target aarch64-apple-ios || {
+            echo "Gate code only desktop modules use with the same cfg and try again"
+            exit 1
+        }
+    fi
 fi
 
 STAGED_SWIFT_FILES=()
