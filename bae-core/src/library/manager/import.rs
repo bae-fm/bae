@@ -71,6 +71,12 @@ impl LibraryManager {
         self.database.subscribe_import_list(initial)
     }
 
+    pub(crate) async fn load_folder_scan_progress(
+        &self,
+    ) -> Result<crate::import::FolderScanProgress, LibraryError> {
+        Ok(self.database.load_folder_scan_progress().await?)
+    }
+
     pub(crate) fn subscribe_folder_scan_progress(
         &self,
     ) -> coven::LiveQuery<crate::import::FolderScanProgress> {

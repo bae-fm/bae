@@ -18,7 +18,7 @@ use bae_core::import::{
     CandidateEditField, CandidateImportStatus, CandidateRuntimeSnapshot, Catalog, CoverSelection,
     GroupedSearchResults, ImportCandidateDetail, ImportError, ImportInFlight, ImportListItem,
     ImportListView, ImportPhase, ImportStep, MetadataProvenance, MetadataRef, PrepareStep,
-    ReleaseReseed, ScanEvent, SearchQuery, TrackUserEdit, TriageTab,
+    ReleaseReseed, SearchQuery, TrackUserEdit, TriageTab,
 };
 use bae_core::library::{AppServices, LibraryError};
 use schemars::JsonSchema;

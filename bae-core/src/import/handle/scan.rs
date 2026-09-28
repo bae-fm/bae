@@ -831,37 +831,4 @@ impl ImportServiceHandle {
                 detail: format!("{candidate_key} is not a folder candidate"),
             })
     }
-
-    /// Receive only the `ScanEvent`s from the import event channel.
-    pub fn subscribe_folder_scan_events(&self) -> mpsc::UnboundedReceiver<ScanEvent> {
-        let mut rx = self.event_tx.subscribe();
-        let (tx, out_rx) = mpsc::unbounded_channel();
-        let library_manager = self.library_manager.clone();
-        self.runtime_handle.spawn(async move {
-            loop {
-                match rx.recv().await {
-                    Ok(event) => {
-                        if tx.is_closed() {
-                            break;
-                        }
-                        if let ImportEvent::Scan(event) = event {
-                            if tx.send(event).is_err() {
-                                break;
-                            }
-                        }
-                    }
-                    Err(broadcast::error::RecvError::Lagged(n)) => {
-                        tracing::warn!("Scan event subscriber lagged by {n} events");
-                        library_manager.record_telemetry(
-                            crate::diagnostics::TelemetryEvent::Anomaly {
-                                kind: crate::diagnostics::AnomalyKind::EventBusLagged,
-                            },
-                        );
-                    }
-                    Err(broadcast::error::RecvError::Closed) => break,
-                }
-            }
-        });
-        out_rx
-    }
 }

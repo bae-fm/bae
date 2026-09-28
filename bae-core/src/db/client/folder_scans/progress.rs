@@ -103,6 +103,12 @@ fn load_folder_scan_progress_on(
 }
 
 impl Database {
+    /// Where each watched folder's scan stands now.
+    pub(crate) async fn load_folder_scan_progress(&self) -> Result<FolderScanProgress, DbError> {
+        let process = self.read(move |sql| load_folder_scan_progress_on(&sql)).await?;
+        process()
+    }
+
     /// Where each watched folder's scan stands, live.
     pub(crate) fn subscribe_folder_scan_progress(&self) -> coven::LiveQuery<FolderScanProgress> {
         self.inner

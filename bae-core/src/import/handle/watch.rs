@@ -128,6 +128,28 @@ impl ImportServiceHandle {
         self.send_watcher_command(WatcherCommand::RescanAll, "Failed to start watching folder")
     }
 
+    /// Read every watched folder and return, once each read has ended, where
+    /// each one's scan stands.
+    pub async fn read_watched_folders(
+        &self,
+    ) -> Result<Vec<crate::import::WatchedFolderScanStatus>, crate::import::ImportError> {
+        let mut reads = tokio::task::JoinSet::new();
+        for folder in self.watched_folders().await? {
+            let this = self.clone();
+            reads.spawn(async move { this.refresh_watched_folder(folder.path).await });
+        }
+        while let Some(read) = reads.join_next().await {
+            read.map_err(|error| crate::import::ImportError::Internal {
+                detail: format!("a folder read stopped: {error}"),
+            })??;
+        }
+        Ok(self
+            .library_manager
+            .load_folder_scan_progress()
+            .await?
+            .statuses)
+    }
+
     pub async fn refresh_watched_folder(
         &self,
         path: String,

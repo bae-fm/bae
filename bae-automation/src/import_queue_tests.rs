@@ -296,3 +296,57 @@ async fn a_candidate_carries_the_import_service_s_runtime() {
     );
     assert_eq!(json["runtime"]["identify_state"]["kind"], "idle");
 }
+
+/// Waiting for a scan answers once every watched folder's read has ended, with
+/// what the reads found.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_scan_waited_on_answers_with_what_every_folder_read_found() {
+    let fixture = automation_over().await;
+    let first = fixture.tmp.path().join("First");
+    let second = fixture.tmp.path().join("Second");
+    for (root, album) in [(&first, "Album One"), (&second, "Album Two")] {
+        let album = root.join(album);
+        std::fs::create_dir_all(&album).unwrap();
+        bae_test_support::write_tagged_flac(&album, "01 Track.flac", "Track");
+        fixture
+            .automation
+            .add_watched_folder(root.to_string_lossy().into_owned())
+            .await
+            .expect("the folder is watched");
+    }
+
+    let result = fixture
+        .automation
+        .scan_watched_folders(ScanWait::UntilFinished { timeout_ms: 30_000 })
+        .await
+        .expect("both reads end");
+
+    assert_eq!(result.watched_folders.len(), 2);
+    assert_eq!(
+        result.candidates.len(),
+        2,
+        "each folder's album is read by the time the wait answers"
+    );
+}
+
+/// A folder whose read fails is named in the error the wait answers with.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_scan_waited_on_names_a_folder_whose_read_failed() {
+    let fixture = automation_over().await;
+    let root = fixture.tmp.path().join("Gone");
+    std::fs::create_dir_all(root.join("Album")).unwrap();
+    let path = root.canonicalize().unwrap().to_string_lossy().into_owned();
+    fixture
+        .automation
+        .add_watched_folder(path.clone())
+        .await
+        .expect("the folder is watched");
+    std::fs::remove_dir_all(&root).unwrap();
+
+    let error = fixture
+        .automation
+        .scan_watched_folders(ScanWait::UntilFinished { timeout_ms: 30_000 })
+        .await
+        .expect_err("the read of a folder that is gone fails");
+    assert!(error.message().contains(&path), "{}", error.message());
+}

@@ -54,46 +54,33 @@ impl Automation {
                 self.services.import_scan_watched_folders()?;
             }
             ScanWait::UntilFinished { timeout_ms } => {
-                let mut rx = self.services.import_subscribe_folder_scan_events();
-                let mut pending: std::collections::HashSet<_> = self
-                    .services
-                    .import_watched_folders()
-                    .await?
-                    .into_iter()
-                    .map(|folder| folder.path)
-                    .collect();
-                self.services.import_scan_watched_folders()?;
-                let wait_for_finish = async {
-                    while !pending.is_empty() {
-                        let Some(event) = rx.recv().await else {
-                            return Err(AutomationError::Unavailable(
-                                "scan event channel closed before finish".to_string(),
-                            ));
-                        };
-                        if let ScanEvent::FolderScanStatusChanged { status } = event {
-                            match status.status {
-                                bae_core::import::FolderScanStatus::Complete => {
-                                    pending.remove(&status.watched_folder_path);
-                                }
-                                bae_core::import::FolderScanStatus::Failed { error } => {
-                                    return Err(AutomationError::import(format!(
-                                        "{}: {error}",
-                                        status.watched_folder_path
-                                    )));
-                                }
-                                bae_core::import::FolderScanStatus::Scanning { .. } => {}
-                            }
+                let statuses = tokio::time::timeout(
+                    Duration::from_millis(timeout_ms),
+                    self.services.import_read_watched_folders(),
+                )
+                .await
+                .map_err(|_| {
+                    AutomationError::Timeout(
+                        "timed out waiting for watched-folder scan".to_string(),
+                    )
+                })??;
+                for status in statuses {
+                    match status.status {
+                        bae_core::import::FolderScanStatus::Complete => {}
+                        bae_core::import::FolderScanStatus::Failed { error } => {
+                            return Err(AutomationError::import(format!(
+                                "{}: {error}",
+                                status.watched_folder_path
+                            )));
+                        }
+                        bae_core::import::FolderScanStatus::Scanning { .. } => {
+                            return Err(AutomationError::import(format!(
+                                "{}: its read ended with no outcome stored",
+                                status.watched_folder_path
+                            )));
                         }
                     }
-                    Ok::<(), AutomationError>(())
-                };
-                tokio::time::timeout(Duration::from_millis(timeout_ms), wait_for_finish)
-                    .await
-                    .map_err(|_| {
-                        AutomationError::Timeout(
-                            "timed out waiting for watched-folder scan".to_string(),
-                        )
-                    })??;
+                }
             }
         }
         Ok(AutomationScanResult {
