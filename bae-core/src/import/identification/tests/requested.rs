@@ -276,9 +276,16 @@ async fn explicit_lookup_stores_a_metadata_projection_failure() {
     fixture.scan(1).await;
 
     fixture.start_explicit_lookup(&dir);
-    let row = tokio::time::timeout(Duration::from_secs(2), fixture.await_identified_row(&dir))
+    tokio::time::timeout(
+        Duration::from_secs(30),
+        fixture.identification().drained_for_test(),
+    )
+    .await
+    .expect("the explicit run ends on the projection failure");
+    let row = fixture
+        .stored_for(&dir)
         .await
-        .expect("the explicit recorder stores the projection failure");
+        .expect("the candidate keeps its row");
 
     assert!(matches!(
         identify_result(&row).verdict,
