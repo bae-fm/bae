@@ -46,20 +46,10 @@ impl Fixture {
             .await;
     }
 
-    /// Emit one import event as the import service would.
+    /// Emit one import event as the import service would; the runtime has
+    /// recorded it by the time this returns.
     pub(super) fn record(&self, event: ImportEvent) {
         self.services.import_emit_event_for_test(event);
-    }
-
-    /// Emit `event` and wait until the runtime recorder, which reads on its own
-    /// task, has taken it in.
-    pub(super) async fn record_and_settle(&self, event: ImportEvent) {
-        let mut changes = self.services.subscribe_candidate_runtime().1;
-        self.services.import_emit_event_for_test(event);
-        tokio::time::timeout(std::time::Duration::from_secs(5), changes.recv())
-            .await
-            .expect("the recorder takes the event in")
-            .expect("the runtime stream stays open");
     }
 
     /// The watched root under the temporary directory, created if missing.
@@ -293,7 +283,7 @@ async fn a_candidate_carries_the_import_service_s_runtime() {
     let fixture = automation_over().await;
     let key = scan(&fixture, "A").await;
     fixture.claim(&key).await;
-    fixture.record_and_settle(importing(&key, 42)).await;
+    fixture.record(importing(&key, 42));
 
     let candidate = fixture.get_candidate(&key).await.expect("published");
     let json = serde_json::to_value(&candidate).unwrap();
