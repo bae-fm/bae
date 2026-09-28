@@ -12,7 +12,6 @@ pub mod combine;
 pub mod discid;
 pub mod documents;
 pub mod fit;
-pub(crate) mod label;
 pub(crate) mod medium;
 mod not_asked;
 pub(crate) mod row_facts;

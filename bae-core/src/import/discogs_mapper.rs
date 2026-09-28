@@ -2,7 +2,7 @@ use super::assemble::{
     assemble_parsed_album, AlbumArtistScope, ArtistRef, ReleaseIr, ReleaseRole, TrackEvent, TrackIr,
 };
 use super::ParsedAlbum;
-use crate::db::is_various_artists;
+use crate::text_match::is_various_artists;
 use crate::pressing::{PhysicalMedium, Pressing, PressingFacts, ReleaseArea, StatedMedia};
 use crate::discogs::{DiscogsArtist, DiscogsRelease, DiscogsRoleArtist, DiscogsTrack};
 use crate::import::medium_coverage::MediumCoverage;

@@ -2,7 +2,7 @@
 //! number once.
 
 use super::ReleaseLabel;
-use crate::util::text::{catalog_key, normalize};
+use crate::text_match::{catalog_key, normalize};
 
 /// One line of a label list: the names the numbers are released on, then the
 /// catalog numbers they share. A name stated with several numbers shows once

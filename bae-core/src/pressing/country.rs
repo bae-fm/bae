@@ -353,7 +353,7 @@ static COUNTRIES: &[CountryRow] = &[
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::util::text::squash;
+    use crate::text_match::squash;
     use std::collections::HashMap;
 
     /// Every spelling reaches exactly one country: a code or a name that two

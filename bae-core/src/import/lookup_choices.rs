@@ -142,7 +142,7 @@ impl LookupChoices {
         self.search_words = self.search_words.take().and_then(SearchWords::trimmed);
         let mut kept: Vec<String> = Vec::new();
         self.chosen_catalogs.retain(|value| {
-            let key = crate::util::text::squash(value);
+            let key = crate::text_match::squash(value);
             if kept.contains(&key) {
                 return false;
             }

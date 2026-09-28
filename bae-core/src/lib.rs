@@ -74,6 +74,7 @@ pub(crate) mod test_gate;
 pub(crate) mod test_logs;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod text_encoding;
+pub(crate) mod text_match;
 pub mod ui;
 pub mod util;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

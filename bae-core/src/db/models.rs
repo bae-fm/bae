@@ -672,12 +672,6 @@ impl DbAlbum {
     }
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(crate) fn is_various_artists(name: &str) -> bool {
-    let lower = name.trim().to_lowercase();
-    lower == "various" || lower == "various artists"
-}
-
 impl DbRelease {
     #[cfg(any(test, feature = "test-utils"))]
     /// A minimal release fixture. It lands **Local**, the way every import does:

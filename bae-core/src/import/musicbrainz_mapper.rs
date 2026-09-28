@@ -13,7 +13,7 @@ use super::assemble::{
     TrackIr, WorkEvent, WorkGraphRef, WorkNode,
 };
 use super::ParsedAlbum;
-use crate::db::is_various_artists;
+use crate::text_match::is_various_artists;
 use crate::pressing::{Medium, Pressing, StatedMedia};
 use crate::import::medium_coverage::MediumCoverage;
 use crate::import::{Catalog, ImportError, MetadataRef};

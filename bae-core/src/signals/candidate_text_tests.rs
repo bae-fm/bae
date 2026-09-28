@@ -234,20 +234,6 @@ fn path_iteratively_strips_multiple_trailing_brackets() {
 }
 
 #[test]
-fn trailing_brackets_leave_the_words() {
-    assert_eq!(
-        strip_trailing_brackets("Album Title [XX34b]"),
-        "Album Title"
-    );
-    assert_eq!(
-        strip_trailing_brackets("Album Title (Deluxe) [2020]"),
-        "Album Title"
-    );
-    assert_eq!(strip_trailing_brackets("[XX34b]"), "");
-    assert_eq!(strip_trailing_brackets("Album Title"), "Album Title");
-}
-
-#[test]
 fn path_returns_none_when_empty() {
     assert_eq!(strip_path_component("[XX34b]"), None);
     assert_eq!(strip_path_component("1989"), None);

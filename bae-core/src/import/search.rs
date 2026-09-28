@@ -2,7 +2,7 @@
 //! Discogs for release metadata, checking Cover Art Archive for thumbnails, and
 //! fetching full release details for the import confirmation step.
 
-use crate::util::text::catalog_key;
+use crate::text_match::catalog_key;
 use crate::barcode::{comparison_key, written_digits, Barcode, Unusable};
 use crate::discogs::client::{DiscogsClient, DiscogsError, DiscogsSearchParams};
 use crate::import::cover_art::RemoteCover;

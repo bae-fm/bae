@@ -9,5 +9,4 @@ pub mod http;
 pub(crate) mod open_file_limit;
 pub mod rate_limiter;
 pub mod session_cache;
-pub(crate) mod text;
 pub(crate) mod worker_thread;

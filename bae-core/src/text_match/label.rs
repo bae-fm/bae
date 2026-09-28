@@ -34,13 +34,13 @@ impl LabelName {
     /// `None` when nothing of the name is left once its trade words are
     /// dropped.
     pub(crate) fn of(name: &str) -> Option<Self> {
-        let words = without_trade_words(super::agreements::words(name));
+        let words = without_trade_words(super::words(name));
         if words.is_empty() {
             return None;
         }
         let initials: String = words
             .iter()
-            .filter(|word| !crate::util::text::is_stop_word(word))
+            .filter(|word| !super::is_stop_word(word))
             .filter_map(|word| word.chars().next())
             .collect();
         Some(Self {
@@ -91,11 +91,7 @@ fn without_trade_words(mut words: Vec<String>) -> Vec<String> {
 /// The initials `name` is written as, lowercased, when it is written as
 /// initials — see [`LabelName::written_initials`].
 fn written_initials(name: &str) -> Option<String> {
-    let mut written: Vec<String> = name
-        .split(|c: char| !c.is_alphanumeric() && c != '.')
-        .map(|word| word.replace('.', ""))
-        .filter(|word| !word.is_empty())
-        .collect();
+    let mut written = super::written_words(name);
     loop {
         let lowered: Vec<String> = written.iter().map(|word| word.to_lowercase()).collect();
         let Some(tail) = tails().iter().find(|tail| lowered.ends_with(tail)) else {
@@ -119,7 +115,7 @@ fn tails() -> &'static [Vec<String>] {
     TAILS.get_or_init(|| {
         TRADE_WORDS
             .iter()
-            .map(|entry| super::agreements::words(entry))
+            .map(|entry| super::words(entry))
             .filter(|tail| !tail.is_empty())
             .collect()
     })
@@ -151,7 +147,7 @@ mod tests {
     fn every_trade_word_is_written_with_words() {
         for entry in TRADE_WORDS {
             assert!(
-                !super::super::agreements::words(entry).is_empty(),
+                !super::super::words(entry).is_empty(),
                 "{entry} is written with no words"
             );
         }

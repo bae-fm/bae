@@ -187,7 +187,7 @@ impl ReleaseLabel {
     pub fn new(name: Option<String>, catalog_number: Option<String>) -> Option<Self> {
         let name = name.filter(|name| !name.trim().is_empty());
         let catalog_number =
-            catalog_number.filter(|number| crate::util::text::catalog_key(number).is_some());
+            catalog_number.filter(|number| crate::text_match::catalog_key(number).is_some());
         (name.is_some() || catalog_number.is_some()).then_some(Self {
             name,
             catalog_number,

@@ -16,6 +16,7 @@
 use super::{names_other_album, AlbumLink, AlbumStatement, Found};
 use crate::import::search::MetadataResult;
 use crate::import::types::{Catalog, MetadataRef};
+use crate::text_match::{album_title_words, catalog_key, LabelName};
 
 /// What a release prints that can say which album it is, read into the form
 /// two releases' are compared in.
@@ -24,7 +25,7 @@ struct Printed {
     barcodes: Vec<String>,
     /// Each label it states both halves of: the label's name, and the
     /// number's key.
-    numbers: Vec<(crate::identify::label::LabelName, String)>,
+    numbers: Vec<(LabelName, String)>,
     /// The words of its title that say which album it is: its bracketed
     /// tails and its stop words left out.
     title: Vec<String>,
@@ -43,12 +44,12 @@ impl Printed {
                 .iter()
                 .filter_map(|label| {
                     Some((
-                        crate::identify::label::LabelName::of(label.name()?)?,
-                        crate::util::text::catalog_key(label.catalog_number()?)?,
+                        LabelName::of(label.name()?)?,
+                        catalog_key(label.catalog_number()?)?,
                     ))
                 })
                 .collect(),
-            title: title_words(&result.title),
+            title: album_title_words(&result.title),
         }
     }
 
@@ -144,17 +145,6 @@ fn pairs(
         }
     }
     found.links
-}
-
-/// A title's words, without its bracketed tails — "(Remastered)", "[Deluxe
-/// Edition]" — and without the words that say nothing about which album it
-/// is.
-fn title_words(title: &str) -> Vec<String> {
-    let bare = crate::signals::candidate_text::strip_trailing_brackets(title);
-    crate::identify::agreements::words(&bare)
-        .into_iter()
-        .filter(|word| !crate::util::text::is_stop_word(word))
-        .collect()
 }
 
 #[cfg(test)]

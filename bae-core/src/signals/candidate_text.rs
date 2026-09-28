@@ -6,8 +6,8 @@ use regex::Regex;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
+use crate::text_match::{normalize, strip_trailing_brackets};
 use strsim::jaro_winkler;
-use crate::util::text::normalize;
 
 /// Catalog-number-like substrings (`WPCR-80001`, `Z1 12345`), each once in
 /// first-seen order. Separators are kept as written, since MusicBrainz indexes
@@ -231,28 +231,6 @@ fn is_catalog_shaped_bracket(s: &str) -> bool {
     let letters = s.chars().filter(|c| c.is_ascii_alphabetic()).count();
     let digits = s.chars().filter(|c| c.is_ascii_digit()).count();
     letters >= 1 && digits >= 2
-}
-
-/// A name without the bracketed tails a person hangs off it — the catalog
-/// number, the edition, the year: `Album Title [XX34b] (2020)` is
-/// `Album Title`. Every trailing group goes, so a name that is nothing but
-/// brackets comes back empty. What a folder name and an album tag are read
-/// as when the words alone are wanted.
-pub(crate) fn strip_trailing_brackets(raw: &str) -> String {
-    static TRAILING_BRACKET: OnceLock<Regex> = OnceLock::new();
-    let bracket =
-        TRAILING_BRACKET.get_or_init(|| Regex::new(r"\s*[\[\(][^\]\)]*[\]\)]\s*$").unwrap());
-    let mut s = raw.trim().to_string();
-    // Repeatedly — a name may carry several (`Album Title [Deluxe] (2020)`).
-    loop {
-        let stripped = bracket.replace(&s, "").into_owned();
-        let stripped = stripped.trim_end().to_string();
-        if stripped == s {
-            break;
-        }
-        s = stripped;
-    }
-    s
 }
 
 /// Normalize a path component for the free-text pool: strip a leading year

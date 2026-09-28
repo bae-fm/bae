@@ -299,7 +299,7 @@ impl QueryValueFormat {
                 let asked: Vec<&str> = words
                     .iter()
                     .copied()
-                    .filter(|word| !crate::util::text::is_stop_word(word))
+                    .filter(|word| !crate::text_match::is_stop_word(word))
                     .collect();
                 let asked = if asked.is_empty() { words } else { asked };
                 let required: Vec<String> = asked

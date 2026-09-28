@@ -19,7 +19,7 @@ use crate::import::release_group::{group_formed_rows, group_results, Judgements,
 use crate::import::Catalog;
 use crate::pressing::ReleaseLabel;
 use crate::signals::{ArtworkScan, DiscIdSignal, LookupFailure};
-use crate::util::text::squash;
+use crate::text_match::squash;
 use std::collections::HashSet;
 
 /// One provider's lookup of one value: a cell of the ledger. The ledger's

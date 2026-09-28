@@ -6,6 +6,7 @@
 use super::agreements::CandidateText;
 use crate::import::search::MetadataResult;
 use crate::pressing::{Country, ReleaseArea};
+use crate::text_match::track_title_key;
 
 /// What a row's fact says against the folder's, worst first, so the derived
 /// order ranks rows.
@@ -172,7 +173,7 @@ pub(crate) fn track_titles(records: &[MetadataResult], folder: &[String]) -> Fac
         let listed: Vec<String> = record
             .track_titles
             .iter()
-            .map(|title| title_key(title))
+            .map(|title| track_title_key(title))
             .collect();
         if listed.len() != folder.len() || listed.iter().any(String::is_empty) {
             continue;
@@ -199,13 +200,13 @@ pub(crate) fn track_titles(records: &[MetadataResult], folder: &[String]) -> Fac
 /// file named "Artist - Title" — after its first " - ". Empty when nothing
 /// of the title is left to compare.
 fn title_spellings(title: &str) -> Vec<String> {
-    let whole = title_key(title);
+    let whole = track_title_key(title);
     if whole.is_empty() {
         return Vec::new();
     }
     let mut spellings = vec![whole];
     if let Some((_, rest)) = title.split_once(" - ") {
-        let rest = title_key(rest);
+        let rest = track_title_key(rest);
         if !rest.is_empty() && !spellings.contains(&rest) {
             spellings.push(rest);
         }
@@ -213,26 +214,9 @@ fn title_spellings(title: &str) -> Vec<String> {
     spellings
 }
 
-/// A track title as two are compared: without its bracketed parts, which
-/// name a version rather than the song — "(Remastered)", "[Live]" — and
-/// squashed, see [`crate::util::text::squash`].
-fn title_key(title: &str) -> String {
-    let mut kept = String::with_capacity(title.len());
-    let mut depth = 0u32;
-    for c in title.chars() {
-        match c {
-            '(' | '[' => depth += 1,
-            ')' | ']' if depth > 0 => depth -= 1,
-            _ if depth == 0 => kept.push(c),
-            _ => {}
-        }
-    }
-    crate::util::text::squash(&kept)
-}
-
 /// The years a title writes as words of their own.
 fn title_years(title: &str) -> Vec<i32> {
-    super::agreements::words(title)
+    crate::text_match::words(title)
         .iter()
         .filter_map(|word| year_of(word))
         .collect()

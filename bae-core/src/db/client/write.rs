@@ -15,7 +15,7 @@ pub(super) fn insert_artist_row(
         params![
             artist.id,
             artist.name,
-            crate::util::text::normalize(&artist.name),
+            crate::text_match::normalize(&artist.name),
             artist.sort_name,
             artist.discogs_artist_id,
             artist.musicbrainz_artist_id,

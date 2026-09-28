@@ -5,9 +5,8 @@ use super::combine::LookupProvenance;
 use crate::import::search::MetadataResult;
 use crate::pressing::{ReleaseArea, ReleaseLabel};
 use crate::signals::TextLine;
-use crate::util::text::squash;
+use crate::text_match::{is_stop_word, squash, words, written_words, LabelName};
 use std::collections::HashSet;
-use unicode_normalization::UnicodeNormalization;
 
 /// Which of one result's fields the folder confirms. A field the result does
 /// not state is no agreement.
@@ -192,7 +191,7 @@ impl CandidateText {
     /// label written as its initials states the name they are the initials
     /// of, either way round: "DFC" and "Dance Floor Corporation".
     pub fn states_label(&self, value: &str) -> bool {
-        let Some(name) = super::label::LabelName::of(value) else {
+        let Some(name) = LabelName::of(value) else {
             return false;
         };
         self.states_run(name.stated())
@@ -260,10 +259,9 @@ impl NormalizedLine {
             run.push_str(&word);
             ends.push(run.len());
         }
-        let capitals = text
-            .split(|c: char| !c.is_alphanumeric() && c != '.')
-            .map(|word| word.replace('.', ""))
-            .filter(|word| !word.is_empty() && word.chars().all(char::is_uppercase))
+        let capitals = written_words(text)
+            .into_iter()
+            .filter(|word| word.chars().all(char::is_uppercase))
             .collect();
         (!run.is_empty()).then_some(Self {
             run,
@@ -288,12 +286,12 @@ impl NormalizedLine {
             .map(|(&start, &end)| &self.run[start..end])
             .collect();
         (0..words.len()).any(|start| {
-            if crate::util::text::is_stop_word(words[start]) {
+            if is_stop_word(words[start]) {
                 return false;
             }
             let mut spelled = String::new();
             for word in &words[start..] {
-                if crate::util::text::is_stop_word(word) {
+                if is_stop_word(word) {
                     continue;
                 }
                 spelled.extend(word.chars().next());
@@ -325,18 +323,6 @@ impl NormalizedLine {
                 && self.ends.binary_search(&(at + value.len())).is_ok()
         })
     }
-}
-
-/// The line's words, each squashed. A word is a run of letters and digits.
-pub(crate) fn words(text: &str) -> Vec<String> {
-    text.nfd()
-        .filter(|c| !unicode_normalization::char::is_combining_mark(*c))
-        .flat_map(char::to_lowercase)
-        .collect::<String>()
-        .split(|c: char| !c.is_alphanumeric())
-        .filter(|word| !word.is_empty())
-        .map(str::to_string)
-        .collect()
 }
 
 #[cfg(test)]

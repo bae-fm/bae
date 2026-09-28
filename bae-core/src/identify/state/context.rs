@@ -321,7 +321,7 @@ impl TitleSearch {
     /// The search for a draft's own title, with trailing bracketed parts such
     /// as `[MR2002]` taken off, since catalogs match nothing with them.
     pub fn of_draft(album: &str, artist: &str) -> Option<Self> {
-        let words = crate::signals::candidate_text::strip_trailing_brackets(album);
+        let words = crate::text_match::strip_trailing_brackets(album);
         let album = if words.is_empty() { album } else { &words };
         Self::of(album, artist)
     }

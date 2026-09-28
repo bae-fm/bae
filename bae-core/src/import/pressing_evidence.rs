@@ -11,11 +11,10 @@
 //! supported that claim is.
 
 use crate::barcode::comparison_key;
-use crate::identify::label::LabelName;
 use crate::import::search::MetadataResult;
 use crate::import::types::{Catalog, MetadataRef};
 use crate::pressing::{Medium, ReleaseArea, ReleaseLabel, StatedMedia};
-use crate::util::text::catalog_key;
+use crate::text_match::{catalog_key, LabelName};
 use tracing::debug;
 
 /// What two records say about one pressing fact.

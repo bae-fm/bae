@@ -5,9 +5,9 @@ use super::Pressing;
 /// Whether two records state the same label: the same name and number, each
 /// compared the way two spellings of one are.
 fn same_label(a: &crate::pressing::ReleaseLabel, b: &crate::pressing::ReleaseLabel) -> bool {
-    a.name().map(crate::util::text::normalize) == b.name().map(crate::util::text::normalize)
-        && a.catalog_number().and_then(crate::util::text::catalog_key)
-            == b.catalog_number().and_then(crate::util::text::catalog_key)
+    a.name().map(crate::text_match::normalize) == b.name().map(crate::text_match::normalize)
+        && a.catalog_number().and_then(crate::text_match::catalog_key)
+            == b.catalog_number().and_then(crate::text_match::catalog_key)
 }
 
 impl Pressing {
