@@ -58,6 +58,8 @@ jobs:
 
     - name: Run macOS unit tests (baeTests)
       if: ${{ !cancelled() && steps.build_macos.conclusion == 'success' }}
+      # A UI test waits on an app that never launches until the job's limit.
+      timeout-minutes: 30
       run: |
         cd bae-macos/bae && xcodebuild -project bae.xcodeproj -scheme bae \
           -configuration Debug CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \

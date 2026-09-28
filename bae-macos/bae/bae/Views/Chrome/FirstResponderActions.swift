@@ -6,8 +6,10 @@ import Observation
 /// item it built: the responder the action reaches, and whether that
 /// responder says the item is valid.
 ///
-/// Asked again each time AppKit updates its windows, which it does after
-/// every event it handles, so a command reads what the event before it left.
+/// Asked each time AppKit updates its windows, which it does after every
+/// event it handles, so a command reads what the event before it left. Never
+/// asked before the first update: this is made while the app starts, before
+/// `NSApp` exists, and until then nothing can take any of the actions.
 @MainActor
 @Observable
 final class FirstResponderActions {
@@ -42,7 +44,6 @@ final class FirstResponderActions {
         ) { [weak self] _ in
             MainActor.assumeIsolated { self?.refresh() }
         }
-        refresh()
     }
 
     func canPerform(_ action: Selector) -> Bool {
