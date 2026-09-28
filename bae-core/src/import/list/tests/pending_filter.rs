@@ -583,3 +583,34 @@ fn live_matches_are_the_candidates_any_checked_live_state_keeps() {
     assert!(matches(&[PendingFilter::Identified]).is_empty());
     assert!(matches(&[]).is_empty());
 }
+
+/// The summary names the states narrowing the tab on show, in the menu's
+/// order: the view's own on Pending, and none on the tabs they leave alone.
+#[test]
+fn the_summary_names_the_states_narrowing_the_tab_on_show() {
+    let rows = every_kind();
+    let narrowing = |tab, filters: &[PendingFilter]| {
+        flattened(
+            &rows,
+            &ImportListView {
+                tab,
+                pending_filters: checked(filters),
+                ..ImportListView::default()
+            },
+        )
+        .summary
+        .pending_filters
+        .into_iter()
+        .collect::<Vec<_>>()
+    };
+    assert_eq!(
+        narrowing(
+            TriageTab::Pending,
+            &[PendingFilter::ImportError, PendingFilter::NeedsYou]
+        ),
+        vec![PendingFilter::NeedsYou, PendingFilter::ImportError]
+    );
+    assert!(narrowing(TriageTab::Pending, &[]).is_empty());
+    assert!(narrowing(TriageTab::Done, &[PendingFilter::NeedsYou]).is_empty());
+    assert!(narrowing(TriageTab::Skipped, &[PendingFilter::NeedsYou]).is_empty());
+}

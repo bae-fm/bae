@@ -17,7 +17,8 @@ struct ImportStoreScanFailureTests {
             folderScanStatuses: statuses,
             folderScanActivity: nil,
             groupKeys: [],
-            pendingCovers: []
+            pendingCovers: [],
+            pendingFilters: []
         )
     }
 

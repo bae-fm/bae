@@ -492,6 +492,7 @@ impl crate::types::BridgeImportQueueSummary {
             watched_folders,
             group_keys,
             pending_covers,
+            pending_filters,
         } = summary;
         let bae_core::import::FolderScanProgress { statuses, activity } = folder_scans;
         Self {
@@ -512,6 +513,10 @@ impl crate::types::BridgeImportQueueSummary {
             pending_covers: pending_covers
                 .into_iter()
                 .map(crate::types::BridgeRemoteImageSet::from_core)
+                .collect(),
+            pending_filters: pending_filters
+                .into_iter()
+                .map(crate::types::BridgePendingFilter::from_core)
                 .collect(),
         }
     }

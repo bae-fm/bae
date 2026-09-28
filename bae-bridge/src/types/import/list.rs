@@ -150,6 +150,9 @@ pub struct BridgeImportQueueSummary {
     /// The lead-match covers of the Pending rows the view's filters keep, in
     /// queue order, to decode before Pending opens.
     pub pending_covers: Vec<BridgeRemoteImageSet>,
+    /// The states narrowing the tab on show, in the menu's order: the view's
+    /// own on Pending, none on Done and Skipped.
+    pub pending_filters: Vec<BridgePendingFilter>,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]

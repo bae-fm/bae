@@ -78,6 +78,15 @@ impl ImportListView {
     pub(crate) fn filters(&self) -> bool {
         !self.filter_text.is_empty()
     }
+
+    /// The states narrowing `tab`'s rows: the view's on Pending, none on Done
+    /// and Skipped, whose rows are past identification.
+    pub(crate) fn pending_filters_on(&self, tab: TriageTab) -> Option<&PendingFilters> {
+        match tab {
+            TriageTab::Pending => Some(&self.pending_filters),
+            TriageTab::Done | TriageTab::Skipped => None,
+        }
+    }
 }
 
 impl Default for ImportListView {
@@ -325,13 +334,9 @@ impl ImportListRequest {
         row: &TriageRow,
         verdict: Option<&VerdictSummary>,
     ) -> bool {
-        match tab {
-            TriageTab::Pending => self
-                .view
-                .pending_filters
-                .keeps(row, verdict, &self.live_matches),
-            TriageTab::Done | TriageTab::Skipped => true,
-        }
+        self.view
+            .pending_filters_on(tab)
+            .is_none_or(|filters| filters.keeps(row, verdict, &self.live_matches))
     }
 }
 
@@ -433,6 +438,8 @@ pub struct ImportQueueSummary {
     /// The lead-match covers of the Pending rows the view's filters keep, in
     /// queue order, to decode before Pending opens.
     pub pending_covers: Vec<crate::import::cover_art::RemoteImageSet>,
+    /// The states narrowing the tab on show, in the menu's order.
+    pub pending_filters: PendingFilters,
 }
 
 /// Where each watched folder's scan stands, for the chrome around the list.

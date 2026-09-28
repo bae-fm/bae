@@ -303,6 +303,17 @@ struct ImportCandidateListContent: View {
                         Image(systemName: "magnifyingglass")
                             .themeIcon(ImportFilterBarLayout.glyph)
                             .foregroundStyle(.tertiary)
+                        if !summary.pendingFilters.isEmpty {
+                            PendingFilterChips(
+                                filters: summary.pendingFilters
+                            ) { filter in
+                                cancelReveal()
+                                listSlot.setPendingFilter(
+                                    filter,
+                                    checked: false
+                                )
+                            }
+                        }
                         TextField("Filter...", text: filterTextBinding)
                             .textFieldStyle(.plain)
                             .themeText(.body)

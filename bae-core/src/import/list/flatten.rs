@@ -79,7 +79,7 @@ pub(crate) fn flatten(
         placed,
         counts,
     } = order(rows, request)?;
-    let summary = summarise(rows, &ordered, &placed, counts);
+    let summary = summarise(rows, &request.view, &ordered, &placed, counts);
     let (items, headers) = emit(&request.view, &ordered);
     Ok(Flattened {
         items,
@@ -640,9 +640,11 @@ fn shown_text<'a>(
     Ok(text.shown_text())
 }
 
-/// The whole queue's tab counts, Pending's covers and group keys.
+/// The whole queue's tab counts, Pending's covers and group keys, and what
+/// narrows the tab `view` shows.
 fn summarise(
     rows: &ImportQueueRows,
+    view: &ImportListView,
     ordered: &[OrderedEntry],
     placed: &[PlacedRow],
     counts: TriageTabCounts,
@@ -673,6 +675,10 @@ fn summarise(
         watched_folders: rows.watched_folders.clone(),
         group_keys,
         pending_covers,
+        pending_filters: view
+            .pending_filters_on(view.tab)
+            .cloned()
+            .unwrap_or_default(),
     }
 }
 
