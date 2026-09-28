@@ -269,15 +269,20 @@ CREATE TABLE IF NOT EXISTS release_files (
     -- against it.
     hash TEXT NOT NULL,
     -- What the file held before import rewrote it: its own audio ('file') or
-    -- one slice of a CUE-described disc ('cue'). The codec decides whether bits
-    -- per sample or bitrate is set.
-    source_audio_layout TEXT CHECK (source_audio_layout IS NULL OR source_audio_layout IN ('file', 'cue')),
+    -- one slice of a CUE-described disc ('cue').
+    source_audio_layout TEXT,
     source_audio_content_type TEXT,
     source_audio_duration_ms INTEGER CHECK (source_audio_duration_ms IS NULL OR source_audio_duration_ms >= 0),
     source_audio_sample_rate_hz INTEGER CHECK (source_audio_sample_rate_hz IS NULL OR source_audio_sample_rate_hz > 0),
     source_audio_bits_per_sample INTEGER CHECK (source_audio_bits_per_sample IS NULL OR source_audio_bits_per_sample > 0),
     source_audio_bitrate_kbps INTEGER CHECK (source_audio_bitrate_kbps IS NULL OR source_audio_bitrate_kbps > 0),
-    source_audio_channels INTEGER CHECK (
+    source_audio_channels INTEGER,
+    FOREIGN KEY (release_id) REFERENCES releases (id) ON DELETE CASCADE,
+    -- A file that is not audio states no audio facts. An audio file states
+    -- them all, the codec deciding whether bits per sample or bitrate is set,
+    -- and a layout unless the release carries it with the tracklist leaving
+    -- it out.
+    CHECK (
         (source_audio_layout IS NULL
             AND source_audio_content_type IS NULL
             AND source_audio_duration_ms IS NULL
@@ -286,7 +291,8 @@ CREATE TABLE IF NOT EXISTS release_files (
             AND source_audio_bitrate_kbps IS NULL
             AND source_audio_channels IS NULL)
         OR (
-            source_audio_channels IS NOT NULL
+            (source_audio_layout IS NULL OR source_audio_layout IN ('file', 'cue'))
+            AND source_audio_channels IS NOT NULL
             AND source_audio_channels > 0
             AND source_audio_content_type IS NOT NULL
             AND source_audio_duration_ms IS NOT NULL
@@ -304,8 +310,7 @@ CREATE TABLE IF NOT EXISTS release_files (
                     AND source_audio_bitrate_kbps IS NOT NULL)
             )
         )
-    ),
-    FOREIGN KEY (release_id) REFERENCES releases (id) ON DELETE CASCADE
+    )
 ) STRICT;
 
 CREATE INDEX IF NOT EXISTS idx_release_files_release_id ON release_files (release_id);
