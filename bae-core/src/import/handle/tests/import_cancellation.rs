@@ -250,7 +250,7 @@ impl Drop for HeldProgress<'_> {
 /// How far along an import's step is, in the order an import takes them.
 fn import_position(import: &crate::import::candidates::ImportInFlight) -> (u8, u32) {
     use crate::import::{ImportPhase, ImportStep, PrepareStep};
-    let step = match import.step.expect("an import in flight names its step") {
+    let step = match import.step {
         ImportStep::Preparing(PrepareStep::Queued) => 0,
         ImportStep::Preparing(PrepareStep::ValidatingSourceFiles) => 1,
         ImportStep::Running(ImportPhase::ReadingFiles) => 2,
@@ -288,9 +288,7 @@ async fn assert_imports_again_from_the_start(handle: &ImportServiceHandle, key: 
         shown.first(),
         Some(&crate::import::candidates::ImportInFlight {
             progress_percent: None,
-            step: Some(crate::import::ImportStep::Preparing(
-                crate::import::PrepareStep::Queued
-            )),
+            step: crate::import::ImportStep::Preparing(crate::import::PrepareStep::Queued),
         }),
         "the import starts from the queue, not where the last attempt stopped"
     );

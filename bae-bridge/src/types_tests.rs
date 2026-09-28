@@ -35,7 +35,9 @@ mod triage_tests {
                 save_failed: None,
                 import: Some(bae_core::import::ImportInFlight {
                     progress_percent: Some(40),
-                    step: None,
+                    step: bae_core::import::ImportStep::Running(
+                        bae_core::import::ImportPhase::ReadingFiles,
+                    ),
                 }),
                 search: None,
             });

@@ -699,7 +699,7 @@ impl CandidateRuntime {
                 import_id: import_id.to_string(),
                 in_flight: ImportInFlight {
                     progress_percent: None,
-                    step: Some(ImportStep::Preparing(PrepareStep::Queued)),
+                    step: ImportStep::Preparing(PrepareStep::Queued),
                 },
             });
             Ok(())
@@ -741,11 +741,11 @@ impl CandidateRuntime {
                 let in_flight = match progress {
                     ImportProgress::Preparing { step, .. } => Some(ImportInFlight {
                         progress_percent: None,
-                        step: Some(ImportStep::Preparing(*step)),
+                        step: ImportStep::Preparing(*step),
                     }),
                     ImportProgress::Progress { percent, phase, .. } => Some(ImportInFlight {
                         progress_percent: percent.map(u32::from),
-                        step: Some(ImportStep::Running(*phase)),
+                        step: ImportStep::Running(*phase),
                     }),
                     ImportProgress::Complete { .. }
                     | ImportProgress::RemoteUploadQueued { .. }

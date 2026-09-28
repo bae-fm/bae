@@ -160,11 +160,12 @@ impl TriageRuntimeFacts {
             runtime.queued.map(|_| IdentificationStatus::Queued)
         };
         let import = runtime.import.as_ref().map(|import| match import.step {
-            Some(crate::import::ImportStep::Running(crate::import::ImportPhase::Finalizing)) => {
+            crate::import::ImportStep::Running(crate::import::ImportPhase::Finalizing) => {
                 ImportStanding::Writing
             }
-            Some(crate::import::ImportStep::Preparing(_) | crate::import::ImportStep::Running(_))
-            | None => ImportStanding::Cancellable,
+            crate::import::ImportStep::Preparing(_) | crate::import::ImportStep::Running(_) => {
+                ImportStanding::Cancellable
+            }
         });
         Self {
             identification,

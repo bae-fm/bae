@@ -160,7 +160,7 @@ fn import_progress_is_recorded_per_key_and_published_for_that_key_only() {
         in_flight,
         ImportInFlight {
             progress_percent: Some(42),
-            step: Some(ImportStep::Running(ImportPhase::MeasuringLoudness)),
+            step: ImportStep::Running(ImportPhase::MeasuringLoudness),
         }
     );
     let published = drain(&mut changes);
@@ -272,7 +272,7 @@ fn a_late_subscriber_reads_every_running_key() {
         running["/watch/a/rel1"].import,
         Some(ImportInFlight {
             progress_percent: Some(10),
-            step: Some(ImportStep::Running(ImportPhase::MeasuringLoudness)),
+            step: ImportStep::Running(ImportPhase::MeasuringLoudness),
         })
     );
     assert!(running["/watch/a/rel2"].import.is_some());

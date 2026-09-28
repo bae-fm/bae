@@ -140,7 +140,7 @@ pub enum Admission {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImportInFlight {
     pub progress_percent: Option<u32>,
-    pub step: Option<ImportStep>,
+    pub step: ImportStep,
 }
 
 /// The library release one candidate's bytes were imported as.

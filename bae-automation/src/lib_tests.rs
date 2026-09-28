@@ -246,7 +246,7 @@ fn indeterminate_import_progress_serializes_without_a_fraction() {
         None,
         Some(&ImportInFlight {
             progress_percent: None,
-            step: Some(ImportStep::Preparing(PrepareStep::ValidatingSourceFiles)),
+            step: ImportStep::Preparing(PrepareStep::ValidatingSourceFiles),
         }),
     )
     .expect("the importing row has a status");

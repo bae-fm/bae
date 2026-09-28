@@ -178,7 +178,7 @@ pub(crate) fn automation_import_status(
     if let Some(in_flight) = in_flight {
         return Some(AutomationImportStatus::Importing {
             progress_percent: in_flight.progress_percent,
-            step: in_flight.step.map(AutomationImportStep::from_core),
+            step: Some(AutomationImportStep::from_core(in_flight.step)),
         });
     }
     Some(match status? {

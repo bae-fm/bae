@@ -27,7 +27,7 @@ fn a_claim_is_the_queued_step_until_the_worker_reports() {
         runtime.get(key).and_then(|runtime| runtime.import),
         Some(ImportInFlight {
             progress_percent: None,
-            step: Some(ImportStep::Preparing(PrepareStep::Queued)),
+            step: ImportStep::Preparing(PrepareStep::Queued),
         })
     );
     drain(&mut changes);
@@ -70,7 +70,7 @@ fn only_the_claiming_imports_reports_move_its_claim() {
     runtime.claim_for_import(key, "imp-2").unwrap();
     let queued = Some(ImportInFlight {
         progress_percent: None,
-        step: Some(ImportStep::Preparing(PrepareStep::Queued)),
+        step: ImportStep::Preparing(PrepareStep::Queued),
     });
     assert_eq!(runtime.get(key).and_then(|runtime| runtime.import), queued);
     runtime.record_event(&progress(key, 80));

@@ -98,7 +98,7 @@ mirror_struct! {
     from_core: fn,
     fields: {
         progress_percent,
-        step: (opt crate::types::BridgeImportStep),
+        step: (crate::types::BridgeImportStep),
     },
 }
 

@@ -873,7 +873,9 @@ mod candidate_runtime {
                 save_failed: None,
                 import: Some(bae_core::import::ImportInFlight {
                     progress_percent: None,
-                    step: None,
+                    step: bae_core::import::ImportStep::Running(
+                        bae_core::import::ImportPhase::ReadingFiles,
+                    ),
                 }),
                 search: None,
             },
@@ -925,7 +927,7 @@ mod candidate_runtime {
         assert!(
             matches!(
                 import.step,
-                Some(crate::types::BridgeImportStep::Preparing { .. })
+                crate::types::BridgeImportStep::Preparing { .. }
             ),
             "a claim is the queued step, got {:?}",
             import.step

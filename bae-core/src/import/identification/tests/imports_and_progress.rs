@@ -42,9 +42,9 @@ async fn claiming_an_import_publishes_queued_status_immediately() {
                 && runtime.import
                     == Some(crate::import::ImportInFlight {
                         progress_percent: None,
-                        step: Some(crate::import::ImportStep::Preparing(
+                        step: crate::import::ImportStep::Preparing(
                             crate::import::PrepareStep::Queued
-                        )),
+                        ),
                     })
     ));
 }

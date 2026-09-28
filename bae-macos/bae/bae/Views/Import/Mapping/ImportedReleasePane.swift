@@ -256,7 +256,7 @@ struct ImportingCandidatePane: View {
                     onNavigateToPlacement: {}
                 )
                 ProgressLine(
-                    runtime?.import?.step?.localizedText
+                    runtime?.import?.step.localizedText
                         ?? String(localized: "Importing\u{2026}"),
                     progress: runtime?.import?.progressPercent
                         .map {
