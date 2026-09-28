@@ -2,7 +2,7 @@
 //! number once.
 
 use super::ReleaseLabel;
-use crate::text_match::{catalog_key, normalize};
+use crate::text_match::{catalog_key, same_label_name};
 
 /// One line of a label list: the names the numbers are released on, then the
 /// catalog numbers they share. A name stated with several numbers shows once
@@ -15,9 +15,10 @@ pub struct LabelLine {
 }
 
 /// `labels` as lines, in the order each first appears: first every number
-/// under the name it is stated with, then every name whose numbers are the
-/// same as an earlier name's beside that name. A number stated with no name
-/// is its own line.
+/// under the name it is stated with — the first name of its label, as
+/// `same_label_name` tells labels apart — then every name whose numbers are
+/// the same as an earlier name's beside that name. A number stated with no
+/// name is its own line.
 pub fn label_lines(labels: &[ReleaseLabel]) -> Vec<LabelLine> {
     let mut by_name: Vec<LabelLine> = Vec::new();
     for label in labels {
@@ -26,7 +27,7 @@ pub fn label_lines(labels: &[ReleaseLabel]) -> Vec<LabelLine> {
             by_name.iter_mut().find(|line| {
                 line.names
                     .first()
-                    .is_some_and(|shown| normalize(shown) == normalize(name))
+                    .is_some_and(|shown| same_label_name(shown, name))
             })
         });
         match named {
@@ -117,6 +118,26 @@ mod tests {
             vec![
                 line(&["Label One", "Label Two", "Label Four"], &["AB-100"]),
                 line(&["Label Three"], &["CD-200"]),
+            ]
+        );
+    }
+
+    /// Two names of one label — one trailing a trade word, one written as
+    /// the other's initials — are the one label, shown by the name it first
+    /// appears as.
+    #[test]
+    fn names_of_one_label_show_once() {
+        let labels = [
+            label(Some("Harbor Records"), Some("AB-100")),
+            label(Some("Harbor"), Some("CD-200")),
+            label(Some("Alpha Beta Corporation"), Some("EF-300")),
+            label(Some("A.B.C."), Some("GH-400")),
+        ];
+        assert_eq!(
+            label_lines(&labels),
+            vec![
+                line(&["Harbor Records"], &["AB-100", "CD-200"]),
+                line(&["Alpha Beta Corporation"], &["EF-300", "GH-400"]),
             ]
         );
     }

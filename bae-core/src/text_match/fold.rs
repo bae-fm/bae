@@ -25,7 +25,6 @@ pub(crate) fn squash(text: &str) -> String {
 /// The text's words, each squashed: a word is a run of letters and digits, so
 /// `16033-2` is the words `16033` and `2`, and its words run together are
 /// [`squash`] of it.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) fn words(text: &str) -> Vec<String> {
     folded(text)
         .collect::<String>()
@@ -38,7 +37,6 @@ pub(crate) fn words(text: &str) -> Vec<String> {
 /// The text's words as it writes them, case kept, with the dots between
 /// letters dropped: "D.F.C." is the one word `DFC`. What a code or a set of
 /// initials is recognized in, where capitals are what say it is one.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) fn written_words(text: &str) -> Vec<String> {
     text.split(|c: char| !c.is_alphanumeric() && c != '.')
         .map(|word| word.replace('.', ""))
@@ -49,12 +47,10 @@ pub(crate) fn written_words(text: &str) -> Vec<String> {
 /// Whether `word` says nothing about which album or artist a name is: an
 /// article, conjunction or preposition, in the languages record titles are
 /// most often in. Compared squashed, so "The" and "the" are one word.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) fn is_stop_word(word: &str) -> bool {
     STOP_WORDS.contains(&squash(word).as_str())
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 const STOP_WORDS: &[&str] = &[
     "a", "an", "and", "at", "by", "for", "from", "in", "of", "on", "or", "the", "to", "with",
     "das", "de", "del", "der", "des", "die", "du", "el", "et", "la", "le", "les", "los", "und",

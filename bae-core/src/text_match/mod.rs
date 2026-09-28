@@ -22,7 +22,7 @@
 //! - [`track_title_key`]: two track titles are one song.
 //! - [`album_title_words`]: the words of an album's title that say which
 //!   album it is.
-//! - [`LabelName`]: two label names name one label.
+//! - [`LabelName`] and [`same_label_name`]: two label names name one label.
 //! - [`is_various_artists`]: a credit that names a compilation, not an
 //!   artist.
 //!
@@ -31,17 +31,17 @@
 
 mod catalog_number;
 mod fold;
+mod label;
 
 pub(crate) use catalog_number::catalog_key;
-pub(crate) use fold::{normalize, squash};
+pub(crate) use fold::{is_stop_word, normalize, squash, words, written_words};
+pub(crate) use label::same_label_name;
 
 desktop_only! {
     mod artist;
-    mod label;
     mod title;
 
     pub(crate) use artist::is_various_artists;
-    pub(crate) use fold::{is_stop_word, words, written_words};
     pub(crate) use label::LabelName;
     pub(crate) use title::{album_title_words, strip_trailing_brackets, track_title_key};
 }

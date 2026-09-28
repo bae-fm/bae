@@ -11,7 +11,10 @@
 //!
 //! A label may also be written as its initials — "DFC" for "Dance Floor
 //! Corporation" — and two names agree when one is the other's initials.
-//! [`LabelName::same_label`] is the one place two label names are compared.
+//! [`LabelName::same_label`] is the one place two label names are compared:
+//! pairing two records as one pressing, joining two catalogs' albums, and
+//! listing a row's or a release's labels each once all ask it, directly or
+//! through [`same_label_name`].
 
 use std::sync::OnceLock;
 
@@ -65,18 +68,33 @@ impl LabelName {
     }
 
     /// Its words run together, as a line of text is searched for it.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) fn stated(&self) -> &str {
         &self.stated
     }
 
     /// Its initials, when its words make some.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) fn initials(&self) -> Option<&str> {
         self.initials.as_deref()
     }
 
     /// The initials it is written as, when it is.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) fn written_initials(&self) -> Option<&str> {
         self.written_initials.as_deref()
+    }
+}
+
+/// Whether two written label names name one label, as
+/// [`LabelName::same_label`] says. Two names that name no label — nothing but
+/// trade words — are one only when they are written alike, as
+/// [`super::normalize`] compares them.
+pub(crate) fn same_label_name(a: &str, b: &str) -> bool {
+    match (LabelName::of(a), LabelName::of(b)) {
+        (Some(a), Some(b)) => a.same_label(&b),
+        (None, None) => super::normalize(a) == super::normalize(b),
+        _ => false,
     }
 }
 
@@ -195,5 +213,16 @@ mod tests {
         assert!(!same("abc", "Alpha Beta Corporation"));
         assert!(!same("ABD", "Alpha Beta Corporation"));
         assert!(!same("Harbor", "Summit"));
+    }
+
+    /// Written names compare as their labels do; names of trade words alone
+    /// compare as written.
+    #[test]
+    fn two_written_names_name_one_label() {
+        assert!(same_label_name("Harbor Records", "harbor"));
+        assert!(same_label_name("A.B.C.", "Alpha Beta Corporation Ltd"));
+        assert!(same_label_name("Records", "records"));
+        assert!(!same_label_name("Records", "Recordings"));
+        assert!(!same_label_name("Records", "Harbor Records"));
     }
 }
