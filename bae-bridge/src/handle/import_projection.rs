@@ -274,9 +274,16 @@ mirror_struct! {
         actionable,
         placement: (crate::types::BridgeTriagePlacement),
         draft_valid,
-        lookup_failed,
+        lookup: (opt crate::types::BridgeStoredLookup),
         separable,
     },
+}
+
+mirror_enum! {
+    crate::types::BridgeStoredLookup = bae_core::import::StoredLookup,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    variants: { Answered, Failed },
 }
 
 impl crate::types::BridgeCandidateLiveState {

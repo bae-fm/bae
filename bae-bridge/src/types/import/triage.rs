@@ -221,8 +221,19 @@ pub struct BridgeCandidateActionBasis {
     pub placement: BridgeTriagePlacement,
     /// Whether the draft shapes into a release an import can commit.
     pub draft_valid: bool,
-    pub lookup_failed: bool,
+    /// What the lookup stored for the candidate's current files came to, or
+    /// none when none is stored.
+    pub lookup: Option<BridgeStoredLookup>,
     pub separable: bool,
+}
+
+/// What a candidate's stored lookup came to.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeStoredLookup {
+    /// It found a release, found none, or left the choice to the person.
+    Answered,
+    /// A source it asked could not answer.
+    Failed,
 }
 
 /// One selected candidate and the actions its live state offers.

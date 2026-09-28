@@ -98,7 +98,7 @@ mod tests {
     #[test]
     fn each_action_applies_to_the_members_that_offer_it() {
         let members = [
-            member("Identified Album", &[A::Import, A::Identify, A::RevealFolder]),
+            member("Album", &[A::Import, A::Identify, A::RevealFolder]),
             member("Other Album", &[A::Identify, A::RevealFolder]),
         ];
         let offers = selection_offers(&members);
@@ -111,7 +111,7 @@ mod tests {
         assert_eq!(count(A::Import), Some(1));
         assert_eq!(count(A::Identify), Some(2));
         assert_eq!(count(A::Skip), None);
-        assert_eq!(keys_for(&members, A::Import), vec!["Identified Album".to_string()]);
+        assert_eq!(keys_for(&members, A::Import), vec!["Album".to_string()]);
     }
 
     /// Combining is the whole selection's: offered for two or more, runnable

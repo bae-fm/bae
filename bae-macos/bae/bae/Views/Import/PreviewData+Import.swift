@@ -228,7 +228,7 @@
                     actionable: true,
                     placement: .pending,
                     draftValid: true,
-                    lookupFailed: false,
+                    lookup: nil,
                     separable: separable
                 ),
                 matched: nil,

@@ -50,8 +50,8 @@ impl CandidateAction {
 
 /// What the tables say a candidate's commands are decided from: whether it can
 /// be acted on at all, where it is placed, whether its draft would import, and
-/// whether its stored lookup failed — which offers a retry whatever the draft
-/// over it says.
+/// what its stored lookup came to — none offers identifying it, and a failed
+/// one offers a retry whatever the draft over it says.
 ///
 /// The row carries it so the surface drawing the row can hand it back with
 /// the row's live-state subscription: the commands a row offers are these
@@ -62,10 +62,21 @@ pub struct CandidateActionBasis {
     pub placement: TriagePlacement,
     /// Whether the draft shapes into a release an import can commit.
     pub draft_valid: bool,
-    pub lookup_failed: bool,
+    /// What the lookup stored for the candidate's current files came to, or
+    /// `None` when none is stored.
+    pub lookup: Option<StoredLookup>,
     /// Whether this release is folders a grouping reads as one, which the
     /// candidate offers to read as releases of their own.
     pub separable: bool,
+}
+
+/// What a candidate's stored lookup came to.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StoredLookup {
+    /// It found a release, found none, or left the choice to the person.
+    Answered,
+    /// A source it asked could not answer.
+    Failed,
 }
 
 impl CandidateActionBasis {
@@ -82,7 +93,12 @@ impl CandidateActionBasis {
             actionable,
             placement: *placement,
             draft_valid,
-            lookup_failed: lookup == Some(VerdictKind::Failed),
+            lookup: lookup.map(|kind| match kind {
+                VerdictKind::Failed => StoredLookup::Failed,
+                VerdictKind::Found | VerdictKind::NotFound | VerdictKind::ManualOnly => {
+                    StoredLookup::Answered
+                }
+            }),
             separable,
         }
     }
@@ -141,8 +157,12 @@ impl CandidateActionBasis {
                 if self.draft_valid {
                     actions.push(A::Import);
                 }
-                actions.push(A::Identify);
-                if self.lookup_failed
+                // A stored lookup is shown as it stood, as Automatic shows it,
+                // so only a candidate with none is offered identifying.
+                if self.lookup.is_none() {
+                    actions.push(A::Identify);
+                }
+                if self.lookup == Some(StoredLookup::Failed)
                     || matches!(
                         live.identification,
                         Some(IdentificationStatus::FinalizationFailed { .. })
@@ -337,6 +357,32 @@ mod tests {
             import: Some(ImportStanding::Cancellable),
         };
         assert!(!grouped.actions(&importing).contains(&CandidateAction::Separate));
+    }
+
+    /// A candidate is offered identifying only while no lookup is stored for
+    /// its files — the rule Automatic follows, which shows a stored one as it
+    /// stood. A failed lookup is retried rather than identified again.
+    #[test]
+    fn only_a_candidate_with_no_stored_lookup_offers_identify() {
+        let rest = TriageRuntimeFacts::default();
+        for placement in [TriagePlacement::Pending, TriagePlacement::Failed] {
+            assert!(basis(placement, None)
+                .actions(&rest)
+                .contains(&CandidateAction::Identify));
+            for lookup in [
+                VerdictKind::Found,
+                VerdictKind::NotFound,
+                VerdictKind::ManualOnly,
+                VerdictKind::Failed,
+            ] {
+                assert!(
+                    !basis(placement, Some(lookup))
+                        .actions(&rest)
+                        .contains(&CandidateAction::Identify),
+                    "{placement:?} with a stored {lookup:?} lookup"
+                );
+            }
+        }
     }
 
     #[test]

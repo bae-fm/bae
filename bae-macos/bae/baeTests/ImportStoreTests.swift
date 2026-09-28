@@ -157,7 +157,7 @@ private func identifiedRow(
             actionable: true,
             placement: .pending,
             draftValid: true,
-            lookupFailed: false,
+            lookup: nil,
             separable: false
         ),
         matched: matchedRelease(
@@ -196,7 +196,7 @@ private func skippedRow(_ key: String, title: String) -> BridgeTriageRow {
             actionable: true,
             placement: .skipped,
             draftValid: false,
-            lookupFailed: false,
+            lookup: nil,
             separable: false
         ),
         matched: nil,

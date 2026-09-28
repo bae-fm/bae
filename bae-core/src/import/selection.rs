@@ -119,3 +119,52 @@ pub(crate) fn watch_selection(
     });
     rx
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::identify::VerdictKind;
+    use crate::import::triage::{CandidateAction, TriagePlacement};
+
+    fn selected(key: &str, lookup: Option<VerdictKind>) -> SelectedCandidate {
+        SelectedCandidate {
+            candidate_key: key.to_string(),
+            name: key.to_string(),
+            basis: CandidateActionBasis::of(true, &TriagePlacement::Pending, true, lookup, false),
+        }
+    }
+
+    fn identify_count(selected: &[SelectedCandidate]) -> Option<u64> {
+        SelectionSummary::of(selected, &HashMap::new())
+            .offers
+            .into_iter()
+            .find(|offer| offer.action == CandidateAction::Identify)
+            .map(|offer| offer.count)
+    }
+
+    /// A selection of identified rows offers no Identify at all.
+    #[test]
+    fn identified_rows_offer_no_identify() {
+        assert_eq!(
+            identify_count(&[
+                selected("Album A", Some(VerdictKind::Found)),
+                selected("Album B", Some(VerdictKind::NotFound)),
+            ]),
+            None
+        );
+    }
+
+    /// A mixed selection counts only the rows no lookup is stored for.
+    #[test]
+    fn a_mixed_selection_counts_only_the_unidentified_rows() {
+        assert_eq!(
+            identify_count(&[
+                selected("Album A", Some(VerdictKind::Found)),
+                selected("Album B", None),
+                selected("Album C", Some(VerdictKind::Failed)),
+                selected("Album D", None),
+            ]),
+            Some(2)
+        );
+    }
+}

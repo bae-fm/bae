@@ -432,7 +432,7 @@ extension ImportCandidateViewportTests {
                     actionable: true,
                     placement: .skipped,
                     draftValid: false,
-                    lookupFailed: false,
+                    lookup: nil,
                     separable: false
                 ),
                 matched: nil,

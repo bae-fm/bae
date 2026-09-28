@@ -51,8 +51,8 @@ struct ImportCandidateBulkSelectionPaneTests {
     /// The rows are the actions the selection offers, grouped: what gets the
     /// folders in, where their metadata comes from, what takes them out of
     /// the queue, and where they are. An action none of the selected folders
-    /// offers is no row — here, retrying an identification neither of them
-    /// failed.
+    /// offers is no row — here, identifying, since both have a stored lookup,
+    /// and retrying an identification neither of them failed.
     @Test("the card's rows are the actions the selection offers, grouped")
     func theRowsAreTheSelectionsOffers() {
         let card = Self.card()
@@ -65,7 +65,7 @@ struct ImportCandidateBulkSelectionPaneTests {
         )
         #expect(
             card.rows(in: .metadata).map(\.action) == [
-                .identify, .resetToFileMetadata, .clearMetadata,
+                .resetToFileMetadata, .clearMetadata,
             ]
         )
         #expect(card.rows(in: .placement).map(\.action) == [.skip])
@@ -73,13 +73,13 @@ struct ImportCandidateBulkSelectionPaneTests {
     }
 
     /// Each row states how many of the selected folders its action applies to:
-    /// one of the two can be imported, both can be identified or skipped.
+    /// one of the two can be imported, both can be reset or skipped.
     @Test("a row counts the selected folders its action applies to")
     func aRowCountsTheFoldersItAppliesTo() {
         let card = Self.card()
 
         #expect(card.rows(in: .importing).map(\.count) == [1, nil])
-        #expect(card.rows(in: .metadata).map(\.count) == [2, 2, 2])
+        #expect(card.rows(in: .metadata).map(\.count) == [2, 2])
         #expect(card.rows(in: .placement).map(\.count) == [2])
         #expect(card.rows(in: .folder).map(\.count) == [2])
     }

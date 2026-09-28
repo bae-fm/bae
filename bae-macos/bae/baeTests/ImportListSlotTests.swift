@@ -96,7 +96,7 @@ private func candidateItem(_ index: Int) -> BridgeImportListItem {
                 actionable: true,
                 placement: .skipped,
                 draftValid: false,
-                lookupFailed: false,
+                lookup: nil,
                 separable: false
             ),
             matched: nil,

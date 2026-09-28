@@ -232,7 +232,7 @@ desktop_only! {
         ImportedReleaseSummary, ImportedReleaseText, ImportedRow, MatchEvidence, MatchedPressing, MatchedRelease,
         MatchedSignal, TriageGroup, TriageImportStatus, TriageMetadataSummary, TriagePlacement,
         TriageRow, TriageRuntimeFacts, TriageSkipAction, TriageTab, TriageTabCounts,
-        ImportStanding,
+        ImportStanding, StoredLookup,
     };
     pub(crate) use types::CandidateMappingPreparation;
     pub use types::ImportCommand;

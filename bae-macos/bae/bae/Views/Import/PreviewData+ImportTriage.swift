@@ -58,7 +58,7 @@
                     actionable: true,
                     placement: placement,
                     draftValid: metadataSummary != nil,
-                    lookupFailed: false,
+                    lookup: nil,
                     separable: false
                 ),
                 matched: matched,
@@ -529,7 +529,7 @@
                     actionable: true,
                     placement: .done,
                     draftValid: false,
-                    lookupFailed: false,
+                    lookup: nil,
                     separable: false
                 ),
                 release: BridgeImportedReleaseSummary(
@@ -684,10 +684,16 @@
             )
         }
 
-        private static let everyDraftCommand: [BridgeCandidateAction] = [
-            .identify, .resetToFileMetadata, .clearMetadata, .combine, .skip,
+        /// What a row whose lookup is stored offers over its draft: no
+        /// Identify, since the stored lookup is shown as it stood.
+        private static let identifiedDraftCommands: [BridgeCandidateAction] = [
+            .resetToFileMetadata, .clearMetadata, .combine, .skip,
             .revealFolder,
         ]
+
+        /// What a row no lookup is stored for offers over its draft.
+        private static let unidentifiedDraftCommands: [BridgeCandidateAction] =
+            [.identify] + identifiedDraftCommands
 
         /// Each of the tab's rows' live state, by candidate key.
         @MainActor
@@ -697,19 +703,19 @@
             let entries: [(BridgeTriageRow, BridgeCandidateLiveState)] = [
                 (
                     triageRowIdentified,
-                    triageLive([.import] + everyDraftCommand)
+                    triageLive([.import] + identifiedDraftCommands)
                 ),
-                (triageRowPickAPressing, triageLive(everyDraftCommand)),
+                (triageRowPickAPressing, triageLive(identifiedDraftCommands)),
                 (
                     triageRowSeveralMatchesFromSignals,
-                    triageLive(everyDraftCommand)
+                    triageLive(identifiedDraftCommands)
                 ),
-                (triageRowTrackMismatch, triageLive(everyDraftCommand)),
+                (triageRowTrackMismatch, triageLive(identifiedDraftCommands)),
                 (
                     triageRowAlreadyInLibrary,
-                    triageLive([.import] + everyDraftCommand)
+                    triageLive([.import] + identifiedDraftCommands)
                 ),
-                (triageRowNoMatch, triageLive(everyDraftCommand)),
+                (triageRowNoMatch, triageLive(identifiedDraftCommands)),
                 (
                     triageRowIdentifying,
                     triageLive([.skip], identification: .running)
@@ -717,15 +723,16 @@
                 (triageRowImporting, triageLive([], importing: true)),
                 (
                     triageRowFailed,
-                    triageLive([
-                        .identify, .resetToFileMetadata, .clearMetadata,
-                    ])
+                    triageLive([.resetToFileMetadata, .clearMetadata])
                 ),
                 (
                     triageGroupedRows[0],
-                    triageLive([.import] + everyDraftCommand)
+                    triageLive([.import] + identifiedDraftCommands)
                 ),
-                (triageGroupedRows[1], triageLive(everyDraftCommand)),
+                (
+                    triageGroupedRows[1],
+                    triageLive(unidentifiedDraftCommands)
+                ),
                 (triageRowDoneImported, triageLive([])),
                 (triageRowSkipped, triageLive([.restore])),
             ]

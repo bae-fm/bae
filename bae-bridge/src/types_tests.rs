@@ -326,7 +326,7 @@ mod conversion_roundtrip {
             actionable: true,
             placement: bae_core::import::TriagePlacement::Failed,
             draft_valid: true,
-            lookup_failed: true,
+            lookup: Some(bae_core::import::StoredLookup::Failed),
             separable: true,
         };
         assert_eq!(

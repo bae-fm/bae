@@ -29,7 +29,7 @@ mod actions;
 mod model;
 mod selection;
 
-pub use actions::{CandidateAction, CandidateActionBasis, CandidateLiveState};
+pub use actions::{CandidateAction, CandidateActionBasis, CandidateLiveState, StoredLookup};
 pub use model::*;
 pub use selection::{keys_for, selection_offers, SelectionMember, SelectionOffer};
 
