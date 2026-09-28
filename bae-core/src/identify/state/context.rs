@@ -366,6 +366,8 @@ pub struct SignalsContext {
     pub barcode: BarcodeEvidence,
     pub catalog: CatalogEvidence,
     pub isrc: IsrcEvidence,
+    /// Each track's title as the folder gives it, from the latest snapshot.
+    pub track_titles: Vec<String>,
     pub search: SearchEvidence,
     /// The candidate's own text, normalized — what a result is judged against.
     pub text: CandidateText,
@@ -409,6 +411,7 @@ impl Default for SignalsContext {
             barcode: BarcodeEvidence::default(),
             catalog: CatalogEvidence::default(),
             isrc: IsrcEvidence::default(),
+            track_titles: Vec::new(),
             search: SearchEvidence::default(),
             text: CandidateText::default(),
             text_settled: false,
@@ -425,6 +428,7 @@ impl SignalsContext {
             origin: &self.origin,
             mono: self.audio.mono,
             track_count: self.audio.track_count,
+            track_titles: &self.track_titles,
             registered_in: self.isrc.registered_in(),
         }
     }
@@ -481,6 +485,7 @@ impl SignalsContext {
         self.artwork = artwork;
         self.origin = signals.origin.clone();
         self.isrc.tagged = signals.isrcs.clone();
+        self.track_titles = signals.track_titles.clone();
         self.audio = audio;
         self.disc.refresh_input(&signals.disc_id);
         self.barcode.refresh_input(&signals.barcode);

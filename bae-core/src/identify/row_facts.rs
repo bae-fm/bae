@@ -152,6 +152,84 @@ pub(crate) fn registration(records: &[MetadataResult], registered: Option<Releas
     }
 }
 
+/// Whether the titles a row's read document lists run in the order the
+/// folder's tracks do.
+///
+/// It agrees when every track's title matches the document's at its position,
+/// compared as [`title_spellings`] spells them. It disagrees only when the
+/// document lists the same titles as the folder, every one, at other
+/// positions: a spelling, a language or a title missing on either side leaves
+/// the lists apart for reasons that say nothing about the edition, so it
+/// states nothing — as does a row whose document was not read. Of a row's
+/// records, one that agrees decides it.
+pub(crate) fn track_titles(records: &[MetadataResult], folder: &[String]) -> Fact {
+    let folder: Vec<Vec<String>> = folder.iter().map(|title| title_spellings(title)).collect();
+    if folder.is_empty() || folder.iter().any(Vec::is_empty) {
+        return Fact::StatesNothing;
+    }
+    let mut fact = Fact::StatesNothing;
+    for record in records {
+        let listed: Vec<String> = record
+            .track_titles
+            .iter()
+            .map(|title| title_key(title))
+            .collect();
+        if listed.len() != folder.len() || listed.iter().any(String::is_empty) {
+            continue;
+        }
+        if listed
+            .iter()
+            .zip(&folder)
+            .all(|(listed, spellings)| spellings.contains(listed))
+        {
+            return Fact::Agrees;
+        }
+        let mut stated: Vec<&String> = folder.iter().map(|spellings| &spellings[0]).collect();
+        let mut listed: Vec<&String> = listed.iter().collect();
+        stated.sort();
+        listed.sort();
+        if stated == listed {
+            fact = Fact::Disagrees;
+        }
+    }
+    fact
+}
+
+/// The ways a track title the folder gives is compared: whole, and — for a
+/// file named "Artist - Title" — after its first " - ". Empty when nothing
+/// of the title is left to compare.
+fn title_spellings(title: &str) -> Vec<String> {
+    let whole = title_key(title);
+    if whole.is_empty() {
+        return Vec::new();
+    }
+    let mut spellings = vec![whole];
+    if let Some((_, rest)) = title.split_once(" - ") {
+        let rest = title_key(rest);
+        if !rest.is_empty() && !spellings.contains(&rest) {
+            spellings.push(rest);
+        }
+    }
+    spellings
+}
+
+/// A track title as two are compared: without its bracketed parts, which
+/// name a version rather than the song — "(Remastered)", "[Live]" — and
+/// squashed, see [`crate::util::text::squash`].
+fn title_key(title: &str) -> String {
+    let mut kept = String::with_capacity(title.len());
+    let mut depth = 0u32;
+    for c in title.chars() {
+        match c {
+            '(' | '[' => depth += 1,
+            ')' | ']' if depth > 0 => depth -= 1,
+            _ if depth == 0 => kept.push(c),
+            _ => {}
+        }
+    }
+    crate::util::text::squash(&kept)
+}
+
 /// The years a title writes as words of their own.
 fn title_years(title: &str) -> Vec<i32> {
     super::agreements::words(title)

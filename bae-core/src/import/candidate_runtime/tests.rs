@@ -74,6 +74,7 @@ pub(crate) fn signals_context(track_count: u32) -> crate::identify::state::Signa
         album_links: crate::identify::state::AlbumLinkReading::Pending,
         documents: crate::identify::documents::DocumentReading::Pending,
         isrc: Default::default(),
+        track_titles: Vec::new(),
     }
 }
 
@@ -136,6 +137,7 @@ fn extracted_signals() -> crate::signals::Signals {
         },
         text_pool: Vec::new(),
         isrcs: Vec::new(),
+        track_titles: Vec::new(),
     }
 }
 
@@ -704,25 +706,10 @@ fn search_result(
 ) -> (crate::import::search::MetadataResult, LibraryStatus) {
     (
         crate::import::search::MetadataResult {
-            source,
-            release_id: release_id.to_string(),
             title: "Album Title".to_string(),
             artist: Some("Artist Name".to_string()),
             year: Some(1992),
-            labels: Vec::new(),
-            area: None,
-            status: None,
-            packaging: None,
-            discogs_details: Vec::new(),
-            barcodes: Vec::new(),
-            media: crate::pressing::StatedMedia::Undescribed,
-            links: Vec::new(),
-            cover_art: None,
-            source_group_id: None,
-            album_links: crate::import::album_links::AlbumLinks::NotAsked,
-            source_tracks: None,
-            document_failure: None,
-            album_first_year: None,
+            ..crate::import::search::MetadataResult::for_test(source, release_id, None)
         },
         LibraryStatus::absent(release_id),
     )

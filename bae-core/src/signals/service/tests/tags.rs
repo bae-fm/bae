@@ -161,3 +161,59 @@ fn a_rip_log_outweighs_a_store_s_marker() {
         })
     ));
 }
+
+/// Each track is titled by its file's title tag, or failing that by its file
+/// name without the track number.
+#[test]
+fn each_track_is_titled_by_its_tag_or_its_file_name() {
+    let tmp = TempDir::new().unwrap();
+    let folder = tmp.path().join("Some Folder");
+    fs::create_dir_all(&folder).unwrap();
+    tagged_flac(&folder.join("01 - First File.flac"), &[("TITLE", "Song One")]);
+    tagged_flac(&folder.join("02 - Song Two.flac"), &[]);
+    let files = crate::import::folder_scanner::collect_release_candidate_files_with_scope(
+        &folder,
+        crate::import::ReleaseFileScope::Recursive,
+        &crate::import::folder_scanner::StoredCandidateEdits::none(),
+    )
+    .expect("candidate scan");
+    let pass = gather_non_ocr_sources(&[folder], &files).expect("the fixture audio times");
+
+    assert_eq!(pass.track_titles, vec!["Song One", "Song Two"]);
+}
+
+/// Files nothing numbers are laid out in an order nothing states, so their
+/// titles are not given in it; nor are files whose numbers run backwards.
+#[test]
+fn unnumbered_files_give_no_titles() {
+    let titles_of = |files: &[(&str, &[(&str, &str)])]| {
+        let tmp = TempDir::new().unwrap();
+        let folder = tmp.path().join("Some Folder");
+        fs::create_dir_all(&folder).unwrap();
+        for (name, comments) in files {
+            tagged_flac(&folder.join(name), comments);
+        }
+        let files = crate::import::folder_scanner::collect_release_candidate_files_with_scope(
+            &folder,
+            crate::import::ReleaseFileScope::Recursive,
+            &crate::import::folder_scanner::StoredCandidateEdits::none(),
+        )
+        .expect("candidate scan");
+        gather_non_ocr_sources(&[folder], &files)
+            .expect("the fixture audio times")
+            .track_titles
+    };
+    assert!(titles_of(&[("Song A.flac", &[]), ("Song B.flac", &[])]).is_empty());
+    assert!(titles_of(&[
+        ("a.flac", &[("TITLE", "Song One"), ("TRACKNUMBER", "2")]),
+        ("b.flac", &[("TITLE", "Song Two"), ("TRACKNUMBER", "1")]),
+    ])
+    .is_empty());
+    assert_eq!(
+        titles_of(&[
+            ("a.flac", &[("TITLE", "Song One"), ("TRACKNUMBER", "1")]),
+            ("b.flac", &[("TITLE", "Song Two"), ("TRACKNUMBER", "2")]),
+        ]),
+        vec!["Song One", "Song Two"]
+    );
+}

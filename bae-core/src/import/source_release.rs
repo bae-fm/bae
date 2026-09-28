@@ -304,24 +304,28 @@ impl SourceRelease {
     /// What the source says about this release's own tracklist — the half of
     /// the auto-import check the folder's track count is checked against.
     pub fn source_tracks_for_audio(&self, audio_durations_ms: &[u64]) -> SourceTracks {
+        SourceTracks::of_titles(&self.track_titles_for_audio(audio_durations_ms))
+    }
+
+    /// The title of each track this release lists for the audio, in its
+    /// order: the covered mediums' tracks, as the tracklist is laid out
+    /// against the audio. `None` for a track the catalog gives no title.
+    pub(crate) fn track_titles_for_audio(&self, audio_durations_ms: &[u64]) -> Vec<Option<String>> {
         let coverage = self.coverage(audio_durations_ms);
-        let count = match self.release.catalog {
+        match self.release.catalog {
             Catalog::MusicBrainz => self
                 .covered_mediums(&coverage)
-                .map(|medium| medium.entries.len())
-                .sum(),
+                .flat_map(|medium| &medium.entries)
+                .map(|entry| entry.title.clone())
+                .collect(),
             Catalog::Discogs => crate::import::discogs_mapper::process_tracklist(
                 &self.covered_entries(&coverage),
                 Some(audio_durations_ms),
             )
-            .len(),
+            .into_iter()
+            .map(|track| Some(track.title))
+            .collect(),
             other => not_fetched(other),
-        };
-        if count == 0 {
-            return SourceTracks::Nothing;
-        }
-        SourceTracks::Listed {
-            count: count as u32,
         }
     }
 

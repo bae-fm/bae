@@ -312,6 +312,17 @@ struct Support {
     /// tracklist is a different edition, where those only say where or how
     /// one edition was cut.
     fits_the_tracks: bool,
+    /// Whether the titles a row's read document lists run in the order the
+    /// folder's do — see [`super::row_facts::track_titles`]. Agreeing counts
+    /// only where every row tied with it above lists titles to compare — see
+    /// [`weigh_title_agreement`].
+    ///
+    /// Directly below the track count: a row whose tracks number other than
+    /// the folder's is already another edition, and the titles' order only
+    /// tells apart editions that hold the same tracks, such as one that runs
+    /// them in another order; above the download, the year and the country,
+    /// which only say how or where one tracklist was issued.
+    track_titles: Fact,
     /// Whether the row was released as a download, where the folder is one —
     /// see [`super::medium::download`]. Above the edition year: a download is
     /// a copy of one digital release, where a year a catalog states is often
@@ -395,6 +406,7 @@ fn support_of(
                 }
                 Some(crate::import::search::SourceTracks::Nothing) => false,
             }),
+        track_titles: super::row_facts::track_titles(&row.releases, folder.track_titles),
         download: super::medium::download(
             folder.origin,
             row.releases.iter().map(|release| &release.media),
@@ -423,7 +435,7 @@ fn split_rows(
     text: &CandidateText,
 ) -> (Vec<Pressing>, Vec<Pressing>, Option<super::MediumConflict>) {
     let facts = FolderFacts::of(text, rows.iter().flat_map(|row| &row.releases));
-    let support: Vec<Support> = rows
+    let mut support: Vec<Support> = rows
         .iter()
         .map(|row| {
             support_of(
@@ -437,6 +449,7 @@ fn split_rows(
             )
         })
         .collect();
+    weigh_title_agreement(&rows, &mut support);
     let Some(best) = support.iter().copied().max() else {
         return (Vec::new(), Vec::new(), None);
     };
@@ -455,6 +468,49 @@ fn split_rows(
         }
     }
     (offered, set_aside, medium_conflict)
+}
+
+impl Support {
+    /// The fields declared above `track_titles`: what a row ties with the
+    /// others on before its titles are weighed.
+    fn above_track_titles(&self) -> (bool, u32, u32, bool, u32, bool) {
+        (
+            self.medium,
+            self.lookups,
+            self.names_pressing,
+            self.shares_toc,
+            self.names_album,
+            self.fits_the_tracks,
+        )
+    }
+}
+
+/// Titles in the folder's order lift a row above the rows it ties with only
+/// where each of those lists titles to compare. A run reads only some rows'
+/// documents, and a row it left unread, or read with a track untitled, cannot
+/// be told to agree or not — which rows were read says nothing about them.
+/// Where one of the rows tied at the top lists none, agreeing counts for
+/// nothing, and only a row listing the folder's titles in another order is
+/// set below the rest.
+fn weigh_title_agreement(rows: &[Pressing], support: &mut [Support]) {
+    let Some(best) = support.iter().map(Support::above_track_titles).max() else {
+        return;
+    };
+    let undecided = rows.iter().zip(support.iter()).any(|(row, support)| {
+        support.above_track_titles() == best
+            && row
+                .releases
+                .iter()
+                .all(|release| release.track_titles.is_empty())
+    });
+    if undecided {
+        for support in support
+            .iter_mut()
+            .filter(|support| support.track_titles == Fact::Agrees)
+        {
+            support.track_titles = Fact::StatesNothing;
+        }
+    }
 }
 
 fn release_keys(results: &Results) -> HashSet<ReleaseKey> {

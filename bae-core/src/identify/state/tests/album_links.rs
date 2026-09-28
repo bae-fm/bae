@@ -228,6 +228,7 @@ fn a_catalog_number_only_a_document_states_joins_the_albums() {
         barcode: None,
         source_tracks: crate::import::search::SourceTracks::Listed { count: 5 },
         album_first_year: None,
+        track_titles: Vec::new(),
     };
     let (state, effects) = super::step(
         state,

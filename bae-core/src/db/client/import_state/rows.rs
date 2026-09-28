@@ -206,7 +206,8 @@ const MATCH_COLUMNS: &str = "content_hash, position, pressing, source, release_i
      cover_label, cover_source, cover_standing, source_group_id, album_links, source_tracks_kind, \
      source_tracks_count, \
      by_disc_id, by_barcode, by_catalog, by_isrc, by_search, named_by_catalog, named_by_key, narrowed_out, \
-     document_failure, document_failure_status, document_failure_detail, album_first_year";
+     document_failure, document_failure_status, document_failure_detail, album_first_year, \
+     track_titles";
 
 const FILE_EDIT_COLUMNS: &str =
     "content_hash, relative_path, role_choice, sheet_disc, sheet_disc_number";

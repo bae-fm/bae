@@ -82,6 +82,10 @@ pub struct MetadataResult {
     /// master states it. A search result states none; its full document
     /// does.
     pub album_first_year: Option<i32>,
+    /// The title of each track its full document lists for the audio, in
+    /// order. Empty where the document was not read, or leaves a track
+    /// untitled. A search result states none.
+    pub track_titles: Vec<String>,
 }
 
 impl MetadataResult {
@@ -125,6 +129,7 @@ impl MetadataResult {
             }),
             document_failure: None,
             album_first_year: None,
+            track_titles: Vec::new(),
         }
     }
 }
@@ -156,6 +161,7 @@ impl MetadataResult {
             source_tracks: None,
             document_failure: None,
             album_first_year: None,
+            track_titles: Vec::new(),
         }
     }
 }
@@ -169,6 +175,19 @@ pub enum SourceTracks {
     /// or one with no media. There is nothing left to ask, so a verdict
     /// carrying this is finished rather than waiting on a top-up.
     Nothing,
+}
+
+impl SourceTracks {
+    /// What a tracklist of these titles says: as many tracks as it holds,
+    /// or nothing where it holds none.
+    pub(crate) fn of_titles(titles: &[Option<String>]) -> Self {
+        match titles.len() {
+            0 => Self::Nothing,
+            count => Self::Listed {
+                count: count as u32,
+            },
+        }
+    }
 }
 
 impl From<&MetadataResult> for crate::db::LibraryCheck {
@@ -281,6 +300,7 @@ pub fn discogs_search_result_to_metadata(
         source_tracks: None,
         document_failure: None,
         album_first_year: None,
+        track_titles: Vec::new(),
     }
 }
 
@@ -314,6 +334,7 @@ pub(crate) fn discogs_release_to_metadata(release: &crate::discogs::DiscogsRelea
         source_tracks: None,
         document_failure: None,
         album_first_year: None,
+        track_titles: Vec::new(),
     }
 }
 
@@ -379,6 +400,7 @@ fn mb_discid_release_to_metadata(discid: &str, r: MbReleaseResponse) -> Option<M
         source_tracks,
         document_failure: None,
         album_first_year: None,
+        track_titles: Vec::new(),
     })
 }
 
@@ -440,6 +462,7 @@ fn search_release_to_metadata(r: SearchRelease, cover_art: Option<RemoteCover>) 
         source_tracks: None,
         document_failure: None,
         album_first_year: None,
+        track_titles: Vec::new(),
     }
 }
 

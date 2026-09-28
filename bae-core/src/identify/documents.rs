@@ -58,6 +58,8 @@ pub struct ReleaseDocument {
     pub album_first_year: Option<i32>,
     /// The tracks it lists for the audio being identified.
     pub source_tracks: SourceTracks,
+    /// Their titles, in order; empty where a track has none.
+    pub track_titles: Vec<String>,
 }
 
 impl ReleaseDocument {
@@ -66,11 +68,16 @@ impl ReleaseDocument {
         release: &crate::import::source_release::SourceRelease,
         track_lengths_ms: &[u64],
     ) -> Self {
+        let titles = release.track_titles_for_audio(track_lengths_ms);
         Self {
             labels: release.pressing().labels.clone(),
             barcode: release.pressing().barcode.clone(),
             album_first_year: release.metadata.album.first_year,
-            source_tracks: release.source_tracks_for_audio(track_lengths_ms),
+            source_tracks: SourceTracks::of_titles(&titles),
+            track_titles: titles
+                .into_iter()
+                .collect::<Option<_>>()
+                .unwrap_or_default(),
         }
     }
 }
@@ -97,6 +104,7 @@ impl DocumentReading {
                 result.labels = document.labels.clone();
                 result.source_tracks = Some(document.source_tracks.clone());
                 result.album_first_year = document.album_first_year;
+                result.track_titles = document.track_titles.clone();
                 if let Some(barcode) = &document.barcode {
                     let key = crate::barcode::comparison_key(barcode).ok();
                     let stated = result.barcodes.iter().any(|stated| {

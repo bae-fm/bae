@@ -55,6 +55,7 @@ fn settled_signals() -> Signals {
         },
         text_pool: Vec::new(),
         isrcs: Vec::new(),
+        track_titles: Vec::new(),
     }
 }
 
@@ -758,6 +759,7 @@ impl Fixture {
                     source_tracks: Some(source_tracks),
                     document_failure: None,
                     album_first_year: None,
+                    track_titles: Vec::new(),
                 }],
                 provenance: vec![crate::identify::combine::LookupProvenance {
                     by_disc_id: true,

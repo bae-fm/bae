@@ -262,6 +262,7 @@ fn the_pressing_the_barcode_and_catalog_number_name_outranks_the_disc_id_s() {
             mono: false,
             track_count: 0,
             registered_in: None,
+            track_titles: &[],
         },
     );
     assert_eq!(offered(&outcome), vec!["rel-named"]);
@@ -439,6 +440,7 @@ const MONO_FILES: FolderAudio<'static> = FolderAudio {
     mono: true,
     track_count: 0,
     registered_in: None,
+    track_titles: &[],
 };
 
 /// Catalogs list mono pressings as stereo, so one-channel files rule no row

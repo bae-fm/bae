@@ -235,9 +235,10 @@ fn insert_match(
               cover_standing, source_group_id, album_links, source_tracks_kind, \
               source_tracks_count, by_disc_id, by_barcode, by_catalog, by_isrc, by_search, \
               named_by_catalog, named_by_key, narrowed_out, document_failure, \
-              document_failure_status, document_failure_detail, album_first_year) \
+              document_failure_status, document_failure_detail, album_first_year, \
+              track_titles) \
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \
-                 ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                 ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         params![
             content_hash,
             position,
@@ -274,6 +275,7 @@ fn insert_match(
             document_failure.status,
             document_failure.detail,
             result.album_first_year,
+            serde_json::to_string(&result.track_titles).expect("titles serialize"),
         ],
     )?;
     if let Some(cover) = cover {
@@ -604,6 +606,7 @@ fn read_match_columns(row: &Row<'_>, pressing: i64) -> Result<MatchColumns, DbEr
                 row.get("document_failure_detail")?,
             )?,
             album_first_year: row.get("album_first_year")?,
+            track_titles: read_track_titles(row)?,
         },
         provenance: LookupProvenance {
             by_disc_id: row.get("by_disc_id")?,
@@ -780,4 +783,11 @@ fn unzip_stored(
         pressings.push(entry.pressing);
     }
     (results, provenance, pressings)
+}
+
+/// Read a match's `track_titles` column.
+fn read_track_titles(row: &Row<'_>) -> Result<Vec<String>, DbError> {
+    let titles: String = row.get("track_titles")?;
+    serde_json::from_str(&titles)
+        .map_err(|error| DbError::Message(format!("track titles {titles:?}: {error}")))
 }

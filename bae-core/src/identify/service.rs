@@ -642,6 +642,7 @@ mod tests {
             },
             text_pool: Vec::new(),
             isrcs: Vec::new(),
+            track_titles: Vec::new(),
         }
     }
 

@@ -400,6 +400,7 @@ mod tests {
             source_tracks: None,
             document_failure: None,
             album_first_year: None,
+            track_titles: Vec::new(),
         }
     }
 

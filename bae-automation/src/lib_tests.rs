@@ -307,6 +307,7 @@ mod identify_mirrors {
             isrc: Default::default(),
             album_links: bae_core::identify::state::AlbumLinkReading::Pending,
             documents: bae_core::identify::documents::DocumentReading::Pending,
+            track_titles: Vec::new(),
         }
     }
 
@@ -596,6 +597,7 @@ mod identify_mirrors {
             },
             text_pool: Vec::new(),
             isrcs: Vec::new(),
+            track_titles: Vec::new(),
         };
 
         let json = serde_json::to_value(AutomationSignals::from_core(signals)).unwrap();

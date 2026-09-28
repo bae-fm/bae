@@ -282,6 +282,7 @@ async fn run_extraction(
                         pool,
                         audio: fast.audio,
                         isrcs: fast.isrcs,
+                        track_titles: fast.track_titles,
                     },
                     artwork,
                 },
@@ -360,6 +361,7 @@ async fn run_extraction(
                         pool: Pool::default(),
                         audio,
                         isrcs: Vec::new(),
+                        track_titles: Vec::new(),
                     },
                     artwork,
                 },
@@ -411,6 +413,7 @@ struct Gathered {
     pool: Pool,
     audio: AudioFacts,
     isrcs: Vec<String>,
+    track_titles: Vec<String>,
 }
 
 /// What the streaming pass consumes: what is already gathered, and the
@@ -621,6 +624,7 @@ async fn stream_extraction(
             },
             text_pool: gathered.pool.text_lines(),
             isrcs: gathered.isrcs,
+            track_titles: gathered.track_titles,
         },
         audio: gathered.audio,
         artwork: finished,
@@ -656,6 +660,7 @@ fn emit_failed_ocr_signals(
                 },
                 text_pool: gathered.pool.text_lines(),
                 isrcs: gathered.isrcs,
+                track_titles: gathered.track_titles,
             },
             audio: gathered.audio,
             artwork,
@@ -690,6 +695,7 @@ fn emit_aborted_signals(
                 },
                 text_pool: Vec::new(),
                 isrcs: Vec::new(),
+                track_titles: Vec::new(),
             },
             audio: AudioFacts::default(),
             artwork: ArtworkScan::Failed {
@@ -720,6 +726,7 @@ fn scanning_signals(
         },
         text_pool,
         isrcs: gathered.isrcs.clone(),
+        track_titles: gathered.track_titles.clone(),
     }
 }
 

@@ -142,6 +142,7 @@ pub(super) fn insert_signals(
         ("catalog", unsourced(signals.text.catalogs())),
         ("free_text", unsourced(free_text(&signals.text))),
         ("isrc", unsourced(&signals.isrcs)),
+        ("track_title", unsourced(&signals.track_titles)),
     ];
     for (list, values) in lists {
         for (position, (value, origin_path)) in values.into_iter().enumerate() {
@@ -255,6 +256,7 @@ pub(super) fn load_signals_on(
                 "catalog" => entry.catalogs.push(value),
                 "free_text" => entry.free_text.push(value),
                 "isrc" => entry.isrcs.push(value),
+                "track_title" => entry.track_titles.push(value),
                 other => return Err(unreadable("list", other)),
             }
         }
@@ -371,6 +373,7 @@ pub(super) fn load_signals_on(
                     text,
                     text_pool,
                     isrcs: values.isrcs,
+                    track_titles: values.track_titles,
                 },
             );
         }
@@ -384,4 +387,5 @@ struct SignalValues {
     catalogs: Vec<String>,
     free_text: Vec<String>,
     isrcs: Vec<String>,
+    track_titles: Vec<String>,
 }

@@ -34,6 +34,7 @@ fn settled_signals() -> Signals {
         },
         text_pool: Vec::new(),
         isrcs: Vec::new(),
+        track_titles: Vec::new(),
     }
 }
 
@@ -331,6 +332,7 @@ async fn every_settled_signal_shape_round_trips() {
                 .iter()
                 .map(|code| code.to_string())
                 .collect(),
+                track_titles: Vec::new(),
         };
 
         assert!(store_verdict(&db, &hash, signals.clone()).await, "{what}");
@@ -368,6 +370,7 @@ async fn a_scanning_signal_is_refused_and_writes_nothing() {
             },
             text_pool: Vec::new(),
             isrcs: Vec::new(),
+            track_titles: Vec::new(),
         },
         Signals {
             origin: crate::signals::AudioOrigin::default(),
@@ -379,6 +382,7 @@ async fn a_scanning_signal_is_refused_and_writes_nothing() {
             },
             text_pool: Vec::new(),
             isrcs: Vec::new(),
+            track_titles: Vec::new(),
         },
     ] {
         let (db, _tmp) = empty_db().await;

@@ -285,6 +285,7 @@ pub struct AutomationSignals {
     pub barcode: AutomationBarcodeSignal,
     pub text: AutomationTextSignal,
     pub isrcs: Vec<String>,
+    pub track_titles: Vec<String>,
 }
 
 /// Mirrors bae-core's `identify::SignalKind`.

@@ -33,3 +33,4 @@ include!("tests/album_links.rs");
 include!("tests/switched_off_steps.rs");
 include!("tests/documents.rs");
 include!("tests/isrcs.rs");
+include!("tests/track_titles.rs");

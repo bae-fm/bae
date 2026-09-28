@@ -333,6 +333,7 @@ fn found_verdict(track_count: u32, source: Option<SourceTracks>) -> TerminalVerd
                 source_tracks: source,
                 document_failure: None,
                 album_first_year: None,
+                track_titles: Vec::new(),
             }],
             provenance: vec![crate::identify::LookupProvenance {
                 by_disc_id: true,
@@ -369,6 +370,21 @@ fn the_lengths_a_source_states_do_not_decide() {
         (true, None),
         "the counts agree, whatever the lengths"
     );
+}
+
+/// A read document lists the title of each track it holds for the audio, as
+/// many as it counts.
+#[test]
+fn a_document_lists_its_tracks_titles() {
+    let payloads = crate::import::payloads::ReleasePayloads::for_test(
+        crate::import::MetadataRef::new(crate::import::Catalog::MusicBrainz, "mb-1"),
+        release_json("mb-1", "rg-1", &[200_000, 100_000, 300_000]),
+        Vec::new(),
+    );
+    let release = payloads.extract().unwrap();
+    let document = crate::identify::documents::ReleaseDocument::of(&release, &[]);
+    assert_eq!(document.source_tracks, SourceTracks::Listed { count: 3 });
+    assert_eq!(document.track_titles, vec!["Track 1", "Track 2", "Track 3"]);
 }
 
 /// A count disagreement is named as one, with both counts.

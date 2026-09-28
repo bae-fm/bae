@@ -129,3 +129,67 @@ fn an_album_s_first_year_is_every_pressing_s() {
     );
     assert!(facts.names_the_album_year(std::slice::from_ref(&unread)));
 }
+
+/// A record whose read document lists `titles`.
+fn listing(titles: &[&str]) -> MetadataResult {
+    MetadataResult {
+        track_titles: titles.iter().map(|title| title.to_string()).collect(),
+        ..MetadataResult::for_test(Catalog::MusicBrainz, "rel-1", Some("rg-1"))
+    }
+}
+
+fn titles(titles: &[&str]) -> Vec<String> {
+    titles.iter().map(|title| title.to_string()).collect()
+}
+
+/// Every position matching, loosely, agrees: case, accents and a bracketed
+/// version aside, and a file named "Artist - Title".
+#[test]
+fn titles_in_the_folder_s_order_agree() {
+    let folder = titles(&["Artist Name - Song One", "Chanson Deux", "Song Three"]);
+    let listed = listing(&["Song One (Remastered)", "chanson deux", "Song Three [Live]"]);
+    assert_eq!(track_titles(&[listed], &folder), Fact::Agrees);
+}
+
+/// The same titles, every one, at other positions disagree.
+#[test]
+fn the_same_titles_in_another_order_disagree() {
+    let folder = titles(&["Song One", "Song Two", "Song Three"]);
+    let listed = listing(&["Song Two", "Song One", "Song Three"]);
+    assert_eq!(track_titles(&[listed], &folder), Fact::Disagrees);
+}
+
+/// A spelling, a language, a missing title, another count, and a document not
+/// read state nothing — never a disagreement.
+#[test]
+fn titles_that_differ_otherwise_state_nothing() {
+    let folder = titles(&["Song One", "Song Two", "Song Three"]);
+    for listed in [
+        listing(&["Song Two", "Song Won", "Song Three"]),
+        listing(&["Chanson Deux", "Chanson Un", "Song Three"]),
+        listing(&["Song Two", "Song One"]),
+        listing(&["Song Two", "Song One", "Song Three", "Song Four"]),
+        listing(&["Song Two", "(Untitled)", "Song Three"]),
+        listing(&[]),
+    ] {
+        assert_eq!(
+            track_titles(std::slice::from_ref(&listed), &folder),
+            Fact::StatesNothing,
+            "{:?}",
+            listed.track_titles
+        );
+    }
+    let listed = listing(&["Song Two", "Song One", "Song Three"]);
+    assert_eq!(track_titles(&[listed], &[]), Fact::StatesNothing);
+}
+
+/// Of a row's records, one listing the titles in order decides it.
+#[test]
+fn a_record_in_order_decides_its_row() {
+    let folder = titles(&["Song One", "Song Two"]);
+    let rows = [
+        listing(&["Song Two", "Song One"]),
+        listing(&["Song One", "Song Two"]),
+    ];
+    assert_eq!(track_titles(&rows, &folder), Fact::Agrees);
+}

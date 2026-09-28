@@ -12,14 +12,17 @@ use crate::signals::AudioOrigin;
 
 /// What the folder's own files say about its audio, as combine reads it: the
 /// rip evidence, which speaks to its medium; and whether the audio is one
-/// channel, how many tracks it holds and where its recordings were
-/// registered, which only tell otherwise tied rows apart.
+/// channel, how many tracks it holds, what they are titled and where their
+/// recordings were registered, which only tell otherwise tied rows apart.
 #[derive(Debug, Clone, Copy)]
 pub struct FolderAudio<'a> {
     pub origin: &'a AudioOrigin,
     /// Every audio file carries one channel.
     pub mono: bool,
     pub track_count: u32,
+    /// Each track's title, in order — see
+    /// [`crate::signals::Signals::track_titles`].
+    pub track_titles: &'a [String],
     /// Where most of the tracks' recordings were registered, as their ISRC
     /// tags say — see [`crate::isrc::registered_in`].
     pub registered_in: Option<crate::pressing::ReleaseArea>,
@@ -35,6 +38,7 @@ impl FolderAudio<'static> {
         },
         mono: false,
         track_count: 0,
+        track_titles: &[],
         registered_in: None,
     };
 }

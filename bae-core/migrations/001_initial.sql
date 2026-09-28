@@ -1328,7 +1328,7 @@ CREATE TABLE IF NOT EXISTS import_candidate_signals (
 -- in reading order.
 CREATE TABLE IF NOT EXISTS import_candidate_signal_value (
     content_hash TEXT NOT NULL,
-    list         TEXT NOT NULL CHECK (list IN ('barcode', 'catalog', 'free_text', 'isrc')),
+    list         TEXT NOT NULL CHECK (list IN ('barcode', 'catalog', 'free_text', 'isrc', 'track_title')),
     position     INTEGER NOT NULL CHECK (position >= 0),
     value        TEXT NOT NULL,
     -- The candidate-relative path of the file a barcode was read off; NULL for
@@ -1495,6 +1495,11 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     -- The year the release's album first came out, as its full document's
     -- release group or master states it.
     album_first_year        INTEGER,
+    -- The title of each track the full document lists for the audio, in
+    -- order: a JSON array of strings, empty where it was not read or leaves a
+    -- track untitled.
+    track_titles            TEXT NOT NULL DEFAULT '[]'
+        CHECK (json_valid(track_titles) AND json_type(track_titles) = 'array'),
     PRIMARY KEY (content_hash, position),
     -- Referenced by the medium rows with the media kind, so a medium row always
     -- belongs to a match of its kind.

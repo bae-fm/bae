@@ -36,6 +36,7 @@ fn mk_context(track_count: u32) -> SignalsContext {
         album_links: crate::identify::state::AlbumLinkReading::Pending,
         documents: crate::identify::documents::DocumentReading::Pending,
         isrc: Default::default(),
+        track_titles: Vec::new(),
     }
 }
 

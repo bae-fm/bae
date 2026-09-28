@@ -382,6 +382,7 @@ fn extracted_signals_cross_the_bus_with_their_key() {
         },
         text_pool: Vec::new(),
         isrcs: Vec::new(),
+        track_titles: Vec::new(),
     };
 
     let crossed =

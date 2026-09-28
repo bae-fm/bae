@@ -240,6 +240,7 @@ async fn store_settled_text(handle: &ImportServiceHandle, hash: &str, printed: &
                     origin: crate::signals::TextOrigin::FolderName,
                 }],
                 isrcs: Vec::new(),
+                track_titles: Vec::new(),
             },
             metadata: None,
         })

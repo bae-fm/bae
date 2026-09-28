@@ -86,6 +86,7 @@ async fn pure_reads_use_the_read_connection() {
                 },
                 text_pool: Vec::new(),
                 isrcs: Vec::new(),
+                track_titles: Vec::new(),
             },
             metadata: Some(bae_core::import::CandidateMetadataDraft {
                 draft: bae_core::import::CandidateDraft {

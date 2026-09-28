@@ -57,4 +57,9 @@ pub struct Signals {
     /// looked up on MusicBrainz, and say where the recordings were registered
     /// (see [`crate::isrc::registered_in`]).
     pub isrcs: Vec<String>,
+    /// Each track's title, in the tracks' order: its file's title tag, or
+    /// failing that its file name without the track number. Empty unless
+    /// every track is a file of its own, each has one, and the files' own
+    /// numbers put them in that order.
+    pub track_titles: Vec<String>,
 }

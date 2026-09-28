@@ -20,6 +20,7 @@ impl BridgeMetadataResult {
             // auto-import and ranking evidence, not something a row renders.
             source_tracks: _,
             album_first_year: _,
+            track_titles: _,
             // Read into `facts` above, or pairing evidence the row already
             // reflects.
             area: _,
@@ -426,6 +427,7 @@ impl BridgeSignals {
             text,
             text_pool: _,
             isrcs: _,
+            track_titles: _,
         } = s;
         BridgeSignals {
             text: BridgeTextSignal::from_core(text),
@@ -636,6 +638,7 @@ mod tests {
                     ..Default::default()
                 },
                 isrc: Default::default(),
+                track_titles: Vec::new(),
                 album_links: bae_core::identify::state::AlbumLinkReading::Pending,
                 documents: bae_core::identify::documents::DocumentReading::Pending,
             },

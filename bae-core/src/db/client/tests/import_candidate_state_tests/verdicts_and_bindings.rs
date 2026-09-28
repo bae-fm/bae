@@ -64,9 +64,10 @@ fn sample_match() -> MetadataResult {
         cover_art: None,
         source_group_id: Some("group-1".to_string()),
         album_links: crate::import::album_links::AlbumLinks::NotAsked,
-        source_tracks: None,
+        source_tracks: Some(crate::import::search::SourceTracks::Listed { count: 2 }),
         document_failure: None,
-        album_first_year: None,
+        album_first_year: Some(1998),
+        track_titles: vec!["Track One".to_string(), "Track Two".to_string()],
     }
 }
 
@@ -107,6 +108,7 @@ fn sample_signals() -> crate::signals::Signals {
         },
         text_pool: Vec::new(),
         isrcs: Vec::new(),
+        track_titles: Vec::new(),
     }
 }
 
@@ -917,6 +919,7 @@ async fn a_transport_failure_round_trips_as_a_failed_verdict() {
                 },
                 text_pool: Vec::new(),
                 isrcs: Vec::new(),
+                track_titles: Vec::new(),
             },
             audio: crate::signals::AudioFacts::default(),
             artwork: crate::signals::ArtworkScan::Absent,

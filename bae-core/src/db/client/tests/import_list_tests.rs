@@ -54,6 +54,7 @@ fn verdict(release_id: &str, ledger: Option<crate::identify::IdentifyRunView>) -
                 source_tracks: Some(SourceTracks::Listed { count: 1 }),
                 document_failure: None,
                 album_first_year: None,
+                track_titles: Vec::new(),
             }],
             provenance: vec![LookupProvenance {
                 by_disc_id: true,
@@ -99,6 +100,7 @@ async fn save_verdict_with_ledger(
                 },
                 text_pool: Vec::new(),
                 isrcs: Vec::new(),
+                track_titles: Vec::new(),
             },
             metadata: None,
         })
@@ -340,6 +342,7 @@ async fn a_verdict_the_folder_rules_out_reads_back_as_its_failed_check() {
                 },
                 text_pool: Vec::new(),
                 isrcs: Vec::new(),
+                track_titles: Vec::new(),
             },
             metadata: None,
         })

@@ -225,6 +225,7 @@ fn a_chosen_number_survives_a_snapshot_still_being_read() {
                 },
                 text_pool: Vec::new(),
                 isrcs: Vec::new(),
+                track_titles: Vec::new(),
             },
             audio: crate::signals::AudioFacts::default(),
             artwork: crate::signals::ArtworkScan::Absent,

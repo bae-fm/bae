@@ -125,6 +125,7 @@ impl AutomationSignals {
             barcode: AutomationBarcodeSignal::from_core(signals.barcode),
             text: AutomationTextSignal::from_core(signals.text),
             isrcs: signals.isrcs,
+            track_titles: signals.track_titles,
         }
     }
 }

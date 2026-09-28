@@ -39,6 +39,7 @@ fn document(labels: &[(&str, &str)], tracks: u32) -> crate::identify::documents:
         barcode: None,
         source_tracks: crate::import::search::SourceTracks::Listed { count: tracks },
         album_first_year: None,
+        track_titles: Vec::new(),
     }
 }
 

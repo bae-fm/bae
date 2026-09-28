@@ -103,6 +103,7 @@ fn multi_match_verdict(release_ids: &[&str], group_id: &str) -> TerminalVerdict 
                     source_tracks: None,
                     document_failure: None,
                     album_first_year: None,
+                    track_titles: Vec::new(),
                 })
                 .collect(),
             provenance: release_ids
@@ -265,6 +266,7 @@ async fn an_ending_ends_the_run_it_names_and_not_the_answer_being_saved() {
             album_links: crate::identify::state::AlbumLinkReading::Pending,
             documents: crate::identify::documents::DocumentReading::Pending,
             isrc: Default::default(),
+            track_titles: Vec::new(),
         },
     };
     fixture
