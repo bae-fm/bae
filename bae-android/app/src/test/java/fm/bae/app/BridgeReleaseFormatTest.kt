@@ -11,8 +11,7 @@ import uniffi.bae_bridge.BridgeAudioFormat
 import uniffi.bae_bridge.BridgeFactTerm
 import uniffi.bae_bridge.BridgeFile
 import uniffi.bae_bridge.BridgeLabelLine
-import uniffi.bae_bridge.BridgeSourceAudioDescriptor
-import uniffi.bae_bridge.BridgeSourceAudioLayout
+import uniffi.bae_bridge.BridgeSourceAudioDifference
 import uniffi.bae_bridge.BridgeSourceAudioSummary
 import uniffi.bae_bridge.BridgeTermLabel
 
@@ -50,14 +49,6 @@ class BridgeReleaseFormatTest {
                 bitrateKbps = null,
                 channels = 2,
             )
-        val mp3 =
-            BridgeAudioFormat(
-                codec = "MP3",
-                sampleRateHz = 48_000,
-                bitsPerSample = null,
-                bitrateKbps = 320,
-                channels = 2,
-            )
         val release =
             BridgeFixtures.release(
                 id = "release-1",
@@ -76,15 +67,15 @@ class BridgeReleaseFormatTest {
                 sourceAudio =
                     BridgeSourceAudioSummary.Mixed(
                         listOf(
-                            BridgeSourceAudioDescriptor(BridgeSourceAudioLayout.FILE, flac),
-                            BridgeSourceAudioDescriptor(BridgeSourceAudioLayout.FILE, mp3),
+                            BridgeSourceAudioDifference.Codec(listOf("FLAC", "MP3")),
+                            BridgeSourceAudioDifference.SampleRate(listOf(44_100L, 48_000L)),
                         ),
                     ),
             )
 
+        // A mixed release names what differs.
         assertEquals(
-            "Various · FLAC · 44.1 kHz · 16-bit · stereo · " +
-                "MP3 · 320 kbps · 48 kHz · stereo",
+            "FLAC and MP3 · 44.1 kHz and 48 kHz",
             release.pressingLineText(context, stereoKey),
         )
     }

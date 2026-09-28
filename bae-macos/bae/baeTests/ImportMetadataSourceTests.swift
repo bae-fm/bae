@@ -806,19 +806,33 @@ extension ImportMetadataCardLayoutTests {
         }
     }
 
-    func testSeveralSourceAudioProfilesReadAsVarious() {
-        let summary = BridgeSourceAudioSummary.mixed(descriptors: [
-            BridgeSourceAudioDescriptor(
-                layout: .file,
-                format: MappingFixtures.audioFormat
-            ),
-            BridgeSourceAudioDescriptor(
-                layout: .cue,
-                format: MappingFixtures.audioFormat
-            ),
+    /// A release in more than one format names what differs, each fact's
+    /// values joined the way the locale lists things.
+    func testMixedSourceAudioNamesWhatDiffers() {
+        let codecs = BridgeSourceAudioSummary.mixed(differences: [
+            .codec(codecs: ["FLAC", "MP3"])
         ])
+        XCTAssertEqual(
+            codecs.text,
+            ListFormatter.localizedString(byJoining: ["FLAC", "MP3"])
+        )
 
-        XCTAssertEqual(summary.text, "Various")
+        let rateAndDepth = BridgeSourceAudioSummary.mixed(differences: [
+            .sampleRate(sampleRatesHz: [44_100, 96_000]),
+            .bitDepth(bitsPerSample: [16, 24]),
+        ])
+        XCTAssertEqual(
+            rateAndDepth.text,
+            [
+                ListFormatter.localizedString(byJoining: [
+                    "44.1\u{00a0}kHz", "96\u{00a0}kHz",
+                ]),
+                ListFormatter.localizedString(byJoining: [
+                    "16\u{2011}bit", "24\u{2011}bit",
+                ]),
+            ]
+            .joined(separator: coreString("core.audio.list_separator"))
+        )
     }
 
     func testSourceAudioFactsBreakOnlyBetweenComponents() {

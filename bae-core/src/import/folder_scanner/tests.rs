@@ -34,8 +34,8 @@ fn assert_uniform_source_audio(
             assert_eq!(descriptor.layout, layout);
             assert_eq!(descriptor.format.codec, codec);
         }
-        crate::album_detail::SourceAudioSummary::Mixed { descriptors } => {
-            panic!("expected uniform source audio, got {descriptors:?}")
+        crate::album_detail::SourceAudioSummary::Mixed { differences } => {
+            panic!("expected uniform source audio, got {differences:?}")
         }
     }
 }

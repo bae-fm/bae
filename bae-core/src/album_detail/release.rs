@@ -240,10 +240,10 @@ impl ReleaseEditDisplayContext {
         }
 
         Ok(Self {
-            source_audio: SourceAudioSummary::from_descriptors(
+            source_audio: SourceAudioSummary::from_files(
                 raw.files
                     .iter()
-                    .filter_map(|file| file.source_audio.as_ref()?.descriptor()),
+                    .filter_map(|file| file.source_audio.as_ref()?.summarized()),
             ),
             tracks: contexts,
         })
@@ -334,10 +334,10 @@ impl ReleaseDetail {
             })
             .collect();
         let image_files: Vec<FileDetail> = files.iter().filter(|f| f.is_image).cloned().collect();
-        let source_audio = SourceAudioSummary::from_descriptors(
+        let source_audio = SourceAudioSummary::from_files(
             files
                 .iter()
-                .filter_map(|file| file.source_audio.as_ref()?.descriptor()),
+                .filter_map(|file| file.source_audio.as_ref()?.summarized()),
         );
 
         let file_count = files.len() as i64;

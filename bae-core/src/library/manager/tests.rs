@@ -212,6 +212,7 @@ async fn manager_with_release() -> (LibraryManager, TempDir, DbAlbum, DbRelease)
 include!("tests/save_and_config.rs");
 include!("tests/deletion.rs");
 include!("tests/release_details.rs");
+include!("tests/cover_changes.rs");
 include!("tests/release_edit.rs");
 include!("tests/detail_subscriptions.rs");
 include!("tests/storage_fixtures.rs");

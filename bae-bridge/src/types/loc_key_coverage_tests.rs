@@ -51,8 +51,8 @@ const DIRECT_KEYS: &[&str] = &[
     // Source-audio formatters compose these labels and numeric facts directly.
     "core.audio.label",
     "core.audio.layout.cue",
+    "core.audio.layout.file",
     "core.audio.list_separator",
-    "core.audio.mixed",
     // A release's labels line joins label names and catalog numbers with this.
     "core.label.list_separator",
     "core.audio.sample_rate_khz",

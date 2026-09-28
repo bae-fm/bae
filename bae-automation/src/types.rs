@@ -104,7 +104,28 @@ pub enum AutomationSourceAudioSummary {
         descriptor: AutomationSourceAudioDescriptor,
     },
     Mixed {
-        descriptors: Vec<AutomationSourceAudioDescriptor>,
+        differences: Vec<AutomationSourceAudioDifference>,
+    },
+}
+
+/// One fact a release's files disagree on, and its values, each once.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case", tag = "fact")]
+pub enum AutomationSourceAudioDifference {
+    Layout {
+        layouts: Vec<AutomationSourceAudioLayout>,
+    },
+    Codec {
+        codecs: Vec<String>,
+    },
+    SampleRate {
+        sample_rates_hz: Vec<i64>,
+    },
+    BitDepth {
+        bits_per_sample: Vec<i64>,
+    },
+    Channels {
+        channels: Vec<i64>,
     },
 }
 

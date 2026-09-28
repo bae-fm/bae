@@ -9,6 +9,7 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeAudioFormat
 import uniffi.bae_bridge.BridgeSourceAudioDescriptor
+import uniffi.bae_bridge.BridgeSourceAudioDifference
 import uniffi.bae_bridge.BridgeSourceAudioLayout
 import uniffi.bae_bridge.BridgeSourceAudioSummary
 
@@ -41,40 +42,26 @@ class BridgeFormatTest {
         )
     }
 
+    /** A mixed summary names what differs, each fact's values listed the locale's way. */
     @Test
-    fun mixedSummaryRendersEverySourceDescriptor() {
+    fun mixedSummaryNamesWhatDiffers() {
         val summary =
             BridgeSourceAudioSummary.Mixed(
                 listOf(
-                    BridgeSourceAudioDescriptor(
-                        layout = BridgeSourceAudioLayout.FILE,
-                        format =
-                            BridgeAudioFormat(
-                                codec = "FLAC",
-                                sampleRateHz = 44_100,
-                                bitsPerSample = 16,
-                                bitrateKbps = null,
-                                channels = 2,
-                            ),
+                    BridgeSourceAudioDifference.Layout(
+                        listOf(BridgeSourceAudioLayout.CUE, BridgeSourceAudioLayout.FILE),
                     ),
-                    BridgeSourceAudioDescriptor(
-                        layout = BridgeSourceAudioLayout.FILE,
-                        format =
-                            BridgeAudioFormat(
-                                codec = "MP3",
-                                sampleRateHz = 48_000,
-                                bitsPerSample = null,
-                                bitrateKbps = 320,
-                                channels = 2,
-                            ),
-                    ),
+                    BridgeSourceAudioDifference.BitDepth(listOf(16L, 24L)),
+                    BridgeSourceAudioDifference.Channels(listOf(2L, 1L)),
                 ),
             )
+        val channelsKey: (Long) -> String? = {
+            if (it == 1L) "core.audio.channels.mono" else "core.audio.channels.stereo"
+        }
 
         assertEquals(
-            "Various · FLAC · 44.1 kHz · 16-bit · stereo · " +
-                "MP3 · 320 kbps · 48 kHz · stereo",
-            summary.text(context, stereoKey),
+            "CUE and track files · 16-bit and 24-bit · stereo and mono",
+            summary.text(context, channelsKey),
         )
     }
 }

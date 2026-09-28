@@ -21,20 +21,8 @@ extension BridgeAudioFormat {
         if let bits = bitsPerSample {
             parts.append(coreString("core.audio.bit_depth", bits))
         }
-        parts.append(channelsText)
+        parts.append(channelsText(channels))
         return parts
-    }
-
-    private var channelsText: String {
-        if let key = bridgeAudioChannelsKey(channels: channels) {
-            return NSLocalizedString(
-                key,
-                tableName: "Core",
-                bundle: .main,
-                comment: ""
-            )
-        }
-        return coreString("core.audio.channels.count", channels)
     }
 }
 
@@ -45,14 +33,58 @@ extension BridgeSourceAudioDescriptor {
 }
 
 extension BridgeSourceAudioSummary {
+    /// One format's facts, or the facts the files disagree on, each fact's
+    /// values joined by the locale's list formatter ("FLAC, MP3").
     var text: String {
         switch self {
         case .uniform(let descriptor):
             descriptor.text
-        case .mixed:
-            nonbreakingAudioFact(coreString("core.audio.mixed"))
+        case .mixed(let differences):
+            differences.map(\.text)
+                .joined(separator: coreString("core.audio.list_separator"))
         }
     }
+}
+
+extension BridgeSourceAudioDifference {
+    var text: String {
+        ListFormatter.localizedString(
+            byJoining: values.map(nonbreakingAudioFact)
+        )
+    }
+
+    private var values: [String] {
+        switch self {
+        case .layout(let layouts):
+            layouts.map {
+                switch $0 {
+                case .cue: coreString("core.audio.layout.cue")
+                case .file: coreString("core.audio.layout.file")
+                }
+            }
+        case .codec(let codecs):
+            codecs
+        case .sampleRate(let sampleRatesHz):
+            sampleRatesHz.map { sampleRateText(hz: Double($0)) }
+        case .bitDepth(let bitsPerSample):
+            bitsPerSample.map { coreString("core.audio.bit_depth", $0) }
+        case .channels(let channels):
+            channels.map(channelsText)
+        }
+    }
+}
+
+/// A channel count's word ("stereo"), or its count where it has none.
+private func channelsText(_ channels: Int64) -> String {
+    if let key = bridgeAudioChannelsKey(channels: channels) {
+        return NSLocalizedString(
+            key,
+            tableName: "Core",
+            bundle: .main,
+            comment: ""
+        )
+    }
+    return coreString("core.audio.channels.count", channels)
 }
 
 /// A sample rate in kilohertz for the current locale, e.g. "44.1 kHz".

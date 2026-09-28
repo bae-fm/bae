@@ -615,13 +615,36 @@ pub struct BridgeSourceAudioDescriptor {
     pub format: BridgeAudioFormat,
 }
 
+/// A release's audio: one format — a lossy one at the release's average
+/// bitrate — or the facts its files disagree on.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeSourceAudioSummary {
     Uniform {
         descriptor: BridgeSourceAudioDescriptor,
     },
     Mixed {
-        descriptors: Vec<BridgeSourceAudioDescriptor>,
+        differences: Vec<BridgeSourceAudioDifference>,
+    },
+}
+
+/// One fact a release's files disagree on, and its values, each once. A
+/// surface lists the values with its locale's list formatter.
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeSourceAudioDifference {
+    Layout {
+        layouts: Vec<BridgeSourceAudioLayout>,
+    },
+    Codec {
+        codecs: Vec<String>,
+    },
+    SampleRate {
+        sample_rates_hz: Vec<i64>,
+    },
+    BitDepth {
+        bits_per_sample: Vec<i64>,
+    },
+    Channels {
+        channels: Vec<i64>,
     },
 }
 
@@ -642,7 +665,19 @@ mirror_enum! {
     from_core: pub(crate) fn,
     variants: {
         Uniform { descriptor: (BridgeSourceAudioDescriptor) },
-        Mixed { descriptors: (each BridgeSourceAudioDescriptor) },
+        Mixed { differences: (each BridgeSourceAudioDifference) },
+    },
+}
+
+mirror_enum! {
+    BridgeSourceAudioDifference = bae_core::album_detail::SourceAudioDifference,
+    from_core: pub(crate) fn,
+    variants: {
+        Layout { layouts: (each BridgeSourceAudioLayout) },
+        Codec { codecs },
+        SampleRate { sample_rates_hz },
+        BitDepth { bits_per_sample },
+        Channels { channels },
     },
 }
 
@@ -651,40 +686,35 @@ mod source_audio_bridge_tests {
     use super::*;
 
     #[test]
-    fn mixed_source_audio_crosses_with_every_descriptor() {
-        let format = bae_core::album_detail::AudioFormat {
-            codec: "FLAC".to_string(),
-            sample_rate_hz: 44_100,
-            bits_per_sample: Some(16),
-            bitrate_kbps: None,
-            channels: 2,
-        };
+    fn mixed_source_audio_crosses_with_every_difference() {
         let summary = bae_core::album_detail::SourceAudioSummary::Mixed {
-            descriptors: vec![
-                bae_core::album_detail::SourceAudioDescriptor {
-                    layout: bae_core::album_detail::SourceAudioLayout::Cue,
-                    format: format.clone(),
+            differences: vec![
+                bae_core::album_detail::SourceAudioDifference::Layout {
+                    layouts: vec![
+                        bae_core::album_detail::SourceAudioLayout::Cue,
+                        bae_core::album_detail::SourceAudioLayout::File,
+                    ],
                 },
-                bae_core::album_detail::SourceAudioDescriptor {
-                    layout: bae_core::album_detail::SourceAudioLayout::File,
-                    format,
+                bae_core::album_detail::SourceAudioDifference::Codec {
+                    codecs: vec!["FLAC".to_string(), "MP3".to_string()],
                 },
             ],
         };
 
-        let BridgeSourceAudioSummary::Mixed { descriptors } =
+        let BridgeSourceAudioSummary::Mixed { differences } =
             BridgeSourceAudioSummary::from_core(summary)
         else {
             panic!("mixed source audio became uniform");
         };
-        assert_eq!(descriptors.len(), 2);
         assert!(matches!(
-            descriptors[0].layout,
-            BridgeSourceAudioLayout::Cue
-        ));
-        assert!(matches!(
-            descriptors[1].layout,
-            BridgeSourceAudioLayout::File
+            differences.as_slice(),
+            [
+                BridgeSourceAudioDifference::Layout { layouts },
+                BridgeSourceAudioDifference::Codec { codecs },
+            ] if matches!(
+                layouts.as_slice(),
+                [BridgeSourceAudioLayout::Cue, BridgeSourceAudioLayout::File]
+            ) && codecs == &["FLAC", "MP3"]
         ));
     }
 }

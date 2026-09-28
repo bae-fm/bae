@@ -597,7 +597,7 @@ pub(crate) fn part_of(parts: &[ReleasePart], relative_path: &str) -> Option<usiz
         .map(|(index, _)| index)
 }
 
-/// The effective source audio of one candidate: its aggregate descriptor and
+/// The effective source audio of one candidate: its summary and
 /// every physical file contributing to it, in release-relative path order.
 ///
 /// The files stay as references to the scan's canonical [`ScannedFile`] values;
@@ -619,39 +619,45 @@ impl CategorizedFiles {
     }
 
     pub fn source_audio(&self) -> Option<CandidateSourceAudio<'_>> {
-        use crate::album_detail::{SourceAudioDescriptor, SourceAudioLayout, SourceAudioSummary};
+        use crate::album_detail::{
+            SourceAudioDescriptor, SourceAudioLayout, SourceAudioSummary, SummarizedAudio,
+        };
         let carved_audio: std::collections::HashSet<&str> = self
             .carving_sheets()
             .into_iter()
             .flat_map(|sheet| sheet.audio_files)
             .map(|(_, audio)| audio.relative_path.as_str())
             .collect();
-        let files_and_descriptors: Vec<_> = self
+        let files_and_summarized: Vec<_> = self
             .audio()
             .filter_map(|file| {
                 file.source_audio.as_ref().map(|audio| {
                     (
                         file,
-                        SourceAudioDescriptor {
-                            layout: if carved_audio.contains(file.relative_path.as_str()) {
-                                SourceAudioLayout::Cue
-                            } else {
-                                SourceAudioLayout::File
+                        SummarizedAudio {
+                            descriptor: SourceAudioDescriptor {
+                                layout: if carved_audio.contains(file.relative_path.as_str()) {
+                                    SourceAudioLayout::Cue
+                                } else {
+                                    SourceAudioLayout::File
+                                },
+                                format: audio.format.clone(),
                             },
-                            format: audio.format.clone(),
+                            duration_ms: i64::try_from(audio.duration_ms)
+                                .expect("scan audio duration fits SQLite's integer range"),
                         },
                     )
                 })
             })
             .collect();
-        let summary = SourceAudioSummary::from_descriptors(
-            files_and_descriptors
+        let summary = SourceAudioSummary::from_files(
+            files_and_summarized
                 .iter()
-                .map(|(_, descriptor)| descriptor.clone()),
+                .map(|(_, summarized)| summarized.clone()),
         )?;
         Some(CandidateSourceAudio {
             summary,
-            files: files_and_descriptors
+            files: files_and_summarized
                 .into_iter()
                 .map(|(file, _)| file)
                 .collect(),

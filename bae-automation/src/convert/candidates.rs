@@ -97,7 +97,19 @@ mirror_enum! {
     from_core: pub(crate) fn,
     variants: {
         Uniform { descriptor: (AutomationSourceAudioDescriptor) },
-        Mixed { descriptors: (each AutomationSourceAudioDescriptor) },
+        Mixed { differences: (each AutomationSourceAudioDifference) },
+    },
+}
+
+mirror_enum! {
+    AutomationSourceAudioDifference = bae_core::album_detail::SourceAudioDifference,
+    from_core: pub(crate) fn,
+    variants: {
+        Layout { layouts: (each AutomationSourceAudioLayout) },
+        Codec { codecs },
+        SampleRate { sample_rates_hz },
+        BitDepth { bits_per_sample },
+        Channels { channels },
     },
 }
 
