@@ -341,6 +341,17 @@ impl LibraryManager {
             .await
     }
 
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) async fn lookup_musicbrainz_isrcs(
+        &self,
+        isrcs: &[String],
+        priority: crate::util::rate_limiter::CallPriority,
+    ) -> Result<Vec<crate::import::search::MetadataResult>, crate::signals::LookupFailure> {
+        self.providers
+            .lookup_musicbrainz_isrcs(isrcs, priority)
+            .await
+    }
+
     /// The Cover Art Archive's images of a MusicBrainz release, then of its
     /// group.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]

@@ -85,6 +85,18 @@ pub enum AutomationBarcodeStep {
     },
 }
 
+/// Mirrors bae-core's `identify::IsrcStepView`.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case", tag = "kind")]
+pub enum AutomationIsrcStep {
+    Reading,
+    Absent,
+    Read {
+        isrcs: Vec<String>,
+        lookup: AutomationLookupState,
+    },
+}
+
 /// Mirrors bae-core's `identify::CatalogCandidateView`.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationCatalogCandidate {
@@ -140,6 +152,7 @@ pub struct AutomationIdentifyRun {
     pub disc_id: AutomationDiscIdStep,
     pub barcode: AutomationBarcodeStep,
     pub catalog: AutomationCatalogStep,
+    pub isrc: AutomationIsrcStep,
     pub search: AutomationSearchStep,
 }
 
@@ -178,6 +191,9 @@ pub enum AutomationIdentifyFailure {
     },
     Search {
         source: AutomationCatalog,
+        failure: AutomationLookupFailure,
+    },
+    Isrc {
         failure: AutomationLookupFailure,
     },
     ReleaseDetails {

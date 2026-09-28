@@ -94,6 +94,7 @@ fn lead(release_id: &str) -> LeadMatch {
         source_tracks: Some(SourceTracks::Listed { count: 11 }),
         by_disc_id: true,
         by_barcode: false,
+        by_isrc: false,
         by_search: false,
     }
 }

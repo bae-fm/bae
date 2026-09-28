@@ -1301,12 +1301,7 @@ CREATE TABLE IF NOT EXISTS import_candidate_signals (
     text_failure           TEXT CHECK (text_failure IS NULL OR text_failure IN ('network', 'provider', 'timeout', 'artwork_analysis', 'diagnostic')),
     text_failure_status    INTEGER,
     text_failure_detail    TEXT,
-    -- Where most of the audio's recordings were registered, as the ISRCs its
-    -- tags carry say: a country's code or a region's key.
-    registered_in_country  TEXT CHECK (registered_in_country IS NULL OR registered_in_country <> ''),
-    registered_in_region   TEXT CHECK (registered_in_region IS NULL OR registered_in_region <> ''),
     FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE,
-    CHECK (registered_in_country IS NULL OR registered_in_region IS NULL),
     CHECK ((audio_source IS 'cd_rip') = (cd_rip_proof IS NOT NULL)),
     CHECK ((audio_source IS 'download') = (download_proof IS NOT NULL)),
     CHECK (download_proof IS NOT 'delivery_set' OR audio_source_file IS NULL),
@@ -1333,7 +1328,7 @@ CREATE TABLE IF NOT EXISTS import_candidate_signals (
 -- in reading order.
 CREATE TABLE IF NOT EXISTS import_candidate_signal_value (
     content_hash TEXT NOT NULL,
-    list         TEXT NOT NULL CHECK (list IN ('barcode', 'catalog', 'free_text')),
+    list         TEXT NOT NULL CHECK (list IN ('barcode', 'catalog', 'free_text', 'isrc')),
     position     INTEGER NOT NULL CHECK (position >= 0),
     value        TEXT NOT NULL,
     -- The candidate-relative path of the file a barcode was read off; NULL for
@@ -1481,7 +1476,10 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     by_disc_id          INTEGER NOT NULL CHECK (by_disc_id IN (0, 1)),
     by_barcode          INTEGER NOT NULL CHECK (by_barcode IN (0, 1)),
     by_catalog          INTEGER NOT NULL CHECK (by_catalog IN (0, 1)),
-    -- The title search, asked only when the three above all came back empty.
+    -- The search by the ISRCs the audio's tags carry.
+    by_isrc             INTEGER NOT NULL CHECK (by_isrc IN (0, 1)),
+    -- The title search, asked only when the disc ID, the barcodes and the
+    -- catalog numbers all came back empty.
     by_search           INTEGER NOT NULL CHECK (by_search IN (0, 1)),
     -- For a release no lookup returned: the release whose own document names
     -- this one as the same release, read through to learn its album.
@@ -1508,7 +1506,8 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     CHECK ((source_tracks_kind = 'listed') = (source_tracks_count IS NOT NULL)),
     CHECK ((named_by_catalog IS NULL) = (named_by_key IS NULL)),
     CHECK (named_by_catalog IS NULL
-           OR (by_disc_id = 0 AND by_barcode = 0 AND by_catalog = 0 AND by_search = 0)),
+           OR (by_disc_id = 0 AND by_barcode = 0 AND by_catalog = 0 AND by_isrc = 0
+               AND by_search = 0)),
     CHECK (country IS NULL OR region IS NULL),
     CHECK (document_failure_status IS NULL OR document_failure = 'provider'),
     CHECK ((document_failure = 'diagnostic') = (document_failure_detail IS NOT NULL))

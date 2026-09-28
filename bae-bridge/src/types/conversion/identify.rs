@@ -278,6 +278,16 @@ mirror_enum! {
     },
 }
 
+mirror_enum! {
+    BridgeIsrcStep = bae_core::identify::IsrcStepView,
+    from_core: fn,
+    variants: {
+        Reading,
+        Absent,
+        Read { isrcs, lookup: (BridgeLookupState) },
+    },
+}
+
 impl BridgeIdentifyRun {
     /// The ledger, with the rate of the audio the run was over for its
     /// disc-ID step.
@@ -287,6 +297,7 @@ impl BridgeIdentifyRun {
             disc_id,
             barcode,
             catalog,
+            isrc,
             search,
         } = run;
         Self {
@@ -297,6 +308,7 @@ impl BridgeIdentifyRun {
             disc_id: BridgeDiscIdStep::from_core(disc_id, rate),
             barcode: BridgeBarcodeStep::from_core(barcode),
             catalog: BridgeCatalogStep::from_core(catalog),
+            isrc: BridgeIsrcStep::from_core(isrc),
             search: BridgeSearchStep::from_core(search),
         }
     }
@@ -413,7 +425,7 @@ impl BridgeSignals {
             barcode: _,
             text,
             text_pool: _,
-            registered_in: _,
+            isrcs: _,
         } = s;
         BridgeSignals {
             text: BridgeTextSignal::from_core(text),
@@ -559,6 +571,9 @@ fn identify_failure(
             source: BridgeCatalog::from_core(failure.source),
             failure: BridgeLookupFailure::from_core(failure.failure),
         },
+        IdentifyFailure::Isrc(failure) => crate::types::BridgeIdentifyFailure::Isrc {
+            failure: BridgeLookupFailure::from_core(failure),
+        },
         IdentifyFailure::ReleaseDetails(failure) => {
             crate::types::BridgeIdentifyFailure::ReleaseDetails {
                 failure: BridgeLookupFailure::from_core(failure),
@@ -593,6 +608,7 @@ mod tests {
             discid: DiscidProgress::Skipped,
             barcode,
             catalog: CatalogProgress::Skipped,
+            isrc: bae_core::identify::IsrcProgress::Skipped,
             search: bae_core::identify::SearchProgress::Skipped,
             context: SignalsContext {
                 providers: vec![Catalog::MusicBrainz, Catalog::Discogs],
@@ -619,7 +635,7 @@ mod tests {
                     track_count: 9,
                     ..Default::default()
                 },
-                registered_in: None,
+                isrc: Default::default(),
                 album_links: bae_core::identify::state::AlbumLinkReading::Pending,
                 documents: bae_core::identify::documents::DocumentReading::Pending,
             },

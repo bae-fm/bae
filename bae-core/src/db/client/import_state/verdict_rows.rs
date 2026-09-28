@@ -233,11 +233,11 @@ fn insert_match(
               labels, country, region, status, packaging, discogs_details, \
               media_kind, cover_url, cover_label, cover_source, \
               cover_standing, source_group_id, album_links, source_tracks_kind, \
-              source_tracks_count, by_disc_id, by_barcode, by_catalog, by_search, \
+              source_tracks_count, by_disc_id, by_barcode, by_catalog, by_isrc, by_search, \
               named_by_catalog, named_by_key, narrowed_out, document_failure, \
               document_failure_status, document_failure_detail, album_first_year) \
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \
-                 ?, ?, ?, ?, ?, ?, ?, ?)",
+                 ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         params![
             content_hash,
             position,
@@ -265,6 +265,7 @@ fn insert_match(
             provenance.by_disc_id,
             provenance.by_barcode,
             provenance.by_catalog,
+            provenance.by_isrc,
             provenance.by_search,
             provenance.named_by.as_ref().map(|by| by.catalog.as_str()),
             provenance.named_by.as_ref().map(|by| by.key.as_str()),
@@ -608,6 +609,7 @@ fn read_match_columns(row: &Row<'_>, pressing: i64) -> Result<MatchColumns, DbEr
             by_disc_id: row.get("by_disc_id")?,
             by_barcode: row.get("by_barcode")?,
             by_catalog: row.get("by_catalog")?,
+            by_isrc: row.get("by_isrc")?,
             by_search: row.get("by_search")?,
             named_by: match (
                 row.get::<_, Option<String>>("named_by_catalog")?,

@@ -4,11 +4,12 @@
 //! empty one.
 
 use super::{
-    BarcodeProgress, CatalogProgress, DiscidProgress, LibraryStatus, MetadataResult,
+    BarcodeProgress, CatalogProgress, DiscidProgress, IsrcProgress, LibraryStatus, MetadataResult,
     SearchProgress, SourceFailure,
 };
 use crate::config::IdentificationSteps;
 use crate::identify::agreements::CandidateText;
+use crate::identify::combine::LookupAnswers;
 use crate::identify::documents::DocumentReading;
 use crate::identify::{IdentifyFailure, NotAskedReason};
 use crate::import::album_links::{self, GroupReading, Twin};
@@ -147,6 +148,60 @@ impl BarcodeEvidence {
             into.push(IdentifyFailure::BarcodeScan(failure.clone()));
         }
         into.extend(self.failures.iter().cloned().map(IdentifyFailure::Barcode));
+    }
+}
+
+/// The ISRCs the audio's tags carry and what asking MusicBrainz about them
+/// produced; one provider, so one failure.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct IsrcEvidence {
+    /// Each audio file's ISRC, in the files' order, as the signals carry them.
+    pub tagged: Vec<String>,
+    /// The lookup's results, once settled.
+    pub results: Vec<(MetadataResult, LibraryStatus)>,
+    /// Why the lookup failed, which tells "nothing was learned" from an empty
+    /// `results`.
+    pub failure: Option<LookupFailure>,
+    /// Why nobody was asked about the codes, where nobody was.
+    pub not_asked: Option<NotAskedReason>,
+}
+
+impl IsrcEvidence {
+    /// Each code once, in first-tagged order: what the lookup asks about.
+    pub fn codes(&self) -> Vec<String> {
+        let mut codes: Vec<String> = Vec::new();
+        for code in &self.tagged {
+            if !codes.contains(code) {
+                codes.push(code.clone());
+            }
+        }
+        codes
+    }
+
+    /// Where most of the audio's recordings were registered — see
+    /// [`crate::isrc::registered_in`].
+    fn registered_in(&self) -> Option<crate::pressing::ReleaseArea> {
+        crate::isrc::registered_in(self.tagged.iter().map(String::as_str))
+    }
+
+    /// Record what the settled lookup found.
+    fn record(&mut self, progress: &IsrcProgress) {
+        self.results = progress.results();
+        self.failure = match progress {
+            IsrcProgress::Failed { failure } => Some(failure.clone()),
+            _ => None,
+        };
+        self.not_asked = match progress {
+            IsrcProgress::NotAsked { reason } => Some(*reason),
+            _ => None,
+        };
+    }
+
+    /// The lookup's failure, where it has one.
+    fn active_failures(&self, into: &mut Vec<IdentifyFailure>) {
+        if let Some(failure) = &self.failure {
+            into.push(IdentifyFailure::Isrc(failure.clone()));
+        }
     }
 }
 
@@ -307,12 +362,10 @@ pub struct SignalsContext {
     pub origin: AudioOrigin,
     /// The audio being identified, read off its files.
     pub audio: AudioFacts,
-    /// Where most of the audio's recordings were registered, as the ISRCs
-    /// its files' tags carry say.
-    pub registered_in: Option<crate::pressing::ReleaseArea>,
     pub disc: DiscIdEvidence,
     pub barcode: BarcodeEvidence,
     pub catalog: CatalogEvidence,
+    pub isrc: IsrcEvidence,
     pub search: SearchEvidence,
     /// The candidate's own text, normalized — what a result is judged against.
     pub text: CandidateText,
@@ -352,10 +405,10 @@ impl Default for SignalsContext {
             artwork: ArtworkScan::Absent,
             origin: AudioOrigin::default(),
             audio: AudioFacts::default(),
-            registered_in: None,
             disc: DiscIdEvidence::default(),
             barcode: BarcodeEvidence::default(),
             catalog: CatalogEvidence::default(),
+            isrc: IsrcEvidence::default(),
             search: SearchEvidence::default(),
             text: CandidateText::default(),
             text_settled: false,
@@ -372,7 +425,7 @@ impl SignalsContext {
             origin: &self.origin,
             mono: self.audio.mono,
             track_count: self.audio.track_count,
-            registered_in: self.registered_in,
+            registered_in: self.isrc.registered_in(),
         }
     }
 
@@ -427,7 +480,7 @@ impl SignalsContext {
     ) {
         self.artwork = artwork;
         self.origin = signals.origin.clone();
-        self.registered_in = signals.registered_in;
+        self.isrc.tagged = signals.isrcs.clone();
         self.audio = audio;
         self.disc.refresh_input(&signals.disc_id);
         self.barcode.refresh_input(&signals.barcode);
@@ -441,10 +494,12 @@ impl SignalsContext {
         discid: &DiscidProgress,
         barcode: &BarcodeProgress,
         catalog: &CatalogProgress,
+        isrc: &IsrcProgress,
     ) {
         self.disc.record(discid);
         self.barcode.record(barcode);
         self.catalog.record(catalog);
+        self.isrc.record(isrc);
     }
 
     /// Record what the title search found; it settles after the identifiers.
@@ -464,15 +519,9 @@ impl SignalsContext {
 
     /// Every lookup's results with their album links and documents applied,
     /// in the order combine takes them.
-    pub(super) fn lookup_results(&self) -> [Vec<(MetadataResult, LibraryStatus)>; 4] {
+    pub(super) fn lookup_results(&self) -> LookupAnswers {
         let read = self.album_readings();
-        [
-            self.disc.results.clone(),
-            self.barcode.results.clone(),
-            self.catalog.active_results(),
-            self.search.results.clone(),
-        ]
-        .map(|results| {
+        let applied = |results: Vec<(MetadataResult, LibraryStatus)>| {
             results
                 .into_iter()
                 .map(|(mut result, status)| {
@@ -481,7 +530,14 @@ impl SignalsContext {
                     (result, status)
                 })
                 .collect()
-        })
+        };
+        LookupAnswers {
+            disc_id: applied(self.disc.results.clone()),
+            barcode: applied(self.barcode.results.clone()),
+            catalog: applied(self.catalog.active_results()),
+            isrc: applied(self.isrc.results.clone()),
+            search: applied(self.search.results.clone()),
+        }
     }
 
     /// The releases reading the albums found that no lookup returned, with
@@ -502,17 +558,19 @@ impl SignalsContext {
         self.disc.active_failures(&mut failures);
         self.barcode.active_failures(&mut failures);
         self.catalog.active_failures(&mut failures);
+        self.isrc.active_failures(&mut failures);
         self.search.active_failures(&mut failures);
         failures
     }
 
     /// Whether extraction gave this run anything to lay out: a disc ID, a
-    /// barcode source, or a catalog number.
+    /// barcode source, a catalog number, or an ISRC.
     pub fn has_inputs(&self) -> bool {
         !matches!(self.disc.signal, DiscIdSignal::Absent)
             || self.barcode.had_source
             || !self.barcode.codes.is_empty()
             || self.barcode.scan_failure.is_some()
             || !self.catalog.numbers.is_empty()
+            || !self.isrc.tagged.is_empty()
     }
 }

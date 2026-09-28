@@ -35,10 +35,10 @@ fn pressing(release_id: &str, year: Option<i32>) -> (MetadataResult, LibraryStat
 
 fn search(results: Vec<(MetadataResult, LibraryStatus)>, text: &CandidateText) -> Outcome {
     combine_results(
-        Vec::new(),
-        Vec::new(),
-        Vec::new(),
-        results,
+        LookupAnswers {
+            search: results,
+            ..LookupAnswers::default()
+        },
         Vec::new(),
         text,
         FolderAudio {

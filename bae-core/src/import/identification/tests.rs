@@ -54,7 +54,7 @@ fn settled_signals() -> Signals {
             free_text: Vec::new(),
         },
         text_pool: Vec::new(),
-        registered_in: None,
+        isrcs: Vec::new(),
     }
 }
 
@@ -763,6 +763,7 @@ impl Fixture {
                     by_disc_id: true,
                     by_barcode: false,
                     by_catalog: false,
+                    by_isrc: false,
                     by_search: false,
                     named_by: None,
                 }],

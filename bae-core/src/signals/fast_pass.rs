@@ -30,9 +30,8 @@ pub(super) struct FastPass {
     pub(super) disc_id: DiscIdSignal,
     pub(super) cue_barcodes: Vec<SourcedValue>,
     pub(super) audio: AudioFacts,
-    /// Where most of the audio's recordings were registered, as the ISRCs
-    /// its tags carry say.
-    pub(super) registered_in: Option<crate::pressing::ReleaseArea>,
+    /// Each audio file's ISRC, as its tags carry it.
+    pub(super) isrcs: Vec<String>,
 }
 
 impl FastPass {
@@ -46,7 +45,7 @@ impl FastPass {
             disc_id: DiscIdSignal::Absent,
             cue_barcodes: Vec::new(),
             audio: AudioFacts::default(),
-            registered_in: None,
+            isrcs: Vec::new(),
         }
     }
 }
@@ -139,8 +138,8 @@ pub(super) fn gather_non_ocr_sources(
     }
 
     // The audio's own tags: their album, artists and label feed the pool, and
-    // their ISRCs say where the recordings were registered. A reading that
-    // cannot be had is skipped like any other unreadable text.
+    // their ISRCs are looked up. A reading that cannot be had is skipped like
+    // any other unreadable text.
     let audio_files: Vec<_> = categorized.audio().cloned().collect();
     match crate::import::file_tag_snapshot::extract_file_tag_snapshot(
         &audio_files,
@@ -149,7 +148,7 @@ pub(super) fn gather_non_ocr_sources(
         &crate::import::file_tag_snapshot::LoftyFileTagReader,
     ) {
         Ok(tags) => {
-            pass.registered_in = tags.registered_in();
+            pass.isrcs = tags.isrcs();
             // A file a ripper made reading a disc outweighs a tag, which can
             // be copied.
             if pass.origin.source.is_none() {

@@ -725,6 +725,7 @@
                         ]
                     ),
                     catalog: .noneFound,
+                    isrc: .absent,
                     search: .notNeeded
                 ),
                 failures: [

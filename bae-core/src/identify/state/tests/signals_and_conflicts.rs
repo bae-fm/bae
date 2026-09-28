@@ -175,7 +175,7 @@ fn signals_with_catalogs(
             free_text: vec![],
         },
         text_pool: Vec::new(),
-        registered_in: None,
+        isrcs: Vec::new(),
     }
 }
 
@@ -215,10 +215,12 @@ fn started_enters_triangulating_awaiting_signals() {
             discid,
             barcode,
             catalog: _,
+            isrc,
             search: _,
             context,
         } => {
             assert!(matches!(discid, DiscidProgress::Computing));
+            assert!(matches!(isrc, IsrcProgress::Reading));
             assert!(matches!(barcode, BarcodeProgress::Scanning));
             assert!(context.catalog.numbers.is_empty());
             assert_eq!(context.providers, vec![MB, DG]);
@@ -272,7 +274,7 @@ fn nothing_to_run_waits_for_the_settled_text() {
             free_text: vec![],
         },
         text_pool: Vec::new(),
-        registered_in: None,
+        isrcs: Vec::new(),
     };
     let (state, effects) = update(started(), scanning);
     assert!(effects.is_empty());
@@ -317,7 +319,7 @@ fn an_aborted_extraction_settles_the_run_as_failed() {
             free_text: vec![],
         },
         text_pool: Vec::new(),
-        registered_in: None,
+        isrcs: Vec::new(),
     };
     let (state, effects) = update(started(), aborted);
     assert!(effects.is_empty(), "nothing is asked, got {effects:?}");

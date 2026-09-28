@@ -52,6 +52,50 @@ impl DiscidProgress {
     }
 }
 
+/// The ISRC lookup's progress. Only MusicBrainz answers ISRCs, and every code
+/// the audio's tags carry is asked in one search, so there is one lookup.
+#[derive(Clone, Debug, PartialEq)]
+pub enum IsrcProgress {
+    /// Waiting for the first snapshot, which carries the tags' codes.
+    Reading,
+    LookingUp,
+    Done {
+        results: LookupResults,
+    },
+    /// No audio file's tags carry an ISRC.
+    Skipped,
+    /// The tags carry codes and nobody was asked about them, for `reason`.
+    NotAsked {
+        reason: NotAskedReason,
+    },
+    Failed {
+        failure: LookupFailure,
+    },
+}
+
+impl IsrcProgress {
+    pub fn is_settled(&self) -> bool {
+        match self {
+            IsrcProgress::Reading | IsrcProgress::LookingUp => false,
+            IsrcProgress::Done { .. }
+            | IsrcProgress::Skipped
+            | IsrcProgress::NotAsked { .. }
+            | IsrcProgress::Failed { .. } => true,
+        }
+    }
+
+    pub fn results(&self) -> LookupResults {
+        match self {
+            IsrcProgress::Done { results } => results.clone(),
+            IsrcProgress::Reading
+            | IsrcProgress::LookingUp
+            | IsrcProgress::Skipped
+            | IsrcProgress::NotAsked { .. }
+            | IsrcProgress::Failed { .. } => Vec::new(),
+        }
+    }
+}
+
 /// One provider's part of a lookup.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ProviderLookup {
@@ -152,10 +196,10 @@ impl BarcodeProgress {
 }
 
 /// The title search's progress: the run's last step, decided once the three
-/// identifiers have settled.
+/// identifiers and the ISRCs have settled.
 #[derive(Clone, Debug, PartialEq)]
 pub enum SearchProgress {
-    /// Waiting for the three identifiers.
+    /// Waiting for the three identifiers and the ISRCs.
     Pending,
     /// The identifiers answered, or there was nothing to search by.
     Skipped,
@@ -390,6 +434,18 @@ pub(super) fn discid_progress_state(progress: &DiscidProgress) -> SignalState {
     }
 }
 
+pub(super) fn isrc_progress_state(progress: &IsrcProgress) -> SignalState {
+    match progress {
+        IsrcProgress::Reading | IsrcProgress::LookingUp => SignalState::LookingUp,
+        IsrcProgress::Done { results } => found_or_no_match(results.len() as u32),
+        IsrcProgress::Skipped => SignalState::Skipped,
+        IsrcProgress::NotAsked { reason } => SignalState::NotAsked { reason: *reason },
+        IsrcProgress::Failed { failure } => SignalState::Failed {
+            failure: failure.clone(),
+        },
+    }
+}
+
 /// Results beat failures: only a lookup that found nothing reads as failed.
 pub(super) fn barcode_progress_state(progress: &BarcodeProgress) -> SignalState {
     match progress {
@@ -450,6 +506,23 @@ pub(super) fn settled_identity_state(context: &SignalsContext) -> SignalState {
             Some(reason) => SignalState::NotAsked { reason },
             None => found_or_no_match(context.disc.results.len() as u32),
         },
+    }
+}
+
+/// The ISRC badge of a settled run.
+pub(super) fn isrc_settled_state(context: &SignalsContext) -> SignalState {
+    let isrc = &context.isrc;
+    if let Some(failure) = &isrc.failure {
+        return SignalState::Failed {
+            failure: failure.clone(),
+        };
+    }
+    if isrc.tagged.is_empty() {
+        return SignalState::Skipped;
+    }
+    match isrc.not_asked {
+        Some(reason) => SignalState::NotAsked { reason },
+        None => found_or_no_match(isrc.results.len() as u32),
     }
 }
 
@@ -527,6 +600,24 @@ pub(super) fn start_discid_progress(
             failure: failure.clone(),
         },
     }
+}
+
+/// Ask MusicBrainz about every code the audio's tags carry, in one search.
+pub(super) fn start_isrc_progress(
+    codes: Vec<String>,
+    providers: &[Catalog],
+    effects: &mut Vec<Effect>,
+) -> IsrcProgress {
+    if codes.is_empty() {
+        return IsrcProgress::Skipped;
+    }
+    if !providers.contains(&Catalog::ISRC_CATALOG) {
+        return IsrcProgress::NotAsked {
+            reason: NotAskedReason::NoCatalog,
+        };
+    }
+    effects.push(Effect::LookupIsrcs { isrcs: codes });
+    IsrcProgress::LookingUp
 }
 
 /// Ask every provider about every code in `codes` the person did not leave out.
@@ -627,7 +718,11 @@ pub(super) fn search_progress_at_start(search_by_title: bool) -> SearchProgress 
 }
 
 /// Ask every provider the candidate's title, unless the identifiers already
-/// answered or there is no title.
+/// answered or there is no title. The ISRCs are no identifier here: a
+/// recording is on every compilation that reissued it, and MusicBrainz lists
+/// few of an album's codes, so what they return does not stand for the album
+/// the way a disc ID, a barcode or a catalog number does — and Discogs, which
+/// no ISRC reaches, is still asked the title.
 pub(super) fn start_search_progress(
     context: &SignalsContext,
     effects: &mut Vec<Effect>,

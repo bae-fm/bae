@@ -23,8 +23,10 @@ pub struct LookupProvenance {
     pub by_disc_id: bool,
     pub by_barcode: bool,
     pub by_catalog: bool,
-    /// Never true beside the others: the title search runs only when the
-    /// identifiers named nothing.
+    /// The search for the recordings the audio's ISRCs are registered to.
+    pub by_isrc: bool,
+    /// Never true beside the disc ID, the barcode or the catalog number: the
+    /// title search runs only when those named nothing.
     pub by_search: bool,
     /// The MusicBrainz release that names this one as itself, when no lookup
     /// returned it.
@@ -37,6 +39,7 @@ impl LookupProvenance {
         by_disc_id: false,
         by_barcode: false,
         by_catalog: false,
+        by_isrc: false,
         by_search: false,
         named_by: None,
     };
@@ -119,24 +122,45 @@ impl LibraryStatuses {
 type Results = Vec<(MetadataResult, LibraryStatus)>;
 type ReleaseKey = (Catalog, String);
 
+/// What each of a run's lookups returned, each release with its library
+/// status.
+#[derive(Debug, Clone, Default)]
+pub struct LookupAnswers {
+    pub disc_id: Results,
+    pub barcode: Results,
+    pub catalog: Results,
+    pub isrc: Results,
+    pub search: Results,
+}
+
+impl LookupAnswers {
+    /// Every lookup's results, in the order above.
+    pub(crate) fn all(&self) -> impl Iterator<Item = &(MetadataResult, LibraryStatus)> {
+        self.disc_id
+            .iter()
+            .chain(&self.barcode)
+            .chain(&self.catalog)
+            .chain(&self.isrc)
+            .chain(&self.search)
+    }
+}
+
 /// Combine each lookup's results into what the run found. An empty set takes
 /// no part. `twins` are releases no lookup returned, each placed beside the
 /// release that names it.
 pub fn combine_results(
-    discid_results: Results,
-    barcode_results: Results,
-    catalog_results: Results,
-    search_results: Results,
+    answers: LookupAnswers,
     twins: Vec<Twin>,
     text: &CandidateText,
     folder: FolderAudio<'_>,
 ) -> (Findings, LibraryStatuses) {
-    let ripped_from = RippedFrom::of(folder.origin, !discid_results.is_empty());
+    let ripped_from = RippedFrom::of(folder.origin, !answers.disc_id.is_empty());
     let by_signal = [
-        &discid_results,
-        &barcode_results,
-        &catalog_results,
-        &search_results,
+        &answers.disc_id,
+        &answers.barcode,
+        &answers.catalog,
+        &answers.isrc,
+        &answers.search,
     ];
     let keys: Vec<HashSet<ReleaseKey>> = by_signal.iter().map(|set| release_keys(set)).collect();
 
@@ -178,7 +202,8 @@ pub fn combine_results(
             by_disc_id: keys[0].contains(&key),
             by_barcode: keys[1].contains(&key),
             by_catalog: keys[2].contains(&key),
-            by_search: keys[3].contains(&key),
+            by_isrc: keys[3].contains(&key),
+            by_search: keys[4].contains(&key),
             named_by: named_by.get(&key).cloned(),
         }
     };
@@ -336,6 +361,7 @@ fn support_of(
         returned.by_disc_id |= found.by_disc_id;
         returned.by_barcode |= found.by_barcode;
         returned.by_catalog |= found.by_catalog;
+        returned.by_isrc |= found.by_isrc;
         returned.by_search |= found.by_search;
     }
     let agreements = row.agreements(judgements);
@@ -349,6 +375,7 @@ fn support_of(
             returned.by_disc_id,
             returned.by_barcode,
             returned.by_catalog,
+            returned.by_isrc,
             returned.by_search,
         ]
         .into_iter()

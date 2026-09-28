@@ -32,6 +32,10 @@
                 rows: [],
                 candidates: catalogCandidates
             ),
+            isrc: .read(
+                isrcs: ["XX0000000001", "XX0000000002"],
+                lookup: .found(count: 1, groups: [searchGroupExactBridge])
+            ),
             search: .notNeeded
         )
 
@@ -53,6 +57,7 @@
                 ]
             ),
             catalog: .coverArtOff,
+            isrc: .absent,
             search: .notAsked(reason: .switchedOff)
         )
 
@@ -62,6 +67,7 @@
             discId: .reading,
             barcode: .rows(scanning: true, rows: []),
             catalog: .numbers(scanning: true, rows: [], candidates: []),
+            isrc: .absent,
             search: .notNeeded
         )
 
@@ -88,6 +94,10 @@
                 ]
             ),
             catalog: .numbers(scanning: false, rows: [], candidates: []),
+            isrc: .read(
+                isrcs: ["XX0000000001"],
+                lookup: .notAsked(reason: .noCatalog)
+            ),
             search: .notNeeded
         )
 
@@ -100,6 +110,7 @@
             ),
             barcode: identifyRunOneSource.barcode,
             catalog: identifyRunOneSource.catalog,
+            isrc: identifyRunOneSource.isrc,
             search: identifyRunOneSource.search
         )
 
@@ -123,6 +134,7 @@
                 ]
             ),
             catalog: .numbers(scanning: false, rows: [], candidates: []),
+            isrc: .absent,
             search: .notNeeded
         )
 
@@ -146,6 +158,7 @@
                 ]
             ),
             catalog: identifyRunBarcodeLeftOut.catalog,
+            isrc: identifyRunBarcodeLeftOut.isrc,
             search: identifyRunBarcodeLeftOut.search
         )
 
@@ -179,6 +192,10 @@
                 ],
                 candidates: Array(catalogCandidates.dropFirst())
             ),
+            isrc: .read(
+                isrcs: ["XX0000000001"],
+                lookup: .failed(failure: .timeout)
+            ),
             search: .notNeeded
         )
 
@@ -192,6 +209,7 @@
                 rows: [],
                 candidates: catalogCandidates
             ),
+            isrc: identifyRunProviderFailed.isrc,
             search: identifyRunProviderFailed.search
         )
 
@@ -217,6 +235,7 @@
                 rows: [],
                 candidates: Array(catalogCandidates.prefix(2))
             ),
+            isrc: .absent,
             search: .searched(
                 album: "Album Title One",
                 artist: "Artist Name",
@@ -246,6 +265,7 @@
                 rows: [],
                 candidates: Array(catalogCandidates.prefix(1))
             ),
+            isrc: .absent,
             search: .notNeeded
         )
 
@@ -259,6 +279,7 @@
                 rows: [],
                 candidates: Array(catalogCandidates.prefix(2))
             ),
+            isrc: .absent,
             search: .noTitle
         )
 

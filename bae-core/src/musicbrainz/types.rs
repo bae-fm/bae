@@ -225,6 +225,28 @@ pub(super) struct SearchResponse {
     pub(super) error: Option<String>,
 }
 
+/// One page of what the recording search matched.
+#[derive(Debug, Clone, Deserialize)]
+pub(super) struct RecordingSearchResponse {
+    /// How many recordings match in all, across every page.
+    pub(super) count: usize,
+    #[serde(default)]
+    pub(super) recordings: Vec<SearchRecording>,
+}
+
+/// A recording the search matched: the ISRCs it is registered under, its
+/// credit, and every release it is on, each as the release search states one.
+/// A release states its own credit only where it is not the recording's.
+#[derive(Debug, Clone, Deserialize)]
+pub struct SearchRecording {
+    #[serde(default)]
+    pub isrcs: Vec<String>,
+    #[serde(rename = "artist-credit", default)]
+    pub artist_credit: Vec<MbArtistCredit>,
+    #[serde(default)]
+    pub releases: Vec<SearchRelease>,
+}
+
 /// A release in search results (less data than full lookup)
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct SearchRelease {

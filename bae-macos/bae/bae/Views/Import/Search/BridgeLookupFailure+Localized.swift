@@ -84,6 +84,8 @@ extension BridgeIdentifyFailure {
             return String(localized: "Title") + " \u{00b7} "
                 + bridgeCatalogName(catalog: source) + ": "
                 + failure.badgeLine
+        case .isrc(let failure):
+            return String(localized: "ISRC") + ": " + failure.badgeLine
         case .releaseDetails(let failure):
             return String(
                 localized:

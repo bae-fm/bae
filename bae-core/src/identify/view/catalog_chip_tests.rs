@@ -59,6 +59,7 @@ fn resumed(
                 by_disc_id: true,
                 by_barcode: false,
                 by_catalog: false,
+                by_isrc: false,
                 by_search: false,
                 named_by: None,
             };
@@ -217,6 +218,7 @@ fn a_number_an_offered_release_carries_is_a_chip_rather_than_a_tile() {
                 },
             ],
         },
+        isrc: crate::identify::IsrcStepView::Absent,
         search: SearchStepView::NotNeeded,
     };
     let view = resumed(

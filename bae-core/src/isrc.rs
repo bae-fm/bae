@@ -14,11 +14,11 @@
 
 use crate::pressing::{Country, Region, ReleaseArea};
 
-/// The territory the agency code of `isrc` was allocated for, when it is a
-/// well-formed ISRC whose agency code names one. Hyphens and spaces a tag
-/// writes between its parts are read through, and case is not.
-pub fn territory(isrc: &str) -> Option<ReleaseArea> {
-    let code: String = isrc
+/// `stated` as the twelve characters of an ISRC, when it is a well-formed
+/// one. Hyphens and spaces a tag writes between its parts are read through,
+/// and case is not.
+pub fn code(stated: &str) -> Option<String> {
+    let code: String = stated
         .chars()
         .filter(|c| !matches!(c, '-' | ' '))
         .map(|c| c.to_ascii_uppercase())
@@ -28,9 +28,13 @@ pub fn territory(isrc: &str) -> Option<ReleaseArea> {
         && code[..2].chars().all(|c| c.is_ascii_uppercase())
         && code[2..5].chars().all(|c| c.is_ascii_alphanumeric())
         && code[5..].chars().all(|c| c.is_ascii_digit());
-    if !well_formed {
-        return None;
-    }
+    well_formed.then_some(code)
+}
+
+/// The territory the agency code of `isrc` was allocated for, when it is a
+/// well-formed ISRC — see [`code`] — whose agency code names one.
+pub fn territory(isrc: &str) -> Option<ReleaseArea> {
+    let code = code(isrc)?;
     AGENCY_CODES
         .iter()
         .find(|(agency, _)| *agency == &code[..2])

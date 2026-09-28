@@ -70,6 +70,17 @@ mirror_enum! {
     },
 }
 
+mirror_enum! {
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    AutomationIsrcStep = bae_core::identify::IsrcStepView,
+    from_core: pub(crate) fn,
+    variants: {
+        Reading,
+        Absent,
+        Read { isrcs, lookup: (AutomationLookupState) },
+    },
+}
+
 mirror_struct! {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     AutomationCatalogCandidate = bae_core::identify::CatalogCandidateView,
@@ -121,6 +132,7 @@ mirror_struct! {
         disc_id: (AutomationDiscIdStep),
         barcode: (AutomationBarcodeStep),
         catalog: (AutomationCatalogStep),
+        isrc: (AutomationIsrcStep),
         search: (AutomationSearchStep),
     },
 }
@@ -148,6 +160,9 @@ impl AutomationIdentifyFailure {
             IdentifyFailure::Search(failure) => Self::Search {
                 source: failure.source.into(),
                 failure: AutomationLookupFailure::from_core(failure.failure),
+            },
+            IdentifyFailure::Isrc(failure) => Self::Isrc {
+                failure: AutomationLookupFailure::from_core(failure),
             },
             IdentifyFailure::ReleaseDetails(failure) => Self::ReleaseDetails {
                 failure: AutomationLookupFailure::from_core(failure),

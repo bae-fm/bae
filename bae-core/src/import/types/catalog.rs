@@ -55,6 +55,10 @@ impl Catalog {
     /// up against it.
     pub const DISC_ID_CATALOG: Catalog = Self::MusicBrainz;
 
+    /// The one catalog bae asks about ISRCs: MusicBrainz lists the codes each
+    /// recording is registered under, and Discogs has no way to ask by one.
+    pub const ISRC_CATALOG: Catalog = Self::MusicBrainz;
+
     /// The stored `catalog` column value.
     pub fn as_str(&self) -> &'static str {
         match self {

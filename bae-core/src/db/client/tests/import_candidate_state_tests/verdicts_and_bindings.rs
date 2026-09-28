@@ -41,6 +41,7 @@ fn sample_ledger() -> IdentifyRunView {
         },
         barcode: crate::identify::BarcodeStepView::Absent,
         catalog: crate::identify::CatalogStepView::NoneFound,
+        isrc: crate::identify::IsrcStepView::Absent,
         search: crate::identify::SearchStepView::NotNeeded,
     }
 }
@@ -84,6 +85,7 @@ fn sample_findings() -> Findings {
             by_disc_id: true,
             by_barcode: true,
             by_catalog: true,
+            by_isrc: false,
             by_search: false,
             named_by: None,
         }],
@@ -104,7 +106,7 @@ fn sample_signals() -> crate::signals::Signals {
             free_text: Vec::new(),
         },
         text_pool: Vec::new(),
-        registered_in: None,
+        isrcs: Vec::new(),
     }
 }
 
@@ -466,6 +468,7 @@ async fn a_verdict_round_trips_its_narrowed_out_releases_apart_from_its_matches(
                     by_disc_id: true,
                     by_barcode: false,
                     by_catalog: false,
+                    by_isrc: false,
                     by_search: false,
                     named_by: None,
                 }],
@@ -913,7 +916,7 @@ async fn a_transport_failure_round_trips_as_a_failed_verdict() {
                     free_text: vec![],
                 },
                 text_pool: Vec::new(),
-                registered_in: None,
+                isrcs: Vec::new(),
             },
             audio: crate::signals::AudioFacts::default(),
             artwork: crate::signals::ArtworkScan::Absent,

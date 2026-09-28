@@ -927,3 +927,45 @@ fn a_discogs_search_result_reads_its_format_entries() {
 
 #[path = "search_tests/labels.rs"]
 mod labels;
+
+/// A recording the search returned under no asked code answers nothing; a
+/// release two recordings are on answers once; and a release that states no
+/// credit of its own is the recording's.
+#[test]
+fn the_isrc_search_answers_each_release_of_an_asked_recording_once() {
+    let recording = |isrc: &str, releases: serde_json::Value| {
+        serde_json::from_value::<musicbrainz::SearchRecording>(serde_json::json!({
+            "isrcs": [isrc],
+            "artist-credit": [{"name": "Artist Name", "artist": null}],
+            "releases": releases,
+        }))
+        .expect("the recording parses")
+    };
+    let album = serde_json::json!({"id": "rel-album", "title": "Album Title"});
+    let compilation = serde_json::json!({
+        "id": "rel-compilation",
+        "title": "Compilation Title",
+        "artist-credit": [{"name": "Various Artists", "artist": null}],
+    });
+    let results = isrc_releases_to_metadata(
+        &["XX0000000001".to_string(), "XX0000000002".to_string()],
+        vec![
+            recording("xx-000-00-00001", serde_json::json!([album, compilation])),
+            recording("XX0000000002", serde_json::json!([album])),
+            recording(
+                "XX0000000009",
+                serde_json::json!([{"id": "rel-other", "title": "Other Title"}]),
+            ),
+        ],
+    );
+    assert_eq!(
+        results
+            .iter()
+            .map(|result| (result.release_id.as_str(), result.artist.as_deref()))
+            .collect::<Vec<_>>(),
+        vec![
+            ("rel-album", Some("Artist Name")),
+            ("rel-compilation", Some("Various Artists")),
+        ]
+    );
+}

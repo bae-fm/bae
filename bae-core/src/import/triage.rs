@@ -225,6 +225,7 @@ mod tests {
                 source_tracks: Some(SourceTracks::Listed { count: 13 }),
                 by_disc_id: true,
                 by_barcode: false,
+                by_isrc: false,
                 by_search: false,
             }),
             medium_conflict: None,

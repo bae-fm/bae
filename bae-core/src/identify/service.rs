@@ -399,6 +399,20 @@ fn dispatch_effect(
             });
         }
 
+        Effect::LookupIsrcs { isrcs } => {
+            let library_manager = inner.library_manager.clone();
+            spawn_until_cancelled(&runtime, &token, async move {
+                let lookup = library_manager
+                    .lookup_musicbrainz_isrcs(&isrcs, priority)
+                    .await;
+                let outcome = annotate_lookup(lookup, &library_manager).await;
+                if let Err(failure) = &outcome {
+                    debug!("ISRC lookup failed for {isrcs:?}: {failure:?}");
+                }
+                emit_step(&event_tx, IdentifyEvent::IsrcLookupAnswered { outcome });
+            });
+        }
+
         // Each provider is asked on its own task and answers for itself, so
         // one landing never waits on the other.
         Effect::LookupBarcode { source, barcode } => {
@@ -627,7 +641,7 @@ mod tests {
                 free_text: vec![],
             },
             text_pool: Vec::new(),
-            registered_in: None,
+            isrcs: Vec::new(),
         }
     }
 

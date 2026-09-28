@@ -338,6 +338,7 @@ fn found_verdict(track_count: u32, source: Option<SourceTracks>) -> TerminalVerd
                 by_disc_id: true,
                 by_barcode: false,
                 by_catalog: false,
+                by_isrc: false,
                 by_search: false,
                 named_by: None,
             }],

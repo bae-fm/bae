@@ -33,7 +33,7 @@ fn settled_signals() -> Signals {
             free_text: Vec::new(),
         },
         text_pool: Vec::new(),
-        registered_in: None,
+        isrcs: Vec::new(),
     }
 }
 
@@ -311,14 +311,12 @@ async fn every_settled_signal_shape_round_trips() {
         ),
     ];
 
-    // Where the recordings were registered rides along: a country, a region,
-    // and nowhere.
-    let registrations = [
-        crate::pressing::Country::from_code("IT").map(crate::pressing::ReleaseArea::Country),
-        Some(crate::pressing::ReleaseArea::Region(
-            crate::pressing::Region::Yugoslavia,
-        )),
-        None,
+    // The tags' ISRCs ride along, in their order, a code tagged twice kept
+    // twice; or none.
+    let isrcs = [
+        vec!["IT0000000002", "IT0000000001", "IT0000000002"],
+        vec!["YU0000000001"],
+        Vec::new(),
     ];
     for (at, (what, origin, disc_id, barcode, text)) in cases.into_iter().enumerate() {
         let (db, _tmp) = empty_db().await;
@@ -329,7 +327,10 @@ async fn every_settled_signal_shape_round_trips() {
             barcode,
             text,
             text_pool: Vec::new(),
-            registered_in: registrations[at % registrations.len()],
+            isrcs: isrcs[at % isrcs.len()]
+                .iter()
+                .map(|code| code.to_string())
+                .collect(),
         };
 
         assert!(store_verdict(&db, &hash, signals.clone()).await, "{what}");
@@ -366,7 +367,7 @@ async fn a_scanning_signal_is_refused_and_writes_nothing() {
                 free_text: Vec::new(),
             },
             text_pool: Vec::new(),
-            registered_in: None,
+            isrcs: Vec::new(),
         },
         Signals {
             origin: crate::signals::AudioOrigin::default(),
@@ -377,7 +378,7 @@ async fn a_scanning_signal_is_refused_and_writes_nothing() {
                 free_text: Vec::new(),
             },
             text_pool: Vec::new(),
-            registered_in: None,
+            isrcs: Vec::new(),
         },
     ] {
         let (db, _tmp) = empty_db().await;

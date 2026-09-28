@@ -73,7 +73,7 @@ pub(crate) fn signals_context(track_count: u32) -> crate::identify::state::Signa
         },
         album_links: crate::identify::state::AlbumLinkReading::Pending,
         documents: crate::identify::documents::DocumentReading::Pending,
-        registered_in: None,
+        isrc: Default::default(),
     }
 }
 
@@ -96,6 +96,7 @@ pub(crate) fn triangulating() -> crate::identify::IdentifyState {
         discid: crate::identify::DiscidProgress::Computing,
         barcode: crate::identify::BarcodeProgress::Scanning,
         catalog: crate::identify::CatalogProgress::Skipped,
+        isrc: crate::identify::IsrcProgress::Skipped,
         search: crate::identify::SearchProgress::Pending,
         context: signals_context(9),
     }
@@ -134,7 +135,7 @@ fn extracted_signals() -> crate::signals::Signals {
             free_text: Vec::new(),
         },
         text_pool: Vec::new(),
-        registered_in: None,
+        isrcs: Vec::new(),
     }
 }
 

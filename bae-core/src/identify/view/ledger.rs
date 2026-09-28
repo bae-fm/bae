@@ -97,6 +97,24 @@ pub(super) fn disc_id_step(progress: &DiscidProgress, context: &SignalsContext) 
     DiscIdStepView::Read { disc_id, lookup }
 }
 
+/// The ISRC step: the codes from the context, their lookup from the pipe.
+pub(super) fn isrc_step(progress: &IsrcProgress, context: &SignalsContext) -> IsrcStepView {
+    let lookup = match progress {
+        IsrcProgress::Reading => return IsrcStepView::Reading,
+        IsrcProgress::Skipped => return IsrcStepView::Absent,
+        IsrcProgress::LookingUp => LookupView::LookingUp,
+        IsrcProgress::Done { results } => found_or_no_match(results),
+        IsrcProgress::NotAsked { reason } => LookupView::NotAsked { reason: *reason },
+        IsrcProgress::Failed { failure } => LookupView::Failed {
+            failure: failure.clone(),
+        },
+    };
+    IsrcStepView::Read {
+        isrcs: context.isrc.codes(),
+        lookup,
+    }
+}
+
 pub(super) fn barcode_step(
     progress: &BarcodeProgress,
     context: &SignalsContext,

@@ -17,8 +17,7 @@ const SIGNALS_COLUMNS: &str = "content_hash, audio_source, cd_rip_proof, downloa
      disc_id_state, disc_id, disc_id_source_file, \
      disc_id_failure, disc_id_failure_status, disc_id_failure_detail, \
      barcode_state, barcode_failure, barcode_failure_status, barcode_failure_detail, \
-     text_state, text_failure, text_failure_status, text_failure_detail, \
-     registered_in_country, registered_in_region";
+     text_state, text_failure, text_failure_status, text_failure_detail";
 
 /// The stored `download_proof` of a label's delivery set; a store's marker is
 /// stored as its own key.
@@ -94,8 +93,6 @@ pub(super) fn insert_signals(
             ))
         }
     };
-    let (registered_in_country, registered_in_region) =
-        crate::db::client::pressing_columns::area_columns(signals.registered_in);
     let disc_id_failure = failure_columns(disc_id_failure);
     let barcode_failure = failure_columns(barcode_failure);
     let text_failure = failure_columns(text_failure);
@@ -103,7 +100,7 @@ pub(super) fn insert_signals(
     sql.execute(
         &format!(
             "INSERT INTO import_candidate_signals ({SIGNALS_COLUMNS}) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         ),
         params![
             content_hash,
@@ -126,8 +123,6 @@ pub(super) fn insert_signals(
             text_failure.kind,
             text_failure.status,
             text_failure.detail,
-            registered_in_country,
-            registered_in_region,
         ],
     )?;
 
@@ -146,6 +141,7 @@ pub(super) fn insert_signals(
         ),
         ("catalog", unsourced(signals.text.catalogs())),
         ("free_text", unsourced(free_text(&signals.text))),
+        ("isrc", unsourced(&signals.isrcs)),
     ];
     for (list, values) in lists {
         for (position, (value, origin_path)) in values.into_iter().enumerate() {
@@ -246,10 +242,6 @@ pub(super) fn load_signals_on(
                 row.get::<_, Option<String>>("text_failure")?,
                 row.get::<_, Option<i64>>("text_failure_status")?,
                 row.get::<_, Option<String>>("text_failure_detail")?,
-                (
-                    row.get::<_, Option<String>>("registered_in_country")?,
-                    row.get::<_, Option<String>>("registered_in_region")?,
-                ),
             ))
         },
     )?;
@@ -262,6 +254,7 @@ pub(super) fn load_signals_on(
                 "barcode" => entry.barcodes.push(SourcedValue { value, origin_path }),
                 "catalog" => entry.catalogs.push(value),
                 "free_text" => entry.free_text.push(value),
+                "isrc" => entry.isrcs.push(value),
                 other => return Err(unreadable("list", other)),
             }
         }
@@ -292,13 +285,7 @@ pub(super) fn load_signals_on(
                 text_failure,
                 text_failure_status,
                 text_failure_detail,
-                (registered_in_country, registered_in_region),
             ) = row;
-            let registered_in = crate::db::client::pressing_columns::area_of(
-                registered_in_country,
-                registered_in_region,
-            )
-            .map_err(|detail| DbError::Message(format!("a stored registration: {detail}")))?;
             let values = lists.remove(&content_hash).unwrap_or_default();
             let source = match (audio_source.as_deref(), cd_rip_proof, download_proof) {
                 (None, None, None) => None,
@@ -383,7 +370,7 @@ pub(super) fn load_signals_on(
                     barcode,
                     text,
                     text_pool,
-                    registered_in,
+                    isrcs: values.isrcs,
                 },
             );
         }
@@ -396,4 +383,5 @@ struct SignalValues {
     barcodes: Vec<SourcedValue>,
     catalogs: Vec<String>,
     free_text: Vec<String>,
+    isrcs: Vec<String>,
 }

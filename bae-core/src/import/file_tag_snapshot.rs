@@ -84,10 +84,15 @@ impl FileTagSnapshot {
         facts.next().is_none()
     }
 
-    /// Where most of the tracks' recordings were registered, as their ISRCs
-    /// say — see [`crate::isrc::registered_in`].
-    pub(crate) fn registered_in(&self) -> Option<crate::pressing::ReleaseArea> {
-        crate::isrc::registered_in(self.files.iter().filter_map(|fact| fact.isrc.as_deref()))
+    /// Each file's ISRC, as [`crate::isrc::code`] reads its tag, in the files'
+    /// order; a file whose tag holds none, or none that reads as one, adds
+    /// nothing.
+    pub(crate) fn isrcs(&self) -> Vec<String> {
+        self.files
+            .iter()
+            .filter_map(|fact| fact.isrc.as_deref())
+            .filter_map(crate::isrc::code)
+            .collect()
     }
 }
 

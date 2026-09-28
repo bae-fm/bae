@@ -45,7 +45,7 @@ async fn emit_signals_warns_when_broadcast_has_no_subscribers() {
                         free_text: Vec::new(),
                     },
                     text_pool: Vec::new(),
-                    registered_in: None,
+                    isrcs: Vec::new(),
                 },
                 audio: crate::signals::AudioFacts::default(),
                 artwork: ArtworkScan::Absent,

@@ -7,9 +7,9 @@ struct FailedSearch: Hashable {
     let source: BridgeCatalog
     let step: Step
 
-    /// The steps a provider answers. Three of them are the identifiers the
-    /// badge row names; the title search is the run's own last step, which has
-    /// no badge because it is not a value the folder carries.
+    /// The steps a provider answers. Most are the identifiers the badge row
+    /// names; the title search is the run's own last step, which has no badge
+    /// because it is not a value the folder carries.
     enum Step: Hashable {
         case signal(BridgeSignalKind)
         case titleSearch
@@ -18,8 +18,9 @@ struct FailedSearch: Hashable {
 
 extension BridgeIdentifyFailure {
     /// The lookup this failure names, for the line saying its results are
-    /// missing from the list. `nil` for the steps no provider owns. The
-    /// disc-ID endpoint is MusicBrainz's alone, so a disc-ID failure names it.
+    /// missing from the list. `nil` for the steps no provider owns. Only
+    /// MusicBrainz is asked about disc IDs and ISRCs, so their failures name
+    /// it.
     var failedSearch: FailedSearch? {
         switch self {
         case .discId: FailedSearch(source: .musicBrainz, step: .signal(.discId))
@@ -27,6 +28,7 @@ extension BridgeIdentifyFailure {
             FailedSearch(source: source, step: .signal(.barcode))
         case .catalog(let source, _):
             FailedSearch(source: source, step: .signal(.catalog))
+        case .isrc: FailedSearch(source: .musicBrainz, step: .signal(.isrc))
         case .search(let source, _):
             FailedSearch(source: source, step: .titleSearch)
         case .barcodeScan, .releaseDetails: nil

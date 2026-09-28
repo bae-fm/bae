@@ -399,6 +399,8 @@ pub fn bridge_folder_check_key(folder_check: &BridgeFolderCheck) -> String {
 pub enum BridgeMatchedSignal {
     DiscId,
     Barcode,
+    /// The search by the audio's ISRCs.
+    Isrc,
     /// A catalog search for the candidate's album title.
     TitleSearch,
 }

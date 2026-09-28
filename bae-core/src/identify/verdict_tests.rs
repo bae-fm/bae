@@ -35,7 +35,7 @@ fn mk_context(track_count: u32) -> SignalsContext {
         },
         album_links: crate::identify::state::AlbumLinkReading::Pending,
         documents: crate::identify::documents::DocumentReading::Pending,
-        registered_in: None,
+        isrc: Default::default(),
     }
 }
 
@@ -47,6 +47,7 @@ fn in_flight_states_have_no_terminal_verdict() {
         discid: DiscidProgress::Computing,
         barcode: BarcodeProgress::Scanning,
         catalog: crate::identify::CatalogProgress::Skipped,
+        isrc: crate::identify::IsrcProgress::Skipped,
         search: SearchProgress::Pending,
         context: mk_context(0),
     })
@@ -111,6 +112,7 @@ fn a_terminal_verdict_carries_the_ledger_its_run_recorded() {
                 }],
             },
             catalog: CatalogProgress::Skipped,
+            isrc: crate::identify::IsrcProgress::Skipped,
             search: SearchProgress::Pending,
             context,
         },
@@ -156,6 +158,7 @@ fn disc_id_only() -> LookupProvenance {
         by_disc_id: true,
         by_barcode: false,
         by_catalog: false,
+        by_isrc: false,
         by_search: false,
         named_by: None,
     }
@@ -291,6 +294,7 @@ fn signals_that_share_no_result_store_as_one_match_list() {
                         by_disc_id: false,
                         by_barcode: true,
                         by_catalog: false,
+                        by_isrc: false,
                         by_search: false,
                         named_by: None,
                     }],

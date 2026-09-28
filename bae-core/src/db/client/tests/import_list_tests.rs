@@ -59,6 +59,7 @@ fn verdict(release_id: &str, ledger: Option<crate::identify::IdentifyRunView>) -
                 by_disc_id: true,
                 by_barcode: false,
                 by_catalog: false,
+                by_isrc: false,
                 by_search: false,
                 named_by: None,
             }],
@@ -97,7 +98,7 @@ async fn save_verdict_with_ledger(
                     free_text: Vec::new(),
                 },
                 text_pool: Vec::new(),
-                registered_in: None,
+                isrcs: Vec::new(),
             },
             metadata: None,
         })
@@ -338,7 +339,7 @@ async fn a_verdict_the_folder_rules_out_reads_back_as_its_failed_check() {
                     free_text: Vec::new(),
                 },
                 text_pool: Vec::new(),
-                registered_in: None,
+                isrcs: Vec::new(),
             },
             metadata: None,
         })
@@ -468,6 +469,7 @@ async fn the_detail_resumes_the_ledger_the_run_recorded() {
         },
         barcode: crate::identify::BarcodeStepView::Absent,
         catalog: crate::identify::CatalogStepView::NoneFound,
+        isrc: crate::identify::IsrcStepView::Absent,
         search: crate::identify::SearchStepView::NotNeeded,
     };
     save_verdict_with_ledger(&db, &candidate, "mb-verdict", Some(ledger.clone())).await;

@@ -1,9 +1,9 @@
 import BaeKit
 import SwiftUI
 
-/// The run as one wrapping band of chips — Disc ID, Barcode, Catalog #, Title,
-/// then the catalog numbers that rank the answers, then the unused numbers
-/// folded behind their count — each with every provider's answer.
+/// The run as one wrapping band of chips — Disc ID, Barcode, Catalog #, ISRC,
+/// Title, then the catalog numbers that rank the answers, then the unused
+/// numbers folded behind their count — each with every provider's answer.
 struct IdentifierBand: View {
     let run: BridgeIdentifyRun
     /// The numbers an offered release carries; empty while the run is going.
@@ -27,6 +27,7 @@ struct IdentifierBand: View {
             discIdChip
             barcodeChips
             catalogChips
+            isrcChip
             titleChip
             ForEach(catalogAgreements, id: \.value) { agreement in
                 CatalogAgreementChip(
@@ -218,6 +219,39 @@ struct IdentifierBand: View {
                 .buttonStyle(.plain)
                 .help("Take this catalog number out of the run")
             }
+        }
+    }
+
+    // MARK: - ISRC
+
+    /// One chip with MusicBrainz's capsule, the only catalog asked about
+    /// ISRCs: every code the files' tags carry, asked in one search. It shows
+    /// the first code and lists every one on hover.
+    @ViewBuilder
+    private var isrcChip: some View {
+        let label = SignalBadgeStyle.label(for: BridgeSignalKind.isrc)
+        switch run.isrc {
+        case .reading:
+            IdentifierChip(label: label) { ChipSpinner() }
+                .help("Reading…")
+        case .absent:
+            IdentifierChip(label: label) { IdentifierDash() }
+                .help("No ISRC in the files' tags")
+        // Only Settings can switch on the catalog that answers ISRCs.
+        case .read(let isrcs, .notAsked(reason: _)):
+            IdentifierChip(label: label, value: isrcs.first ?? "") {
+                IdentifierDash()
+            }
+            .help(isrcs.joined(separator: "\n"))
+        case .read(let isrcs, let lookup):
+            IdentifierChip(label: label, value: isrcs.first ?? "") {
+                ProviderCapsule(
+                    source: .musicBrainz,
+                    lookup: lookup,
+                    onRetry: onRetryFailed
+                )
+            }
+            .help(isrcs.joined(separator: "\n"))
         }
     }
 

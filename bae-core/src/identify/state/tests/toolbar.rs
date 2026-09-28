@@ -46,8 +46,9 @@ fn toolbar_while_triangulating_shows_spinners() {
         ),
     );
     let toolbar = state.toolbar();
-    // Three badges, whatever the candidate turned up: disc, barcode, catalog.
-    assert_eq!(toolbar.len(), 3);
+    // Four badges, whatever the candidate turned up: disc, barcode, catalog,
+    // ISRC.
+    assert_eq!(toolbar.len(), 4);
 
     let disc = &toolbar[0];
     assert_eq!(disc.kind, SignalKind::DiscId);
@@ -76,6 +77,12 @@ fn toolbar_while_triangulating_shows_spinners() {
         vec!["LBL-001"]
     );
     assert!(catalog.options.iter().all(|o| !o.chosen));
+
+    // The tags carry no ISRC, so none is looked up.
+    let isrc = &toolbar[3];
+    assert_eq!(isrc.kind, SignalKind::Isrc);
+    assert_eq!(isrc.shown, None);
+    assert_eq!(isrc.state, SignalState::Skipped);
 }
 
 /// Thirty extracted catalog numbers are one badge with thirty options behind
@@ -217,7 +224,7 @@ fn a_chosen_number_survives_a_snapshot_still_being_read() {
                     free_text: Vec::new(),
                 },
                 text_pool: Vec::new(),
-                registered_in: None,
+                isrcs: Vec::new(),
             },
             audio: crate::signals::AudioFacts::default(),
             artwork: crate::signals::ArtworkScan::Absent,

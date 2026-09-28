@@ -284,6 +284,7 @@ pub struct AutomationSignals {
     pub disc_id: AutomationDiscIdSignal,
     pub barcode: AutomationBarcodeSignal,
     pub text: AutomationTextSignal,
+    pub isrcs: Vec<String>,
 }
 
 /// Mirrors bae-core's `identify::SignalKind`.
@@ -293,6 +294,7 @@ pub enum AutomationSignalKind {
     DiscId,
     Barcode,
     Catalog,
+    Isrc,
 }
 
 /// Mirrors bae-core's `identify::SignalState`.

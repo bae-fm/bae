@@ -7,10 +7,11 @@
 //! The ledger is recorded once as a run ends and stored with its verdict.
 
 use super::agreements::{judged_results, Agreements, CandidateText};
+use super::combine::LookupAnswers;
 use super::combine::{combine_results, Findings, LibraryStatuses};
 use super::state::{
-    BarcodeProgress, CatalogProgress, DiscidProgress, IdentifyState, LookupResults, LookupState,
-    SearchProgress, SignalsContext, ValueLookup,
+    BarcodeProgress, CatalogProgress, DiscidProgress, IdentifyState, IsrcProgress, LookupResults,
+    LookupState, SearchProgress, SignalsContext, ValueLookup,
 };
 use super::NotAskedReason;
 use crate::db::LibraryStatus;
@@ -136,6 +137,21 @@ pub enum CatalogStepView {
     },
 }
 
+/// The ISRCs the audio's tags carry, looked up together on
+/// [`Catalog::ISRC_CATALOG`] alone, so the step has one lookup and no cells.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub enum IsrcStepView {
+    /// Extraction has not reported yet.
+    Reading,
+    /// No audio file's tags carry one.
+    Absent,
+    /// Every code, each once, in the files' order.
+    Read {
+        isrcs: Vec<String>,
+        lookup: LookupView,
+    },
+}
+
 /// The title search, asked of every provider when the identifiers name
 /// nothing.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -160,7 +176,8 @@ pub enum SearchStepView {
     },
 }
 
-/// The run as a ledger: the three identifiers and the title search.
+/// The run as a ledger: the three identifiers, the ISRCs and the title
+/// search.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct IdentifyRunView {
     /// The providers the run asks, in cell order.
@@ -168,6 +185,7 @@ pub struct IdentifyRunView {
     pub disc_id: DiscIdStepView,
     pub barcode: BarcodeStepView,
     pub catalog: CatalogStepView,
+    pub isrc: IsrcStepView,
     pub search: SearchStepView,
 }
 
@@ -239,14 +257,15 @@ impl From<IdentifyState> for IdentifyStateView {
                 discid,
                 barcode,
                 catalog,
+                isrc,
                 search,
                 context,
             } => {
                 let (findings, library_statuses) =
-                    live_findings(&discid, &barcode, &catalog, &search, &context);
+                    live_findings(&discid, &barcode, &catalog, &isrc, &search, &context);
                 let folded = fold(findings, library_statuses, &context.text);
                 IdentifyStateView::Triangulating {
-                    run: run_view(&discid, &barcode, &catalog, &search, &context),
+                    run: run_view(&discid, &barcode, &catalog, &isrc, &search, &context),
                     groups: folded.groups,
                     library_statuses: folded.library_statuses,
                     agreements: folded.agreements,
@@ -317,14 +336,18 @@ fn live_findings(
     discid: &DiscidProgress,
     barcode: &BarcodeProgress,
     catalog: &CatalogProgress,
+    isrc: &IsrcProgress,
     search: &SearchProgress,
     context: &SignalsContext,
 ) -> (Findings, LibraryStatuses) {
     combine_results(
-        discid.results(),
-        barcode.results(),
-        catalog.results(),
-        search.results(),
+        LookupAnswers {
+            disc_id: discid.results(),
+            barcode: barcode.results(),
+            catalog: catalog.results(),
+            isrc: isrc.results(),
+            search: search.results(),
+        },
         // Album links are read only once every lookup has settled.
         Vec::new(),
         &context.text,
@@ -420,13 +443,16 @@ fn without_chip_tiles(mut run: IdentifyRunView, chips: &[CatalogAgreementView]) 
 }
 
 mod ledger;
-use ledger::{barcode_step, catalog_step, disc_id_step, identifiers_found_something, search_step};
+use ledger::{
+    barcode_step, catalog_step, disc_id_step, identifiers_found_something, isrc_step, search_step,
+};
 
 /// The run as it stands, laid out as its ledger.
 pub(super) fn run_view(
     discid: &DiscidProgress,
     barcode: &BarcodeProgress,
     catalog: &CatalogProgress,
+    isrc: &IsrcProgress,
     search: &SearchProgress,
     context: &SignalsContext,
 ) -> IdentifyRunView {
@@ -436,6 +462,7 @@ pub(super) fn run_view(
         disc_id: disc_id_step(discid, context),
         barcode: barcode_step(barcode, context, scanning),
         catalog: catalog_step(catalog, context, scanning),
+        isrc: isrc_step(isrc, context),
         search: search_step(
             search,
             identifiers_found_something(discid, barcode, catalog),

@@ -1,13 +1,14 @@
 //! The identify pipeline's pure state machine: `step` takes a state and an
 //! event and returns the next state and the lookups for the service to run.
 //!
-//! The disc-ID, barcode and catalog lookups run in parallel, each provider
-//! answering for itself. When they name nothing, the run searches by the
-//! candidate's title. Once every lookup settles, the run reads its MusicBrainz
-//! albums' links to Discogs (see [`crate::import::album_links`]), then the
-//! full documents of the rows it offers, then what the list's releases print
-//! for the albums no link joins; it combines the results into a terminal
-//! state, and records the ledger it showed.
+//! The disc-ID, barcode, catalog and ISRC lookups run in parallel, each
+//! provider answering for itself. When the first three name nothing, the run
+//! searches by the candidate's title. Once every lookup settles, the run
+//! reads its MusicBrainz albums' links to Discogs (see
+//! [`crate::import::album_links`]), then the full documents of the rows it
+//! offers, then what the list's releases print for the albums no link joins;
+//! it combines the results into a terminal state, and records the ledger it
+//! showed.
 
 use super::combine::{combine_results, Findings, LibraryStatuses};
 use super::documents::{DocumentReading, ReleaseReading};
@@ -31,6 +32,7 @@ pub enum IdentifyState {
         discid: DiscidProgress,
         barcode: BarcodeProgress,
         catalog: CatalogProgress,
+        isrc: IsrcProgress,
         search: SearchProgress,
         context: SignalsContext,
     },
@@ -106,7 +108,7 @@ impl IdentifyState {
         }
     }
 
-    /// The disc-ID, barcode and catalog badges; none for `Idle`.
+    /// The disc-ID, barcode, catalog and ISRC badges; none for `Idle`.
     pub fn toolbar(&self) -> Vec<ToolbarSignal> {
         let Some(context) = self.context() else {
             return Vec::new();
@@ -115,7 +117,25 @@ impl IdentifyState {
             self.disc_badge(context),
             self.barcode_badge(context),
             self.catalog_badge(context),
+            self.isrc_badge(context),
         ]
+    }
+
+    /// Shows the first code, with every code as an option: all of them are
+    /// asked about, in one search.
+    fn isrc_badge(&self, context: &SignalsContext) -> ToolbarSignal {
+        let codes = context.isrc.codes();
+        let state = match self {
+            IdentifyState::Triangulating { isrc, .. } => isrc_progress_state(isrc),
+            _ => isrc_settled_state(context),
+        };
+        ToolbarSignal {
+            kind: SignalKind::Isrc,
+            shown: codes.first().cloned(),
+            state,
+            excluded: false,
+            options: signal_options(&codes, |_| true),
+        }
     }
 
     fn disc_badge(&self, context: &SignalsContext) -> ToolbarSignal {
@@ -236,6 +256,11 @@ pub enum IdentifyEvent {
         outcome: LookupOutcome,
     },
 
+    /// MusicBrainz answered the search by the audio's ISRCs.
+    IsrcLookupAnswered {
+        outcome: LookupOutcome,
+    },
+
     /// One provider answered the title search.
     SearchAnswered {
         source: Catalog,
@@ -267,6 +292,10 @@ pub enum Effect {
     LookupCatalog {
         source: Catalog,
         catalog: String,
+    },
+    /// Ask MusicBrainz for the recordings these ISRCs are registered to.
+    LookupIsrcs {
+        isrcs: Vec<String>,
     },
     /// Ask one provider for the title.
     SearchTitle {
@@ -321,6 +350,7 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                     discid: DiscidProgress::Computing,
                     barcode: BarcodeProgress::Scanning,
                     catalog,
+                    isrc: IsrcProgress::Reading,
                     search,
                     context,
                 },
@@ -333,6 +363,7 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                 discid,
                 barcode,
                 catalog,
+                isrc,
                 search,
                 context,
             },
@@ -342,7 +373,7 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                 artwork,
             },
         ) => apply_signals(
-            discid, barcode, catalog, search, context, signals, audio, artwork,
+            discid, barcode, catalog, isrc, search, context, signals, audio, artwork,
         ),
 
         (
@@ -350,6 +381,7 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                 discid: DiscidProgress::Computing | DiscidProgress::LookingUp,
                 barcode,
                 catalog,
+                isrc,
                 search,
                 context,
             },
@@ -358,6 +390,7 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
             discid: DiscidProgress::Failed { failure },
             barcode,
             catalog,
+            isrc,
             search,
             context,
         }),
@@ -367,6 +400,7 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                 discid: DiscidProgress::LookingUp,
                 barcode,
                 catalog,
+                isrc,
                 search,
                 context,
             },
@@ -375,6 +409,7 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
             discid: DiscidProgress::Done { results },
             barcode,
             catalog,
+            isrc,
             search,
             context,
         }),
@@ -384,6 +419,7 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                 discid,
                 barcode: BarcodeProgress::Lookups { mut codes },
                 catalog,
+                isrc,
                 search,
                 context,
             },
@@ -400,6 +436,7 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                 discid,
                 barcode: BarcodeProgress::Lookups { codes },
                 catalog,
+                isrc,
                 search,
                 context,
             })
@@ -411,6 +448,7 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                 discid,
                 barcode,
                 catalog: CatalogProgress::Lookups { mut values },
+                isrc,
                 search,
                 context,
             },
@@ -427,6 +465,7 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                 discid,
                 barcode,
                 catalog: CatalogProgress::Lookups { values },
+                isrc,
                 search,
                 context,
             })
@@ -437,6 +476,7 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                 discid,
                 barcode,
                 catalog,
+                isrc,
                 search: SearchProgress::Lookups { mut providers },
                 context,
             },
@@ -455,6 +495,7 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                 discid,
                 barcode,
                 catalog,
+                isrc,
                 search: SearchProgress::Lookups { providers },
                 context,
             })
@@ -465,6 +506,29 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                 discid,
                 barcode,
                 catalog,
+                isrc: IsrcProgress::LookingUp,
+                search,
+                context,
+            },
+            IdentifyEvent::IsrcLookupAnswered { outcome },
+        ) => settle_if_ready(IdentifyState::Triangulating {
+            discid,
+            barcode,
+            catalog,
+            isrc: match outcome {
+                Ok(results) => IsrcProgress::Done { results },
+                Err(failure) => IsrcProgress::Failed { failure },
+            },
+            search,
+            context,
+        }),
+
+        (
+            IdentifyState::Triangulating {
+                discid,
+                barcode,
+                catalog,
+                isrc,
                 search,
                 mut context,
             },
@@ -475,6 +539,7 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                 discid,
                 barcode,
                 catalog,
+                isrc,
                 search,
                 context,
             })
@@ -485,6 +550,7 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                 discid,
                 barcode,
                 catalog,
+                isrc,
                 search,
                 mut context,
             },
@@ -497,6 +563,7 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                 discid,
                 barcode,
                 catalog,
+                isrc,
                 search,
                 context,
             })
@@ -515,6 +582,7 @@ fn apply_signals(
     discid: DiscidProgress,
     barcode: BarcodeProgress,
     catalog: CatalogProgress,
+    isrc: IsrcProgress,
     search: SearchProgress,
     mut context: SignalsContext,
     signals: Signals,
@@ -557,10 +625,18 @@ fn apply_signals(
     // A chosen number the snapshot no longer offers loses its lookup.
     let catalog = catalog.keeping(|lookup| context.catalog.is_chosen(&lookup.value));
 
+    let isrc = match isrc {
+        IsrcProgress::Reading => {
+            start_isrc_progress(context.isrc.codes(), &context.providers, &mut effects)
+        }
+        isrc => isrc,
+    };
+
     let next = IdentifyState::Triangulating {
         discid,
         barcode,
         catalog,
+        isrc,
         search,
         context,
     };
@@ -580,6 +656,7 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
         discid,
         barcode,
         catalog,
+        isrc,
         search,
         mut context,
     } = state
@@ -591,12 +668,14 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
         || !discid.is_settled()
         || !barcode.is_settled()
         || !catalog.is_settled()
+        || !isrc.is_settled()
     {
         return (
             IdentifyState::Triangulating {
                 discid,
                 barcode,
                 catalog,
+                isrc,
                 search,
                 context,
             },
@@ -604,7 +683,7 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
         );
     }
 
-    context.record_results(&discid, &barcode, &catalog);
+    context.record_results(&discid, &barcode, &catalog, &isrc);
 
     // The title search goes out now or never.
     let search = if matches!(search, SearchProgress::Pending) {
@@ -616,6 +695,7 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
                     discid,
                     barcode,
                     catalog,
+                    isrc,
                     search: started,
                     context,
                 },
@@ -629,6 +709,7 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
                 discid,
                 barcode,
                 catalog,
+                isrc,
                 search,
                 context,
             },
@@ -643,8 +724,7 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
     match context.album_links {
         AlbumLinkReading::Pending => {
             let found = context.lookup_results();
-            let to_read =
-                album_links::to_read(found.iter().flatten().map(|(result, _)| result), |_| false);
+            let to_read = album_links::to_read(found.all().map(|(result, _)| result), |_| false);
             if to_read.is_empty() {
                 context.album_links = AlbumLinkReading::Read(Vec::new());
             } else {
@@ -654,6 +734,7 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
                         discid,
                         barcode,
                         catalog,
+                        isrc,
                         search,
                         context,
                     },
@@ -667,6 +748,7 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
                     discid,
                     barcode,
                     catalog,
+                    isrc,
                     search,
                     context,
                 },
@@ -692,6 +774,7 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
                 discid,
                 barcode,
                 catalog,
+                isrc,
                 search,
                 context,
             },
@@ -718,6 +801,7 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
                     discid,
                     barcode,
                     catalog,
+                    isrc,
                     search,
                     context,
                 },
@@ -731,8 +815,7 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
         let found = context.lookup_results();
         let twins = context.twins();
         let list: Vec<&crate::import::search::MetadataResult> = found
-            .iter()
-            .flatten()
+            .all()
             .map(|(result, _)| result)
             .chain(twins.iter().map(|twin| &twin.result))
             .collect();
@@ -746,7 +829,7 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
     // The only place a ledger is recorded; later readers show this one.
     let ledger = context
         .has_inputs()
-        .then(|| run_view(&discid, &barcode, &catalog, &search, &context));
+        .then(|| run_view(&discid, &barcode, &catalog, &isrc, &search, &context));
 
     // Nothing was asked of anyone, so nothing was found wanting.
     if matches!(
@@ -756,6 +839,7 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
         barcode,
         BarcodeProgress::Skipped | BarcodeProgress::NotAsked { .. }
     ) && matches!(catalog, CatalogProgress::Skipped)
+        && matches!(isrc, IsrcProgress::Skipped | IsrcProgress::NotAsked { .. })
         && matches!(
             search,
             SearchProgress::Skipped | SearchProgress::NotAsked { .. }
@@ -776,13 +860,8 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
 
 /// The recorded results, combined: what the run offers and sets aside.
 fn combined(context: &SignalsContext) -> (Findings, LibraryStatuses) {
-    let [discid_results, barcode_results, catalog_results, search_results] =
-        context.lookup_results();
     combine_results(
-        discid_results,
-        barcode_results,
-        catalog_results,
-        search_results,
+        context.lookup_results(),
         context.twins(),
         &context.text,
         context.folder_audio(),
@@ -836,16 +915,17 @@ mod progress;
 
 pub use context::{
     AlbumLinkReading, BarcodeEvidence, CatalogEvidence, ChosenCatalog, DiscIdEvidence,
-    SearchEvidence, SignalsContext, TitleSearch,
+    IsrcEvidence, SearchEvidence, SignalsContext, TitleSearch,
 };
 use progress::{
     barcode_progress_state, barcode_settled_state, catalog_progress_state, catalog_settled_state,
-    discid_progress_state, search_progress_at_start, settled_identity_state,
-    start_barcode_progress, start_catalog_progress, start_discid_progress, start_search_progress,
+    discid_progress_state, isrc_progress_state, isrc_settled_state, search_progress_at_start,
+    settled_identity_state, start_barcode_progress, start_catalog_progress, start_discid_progress,
+    start_isrc_progress, start_search_progress,
 };
 pub use progress::{
-    BarcodeProgress, CatalogProgress, DiscidProgress, LookupResults, LookupState, ProviderLookup,
-    SearchProgress, ValueLookup,
+    BarcodeProgress, CatalogProgress, DiscidProgress, IsrcProgress, LookupResults, LookupState,
+    ProviderLookup, SearchProgress, ValueLookup,
 };
 
 // ── Tests ───────────────────────────────────────────────────────────────────
@@ -860,7 +940,7 @@ pub(crate) fn re_derive_for_tests(context: SignalsContext) -> IdentifyState {
 }
 
 /// The terminal state these settled pipes land on, ledger and all, for tests
-/// in sibling modules.
+/// in sibling modules. The audio's tags carry no ISRC.
 #[cfg(test)]
 pub(crate) fn settle_for_tests(
     discid: DiscidProgress,
@@ -873,6 +953,7 @@ pub(crate) fn settle_for_tests(
         discid,
         barcode,
         catalog,
+        isrc: IsrcProgress::Skipped,
         search,
         context,
     })

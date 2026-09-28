@@ -686,6 +686,51 @@ pub(crate) async fn lookup_by_discid(
     Ok(mb_discid_releases_to_metadata(discid, releases))
 }
 
+/// Every release MusicBrainz has a recording registered under any of `isrcs`
+/// on, each once, in the order the search answered, with its cover art.
+/// `isrcs` are codes as [`crate::isrc::code`] reads them; a recording the
+/// search returned under none of them answers nothing.
+pub(crate) async fn lookup_by_isrcs(
+    musicbrainz: &musicbrainz::MusicBrainz,
+    isrcs: &[String],
+    priority: CallPriority,
+) -> Result<Vec<MetadataResult>, LookupFailure> {
+    let recordings = musicbrainz
+        .search_recordings_by_isrcs(isrcs, priority)
+        .await
+        .map_err(|error| mb_error_to_lookup_failure(&error))?;
+    Ok(isrc_releases_to_metadata(isrcs, recordings))
+}
+
+fn isrc_releases_to_metadata(
+    isrcs: &[String],
+    recordings: Vec<musicbrainz::SearchRecording>,
+) -> Vec<MetadataResult> {
+    let mut seen = std::collections::HashSet::new();
+    let mut results = Vec::new();
+    for recording in recordings {
+        let asked = recording
+            .isrcs
+            .iter()
+            .filter_map(|stated| crate::isrc::code(stated))
+            .any(|code| isrcs.contains(&code));
+        if !asked {
+            continue;
+        }
+        for mut release in recording.releases {
+            if !seen.insert(release.id.clone()) {
+                continue;
+            }
+            if release.artist_credit.is_empty() {
+                release.artist_credit = recording.artist_credit.clone();
+            }
+            let cover_art = RemoteCover::musicbrainz_release(&release.id);
+            results.push(search_release_to_metadata(release, Some(cover_art)));
+        }
+    }
+    results
+}
+
 #[cfg(test)]
 #[path = "search_tests.rs"]
 mod search_tests;

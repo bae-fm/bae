@@ -124,6 +124,7 @@ impl AutomationSignals {
             disc_id: AutomationDiscIdSignal::from_core(signals.disc_id),
             barcode: AutomationBarcodeSignal::from_core(signals.barcode),
             text: AutomationTextSignal::from_core(signals.text),
+            isrcs: signals.isrcs,
         }
     }
 }

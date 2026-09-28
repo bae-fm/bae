@@ -35,6 +35,7 @@ enum SignalBadgeStyle {
         case .discId: "opticaldiscdrive"
         case .barcode: "barcode"
         case .catalog: "tag"
+        case .isrc: "waveform"
         }
     }
 
@@ -44,6 +45,7 @@ enum SignalBadgeStyle {
         case .discId: String(localized: "Disc ID")
         case .barcode: String(localized: "Barcode")
         case .catalog: String(localized: "Catalog")
+        case .isrc: String(localized: "ISRC")
         }
     }
 
@@ -55,11 +57,12 @@ enum SignalBadgeStyle {
         case .discId: String(localized: "Disc ID")
         case .barcode: String(localized: "barcode")
         case .catalog: String(localized: "catalog number")
+        case .isrc: String(localized: "ISRC")
         }
     }
 
-    /// The same, for a step a provider was asked: the three identifiers, or
-    /// the title the run searched by when none of them named anything.
+    /// The same, for a step a provider was asked: the identifiers, or the
+    /// title the run searched by.
     static func sentenceLabel(for step: FailedSearch.Step) -> String {
         switch step {
         case .signal(let kind): sentenceLabel(for: kind)

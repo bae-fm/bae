@@ -69,6 +69,8 @@ pub enum MatchedSignal {
     /// The disc's table of contents.
     DiscId,
     Barcode,
+    /// The search by the audio's ISRCs.
+    Isrc,
     /// A catalog search for the candidate's album title.
     TitleSearch,
 }
@@ -80,6 +82,8 @@ impl MatchedSignal {
             Some(Self::DiscId)
         } else if lead.by_barcode {
             Some(Self::Barcode)
+        } else if lead.by_isrc {
+            Some(Self::Isrc)
         } else if lead.by_search {
             Some(Self::TitleSearch)
         } else {

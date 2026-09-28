@@ -63,6 +63,10 @@ fn release_group_url(release_group_id: &str) -> String {
 /// most MusicBrainz serves a page.
 pub const GROUP_RELEASES_PAGE: usize = 100;
 
+/// How many recordings one search page answers — the most MusicBrainz serves
+/// a page.
+const RECORDING_SEARCH_PAGE: usize = 100;
+
 /// One page of a release group's releases, from `offset`, each with its own
 /// links and the group's — one request that states both what the group's
 /// page links and what each of those releases links.
@@ -556,6 +560,68 @@ impl MusicBrainz {
             Ok(Some((targets, body)))
         })
         .await
+    }
+
+    /// Every recording registered under any of `isrcs`, each with the
+    /// releases it is on: one search for all of them, asked a page at a time
+    /// until every match is in. A search matches loosely, so the caller keeps
+    /// only the recordings registered under a code it asked for.
+    pub async fn search_recordings_by_isrcs(
+        &self,
+        isrcs: &[String],
+        priority: CallPriority,
+    ) -> Result<Vec<SearchRecording>, MusicBrainzError> {
+        // Outside the retry: no request is made, so repeating cannot help.
+        if isrcs.is_empty() {
+            return Err(MusicBrainzError::Other(
+                "An ISRC search needs at least one code".to_string(),
+            ));
+        }
+        let query = format!("isrc:({})", isrcs.join(" OR "));
+        let mut recordings = Vec::new();
+        loop {
+            let offset = recordings.len();
+            let page = mb_retry("MusicBrainz ISRC search", || {
+                self.search_recordings_once(&query, offset, priority)
+            })
+            .await?;
+            let total = page.count;
+            let answered = page.recordings.len();
+            recordings.extend(page.recordings);
+            if answered == 0 || recordings.len() >= total {
+                return Ok(recordings);
+            }
+        }
+    }
+
+    async fn search_recordings_once(
+        &self,
+        query: &str,
+        offset: usize,
+        priority: CallPriority,
+    ) -> Result<RecordingSearchResponse, MusicBrainzError> {
+        let offset = offset.to_string();
+        let limit = RECORDING_SEARCH_PAGE.to_string();
+        let request = self.http.get(&ws2("recording")).query(&[
+            ("query", query),
+            ("limit", limit.as_str()),
+            ("offset", offset.as_str()),
+        ]);
+        let body = match self.get_request(request, priority).await {
+            Ok(body) => body,
+            Err(MusicBrainzError::Provider {
+                status: Some(404), ..
+            }) => {
+                return Ok(RecordingSearchResponse {
+                    count: 0,
+                    recordings: Vec::new(),
+                })
+            }
+            Err(error) => return Err(error),
+        };
+        serde_json::from_str(&body).map_err(|error| {
+            MusicBrainzError::Other(format!("Failed to parse recording search JSON: {error}"))
+        })
     }
 
     pub async fn search_releases_with_params(

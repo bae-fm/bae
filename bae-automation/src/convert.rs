@@ -532,7 +532,7 @@ mirror_enum! {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     AutomationSignalKind = bae_core::identify::SignalKind,
     from_core: pub(crate) fn,
-    variants: { DiscId, Barcode, Catalog },
+    variants: { DiscId, Barcode, Catalog, Isrc },
 }
 
 mirror_enum! {

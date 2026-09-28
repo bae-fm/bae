@@ -70,6 +70,7 @@ fn in_flight(context: SignalsContext) -> IdentifyState {
             )],
         },
         catalog: CatalogProgress::Skipped,
+        isrc: crate::identify::IsrcProgress::Skipped,
         search: SearchProgress::Pending,
         context,
     }
@@ -133,6 +134,7 @@ fn a_code_left_out_is_a_row_that_says_nobody_was_asked() {
             codes: vec![code("DISC", vec![(MB, found(vec![result(MB, "mb-1")]))])],
         },
         catalog: CatalogProgress::Skipped,
+        isrc: crate::identify::IsrcProgress::Skipped,
         search: SearchProgress::Pending,
         context,
     };
@@ -173,6 +175,7 @@ fn every_code_left_out_lists_them_all_unasked() {
             reason: NotAskedReason::LeftOut,
         },
         catalog: CatalogProgress::Skipped,
+        isrc: crate::identify::IsrcProgress::Skipped,
         search: SearchProgress::Pending,
         context,
     };
@@ -204,6 +207,7 @@ fn a_disc_id_nobody_looked_up_says_why() {
             discid: DiscidProgress::NotAsked { reason },
             barcode: BarcodeProgress::NoCodes,
             catalog: CatalogProgress::Skipped,
+            isrc: crate::identify::IsrcProgress::Skipped,
             search: SearchProgress::Pending,
             context,
         })
@@ -260,6 +264,7 @@ fn each_code_fills_its_own_cells() {
             ],
         },
         catalog: CatalogProgress::Skipped,
+        isrc: crate::identify::IsrcProgress::Skipped,
         search: SearchProgress::Pending,
         context,
     };
@@ -322,6 +327,7 @@ fn codes_read_so_far_wait_while_the_artwork_is_still_being_read() {
         discid: DiscidProgress::Skipped,
         barcode: BarcodeProgress::Scanning,
         catalog: CatalogProgress::Skipped,
+        isrc: crate::identify::IsrcProgress::Skipped,
         search: SearchProgress::Pending,
         context,
     };
@@ -375,6 +381,7 @@ fn chosen_catalog_numbers_are_rows_and_the_rest_are_tiles() {
                 ],
             }],
         },
+        isrc: crate::identify::IsrcProgress::Skipped,
         search: SearchProgress::Pending,
         context,
     };
@@ -435,6 +442,7 @@ fn a_settled_state_carries_the_ledger_its_last_frame_showed() {
             ],
         },
         catalog: CatalogProgress::Skipped,
+        isrc: crate::identify::IsrcProgress::Skipped,
         search: SearchProgress::Pending,
         context,
     };
@@ -549,6 +557,7 @@ fn a_found_lookup_names_its_releases() {
         },
         barcode: BarcodeProgress::NoCodes,
         catalog: CatalogProgress::Skipped,
+        isrc: crate::identify::IsrcProgress::Skipped,
         search: SearchProgress::Pending,
         context,
     };
@@ -608,6 +617,7 @@ fn recorded_ledger() -> IdentifyRunView {
             }],
         },
         catalog: CatalogStepView::NoneFound,
+        isrc: crate::identify::IsrcStepView::Absent,
         search: SearchStepView::NotNeeded,
     }
 }
@@ -627,6 +637,7 @@ fn a_resumed_verdict_shows_the_ledger_its_run_recorded() {
                 by_disc_id: true,
                 by_barcode: false,
                 by_catalog: false,
+                by_isrc: false,
                 by_search: false,
                 named_by: None,
             }],
@@ -637,6 +648,7 @@ fn a_resumed_verdict_shows_the_ledger_its_run_recorded() {
                     by_disc_id: false,
                     by_barcode: true,
                     by_catalog: false,
+                    by_isrc: false,
                     by_search: false,
                     named_by: None,
                 }],

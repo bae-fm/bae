@@ -1,5 +1,6 @@
 //! What the audio's own tags add: their album, artists and label as text the
-//! rows are judged against, and where their recordings were registered.
+//! rows are judged against, and the ISRCs their recordings are registered
+//! under.
 
 use super::*;
 
@@ -16,11 +17,11 @@ fn tagged_flac(path: &Path, comments: &[(&str, &str)]) {
 }
 
 #[test]
-fn the_audio_s_tags_feed_the_text_and_name_where_it_was_registered() {
+fn the_audio_s_tags_feed_the_text_and_carry_their_isrcs() {
     let tmp = TempDir::new().unwrap();
     let folder = tmp.path().join("Some Folder");
     fs::create_dir_all(&folder).unwrap();
-    for (name, isrc) in [("01.flac", "IT0000000001"), ("02.flac", "IT0000000002")] {
+    for (name, isrc) in [("01.flac", "it-000-00-00001"), ("02.flac", "IT0000000002")] {
         tagged_flac(
             &folder.join(name),
             &[
@@ -46,10 +47,7 @@ fn the_audio_s_tags_feed_the_text_and_name_where_it_was_registered() {
         .map(|line| line.text.as_str())
         .collect();
     assert_eq!(tagged, vec!["Album Title", "Artist Name", "Imprint Name"]);
-    assert_eq!(
-        pass.registered_in,
-        crate::pressing::Country::from_code("IT").map(crate::pressing::ReleaseArea::Country)
-    );
+    assert_eq!(pass.isrcs, vec!["IT0000000001", "IT0000000002"]);
 }
 
 /// Read a folder of two FLACs carrying these comments, with `extra` files

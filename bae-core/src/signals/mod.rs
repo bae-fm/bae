@@ -52,7 +52,9 @@ pub struct Signals {
     /// Every line of the candidate's own text, in reading order, which
     /// results are ranked against.
     pub text_pool: Vec<TextLine>,
-    /// Where most of the audio's recordings were registered, as the ISRCs its
-    /// tags carry say — see [`crate::isrc::registered_in`].
-    pub registered_in: Option<crate::pressing::ReleaseArea>,
+    /// Each audio file's ISRC, as [`crate::isrc::code`] reads its tag, in the
+    /// files' order; a file whose tags carry none adds nothing. They are
+    /// looked up on MusicBrainz, and say where the recordings were registered
+    /// (see [`crate::isrc::registered_in`]).
+    pub isrcs: Vec<String>,
 }

@@ -798,3 +798,60 @@ fn a_master_lookup_reads_the_group_musicbrainz_names() {
         }]
     );
 }
+
+/// A recording search page answering `count` matches in all, with recordings
+/// registered under `isrcs`, one each.
+fn recording_page(count: usize, isrcs: &[&str]) -> String {
+    serde_json::json!({
+        "count": count,
+        "recordings": isrcs
+            .iter()
+            .map(|isrc| serde_json::json!({
+                "isrcs": [isrc],
+                "releases": [{"id": format!("rel-{isrc}"), "title": "Album Title"}],
+            }))
+            .collect::<Vec<_>>(),
+    })
+    .to_string()
+}
+
+/// Every code is asked in one search, and the pages are read until every
+/// match is in.
+#[tokio::test]
+async fn an_isrc_search_asks_every_code_at_once_and_reads_every_page() {
+    let (url, requests, paths) = mb_recording_server(vec![
+        (200, recording_page(3, &["XX0000000001", "XX0000000002"])),
+        (200, recording_page(3, &["XX0000000003"])),
+    ])
+    .await;
+    let musicbrainz = served_by(&url);
+
+    let recordings = musicbrainz
+        .search_recordings_by_isrcs(
+            &[
+                "XX0000000001".to_string(),
+                "XX0000000002".to_string(),
+                "XX0000000003".to_string(),
+            ],
+            CallPriority::Interactive,
+        )
+        .await
+        .expect("the search answers");
+
+    assert_eq!(
+        recordings
+            .iter()
+            .flat_map(|recording| &recording.isrcs)
+            .collect::<Vec<_>>(),
+        vec!["XX0000000001", "XX0000000002", "XX0000000003"]
+    );
+    assert_eq!(requests.load(Ordering::SeqCst), 2);
+    let paths = paths.lock().unwrap();
+    assert!(
+        paths[0].contains("query=isrc%3A%28XX0000000001+OR+XX0000000002+OR+XX0000000003%29"),
+        "{}",
+        paths[0]
+    );
+    assert!(paths[0].contains("offset=0"), "{}", paths[0]);
+    assert!(paths[1].contains("offset=2"), "{}", paths[1]);
+}

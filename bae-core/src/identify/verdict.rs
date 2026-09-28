@@ -55,6 +55,8 @@ pub enum IdentifyFailure {
     Catalog(SourceFailure),
     /// One provider could not answer the title search the run fell back on.
     Search(SourceFailure),
+    /// MusicBrainz could not answer the search by the audio's ISRCs.
+    Isrc(LookupFailure),
     ReleaseDetails(LookupFailure),
 }
 

@@ -119,6 +119,14 @@ impl Providers {
         crate::import::search::lookup_by_discid(&self.musicbrainz, discid, priority).await
     }
 
+    pub(crate) async fn lookup_musicbrainz_isrcs(
+        &self,
+        isrcs: &[String],
+        priority: CallPriority,
+    ) -> Result<Vec<MetadataResult>, LookupFailure> {
+        crate::import::search::lookup_by_isrcs(&self.musicbrainz, isrcs, priority).await
+    }
+
     /// The archive's images of a MusicBrainz release, then of its group.
     pub(crate) async fn musicbrainz_gallery(
         &self,

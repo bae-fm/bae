@@ -58,7 +58,7 @@ fn extracted(catalog: &str) -> crate::signals::Signals {
             free_text: Vec::new(),
         },
         text_pool: Vec::new(),
-        registered_in: None,
+        isrcs: Vec::new(),
     }
 }
 

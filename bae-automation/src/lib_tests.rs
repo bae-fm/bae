@@ -304,7 +304,7 @@ mod identify_mirrors {
             text: Default::default(),
             text_settled: true,
             audio: Default::default(),
-            registered_in: None,
+            isrc: Default::default(),
             album_links: bae_core::identify::state::AlbumLinkReading::Pending,
             documents: bae_core::identify::documents::DocumentReading::Pending,
         }
@@ -332,6 +332,7 @@ mod identify_mirrors {
                         by_disc_id: true,
                         by_barcode: false,
                         by_catalog: false,
+                        by_isrc: false,
                         by_search: false,
                         named_by: None,
                     },
@@ -339,6 +340,7 @@ mod identify_mirrors {
                         by_disc_id: true,
                         by_barcode: true,
                         by_catalog: false,
+                        by_isrc: false,
                         by_search: false,
                         named_by: None,
                     },
@@ -403,6 +405,7 @@ mod identify_mirrors {
                         by_disc_id: true,
                         by_barcode: false,
                         by_catalog: false,
+                        by_isrc: false,
                         by_search: false,
                         named_by: None,
                     },
@@ -410,6 +413,7 @@ mod identify_mirrors {
                         by_disc_id: false,
                         by_barcode: true,
                         by_catalog: false,
+                        by_isrc: false,
                         by_search: false,
                         named_by: None,
                     },
@@ -487,6 +491,7 @@ mod identify_mirrors {
                 ],
             },
             catalog: CatalogProgress::Skipped,
+            isrc: bae_core::identify::IsrcProgress::Skipped,
             search: bae_core::identify::SearchProgress::Pending,
             context: SignalsContext {
                 providers: vec![Catalog::MusicBrainz, Catalog::Discogs],
@@ -590,7 +595,7 @@ mod identify_mirrors {
                 free_text: vec!["Album Title".to_string()],
             },
             text_pool: Vec::new(),
-            registered_in: None,
+            isrcs: Vec::new(),
         };
 
         let json = serde_json::to_value(AutomationSignals::from_core(signals)).unwrap();

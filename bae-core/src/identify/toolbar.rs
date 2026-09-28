@@ -9,6 +9,7 @@ pub enum SignalKind {
     DiscId,
     Barcode,
     Catalog,
+    Isrc,
 }
 
 /// One badge's live lookup state.
@@ -48,7 +49,8 @@ pub struct ToolbarSignal {
     pub shown: Option<String>,
     pub state: SignalState,
     /// Whether the person left every value out; always `false` for the
-    /// catalog, which stays out by having no number chosen.
+    /// catalog, which stays out by having no number chosen, and for the ISRCs,
+    /// which are always asked about.
     pub excluded: bool,
     /// The values the signal offers; empty for the disc ID, which has one.
     pub options: Vec<SignalOption>,

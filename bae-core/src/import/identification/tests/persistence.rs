@@ -111,6 +111,7 @@ fn multi_match_verdict(release_ids: &[&str], group_id: &str) -> TerminalVerdict 
                     by_disc_id: true,
                     by_barcode: false,
                     by_catalog: false,
+                    by_isrc: false,
                     by_search: false,
                     named_by: None,
                 })
@@ -244,6 +245,7 @@ async fn an_ending_ends_the_run_it_names_and_not_the_answer_being_saved() {
         discid: crate::identify::DiscidProgress::Computing,
         barcode: crate::identify::BarcodeProgress::Scanning,
         catalog: crate::identify::CatalogProgress::Skipped,
+        isrc: crate::identify::IsrcProgress::Skipped,
         search: crate::identify::SearchProgress::Pending,
         context: crate::identify::state::SignalsContext {
             origin: crate::signals::AudioOrigin::default(),
@@ -262,7 +264,7 @@ async fn an_ending_ends_the_run_it_names_and_not_the_answer_being_saved() {
             },
             album_links: crate::identify::state::AlbumLinkReading::Pending,
             documents: crate::identify::documents::DocumentReading::Pending,
-            registered_in: None,
+            isrc: Default::default(),
         },
     };
     fixture

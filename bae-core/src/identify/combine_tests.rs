@@ -8,10 +8,12 @@ type Outcome = (Findings, LibraryStatuses);
 
 fn combine(discid: Results, barcode: Results, catalog: Results) -> Outcome {
     combine_results(
-        discid,
-        barcode,
-        catalog,
-        Results::new(),
+        LookupAnswers {
+            disc_id: discid,
+            barcode,
+            catalog,
+            ..LookupAnswers::default()
+        },
         Vec::new(),
         &CandidateText::default(),
         FolderAudio::UNPROVEN,
@@ -139,10 +141,12 @@ fn lookups_that_named_different_releases_each_keep_their_answer() {
     numbered.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("L3-100"))];
     let catalog = vec![(numbered, status)];
     let outcome = combine_results(
-        discid,
-        barcode,
-        catalog,
-        Results::new(),
+        LookupAnswers {
+            disc_id: discid,
+            barcode,
+            catalog,
+            ..LookupAnswers::default()
+        },
         Vec::new(),
         &folder(&["Album [L3-100]"]),
         FolderAudio::UNPROVEN,
@@ -313,10 +317,10 @@ fn the_pressing_the_folder_describes_leads_the_disc_id_s_others() {
         pressing_of_album_one("rel-1976", 1976),
     ];
     let outcome = combine_results(
-        discid,
-        vec![],
-        vec![],
-        vec![],
+        LookupAnswers {
+            disc_id: discid,
+            ..LookupAnswers::default()
+        },
         Vec::new(),
         &text,
         FolderAudio::UNPROVEN,
@@ -331,10 +335,11 @@ fn the_pressing_the_folder_describes_leads_the_disc_id_s_others() {
 fn a_barcode_naming_a_record_the_folder_never_mentions_folds() {
     let text = folder(&["Artist One - Album One [L1-16033]"]);
     let outcome = combine_results(
-        vec![pressing_of_album_one("rel-1976", 1976)],
-        vec![unrelated_record()],
-        vec![],
-        vec![],
+        LookupAnswers {
+            disc_id: vec![pressing_of_album_one("rel-1976", 1976)],
+            barcode: vec![unrelated_record()],
+            ..LookupAnswers::default()
+        },
         Vec::new(),
         &text,
         FolderAudio::UNPROVEN,
@@ -354,10 +359,11 @@ fn the_pressing_whose_catalog_number_the_folder_states_folds_the_other() {
     let mut other = pressing_of_album_one("rel-other", 1990);
     other.0.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("L1-99999"))];
     let outcome = combine_results(
-        vec![stated.clone(), other.clone()],
-        vec![stated, other],
-        vec![],
-        vec![],
+        LookupAnswers {
+            disc_id: vec![stated.clone(), other.clone()],
+            barcode: vec![stated, other],
+            ..LookupAnswers::default()
+        },
         Vec::new(),
         &text,
         FolderAudio::UNPROVEN,
@@ -375,10 +381,11 @@ fn two_pressings_the_folder_names_no_number_of_both_stay() {
     let mut second = pressing_of_album_one("rel-second", 1990);
     second.0.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("L1-99999"))];
     let outcome = combine_results(
-        vec![first.clone(), second.clone()],
-        vec![first, second],
-        vec![],
-        vec![],
+        LookupAnswers {
+            disc_id: vec![first.clone(), second.clone()],
+            barcode: vec![first, second],
+            ..LookupAnswers::default()
+        },
         Vec::new(),
         &text,
         FolderAudio::UNPROVEN,
@@ -399,10 +406,10 @@ fn pressings_that_differ_only_by_year_all_stay_on_the_list() {
         pressing_of_album_one("rel-1976", 1976),
     ];
     let outcome = combine_results(
-        discid,
-        vec![],
-        vec![],
-        vec![],
+        LookupAnswers {
+            disc_id: discid,
+            ..LookupAnswers::default()
+        },
         Vec::new(),
         &text,
         FolderAudio::UNPROVEN,
@@ -421,10 +428,10 @@ fn a_disc_id_s_pressing_stays_however_the_folder_spells_its_label() {
     let mut reissue = pressing_of_album_one("rel-reissue", 1994);
     reissue.0.labels = vec![crate::pressing::ReleaseLabel::of(Some("Label Four"), None)];
     let outcome = combine_results(
-        vec![matched, reissue],
-        vec![],
-        vec![],
-        vec![],
+        LookupAnswers {
+            disc_id: vec![matched, reissue],
+            ..LookupAnswers::default()
+        },
         Vec::new(),
         &text,
         FolderAudio::UNPROVEN,
@@ -439,10 +446,10 @@ fn a_disc_id_s_pressing_stays_however_the_folder_spells_its_label() {
 fn a_barcode_answering_alone_is_offered_however_little_the_folder_says() {
     let text = folder(&["CD1"]);
     let (matches, _, _) = found(combine_results(
-        vec![],
-        vec![unrelated_record()],
-        vec![],
-        vec![],
+        LookupAnswers {
+            barcode: vec![unrelated_record()],
+            ..LookupAnswers::default()
+        },
         Vec::new(),
         &text,
         FolderAudio::UNPROVEN,
@@ -454,10 +461,10 @@ fn a_barcode_answering_alone_is_offered_however_little_the_folder_says() {
 #[test]
 fn a_candidate_with_no_text_narrows_nothing_on_it() {
     let outcome = combine_results(
-        vec![],
-        vec![pressing_of_album_one("rel-1976", 1976), unrelated_record()],
-        vec![],
-        vec![],
+        LookupAnswers {
+            barcode: vec![pressing_of_album_one("rel-1976", 1976), unrelated_record()],
+            ..LookupAnswers::default()
+        },
         Vec::new(),
         &CandidateText::default(),
         FolderAudio::UNPROVEN,
@@ -478,10 +485,11 @@ fn the_intersection_s_leftovers_and_the_folder_s_are_one_list() {
     ];
     let barcode = vec![pressing_of_album_one("rel-1976", 1976), unrelated_record()];
     let outcome = combine_results(
-        discid,
-        barcode,
-        vec![],
-        vec![],
+        LookupAnswers {
+            disc_id: discid,
+            barcode,
+            ..LookupAnswers::default()
+        },
         Vec::new(),
         &text,
         FolderAudio::UNPROVEN,
@@ -595,16 +603,17 @@ fn album_two_discogs(release_id: &str, year: Option<i32>) -> (MetadataResult, Li
 fn the_discogs_record_of_the_pressing_the_disc_id_named_is_offered_with_it() {
     let text = folder(&["1979 - Album Two (Label Two, L2-2031, Japan)"]);
     let outcome = combine_results(
-        vec![album_two_musicbrainz()],
-        vec![
-            album_two_musicbrainz(),
-            album_two_discogs("dg-1991", Some(1991)),
-            album_two_discogs("dg-1988", Some(1988)),
-            album_two_discogs("dg-undated-a", None),
-            album_two_discogs("dg-undated-b", None),
-        ],
-        vec![],
-        vec![],
+        LookupAnswers {
+            disc_id: vec![album_two_musicbrainz()],
+            barcode: vec![
+                album_two_musicbrainz(),
+                album_two_discogs("dg-1991", Some(1991)),
+                album_two_discogs("dg-1988", Some(1988)),
+                album_two_discogs("dg-undated-a", None),
+                album_two_discogs("dg-undated-b", None),
+            ],
+            ..LookupAnswers::default()
+        },
         Vec::new(),
         &text,
         FolderAudio::UNPROVEN,
@@ -673,14 +682,15 @@ fn the_discogs_record_of_the_pressing_the_disc_id_named_is_offered_with_it() {
 fn a_pressing_never_splits_across_the_two_lists() {
     let text = folder(&["1979 - Album Two (Label Two, L2-2031, Japan)"]);
     let outcome = combine_results(
-        vec![album_two_musicbrainz()],
-        vec![
-            album_two_musicbrainz(),
-            album_two_discogs("dg-1988", Some(1988)),
-            album_two_discogs("dg-1991", Some(1991)),
-        ],
-        vec![],
-        vec![],
+        LookupAnswers {
+            disc_id: vec![album_two_musicbrainz()],
+            barcode: vec![
+                album_two_musicbrainz(),
+                album_two_discogs("dg-1988", Some(1988)),
+                album_two_discogs("dg-1991", Some(1991)),
+            ],
+            ..LookupAnswers::default()
+        },
         Vec::new(),
         &text,
         FolderAudio::UNPROVEN,
@@ -699,10 +709,11 @@ fn a_pressing_never_splits_across_the_two_lists() {
 fn a_lone_pressing_the_folder_describes_is_the_sole_match() {
     let text = folder(&["Artist One - Album One [L1-16033]"]);
     let outcome = combine_results(
-        vec![pressing_of_album_one("rel-1976", 1976)],
-        vec![unrelated_record()],
-        vec![],
-        vec![],
+        LookupAnswers {
+            disc_id: vec![pressing_of_album_one("rel-1976", 1976)],
+            barcode: vec![unrelated_record()],
+            ..LookupAnswers::default()
+        },
         Vec::new(),
         &text,
         FolderAudio::UNPROVEN,
@@ -716,10 +727,10 @@ fn a_lone_pressing_the_folder_describes_is_the_sole_match() {
 #[test]
 fn a_search_that_answered_alone_is_offered_whole() {
     let outcome = combine_results(
-        vec![],
-        vec![],
-        vec![],
-        vec![pair("rel-a", Some("g-x")), pair("rel-b", Some("g-y"))],
+        LookupAnswers {
+            search: vec![pair("rel-a", Some("g-x")), pair("rel-b", Some("g-y"))],
+            ..LookupAnswers::default()
+        },
         Vec::new(),
         &CandidateText::default(),
         FolderAudio::UNPROVEN,
@@ -748,10 +759,11 @@ fn a_twin_counts_for_no_lookup_and_sits_on_its_namer_s_row() {
         status: LibraryStatus::absent(id),
     };
     let outcome = combine_results(
-        vec![named],
-        vec![pair_src(Catalog::Discogs, "dg-barcode", Some("master-1"))],
-        vec![],
-        vec![],
+        LookupAnswers {
+            disc_id: vec![named],
+            barcode: vec![pair_src(Catalog::Discogs, "dg-barcode", Some("master-1"))],
+            ..LookupAnswers::default()
+        },
         vec![twin("dg-twin", "mb-1"), twin("dg-orphan", "mb-gone")],
         &CandidateText::default(),
         FolderAudio::UNPROVEN,

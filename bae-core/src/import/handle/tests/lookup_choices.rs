@@ -239,7 +239,7 @@ async fn store_settled_text(handle: &ImportServiceHandle, hash: &str, printed: &
                     text: printed.to_string(),
                     origin: crate::signals::TextOrigin::FolderName,
                 }],
-                registered_in: None,
+                isrcs: Vec::new(),
             },
             metadata: None,
         })

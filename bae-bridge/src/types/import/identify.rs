@@ -34,13 +34,14 @@ mirror_enum! {
     },
 }
 
-/// The three identifying signals, as the apps name them in a failure line or
-/// an evidence chip. Nothing crosses into it from core.
+/// The identifying signals, as the apps name them in a failure line, an
+/// evidence chip or the run's lookup row. Nothing crosses into it from core.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeSignalKind {
     DiscId,
     Barcode,
     Catalog,
+    Isrc,
 }
 
 /// Why a metadata lookup failed; the UI resolves its line through
@@ -242,6 +243,20 @@ pub struct BridgeCatalogAgreement {
     pub discounted: bool,
 }
 
+/// The ISRCs the audio's tags carry: one lookup, since only MusicBrainz is
+/// asked. Mirrors `bae_core::identify::IsrcStepView`.
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeIsrcStep {
+    Reading,
+    /// No audio file's tags carry one.
+    Absent,
+    /// Every code, each once, in the files' order.
+    Read {
+        isrcs: Vec<String>,
+        lookup: BridgeLookupState,
+    },
+}
+
 /// Mirrors `bae_core::identify::SearchStepView`.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeSearchStep {
@@ -270,6 +285,7 @@ pub struct BridgeIdentifyRun {
     pub disc_id: BridgeDiscIdStep,
     pub barcode: BridgeBarcodeStep,
     pub catalog: BridgeCatalogStep,
+    pub isrc: BridgeIsrcStep,
     pub search: BridgeSearchStep,
 }
 
@@ -391,6 +407,10 @@ pub enum BridgeIdentifyFailure {
     },
     Search {
         source: BridgeCatalog,
+        failure: BridgeLookupFailure,
+    },
+    /// MusicBrainz could not answer the search by the audio's ISRCs.
+    Isrc {
         failure: BridgeLookupFailure,
     },
     ReleaseDetails {

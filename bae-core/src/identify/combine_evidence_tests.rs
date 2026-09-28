@@ -62,10 +62,10 @@ const UNPROVEN: AudioOrigin = AudioOrigin {
 /// The catalog lookup returned `rows`, and the folder's files say `origin`.
 fn by_catalog(rows: Vec<Found>, origin: &AudioOrigin) -> Outcome {
     combine_results(
-        Vec::new(),
-        Vec::new(),
-        rows,
-        Vec::new(),
+        LookupAnswers {
+            catalog: rows,
+            ..LookupAnswers::default()
+        },
         Vec::new(),
         &folder(),
         FolderAudio {
@@ -213,10 +213,12 @@ fn a_download_offers_the_digital_release() {
 fn a_matched_disc_id_proves_a_cd() {
     let vinyl = pressing("rel-vinyl", made_of(&[Medium::Vinyl]));
     let outcome = combine_results(
-        vec![pressing("rel-cd", made_of(&[Medium::Cd]))],
-        vec![vinyl.clone()],
-        vec![vinyl],
-        Vec::new(),
+        LookupAnswers {
+            disc_id: vec![pressing("rel-cd", made_of(&[Medium::Cd]))],
+            barcode: vec![vinyl.clone()],
+            catalog: vec![vinyl],
+            ..LookupAnswers::default()
+        },
         Vec::new(),
         &folder(),
         FolderAudio::UNPROVEN,
@@ -248,10 +250,11 @@ fn the_pressing_the_barcode_and_catalog_number_name_outranks_the_disc_id_s() {
     let mut other = pressing("rel-other", made_of(&[Medium::Cd]));
     other.0.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("L1-999"))];
     let outcome = combine_results(
-        vec![other],
-        vec![named],
-        Vec::new(),
-        Vec::new(),
+        LookupAnswers {
+            disc_id: vec![other],
+            barcode: vec![named],
+            ..LookupAnswers::default()
+        },
         Vec::new(),
         &folder(),
         FolderAudio {
@@ -300,10 +303,10 @@ fn a_sleeve_saying_where_it_was_made_offers_that_pressing() {
         )
     };
     let outcome = combine_results(
-        Vec::new(),
-        vec![released_in("rel-us", "US"), released_in("rel-europe", "XE")],
-        Vec::new(),
-        Vec::new(),
+        LookupAnswers {
+            barcode: vec![released_in("rel-us", "US"), released_in("rel-europe", "XE")],
+            ..LookupAnswers::default()
+        },
         Vec::new(),
         &text,
         FolderAudio::UNPROVEN,
@@ -339,10 +342,10 @@ fn stating_no_country_or_both_leaves_the_pressings_tied() {
         ],
     ] {
         let outcome = combine_results(
-            Vec::new(),
-            vec![released_in("rel-us", "US"), released_in("rel-europe", "XE")],
-            Vec::new(),
-            Vec::new(),
+            LookupAnswers {
+                barcode: vec![released_in("rel-us", "US"), released_in("rel-europe", "XE")],
+                ..LookupAnswers::default()
+            },
             Vec::new(),
             &CandidateText::of(&sleeve, &[]),
             FolderAudio::UNPROVEN,
@@ -403,13 +406,13 @@ fn mono_audio_offers_the_pressing_stated_mono() {
         )
     };
     let outcome = combine_results(
-        Vec::new(),
-        Vec::new(),
-        vec![
-            lp("rel-stereo", vec![DiscogsDetail::Stereo]),
-            lp("rel-mono", vec![DiscogsDetail::Mono]),
-        ],
-        Vec::new(),
+        LookupAnswers {
+            catalog: vec![
+                lp("rel-stereo", vec![DiscogsDetail::Stereo]),
+                lp("rel-mono", vec![DiscogsDetail::Mono]),
+            ],
+            ..LookupAnswers::default()
+        },
         Vec::new(),
         &folder(),
         MONO_FILES,
@@ -454,10 +457,12 @@ fn mono_audio_does_not_outrank_what_the_lookups_agree_on() {
         mono_status,
     );
     let outcome = combine_results(
-        Vec::new(),
-        vec![stereo.clone()],
-        vec![stereo],
-        vec![by_title],
+        LookupAnswers {
+            barcode: vec![stereo.clone()],
+            catalog: vec![stereo],
+            search: vec![by_title],
+            ..LookupAnswers::default()
+        },
         Vec::new(),
         &folder(),
         MONO_FILES,
@@ -480,10 +485,10 @@ fn mono_audio_against_stereo_listings_can_still_be_ready() {
         status,
     );
     let (findings, _) = combine_results(
-        Vec::new(),
-        vec![listed],
-        Vec::new(),
-        Vec::new(),
+        LookupAnswers {
+            barcode: vec![listed],
+            ..LookupAnswers::default()
+        },
         Vec::new(),
         &folder(),
         MONO_FILES,
@@ -525,13 +530,13 @@ fn the_album_the_folder_names_outranks_another_on_the_same_label() {
         )
     };
     let outcome = combine_results(
-        Vec::new(),
-        vec![
-            on_label("rel-other", "Album Two", "Artist Two"),
-            on_label("rel-named", "Album One", "Artist One"),
-        ],
-        Vec::new(),
-        Vec::new(),
+        LookupAnswers {
+            barcode: vec![
+                on_label("rel-other", "Album Two", "Artist Two"),
+                on_label("rel-named", "Album One", "Artist One"),
+            ],
+            ..LookupAnswers::default()
+        },
         Vec::new(),
         &text,
         FolderAudio::UNPROVEN,
@@ -570,10 +575,10 @@ fn registered_in(country: Option<&str>) -> FolderAudio<'static> {
 #[test]
 fn the_country_the_recordings_were_registered_in_breaks_a_tie() {
     let outcome = combine_results(
-        Vec::new(),
-        released_in(&[("rel-de", "DE"), ("rel-it", "IT"), ("rel-fr", "FR")]),
-        Vec::new(),
-        Vec::new(),
+        LookupAnswers {
+            barcode: released_in(&[("rel-de", "DE"), ("rel-it", "IT"), ("rel-fr", "FR")]),
+            ..LookupAnswers::default()
+        },
         Vec::new(),
         &folder(),
         registered_in(Some("IT")),
@@ -586,10 +591,10 @@ fn the_country_the_recordings_were_registered_in_breaks_a_tie() {
 #[test]
 fn recordings_registered_nowhere_in_particular_break_no_tie() {
     let outcome = combine_results(
-        Vec::new(),
-        released_in(&[("rel-de", "DE"), ("rel-it", "IT"), ("rel-fr", "FR")]),
-        Vec::new(),
-        Vec::new(),
+        LookupAnswers {
+            barcode: released_in(&[("rel-de", "DE"), ("rel-it", "IT"), ("rel-fr", "FR")]),
+            ..LookupAnswers::default()
+        },
         Vec::new(),
         &folder(),
         registered_in(None),
@@ -608,13 +613,35 @@ fn the_folder_naming_a_country_outranks_where_the_recordings_were_registered() {
         &[],
     );
     let outcome = combine_results(
-        Vec::new(),
-        released_in(&[("rel-de", "DE"), ("rel-it", "IT")]),
-        Vec::new(),
-        Vec::new(),
+        LookupAnswers {
+            barcode: released_in(&[("rel-de", "DE"), ("rel-it", "IT")]),
+            ..LookupAnswers::default()
+        },
         Vec::new(),
         &text,
         registered_in(Some("IT")),
     );
     assert_eq!(offered(&outcome), vec!["rel-de"]);
+}
+
+/// A pressing the ISRC search returned stands on one more lookup than its
+/// sibling the title search alone found.
+#[test]
+fn the_isrcs_lend_a_row_their_lookup() {
+    let outcome = combine_results(
+        LookupAnswers {
+            isrc: vec![pressing("rel-by-isrc", StatedMedia::Undescribed)],
+            search: vec![
+                pressing("rel-by-isrc", StatedMedia::Undescribed),
+                pressing("rel-by-title", StatedMedia::Undescribed),
+            ],
+            ..LookupAnswers::default()
+        },
+        Vec::new(),
+        &folder(),
+        FolderAudio::UNPROVEN,
+    );
+    assert_eq!(offered(&outcome), vec!["rel-by-isrc"]);
+    assert_eq!(set_aside(&outcome), vec!["rel-by-title"]);
+    assert!(outcome.0.provenance[0].by_isrc && outcome.0.provenance[0].by_search);
 }
