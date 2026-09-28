@@ -236,6 +236,7 @@ extension ImportedReleasePane {
 /// A candidate being imported, shown read-only while the import runs.
 struct ImportingCandidatePane: View {
     let candidate: Candidate
+    let standing: BridgeImportStanding
     let runtime: BridgeCandidateRuntimeSnapshot?
     let coverContent: ImageContent?
     let onOpenImages: ([BridgeMappingImage], String) -> Void
@@ -255,14 +256,23 @@ struct ImportingCandidatePane: View {
                     folderPaths: candidate.sourceFolderPaths,
                     onNavigateToPlacement: {}
                 )
-                ProgressLine(
-                    runtime?.import?.step.localizedText
-                        ?? String(localized: "Importing\u{2026}"),
-                    progress: runtime?.import?.progressPercent
-                        .map {
-                            Double($0) / 100
-                        }
-                )
+                switch standing {
+                case .queued:
+                    Label(
+                        String(localized: "Waiting to import"),
+                        systemImage: "clock"
+                    )
+                    .foregroundStyle(.secondary)
+                case .running, .writing:
+                    ProgressLine(
+                        runtime?.import?.step.localizedText
+                            ?? String(localized: "Importing\u{2026}"),
+                        progress: runtime?.import?.progressPercent
+                            .map {
+                                Double($0) / 100
+                            }
+                    )
+                }
                 HStack(alignment: .top, spacing: ThemeSpace.section) {
                     ImageView(content: coverContent, pointSize: Self.coverSize)
                         .frame(width: Self.coverSize, height: Self.coverSize)

@@ -118,7 +118,9 @@ pub struct BridgeImportInFlight {
 /// Where a candidate's import stands: running, or how the last one ended.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeCandidateImportStatus {
-    Importing,
+    Importing {
+        standing: BridgeImportStanding,
+    },
     Complete {
         release_id: String,
         album_id: String,

@@ -49,6 +49,28 @@ struct ImportStandingRowTests {
         #expect(running.bars == 1)
     }
 
+    @Test("a queued import's pane says it is waiting and draws no bar")
+    func queuedPane() async throws {
+        let queued = try await drawn(pane: .queued)
+
+        #expect(queued.bars == 0)
+        let lines =
+            try await SnapshotTestSupport.recognizedText(
+                in: queued.pixels,
+                languages: ["en-US"]
+            )
+            .map(\.text)
+        #expect(lines.carrying("Waiting to import"))
+    }
+
+    @Test(
+        "a running import's pane draws its phase and bar",
+        arguments: [BridgeImportStanding.running, .writing]
+    )
+    func runningPane(standing: BridgeImportStanding) async throws {
+        #expect(try await drawn(pane: standing).bars == 1)
+    }
+
     private struct Drawn {
         let bars: Int
         let height: CGFloat
@@ -89,15 +111,38 @@ struct ImportStandingRowTests {
         )
     }
 
-    private func drawn(_ row: some View) async throws -> Drawn {
-        try await SnapshotTestSupport.withHostedWindow(
+    private func drawn(pane standing: BridgeImportStanding) async throws
+        -> Drawn
+    {
+        try await drawn(
+            ImportingCandidatePane(
+                candidate: PreviewData.folderCandidates[0],
+                standing: standing,
+                runtime: nil,
+                coverContent: nil,
+                onOpenImages: { _, _ in },
+                onOpenDocument: { _, _ in },
+                onPreview: { _ in },
+                onStopPreview: {},
+                previewingTarget: nil
+            )
+            .frame(height: 400),
+            height: 400
+        )
+    }
+
+    private func drawn(_ row: some View, height: CGFloat = rowSize.height)
+        async throws -> Drawn
+    {
+        let size = NSSize(width: Self.rowSize.width, height: height)
+        return try await SnapshotTestSupport.withHostedWindow(
             row
                 .candidateReaderPreviewEnvironment()
                 .environment(ImageStore.stub())
                 .preferredColorScheme(.light)
                 .background(.white)
-                .frame(width: Self.rowSize.width),
-            size: Self.rowSize
+                .frame(width: size.width),
+            size: size
         ) { _, host in
             try await SnapshotTestSupport.settle(host)
             return Drawn(
@@ -107,7 +152,7 @@ struct ImportStandingRowTests {
                 height: host.fittingSize.height,
                 pixels: try await SnapshotTestSupport.capturePNG(
                     host,
-                    size: Self.rowSize
+                    size: size
                 )
             )
         }

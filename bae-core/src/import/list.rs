@@ -600,10 +600,9 @@ impl ImportCandidateDetailProjection {
             TriageTab::Done => CandidatePanePlacement::Done,
         };
         let metadata_draft_is_blank = metadata_draft.is_blank();
-        let import_status = if facts.importing() {
-            Some(CandidateImportStatus::Importing)
-        } else {
-            import_status.map(CandidateImportStatus::of)
+        let import_status = match facts.import {
+            Some(standing) => Some(CandidateImportStatus::Importing { standing }),
+            None => import_status.map(CandidateImportStatus::of),
         };
         ImportCandidateDetail {
             candidate,
@@ -665,7 +664,9 @@ pub enum CandidatePanePlacement {
 /// than a row's stored outcome beside a live flag.
 #[derive(Debug, Clone, PartialEq)]
 pub enum CandidateImportStatus {
-    Importing,
+    Importing {
+        standing: super::ImportStanding,
+    },
     Complete { release: super::ImportedRelease },
     Error { error: String },
     /// A release read from several folders that cannot be worked on as it

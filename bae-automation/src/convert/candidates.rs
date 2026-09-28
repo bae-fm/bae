@@ -183,7 +183,7 @@ pub(crate) fn automation_import_status(
     }
     Some(match status? {
         // Running, with no progress reported yet.
-        CandidateImportStatus::Importing => AutomationImportStatus::Importing {
+        CandidateImportStatus::Importing { .. } => AutomationImportStatus::Importing {
             progress_percent: None,
             step: None,
         },

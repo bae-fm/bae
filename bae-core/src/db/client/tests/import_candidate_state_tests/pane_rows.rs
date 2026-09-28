@@ -500,6 +500,35 @@ async fn an_active_import_omits_its_previous_persisted_failure_from_the_detail()
     assert!(detail.failure.is_none());
 }
 
+/// The pane draws a queued import differently from a running one, so its
+/// import status says where the import stands.
+#[tokio::test]
+async fn the_pane_s_import_status_says_where_the_import_stands() {
+    let (db, _tmp) = empty_db().await;
+    stored_pane_candidate(&db).await;
+    let key = pane_candidate_path();
+    let projection = db
+        .load_import_candidate(&key)
+        .await
+        .unwrap()
+        .expect("the stored candidate has a detail");
+
+    for standing in [
+        crate::import::ImportStanding::Queued,
+        crate::import::ImportStanding::Running,
+        crate::import::ImportStanding::Writing,
+    ] {
+        let detail = projection.clone().resolve(&crate::import::TriageRuntimeFacts {
+            identification: None,
+            import: Some(standing),
+        });
+        assert_eq!(
+            detail.import_status,
+            Some(crate::import::CandidateImportStatus::Importing { standing })
+        );
+    }
+}
+
 fn remote_with_copies(url: &str) -> CoverSelection {
     use crate::import::cover_art::{DownscaledCopy, RemoteImageSet};
     CoverSelection::Remote(

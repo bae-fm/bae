@@ -143,7 +143,9 @@ impl crate::types::BridgeTriageImportStatus {
 impl crate::types::BridgeCandidateImportStatus {
     pub(super) fn from_core(status: bae_core::import::CandidateImportStatus) -> Self {
         match status {
-            bae_core::import::CandidateImportStatus::Importing => Self::Importing,
+            bae_core::import::CandidateImportStatus::Importing { standing } => Self::Importing {
+                standing: crate::types::BridgeImportStanding::from_core(standing),
+            },
             bae_core::import::CandidateImportStatus::Complete { release } => Self::Complete {
                 release_id: release.release_id,
                 album_id: release.album_id,

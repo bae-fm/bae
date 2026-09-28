@@ -84,10 +84,11 @@ extension ImportView {
                     )
                 }
             )
-        case .importing:
+        case .importing(let standing):
             let mappingActions = mappingActions(for: candidate)
             ImportingCandidatePane(
                 candidate: candidate,
+                standing: standing,
                 runtime: runtime,
                 coverContent: candidate.cover?.imageContent,
                 onOpenImages: mappingActions.openImages,
