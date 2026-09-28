@@ -63,7 +63,18 @@ jobs:
       run: |
         cd bae-macos/bae && xcodebuild -project bae.xcodeproj -scheme bae \
           -configuration Debug CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
-          -derivedDataPath .build/derivedData test
+          -derivedDataPath .build/derivedData \
+          -resultBundlePath "$RUNNER_TEMP/baeTests.xcresult" test
+
+    # The log does not say why a UI test's app stopped; the bundle holds its
+    # crash report and screenshots.
+    - name: Keep the macOS test results
+      if: ${{ failure() && steps.build_macos.conclusion == 'success' }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: baeTests-xcresult
+        path: ${{ runner.temp }}/baeTests.xcresult
+        retention-days: 7
 
     - name: Check Swift formatting
       if: ${{ !cancelled() }}
