@@ -26,8 +26,15 @@ final class EditMenuClipboardTests: XCTestCase {
             ["Cut": true, "Copy": true, "Paste": false]
         )
 
-        app.typeKey("c", modifierFlags: .command)
-        XCTAssertEqual(NSPasteboard.general.string(forType: .string), "Album")
+        edit.click()
+        edit.menuItems["Copy"].click()
+        let copied = XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in
+                NSPasteboard.general.string(forType: .string) == "Album"
+            },
+            object: nil
+        )
+        wait(for: [copied], timeout: 5)
         XCTAssertEqual(
             enabled(["Paste"], under: edit, in: app),
             ["Paste": true]
