@@ -10,6 +10,7 @@
 //! import a person asks for.
 
 use super::combine::LookupProvenance;
+use super::fit::Declined;
 use super::verdict::TerminalVerdict;
 use super::MediumConflict;
 use crate::import::cover_art::RemoteCover;
@@ -119,7 +120,7 @@ pub struct VerdictSummary {
     pub lead: Option<LeadMatch>,
     /// The folder's own files rule out every release the verdict found.
     pub medium_conflict: Option<MediumConflict>,
-    /// A release the `found` list names whose full document could not be
+    /// A record the `found` list names whose full document could not be
     /// read: what it states was never checked against the folder.
     pub unread_document: bool,
 }
@@ -178,63 +179,40 @@ impl VerdictSummary {
 }
 
 impl VerdictSummary {
-    /// The check against the folder the found release did not pass, when one
-    /// failed. Only a found verdict has a release to check.
-    pub fn folder_check(&self) -> Option<FolderCheck> {
+    /// Why a found verdict picks none of its releases unattended, by the one
+    /// rule ([`super::fit::unattended_pick`]); `None` when it picks one, and for the
+    /// shapes that hold no find.
+    pub fn declined(&self) -> Option<Declined> {
         if self.kind != VerdictKind::Found {
             return None;
         }
         let track_count = self.track_count.unwrap_or_default();
-
-        // A release the folder's own files rule out is never picked unattended,
-        // however well the lookups agree on it: the person reads the evidence
-        // and picks, or does not. Checked before the pressing count, so it is
-        // named over several pressings too.
-        if let Some(folder) = self.medium_conflict {
-            return Some(FolderCheck::MediumDisagrees { folder });
-        }
-
-        // Several pressings are a choice, not a failed check: the tracklist is
-        // only compared once the matches make a single pressing.
-        let (Some(lead), 1) = (self.lead.as_ref(), self.pressing_count) else {
-            return None;
-        };
-
-        // `None` (nobody has asked the source yet) and `Nothing` (it answered
-        // and listed no tracks) are different facts about the queue, but they
-        // leave the same count unchecked, so they fail alike.
-        let Some(SourceTracks::Listed { count }) = &lead.source_tracks else {
-            return Some(FolderCheck::SourceTracksUnknown);
-        };
-
-        // The count, never the lengths. A source's lengths are whatever it
-        // transcribed — rounded to whole seconds, counted with or without a
-        // pre-gap, missing for some tracks — so disagreeing lengths say more
-        // about the source than about the match. The mapping pane shows both
-        // durations per row for a person who wants to read them.
-        (*count != track_count).then_some(FolderCheck::TrackCountDisagrees {
-            local: track_count,
-            source: *count,
-        })
+        super::fit::decline(
+            self.medium_conflict,
+            self.pressing_count as usize,
+            self.lead
+                .as_ref()
+                .map(|lead| super::fit::TracklistFit::of(lead.source_tracks.as_ref(), track_count)),
+            self.unread_document,
+            track_count,
+        )
     }
 
-    /// Whether the verdict picks its one release without a person: the one
-    /// rule for both the settle applying it to the draft and automatic import
-    /// taking the candidate, so neither can act where the other would not.
-    /// It holds when the verdict is unambiguous given what we have: one
-    /// pressing found, every one of its documents read, and no check against
-    /// the folder failed.
-    ///
-    /// "An exact signal is not the same as a unique result" — a disc ID or a
-    /// barcode routinely returns several pressings of one release group, and
-    /// picking between them is the person's job. Two sources' records of the
-    /// same pressing are not that choice: they are one row, so they count once.
+    /// The check against the folder the found release did not pass, when one
+    /// failed: why a found verdict picks nothing, when a check is why.
+    pub fn folder_check(&self) -> Option<FolderCheck> {
+        match self.declined() {
+            Some(Declined::FolderCheck(check)) => Some(check),
+            Some(Declined::NothingFound | Declined::Several | Declined::UnreadDocument) | None => {
+                None
+            }
+        }
+    }
+
+    /// Whether the verdict picks its one release without a person — see
+    /// [`super::fit::unattended_pick`].
     pub fn picks_unattended(&self) -> bool {
-        self.kind == VerdictKind::Found
-            && self.pressing_count == 1
-            && self.lead.is_some()
-            && !self.unread_document
-            && self.folder_check().is_none()
+        self.kind == VerdictKind::Found && self.declined().is_none()
     }
 
     /// Both judgements at once, for a test to compare in one assertion.

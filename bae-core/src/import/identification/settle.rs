@@ -95,7 +95,6 @@ async fn settle_verdict(
     priority: CallPriority,
     token: &CancellationToken,
 ) -> Settled {
-    let text = state.candidate_text();
     let durations = state
         .audio()
         .expect("a terminal state carries the audio it was identified over")
@@ -116,7 +115,7 @@ async fn settle_verdict(
             ),
         };
     };
-    let Ok(settled_lead) = settle_lead(context, &mut verdict, &text, priority, token).await else {
+    let Ok(settled_lead) = settle_lead(context, &mut verdict, priority, token).await else {
         return Settled::Abandoned;
     };
 
@@ -200,6 +199,9 @@ pub(super) async fn save(
         return Settled::Abandoned;
     }
     let candidate_key = candidate.key();
+    // Only the verdict's unattended pick is ever applied, so an applied
+    // release is that pick, which automatic import then takes.
+    let picked_unattended = metadata.is_some();
     let row = NewImportCandidateVerdict {
         content_hash: candidate.files.content_hash(),
         file_edit_revision: candidate.file_edit_revision,
@@ -227,48 +229,36 @@ pub(super) async fn save(
         );
         return Settled::Refused;
     }
-    Settled::Stored {
-        picked_unattended: crate::identify::VerdictSummary::of(verdict).picks_unattended(),
-    }
+    Settled::Stored { picked_unattended }
 }
 
-/// The one pressing a verdict's matches describe, or `None` when they describe
-/// several. Rows come from the run's own `pressings`, so two catalogs' records
-/// of one pressing are one row, and the row's lead is judged against the
-/// candidate's text as the pane judges it.
-fn sole_pressing(
-    findings: &crate::identify::Findings,
-    text: &crate::identify::CandidateText,
-) -> Option<crate::import::release_group::Pressing> {
-    let judged =
-        crate::identify::judged_results(findings.matches.clone(), &findings.provenance, text);
-    let mut rows =
-        crate::import::release_group::group_formed_rows(judged, &findings.pressings, Vec::new(), &[])
-            .into_iter()
-            .flat_map(crate::import::release_group::ReleaseGroup::into_pressings);
-    let only = rows.next()?;
-    rows.next().is_none().then_some(only)
-}
-
-/// Settle a candidate's lead: the stored releases of the one pressing it
-/// matched, primary and partners, which the run already fetched and stored.
-/// Only a verdict that picks its release unattended has a lead; any other
-/// stands as the run found it, for the person to pick from or not.
+/// Settle a candidate's lead: the stored releases of the pressing the verdict
+/// picks unattended, primary and partners, which the run already fetched and
+/// stored. A verdict that picks none stands as the run found it, for the
+/// person to pick from or not.
 async fn settle_lead(
     context: &Context,
     verdict: &mut TerminalVerdict,
-    text: &crate::identify::CandidateText,
     priority: CallPriority,
     token: &CancellationToken,
 ) -> Result<SettledLead, Superseded> {
-    if !crate::identify::VerdictSummary::of(verdict).picks_unattended() {
+    let TerminalVerdict::Found {
+        findings,
+        track_count,
+        ..
+    } = &*verdict
+    else {
         return Ok(SettledLead::NoExternalRelease);
-    }
-    let TerminalVerdict::Found { findings, .. } = verdict else {
-        unreachable!("only a found verdict picks unattended");
     };
-    let pressing = sole_pressing(findings, text)
-        .expect("a verdict that picks unattended names one pressing");
+    let Ok(pick) = crate::identify::unattended_pick(
+        &findings.matches,
+        &findings.pressings,
+        findings.medium_conflict,
+        *track_count,
+    ) else {
+        return Ok(SettledLead::NoExternalRelease);
+    };
+    let pressing = pick.pressing();
     let (primary, partners) = pressing.claims();
 
     let settle = async {

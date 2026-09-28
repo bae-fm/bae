@@ -11,6 +11,7 @@ pub mod agreements;
 pub mod combine;
 pub mod discid;
 pub mod documents;
+pub mod fit;
 pub(crate) mod label;
 pub(crate) mod medium;
 mod not_asked;
@@ -24,6 +25,7 @@ pub mod view;
 
 pub use agreements::{agreements_of, judged_results, Agreements, CandidateText};
 pub use combine::{Findings, LibraryStatuses, LookupAnswers, LookupProvenance, NarrowedOut};
+pub use fit::{unattended_pick, Declined, TracklistFit, UnattendedPick};
 pub use medium::MediumConflict;
 pub use not_asked::NotAskedReason;
 pub use service::{IdentifyRunId, IdentifyServiceHandle};
