@@ -27,6 +27,7 @@ import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.padding
 import androidx.glance.layout.size
 import androidx.glance.layout.width
+import androidx.glance.material3.ColorProviders
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
@@ -34,13 +35,20 @@ import androidx.glance.unit.ColorProvider
 import fm.bae.app.R
 import fm.bae.app.mainActivityIntent
 import fm.bae.app.playback.ArtworkContentProvider
+import fm.bae.app.ui.appearance.AppearanceMode
+import fm.bae.app.ui.appearance.AppearancePreferences
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeRadius
 import fm.bae.app.ui.appearance.ThemeSize
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.appearance.appearanceColorScheme
+import fm.bae.app.ui.appearance.appearanceFile
+import fm.bae.app.ui.appearance.readAppearancePreferences
+import fm.bae.app.ui.appearance.surfaces
 import uniffi.bae_bridge.BridgeImageRef
 import androidx.compose.ui.text.font.FontWeight as ComposeFontWeight
+import androidx.glance.color.ColorProvider as DayNightColorProvider
 
 /**
  * Home-screen now-playing widget, drawn from the file-backed [WidgetSnapshot]
@@ -52,16 +60,20 @@ class NowPlayingWidget : GlanceAppWidget() {
         id: GlanceId,
     ) {
         val snapshot = WidgetSnapshotStore(context).read()
+        val preferences = readAppearancePreferences(appearanceFile(context))
         provideContent {
-            GlanceTheme {
-                NowPlayingWidgetContent(snapshot)
+            GlanceTheme(colors = widgetColors(preferences)) {
+                NowPlayingWidgetContent(snapshot, placeholder = placeholderColor(preferences))
             }
         }
     }
 }
 
 @Composable
-private fun NowPlayingWidgetContent(snapshot: WidgetSnapshot) {
+private fun NowPlayingWidgetContent(
+    snapshot: WidgetSnapshot,
+    placeholder: ColorProvider,
+) {
     val context = LocalContext.current
     val track = snapshot.track
     // The whole surface opens the app; the transport buttons take their own taps.
@@ -74,7 +86,7 @@ private fun NowPlayingWidgetContent(snapshot: WidgetSnapshot) {
                 .clickable(actionStartActivity(mainActivityIntent(context))),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Cover(track?.coverImage)
+        Cover(track?.coverImage, placeholder)
         Spacer(GlanceModifier.width(ThemeSpace.group))
         Column(modifier = GlanceModifier.defaultWeight()) {
             Text(
@@ -108,7 +120,10 @@ private fun NowPlayingWidgetContent(snapshot: WidgetSnapshot) {
 }
 
 @Composable
-private fun Cover(coverImage: BridgeImageRef?) {
+private fun Cover(
+    coverImage: BridgeImageRef?,
+    placeholder: ColorProvider,
+) {
     val context = LocalContext.current
     val coverSize = ThemeSize.barArtwork
     if (coverImage == null) {
@@ -117,14 +132,14 @@ private fun Cover(coverImage: BridgeImageRef?) {
                 GlanceModifier
                     .size(coverSize)
                     .cornerRadius(ThemeRadius.artwork)
-                    .background(GlanceTheme.colors.secondaryContainer),
+                    .background(placeholder),
             contentAlignment = Alignment.Center,
         ) {
             Image(
                 provider = ImageProvider(R.drawable.ic_widget_music_note),
                 contentDescription = null,
                 modifier = GlanceModifier.size(ThemeIcon.large),
-                colorFilter = ColorFilter.tint(GlanceTheme.colors.onSecondaryContainer),
+                colorFilter = ColorFilter.tint(GlanceTheme.colors.onSurfaceVariant),
             )
         }
     } else {
@@ -162,6 +177,20 @@ private fun TransportButton(
         )
     }
 }
+
+/** The app's colour scheme for the chosen appearance, in light and dark. */
+private fun widgetColors(preferences: AppearancePreferences) =
+    ColorProviders(
+        light = appearanceColorScheme(preferences, dark = preferences.mode == AppearanceMode.DARK),
+        dark = appearanceColorScheme(preferences, dark = preferences.mode != AppearanceMode.LIGHT),
+    )
+
+/** The chosen tone's placeholder surface, behind a missing cover. */
+private fun placeholderColor(preferences: AppearancePreferences): ColorProvider =
+    DayNightColorProvider(
+        day = preferences.tone.surfaces(dark = preferences.mode == AppearanceMode.DARK).placeholder,
+        night = preferences.tone.surfaces(dark = preferences.mode != AppearanceMode.LIGHT).placeholder,
+    )
 
 /** A role as a Glance text style, its weight rounded down to Glance's normal, medium or bold. */
 private fun ThemeText.glanceStyle(color: ColorProvider): TextStyle {

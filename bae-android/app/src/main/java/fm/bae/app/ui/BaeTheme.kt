@@ -7,6 +7,7 @@ import androidx.compose.material3.LocalTonalElevationEnabled
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
@@ -19,6 +20,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import androidx.glance.appwidget.updateAll
 import fm.bae.app.ui.appearance.AppearanceMode
 import fm.bae.app.ui.appearance.AppearancePreferences
 import fm.bae.app.ui.appearance.AppearanceStore
@@ -26,11 +28,12 @@ import fm.bae.app.ui.appearance.LocalAppearanceStore
 import fm.bae.app.ui.appearance.SemanticColors
 import fm.bae.app.ui.appearance.ToneSurfaces
 import fm.bae.app.ui.appearance.appearanceColorScheme
+import fm.bae.app.ui.appearance.appearanceFile
 import fm.bae.app.ui.appearance.colors
 import fm.bae.app.ui.appearance.semanticColors
 import fm.bae.app.ui.appearance.surfaces
+import fm.bae.app.widget.NowPlayingWidget
 import kotlinx.coroutines.Dispatchers
-import java.io.File
 
 val LocalPrimaryFill = staticCompositionLocalOf<Color> { error("BaeTheme provides primary button colors") }
 private val LocalSemanticColors = staticCompositionLocalOf<SemanticColors> { error("BaeTheme provides colours") }
@@ -57,7 +60,7 @@ private fun rememberAppearanceStore(): AppearanceStore {
         if (preview) {
             AppearanceStore(AppearancePreferences()) {}
         } else {
-            AppearanceStore.fromFile(File(context.filesDir, "appearance.json"), Dispatchers.IO)
+            AppearanceStore.fromFile(appearanceFile(context), Dispatchers.IO)
         }
     }
 }
@@ -68,6 +71,11 @@ fun BaeTheme(
     content: @Composable () -> Unit,
 ) {
     val preferences by appearance.preferences.collectAsState()
+    val context = LocalContext.current
+    if (!LocalInspectionMode.current) {
+        // The home-screen widget draws with the same appearance.
+        LaunchedEffect(preferences) { NowPlayingWidget().updateAll(context.applicationContext) }
+    }
     val isDark =
         when (preferences.mode) {
             AppearanceMode.SYSTEM -> isSystemInDarkTheme()

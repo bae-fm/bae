@@ -1,5 +1,6 @@
 package fm.bae.app.ui.appearance
 
+import android.content.Context
 import androidx.compose.runtime.staticCompositionLocalOf
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.NonCancellable
@@ -23,6 +24,20 @@ data class AppearancePreferences(
 )
 
 val LocalAppearanceStore = staticCompositionLocalOf<AppearanceStore> { error("BaeTheme provides appearance") }
+
+/** Where the app keeps the appearance preferences. */
+fun appearanceFile(context: Context): File = File(context.filesDir, "appearance.json")
+
+/** The preferences stored in [file], or the defaults when none are. */
+fun readAppearancePreferences(file: File): AppearancePreferences {
+    if (!file.exists()) return AppearancePreferences()
+    val json = JSONObject(file.readBytes().toString(Charsets.UTF_8))
+    return AppearancePreferences(
+        mode = AppearanceMode.valueOf(json.getString("mode")),
+        accent = AccentChoice.valueOf(json.getString("accent")),
+        tone = SurfaceTone.valueOf(json.getString("tone")),
+    )
+}
 
 /** Publishes a selection only after its atomic preference write succeeds. */
 class AppearanceStore(
@@ -54,19 +69,8 @@ class AppearanceStore(
         fun fromFile(
             file: File,
             ioDispatcher: CoroutineDispatcher,
-        ): AppearanceStore {
-            val initial =
-                if (file.exists()) {
-                    val json = JSONObject(file.readBytes().toString(Charsets.UTF_8))
-                    AppearancePreferences(
-                        mode = AppearanceMode.valueOf(json.getString("mode")),
-                        accent = AccentChoice.valueOf(json.getString("accent")),
-                        tone = SurfaceTone.valueOf(json.getString("tone")),
-                    )
-                } else {
-                    AppearancePreferences()
-                }
-            return AppearanceStore(initial) { preferences ->
+        ): AppearanceStore =
+            AppearanceStore(readAppearancePreferences(file)) { preferences ->
                 withContext(ioDispatcher) {
                     val bytes =
                         JSONObject()
@@ -92,6 +96,5 @@ class AppearanceStore(
                     }
                 }
             }
-        }
     }
 }
