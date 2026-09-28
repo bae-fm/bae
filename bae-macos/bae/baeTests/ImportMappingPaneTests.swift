@@ -800,4 +800,37 @@ struct ImportCommitControlsTests {
             .map(\.text)
         #expect(!ready.carrying("in the folder"))
     }
+
+    /// The pane is shown only before an import runs or after one fails, so
+    /// its commit bar offers Import, or Retry Import after a failed attempt.
+    @MainActor
+    @Test("the commit bar offers Import, and Retry Import after a failure")
+    func theCommitBarOffersImportOrRetry() async throws {
+        var candidate = Candidate(
+            detail: MappingFixtures.detail(
+                mapping: MappingFixtures.thirteenFileTable
+            )
+        )
+        let fresh =
+            try await SnapshotTestSupport.recognizedText(
+                in: captureMappingPane(candidate: candidate, runtime: nil),
+                languages: ["en-US"]
+            )
+            .map(\.text)
+        #expect(!fresh.carrying("Retry Import"))
+
+        candidate.detail?.importStatus = .error(
+            error: .Diagnostic(
+                category: .import,
+                detail: "the disc would not read"
+            )
+        )
+        let failed =
+            try await SnapshotTestSupport.recognizedText(
+                in: captureMappingPane(candidate: candidate, runtime: nil),
+                languages: ["en-US"]
+            )
+            .map(\.text)
+        #expect(failed.carrying("Retry Import"))
+    }
 }

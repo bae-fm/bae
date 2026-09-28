@@ -1234,7 +1234,7 @@ CREATE TABLE IF NOT EXISTS import_candidate_session (
     -- The pane's last command, when it failed: which command, the class of
     -- its failure, and the failure's untranslated text.
     error_command  TEXT CHECK (error_command IN (
-        'import', 'cancel_import', 'merge_artists', 'read_file_tags',
+        'import', 'merge_artists', 'read_file_tags',
         'change_lookups', 'change_search_words', 'change_agreements')),
     error_category TEXT,
     error_detail   TEXT,

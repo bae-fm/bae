@@ -108,10 +108,7 @@ struct ImportMappingPane: View {
         return ImportCommitControls(
             unansweredCount: mapping.unansweredCount,
             folderCheck: candidate.folderCheck,
-            candidateKey: candidate.key,
             importStatus: candidate.importStatus,
-            canCancelImport: candidate.live?.actions.contains(.cancelImport)
-                == true,
             storageCloud: $storageCloud,
             storagePinned: $storagePinned,
             actions: commitActions,

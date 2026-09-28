@@ -43,7 +43,6 @@ pub struct SearchForm {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PaneCommand {
     Import,
-    CancelImport,
     /// Take the two library artists an import found to be one as one.
     MergeArtists,
     /// Read the files' own tags into the draft.

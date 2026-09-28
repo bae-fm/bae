@@ -223,7 +223,7 @@ extension BridgePaneFailure {
         guard let displayed = DisplayError(error) else { return nil }
         let why = displayed.line
         switch command {
-        case .import, .cancelImport, .mergeArtists:
+        case .import, .mergeArtists:
             return why
         case .readFileTags:
             if case .Diagnostic(.metadataTrackCount, _) = error {

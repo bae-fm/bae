@@ -68,7 +68,6 @@ private struct ImportOperations: Sendable {
             BridgePaneOutcome
     let rerunIdentifyForCandidate: @Sendable (String) -> Void
     let cancelAllIdentification: @Sendable () async throws -> Void
-    let cancelImport: @Sendable (String) async throws -> BridgePaneOutcome
     let cancelAllImports: @Sendable () -> Void
     let moveCandidatePane:
         @Sendable (String, BridgePaneMove) async throws -> Void
@@ -220,9 +219,6 @@ extension ImportOperations {
             },
             cancelAllIdentification: {
                 try await handle.cancelAllIdentification()
-            },
-            cancelImport: {
-                try await handle.cancelImport(candidateKey: $0)
             },
             cancelAllImports: {
                 handle.cancelAllImports()
@@ -423,10 +419,6 @@ final class Importer: Sendable, Observable {
             @escaping @Sendable (String) -> Void = { _ in },
         cancelAllIdentification:
             @escaping @Sendable () async throws -> Void = {},
-        cancelImport:
-            @escaping @Sendable (String) async throws -> BridgePaneOutcome = {
-                _ in .done
-            },
         cancelAllImports: @escaping @Sendable () -> Void = {},
         moveCandidatePane:
             @escaping @Sendable (String, BridgePaneMove) async throws -> Void =
@@ -532,7 +524,6 @@ final class Importer: Sendable, Observable {
             editCandidateLookupChoices: editCandidateLookupChoices,
             rerunIdentifyForCandidate: rerunIdentifyForCandidate,
             cancelAllIdentification: cancelAllIdentification,
-            cancelImport: cancelImport,
             cancelAllImports: cancelAllImports,
             moveCandidatePane: moveCandidatePane,
             identifyAutomatically: identifyAutomatically,
@@ -719,14 +710,6 @@ extension Importer {
     /// Take every candidate off the identification queue.
     func cancelAllIdentification() async throws {
         try await operations.cancelAllIdentification()
-    }
-
-    /// Cancel the candidate's import, waiting or running, a pane command. It
-    /// records no import failure; one already writing its release completes,
-    /// and the pane states that.
-    func cancelImport(_ candidateKey: String) async throws -> BridgePaneOutcome
-    {
-        try await operations.cancelImport(candidateKey)
     }
 
     /// Cancel every import that has not begun writing its release.

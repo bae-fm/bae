@@ -8,13 +8,9 @@ struct ImportCommitControls {
     /// Why the folder keeps this candidate out of a bulk import, such as a
     /// track count mismatch; shown beside Import, which stays available.
     let folderCheck: BridgeFolderCheck?
-    /// Routes the running import's progress to the leaf line that draws it.
-    let candidateKey: String
-    /// The running import, or the result of the last one.
+    /// What the last import left: a failure, which Import retries, or
+    /// nothing.
     let importStatus: BridgeCandidateImportStatus?
-    /// Whether core still allows cancelling the running import, which it does
-    /// until the release is being written.
-    let canCancelImport: Bool
     let storageCloud: Binding<Bool>
     let storagePinned: Binding<Bool>
     let actions: ImportCommitActions
@@ -194,7 +190,7 @@ struct ImportReleaseHeader: View {
                     .themeText(.detail)
                     .foregroundStyle(Theme.warning)
                 }
-                if !commitSettled(commit), configStore.config.hasCloudHome {
+                if configStore.config.hasCloudHome {
                     HStack(spacing: ThemeSpace.related) {
                         ImportCheckboxToggle(
                             "Cloud",
@@ -211,22 +207,9 @@ struct ImportReleaseHeader: View {
                 }
                 ImportConfirmationCardAction(
                     importStatus: commit.importStatus,
-                    candidateKey: commit.candidateKey,
-                    canCancelImport: commit.canCancelImport,
-                    onConfirmImport: commit.actions.confirmImport,
-                    onCancelImport: commit.actions.cancelImport,
-                    onViewInLibrary: commit.actions.viewInLibrary,
+                    onConfirmImport: commit.actions.confirmImport
                 )
             }
-        }
-    }
-
-    /// Whether the import already ran or is running, which hides the storage
-    /// toggles.
-    private func commitSettled(_ commit: ImportCommitControls) -> Bool {
-        switch commit.importStatus {
-        case .importing, .complete: return true
-        case .error, nil: return false
         }
     }
 

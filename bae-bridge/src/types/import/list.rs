@@ -312,7 +312,6 @@ pub struct BridgeCandidateSession {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgePaneCommand {
     Import,
-    CancelImport,
     MergeArtists,
     ReadFileTags,
     ChangeLookups,
@@ -342,7 +341,6 @@ mirror_enum! {
     from_core: pub(crate) fn,
     variants: {
         Import,
-        CancelImport,
         MergeArtists,
         ReadFileTags,
         ChangeLookups,

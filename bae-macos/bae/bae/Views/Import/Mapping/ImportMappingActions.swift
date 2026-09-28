@@ -39,8 +39,6 @@ struct ImportMappingActions {
 /// What the commit bar calls back into.
 struct ImportCommitActions {
     let confirmImport: () -> Void
-    /// Cancel the import the bar is showing, the way the row's menu does.
-    let cancelImport: () -> Void
     let mergeArtists: (String) -> Void
     let viewInLibrary: (String) -> Void
 }

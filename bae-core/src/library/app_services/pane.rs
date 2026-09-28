@@ -22,19 +22,6 @@ impl AppServices {
             .await
     }
 
-    /// Cancel the import of the candidate the pane shows.
-    pub async fn pane_cancel_import(
-        &self,
-        candidate_key: &str,
-    ) -> Result<PaneOutcome, ImportError> {
-        let import = &self.inner.import;
-        import
-            .run_pane_command(candidate_key, PaneCommand::CancelImport, async {
-                import.cancel_import(candidate_key)
-            })
-            .await
-    }
-
     /// Take the two library artists the candidate's import found to be one as
     /// one, keeping `surviving_artist_id`.
     pub async fn pane_merge_artists(

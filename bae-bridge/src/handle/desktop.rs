@@ -294,15 +294,6 @@ forward! {
                 .map_err(BridgeError::from)
         }
 
-        /// Cancel the import of `candidate_key`, waiting or running, a pane
-        /// command. It records no import failure. An import already writing
-        /// its release completes, and the pane states that.
-        fn cancel_import(candidate_key: String) -> crate::types::BridgePaneOutcome {
-            Ok(crate::types::BridgePaneOutcome::from_core(
-                this.services.pane_cancel_import(&candidate_key).await?,
-            ))
-        }
-
         fn remove_watched_folder(path: String) -> () {
             this.services
                 .import_remove_watched_folder(path)

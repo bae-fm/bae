@@ -20,16 +20,6 @@ extension ImportView {
         }
     }
 
-    /// Cancel the candidate's import from the pane — the same cancel the
-    /// row's menu runs. An import that has begun writing its release is not
-    /// cancelled and completes; the bar stops offering the cancel by then,
-    /// and a cancel that crossed that moment says so on the banner.
-    func cancelImport(candidate: Candidate) {
-        runCandidateMutation(candidate: candidate) {
-            try await importer.cancelImport(candidate.key)
-        }
-    }
-
     /// Consolidate the two library artist rows named by the persisted import
     /// conflict. The candidate subscription removes the conflict banner only
     /// after core commits every reference move and deletes the absorbed row.
