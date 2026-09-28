@@ -2,8 +2,7 @@
 //! injects its running services into the frontend's final owner. Frontends reach
 //! it through the uniffi bridge (`bae-bridge`, via its `AppHandle`). One place opens the DB, unlocks
 //! encryption, starts sync, playback, and (on desktop) the import/identify/
-//! extraction services, and wires the UI event bus — no per-frontend copy to
-//! drift.
+//! extraction services — no per-frontend copy to drift.
 
 use std::{sync::Arc, time::Instant};
 
@@ -12,7 +11,6 @@ use tracing::{info, warn};
 use crate::config::{Config, ConfigHandle};
 use crate::diagnostics::{AnomalyKind, Diagnostics, TelemetryEvent};
 use crate::library::AppServices;
-use crate::ui::UiEventBus;
 use coven::{ClockRef, SystemClock};
 use coven::{IdRef, UuidProvider};
 
@@ -115,9 +113,7 @@ pub fn bootstrap<T, F>(
 ) -> Result<T, BootstrapError>
 where
     T: Send + 'static,
-    F: FnOnce(AppServices, UiEventBus, tokio::runtime::Runtime) -> Result<T, BootstrapError>
-        + Send
-        + 'static,
+    F: FnOnce(AppServices, tokio::runtime::Runtime) -> Result<T, BootstrapError> + Send + 'static,
 {
     // Building the sync manager and `block_on`-ing the async setup uses a deep
     // stack, especially in debug builds. Callers may invoke us from small-stack
@@ -165,7 +161,7 @@ fn bootstrap_inner<T, F>(
     compose: F,
 ) -> Result<T, BootstrapError>
 where
-    F: FnOnce(AppServices, UiEventBus, tokio::runtime::Runtime) -> Result<T, BootstrapError>,
+    F: FnOnce(AppServices, tokio::runtime::Runtime) -> Result<T, BootstrapError>,
 {
     let timing = BootstrapTiming::start(&library_id);
 
@@ -319,10 +315,6 @@ where
     info!("Application services initialized for library '{library_id}'");
     diagnostics.event(TelemetryEvent::AppStarted {});
 
-    let ui_event_bus = UiEventBus::new();
-    timing.stage(&library_id, "wire UI event bus", || {
-        ui_event_bus.wire(&app_services, runtime.handle())
-    });
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     timing
         .stage(&library_id, "request watched-folder scan", || {
@@ -331,7 +323,7 @@ where
         .map_err(|error| BootstrapError::Database(error.to_string()))?;
 
     let owner = timing.stage(&library_id, "compose frontend owner", || {
-        compose(app_services, ui_event_bus, runtime)
+        compose(app_services, runtime)
     })?;
 
     // The durable active-library pointer names the library the user last actually

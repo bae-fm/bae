@@ -29,21 +29,15 @@ fn write_cloudkit_library(app_dir: &AppDir) -> String {
 
 struct TestApp {
     services: bae_core::library::AppServices,
-    _ui_event_bus: bae_core::ui::UiEventBus,
     runtime: tokio::runtime::Runtime,
 }
 
 impl TestApp {
     fn start(
         services: bae_core::library::AppServices,
-        ui_event_bus: bae_core::ui::UiEventBus,
         runtime: tokio::runtime::Runtime,
     ) -> Result<Self, bae_core::app::BootstrapError> {
-        Ok(Self {
-            services,
-            _ui_event_bus: ui_event_bus,
-            runtime,
-        })
+        Ok(Self { services, runtime })
     }
 }
 

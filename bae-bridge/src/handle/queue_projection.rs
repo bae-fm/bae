@@ -1,29 +1,3 @@
-use super::*;
-
-/// Forward bus events to the platform callback until the bus closes.
-///
-/// Falling behind (`Lagged`) drops transient events but must not kill the
-/// subscription. Persistent state is delivered by independent live-result
-/// subscriptions and is unaffected by this bus.
-pub(super) async fn pump_ui_events(
-    mut rx: tokio::sync::broadcast::Receiver<bae_core::ui::UiBusEvent>,
-    callback: Box<dyn crate::types::UiEventCallback>,
-) {
-    loop {
-        match rx.recv().await {
-            Ok(event) => {
-                if let Some(bridge_event) = convert_ui_event(event) {
-                    callback.on_event(bridge_event);
-                }
-            }
-            Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
-                tracing::warn!("UI event subscription lagged; dropped {n} transient events");
-            }
-            Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
-        }
-    }
-}
-
 mirror_struct! {
     crate::types::BridgeUploadReleaseGroup = bae_core::library::UploadReleaseGroup,
     from_core: pub(super) fn,

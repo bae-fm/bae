@@ -1,7 +1,7 @@
-mod event_bus;
+mod events;
 #[cfg(test)]
-mod event_bus_tests;
+mod events_tests;
 mod types;
 
-pub use event_bus::UiEventBus;
+pub use events::UiEvents;
 pub use types::*;

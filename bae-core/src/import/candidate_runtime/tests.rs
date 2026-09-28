@@ -438,7 +438,7 @@ fn removal_and_invalidation_drop_the_runtime() {
 
 /// Extraction's snapshots are kept for the one form that reads them, but they
 /// are not what is in flight: no entry appears for them and nobody watching a
-/// row is woken. The form is fed by the UI bus instead.
+/// row is woken. The form is fed by the UI events instead.
 #[test]
 fn extracted_signals_are_retained_without_publishing_a_runtime() {
     let runtime = CandidateRuntime::default();

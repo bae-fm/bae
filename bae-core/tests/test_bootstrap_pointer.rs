@@ -67,21 +67,15 @@ fn active_pointer(app_dir: &AppDir) -> Option<String> {
 
 struct TestApp {
     services: bae_core::library::AppServices,
-    _ui_event_bus: bae_core::ui::UiEventBus,
     runtime: tokio::runtime::Runtime,
 }
 
 impl TestApp {
     fn start(
         services: bae_core::library::AppServices,
-        ui_event_bus: bae_core::ui::UiEventBus,
         runtime: tokio::runtime::Runtime,
     ) -> Result<Self, bae_core::app::BootstrapError> {
-        Ok(Self {
-            services,
-            _ui_event_bus: ui_event_bus,
-            runtime,
-        })
+        Ok(Self { services, runtime })
     }
 }
 
@@ -216,7 +210,7 @@ fn bootstrap_that_cannot_compose_the_frontend_leaves_active_pointer() {
         bae_core::diagnostics::Diagnostics::noop(),
         None,
         coven::OAuthClients::empty(),
-        |_services, _ui_event_bus, _runtime| {
+        |_services, _runtime| {
             Err(bae_core::app::BootstrapError::Internal(
                 "frontend owner failed to start".to_string(),
             ))
@@ -249,7 +243,7 @@ fn bootstrap_that_panics_while_composing_the_frontend_returns_an_error() {
         bae_core::diagnostics::Diagnostics::noop(),
         None,
         coven::OAuthClients::empty(),
-        |_services, _ui_event_bus, _runtime| panic!("frontend owner panicked"),
+        |_services, _runtime| panic!("frontend owner panicked"),
     );
 
     assert!(

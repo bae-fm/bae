@@ -28,39 +28,22 @@ pub trait ArtworkAnalyzerCallback: Send + Sync {
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeUiEvent {
     /// Playback couldn't start or continue, and has stopped.
-    PlaybackError {
-        reason: BridgePlaybackErrorReason,
-    },
+    PlaybackError { reason: BridgePlaybackErrorReason },
     /// Tracks were added to the queue; never sent for zero.
-    QueueItemsAdded {
-        count: u32,
-    },
+    QueueItemsAdded { count: u32 },
 
     // ── Import live progress ───────────────────────────────────────
     /// A candidate's extracted text pools as extraction settles them, for the
     /// search pane's autocomplete and scanning indicator.
     #[cfg(feature = "desktop")]
-    CandidateSignalsUpdated {
-        key: String,
-        signals: BridgeSignals,
-    },
+    CandidateSignalsUpdated { key: String, signals: BridgeSignals },
     /// How many running identifications have ended, out of how many; `(0, 0)`
     /// is none. A view must not derive `total` from its filtered rows.
     #[cfg(feature = "desktop")]
-    ImportIdentificationProgress {
-        identified: u32,
-        total: u32,
-    },
+    ImportIdentificationProgress { identified: u32, total: u32 },
     /// How many imports are waiting or running.
     #[cfg(feature = "desktop")]
-    ImportsInFlight {
-        count: u32,
-    },
-
-    // ── Errors ─────────────────────────────────────────────────────
-    Error {
-        error: BridgeError,
-    },
+    ImportsInFlight { count: u32 },
 }
 
 /// The dominant activity of a slice of the upload queue. Mirrors bae-core's

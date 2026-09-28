@@ -28,7 +28,6 @@ use crate::types::{BridgeMcpServerStatus, BridgeSubsonicServerStatus};
 #[derive(uniffi::Object)]
 pub struct AppHandle {
     services: AppServices,
-    ui_event_bus: bae_core::ui::UiEventBus,
     #[cfg(feature = "desktop")]
     desktop: bae_desktop::DesktopServices,
     #[cfg(feature = "cast")]
@@ -135,8 +134,6 @@ mod service_status;
 mod storage_browse;
 mod sync_status;
 mod ui_events;
-use queue_projection::pump_ui_events;
-use ui_events::convert_ui_event;
 
 /// Owns the runtime every task of an open library runs on.
 /// [`AppHandle::close_library`] runs its last work on it and then drops it,
@@ -169,7 +166,6 @@ pub use editing_projection::{bridge_validation_reason_key, shape_release_edit};
 impl AppHandle {
     pub(crate) fn start(
         services: AppServices,
-        ui_event_bus: bae_core::ui::UiEventBus,
         runtime: tokio::runtime::Runtime,
     ) -> Result<Self, bae_core::app::BootstrapError> {
         #[cfg(feature = "desktop")]
@@ -196,7 +192,6 @@ impl AppHandle {
 
         Ok(Self {
             services,
-            ui_event_bus,
             #[cfg(feature = "desktop")]
             desktop,
             #[cfg(feature = "cast")]

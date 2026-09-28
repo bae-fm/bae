@@ -746,7 +746,7 @@ impl LibraryManager {
         self.emit_outbox_changed().await;
 
         if !track_ids.is_empty() {
-            self.emit(LibraryEvent::TracksDeleted { track_ids });
+            self.tracks_deleted(track_ids);
         }
 
         Ok(())

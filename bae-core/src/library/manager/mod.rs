@@ -24,7 +24,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use thiserror::Error;
-use tokio::sync::broadcast;
 use tracing::{debug, warn};
 
 use crate::album_detail::{
@@ -52,11 +51,9 @@ use coven::ClockRef;
 use coven::ExactCloudHome;
 use coven::IdRef;
 
-/// Transient library events can burst during imports and sync catch-up.
 mod service;
 mod storage_operations;
 use storage_operations::*;
-const LIBRARY_EVENT_CHANNEL_CAPACITY: usize = 1024;
 
 mod album;
 mod artist;
@@ -793,11 +790,6 @@ fn verb(action: ReleaseStorageAction) -> &'static str {
     }
 }
 
-/// Transient operation events emitted by `LibraryManager`.
-#[derive(Clone, Debug)]
-pub enum LibraryEvent {
-    TracksDeleted { track_ids: Vec<String> },
-}
 /// Persistence and queries for albums, tracks, and files: import state
 /// transitions, library browsing, and deletion with cloud-storage cleanup.
 #[derive(Clone)]
@@ -819,7 +811,9 @@ pub struct LibraryManager {
     /// outbox subscriptions, startup sync), which each hold a clone of it and
     /// so of the store. [`LibraryManager::close`] ends them all.
     tasks: service::BackgroundTasks,
-    event_tx: broadcast::Sender<LibraryEvent>,
+    /// The readers of every deletion of tracks, each hearing all of them in
+    /// order, as the ids deleted: the player drops them from its queue.
+    track_deletions: Arc<std::sync::Mutex<Vec<tokio::sync::mpsc::UnboundedSender<Vec<String>>>>>,
     /// The cloud-sync responsibility: the outbox projection over the live
     /// upload state, provider connection, membership, and the coven
     /// make-Remote/make-Local primitives.

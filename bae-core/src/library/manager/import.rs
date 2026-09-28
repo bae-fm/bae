@@ -613,9 +613,7 @@ impl LibraryManager {
         };
         for plan in replacement_plans {
             if !plan.track_ids.is_empty() {
-                self.emit(LibraryEvent::TracksDeleted {
-                    track_ids: plan.track_ids.clone(),
-                });
+                self.tracks_deleted(plan.track_ids.clone());
             }
         }
         Ok(outbox_revision.filter(|_| remote))

@@ -26,23 +26,6 @@ struct UiEventDispatcherErrorTests {
 
         #expect(appService.hasDisplayedErrorForTesting)
     }
-
-    @Test("error reaches uiStore through the showError override")
-    func errorReachesUiStore() {
-        let appService = makeAppService()
-        let sink = UiEventDispatcher.makeSink(
-            appService: appService,
-            onUnhandled: DesktopUiEvents.apply
-        )
-
-        sink(
-            .error(
-                error: .Diagnostic(category: .internal, detail: "boom")
-            )
-        )
-
-        #expect(appService.hasDisplayedErrorForTesting)
-    }
 }
 
 @MainActor
@@ -169,7 +152,6 @@ private let unhandledEvents: [BridgeUiEvent] = [
 private let handledEvents: [BridgeUiEvent] = [
     .playbackError(reason: .syncDisconnected),
     .queueItemsAdded(count: 1),
-    .error(error: .Diagnostic(category: .internal, detail: "boom")),
 ]
 
 // MARK: - Test doubles

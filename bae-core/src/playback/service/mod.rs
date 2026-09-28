@@ -37,7 +37,6 @@ use crate::diagnostics::{
     AnomalyKind, LocalId, PlaybackCommandKind, PlaybackOperation, PlaybackStartSource,
     TelemetryEvent, TrackTransition,
 };
-use crate::library::LibraryEvent;
 use crate::library::LibraryManager;
 use crate::library::ResolvedTrackAudio;
 use crate::playback::audio_output::{

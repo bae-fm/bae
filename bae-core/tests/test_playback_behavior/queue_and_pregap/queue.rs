@@ -338,7 +338,7 @@ async fn test_remove_entry_refreshes_preloaded_track() {
 // ============================================================================
 // Service command coverage
 // ============================================================================
-// One focused test per PlaybackCommand / LibraryEvent branch that had no
+// One focused test per PlaybackCommand / track deletion branch that had no
 // coverage, driven through the PlaybackHandle like the rest of the suite. Where
 // a command's effect is a queue-shape change, the serial command loop lets a
 // following queue_projection() read reflect it (the projection query is
@@ -795,7 +795,7 @@ async fn play_release_clamps_an_out_of_range_start_index() {
         .expect("an out-of-range start index clamps to the first track");
 }
 
-/// LibraryEvent::TracksDeleted, both branches. Two releases share one library so
+/// A deletion of tracks, both branches. Two releases share one library so
 /// the current track (release A) and a preloaded next (release B) can be deleted
 /// independently: deleting B clears the preloaded next and purges its queued
 /// track while A keeps playing; deleting A deletes the current track and stops.

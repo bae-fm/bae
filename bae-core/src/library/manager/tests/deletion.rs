@@ -583,3 +583,22 @@ async fn test_delete_album_deletes_all_releases() {
     let releases = album_releases(&manager, &album.id).await;
     assert!(releases.is_empty());
 }
+
+/// Every deletion reaches the player, however many land before it reads them:
+/// one it missed would leave deleted tracks in its queue.
+#[tokio::test]
+async fn every_track_deletion_reaches_a_reader_that_fell_behind() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let mut deletions = manager.subscribe_track_deletions();
+    let deleted = 2_048;
+    for index in 0..deleted {
+        manager.tracks_deleted(vec![format!("track-{index}")]);
+    }
+
+    let mut heard = Vec::new();
+    while let Ok(track_ids) = deletions.try_recv() {
+        heard.extend(track_ids);
+    }
+    assert_eq!(heard.len(), deleted);
+    assert_eq!(heard.first().map(String::as_str), Some("track-0"));
+}

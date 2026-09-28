@@ -2,18 +2,7 @@ use bae_core::album_detail::{
     ComposerDetail, ComposerSummary, ComposerWorkGroup, WorkDetail, WorkReleaseSummary, WorkSummary,
 };
 use bae_core::db::{DbArtist, DbComposerSummary, DbWork, DbWorkSummary};
-use std::sync::{Arc, Mutex};
-
-/// Records every delivered event so tests can assert on the stream.
-struct CollectingCallback {
-    events: Arc<Mutex<Vec<crate::types::BridgeUiEvent>>>,
-}
-
-impl crate::types::UiEventCallback for CollectingCallback {
-    fn on_event(&self, event: crate::types::BridgeUiEvent) {
-        self.events.lock().unwrap().push(event);
-    }
-}
+use std::sync::Arc;
 
 fn track_detail(
     position: bae_core::album_detail::TrackPosition,
@@ -191,10 +180,8 @@ pub(super) fn fresh_bridge_handle(test_name: &str) -> (Arc<super::AppHandle>, st
         let playback = manager.start_playback_service(runtime.handle().clone(), 50, true);
         bae_core::library::AppServices::new(manager, playback)
     };
-    let handle = Arc::new(
-        super::AppHandle::start(services, bae_core::ui::UiEventBus::new(), runtime)
-            .expect("the bridge handle starts"),
-    );
+    let handle =
+        Arc::new(super::AppHandle::start(services, runtime).expect("the bridge handle starts"));
 
     (handle, root)
 }
@@ -338,40 +325,10 @@ fn enqueue_export_missing_release_does_not_panic() {
     ));
 }
 
-/// A consumer that falls behind the transient-event bus keeps receiving the
-/// events behind the gap. Persistent values have independent subscriptions.
-#[tokio::test]
-async fn pump_ui_events_keeps_delivering_after_broadcast_lag() {
-    let (tx, rx) = tokio::sync::broadcast::channel(1);
-
-    // Two sends into a capacity-1 channel: the pump's first recv lags, with
-    // the second event still queued.
-    tx.send(bae_core::ui::UiBusEvent::QueueItemsAdded { count: 1 })
-        .unwrap();
-    tx.send(bae_core::ui::UiBusEvent::QueueItemsAdded { count: 2 })
-        .unwrap();
-    drop(tx);
-
-    let events = Arc::new(Mutex::new(Vec::new()));
-    let pump = tokio::spawn(super::pump_ui_events(
-        rx,
-        Box::new(CollectingCallback {
-            events: events.clone(),
-        }),
-    ));
-    pump.await.unwrap();
-
-    let events = events.lock().unwrap();
-    assert!(matches!(
-        events.as_slice(),
-        [crate::types::BridgeUiEvent::QueueItemsAdded { count: 2 }]
-    ));
-}
-
 /// Extraction's text pools cross keyed by candidate, as the run produced them.
 #[cfg(feature = "desktop")]
 #[test]
-fn extracted_signals_cross_the_bus_with_their_key() {
+fn extracted_signals_cross_with_their_key() {
     let signals = bae_core::signals::Signals {
         origin: bae_core::signals::AudioOrigin::default(),
         disc_id: bae_core::signals::DiscIdSignal::Absent,
@@ -386,7 +343,7 @@ fn extracted_signals_cross_the_bus_with_their_key() {
     };
 
     let crossed =
-        super::ui_events::convert_ui_event(bae_core::ui::UiBusEvent::CandidateSignalsUpdated {
+        super::ui_events::convert_ui_event(bae_core::ui::UiEvent::CandidateSignalsUpdated {
             key: "reidentify:release-1".to_string(),
             signals,
         })

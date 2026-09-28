@@ -142,22 +142,19 @@ impl PlaybackErrorReason {
     }
 }
 
-/// Transient notifications that do not describe retained application state.
+/// What the UI hears outside its value subscriptions: playback's notices,
+/// and the import runtime's values as they change.
 #[derive(Debug, Clone)]
-pub enum UiBusEvent {
+pub enum UiEvent {
     /// Playback couldn't start or continue — e.g. a cloud-only track that isn't
     /// downloaded yet, or an in-core decode failure. Carries a typed reason the
     /// UI renders for its locale; playback falls back to stopped.
-    PlaybackError {
-        reason: PlaybackErrorReason,
-    },
+    PlaybackError { reason: PlaybackErrorReason },
     /// Tracks were just appended/inserted into the queue. Carries the count
     /// for a transient "+N" UI indicator. Fires only on add operations
     /// (AddToQueue, AddNext, AddReleaseToQueue, AddReleaseNext, InsertInQueue),
     /// never on remove/reorder/clear. Suppressed when count is zero.
-    QueueItemsAdded {
-        count: u32,
-    },
+    QueueItemsAdded { count: u32 },
 
     // ── Import live progress ───────────────────────────────────────
     /// A candidate's extracted signals, as extraction settles each one. Goes
@@ -178,20 +175,10 @@ pub enum UiBusEvent {
     /// the rows it holds would report a different, wrong total. `(0, 0)` is
     /// none running, which the header shows nothing for.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    ImportIdentificationProgress {
-        identified: u32,
-        total: u32,
-    },
+    ImportIdentificationProgress { identified: u32, total: u32 },
     /// How many imports are waiting or running, whoever started them. The
     /// sidebar header shows them, and a way to cancel them all, while there
     /// are any.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    ImportsInFlight {
-        count: u32,
-    },
-
-    // ── Errors ─────────────────────────────────────────────────────
-    Error {
-        error: UiError,
-    },
+    ImportsInFlight { count: u32 },
 }

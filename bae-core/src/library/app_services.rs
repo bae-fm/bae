@@ -256,6 +256,11 @@ impl AppServices {
         self.inner.playback.subscribe_values()
     }
 
+    /// What the UI hears outside its value subscriptions, from now on.
+    pub fn subscribe_ui_events(&self) -> crate::ui::UiEvents {
+        crate::ui::UiEvents::of(self)
+    }
+
     delegate_sync!(manager, get_config => get_config() -> crate::config::Config);
     delegate_async!(manager, ensure_mcp_token => ensure_mcp_token() -> Result<String, crate::library::LibraryError>);
     delegate_async!(manager, set_mcp_token => set_mcp_token(token: String) -> Result<(), crate::library::LibraryError>);

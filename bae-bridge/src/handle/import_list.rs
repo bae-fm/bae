@@ -192,7 +192,7 @@ impl AppHandle {
     }
 
     /// The signals extraction has found for one key so far — the read a form
-    /// does once when it opens, after it has subscribed to the UI bus. `None`
+    /// does once when it opens, after it has subscribed to the UI events. `None`
     /// before the first snapshot, and for a run that settled in an earlier
     /// session: what that run stored is on the candidate's row instead.
     pub fn candidate_signals(&self, candidate_key: String) -> Option<crate::types::BridgeSignals> {

@@ -165,7 +165,7 @@ impl ImportServiceHandle {
     /// what that run stored is on the candidate's row instead.
     ///
     /// The read a form does once when it opens, after it has subscribed to
-    /// the UI bus, so a form opened partway through a run has the pool the
+    /// the UI events, so a form opened partway through a run has the pool the
     /// run has built rather than an empty one.
     pub fn candidate_signals(&self, key: &str) -> Option<crate::signals::Signals> {
         self.runtime.signals(key)

@@ -207,7 +207,7 @@ impl AppServices {
     }
 
     /// The signals extraction has found for one key so far — the read a form
-    /// does once when it opens, after it has subscribed to the UI bus.
+    /// does once when it opens, after it has subscribed to the UI events.
     pub fn candidate_signals(&self, key: &str) -> Option<crate::signals::Signals> {
         self.inner.import.candidate_signals(key)
     }

@@ -147,7 +147,6 @@ impl LibraryManager {
         cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
         uploads: UploadObserver,
     ) -> Self {
-        let (event_tx, _) = broadcast::channel(LIBRARY_EVENT_CHANNEL_CAPACITY);
         let sync_status = SyncStatus::new(&database);
         let sync = SyncController::new(
             config_handle.clone(),
@@ -172,7 +171,7 @@ impl LibraryManager {
             diagnostics,
             runtime_handle,
             tasks: BackgroundTasks::default(),
-            event_tx,
+            track_deletions: Arc::default(),
             sync,
             sync_status,
             transitions: crate::library::storage_transitions::StorageTransitions::new(),
@@ -570,8 +569,14 @@ impl LibraryManager {
         });
     }
 
-    pub fn subscribe_events(&self) -> broadcast::Receiver<LibraryEvent> {
-        self.event_tx.subscribe()
+    /// Every deletion of tracks from now on, none dropped, as the ids each
+    /// deleted.
+    pub(crate) fn subscribe_track_deletions(
+        &self,
+    ) -> tokio::sync::mpsc::UnboundedReceiver<Vec<String>> {
+        let (reader, deletions) = tokio::sync::mpsc::unbounded_channel();
+        self.track_deletions.lock().unwrap().push(reader);
+        deletions
     }
 
     pub fn subscribe_sync_status_values(
@@ -580,13 +585,12 @@ impl LibraryManager {
         self.sync_status.subscribe()
     }
 
-    /// Emit a library event to all subscribers. Logs at warn-level when no
-    /// subscribers remain — the bus is alive for the lifetime of the library
-    /// so empty subscribers is unusual and worth a trace.
-    pub(super) fn emit(&self, event: LibraryEvent) {
-        if let Err(err) = self.event_tx.send(event) {
-            warn!("library event broadcast had no subscribers: {err}");
-        }
+    /// Tell every reader these tracks are deleted.
+    pub(super) fn tracks_deleted(&self, track_ids: Vec<String>) {
+        self.track_deletions
+            .lock()
+            .unwrap()
+            .retain(|reader| reader.send(track_ids.clone()).is_ok());
     }
 
     /// Build and publish the current outbox snapshot. Called by durable outbox

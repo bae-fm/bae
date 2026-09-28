@@ -1,4 +1,4 @@
-//! What the import event channel puts on the UI bus.
+//! What the import runtime tells a UI subscriber.
 
 use super::*;
 use crate::config::{Config, ConfigHandle};
@@ -81,22 +81,20 @@ fn catalog_of(signals: &crate::signals::Signals) -> &str {
     &signals.text.catalogs()[0]
 }
 
-/// Wait for the bus to deliver a signals event for `key`, or give up.
-async fn signals_for(
-    events: &mut tokio::sync::broadcast::Receiver<UiBusEvent>,
-    key: &str,
-) -> crate::signals::Signals {
+/// Wait for the subscriber to hear a signals event for `key`, or give up.
+async fn signals_for(events: &mut UiEvents, key: &str) -> crate::signals::Signals {
     let deadline = tokio::time::timeout(Duration::from_secs(5), async {
         loop {
-            match events.recv().await {
-                Ok(UiBusEvent::CandidateSignalsUpdated {
+            let heard = events.next().await.expect("the UI events are still told");
+            for event in heard {
+                if let UiEvent::CandidateSignalsUpdated {
                     key: delivered,
                     signals,
-                }) if delivered == key => return signals,
-                Ok(_) => continue,
-                Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => continue,
-                Err(tokio::sync::broadcast::error::RecvError::Closed) => {
-                    panic!("the UI bus closed")
+                } = event
+                {
+                    if delivered == key {
+                        return signals;
+                    }
                 }
             }
         }
@@ -104,14 +102,12 @@ async fn signals_for(
     deadline.await.expect("the signals event is delivered")
 }
 
-/// Extraction's snapshots reach the bus by key, and each key's latest
+/// Extraction's snapshots reach a subscriber by key, and each key's latest
 /// snapshot reads back on its own.
 #[tokio::test(flavor = "multi_thread")]
-async fn extracted_signals_reach_the_bus_by_key_and_read_back_for_that_key() {
+async fn extracted_signals_reach_a_subscriber_by_key_and_read_back_for_that_key() {
     let (services, _temp) = services().await;
-    let bus = UiEventBus::new();
-    bus.wire(&services, &tokio::runtime::Handle::current());
-    let mut events = bus.subscribe();
+    let mut events = services.subscribe_ui_events();
 
     let key = "reidentify:release-1";
     assert!(
@@ -143,4 +139,24 @@ async fn extracted_signals_reach_the_bus_by_key_and_read_back_for_that_key() {
         catalog_of(&recorded(&services, "/watch/other").await),
         "OTHER-1"
     );
+}
+
+/// A subscriber that arrives after the import runtime moved reads the values
+/// as they stand, not only the changes after it arrived.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_late_subscriber_reads_the_import_values_as_they_stand() {
+    let (services, _temp) = services().await;
+    let mut early = services.subscribe_ui_events();
+    let key = "/watch/a/rel1";
+    services.import_emit_event_for_test(ImportEvent::SignalsUpdated {
+        candidate_key: key.to_string(),
+        run: crate::identify::IdentifyRunId::for_test(1),
+        signals: extracted("CAT-1"),
+        artwork: crate::signals::ArtworkScan::Absent,
+        priority: CallPriority::Background,
+    });
+    assert_eq!(catalog_of(&signals_for(&mut early, key).await), "CAT-1");
+
+    let mut late = services.subscribe_ui_events();
+    assert_eq!(catalog_of(&signals_for(&mut late, key).await), "CAT-1");
 }

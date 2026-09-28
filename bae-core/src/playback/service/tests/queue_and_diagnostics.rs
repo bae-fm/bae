@@ -605,7 +605,8 @@ async fn a_play_command_ships_playback_command_started_and_track_started() {
     );
     let (shutdown_tx, _shutdown_rx) = tokio::sync::oneshot::channel::<()>();
     dispatch_command(&commands, PlaybackCommand::Shutdown(shutdown_tx));
-    service.run().await;
+    let track_deletions = service.library_manager.subscribe_track_deletions();
+    service.run(track_deletions).await;
 
     diagnostics.flush().await.expect("flush succeeds");
     let names = transport.event_names();

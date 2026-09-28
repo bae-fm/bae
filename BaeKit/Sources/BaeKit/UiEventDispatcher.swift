@@ -34,9 +34,6 @@ public enum UiEventDispatcher {
         case .playbackError(let reason):
             appService.showError(reason)
 
-        case .error(let error):
-            appService.showError(error)
-
         #if os(macOS)
             case .candidateSignalsUpdated,
                 .importIdentificationProgress,

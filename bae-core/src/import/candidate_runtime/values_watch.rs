@@ -1,5 +1,6 @@
 //! The values the import sidebar draws off the runtime: each candidate's
-//! extracted signals and the two counts, told as they change.
+//! extracted signals and the two counts, told as they stand and then as they
+//! change.
 
 use super::{CandidateRuntime, Revisions};
 use crate::signals::Signals;
@@ -19,7 +20,8 @@ pub(crate) enum RuntimeValue {
 
 pub(crate) struct RuntimeValuesWatch {
     revisions: watch::Receiver<Revisions>,
-    read_at: Revisions,
+    /// `None` until the first read, which reads every part.
+    read_at: Option<Revisions>,
     progress: (u32, u32),
     importing: u32,
     signals: HashMap<String, Signals>,
@@ -27,16 +29,16 @@ pub(crate) struct RuntimeValuesWatch {
 }
 
 impl RuntimeValuesWatch {
-    /// The values as they stand, told only once they change.
+    /// The values, told first as they stand and then as they change.
     pub(crate) fn of(runtime: &CandidateRuntime) -> Self {
-        let revisions = runtime.watch_revisions();
-        let read_at = *revisions.borrow();
+        let mut revisions = runtime.watch_revisions();
+        revisions.mark_changed();
         Self {
             revisions,
-            read_at,
-            progress: runtime.identification_progress(),
-            importing: runtime.imports_in_flight(),
-            signals: runtime.all_signals(),
+            read_at: None,
+            progress: (0, 0),
+            importing: 0,
+            signals: HashMap::new(),
             runtime: runtime.clone(),
         }
     }
@@ -48,7 +50,7 @@ impl RuntimeValuesWatch {
             self.revisions.changed().await.ok()?;
             let revisions = *self.revisions.borrow_and_update();
             let mut changed = Vec::new();
-            if revisions.runtime != self.read_at.runtime {
+            if self.read_at.is_none_or(|read_at| revisions.runtime != read_at.runtime) {
                 let progress = self.runtime.identification_progress();
                 if progress != self.progress {
                     self.progress = progress;
@@ -63,7 +65,7 @@ impl RuntimeValuesWatch {
                     changed.push(RuntimeValue::ImportsInFlight { count: importing });
                 }
             }
-            if revisions.signals != self.read_at.signals {
+            if self.read_at.is_none_or(|read_at| revisions.signals != read_at.signals) {
                 let signals = self.runtime.all_signals();
                 changed.extend(
                     signals
@@ -76,7 +78,7 @@ impl RuntimeValuesWatch {
                 );
                 self.signals = signals;
             }
-            self.read_at = revisions;
+            self.read_at = Some(revisions);
             if !changed.is_empty() {
                 return Some(changed);
             }

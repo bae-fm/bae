@@ -689,6 +689,8 @@ impl PlaybackService {
         let progress_handle = PlaybackProgressHandle::new(progress_rx, runtime_handle.clone());
         let playback_queue = PublishedQueue::new(queue_ids);
         let queue_receiver = playback_queue.subscribe();
+        // Taken before the service runs, so no deletion lands unheard between.
+        let track_deletions = library_manager.subscribe_track_deletions();
         let progress_handle_for_completion = progress_handle.clone();
         let worker =
             WorkerThread::spawn("playback service thread", move |command_tx, command_rx| {
@@ -766,7 +768,7 @@ impl PlaybackService {
                         } else {
                             debug!("restore on launch is off; starting with nothing in playback");
                         }
-                        service.run().await;
+                        service.run(track_deletions).await;
                     });
                 })
             });
@@ -787,9 +789,11 @@ impl PlaybackService {
         self.persist_playback_state().await;
     }
 
-    pub(super) async fn run(&mut self) {
+    pub(super) async fn run(
+        &mut self,
+        mut track_deletions: tokio_mpsc::UnboundedReceiver<Vec<String>>,
+    ) {
         info!("PlaybackService started");
-        let mut library_event_rx = self.library_manager.subscribe_events();
         let mut audio_event_tick = tokio::time::interval(std::time::Duration::from_millis(10));
         audio_event_tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
         let mut countdown = side_countdown::SideCountdownWait::new();
@@ -1183,8 +1187,7 @@ impl PlaybackService {
                 }
             }
                 }
-                Ok(event) = library_event_rx.recv() => {
-                    let LibraryEvent::TracksDeleted { track_ids } = event;
+                Some(track_ids) = track_deletions.recv() => {
                     self.handle_tracks_deleted(track_ids).await;
                 }
                 else => break,

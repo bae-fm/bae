@@ -54,9 +54,6 @@ object UiEventAdapter {
         if (handlePlaybackEvent(event, stores, player, errors)) {
             return
         }
-        if (handleAppErrorEvent(event, stores, errors)) {
-            return
-        }
         error("unhandled UI event: ${event::class.simpleName}")
     }
 
@@ -73,23 +70,6 @@ object UiEventAdapter {
 
             is BridgeUiEvent.QueueItemsAdded -> {
                 player.onQueueItemsAdded(event.count.toInt())
-            }
-
-            else -> {
-                return false
-            }
-        }
-        return true
-    }
-
-    private fun handleAppErrorEvent(
-        event: BridgeUiEvent,
-        stores: OpenLibraryStores,
-        errors: ErrorLines,
-    ): Boolean {
-        when (event) {
-            is BridgeUiEvent.Error -> {
-                stores.config.showError(errors.line(event.error))
             }
 
             else -> {
