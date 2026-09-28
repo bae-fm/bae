@@ -47,10 +47,8 @@ class PlaybackService : MediaLibraryService() {
         val open = AppSessionHolder.currentSession()
         val player = open?.playback
         if (open == null || player == null) {
-            // The service only runs while a library is open and playback has
-            // begun — BaeCorePlayer.ensurePlaybackService starts us. If the
-            // library was closed between that start and now, there's nothing to
-            // host.
+            // PlaybackSystemHooks starts this service once playback begins; a
+            // library closed since then leaves nothing to host.
             logger.error("onCreate with no open session; stopping")
             stopSelf()
             return

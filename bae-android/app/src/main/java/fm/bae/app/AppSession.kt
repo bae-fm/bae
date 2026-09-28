@@ -117,12 +117,9 @@ class OpenLibrary internal constructor(
      * Subscribe to retained values first, then route transient notifications
      * through the event adapter.
      *
-     * The [PlaybackService] is not started here. It hosts the foreground service
-     * that keeps core's audio thread alive while the screen is off, which Android
-     * only lets us start from the foreground — so the player starts it (see
-     * `BaeCorePlayer.ensurePlaybackService`) when playback begins on screen, not
-     * eagerly at library open (where a non-foreground service would be reclaimed
-     * before the first track plays).
+     * The [PlaybackService] is not started here: Android starts a service only
+     * from the foreground, so `PlaybackSystemHooks` starts it when playback
+     * begins on screen.
      */
     fun wireUp(scope: CoroutineScope) {
         subscribeToValues(scope)
