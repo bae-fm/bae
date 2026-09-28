@@ -201,7 +201,7 @@ async fn drive_fixture(
     ocr_map: HashMap<PathBuf, Vec<String>>,
 ) -> (Vec<String>, Vec<String>) {
     let candidates = bae_core::import::CandidateRuntime::default();
-    let tx = ImportEventBus::new(128, candidates.clone());
+    let tx = ImportEventBus::new(candidates.clone());
     let (library_manager, _lib_tmp) = make_library_manager().await;
     let handle: ExtractionServiceHandle = ExtractionService::start(
         tokio::runtime::Handle::current(),

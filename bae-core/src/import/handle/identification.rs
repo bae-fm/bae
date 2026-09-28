@@ -8,7 +8,7 @@ impl ImportServiceHandle {
     /// The id of a run about to start. Separate from
     /// [`Self::start_identification`] so a consumer can subscribe to this
     /// handle's bus knowing which run it is waiting for before that run's
-    /// first state is broadcast.
+    /// first state is sent.
     pub(crate) fn new_identification_run(&self) -> crate::identify::IdentifyRunId {
         self.identify.new_run()
     }

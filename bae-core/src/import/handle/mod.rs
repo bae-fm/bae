@@ -8,7 +8,7 @@ use crate::library::LibraryManager;
 use crate::util::worker_thread::WorkerThread;
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::{broadcast, mpsc};
+use tokio::sync::mpsc;
 use tracing::{debug, info, warn};
 
 mod candidate_facts_watch;
@@ -33,9 +33,9 @@ mod tests;
 
 /// The import event channel and the candidate runtime it records into.
 ///
-/// Every event is recorded in the runtime before it is broadcast, so a
-/// subscriber that hears an event and then asks the runtime finds the event's
-/// effect already there.
+/// Every event is recorded in the runtime before any reader hears it, so a
+/// reader that hears an event and then asks the runtime finds its effect
+/// already there.
 #[derive(Clone)]
 pub struct ImportEventBus {
     delivery: EventDelivery,
@@ -80,9 +80,8 @@ enum HoldState {
 }
 
 /// The one way an event reaches the bus's readers.
-#[derive(Clone)]
+#[derive(Clone, Default)]
 struct EventDelivery {
-    sender: broadcast::Sender<ImportEvent>,
     every_event: Arc<std::sync::Mutex<EveryEvent>>,
     /// Whether the one reader in the app that hears every event was taken.
     feed_taken: Arc<std::sync::atomic::AtomicBool>,
@@ -99,55 +98,34 @@ struct EveryEvent {
 }
 
 impl EventDelivery {
-    fn new(capacity: usize) -> Self {
-        let (sender, _) = broadcast::channel(capacity);
-        Self {
-            sender,
-            every_event: Arc::default(),
-            feed_taken: Arc::default(),
-        }
-    }
-
-    /// Hand `event` to every reader; `false` when no reader heard it.
-    fn deliver(&self, event: ImportEvent) -> bool {
-        let heard_every_event = {
-            let mut every_event = self.every_event.lock().unwrap();
-            #[cfg(any(test, feature = "test-utils"))]
-            every_event.delivered.push(event.clone());
-            every_event
-                .readers
-                .retain(|reader| reader.send(event.clone()).is_ok());
-            !every_event.readers.is_empty()
-        };
-        self.sender.send(event).is_ok() || heard_every_event
+    /// Hand `event` to every reader.
+    fn deliver(&self, event: ImportEvent) {
+        let mut every_event = self.every_event.lock().unwrap();
+        #[cfg(any(test, feature = "test-utils"))]
+        every_event.delivered.push(event.clone());
+        every_event
+            .readers
+            .retain(|reader| reader.send(event.clone()).is_ok());
     }
 }
 
 impl ImportEventBus {
-    /// A bus whose subscribers may fall `capacity` events behind, recording
-    /// into `runtime`.
-    pub fn new(capacity: usize, runtime: CandidateRuntime) -> Self {
+    /// A bus recording into `runtime`.
+    pub fn new(runtime: CandidateRuntime) -> Self {
         Self {
-            delivery: EventDelivery::new(capacity),
+            delivery: EventDelivery::default(),
             runtime,
             #[cfg(test)]
             send_hold: Arc::default(),
         }
     }
 
-    /// Record `event` in the runtime, then broadcast it. The bus lives as long
-    /// as the app, so having no subscriber is worth a warning.
+    /// Record `event` in the runtime, then hand it to every reader.
     pub fn send(&self, event: ImportEvent) {
         #[cfg(test)]
         self.wait_if_held(&event);
         self.runtime.record_event(&event);
-        if !self.delivery.deliver(event) {
-            warn!("import event broadcast had no subscribers");
-        }
-    }
-
-    pub fn subscribe(&self) -> broadcast::Receiver<ImportEvent> {
-        self.delivery.sender.subscribe()
+        self.delivery.deliver(event);
     }
 
     /// Every event from now on, none dropped, each on the reader before its
@@ -264,7 +242,7 @@ pub enum ImportEvent {
     /// projection of it.
     IdentifyStateChanged {
         candidate_key: String,
-        /// The run this state belongs to. A settled run keeps broadcasting, so
+        /// The run this state belongs to. A settled run keeps reporting, so
         /// a consumer waiting on a later run of the candidate matches on this,
         /// not the key.
         run: crate::identify::IdentifyRunId,

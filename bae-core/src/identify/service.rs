@@ -72,7 +72,7 @@ struct IdentifyServiceInner {
 }
 
 /// One identify run of one candidate. A candidate is identified once at a
-/// time, but a run that ends and the run that replaces it broadcast on the
+/// time, but a run that ends and the run that replaces it report on the
 /// same bus under the same key, so a consumer waiting on one of them tells
 /// the two apart by this id rather than by the candidate.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -111,7 +111,7 @@ impl IdentifyServiceHandle {
 
     /// Allocate the id for a run about to be started. Separate from
     /// [`Self::start`] so a consumer can subscribe to the bus knowing which
-    /// run it is waiting for before that run's first state is broadcast.
+    /// run it is waiting for before that run's first state is sent.
     pub fn new_run(&self) -> IdentifyRunId {
         IdentifyRunId(
             self.inner
@@ -227,7 +227,7 @@ impl IdentifyServiceHandle {
 
 /// The driver loop for one candidate. Each iteration takes the extraction's
 /// next snapshot or a lookup's completion, feeds it to the pure reducer,
-/// broadcasts the new state, and spawns the effects the reducer asked for —
+/// sends the new state, and spawns the effects the reducer asked for —
 /// whose results come back as further events. Ends when the reducer stops
 /// moving: on the run's terminal state, or on cancellation.
 ///
@@ -301,7 +301,7 @@ async fn run_driver(
         let (next_state, effects) = step(state.clone(), event);
         state = next_state;
 
-        // Every state `step` returns is broadcast, including one identical to the
+        // Every state `step` returns is sent, including one identical to the
         // last (a stale response the reducer's `for_barcode` guard dropped). The
         // signals toolbar is a projection of the state, so a consumer that draws
         // the badge row derives it from this same value.
@@ -557,7 +557,7 @@ mod tests {
             crate::providers::Providers::offline(),
         );
         let candidates = CandidateRuntime::default();
-        let event_tx = ImportEventBus::new(BUS_CAPACITY, candidates.clone());
+        let event_tx = ImportEventBus::new(candidates.clone());
         let handle = IdentifyServiceHandle::new(
             manager,
             tokio::runtime::Handle::current(),
@@ -567,14 +567,10 @@ mod tests {
         (handle.inner, temp_dir)
     }
 
-    /// How far behind a reader of the test service's bus may fall.
-    const BUS_CAPACITY: usize = 64;
-
-    /// A removal sent while a run is in flight ends it, even when more events
-    /// follow than a bus reader can fall behind by. On one thread, so no
-    /// reader runs between the sends.
+    /// A removal sent while a run is in flight ends it by the time the send
+    /// returns.
     #[tokio::test]
-    async fn a_removed_candidates_run_ends_however_far_behind_bus_readers_are() {
+    async fn a_removed_candidates_run_ends_in_the_send_that_removes_it() {
         let (inner, _tmp) = setup_inner().await;
         let token =
             inner
@@ -586,15 +582,6 @@ mod tests {
                 candidate_key: "k".to_string(),
             },
         ));
-        for _ in 0..BUS_CAPACITY + 1 {
-            inner
-                .event_tx
-                .send(ImportEvent::Scan(crate::import::ScanEvent::Finished));
-        }
-        // Whatever reads the bus gets its turn before the check.
-        for _ in 0..16 {
-            tokio::task::yield_now().await;
-        }
 
         assert!(
             token.is_cancelled(),
@@ -830,7 +817,7 @@ mod tests {
     /// A cancel mid-run is the other way out: `Idle` says the run wrote
     /// nothing, and the driver is gone behind it.
     #[tokio::test(flavor = "multi_thread")]
-    async fn a_cancel_mid_run_broadcasts_idle_and_deregisters() {
+    async fn a_cancel_mid_run_reports_idle_and_deregisters() {
         let (inner, _tmp) = setup_inner().await;
         let handle = IdentifyServiceHandle {
             inner: inner.clone(),

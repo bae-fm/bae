@@ -728,11 +728,6 @@ impl ImportServiceHandle {
         });
     }
 
-    /// Import events from now on; a reader that falls behind misses some.
-    pub fn subscribe_events(&self) -> broadcast::Receiver<ImportEvent> {
-        self.event_tx.subscribe()
-    }
-
     /// Every import event from now on, for the one identification queue that
     /// takes it (see [`super::ImportEventBus::take_feed`]).
     pub(crate) fn take_event_feed(&self) -> Option<mpsc::UnboundedReceiver<ImportEvent>> {

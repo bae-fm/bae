@@ -1,6 +1,6 @@
 //! Import progress events.
 //!
-//! Thin emitters that publish `ImportProgress` onto the broadcast bus as the
+//! Thin emitters that publish `ImportProgress` onto the import bus as the
 //! import advances through its phases.
 
 use crate::import::types::{ImportPhase, ImportProgress};

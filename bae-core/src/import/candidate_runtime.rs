@@ -3,10 +3,10 @@
 //! that failed, the import running, the search a person typed.
 //!
 //! Each field has one writer and is never inferred from another. The queue
-//! owns `queued`; the identify driver's broadcasts own the run; the write of
+//! owns `queued`; the identify driver's reports own the run; the write of
 //! its answer owns `save_failed`; the import worker owns `import`; the search
 //! owns `search`. Where waiting hands over to running, the run's first
-//! broadcast clears `queued`, so a key never reads as idle in between.
+//! report clears `queued`, so a key never reads as idle in between.
 //!
 //! Every identification of an import candidate is counted here, in one batch
 //! (see [`batch::IdentificationBatch`]): a key joins when it is admitted and
@@ -125,10 +125,10 @@ struct FailedSave {
 /// One key's runtime; [`CandidateRuntimeSnapshot`] is derived from it.
 #[derive(Clone, Default, PartialEq)]
 struct CandidateRuntimeState {
-    /// Set by the queue on admission; cleared by the run's first broadcast, or
+    /// Set by the queue on admission; cleared by the run's first report, or
     /// by the queue when no run came of it.
     queued: Option<Admission>,
-    /// From the driver's broadcasts; never terminal and never `Idle`.
+    /// From the driver's reports; never terminal and never `Idle`.
     running: Option<RunState>,
     /// The terminal answer a run reached, held until whoever asked for it
     /// disposes of it: the verdict write, or a re-identify sheet closing.

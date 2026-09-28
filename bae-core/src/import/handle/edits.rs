@@ -1,7 +1,7 @@
 //! The pane's own writes: the cover, the album fields, and the track rows.
 //!
 //! Each one is stored the moment the control is used, keyed by the
-//! candidate's content hash. Nothing is broadcast: the tables are
+//! candidate's content hash. Nothing is sent: the tables are
 //! device-local, so the per-candidate live query sees the commit and the pane
 //! redraws from it.
 

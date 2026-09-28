@@ -567,9 +567,9 @@ fn resolve_file_content_type_uses_scan_facts_for_new_audio_formats() {
 /// Re-reading a folder nothing has touched is a scan that finds what it found
 /// last time. It must write nothing and announce nothing: a watched folder is
 /// re-read on a timer, and a pass that rewrites and re-announces every row it
-/// already holds is work the whole app pays for — a database transaction, a
-/// broadcast, and a list rebuilt — once per row, forever, over a folder that
-/// did not change.
+/// already holds is work the whole app pays for — a database transaction, an
+/// event, and a list rebuilt — once per row, forever, over a folder that did
+/// not change.
 #[tokio::test]
 async fn a_second_pass_over_an_unchanged_folder_announces_nothing() {
     let test = setup_import_service().await;

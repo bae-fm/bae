@@ -194,7 +194,6 @@ telemetry_value_enum! {
         AudioFormatOrphaned => "audio_format_orphaned",
         BlobIdInvalid => "blob_id_invalid",
         EncryptionKeyMissing => "encryption_key_missing",
-        EventBusLagged => "event_bus_lagged",
     }
 }
 

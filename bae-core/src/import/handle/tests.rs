@@ -100,7 +100,7 @@ async fn await_import_outcome(
 /// and only one reader takes it.
 #[test]
 fn the_event_feed_holds_every_event_and_is_taken_once() {
-    let bus = ImportEventBus::new(1, CandidateRuntime::default());
+    let bus = ImportEventBus::new(CandidateRuntime::default());
     let mut feed = bus.take_feed().expect("the feed is there to take");
     for _ in 0..3 {
         bus.send(ImportEvent::Scan(ScanEvent::Finished));
@@ -113,13 +113,14 @@ fn the_event_feed_holds_every_event_and_is_taken_once() {
     assert!(bus.take_feed().is_none(), "the feed is taken once");
 }
 
-/// A subscriber that hears an import end and then asks the runtime finds the
-/// claim already released: the bus records an event before it broadcasts it.
+/// A reader that hears an import end and then asks the runtime finds the
+/// claim already released: the bus records an event before any reader hears
+/// it.
 #[tokio::test]
-async fn an_import_outcome_is_recorded_before_it_is_broadcast() {
+async fn an_import_outcome_is_recorded_before_any_reader_hears_it() {
     let runtime = CandidateRuntime::default();
-    let bus = ImportEventBus::new(8, runtime.clone());
-    let mut events = bus.subscribe();
+    let bus = ImportEventBus::new(runtime.clone());
+    let mut events = bus.every_event();
     runtime.claim_for_import("candidate", "import-1").unwrap();
     assert!(runtime
         .get("candidate")

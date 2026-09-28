@@ -86,7 +86,7 @@ impl Job {
         }
     }
 
-    /// Mark every member as waiting again; a run's first broadcast took its
+    /// Mark every member as waiting again; a run's first report took its
     /// representative's mark off.
     fn mark_waiting(&self, context: &Context) {
         context

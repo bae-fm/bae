@@ -1,67 +1,7 @@
-//! An extraction that cannot finish: a blocking task that died, a bus with
-//! nobody listening. What it says, and that it says something.
+//! An extraction that cannot finish: a blocking task that died. What it says,
+//! and that it says something.
 
 use super::*;
-use crate::test_logs::capture_warn_logs;
-
-#[tokio::test(flavor = "multi_thread")]
-async fn emit_signals_warns_when_broadcast_has_no_subscribers() {
-    let candidates = CandidateRuntime::default();
-    let tx = ImportEventBus::new(64, candidates.clone());
-    let (library_manager, _lib_tmp) = make_library_manager().await;
-    let inner = ExtractionServiceInner {
-        runtime_handle: tokio::runtime::Handle::current(),
-        event_tx: tx,
-        analyzer: std::sync::Mutex::new(None),
-        library_manager,
-        settled: SessionCache::new("Settled folder signals", SETTLED_CAPACITY),
-        candidates,
-    };
-
-    // A registered generation, as every running extraction has: an
-    // unregistered one is not current and sends nothing to warn about.
-    let generation = inner.candidates.start_work(
-        CandidateWork::Extraction,
-        "cand-1".to_string(),
-        |_, generation| generation,
-    );
-    let extraction = RunningExtraction {
-        run: IdentifyRunId::for_test(1),
-        key: "cand-1".to_string(),
-        generation,
-        priority: CallPriority::Interactive,
-        read_cover_art: true,
-        snapshots: watch::channel(None).0,
-    };
-
-    let logs = capture_warn_logs(|| {
-        emit_signals(
-            &inner,
-            &extraction,
-            SignalsSnapshot {
-                signals: Signals {
-                    origin: crate::signals::AudioOrigin::default(),
-                    disc_id: DiscIdSignal::Absent,
-                    barcode: BarcodeSignal::Absent,
-                    text: TextSignal::Settled {
-                        catalogs: Vec::new(),
-                        free_text: Vec::new(),
-                    },
-                    text_pool: Vec::new(),
-                    isrcs: Vec::new(),
-                    track_titles: Vec::new(),
-                },
-                audio: crate::signals::AudioFacts::default(),
-                artwork: ArtworkScan::Absent,
-            },
-        );
-    });
-
-    assert!(
-        logs.contains("import event broadcast had no subscribers"),
-        "expected no-subscriber warning, got {logs:?}",
-    );
-}
 
 #[tokio::test(flavor = "multi_thread")]
 async fn fast_pass_join_error_reports_why_there_is_no_pass() {
@@ -89,7 +29,7 @@ async fn fast_pass_join_error_reports_why_there_is_no_pass() {
 #[tokio::test(flavor = "multi_thread")]
 async fn an_aborted_extraction_fails_every_signal_in_one_snapshot() {
     let candidates = CandidateRuntime::default();
-    let tx = ImportEventBus::new(64, candidates.clone());
+    let tx = ImportEventBus::new(candidates.clone());
     let mut rx = tx.every_event();
     let (library_manager, _lib_tmp) = make_library_manager().await;
     let inner = ExtractionServiceInner {

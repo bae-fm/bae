@@ -69,10 +69,9 @@ async fn cancelled_ocr_run_does_not_settle() {
     );
 }
 
-/// A `CandidateRemoved` sent mid-OCR cancels the run, even when more events
-/// follow than a bus reader can fall behind by: it never settles, and it stops
-/// short of analyzing every image, since the token is checked between images.
-/// On one thread, so no reader runs between the sends.
+/// A `CandidateRemoved` sent mid-OCR cancels the run by the time the send
+/// returns: it never settles, and it stops short of analyzing every image,
+/// since the token is checked between images.
 #[tokio::test]
 async fn candidate_removed_event_cancels_in_flight_extraction() {
     let tmp = TempDir::new().unwrap();
@@ -96,10 +95,7 @@ async fn candidate_removed_event_cancels_in_flight_extraction() {
     tx.send(ImportEvent::Scan(ScanEvent::CandidateRemoved {
         candidate_key: "cand-1".to_string(),
     }));
-    for _ in 0..BUS_CAPACITY + 1 {
-        tx.send(ImportEvent::Scan(ScanEvent::Finished));
-    }
-    tokio::time::timeout(Duration::from_secs(30), cancelled)
+    tokio::time::timeout(Duration::ZERO, cancelled)
         .await
         .expect("the removal cancels the extraction");
     gate.open();

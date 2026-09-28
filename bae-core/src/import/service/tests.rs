@@ -54,7 +54,7 @@ async fn setup_import_service() -> TestService {
         crate::providers::Providers::offline(),
     );
     let (_commands_tx, commands_rx) = tokio::sync::mpsc::unbounded_channel();
-    let event_tx = crate::import::ImportEventBus::new(16, crate::import::CandidateRuntime::default());
+    let event_tx = crate::import::ImportEventBus::new(crate::import::CandidateRuntime::default());
     TestService {
         service: ImportService {
             commands_rx,
@@ -578,7 +578,7 @@ impl TestService {
         TestScan,
         tokio::sync::mpsc::UnboundedReceiver<crate::import::handle::ImportEvent>,
     ) {
-        let event_tx = crate::import::ImportEventBus::new(256, crate::import::CandidateRuntime::default());
+        let event_tx = crate::import::ImportEventBus::new(crate::import::CandidateRuntime::default());
         let events = event_tx.every_event();
         let (fs_tx, fs_rx) = tokio::sync::mpsc::unbounded_channel();
         let scan = TestScan {

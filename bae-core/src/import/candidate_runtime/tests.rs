@@ -495,10 +495,10 @@ fn a_terminal_state_moves_the_run_from_running_to_saving() {
     ));
 }
 
-/// A cancelled run broadcasts `Idle` on its way out. It ends that run and
+/// A cancelled run reports `Idle` on its way out. It ends that run and
 /// nothing else: the run that superseded it keeps the field.
 #[test]
-fn an_idle_ends_only_the_run_that_broadcast_it() {
+fn an_idle_ends_only_the_run_that_reported_it() {
     let runtime = CandidateRuntime::default();
     let key = "/watch/a/rel1";
     runtime.record_event(&identify(key, 2, triangulating()));

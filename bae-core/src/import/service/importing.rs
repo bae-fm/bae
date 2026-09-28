@@ -15,7 +15,7 @@ impl ImportService {
         ids: coven::IdRef,
     ) -> Result<ImportServiceHandle, crate::import::ImportError> {
         let runtime = CandidateRuntime::default();
-        let event_tx = crate::import::handle::ImportEventBus::new(1024, runtime.clone());
+        let event_tx = crate::import::handle::ImportEventBus::new(runtime.clone());
         let services = crate::import::ImportServices::new(
             event_tx,
             library_manager.clone(),
@@ -38,7 +38,7 @@ impl ImportService {
         file_tags: Arc<dyn crate::import::file_tag_snapshot::FileTagReader>,
     ) -> ImportServiceHandle {
         let runtime = CandidateRuntime::default();
-        let event_tx = crate::import::handle::ImportEventBus::new(1024, runtime.clone());
+        let event_tx = crate::import::handle::ImportEventBus::new(runtime.clone());
         let mut services = crate::import::ImportServices::new(
             event_tx,
             library_manager,

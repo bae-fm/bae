@@ -170,9 +170,6 @@ async fn make_library_manager() -> (crate::library::LibraryManager, TempDir) {
     (manager, tmp)
 }
 
-/// How far behind a reader of [`make_service`]'s bus may fall.
-const BUS_CAPACITY: usize = 64;
-
 /// Start a service; the bus sender comes back so a test can inject events.
 async fn make_service() -> (
     ExtractionServiceHandle,
@@ -181,7 +178,7 @@ async fn make_service() -> (
     TempDir,
 ) {
     let candidates = CandidateRuntime::default();
-    let tx = ImportEventBus::new(BUS_CAPACITY, candidates.clone());
+    let tx = ImportEventBus::new(candidates.clone());
     let rx = tx.every_event();
     let (library_manager, lib_tmp) = make_library_manager().await;
     let handle = ExtractionService::start(
