@@ -73,7 +73,16 @@ async fn a_file_tags_draft_is_still_run() {
             "{name}: the draft says who read the tags into it"
         );
 
-        fixture.drain_automatic().await;
+        if reset_by_hand {
+            // The reset is a person's decision, which ends the found release's
+            // identification; asking again runs it over the reset draft.
+            fixture.drain_automatic().await;
+            assert!(fixture.identified_for(&dir).await.is_none());
+            fixture.start_explicit_lookup(&dir);
+            fixture.await_identified_row(&dir).await;
+        } else {
+            fixture.drain_automatic().await;
+        }
 
         assert!(
             fixture.identified_for(&dir).await.is_some(),

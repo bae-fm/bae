@@ -190,18 +190,19 @@ impl ImportServiceHandle {
                 }));
                 for item in returned {
                     let event = match item {
-                        // Each release a separation returns to the queue is
-                        // found, as combining finds the release it makes.
+                        // Each release a separation returns is found, as
+                        // combining finds the release it makes.
                         ScanItem::Valid(candidate) => {
                             let standing = self
                                 .candidate_standing(&candidate.key(), &candidate)
                                 .await?;
-                            self.automatic_admissions
-                                .found(&self.library_manager, candidate.key());
                             ScanEvent::FolderCandidate {
                                 candidate,
                                 skipped: standing.skipped,
                                 is_added: standing.imported,
+                                found_while_automatic: self
+                                    .library_manager
+                                    .identifies_automatically(),
                             }
                         }
                         ScanItem::Discovered(candidate) => {
@@ -228,8 +229,8 @@ impl ImportServiceHandle {
         }
     }
 
-    /// Announce the releases a grouping rebuilt, and hand the new ones to
-    /// automatic identification.
+    /// Announce the releases a grouping rebuilt, saying which are new while
+    /// identification runs on its own.
     async fn announce_regrouped(
         &self,
         regrouped: &crate::db::GroupingChanges,
@@ -243,11 +244,9 @@ impl ImportServiceHandle {
             let event = match item.clone() {
                 ScanItem::Valid(candidate) => {
                     let standing = self.candidate_standing(&candidate.key(), &candidate).await?;
-                    if regrouped.found.contains(&candidate.key()) {
-                        self.automatic_admissions
-                            .found(&self.library_manager, candidate.key());
-                    }
                     ScanEvent::FolderCandidate {
+                        found_while_automatic: regrouped.found.contains(&candidate.key())
+                            && self.library_manager.identifies_automatically(),
                         candidate,
                         skipped: standing.skipped,
                         is_added: standing.imported,

@@ -171,13 +171,12 @@ async fn a_cleared_sheet_can_be_bound_again() {
         )
         .await
         .unwrap();
-    // The release was found while identification ran on its own, and its run
-    // starts now, over the reshaped folder: it finds nothing, and the draft is
-    // the folder's own, one blank track per loose file.
+    // The release was found while identification ran on its own, and the
+    // person's decision ends its identification before a run starts.
     fixture.drain_automatic().await;
     assert!(
-        fixture.identified_for(&dir).await.is_some(),
-        "the found release's run answered the reshaped folder"
+        fixture.identified_for(&dir).await.is_none(),
+        "the cleared binding left the found release unanswered"
     );
     let options = fixture
         .import

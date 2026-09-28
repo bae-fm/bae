@@ -10,45 +10,6 @@ pub(super) fn candidate_identity(candidate: &FolderCandidate) -> CandidateIdenti
     )
 }
 
-/// The releases stored for the first time while
-/// [`IdentificationPreferences::automatic`](crate::config::IdentificationPreferences::automatic)
-/// is on, on their way to the queue.
-///
-/// A channel of its own because the import event bus drops what a subscriber
-/// falls behind on, and a release is found only once.
-#[derive(Clone)]
-pub(crate) struct AutomaticAdmissions {
-    sender: mpsc::UnboundedSender<String>,
-    /// The queue's end, until the queue takes it.
-    receiver: Arc<Mutex<Option<mpsc::UnboundedReceiver<String>>>>,
-}
-
-impl AutomaticAdmissions {
-    pub(crate) fn new() -> Self {
-        let (sender, receiver) = mpsc::unbounded_channel();
-        Self {
-            sender,
-            receiver: Arc::new(Mutex::new(Some(receiver))),
-        }
-    }
-
-    /// The store now holds the release at `key` for the first time; queue it if
-    /// identification runs on its own right now.
-    pub(crate) fn found(&self, library_manager: &LibraryManager, key: String) {
-        if !library_manager.identifies_automatically() {
-            return;
-        }
-        if self.sender.send(key).is_err() {
-            debug!("identification: the queue has stopped; a found release is not queued");
-        }
-    }
-
-    /// The queue's end, for the one queue that takes it.
-    pub(crate) fn take(&self) -> Option<mpsc::UnboundedReceiver<String>> {
-        self.receiver.lock().unwrap().take()
-    }
-}
-
 /// Put the found releases at `keys` on the queue as one automatic admission,
 /// except those that cannot be answered and those whose files already have a
 /// stored result, such as a folder renamed after it was identified.

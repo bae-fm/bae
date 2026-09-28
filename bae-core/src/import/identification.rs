@@ -2,9 +2,10 @@
 //!
 //! A candidate is admitted one of two ways:
 //!
-//! - **Automatic**, at [`CallPriority::Background`]: a release a scan finds for
-//!   the first time while identification runs on its own (see
-//!   `AutomaticAdmissions`). Nothing else admits a candidate on its own.
+//! - **Automatic**, at [`CallPriority::Background`]: a release a scan
+//!   announces as found for the first time while identification runs on its
+//!   own (`found_while_automatic` on [`ScanEvent::FolderCandidate`]). Nothing
+//!   else admits a candidate on its own.
 //! - **Requested**, at [`CallPriority::Interactive`] and ahead of automatic
 //!   jobs: a person asked for it.
 //!
@@ -14,7 +15,8 @@
 //! is kept.
 //!
 //! One loop runs the queue for the library's lifetime: it fills the slots,
-//! follows the import bus, and hands each answer to a settle task, which
+//! follows the import bus's events in the order they were sent, found
+//! releases among them, and hands each answer to a settle task, which
 //! fetches the matched pressing's documents and writes the verdict. The queue
 //! is the only writer of verdicts. A result writes the draft only when it
 //! found one release, and an automatic run that stores an auto-importable verdict starts
@@ -40,7 +42,6 @@ mod handle;
 mod queue;
 mod settle;
 
-pub(crate) use admission::AutomaticAdmissions;
 use admission::*;
 pub use handle::IdentificationHandle;
 use queue::{admit, Queue};
@@ -99,7 +100,7 @@ enum Drain {
 }
 
 /// Start the identification queue over `import`. There is one per import
-/// service, since it takes the service's found releases.
+/// service, since it takes the service's event feed.
 pub fn start(import: ImportServiceHandle, library_manager: LibraryManager) -> IdentificationHandle {
     let token = CancellationToken::new();
     let tasks = TaskTracker::new();
@@ -108,10 +109,6 @@ pub fn start(import: ImportServiceHandle, library_manager: LibraryManager) -> Id
         library_manager,
     };
 
-    let mut found = context
-        .import
-        .take_automatic_admissions()
-        .expect("one identification queue per import service");
     let mut bus = context
         .import
         .take_event_feed()
@@ -132,7 +129,6 @@ pub fn start(import: ImportServiceHandle, library_manager: LibraryManager) -> Id
                 &loop_token,
                 &mut bus,
                 &mut command_rx,
-                &mut found,
                 &config,
             )
             .await;

@@ -728,8 +728,9 @@ impl ImportServiceHandle {
         });
     }
 
-    /// Every import event from now on, for the one identification queue that
-    /// takes it (see [`super::ImportEventBus::take_feed`]).
+    /// Every import event since the service started, for the one
+    /// identification queue that takes it (see
+    /// [`super::ImportEventBus::take_feed`]).
     pub(crate) fn take_event_feed(&self) -> Option<mpsc::UnboundedReceiver<ImportEvent>> {
         self.event_tx.take_feed()
     }

@@ -7,7 +7,7 @@ use tokio::task::JoinSet;
 
 mod reactions;
 
-use reactions::{finish, handle_event};
+use reactions::{finish, handle_events};
 
 /// One candidate on the queue, and which admission put it there.
 struct Entry {
@@ -381,7 +381,6 @@ pub(super) async fn run(
     token: &CancellationToken,
     bus: &mut mpsc::UnboundedReceiver<ImportEvent>,
     commands: &mut mpsc::UnboundedReceiver<Command>,
-    found: &mut mpsc::UnboundedReceiver<String>,
     config: &watch::Receiver<crate::config::Config>,
 ) {
     let mut queue = Queue::default();
@@ -417,18 +416,12 @@ pub(super) async fn run(
                 }
                 return;
             }
-            // Everything found since the queue last looked is one admission.
-            Some(key) = found.recv() => {
-                let keys = std::iter::once(key).chain(pending(found)).collect();
-                admit_found(context, &mut queue, keys).await;
-            }
             Some(command) = commands.recv() => {
                 // Every event sent before the command is on the bus by now, and
                 // is heard first: a decision announced before a request must
                 // not take off the queue the job the request puts on it.
-                while let Ok(event) = bus.try_recv() {
-                    handle_event(context, &mut queue, &settle_token, &mut settling, event).await;
-                }
+                let events = pending(bus).collect();
+                handle_events(context, &mut queue, &settle_token, &mut settling, events).await;
                 match command {
                     Command::Request { candidate_key } => {
                         request(context, &mut queue, candidate_key).await;
@@ -452,7 +445,6 @@ pub(super) async fn run(
                     }
                     #[cfg(any(test, feature = "test-utils"))]
                     Command::AwaitDrained { drain, drained } => {
-                        admit_found(context, &mut queue, pending(found).collect()).await;
                         waiting_for_drain.push((drain, drained));
                     }
                     #[cfg(any(test, feature = "test-utils"))]
@@ -470,15 +462,16 @@ pub(super) async fn run(
                     info!("identification: the import event stream closed");
                     return;
                 };
-                handle_event(context, &mut queue, &settle_token, &mut settling, event).await;
+                let events = std::iter::once(event).chain(pending(bus)).collect();
+                handle_events(context, &mut queue, &settle_token, &mut settling, events).await;
             }
         }
     }
 }
 
-/// The releases found and not yet taken off `found`.
-fn pending(found: &mut mpsc::UnboundedReceiver<String>) -> impl Iterator<Item = String> + '_ {
-    std::iter::from_fn(|| found.try_recv().ok())
+/// The events on the bus not yet taken off it.
+fn pending(bus: &mut mpsc::UnboundedReceiver<ImportEvent>) -> impl Iterator<Item = ImportEvent> + '_ {
+    std::iter::from_fn(|| bus.try_recv().ok())
 }
 
 /// The one way onto the queue: place the candidates under `admission`, then

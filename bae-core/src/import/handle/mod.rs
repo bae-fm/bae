@@ -80,17 +80,17 @@ enum HoldState {
 }
 
 /// The one way an event reaches the bus's readers.
-#[derive(Clone, Default)]
+#[derive(Clone)]
 struct EventDelivery {
     every_event: Arc<std::sync::Mutex<EveryEvent>>,
-    /// Whether the one reader in the app that hears every event was taken.
-    feed_taken: Arc<std::sync::atomic::AtomicBool>,
+    /// The feed's end, holding every event since the bus started, until the
+    /// one reader in the app that acts on every event takes it.
+    feed: Arc<std::sync::Mutex<Option<mpsc::UnboundedReceiver<ImportEvent>>>>,
 }
 
 /// The readers that hear every event, and — for a test reader from the start
 /// — every event delivered so far, under one lock so a reader misses nothing
 /// and hears nothing twice.
-#[derive(Default)]
 struct EveryEvent {
     readers: Vec<mpsc::UnboundedSender<ImportEvent>>,
     #[cfg(any(test, feature = "test-utils"))]
@@ -98,6 +98,18 @@ struct EveryEvent {
 }
 
 impl EventDelivery {
+    fn new() -> Self {
+        let (feed_reader, feed) = mpsc::unbounded_channel();
+        Self {
+            every_event: Arc::new(std::sync::Mutex::new(EveryEvent {
+                readers: vec![feed_reader],
+                #[cfg(any(test, feature = "test-utils"))]
+                delivered: Vec::new(),
+            })),
+            feed: Arc::new(std::sync::Mutex::new(Some(feed))),
+        }
+    }
+
     /// Hand `event` to every reader.
     fn deliver(&self, event: ImportEvent) {
         let mut every_event = self.every_event.lock().unwrap();
@@ -113,7 +125,7 @@ impl ImportEventBus {
     /// A bus recording into `runtime`.
     pub fn new(runtime: CandidateRuntime) -> Self {
         Self {
-            delivery: EventDelivery::default(),
+            delivery: EventDelivery::new(),
             runtime,
             #[cfg(test)]
             send_hold: Arc::default(),
@@ -128,21 +140,13 @@ impl ImportEventBus {
         self.delivery.deliver(event);
     }
 
-    /// Every event from now on, none dropped, each on the reader before its
-    /// send returns, for the one reader in the app that acts on every event.
-    /// A reader that also takes commands hears every event sent before a
-    /// command before the command itself. `None` once taken.
+    /// Every event since the bus started, none dropped, each on the reader
+    /// before its send returns, for the one reader in the app that acts on
+    /// every event, whenever it starts. A reader that also takes commands
+    /// hears every event sent before a command before the command itself.
+    /// `None` once taken.
     pub(crate) fn take_feed(&self) -> Option<mpsc::UnboundedReceiver<ImportEvent>> {
-        if self
-            .delivery
-            .feed_taken
-            .swap(true, std::sync::atomic::Ordering::SeqCst)
-        {
-            return None;
-        }
-        let (reader, events) = mpsc::unbounded_channel();
-        self.delivery.every_event.lock().unwrap().readers.push(reader);
-        Some(events)
+        self.delivery.feed.lock().unwrap().take()
     }
 
     /// Every event sent from now on, none dropped, for a test to wait on.
@@ -318,8 +322,6 @@ pub struct ImportServiceHandle {
     extraction: crate::signals::ExtractionServiceHandle,
     folder_state_commit: crate::import::FolderStateCommit,
     import_cancels: crate::import::import_cancel::ImportCancels,
-    /// Where a release a combination makes goes to be identified on its own.
-    automatic_admissions: crate::import::identification::AutomaticAdmissions,
     watcher: WorkerThread<WatcherCommand>,
     runtime_handle: tokio::runtime::Handle,
 }
@@ -335,6 +337,10 @@ pub enum ScanEvent {
         candidate: FolderCandidate,
         skipped: bool,
         is_added: bool,
+        /// The write this announces listed the release for the first time —
+        /// new to the library, or listed anew by a person's decision about
+        /// how its folder reads — while identification runs on its own.
+        found_while_automatic: bool,
     },
     CandidateDiscovered {
         candidate: FolderCandidate,
@@ -436,7 +442,6 @@ impl ImportServiceHandle {
             directories: _,
             folder_state_commit,
             import_cancels,
-            automatic_admissions,
         } = services;
         let identify = crate::identify::IdentifyServiceHandle::new(
             library_manager.clone(),
@@ -463,18 +468,9 @@ impl ImportServiceHandle {
             extraction,
             folder_state_commit,
             import_cancels,
-            automatic_admissions,
             watcher,
             runtime_handle,
         }
-    }
-
-    /// The releases this service finds, for the one identification queue that
-    /// takes them.
-    pub(crate) fn take_automatic_admissions(
-        &self,
-    ) -> Option<tokio::sync::mpsc::UnboundedReceiver<String>> {
-        self.automatic_admissions.take()
     }
 
     /// Stop and join both worker threads; later calls do nothing. Called from

@@ -1,10 +1,81 @@
-//! What each event does to the work already on the queue. None of them puts a
-//! candidate the queue does not hold on it.
+//! What each event does to the queue. Only a found release puts a candidate
+//! the queue does not hold on it.
 
 use super::*;
 
+/// Apply `events` in the order they were sent. The releases found among them
+/// are one admission, so the count opens at their total; it goes ahead of any
+/// later event about one of them.
+pub(super) async fn handle_events(
+    context: &Context,
+    queue: &mut Queue,
+    settle_token: &CancellationToken,
+    settling: &mut JoinSet<Finished>,
+    events: Vec<ImportEvent>,
+) {
+    let mut found: Vec<String> = Vec::new();
+    for event in events {
+        match event {
+            ImportEvent::Scan(ScanEvent::FolderCandidate {
+                candidate,
+                found_while_automatic: true,
+                ..
+            }) => {
+                let key = candidate.key();
+                if !found.contains(&key) {
+                    found.push(key);
+                }
+            }
+            event => {
+                if subject(&event).is_some_and(|key| found.contains(&key)) {
+                    admit_found_releases(context, queue, std::mem::take(&mut found)).await;
+                }
+                handle_event(context, queue, settle_token, settling, event).await;
+            }
+        }
+    }
+    admit_found_releases(context, queue, found).await;
+}
+
+/// The candidate `event` is about, when it names one.
+fn subject(event: &ImportEvent) -> Option<String> {
+    match event {
+        ImportEvent::ImportProgress { candidate_key, .. }
+        | ImportEvent::IdentifyStateChanged { candidate_key, .. }
+        | ImportEvent::SignalsUpdated { candidate_key, .. }
+        | ImportEvent::Scan(
+            ScanEvent::CandidateRemoved { candidate_key }
+            | ScanEvent::CandidateSkipChanged { candidate_key, .. }
+            | ScanEvent::CandidateMetadataChanged { candidate_key },
+        ) => Some(candidate_key.clone()),
+        ImportEvent::Scan(
+            ScanEvent::FolderCandidate { candidate, .. }
+            | ScanEvent::CandidateDiscovered { candidate, .. }
+            | ScanEvent::CandidateBindingChanged { candidate },
+        ) => Some(candidate.key()),
+        ImportEvent::Scan(ScanEvent::InvalidCandidate(candidate)) => Some(candidate.key()),
+        ImportEvent::Scan(
+            ScanEvent::WatchedFoldersChanged { .. }
+            | ScanEvent::FolderScanStatusChanged { .. }
+            | ScanEvent::Finished,
+        ) => None,
+    }
+}
+
+/// Queue the releases at `keys`, then follow each as any announced candidate
+/// is followed.
+async fn admit_found_releases(context: &Context, queue: &mut Queue, keys: Vec<String>) {
+    if keys.is_empty() {
+        return;
+    }
+    admit_found(context, queue, keys.clone()).await;
+    for key in &keys {
+        follow(context, queue, key).await;
+    }
+}
+
 /// Apply one import event.
-pub(super) async fn handle_event(
+async fn handle_event(
     context: &Context,
     queue: &mut Queue,
     settle_token: &CancellationToken,

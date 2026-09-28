@@ -210,6 +210,8 @@ async fn a_run_the_queue_did_not_start_ends_through_the_same_cancel() {
     let key = dir.to_string_lossy().into_owned();
     fixture.provider.route("/discid/", 200, "{}");
     fixture.provider.hold("/discid/");
+    // Nothing found is queued, so the queue holds nothing for the key.
+    fixture.manager.set_identify_automatically(false).await.unwrap();
     fixture.scan(1).await;
     let candidate = fixture
         .import

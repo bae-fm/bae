@@ -424,7 +424,6 @@ impl CoordinatorHarness {
                 directories: Arc::new(crate::import::folder_scanner::OsDirectoryReader),
                 folder_state_commit: folder_state_commit.clone(),
                 import_cancels: Default::default(),
-                automatic_admissions: crate::import::identification::AutomaticAdmissions::new(),
             },
             starter,
             removal_backend.clone(),
@@ -540,7 +539,6 @@ fn test_scan_services(
             directories,
             folder_state_commit: crate::import::FolderStateCommit::default(),
             import_cancels: Default::default(),
-            automatic_admissions: crate::import::identification::AutomaticAdmissions::new(),
         },
         folder_watcher,
     )

@@ -190,9 +190,9 @@ impl ImportService {
         Ok(())
     }
 
-    /// Announce one stored entry as what it now is, and hand a `found` release
-    /// to automatic identification. A release's skip stamp is its grouping's
-    /// own, or its folder's in `skipped`.
+    /// Announce one stored entry as what it now is, and whether its write
+    /// `found` the release while identification runs on its own. A release's
+    /// skip stamp is its grouping's own, or its folder's in `skipped`.
     async fn announce_item(
         item: ScanItem,
         found: bool,
@@ -225,16 +225,13 @@ impl ImportService {
                     .library_manager
                     .is_content_hash_imported(&candidate.files.content_hash())
                     .await?;
-                if found {
-                    services
-                        .automatic_admissions
-                        .found(&services.library_manager, candidate.key());
-                }
                 event_tx.send(crate::import::handle::ImportEvent::Scan(if actionable {
                     ScanEvent::FolderCandidate {
                         candidate,
                         skipped,
                         is_added,
+                        found_while_automatic: found
+                            && services.library_manager.identifies_automatically(),
                     }
                 } else {
                     ScanEvent::CandidateDiscovered {

@@ -32,6 +32,75 @@ async fn only_a_release_found_while_automatic_is_on_is_identified_on_its_own() {
     );
 }
 
+/// A found release reaches the queue in the order its events were sent: a
+/// removal of its key announced before it does not take it off the queue.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_release_found_after_its_key_was_removed_is_queued() {
+    let fixture = Fixture::new("found-after-removal").await;
+    let dir = fixture.disc_id_candidate("Album");
+    let key = dir.to_string_lossy().into_owned();
+    fixture.provider.route("/discid/", 200, "{}");
+    fixture.manager.set_identify_automatically(false).await.unwrap();
+    fixture.scan(1).await;
+    fixture.manager.set_identify_automatically(true).await.unwrap();
+    let candidate = fixture
+        .import
+        .answerable_candidate(&key)
+        .await
+        .unwrap()
+        .expect("the scanned candidate is answerable");
+
+    fixture.import.emit_event_for_test(ImportEvent::Scan(ScanEvent::CandidateRemoved {
+        candidate_key: key,
+    }));
+    fixture.import.emit_event_for_test(ImportEvent::Scan(ScanEvent::FolderCandidate {
+        candidate,
+        skipped: false,
+        is_added: false,
+        found_while_automatic: true,
+    }));
+    fixture.drain_automatic().await;
+
+    assert!(
+        fixture.identified_for(&dir).await.is_some(),
+        "the release found after the removal is identified: {:?}",
+        fixture.provider.requests()
+    );
+}
+
+/// A removal announced after a release was found takes it off the queue,
+/// however many events the queue reads at once.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_found_release_whose_key_is_then_removed_is_not_identified() {
+    let fixture = Fixture::new("removed-after-found").await;
+    let dir = fixture.disc_id_candidate("Album");
+    let key = dir.to_string_lossy().into_owned();
+    fixture.provider.route("/discid/", 200, "{}");
+    fixture.provider.hold("/discid/");
+    fixture.manager.set_identify_automatically(false).await.unwrap();
+    fixture.scan(1).await;
+    let candidate = fixture
+        .import
+        .answerable_candidate(&key)
+        .await
+        .unwrap()
+        .expect("the scanned candidate is answerable");
+
+    fixture.import.emit_event_for_test(ImportEvent::Scan(ScanEvent::FolderCandidate {
+        candidate,
+        skipped: false,
+        is_added: false,
+        found_while_automatic: true,
+    }));
+    fixture.import.emit_event_for_test(ImportEvent::Scan(ScanEvent::CandidateRemoved {
+        candidate_key: key,
+    }));
+    fixture.drain_automatic().await;
+    fixture.provider.release();
+
+    assert!(fixture.identified_for(&dir).await.is_none());
+}
+
 /// Turning the setting on queues no candidate found while it was off.
 #[tokio::test(flavor = "multi_thread")]
 async fn turning_automatic_identification_on_queues_no_candidate_already_found() {

@@ -31,6 +31,7 @@ fn scanned(candidate: FolderCandidate) -> ImportEvent {
         candidate,
         skipped: false,
         is_added: false,
+        found_while_automatic: false,
     })
 }
 
