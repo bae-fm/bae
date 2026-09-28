@@ -59,6 +59,20 @@ final class FindOnlinePaneTests: XCTestCase {
         )
     }
 
+    /// A sole match that does not fit the folder says why it was not picked,
+    /// under its row, in the words the pane uses beside Import.
+    func testASoleMatchThatDoesNotFitSaysWhy() async throws {
+        let lines = try await renderedText(of: PreviewData.searchStateSoleUnfit)
+
+        XCTAssertTrue(
+            lines.contains {
+                $0.contains("13 in the folder")
+                    && $0.contains("12 on the release")
+            },
+            "the pane reads: \(lines)"
+        )
+    }
+
     /// Nothing has run for this candidate, and starting one is the card's
     /// action, not the pane's: the not-started area offers the other way to a
     /// release — asking for it by name — and no way to start a run.
@@ -640,6 +654,13 @@ struct FindOnlineFinalizingTests {
                 == "rel-456"
         )
         #expect(PreviewData.searchStateFoundExact.finalizingPressing == nil)
+    }
+
+    /// A sole match that does not fit the folder is not picked, so no row
+    /// spins while the answer saves.
+    @Test("a sole match that does not fit does not select itself")
+    func aSoleMatchThatDoesNotFitStaysUnselected() {
+        #expect(PreviewData.searchStateSoleUnfit.finalizingPressing == nil)
     }
 }
 

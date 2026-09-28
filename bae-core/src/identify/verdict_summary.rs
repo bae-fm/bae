@@ -1,8 +1,8 @@
 //! What the queue reads of a stored verdict, and the two judgements made from
 //! it: which check against the folder the found release failed, which the pane
-//! states beside Import, and whether the verdict picks its one release
-//! unattended — applied to the draft as the run settles, and taken by
-//! automatic import.
+//! states beside Import and under the release in Find online, and whether the
+//! verdict picks its one release unattended — applied to the draft as the run
+//! settles, and taken by automatic import.
 //!
 //! Derived on read, never stored: the verdict's own columns are the whole
 //! input. Whether the release is already in the library is not part of either —
@@ -140,7 +140,20 @@ impl VerdictSummary {
         };
         // A failed verdict leads with what its answering lookups found, as a
         // found one does; its kind is what keeps it from being auto-importable.
-        let findings = verdict.findings();
+        Self::with_findings(kind, track_count, verdict.findings())
+    }
+
+    /// A found verdict's summary, from what its lookups found and the
+    /// folder's track count.
+    pub(crate) fn of_found(findings: &super::Findings, track_count: u32) -> Self {
+        Self::with_findings(VerdictKind::Found, Some(track_count), Some(findings))
+    }
+
+    fn with_findings(
+        kind: VerdictKind,
+        track_count: Option<u32>,
+        findings: Option<&super::Findings>,
+    ) -> Self {
         Self {
             kind,
             track_count,

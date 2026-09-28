@@ -495,6 +495,8 @@ impl BridgeIdentifyState {
                 agreements,
                 narrowed_out_count,
                 catalog_agreements,
+                folder_check,
+                picks_unattended,
             } => BridgeIdentifyState::Found {
                 run: run.map(|run| BridgeIdentifyRun::from_core(run, rate)),
                 groups: groups
@@ -512,6 +514,9 @@ impl BridgeIdentifyState {
                     .into_iter()
                     .map(BridgeCatalogAgreement::from_core)
                     .collect(),
+                folder_check: folder_check
+                    .map(|check| crate::types::BridgeFolderCheck::with_rate(check, rate)),
+                picks_unattended,
             },
             IdentifyStateView::NotFoundAnywhere { run } => BridgeIdentifyState::NotFoundAnywhere {
                 run: run.map(|run| BridgeIdentifyRun::from_core(run, rate)),

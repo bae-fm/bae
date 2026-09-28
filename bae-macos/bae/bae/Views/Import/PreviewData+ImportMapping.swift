@@ -578,7 +578,9 @@
                 trackCount: 12,
                 agreements: searchAgreementsExact,
                 narrowedOutCount: 0,
-                catalogAgreements: catalogAgreements
+                catalogAgreements: catalogAgreements,
+                folderCheck: nil,
+                picksUnattended: false
             )
             return candidate
         }()

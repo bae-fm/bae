@@ -3823,7 +3823,7 @@ da = "{count, plural, one {# udgivelse findes kun i skyen. Den kan ikke afspille
 nb = "{count, plural, one {# utgivelse finnes bare i skyen. Den kan ikke spilles av før du kobler til igjen.} other {# utgivelser finnes bare i skyen. De kan ikke spilles av før du kobler til igjen.}}"
 fi = "{count, plural, one {# julkaisu on tallennettu vain pilveen. Sitä ei voi toistaa, ennen kuin yhdistät uudelleen.} other {# julkaisua on tallennettu vain pilveen. Niitä ei voi toistaa, ennen kuin yhdistät uudelleen.}}"
 [messages."core.import.triage.track_count_disagrees"]
-comment = "Import pane, beside the Import button: the folder and the release disagree on how many tracks there are."
+comment = "Import pane, beside the Import button and under the release found in Find online: the folder and the release disagree on how many tracks there are."
 args = { local = "Int", source = "Int" }
 value = "Tracks: {local} in the folder, {source} on the release"
 
@@ -3856,7 +3856,7 @@ da = "Spor: {local} i mappen, {source} på udgivelsen"
 nb = "Spor: {local} i mappen, {source} på utgivelsen"
 fi = "Raidat: {local} kansiossa, {source} julkaisussa"
 [messages."core.import.triage.medium_disagrees.cd_rip"]
-comment = "Import pane, beside the Import button: the folder's rip log (or similar) proves a CD rip, and none of the releases found could be a CD, so none is picked automatically."
+comment = "Import pane, beside the Import button and under the release found in Find online: the folder's rip log (or similar) proves a CD rip, and none of the releases found could be a CD, so none is picked automatically."
 value = "The folder is a CD rip and no release is a CD"
 
 [messages."core.import.triage.medium_disagrees.cd_rip".translations]
@@ -3888,7 +3888,7 @@ da = "Mappen er rippet fra cd, og ingen udgivelse er en cd"
 nb = "Mappen er rippet fra CD, og ingen utgivelse er en CD"
 fi = "Kansio on CD-levyltä ripattu, eikä mikään julkaisu ole CD"
 [messages."core.import.triage.medium_disagrees.not_cd_audio"]
-comment = "Import pane, beside the Import button: the folder's audio is at a sample rate no CD plays at (rate is a locale-formatted number of kilohertz, e.g. 96), and every release found is a CD, so none is picked automatically."
+comment = "Import pane, beside the Import button and under the release found in Find online: the folder's audio is at a sample rate no CD plays at (rate is a locale-formatted number of kilohertz, e.g. 96), and every release found is a CD, so none is picked automatically."
 args = { rate = "Str" }
 value = "The audio is {rate} kHz, which no CD holds, and every release is a CD"
 
@@ -3921,7 +3921,7 @@ da = "Lyden er {rate} kHz, hvilket ingen cd rummer, og hver udgivelse er en cd"
 nb = "Lyden er {rate} kHz, noe ingen CD inneholder, og hver utgivelse er en CD"
 fi = "Ääni on {rate} kHz, jota mikään CD ei sisällä, ja jokainen julkaisu on CD"
 [messages."core.import.triage.source_tracks_unknown"]
-comment = "Import pane, beside the Import button: the release lists no tracks, so its track count cannot be checked against the folder."
+comment = "Import pane, beside the Import button and under the release found in Find online: the release lists no tracks, so its track count cannot be checked against the folder."
 value = "The release lists no tracks"
 
 [messages."core.import.triage.source_tracks_unknown".translations]

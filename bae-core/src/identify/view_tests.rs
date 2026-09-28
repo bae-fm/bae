@@ -781,3 +781,59 @@ fn the_disc_id_s_release_outranks_a_barcode_that_named_another() {
     assert_eq!(groups[0].narrowed_out().count(), 1);
     assert_eq!(narrowed_out_count, 1);
 }
+
+// ── Why nothing was picked ──────────────────────────────────────────────────
+
+/// A found sole release that does not fit the folder states the check it
+/// failed, which says why nothing was picked; one that fits states none and
+/// picks itself.
+#[test]
+fn a_found_release_states_the_check_against_the_folder_it_failed() {
+    let lone = |listed: u32| TerminalVerdict::Found {
+        findings: Findings {
+            matches: vec![MetadataResult {
+                source_tracks: Some(crate::import::search::SourceTracks::Listed { count: listed }),
+                ..MetadataResult::for_test(DG, "dg-1", Some("g"))
+            }],
+            provenance: vec![LookupProvenance {
+                by_disc_id: false,
+                by_barcode: true,
+                by_catalog: false,
+                by_isrc: false,
+                by_search: false,
+                named_by: None,
+            }],
+            pressings: vec![0],
+            narrowed_out: NarrowedOut::default(),
+            medium_conflict: None,
+        },
+        track_count: 13,
+        ledger: None,
+    };
+    let judged = |verdict: TerminalVerdict| {
+        let IdentifyStateView::Found {
+            folder_check,
+            picks_unattended,
+            ..
+        } = IdentifyStateView::from(verdict.resume_state(
+            &not_in_library,
+            Default::default(),
+            Default::default(),
+        ))
+        else {
+            panic!("a found verdict resumes found");
+        };
+        (picks_unattended, folder_check)
+    };
+    assert_eq!(
+        judged(lone(12)),
+        (
+            false,
+            Some(crate::identify::FolderCheck::TrackCountDisagrees {
+                local: 13,
+                source: 12
+            })
+        )
+    );
+    assert_eq!(judged(lone(13)), (true, None));
+}

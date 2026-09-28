@@ -110,6 +110,9 @@ struct FindOnlineAutomaticSection: View {
             }
         case .groups:
             identifiedList {
+                if let folderCheck = state.folderCheck?.localizedText {
+                    FolderCheckNote(text: folderCheck)
+                }
                 narrowedOut
                 ForEach(missingSourceNotes, id: \.self) { note in
                     MissingSourceNote(text: note)
@@ -185,5 +188,18 @@ struct FindOnlineAutomaticSection: View {
                     "\(source) \(step) results are missing from this list."
             )
         }
+    }
+}
+
+/// Why the release found was not picked for the folder: the check against the
+/// folder it failed, under its row.
+private struct FolderCheckNote: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .themeText(.detail)
+            .foregroundStyle(Theme.warning)
+            .padding(.leading, ReleaseGroupSection.rowTextInset)
     }
 }

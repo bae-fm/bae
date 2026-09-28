@@ -26,6 +26,24 @@ mirror_enum! {
     },
 }
 
+mirror_enum! {
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    AutomationMediumConflict = bae_core::identify::MediumConflict,
+    from_core: pub(crate) fn,
+    variants: { CdRip, NotCdAudio },
+}
+
+mirror_enum! {
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    AutomationFolderCheck = bae_core::identify::FolderCheck,
+    from_core: pub(crate) fn,
+    variants: {
+        TrackCountDisagrees { local, source },
+        SourceTracksUnknown,
+        MediumDisagrees { folder: (AutomationMediumConflict) },
+    },
+}
+
 mirror_struct! {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     AutomationProviderCell = bae_core::identify::ProviderCell,
@@ -239,6 +257,8 @@ pub(crate) fn automation_identify_state(
             agreements,
             narrowed_out_count,
             catalog_agreements,
+            folder_check,
+            picks_unattended,
         } => AutomationIdentifyState::Found {
             run: run.map(AutomationIdentifyRun::from_core),
             groups: groups
@@ -256,6 +276,8 @@ pub(crate) fn automation_identify_state(
                 .into_iter()
                 .map(AutomationCatalogAgreement::from_core)
                 .collect(),
+            folder_check: folder_check.map(AutomationFolderCheck::from_core),
+            picks_unattended,
         },
         IdentifyStateView::NotFoundAnywhere { run } => AutomationIdentifyState::NotFoundAnywhere {
             run: run.map(AutomationIdentifyRun::from_core),

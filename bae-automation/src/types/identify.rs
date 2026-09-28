@@ -35,6 +35,23 @@ pub enum AutomationLookupState {
     },
 }
 
+/// Mirrors bae-core's `identify::FolderCheck`.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case", tag = "kind")]
+pub enum AutomationFolderCheck {
+    TrackCountDisagrees { local: u32, source: u32 },
+    SourceTracksUnknown,
+    MediumDisagrees { folder: AutomationMediumConflict },
+}
+
+/// Mirrors bae-core's `identify::MediumConflict`.
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AutomationMediumConflict {
+    CdRip,
+    NotCdAudio,
+}
+
 /// Mirrors bae-core's `identify::ProviderCell`.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationProviderCell {
@@ -224,6 +241,10 @@ pub enum AutomationIdentifyState {
         agreements: Vec<AutomationAgreements>,
         narrowed_out_count: u32,
         catalog_agreements: Vec<AutomationCatalogAgreement>,
+        /// Why the verdict picks none of its releases, when a check against
+        /// the folder failed.
+        folder_check: Option<AutomationFolderCheck>,
+        picks_unattended: bool,
     },
     NotFoundAnywhere {
         run: Option<AutomationIdentifyRun>,

@@ -599,7 +599,9 @@
                 trackCount: 11,
                 agreements: searchAgreementsExact,
                 narrowedOutCount: 0,
-                catalogAgreements: catalogAgreements
+                catalogAgreements: catalogAgreements,
+                folderCheck: nil,
+                picksUnattended: false
             ),
             signals: settledSignals
         )
@@ -645,7 +647,9 @@
                     disagreementAgreements
                 ) { offered, _ in offered },
                 narrowedOutCount: 3,
-                catalogAgreements: catalogAgreements
+                catalogAgreements: catalogAgreements,
+                folderCheck: nil,
+                picksUnattended: false
             ),
             signals: settledSignals
         )
@@ -663,7 +667,9 @@
             trackCount: 11,
             agreements: disagreementAgreements,
             narrowedOutCount: 0,
-            catalogAgreements: catalogAgreements
+            catalogAgreements: catalogAgreements,
+            folderCheck: nil,
+            picksUnattended: false
         )
 
         /// Both signals ran and neither source knew them.
@@ -785,7 +791,47 @@
                 trackCount: 11,
                 agreements: searchAgreementsExact,
                 narrowedOutCount: 0,
-                catalogAgreements: catalogAgreements
+                catalogAgreements: catalogAgreements,
+                folderCheck: nil,
+                picksUnattended: true
+            ),
+            signals: settledSignals,
+            isFinalizing: true
+        )
+
+        /// A sole match whose tracklist does not fit the folder: offered, not
+        /// picked, with the check it failed under its row.
+        static let searchStateSoleUnfit = searchState(
+            identifyState: .found(
+                run: identifyRunFound,
+                groups: [
+                    ReleaseGroup(
+                        bridge: BridgeReleaseGroup(
+                            id: "group-preview",
+                            title: "Album Title",
+                            artist: "Artist Name",
+                            label: "Label Name",
+                            coverArt: nil,
+                            sources: searchGroupExactBridge.sources,
+                            yearMin: 1996,
+                            yearMax: 1996,
+                            sections: [
+                                BridgePressingSection(
+                                    album: nil,
+                                    pressings: [exactPressings[1]],
+                                    narrowedOut: []
+                                )
+                            ]
+                        )
+                    )
+                ],
+                libraryStatuses: [:],
+                trackCount: 13,
+                agreements: searchAgreementsExact,
+                narrowedOutCount: 0,
+                catalogAgreements: catalogAgreements,
+                folderCheck: .trackCountDisagrees(local: 13, source: 12),
+                picksUnattended: false
             ),
             signals: settledSignals,
             isFinalizing: true
@@ -800,7 +846,9 @@
                 trackCount: 11,
                 agreements: searchAgreementsExact,
                 narrowedOutCount: 0,
-                catalogAgreements: catalogAgreements
+                catalogAgreements: catalogAgreements,
+                folderCheck: nil,
+                picksUnattended: false
             ),
             search: searchRunInFlight,
             signals: settledSignals
@@ -815,7 +863,9 @@
                 trackCount: 11,
                 agreements: searchAgreementsExact,
                 narrowedOutCount: 0,
-                catalogAgreements: catalogAgreements
+                catalogAgreements: catalogAgreements,
+                folderCheck: nil,
+                picksUnattended: false
             ),
             search: manualSearchRun,
             signals: settledSignals
@@ -830,7 +880,9 @@
                 trackCount: 11,
                 agreements: searchAgreementsExact,
                 narrowedOutCount: 0,
-                catalogAgreements: catalogAgreements
+                catalogAgreements: catalogAgreements,
+                folderCheck: nil,
+                picksUnattended: false
             ),
             search: searchRunSourceFailed,
             signals: settledSignals
@@ -845,7 +897,9 @@
                 trackCount: 11,
                 agreements: searchAgreementsExact,
                 narrowedOutCount: 0,
-                catalogAgreements: catalogAgreements
+                catalogAgreements: catalogAgreements,
+                folderCheck: nil,
+                picksUnattended: false
             ),
             search: searchRunEmpty,
             signals: settledSignals

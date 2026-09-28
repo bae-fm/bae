@@ -358,6 +358,11 @@ pub enum BridgeIdentifyState {
         narrowed_out_count: u32,
         /// The Catalog # row's chips.
         catalog_agreements: Vec<BridgeCatalogAgreement>,
+        /// The check against the folder the found release failed: why the
+        /// verdict picks none of its releases.
+        folder_check: Option<crate::types::BridgeFolderCheck>,
+        /// Whether the verdict picks its one release unattended.
+        picks_unattended: bool,
     },
     NotFoundAnywhere {
         run: Option<BridgeIdentifyRun>,

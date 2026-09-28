@@ -35,7 +35,7 @@ struct ImportSearchState {
     /// far; a failed run still carries whatever the surviving source found.
     var identifiedGroups: [ReleaseGroup] {
         switch identifyState {
-        case .found(_, let groups, _, _, _, _, _): groups
+        case .found(_, let groups, _, _, _, _, _, _, _): groups
         case .failed(_, _, let groups, _, _, _, _): groups
         case .triangulating(_, let groups, _, _, _): groups
         case .idle, .notFoundAnywhere, .manualOnly: []
@@ -52,7 +52,7 @@ struct ImportSearchState {
     /// keyed by release id — the row badges, and what ordered the rows.
     var identifiedAgreements: [String: BridgeAgreements] {
         switch identifyState {
-        case .found(_, _, _, _, let agreements, _, _): agreements
+        case .found(_, _, _, _, let agreements, _, _, _, _): agreements
         case .failed(_, _, _, _, let agreements, _, _): agreements
         case .triangulating(_, _, _, let agreements, _): agreements
         case .idle, .notFoundAnywhere, .manualOnly: [:]
@@ -65,6 +65,12 @@ struct ImportSearchState {
         identifyState.catalogAgreements
     }
 
+    /// The check against the folder the found release failed: why nothing
+    /// was picked.
+    var folderCheck: BridgeFolderCheck? {
+        identifyState.folderCheck
+    }
+
     /// The automatic lookups that failed, each naming what it was and why.
     var identifyFailures: [BridgeIdentifyFailure] {
         guard
@@ -75,14 +81,11 @@ struct ImportSearchState {
         return failures
     }
 
-    /// The pressing core is picking on its own: a sole match selects itself,
-    /// and its row holds the spinner while its details fetch and the answer
-    /// saves. `nil` when nothing is finalizing, or when the verdict left
-    /// several to choose from — those wait on a person.
+    /// The pressing core is picking on its own, whose row holds the spinner
+    /// while its details fetch and the answer saves. `nil` when nothing is
+    /// finalizing, or when the verdict picks nothing — those wait on a person.
     var finalizingPressing: Pressing? {
-        guard isFinalizing else { return nil }
-        let pressings = identifiedGroups.flatMap(\.pressings)
-        guard pressings.count == 1 else { return nil }
-        return pressings[0]
+        guard isFinalizing, identifyState.picksUnattended else { return nil }
+        return identifiedGroups.flatMap(\.pressings).first
     }
 }

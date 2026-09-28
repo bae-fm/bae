@@ -223,6 +223,11 @@ pub enum IdentifyStateView {
         narrowed_out_count: u32,
         /// The Catalog # row's chips.
         catalog_agreements: Vec<CatalogAgreementView>,
+        /// The check against the folder the found release failed: why the
+        /// verdict picks none of its releases.
+        folder_check: Option<super::FolderCheck>,
+        /// Whether the verdict picks its one release unattended.
+        picks_unattended: bool,
     },
 
     NotFoundAnywhere {
@@ -280,6 +285,7 @@ impl From<IdentifyState> for IdentifyStateView {
                 ledger,
                 context,
             } => {
+                let summary = super::VerdictSummary::of_found(&findings, track_count);
                 let catalog_agreements = catalog_agreements(&findings, &context.text);
                 let folded = fold(findings, library_statuses, &context.text);
                 IdentifyStateView::Found {
@@ -290,6 +296,8 @@ impl From<IdentifyState> for IdentifyStateView {
                     agreements: folded.agreements,
                     narrowed_out_count: folded.narrowed_out_count,
                     catalog_agreements,
+                    folder_check: summary.folder_check(),
+                    picks_unattended: summary.picks_unattended(),
                 }
             }
 
@@ -368,7 +376,7 @@ struct Folded {
 /// way. Badges belong to a row, so every release id in a row answers with the
 /// row's badges.
 fn fold(findings: Findings, library_statuses: LibraryStatuses, text: &CandidateText) -> Folded {
-    // The medium conflict is stated by the queue, not here.
+    // The medium conflict is stated by the folder check, not here.
     let Findings {
         matches,
         provenance,

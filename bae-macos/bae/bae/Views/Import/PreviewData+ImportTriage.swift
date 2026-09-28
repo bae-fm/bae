@@ -105,7 +105,9 @@
                 trackCount: 12,
                 agreements: searchAgreementsExact,
                 narrowedOutCount: 0,
-                catalogAgreements: catalogAgreements
+                catalogAgreements: catalogAgreements,
+                folderCheck: nil,
+                picksUnattended: false
             )
         )
 
@@ -154,7 +156,9 @@
                 trackCount: 1,
                 agreements: [:],
                 narrowedOutCount: 0,
-                catalogAgreements: []
+                catalogAgreements: [],
+                folderCheck: .trackCountDisagrees(local: 1, source: 10),
+                picksUnattended: false
             )
         )
 
@@ -181,7 +185,9 @@
                 trackCount: 14,
                 agreements: searchAgreementsExact,
                 narrowedOutCount: 0,
-                catalogAgreements: catalogAgreements
+                catalogAgreements: catalogAgreements,
+                folderCheck: nil,
+                picksUnattended: false
             )
         )
 
@@ -255,7 +261,9 @@
                 trackCount: 9,
                 agreements: searchAgreementsExact,
                 narrowedOutCount: 0,
-                catalogAgreements: catalogAgreements
+                catalogAgreements: catalogAgreements,
+                folderCheck: nil,
+                picksUnattended: false
             )
         )
 
@@ -270,7 +278,9 @@
                     trackCount: 9,
                     agreements: searchAgreementsExact,
                     narrowedOutCount: 0,
-                    catalogAgreements: catalogAgreements
+                    catalogAgreements: catalogAgreements,
+                    folderCheck: nil,
+                    picksUnattended: false
                 )
             )
 

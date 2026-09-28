@@ -323,7 +323,7 @@ impl crate::types::BridgeIdentificationStatus {
 // only the pane has at hand.
 impl crate::types::BridgeFolderCheck {
     /// A check with the rate of the audio's files.
-    fn with_rate(check: bae_core::identify::FolderCheck, rate: Option<u32>) -> Self {
+    pub(crate) fn with_rate(check: bae_core::identify::FolderCheck, rate: Option<u32>) -> Self {
         use bae_core::identify::FolderCheck;
         match check {
             FolderCheck::TrackCountDisagrees { local, source } => {

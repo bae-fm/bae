@@ -307,6 +307,12 @@ struct ImportSearchPane: View {
             .importPreviewEnvironment()
     }
 
+    #Preview("Find online — a sole match that does not fit") {
+        ImportSearchPane.preview(state: PreviewData.searchStateSoleUnfit)
+            .frame(width: 900, height: 620)
+            .importPreviewEnvironment()
+    }
+
     #Preview("Find online — searching") {
         ImportSearchPane.preview(
             state: PreviewData.searchStateSearching,

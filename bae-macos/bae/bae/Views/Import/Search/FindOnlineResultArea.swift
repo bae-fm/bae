@@ -30,7 +30,7 @@ enum FindOnlineResultArea: Equatable {
             self = .notStarted
         case .triangulating:
             self = .identifying
-        case .found(_, let groups, _, _, _, _, _):
+        case .found(_, let groups, _, _, _, _, _, _, _):
             self = groups.isEmpty ? .nothingFound : .groups
         case .notFoundAnywhere:
             self = .nothingFound
