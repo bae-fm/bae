@@ -351,12 +351,20 @@ struct ImportCandidateListContent: View {
                                 cancelReveal()
                                 listSlot.setSortOrder(order)
                             },
-                            pendingFilter: uiStore.importCandidatePendingFilter,
+                            pendingFilters: uiStore
+                                .importCandidatePendingFilters,
                             pendingFilterApplies: uiStore
                                 .importCandidateTab == .pending,
-                            onSetPendingFilter: { filter in
+                            onSetPendingFilter: { filter, checked in
                                 cancelReveal()
-                                listSlot.setPendingFilter(filter)
+                                listSlot.setPendingFilter(
+                                    filter,
+                                    checked: checked
+                                )
+                            },
+                            onShowAllPending: {
+                                cancelReveal()
+                                listSlot.showAllPending()
                             },
                             onAddFolder: onAddFolder,
                             onSetAllGroupsExpanded: { expanded in

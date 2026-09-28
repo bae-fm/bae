@@ -304,7 +304,8 @@ async fn a_sole_release_with_an_unread_document_reads_back_as_needing_you() {
     store_verdict(&db, &candidate, unread).await;
 
     let mut needs_you = request(TriageTab::Pending).await;
-    needs_you.view.pending_filter = Some(crate::import::PendingFilter::NeedsYou);
+    needs_you.view.pending_filters = crate::import::PendingFilters::default()
+        .with_checked(crate::import::PendingFilter::NeedsYou, true);
     let projection = db.load_import_list(needs_you).await.unwrap();
     assert_eq!(
         rows(&projection)

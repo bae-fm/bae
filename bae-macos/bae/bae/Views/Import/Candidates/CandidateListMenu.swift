@@ -20,11 +20,13 @@ struct CandidateListMenu: View, Equatable {
     let hasGroups: Bool
     let sortOrder: BridgeImportListOrder
     let onSetSortOrder: (BridgeImportListOrder) -> Void
-    /// Which of Pending's rows the list shows; `nil` shows them all.
-    let pendingFilter: BridgePendingFilter?
+    /// The states Pending's rows are narrowed to; empty shows them all.
+    let pendingFilters: [BridgePendingFilter]
     /// Whether the tab on show is Pending, the one tab the filter applies to.
     let pendingFilterApplies: Bool
-    let onSetPendingFilter: (BridgePendingFilter?) -> Void
+    let onSetPendingFilter:
+        (_ filter: BridgePendingFilter, _ checked: Bool) -> Void
+    let onShowAllPending: () -> Void
     let onAddFolder: () -> Void
     /// Fold every folder group in the queue open (`true`) or shut (`false`).
     let onSetAllGroupsExpanded: (_ expanded: Bool) -> Void
@@ -42,7 +44,7 @@ struct CandidateListMenu: View, Equatable {
             && lhs.networkFolders == rhs.networkFolders
             && lhs.hasGroups == rhs.hasGroups
             && lhs.sortOrder == rhs.sortOrder
-            && lhs.pendingFilter == rhs.pendingFilter
+            && lhs.pendingFilters == rhs.pendingFilters
             && lhs.pendingFilterApplies == rhs.pendingFilterApplies
             && hasFailedScan(in: lhs.scanStatuses)
                 == hasFailedScan(in: rhs.scanStatuses)
@@ -100,9 +102,10 @@ struct CandidateListMenu: View, Equatable {
                     .tag(BridgeImportListOrder.pathDescending)
             }
             .pickerStyle(.inline)
-            PendingFilterPicker(
-                selection: pendingFilter,
-                onSelect: onSetPendingFilter
+            PendingFilterSection(
+                filters: pendingFilters,
+                onSetFilter: onSetPendingFilter,
+                onShowAll: onShowAllPending
             )
             .disabled(!pendingFilterApplies)
             Section("Folders") {
@@ -135,7 +138,7 @@ struct CandidateListMenu: View, Equatable {
                 .overlay(alignment: .topTrailing) {
                     // A filter hiding Pending rows marks the trigger, so a
                     // short list never reads as a short queue.
-                    if pendingFilter != nil && !hasFailedScan {
+                    if !pendingFilters.isEmpty && !hasFailedScan {
                         Circle()
                             .fill(Color.accentColor)
                             .frame(width: 6, height: 6)
@@ -251,9 +254,10 @@ struct CandidateListMenu: View, Equatable {
             hasGroups: true,
             sortOrder: .newestFirst,
             onSetSortOrder: { _ in },
-            pendingFilter: .identified,
+            pendingFilters: [.needsYou, .identified],
             pendingFilterApplies: true,
-            onSetPendingFilter: { _ in },
+            onSetPendingFilter: { _, _ in },
+            onShowAllPending: {},
             onAddFolder: {},
             onSetAllGroupsExpanded: { _ in },
             onRefreshFolder: { _ in },

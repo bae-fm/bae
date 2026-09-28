@@ -2,7 +2,7 @@
 //! shows while its run or import is queued or going, and leaves when it ends.
 
 use super::*;
-use crate::import::{ImportListSubscription, ImportListView, PendingFilter};
+use crate::import::{ImportListSubscription, ImportListView, PendingFilter, PendingFilters};
 
 /// The list under a live filter, and the keys its last snapshot showed.
 struct LiveList {
@@ -11,10 +11,10 @@ struct LiveList {
 }
 
 impl LiveList {
-    fn new(handle: &ImportServiceHandle, filter: PendingFilter) -> Self {
+    fn new(handle: &ImportServiceHandle, filters: &[PendingFilter]) -> Self {
         Self {
             list: handle.subscribe_whole_list(ImportListView {
-                pending_filter: Some(filter),
+                pending_filters: filters.iter().copied().collect::<PendingFilters>(),
                 ..ImportListView::default()
             }),
             shown: None,
@@ -64,7 +64,7 @@ fn import_event(key: &str, progress: crate::import::ImportProgress) -> ImportEve
 #[tokio::test(flavor = "multi_thread")]
 async fn importing_shows_a_queued_and_a_running_import_until_it_ends() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
-    let mut list = LiveList::new(&handle, PendingFilter::Importing);
+    let mut list = LiveList::new(&handle, &[PendingFilter::Importing]);
     list.shows(&[]).await;
 
     handle.claim_candidate_for_import(&key, "import-1").await;
@@ -96,7 +96,7 @@ async fn importing_shows_a_queued_and_a_running_import_until_it_ends() {
 #[tokio::test(flavor = "multi_thread")]
 async fn identifying_shows_a_queued_and_a_running_run_until_it_ends() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
-    let mut list = LiveList::new(&handle, PendingFilter::Identifying);
+    let mut list = LiveList::new(&handle, &[PendingFilter::Identifying]);
     list.shows(&[]).await;
 
     handle.admit_identification(vec![key.clone()], crate::import::Admission::Requested);
@@ -111,6 +111,40 @@ async fn identifying_shows_a_queued_and_a_running_run_until_it_ends() {
     list.shows(&[&key]).await;
 
     handle.cancel_identification(&key);
+    list.shows(&[]).await;
+    shut_down(handle).await;
+}
+
+/// Under Identifying and Importing both, a candidate shows while either is
+/// going for it.
+#[tokio::test(flavor = "multi_thread")]
+async fn identifying_and_importing_show_a_candidate_while_either_goes() {
+    let (handle, _tmp, key, _hash) = pane_fixture().await;
+    let mut list = LiveList::new(
+        &handle,
+        &[PendingFilter::Identifying, PendingFilter::Importing],
+    );
+    list.shows(&[]).await;
+
+    handle.admit_identification(vec![key.clone()], crate::import::Admission::Requested);
+    handle.event_tx.send(ImportEvent::IdentifyStateChanged {
+        candidate_key: key.clone(),
+        run: crate::identify::IdentifyRunId::for_test(1),
+        state: crate::import::candidate_runtime::tests::triangulating(),
+        priority: crate::util::rate_limiter::CallPriority::Interactive,
+    });
+    list.shows(&[&key]).await;
+    handle.cancel_identification(&key);
+    list.shows(&[]).await;
+
+    handle.claim_candidate_for_import(&key, "import-1").await;
+    list.shows(&[&key]).await;
+    handle.event_tx.send(import_event(
+        &key,
+        crate::import::ImportProgress::Cancelled {
+            import_id: "import-1".to_string(),
+        },
+    ));
     list.shows(&[]).await;
     shut_down(handle).await;
 }

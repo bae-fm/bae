@@ -24,7 +24,7 @@ final class CandidateListMenuTests: XCTestCase {
     private func menu(
         status: BridgeFolderScanStatus,
         sortOrder: BridgeImportListOrder = .newestFirst,
-        pendingFilter: BridgePendingFilter? = nil
+        pendingFilters: [BridgePendingFilter] = []
     ) -> CandidateListMenu {
         CandidateListMenu(
             watchedFolders: [
@@ -36,9 +36,10 @@ final class CandidateListMenuTests: XCTestCase {
             hasGroups: false,
             sortOrder: sortOrder,
             onSetSortOrder: { _ in },
-            pendingFilter: pendingFilter,
+            pendingFilters: pendingFilters,
             pendingFilterApplies: true,
-            onSetPendingFilter: { _ in },
+            onSetPendingFilter: { _, _ in },
+            onShowAllPending: {},
             onAddFolder: {},
             onSetAllGroupsExpanded: { _ in },
             onRefreshFolder: { _ in },
@@ -58,11 +59,11 @@ final class CandidateListMenuTests: XCTestCase {
     func testChangedPendingFilterReplacesTheMenuCheckmark() {
         XCTAssertNotEqual(
             menu(status: .complete),
-            menu(status: .complete, pendingFilter: .identified)
+            menu(status: .complete, pendingFilters: [.identified])
         )
         XCTAssertNotEqual(
-            menu(status: .complete, pendingFilter: .needsYou),
-            menu(status: .complete, pendingFilter: .importError)
+            menu(status: .complete, pendingFilters: [.needsYou]),
+            menu(status: .complete, pendingFilters: [.needsYou, .importError])
         )
     }
 }

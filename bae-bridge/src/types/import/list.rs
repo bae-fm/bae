@@ -22,15 +22,17 @@ pub enum BridgeImportListOrder {
 pub struct BridgeImportListView {
     pub tab: BridgeTriageTab,
     pub filter_text: String,
-    /// Which of Pending's rows the list shows; `None` shows every row.
-    pub pending_filter: Option<BridgePendingFilter>,
+    /// The states Pending's rows are narrowed to, in the menu's order: the
+    /// list shows the rows any of them keeps, and every row when empty.
+    /// Changed through `bridge_pending_filters_with`.
+    pub pending_filters: Vec<BridgePendingFilter>,
     /// The groups folded shut. Their entries are not in the list at all, which
     /// is why this is part of the request rather than a rendering decision.
     pub collapsed_groups: Vec<BridgeFolderReleaseDecisionKey>,
     pub order: BridgeImportListOrder,
 }
 
-/// Which of Pending's rows the list shows. Mirrors
+/// One state Pending's rows can be narrowed to. Mirrors
 /// `bae_core::import::PendingFilter`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, uniffi::Enum)]
 pub enum BridgePendingFilter {
@@ -62,6 +64,26 @@ pub fn bridge_pending_filter_groups() -> Vec<Vec<BridgePendingFilter>> {
                 .map(BridgePendingFilter::from_core)
                 .collect()
         })
+        .collect()
+}
+
+/// `filters` after the person checks (`true`) or clears `filter`. Checking
+/// the last unchecked state and clearing the last checked one both come to
+/// every row: an empty list.
+#[cfg(feature = "desktop")]
+#[uniffi::export]
+pub fn bridge_pending_filters_with(
+    filters: Vec<BridgePendingFilter>,
+    filter: BridgePendingFilter,
+    checked: bool,
+) -> Vec<BridgePendingFilter> {
+    filters
+        .into_iter()
+        .map(BridgePendingFilter::into_core)
+        .collect::<bae_core::import::PendingFilters>()
+        .with_checked(filter.into_core(), checked)
+        .into_iter()
+        .map(BridgePendingFilter::from_core)
         .collect()
 }
 

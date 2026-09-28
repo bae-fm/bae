@@ -14,13 +14,13 @@
 
 use super::{
     FolderScanProgress, ImportListProjection, ImportListRequest, ImportListSnapshot,
-    ImportListView, PendingFilter, UploadStanding,
+    ImportListView, UploadStanding,
 };
 use crate::import::candidate_runtime::RuntimeFactsWatch;
 use crate::import::triage::TriageRuntimeFacts;
-use std::collections::HashMap;
 use crate::library::{LibraryPageWindows, OutboxSnapshot};
 use crate::live_query::CancellableLiveQuery;
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use tokio::sync::watch;
 
@@ -65,8 +65,10 @@ impl StandingRequest {
             request,
             runtime_facts,
         } = &mut *standing;
-        request.live_matches =
-            PendingFilter::live_matches(request.view.pending_filter, runtime_facts.iter());
+        request.live_matches = request
+            .view
+            .pending_filters
+            .live_matches(runtime_facts.iter());
         self.query
             .set(request.clone())
             .map_err(|_| ImportListSubscriptionError::Cancelled)

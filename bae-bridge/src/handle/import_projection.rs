@@ -400,7 +400,7 @@ mirror_enum! {
 mirror_enum! {
     crate::types::BridgePendingFilter = bae_core::import::PendingFilter,
     from_core: pub(crate) fn,
-    into_core: fn,
+    into_core: pub(crate) fn,
     variants: { Identified, NeedsYou, Identifying, Importing, LookupError, ImportError },
 }
 
@@ -410,7 +410,7 @@ mirror_struct! {
     fields: {
         tab: (crate::types::BridgeTriageTab),
         filter_text,
-        pending_filter: (opt crate::types::BridgePendingFilter),
+        pending_filters: (each crate::types::BridgePendingFilter),
         collapsed_groups: (each crate::types::BridgeFolderReleaseDecisionKey),
         order: (crate::types::BridgeImportListOrder),
     },

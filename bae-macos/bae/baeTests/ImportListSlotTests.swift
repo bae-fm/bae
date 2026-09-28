@@ -303,6 +303,53 @@ struct ImportListSlotTests {
         #expect(writes.all == ["toggle", "select all", "keep shown in done"])
     }
 
+    /// The slot sends which state the person checked or cleared, and the
+    /// view it asks for is what core makes of that: states in the menu's
+    /// order, and every state checked the same as none.
+    @Test("checked states narrow the view as core decides")
+    func checkedStatesNarrowTheViewAsCoreDecides() async throws {
+        let requests = RecordedImportView()
+        let uiStore = UiStore()
+        let source = ImportListPreviewPageSource(items: [])
+        let slot = ImportListSlot(
+            importStore: ImportStore(),
+            uiStore: uiStore,
+            selection: ImportSelection(),
+            makeSource: { view in
+                requests.set(view)
+                return ImportListPages(
+                    source: source,
+                    setView: { requests.set($0) },
+                    waitForView: { _ in }
+                )
+            },
+            locateCandidate: { _, _ in nil },
+            firstIdentifyingCandidate: { _ in nil }
+        )
+        slot.startLoad()
+        try await Wait.until { slot.list != nil }
+
+        slot.setPendingFilter(.importError, checked: true)
+        slot.setPendingFilter(.needsYou, checked: true)
+        #expect(requests.last?.pendingFilters == [.needsYou, .importError])
+        #expect(
+            uiStore.importCandidatePendingFilters == [.needsYou, .importError]
+        )
+
+        slot.setPendingFilter(.importError, checked: false)
+        #expect(requests.last?.pendingFilters == [.needsYou])
+
+        for filter in PendingFilterSection.groups.joined() {
+            slot.setPendingFilter(filter, checked: true)
+        }
+        #expect(requests.last?.pendingFilters == [])
+        #expect(uiStore.importCandidatePendingFilters.isEmpty)
+
+        slot.setPendingFilter(.identified, checked: true)
+        slot.showAllPending()
+        #expect(requests.last?.pendingFilters == [])
+    }
+
 }
 
 final class CandidatePlacementNavigationTests: XCTestCase {

@@ -136,7 +136,7 @@ class UiStore: @unchecked Sendable {
     /// filter still hiding rows would read as rows gone missing.
     var importCandidateTab: BridgeTriageTab = .pending
     var importCandidateFilterText: String = ""
-    var importCandidatePendingFilter: BridgePendingFilter?
+    var importCandidatePendingFilters: [BridgePendingFilter] = []
 
     private var releaseGroupDisclosureState: [ReleaseGroupDisclosureID: Bool] =
         [:]
@@ -315,8 +315,8 @@ class UiStore: @unchecked Sendable {
         importCandidateFilterText = text
     }
 
-    func setImportCandidatePendingFilter(_ filter: BridgePendingFilter?) {
-        importCandidatePendingFilter = filter
+    func setImportCandidatePendingFilters(_ filters: [BridgePendingFilter]) {
+        importCandidatePendingFilters = filters
     }
 
     /// The groups folded shut, as the list request names them. A group with no

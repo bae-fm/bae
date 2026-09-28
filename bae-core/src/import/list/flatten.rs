@@ -4,14 +4,15 @@
 //! The filter matches only the text each row shows.
 
 use super::{
-    GroupHeaderRow, ImportCandidateListLocation, ImportListItem, ImportListOrder, ImportListRequest, ImportListView, ImportQueueSummary, PlacedRow,
+    GroupHeaderRow, ImportCandidateListLocation, ImportListItem, ImportListOrder,
+    ImportListRequest, ImportListView, ImportQueueSummary, PendingFilters, PlacedRow,
     UploadStanding,
 };
 use crate::db::{ImportQueueRows, ScanCandidateKind, ScanCandidateListRow};
 use crate::identify::VerdictSummary;
 use crate::import::triage::{
-    import_status_of, place, CandidateActionBasis, MatchedRelease, TriageGroup,
-    TriageImportStatus, TriagePlacement, TriageReading, TriageRow, TriageTab, TriageTabCounts,
+    import_status_of, place, CandidateActionBasis, MatchedRelease, TriageGroup, TriageImportStatus,
+    TriagePlacement, TriageReading, TriageRow, TriageTab, TriageTabCounts,
 };
 use crate::import::watched_folder::candidate_relative_path;
 use crate::import::FolderReleaseDecisionKey;
@@ -386,7 +387,7 @@ pub(crate) fn locate_candidate(
 fn unfiltered(request: &ImportListRequest) -> ImportListRequest {
     let mut request = request.clone();
     request.view.filter_text.clear();
-    request.view.pending_filter = None;
+    request.view.pending_filters = PendingFilters::default();
     request.live_matches.clear();
     request
 }
@@ -532,11 +533,14 @@ fn combinable_roots(rows: &ImportQueueRows) -> HashSet<(String, String)> {
         .map(|(folder, _)| folder.clone())
         .collect();
     for row in &releases {
-        let nearest = ancestors(&row.display_path).into_iter().rev().find(|ancestor| {
-            let folder = (row.watched_folder_path.clone(), ancestor.clone());
-            !rows.folder_readings.contains_key(&folder)
-                && held.get(&folder).copied().unwrap_or(0) >= 2
-        });
+        let nearest = ancestors(&row.display_path)
+            .into_iter()
+            .rev()
+            .find(|ancestor| {
+                let folder = (row.watched_folder_path.clone(), ancestor.clone());
+                !rows.folder_readings.contains_key(&folder)
+                    && held.get(&folder).copied().unwrap_or(0) >= 2
+            });
         if let Some(nearest) = nearest {
             combinable.insert((row.watched_folder_path.clone(), nearest));
         }
@@ -584,10 +588,7 @@ struct TextFilter(Option<String>);
 
 impl TextFilter {
     fn of(view: &ImportListView) -> Self {
-        Self(
-            view.filters()
-                .then(|| view.filter_text.to_lowercase()),
-        )
+        Self(view.filters().then(|| view.filter_text.to_lowercase()))
     }
 
     /// Whether a row showing `shown` survives the filter; `shown` is only
@@ -660,7 +661,11 @@ fn summarise(
         };
         let row = &placed[index].row;
         if entry.matches_filter && entry.tab == TriageTab::Pending {
-            pending_covers.extend(row.matched.as_ref().and_then(|matched| matched.cover.clone()));
+            pending_covers.extend(
+                row.matched
+                    .as_ref()
+                    .and_then(|matched| matched.cover.clone()),
+            );
         }
     }
     ImportQueueSummary {

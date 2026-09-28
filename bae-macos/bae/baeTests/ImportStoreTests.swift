@@ -598,7 +598,7 @@ extension ImportListPageSourceTests {
         let view = BridgeImportListView(
             tab: .pending,
             filterText: "",
-            pendingFilter: nil,
+            pendingFilters: [],
             collapsedGroups: [],
             order: .pathAscending
         )
@@ -644,7 +644,7 @@ extension ImportListPageSourceTests {
                 BridgeImportListView(
                     tab: .pending,
                     filterText: "",
-                    pendingFilter: nil,
+                    pendingFilters: [],
                     collapsedGroups: [],
                     order: .pathAscending
                 )
@@ -677,7 +677,7 @@ extension ImportListPageSourceTests {
                 BridgeImportListView(
                     tab: .pending,
                     filterText: "",
-                    pendingFilter: nil,
+                    pendingFilters: [],
                     collapsedGroups: [],
                     order: .pathAscending
                 )
@@ -722,7 +722,7 @@ extension ImportListPageSourceTests {
                 BridgeImportListView(
                     tab: .pending,
                     filterText: "",
-                    pendingFilter: nil,
+                    pendingFilters: [],
                     collapsedGroups: [],
                     order: .pathAscending
                 )

@@ -107,7 +107,7 @@ final class ImportListSlot {
         view = BridgeImportListView(
             tab: uiStore.importCandidateTab,
             filterText: uiStore.importCandidateFilterText,
-            pendingFilter: uiStore.importCandidatePendingFilter,
+            pendingFilters: uiStore.importCandidatePendingFilters,
             collapsedGroups: uiStore.collapsedReleaseGroupKeys,
             order: initialOrder
         )
@@ -133,10 +133,26 @@ final class ImportListSlot {
         updateView { $0.filterText = text }
     }
 
-    /// Show only the Pending rows `filter` keeps, or every row for `nil`.
-    func setPendingFilter(_ filter: BridgePendingFilter?) {
-        uiStore.setImportCandidatePendingFilter(filter)
-        updateView { $0.pendingFilter = filter }
+    /// Check or clear one state Pending's rows are narrowed to; core says
+    /// what that leaves narrowing them.
+    func setPendingFilter(_ filter: BridgePendingFilter, checked: Bool) {
+        setPendingFilters(
+            bridgePendingFiltersWith(
+                filters: view.pendingFilters,
+                filter: filter,
+                checked: checked
+            )
+        )
+    }
+
+    /// Show every Pending row.
+    func showAllPending() {
+        setPendingFilters([])
+    }
+
+    private func setPendingFilters(_ filters: [BridgePendingFilter]) {
+        uiStore.setImportCandidatePendingFilters(filters)
+        updateView { $0.pendingFilters = filters }
     }
 
     func setSortOrder(_ order: BridgeImportListOrder) {
@@ -166,7 +182,7 @@ final class ImportListSlot {
         }
         uiStore.setImportCandidateTab(location.tab)
         uiStore.setImportCandidateFilterText("")
-        uiStore.setImportCandidatePendingFilter(nil)
+        uiStore.setImportCandidatePendingFilters([])
         if let groupKey = location.groupKey {
             uiStore.setReleaseGroupExpanded(
                 releaseGroupDisclosureID(groupKey),
@@ -176,7 +192,7 @@ final class ImportListSlot {
         var next = view
         next.tab = location.tab
         next.filterText = ""
-        next.pendingFilter = nil
+        next.pendingFilters = []
         next.collapsedGroups = uiStore.collapsedReleaseGroupKeys
         view = next
         try await selectOnly(candidateKey)

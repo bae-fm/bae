@@ -202,7 +202,7 @@ desktop_only! {
         ImportCandidateDetailProjection, ImportCandidateListLocation, ImportListItem,
         ImportListOrder, ImportListProjection, ImportListRequest, ImportListSnapshot,
         ImportListSubscription, ImportListSubscriptionError, ImportListView, ImportListWindow,
-        ImportQueueSummary, PendingFilter,
+        ImportQueueSummary, PendingFilter, PendingFilters,
     };
     pub use mapping::{
         mapping_table, mapping_tracks, MappingBecomes,

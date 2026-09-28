@@ -22,15 +22,14 @@
 //! [`CandidateLiveState`].
 
 use super::cover_art::{CoverChoice, RemoteCover};
+use super::folder_scanner::FolderCandidate;
 use super::folder_scanner::{FolderReleaseDecisionKey, InvalidCandidate};
 use super::mapping::MappingTable;
-use super::folder_scanner::FolderCandidate;
 use super::search::ImportSearchReleaseDetail;
 use super::triage::{
-    import_status_of, place, stated_folder_check, CandidateActionBasis, CandidateLiveState, ImportedRow,
-    TriageGroup, TriageImportStatus, TriageMetadataSummary, TriagePlacement, TriageReading,
-    TriageRow,
-    TriageRuntimeFacts, TriageTabCounts,
+    import_status_of, place, stated_folder_check, CandidateActionBasis, CandidateLiveState,
+    ImportedRow, TriageGroup, TriageImportStatus, TriageMetadataSummary, TriagePlacement,
+    TriageReading, TriageRow, TriageRuntimeFacts, TriageTabCounts,
 };
 use super::types::{MetadataProvenance, RawReleaseEdit};
 use super::watched_folder::WatchedFolder;
@@ -66,9 +65,9 @@ pub use super::triage::TriageTab;
 pub struct ImportListView {
     pub tab: TriageTab,
     pub filter_text: String,
-    /// Which of Pending's rows the list shows; `None` shows every row. Done and
-    /// Skipped rows are past identification, so it leaves them alone.
-    pub pending_filter: Option<PendingFilter>,
+    /// Which of Pending's rows the list shows. Done and Skipped rows are past
+    /// identification, so it leaves them alone.
+    pub pending_filters: PendingFilters,
     pub collapsed_groups: BTreeSet<FolderReleaseDecisionKey>,
     pub order: ImportListOrder,
 }
@@ -79,7 +78,6 @@ impl ImportListView {
     pub(crate) fn filters(&self) -> bool {
         !self.filter_text.is_empty()
     }
-
 }
 
 impl Default for ImportListView {
@@ -87,27 +85,29 @@ impl Default for ImportListView {
         Self {
             tab: TriageTab::Pending,
             filter_text: String::new(),
-            pending_filter: None,
+            pending_filters: PendingFilters::default(),
             collapsed_groups: BTreeSet::new(),
             order: ImportListOrder::NewestFirst,
         }
     }
 }
 
-/// Which of Pending's rows the list shows. A row can match more than one.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// One state of Pending's rows the list can be narrowed to. A row can match
+/// more than one. Declared in the menu's order, which is the order a set of
+/// them lists in.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum PendingFilter {
-    /// A catalog release is matched: the draft was read from one.
-    Identified,
+    /// An identification is queued, running, or writing its answer.
+    Identifying,
     /// The lookup found releases and none is picked yet, since the verdict
     /// picks none unattended: several, or one that does not fit the folder.
     NeedsYou,
-    /// An identification is queued, running, or writing its answer.
-    Identifying,
-    /// An import is queued or running.
-    Importing,
+    /// A catalog release is matched: the draft was read from one.
+    Identified,
     /// A lookup failed to answer.
     LookupError,
+    /// An import is queued or running.
+    Importing,
     /// The candidate's last import failed.
     ImportError,
 }
@@ -126,31 +126,23 @@ impl PendingFilter {
         &[Self::Importing, Self::ImportError],
     ];
 
-    /// The candidates `filter` keeps by what is running for them, from every
-    /// candidate's runtime facts; empty for a filter the tables answer.
-    pub(crate) fn live_matches<'a>(
-        filter: Option<Self>,
-        facts: impl IntoIterator<Item = (&'a String, &'a TriageRuntimeFacts)>,
-    ) -> BTreeSet<String> {
-        let keeps: fn(&TriageRuntimeFacts) -> bool = match filter {
-            Some(Self::Identifying) => TriageRuntimeFacts::identifying,
-            Some(Self::Importing) => TriageRuntimeFacts::importing,
-            Some(Self::Identified | Self::NeedsYou | Self::LookupError | Self::ImportError)
-            | None => return BTreeSet::new(),
-        };
-        facts
-            .into_iter()
-            .filter(|(_, facts)| keeps(facts))
-            .map(|(key, _)| key.clone())
-            .collect()
+    fn every() -> impl Iterator<Item = Self> {
+        Self::GROUPS.into_iter().flatten().copied()
     }
 
-    fn keeps(
-        self,
-        row: &TriageRow,
-        verdict: Option<&VerdictSummary>,
-        live_matches: &BTreeSet<String>,
-    ) -> bool {
+    /// The runtime fact this filter keeps a candidate by; `None` for a filter
+    /// the tables answer.
+    fn live(self) -> Option<fn(&TriageRuntimeFacts) -> bool> {
+        match self {
+            Self::Identifying => Some(TriageRuntimeFacts::identifying),
+            Self::Importing => Some(TriageRuntimeFacts::importing),
+            Self::Identified | Self::NeedsYou | Self::LookupError | Self::ImportError => None,
+        }
+    }
+
+    /// Whether the tables keep `row`, whose stored lookup result is
+    /// `verdict`; never for a filter the runtime answers.
+    fn keeps_stored(self, row: &TriageRow, verdict: Option<&VerdictSummary>) -> bool {
         let identified = matches!(row.reading, TriageReading::Identified { .. });
         match self {
             Self::Identified => identified,
@@ -160,15 +152,91 @@ impl PendingFilter {
                         verdict.kind == VerdictKind::Found && !verdict.picks_unattended()
                     })
             }
-            Self::LookupError => {
-                verdict.is_some_and(|verdict| verdict.kind == VerdictKind::Failed)
+            Self::LookupError => verdict.is_some_and(|verdict| verdict.kind == VerdictKind::Failed),
+            Self::ImportError => {
+                matches!(row.import_status, Some(TriageImportStatus::Error { .. }))
             }
-            Self::ImportError => matches!(
-                row.import_status,
-                Some(TriageImportStatus::Error { .. })
-            ),
-            Self::Identifying | Self::Importing => live_matches.contains(&row.candidate_key),
+            Self::Identifying | Self::Importing => false,
         }
+    }
+}
+
+/// The states Pending's rows are narrowed to: the list shows the rows any of
+/// them keeps, and every row when the set is empty. Every state checked is
+/// the same as none, so the set never holds them all.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct PendingFilters(BTreeSet<PendingFilter>);
+
+impl PendingFilters {
+    fn of(filters: BTreeSet<PendingFilter>) -> Self {
+        if PendingFilter::every().all(|filter| filters.contains(&filter)) {
+            Self::default()
+        } else {
+            Self(filters)
+        }
+    }
+
+    /// The filters after the person checks (`true`) or clears `filter`.
+    pub fn with_checked(mut self, filter: PendingFilter, checked: bool) -> Self {
+        if checked {
+            self.0.insert(filter);
+        } else {
+            self.0.remove(&filter);
+        }
+        Self::of(self.0)
+    }
+
+    /// Whether any state narrows the rows.
+    pub fn narrows(&self) -> bool {
+        !self.0.is_empty()
+    }
+
+    /// The candidates these filters keep by what is running for them, from
+    /// every candidate's runtime facts; empty when no filter the runtime
+    /// answers is checked.
+    pub(crate) fn live_matches<'a>(
+        &self,
+        facts: impl IntoIterator<Item = (&'a String, &'a TriageRuntimeFacts)>,
+    ) -> BTreeSet<String> {
+        let live: Vec<fn(&TriageRuntimeFacts) -> bool> =
+            self.0.iter().filter_map(|filter| filter.live()).collect();
+        if live.is_empty() {
+            return BTreeSet::new();
+        }
+        facts
+            .into_iter()
+            .filter(|(_, facts)| live.iter().any(|keeps| keeps(facts)))
+            .map(|(key, _)| key.clone())
+            .collect()
+    }
+
+    fn keeps(
+        &self,
+        row: &TriageRow,
+        verdict: Option<&VerdictSummary>,
+        live_matches: &BTreeSet<String>,
+    ) -> bool {
+        !self.narrows()
+            || live_matches.contains(&row.candidate_key)
+            || self
+                .0
+                .iter()
+                .any(|filter| filter.keeps_stored(row, verdict))
+    }
+}
+
+impl FromIterator<PendingFilter> for PendingFilters {
+    fn from_iter<I: IntoIterator<Item = PendingFilter>>(filters: I) -> Self {
+        Self::of(filters.into_iter().collect())
+    }
+}
+
+impl IntoIterator for PendingFilters {
+    type Item = PendingFilter;
+    type IntoIter = std::collections::btree_set::IntoIter<PendingFilter>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
     }
 }
 
@@ -243,13 +311,13 @@ pub struct ImportListRequest {
     pub windows: LibraryPageWindows,
     /// Only the releases the cloud outbox still holds work for, by release id.
     pub upload_standing: BTreeMap<String, UploadStanding>,
-    /// The candidates the view's pending filter keeps by what is running for
-    /// them now; empty for a filter the tables answer.
+    /// The candidates the view's pending filters keep by what is running for
+    /// them now; empty when no filter the runtime answers is checked.
     pub live_matches: BTreeSet<String>,
 }
 
 impl ImportListRequest {
-    /// Whether the pending filter keeps `row`, placed in `tab`, whose stored
+    /// Whether the pending filters keep `row`, placed in `tab`, whose stored
     /// lookup result is `verdict`.
     pub(crate) fn keeps_pending(
         &self,
@@ -260,8 +328,8 @@ impl ImportListRequest {
         match tab {
             TriageTab::Pending => self
                 .view
-                .pending_filter
-                .is_none_or(|filter| filter.keeps(row, verdict, &self.live_matches)),
+                .pending_filters
+                .keeps(row, verdict, &self.live_matches),
             TriageTab::Done | TriageTab::Skipped => true,
         }
     }
@@ -285,9 +353,7 @@ pub enum ImportListItem {
     },
     /// A candidate the list places in Done, presented as the library release
     /// it became. Never a group member: only Pending rows join a group.
-    Imported {
-        row: ImportedRow,
-    },
+    Imported { row: ImportedRow },
     Invalid {
         candidate: InvalidCandidate,
         is_group_member: bool,
@@ -668,11 +734,17 @@ pub enum CandidateImportStatus {
     Importing {
         standing: super::ImportStanding,
     },
-    Complete { release: super::ImportedRelease },
-    Error { error: String },
+    Complete {
+        release: super::ImportedRelease,
+    },
+    Error {
+        error: String,
+    },
     /// A release read from several folders that cannot be worked on as it
     /// stands, and why.
-    Blocked { reason: super::GroupingBlock },
+    Blocked {
+        reason: super::GroupingBlock,
+    },
 }
 
 impl CandidateImportStatus {
