@@ -381,6 +381,7 @@ fn extracted_signals_cross_the_bus_with_their_key() {
             free_text: vec!["Album Title".to_string()],
         },
         text_pool: Vec::new(),
+        registered_in: None,
     };
 
     let crossed =
