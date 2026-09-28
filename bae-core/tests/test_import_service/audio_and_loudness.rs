@@ -242,73 +242,6 @@ async fn exact_metadata_import_stores_dsd_audio_format() {
     }
 }
 
-/// With every track length known, the loudness pass reports its percent
-/// several times within each track, rising to 100.
-#[tokio::test]
-async fn loudness_pass_emits_within_track_progress() {
-    let f = ImportFixture::new().await;
-
-    use bae_core::import::ImportEvent;
-    use bae_core::import::{ImportPhase, ImportProgress};
-
-    support::tracing_init();
-
-    let release = discogs_release("Loudness Album", &["Track One", "Track Two", "Track Three"]);
-    let release_id_key = seed_discogs_test_release(f.library_manager.providers(), release);
-
-    // Read from before the import starts, so no percent is missed.
-    let mut event_rx = f.handle.every_event_for_test();
-
-    let album_dir = f.temp_path().join("album");
-    let expected_candidate_key = album_dir.to_string_lossy().into_owned();
-    fs::create_dir_all(&album_dir).unwrap();
-    generate_album_files(
-        &album_dir,
-        &[
-            "01 Track One.flac",
-            "02 Track Two.flac",
-            "03 Track Three.flac",
-        ],
-    );
-
-    let import_id = uuid::Uuid::new_v4().to_string();
-    f.handle
-        .send_command(support::folder_import(
-            &import_id,
-            album_dir,
-            support::discogs_release(release_id_key),
-        ))
-        .await
-        .unwrap();
-
-    let mut progress_rx = f.handle.subscribe_import(import_id);
-    let _ = support::wait_for_import_complete(&mut progress_rx).await;
-
-    let mut percents: Vec<u8> = Vec::new();
-    while let Ok(event) = event_rx.try_recv() {
-        if let ImportEvent::ImportProgress {
-            candidate_key,
-            progress: ImportProgress::Progress { percent, phase, .. },
-        } = event
-        {
-            if candidate_key == expected_candidate_key && phase == ImportPhase::MeasuringLoudness {
-                percents.extend(percent);
-            }
-        }
-    }
-
-    // More reports than tracks means the percent moves within a track.
-    assert!(
-        percents.len() > 4,
-        "within-track measurement moves the percent more than once per track: {percents:?}",
-    );
-    assert!(
-        percents.windows(2).all(|w| w[1] >= w[0]),
-        "the percent is monotonic non-decreasing: {percents:?}"
-    );
-    assert_eq!(percents.last().copied(), Some(100), "reaches exactly 100");
-}
-
 /// Interleaved-stereo 1 kHz sine at `amplitude` (fraction of full scale).
 ///
 /// `spikes` adds one full-scale sample every 0.1 s: too sparse to move the
@@ -494,7 +427,7 @@ async fn loudness_measured_at_import_drives_playback_gain() {
 
 /// The candidate row shows `ImportProgress::Progress`'s percent, so the
 /// loudness pass, an import's longest phase, reports each whole-percent move
-/// rather than leaving the bar at 0 until it ends.
+/// within a track rather than leaving the bar at 0 until it ends.
 #[tokio::test]
 async fn loudness_pass_advances_the_candidate_rows_percent() {
     let f = ImportFixture::new().await;
@@ -552,9 +485,10 @@ async fn loudness_pass_advances_the_candidate_rows_percent() {
         }
     }
 
+    // More reports than tracks means the percent moves within a track.
     assert!(
-        percents.len() > 2,
-        "the pass reports its scan while it runs, not one percent for the whole phase: {percents:?}"
+        percents.len() > 4,
+        "the pass reports its scan within each of the three tracks: {percents:?}"
     );
     assert!(
         percents.windows(2).all(|w| w[1] > w[0]),
