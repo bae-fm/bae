@@ -2,14 +2,6 @@
 
 use super::Pressing;
 
-/// One label as a row shows it: its name once, then every catalog number the
-/// row has under that name.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct LabelLine {
-    pub name: Option<String>,
-    pub catalog_numbers: Vec<String>,
-}
-
 /// Whether two records state the same label: the same name and number, each
 /// compared the way two spellings of one are.
 fn same_label(a: &crate::pressing::ReleaseLabel, b: &crate::pressing::ReleaseLabel) -> bool {
@@ -40,29 +32,10 @@ impl Pressing {
         labels
     }
 
-    /// The row's labels as it shows them: a name once, followed by every
-    /// catalog number the row has under it, at the place the name first
-    /// appears. A number stated with no name is shown on its own.
-    pub fn label_lines(&self) -> Vec<LabelLine> {
-        let mut lines: Vec<LabelLine> = Vec::new();
-        for label in self.labels() {
-            let number = label.catalog_number().map(str::to_string);
-            let named = label.name().and_then(|name| {
-                lines.iter_mut().find(|line| {
-                    line.name.as_deref().is_some_and(|shown| {
-                        crate::util::text::normalize(shown) == crate::util::text::normalize(name)
-                    })
-                })
-            });
-            match named {
-                Some(line) => line.catalog_numbers.extend(number),
-                None => lines.push(LabelLine {
-                    name: label.name().map(str::to_string),
-                    catalog_numbers: number.into_iter().collect(),
-                }),
-            }
-        }
-        lines
+    /// The row's labels as it shows them: each name once, each catalog
+    /// number once, as [`crate::pressing::label_lines()`] groups them.
+    pub fn label_lines(&self) -> Vec<crate::pressing::LabelLine> {
+        crate::pressing::label_lines(&self.labels())
     }
 
 }
@@ -84,9 +57,9 @@ mod tests {
         }
     }
 
-    fn line(name: &str, numbers: &[&str]) -> LabelLine {
-        LabelLine {
-            name: Some(name.to_string()),
+    fn line(name: &str, numbers: &[&str]) -> crate::pressing::LabelLine {
+        crate::pressing::LabelLine {
+            names: vec![name.to_string()],
             catalog_numbers: numbers.iter().map(|number| number.to_string()).collect(),
         }
     }

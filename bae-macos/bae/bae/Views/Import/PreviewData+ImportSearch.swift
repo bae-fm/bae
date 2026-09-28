@@ -26,7 +26,7 @@
                 ],
                 labels: [
                     BridgeLabelLine(
-                        name: "Label Name",
+                        names: ["Label Name"],
                         catalogNumbers: ["1871-2"]
                     )
                 ],
@@ -67,7 +67,7 @@
                 ],
                 labels: [
                     BridgeLabelLine(
-                        name: "Label Name",
+                        names: ["Label Name"],
                         catalogNumbers: ["6006-2"]
                     )
                 ],
@@ -192,7 +192,7 @@
                                 ],
                                 labels: [
                                     BridgeLabelLine(
-                                        name: "Label Name",
+                                        names: ["Label Name"],
                                         catalogNumbers: ["6006-2"]
                                     )
                                 ],
@@ -220,7 +220,7 @@
                                 ],
                                 labels: [
                                     BridgeLabelLine(
-                                        name: "Another Label",
+                                        names: ["Another Label"],
                                         catalogNumbers: ["AL-1234"]
                                     )
                                 ],
@@ -292,7 +292,7 @@
                                 ],
                                 labels: [
                                     BridgeLabelLine(
-                                        name: "Reissue Records",
+                                        names: ["Reissue Records"],
                                         catalogNumbers: ["RR-500"]
                                     )
                                 ],
@@ -356,7 +356,7 @@
                             ],
                             labels: [
                                 BridgeLabelLine(
-                                    name: "Label A",
+                                    names: ["Label A"],
                                     catalogNumbers: ["AAA-001"]
                                 )
                             ],
@@ -409,7 +409,7 @@
                             ],
                             labels: [
                                 BridgeLabelLine(
-                                    name: "Label B",
+                                    names: ["Label B"],
                                     catalogNumbers: ["BBB-002"]
                                 )
                             ],

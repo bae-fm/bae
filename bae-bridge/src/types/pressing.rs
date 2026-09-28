@@ -60,6 +60,20 @@ mirror_struct! {
     fields: { medium: (BridgeMedium), count },
 }
 
+/// One line of a label list: the names, then the catalog numbers they share.
+/// Mirrors `bae_core::pressing::LabelLine`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeLabelLine {
+    pub names: Vec<String>,
+    pub catalog_numbers: Vec<String>,
+}
+
+mirror_struct! {
+    BridgeLabelLine = bae_core::pressing::LabelLine,
+    from_core: pub(crate) fn,
+    fields: { names, catalog_numbers },
+}
+
 /// One label a release is on, with its catalog number. Mirrors
 /// `bae_core::pressing::ReleaseLabel`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
@@ -69,6 +83,7 @@ pub struct BridgeReleaseLabel {
 }
 
 impl BridgeReleaseLabel {
+    #[cfg(feature = "desktop")]
     pub(crate) fn from_core(label: bae_core::pressing::ReleaseLabel) -> Self {
         Self {
             name: label.name().map(str::to_string),

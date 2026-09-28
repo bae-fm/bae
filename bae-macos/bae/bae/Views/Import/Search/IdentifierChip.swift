@@ -301,11 +301,17 @@ struct LookupReleaseLine: View {
             ForEach(Array(pressing.labels.enumerated()), id: \.offset) {
                 _,
                 label in
-                if let name = label.name {
-                    Text(name)
-                        .themeText(.detail)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                if !label.names.isEmpty {
+                    Text(
+                        label.names.joined(
+                            separator: QueueSummary.message(
+                                "core.label.list_separator"
+                            )
+                        )
+                    )
+                    .themeText(.detail)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
                 }
                 ForEach(label.catalogNumbers, id: \.self) { catalogNumber in
                     StatusChip(verbatim: catalogNumber)

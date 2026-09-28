@@ -42,17 +42,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
-import fm.bae.app.compactMetadataText
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LiveQueryState
 import fm.bae.app.data.LocalImageStore
 import fm.bae.app.durationClockLabel
 import fm.bae.app.durationUnitsText
+import fm.bae.app.labelsLineText
+import fm.bae.app.pressingLineText
 import fm.bae.app.runLoggedBridgeCommand
 import fm.bae.app.sideHeaderText
 import fm.bae.app.text
@@ -345,7 +347,6 @@ private fun AlbumDetailHeader(
     val album = detail.album
     val context = LocalContext.current
 
-    fun compactMeta(): String = selectedRelease?.compactMetadataText(context).orEmpty()
     Row(verticalAlignment = Alignment.Top) {
         CoverImage(
             cover = cover,
@@ -372,14 +373,23 @@ private fun AlbumDetailHeader(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            val meta = compactMeta()
-            if (meta.isNotEmpty()) {
+            // The pressing, then its labels, each on one line of its own.
+            val factLines =
+                listOfNotNull(
+                    selectedRelease?.pressingLineText(context),
+                    selectedRelease?.labelsLineText(context),
+                ).filter { it.isNotEmpty() }
+            if (factLines.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(ThemeSpace.inline))
-                Text(
-                    text = meta,
-                    style = ThemeText.detail.style,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                factLines.forEach { line ->
+                    Text(
+                        text = line,
+                        style = ThemeText.detail.style,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
         }
     }

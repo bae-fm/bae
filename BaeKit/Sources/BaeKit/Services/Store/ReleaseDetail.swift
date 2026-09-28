@@ -15,7 +15,12 @@ public struct ReleaseDetail: Identifiable {
     /// What a list of the album's releases calls this one, in the current
     /// locale.
     public var displayName: String
-    public var compactMetadata: String
+    /// The pressing on one line: year, where and what it is, and its play
+    /// time. Empty when the release states none of it.
+    public var pressingLine: String
+    /// The labels on one line: each name once, each catalog number once, as
+    /// core groups them. Empty when the release names no label.
+    public var labelsLine: String
     /// What the pressing is, worded: "Japan · 2×CD" and "Promo · Reissue".
     /// Either is empty when the release states none of its parts.
     public var pressingSummary: String
@@ -48,17 +53,17 @@ public struct ReleaseDetail: Identifiable {
         displayName = bridge.name.text
         pressingSummary = PressingText.line(bridge.pressingSummary)
         pressingDetails = PressingText.line(bridge.pressingDetails)
+        let separator = QueueSummary.message("core.audio.list_separator")
         // The play time ends the line, in the words core chose for it
         // ("39 min" / "1 hr, 18 min"); absent when no track reports a length.
-        compactMetadata =
-            ([bridge.year.map { String($0) }, pressingSummary]
-            + bridge.labels.flatMap { [$0.name, $0.catalogNumber] }
-            + [pressingDetails, bridge.totalDuration?.text])
-            .compactMap { $0 }
-            .filter { !$0.isEmpty }
-            .joined(
-                separator: QueueSummary.message("core.audio.list_separator")
-            )
+        pressingLine = [
+            bridge.year.map { String($0) }, pressingSummary, pressingDetails,
+            bridge.totalDuration?.text,
+        ]
+        .compactMap { $0 }
+        .filter { !$0.isEmpty }
+        .joined(separator: separator)
+        labelsLine = Self.labelsLine(bridge.labels, separator: separator)
         totalDuration = bridge.totalDuration
         tracks = bridge.tracks.map(Track.init(from:))
         trackGroups = bridge.trackGroups.map(TrackGroup.init(from:))
@@ -67,5 +72,25 @@ public struct ReleaseDetail: Identifiable {
         coverFiles = bridge.coverFiles
         galleryItems = bridge.galleryItems
         records = bridge.records
+    }
+
+    /// Each line core grouped: its names, then the catalog numbers they
+    /// share, the lines one after another.
+    static func labelsLine(
+        _ lines: [BridgeLabelLine],
+        separator: String
+    ) -> String {
+        let within = QueueSummary.message("core.label.list_separator")
+        return
+            lines.map { line in
+                [
+                    line.names.joined(separator: within),
+                    line.catalogNumbers.joined(separator: within),
+                ]
+                .filter { !$0.isEmpty }
+                .joined(separator: separator)
+            }
+            .filter { !$0.isEmpty }
+            .joined(separator: separator)
     }
 }

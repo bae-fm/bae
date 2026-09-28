@@ -53,6 +53,8 @@ const DIRECT_KEYS: &[&str] = &[
     "core.audio.layout.cue",
     "core.audio.list_separator",
     "core.audio.mixed",
+    // A release's labels line joins label names and catalog numbers with this.
+    "core.label.list_separator",
     "core.audio.sample_rate_khz",
     "core.audio.bitrate_kbps",
     "core.audio.bit_depth",

@@ -236,9 +236,9 @@
                 ),
                 year: 2019,
                 labels: [
-                    BridgeReleaseLabel(
-                        name: "Some Label",
-                        catalogNumber: "CAT-0001"
+                    BridgeLabelLine(
+                        names: ["Some Label"],
+                        catalogNumbers: ["CAT-0001"]
                     )
                 ],
                 facts: facts,

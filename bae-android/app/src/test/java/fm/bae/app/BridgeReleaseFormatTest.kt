@@ -10,6 +10,7 @@ import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeAudioFormat
 import uniffi.bae_bridge.BridgeFactTerm
 import uniffi.bae_bridge.BridgeFile
+import uniffi.bae_bridge.BridgeLabelLine
 import uniffi.bae_bridge.BridgeSourceAudioDescriptor
 import uniffi.bae_bridge.BridgeSourceAudioLayout
 import uniffi.bae_bridge.BridgeSourceAudioSummary
@@ -21,7 +22,7 @@ class BridgeReleaseFormatTest {
     private val context: Context = RuntimeEnvironment.getApplication()
     private val stereoKey: (Long) -> String? = { "core.audio.channels.stereo" }
 
-    /** What the pressing is sits after the year, its details after the catalog number. */
+    /** What the pressing is sits after the year, its details after it. */
     @Test
     fun pressingFactsTakeTheirPlacesInTheLine() {
         val release =
@@ -36,7 +37,7 @@ class BridgeReleaseFormatTest {
                     pressingDetails =
                         listOf(BridgeFactTerm.Worded(BridgeTermLabel.Localized("core.pressing.status.promotion"))),
                 )
-        assertEquals("Japan · CD · Promo", release.compactMetadataText(context, stereoKey))
+        assertEquals("Japan · CD · Promo", release.pressingLineText(context, stereoKey))
     }
 
     @Test
@@ -84,7 +85,21 @@ class BridgeReleaseFormatTest {
         assertEquals(
             "Various · FLAC · 44.1 kHz · 16-bit · stereo · " +
                 "MP3 · 320 kbps · 48 kHz · stereo",
-            release.compactMetadataText(context, stereoKey),
+            release.pressingLineText(context, stereoKey),
+        )
+    }
+
+    /** Each label line shows its names, then the numbers they share, once. */
+    @Test
+    fun labelLinesShowTheirNamesThenTheirNumbers() {
+        val lines =
+            listOf(
+                BridgeLabelLine(names = listOf("Label One", "Label Two"), catalogNumbers = listOf("AB-100")),
+                BridgeLabelLine(names = listOf("Label Three"), catalogNumbers = listOf("CD-200", "EF-300")),
+            )
+        assertEquals(
+            "Label One, Label Two · AB-100 · Label Three · CD-200, EF-300",
+            labelsLineText(context, lines),
         )
     }
 }

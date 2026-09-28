@@ -71,7 +71,8 @@ struct AlbumExpansionContent: View {
                         releasePicker
                     }
                     ReleaseFactsLine(
-                        facts: selectedRelease.compactMetadata,
+                        pressingLine: selectedRelease.pressingLine,
+                        labelsLine: selectedRelease.labelsLine,
                         records: selectedRelease.records
                     )
                     HStack(spacing: ThemeSpace.related) {
@@ -211,10 +212,15 @@ struct AlbumExpansionContent: View {
     }
 }
 
-/// The release's facts; with catalog records, a click toggles a card naming
-/// them, drawn in the window with its own dismiss monitor.
-private struct ReleaseFactsLine: View {
-    let facts: String
+/// The release's facts on two lines, each cut short on its own: the pressing,
+/// then its labels. When a catalog describes the release, an arrow beside the
+/// first line marks them and a click toggles a card naming the catalogs.
+///
+/// The card is drawn in the window rather than as a popover, so it carries its
+/// own monitor that closes it on a click away or Escape.
+struct ReleaseFactsLine: View {
+    let pressingLine: String
+    let labelsLine: String
     let records: [BridgeReleaseRecord]
 
     /// How far under the line the card's top sits.
@@ -226,7 +232,7 @@ private struct ReleaseFactsLine: View {
     private var isShowingCard = false
     @State
     private var trigger = OverlayAnchor()
-    /// The line's own height, which is where the card hangs from.
+    /// The facts' own height, which is where the card hangs from.
     @State
     private var lineHeight: CGFloat = 0
 
@@ -238,7 +244,10 @@ private struct ReleaseFactsLine: View {
             Button {
                 isShowingCard.toggle()
             } label: {
-                HStack(spacing: ThemeSpace.inline) {
+                HStack(
+                    alignment: .firstTextBaseline,
+                    spacing: ThemeSpace.inline
+                ) {
                     factsText
                     Image(systemName: "arrow.up.right")
                         .themeText(.detail)
@@ -297,10 +306,21 @@ private struct ReleaseFactsLine: View {
             .accessibilityIdentifier("release-facts-card")
     }
 
+    /// The lines the release states, each on one line of its own.
+    var shownLines: [String] {
+        [pressingLine, labelsLine].filter { !$0.isEmpty }
+    }
+
     private var factsText: some View {
-        Text(facts)
-            .themeText(.detail)
-            .foregroundStyle(.tertiary)
+        VStack(alignment: .leading, spacing: ThemeSpace.line) {
+            ForEach(Array(shownLines.enumerated()), id: \.offset) { _, line in
+                Text(line)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
+        }
+        .themeText(.detail)
+        .foregroundStyle(.tertiary)
     }
 }
 

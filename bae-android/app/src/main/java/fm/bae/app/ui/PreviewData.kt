@@ -18,6 +18,7 @@ import uniffi.bae_bridge.BridgeFactTerm
 import uniffi.bae_bridge.BridgeGalleryItem
 import uniffi.bae_bridge.BridgeGallerySource
 import uniffi.bae_bridge.BridgeImageRef
+import uniffi.bae_bridge.BridgeLabelLine
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeLibraryImageType
 import uniffi.bae_bridge.BridgeMediaCount
@@ -29,7 +30,6 @@ import uniffi.bae_bridge.BridgePauseBoundary
 import uniffi.bae_bridge.BridgePressingFacts
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeReleaseArea
-import uniffi.bae_bridge.BridgeReleaseLabel
 import uniffi.bae_bridge.BridgeReleaseName
 import uniffi.bae_bridge.BridgeReleaseStorageState
 import uniffi.bae_bridge.BridgeSearchResults
@@ -122,7 +122,7 @@ object PreviewData {
             albumId = albumId,
             name = BridgeReleaseName.Named("Release"),
             year = 2020,
-            labels = listOf(BridgeReleaseLabel(name = "Label A", catalogNumber = "AB 100")),
+            labels = listOf(BridgeLabelLine(names = listOf("Label A"), catalogNumbers = listOf("AB 100"))),
             facts =
                 BridgePressingFacts(
                     area = BridgeReleaseArea.Country("US"),

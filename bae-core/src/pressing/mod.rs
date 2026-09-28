@@ -14,6 +14,7 @@
 pub mod area;
 pub mod country;
 pub mod discogs_detail;
+mod label_lines;
 pub mod medium;
 pub mod packaging;
 pub mod stated_media;
@@ -27,6 +28,7 @@ desktop_only! {
 pub use area::{Region, ReleaseArea};
 pub use country::Country;
 pub use discogs_detail::DiscogsDetail;
+pub use label_lines::{label_lines, LabelLine};
 pub use medium::{CdAudio, Medium};
 pub use packaging::Packaging;
 pub use stated_media::{StatedFormat, StatedMedia};

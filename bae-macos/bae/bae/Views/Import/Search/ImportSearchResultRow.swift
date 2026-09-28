@@ -137,12 +137,18 @@ struct ImportSearchResultRow: View {
             ForEach(Array(pressing.labels.enumerated()), id: \.offset) {
                 _,
                 label in
-                if let name = label.name {
-                    Text(name)
-                        .themeText(.body)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
+                if !label.names.isEmpty {
+                    Text(
+                        label.names.joined(
+                            separator: QueueSummary.message(
+                                "core.label.list_separator"
+                            )
+                        )
+                    )
+                    .themeText(.body)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
                 }
                 ForEach(label.catalogNumbers, id: \.self) { catalogNumber in
                     StatusChip(verbatim: catalogNumber)

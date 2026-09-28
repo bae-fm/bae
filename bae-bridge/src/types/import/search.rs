@@ -27,14 +27,6 @@ pub struct BridgeMetadataResult {
     pub source_group_id: Option<String>,
 }
 
-/// One label as a row shows it: its name once, then every catalog number the
-/// row has under it. Mirrors `bae_core::import::release_group::LabelLine`.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct BridgeLabelLine {
-    pub name: Option<String>,
-    pub catalog_numbers: Vec<String>,
-}
-
 /// Search query — one of the three search modes, independent of the chosen provider.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeSearchQuery {

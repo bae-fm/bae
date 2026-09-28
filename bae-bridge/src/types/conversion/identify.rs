@@ -362,12 +362,6 @@ impl BridgePressingSection {
 }
 
 mirror_struct! {
-    BridgeLabelLine = bae_core::import::release_group::LabelLine,
-    from_core: fn,
-    fields: { name, catalog_numbers },
-}
-
-mirror_struct! {
     BridgeAlbumHeading = bae_core::import::release_group::AlbumHeading,
     from_core: fn,
     fields: { title, source: (BridgeReleaseGroupSource) },

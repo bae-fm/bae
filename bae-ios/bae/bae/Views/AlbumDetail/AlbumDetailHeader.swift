@@ -50,11 +50,23 @@ struct AlbumDetailHeader: View {
                         .themeText(.detail)
                         .foregroundStyle(.secondary)
                 }
-                if !detail.compactMetadata.isEmpty {
-                    Text(detail.compactMetadata)
-                        .themeText(.detail)
-                        .foregroundStyle(.secondary)
-                        .padding(.top, ThemeSpace.inline)
+                // The pressing, then its labels, each on one line of its
+                // own.
+                let factLines = [detail.pressingLine, detail.labelsLine]
+                    .filter { !$0.isEmpty }
+                if !factLines.isEmpty {
+                    VStack(alignment: .leading, spacing: ThemeSpace.line) {
+                        ForEach(Array(factLines.enumerated()), id: \.offset) {
+                            _,
+                            line in
+                            Text(line)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+                        }
+                    }
+                    .themeText(.detail)
+                    .foregroundStyle(.secondary)
+                    .padding(.top, ThemeSpace.inline)
                 }
             }
             Spacer(minLength: 0)

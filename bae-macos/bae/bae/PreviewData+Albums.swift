@@ -90,7 +90,8 @@
         }
 
         private struct ReleaseIdentifiers {
-            let labels: [BridgeReleaseLabel]
+            /// As core groups them: names that share a number show it once.
+            let labels: [BridgeLabelLine]
             let area: BridgeReleaseArea
         }
 
@@ -262,13 +263,13 @@
                     tracks: .twoPart(first: first, second: second),
                     identifiers: ReleaseIdentifiers(
                         labels: [
-                            BridgeReleaseLabel(
-                                name: "Label A",
-                                catalogNumber: "AB 100"
+                            BridgeLabelLine(
+                                names: ["Label A", "Label B"],
+                                catalogNumbers: ["AB 100"]
                             ),
-                            BridgeReleaseLabel(
-                                name: "Label B",
-                                catalogNumber: "CL 719"
+                            BridgeLabelLine(
+                                names: ["Label C"],
+                                catalogNumbers: ["CL 719"]
                             ),
                         ],
                         area: .country(code: "US"),
