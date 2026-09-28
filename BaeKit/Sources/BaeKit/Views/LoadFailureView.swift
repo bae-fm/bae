@@ -1,20 +1,19 @@
 import SwiftUI
 
-/// A centered error line and Retry button for a full view whose load failed;
-/// `line` is already localized.
+/// The failure and a Retry button for a full view whose load failed.
 public struct LoadFailureView: View {
-    private let line: String
+    private let error: DisplayError
     private let onRetry: () -> Void
 
-    public init(line: String, onRetry: @escaping () -> Void) {
-        self.line = line
+    public init(error: DisplayError, onRetry: @escaping () -> Void) {
+        self.error = error
         self.onRetry = onRetry
     }
 
     public var body: some View {
         VStack(spacing: ThemeSpace.group) {
-            ErrorText(line)
-                .multilineTextAlignment(.center)
+            ErrorDetailDisclosure(error: error)
+                .fixedSize(horizontal: false, vertical: true)
             Button("Retry", action: onRetry)
         }
         .padding(ThemeSpace.page)

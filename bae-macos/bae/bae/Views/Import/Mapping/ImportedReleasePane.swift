@@ -28,7 +28,7 @@ struct ImportedReleasePane: View {
     @State
     private var session: ReleaseMetadataEditSession?
     @State
-    private var loadError: String?
+    private var loadError: DisplayError?
 
     @Environment(UiStore.self)
     private var uiStore
@@ -57,7 +57,7 @@ struct ImportedReleasePane: View {
                     }
                 }
                 else if let loadError {
-                    LoadFailureView(line: loadError) {
+                    LoadFailureView(error: loadError) {
                         Task { await load() }
                     }
                     .frame(
@@ -228,7 +228,7 @@ extension ImportedReleasePane {
         }
         catch is CancellationError {}
         catch {
-            loadError = error.displayLine
+            loadError = DisplayError(error)
         }
     }
 }

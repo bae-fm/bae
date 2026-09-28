@@ -9,7 +9,7 @@ struct ComposerListView: View {
     var body: some View {
         if let error = list.initialLoadError {
             ListPlaceholder {
-                LoadFailureView(line: error.line) {
+                LoadFailureView(error: error) {
                     Task { await list.loadInitial() }
                 }
             }

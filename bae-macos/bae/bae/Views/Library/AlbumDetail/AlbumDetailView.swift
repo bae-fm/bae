@@ -193,7 +193,7 @@ struct AlbumDetailView: View {
     @ViewBuilder
     private func detailPlaceholder(releaseId _: String?) -> some View {
         if let error = libraryStore.albumDetailErrors[albumId] {
-            LoadFailureView(line: error.line) {
+            LoadFailureView(error: error) {
                 detailReader?.retry()
             }
         }

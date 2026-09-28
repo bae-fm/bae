@@ -175,7 +175,7 @@ extension LibraryView {
         Group {
             if let albumList = session.albums.list {
                 if let error = albumList.initialLoadError {
-                    LoadFailureView(line: error.line) {
+                    LoadFailureView(error: error) {
                         Task { await albumList.loadInitial() }
                     }
                 }
@@ -214,7 +214,7 @@ extension LibraryView {
         Group {
             if let composerList = session.composers.list {
                 if let error = composerList.initialLoadError {
-                    LoadFailureView(line: error.line) {
+                    LoadFailureView(error: error) {
                         Task { await composerList.loadInitial() }
                     }
                 }
@@ -249,7 +249,7 @@ extension LibraryView {
         Group {
             if let artistList = session.artists.list {
                 if let error = artistList.initialLoadError {
-                    LoadFailureView(line: error.line) {
+                    LoadFailureView(error: error) {
                         Task { await artistList.loadInitial() }
                     }
                 }

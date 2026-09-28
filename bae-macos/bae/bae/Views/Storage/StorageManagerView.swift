@@ -124,7 +124,7 @@ struct StorageManagerView: View {
 
             if let list = storageManagerStore.list, let runner {
                 if let error = list.initialLoadError {
-                    LoadFailureView(line: error.line) {
+                    LoadFailureView(error: error) {
                         Task { await list.loadInitial() }
                     }
                 }

@@ -31,7 +31,7 @@ struct StorageContentsInspector: View {
     private var fileList: some View {
         Group {
             if let error = libraryStore.releaseDetailErrors[releaseId] {
-                LoadFailureView(line: error.line) {
+                LoadFailureView(error: error) {
                     detailReader?.retry()
                 }
             }
