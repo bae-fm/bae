@@ -200,10 +200,15 @@ async fn drive_fixture(
     folder: PathBuf,
     ocr_map: HashMap<PathBuf, Vec<String>>,
 ) -> (Vec<String>, Vec<String>) {
-    let tx = ImportEventBus::new(128, bae_core::import::CandidateRuntime::default());
+    let candidates = bae_core::import::CandidateRuntime::default();
+    let tx = ImportEventBus::new(128, candidates.clone());
     let (library_manager, _lib_tmp) = make_library_manager().await;
-    let handle: ExtractionServiceHandle =
-        ExtractionService::start(tokio::runtime::Handle::current(), tx, library_manager);
+    let handle: ExtractionServiceHandle = ExtractionService::start(
+        tokio::runtime::Handle::current(),
+        tx,
+        candidates,
+        library_manager,
+    );
     let analyzer: Arc<dyn ArtworkAnalyzer> = Arc::new(FixtureAnalyzer::new(ocr_map));
     handle.register_analyzer(analyzer);
 

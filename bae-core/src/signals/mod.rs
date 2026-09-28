@@ -15,7 +15,6 @@ desktop_only! {
     pub mod artwork;
     pub mod audio;
     pub mod barcode;
-    mod cancellation;
     pub(crate) mod candidate_text;
     pub mod disc_id;
     mod fast_pass;

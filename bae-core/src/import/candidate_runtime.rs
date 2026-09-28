@@ -35,7 +35,9 @@ use tracing::{debug, info};
 
 mod batch;
 mod facts_watch;
+mod work;
 pub(crate) use facts_watch::RuntimeFactsWatch;
+pub(crate) use work::CandidateWork;
 
 #[cfg(test)]
 pub(crate) mod tests;
@@ -246,6 +248,9 @@ impl Inner {
 #[derive(Clone)]
 pub struct CandidateRuntime {
     inner: Arc<Mutex<Inner>>,
+    /// Its own lock: work emits through the bus while holding it, and the
+    /// bus records into `inner`.
+    work: Arc<Mutex<work::WorkInFlight>>,
     changes: broadcast::Sender<CandidateRuntimeChange>,
     /// Test readers that hear every change, however far behind they read.
     #[cfg(test)]
@@ -262,6 +267,7 @@ impl Default for CandidateRuntime {
         let (changes, _) = broadcast::channel(1024);
         Self {
             inner: Arc::new(Mutex::new(Inner::default())),
+            work: Arc::default(),
             changes,
             #[cfg(test)]
             every_change: Arc::default(),
@@ -770,8 +776,9 @@ impl CandidateRuntime {
                 ScanEvent::FolderCandidate { candidate, .. }
                 | ScanEvent::CandidateDiscovered { candidate, .. },
             ) => self.observe_shape(candidate),
-            // A rebound sheet is a different disc, so its search goes.
+            // A rebound sheet is a different disc, so its search and work go.
             ImportEvent::Scan(ScanEvent::CandidateBindingChanged { candidate }) => {
+                self.end_work(&candidate.key());
                 self.clear_search(&candidate.path.to_string_lossy());
                 self.observe_shape(candidate);
             }
@@ -781,6 +788,7 @@ impl CandidateRuntime {
                 self.remove(&key);
             }
             ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key }) => {
+                self.end_work(candidate_key);
                 self.inner.lock().unwrap().shapes.remove(candidate_key);
                 self.remove(candidate_key);
             }

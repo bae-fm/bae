@@ -11,13 +11,12 @@
 //! replaced extraction sends nothing more.
 
 use super::analyzer::{ArtworkAnalysis, ArtworkAnalyzer};
-use super::cancellation::CancellationRegistry;
 use super::candidate_text::{Source, SourcedLine};
 use super::fast_pass::{gather_non_ocr_sources, ArtworkImage, FastPass};
 use super::pool::Pool;
 use super::release::{resolve_release_artwork_paths, resolve_release_identity};
 use crate::identify::IdentifyRunId;
-use crate::import::{ImportEvent, ImportEventBus};
+use crate::import::{CandidateRuntime, CandidateWork, ImportEvent, ImportEventBus};
 use crate::library::LibraryManager;
 use crate::signals::{
     AudioFacts,
@@ -75,17 +74,16 @@ struct ExtractionServiceInner {
     /// Each folder's settled snapshot this session, so a later run over the
     /// same files does not read every image again.
     settled: SessionCache<SignalsSnapshot>,
-    /// Per-candidate cancellation; the bus cancels a removed or rebound
-    /// candidate's extraction in the send that says so.
-    cancellation: CancellationRegistry,
+    /// The record the bus keeps each candidate in, which holds the
+    /// candidate's extraction in flight.
+    candidates: CandidateRuntime,
 }
 
 /// One extraction in flight.
 struct RunningExtraction {
     run: IdentifyRunId,
     key: String,
-    /// The registry generation that says whether this is still the key's
-    /// current extraction.
+    /// Whether this is still the key's current extraction.
     generation: u64,
     priority: CallPriority,
     read_cover_art: bool,
@@ -101,8 +99,8 @@ struct ExtractionRelease {
 impl Drop for ExtractionRelease {
     fn drop(&mut self) {
         self.inner
-            .cancellation
-            .release_if_current(&self.key, self.generation);
+            .candidates
+            .release_work(CandidateWork::Extraction, &self.key, self.generation);
     }
 }
 
@@ -112,9 +110,11 @@ const SETTLED_CAPACITY: usize = 1024;
 pub struct ExtractionService;
 
 impl ExtractionService {
+    /// `candidates` is the runtime `event_tx` records into.
     pub fn start(
         runtime_handle: tokio::runtime::Handle,
         event_tx: ImportEventBus,
+        candidates: CandidateRuntime,
         library_manager: LibraryManager,
     ) -> ExtractionServiceHandle {
         let inner = Arc::new(ExtractionServiceInner {
@@ -123,16 +123,8 @@ impl ExtractionService {
             analyzer: Mutex::new(None),
             library_manager,
             settled: SessionCache::new("Settled folder signals", SETTLED_CAPACITY),
-            cancellation: CancellationRegistry::default(),
+            candidates,
         });
-
-        let ending = Arc::downgrade(&inner);
-        inner.event_tx.on_candidate_ended(move |key| {
-            if let Some(inner) = ending.upgrade() {
-                inner.cancellation.cancel(key);
-            }
-        });
-
         ExtractionServiceHandle { inner }
     }
 }
@@ -181,8 +173,8 @@ impl ExtractionServiceHandle {
         let runtime_handle = self.inner.runtime_handle.clone();
         let (snapshots, watch) = watch::channel(None);
         self.inner
-            .cancellation
-            .register(key.clone(), move |token, generation| {
+            .candidates
+            .start_work(CandidateWork::Extraction, key.clone(), move |token, generation| {
                 let extraction = RunningExtraction {
                     run,
                     key,
@@ -200,7 +192,7 @@ impl ExtractionServiceHandle {
 
     /// Cancel a candidate's in-flight extraction.
     pub fn cancel(&self, key: &str) {
-        self.inner.cancellation.cancel(key);
+        self.inner.candidates.cancel_work(CandidateWork::Extraction, key);
     }
 
     /// What ends once `key`'s extraction in flight is cancelled.
@@ -209,7 +201,9 @@ impl ExtractionServiceHandle {
         &self,
         key: &str,
     ) -> Option<impl std::future::Future<Output = ()> + Send + 'static> {
-        self.inner.cancellation.cancelled_for_test(key)
+        self.inner
+            .candidates
+            .work_cancelled_for_test(CandidateWork::Extraction, key)
     }
 }
 
@@ -733,8 +727,8 @@ fn scanning_signals(
 }
 
 /// Send a snapshot to the run's watch and the bus while the extraction is
-/// still its key's current one, checked under the registry's lock so a
-/// successor starting mid-pass never sees a stale snapshot after its own.
+/// still its key's current one, so a successor starting mid-pass never sees a
+/// stale snapshot after its own.
 fn emit_signals(
     inner: &ExtractionServiceInner,
     extraction: &RunningExtraction,
@@ -742,8 +736,8 @@ fn emit_signals(
 ) {
     let key = &extraction.key;
     let sent = inner
-        .cancellation
-        .while_current(key, extraction.generation, || {
+        .candidates
+        .while_work_current(CandidateWork::Extraction, key, extraction.generation, || {
             let signals = snapshot.signals.clone();
             let artwork = snapshot.artwork.clone();
             extraction.snapshots.send_replace(Some(snapshot));

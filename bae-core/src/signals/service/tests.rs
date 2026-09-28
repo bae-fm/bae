@@ -180,12 +180,14 @@ async fn make_service() -> (
     UnboundedReceiver<ImportEvent>,
     TempDir,
 ) {
-    let tx = ImportEventBus::new(BUS_CAPACITY, crate::import::CandidateRuntime::default());
+    let candidates = CandidateRuntime::default();
+    let tx = ImportEventBus::new(BUS_CAPACITY, candidates.clone());
     let rx = tx.every_event();
     let (library_manager, lib_tmp) = make_library_manager().await;
     let handle = ExtractionService::start(
         tokio::runtime::Handle::current(),
         tx.clone(),
+        candidates,
         library_manager,
     );
     (handle, tx, rx, lib_tmp)

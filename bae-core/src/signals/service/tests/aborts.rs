@@ -6,7 +6,8 @@ use crate::test_logs::capture_warn_logs;
 
 #[tokio::test(flavor = "multi_thread")]
 async fn emit_signals_warns_when_broadcast_has_no_subscribers() {
-    let tx = ImportEventBus::new(64, crate::import::CandidateRuntime::default());
+    let candidates = CandidateRuntime::default();
+    let tx = ImportEventBus::new(64, candidates.clone());
     let (library_manager, _lib_tmp) = make_library_manager().await;
     let inner = ExtractionServiceInner {
         runtime_handle: tokio::runtime::Handle::current(),
@@ -14,14 +15,16 @@ async fn emit_signals_warns_when_broadcast_has_no_subscribers() {
         analyzer: std::sync::Mutex::new(None),
         library_manager,
         settled: SessionCache::new("Settled folder signals", SETTLED_CAPACITY),
-        cancellation: CancellationRegistry::default(),
+        candidates,
     };
 
     // A registered generation, as every running extraction has: an
     // unregistered one is not current and sends nothing to warn about.
-    let generation = inner
-        .cancellation
-        .register("cand-1".to_string(), |_, generation| generation);
+    let generation = inner.candidates.start_work(
+        CandidateWork::Extraction,
+        "cand-1".to_string(),
+        |_, generation| generation,
+    );
     let extraction = RunningExtraction {
         run: IdentifyRunId::for_test(1),
         key: "cand-1".to_string(),
@@ -85,7 +88,8 @@ async fn fast_pass_join_error_reports_why_there_is_no_pass() {
 /// is not coming.
 #[tokio::test(flavor = "multi_thread")]
 async fn an_aborted_extraction_fails_every_signal_in_one_snapshot() {
-    let tx = ImportEventBus::new(64, crate::import::CandidateRuntime::default());
+    let candidates = CandidateRuntime::default();
+    let tx = ImportEventBus::new(64, candidates.clone());
     let mut rx = tx.every_event();
     let (library_manager, _lib_tmp) = make_library_manager().await;
     let inner = ExtractionServiceInner {
@@ -94,11 +98,13 @@ async fn an_aborted_extraction_fails_every_signal_in_one_snapshot() {
         analyzer: std::sync::Mutex::new(None),
         library_manager,
         settled: SessionCache::new("Settled folder signals", SETTLED_CAPACITY),
-        cancellation: CancellationRegistry::default(),
+        candidates,
     };
-    let generation = inner
-        .cancellation
-        .register("cand-1".to_string(), |_, generation| generation);
+    let generation = inner.candidates.start_work(
+        CandidateWork::Extraction,
+        "cand-1".to_string(),
+        |_, generation| generation,
+    );
     let extraction = RunningExtraction {
         run: IdentifyRunId::for_test(1),
         key: "cand-1".to_string(),

@@ -40,16 +40,11 @@ mod tests;
 pub struct ImportEventBus {
     delivery: EventDelivery,
     runtime: CandidateRuntime,
-    /// What ends a candidate's in-flight work, run inside the send that says
-    /// the candidate was removed or rebound.
-    candidate_endings: Arc<std::sync::Mutex<Vec<CandidateEnding>>>,
     /// Stops the thread sending one chosen event until a test lets it
     /// through, so the test can act partway through the work that sends it.
     #[cfg(test)]
     send_hold: Arc<SendHold>,
 }
-
-type CandidateEnding = Arc<dyn Fn(&str) + Send + Sync>;
 
 /// Where [`ImportEventBus::hold_send_where`] stops a sender.
 #[cfg(test)]
@@ -135,31 +130,17 @@ impl ImportEventBus {
         Self {
             delivery,
             runtime,
-            candidate_endings: Arc::default(),
             #[cfg(test)]
             send_hold: Arc::default(),
         }
     }
 
-    /// Run `end` with the key of every candidate removed or rebound, inside
-    /// the send that says so, before any reader hears it.
-    pub(crate) fn on_candidate_ended(&self, end: impl Fn(&str) + Send + Sync + 'static) {
-        self.candidate_endings.lock().unwrap().push(Arc::new(end));
-    }
-
-    /// Record `event` in the runtime, end the work of a candidate it removes
-    /// or rebinds, then broadcast it. The bus lives as long as the app, so
-    /// having no subscriber is worth a warning.
+    /// Record `event` in the runtime, then broadcast it. The bus lives as long
+    /// as the app, so having no subscriber is worth a warning.
     pub fn send(&self, event: ImportEvent) {
         #[cfg(test)]
         self.wait_if_held(&event);
         self.runtime.record_event(&event);
-        if let Some(key) = event.ended_candidate() {
-            let endings = self.candidate_endings.lock().unwrap().clone();
-            for end in endings {
-                end(&key);
-            }
-        }
         if !self.delivery.deliver(event) {
             warn!("import event broadcast had no subscribers");
         }
@@ -307,22 +288,6 @@ pub enum ImportEvent {
     ImportsInFlight {
         count: u32,
     },
-}
-
-impl ImportEvent {
-    /// The key of the candidate whose in-flight work this event ends: one
-    /// removed, or one whose sheet binding changed and so is another disc.
-    fn ended_candidate(&self) -> Option<String> {
-        match self {
-            ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key }) => {
-                Some(candidate_key.clone())
-            }
-            ImportEvent::Scan(ScanEvent::CandidateBindingChanged { candidate }) => {
-                Some(candidate.key())
-            }
-            _ => None,
-        }
-    }
 }
 
 /// Search results grouped by release group, with the per-release library dupe
@@ -496,10 +461,12 @@ impl ImportServiceHandle {
             library_manager.clone(),
             runtime_handle.clone(),
             event_tx.clone(),
+            runtime.clone(),
         );
         let extraction = crate::signals::ExtractionService::start(
             runtime_handle.clone(),
             event_tx.clone(),
+            runtime.clone(),
             library_manager.clone(),
         );
         Self {

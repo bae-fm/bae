@@ -7,12 +7,13 @@ use super::discid::lookup_and_resolve;
 use super::state::{step, Effect, IdentifyEvent, IdentifyState, LookupOutcome, TitleSearch};
 use crate::config::IdentificationSteps;
 use crate::import::search::{search_source, SearchQuery, SourceLookup};
-use crate::import::{Catalog, ImportEvent, ImportEventBus, LookupChoices};
+use crate::import::{
+    CandidateRuntime, CandidateWork, Catalog, ImportEvent, ImportEventBus, LookupChoices,
+};
 use crate::library::LibraryManager;
 use crate::signals::{ExtractionWatch, SignalsSnapshot};
 use crate::util::rate_limiter::CallPriority;
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, warn};
@@ -59,7 +60,9 @@ struct IdentifyServiceInner {
     library_manager: LibraryManager,
     runtime_handle: tokio::runtime::Handle,
     event_tx: ImportEventBus,
-    drivers: Mutex<HashMap<String, CandidateDriver>>,
+    /// The record `event_tx` keeps each candidate in, which holds the
+    /// candidate's run in flight.
+    candidates: CandidateRuntime,
     /// Source of [`IdentifyRunId`]s: every run this service starts is told
     /// apart from every other, including earlier runs of the same candidate.
     next_run: std::sync::atomic::AtomicU64,
@@ -85,39 +88,23 @@ impl IdentifyRunId {
     }
 }
 
-struct CandidateDriver {
-    token: CancellationToken,
-    /// Which run this driver is. A driver deregisters itself on its way out
-    /// only while it is still the registered one, so a run a later `start`
-    /// superseded cannot evict its successor.
-    run: IdentifyRunId,
-}
-
 impl IdentifyServiceHandle {
+    /// `candidates` is the runtime `event_tx` records into, which ends a
+    /// removed or rebound candidate's run in the send that says so.
     pub fn new(
         library_manager: LibraryManager,
         runtime_handle: tokio::runtime::Handle,
         event_tx: ImportEventBus,
+        candidates: CandidateRuntime,
     ) -> IdentifyServiceHandle {
         let inner = Arc::new(IdentifyServiceInner {
             library_manager,
             runtime_handle,
             event_tx,
-            drivers: Mutex::new(HashMap::new()),
+            candidates,
             next_run: std::sync::atomic::AtomicU64::new(1),
             #[cfg(test)]
             driver_tasks: tokio_util::task::TaskTracker::new(),
-        });
-        // A candidate that vanished or was reshaped cannot be answered by the
-        // run in flight, and storing its answer would put back the stale
-        // verdict the reshape cleared. The bus ends the run in the send that
-        // says so; every decision a person makes ends it inside that
-        // decision's own write instead.
-        let ending = Arc::downgrade(&inner);
-        inner.event_tx.on_candidate_ended(move |key| {
-            if let Some(inner) = ending.upgrade() {
-                inner.cancel(key);
-            }
         });
         IdentifyServiceHandle { inner }
     }
@@ -181,33 +168,31 @@ impl IdentifyServiceHandle {
             return false;
         }
 
-        let token = CancellationToken::new();
-        self.inner.drivers.lock().unwrap().insert(
+        let inner = self.inner.clone();
+        self.inner.candidates.start_work(
+            CandidateWork::Identify,
             key.clone(),
-            CandidateDriver {
-                token: token.clone(),
-                run,
+            |token, generation| {
+                let driver = async move {
+                    run_driver(
+                        inner,
+                        run,
+                        key,
+                        generation,
+                        priority,
+                        steps,
+                        choices,
+                        title_search,
+                        token,
+                        snapshots,
+                    )
+                    .await;
+                };
+                #[cfg(test)]
+                let driver = self.inner.driver_tasks.track_future(driver);
+                self.inner.runtime_handle.spawn(driver);
             },
         );
-
-        let inner = self.inner.clone();
-        let driver = async move {
-            run_driver(
-                inner,
-                run,
-                key,
-                priority,
-                steps,
-                choices,
-                title_search,
-                token,
-                snapshots,
-            )
-            .await;
-        };
-        #[cfg(test)]
-        let driver = self.inner.driver_tasks.track_future(driver);
-        self.inner.runtime_handle.spawn(driver);
         true
     }
 
@@ -219,36 +204,24 @@ impl IdentifyServiceHandle {
     /// that starts a candidate's run, and its own entry says what that run is
     /// doing. A test asks to check that from the outside.
     pub fn is_running(&self, key: &str) -> bool {
-        self.inner.drivers.lock().unwrap().contains_key(key)
+        self.inner
+            .candidates
+            .is_working(CandidateWork::Identify, key)
     }
 
     /// Every key with a run in flight right now. What a change to the inputs
     /// every run reads — the library's provider list — has to act on: those
     /// runs answer the list as it was, and nothing else does.
     pub fn running_keys(&self) -> Vec<String> {
-        self.inner.drivers.lock().unwrap().keys().cloned().collect()
+        self.inner.candidates.working_keys(CandidateWork::Identify)
     }
 
     /// Cancel an in-flight identify. Drops the driver task on the next
     /// await point.
     pub fn cancel(&self, key: &str) {
-        self.inner.cancel(key);
-    }
-}
-
-impl IdentifyServiceInner {
-    fn cancel(&self, key: &str) {
-        let driver = self.drivers.lock().unwrap().remove(key);
-        if let Some(driver) = driver {
-            driver.token.cancel();
-        }
-    }
-}
-
-fn remove_driver_if_current(inner: &IdentifyServiceInner, key: &str, run: IdentifyRunId) {
-    let mut drivers = inner.drivers.lock().unwrap();
-    if drivers.get(key).is_some_and(|driver| driver.run == run) {
-        drivers.remove(key);
+        self.inner
+            .candidates
+            .cancel_work(CandidateWork::Identify, key);
     }
 }
 
@@ -267,6 +240,9 @@ async fn run_driver(
     inner: Arc<IdentifyServiceInner>,
     run: IdentifyRunId,
     key: String,
+    // Whether this is still the key's current run, so a run a later start
+    // superseded cannot deregister its successor.
+    generation: u64,
     priority: CallPriority,
     steps: IdentificationSteps,
     choices: LookupChoices,
@@ -342,7 +318,9 @@ async fn run_driver(
         // anything a person asks for afterwards is a new run with inputs of its
         // own rather than a message to this one.
         if state.is_terminal() || matches!(state, IdentifyState::Idle) {
-            remove_driver_if_current(&inner, &key, run);
+            inner
+                .candidates
+                .release_work(CandidateWork::Identify, &key, generation);
             return;
         }
 
@@ -578,10 +556,14 @@ mod tests {
             ),
             crate::providers::Providers::offline(),
         );
-        let event_tx =
-            ImportEventBus::new(BUS_CAPACITY, crate::import::CandidateRuntime::default());
-        let handle =
-            IdentifyServiceHandle::new(manager, tokio::runtime::Handle::current(), event_tx);
+        let candidates = CandidateRuntime::default();
+        let event_tx = ImportEventBus::new(BUS_CAPACITY, candidates.clone());
+        let handle = IdentifyServiceHandle::new(
+            manager,
+            tokio::runtime::Handle::current(),
+            event_tx,
+            candidates,
+        );
         (handle.inner, temp_dir)
     }
 
@@ -594,14 +576,10 @@ mod tests {
     #[tokio::test]
     async fn a_removed_candidates_run_ends_however_far_behind_bus_readers_are() {
         let (inner, _tmp) = setup_inner().await;
-        let token = CancellationToken::new();
-        inner.drivers.lock().unwrap().insert(
-            "k".to_string(),
-            CandidateDriver {
-                token: token.clone(),
-                run: IdentifyRunId(1),
-            },
-        );
+        let token =
+            inner
+                .candidates
+                .start_work(CandidateWork::Identify, "k".to_string(), |token, _| token);
 
         inner.event_tx.send(ImportEvent::Scan(
             crate::import::ScanEvent::CandidateRemoved {
@@ -623,7 +601,7 @@ mod tests {
             "the removed candidate's run is cancelled"
         );
         assert!(
-            !inner.drivers.lock().unwrap().contains_key("k"),
+            !inner.candidates.is_working(CandidateWork::Identify, "k"),
             "and no longer registered"
         );
     }
@@ -644,34 +622,6 @@ mod tests {
             isrcs: Vec::new(),
             track_titles: Vec::new(),
         }
-    }
-
-    #[tokio::test(flavor = "multi_thread")]
-    async fn remove_driver_if_current_only_evicts_the_registered_run() {
-        let (inner, _tmp) = setup_inner().await;
-        let registered = IdentifyRunId(1);
-        let superseded = IdentifyRunId(2);
-
-        inner.drivers.lock().unwrap().insert(
-            "k".to_string(),
-            CandidateDriver {
-                token: CancellationToken::new(),
-                run: registered,
-            },
-        );
-
-        // A run a later `start` superseded must not evict the one currently
-        // registered — that's the "if current" guard.
-        remove_driver_if_current(&inner, "k", superseded);
-        assert!(inner.drivers.lock().unwrap().contains_key("k"));
-
-        // Removing an unknown key is a no-op.
-        remove_driver_if_current(&inner, "absent", registered);
-        assert!(inner.drivers.lock().unwrap().contains_key("k"));
-
-        // The registered run evicts it.
-        remove_driver_if_current(&inner, "k", registered);
-        assert!(!inner.drivers.lock().unwrap().contains_key("k"));
     }
 
     /// Wait until every driver task has returned, so everything they report
