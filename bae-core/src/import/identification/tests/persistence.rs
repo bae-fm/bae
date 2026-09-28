@@ -102,6 +102,7 @@ fn multi_match_verdict(release_ids: &[&str], group_id: &str) -> TerminalVerdict 
                     album_links: crate::import::album_links::AlbumLinks::NotAsked,
                     source_tracks: None,
                     document_failure: None,
+                    album_first_year: None,
                 })
                 .collect(),
             provenance: release_ids

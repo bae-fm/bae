@@ -9,6 +9,10 @@ pub(crate) struct AlbumMetadata {
     pub title: String,
     pub artists: Vec<ArtistRef>,
     pub year: Option<i32>,
+    /// The year the album first came out, as its MusicBrainz release group's
+    /// first release date or its Discogs master's year states it — never a
+    /// pressing's year. `None` when no album document states it.
+    pub first_year: Option<i32>,
 }
 
 impl AlbumMetadata {
@@ -17,6 +21,7 @@ impl AlbumMetadata {
             self.title = other.title;
         }
         self.year = self.year.or(other.year);
+        self.first_year = self.first_year.or(other.first_year);
         if self.artists.is_empty() {
             self.artists = other.artists;
         } else {

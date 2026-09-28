@@ -78,6 +78,10 @@ pub struct MetadataResult {
     /// its row, which then states what the result said. `None` when it was
     /// read, or never asked for.
     pub document_failure: Option<LookupFailure>,
+    /// The year the release's album first came out, as its release group or
+    /// master states it. A search result states none; its full document
+    /// does.
+    pub album_first_year: Option<i32>,
 }
 
 impl MetadataResult {
@@ -120,6 +124,7 @@ impl MetadataResult {
                 count: detail.track_count,
             }),
             document_failure: None,
+            album_first_year: None,
         }
     }
 }
@@ -150,6 +155,7 @@ impl MetadataResult {
             album_links: AlbumLinks::NotAsked,
             source_tracks: None,
             document_failure: None,
+            album_first_year: None,
         }
     }
 }
@@ -274,6 +280,7 @@ pub fn discogs_search_result_to_metadata(
         // gets one only from a paid `get_release`.
         source_tracks: None,
         document_failure: None,
+        album_first_year: None,
     }
 }
 
@@ -306,6 +313,7 @@ pub(crate) fn discogs_release_to_metadata(release: &crate::discogs::DiscogsRelea
         // Its documents are not stored, and a `Some` here says they are.
         source_tracks: None,
         document_failure: None,
+        album_first_year: None,
     }
 }
 
@@ -370,6 +378,7 @@ fn mb_discid_release_to_metadata(discid: &str, r: MbReleaseResponse) -> Option<M
         album_links: AlbumLinks::NotAsked,
         source_tracks,
         document_failure: None,
+        album_first_year: None,
     })
 }
 
@@ -430,6 +439,7 @@ fn search_release_to_metadata(r: SearchRelease, cover_art: Option<RemoteCover>) 
         album_links: AlbumLinks::NotAsked,
         source_tracks: None,
         document_failure: None,
+        album_first_year: None,
     }
 }
 

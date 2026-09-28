@@ -235,9 +235,9 @@ fn insert_match(
               cover_standing, source_group_id, album_links, source_tracks_kind, \
               source_tracks_count, by_disc_id, by_barcode, by_catalog, by_search, \
               named_by_catalog, named_by_key, narrowed_out, document_failure, \
-              document_failure_status, document_failure_detail) \
+              document_failure_status, document_failure_detail, album_first_year) \
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \
-                 ?, ?, ?, ?, ?, ?, ?)",
+                 ?, ?, ?, ?, ?, ?, ?, ?)",
         params![
             content_hash,
             position,
@@ -272,6 +272,7 @@ fn insert_match(
             document_failure.kind,
             document_failure.status,
             document_failure.detail,
+            result.album_first_year,
         ],
     )?;
     if let Some(cover) = cover {
@@ -601,6 +602,7 @@ fn read_match_columns(row: &Row<'_>, pressing: i64) -> Result<MatchColumns, DbEr
                 row.get("document_failure_status")?,
                 row.get("document_failure_detail")?,
             )?,
+            album_first_year: row.get("album_first_year")?,
         },
         provenance: LookupProvenance {
             by_disc_id: row.get("by_disc_id")?,

@@ -75,11 +75,13 @@ impl Agreements {
         u32::from(self.title) + u32::from(self.artist)
     }
 
-    /// Whether anything but the barcode agrees, which is what shows a release
-    /// on the list rather than under "N more": a barcode read off a photo can
-    /// be misread into some other release.
+    /// Whether anything but the barcode and the year agrees, which is what
+    /// shows a release on the list rather than under "N more": a barcode read
+    /// off a photo can be misread into some other release, and a folder's
+    /// year is as often the album's as its edition's, which only the album's
+    /// first year tells apart — the ranking weighs the year against that.
     pub fn offered(&self) -> bool {
-        self.disc_id || self.catalog || self.label || self.year || self.country
+        self.disc_id || self.catalog || self.label || self.country
     }
 }
 
@@ -201,6 +203,21 @@ impl CandidateText {
             || name.written_initials().is_some_and(|initials| {
                 self.lines.iter().any(|line| line.spells_initials(initials))
             })
+    }
+
+    /// Every year the text writes as a word of its own, each once.
+    pub fn years(&self) -> Vec<i32> {
+        let mut years: Vec<i32> = Vec::new();
+        for line in &self.lines {
+            for (start, end) in line.starts.iter().zip(&line.ends) {
+                if let Some(year) = super::row_facts::year_of(&line.run[*start..*end]) {
+                    if !years.contains(&year) {
+                        years.push(year);
+                    }
+                }
+            }
+        }
+        years
     }
 
     /// Whether the text writes `area` any way it is written — see

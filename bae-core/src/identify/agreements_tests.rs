@@ -184,16 +184,18 @@ fn a_barcode_is_the_one_agreement_that_does_not_stand_alone() {
             ..Agreements::NONE
         },
         Agreements {
-            year: true,
-            ..Agreements::NONE
-        },
-        Agreements {
             country: true,
             ..Agreements::NONE
         },
     ] {
         assert!(standing.offered(), "{standing:?}");
     }
+    // The year is read on its own, against the album's first year.
+    assert!(!Agreements {
+        year: true,
+        ..Agreements::NONE
+    }
+    .offered());
     assert!(!Agreements::NONE.offered());
 }
 

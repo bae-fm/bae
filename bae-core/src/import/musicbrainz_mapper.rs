@@ -338,6 +338,7 @@ pub(crate) fn metadata(
             title: response.title.clone(),
             artists: release_refs,
             year: album_year,
+            first_year: album_year,
         },
         pressing: pressing(response).0,
     })

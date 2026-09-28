@@ -85,6 +85,7 @@ pub(crate) fn metadata(release: &DiscogsRelease) -> super::release_metadata::Rel
             title: release.title.clone(),
             artists: release_refs,
             year: None,
+            first_year: None,
         },
         pressing: pressing(release).0,
     }

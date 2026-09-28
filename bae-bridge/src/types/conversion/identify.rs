@@ -17,8 +17,9 @@ impl BridgeMetadataResult {
             title: _,
             artist: _,
             cover_art: _,
-            // auto-import evidence, not something a row renders.
+            // auto-import and ranking evidence, not something a row renders.
             source_tracks: _,
+            album_first_year: _,
             // Read into `facts` above, or pairing evidence the row already
             // reflects.
             area: _,

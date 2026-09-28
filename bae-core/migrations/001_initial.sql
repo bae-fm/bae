@@ -1494,6 +1494,9 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     document_failure        TEXT CHECK (document_failure IS NULL OR document_failure IN ('network', 'provider', 'timeout', 'artwork_analysis', 'diagnostic')),
     document_failure_status INTEGER,
     document_failure_detail TEXT,
+    -- The year the release's album first came out, as its full document's
+    -- release group or master states it.
+    album_first_year        INTEGER,
     PRIMARY KEY (content_hash, position),
     -- Referenced by the medium rows with the media kind, so a medium row always
     -- belongs to a match of its kind.
@@ -1610,6 +1613,9 @@ CREATE TABLE IF NOT EXISTS source_release (
     -- its cross-referenced release and its album's documents.
     album_title        TEXT NOT NULL,
     album_year         INTEGER,
+    -- The year the album first came out, as its release group's first release
+    -- date or its master's year states it; never a pressing's year.
+    album_first_year   INTEGER,
     -- The pressing's facts, filled the same way.
     year               INTEGER,
     -- Every label the pressing is on, in its source's order: a JSON array of

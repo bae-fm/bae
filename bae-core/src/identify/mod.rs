@@ -14,6 +14,7 @@ pub mod documents;
 pub(crate) mod label;
 pub(crate) mod medium;
 mod not_asked;
+pub(crate) mod row_facts;
 pub mod service;
 pub mod state;
 pub mod toolbar;

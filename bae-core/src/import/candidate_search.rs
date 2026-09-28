@@ -399,6 +399,7 @@ mod tests {
             album_links: crate::import::album_links::AlbumLinks::NotAsked,
             source_tracks: None,
             document_failure: None,
+            album_first_year: None,
         }
     }
 

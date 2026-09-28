@@ -9,6 +9,7 @@
 
 use super::agreements::{agreements_of, CandidateText};
 use super::medium::{agrees_with_mono, FolderAudio, RippedFrom};
+use super::row_facts::{Fact, FolderFacts};
 use crate::db::LibraryStatus;
 use crate::import::album_links::Twin;
 use crate::import::release_group::{group_results, Judged, Judgements, Pressing, ReleaseGroup};
@@ -203,7 +204,7 @@ pub fn combine_results(
         .flat_map(ReleaseGroup::into_pressings)
         .collect();
     let (offered, set_aside, medium_conflict) =
-        split_rows(rows, &judgements, &returned_by, ripped_from, folder);
+        split_rows(rows, &judgements, &returned_by, ripped_from, folder, text);
 
     let statuses: HashMap<ReleaseKey, LibraryStatus> = all
         .into_iter()
@@ -254,7 +255,7 @@ pub fn combine_results(
 
 /// What stands behind one row, compared field by field in declaration order.
 /// The rows tied at the highest value are offered.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 struct Support {
     /// Whether the row's carrier could have given the folder its audio — see
     /// [`RippedFrom::admits`]. First: a vinyl pressing every lookup returned
@@ -270,9 +271,11 @@ struct Support {
     /// Whether the disc ID returned this row. Below what names one pressing,
     /// since every pressing cut from one master shares a table of contents.
     shares_toc: bool,
-    /// How many of the album's title and artist the folder's text states.
-    /// They name the album, not the pressing, so they only tell apart a row
-    /// returned for some other album.
+    /// How many of the album's title, artist and first year the folder's text
+    /// states. They name the album, not the pressing, so they only tell apart
+    /// a row returned for some other album. Agreements only: the text does not
+    /// say which of its lines is the title or the artist, so a row's title it
+    /// does not write contradicts nothing.
     names_album: u32,
     /// Whether nothing read says the row holds other tracks than the folder:
     /// a record of it lists as many tracks as the folder holds, as its full
@@ -284,22 +287,28 @@ struct Support {
     /// tracklist is a different edition, where those only say where or how
     /// one edition was cut.
     fits_the_tracks: bool,
+    /// Whether the row was released in the year the folder names its edition
+    /// by — see [`FolderFacts::edition_year`].
+    edition_year: Fact,
     /// Whether the row states mono and the folder's audio is one channel: a
-    /// tiebreak only, since catalogs list mono pressings as stereo.
+    /// tiebreak only. Agreement only: catalogs list mono pressings as stereo,
+    /// so a row stating stereo contradicts nothing.
     states_the_channels: bool,
-    /// Whether the folder's text states the area this pressing was released
-    /// in, which tells apart pressings a barcode names alike. The year and
-    /// the label count only toward `offered`: a folder's year is usually the
-    /// album's, and a label is written too many ways.
-    states_the_country: bool,
+    /// Whether the row was released where the folder's text says, which tells
+    /// apart pressings a barcode names alike — see [`FolderFacts::country`].
+    country: Fact,
     /// Whether the row was released where the folder's recordings were
     /// registered, as their ISRCs say. Below the folder naming the country:
     /// a recording is registered where its producer is, not where a copy was
     /// pressed, so it only tells apart rows nothing else does.
-    released_where_registered: bool,
-    /// Whether anything but a barcode stands behind the row — see
-    /// [`super::agreements::Agreements::offered`]. One value, so a year one
-    /// pressing states does not split it from its siblings.
+    registration: Fact,
+    /// Whether anything but a barcode and a year stands behind the row — see
+    /// [`super::agreements::Agreements::offered`]. One value, so a fact one
+    /// pressing states does not split it from its siblings. The label and the
+    /// catalog number count only here and toward `names_pressing`, as
+    /// agreements: a folder does not say which of its words are its label or
+    /// its number, and a label keeps a number across reissues, so a row
+    /// stating another contradicts nothing.
     offered: bool,
 }
 
@@ -310,6 +319,8 @@ fn support_of(
     provenance: &HashMap<ReleaseKey, LookupProvenance>,
     ripped_from: RippedFrom,
     folder: FolderAudio<'_>,
+    text: &CandidateText,
+    facts: &FolderFacts,
 ) -> Support {
     let mut returned = LookupProvenance::CHOSEN;
     // A twin on the row states no lookup of its own: every field is false.
@@ -323,7 +334,10 @@ fn support_of(
         returned.by_search |= found.by_search;
     }
     let agreements = row.agreements(judgements);
-    let offered = agreements.offered();
+    // With no first year to weigh it against, a year the folder states stands
+    // behind the row like any other fact of its pressing.
+    let offered = agreements.offered()
+        || (agreements.year && facts.album_first_year(&row.releases).is_none());
     Support {
         medium: ripped_from.admits(row.releases.iter().map(|release| &release.media)),
         lookups: [
@@ -337,7 +351,8 @@ fn support_of(
         .count() as u32,
         names_pressing: u32::from(agreements.catalog) + u32::from(returned.by_barcode && offered),
         shares_toc: returned.by_disc_id,
-        names_album: agreements.names_album(),
+        names_album: agreements.names_album()
+            + u32::from(facts.names_the_album_year(&row.releases)),
         fits_the_tracks: row
             .releases
             .iter()
@@ -348,18 +363,15 @@ fn support_of(
                 }
                 Some(crate::import::search::SourceTracks::Nothing) => false,
             }),
+        edition_year: facts.edition_year(&row.releases),
         states_the_channels: agrees_with_mono(
             folder.mono,
             row.releases
                 .iter()
                 .flat_map(|release| &release.discogs_details),
         ),
-        states_the_country: agreements.country,
-        released_where_registered: folder.registered_in.is_some_and(|registered| {
-            row.releases
-                .iter()
-                .any(|release| release.area == Some(registered))
-        }),
+        country: facts.country(&row.releases, text),
+        registration: super::row_facts::registration(&row.releases, folder.registered_in),
         offered,
     }
 }
@@ -372,10 +384,22 @@ fn split_rows(
     provenance: &HashMap<ReleaseKey, LookupProvenance>,
     ripped_from: RippedFrom,
     folder: FolderAudio<'_>,
+    text: &CandidateText,
 ) -> (Vec<Pressing>, Vec<Pressing>, Option<super::MediumConflict>) {
+    let facts = FolderFacts::of(text, rows.iter().flat_map(|row| &row.releases));
     let support: Vec<Support> = rows
         .iter()
-        .map(|row| support_of(row, judgements, provenance, ripped_from, folder))
+        .map(|row| {
+            support_of(
+                row,
+                judgements,
+                provenance,
+                ripped_from,
+                folder,
+                text,
+                &facts,
+            )
+        })
         .collect();
     let Some(best) = support.iter().copied().max() else {
         return (Vec::new(), Vec::new(), None);
@@ -425,3 +449,7 @@ mod tests;
 #[cfg(test)]
 #[path = "combine_evidence_tests.rs"]
 mod evidence_tests;
+
+#[cfg(test)]
+#[path = "combine_year_tests.rs"]
+mod year_tests;

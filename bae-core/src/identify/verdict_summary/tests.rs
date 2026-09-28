@@ -26,6 +26,7 @@ fn result(release_id: &str, source_tracks: Option<SourceTracks>) -> MetadataResu
         album_links: crate::import::album_links::AlbumLinks::NotAsked,
         source_tracks,
         document_failure: None,
+        album_first_year: None,
     }
 }
 

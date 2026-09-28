@@ -227,6 +227,7 @@ fn a_catalog_number_only_a_document_states_joins_the_albums() {
         labels: vec![crate::pressing::ReleaseLabel::of(Some("Imprint"), Some("LB-100"))],
         barcode: None,
         source_tracks: crate::import::search::SourceTracks::Listed { count: 5 },
+        album_first_year: None,
     };
     let (state, effects) = super::step(
         state,

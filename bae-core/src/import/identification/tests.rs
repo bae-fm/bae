@@ -757,6 +757,7 @@ impl Fixture {
                     album_links: crate::import::album_links::AlbumLinks::NotAsked,
                     source_tracks: Some(source_tracks),
                     document_failure: None,
+                    album_first_year: None,
                 }],
                 provenance: vec![crate::identify::combine::LookupProvenance {
                     by_disc_id: true,

@@ -105,6 +105,7 @@ impl ReleasePayloads {
                         title: group.title.unwrap_or_default(),
                         artists: crate::import::musicbrainz_mapper::artist_credits(&credits, key)?,
                         year: crate::import::parse_year(group.first_release_date.as_deref()),
+                        first_year: crate::import::parse_year(group.first_release_date.as_deref()),
                     }
                 }
                 Catalog::Discogs => {
@@ -117,6 +118,7 @@ impl ReleasePayloads {
                             .map(crate::import::discogs_mapper::discogs_track_artist_ref)
                             .collect(),
                         year: master.year.map(|year| year as i32),
+                        first_year: master.year.map(|year| year as i32),
                     }
                 }
                 other => not_fetched(other),
