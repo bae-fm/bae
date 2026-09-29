@@ -116,7 +116,10 @@ public struct ImageStoreBudgets: Equatable, Sendable {
 /// size. Content at one library, release, or remote reference is stable for the
 /// lifetime of an image in bae; a workflow that replaces it supplies a new
 /// reference. A local file's key also carries its modification date and size,
-/// since whatever replaces it keeps its path.
+/// since whatever replaces it keeps its path. Those are read only when a load
+/// runs, off the calling thread; the synchronous lookup a view makes while it
+/// draws uses the ones its path's last load read, so drawing never touches the
+/// file.
 public final class ImageStore: Sendable, Observable {
     /// Bytes of a curated library image, or nil when no such image exists.
     private let fetchLibraryImageBytes:
@@ -137,6 +140,7 @@ public final class ImageStore: Sendable, Observable {
 
     private let buckets: Buckets
     private let inFlightLoads = InFlightImageLoads()
+    private let localFileTokens = LocalFileTokens()
 
     public init(
         fetchLibraryImageBytes:
@@ -214,7 +218,9 @@ public final class ImageStore: Sendable, Observable {
     /// inserts the image leaf with no prior position, which snaps it to its
     /// final place while everything around it is still animating.
     ///
-    /// This is a memory-only lookup; `.bytes` is never cached.
+    /// This is a memory-only lookup, which reads no file: a file on disk is
+    /// looked up under the attributes its last load read, and one never loaded
+    /// is not cached. `.bytes` is never cached.
     public func cachedImage(
         _ content: ImageContent,
         pointSize: CGFloat,
@@ -222,7 +228,7 @@ public final class ImageStore: Sendable, Observable {
     ) -> PlatformImage? {
         guard
             let key = cacheKey(
-                content,
+                rememberedToken(for: content),
                 pointSize: pointSize,
                 displayScale: displayScale
             )
@@ -244,7 +250,7 @@ public final class ImageStore: Sendable, Observable {
     ) async throws -> PlatformImage? {
         guard
             let key = cacheKey(
-                content,
+                try await currentToken(for: content),
                 pointSize: pointSize,
                 displayScale: displayScale
             )
@@ -403,20 +409,44 @@ extension ImageStore {
     /// view's 400pt slot, and vice versa. Nil when the content has no cacheable
     /// identity.
     fileprivate func cacheKey(
-        _ content: ImageContent,
+        _ token: String?,
         pointSize: CGFloat,
         displayScale: CGFloat
     ) -> String? {
-        guard let token = token(for: content) else {
+        guard let token else {
             return nil
         }
         let pixelSize = Int((pointSize * displayScale).rounded())
         return "\(token)#\(pixelSize)"
     }
 
+    /// The content's identity as a synchronous read may know it: a file on
+    /// disk by the attributes its last load read, nil when none has.
+    fileprivate func rememberedToken(for content: ImageContent) -> String? {
+        if case .localFile(let path) = content {
+            return localFileTokens.token(for: path)
+        }
+        return referenceToken(for: content)
+    }
+
+    /// The content's identity as it stands now: a file on disk by the
+    /// attributes read from it off the calling thread, remembered for the
+    /// synchronous reads that follow.
+    fileprivate func currentToken(
+        for content: ImageContent
+    ) async throws -> String? {
+        guard case .localFile(let path) = content else {
+            return referenceToken(for: content)
+        }
+        let token = try await DetachedWork.run { Self.localFileToken(path) }
+        localFileTokens.remember(token, for: path)
+        return token
+    }
+
     /// The content reference the caller supplied. Nil for `.bytes`, whose
-    /// identity remains with its caller.
-    fileprivate func token(for content: ImageContent) -> String? {
+    /// identity remains with its caller, and for a local file, whose identity
+    /// is read from the file.
+    fileprivate func referenceToken(for content: ImageContent) -> String? {
         switch content {
         case .libraryImage(let image):
             return Self.libraryToken(image)
@@ -436,9 +466,7 @@ extension ImageStore {
             // The original names the image; the pixel size beside it in the
             // key already separates the copies decoded for different slots.
             return "remote:\(image.url)"
-        case .localFile(let path):
-            return Self.localFileToken(path)
-        case .bytes:
+        case .localFile, .bytes:
             return nil
         }
     }
@@ -540,6 +568,22 @@ private struct Buckets: Sendable {
             preconditionFailure("every bucket is built in init")
         }
         return cache
+    }
+}
+
+/// The token each local file's last load read from its attributes, by path.
+/// A path whose attributes could not be read has none, so nothing is looked up
+/// for it until a load reads them.
+private final class LocalFileTokens: @unchecked Sendable {
+    private let lock = NSLock()
+    private var tokens: [String: String] = [:]
+
+    func token(for path: String) -> String? {
+        lock.withLock { tokens[path] }
+    }
+
+    func remember(_ token: String?, for path: String) {
+        lock.withLock { tokens[path] = token }
     }
 }
 

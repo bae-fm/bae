@@ -399,7 +399,9 @@ struct ImageStoreContentIdentityTests {
 
         let store = ImageStore()
         let content = ImageContent.localFile(path: file.path)
-        _ = try await store.image(content, pointSize: 56, displayScale: 2)
+        let original = try #require(
+            try await store.image(content, pointSize: 56, displayScale: 2)
+        )
 
         try makePngBytes(width: 16, height: 16).write(to: file)
         try FileManager.default.setAttributes(
@@ -407,16 +409,43 @@ struct ImageStoreContentIdentityTests {
             ofItemAtPath: file.path
         )
 
-        #expect(
-            store.cachedImage(content, pointSize: 56, displayScale: 2) == nil,
-            "the replaced file is new content"
-        )
         let replaced = try #require(
             try await store.image(content, pointSize: 56, displayScale: 2)
         )
+        #expect(replaced !== original, "the replaced file is new content")
         #expect(
             store.cachedImage(content, pointSize: 56, displayScale: 2)
                 === replaced
+        )
+    }
+
+    @Test("a synchronous lookup reads nothing from the file")
+    func cachedLookupReadsNoFile() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(
+            at: directory,
+            withIntermediateDirectories: true
+        )
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let file = directory.appendingPathComponent("candidate.png")
+        try makePngBytes(width: 8, height: 8).write(to: file)
+
+        let store = ImageStore()
+        let content = ImageContent.localFile(path: file.path)
+        #expect(
+            store.cachedImage(content, pointSize: 56, displayScale: 2) == nil,
+            "a file never loaded has no key to look up"
+        )
+        let loaded = try #require(
+            try await store.image(content, pointSize: 56, displayScale: 2)
+        )
+        try FileManager.default.removeItem(at: file)
+
+        // A lookup that read the file's attributes would find none now.
+        #expect(
+            store.cachedImage(content, pointSize: 56, displayScale: 2)
+                === loaded
         )
     }
 }
