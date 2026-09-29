@@ -51,6 +51,9 @@ struct ReleaseGroupListContent<Trailing: View>: View {
     /// Identify the candidate again, reading once more the documents a run
     /// could not; `nil` where no run read any, as for a typed search.
     var onRetryUnread: (() -> Void)?
+    /// What picking a row does, said beside each row; `nil` where the rows
+    /// say nothing of it.
+    var pickSubtitle: String?
     let onSelect: (Pressing) -> Void
     @ViewBuilder
     let trailing: () -> Trailing
@@ -68,6 +71,7 @@ struct ReleaseGroupListContent<Trailing: View>: View {
                     loadingReleaseId: loadingReleaseId,
                     releaseSelectionFailure: releaseSelectionFailure,
                     onRetryUnread: onRetryUnread,
+                    pickSubtitle: pickSubtitle,
                     onSelect: onSelect,
                 )
             }
@@ -137,6 +141,8 @@ struct ReleaseGroupSection: View {
     /// Identify the candidate again, reading once more the documents a run
     /// could not; `nil` where no run read any, as for a typed search.
     var onRetryUnread: (() -> Void)?
+    /// What picking a row does, said beside each row.
+    var pickSubtitle: String?
     let onSelect: (Pressing) -> Void
 
     /// Each section's rows as shown: the offered ones, then the ones set
@@ -190,6 +196,7 @@ struct ReleaseGroupSection: View {
                             isLoading: isLoading(pressing),
                             failure: releaseSelectionFailure,
                             onRetryUnread: onRetryUnread,
+                            pickSubtitle: pickSubtitle,
                             onSelect: onSelect,
                         )
                     }

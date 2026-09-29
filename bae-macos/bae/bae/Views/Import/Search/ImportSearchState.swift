@@ -24,6 +24,10 @@ struct ImportSearchState {
     let isFinalizing: Bool
     let libraryStatuses: [String: BridgeLibraryStatus]
     let signals: Signals?
+    /// Why the folder waits on the person, while it does: the page opens with
+    /// the sentence saying so. `nil` otherwise, and for a library release
+    /// being identified again, which is not on Found.
+    let needsYou: BridgeNeedsYouReason?
 
     /// The run as its ledger, while there is one to lay out.
     var run: BridgeIdentifyRun? {

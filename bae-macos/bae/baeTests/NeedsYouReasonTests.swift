@@ -38,4 +38,42 @@ struct NeedsYouReasonTests {
                 == String(localized: "\(3) matches")
         )
     }
+
+    @Test("the sentence carries the numbers core gave it")
+    func theSentenceCarriesTheNumbers() {
+        #expect(
+            BridgeNeedsYouReason.matches(count: 4).sentence
+                == String(
+                    localized: "We found \(4) releases that could be this."
+                )
+        )
+        #expect(
+            BridgeNeedsYouReason.trackCountMismatch(local: 11, source: 12)
+                .sentence
+                == String(
+                    localized:
+                        "This release has \(12) tracks; your folder has \(11)."
+                )
+        )
+    }
+
+    @Test("a medium that rules out one release reads in the singular")
+    func mediumSentenceFollowsTheCount() {
+        let one = BridgeNeedsYouReason.mediumMismatch(
+            folder: .cdRip,
+            releases: 1
+        )
+        let two = BridgeNeedsYouReason.mediumMismatch(
+            folder: .cdRip,
+            releases: 2
+        )
+        #expect(one.sentence != two.sentence)
+        #expect(
+            BridgeNeedsYouReason.mediumMismatch(
+                folder: .notCdAudio,
+                releases: 2
+            )
+            .sentence != two.sentence
+        )
+    }
 }

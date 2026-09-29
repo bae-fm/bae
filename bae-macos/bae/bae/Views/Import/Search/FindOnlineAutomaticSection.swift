@@ -73,8 +73,14 @@ struct FindOnlineAutomaticSection: View {
             }
         case .noSignals:
             FindOnlineEmptyZone {
-                Text("No disc ID, barcode, or catalog number found")
-                    .foregroundStyle(.secondary)
+                if let needsYou = state.needsYou {
+                    Text(verbatim: needsYou.sentence)
+                        .multilineTextAlignment(.center)
+                }
+                else {
+                    Text("No disc ID, barcode, or catalog number found")
+                        .foregroundStyle(.secondary)
+                }
                 SearchManuallyButton(action: onSearchManually)
             }
         case .error(let failure):
@@ -91,6 +97,11 @@ struct FindOnlineAutomaticSection: View {
             .failureLines:
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
+                    if let sentence = headerSentence {
+                        NeedsYouSentence(text: sentence)
+                        Divider()
+                            .padding(.horizontal, ThemeSpace.group)
+                    }
                     if let run = state.run {
                         IdentifierBand(
                             run: run,
@@ -120,7 +131,10 @@ struct FindOnlineAutomaticSection: View {
             }
         case .groups:
             identifiedList {
-                if let folderCheck = state.folderCheck?.localizedText {
+                // A folder waiting on the person heads the page with why.
+                if state.needsYou == nil,
+                    let folderCheck = state.folderCheck?.localizedText
+                {
                     FolderCheckNote(text: folderCheck)
                 }
                 narrowedOut
@@ -130,14 +144,31 @@ struct FindOnlineAutomaticSection: View {
             }
         case .nothingFound:
             FindOnlineEmptyZone {
-                Text("No results")
-                    .foregroundStyle(.secondary)
+                if let needsYou = state.needsYou {
+                    Text(verbatim: needsYou.sentence)
+                        .multilineTextAlignment(.center)
+                }
+                else {
+                    Text("No results")
+                        .foregroundStyle(.secondary)
+                }
                 SearchManuallyButton(action: onSearchManually)
             }
         case .failureLines:
             failureLines
         case .awaitingCatalog, .notStarted, .noSignals, .error:
             EmptyView()
+        }
+    }
+
+    /// The sentence heading a page whose folder waits on the person, where
+    /// the page lists what was found; an empty page says it in its middle.
+    private var headerSentence: String? {
+        switch area {
+        case .groups, .awaitingCatalog: state.needsYou?.sentence
+        case .identifying, .nothingFound, .failureLines, .notStarted,
+            .noSignals, .error:
+            nil
         }
     }
 
@@ -169,6 +200,11 @@ struct FindOnlineAutomaticSection: View {
                 ?? state.finalizingPressing?.lead.releaseId,
             releaseSelectionFailure: state.releaseSelectionFailure,
             onRetryUnread: onRetryFailed,
+            // Picking a row is the first thing a folder waiting on the person
+            // can do, so each row says what picking it does.
+            pickSubtitle: state.needsYou.map { _ in
+                String(localized: "Use this release")
+            },
             onSelect: onSelect,
             trailing: trailing,
         )
@@ -198,6 +234,20 @@ struct FindOnlineAutomaticSection: View {
                     "\(source) \(step) results are missing from this list."
             )
         }
+    }
+}
+
+/// What happened to a folder that waits on the person, in one plain sentence
+/// over everything the page lists.
+private struct NeedsYouSentence: View {
+    let text: String
+
+    var body: some View {
+        Text(verbatim: text)
+            .themeText(.body)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, ThemeSpace.group)
+            .padding(.vertical, ThemeSpace.related)
     }
 }
 

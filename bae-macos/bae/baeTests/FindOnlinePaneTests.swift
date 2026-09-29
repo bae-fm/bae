@@ -73,6 +73,41 @@ final class FindOnlinePaneTests: XCTestCase {
         )
     }
 
+    /// A folder waiting on the person opens its page with one sentence
+    /// saying what happened, and each row found says what picking it does.
+    func testAFolderWaitingOnThePersonSaysWhatHappened() async throws {
+        let matches = try await renderedText(
+            of: PreviewData.searchStateNeedsYouMatches
+        )
+        XCTAssertTrue(
+            matches.contains {
+                $0.localizedCaseInsensitiveContains("could be this")
+            },
+            "the pane reads: \(matches)"
+        )
+        XCTAssertTrue(
+            matches.contains {
+                $0.localizedCaseInsensitiveContains(
+                    String(localized: "Use this release")
+                )
+            },
+            "the pane reads: \(matches)"
+        )
+
+        let notFound = try await renderedText(
+            of: PreviewData.searchStateNeedsYouNotFound
+        )
+        XCTAssertTrue(
+            notFound.contains {
+                $0.localizedCaseInsensitiveContains(
+                    String(localized: "No catalog has this.")
+                        .trimmingCharacters(in: .punctuationCharacters)
+                )
+            },
+            "the pane reads: \(notFound)"
+        )
+    }
+
     /// Nothing has run for this candidate, and starting one is the card's
     /// action, not the pane's: the not-started area offers the other way to a
     /// release — asking for it by name — and no way to start a run.

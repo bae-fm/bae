@@ -270,6 +270,7 @@ extension ImportSearchFlow {
             // and for a re-identify key — which has no row at all — it is the
             // only answer.
             signals: input.liveSignals ?? candidate.settledSignals,
+            needsYou: candidate.live?.standing?.needsYou,
         )
     }
 
