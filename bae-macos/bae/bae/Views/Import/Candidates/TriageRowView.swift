@@ -43,7 +43,7 @@ struct TriageRowView: View {
                 live: live,
                 coverContent: coverContent,
                 isGroupMember: isGroupMember,
-                menuOffers: menuOffers(live),
+                menuOffers: { menuOffers(live) },
                 onPerform: onPerform
             )
         }
@@ -58,7 +58,10 @@ struct TriageRowContent: View {
     let coverContent: ImageContent?
     let isGroupMember: Bool
     /// What the row's menu offers, in the same order as the selection's pane.
-    let menuOffers: CandidateActionMenu
+    /// Asked when the menu opens, not when the row is drawn: the answer reads
+    /// the selection and asks core, and a list draws its rows far more often
+    /// than anyone opens a menu.
+    let menuOffers: () -> CandidateActionMenu
     let onPerform: (ImportCandidateActionOffer) -> Void
 
     var body: some View {

@@ -92,7 +92,7 @@ struct ImportStandingRowTests {
                 ),
                 coverContent: nil,
                 isGroupMember: false,
-                menuOffers: .empty,
+                menuOffers: { .empty },
                 onPerform: { _ in }
             )
         )

@@ -188,13 +188,18 @@ class ImportStore {
             next[entry.id] = entry
         }
         items = next
+        updateSelectedLoadedKeys()
     }
 
     /// The keys of the loaded rows the person has selected, as core's rows
     /// say — what the list's own selection handling reads. Rows past the
     /// loaded pages may be selected too; core holds the whole selection.
-    var selectedLoadedKeys: Set<String> {
-        Set(
+    /// Kept as the rows land rather than worked out on each read: the list
+    /// reads it for every row it reconciles.
+    private(set) var selectedLoadedKeys: Set<String> = []
+
+    private func updateSelectedLoadedKeys() {
+        let next = Set(
             items.values.compactMap { item -> String? in
                 switch item {
                 case .candidate(_, let row, _):
@@ -206,6 +211,9 @@ class ImportStore {
                 }
             }
         )
+        if next != selectedLoadedKeys {
+            selectedLoadedKeys = next
+        }
     }
 
     /// The keys of the loaded rows the list shows selected: core's, except
@@ -262,6 +270,7 @@ class ImportStore {
             return
         }
         items = items.filter { loaded.contains($0.key) }
+        updateSelectedLoadedKeys()
     }
 
     /// The effective cover resolved by core for this row.
