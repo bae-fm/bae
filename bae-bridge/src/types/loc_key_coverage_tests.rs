@@ -271,6 +271,7 @@ fn produced_keys() -> Vec<String> {
         BridgeErrorCategory::Import,
         BridgeErrorCategory::ImportData,
         BridgeErrorCategory::MetadataTrackCount,
+        BridgeErrorCategory::AlreadyInLibrary,
         BridgeErrorCategory::CandidateImportInProgress,
         BridgeErrorCategory::CandidateBeingIdentified,
         BridgeErrorCategory::CandidateAlreadyImported,

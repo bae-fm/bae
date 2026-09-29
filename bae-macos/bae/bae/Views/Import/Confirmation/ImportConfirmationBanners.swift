@@ -73,20 +73,55 @@ struct ImportConfirmationBanners: View {
 
     @ViewBuilder
     private var importFailureBanner: some View {
-        if let failure, let displayed = DisplayError(failure.error) {
-            if let conflict = failure.artistIdentityConflict {
+        switch failure {
+        case .alreadyInLibrary(let albumId, let albumTitle):
+            alreadyInLibrary(albumId: albumId, albumTitle: albumTitle)
+        case .artistIdentityConflict(let conflict, let error):
+            if let displayed = DisplayError(error) {
                 artistIdentityConflict(conflict, error: displayed)
             }
-            else {
+        case .error(let error):
+            if let displayed = DisplayError(error) {
                 persistedFailure(displayed)
             }
+        case nil:
+            importStatusFailure
         }
-        else if case .error(let bridgeError) = importStatus,
+    }
+
+    /// The running import's failure, when no stored failure speaks for it.
+    @ViewBuilder
+    private var importStatusFailure: some View {
+        if case .error(let bridgeError) = importStatus,
             let displayed = DisplayError(bridgeError)
         {
             ErrorDetailDisclosure(error: displayed)
                 .notice(.danger)
         }
+    }
+
+    private func alreadyInLibrary(
+        albumId: String,
+        albumTitle: String
+    ) -> some View {
+        HStack(spacing: ThemeSpace.related) {
+            glyph(.warning)
+            Text(
+                verbatim: coreString(
+                    "ui.import.already_in_library_as",
+                    albumTitle
+                )
+            )
+            .themeText(.body)
+            .foregroundStyle(StatusTone.warning.color)
+            Spacer()
+            Button("View in Library") { onViewInLibrary(albumId) }
+                .controlSize(.small)
+            Button("Retry") { onRetry() }
+                .controlSize(.small)
+                .disabled(!canEdit)
+        }
+        .notice(.warning)
     }
 
     private func persistedFailure(_ error: DisplayError) -> some View {
@@ -175,12 +210,11 @@ struct ImportConfirmationBanners: View {
                 ),
                 importStatus: nil,
                 error: "Couldn't shape the edit: missing album title",
-                failure: BridgeImportFailure(
+                failure: .error(
                     error: .Diagnostic(
                         category: .import,
                         detail: "The folder is no longer where it was"
-                    ),
-                    artistIdentityConflict: nil
+                    )
                 ),
                 canEdit: true,
                 onRetry: {},

@@ -928,7 +928,7 @@ async fn a_stored_failure_keeps_the_row_pending_saying_why() {
     assert_eq!(
         failed[0].import_status,
         Some(crate::import::TriageImportStatus::Error {
-            error: "the disk filled".to_string()
+            failure: crate::import::ImportFailureReason::error("the disk filled")
         }),
         "with no runtime entry of its own"
     );

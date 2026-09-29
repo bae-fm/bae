@@ -484,10 +484,22 @@ mirror_struct! {
 }
 
 /// An import that failed, as the pane still shows it after a relaunch.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeImportFailure {
-    pub error: BridgeError,
-    pub artist_identity_conflict: Option<BridgeArtistIdentityConflict>,
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeImportFailure {
+    /// An exact identity of the release is already in the library, as this
+    /// album, under its current title.
+    AlreadyInLibrary {
+        album_id: String,
+        album_title: String,
+    },
+    /// One incoming artist matched two library artists; the pane offers to
+    /// consolidate them.
+    ArtistIdentityConflict {
+        conflict: BridgeArtistIdentityConflict,
+        error: BridgeError,
+    },
+    /// Any other failure: a generic line and its diagnostic detail.
+    Error { error: BridgeError },
 }
 
 /// The two library rows an incoming cross-provider artist identity connected.

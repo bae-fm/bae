@@ -599,7 +599,7 @@ impl ImportCandidateDetailProjection {
         let import_status = import_status_of(
             imported_release.as_ref(),
             source_error.as_ref(),
-            failure.as_ref().map(|failure| failure.error.as_str()),
+            failure.as_ref().map(|failure| &failure.reason),
         );
         // The attempt running now, or the one that completed, is what the pane
         // shows; an earlier failure is behind either.
@@ -722,7 +722,7 @@ pub enum CandidateImportStatus {
         release: super::ImportedRelease,
     },
     Error {
-        error: String,
+        failure: super::ImportFailureReason,
     },
     /// A release read from several folders that cannot be worked on as it
     /// stands, and why.
@@ -735,7 +735,7 @@ impl CandidateImportStatus {
     fn of(stored: TriageImportStatus) -> Self {
         match stored {
             TriageImportStatus::Complete { release } => Self::Complete { release },
-            TriageImportStatus::Error { error } => Self::Error { error },
+            TriageImportStatus::Error { failure } => Self::Error { failure },
             TriageImportStatus::Blocked { reason } => Self::Blocked { reason },
         }
     }

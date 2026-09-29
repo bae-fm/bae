@@ -417,8 +417,8 @@ async fn record_identity_conflict(device: &TestDevice, discogs_artist: &str, mb_
         .execute_local_sql_for_test(&format!(
             "INSERT INTO import_candidate_state (content_hash, folder_path) \
                  VALUES ('conflict', '/Album');
-             INSERT INTO import_candidate_failure (content_hash, error, failed_at) \
-                 VALUES ('conflict', 'artist identity', '2026-01-01T00:00:00Z');
+             INSERT INTO import_candidate_failure (content_hash, kind, error, failed_at) \
+                 VALUES ('conflict', 'error', 'artist identity', '2026-01-01T00:00:00Z');
              INSERT INTO import_candidate_artist_identity_conflict \
                  (content_hash, incoming_artist_name, discogs_artist_id, musicbrainz_artist_id, \
                   discogs_library_artist_id, musicbrainz_library_artist_id) \

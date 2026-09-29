@@ -234,6 +234,8 @@ pub enum BridgeErrorCategory {
     CandidateBeingIdentified,
     CandidateAlreadyImported,
     MetadataTrackCount,
+    /// An exact identity of the candidate's release is already in the library.
+    AlreadyInLibrary,
     Export,
     Save,
     CloudSetup {
@@ -389,6 +391,7 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
             "core.import.error.candidate_already_imported"
         }
         BridgeErrorCategory::MetadataTrackCount => "core.import.error.metadata_track_count",
+        BridgeErrorCategory::AlreadyInLibrary => "core.import.error.already_in_library",
         BridgeErrorCategory::Export => "core.error.category.export",
         BridgeErrorCategory::Save => "core.error.category.save",
         BridgeErrorCategory::CloudSetup { failure } => match failure {
@@ -564,6 +567,7 @@ mirror_enum! {
         CandidateBeingIdentified,
         CandidateAlreadyImported,
         MetadataTrackCount,
+        AlreadyInLibrary,
         GroupingBlocked(reason: (BridgeGroupingBlock)),
         Export,
         Save,

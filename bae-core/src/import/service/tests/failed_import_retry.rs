@@ -67,10 +67,12 @@ async fn an_import_that_cannot_open_a_source_writes_nothing_and_a_retry_lands_it
         .unwrap()
         .failure
         .expect("the failed import is recorded on its candidate");
+    let crate::import::ImportFailureReason::Error { detail } = &failure.reason else {
+        panic!("an unreadable file is a diagnostic failure: {:?}", failure.reason);
+    };
     assert!(
-        failure.error.contains(&*blocked_name.to_string_lossy()),
-        "the failure names the file that would not open: {}",
-        failure.error
+        detail.contains(&*blocked_name.to_string_lossy()),
+        "the failure names the file that would not open: {detail}"
     );
     assert!(
         test.service

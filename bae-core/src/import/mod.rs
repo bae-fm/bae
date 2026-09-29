@@ -172,7 +172,7 @@ desktop_only! {
         WatchedFolderScanStatus,
     };
     pub use cover_art::{CoverChoice, CoverImageSource};
-    pub use import_failure::ImportFailure;
+    pub use import_failure::{ImportFailure, ImportFailureReason};
 }
 pub(crate) use error::artist_source_ids_are_compatible;
 pub use error::ArtistIdentityConflict;

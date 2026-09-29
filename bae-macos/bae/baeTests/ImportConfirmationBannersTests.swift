@@ -22,15 +22,15 @@ struct ImportConfirmationBannersTests {
             musicbrainzArtistId: "musicbrainz-1",
             discogsArtistId: nil
         )
-        return BridgeImportFailure(
-            error: .Diagnostic(
-                category: .import,
-                detail: "the artist identities disagree"
-            ),
-            artistIdentityConflict: BridgeArtistIdentityConflict(
+        return .artistIdentityConflict(
+            conflict: BridgeArtistIdentityConflict(
                 incomingArtistName: "Artist One",
                 discogsArtist: discogsArtist,
                 musicbrainzArtist: musicbrainzArtist
+            ),
+            error: .Diagnostic(
+                category: .import,
+                detail: "the artist identities disagree"
             )
         )
     }
@@ -42,12 +42,11 @@ struct ImportConfirmationBannersTests {
             failure: conflictFailure()
         )
         let retryControlCount = try await focusControlCount(
-            failure: BridgeImportFailure(
+            failure: .error(
                 error: .Diagnostic(
                     category: .import,
                     detail: "the import failed"
-                ),
-                artistIdentityConflict: nil
+                )
             )
         )
 

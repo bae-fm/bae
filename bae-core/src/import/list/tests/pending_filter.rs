@@ -119,7 +119,7 @@ fn every_kind() -> ImportQueueRows {
     }
     rows.failures.insert(
         "hash-Failed Import".to_string(),
-        "Import failed".to_string(),
+        crate::import::ImportFailureReason::error("Import failed"),
     );
     imported(&mut rows, "Imported", "release-1", 1);
     rows.skipped.insert((root(), "Set Aside".to_string()));

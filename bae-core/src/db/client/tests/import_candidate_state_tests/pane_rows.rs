@@ -425,7 +425,10 @@ async fn a_failure_on_a_discovered_candidate_is_replaced_then_cleared() {
         .unwrap()
         .failure
         .expect("the failure is stored");
-    assert_eq!(failure.error, "the folder vanished");
+    assert_eq!(
+        failure.reason,
+        crate::import::ImportFailureReason::error("the folder vanished")
+    );
     assert_eq!(failure.failed_at, fixed_now());
     assert!(db
         .load_import_candidate_pane_rows(&hash)
@@ -448,8 +451,8 @@ async fn a_failure_on_a_discovered_candidate_is_replaced_then_cleared() {
             .unwrap()
             .failure
             .unwrap()
-            .error,
-        "the disc would not read",
+            .reason,
+        crate::import::ImportFailureReason::error("the disc would not read"),
         "the second failure replaces the first"
     );
 }
@@ -879,4 +882,58 @@ async fn preparation_round_trips_source_only_artist_answers() {
         .expect("the candidate remains prepared");
     assert!(preparation.source_discogs_artist_ids.is_empty());
     assert!(preparation.assets.artist_images.is_empty());
+}
+
+/// A refusal because the release is already in the library is stored as the
+/// album it matched, so the failure reads that album's title as it is now.
+#[tokio::test]
+async fn an_already_in_library_failure_reads_the_albums_current_title() {
+    let (db, _tmp) = empty_db().await;
+    let (_, hash) = stored_pane_candidate(&db).await;
+    let artist = crate::db::DbArtist {
+        id: "6c441836-aef7-4239-8a84-5336c4cce52c".to_string(),
+        name: "Artist Name".to_string(),
+        sort_name: None,
+        discogs_artist_id: None,
+        musicbrainz_artist_id: None,
+        created_at: fixed_now(),
+    };
+    db.insert_artist(&artist).await.unwrap();
+    let album = crate::db::DbAlbum::new_test("Album Title", &artist.id);
+    db.insert_album(&album).await.unwrap();
+
+    db.save_import_candidate_failure(
+        &hash,
+        0,
+        &ImportFailure {
+            reason: crate::import::ImportFailureReason::AlreadyInLibrary {
+                album_id: album.id.clone(),
+                album_title: "Album Title".to_string(),
+            },
+            failed_at: fixed_now(),
+            artist_identity_conflict: None,
+        },
+    )
+    .await
+    .unwrap();
+    db.execute_local_sql_for_test(&format!(
+        "UPDATE albums SET title = 'Album Title Renamed' WHERE id = '{}'",
+        album.id
+    ))
+    .await
+    .unwrap();
+
+    let failure = db
+        .load_import_candidate_pane_rows(&hash)
+        .await
+        .unwrap()
+        .failure
+        .expect("the failure is stored");
+    assert_eq!(
+        failure.reason,
+        crate::import::ImportFailureReason::AlreadyInLibrary {
+            album_id: album.id,
+            album_title: "Album Title Renamed".to_string(),
+        }
+    );
 }

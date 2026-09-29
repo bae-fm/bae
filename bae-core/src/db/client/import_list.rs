@@ -97,9 +97,9 @@ pub struct ImportQueueRows {
     /// When each imported content hash's release was written, in Unix epoch
     /// milliseconds; orders rows within a Done section.
     pub imported_at: HashMap<String, i64>,
-    /// The error the last import attempt left, by content hash, so a failed
+    /// Why the last import attempt failed, by content hash, so a failed
     /// import still places as failed after a relaunch.
-    pub failures: HashMap<String, String>,
+    pub failures: HashMap<String, crate::import::ImportFailureReason>,
     pub states: HashMap<String, CandidateStateListRow>,
     /// Each grouping's anchor folder as (watched folder, path below it):
     /// `true` when its releases are read as one, `false` when kept apart.
@@ -226,14 +226,21 @@ pub(super) fn load_import_queue_on(
         .map(|(folder, combined)| Ok((listed_below(&roots, &folder)?, combined)))
         .collect::<Result<_, DbError>>()?;
 
-    let failures: HashMap<String, String> = sql
-        .query(
-            "SELECT content_hash, error FROM import_candidate_failure",
+    let failures: HashMap<String, crate::import::ImportFailureReason> = {
+        use super::import_state::failure_rows::{
+            failure_reason_from_row, FAILURE_ALBUM_JOIN, FAILURE_REASON_COLUMNS,
+        };
+        sql.query(
+            &format!(
+                "SELECT failure.content_hash AS content_hash, {FAILURE_REASON_COLUMNS} \
+                 FROM import_candidate_failure failure {FAILURE_ALBUM_JOIN}"
+            ),
             [],
-            |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+            |row| Ok((row.get::<_, String>("content_hash")?, failure_reason_from_row(row)?)),
         )?
         .into_iter()
-        .collect();
+        .collect()
+    };
 
     let states = state_rows(sql)?;
     let selected: HashSet<String> = sql

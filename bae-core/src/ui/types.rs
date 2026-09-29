@@ -20,6 +20,8 @@ pub enum UiErrorCategory {
     CandidateAlreadyImported,
     /// The metadata read for the candidate has a different number of tracks.
     MetadataTrackCount,
+    /// An exact identity of the candidate's release is already in the library.
+    AlreadyInLibrary,
     /// A release read from several folders cannot be worked on as it stands,
     /// or cannot be made, for a reason the person can act on.
     GroupingBlocked(GroupingBlockReason),

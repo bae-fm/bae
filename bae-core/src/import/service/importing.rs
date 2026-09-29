@@ -141,12 +141,12 @@ impl ImportService {
             error!("Import failed: {}", e);
             self.library_manager
                 .record_telemetry(TelemetryEvent::ImportFailed {});
-            // The typed error becomes a user-facing string only here, at the
-            // pipeline's terminal consumer. The variant Displays embed their
-            // `#[from]` source messages, so `to_string()` carries the chain.
+            // The failure is recorded as what it is; the progress event carries
+            // the error's diagnostic text, which the variant Displays build
+            // from their `#[from]` source messages.
             let failed_at = self.library_manager.now();
             let failure = Self::terminal_failure(&e, failed_at);
-            let error = failure.error.clone();
+            let error = e.to_string();
 
             // The row goes first and the event second: the event is what the
             // pane showing this import redraws from, and the row is what a
@@ -173,7 +173,19 @@ impl ImportService {
         error: &crate::import::ImportError,
         failed_at: chrono::DateTime<chrono::Utc>,
     ) -> crate::import::ImportFailure {
-        let message = error.to_string();
+        let reason = match error {
+            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            crate::import::ImportError::AlreadyInLibrary {
+                album_id,
+                album_title,
+            } => crate::import::ImportFailureReason::AlreadyInLibrary {
+                album_id: album_id.clone(),
+                album_title: album_title.clone(),
+            },
+            error => crate::import::ImportFailureReason::Error {
+                detail: error.to_string(),
+            },
+        };
         let artist_identity_conflict = match error {
             crate::import::ImportError::Db(
                 crate::library::LibraryError::ArtistIdentityConflict(conflict),
@@ -181,7 +193,7 @@ impl ImportService {
             _ => None,
         };
         crate::import::ImportFailure {
-            error: message,
+            reason,
             failed_at,
             artist_identity_conflict,
         }

@@ -1,7 +1,7 @@
 use super::*;
 
 mod edit_rows;
-mod failure_rows;
+pub(super) mod failure_rows;
 mod import_commit;
 mod lookup_choice_rows;
 mod lookup_failure_columns;

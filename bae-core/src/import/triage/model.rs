@@ -385,7 +385,10 @@ impl TriageTabCounts {
 #[derive(Debug, Clone, PartialEq)]
 pub enum TriageImportStatus {
     Complete { release: ImportedRelease },
-    Error { error: String },
+    /// The last import failed, and why.
+    Error {
+        failure: crate::import::ImportFailureReason,
+    },
     /// A release read from several folders that cannot be worked on, and why.
     Blocked { reason: crate::import::GroupingBlock },
 }

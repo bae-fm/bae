@@ -1240,10 +1240,19 @@ CREATE TABLE IF NOT EXISTS import_candidate_session (
 
 -- Why a candidate's import failed.
 CREATE TABLE IF NOT EXISTS import_candidate_failure (
-    content_hash TEXT PRIMARY KEY,
-    error        TEXT NOT NULL,
-    failed_at    TEXT NOT NULL,
-    FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE
+    content_hash      TEXT PRIMARY KEY,
+    -- Why: an exact identity of the release is already in the library as
+    -- `existing_album_id`, whose title is read with the failure; or another
+    -- failure, with its untranslated diagnostic text in `error`.
+    kind              TEXT NOT NULL CHECK (kind IN ('already_in_library', 'error')),
+    existing_album_id TEXT,
+    error             TEXT,
+    failed_at         TEXT NOT NULL,
+    CHECK ((kind = 'already_in_library' AND existing_album_id IS NOT NULL AND error IS NULL)
+        OR (kind = 'error' AND error IS NOT NULL AND existing_album_id IS NULL)),
+    FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE,
+    -- The album going away takes the reason with it.
+    FOREIGN KEY (existing_album_id) REFERENCES albums (id) ON DELETE CASCADE
 ) STRICT;
 
 -- The failure where one incoming artist name matches two library artists, each

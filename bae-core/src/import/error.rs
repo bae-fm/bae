@@ -138,10 +138,14 @@ pub enum ImportError {
     },
 
     /// Per-pressing duplicate rejection: an Exact identity already in the
-    /// library. The Display text is user-facing — the UI renders it verbatim.
+    /// library, as this album. A failure records the album by id; its title
+    /// here is the one read when the import was refused.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    #[error("This release is already in your library as \"{album_title}\"")]
-    AlreadyInLibrary { album_title: String },
+    #[error("release is already in the library as album {album_id} (\"{album_title}\")")]
+    AlreadyInLibrary {
+        album_id: String,
+        album_title: String,
+    },
 
     /// Candidate preparation is immutable from the moment import owns it.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -271,6 +275,7 @@ impl ImportError {
             Self::CandidateBeingIdentified => C::CandidateBeingIdentified,
             Self::CandidateAlreadyImported => C::CandidateAlreadyImported,
             Self::MetadataTrackCount { .. } => C::MetadataTrackCount,
+            Self::AlreadyInLibrary { .. } => C::AlreadyInLibrary,
             Self::SourceData { .. } | Self::CoverArt { .. } => C::ImportData,
             Self::MusicBrainz(error) => match error {
                 MusicBrainzError::Other(_) => C::ImportData,
@@ -305,7 +310,6 @@ impl ImportError {
             | Self::LocalCover { .. }
             | Self::DecodeVerification { .. }
             | Self::SourceRead { .. }
-            | Self::AlreadyInLibrary { .. }
             | Self::Edit(_)
             | Self::SheetBinding { .. }
             | Self::WatchedFolder { .. }

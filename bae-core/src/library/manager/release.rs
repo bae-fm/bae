@@ -115,6 +115,7 @@ impl LibraryManager {
             .map_err(|e| crate::import::ImportError::Db(LibraryError::Database(e)))?
         {
             return Err(crate::import::ImportError::AlreadyInLibrary {
+                album_id: existing.id,
                 album_title: existing.title,
             });
         }

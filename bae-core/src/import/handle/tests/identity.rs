@@ -471,7 +471,7 @@ async fn test_exact_release_duplicate_rejected() {
 
     let err = result.expect_err("duplicate import should be rejected");
     assert!(
-        matches!(&err, crate::import::ImportError::AlreadyInLibrary { album_title } if album_title == "Album Title"),
+        matches!(&err, crate::import::ImportError::AlreadyInLibrary { album_title, .. } if album_title == "Album Title"),
         "Expected duplicate error naming the album, got: {err}",
     );
 

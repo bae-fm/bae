@@ -427,7 +427,7 @@ pub(super) fn place_row(
     let import_status = import_status_of(
         imported,
         row.error(),
-        rows.failures.get(content_hash).map(String::as_str),
+        rows.failures.get(content_hash),
     );
     let skipped = match &row.grouping {
         Some(grouping) => grouping.skipped,

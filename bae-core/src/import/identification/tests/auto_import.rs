@@ -322,7 +322,10 @@ async fn an_automatic_import_that_cannot_start_is_recorded_as_its_failed_import(
         .import_failure(&dir)
         .await
         .expect("the refused start is the candidate's failed import");
-    assert_eq!(failure.error, error.to_string());
+    assert_eq!(
+        failure.reason,
+        crate::import::ImportFailureReason::error(error.to_string())
+    );
     assert!(
         fixture
             .import

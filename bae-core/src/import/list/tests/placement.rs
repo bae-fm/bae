@@ -132,7 +132,10 @@ fn a_failed_import_stays_pending_and_reads_its_error_from_its_row() {
     rows.states
         .insert("hash-Release".to_string(), auto_importable_state("mb-1"));
     rows.failures
-        .insert("hash-Release".to_string(), "boom".to_string());
+        .insert(
+            "hash-Release".to_string(),
+            crate::import::ImportFailureReason::error("boom"),
+        );
 
     let flat = flattened(&rows, &view(TriageTab::Pending));
 
@@ -141,7 +144,7 @@ fn a_failed_import_stays_pending_and_reads_its_error_from_its_row() {
     assert_eq!(
         row.import_status,
         Some(TriageImportStatus::Error {
-            error: "boom".to_string()
+            failure: crate::import::ImportFailureReason::error("boom")
         })
     );
     assert_eq!(flat.summary.counts.pending, 1);
@@ -158,7 +161,10 @@ fn retrying_a_failed_import_moves_it_back_to_pending_then_to_done() {
     rows.states
         .insert("hash-Release".to_string(), auto_importable_state("mb-1"));
     rows.failures
-        .insert("hash-Release".to_string(), "boom".to_string());
+        .insert(
+            "hash-Release".to_string(),
+            crate::import::ImportFailureReason::error("boom"),
+        );
     assert_eq!(
         row_for(&flattened(&rows, &view(TriageTab::Pending)), "Release").placement,
         TriagePlacement::Failed
@@ -189,7 +195,10 @@ fn an_imported_release_outranks_a_leftover_failure() {
     let mut rows = queue();
     rows.candidates = vec![candidate("Release")];
     rows.failures
-        .insert("hash-Release".to_string(), "boom".to_string());
+        .insert(
+            "hash-Release".to_string(),
+            crate::import::ImportFailureReason::error("boom"),
+        );
     rows.imported.insert(
         "hash-Release".to_string(),
         ImportedRelease {

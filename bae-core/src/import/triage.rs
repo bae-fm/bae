@@ -105,7 +105,7 @@ pub fn stated_folder_check(
 pub fn import_status_of(
     imported: Option<&ImportedRelease>,
     blocked: Option<&crate::import::GroupingBlock>,
-    failure: Option<&str>,
+    failure: Option<&crate::import::ImportFailureReason>,
 ) -> Option<TriageImportStatus> {
     if let Some(release) = imported {
         return Some(TriageImportStatus::Complete {
@@ -117,8 +117,8 @@ pub fn import_status_of(
             reason: reason.clone(),
         });
     }
-    failure.map(|error| TriageImportStatus::Error {
-        error: error.to_string(),
+    failure.map(|failure| TriageImportStatus::Error {
+        failure: failure.clone(),
     })
 }
 

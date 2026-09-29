@@ -409,8 +409,8 @@ async fn a_cancelled_retry_leaves_the_failure_it_retried() {
     );
     let pane = handle.candidate_pane(&key).await.unwrap().unwrap();
     assert_eq!(
-        pane.failure.map(|failure| failure.error),
-        Some(error),
+        pane.failure.map(|failure| failure.reason),
+        Some(crate::import::ImportFailureReason::error(error)),
         "the failure the retry was answering still stands"
     );
     shut_down(handle).await;

@@ -71,9 +71,22 @@ pub(crate) fn automation_candidate_from_folder(
             .failure
             .as_ref()
             .map(|failure| AutomationImportFailure {
-                error: failure.error.clone(),
+                error: failure_text(&failure.reason),
                 failed_at: failure.failed_at.to_rfc3339(),
             }),
+    }
+}
+
+/// An import failure in words an agent reads.
+fn failure_text(reason: &bae_core::import::ImportFailureReason) -> String {
+    match reason {
+        bae_core::import::ImportFailureReason::AlreadyInLibrary {
+            album_id,
+            album_title,
+        } => {
+            format!("the release is already in the library as album {album_id} (\"{album_title}\")")
+        }
+        bae_core::import::ImportFailureReason::Error { detail } => detail.clone(),
     }
 }
 
@@ -191,8 +204,8 @@ pub(crate) fn automation_import_status(
             release_id: release.release_id.clone(),
             album_id: release.album_id.clone(),
         },
-        CandidateImportStatus::Error { error } => AutomationImportStatus::Error {
-            error: error.clone(),
+        CandidateImportStatus::Error { failure } => AutomationImportStatus::Error {
+            error: failure_text(failure),
         },
         // An agent reads the reason in the log's own words.
         CandidateImportStatus::Blocked { reason } => AutomationImportStatus::Error {

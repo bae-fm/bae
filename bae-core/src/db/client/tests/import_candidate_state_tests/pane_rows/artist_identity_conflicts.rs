@@ -2,7 +2,7 @@ use super::*;
 
 fn artist_identity_failure(discogs: &DbArtist, musicbrainz: &DbArtist) -> ImportFailure {
     ImportFailure {
-        error: "the artist identities disagree".to_string(),
+        reason: crate::import::ImportFailureReason::error("the artist identities disagree"),
         failed_at: fixed_now(),
         artist_identity_conflict: Some(crate::import::ArtistIdentityConflict {
             incoming_artist_name: "Artist One".to_string(),
