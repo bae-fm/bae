@@ -31,10 +31,8 @@ final class MainMenuTests: XCTestCase {
         app.activate()
         addTeardownBlock { app.terminate() }
 
+        // Launch presents the primary window.
         let primaryWindow = app.windows.firstMatch
-        if !primaryWindow.waitForExistence(timeout: 2) {
-            app.typeKey("n", modifierFlags: .command)
-        }
         XCTAssertTrue(primaryWindow.waitForExistence(timeout: 20))
         XCTAssertEqual(primaryWindow.frame.width, 1_350, accuracy: 2)
 
@@ -83,10 +81,8 @@ final class MainMenuTests: XCTestCase {
         app.activate()
         addTeardownBlock { app.terminate() }
 
+        // Launch presents the primary window.
         let primaryWindow = app.windows.firstMatch
-        if !primaryWindow.waitForExistence(timeout: 2) {
-            app.typeKey("n", modifierFlags: .command)
-        }
         XCTAssertTrue(
             primaryWindow.waitForExistence(timeout: 20),
             file: file,

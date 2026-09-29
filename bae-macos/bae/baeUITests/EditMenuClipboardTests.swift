@@ -79,11 +79,8 @@ final class EditMenuClipboardTests: XCTestCase {
         app.launch()
         app.activate()
         addTeardownBlock { app.terminate() }
-        let window = app.windows.firstMatch
-        if !window.waitForExistence(timeout: 2) {
-            app.typeKey("n", modifierFlags: .command)
-        }
-        XCTAssertTrue(window.waitForExistence(timeout: 20))
+        // Launch presents the primary window.
+        XCTAssertTrue(app.windows.firstMatch.waitForExistence(timeout: 20))
         return app
     }
 }
