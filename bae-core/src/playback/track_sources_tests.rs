@@ -54,9 +54,9 @@ struct Run {
 }
 
 /// Run `tracks` at `parallelism`, each reading every one of its files through
-/// its own reader and holding a moment so tracks overlap. The first
-/// `parallelism` tracks wait for one another before going on, so the run is
-/// seen at its full width however the tasks are scheduled.
+/// its own reader and noting the files open together while it holds them. The
+/// first `parallelism` tracks wait for one another before going on, so the run
+/// is seen at its full width however the tasks are scheduled.
 async fn run(dir: &Path, tracks: Vec<Track>, parallelism: usize) -> Run {
     let opens = Arc::new(AtomicUsize::new(0));
     let first_batch = Arc::new(tokio::sync::Barrier::new(parallelism));
@@ -102,7 +102,6 @@ async fn run(dir: &Path, tracks: Vec<Track>, parallelism: usize) -> Run {
                         crate::open_files_peak::open_together(&dir).len(),
                         Ordering::SeqCst,
                     );
-                    std::thread::sleep(Duration::from_millis(15));
                 })
                 .await
                 .unwrap();
