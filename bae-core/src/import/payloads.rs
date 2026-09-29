@@ -224,6 +224,7 @@ impl ReleasePayloads {
                     crate::import::musicbrainz_mapper::mediums(&anchor),
                     CatalogFacts::MusicBrainz {
                         links: crate::import::search::release_links_of(&anchor.relations),
+                        album_links: self.album_statements()?,
                     },
                     crate::import::search::musicbrainz_release_notes(&anchor),
                 )

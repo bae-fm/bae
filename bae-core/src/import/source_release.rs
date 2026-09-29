@@ -103,6 +103,9 @@ pub(crate) enum CatalogFacts {
         /// The releases on other catalogs the document names as the same
         /// release, in relation order.
         links: Vec<MetadataRef>,
+        /// What its documents state its album is on the other lookup
+        /// catalog: see [`crate::import::payloads::ReleasePayloads::album_statements`].
+        album_links: crate::import::album_links::AlbumLinks,
     },
     Discogs {
         /// What the release's format entries say it is made of, entry by
@@ -422,7 +425,7 @@ impl SourceRelease {
     /// the same release. Only a MusicBrainz document names any.
     pub(crate) fn links(&self) -> Vec<MetadataRef> {
         match &self.catalog {
-            CatalogFacts::MusicBrainz { links } => links.clone(),
+            CatalogFacts::MusicBrainz { links, .. } => links.clone(),
             CatalogFacts::Discogs { .. } => Vec::new(),
         }
     }

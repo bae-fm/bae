@@ -230,6 +230,57 @@ async fn a_stored_release_reads_back_as_it_was_extracted() {
     }
 }
 
+/// A MusicBrainz release's album links read back as its documents stated
+/// them: the statement that named each album, or that one could not be read.
+#[tokio::test]
+async fn a_stored_release_reads_back_its_album_links() {
+    use crate::import::album_links::{AlbumLink, AlbumLinks, AlbumStatement};
+    use crate::import::source_release::CatalogFacts;
+    let (db, _tmp) = empty_db().await;
+    let extracted = musicbrainz_documents().extract().unwrap();
+    let CatalogFacts::MusicBrainz { album_links, .. } = &extracted.catalog else {
+        panic!("a MusicBrainz release states MusicBrainz facts");
+    };
+    assert_eq!(
+        *album_links,
+        AlbumLinks::Read(vec![AlbumLink {
+            album: MetadataRef::new(Catalog::Discogs, "909"),
+            stated: AlbumStatement::Page,
+        }]),
+        "the group's page links the master"
+    );
+    for stated in [
+        AlbumLinks::Read(vec![
+            AlbumLink {
+                album: MetadataRef::new(Catalog::Discogs, "909"),
+                stated: AlbumStatement::Release {
+                    musicbrainz_release: "mb-release".to_string(),
+                    twin: MetadataRef::new(Catalog::Discogs, "4242"),
+                },
+            },
+            AlbumLink {
+                album: MetadataRef::new(Catalog::Discogs, "910"),
+                stated: AlbumStatement::Wikidata {
+                    item: "Q1".to_string(),
+                },
+            },
+        ]),
+        AlbumLinks::Read(Vec::new()),
+        AlbumLinks::Unread,
+    ] {
+        let mut release = extracted.clone();
+        let CatalogFacts::MusicBrainz { album_links, .. } = &mut release.catalog else {
+            unreachable!("checked above");
+        };
+        *album_links = stated;
+        db.save_source_release(&release).await.unwrap();
+        assert_eq!(
+            db.load_source_release(release.release()).await.unwrap(),
+            Some(release)
+        );
+    }
+}
+
 /// Fetching a release again replaces everything stored under it: no row of
 /// the earlier extraction outlives it.
 #[tokio::test]

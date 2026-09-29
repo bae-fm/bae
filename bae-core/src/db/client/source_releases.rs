@@ -5,6 +5,7 @@
 //! import surface. Writing it again replaces every row under it in one
 //! transaction, so a reader sees one extraction or the other, never a mix.
 
+use crate::import::album_links::AlbumLinks;
 use super::*;
 use crate::import::assemble::{ArtistRef, PartDirection};
 use crate::import::cover_art::{CoverStanding, DownscaledCopy, RemoteCover, RemoteImageSet};
@@ -24,9 +25,10 @@ mod tracklist;
 /// The tables under `source_release`, children before the tables they hang
 /// off. Deleting a release's mediums takes its entries, and with them their
 /// credits, roles and works.
-const CHILD_TABLES: [&str; 10] = [
+const CHILD_TABLES: [&str; 11] = [
     "source_release_album_artist",
     "source_release_link",
+    "source_release_album_link",
     "source_release_format",
     "source_release_record",
     "source_release_cover_copy",
@@ -36,6 +38,25 @@ const CHILD_TABLES: [&str; 10] = [
     "source_release_medium",
     "source_release_unfetched",
 ];
+
+/// The stored `album_links` values of a MusicBrainz release.
+const ALBUM_LINKS_READ: &str = "read";
+const ALBUM_LINKS_UNREAD: &str = "unread";
+
+/// The `album_links` column a release's facts are stored with: a MusicBrainz
+/// release's reading, none for a Discogs release.
+fn album_links_column(facts: &CatalogFacts) -> Result<Option<&'static str>, DbError> {
+    match facts {
+        CatalogFacts::MusicBrainz { album_links, .. } => match album_links {
+            AlbumLinks::Read(_) => Ok(Some(ALBUM_LINKS_READ)),
+            AlbumLinks::Unread => Ok(Some(ALBUM_LINKS_UNREAD)),
+            AlbumLinks::NotAsked => Err(DbError::Message(
+                "a fetched MusicBrainz release carries album links that were never read".to_string(),
+            )),
+        },
+        CatalogFacts::Discogs { .. } => Ok(None),
+    }
+}
 
 fn unreadable(what: &str, value: impl std::fmt::Debug) -> DbError {
     DbError::Message(format!("stored source release holds an unreadable {what}: {value:?}"))
@@ -70,8 +91,8 @@ pub(super) fn replace_source_release_on(
              (catalog, release_id, source_group_id, album_title, album_year, \
               album_first_year, year, labels, barcode, country, region, media, status, \
               packaging, discogs_details, notes, archive_release_id, archive_group_id, \
-              fetched_at) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
+              album_links, fetched_at) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
          ON CONFLICT (catalog, release_id) DO UPDATE SET \
              source_group_id = excluded.source_group_id, \
              album_title = excluded.album_title, album_year = excluded.album_year, \
@@ -81,7 +102,8 @@ pub(super) fn replace_source_release_on(
              status = excluded.status, packaging = excluded.packaging, \
              discogs_details = excluded.discogs_details, notes = excluded.notes, \
              archive_release_id = excluded.archive_release_id, \
-             archive_group_id = excluded.archive_group_id, fetched_at = excluded.fetched_at",
+             archive_group_id = excluded.archive_group_id, \
+             album_links = excluded.album_links, fetched_at = excluded.fetched_at",
         params![
             catalog,
             key,
@@ -107,6 +129,7 @@ pub(super) fn replace_source_release_on(
                 .archive_release
                 .as_ref()
                 .and_then(|archive| archive.group_id.as_deref()),
+            album_links_column(&release.catalog)?,
             fetched_at.to_rfc3339(),
         ],
     )?;
@@ -134,13 +157,34 @@ pub(super) fn replace_source_release_on(
         )?;
     }
     match &release.catalog {
-        CatalogFacts::MusicBrainz { links } => {
+        CatalogFacts::MusicBrainz { links, album_links } => {
             for (position, link) in links.iter().enumerate() {
                 sql.execute(
                     "INSERT INTO source_release_link \
                          (catalog, release_id, position, link_catalog, link_key) \
                      VALUES (?, ?, ?, ?, ?)",
                     params![catalog, key, position as i64, link.catalog.as_str(), link.key],
+                )?;
+            }
+            for (ordinal, link) in album_links.read().iter().enumerate() {
+                let columns = super::album_link_rows::StatementColumns::of(&link.stated);
+                sql.execute(
+                    "INSERT INTO source_release_album_link \
+                         (catalog, release_id, ordinal, album_catalog, album_key, stated, \
+                          wikidata_item, musicbrainz_release, release_catalog, release_key) \
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    params![
+                        catalog,
+                        key,
+                        ordinal as i64,
+                        link.album.catalog.as_str(),
+                        link.album.key,
+                        columns.stated,
+                        columns.wikidata_item,
+                        columns.musicbrainz_release,
+                        columns.release.map(|release| release.catalog.as_str()),
+                        columns.release.map(|release| release.key.as_str()),
+                    ],
                 )?;
             }
         }
@@ -306,7 +350,7 @@ pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
         .query_row(
             "SELECT source_group_id, album_title, album_year, year, labels, barcode, \
                     archive_release_id, archive_group_id, country, region, media, \
-                    status, packaging, discogs_details, album_first_year, notes \
+                    status, packaging, discogs_details, album_first_year, notes, album_links \
              FROM source_release WHERE catalog = ? AND release_id = ?",
             params![catalog, key],
             |row| {
@@ -324,6 +368,7 @@ pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
                     row.get::<_, Option<String>>(7)?,
                     row.get::<_, Option<i32>>("album_first_year")?,
                     row.get::<_, String>("notes")?,
+                    row.get::<_, Option<String>>("album_links")?,
                 ))
             },
         )
@@ -337,6 +382,7 @@ pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
         archive_group,
         album_first_year,
         notes,
+        album_links,
     )) = head
     else {
         return Ok(None);
@@ -372,6 +418,33 @@ pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
                     Ok(MetadataRef::new(catalog_column(&link_catalog)?, link_key))
                 })
                 .collect::<Result<_, DbError>>()?,
+            album_links: match album_links.as_deref() {
+                Some(ALBUM_LINKS_READ) => AlbumLinks::Read(
+                    sql.query(
+                        "SELECT album_catalog, album_key, stated, wikidata_item, \
+                                musicbrainz_release, release_catalog, release_key \
+                         FROM source_release_album_link \
+                         WHERE catalog = ? AND release_id = ? ORDER BY ordinal",
+                        params![catalog, key],
+                        |row| {
+                            Ok(super::album_link_rows::AlbumLinkRow {
+                                catalog: row.get(0)?,
+                                key: row.get(1)?,
+                                stated: row.get(2)?,
+                                wikidata_item: row.get(3)?,
+                                musicbrainz_release: row.get(4)?,
+                                release_catalog: row.get(5)?,
+                                release_key: row.get(6)?,
+                            })
+                        },
+                    )?
+                    .into_iter()
+                    .map(super::album_link_rows::AlbumLinkRow::link)
+                    .collect::<Result<_, DbError>>()?,
+                ),
+                Some(ALBUM_LINKS_UNREAD) => AlbumLinks::Unread,
+                other => return Err(unreadable("MusicBrainz release album links", other)),
+            },
         },
         Catalog::Discogs => CatalogFacts::Discogs {
             media: {

@@ -1692,6 +1692,12 @@ CREATE TABLE IF NOT EXISTS source_release (
     -- runout inscriptions.
     notes              TEXT NOT NULL DEFAULT '[]'
         CHECK (json_valid(notes) AND json_type(notes) = 'array'),
+    -- What a MusicBrainz release's documents state its album is on the other
+    -- lookup catalog: 'read', the albums named in source_release_album_link
+    -- (none, where nothing names one), or 'unread', where a document a
+    -- statement reads was not fetched and none named an album. NULL for a
+    -- Discogs release, whose documents state no counterpart album.
+    album_links        TEXT CHECK (album_links IS NULL OR album_links IN ('read', 'unread')),
     -- The MusicBrainz release whose Cover Art Archive gallery the picker opens
     -- (this release, or the one a Discogs release cross-references), and its
     -- release group.
@@ -1700,7 +1706,8 @@ CREATE TABLE IF NOT EXISTS source_release (
     fetched_at         TEXT NOT NULL,
     PRIMARY KEY (catalog, release_id),
     CHECK (archive_release_id IS NOT NULL OR archive_group_id IS NULL),
-    CHECK (country IS NULL OR region IS NULL)
+    CHECK (country IS NULL OR region IS NULL),
+    CHECK ((catalog = 'musicbrainz') = (album_links IS NOT NULL))
 ) STRICT;
 
 -- The album's artists, in credit order.
@@ -1728,6 +1735,33 @@ CREATE TABLE IF NOT EXISTS source_release_link (
     PRIMARY KEY (catalog, release_id, position),
     FOREIGN KEY (catalog, release_id)
         REFERENCES source_release (catalog, release_id) ON DELETE CASCADE
+) STRICT;
+
+-- Each album on another catalog a MusicBrainz release's documents name as its
+-- album, for a release whose album_links is 'read', in statement order and in
+-- the columns import_candidate_match_album_link uses. `stated` says how:
+-- 'page', its release group's page or its own links it; 'wikidata', a
+-- Wikidata item that page links states it; 'release', the release
+-- (`musicbrainz_release`) links a twin release (`release_catalog`,
+-- `release_key`) whose own document files it under the album.
+CREATE TABLE IF NOT EXISTS source_release_album_link (
+    catalog             TEXT NOT NULL CHECK (catalog = 'musicbrainz'),
+    release_id          TEXT NOT NULL,
+    ordinal             INTEGER NOT NULL CHECK (ordinal >= 0),
+    album_catalog       TEXT NOT NULL CHECK (album_catalog <> '' AND album_catalog <> 'musicbrainz'),
+    album_key           TEXT NOT NULL CHECK (album_key <> ''),
+    stated              TEXT NOT NULL CHECK (stated IN ('page', 'wikidata', 'release')),
+    wikidata_item       TEXT CHECK (wikidata_item IS NULL OR wikidata_item <> ''),
+    musicbrainz_release TEXT CHECK (musicbrainz_release IS NULL OR musicbrainz_release <> ''),
+    release_catalog     TEXT CHECK (release_catalog IS NULL OR release_catalog <> ''),
+    release_key         TEXT CHECK (release_key IS NULL OR release_key <> ''),
+    PRIMARY KEY (catalog, release_id, ordinal),
+    FOREIGN KEY (catalog, release_id)
+        REFERENCES source_release (catalog, release_id) ON DELETE CASCADE,
+    CHECK ((stated = 'wikidata') = (wikidata_item IS NOT NULL)),
+    CHECK ((stated = 'release') = (musicbrainz_release IS NOT NULL)),
+    CHECK ((stated = 'release') = (release_catalog IS NOT NULL)),
+    CHECK ((stated = 'release') = (release_key IS NOT NULL))
 ) STRICT;
 
 -- A Discogs release's format entries that are media, in order: the carrier (a
