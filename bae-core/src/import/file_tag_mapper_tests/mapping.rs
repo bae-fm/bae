@@ -173,46 +173,116 @@ fn stored_file_tag_facts_project_without_opening_the_source_file() {
     assert!(parsed.release.pressing.facts.media.is_empty());
 }
 
-#[test]
-fn cue_sheet_seeds_one_track_per_cue_entry_not_per_image_file() {
-    use crate::cue_flac::{CueIndex, CueSheet, CueTrack, CueTrackMode};
-    let mk = |number: u32, title: &str| CueTrack {
-        number,
-        mode: CueTrackMode::Audio,
-        title: Some(title.to_string()),
-        performer: Some("Artist Name".to_string()),
-        indexes: vec![CueIndex {
-            number: 1,
-            frames: 0,
-            file_reference: "image.flac".to_string(),
-        }],
-        file_reference: "image.flac".to_string(),
-        start_cue_frames: 0,
-        generated_pregap_frames: None,
-        end_cue_frames: None,
+/// A folder holding one disc image per sheet, each sheet bound to its image
+/// and assigned its disc in order, read through the file-metadata mapper with
+/// tags that name nothing.
+fn map_cue_folder(sheets: Vec<CueSheet>, folder_name: Option<&str>) -> ParsedAlbum {
+    use crate::import::file_tag_snapshot::{FileObservation, FileTagFact};
+    use crate::import::folder_scanner::{
+        CandidateFile, CategorizedFiles, FileRole, ScannedFile, SheetAudioFile, SheetBinding,
+        SheetDisc,
     };
-    let sheet = CueSheet {
-        title: Some("Album Title".to_string()),
-        performer: Some("Artist Name".to_string()),
-        catalog: None,
-        date: Some("1970".to_string()),
-        ripper: None,
-        tracks: vec![mk(1, "Track One"), mk(2, "Track Two"), mk(3, "Track Three")],
+    let mut entries = Vec::new();
+    for (index, sheet) in sheets.into_iter().enumerate() {
+        let image = format!("disc{}.flac", index + 1);
+        let sheet_name = format!("disc{}.cue", index + 1);
+        entries.push(CandidateFile {
+            file: ScannedFile::new(PathBuf::from("/source").join(&image), image.clone(), 123, 1)
+                .with_test_flac_audio(),
+            role: FileRole::Audio,
+        });
+        entries.push(CandidateFile {
+            file: ScannedFile::new(
+                PathBuf::from("/source").join(&sheet_name),
+                sheet_name,
+                123,
+                1,
+            ),
+            role: FileRole::TrackSheet {
+                sheet,
+                binding: SheetBinding::Resolved {
+                    files: vec![SheetAudioFile {
+                        file_reference: "image.flac".into(),
+                        file_id: image,
+                    }],
+                },
+                disc: SheetDisc::Disc {
+                    number: index as u32 + 1,
+                },
+            },
+        });
+    }
+    let files = CategorizedFiles {
+        files: entries,
+        parts: Vec::new(),
+    };
+    let snapshot = FileTagSnapshot {
+        scan_generation: 1,
+        file_edit_revision: 0,
+        embedded_cover: None,
+        files: files
+            .audio()
+            .map(|file| FileTagFact {
+                observation: FileObservation {
+                    relative_path: file.relative_path.clone(),
+                    size: file.size,
+                    modified_at_ns: file.modified_at_ns,
+                },
+                title: None,
+                track_artist: None,
+                album_title: None,
+                album_artist: None,
+                year: None,
+                track_number: None,
+                disc_number: None,
+                isrc: None,
+                copyright: None,
+                label: None,
+                store: None,
+            })
+            .collect(),
     };
     let clock = FixedClock(
         chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
             .unwrap()
             .with_timezone(&chrono::Utc),
     );
-    let ids = SequentialIdProvider::new("cue");
-    let parsed = map_cue_sheets_to_db(&[&sheet], Some("Folder Name"), &clock, &ids).unwrap();
+    map_file_metadata_to_db(
+        &files,
+        &snapshot,
+        folder_name,
+        &clock,
+        &SequentialIdProvider::new("cue"),
+    )
+    .unwrap()
+}
+
+#[test]
+fn cue_sheet_seeds_one_track_per_cue_entry_not_per_image_file() {
+    let mut sheet = cue_sheet(
+        "Album Title",
+        vec![
+            cue_track(1, "Track One"),
+            cue_track(2, "Track Two"),
+            cue_track(3, "Track Three"),
+        ],
+    );
+    sheet.date = Some("1970".to_string());
+    for track in &mut sheet.tracks {
+        track.performer = Some("Artist Name".to_string());
+    }
+    let parsed = map_cue_folder(vec![sheet], Some("Folder Name"));
 
     // The single-file image is NOT collapsed to one track: one DbTrack per
     // CUE TRACK entry, in order, carrying the CUE's own titles.
-    assert_eq!(parsed.tracks.len(), 3);
-    assert_eq!(parsed.tracks[0].title, "Track One");
-    assert_eq!(parsed.tracks[1].title, "Track Two");
-    assert_eq!(parsed.tracks[2].title, "Track Three");
+    assert_eq!(
+        parsed
+            .tracks
+            .iter()
+            .map(|t| t.title.as_str())
+            .collect::<Vec<_>>(),
+        ["Track One", "Track Two", "Track Three"]
+    );
     assert!(parsed.tracks.iter().all(|t| t.side == Some(1)));
     assert_eq!(
         parsed
@@ -257,8 +327,8 @@ fn cue_sheet(title: &str, tracks: Vec<crate::cue_flac::CueTrack>) -> CueSheet {
     }
 }
 
-/// Multi-disc CUE rip: one sheet per disc. Side is the 1-based disc index
-/// (sheet order); track numbers restart per sheet.
+/// Multi-disc CUE rip: one sheet per disc. Side is the disc the sheet is
+/// assigned; track numbers restart per sheet.
 #[test]
 fn cue_multi_sheet_assigns_side_per_disc() {
     let disc1 = cue_sheet(
@@ -269,39 +339,20 @@ fn cue_multi_sheet_assigns_side_per_disc() {
         "Album Title",
         vec![cue_track(1, "D2 T1"), cue_track(2, "D2 T2")],
     );
-    let clock = FixedClock(
-        chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
-            .unwrap()
-            .with_timezone(&chrono::Utc),
-    );
-    let ids = SequentialIdProvider::new("cue");
-    let parsed = map_cue_sheets_to_db(&[&disc1, &disc2], Some("Folder"), &clock, &ids).unwrap();
+    let parsed = map_cue_folder(vec![disc1, disc2], Some("Folder"));
 
-    assert_eq!(parsed.tracks.len(), 4);
-    assert_eq!(parsed.tracks[0].side, Some(1));
-    assert_eq!(parsed.tracks[0].track_number, Some(1));
-    assert_eq!(parsed.tracks[1].side, Some(1));
-    assert_eq!(parsed.tracks[1].track_number, Some(2));
-    assert_eq!(parsed.tracks[2].side, Some(2));
-    assert_eq!(parsed.tracks[2].track_number, Some(1));
-    assert_eq!(parsed.tracks[3].side, Some(2));
-    assert_eq!(parsed.tracks[3].track_number, Some(2));
-}
-
-/// No sheets → error (an album has at least one disc).
-#[test]
-fn cue_empty_sheets_returns_error() {
-    let clock = FixedClock(
-        chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
-            .unwrap()
-            .with_timezone(&chrono::Utc),
-    );
-    let ids = SequentialIdProvider::new("cue");
-    let err = map_cue_sheets_to_db(&[], Some("Folder"), &clock, &ids)
-        .expect_err("expected empty sheets to error");
-    assert!(
-        matches!(&err, ImportError::FileTags { detail } if detail.contains("at least one sheet")),
-        "got: {err}"
+    assert_eq!(
+        parsed
+            .tracks
+            .iter()
+            .map(|track| (track.side, track.track_number))
+            .collect::<Vec<_>>(),
+        [
+            (Some(1), Some(1)),
+            (Some(1), Some(2)),
+            (Some(2), Some(1)),
+            (Some(2), Some(2)),
+        ]
     );
 }
 
@@ -804,14 +855,7 @@ fn cue_numbers_are_preserved_instead_of_recreated() {
         "Album",
         vec![cue_track(4, "Fourth"), cue_track(7, "Seventh")],
     );
-    let clock = FixedClock("2026-01-01T00:00:00Z".parse().unwrap());
-    let parsed = map_cue_sheets_to_db(
-        &[&sheet],
-        None,
-        &clock,
-        &SequentialIdProvider::new("cue-numbers"),
-    )
-    .unwrap();
+    let parsed = map_cue_folder(vec![sheet], None);
     assert_eq!(
         parsed
             .tracks

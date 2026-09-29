@@ -20,9 +20,9 @@ use super::file_tag_snapshot::{
 };
 use super::ParsedAlbum;
 use crate::cue_flac::CueSheet;
-use crate::pressing::Pressing;
 use crate::import::folder_scanner::{CategorizedFiles, ScannedFile};
 use crate::import::ImportError;
+use crate::pressing::Pressing;
 #[cfg(test)]
 use crate::util::content_type::ContentType;
 use coven::Clock;
@@ -269,7 +269,7 @@ pub(crate) fn map_file_metadata_to_db(
     if sheets.is_empty() {
         return map_file_tag_facts_to_db(&loose_facts, folder_name, clock, ids);
     }
-    let mut release = cue_sheets_ir(&sheets, folder_name)?;
+    let mut release = cue_sheets_release(&sheets, folder_name);
     let mut loose_tracks = if loose_facts.is_empty() {
         Vec::new()
     } else {
@@ -307,69 +307,25 @@ pub(crate) fn map_file_metadata_to_db(
     Ok(assemble_parsed_album(release, clock, ids))
 }
 
-/// Map a CUE-backed rip's parsed sheets to a [`ParsedAlbum`] for the
-/// file-metadata path. Where [`map_file_tags_to_db`] seeds one track per file, here the track
-/// structure comes from the playable CUE `TRACK` entries: title from each
-/// `TITLE`, per-track artist from each `PERFORMER`. Album-level fields come from
-/// the sheet header (`TITLE` / `PERFORMER` / `REM DATE`), the title falling back
-/// to the folder name. `sheets` and `audio_files` are one-per-pair in disc order
-/// — the same order `audio_layout` lays the folder's audio down — so side is the
-/// 1-based disc index and track numbers run per sheet.
-pub fn map_cue_sheets_to_db(
-    sheets: &[&CueSheet],
-    folder_name: Option<&str>,
-    clock: &dyn Clock,
-    ids: &dyn IdProvider,
-) -> Result<ParsedAlbum, ImportError> {
-    Ok(assemble_parsed_album(
-        cue_sheets_ir(sheets, folder_name)?,
-        clock,
-        ids,
-    ))
-}
-
-fn cue_sheets_ir(
-    sheets: &[&CueSheet],
-    folder_name: Option<&str>,
-) -> Result<ReleaseIr, ImportError> {
-    if sheets.is_empty() {
-        return Err(ImportError::FileTags {
-            detail: "CUE seeding requires at least one sheet".to_string(),
-        });
-    }
-
+/// The release a folder's carving sheets describe, before its tracks: the
+/// album title from the first sheet's `TITLE` (the folder name when none has
+/// one), the artist from the first `PERFORMER`, the year from the first
+/// `REM DATE`. The tracks are the folder's layout's to lay down.
+fn cue_sheets_release(sheets: &[&CueSheet], folder_name: Option<&str>) -> ReleaseIr {
     // Blank is allowed — the editable file-metadata form gates save on a title.
     let album_title = sheets
         .iter()
         .find_map(|s| non_empty(s.title.clone()))
         .or_else(|| folder_name.map(str::to_string))
         .unwrap_or_default();
-
     let album_artist_name = sheets
         .iter()
         .find_map(|s| non_empty(s.performer.clone()))
         .unwrap_or_default();
-
     let year = sheets
         .iter()
         .find_map(|s| year_from_cue_date(s.date.as_deref()));
-
-    // Each sheet is one side and its playable tracks are already in order, so
-    // per-side numbering by the assembler reproduces `position + 1` exactly.
-    let mut tracks: Vec<TrackIr> = Vec::new();
-    for (disc_index, sheet) in sheets.iter().enumerate() {
-        let side = disc_index as i32 + 1;
-        for track in sheet.playable_tracks() {
-            tracks.push(cue_track_ir(track, side));
-        }
-    }
-
-    Ok(file_tag_release_ir(
-        album_title,
-        &album_artist_name,
-        year,
-        tracks,
-    ))
+    file_tag_release_ir(album_title, &album_artist_name, year, Vec::new())
 }
 
 fn cue_track_ir(track: &crate::cue_flac::CueTrack, side: i32) -> TrackIr {
