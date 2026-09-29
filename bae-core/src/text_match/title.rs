@@ -33,6 +33,18 @@ pub(crate) fn strip_trailing_brackets(raw: &str) -> String {
     s
 }
 
+/// An album's title as it names the album: without its trailing bracketed
+/// tails (see [`strip_trailing_brackets`]), or whole when it is nothing but
+/// brackets — then the brackets are its name.
+pub(crate) fn bare_album_title(title: &str) -> String {
+    let bare = strip_trailing_brackets(title);
+    if bare.is_empty() {
+        title.to_string()
+    } else {
+        bare
+    }
+}
+
 /// A track title as two are compared: without its bracketed parts, wherever
 /// they sit, since they name a version rather than the song — "(Remastered)",
 /// "[Live]" — and squashed, see [`super::squash`].
@@ -90,6 +102,12 @@ mod tests {
             strip_trailing_brackets("Album (Middle) Title"),
             "Album (Middle) Title"
         );
+    }
+
+    #[test]
+    fn an_album_title_is_bare_unless_it_is_nothing_but_brackets() {
+        assert_eq!(bare_album_title("Album Title (Remastered)"), "Album Title");
+        assert_eq!(bare_album_title("[Untitled]"), "[Untitled]");
     }
 
     #[test]

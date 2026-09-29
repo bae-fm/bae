@@ -438,6 +438,38 @@ fn a_title_agrees_in_any_order_of_its_words() {
     assert!(!titled("Words Album 1999", &["1999 Album", "Words"]));
 }
 
+/// A catalog's title agrees without the bracketed tails it ends on, which
+/// name an edition the folder need not write; a bracket that opens the title
+/// is part of it, and a title that is nothing but brackets is its own words.
+#[test]
+fn a_title_agrees_without_its_trailing_brackets() {
+    let titled = |title: &str, lines: &[&str]| {
+        agreements_of(
+            &MetadataResult {
+                title: title.to_string(),
+                ..result()
+            },
+            &text(lines),
+            &NO_LOOKUP,
+        )
+        .title
+    };
+    assert!(titled(
+        "Album Title (Remastered)",
+        &["Artist Name - Album Title"]
+    ));
+    assert!(titled(
+        "Album Title [Deluxe Edition] (2009)",
+        &["Album Title"]
+    ));
+    assert!(titled(
+        "(Leading Words) Album Title?",
+        &["(Leading Words) Album Title"]
+    ));
+    assert!(!titled("(Leading Words) Album Title?", &["Album Title"]));
+    assert!(titled("[Untitled]", &["Artist Name - Untitled"]));
+}
+
 /// A row is one physical object however many sources carry it, so what either
 /// source's record of it agrees with is what the row agrees with.
 #[test]

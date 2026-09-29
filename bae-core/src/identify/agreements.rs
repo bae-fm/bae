@@ -5,7 +5,7 @@ use super::combine::LookupProvenance;
 use crate::import::search::MetadataResult;
 use crate::pressing::{ReleaseArea, ReleaseLabel};
 use crate::signals::TextLine;
-use crate::text_match::{is_stop_word, squash, words, written_words, LabelName};
+use crate::text_match::{bare_album_title, is_stop_word, squash, words, written_words, LabelName};
 use std::collections::HashSet;
 
 /// Which of one result's fields the folder confirms. A field the result does
@@ -169,9 +169,11 @@ impl CandidateText {
     /// Whether the text states `title` as an album's title: every word of it
     /// in one of its lines, in any order. A catalog writes an album's words
     /// in the order its sleeve does, which one edition's sleeve may not —
-    /// "Album 1999" and "1999 Album" are one album.
+    /// "Album 1999" and "1999 Album" are one album. The bracketed tails the
+    /// title ends on name an edition, not the album, and are not asked for:
+    /// see `text_match::bare_album_title`.
     pub fn states_title(&self, title: &str) -> bool {
-        let words = words(title);
+        let words = words(&bare_album_title(title));
         !words.is_empty() && self.lines.iter().any(|line| line.holds_words(&words))
     }
 

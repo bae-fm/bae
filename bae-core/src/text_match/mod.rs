@@ -19,6 +19,8 @@
 //! - [`catalog_key`]: two catalog numbers are one number.
 //! - [`strip_trailing_brackets`]: an album title or folder name without the
 //!   bracketed tails that name its edition or catalog number.
+//! - [`bare_album_title`]: an album's title as it names the album — the
+//!   same, unless the title is nothing but brackets.
 //! - [`track_title_key`]: two track titles are one song.
 //! - [`album_title_words`]: the words of an album's title that say which
 //!   album it is.
@@ -46,5 +48,7 @@ desktop_only! {
 
     pub(crate) use artist::is_various_artists;
     pub(crate) use label::LabelName;
-    pub(crate) use title::{album_title_words, strip_trailing_brackets, track_title_key};
+    pub(crate) use title::{
+        album_title_words, bare_album_title, strip_trailing_brackets, track_title_key,
+    };
 }
