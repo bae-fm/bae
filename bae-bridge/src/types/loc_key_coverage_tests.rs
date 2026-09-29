@@ -239,29 +239,6 @@ fn produced_keys() -> Vec<String> {
         keys.push(bridge_lookup_failure_key(f));
     }
 
-    // bridge_lookup_failure_brief_key — total over the variants, with the
-    // status split walked so both sides of it produce their key.
-    for f in [
-        BridgeLookupFailure::Network,
-        BridgeLookupFailure::Provider { status: Some(429) },
-        BridgeLookupFailure::Provider { status: Some(503) },
-        BridgeLookupFailure::Provider { status: Some(404) },
-        BridgeLookupFailure::Provider { status: None },
-        BridgeLookupFailure::Timeout,
-    ] {
-        keys.push(bridge_lookup_failure_brief_key(f));
-    }
-    // A 429 and a 503 are both the provider refusing for now, so they read
-    // alike — and neither reads like a 404.
-    assert_eq!(
-        bridge_lookup_failure_brief_key(BridgeLookupFailure::Provider { status: Some(429) }),
-        bridge_lookup_failure_brief_key(BridgeLookupFailure::Provider { status: Some(503) })
-    );
-    assert_ne!(
-        bridge_lookup_failure_brief_key(BridgeLookupFailure::Provider { status: Some(429) }),
-        bridge_lookup_failure_brief_key(BridgeLookupFailure::Provider { status: Some(404) })
-    );
-
     // bridge_error_category_key — every variant carries a key.
     for c in [
         BridgeErrorCategory::Database,

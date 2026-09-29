@@ -95,25 +95,6 @@ pub fn bridge_lookup_failure_key(failure: BridgeLookupFailure) -> String {
     .to_string()
 }
 
-/// Localization key for a lookup failure's few-word reason ("timed out",
-/// "busy"). A 429 or 503 reads as busy: the provider refusing for now, not a
-/// fault in what was asked.
-#[uniffi::export]
-pub fn bridge_lookup_failure_brief_key(failure: BridgeLookupFailure) -> String {
-    match failure {
-        BridgeLookupFailure::Network => "core.lookup.failure.brief.network",
-        BridgeLookupFailure::Provider {
-            status: Some(429 | 503),
-        } => "core.lookup.failure.brief.busy",
-        BridgeLookupFailure::Provider { status: Some(_) } => "core.lookup.failure.brief.provider",
-        BridgeLookupFailure::Provider { status: None } => {
-            "core.lookup.failure.brief.provider_unknown"
-        }
-        BridgeLookupFailure::Timeout => "core.lookup.failure.brief.timeout",
-    }
-    .to_string()
-}
-
 /// Why a run did not ask about a value, or took a step without asking
 /// anyone. Mirrors `bae_core::identify::NotAskedReason`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
