@@ -583,3 +583,32 @@ fn a_multi_file_sheet_in_another_case_resolves_every_reference() {
         },
     );
 }
+
+/// A sheet saved in a Windows code page rather than UTF-8 still names its
+/// audio: the sheet's text is decoded before its `FILE` reference is read.
+#[test]
+fn a_sheet_in_a_windows_code_page_names_its_audio() {
+    let (_tmp, album) = album_dir();
+    copy_cue_flac(&album, "Café Image.flac");
+    copy_cue_flac(&album, "bonus.flac");
+    let cue = std::fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac/Test Album.cue"),
+    )
+    .unwrap()
+    .replace("Test Album.flac", "Café Image.wav");
+    let (windows_1252, _, unmappable) = encoding_rs::WINDOWS_1252.encode(&cue);
+    assert!(!unmappable);
+    std::fs::write(album.join("disc.cue"), windows_1252).unwrap();
+
+    let files = scan_files(&album);
+
+    assert_eq!(
+        files.track_sheets().next().unwrap().binding,
+        &SheetBinding::Resolved {
+            files: vec![SheetAudioFile {
+                file_reference: "Café Image.wav".to_string(),
+                file_id: "Café Image.flac".to_string(),
+            }],
+        },
+    );
+}
