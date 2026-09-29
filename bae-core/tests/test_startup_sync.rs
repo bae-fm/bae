@@ -213,27 +213,22 @@ fn local_startup_returns_while_cloud_attachment_is_pending() {
             Err(error) => panic!("startup did not reach CloudKit attachment: {error}"),
         }
     }
-    let early = app_rx.recv_timeout(Duration::from_millis(250));
-    let returned_while_pending = early.is_ok();
+    // CloudKit stays held until the release below, so a result arriving here
+    // came back while cloud attachment was still pending.
+    let returned = app_rx.recv_timeout(Duration::from_secs(10));
     release_tx
         .send(())
         .expect("release the pending CloudKit operation");
-    let app = match early {
+    let app = match returned {
         Ok(result) => result.expect("local startup succeeds"),
-        Err(mpsc::RecvTimeoutError::Timeout) => app_rx
-            .recv_timeout(Duration::from_secs(10))
-            .expect("bootstrap returns after CloudKit is released")
-            .expect("local startup succeeds after provider failure"),
+        Err(mpsc::RecvTimeoutError::Timeout) => {
+            panic!("local services must return before cloud attachment completes")
+        }
         Err(mpsc::RecvTimeoutError::Disconnected) => {
             panic!("bootstrap result sender disconnected")
         }
     };
     bootstrap_thread.join().expect("bootstrap thread joins");
-
-    assert!(
-        returned_while_pending,
-        "local services must return before cloud attachment completes"
-    );
 
     let mut status = app.services.subscribe_sync_status_values();
     app.runtime.block_on(async {
