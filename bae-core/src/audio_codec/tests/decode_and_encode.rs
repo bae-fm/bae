@@ -464,7 +464,8 @@ fn i32_decode_fails_loud_when_the_buffer_is_cancelled_mid_stream() {
         )
     });
 
-    std::thread::sleep(std::time::Duration::from_millis(50));
+    // Cancel only once the decode is blocked on the missing back half.
+    buffer.wait_until_parked(1);
     buffer.cancel();
 
     let result = handle.join().expect("decode thread");
