@@ -233,19 +233,14 @@ final class ReleaseMetadataEditSession {
 
 extension ReleaseMetadataEditSession {
     var trackItems: [ReleaseMetadataTrackItem] {
-        form.tracks.enumerated()
-            .map { index, track in
-                guard let context = trackContextById[track.id] else {
-                    preconditionFailure(
-                        "Release edit track \(track.id) has no display context"
-                    )
-                }
-                return ReleaseMetadataTrackItem(
-                    index: index,
-                    track: track,
-                    context: context
+        form.tracks.map { track in
+            guard let context = trackContextById[track.id] else {
+                preconditionFailure(
+                    "Release edit track \(track.id) has no display context"
                 )
             }
+            return ReleaseMetadataTrackItem(track: track, context: context)
+        }
     }
 
     /// The tracks as the table lays them out: a run per side, and within it a
@@ -292,7 +287,6 @@ extension ReleaseMetadataEditSession {
 }
 
 struct ReleaseMetadataTrackItem: Identifiable {
-    let index: Int
     let track: BridgeRawTrackEdit
     let context: BridgeReleaseEditTrackContext
 
