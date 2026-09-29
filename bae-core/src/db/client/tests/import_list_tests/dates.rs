@@ -144,3 +144,98 @@ async fn a_rescan_captures_dates_even_when_the_candidate_files_are_unchanged() {
         )]
     );
 }
+
+/// `db` under a clock `days` after the fixtures' pinned instant.
+fn days_later(db: &Database, days: i64) -> Database {
+    Database::from_handle(
+        db.inner.handle.clone(),
+        Arc::new(FixedClock(fixed_now() + chrono::Duration::days(days))),
+    )
+}
+
+/// One completed scan of `root` finding `folders`.
+async fn scan(db: &Database, root: &str, folders: &[&FolderCandidate]) {
+    let generation = db
+        .begin_folder_scan(root, crate::import::VolumeKind::Local)
+        .await
+        .unwrap();
+    for folder in folders {
+        db.save_folder_scan_item(root, generation, &ScanItem::Valid((*folder).clone()))
+            .await
+            .unwrap();
+    }
+    db.finish_folder_scan(root, generation, None).await.unwrap();
+}
+
+/// Folders joined into one release are dated by the earliest of them: the
+/// joined row sorts where that folder did, not as a release found at the join.
+#[tokio::test]
+async fn joined_folders_sort_by_the_earliest_found_of_them() {
+    let (db, _tmp, root) = watched_root().await;
+    db.add_watched_import_folder(&root).await.unwrap();
+    let older = candidate(&root, "Older");
+    let middle = candidate(&root, "Middle");
+    let newest = candidate(&root, "Newest");
+    scan(&db, &root, &[&older]).await;
+    scan(&days_later(&db, 1), &root, &[&older, &middle]).await;
+    scan(&days_later(&db, 2), &root, &[&older, &middle, &newest]).await;
+
+    let listed = |db: Database, order: ImportListOrder| async move {
+        let mut request = request(TriageTab::Pending).await;
+        request.view.order = order;
+        rows(&db.load_import_list(request).await.unwrap())
+            .into_iter()
+            .map(|row| (row.candidate_key, row.folder_name))
+            .collect::<Vec<_>>()
+    };
+    let key = |folder: &FolderCandidate| folder.key();
+    assert_eq!(
+        listed(db.clone(), ImportListOrder::NewestFirst).await,
+        [
+            (key(&newest), "Newest".to_string()),
+            (key(&middle), "Middle".to_string()),
+            (key(&older), "Older".to_string()),
+        ]
+    );
+
+    let joined = days_later(&db, 3);
+    joined
+        .combine_releases(
+            "grouping:joined".into(),
+            vec![older.clone(), newest.clone()],
+        )
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        listed(joined.clone(), ImportListOrder::NewestFirst).await,
+        [
+            (key(&middle), "Middle".to_string()),
+            ("grouping:joined".to_string(), "Older".to_string()),
+        ]
+    );
+    assert_eq!(
+        listed(joined.clone(), ImportListOrder::OldestFirst).await,
+        [
+            ("grouping:joined".to_string(), "Older".to_string()),
+            (key(&middle), "Middle".to_string()),
+        ]
+    );
+    // Joining records no folder as found: only the scanned folders are dated.
+    let discovered: Vec<String> = joined
+        .read(|sql| {
+            Ok(sql.query(
+                "SELECT folder FROM folder_discovery ORDER BY folder",
+                [],
+                |row| row.get(0),
+            )?)
+        })
+        .await
+        .unwrap();
+    let mut scanned: Vec<String> = [&older, &middle, &newest]
+        .iter()
+        .map(|folder| folder.path.to_string_lossy().into_owned())
+        .collect();
+    scanned.sort();
+    assert_eq!(discovered, scanned);
+}

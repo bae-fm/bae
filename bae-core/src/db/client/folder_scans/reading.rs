@@ -235,7 +235,6 @@ impl Database {
                 sql,
                 &pruned,
                 &pruned_sidecars,
-                observed_at,
             )?;
             Ok(FolderReadingWrite {
                 writes,

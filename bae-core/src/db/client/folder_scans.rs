@@ -395,7 +395,6 @@ impl Database {
         let watched_folder_path = watched_folder_path.to_string();
         let generation = generation_column(generation)?;
         let error = error.map(str::to_string);
-        let observed_at = self.inner.clock.now().timestamp_millis();
         if self.current_scan_generation(&watched_folder_path).await? != Some(generation) {
             return Ok(None);
         }
@@ -417,12 +416,8 @@ impl Database {
                  WHERE watched_folder_path = ? AND generation = ?",
                 params![watched_folder_path, generation],
             )?;
-            let regrouped = super::release_groupings::rebuild_groupings(
-                sql,
-                &pruned,
-                &pruned_sidecars,
-                observed_at,
-            )?;
+            let regrouped =
+                super::release_groupings::rebuild_groupings(sql, &pruned, &pruned_sidecars)?;
             Ok(Some(FinishedScan { pruned, regrouped }))
         })
         .await
@@ -530,13 +525,7 @@ fn write_scan_item(
     finding: Finding,
 ) -> Result<ScanItemWrite, DbError> {
     if let ScanItem::Sidecar(folder_sidecar) = &to_write.item {
-        return sidecar::write_sidecar(
-            sql,
-            watched_folder_path,
-            generation,
-            folder_sidecar,
-            observed_at,
-        );
+        return sidecar::write_sidecar(sql, watched_folder_path, generation, folder_sidecar);
     }
     let Some(entry_key) = to_write.item.persisted_key() else {
         return Err(DbError::Message(
@@ -552,8 +541,10 @@ fn write_scan_item(
         watched_folder_path,
         generation,
         to_write,
-        observed_at,
-        EntrySource::Scanned(finding),
+        EntrySource::Scanned {
+            finding,
+            observed_at,
+        },
     )?
     else {
         return Ok(ScanItemWrite::Unchanged);
@@ -564,7 +555,7 @@ fn write_scan_item(
         .chain(superseded_keys.iter().cloned())
         .collect();
     let regrouped =
-        super::release_groupings::rebuild_groupings(sql, &touched, &uncovered, observed_at)?;
+        super::release_groupings::rebuild_groupings(sql, &touched, &uncovered)?;
     Ok(ScanItemWrite::Stored {
         superseded_keys,
         regrouped,
@@ -575,10 +566,12 @@ fn write_scan_item(
 /// Who writes an entry.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum EntrySource {
-    /// A scan, which replaces every other reading of its files.
-    Scanned(Finding),
+    /// A scan, which replaces every other reading of its files and records
+    /// the folder as seen at `observed_at`.
+    Scanned { finding: Finding, observed_at: i64 },
     /// A grouping, which replaces only its own row. Its release is found when
-    /// it is combined.
+    /// it is combined, and records no folder as seen: it is dated by the
+    /// folders it takes in when the list reads it.
     Grouping,
 }
 
@@ -612,7 +605,6 @@ pub(super) fn write_entry(
     watched_folder_path: &str,
     generation: i64,
     to_write: &ScanItemToWrite,
-    observed_at: i64,
     source: EntrySource,
 ) -> Result<EntryWrite, DbError> {
     let ScanItemToWrite {
@@ -626,7 +618,7 @@ pub(super) fn write_entry(
         ));
     };
     let sources = match source {
-        EntrySource::Scanned(_) => RowSources::Scanned,
+        EntrySource::Scanned { .. } => RowSources::Scanned,
         EntrySource::Grouping => RowSources::Any,
     };
     let folder = match item {
@@ -638,9 +630,23 @@ pub(super) fn write_entry(
             )))
         }
     };
-    let discovery = dates::FolderDiscovery::observe(sql, folder, *folder_date, observed_at)?;
-    let settles =
-        matches!(source, EntrySource::Scanned(_)) && !matches!(item, ScanItem::Discovered(_));
+    // Only a scan sees a folder. A grouping's release is dated by the folders
+    // it takes in, so writing it must not record its folder as found now.
+    let discovery = match source {
+        EntrySource::Scanned {
+            finding,
+            observed_at,
+        } => Some((
+            finding,
+            dates::FolderDiscovery::observe(sql, folder, *folder_date, observed_at)?,
+        )),
+        EntrySource::Grouping => None,
+    };
+    let settles = !matches!(item, ScanItem::Discovered(_));
+    let record_discovery = || match &discovery {
+        Some((_, discovery)) => discovery.store(sql, settles),
+        None => Ok(()),
+    };
     let listed_before = read::settled_entry_is_stored(sql, watched_folder_path, &entry_key)?;
     // A rescan reports every candidate tentative before it reports it settled.
     // A settled row keeps standing through that, taking only this
@@ -648,7 +654,7 @@ pub(super) fn write_entry(
     // write that follows replaces it.
     if matches!(item, ScanItem::Discovered(_)) && listed_before {
         write::touch_candidate(sql, watched_folder_path, &entry_key, generation)?;
-        discovery.store(sql, settles)?;
+        record_discovery()?;
         return Ok(EntryWrite::Unchanged);
     }
     // An unchanged row only takes the stamp, so an untouched folder
@@ -656,7 +662,7 @@ pub(super) fn write_entry(
     let stored_item = read::load_item_by_key(sql, &entry_key, sources)?.map(|(_, stored)| stored.item);
     if stored_item.as_ref() == Some(item) {
         write::touch_candidate(sql, watched_folder_path, &entry_key, generation)?;
-        discovery.store(sql, settles)?;
+        record_discovery()?;
         return Ok(EntryWrite::Unchanged);
     }
     // Rewriting the row deletes its file-tag reading; a write with no
@@ -668,7 +674,7 @@ pub(super) fn write_entry(
             .filter(|snapshot| item_was_read_for(item, snapshot)),
     };
     let removed_keys = match source {
-        EntrySource::Scanned(_) => {
+        EntrySource::Scanned { .. } => {
             superseded_keys(&stored_entries(sql, watched_folder_path)?, item)
         }
         EntrySource::Grouping => Vec::new(),
@@ -698,14 +704,14 @@ pub(super) fn write_entry(
             &snapshot,
         )?;
     }
-    discovery.store(sql, settles)?;
+    record_discovery()?;
     Ok(EntryWrite::Stored {
         replaced: removed_keys,
         found: matches!(item, ScanItem::Valid(_))
-            && match source {
-                EntrySource::Scanned(Finding::FirstRead) => !discovery.settled(),
-                EntrySource::Scanned(Finding::Decision) => !listed_before,
-                EntrySource::Grouping => false,
+            && match &discovery {
+                Some((Finding::FirstRead, discovery)) => !discovery.settled(),
+                Some((Finding::Decision, _)) => !listed_before,
+                None => false,
             },
     })
 }

@@ -120,7 +120,6 @@ pub(super) fn rebuild_groupings(
     sql: &SqlContext<'_, '_>,
     touched: &[String],
     sidecars: &[PathBuf],
-    observed_at: i64,
 ) -> Result<GroupingChanges, DbError> {
     let mut groupings = BTreeSet::new();
     for key in touched {
@@ -139,7 +138,7 @@ pub(super) fn rebuild_groupings(
     }
     let mut changes = GroupingChanges::default();
     for grouping in groupings {
-        changes.extend(rebuild_grouping(sql, &grouping, observed_at)?);
+        changes.extend(rebuild_grouping(sql, &grouping)?);
     }
     Ok(changes)
 }
@@ -147,11 +146,7 @@ pub(super) fn rebuild_groupings(
 /// Build and store the release of the grouping `key` from the releases it
 /// takes in, or record on the grouping why it cannot be built and leave its
 /// release as last built.
-fn rebuild_grouping(
-    sql: &SqlContext<'_, '_>,
-    key: &str,
-    observed_at: i64,
-) -> Result<GroupingChanges, DbError> {
+fn rebuild_grouping(sql: &SqlContext<'_, '_>, key: &str) -> Result<GroupingChanges, DbError> {
     let member_keys: Vec<String> = sql.query(
         "SELECT member_key FROM release_grouping_member WHERE grouping_key = ? ORDER BY position",
         [key],
@@ -229,7 +224,7 @@ fn rebuild_grouping(
             params![sits_in_text, key],
         )?;
         if let Some(left) = &sat_in {
-            changes.extend(rebuild_blocked_in(sql, key, Path::new(left), observed_at)?);
+            changes.extend(rebuild_blocked_in(sql, key, Path::new(left))?);
         }
     }
     let reading = sat_in == sits_in_text && was_reading;
@@ -315,7 +310,6 @@ fn rebuild_grouping(
             file_metadata: None,
             folder_date: None,
         },
-        observed_at,
         EntrySource::Grouping,
     )?;
     if let folder_scans::EntryWrite::Stored { .. } = written {
@@ -413,7 +407,6 @@ fn rebuild_blocked_in(
     sql: &SqlContext<'_, '_>,
     key: &str,
     folder: &Path,
-    observed_at: i64,
 ) -> Result<GroupingChanges, DbError> {
     let blocked: Vec<String> = sql.query(
         "SELECT key FROM release_grouping \
@@ -423,7 +416,7 @@ fn rebuild_blocked_in(
     )?;
     let mut changes = GroupingChanges::default();
     for blocked in blocked {
-        changes.extend(rebuild_grouping(sql, &blocked, observed_at)?);
+        changes.extend(rebuild_grouping(sql, &blocked)?);
     }
     Ok(changes)
 }
@@ -621,7 +614,6 @@ impl Database {
         }
         let root_for_compose = members[0].watched_folder_path.clone();
         let key_for_compose = key.clone();
-        let observed_at = self.inner.clock.now().timestamp_millis();
         // Check for a refusal on the read connection; the write checks again
         // and fails if the store changed in between.
         let sits_in = crate::import::grouping::shared_parent(
@@ -738,7 +730,7 @@ impl Database {
                     ],
                 )?;
             }
-            let mut changes = rebuild_grouping(sql, &key, observed_at)?;
+            let mut changes = rebuild_grouping(sql, &key)?;
             if changes.written.iter().any(
                 |item| matches!(item, ScanItem::Valid(release) if release.key() == key),
             ) {
@@ -768,7 +760,6 @@ impl Database {
         key: &str,
     ) -> Result<(Vec<ScanItem>, GroupingChanges), DbError> {
         let key = key.to_string();
-        let observed_at = self.inner.clock.now().timestamp_millis();
         self.call(move |sql| {
             let members: Vec<String> = sql.query(
                 "SELECT member_key FROM release_grouping_member \
@@ -802,7 +793,7 @@ impl Database {
                 }
             }
             let regrouped = match sat_in {
-                Some(folder) => rebuild_blocked_in(sql, &key, Path::new(&folder), observed_at)?,
+                Some(folder) => rebuild_blocked_in(sql, &key, Path::new(&folder))?,
                 None => GroupingChanges::default(),
             };
             Ok((returned, regrouped))

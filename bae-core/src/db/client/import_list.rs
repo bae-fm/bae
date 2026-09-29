@@ -42,7 +42,8 @@ pub struct ScanCandidateListRow {
     pub name: String,
     pub display_path: String,
     /// Filesystem date, or first observation when the filesystem has none;
-    /// `None` when neither is stored.
+    /// for a release built from folders picked together, the earliest of
+    /// those folders' dates. `None` when none is stored.
     pub discovered_at: Option<i64>,
     /// `None` only for an invalid folder, which carries no files.
     pub content_hash: Option<String>,
@@ -285,13 +286,23 @@ fn listed_below(roots: &[String], folder: &str) -> Result<(String, String), DbEr
 
 fn candidate_rows(sql: &SqlReadContext<'_>) -> Result<Vec<ScanCandidateListRow>, DbError> {
     // A release a grouping takes in stays stored but is left out of the queue.
+    // A scanned release is dated by its folder; a grouping's release by the
+    // earliest of the folders it takes in, since joining them finds nothing.
     sql.query(
         "SELECT c.watched_folder_path, c.path, c.folder, c.kind, c.name, c.display_path, \
                 c.content_hash, c.file_edit_revision, c.invalid_reason, c.invalid_reason_path, \
-                COALESCE(d.source_date, d.first_seen_at), c.grouping_key, g.skipped, \
-                g.blocked, g.blocked_subject, g.blocked_holder \
+                CASE c.source_kind \
+                    WHEN 'folder' THEN \
+                        (SELECT COALESCE(d.source_date, d.first_seen_at) \
+                         FROM folder_discovery AS d WHERE d.folder = c.folder) \
+                    WHEN 'grouping' THEN \
+                        (SELECT MIN(COALESCE(d.source_date, d.first_seen_at)) \
+                         FROM release_grouping_member AS m \
+                         JOIN folder_discovery AS d ON d.folder = m.member_folder \
+                         WHERE m.grouping_key = c.grouping_key) \
+                END, \
+                c.grouping_key, g.skipped, g.blocked, g.blocked_subject, g.blocked_holder \
          FROM scan_candidate AS c \
-         LEFT JOIN folder_discovery AS d ON d.folder = c.folder \
          LEFT JOIN release_grouping AS g ON g.key = c.grouping_key \
          WHERE NOT EXISTS \
              (SELECT 1 FROM release_grouping_member WHERE member_key = c.path)",

@@ -163,7 +163,6 @@ pub(super) fn save_preparation_on(
     prep: &CandidatePreparation,
     expected: &CandidateSaveExpectation,
     extras: &CandidateSaveExtras,
-    observed_at: i64,
 ) -> Result<CandidateSaved, DbError> {
     prep.validate().map_err(DbError::Message)?;
     let content_hash = prep.content_hash.as_str();
@@ -295,7 +294,6 @@ pub(super) fn save_preparation_on(
                 expected_edit,
                 next_edit,
                 &settled_by_key,
-                observed_at,
             )?
         }
     };
@@ -364,8 +362,7 @@ impl Database {
         expected: CandidateSaveExpectation,
         extras: CandidateSaveExtras,
     ) -> Result<CandidateSaved, DbError> {
-        let observed_at = self.inner.clock.now().timestamp_millis();
-        self.call(move |sql| save_preparation_on(sql, &prep, &expected, &extras, observed_at))
+        self.call(move |sql| save_preparation_on(sql, &prep, &expected, &extras))
             .await
     }
 

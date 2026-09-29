@@ -583,7 +583,8 @@ CREATE TABLE IF NOT EXISTS skipped_import_candidates (
 
 -- When the scans first saw each folder, the date the folder carries, and
 -- whether a scan has read it as a release or as broken: a valid release read
--- where it has not is newly found.
+-- where it has not is newly found. Only scans write it: a release built from
+-- folders picked together is dated by theirs.
 CREATE TABLE IF NOT EXISTS folder_discovery (
     folder           TEXT PRIMARY KEY,
     first_seen_at    INTEGER NOT NULL,

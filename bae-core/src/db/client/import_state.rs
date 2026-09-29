@@ -453,7 +453,6 @@ pub(super) fn settle_scanned_candidates(
     expected_revision: i64,
     next_revision: i64,
     settled_by_key: &HashMap<String, crate::import::folder_scanner::CategorizedFiles>,
-    observed_at: i64,
 ) -> Result<Vec<crate::import::folder_scanner::FolderCandidate>, DbError> {
     let scanned = sql.query(
         "SELECT watched_folder_path, path, source_kind, file_edit_revision FROM scan_candidate \
@@ -540,7 +539,7 @@ pub(super) fn settle_scanned_candidates(
         )));
     }
     let settled: Vec<String> = updated_folders.into_iter().collect();
-    let regrouped = super::release_groupings::rebuild_groupings(sql, &settled, &[], observed_at)?;
+    let regrouped = super::release_groupings::rebuild_groupings(sql, &settled, &[])?;
     updated_candidates.extend(regrouped.written.into_iter().filter_map(|item| match item {
         crate::import::folder_scanner::ScanItem::Valid(candidate) => Some(candidate),
         _ => None,

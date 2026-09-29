@@ -87,7 +87,6 @@ pub(super) fn write_sidecar(
     watched_folder_path: &str,
     generation: i64,
     sidecar: &FolderSidecar,
-    observed_at: i64,
 ) -> Result<ScanItemWrite, DbError> {
     let root = Path::new(watched_folder_path);
     if sidecar.watched_folder_path != watched_folder_path
@@ -188,12 +187,8 @@ pub(super) fn write_sidecar(
         )?;
     }
     let touched: Vec<PathBuf> = touched.into_iter().collect();
-    let regrouped = super::super::release_groupings::rebuild_groupings(
-        sql,
-        &superseded_keys,
-        &touched,
-        observed_at,
-    )?;
+    let regrouped =
+        super::super::release_groupings::rebuild_groupings(sql, &superseded_keys, &touched)?;
     Ok(ScanItemWrite::Stored {
         superseded_keys,
         regrouped,
