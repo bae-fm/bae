@@ -429,11 +429,16 @@ pub fn mapping_tracks(table: &MappingTable) -> Vec<RawTrackEdit> {
 
 /// Render included tracks in their stored order, with omitted audio inserted
 /// at its source position. Every offer retains the read that produced it.
+///
+/// `source_lengths` are the lengths the applied release lists for its
+/// tracks, by the source index a track keeps; empty when no release was
+/// applied. A row one names shows that length beside its file's own.
 pub(crate) fn draft_mapping_table(
     files: &CategorizedFiles,
     durations: &SourceDurations,
     draft: &crate::import::CandidateDraft,
     read: &crate::import::CandidateAsRead,
+    source_lengths: &[Option<u64>],
 ) -> MappingTable {
     let mut table = mapping_table(files, None, durations);
     let mut sources = Vec::new();
@@ -514,6 +519,12 @@ pub(crate) fn draft_mapping_table(
             push_omitted(&mut table, audio, source);
         }
         let mut row = sources[position].1.clone();
+        if let Some(length) = track
+            .source_index
+            .and_then(|index| source_lengths.get(index as usize).copied().flatten())
+        {
+            row.duration_ms = Some(length);
+        }
         let position = crate::util::format::compute_track_position(
             draft.pressing.facts.physical_medium(),
             track.edit.side,

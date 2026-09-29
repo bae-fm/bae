@@ -169,7 +169,18 @@ pub(crate) fn draft_pane(
     draft: &CandidateDraft,
     read: &crate::import::CandidateAsRead,
 ) -> PanePick {
-    let table = crate::import::mapping::draft_mapping_table(files, durations, draft, read);
+    let source_lengths: Vec<Option<u64>> = release
+        .iter()
+        .flat_map(|release| &release.tracks)
+        .map(|track| track.duration_ms)
+        .collect();
+    let table = crate::import::mapping::draft_mapping_table(
+        files,
+        durations,
+        draft,
+        read,
+        &source_lengths,
+    );
     PanePick {
         release,
         edit: draft.release_edit(),
