@@ -28,10 +28,16 @@ pub(crate) struct FolderFacts {
     /// record of it whose full document was read states it: every pressing of
     /// one album shares it, read or not.
     album_years: Vec<((crate::import::Catalog, String), i32)>,
-    /// Every country its text writes out by name. Codes are left out: a
-    /// two-letter capital word is as often something else ("CD" is the
-    /// Congo's), and a country the folder does not name contradicts nothing.
-    countries: Vec<Country>,
+    /// Where the folder says the copy was released: the one area its
+    /// highest-standing text naming any names (see
+    /// [`CandidateText::highest_stating`]). None where that text names two:
+    /// one copy was released in one place, so two rows of different countries
+    /// never both agree. An area is named by a country's name, or by any way
+    /// of writing an area a record on the list states — codes count only
+    /// there, since a two-letter capital word is as often something else
+    /// ("CD" is the Congo's). A country no record states still counts: it is
+    /// a fact about the copy, and every row of another country disagrees.
+    area: Option<ReleaseArea>,
 }
 
 impl FolderFacts {
@@ -39,6 +45,20 @@ impl FolderFacts {
         text: &CandidateText,
         results: impl IntoIterator<Item = &'a MetadataResult>,
     ) -> Self {
+        let results: Vec<&MetadataResult> = results.into_iter().collect();
+        let listed: Vec<ReleaseArea> = results.iter().filter_map(|result| result.area).collect();
+        let named = text.highest_stating(|lines| {
+            let mut named: Vec<ReleaseArea> = Country::all()
+                .filter(|country| country.names().iter().any(|name| lines.states(name)))
+                .map(ReleaseArea::Country)
+                .collect();
+            for area in &listed {
+                if !named.contains(area) && lines.states_area(*area) {
+                    named.push(*area);
+                }
+            }
+            named
+        });
         let mut album_years: Vec<((crate::import::Catalog, String), i32)> = Vec::new();
         for result in results {
             if let (Some(group), Some(year)) = (&result.source_group_id, result.album_first_year) {
@@ -51,9 +71,10 @@ impl FolderFacts {
         Self {
             years: text.years(),
             album_years,
-            countries: Country::all()
-                .filter(|country| country.names().iter().any(|name| text.states(name)))
-                .collect(),
+            area: match named.as_slice() {
+                [one] => Some(*one),
+                _ => None,
+            },
         }
     }
 
@@ -111,20 +132,27 @@ impl FolderFacts {
         }
     }
 
-    /// Whether the row was released where the folder says: in a country or
-    /// region the text writes, or — where the folder names a country and the
-    /// row states another country — somewhere else. A region the row states
-    /// and the folder does not write says nothing: which countries a region
-    /// spans is not known here.
-    pub(crate) fn country(&self, records: &[MetadataResult], text: &CandidateText) -> Fact {
+    /// Whether `area` is where the folder says the copy was released.
+    pub(crate) fn names_area(&self, area: ReleaseArea) -> bool {
+        self.area == Some(area)
+    }
+
+    /// Whether the row was released where the folder says: there, or — where
+    /// the folder names a country and the row states another country —
+    /// somewhere else. A region the row states and the folder does not name
+    /// says nothing: which countries a region spans is not known here.
+    pub(crate) fn country(&self, records: &[MetadataResult]) -> Fact {
+        let Some(folder) = self.area else {
+            return Fact::StatesNothing;
+        };
         let areas: Vec<ReleaseArea> = records.iter().filter_map(|record| record.area).collect();
-        if areas.iter().any(|area| text.states_area(*area)) {
-            return Fact::Agrees;
-        }
-        let states_a_country = areas
-            .iter()
-            .any(|area| matches!(area, ReleaseArea::Country(_)));
-        if states_a_country && !self.countries.is_empty() {
+        if areas.contains(&folder) {
+            Fact::Agrees
+        } else if matches!(folder, ReleaseArea::Country(_))
+            && areas
+                .iter()
+                .any(|area| matches!(area, ReleaseArea::Country(_)))
+        {
             Fact::Disagrees
         } else {
             Fact::StatesNothing

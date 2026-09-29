@@ -9,6 +9,7 @@
 use super::agreements::{judged_results, Agreements, CandidateText};
 use super::combine::LookupAnswers;
 use super::combine::{combine_results, Findings, LibraryStatuses};
+use super::row_facts::FolderFacts;
 use super::state::{
     BarcodeProgress, CatalogProgress, DiscidProgress, IdentifyState, IsrcProgress, LookupResults,
     LookupState, SearchProgress, SignalsContext, ValueLookup,
@@ -399,6 +400,7 @@ fn fold(
     text: &CandidateText,
     track_count: u32,
 ) -> Folded {
+    let facts = FolderFacts::of(text, findings.releases());
     // The medium conflict is stated by the folder check, not here.
     let Findings {
         matches,
@@ -407,8 +409,8 @@ fn fold(
         narrowed_out,
         medium_conflict: _,
     } = findings;
-    let offered = judged_results(matches, &provenance, text);
-    let set_aside = judged_results(narrowed_out.matches, &narrowed_out.provenance, text);
+    let offered = judged_results(matches, &provenance, text, &facts);
+    let set_aside = judged_results(narrowed_out.matches, &narrowed_out.provenance, text, &facts);
     let judgements = Judgements::of(
         &offered
             .iter()

@@ -512,12 +512,13 @@ fn rows(
     pressings: &[u32],
     text: &CandidateText,
 ) -> Vec<(Pressing, crate::identify::agreements::Agreements)> {
+    let facts = FolderFacts::of(text, matches);
     let judged: Vec<Judged> = matches
         .iter()
         .cloned()
         .zip(provenance.iter().cloned())
         .map(|(result, lookup)| {
-            let agreements = agreements_of(&result, text, &lookup);
+            let agreements = agreements_of(&result, text, &facts, &lookup);
             (result, agreements)
         })
         .collect();

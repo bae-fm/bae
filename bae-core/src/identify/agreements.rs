@@ -2,9 +2,10 @@
 //! the barcode come from the lookups that returned the result, not the text.
 
 use super::combine::LookupProvenance;
+use super::row_facts::FolderFacts;
 use crate::import::search::MetadataResult;
 use crate::pressing::{ReleaseArea, ReleaseLabel};
-use crate::signals::TextLine;
+use crate::signals::{TextLine, TextOrigin};
 use crate::text_match::{bare_album_title, is_stop_word, squash, words, written_words, LabelName};
 use std::collections::HashSet;
 
@@ -84,11 +85,12 @@ impl Agreements {
     }
 }
 
-/// What the candidate's text agrees with about `result`, given the lookups
-/// that returned it.
-pub fn agreements_of(
+/// What the candidate's text agrees with about `result`, given what the
+/// folder states over the whole list and the lookups that returned it.
+pub(crate) fn agreements_of(
     result: &MetadataResult,
     text: &CandidateText,
+    facts: &FolderFacts,
     lookup: &LookupProvenance,
 ) -> Agreements {
     Agreements {
@@ -107,7 +109,7 @@ pub fn agreements_of(
         year: result
             .year
             .is_some_and(|year| text.states(&year.to_string())),
-        country: result.area.is_some_and(|area| text.states_area(area)),
+        country: result.area.is_some_and(|area| facts.names_area(area)),
         title: text.states_title(&result.title),
         artist: result
             .artist
@@ -119,16 +121,17 @@ pub fn agreements_of(
 /// Each match paired with its agreements, for
 /// [`crate::import::release_group::group_results`]. `provenance` is
 /// index-aligned with `matches`.
-pub fn judged_results(
+pub(crate) fn judged_results(
     matches: Vec<MetadataResult>,
     provenance: &[LookupProvenance],
     text: &CandidateText,
+    facts: &FolderFacts,
 ) -> Vec<crate::import::release_group::Judged> {
     matches
         .into_iter()
         .zip(provenance)
         .map(|(result, lookup)| {
-            let agreements = agreements_of(&result, text, lookup);
+            let agreements = agreements_of(&result, text, facts, lookup);
             (result, agreements)
         })
         .collect()
@@ -149,10 +152,7 @@ impl CandidateText {
     /// The pooled lines and the struck-out catalog numbers.
     pub fn of(pool: &[TextLine], struck_out: &[String]) -> Self {
         Self {
-            lines: pool
-                .iter()
-                .filter_map(|line| NormalizedLine::of(&line.text))
-                .collect(),
+            lines: pool.iter().filter_map(NormalizedLine::of).collect(),
             struck_out: struck_out
                 .iter()
                 .map(|value| squash(value))
@@ -221,6 +221,27 @@ impl CandidateText {
         years
     }
 
+    /// What the lines of the highest standing that state anything by
+    /// `stated` state: `stated` asked of each standing's lines, highest
+    /// first, and the first answer that is not empty — see [`Standing`].
+    pub(crate) fn highest_stating<T>(&self, stated: impl Fn(&Self) -> Vec<T>) -> Vec<T> {
+        [Standing::Labelled, Standing::Document, Standing::Printed]
+            .into_iter()
+            .map(|standing| {
+                stated(&Self {
+                    lines: self
+                        .lines
+                        .iter()
+                        .filter(|line| line.standing == standing)
+                        .cloned()
+                        .collect(),
+                    struck_out: self.struck_out.clone(),
+                })
+            })
+            .find(|found| !found.is_empty())
+            .unwrap_or_default()
+    }
+
     /// Whether the text writes `area` any way it is written — see
     /// `ReleaseArea::names`.
     pub fn states_area(&self, area: ReleaseArea) -> bool {
@@ -240,10 +261,40 @@ impl CandidateText {
     }
 }
 
+/// How far a line of the folder's text speaks for this copy, least first.
+/// What the person or the ripper wrote outranks what was scanned off the
+/// artwork, which prints lyrics, addresses and "Printed in U.S.A." as readily
+/// as the facts of the pressing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum Standing {
+    /// Read off the artwork.
+    Printed,
+    /// A text document beside the audio: written about this copy, but prose —
+    /// lyrics and liner notes as often as a description of it.
+    Document,
+    /// What the copy is labelled with: its folder's name, its files' names and
+    /// tags, its cue sheet.
+    Labelled,
+}
+
+impl Standing {
+    fn of(origin: TextOrigin) -> Self {
+        match origin {
+            TextOrigin::Artwork => Self::Printed,
+            TextOrigin::TextFile => Self::Document,
+            TextOrigin::FolderName
+            | TextOrigin::Filename
+            | TextOrigin::FileTag
+            | TextOrigin::CueSheet => Self::Labelled,
+        }
+    }
+}
+
 /// One line: its words run together, where each begins and ends, and the
 /// words it writes in capitals.
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct NormalizedLine {
+    standing: Standing,
     run: String,
     starts: Vec<usize>,
     ends: Vec<usize>,
@@ -252,7 +303,8 @@ struct NormalizedLine {
 }
 
 impl NormalizedLine {
-    fn of(text: &str) -> Option<Self> {
+    fn of(line: &TextLine) -> Option<Self> {
+        let text = line.text.as_str();
         let mut run = String::new();
         let mut starts = Vec::new();
         let mut ends = Vec::new();
@@ -266,6 +318,7 @@ impl NormalizedLine {
             .filter(|word| word.chars().all(char::is_uppercase))
             .collect();
         (!run.is_empty()).then_some(Self {
+            standing: Standing::of(line.origin),
             run,
             starts,
             ends,

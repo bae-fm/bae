@@ -17,6 +17,16 @@ fn result() -> MetadataResult {
     MetadataResult::for_test(Catalog::MusicBrainz, "rel-1", None)
 }
 
+/// What `text` agrees with about `result`, as a list of that one record.
+fn judge(result: &MetadataResult, text: &CandidateText, lookup: &LookupProvenance) -> Agreements {
+    agreements_of(
+        result,
+        text,
+        &FolderFacts::of(text, std::slice::from_ref(result)),
+        lookup,
+    )
+}
+
 const NO_LOOKUP: LookupProvenance = LookupProvenance {
     by_disc_id: false,
     by_barcode: false,
@@ -32,7 +42,7 @@ const NO_LOOKUP: LookupProvenance = LookupProvenance {
 fn a_catalog_number_is_stated_however_its_separators_fall() {
     let folder = text(&["Artist - Album [10101-2]"]);
     for stated in ["10101 2", "10101-2", "101012", "10101.2"] {
-        let judged = agreements_of(
+        let judged = judge(
             &MetadataResult {
                 labels: vec![ReleaseLabel::of(None, Some(stated))],
                 ..result()
@@ -48,7 +58,7 @@ fn a_catalog_number_is_stated_however_its_separators_fall() {
 /// digits happen to sit inside a longer run of them.
 #[test]
 fn digits_inside_a_longer_run_state_no_catalog_number() {
-    let judged = agreements_of(
+    let judged = judge(
         &MetadataResult {
             labels: vec![ReleaseLabel::of(None, Some("531 2"))],
             ..result()
@@ -62,13 +72,13 @@ fn digits_inside_a_longer_run_state_no_catalog_number() {
 /// A field the result does not state cannot be agreed with.
 #[test]
 fn a_field_the_result_leaves_out_is_no_agreement() {
-    let judged = agreements_of(&result(), &text(&["Harbor 1976 US"]), &NO_LOOKUP);
+    let judged = judge(&result(), &text(&["Harbor 1976 US"]), &NO_LOOKUP);
     assert_eq!(judged, Agreements::NONE);
 }
 
 #[test]
 fn the_label_the_year_and_the_country_are_read_out_of_the_text() {
-    let judged = agreements_of(
+    let judged = judge(
         &MetadataResult {
             labels: vec![ReleaseLabel::of(Some("Harbor Records"), None)],
             year: Some(1976),
@@ -89,7 +99,7 @@ fn the_label_the_year_and_the_country_are_read_out_of_the_text() {
 /// folder would agree with every country.
 #[test]
 fn a_country_code_inside_a_word_states_nothing() {
-    let judged = agreements_of(
+    let judged = judge(
         &MetadataResult {
             area: Some(crate::pressing::area("US")),
             status: None,
@@ -107,7 +117,7 @@ fn a_country_code_inside_a_word_states_nothing() {
 /// about them.
 #[test]
 fn the_disc_id_and_the_barcode_come_from_the_lookups_alone() {
-    let judged = agreements_of(
+    let judged = judge(
         &result(),
         &CandidateText::default(),
         &LookupProvenance {
@@ -140,16 +150,16 @@ fn a_catalog_lookup_agrees_only_through_the_number() {
         labels: vec![ReleaseLabel::of(None, Some(number))],
         ..result()
     };
-    assert!(agreements_of(&numbered("LBL 719"), &folder, &catalog_lookup).catalog);
-    assert!(!agreements_of(&numbered("LBL 1719"), &folder, &catalog_lookup).catalog);
-    assert!(!agreements_of(&result(), &folder, &catalog_lookup).catalog);
+    assert!(judge(&numbered("LBL 719"), &folder, &catalog_lookup).catalog);
+    assert!(!judge(&numbered("LBL 1719"), &folder, &catalog_lookup).catalog);
+    assert!(!judge(&result(), &folder, &catalog_lookup).catalog);
 }
 
 /// A release on two labels is under both numbers: the folder printing the
 /// second label's number agrees with it, and so does its second label's name.
 #[test]
 fn the_second_labels_number_and_name_are_agreed_with() {
-    let judged = agreements_of(
+    let judged = judge(
         &MetadataResult {
             labels: vec![
                 ReleaseLabel::of(Some("Label A"), Some("AB 100")),
@@ -210,7 +220,7 @@ fn a_struck_out_catalog_number_states_nothing() {
         &[line("Artist - Album [10101-2]")],
         &["10101-2".to_string()],
     );
-    let judged = agreements_of(
+    let judged = judge(
         &MetadataResult {
             labels: vec![ReleaseLabel::of(None, Some("10101-2"))],
             ..result()
@@ -226,7 +236,7 @@ fn a_struck_out_catalog_number_states_nothing() {
 #[test]
 fn striking_out_a_value_leaves_the_other_fields_alone() {
     let folder = CandidateText::of(&[line("Harbor 1976 US")], &["1976".to_string()]);
-    let judged = agreements_of(
+    let judged = judge(
         &MetadataResult {
             labels: vec![ReleaseLabel::of(None, Some("1976"))],
             year: Some(1976),
@@ -244,7 +254,7 @@ fn striking_out_a_value_leaves_the_other_fields_alone() {
 #[test]
 fn striking_out_a_number_takes_its_agreement_away() {
     let folder = CandidateText::of(&[line("[LBL-1]")], &["LBL-1".to_string()]);
-    let judged = agreements_of(
+    let judged = judge(
         &MetadataResult {
             labels: vec![ReleaseLabel::of(None, Some("LBL-1"))],
             ..result()
@@ -273,7 +283,7 @@ fn an_area_agrees_whichever_way_the_folder_spells_it() {
         ("US", "Album (US)"),
         ("XE", "Album (Europe)"),
     ] {
-        let judged = agreements_of(
+        let judged = judge(
             &MetadataResult {
                 area: Some(crate::pressing::area(area)),
                 ..result()
@@ -293,7 +303,7 @@ fn read_off(origin: TextOrigin, text: &str) -> TextLine {
 }
 
 fn states_country(code: &str, lines: &[TextLine]) -> bool {
-    agreements_of(
+    judge(
         &MetadataResult {
             area: Some(crate::pressing::area(code)),
             ..result()
@@ -370,7 +380,7 @@ fn an_area_the_folder_does_not_name_is_no_agreement() {
         ("JP", "1979 - Album (Label, CAT-1, DE)"),
         ("XW", "1979 - Album (Label, CAT-1, Japan)"),
     ] {
-        let judged = agreements_of(
+        let judged = judge(
             &MetadataResult {
                 area: Some(crate::pressing::area(area)),
                 ..result()
@@ -386,7 +396,7 @@ fn an_area_the_folder_does_not_name_is_no_agreement() {
 /// fields, but they name the album, so they neither count nor offer a row.
 #[test]
 fn the_title_and_the_artist_are_read_out_of_the_text() {
-    let judged = agreements_of(
+    let judged = judge(
         &MetadataResult {
             title: "Album Title".to_string(),
             artist: Some("Artist Name".to_string()),
@@ -400,7 +410,7 @@ fn the_title_and_the_artist_are_read_out_of_the_text() {
     assert_eq!(judged.count(), 0);
     assert!(!judged.offered());
 
-    let other = agreements_of(
+    let other = judge(
         &MetadataResult {
             title: "Other Title".to_string(),
             artist: Some("Other Name".to_string()),
@@ -419,7 +429,7 @@ fn the_title_and_the_artist_are_read_out_of_the_text() {
 #[test]
 fn a_title_agrees_in_any_order_of_its_words() {
     let titled = |title: &str, lines: &[&str]| {
-        agreements_of(
+        judge(
             &MetadataResult {
                 title: title.to_string(),
                 ..result()
@@ -444,7 +454,7 @@ fn a_title_agrees_in_any_order_of_its_words() {
 #[test]
 fn a_title_agrees_without_its_trailing_brackets() {
     let titled = |title: &str, lines: &[&str]| {
-        agreements_of(
+        judge(
             &MetadataResult {
                 title: title.to_string(),
                 ..result()
@@ -515,7 +525,7 @@ fn a_label_agrees_without_the_trade_word_either_of_them_prints() {
         ("Lantern Record Co.", "Lantern"),
         ("Paper Kite", "Paper Kite"),
     ] {
-        let judged = agreements_of(
+        let judged = judge(
             &MetadataResult {
                 labels: vec![ReleaseLabel::of(Some(stated), None)],
                 ..result()
@@ -531,7 +541,7 @@ fn a_label_agrees_without_the_trade_word_either_of_them_prints() {
 #[test]
 fn a_label_that_is_only_trade_words_states_nothing() {
     for stated in ["Records", "Music", "Record Co.", "Music Entertainment"] {
-        let judged = agreements_of(
+        let judged = judge(
             &MetadataResult {
                 labels: vec![ReleaseLabel::of(Some(stated), None)],
                 ..result()
@@ -552,7 +562,7 @@ fn a_label_the_folder_does_not_name_is_no_agreement() {
         ("North Star Records", "North Music"),
         ("Grey Stone", "Stone Records"),
     ] {
-        let judged = agreements_of(
+        let judged = judge(
             &MetadataResult {
                 labels: vec![ReleaseLabel::of(Some(stated), None)],
                 ..result()
@@ -565,7 +575,7 @@ fn a_label_the_folder_does_not_name_is_no_agreement() {
 }
 
 fn label_agrees(stated: &str, folder: &str) -> bool {
-    agreements_of(
+    judge(
         &MetadataResult {
             labels: vec![ReleaseLabel::of(Some(stated), None)],
             ..result()

@@ -39,7 +39,7 @@ fn the_album_s_own_year_confirms_the_album_and_names_no_edition() {
 }
 
 /// A later folder year names the edition: the row stating it agrees, one
-/// stating another disagrees, an undated one states nothing. Of two folder
+/// stating another disagrees, an unplaced one states nothing. Of two folder
 /// years, the later is the edition's.
 #[test]
 fn a_later_folder_year_names_the_edition() {
@@ -79,7 +79,7 @@ fn with_no_album_year_no_year_names_an_edition() {
 fn a_country_agrees_disagrees_or_states_nothing() {
     let named = text(&["Album (Italy)"]);
     let facts = FolderFacts::of(&named, []);
-    let country = |area| facts.country(&[record(None, None, area)], &named);
+    let country = |area| facts.country(&[record(None, None, area)]);
     assert_eq!(country(Some("IT")), Fact::Agrees);
     assert_eq!(country(Some("US")), Fact::Disagrees);
     assert_eq!(country(Some("XE")), Fact::StatesNothing);
@@ -87,7 +87,7 @@ fn a_country_agrees_disagrees_or_states_nothing() {
     let unnamed = text(&["Album CD"]);
     let facts = FolderFacts::of(&unnamed, []);
     assert_eq!(
-        facts.country(&[record(None, None, Some("US"))], &unnamed),
+        facts.country(&[record(None, None, Some("US"))]),
         Fact::StatesNothing
     );
 }
@@ -192,4 +192,106 @@ fn a_record_in_order_decides_its_row() {
         listing(&["Song One", "Song Two"]),
     ];
     assert_eq!(track_titles(&rows, &folder), Fact::Agrees);
+}
+
+/// Lines read off `origin`s: the folder's own text and what else it carries.
+fn read(lines: &[(TextOrigin, &str)]) -> CandidateText {
+    CandidateText::of(
+        &lines
+            .iter()
+            .map(|(origin, text)| TextLine {
+                text: (*text).to_string(),
+                origin: *origin,
+            })
+            .collect::<Vec<_>>(),
+        &[],
+    )
+}
+
+/// A row of `area`, its own record.
+fn released_in(release_id: &str, area: &str) -> MetadataResult {
+    MetadataResult {
+        area: Some(crate::pressing::area(area)),
+        ..MetadataResult::for_test(Catalog::MusicBrainz, release_id, Some("rg-1"))
+    }
+}
+
+/// The folder's name outranks the artwork: a country the name gives is the
+/// folder's, and a country only a scanned lyric writes counts for nothing.
+#[test]
+fn the_folder_s_name_outranks_the_artwork_s_country() {
+    let canada = released_in("rel-ca", "CA");
+    let us = released_in("rel-us", "US");
+    let facts = FolderFacts::of(
+        &read(&[
+            (
+                TextOrigin::FolderName,
+                "Artist - Album [Label CAT-1, Canada]",
+            ),
+            (TextOrigin::Artwork, "Freedom is coming to the U.S.A."),
+        ]),
+        [&canada, &us],
+    );
+    assert_eq!(facts.country(std::slice::from_ref(&canada)), Fact::Agrees);
+    assert_eq!(facts.country(std::slice::from_ref(&us)), Fact::Disagrees);
+    assert!(facts.names_area(crate::pressing::area("CA")));
+    assert!(!facts.names_area(crate::pressing::area("US")));
+}
+
+/// Two countries in the text of the highest standing leave the folder with
+/// none: no row gets the point.
+#[test]
+fn two_countries_in_the_folder_s_name_name_none() {
+    let canada = released_in("rel-ca", "CA");
+    let us = released_in("rel-us", "US");
+    let facts = FolderFacts::of(
+        &read(&[(TextOrigin::FolderName, "Album (Canada, USA)")]),
+        [&canada, &us],
+    );
+    for row in [&canada, &us] {
+        assert_eq!(
+            facts.country(std::slice::from_ref(row)),
+            Fact::StatesNothing
+        );
+    }
+    assert!(!facts.names_area(crate::pressing::area("CA")));
+    assert!(!facts.names_area(crate::pressing::area("US")));
+}
+
+/// Where only the artwork names a country, that country is the folder's.
+#[test]
+fn a_country_only_the_artwork_names_counts() {
+    let canada = released_in("rel-ca", "CA");
+    let us = released_in("rel-us", "US");
+    let facts = FolderFacts::of(
+        &read(&[
+            (TextOrigin::FolderName, "Artist - Album"),
+            (TextOrigin::Artwork, "Made in Canada"),
+        ]),
+        [&canada, &us],
+    );
+    assert_eq!(facts.country(std::slice::from_ref(&canada)), Fact::Agrees);
+    assert_eq!(facts.country(std::slice::from_ref(&us)), Fact::Disagrees);
+}
+
+/// A country no row was released in is still the folder's: every row of a
+/// country disagrees, and a row stating none states nothing.
+#[test]
+fn a_country_no_row_has_disagrees_with_every_row() {
+    let canada = released_in("rel-ca", "CA");
+    let us = released_in("rel-us", "US");
+    let unplaced = MetadataResult::for_test(Catalog::MusicBrainz, "rel-none", Some("rg-1"));
+    let facts = FolderFacts::of(
+        &read(&[(TextOrigin::FolderName, "Album (Japan)")]),
+        [&canada, &us, &unplaced],
+    );
+    assert_eq!(
+        facts.country(std::slice::from_ref(&canada)),
+        Fact::Disagrees
+    );
+    assert_eq!(facts.country(std::slice::from_ref(&us)), Fact::Disagrees);
+    assert_eq!(
+        facts.country(std::slice::from_ref(&unplaced)),
+        Fact::StatesNothing
+    );
 }

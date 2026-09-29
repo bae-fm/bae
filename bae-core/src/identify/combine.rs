@@ -207,10 +207,11 @@ pub fn combine_results(
             named_by: named_by.get(&key).cloned(),
         }
     };
+    let facts = FolderFacts::of(text, all.iter().map(|(result, _)| result));
     let judged: Vec<Judged> = all
         .iter()
         .map(|(result, _)| {
-            let agreements = agreements_of(result, text, &lookup_of(result));
+            let agreements = agreements_of(result, text, &facts, &lookup_of(result));
             (result.clone(), agreements)
         })
         .collect();
@@ -228,8 +229,15 @@ pub fn combine_results(
         .into_iter()
         .flat_map(ReleaseGroup::into_pressings)
         .collect();
-    let (offered, set_aside, medium_conflict) =
-        split_rows(rows, &judgements, &returned_by, ripped_from, folder, text);
+    let (offered, set_aside, medium_conflict) = split_rows(
+        rows,
+        &judgements,
+        &returned_by,
+        ripped_from,
+        folder,
+        text,
+        &facts,
+    );
 
     let statuses: HashMap<ReleaseKey, LibraryStatus> = all
         .into_iter()
@@ -366,7 +374,6 @@ fn support_of(
     provenance: &HashMap<ReleaseKey, LookupProvenance>,
     ripped_from: RippedFrom,
     folder: FolderAudio<'_>,
-    text: &CandidateText,
     facts: &FolderFacts,
 ) -> Support {
     let mut returned = LookupProvenance::CHOSEN;
@@ -419,7 +426,7 @@ fn support_of(
                 .iter()
                 .flat_map(|release| &release.discogs_details),
         ),
-        country: facts.country(&row.releases, text),
+        country: facts.country(&row.releases),
         registration: super::row_facts::registration(&row.releases, folder.registered_in),
         offered,
         // Weighed once every row's other fields are.
@@ -436,21 +443,11 @@ fn split_rows(
     ripped_from: RippedFrom,
     folder: FolderAudio<'_>,
     text: &CandidateText,
+    facts: &FolderFacts,
 ) -> (Vec<Pressing>, Vec<Pressing>, Option<super::MediumConflict>) {
-    let facts = FolderFacts::of(text, rows.iter().flat_map(|row| &row.releases));
     let mut support: Vec<Support> = rows
         .iter()
-        .map(|row| {
-            support_of(
-                row,
-                judgements,
-                provenance,
-                ripped_from,
-                folder,
-                text,
-                &facts,
-            )
-        })
+        .map(|row| support_of(row, judgements, provenance, ripped_from, folder, facts))
         .collect();
     weigh_title_agreement(&rows, &mut support);
     weigh_notes(&rows, &mut support, text);

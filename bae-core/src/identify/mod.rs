@@ -23,7 +23,7 @@ pub mod verdict;
 pub mod verdict_summary;
 pub mod view;
 
-pub use agreements::{agreements_of, judged_results, Agreements, CandidateText};
+pub use agreements::{Agreements, CandidateText};
 pub use combine::{Findings, LibraryStatuses, LookupAnswers, LookupProvenance, NarrowedOut};
 pub use fit::{unattended_pick, Declined, TracklistFit, UnattendedPick};
 pub use medium::MediumConflict;
