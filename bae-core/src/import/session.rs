@@ -7,8 +7,6 @@
 //! with the rest of the detail. Only what has no meaning past the moment stays
 //! in the view: which field has the keyboard, which popover is open.
 
-use crate::import::MetadataProvenance;
-
 /// Which surface the pane's metadata slot shows: the candidate's draft, or the
 /// Find online page a person opens to identify it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -55,6 +53,8 @@ pub enum PaneCommand {
     ChangeAgreements,
     /// Keep the folder's own draft over what its lookup offered.
     KeepOwnDraft,
+    /// Unlink the candidate from its release.
+    Unlink,
 }
 
 /// The pane's last command, which failed, and why.
@@ -123,12 +123,12 @@ pub struct CandidateSession {
 impl CandidateSession {
     /// The pane a candidate opens on before anyone has touched it: the draft,
     /// which is where the candidate's metadata is; Find online while
-    /// identification has an answer nobody has acted on, since that is where
-    /// the answer is.
-    pub fn initial(provenance: Option<&MetadataProvenance>, has_verdict: bool) -> Self {
-        let presentation = match (provenance, has_verdict) {
-            (None, true) => MetadataPresentation::FindOnline,
-            (Some(_), _) | (None, false) => MetadataPresentation::Draft,
+    /// identification has an answer nobody has acted on — no draft read from
+    /// anywhere and no link — since that is where the answer is.
+    pub fn initial(answered: bool, has_verdict: bool) -> Self {
+        let presentation = match (answered, has_verdict) {
+            (false, true) => MetadataPresentation::FindOnline,
+            (true, _) | (false, false) => MetadataPresentation::Draft,
         };
         Self {
             presentation,
@@ -160,26 +160,21 @@ impl CandidateSession {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::import::Catalog;
 
     /// A candidate nobody has touched opens on its draft — pre-filled from the
     /// folder's tags or blank, that is where its metadata is.
     #[test]
     fn a_fresh_pane_opens_on_the_draft() {
         assert_eq!(
-            CandidateSession::initial(None, false).presentation,
+            CandidateSession::initial(false, false).presentation,
             MetadataPresentation::Draft
         );
         assert_eq!(
-            CandidateSession::initial(Some(&MetadataProvenance::FileMetadata), false).presentation,
+            CandidateSession::initial(true, false).presentation,
             MetadataPresentation::Draft
         );
-        let picked = MetadataProvenance::ExternalRelease {
-            record: crate::import::MetadataRef::new(Catalog::MusicBrainz, "release".to_string()),
-            partners: Vec::new(),
-        };
         assert_eq!(
-            CandidateSession::initial(Some(&picked), true).presentation,
+            CandidateSession::initial(true, true).presentation,
             MetadataPresentation::Draft
         );
     }
@@ -189,7 +184,7 @@ mod tests {
     #[test]
     fn an_unanswered_verdict_opens_on_find_online() {
         assert_eq!(
-            CandidateSession::initial(None, true).presentation,
+            CandidateSession::initial(false, true).presentation,
             MetadataPresentation::FindOnline
         );
     }
@@ -198,7 +193,7 @@ mod tests {
     /// section Find online opens on, and naming no section opens the last one.
     #[test]
     fn each_move_puts_the_pane_where_it_says() {
-        let session = CandidateSession::initial(None, false);
+        let session = CandidateSession::initial(false, false);
         let searched = session.clone().moved(PaneMove::Search);
         assert_eq!(searched.presentation, MetadataPresentation::FindOnline);
         assert_eq!(searched.find_online_section, FindOnlineSection::Search);

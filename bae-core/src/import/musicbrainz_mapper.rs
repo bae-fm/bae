@@ -581,8 +581,6 @@ pub(crate) fn map(
         pressing: metadata.pressing,
         metadata_provenance: Some(crate::import::MetadataProvenance::ExternalRelease {
             record: MetadataRef::new(Catalog::MusicBrainz, release_id.clone()),
-            // As in `discogs_mapper`: one release's own claim.
-            partners: Vec::new(),
         }),
         album_artist_scope: AlbumArtistScope::ReleaseCredits,
         release_roles: Vec::new(),

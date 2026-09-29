@@ -36,10 +36,7 @@ async fn a_pick_ends_only_the_picked_candidates_run() {
 
     fixture
         .import
-        .select_candidate_metadata_provenance(
-            picked_key.clone(),
-            crate::import::MetadataProvenance::FileMetadata,
-        )
+        .select_candidate_file_tags(picked_key.clone())
         .await
         .expect("the pick lands");
 

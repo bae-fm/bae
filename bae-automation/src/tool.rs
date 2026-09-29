@@ -11,7 +11,8 @@ pub enum AutomationTool {
     ImportCandidateGet,
     ImportCandidateSkipSet,
     ImportSearch,
-    ImportCandidateMetadataProvenanceSelect,
+    ImportCandidateReleaseSelect,
+    ImportCandidateFileTagsRead,
     ImportCandidateEditFieldSet,
     ImportCandidateLabelsSet,
     ImportCandidatePressingFactSet,
@@ -28,7 +29,7 @@ pub enum AutomationTool {
 }
 
 impl AutomationTool {
-    const DESCRIPTORS: [AutomationToolDescriptor; 23] = [
+    const DESCRIPTORS: [AutomationToolDescriptor; 24] = [
         AutomationToolDescriptor {
             tool: AutomationTool::ConfigGet,
             name: "config_get",
@@ -84,10 +85,16 @@ impl AutomationTool {
             schema: Some(schema_object::<AutomationSearchQuery>),
         },
         AutomationToolDescriptor {
-            tool: AutomationTool::ImportCandidateMetadataProvenanceSelect,
-            name: "import_candidate_metadata_provenance_select",
-            description: "Select external release, file metadata, or manual entry as a candidate's metadata source",
-            schema: Some(schema_object::<CandidateMetadataProvenanceInput>),
+            tool: AutomationTool::ImportCandidateReleaseSelect,
+            name: "import_candidate_release_select",
+            description: "Link a candidate to an external release and read its metadata draft from it",
+            schema: Some(schema_object::<CandidateReleaseInput>),
+        },
+        AutomationToolDescriptor {
+            tool: AutomationTool::ImportCandidateFileTagsRead,
+            name: "import_candidate_file_tags_read",
+            description: "Read a candidate's metadata draft from its files' own tags, keeping its release link",
+            schema: Some(schema_object::<CandidateKeyInput>),
         },
         AutomationToolDescriptor {
             tool: AutomationTool::ImportCandidateEditFieldSet,

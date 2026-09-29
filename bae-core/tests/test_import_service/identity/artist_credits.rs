@@ -10,7 +10,7 @@ const DISCOGS_ARTIST_FIXTURE: &str = "discogs-artist-1";
 
 /// A folder whose release is picked from a seeded Discogs release by "Artist
 /// Name".
-fn discogs_album_folder(f: &ImportFixture, dir_name: &str, title: &str) -> (std::path::PathBuf, MetadataProvenance) {
+fn discogs_album_folder(f: &ImportFixture, dir_name: &str, title: &str) -> (std::path::PathBuf, support::DraftSource) {
     let release = discogs_release(title, &["Track One"]);
     let release_key = seed_discogs_test_release(f.library_manager.providers(), release);
     let dir = f.temp_path().join(dir_name);
@@ -40,7 +40,7 @@ fn tagged_album_folder(f: &ImportFixture, dir_name: &str, title: &str, artist: &
 async fn import_and_wait(
     f: &ImportFixture,
     dir: std::path::PathBuf,
-    provenance: MetadataProvenance,
+    provenance: support::DraftSource,
 ) -> (String, String) {
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
@@ -96,7 +96,7 @@ async fn a_tagged_album_after_a_catalog_album_joins_its_artist() {
 
     let (_, catalog_album) = import_and_wait(&f, catalog_dir, catalog).await;
     let (_, tagged_album) =
-        import_and_wait(&f, tagged_dir, MetadataProvenance::FileMetadata).await;
+        import_and_wait(&f, tagged_dir, support::DraftSource::FileTags).await;
 
     let artists = artists_named(&f, "Artist Name").await;
     assert_eq!(artists.len(), 1, "one artist, got {artists:?}");
@@ -116,7 +116,7 @@ async fn a_catalog_album_after_a_tagged_album_gives_its_artist_the_catalog_id() 
     let tagged_dir = tagged_album_folder(&f, "album-two", "Album Two", "Artist Name");
 
     let (_, tagged_album) =
-        import_and_wait(&f, tagged_dir, MetadataProvenance::FileMetadata).await;
+        import_and_wait(&f, tagged_dir, support::DraftSource::FileTags).await;
     let tagged_artist = album_artist_id(&f, &tagged_album).await;
     let (_, catalog_album) = import_and_wait(&f, catalog_dir, catalog).await;
 
@@ -149,7 +149,7 @@ async fn two_albums_queued_together_make_one_artist() {
         .send_command(support::folder_import(
             &tagged_import,
             tagged_dir,
-            MetadataProvenance::FileMetadata,
+            support::DraftSource::FileTags,
         ))
         .await
         .unwrap();
@@ -174,7 +174,7 @@ async fn a_name_two_library_artists_share_imports_as_a_new_artist() {
     f.library_manager.insert_artist(&second).await.unwrap();
     let tagged_dir = tagged_album_folder(&f, "album-two", "Album Two", "Artist Name");
 
-    let (_, album) = import_and_wait(&f, tagged_dir, MetadataProvenance::FileMetadata).await;
+    let (_, album) = import_and_wait(&f, tagged_dir, support::DraftSource::FileTags).await;
 
     let album_artist = album_artist_id(&f, &album).await;
     assert_ne!(album_artist, first.id);
@@ -210,8 +210,8 @@ async fn a_credit_meets_its_artist_however_the_name_is_cased_or_accented() {
     let accented_dir = tagged_album_folder(&f, "album-two", "Album Two", "Ärtist Name");
     let cased_dir = tagged_album_folder(&f, "album-three", "Album Three", "ARTIST NAME");
 
-    let (_, accented) = import_and_wait(&f, accented_dir, MetadataProvenance::FileMetadata).await;
-    let (_, cased) = import_and_wait(&f, cased_dir, MetadataProvenance::FileMetadata).await;
+    let (_, accented) = import_and_wait(&f, accented_dir, support::DraftSource::FileTags).await;
+    let (_, cased) = import_and_wait(&f, cased_dir, support::DraftSource::FileTags).await;
 
     assert_eq!(album_artist_id(&f, &accented).await, existing.id);
     assert_eq!(album_artist_id(&f, &cased).await, existing.id);
@@ -239,7 +239,7 @@ async fn open_tagged_pane(
     f.handle.add_watched_folder(key.clone()).await.unwrap();
     f.handle.refresh_watched_folder(key.clone()).await.unwrap();
     f.handle
-        .select_candidate_metadata_provenance(key.clone(), MetadataProvenance::FileMetadata)
+        .select_candidate_file_tags(key.clone())
         .await
         .unwrap();
     let pane = f.handle.subscribe_candidate_pane(&key);

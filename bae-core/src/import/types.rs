@@ -196,31 +196,50 @@ pub struct MetadataRef {
     pub key: String,
 }
 
-/// Where the current candidate metadata draft began. Direct entry and a
+/// What the current draft's values were read from. Direct entry and a
 /// cleared draft carry no provenance.
+///
+/// This is the draft's own history, not a claim about which release the
+/// folder is: that claim is the candidate's [`ReleaseLink`], which no draft
+/// write changes.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum MetadataProvenance {
     ExternalRelease {
         /// The catalog's release the draft is read from.
         record: MetadataRef,
-        /// The other catalogs' releases the picked pressing paired with. Find
-        /// online pairs a MusicBrainz release and a Discogs release into one
-        /// pressing row when the evidence their records carry says they name
-        /// one physical object; picking the row claims both, and these are
-        /// the ones the draft is *not* read from. Each names a different
-        /// source from the primary and from every other partner.
-        ///
-        /// This is what the person picked, not what one provider says about
-        /// another — a cross-reference an editor linked stays inferred from
-        /// the documents.
-        ///
-        /// Only an import candidate stores these. A library release records
-        /// what its pick claimed as one record per catalog, so
-        /// reading a release's provenance back names its anchor document
-        /// alone.
-        partners: Vec<MetadataRef>,
     },
     FileMetadata,
+}
+
+/// The catalog release an import candidate is linked to: the pressing a
+/// person picked, or identification picked unattended, for its folder.
+///
+/// Independent of the draft. Only explicit actions set or clear it — a pick,
+/// identification applying its pick, keeping the folder's own draft over the
+/// lookup, unlinking — so editing, clearing, or re-reading the draft leaves
+/// it standing. Importing takes the draft's values and this link's catalog
+/// identities.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReleaseLink {
+    /// The catalog's release the pick names first.
+    pub record: MetadataRef,
+    /// The other catalogs' releases the picked pressing paired with. Find
+    /// online pairs a MusicBrainz release and a Discogs release into one
+    /// pressing row when the evidence their records carry says they name one
+    /// physical object; picking the row claims both. Each names a different
+    /// source from the primary and from every other partner.
+    ///
+    /// This is what the person picked, not what one provider says about
+    /// another — a cross-reference an editor linked stays inferred from the
+    /// documents.
+    pub partners: Vec<MetadataRef>,
+}
+
+impl ReleaseLink {
+    /// Every release the link claims, the primary first.
+    pub fn claimed(&self) -> impl Iterator<Item = &MetadataRef> {
+        std::iter::once(&self.record).chain(&self.partners)
+    }
 }
 
 /// One candidate's editable metadata, independent of the source that last
@@ -394,26 +413,10 @@ pub enum ReleaseReseed {
     ExternalRelease {
         release_ref: MetadataRef,
         /// The other sources' releases the picked pressing paired with — the
-        /// same claim [`MetadataProvenance`] records for an import candidate.
+        /// same claim a [`ReleaseLink`] records for an import candidate.
         partners: Vec<MetadataRef>,
     },
     FileMetadata,
-}
-
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-impl ReleaseReseed {
-    pub fn metadata_provenance(&self) -> MetadataProvenance {
-        match self {
-            Self::ExternalRelease {
-                release_ref,
-                partners,
-            } => MetadataProvenance::ExternalRelease {
-                record: release_ref.clone(),
-                partners: partners.clone(),
-            },
-            Self::FileMetadata => MetadataProvenance::FileMetadata,
-        }
-    }
 }
 
 /// Whether a track inherits its album artists or has its own ordered credits.
@@ -661,8 +664,12 @@ pub struct ImportCommand {
     #[cfg(any(test, feature = "test-utils"))]
     pub selected_cover: Option<CoverSelection>,
     pub destination: ImportDestination,
+    /// The release a test import picks for the candidate first.
     #[cfg(any(test, feature = "test-utils"))]
-    pub metadata_provenance: Option<MetadataProvenance>,
+    pub pick: Option<ReleaseLink>,
+    /// Whether a test import then reads the draft from the files' tags.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub read_file_tags: bool,
     #[cfg(any(test, feature = "test-utils"))]
     pub user_edit: Option<ReleaseUserEdit>,
 }

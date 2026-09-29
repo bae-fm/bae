@@ -91,17 +91,45 @@ pub async fn wait_for_import_end(
         .unwrap_or_else(|_| panic!("import did not end within {IMPORT_END_GUARD:?}"))
 }
 
-/// The provenance of an import identified by a Discogs release, with no
-/// partner catalog alongside it — what a [`seed_discogs_test_release`] fixture
-/// is imported under.
-pub fn discogs_release(release_id: impl Into<String>) -> bae_core::import::MetadataProvenance {
-    bae_core::import::MetadataProvenance::ExternalRelease {
+/// What a test import reads the candidate's draft from before importing it.
+#[derive(Debug, Clone)]
+pub enum DraftSource {
+    /// The files' own tags; the candidate stays linked to no release.
+    FileTags,
+    /// A picked release, which the candidate is linked to and whose draft it
+    /// reads.
+    Pick(bae_core::import::ReleaseLink),
+}
+
+impl DraftSource {
+    /// `command` reading its draft from this source.
+    pub fn onto(self, command: bae_core::import::ImportCommand) -> bae_core::import::ImportCommand {
+        match self {
+            Self::FileTags => bae_core::import::ImportCommand {
+                pick: None,
+                read_file_tags: true,
+                ..command
+            },
+            Self::Pick(link) => bae_core::import::ImportCommand {
+                pick: Some(link),
+                read_file_tags: false,
+                ..command
+            },
+        }
+    }
+}
+
+/// The pick of an import identified by a Discogs release, with no partner
+/// catalog alongside it — what a [`seed_discogs_test_release`] fixture is
+/// imported under.
+pub fn discogs_release(release_id: impl Into<String>) -> DraftSource {
+    DraftSource::Pick(bae_core::import::ReleaseLink {
         record: bae_core::import::MetadataRef::new(
             bae_core::import::Catalog::Discogs,
             release_id.into(),
         ),
         partners: vec![],
-    }
+    })
 }
 
 /// The command a test sends to import one folder, in the shape almost every
@@ -114,15 +142,15 @@ pub fn discogs_release(release_id: impl Into<String>) -> bae_core::import::Metad
 /// ```ignore
 /// ImportCommand {
 ///     destination: ImportDestination::Remote { pin: false },
-///     ..support::folder_import(&import_id, album_dir, MetadataProvenance::FileMetadata)
+///     ..support::folder_import(&import_id, album_dir, DraftSource::FileTags)
 /// }
 /// ```
 pub fn folder_import(
     import_id: &str,
     folder: impl Into<std::path::PathBuf>,
-    metadata_provenance: bae_core::import::MetadataProvenance,
+    draft_source: DraftSource,
 ) -> bae_core::import::ImportCommand {
-    bae_core::import::ImportCommand {
+    draft_source.onto(bae_core::import::ImportCommand {
         import_id: import_id.to_string(),
         candidate_key: "test".to_string(),
         source: bae_core::import::release_candidate::CandidateSource {
@@ -132,9 +160,10 @@ pub fn folder_import(
         },
         selected_cover: None,
         destination: bae_core::import::ImportDestination::Local,
-        metadata_provenance: Some(metadata_provenance),
+        pick: None,
+        read_file_tags: false,
         user_edit: None,
-    }
+    })
 }
 
 /// Send one folder import and wait for the worker to finish it, returning

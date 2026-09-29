@@ -95,10 +95,10 @@ async fn work_mbid_is_stored_beside_a_minted_row_id_and_shared_across_releases()
         &first_dir,
         None,
         ImportDestination::Local,
-        MetadataProvenance::ExternalRelease {
+        support::DraftSource::Pick(bae_core::import::ReleaseLink {
             record: bae_core::import::MetadataRef::new(Catalog::MusicBrainz, first_mb),
             partners: vec![],
-        },
+        }),
     )
     .await
     .expect("first local MB import succeeds");
@@ -121,10 +121,10 @@ async fn work_mbid_is_stored_beside_a_minted_row_id_and_shared_across_releases()
         &second_dir,
         None,
         ImportDestination::Local,
-        MetadataProvenance::ExternalRelease {
+        support::DraftSource::Pick(bae_core::import::ReleaseLink {
             record: bae_core::import::MetadataRef::new(Catalog::MusicBrainz, second_mb),
             partners: vec![],
-        },
+        }),
     )
     .await
     .expect("second local MB import succeeds");

@@ -334,9 +334,6 @@ pub(crate) fn map(
         pressing: metadata.pressing,
         metadata_provenance: Some(crate::import::MetadataProvenance::ExternalRelease {
             record: MetadataRef::new(Catalog::Discogs, release_id.clone()),
-            // The mapper reads one release; what else the pick claimed is
-            // the picker's to say, and reaches the library as records.
-            partners: Vec::new(),
         }),
         album_artist_scope: AlbumArtistScope::ReleaseCredits,
         release_roles,

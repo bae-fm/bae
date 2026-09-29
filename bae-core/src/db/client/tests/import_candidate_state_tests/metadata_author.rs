@@ -48,7 +48,7 @@ async fn a_verdict_that_picks_nothing_leaves_the_draft_unclaimed() {
         &host_root("/music/Some Album"),
         &sample_verdict(),
     );
-    assert!(row.metadata.is_none(), "it settled on no release to write");
+    assert!(row.pick.is_none(), "it settled on no release to write");
     store_candidate_state(&db, &candidate, &row.folder_path).await;
 
     crate::import::CandidatePreparations::new(db.clone())
@@ -149,13 +149,10 @@ async fn an_applied_draft_reads_back_its_releases_and_lengths() {
         "rel-applied",
     );
     let applied = crate::import::source_release::AppliedSource {
-        primary,
-        partners: Vec::new(),
+        release: primary,
         audio_durations_ms: vec![180_000, 240_000],
     };
-    row.metadata
-        .as_mut()
-        .expect("the concluding verdict carries a draft")
+    row.pick.as_mut().expect("the concluding verdict carries a pick").metadata
         .assets
         .applied_source = Some(applied.clone());
     store_candidate_state(&db, &candidate, &row.folder_path).await;
@@ -194,13 +191,10 @@ async fn an_application_the_provenance_does_not_name_is_refused() {
         new_candidate_row(&hash, &host_root("/music/Some Album"), &sample_verdict()),
         "rel-named",
     );
-    row.metadata
-        .as_mut()
-        .expect("the concluding verdict carries a draft")
+    row.pick.as_mut().expect("the concluding verdict carries a pick").metadata
         .assets
         .applied_source = Some(crate::import::source_release::AppliedSource {
-        primary: other,
-        partners: Vec::new(),
+        release: other,
         audio_durations_ms: vec![180_000, 240_000],
     });
     store_candidate_state(&db, &candidate, &row.folder_path).await;

@@ -125,10 +125,7 @@ async fn reset_setup_restores_cue_choices_and_saves_complete_tags() {
                 assert_eq!(snapshot.scan_generation, stored.scan_generation);
                 handle.file_tags = Arc::new(CountingFileTagReader::failing(0));
                 handle
-                    .select_candidate_metadata_provenance(
-                        key.clone(),
-                        MetadataProvenance::FileMetadata,
-                    )
+                    .select_candidate_file_tags(key.clone())
                     .await
                     .unwrap();
                 assert_eq!(
@@ -241,7 +238,7 @@ async fn reset_setup_tag_failure_keeps_source_preparation_and_snapshot() {
         tmp: _tmp,
     } = stored_candidate().await;
     handle
-        .select_candidate_metadata_provenance(key.clone(), MetadataProvenance::FileMetadata)
+        .select_candidate_file_tags(key.clone())
         .await
         .unwrap();
     let initial = pane(&handle, &key).await;
@@ -440,9 +437,7 @@ async fn reset_setup_discards_selected_release_assets_and_identification() {
     manager.providers().musicbrainz().seed_discogs_url_lookup(id, None);
     manager.providers().discogs().seed_artist_image_response(id, None);
     handle
-        .select_candidate_metadata_provenance(
-            key.clone(),
-            MetadataProvenance::ExternalRelease {
+        .select_candidate_release(key.clone(), crate::import::ReleaseLink {
                 record: crate::import::MetadataRef::new(crate::import::Catalog::Discogs, id),
                 partners: vec![],
             },
@@ -785,7 +780,7 @@ async fn reset_setup_clears_lookup_choices_while_reset_to_tags_keeps_them() {
         handle.edit_candidate_lookup_choices(&key, edit).await.unwrap();
     }
     handle
-        .select_candidate_metadata_provenance(key.clone(), MetadataProvenance::FileMetadata)
+        .select_candidate_file_tags(key.clone())
         .await
         .unwrap();
     assert_eq!(pane(&handle, &key).await.lookup_choices, choices);

@@ -31,7 +31,7 @@ async fn store_not_found(handle: &ImportServiceHandle, hash: &str) {
                 isrcs: Vec::new(),
                 track_titles: Vec::new(),
             },
-            metadata: None,
+            pick: None,
         })
         .await
         .unwrap();

@@ -20,6 +20,7 @@ fn drafted(state: CandidateStateListRow) -> CandidateStateListRow {
 fn picked_among_several_state() -> CandidateStateListRow {
     drafted(CandidateStateListRow {
         metadata_provenance: Some(external_release_seed("mb-2")),
+        release_link: Some(release_link_to("mb-2")),
         metadata_author: crate::import::MetadataAuthor::Identification,
         metadata_draft_valid: true,
         ..several_matches_state()
@@ -62,6 +63,7 @@ fn every_kind() -> ImportQueueRows {
             "Several Tagged",
             drafted(CandidateStateListRow {
                 metadata_provenance: Some(MetadataProvenance::FileMetadata),
+                release_link: None,
                 metadata_author: crate::import::MetadataAuthor::Prefill,
                 metadata_draft_valid: true,
                 ..several_matches_state()
@@ -80,6 +82,7 @@ fn every_kind() -> ImportQueueRows {
             "Pick Set Aside",
             drafted(CandidateStateListRow {
                 metadata_provenance: Some(MetadataProvenance::FileMetadata),
+                release_link: None,
                 metadata_author: crate::import::MetadataAuthor::Person,
                 ..auto_importable_state("mb-4")
             }),

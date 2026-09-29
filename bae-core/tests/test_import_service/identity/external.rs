@@ -175,6 +175,66 @@ async fn a_user_edit_overlays_the_picked_release() {
     assert_eq!(records[0].key(), release_id_key);
 }
 
+/// A pick links the candidate to its release; reading the draft from the
+/// files' tags afterwards replaces the draft and not the link. The import
+/// writes the tags' values under the linked release's record, which no
+/// longer reads the draft.
+#[tokio::test]
+async fn a_linked_draft_read_from_the_tags_imports_under_the_link() {
+    support::tracing_init();
+
+    let f = ImportFixture::new().await;
+
+    let release = discogs_release_rich("Album Title", "master-tags", &["Track One"]);
+    let release_id_key = seed_discogs_test_release(f.library_manager.providers(), release);
+
+    let album_dir = f.temp_path().join("album");
+    fs::create_dir_all(&album_dir).unwrap();
+    generate_tagged_album_files(
+        &album_dir,
+        "Tagged Title",
+        "Tagged Artist",
+        None,
+        &[TaggedTrack {
+            filename: "01.flac",
+            title: "Tagged Track",
+            track_number: 1,
+        }],
+    );
+
+    let import_id = uuid::Uuid::new_v4().to_string();
+    f.handle
+        .send_command(ImportCommand {
+            read_file_tags: true,
+            ..support::folder_import(
+                &import_id,
+                album_dir,
+                support::discogs_release(release_id_key.clone()),
+            )
+        })
+        .await
+        .unwrap();
+
+    let mut progress_rx = f.handle.subscribe_import(import_id);
+    let (release_id, _album_id) = support::wait_for_import_complete(&mut progress_rx).await;
+
+    let release = f.db.find_release_by_id(&release_id).await.unwrap().unwrap();
+    assert!(release.draft_from_tags, "the draft was the files' tags");
+    let album = f.db.find_album_by_id(&release.album_id).await.unwrap().unwrap();
+    assert_eq!(album.title, "Tagged Title");
+    let tracks = f.db.get_tracks_for_release(&release.id).await.unwrap();
+    assert_eq!(tracks.len(), 1);
+    assert_eq!(tracks[0].title, "Tagged Track");
+
+    let records = f.db.get_release_records(&release.id).await.unwrap();
+    assert_eq!(records.len(), 1, "the link's release is recorded: {records:?}");
+    assert_eq!(records[0].key(), release_id_key);
+    assert!(
+        !records[0].reads_draft(),
+        "the draft was not read from the linked release"
+    );
+}
+
 // ── cross-catalog records ───────────────────────────────────────────────────
 //
 // When MB url-rels link to a Discogs release with a master id (or vice
@@ -279,10 +339,10 @@ async fn a_cross_link_writes_both_catalogs_records() {
         .send_command(support::folder_import(
             &import_id,
             album_dir,
-            MetadataProvenance::ExternalRelease {
+            support::DraftSource::Pick(bae_core::import::ReleaseLink {
                 record: bae_core::import::MetadataRef::new(Catalog::MusicBrainz, mb_id.clone()),
                 partners: vec![],
-            },
+            }),
         ))
         .await
         .unwrap();
@@ -342,13 +402,13 @@ async fn a_pick_with_a_partner_writes_both_records() {
         .send_command(support::folder_import(
             &import_id,
             album_dir,
-            MetadataProvenance::ExternalRelease {
+            support::DraftSource::Pick(bae_core::import::ReleaseLink {
                 record: bae_core::import::MetadataRef::new(Catalog::MusicBrainz, mb_id.clone()),
                 partners: vec![bae_core::import::MetadataRef::new(
                     Catalog::Discogs,
                     discogs_id.clone(),
                 )],
-            },
+            }),
         ))
         .await
         .unwrap();
@@ -411,13 +471,13 @@ async fn a_partner_replaces_an_inferred_record_of_the_same_catalog() {
         .send_command(support::folder_import(
             &import_id,
             album_dir,
-            MetadataProvenance::ExternalRelease {
+            support::DraftSource::Pick(bae_core::import::ReleaseLink {
                 record: bae_core::import::MetadataRef::new(Catalog::MusicBrainz, mb_id.clone()),
                 partners: vec![bae_core::import::MetadataRef::new(
                     Catalog::Discogs,
                     picked_id.clone(),
                 )],
-            },
+            }),
         ))
         .await
         .unwrap();

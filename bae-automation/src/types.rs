@@ -495,7 +495,7 @@ pub struct AutomationReleaseGroupSource {
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationPressing {
     pub releases: Vec<AutomationMetadataResult>,
-    pub pick: AutomationMetadataProvenance,
+    pub pick: AutomationReleaseLink,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -684,18 +684,14 @@ pub struct CandidateSkipSetInput {
     pub skipped: bool,
 }
 
-/// Where a candidate's draft will be committed from.
+/// The catalog release a pick links a candidate to.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "snake_case", tag = "kind")]
-pub enum AutomationMetadataProvenance {
-    ExternalRelease {
-        /// The catalog's release the draft is read from.
-        record: AutomationMetadataRef,
-        /// The other catalogs' releases the picked pressing paired with,
-        /// which the pick claims too.
-        partners: Vec<AutomationMetadataRef>,
-    },
-    FileMetadata,
+pub struct AutomationReleaseLink {
+    /// The catalog's release the draft is read from.
+    pub record: AutomationMetadataRef,
+    /// The other catalogs' releases the picked pressing paired with, which
+    /// the pick claims too.
+    pub partners: Vec<AutomationMetadataRef>,
 }
 
 /// One catalog's key for an entity, whose kind is stated by its containing field.
@@ -706,9 +702,9 @@ pub struct AutomationMetadataRef {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-pub struct CandidateMetadataProvenanceInput {
+pub struct CandidateReleaseInput {
     pub candidate_key: String,
-    pub provenance: AutomationMetadataProvenance,
+    pub link: AutomationReleaseLink,
 }
 
 /// One text field of a candidate's metadata form. Years are text because the

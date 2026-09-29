@@ -119,12 +119,15 @@ fn sample_signals() -> crate::signals::Signals {
 /// The row with a draft picking `release_id`, as a run that settled on it
 /// writes.
 fn concluding(mut row: NewImportCandidateVerdict, release_id: &str) -> NewImportCandidateVerdict {
-    row.metadata = Some(crate::import::CandidateMetadataDraft {
-        draft: candidate_draft("", ""),
-        source_discogs_artist_ids: Default::default(),
-        provenance: Some(release_pick(release_id)),
-        cover: None,
-        assets: crate::import::CandidatePreparedAssets::default(),
+    row.pick = Some(crate::db::VerdictPick {
+        link: release_link(release_id),
+        metadata: crate::import::CandidateMetadataDraft {
+            draft: candidate_draft("", ""),
+            source_discogs_artist_ids: Default::default(),
+            provenance: Some(release_pick(release_id)),
+            cover: None,
+            assets: crate::import::CandidatePreparedAssets::default(),
+        },
     });
     row
 }
@@ -140,7 +143,7 @@ file_edit_revision: 0,
         folder_path: folder_path.to_string(),
         verdict: verdict.clone(),
         signals: sample_signals(),
-        metadata: None,
+        pick: None,
     }
 }
 
@@ -617,13 +620,22 @@ async fn fetched(db: &Database, release_id: &str) {
     .unwrap();
 }
 
+fn release_link(release_id: &str) -> crate::import::ReleaseLink {
+    crate::import::ReleaseLink {
+        record: crate::import::MetadataRef::new(
+            crate::import::Catalog::MusicBrainz,
+            release_id.to_string(),
+        ),
+        partners: vec![],
+    }
+}
+
 fn release_pick(release_id: &str) -> crate::import::MetadataProvenance {
     crate::import::MetadataProvenance::ExternalRelease {
         record: crate::import::MetadataRef::new(
             crate::import::Catalog::MusicBrainz,
             release_id.to_string(),
         ),
-        partners: vec![],
     }
 }
 
@@ -708,7 +720,7 @@ async fn a_re_run_that_finds_nothing_leaves_the_draft_an_earlier_run_wrote() {
         .unwrap();
 
     let re_run = new_candidate_row(&hash, &host_root("/music/Album"), &found_nothing());
-    assert!(re_run.metadata.is_none(), "nothing was found to pick");
+    assert!(re_run.pick.is_none(), "nothing was found to pick");
     crate::import::CandidatePreparations::new(db.clone())
         .store_verdict(&re_run)
         .await

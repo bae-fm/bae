@@ -142,16 +142,13 @@ async fn applying_a_settled_candidate_refetches_a_missing_parent_then_reads_offl
 
     fixture
         .import
-        .select_candidate_metadata_provenance(
-            dir.to_string_lossy().into_owned(),
-            crate::import::MetadataProvenance::ExternalRelease {
+        .select_candidate_release(dir.to_string_lossy().into_owned(), crate::import::ReleaseLink {
                 record: crate::import::MetadataRef::new(
                     crate::import::Catalog::MusicBrainz,
                     "mb-offline-1".to_string(),
                 ),
                 partners: vec![],
-            },
-        )
+            })
         .await
         .expect("a settled candidate opens once its release is fetched again");
 
@@ -222,16 +219,13 @@ async fn a_settled_lead_with_no_stored_release_fails_loud() {
 
     let error = fixture
         .import
-        .select_candidate_metadata_provenance(
-            dir.to_string_lossy().into_owned(),
-            crate::import::MetadataProvenance::ExternalRelease {
+        .select_candidate_release(dir.to_string_lossy().into_owned(), crate::import::ReleaseLink {
                 record: crate::import::MetadataRef::new(
                     crate::import::Catalog::MusicBrainz,
                     "mb-missing-1".to_string(),
                 ),
                 partners: vec![],
-            },
-        )
+            })
         .await
         .expect_err("a settled lead with nothing archived must not silently re-fetch");
 
@@ -262,7 +256,7 @@ async fn a_pick_outside_the_verdict_archives_what_it_fetched() {
         "nothing has fetched this release yet"
     );
 
-    let pick = || crate::import::MetadataProvenance::ExternalRelease {
+    let pick = || crate::import::ReleaseLink {
         record: crate::import::MetadataRef::new(
             crate::import::Catalog::MusicBrainz,
             "mb-manual-1".to_string(),
@@ -271,7 +265,7 @@ async fn a_pick_outside_the_verdict_archives_what_it_fetched() {
     };
     fixture
         .import
-        .select_candidate_metadata_provenance(dir.to_string_lossy().into_owned(), pick())
+        .select_candidate_release(dir.to_string_lossy().into_owned(), pick())
         .await
         .expect("a manual pick fetches");
 
@@ -284,7 +278,7 @@ async fn a_pick_outside_the_verdict_archives_what_it_fetched() {
     let before = fixture.provider.requests().len();
     fixture
         .import
-        .select_candidate_metadata_provenance(dir.to_string_lossy().into_owned(), pick())
+        .select_candidate_release(dir.to_string_lossy().into_owned(), pick())
         .await
         .expect("re-picking reads what the first pick archived");
     assert_eq!(
@@ -367,8 +361,8 @@ async fn matches_that_pair_into_one_pressing_settle_as_one_pick() {
         "the pressing's lead was settled before the verdict was written"
     );
     assert_eq!(
-        row.metadata_provenance,
-        Some(crate::import::MetadataProvenance::ExternalRelease {
+        row.release_link,
+        Some(crate::import::ReleaseLink {
             record: crate::import::MetadataRef::new(
                 crate::import::Catalog::MusicBrainz,
                 "mb-paired-1".to_string()
@@ -473,8 +467,8 @@ async fn a_disc_id_lead_settles_with_the_discogs_record_of_its_pressing() {
         "neither of them is what agreement left out: {narrowed_out:?}"
     );
     assert_eq!(
-        row.metadata_provenance,
-        Some(crate::import::MetadataProvenance::ExternalRelease {
+        row.release_link,
+        Some(crate::import::ReleaseLink {
             record: crate::import::MetadataRef::new(
                 crate::import::Catalog::MusicBrainz,
                 "mb-paired-2".to_string()
@@ -571,8 +565,8 @@ async fn the_record_the_folder_agrees_with_settles_as_the_lead() {
         "and the tracklist was settled from it, not from its partner"
     );
     assert_eq!(
-        row.metadata_provenance,
-        Some(crate::import::MetadataProvenance::ExternalRelease {
+        row.release_link,
+        Some(crate::import::ReleaseLink {
             record: crate::import::MetadataRef::new(
                 crate::import::Catalog::Discogs,
                 "70000103".to_string()
@@ -676,16 +670,13 @@ async fn two_distinct_pressings_are_read_in_full_and_do_not_settle() {
     let before_pick = fixture.provider.requests().len();
     fixture
         .import
-        .select_candidate_metadata_provenance(
-            dir.to_string_lossy().into_owned(),
-            crate::import::MetadataProvenance::ExternalRelease {
+        .select_candidate_release(dir.to_string_lossy().into_owned(), crate::import::ReleaseLink {
                 record: crate::import::MetadataRef::new(
                     crate::import::Catalog::MusicBrainz,
                     "mb-two-2".to_string(),
                 ),
                 partners: vec![],
-            },
-        )
+            })
         .await
         .expect("an offered row is picked from what the run stored");
     assert_eq!(
@@ -914,8 +905,8 @@ async fn settling_a_lead_leaves_the_lookup_choices_alone() {
         .await
         .expect("the settled candidate has a pane");
     assert_eq!(
-        pane.metadata_provenance,
-        Some(crate::import::MetadataProvenance::ExternalRelease {
+        pane.release_link,
+        Some(crate::import::ReleaseLink {
             record: crate::import::MetadataRef::new(
                 crate::import::Catalog::MusicBrainz,
                 "mb-catalog-1".to_string()

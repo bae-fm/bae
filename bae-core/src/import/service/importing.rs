@@ -282,6 +282,7 @@ impl ImportService {
             .into());
         }
         let metadata_provenance = preparation.metadata_provenance;
+        let release_link = preparation.release_link;
         let selected_cover = preparation.cover;
         let user_edit = Some(preparation.draft.release_edit().shape()?);
         let mut prepared_assets = preparation.assets;
@@ -332,7 +333,12 @@ impl ImportService {
             .map(|plan| plan.deletion.release_id().to_string())
             .collect();
 
-        let mut records = Vec::new();
+        let records = match &release_link {
+            Some(link) => {
+                linked_records(library_manager, link, metadata_provenance.as_ref()).await?
+            }
+            None => Vec::new(),
+        };
         let parsed = match &metadata_provenance {
             Some(crate::import::MetadataProvenance::ExternalRelease { .. }) => {
                 let applied = prepared_assets.applied_source.as_ref().ok_or_else(|| {
@@ -340,9 +346,7 @@ impl ImportService {
                         detail: format!("{candidate_key} has no applied source"),
                     }
                 })?;
-                let parsed = applied.parsed(self.clock.as_ref(), self.ids.as_ref())?;
-                records = applied.records();
-                parsed
+                applied.parsed(self.clock.as_ref(), self.ids.as_ref())?
             }
             Some(crate::import::MetadataProvenance::FileMetadata) => {
                 let folder_name = source_name.clone();
@@ -888,4 +892,47 @@ impl ImportService {
         info!("Import complete for release {}", db_release.id);
         Ok(())
     }
+}
+
+/// The records an import of a candidate linked to `link` stores: every catalog
+/// its stored releases describe it in. The linked primary's record reads the
+/// draft only while the draft is still read from that release; a draft
+/// re-read from the files or from another release makes none of them the
+/// draft's source.
+async fn linked_records(
+    library_manager: &LibraryManager,
+    link: &crate::import::ReleaseLink,
+    provenance: Option<&crate::import::MetadataProvenance>,
+) -> Result<Vec<crate::import::ReleaseRecord>, crate::import::ImportError> {
+    let mut claimed = Vec::new();
+    for release in link.claimed() {
+        claimed.push(
+            library_manager
+                .load_source_release(release)
+                .await?
+                .ok_or_else(|| crate::import::ImportError::Internal {
+                    detail: format!(
+                        "the candidate is linked to {} release {} that nothing stored",
+                        release.catalog.as_str(),
+                        release.key
+                    ),
+                })?,
+        );
+    }
+    let (primary, partners) = claimed
+        .split_first()
+        .expect("a link claims at least its primary");
+    let mut records = records_for_commit(primary, partners);
+    let read_from_link = provenance
+        == Some(&crate::import::MetadataProvenance::ExternalRelease {
+            record: link.record.clone(),
+        });
+    if !read_from_link {
+        for record in &mut records {
+            if let crate::import::ReleaseRecord::Pressing { reads_draft, .. } = record {
+                *reads_draft = false;
+            }
+        }
+    }
+    Ok(records)
 }

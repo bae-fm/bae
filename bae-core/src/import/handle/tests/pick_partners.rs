@@ -16,9 +16,7 @@ async fn linked_cover_gallery_can_be_empty() {
     let release_id = "70000003";
     seed_discogs_release(handle.library_manager.providers(), release_id);
     handle
-        .select_candidate_metadata_provenance(
-            key.clone(),
-            crate::import::MetadataProvenance::ExternalRelease {
+        .select_candidate_release(key.clone(), crate::import::ReleaseLink {
                 record: crate::import::MetadataRef::new(
                     crate::import::Catalog::Discogs,
                     release_id.to_string(),
@@ -70,9 +68,7 @@ async fn a_pick_with_a_partner_stores_it_and_archives_its_documents() {
     );
 
     handle
-        .select_candidate_metadata_provenance(
-            key.clone(),
-            crate::import::MetadataProvenance::ExternalRelease {
+        .select_candidate_release(key.clone(), crate::import::ReleaseLink {
                 record: crate::import::MetadataRef::new(
                     crate::import::Catalog::Discogs,
                     discogs_release_id.to_string(),
@@ -90,8 +86,8 @@ async fn a_pick_with_a_partner_stores_it_and_archives_its_documents() {
         .unwrap()
         .expect("the candidate row reads back");
     assert_eq!(
-        stored.metadata_provenance,
-        Some(crate::import::MetadataProvenance::ExternalRelease {
+        stored.release_link,
+        Some(crate::import::ReleaseLink {
             record: crate::import::MetadataRef::new(
                 crate::import::Catalog::Discogs,
                 discogs_release_id.to_string()
@@ -144,9 +140,7 @@ async fn a_partner_that_will_not_prepare_fails_the_apply() {
         .metadata_provenance;
 
     handle
-        .select_candidate_metadata_provenance(
-            key.clone(),
-            crate::import::MetadataProvenance::ExternalRelease {
+        .select_candidate_release(key.clone(), crate::import::ReleaseLink {
                 record: crate::import::MetadataRef::new(
                     crate::import::Catalog::MusicBrainz,
                     mb_release_id.to_string(),
@@ -193,9 +187,7 @@ async fn a_partner_repeating_the_primary_source_is_refused() {
         .metadata_provenance;
 
     handle
-        .select_candidate_metadata_provenance(
-            key.clone(),
-            crate::import::MetadataProvenance::ExternalRelease {
+        .select_candidate_release(key.clone(), crate::import::ReleaseLink {
                 record: crate::import::MetadataRef::new(
                     crate::import::Catalog::MusicBrainz,
                     mb_release_id.to_string(),
@@ -358,9 +350,7 @@ async fn numeric_vinyl_import_preserves_unknown_sides_and_track_order() {
         "cover-art-archive": { "front": false, "darkened": false }
     }).to_string());
     handle
-        .select_candidate_metadata_provenance(
-            key.clone(),
-            crate::import::MetadataProvenance::ExternalRelease {
+        .select_candidate_release(key.clone(), crate::import::ReleaseLink {
                 record: crate::import::MetadataRef::new(
                     crate::import::Catalog::MusicBrainz,
                     release_id,
@@ -441,9 +431,7 @@ async fn an_import_commits_what_its_picked_releases_store_now() {
         .musicbrainz()
         .seed_release_group_json_cache(group, group_json("mw111"));
     handle
-        .select_candidate_metadata_provenance(
-            key.clone(),
-            crate::import::MetadataProvenance::ExternalRelease {
+        .select_candidate_release(key.clone(), crate::import::ReleaseLink {
                 record: crate::import::MetadataRef::new(crate::import::Catalog::Discogs, primary),
                 partners: vec![crate::import::MetadataRef::new(
                     crate::import::Catalog::MusicBrainz,
@@ -565,9 +553,7 @@ async fn a_pick_carries_the_album_a_reading_found_through_another_pressing() {
 
     let picked = crate::import::MetadataRef::new(crate::import::Catalog::Discogs, "70000012");
     handle
-        .select_candidate_metadata_provenance(
-            key.clone(),
-            crate::import::MetadataProvenance::ExternalRelease {
+        .select_candidate_release(key.clone(), crate::import::ReleaseLink {
                 record: picked.clone(),
                 partners: vec![],
             },

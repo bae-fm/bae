@@ -368,7 +368,8 @@ pub enum ScanEvent {
     CandidateBindingChanged {
         candidate: FolderCandidate,
     },
-    /// The candidate's metadata draft or its provenance changed.
+    /// The candidate's metadata draft, its provenance, or its release link
+    /// changed.
     CandidateMetadataChanged {
         candidate_key: String,
     },

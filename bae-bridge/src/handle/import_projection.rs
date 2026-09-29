@@ -177,6 +177,8 @@ impl crate::types::BridgeTriageRow {
             cover,
             import_status,
             metadata_provenance,
+            // The row's reading names the linked release's records.
+            release_link: _,
             reading,
             selected,
         } = row;
@@ -693,6 +695,7 @@ impl crate::types::BridgeImportCandidateDetail {
             artist_resolutions,
             metadata_draft_is_blank,
             metadata_provenance,
+            release_link,
             metadata_author,
             metadata_revision,
             mapping,
@@ -733,6 +736,7 @@ impl crate::types::BridgeImportCandidateDetail {
             metadata_draft_is_blank,
             metadata_provenance: metadata_provenance
                 .map(crate::types::BridgeMetadataProvenance::from_core),
+            release_link: release_link.map(crate::types::BridgeReleaseLink::from_core),
             metadata_author: crate::types::BridgeMetadataAuthor::from_core(metadata_author),
             metadata_revision,
             mapping: crate::types::BridgeMappingTable::from_core(mapping),

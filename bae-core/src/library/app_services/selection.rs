@@ -5,7 +5,7 @@
 use super::*;
 use crate::import::selection::{SelectionChange, SelectionSummary};
 use crate::import::triage::{keys_for, CandidateAction};
-use crate::import::{ImportError, ImportListView, MetadataProvenance};
+use crate::import::{ImportError, ImportListView};
 
 /// One selected candidate a bulk action could not run on, and why.
 #[derive(Debug)]
@@ -177,10 +177,7 @@ impl AppServices {
             }
             CandidateAction::CancelImport => self.import_cancel(key),
             CandidateAction::ResetToFileMetadata => self
-                .import_select_candidate_metadata_provenance(
-                    key.to_string(),
-                    MetadataProvenance::FileMetadata,
-                )
+                .import_select_candidate_file_tags(key.to_string())
                 .await
                 .map(|_| ()),
             CandidateAction::ClearMetadata => self

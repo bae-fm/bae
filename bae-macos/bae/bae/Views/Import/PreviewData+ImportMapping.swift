@@ -400,6 +400,7 @@
         static func paneCandidate(
             folder: BridgeFolderCandidate,
             metadataProvenance: BridgeMetadataProvenance? = nil,
+            releaseLink: BridgeReleaseLink? = nil,
             release: BridgeReleaseDetail? = nil,
             edit: BridgeRawReleaseEdit = blankDraftValues,
             mapping: BridgeMappingTable,
@@ -432,6 +433,7 @@
                     artistResolutions: [],
                     metadataDraftIsBlank: edit.albumTitle.isEmpty,
                     metadataProvenance: metadataProvenance,
+                    releaseLink: releaseLink,
                     metadataAuthor: metadataProvenance == nil
                         ? .nobody : .person,
                     metadataRevision: 1,
@@ -454,6 +456,12 @@
                 files: candidateFilesTracks
             ),
             metadataProvenance: .externalRelease(
+                record: BridgeMetadataRef(
+                    catalog: releaseDetailBridge.source,
+                    key: releaseDetailBridge.releaseId
+                )
+            ),
+            releaseLink: BridgeReleaseLink(
                 record: BridgeMetadataRef(
                     catalog: releaseDetailBridge.source,
                     key: releaseDetailBridge.releaseId
@@ -485,6 +493,12 @@
                 record: BridgeMetadataRef(
                     catalog: discogsReleaseDetail.source,
                     key: discogsReleaseDetail.releaseId
+                )
+            ),
+            releaseLink: BridgeReleaseLink(
+                record: BridgeMetadataRef(
+                    catalog: discogsReleaseDetail.source,
+                    key: discogsReleaseDetail.releaseId
                 ),
                 partners: []
             ),
@@ -503,6 +517,12 @@
                 files: candidateFilesTracks
             ),
             metadataProvenance: .externalRelease(
+                record: BridgeMetadataRef(
+                    catalog: releaseDetailBridge.source,
+                    key: releaseDetailBridge.releaseId
+                )
+            ),
+            releaseLink: BridgeReleaseLink(
                 record: BridgeMetadataRef(
                     catalog: releaseDetailBridge.source,
                     key: releaseDetailBridge.releaseId
@@ -577,6 +597,12 @@
                 record: BridgeMetadataRef(
                     catalog: releaseDetailBridge.source,
                     key: releaseDetailBridge.releaseId
+                )
+            ),
+            releaseLink: BridgeReleaseLink(
+                record: BridgeMetadataRef(
+                    catalog: releaseDetailBridge.source,
+                    key: releaseDetailBridge.releaseId
                 ),
                 partners: []
             ),
@@ -604,6 +630,12 @@
                 record: BridgeMetadataRef(
                     catalog: moreTracksReleaseDetail.source,
                     key: moreTracksReleaseDetail.releaseId
+                )
+            ),
+            releaseLink: BridgeReleaseLink(
+                record: BridgeMetadataRef(
+                    catalog: moreTracksReleaseDetail.source,
+                    key: moreTracksReleaseDetail.releaseId
                 ),
                 partners: []
             ),
@@ -624,6 +656,12 @@
                 files: bridgeCandidateFiles
             ),
             metadataProvenance: .externalRelease(
+                record: BridgeMetadataRef(
+                    catalog: releaseDetailBridge.source,
+                    key: releaseDetailBridge.releaseId
+                )
+            ),
+            releaseLink: BridgeReleaseLink(
                 record: BridgeMetadataRef(
                     catalog: releaseDetailBridge.source,
                     key: releaseDetailBridge.releaseId

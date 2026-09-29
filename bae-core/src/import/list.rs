@@ -32,7 +32,7 @@ use super::triage::{
     TriageImportStatus, TriageMetadataSummary, TriagePlacement, TriageRow,
     TriageRuntimeFacts, TriageTabCounts,
 };
-use super::types::{MetadataProvenance, RawReleaseEdit};
+use super::types::{MetadataProvenance, RawReleaseEdit, ReleaseLink};
 use super::watched_folder::WatchedFolder;
 use super::{FileEvidence, ImportFailure, ImportedRelease, WatchedFolderScanStatus};
 use crate::db::LibraryStatus;
@@ -518,18 +518,20 @@ pub struct ImportCandidateDetailProjection {
     /// stored verdict for the candidate's current file shape.
     pub verdict: Option<VerdictSummary>,
     pub metadata_provenance: Option<MetadataProvenance>,
+    /// The catalog release the candidate is linked to.
+    pub release_link: Option<ReleaseLink>,
     /// Who wrote the draft, which decides whether a valid one is the answer.
     pub metadata_author: crate::import::MetadataAuthor,
     pub metadata_revision: u64,
     /// The library release this candidate's bytes were imported as.
     pub imported_release: Option<ImportedRelease>,
-    /// The picked release as its stored release describes it. `None` with no
-    /// pick, and for a folder read as its own tags.
+    /// The linked release as its stored release describes it. `None` with no
+    /// link.
     pub release: Option<ImportSearchReleaseDetail>,
-    /// Every catalog the pick's stored releases describe the release in,
-    /// in the order surfaces list catalogs. Empty with no pick.
+    /// Every catalog the linked releases describe the release in, in the
+    /// order surfaces list catalogs. Empty with no link.
     pub records: Vec<crate::import::ReleaseRecord>,
-    /// Whether the picked release is already in the library.
+    /// Whether the linked release is already in the library.
     pub picked_library_status: Option<LibraryStatus>,
     /// The candidate's one editable metadata draft.
     pub metadata_draft: RawReleaseEdit,
@@ -560,7 +562,10 @@ impl ImportCandidateDetailProjection {
     /// a candidate nobody has touched.
     pub fn session_or_initial(&self) -> CandidateSession {
         self.session.clone().unwrap_or_else(|| {
-            CandidateSession::initial(self.metadata_provenance.as_ref(), self.verdict.is_some())
+            CandidateSession::initial(
+                self.metadata_provenance.is_some() || self.release_link.is_some(),
+                self.verdict.is_some(),
+            )
         })
     }
 
@@ -576,6 +581,7 @@ impl ImportCandidateDetailProjection {
             resumed_identify_state,
             verdict,
             metadata_provenance,
+            release_link,
             metadata_author,
             metadata_revision,
             imported_release,
@@ -621,16 +627,17 @@ impl ImportCandidateDetailProjection {
             draft_valid,
             verdict.map(StoredLookup::of),
             candidate.grouping.is_some(),
-            PendingStanding::stored(placement, metadata_provenance.as_ref(), verdict),
+            PendingStanding::stored(placement, release_link.as_ref(), verdict),
         );
         let live = CandidateLiveState::of(&action_basis, facts.clone());
-        // The catalogs the draft was read from, as the row names them: only a
-        // draft read from a catalog's release names any.
+        // The catalogs the linked release is described in, as the row names
+        // them: only a linked candidate names any.
         let draft_records = || {
-            let picked = metadata_provenance.clone().filter(|_| actionable);
+            let linked = release_link.as_ref().filter(|_| actionable);
+            let answered = linked.is_some() || metadata_provenance.is_some();
             match super::triage::TriageReading::of(
-                TriageMetadataSummary::of(&metadata_draft, picked.clone()).as_ref(),
-                picked.as_ref(),
+                TriageMetadataSummary::of(&metadata_draft, answered).as_ref(),
+                linked,
                 records,
             ) {
                 super::triage::TriageReading::Identified { records } => records,
@@ -671,6 +678,7 @@ impl ImportCandidateDetailProjection {
             artist_resolutions,
             metadata_draft_is_blank,
             metadata_provenance,
+            release_link,
             metadata_author,
             metadata_revision,
             mapping,
@@ -687,7 +695,7 @@ impl ImportCandidateDetailProjection {
 /// Where the queue places the candidate a pane shows, with what the pane
 /// states beside it. A Done candidate's pane is the library release it became,
 /// so it carries nothing the candidate's draft says: the folder check and the
-/// catalogs the draft was read from are a queued candidate's alone.
+/// catalogs of the linked release are a queued candidate's alone.
 #[derive(Debug, Clone, PartialEq)]
 pub enum CandidatePanePlacement {
     /// In Pending.
@@ -696,12 +704,12 @@ pub enum CandidatePanePlacement {
         /// not pass, stated beside its Import: the release's
         /// [`crate::identify::VerdictSummary::folder_check`].
         folder_check: Option<crate::identify::FolderCheck>,
-        /// Every catalog the draft was read from, in the order surfaces list
-        /// catalogs. Empty for a draft read from the files' tags, typed in,
-        /// or not there yet.
+        /// Every catalog the linked release is described in, in the order
+        /// surfaces list catalogs. Empty for a candidate linked to no release.
         records: Vec<crate::import::ReleaseRecord>,
     },
-    /// Skipped, with every catalog the draft was read from, as for Pending.
+    /// Skipped, with every catalog the linked release is described in, as
+    /// for Pending.
     Skipped {
         records: Vec<crate::import::ReleaseRecord>,
     },
@@ -770,6 +778,8 @@ pub struct ImportCandidateDetail {
     pub artist_resolutions: Vec<crate::import::ResolvedCredit>,
     pub metadata_draft_is_blank: bool,
     pub metadata_provenance: Option<MetadataProvenance>,
+    /// The catalog release the candidate is linked to, which Unlink clears.
+    pub release_link: Option<ReleaseLink>,
     /// Who wrote the draft: nobody, the tag prefill, identification's own
     /// pick, or the person.
     pub metadata_author: crate::import::MetadataAuthor,

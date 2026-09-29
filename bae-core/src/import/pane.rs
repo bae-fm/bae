@@ -143,26 +143,33 @@ pub(crate) fn candidate_draft_from_edit(
     })
 }
 
-/// Project the stored draft onto the candidate's physical units. Metadata is
-/// already authoritative; provenance supplies only the exact external release
-/// card and whether source/file durations are independent evidence.
+/// Project the stored draft onto the candidate's physical units, beside the
+/// linked `release`. Metadata is already authoritative; the mapping sets each
+/// track's `source_lengths` entry — from the release the draft was read from,
+/// by the source index a track keeps — beside its file's own length.
 pub(crate) fn draft_pane(
     release: Option<ImportSearchReleaseDetail>,
+    source_lengths: &[Option<u64>],
     files: &CategorizedFiles,
     durations: &SourceDurations,
     draft: &CandidateDraft,
 ) -> Result<PanePick, ImportError> {
-    let source_lengths: Vec<Option<u64>> = release
-        .iter()
-        .flat_map(|release| &release.tracks)
-        .map(|track| track.duration_ms)
-        .collect();
-    let mapping = mapping_table(files, durations, draft, &source_lengths)?;
+    let mapping = mapping_table(files, durations, draft, source_lengths)?;
     Ok(PanePick {
         release,
         edit: draft.release_edit(),
         mapping,
     })
+}
+
+/// Each track's length as `release` lists it, in its order; empty with no
+/// release.
+pub(crate) fn track_lengths(release: Option<&ImportSearchReleaseDetail>) -> Vec<Option<u64>> {
+    release
+        .iter()
+        .flat_map(|release| &release.tracks)
+        .map(|track| track.duration_ms)
+        .collect()
 }
 
 /// The draft over the folder's new audio units: a unit the draft already

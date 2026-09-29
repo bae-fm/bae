@@ -222,8 +222,7 @@
                 record: BridgeMetadataRef(
                     catalog: releaseDetailBridge.source,
                     key: releaseDetailBridge.releaseId
-                ),
-                partners: []
+                )
             ),
             release: releaseDetailBridge,
             edit: confirmEditValues,
@@ -335,13 +334,7 @@
                 record: BridgeMetadataRef(
                     catalog: .musicBrainz,
                     key: "rel-paired"
-                ),
-                partners: [
-                    BridgeMetadataRef(
-                        catalog: .discogs,
-                        key: "discogs-paired"
-                    )
-                ]
+                )
             ),
             reading: .identified(records: identifiedFromBothCatalogs)
         )
@@ -360,13 +353,7 @@
                 record: BridgeMetadataRef(
                     catalog: .musicBrainz,
                     key: "rel-several"
-                ),
-                partners: [
-                    BridgeMetadataRef(
-                        catalog: .discogs,
-                        key: "discogs-several"
-                    )
-                ]
+                )
             ),
             reading: .identified(records: identifiedFromBothCatalogs)
         )
@@ -388,8 +375,7 @@
                 record: BridgeMetadataRef(
                     catalog: releaseDetailBridge.source,
                     key: releaseDetailBridge.releaseId
-                ),
-                partners: []
+                )
             )
         )
 
@@ -448,8 +434,7 @@
                 record: BridgeMetadataRef(
                     catalog: releaseDetailBridge.source,
                     key: releaseDetailBridge.releaseId
-                ),
-                partners: []
+                )
             )
         )
 
@@ -595,8 +580,7 @@
                     record: BridgeMetadataRef(
                         catalog: releaseDetailBridge.source,
                         key: releaseDetailBridge.releaseId
-                    ),
-                    partners: []
+                    )
                 )
             ),
             triageRow(

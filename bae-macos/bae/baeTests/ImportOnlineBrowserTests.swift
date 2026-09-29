@@ -18,6 +18,7 @@ struct ImportOnlineBrowserTests {
                 mapping: nil,
                 edit: MappingFixtures.blankEdit,
                 metadataProvenance: nil,
+                releaseLink: nil,
                 presentation: .findOnline
             )
         )
@@ -40,6 +41,7 @@ struct ImportOnlineBrowserTests {
             onReset: {},
             onResetToFileMetadata: {},
             onClearMetadata: {},
+            onUnlink: {},
             onEditCover: {},
             onSelectCover: { _ in }
         )

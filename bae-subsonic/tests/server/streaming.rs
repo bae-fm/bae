@@ -440,7 +440,8 @@ async fn seed_lossy_release() -> (AppServices, String, Vec<TempDir>) {
             },
             selected_cover: None,
             destination: ImportDestination::Local,
-            metadata_provenance: Some(MetadataProvenance::ExternalRelease {
+            read_file_tags: false,
+            pick: Some(bae_core::import::ReleaseLink {
                 record: bae_core::import::MetadataRef::new(Catalog::Discogs, discogs_key),
                 partners: vec![],
             }),

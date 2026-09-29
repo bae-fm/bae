@@ -109,7 +109,7 @@ async fn store_verdict(db: &Database, candidate: &FolderCandidate, verdict: Term
                 isrcs: Vec::new(),
                 track_titles: Vec::new(),
             },
-            metadata: None,
+            pick: None,
         })
         .await
         .unwrap());
@@ -214,6 +214,15 @@ async fn a_picked_row_leads_with_the_stored_release() {
                     Catalog::MusicBrainz,
                     "mb-picked".to_string(),
                 ),
+            }),
+        )
+        .await
+        .unwrap();
+    crate::import::CandidatePreparations::new(db.clone())
+        .replace_link(
+            &candidate.files.content_hash(),
+            Some(&crate::import::ReleaseLink {
+                record: crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-picked"),
                 partners: vec![],
             }),
         )
@@ -254,7 +263,6 @@ async fn a_pick_of_a_release_nothing_stored_is_refused() {
                     Catalog::MusicBrainz,
                     "mb-never-fetched".to_string(),
                 ),
-                partners: vec![],
             }),
         )
         .await
@@ -410,7 +418,7 @@ async fn a_verdict_the_folder_rules_out_reads_back_as_its_failed_check() {
                 isrcs: Vec::new(),
                 track_titles: Vec::new(),
             },
-            metadata: None,
+            pick: None,
         })
         .await
         .unwrap());

@@ -512,14 +512,13 @@ impl SourceRelease {
     }
 }
 
-/// The releases a candidate's draft was read from — the pick's primary and
-/// its partners, as their stored rows say — and the lengths the draft's
-/// tracks measured when it was. Reading the primary against those lengths
-/// again lays its tracklist out as the draft's source tracks index it.
+/// The release a candidate's draft was read from, as its stored row says,
+/// and the lengths the draft's tracks measured when it was. Reading it
+/// against those lengths again lays its tracklist out as the draft's source
+/// tracks index it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct AppliedSource {
-    pub primary: SourceRelease,
-    pub partners: Vec<SourceRelease>,
+    pub release: SourceRelease,
     pub audio_durations_ms: Vec<u64>,
 }
 
@@ -529,12 +528,7 @@ impl AppliedSource {
         clock: &dyn coven::Clock,
         ids: &dyn coven::IdProvider,
     ) -> Result<ParsedAlbum, ImportError> {
-        self.primary.parsed(&self.audio_durations_ms, clock, ids)
-    }
-
-    /// The records the applied pick claims.
-    pub fn records(&self) -> Vec<ReleaseRecord> {
-        crate::import::service::records_for_commit(&self.primary, &self.partners)
+        self.release.parsed(&self.audio_durations_ms, clock, ids)
     }
 }
 

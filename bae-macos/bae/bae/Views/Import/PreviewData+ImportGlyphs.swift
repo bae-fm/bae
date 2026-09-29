@@ -34,8 +34,7 @@
                         record: BridgeMetadataRef(
                             catalog: .musicBrainz,
                             key: "rel-paired"
-                        ),
-                        partners: []
+                        )
                     )
                     : nil,
                 reading: readFromRecord

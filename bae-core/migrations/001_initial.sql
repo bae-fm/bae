@@ -1186,18 +1186,7 @@ CREATE TABLE IF NOT EXISTS import_candidate_draft_provenance (
     CHECK ((kind = 'external_release') = (release_id IS NOT NULL))
 ) STRICT;
 
--- The releases in the other catalogs that the draft's own record links to.
-CREATE TABLE IF NOT EXISTS import_candidate_provenance_partner (
-    content_hash TEXT NOT NULL,
-    source       TEXT NOT NULL CHECK (source IN ('musicbrainz', 'discogs')),
-    release_id   TEXT NOT NULL,
-    PRIMARY KEY (content_hash, source),
-    FOREIGN KEY (content_hash)
-        REFERENCES import_candidate_draft_provenance (content_hash) ON DELETE CASCADE,
-    FOREIGN KEY (source, release_id) REFERENCES source_release (catalog, release_id)
-) STRICT;
-
--- Marks that the draft's tracks point into the tracklists of the releases its
+-- Marks that the draft's tracks point into the tracklist of the release its
 -- provenance names, as laid out against import_candidate_applied_length.
 CREATE TABLE IF NOT EXISTS import_candidate_applied_source (
     content_hash TEXT PRIMARY KEY,
@@ -1215,6 +1204,29 @@ CREATE TABLE IF NOT EXISTS import_candidate_applied_length (
         REFERENCES import_candidate_applied_source (content_hash) ON DELETE CASCADE
 ) STRICT;
 
+-- The catalog release the candidate is linked to: the pressing picked for its
+-- folder. Independent of the draft: only a pick, identification applying its
+-- pick, keeping the folder's own draft, or unlinking changes it.
+CREATE TABLE IF NOT EXISTS import_candidate_release_link (
+    content_hash TEXT PRIMARY KEY,
+    source       TEXT NOT NULL CHECK (source IN ('musicbrainz', 'discogs')),
+    release_id   TEXT NOT NULL,
+    FOREIGN KEY (content_hash)
+        REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE,
+    FOREIGN KEY (source, release_id) REFERENCES source_release (catalog, release_id)
+) STRICT;
+
+-- The releases in the other catalogs the linked pressing paired with.
+CREATE TABLE IF NOT EXISTS import_candidate_release_link_partner (
+    content_hash TEXT NOT NULL,
+    source       TEXT NOT NULL CHECK (source IN ('musicbrainz', 'discogs')),
+    release_id   TEXT NOT NULL,
+    PRIMARY KEY (content_hash, source),
+    FOREIGN KEY (content_hash)
+        REFERENCES import_candidate_release_link (content_hash) ON DELETE CASCADE,
+    FOREIGN KEY (source, release_id) REFERENCES source_release (catalog, release_id)
+) STRICT;
+
 -- What the import pane is showing for this candidate and what is typed in its
 -- search fields.
 CREATE TABLE IF NOT EXISTS import_candidate_session (
@@ -1230,7 +1242,8 @@ CREATE TABLE IF NOT EXISTS import_candidate_session (
     -- its failure, and the failure's untranslated text.
     error_command  TEXT CHECK (error_command IN (
         'import', 'merge_artists', 'read_file_tags',
-        'change_lookups', 'change_search_words', 'change_agreements', 'keep_own_draft')),
+        'change_lookups', 'change_search_words', 'change_agreements', 'keep_own_draft',
+        'unlink')),
     error_category TEXT,
     error_detail   TEXT,
     CHECK ((error_command IS NULL) = (error_category IS NULL)),

@@ -188,21 +188,31 @@ impl Automation {
         Ok(AutomationSearchResults::from_core(results))
     }
 
-    /// Replace a candidate's metadata from one source and record its provenance.
-    pub async fn select_candidate_metadata_provenance(
+    /// Link a candidate to a release and read its draft from it.
+    pub async fn select_candidate_release(
         &self,
         candidate_key: String,
-        provenance: AutomationMetadataProvenance,
+        link: AutomationReleaseLink,
     ) -> Result<EmptyResponse, AutomationError> {
         // Resolve the candidate first, and hand core the key the snapshot
         // resolved rather than the caller's string, so a typo is refused here
         // rather than stored.
         let candidate = self.get_candidate(candidate_key).await?;
         self.services
-            .import_select_candidate_metadata_provenance(
-                candidate.key().to_string(),
-                provenance.into_core(),
-            )
+            .import_select_candidate_release(candidate.key().to_string(), link.into_core())
+            .await?;
+        Ok(EmptyResponse {})
+    }
+
+    /// Read a candidate's draft from its files' own tags, leaving its release
+    /// link as it is.
+    pub async fn read_candidate_file_tags(
+        &self,
+        candidate_key: String,
+    ) -> Result<EmptyResponse, AutomationError> {
+        let candidate = self.get_candidate(candidate_key).await?;
+        self.services
+            .import_select_candidate_file_tags(candidate.key().to_string())
             .await?;
         Ok(EmptyResponse {})
     }
@@ -500,15 +510,16 @@ impl Automation {
                 let query: AutomationSearchQuery = from_value(args)?;
                 to_value(self.search_imports(query).await?)
             }
-            AutomationTool::ImportCandidateMetadataProvenanceSelect => {
-                let input: CandidateMetadataProvenanceInput = from_value(args)?;
+            AutomationTool::ImportCandidateReleaseSelect => {
+                let input: CandidateReleaseInput = from_value(args)?;
                 to_value(
-                    self.select_candidate_metadata_provenance(
-                        input.candidate_key,
-                        input.provenance,
-                    )
-                    .await?,
+                    self.select_candidate_release(input.candidate_key, input.link)
+                        .await?,
                 )
+            }
+            AutomationTool::ImportCandidateFileTagsRead => {
+                let input: CandidateKeyInput = from_value(args)?;
+                to_value(self.read_candidate_file_tags(input.candidate_key).await?)
             }
             AutomationTool::ImportCandidateEditFieldSet => {
                 let input: CandidateEditFieldInput = from_value(args)?;

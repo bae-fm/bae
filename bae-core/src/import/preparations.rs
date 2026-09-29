@@ -35,8 +35,9 @@ impl CandidatePreparations {
     }
 
     /// Record one candidate's terminal verdict under its content hash, stamped
-    /// from the injected clock. A verdict that settled on one release replaces
-    /// the draft; one that settled on none leaves the draft alone.
+    /// from the injected clock. A verdict that picked one release unattended
+    /// links the candidate to it and replaces the draft; one that picked none
+    /// leaves the link and the draft alone.
     ///
     /// `false` when the row's file decisions moved past the ones the verdict
     /// answers, or no row holds the candidate. A draft edited since the run
@@ -67,9 +68,10 @@ impl CandidatePreparations {
             kept_own_draft: false,
         });
         prep.signals = Some(verdict.signals.clone());
-        if let Some(metadata) = &verdict.metadata {
+        if let Some(pick) = &verdict.pick {
             prep.author = MetadataAuthor::Identification;
-            let mut metadata = metadata.clone();
+            prep.link = Some(pick.link.clone());
+            let mut metadata = pick.metadata.clone();
             settle_cover(&mut metadata, &mut prep.metadata);
             prep.assets_prepared = assets_are_prepared(&metadata);
             prep.metadata = metadata;
@@ -78,7 +80,7 @@ impl CandidatePreparations {
         // A run that applied its own pick and whose release passed every check
         // against the folder has left only the draft and its Import to see, so
         // the pane opens there. Otherwise the pane stays where it was.
-        let pane = if verdict.metadata.is_some() {
+        let pane = if verdict.pick.is_some() {
             CandidatePaneWrite::OpenOnDraftUnlessCheckFailed
         } else {
             CandidatePaneWrite::Keep
@@ -105,10 +107,10 @@ impl CandidatePreparations {
     /// decision without clearing it would leave the queue believing an answer
     /// to a question that changed.
     ///
-    /// Applied metadata, its provenance and its author remain. The caller
-    /// replaces only tracks whose audio changed, using the current prefill
-    /// preference: which tracks exist is the decision, not what the release is
-    /// called. A draft identification wrote stays identification's, so with
+    /// Applied metadata, its provenance, its author and the release link
+    /// remain. The caller replaces only tracks whose audio changed, using the
+    /// current prefill preference: which tracks exist is the decision, not
+    /// what the release is called. A draft identification wrote stays identification's, so with
     /// its verdict cleared it waits for the next run's checks rather than
     /// passing as the person's answer.
     ///
@@ -198,9 +200,8 @@ impl CandidatePreparations {
     }
 
     /// Replace the candidate's draft and its provenance as one transaction,
-    /// laying the new tracks over the stored rows' audio. File
-    /// decisions about the folder itself live in other tables and are
-    /// deliberately untouched.
+    /// laying the new tracks over the stored rows' audio. File decisions
+    /// about the folder itself and the release link are untouched.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn replace_metadata(
         &self,
@@ -238,6 +239,42 @@ impl CandidatePreparations {
         .await
     }
 
+    /// Link the candidate to `link`, or to nothing, leaving everything else
+    /// as it is: the state a pick or an unlink leaves the link in, without
+    /// fetching or reading any release.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn replace_link(
+        &self,
+        content_hash: &str,
+        link: Option<&crate::import::ReleaseLink>,
+    ) -> Result<(), LibraryError> {
+        let mut prep = self
+            .database
+            .load_candidate_preparation(content_hash)
+            .await?
+            .ok_or_else(|| {
+                crate::library::LibraryError::Import(
+                    "link replacement has no candidate state row".into(),
+                )
+            })?;
+        prep.link = link.cloned();
+        let expected = CandidateSaveExpectation {
+            edit_revision: prep.file_edits.revision,
+            metadata_revision: prep.metadata_revision,
+            scanned: None,
+        };
+        match self
+            .database
+            .save_candidate_preparation(prep, expected, CandidateSaveExtras::default())
+            .await?
+        {
+            CandidateSaved::Landed(_) => Ok(()),
+            CandidateSaved::Superseded => Err(LibraryError::Import(format!(
+                "{content_hash} changed while its link was replaced"
+            ))),
+        }
+    }
+
     pub async fn apply_source(
         &self,
         watched_folder_path: &str,
@@ -260,21 +297,24 @@ impl CandidatePreparations {
         .await
     }
 
-    /// A source projection becomes the candidate's metadata, and — where the
-    /// candidate has no result yet — `settled_by_choice` becomes its result,
-    /// in the same write.
+    /// A person's pick: the candidate is linked to `link`, the draft read
+    /// from it becomes the candidate's metadata, and — where the candidate
+    /// has no result yet — `settled_by_choice` becomes its result, in the
+    /// same write.
     ///
     /// A person's chosen release is stored as a result like a run's, unless a
     /// run's result already stands. The read and the write share this load.
-    pub(crate) async fn apply_source_as_result(
+    pub(crate) async fn apply_pick(
         &self,
         watched_folder_path: &str,
         read: &CandidateAsRead,
         folder_path: &str,
+        link: &crate::import::ReleaseLink,
         metadata: &crate::import::CandidateMetadataDraft,
         settled_by_choice: crate::identify::TerminalVerdict,
     ) -> Result<u64, LibraryError> {
         let mut prep = self.loaded_at(read).await?;
+        prep.link = Some(link.clone());
         let scanned = ScannedCandidateKey {
             watched_folder_path: watched_folder_path.to_string(),
             candidate_path: folder_path.to_string(),
@@ -296,17 +336,36 @@ impl CandidatePreparations {
     }
 
     /// The person keeps their own draft over what the stored verdict offered:
-    /// none of its releases is the folder's, or it found none. The draft stays
-    /// as it is.
+    /// none of its releases is the folder's, or it found none. The candidate
+    /// is linked to no release; the draft stays as it is.
     pub(crate) async fn keep_own_draft(&self, read: &CandidateAsRead) -> Result<u64, LibraryError> {
-        let mut prep = self.loaded_at(read).await?;
-        let identification = prep.identification.as_mut().ok_or_else(|| {
-            LibraryError::Import(format!(
+        let prep = self.loaded_at(read).await?;
+        if prep.identification.is_none() {
+            return Err(LibraryError::Import(format!(
                 "{} has no lookup whose offer to set aside",
                 read.content_hash
-            ))
-        })?;
-        identification.kept_own_draft = true;
+            )));
+        }
+        self.set_link_aside(prep, read).await
+    }
+
+    /// The person unlinks the candidate from its release. The draft stays as
+    /// it is, and a stored lookup stands set aside, so the candidate is
+    /// unmatched rather than waiting on the lookup's offer again.
+    pub(crate) async fn unlink(&self, read: &CandidateAsRead) -> Result<u64, LibraryError> {
+        let prep = self.loaded_at(read).await?;
+        self.set_link_aside(prep, read).await
+    }
+
+    async fn set_link_aside(
+        &self,
+        mut prep: CandidatePreparation,
+        read: &CandidateAsRead,
+    ) -> Result<u64, LibraryError> {
+        prep.link = None;
+        if let Some(identification) = prep.identification.as_mut() {
+            identification.kept_own_draft = true;
+        }
         let expected = CandidateSaveExpectation {
             edit_revision: prep.file_edits.revision,
             metadata_revision: prep.metadata_revision,
@@ -320,7 +379,7 @@ impl CandidatePreparations {
         {
             CandidateSaved::Landed(_) => Ok(revision),
             CandidateSaved::Superseded => Err(LibraryError::Import(format!(
-                "{} changed while its own draft was being kept",
+                "{} changed while its release link was being set aside",
                 read.content_hash
             ))),
         }
@@ -380,7 +439,8 @@ impl CandidatePreparations {
 
     /// A source's projection becomes the candidate's metadata: the person
     /// applied it — a pick, their files' tags, or a cleared draft — so they
-    /// are its author, and its answers are complete.
+    /// are its author, and its answers are complete. The release link is the
+    /// caller's to set; the draft never changes it.
     async fn apply_metadata(
         &self,
         mut prep: CandidatePreparation,

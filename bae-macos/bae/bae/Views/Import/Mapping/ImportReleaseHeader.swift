@@ -27,6 +27,8 @@ struct ImportReleaseSourceActions {
     /// Replace the draft with what the candidate's own files say.
     let resetToFileMetadata: () -> Void
     let clearMetadata: () -> Void
+    /// Unlink the candidate from its release, leaving the draft as it is.
+    let unlink: () -> Void
 }
 
 /// The editable metadata draft card: the action row, the cover beside the
@@ -43,8 +45,8 @@ struct ImportReleaseHeader: View {
     let hasCoverOptions: Bool
     /// `nil` when there is no release to edit.
     let editValues: BridgeRawReleaseEdit?
-    /// Every catalog that describes the release the draft was read from.
-    /// Empty for a draft read from the files' own tags, or typed in.
+    /// Every catalog that describes the release the candidate is linked to.
+    /// Empty for a candidate linked to no release.
     let records: [BridgeReleaseRecord]
     /// Where a typed field's value goes.
     let editActions: ReleaseFieldWriter
@@ -94,13 +96,24 @@ struct ImportReleaseHeader: View {
                     }
                 )
                 .disabled(!actionable)
-                // The catalogs that describe the release end the card,
-                // under their own divider.
+                // The catalogs that describe the linked release end the card,
+                // under their own divider, beside the way to unlink it.
                 if !records.isEmpty {
                     Rectangle()
                         .fill(Theme.hairline)
                         .frame(height: 1)
-                    ReleaseRecordsRow(records: records, scale: .pane)
+                    HStack(alignment: .firstTextBaseline) {
+                        ReleaseRecordsRow(records: records, scale: .pane)
+                        Spacer(minLength: ThemeSpace.group)
+                        Button("Unlink") {
+                            sourceActions.unlink()
+                        }
+                        .buttonStyle(.link)
+                        .help(
+                            "Stop treating the folder as this release. The metadata stays as it is."
+                        )
+                        .disabled(!actionable)
+                    }
                 }
             }
         }
@@ -357,7 +370,8 @@ struct ImportCoverWell: View {
                 searchForRelease: {},
                 reset: {},
                 resetToFileMetadata: {},
-                clearMetadata: {}
+                clearMetadata: {},
+                unlink: {}
             ),
             localCoverSelections: [:],
             onEditCover: {},

@@ -6,7 +6,7 @@
 use bae_core::import::selection::{SelectionChange, SelectionSummary};
 use bae_core::import::{
     Admission, ArtistAssignment, CandidateAction, CandidateRuntimeChange, CandidateRuntimeSnapshot,
-    ImportListItem, ImportListOrder, ImportListView, MetadataProvenance,
+    ImportListItem, ImportListOrder, ImportListView,
 };
 use bae_core::library::{AppServices, LibraryPageWindow};
 use bae_test_support as support;
@@ -241,10 +241,7 @@ async fn a_bulk_import_starts_the_rows_as_the_list_shows_them() {
     scan_albums(&services, &tmp.path().join("Collection"), 4).await;
     for key in shown_keys(&services, descending()).await {
         services
-            .import_select_candidate_metadata_provenance(
-                key.clone(),
-                MetadataProvenance::FileMetadata,
-            )
+            .import_select_candidate_file_tags(key.clone())
             .await
             .unwrap();
         services

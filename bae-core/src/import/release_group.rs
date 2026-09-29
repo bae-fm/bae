@@ -246,10 +246,10 @@ impl Pressing {
     }
 
     /// What picking this row claims — the primary release and each other
-    /// catalog's record of the same pressing — as the provenance a pick stores.
-    pub fn pick(&self) -> crate::import::MetadataProvenance {
+    /// catalog's record of the same pressing — as the link a pick stores.
+    pub fn pick(&self) -> crate::import::ReleaseLink {
         let (primary, partners) = self.claims();
-        crate::import::MetadataProvenance::ExternalRelease {
+        crate::import::ReleaseLink {
             record: primary,
             partners,
         }

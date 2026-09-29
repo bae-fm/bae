@@ -8,7 +8,7 @@ import XCTest
 
 private struct ExternalMetadataApplication: Equatable {
     let key: String
-    let provenance: BridgeMetadataProvenance
+    let link: BridgeReleaseLink
 }
 
 @MainActor
@@ -25,12 +25,12 @@ private final class MetadataSourceRecorder {
 
     var importer: Importer {
         Importer(
-            applyCandidateExternalMetadata: { [self] key, provenance in
+            applyCandidateExternalMetadata: { [self] key, link in
                 await MainActor.run {
                     externalApplications.append(
                         ExternalMetadataApplication(
                             key: key,
-                            provenance: provenance
+                            link: link
                         )
                     )
                 }
@@ -131,6 +131,7 @@ extension ImportMetadataSourceTests {
         let store = MappingFixtures.store(
             mapping: nil,
             metadataProvenance: nil,
+            releaseLink: nil,
             edit: MappingFixtures.blankEdit,
         )
         let writes = SessionWriteRecorder()
@@ -147,6 +148,7 @@ extension ImportMetadataSourceTests {
                 mapping: nil,
                 edit: MappingFixtures.blankEdit,
                 metadataProvenance: nil,
+                releaseLink: nil,
                 presentation: .findOnline
             )
         )
@@ -193,6 +195,7 @@ extension ImportMetadataSourceTests {
         let store = MappingFixtures.store(
             mapping: nil,
             metadataProvenance: nil,
+            releaseLink: nil,
             edit: MappingFixtures.blankEdit,
             presentation: .findOnline
         )
@@ -204,7 +207,7 @@ extension ImportMetadataSourceTests {
             importStore: store,
             endEditing: {},
             key: key,
-            provenance: MappingFixtures.provenance
+            application: .pick(MappingFixtures.link)
         )
         try await Wait.until {
             store.metadataApplicationSession(forKey: key) == nil
@@ -242,6 +245,7 @@ extension ImportMetadataSourceTests {
         let store = MappingFixtures.store(
             mapping: nil,
             metadataProvenance: nil,
+            releaseLink: nil,
             edit: MappingFixtures.blankEdit
         )
         store.sessionWriter = .recording { writes.record($0) }
@@ -271,6 +275,7 @@ extension ImportMetadataSourceTests {
         let store = MappingFixtures.store(
             mapping: nil,
             metadataProvenance: nil,
+            releaseLink: nil,
             edit: MappingFixtures.blankEdit
         )
         store.sessionWriter = .recording { writes.record($0) }
@@ -342,7 +347,8 @@ struct ImportReleaseEntryTests {
                     searchForRelease: {},
                     reset: {},
                     resetToFileMetadata: {},
-                    clearMetadata: {}
+                    clearMetadata: {},
+                    unlink: {}
                 ),
                 localCoverSelections: [:],
                 onEditCover: {},
@@ -583,7 +589,8 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
                 searchForRelease: { recorder.searchCount += 1 },
                 reset: { recorder.resetCount += 1 },
                 resetToFileMetadata: { recorder.tagsCount += 1 },
-                clearMetadata: { recorder.clearCount += 1 }
+                clearMetadata: { recorder.clearCount += 1 },
+                unlink: {}
             ),
             localCoverSelections: [:],
             onEditCover: {},
@@ -788,8 +795,7 @@ extension ImportMetadataCardLayoutTests {
                     record: BridgeMetadataRef(
                         catalog: .musicBrainz,
                         key: "release-mb"
-                    ),
-                    partners: []
+                    )
                 ),
                 draftIsBlank: false,
                 recorder: recorder

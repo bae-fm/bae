@@ -18,10 +18,7 @@ async fn two_importable() -> (ImportServiceHandle, [TempDir; 2], String, String)
         .unwrap();
     for key in [&first, &second] {
         handle
-            .select_candidate_metadata_provenance(
-                key.clone(),
-                crate::import::MetadataProvenance::FileMetadata,
-            )
+            .select_candidate_file_tags(key.clone())
             .await
             .unwrap();
         handle

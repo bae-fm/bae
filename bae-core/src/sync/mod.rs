@@ -455,6 +455,8 @@ mod tests {
             "import_candidate_verdict",
             "import_candidate_match",
             "import_candidate_draft_provenance",
+            "import_candidate_release_link",
+            "import_candidate_release_link_partner",
             "import_candidate_sheet_disc",
             "import_candidate_sheet_reference",
             "import_candidate_signals",

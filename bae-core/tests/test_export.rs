@@ -10,7 +10,6 @@ use bae_test_support as support;
 use bae_core::config::{
     SaveBitDepth, SaveCodec, SaveFilenameToken, SavePregapPlacement, SavePreset,
 };
-use bae_core::import::MetadataProvenance;
 use bae_core::library::{LibraryManager, OutputKind};
 use coven::EncryptionService;
 use coven::InMemoryCloudHome;
@@ -94,7 +93,7 @@ async fn import_then_strand_in_cloud(f: &ExportFixture, album_dir: &Path) -> (St
         .send_command(support::folder_import(
             &import_id,
             album_dir.to_path_buf(),
-            MetadataProvenance::FileMetadata,
+            support::DraftSource::FileTags,
         ))
         .await
         .unwrap();
@@ -118,7 +117,7 @@ async fn import_unknown_local(f: &ExportFixture, album_dir: &Path) -> String {
         .send_command(support::folder_import(
             &import_id,
             album_dir.to_path_buf(),
-            MetadataProvenance::FileMetadata,
+            support::DraftSource::FileTags,
         ))
         .await
         .unwrap();

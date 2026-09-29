@@ -17,7 +17,7 @@ struct Pressing: Equatable, Identifiable {
     /// row then shows as its search result stated it.
     let documentFailure: BridgeLookupFailure?
     /// What picking this row claims, as core settled it.
-    let provenance: BridgeMetadataProvenance
+    let link: BridgeReleaseLink
     /// Where it was released and what it is made of: "Japan · 2×CD".
     let summaryText: String
     /// What sets it apart beyond that: "Promo · Reissue".
@@ -42,16 +42,11 @@ struct Pressing: Equatable, Identifiable {
 
     /// The same claim, in the shape a release already in the library takes.
     var reseed: BridgeReleaseReseed {
-        switch provenance {
-        case .externalRelease(let record, let partners):
-            .externalRelease(
-                releaseId: record.key,
-                source: record.catalog,
-                partners: partners
-            )
-        case .fileMetadata:
-            .fileMetadata
-        }
+        .externalRelease(
+            releaseId: link.record.key,
+            source: link.record.catalog,
+            partners: link.partners
+        )
     }
 
     /// `nil` for a pressing carrying no releases, which core does not build:
@@ -62,7 +57,7 @@ struct Pressing: Equatable, Identifiable {
         releases = bridge.releases
         labels = bridge.labels
         documentFailure = bridge.documentFailure
-        provenance = bridge.pick
+        link = bridge.pick
         summaryText = PressingText.line(bridge.summary)
         detailsText = PressingText.line(bridge.details)
     }

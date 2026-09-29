@@ -316,10 +316,10 @@ class ImportStore {
     /// the spinner while it is read.
     func loadingReleaseId(forKey key: String) -> String? {
         guard
-            case .externalRelease(let record, _) =
-                metadataApplicationSession(forKey: key)?.provenance
+            case .pick(let link) =
+                metadataApplicationSession(forKey: key)?.application
         else { return nil }
-        return record.key
+        return link.record.key
     }
 
     /// How this candidate's last pick failed, on the pressing it was about.
@@ -336,11 +336,11 @@ class ImportStore {
     /// read it had running.
     func beginMetadataApplication(
         key: String,
-        provenance: BridgeMetadataProvenance
+        application: MetadataApplication
     ) -> CandidateMetadataApplicationSession? {
         guard let candidate = candidate(forKey: key) else { return nil }
         let session = CandidateMetadataApplicationSession(
-            provenance: provenance
+            application: application
         )
         picks[key] = Pick(
             audioIdentity: candidate.files.fileMetadataIdentity,
@@ -376,12 +376,11 @@ class ImportStore {
             return
         }
         if let error,
-            case .externalRelease(let record, _) = session
-                .provenance
+            case .pick(let link) = session.application
         {
             picks[key]?.state = .failed(
                 ReleaseSelectionFailure(
-                    release: record,
+                    release: link.record,
                     error: error
                 )
             )

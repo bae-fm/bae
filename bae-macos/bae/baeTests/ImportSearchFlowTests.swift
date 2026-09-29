@@ -66,8 +66,8 @@ struct ImportSearchFlowMetadataApplicationTests {
         let store = unsettledStore(writes: writes)
         let recorder = PickRecorder()
         let importer = Importer(
-            applyCandidateExternalMetadata: { _, provenance in
-                await recorder.record(provenance)
+            applyCandidateExternalMetadata: { _, link in
+                await recorder.record(link)
                 return .done
             }
         )
@@ -77,7 +77,7 @@ struct ImportSearchFlowMetadataApplicationTests {
             importStore: store,
             endEditing: {},
             key: MappingFixtures.candidateKey,
-            provenance: MappingFixtures.provenance
+            application: .pick(MappingFixtures.link)
         )
         try await Wait.until {
             store.metadataApplicationSession(
@@ -86,7 +86,7 @@ struct ImportSearchFlowMetadataApplicationTests {
         }
         #expect(writes.paneMoves(forKey: MappingFixtures.candidateKey).isEmpty)
 
-        #expect(recorder.provenances == [MappingFixtures.provenance])
+        #expect(recorder.links == [MappingFixtures.link])
         #expect(
             store.metadataApplicationSession(
                 forKey: MappingFixtures.candidateKey
@@ -100,8 +100,8 @@ struct ImportSearchFlowMetadataApplicationTests {
         let (gate, releaseGate) = AsyncStream<Void>.makeStream()
         let recorder = PickRecorder()
         let importer = Importer(
-            applyCandidateExternalMetadata: { _, provenance in
-                await recorder.record(provenance)
+            applyCandidateExternalMetadata: { _, link in
+                await recorder.record(link)
                 for await _ in gate { break }
                 return .done
             }
@@ -112,10 +112,10 @@ struct ImportSearchFlowMetadataApplicationTests {
             importStore: store,
             endEditing: {},
             key: MappingFixtures.candidateKey,
-            provenance: MappingFixtures.provenance
+            application: .pick(MappingFixtures.link)
         )
         try await Wait.until {
-            recorder.provenances == [MappingFixtures.provenance]
+            recorder.links == [MappingFixtures.link]
         }
 
         #expect(
@@ -137,8 +137,8 @@ struct ImportSearchFlowMetadataApplicationTests {
         let (gate, releaseGate) = AsyncStream<Void>.makeStream()
         let recorder = PickRecorder()
         let importer = Importer(
-            applyCandidateExternalMetadata: { _, provenance in
-                await recorder.record(provenance)
+            applyCandidateExternalMetadata: { _, link in
+                await recorder.record(link)
                 for await _ in gate { break }
                 return .done
             }
@@ -149,10 +149,10 @@ struct ImportSearchFlowMetadataApplicationTests {
             importStore: store,
             endEditing: {},
             key: MappingFixtures.candidateKey,
-            provenance: MappingFixtures.provenance
+            application: .pick(MappingFixtures.link)
         )
         try await Wait.until {
-            recorder.provenances == [MappingFixtures.provenance]
+            recorder.links == [MappingFixtures.link]
         }
 
         store.applyCandidateDetail(
@@ -183,7 +183,7 @@ struct ImportSearchFlowMetadataApplicationTests {
             importStore: store,
             endEditing: {},
             key: MappingFixtures.candidateKey,
-            provenance: MappingFixtures.provenance
+            application: .pick(MappingFixtures.link)
         )
         try await Wait.until {
             store.releaseSelectionFailure(
@@ -194,7 +194,7 @@ struct ImportSearchFlowMetadataApplicationTests {
         let after = try #require(
             store.candidate(forKey: MappingFixtures.candidateKey)
         )
-        #expect(after.pickedRelease == nil)
+        #expect(after.releaseLink == nil)
         #expect(after.error == nil)
         #expect(
             store.releaseSelectionFailure(
@@ -234,7 +234,7 @@ extension ImportSearchFlowMetadataApplicationTests {
             importStore: store,
             endEditing: {},
             key: MappingFixtures.candidateKey,
-            provenance: MappingFixtures.provenance
+            application: .pick(MappingFixtures.link)
         )
         try await Wait.until {
             store.releaseSelectionFailure(forKey: MappingFixtures.candidateKey)
@@ -264,7 +264,7 @@ extension ImportSearchFlowMetadataApplicationTests {
             importStore: store,
             endEditing: {},
             key: MappingFixtures.candidateKey,
-            provenance: MappingFixtures.provenance
+            application: .pick(MappingFixtures.link)
         )
         try await Wait.until {
             store.releaseSelectionFailure(forKey: MappingFixtures.candidateKey)
@@ -298,12 +298,14 @@ extension ImportSearchFlowMetadataApplicationTests {
                 importStore: store,
                 endEditing: {},
                 key: MappingFixtures.candidateKey,
-                provenance: .externalRelease(
-                    record: BridgeMetadataRef(
-                        catalog: .musicBrainz,
-                        key: release
-                    ),
-                    partners: []
+                application: .pick(
+                    BridgeReleaseLink(
+                        record: BridgeMetadataRef(
+                            catalog: .musicBrainz,
+                            key: release
+                        ),
+                        partners: []
+                    )
                 )
             )
             try await Wait.until {
@@ -333,7 +335,7 @@ extension ImportSearchFlowMetadataApplicationTests {
             importStore: store,
             endEditing: {},
             key: MappingFixtures.candidateKey,
-            provenance: MappingFixtures.provenance
+            application: .pick(MappingFixtures.link)
         )
         try await Wait.until {
             store.metadataApplicationSession(
@@ -358,7 +360,8 @@ extension ImportSearchFlowMetadataApplicationTests {
             detail: MappingFixtures.detail(
                 mapping: nil,
                 edit: MappingFixtures.blankEdit,
-                metadataProvenance: nil
+                metadataProvenance: nil,
+                releaseLink: nil
             )
         )
         return store
@@ -371,29 +374,33 @@ final class MetadataApplicationEditingTests: XCTestCase {
     func testApplyingMetadataReplacesTheFocusedFieldForEverySource()
         async throws
     {
-        for provenance in [
-            BridgeMetadataProvenance.fileMetadata,
-            .externalRelease(
-                record: BridgeMetadataRef(
-                    catalog: .musicBrainz,
-                    key: "release-mb"
-                ),
-                partners: []
+        for application in [
+            MetadataApplication.fileTags,
+            .pick(
+                BridgeReleaseLink(
+                    record: BridgeMetadataRef(
+                        catalog: .musicBrainz,
+                        key: "release-mb"
+                    ),
+                    partners: []
+                )
             ),
-            .externalRelease(
-                record: BridgeMetadataRef(
-                    catalog: .discogs,
-                    key: "release-discogs"
-                ),
-                partners: []
+            .pick(
+                BridgeReleaseLink(
+                    record: BridgeMetadataRef(
+                        catalog: .discogs,
+                        key: "release-discogs"
+                    ),
+                    partners: []
+                )
             ),
         ] {
-            try await assertFocusedFieldIsReplaced(by: provenance)
+            try await assertFocusedFieldIsReplaced(by: application)
         }
     }
 
     private func assertFocusedFieldIsReplaced(
-        by provenance: BridgeMetadataProvenance
+        by application: MetadataApplication
     ) async throws {
         let model = MetadataApplicationEditingModel()
         let editingCommands = EditingCommitCommands()
@@ -443,7 +450,7 @@ final class MetadataApplicationEditingTests: XCTestCase {
                     HostedInput.focus(nil, in: window)
                 },
                 key: MappingFixtures.candidateKey,
-                provenance: provenance
+                application: application
             )
             try await Wait.until { model.applicationCount == 1 }
 
@@ -507,10 +514,10 @@ private final class MetadataApplicationEditingModel {
 
 @MainActor
 private final class PickRecorder {
-    var provenances: [BridgeMetadataProvenance] = []
+    var links: [BridgeReleaseLink] = []
 
-    func record(_ provenance: BridgeMetadataProvenance) {
-        provenances.append(provenance)
+    func record(_ link: BridgeReleaseLink) {
+        links.append(link)
     }
 }
 
@@ -661,7 +668,7 @@ struct ImportSearchFlowLibraryStatusTests {
                                                 sourceGroupId: "group-live"
                                             )
                                         ],
-                                        pick: .externalRelease(
+                                        pick: BridgeReleaseLink(
                                             record: BridgeMetadataRef(
                                                 catalog: .musicBrainz,
                                                 key: "rel-live"

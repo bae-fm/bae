@@ -25,7 +25,8 @@ pub(crate) use preparation_rows::{
     CandidateSaveExtras, CandidateSaved, CandidateScanExpectation, ScannedCandidateKey,
 };
 pub(super) use rows::{
-    load_candidate_file_edits_on, load_matches_on, load_provenance_on, load_states_on,
+    load_candidate_file_edits_on, load_matches_on, load_provenance_on, load_release_links_on,
+    load_states_on,
 };
 use session_rows::load_session_on;
 use signal_rows::{delete_signals, insert_signals};

@@ -26,6 +26,7 @@ impl Database {
                 file_edit_revision: state.file_edits.revision,
                 metadata_revision: state.metadata_revision,
                 metadata_provenance: state.metadata_provenance,
+                release_link: state.release_link,
                 cover: rows.cover,
                 draft: rows.draft,
                 source_discogs_artist_ids,

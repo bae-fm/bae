@@ -230,20 +230,37 @@ forward! {
             ))
         }
 
-        /// Replace candidate metadata from a source, a pane command. An
-        /// external release's documents land before provenance does, so the
-        /// next value draws whole. Identification writes the same record itself
-        /// when a verdict settles on exactly one match; this is the path for
-        /// the choices only a person can make. A catalog release that fails to
-        /// load comes back as the error, for its own row to say.
-        fn select_candidate_metadata_provenance(
+        /// Link the candidate to the release `link` names and read its draft
+        /// from it, a pane command. The release's documents land before the
+        /// link does, so the next value draws whole. Identification writes the
+        /// same record itself when a verdict settles on exactly one match; this
+        /// is the path for the choices only a person can make. A catalog
+        /// release that fails to load comes back as the error, for its own row
+        /// to say.
+        fn select_candidate_release(
             candidate_key: String,
-            provenance: crate::types::BridgeMetadataProvenance,
+            link: crate::types::BridgeReleaseLink,
         ) -> crate::types::BridgePaneOutcome {
             Ok(crate::types::BridgePaneOutcome::from_core(
                 this.services
-                    .pane_select_metadata_provenance(candidate_key, provenance.into_core())
+                    .pane_select_release(candidate_key, link.into_core())
                     .await?,
+            ))
+        }
+
+        /// Read the candidate's draft from its files' own tags, a pane command.
+        /// The release link stays as it is.
+        fn read_candidate_file_tags(candidate_key: String) -> crate::types::BridgePaneOutcome {
+            Ok(crate::types::BridgePaneOutcome::from_core(
+                this.services.pane_read_file_tags(candidate_key).await?,
+            ))
+        }
+
+        /// Unlink the candidate from its release, a pane command. The draft
+        /// stays as it is.
+        fn unlink_candidate_release(candidate_key: String) -> crate::types::BridgePaneOutcome {
+            Ok(crate::types::BridgePaneOutcome::from_core(
+                this.services.pane_unlink_release(&candidate_key).await?,
             ))
         }
 

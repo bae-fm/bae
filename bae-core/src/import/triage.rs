@@ -20,7 +20,7 @@
 
 use super::folder_scanner::FolderReleaseDecisionKey;
 use super::search::{ImportSearchReleaseDetail, SourceTracks};
-use super::types::{Catalog, MetadataProvenance};
+use super::types::{Catalog, ReleaseLink};
 use super::MetadataAuthor;
 use super::{CandidateRuntimeSnapshot, ImportedRelease};
 use crate::identify::{FolderCheck, LeadMatch, VerdictSummary};
@@ -290,35 +290,22 @@ mod tests {
             TriageReading::of(None, None, Vec::new()),
             TriageReading::Unidentified
         );
-        assert_eq!(
-            TriageReading::of(None, Some(&MetadataProvenance::FileMetadata), Vec::new()),
-            TriageReading::Unidentified,
-            "a blank draft leads with its folder whatever once wrote it"
-        );
     }
 
     #[test]
-    fn a_draft_read_off_the_file_tags_names_no_source() {
-        assert_eq!(
-            TriageReading::of(
-                Some(&a_draft()),
-                Some(&MetadataProvenance::FileMetadata),
-                Vec::new()
-            ),
-            TriageReading::Prefilled
-        );
+    fn a_draft_of_an_unlinked_candidate_names_no_source() {
         assert_eq!(
             TriageReading::of(Some(&a_draft()), None, Vec::new()),
             TriageReading::Prefilled,
-            "a typed-in draft came from nowhere and is still a draft"
+            "a draft with no release link is a draft, wherever it was read from"
         );
     }
 
-    /// A pick reads as identified in exactly the records its documents were
+    /// A link reads as identified in exactly the records its documents were
     /// read into — the reading names them, it does not derive them.
     #[test]
-    fn a_pick_reads_as_identified_in_the_records_it_is_handed() {
-        let pick = MetadataProvenance::ExternalRelease {
+    fn a_link_reads_as_identified_in_the_records_it_is_handed() {
+        let pick = ReleaseLink {
             record: crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-1".to_string()),
             partners: Vec::new(),
         };

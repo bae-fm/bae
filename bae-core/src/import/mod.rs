@@ -233,8 +233,8 @@ pub use types::{
     CandidateTrack, Catalog, CatalogAvailability, CatalogPage, CreditResolution, DraftFieldEdit,
     EditValidationError, ExistingArtist, MetadataProvenance, MetadataRef, PressingFactEdit,
     RawLabelEdit, RawPressingEdit, RawReleaseEdit, RawReleaseEditOf, RawTrackEdit, ReleaseEditSeed,
-    ReleaseRecord, ReleaseUserEdit, ResolvedCredit, SourceAvailability, TrackArtistAssignments,
-    TrackUserEdit,
+    ReleaseLink, ReleaseRecord, ReleaseUserEdit, ResolvedCredit, SourceAvailability,
+    TrackArtistAssignments, TrackUserEdit,
 };
 desktop_only! {
     pub use types::{

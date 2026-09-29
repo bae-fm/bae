@@ -391,7 +391,7 @@ impl BridgePressing {
                 .into_iter()
                 .map(BridgeLabelLine::from_core)
                 .collect(),
-            pick: crate::types::BridgeMetadataProvenance::from_core(pressing.pick()),
+            pick: crate::types::BridgeReleaseLink::from_core(pressing.pick()),
             summary: crate::types::bridge_pressing_summary(facts.clone()),
             details: crate::types::bridge_pressing_details(facts),
             releases: pressing

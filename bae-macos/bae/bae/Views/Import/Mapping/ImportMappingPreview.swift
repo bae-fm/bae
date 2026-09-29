@@ -64,6 +64,7 @@
                 onReset: {},
                 onResetToFileMetadata: {},
                 onClearMetadata: {},
+                onUnlink: {},
                 onEditCover: {},
                 onSelectCover: { _ in },
                 onNavigateToPlacement: { _ in },

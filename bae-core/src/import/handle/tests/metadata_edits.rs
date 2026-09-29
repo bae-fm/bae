@@ -56,10 +56,7 @@ async fn assert_every_mutation_refused(
     refused(handle.set_candidate_cover(key, cover).await.map(drop));
     refused(
         handle
-            .select_candidate_metadata_provenance(
-                key.to_string(),
-                crate::import::MetadataProvenance::FileMetadata,
-            )
+            .select_candidate_file_tags(key.to_string())
             .await
             .map(drop),
     );
@@ -274,10 +271,7 @@ async fn changing_audio_preserves_the_metadata_of_surviving_tracks() {
     } = stored_candidate_with_sheet(SECOND_FILE_IN_TWO).await;
     let hash = candidate.files.content_hash();
     handle
-        .select_candidate_metadata_provenance(
-            key.clone(),
-            crate::import::MetadataProvenance::FileMetadata,
-        )
+        .select_candidate_file_tags(key.clone())
         .await
         .unwrap();
     let mut tracks = track_rows(&pane(&handle, &key).await.mapping);
@@ -442,9 +436,7 @@ async fn discogs_artist_image_is_prepared_with_the_candidate_and_materialized_by
     );
 
     handle
-        .select_candidate_metadata_provenance(
-            key.clone(),
-            crate::import::MetadataProvenance::ExternalRelease {
+        .select_candidate_release(key.clone(), crate::import::ReleaseLink {
                 record: crate::import::MetadataRef::new(
                     crate::import::Catalog::Discogs,
                     source_release_id.clone(),
@@ -746,10 +738,7 @@ async fn metadata_source_changes_keep_each_row_on_its_audio() {
     );
 
     handle
-        .select_candidate_metadata_provenance(
-            key.clone(),
-            crate::import::MetadataProvenance::FileMetadata,
-        )
+        .select_candidate_file_tags(key.clone())
         .await
         .unwrap();
     let reapplied = handle
@@ -806,10 +795,7 @@ async fn file_tags_persist_the_front_cover_image_ahead_of_embedded_artwork() {
     handle.file_tags =
         std::sync::Arc::new(CountingFileTagReader::with_embedded_cover(vec![1, 2, 3, 4]));
     handle
-        .select_candidate_metadata_provenance(
-            key.clone(),
-            crate::import::MetadataProvenance::FileMetadata,
-        )
+        .select_candidate_file_tags(key.clone())
         .await
         .unwrap();
 

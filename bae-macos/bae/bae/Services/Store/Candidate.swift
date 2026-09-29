@@ -100,18 +100,26 @@ enum CandidateMetadataPresentation: Equatable {
     }
 }
 
+/// What one metadata application reads the draft from: a picked release,
+/// which the candidate is then linked to, or the files' own tags, which leave
+/// the link as it is.
+enum MetadataApplication: Equatable, Sendable {
+    case pick(BridgeReleaseLink)
+    case fileTags
+}
+
 /// One metadata application, from its click until the read it dispatched
 /// ends. The store owns it under the candidate's key; dropping that entry
 /// cancels the read.
 final class CandidateMetadataApplicationSession: Equatable,
     @unchecked Sendable
 {
-    let provenance: BridgeMetadataProvenance
+    let application: MetadataApplication
 
     private var task: Task<Void, Never>?
 
-    init(provenance: BridgeMetadataProvenance) {
-        self.provenance = provenance
+    init(application: MetadataApplication) {
+        self.application = application
     }
 
     func install(_ task: Task<Void, Never>) {
@@ -223,7 +231,7 @@ extension BridgePaneFailure {
         guard let displayed = DisplayError(error) else { return nil }
         let why = displayed.line
         switch command {
-        case .import, .mergeArtists, .keepOwnDraft:
+        case .import, .mergeArtists, .keepOwnDraft, .unlink:
             return why
         case .readFileTags:
             if case .Diagnostic(.metadataTrackCount, _) = error {
@@ -480,12 +488,10 @@ struct Candidate: Equatable, Identifiable {
         }
     }
 
-    /// The catalog's release the draft was read from, where it names one. The
-    /// partners the same pick carried are the provenance's to say.
-    var pickedRelease: BridgeMetadataRef? {
-        guard case .externalRelease(let record, _) = metadataProvenance
-        else { return nil }
-        return record
+    /// The catalog release the candidate is linked to: the pick, whatever
+    /// its draft was read from since.
+    var releaseLink: BridgeReleaseLink? {
+        detail?.releaseLink
     }
 
     /// The signals identification settled on for this candidate's files, as

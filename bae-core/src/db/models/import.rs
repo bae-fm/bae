@@ -40,10 +40,19 @@ pub struct NewImportCandidateVerdict {
     /// Stored beside the verdict so the pane and the queue read them back
     /// instead of extracting them again.
     pub signals: crate::signals::Signals,
-    /// The draft this verdict concludes, or `None` where it concludes no
-    /// draft at all. Only a run that settled on one release concludes one,
-    /// and it replaces whatever draft stands.
-    pub metadata: Option<crate::import::CandidateMetadataDraft>,
+    /// The release this verdict picked unattended and the draft read from
+    /// it, or `None` where it picked none. Only a run that settled on one
+    /// release picks one, and the pick replaces whatever link and draft
+    /// stand.
+    pub pick: Option<VerdictPick>,
+}
+
+/// The release an identification run picked unattended, and the draft it
+/// read from it.
+#[derive(Debug, Clone)]
+pub struct VerdictPick {
+    pub link: crate::import::ReleaseLink,
+    pub metadata: crate::import::CandidateMetadataDraft,
 }
 
 /// What identification concluded about one candidate. Present as a whole or
@@ -81,11 +90,13 @@ pub struct DbImportCandidateState {
     /// The user's decisions about this candidate's files: which audio each
     /// track sheet describes, and which files are the release's tracks.
     pub file_edits: crate::import::folder_scanner::CandidateFileEdits,
-    /// The identity decided for this candidate, or `None` while nothing is
-    /// decided. A person's choice survives file decisions and later verdicts
-    /// alike — it names a release, not a shape; one identification concluded
-    /// lives exactly as long as the verdict that concluded it.
+    /// What the draft's values were read from, or `None` for a draft typed
+    /// in, cleared, or blank.
     pub metadata_provenance: Option<crate::import::MetadataProvenance>,
+    /// The catalog release the candidate is linked to, or `None` while it is
+    /// linked to none. It names a release, not a shape, so file decisions
+    /// and draft edits leave it standing.
+    pub release_link: Option<crate::import::ReleaseLink>,
     /// Who wrote the draft: nobody, discovery's tag seed, identification's
     /// pick, or a person. Stored on the draft, since a person's draft may be
     /// read from nowhere.
@@ -126,6 +137,7 @@ pub struct DbCandidateImportPreparation {
     pub file_edit_revision: u64,
     pub metadata_revision: u64,
     pub metadata_provenance: Option<crate::import::MetadataProvenance>,
+    pub release_link: Option<crate::import::ReleaseLink>,
     pub cover: Option<crate::import::CoverSelection>,
     pub draft: crate::import::CandidateDraft,
     pub source_discogs_artist_ids: std::collections::BTreeSet<String>,

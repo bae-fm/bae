@@ -21,7 +21,7 @@ struct ReleaseSelectionFailureTests {
         let session = try #require(
             store.beginMetadataApplication(
                 key: key,
-                provenance: MappingFixtures.provenance
+                application: .pick(MappingFixtures.link)
             )
         )
         store.metadataApplicationFailed(
@@ -44,7 +44,7 @@ struct ReleaseSelectionFailureTests {
         let first = try #require(
             store.beginMetadataApplication(
                 key: key,
-                provenance: MappingFixtures.provenance
+                application: .pick(MappingFixtures.link)
             )
         )
         store.metadataApplicationFailed(
@@ -63,7 +63,7 @@ struct ReleaseSelectionFailureTests {
         let retry = try #require(
             store.beginMetadataApplication(
                 key: key,
-                provenance: MappingFixtures.provenance
+                application: .pick(MappingFixtures.link)
             )
         )
         #expect(store.releaseSelectionFailure(forKey: key) == nil)
@@ -126,7 +126,7 @@ struct ReleaseSelectionFailureTests {
                 window: window,
                 size: size
             )
-            #expect(selected?.provenance == pressing.provenance)
+            #expect(selected?.link == pressing.link)
         }
     }
 
@@ -246,7 +246,7 @@ extension ReleaseSelectionFailureTests {
             importStore: store,
             endEditing: {},
             key: MappingFixtures.candidateKey,
-            provenance: pressing.provenance
+            application: .pick(pressing.link)
         )
         try await Wait.until {
             store.releaseSelectionFailure(forKey: MappingFixtures.candidateKey)
@@ -340,7 +340,7 @@ extension ReleaseSelectionFailureTests {
                     releases: offered.releases,
                     labels: offered.labels,
                     documentFailure: .timeout,
-                    pick: offered.provenance
+                    pick: offered.link
                 )
             )
         )

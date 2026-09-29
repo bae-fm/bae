@@ -438,6 +438,7 @@ pub(super) fn place_row(
         )),
     };
     let metadata_provenance = state.and_then(|state| state.metadata_provenance.clone());
+    let release_link = state.and_then(|state| state.release_link.clone());
     let draft_valid = state.is_some_and(|state| state.metadata_draft_valid);
     let placement = place(skipped, imported.is_some(), import_status.as_ref());
     let actionable = row.error().is_none();
@@ -447,7 +448,7 @@ pub(super) fn place_row(
         draft_valid,
         verdict.map(StoredLookup::of),
         row.grouping.is_some(),
-        PendingStanding::stored(placement, metadata_provenance.as_ref(), verdict),
+        PendingStanding::stored(placement, release_link.as_ref(), verdict),
     );
     let triage_row = TriageRow {
         candidate_key: row.path.clone(),
@@ -457,11 +458,11 @@ pub(super) fn place_row(
         actionable,
         action_basis,
         matched: verdict.and_then(MatchedRelease::of_summary),
-        // The window that builds the row reads the pick's records and
-        // replaces this reading.
+        // The window that builds the row reads the linked releases' records
+        // and replaces this reading.
         reading: TriageReading::of(
             state.and_then(|state| state.metadata_summary.as_ref()),
-            metadata_provenance.as_ref(),
+            release_link.as_ref(),
             Vec::new(),
         ),
         metadata_summary: state.and_then(|state| state.metadata_summary.clone()),
@@ -469,6 +470,7 @@ pub(super) fn place_row(
         placement,
         import_status,
         metadata_provenance,
+        release_link,
         selected: rows.selected.contains(&row.path),
     };
     Ok(triage_row)

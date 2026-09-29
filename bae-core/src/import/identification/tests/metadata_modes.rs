@@ -47,10 +47,7 @@ async fn a_file_tags_draft_is_still_run() {
         if reset_by_hand {
             fixture
                 .import
-                .select_candidate_metadata_provenance(
-                    dir.to_string_lossy().into_owned(),
-                    crate::import::MetadataProvenance::FileMetadata,
-                )
+                .select_candidate_file_tags(dir.to_string_lossy().into_owned())
                 .await
                 .unwrap();
         }
@@ -108,9 +105,7 @@ async fn a_pick_stores_the_result_and_automatic_identification_leaves_it_alone()
 
     fixture
         .import
-        .select_candidate_metadata_provenance(
-            key.clone(),
-            crate::import::MetadataProvenance::ExternalRelease {
+        .select_candidate_release(key.clone(), crate::import::ReleaseLink {
                 record: crate::import::MetadataRef::new(
                     crate::import::Catalog::MusicBrainz,
                     "mb-chosen".to_string(),
@@ -149,8 +144,8 @@ async fn a_pick_stores_the_result_and_automatic_identification_leaves_it_alone()
             .stored_for(&dir)
             .await
             .expect("the candidate is still stored")
-            .metadata_provenance,
-        Some(crate::import::MetadataProvenance::ExternalRelease {
+            .release_link,
+        Some(crate::import::ReleaseLink {
             record: crate::import::MetadataRef::new(
                 crate::import::Catalog::MusicBrainz,
                 "mb-chosen".to_string()
@@ -193,10 +188,7 @@ async fn a_draft_write_leaves_the_result_and_starts_no_run() {
         } else {
             fixture
                 .import
-                .select_candidate_metadata_provenance(
-                    key,
-                    crate::import::MetadataProvenance::FileMetadata,
-                )
+                .select_candidate_file_tags(key)
                 .await
                 .unwrap();
         }

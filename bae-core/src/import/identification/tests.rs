@@ -796,19 +796,25 @@ impl Fixture {
                         },
                         ..settled_signals()
                     },
-                    metadata: matches!(settled_draft, SettledDraft::Picked).then(|| {
-                        crate::import::CandidateMetadataDraft {
-                            draft,
-                            source_discogs_artist_ids: Default::default(),
-                            provenance: Some(crate::import::MetadataProvenance::ExternalRelease {
-                                record: crate::import::MetadataRef::new(
-                                    crate::import::Catalog::MusicBrainz,
-                                    release_id.to_string(),
-                                ),
+                    pick: matches!(settled_draft, SettledDraft::Picked).then(|| {
+                        let record = crate::import::MetadataRef::new(
+                            crate::import::Catalog::MusicBrainz,
+                            release_id.to_string(),
+                        );
+                        crate::db::VerdictPick {
+                            link: crate::import::ReleaseLink {
+                                record: record.clone(),
                                 partners: vec![],
-                            }),
-                            cover: None,
-                            assets: crate::import::CandidatePreparedAssets::default(),
+                            },
+                            metadata: crate::import::CandidateMetadataDraft {
+                                draft,
+                                source_discogs_artist_ids: Default::default(),
+                                provenance: Some(
+                                    crate::import::MetadataProvenance::ExternalRelease { record },
+                                ),
+                                cover: None,
+                                assets: crate::import::CandidatePreparedAssets::default(),
+                            },
                         }
                     }),
                 },

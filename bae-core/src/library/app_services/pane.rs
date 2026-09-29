@@ -5,8 +5,7 @@
 
 use super::*;
 use crate::import::{
-    ImportError, LookupChoiceEdit, MetadataProvenance, PaneCommand, PaneMove, PaneOutcome,
-    SearchQuery,
+    ImportError, LookupChoiceEdit, PaneCommand, PaneMove, PaneOutcome, ReleaseLink, SearchQuery,
 };
 
 impl AppServices {
@@ -39,55 +38,61 @@ impl AppServices {
             .await
     }
 
-    /// Read the candidate's metadata from `provenance`. Reading the files'
-    /// own tags is a pane command whose failure the pane states; a catalog
-    /// release that fails to load is told on that release's own row, so its
-    /// failure comes back as the error.
-    pub async fn pane_select_metadata_provenance(
+    /// Link the candidate to the release `link` names and read its draft from
+    /// it. A catalog release that fails to load is told on that release's own
+    /// row, so its failure comes back as the error.
+    pub async fn pane_select_release(
         &self,
         candidate_key: String,
-        provenance: MetadataProvenance,
+        link: ReleaseLink,
     ) -> Result<PaneOutcome, ImportError> {
-        let outcome = self
-            .select_metadata_provenance(candidate_key.clone(), provenance)
+        let import = &self.inner.import;
+        import.clear_pane_failure(&candidate_key).await?;
+        import
+            .select_candidate_release(candidate_key.clone(), link)
             .await?;
         // A pick that landed leaves the draft it read to see.
+        import
+            .move_candidate_pane(&candidate_key, PaneMove::Picked)
+            .await?;
+        Ok(PaneOutcome::Done)
+    }
+
+    /// Read the candidate's draft from its files' own tags, a pane command
+    /// whose failure the pane states. The release link stays as it is.
+    pub async fn pane_read_file_tags(
+        &self,
+        candidate_key: String,
+    ) -> Result<PaneOutcome, ImportError> {
+        let import = &self.inner.import;
+        let outcome = import
+            .run_pane_command(
+                &candidate_key,
+                PaneCommand::ReadFileTags,
+                import.select_candidate_file_tags(candidate_key.clone()),
+            )
+            .await?;
         if outcome == PaneOutcome::Done {
-            self.inner
-                .import
+            import
                 .move_candidate_pane(&candidate_key, PaneMove::Picked)
                 .await?;
         }
         Ok(outcome)
     }
 
-    async fn select_metadata_provenance(
+    /// Unlink the candidate from its release, leaving its draft as it is.
+    pub async fn pane_unlink_release(
         &self,
-        candidate_key: String,
-        provenance: MetadataProvenance,
+        candidate_key: &str,
     ) -> Result<PaneOutcome, ImportError> {
         let import = &self.inner.import;
-        match provenance {
-            MetadataProvenance::FileMetadata => {
-                import
-                    .run_pane_command(
-                        &candidate_key,
-                        PaneCommand::ReadFileTags,
-                        import.select_candidate_metadata_provenance(
-                            candidate_key.clone(),
-                            provenance,
-                        ),
-                    )
-                    .await
-            }
-            MetadataProvenance::ExternalRelease { .. } => {
-                import.clear_pane_failure(&candidate_key).await?;
-                import
-                    .select_candidate_metadata_provenance(candidate_key, provenance)
-                    .await?;
-                Ok(PaneOutcome::Done)
-            }
-        }
+        import
+            .run_pane_command(
+                candidate_key,
+                PaneCommand::Unlink,
+                import.unlink_candidate_release(candidate_key.to_string()),
+            )
+            .await
     }
 
     /// Keep the candidate's own draft over what its lookup offered, and go

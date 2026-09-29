@@ -9,7 +9,8 @@ fn local_import_command(import_id: &str, candidate_key: &str, folder: &Path) -> 
         },
         selected_cover: None,
         destination: ImportDestination::Local,
-        metadata_provenance: None,
+        pick: None,
+        read_file_tags: false,
         user_edit: None,
     }
 }

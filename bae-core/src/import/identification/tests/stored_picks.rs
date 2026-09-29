@@ -45,11 +45,11 @@ async fn a_pick_reads_back_as_the_same_answer() {
     // The row carries the same decision for the sidebar's resume trigger.
     let picked = queue_row(&fixture, &key)
         .await
-        .metadata_provenance
+        .release_link
         .expect("the row carries the decision");
     assert_eq!(
         picked,
-        crate::import::MetadataProvenance::ExternalRelease {
+        crate::import::ReleaseLink {
             record: crate::import::MetadataRef::new(
                 crate::import::Catalog::MusicBrainz,
                 "mb-answer-1".to_string()
@@ -58,20 +58,23 @@ async fn a_pick_reads_back_as_the_same_answer() {
         }
     );
 
-    // A person deciding file metadata replaces the record, and the pane reads the
-    // folder's own files instead of a release.
+    // A person reading the draft from the folder's own files replaces the
+    // draft, not the link: the pane still shows the linked release.
     fixture
         .import
-        .select_candidate_metadata_provenance(
-            key.clone(),
-            crate::import::MetadataProvenance::FileMetadata,
-        )
+        .select_candidate_file_tags(key.clone())
         .await
         .expect("deciding file metadata succeeds");
     let resumed = fixture.pane(&dir).await.expect("the candidate reads back");
-    assert!(
-        resumed.release.is_none(),
-        "file metadata names no external release"
+    assert_eq!(
+        resumed.release.map(|release| release.release_id),
+        Some("mb-answer-1".to_string()),
+        "the candidate stays linked to the release identification picked"
+    );
+    assert_eq!(resumed.release_link, Some(picked));
+    assert_eq!(
+        resumed.metadata_provenance,
+        Some(crate::import::MetadataProvenance::FileMetadata)
     );
     assert_eq!(
         resumed.metadata_author,
@@ -89,7 +92,7 @@ async fn a_pick_reads_back_as_the_same_answer() {
             value: SEEDED_DISC_ID.to_string(),
             file_id: SEEDED_DISC_ID_FILE.to_string(),
         }],
-        "the extracted Disc ID still names its source file without a release pick"
+        "the extracted Disc ID still names its source file with the draft re-read"
     );
     assert!(
         fixture.provider.requests().is_empty(),
@@ -140,9 +143,7 @@ async fn a_picked_release_is_what_the_row_leads_with() {
         let key = key.clone();
         tokio::spawn(async move {
             import
-                .select_candidate_metadata_provenance(
-                    key,
-                    crate::import::MetadataProvenance::ExternalRelease {
+                .select_candidate_release(key, crate::import::ReleaseLink {
                         record: crate::import::MetadataRef::new(
                             crate::import::Catalog::MusicBrainz,
                             "mb-picked-1".to_string(),
@@ -225,7 +226,7 @@ async fn a_pick_reads_back_as_the_identity_it_commits() {
         .store_settled_verdict(&dir, "mb-answer-1", "rg-answer-1",)
         .await;
 
-    let pick = crate::import::MetadataProvenance::ExternalRelease {
+    let pick = crate::import::ReleaseLink {
         record: crate::import::MetadataRef::new(
             crate::import::Catalog::MusicBrainz,
             "mb-answer-1".to_string(),
@@ -234,7 +235,7 @@ async fn a_pick_reads_back_as_the_identity_it_commits() {
     };
     fixture
         .import
-        .select_candidate_metadata_provenance(key.clone(), pick.clone())
+        .select_candidate_release(key.clone(), pick.clone())
         .await
         .expect("picking the release succeeds");
 
@@ -252,7 +253,7 @@ async fn a_pick_reads_back_as_the_identity_it_commits() {
 
     // The row carries the draft and provenance the pane and bulk import consume.
     let row = queue_row(&fixture, &key).await;
-    assert_eq!(row.metadata_provenance, Some(pick));
+    assert_eq!(row.release_link, Some(pick));
 }
 
 /// Once a run's verdict lands in its row, the recorded runtime state clears:
@@ -435,7 +436,7 @@ async fn a_verdict_write_ends_its_own_save_when_its_caller_is_torn_down() {
         folder_path: key.clone(),
         verdict: multi_match_verdict(&["mb-torn-1", "mb-torn-2"], "rg-torn-1"),
         signals: settled_signals(),
-        metadata: None,
+        pick: None,
     };
 
     // The run's terminal state is what puts the key on a pending save.
@@ -563,9 +564,7 @@ async fn a_picked_row_states_what_each_claimed_source_says() {
 
     fixture
         .import
-        .select_candidate_metadata_provenance(
-            key.clone(),
-            crate::import::MetadataProvenance::ExternalRelease {
+        .select_candidate_release(key.clone(), crate::import::ReleaseLink {
                 record: crate::import::MetadataRef::new(
                     crate::import::Catalog::MusicBrainz,
                     "mb-stated-1".to_string(),

@@ -417,7 +417,7 @@ async fn explicit_lookup_for_an_answered_candidate_runs_it_again() {
                 folder_path: dir.to_string_lossy().into_owned(),
                 verdict,
                 signals: settled_signals(),
-                metadata: None,
+                pick: None,
             },
         )
         .await
@@ -575,10 +575,7 @@ async fn a_pick_during_an_explicit_lookup_stores_no_verdict() {
 
     fixture
         .import
-        .select_candidate_metadata_provenance(
-            key.clone(),
-            crate::import::MetadataProvenance::FileMetadata,
-        )
+        .select_candidate_file_tags(key.clone())
         .await
         .expect("the pick lands");
 

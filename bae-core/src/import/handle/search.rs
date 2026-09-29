@@ -189,7 +189,7 @@ impl ImportServiceHandle {
     }
 
     /// Fetch complete artwork galleries when the picker opens. Dispatch on
-    /// the owner: library identities and candidate provenance are different
+    /// the owner: library identities and candidate release links are different
     /// records, never interchangeable string identifiers.
     pub async fn fetch_remote_covers(
         &self,
@@ -216,16 +216,14 @@ impl ImportServiceHandle {
             .library_manager
             .load_import_candidate_state(&candidate.files.content_hash())
             .await?;
-        let Some(crate::import::MetadataProvenance::ExternalRelease { record, partners }) =
-            state.and_then(|state| state.metadata_provenance)
-        else {
+        let Some(link) = state.and_then(|state| state.release_link) else {
             return Ok(RemoteCoverGallery::Unlinked);
         };
         let mut claimed_releases = Vec::new();
-        for claimed in std::iter::once(record).chain(partners) {
+        for claimed in link.claimed() {
             claimed_releases.push(
                 self.library_manager
-                    .load_source_release(&claimed)
+                    .load_source_release(claimed)
                     .await?
                     .ok_or_else(|| crate::import::ImportError::Internal {
                         detail: format!(
@@ -305,7 +303,7 @@ impl ImportServiceHandle {
     /// invariant. Preparation follows any related documents the release was
     /// fetched without. Ordinary pane reads and applied drafts never call this
     /// path.
-    pub(super) async fn release_for_provenance(
+    pub(super) async fn release_for_pick(
         &self,
         candidate_key: &str,
         release: &crate::import::MetadataRef,
@@ -365,38 +363,56 @@ impl ImportServiceHandle {
             && only.source_tracks.is_some())
     }
 
-    /// Replace this candidate's metadata from an external release or its file
-    /// tags.
+    /// Link this candidate to the release `link` names and read its draft
+    /// from that release.
     ///
-    /// **The release lands before provenance does.** Stored external provenance is the
+    /// **The release lands before the link does.** A stored link is the
     /// promise that opening that candidate needs no network, so the fetch goes
     /// first and a failure stores nothing: the pane keeps whatever it had and
-    /// says the source failed. Identification writes the same record itself when
-    /// a verdict settles on exactly one match; this is the path for the
+    /// says the source failed. Identification writes the same record itself
+    /// when a verdict settles on exactly one match; this is the path for the
     /// choices only a person can make.
     ///
     /// Nothing comes back. The per-candidate query sees the write and
     /// redraws the pane from it, which is the same thing a relaunch does.
     ///
     /// Runs to completion once asked for, through the handle's `committed`
-    /// wrapper: the person's decision stands
-    /// whether or not they are still looking at the candidate when its
-    /// release fetch and write finish. The decision also ends whatever
-    /// identification the candidate had going, through the handle's
-    /// cancellation, inside that same write, so no run can answer a candidate
-    /// a person has already answered.
-    pub async fn select_candidate_metadata_provenance(
+    /// wrapper: the person's decision stands whether or not they are still
+    /// looking at the candidate when its release fetch and write finish. The
+    /// decision also ends whatever identification the candidate had going,
+    /// through the handle's cancellation, inside that same write, so no run
+    /// can answer a candidate a person has already answered.
+    pub async fn select_candidate_release(
         &self,
         candidate_key: String,
-        provenance: crate::import::MetadataProvenance,
+        link: crate::import::ReleaseLink,
     ) -> Result<u64, crate::import::ImportError> {
         let this = self.clone();
         self.committed(async move {
             let revision = this
-                .set_candidate_metadata_provenance(candidate_key.clone(), provenance)
+                .pick_candidate_release_write(candidate_key.clone(), link)
                 .await?;
             this.cancel_identification(&candidate_key);
-            this.announce_metadata_provenance(candidate_key);
+            this.announce_metadata_changed(candidate_key);
+            Ok(revision)
+        })
+        .await
+    }
+
+    /// Replace this candidate's draft with what its files' own tags say. The
+    /// release link stays as it is. Like a pick, it ends whatever
+    /// identification the candidate had going.
+    pub async fn select_candidate_file_tags(
+        &self,
+        candidate_key: String,
+    ) -> Result<u64, crate::import::ImportError> {
+        let this = self.clone();
+        self.committed(async move {
+            let revision = this
+                .read_candidate_file_tags_write(candidate_key.clone())
+                .await?;
+            this.cancel_identification(&candidate_key);
+            this.announce_metadata_changed(candidate_key);
             Ok(revision)
         })
         .await

@@ -227,6 +227,7 @@ fn a_row_offers_import_exactly_when_its_draft_would_import() {
                 edit_revision: 0,
                 verdict: None,
                 metadata_provenance: None,
+                release_link: None,
                 metadata_author: MetadataAuthor::Person,
                 metadata_draft_valid: true,
                 metadata_summary: None,
@@ -323,6 +324,7 @@ fn a_pick_does_not_outrank_skipped_or_done() {
 fn picked_by_the_person(state: CandidateStateListRow) -> CandidateStateListRow {
     CandidateStateListRow {
         metadata_provenance: Some(external_release_seed("mb-picked")),
+        release_link: Some(release_link_to("mb-picked")),
         metadata_author: MetadataAuthor::Person,
         metadata_draft_valid: true,
         ..state

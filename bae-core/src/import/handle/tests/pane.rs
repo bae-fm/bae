@@ -9,6 +9,7 @@ mod metadata_application;
 mod metadata_author;
 mod metadata_edits;
 mod pick_partners;
+mod release_link;
 mod reset;
 mod session;
 // The pane's own controls, from the handle down to the next read.
@@ -207,10 +208,7 @@ async fn pane_fixture_with(
     let handle = fixture.handle;
     let key = fixture.key;
     let revision = handle
-        .select_candidate_metadata_provenance(
-            key.clone(),
-            crate::import::MetadataProvenance::FileMetadata,
-        )
+        .select_candidate_file_tags(key.clone())
         .await
         .unwrap();
     assert_eq!(revision, 1);
@@ -413,10 +411,7 @@ async fn pick_file_tags(
 ) -> Result<u64, crate::import::ImportError> {
     handle.file_tags = reader;
     handle
-        .select_candidate_metadata_provenance(
-            key.to_string(),
-            crate::import::MetadataProvenance::FileMetadata,
-        )
+        .select_candidate_file_tags(key.to_string())
         .await
 }
 
@@ -631,10 +626,7 @@ async fn file_tags_cannot_restore_mappings_read_before_a_file_decision() {
     } = stored_candidate_with_sheet(SECOND_FILE_IN_TWO).await;
     let hash = candidate.files.content_hash();
     handle
-        .select_candidate_metadata_provenance(
-            key.clone(),
-            crate::import::MetadataProvenance::FileMetadata,
-        )
+        .select_candidate_file_tags(key.clone())
         .await
         .unwrap();
     let stale = handle
@@ -795,10 +787,7 @@ async fn a_scan_that_moves_during_tag_reading_makes_the_pick_read_again() {
         let key = key.clone();
         async move {
             handle
-                .select_candidate_metadata_provenance(
-                    key,
-                    crate::import::MetadataProvenance::FileMetadata,
-                )
+                .select_candidate_file_tags(key)
                 .await
         }
     });
@@ -852,10 +841,7 @@ async fn a_pick_lands_and_is_announced_when_its_caller_is_torn_down() {
     // One poll asks for the pick; dropping the future at the end of the block
     // is the caller being torn down.
     {
-        let mut pick = std::pin::pin!(handle.select_candidate_metadata_provenance(
-            key.clone(),
-            crate::import::MetadataProvenance::FileMetadata,
-        ));
+        let mut pick = std::pin::pin!(handle.select_candidate_file_tags(key.clone()));
         let first_poll =
             std::future::poll_fn(|cx| std::task::Poll::Ready(pick.as_mut().poll(cx))).await;
         assert!(

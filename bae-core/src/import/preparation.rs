@@ -159,6 +159,9 @@ pub struct CandidatePreparation {
     /// The draft, its provenance, its cover, and the provider answers
     /// prepared for it.
     pub metadata: CandidateMetadataDraft,
+    /// The catalog release the candidate is linked to. Independent of
+    /// `metadata`: no draft write changes it.
+    pub link: Option<crate::import::ReleaseLink>,
     /// Whether `metadata.assets` is a complete answer set for this draft: an
     /// image answer for every artist it needs, and bytes for a remote cover.
     /// A candidate stored before assets were prepared has none, and must have
@@ -197,25 +200,16 @@ impl CandidatePreparation {
             .check_provenance(self.metadata.provenance.as_ref())
             .map_err(|error| format!("candidate {}: {error}", self.content_hash))?;
         if let Some(applied) = &self.metadata.assets.applied_source {
-            let Some(crate::import::MetadataProvenance::ExternalRelease { record, partners }) =
-                &self.metadata.provenance
+            let Some(MetadataProvenance::ExternalRelease { record }) = &self.metadata.provenance
             else {
                 return Err(format!(
-                    "candidate {} applies releases its provenance does not name",
+                    "candidate {} applies a release its provenance does not name",
                     self.content_hash
                 ));
             };
-            let applied_partners: std::collections::HashSet<_> = applied
-                .partners
-                .iter()
-                .map(|partner| partner.release())
-                .collect();
-            if applied.primary.release() != record
-                || applied_partners != partners.iter().collect::<std::collections::HashSet<_>>()
-                || applied_partners.len() != applied.partners.len()
-            {
+            if applied.release.release() != record {
                 return Err(format!(
-                    "candidate {}: the applied releases and the draft provenance disagree",
+                    "candidate {}: the applied release and the draft provenance disagree",
                     self.content_hash
                 ));
             }

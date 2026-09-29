@@ -41,6 +41,7 @@ struct ImportMappingPane: View {
     let onReset: () -> Void
     let onResetToFileMetadata: () -> Void
     let onClearMetadata: () -> Void
+    let onUnlink: () -> Void
     let onEditCover: () -> Void
     let onSelectCover: (BridgeCoverSelection) -> Void
     let onNavigateToPlacement: (String) -> Void
@@ -133,6 +134,7 @@ struct ImportMappingPane: View {
             onReset: onReset,
             onResetToFileMetadata: onResetToFileMetadata,
             onClearMetadata: onClearMetadata,
+            onUnlink: onUnlink,
             onEditCover: onEditCover,
             onSelectCover: onSelectCover,
         )

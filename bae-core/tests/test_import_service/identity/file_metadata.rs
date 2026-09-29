@@ -44,7 +44,7 @@ async fn file_metadata_import_seeds_from_the_folder_and_writes_no_identity() {
         .send_command(support::folder_import(
             &import_id,
             album_dir,
-            MetadataProvenance::FileMetadata,
+            support::DraftSource::FileTags,
         ))
         .await
         .unwrap();
@@ -135,7 +135,7 @@ async fn the_seeded_draft_for_a_cue_folder_matches_its_commit_layout() {
     f.handle
         .send_command(ImportCommand {
             candidate_key: "cue".to_string(),
-            ..support::folder_import(&import_id, album_dir, MetadataProvenance::FileMetadata)
+            ..support::folder_import(&import_id, album_dir, support::DraftSource::FileTags)
         })
         .await
         .unwrap();
@@ -217,7 +217,7 @@ async fn file_metadata_import_seeds_embedded_cover_when_no_folder_image() {
         .send_command(support::folder_import(
             &import_id,
             album_dir,
-            MetadataProvenance::FileMetadata,
+            support::DraftSource::FileTags,
         ))
         .await
         .unwrap();
@@ -278,7 +278,7 @@ async fn file_metadata_cover_source_beside(folder_image: &str) -> String {
         .send_command(support::folder_import(
             &import_id,
             album_dir,
-            MetadataProvenance::FileMetadata,
+            support::DraftSource::FileTags,
         ))
         .await
         .unwrap();
@@ -357,7 +357,7 @@ async fn file_metadata_import_always_creates_a_fresh_album() {
     f.handle
         .send_command(ImportCommand {
             candidate_key: "file-tags".to_string(),
-            ..support::folder_import(&import_id2, file_tags_dir, MetadataProvenance::FileMetadata)
+            ..support::folder_import(&import_id2, file_tags_dir, support::DraftSource::FileTags)
         })
         .await
         .unwrap();
@@ -427,7 +427,7 @@ async fn file_metadata_import_with_user_edit_overlay() {
     f.handle
         .send_command(ImportCommand {
             user_edit: Some(edit),
-            ..support::folder_import(&import_id, album_dir, MetadataProvenance::FileMetadata)
+            ..support::folder_import(&import_id, album_dir, support::DraftSource::FileTags)
         })
         .await
         .unwrap();
@@ -495,10 +495,7 @@ async fn file_metadata_import_with_no_tags_seeds_title_from_folder_name() {
         .await
         .unwrap();
     f.handle
-        .select_candidate_metadata_provenance(
-            candidate_key.clone(),
-            MetadataProvenance::FileMetadata,
-        )
+        .select_candidate_file_tags(candidate_key.clone())
         .await
         .unwrap();
     let pane = f

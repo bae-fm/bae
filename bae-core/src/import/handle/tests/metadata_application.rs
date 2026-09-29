@@ -57,10 +57,7 @@ async fn resetting_to_the_tags_drops_what_was_typed() {
         .await
         .unwrap();
     handle
-        .select_candidate_metadata_provenance(
-            key.clone(),
-            crate::import::MetadataProvenance::FileMetadata,
-        )
+        .select_candidate_file_tags(key.clone())
         .await
         .unwrap();
 
@@ -101,9 +98,7 @@ async fn a_pick_replaces_typed_fields_with_the_catalog_metadata() {
     let release_id = "70000101";
     seed_discogs_pressing(handle.library_manager.providers(), release_id, "Label Name", "CAT-1");
     handle
-        .select_candidate_metadata_provenance(
-            key.clone(),
-            crate::import::MetadataProvenance::ExternalRelease {
+        .select_candidate_release(key.clone(), crate::import::ReleaseLink {
                 record: crate::import::MetadataRef::new(
                     crate::import::Catalog::Discogs,
                     release_id.to_string(),

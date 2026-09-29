@@ -25,6 +25,7 @@ struct ImportMetadataSourceSection: View {
     let onReset: () -> Void
     let onResetToFileMetadata: () -> Void
     let onClearMetadata: () -> Void
+    let onUnlink: () -> Void
     let onEditCover: () -> Void
     let onSelectCover: (BridgeCoverSelection) -> Void
 
@@ -67,7 +68,8 @@ struct ImportMetadataSourceSection: View {
                     searchForRelease: onSearchForRelease,
                     reset: onReset,
                     resetToFileMetadata: onResetToFileMetadata,
-                    clearMetadata: onClearMetadata
+                    clearMetadata: onClearMetadata,
+                    unlink: onUnlink
                 ),
                 localCoverSelections: candidate.localCoverSelections,
                 onEditCover: onEditCover,
@@ -109,7 +111,7 @@ private struct ImportOnlineMetadataBrowser: View {
                     input: ImportSearchFlow.SearchPaneInput(
                         candidate: candidate,
                         key: candidateKey,
-                        selectedReleaseId: candidate.pickedRelease?.key,
+                        selectedReleaseId: candidate.releaseLink?.record.key,
                         runtime: runtime,
                         openSection: candidate.session.findOnlineSection,
                         onOpenSection: {
@@ -131,7 +133,7 @@ private struct ImportOnlineMetadataBrowser: View {
                             importStore: importStore,
                             endEditing: endEditing,
                             key: candidateKey,
-                            provenance: pressing.provenance
+                            application: .pick(pressing.link)
                         )
                     }
                 )

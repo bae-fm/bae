@@ -8,7 +8,6 @@ mod metadata_provenance_tests {
     fn a_metadata_provenance_round_trips_without_an_identity_proxy() {
         let provenance = MetadataProvenance::ExternalRelease {
             record: crate::import::MetadataRef::new(Catalog::MusicBrainz, "release-a".to_string()),
-            partners: vec![],
         };
         let stored = serde_json::to_string(&provenance).expect("metadata provenance encodes");
         let read_back: MetadataProvenance =

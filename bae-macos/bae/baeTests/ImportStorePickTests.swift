@@ -109,7 +109,7 @@ struct ImportStorePickTests {
     ) -> CandidateMetadataApplicationSession? {
         store.beginMetadataApplication(
             key: Self.key,
-            provenance: MappingFixtures.provenance
+            application: .pick(MappingFixtures.link)
         )
     }
 

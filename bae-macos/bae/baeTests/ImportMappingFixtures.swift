@@ -15,6 +15,9 @@ enum MappingFixtures {
     static let releaseId = "rel-walkthrough"
     static let source: BridgeCatalog = .musicBrainz
     static let provenance: BridgeMetadataProvenance = .externalRelease(
+        record: BridgeMetadataRef(catalog: source, key: releaseId)
+    )
+    static let link = BridgeReleaseLink(
         record: BridgeMetadataRef(catalog: source, key: releaseId),
         partners: []
     )
@@ -417,6 +420,7 @@ extension MappingFixtures {
         mapping: BridgeMappingTable?,
         edit: BridgeRawReleaseEdit = albumEdit,
         metadataProvenance: BridgeMetadataProvenance? = provenance,
+        releaseLink: BridgeReleaseLink? = link,
         metadataAuthor: BridgeMetadataAuthor? = nil,
         metadataRevision: UInt64 = 1,
         failure: BridgeImportFailure? = nil,
@@ -448,18 +452,14 @@ extension MappingFixtures {
                 standing: .notLookedUp
             ),
             importStatus: nil,
-            release: {
-                if case .externalRelease = metadataProvenance {
-                    return releaseDetail
-                }
-                return nil
-            }(),
+            release: releaseLink == nil ? nil : releaseDetail,
             pickedLibraryStatus: nil,
             fileEvidence: [],
             metadataDraft: edit,
             artistResolutions: [],
             metadataDraftIsBlank: edit.albumTitle.isEmpty,
             metadataProvenance: metadataProvenance,
+            releaseLink: releaseLink,
             metadataAuthor: metadataAuthor
                 ?? (metadataProvenance == nil ? .nobody : .person),
             metadataRevision: metadataRevision,
@@ -522,6 +522,7 @@ extension MappingFixtures {
     static func store(
         mapping: BridgeMappingTable?,
         metadataProvenance: BridgeMetadataProvenance? = provenance,
+        releaseLink: BridgeReleaseLink? = link,
         edit: BridgeRawReleaseEdit = albumEdit,
         presentation: BridgeMetadataPresentation = .draft,
         records: [BridgeReleaseRecord] = []
@@ -533,6 +534,7 @@ extension MappingFixtures {
                 mapping: mapping,
                 edit: edit,
                 metadataProvenance: metadataProvenance,
+                releaseLink: releaseLink,
                 presentation: presentation,
                 records: records
             )

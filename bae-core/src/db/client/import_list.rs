@@ -7,7 +7,7 @@
 
 mod window;
 
-use super::import_state::{load_matches_on, load_provenance_on};
+use super::import_state::{load_matches_on, load_provenance_on, load_release_links_on};
 use super::*;
 use crate::identify::{LeadMatch, VerdictKind, VerdictSummary};
 use crate::import::folder_scanner::InvalidReason;
@@ -77,6 +77,7 @@ pub struct CandidateStateListRow {
     /// `None` when nothing has identified this candidate.
     pub verdict: Option<VerdictSummary>,
     pub metadata_provenance: Option<MetadataProvenance>,
+    pub release_link: Option<crate::import::ReleaseLink>,
     /// Who wrote the draft, which decides whether a valid one is the answer.
     pub metadata_author: crate::import::MetadataAuthor,
     pub metadata_draft_valid: bool,
@@ -414,6 +415,7 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
     // match's run stored for it.
     let mut matches = load_matches_on(sql, None)?;
     let mut provenances = load_provenance_on(sql, None)?;
+    let mut links = load_release_links_on(sql, None)?;
     let mut verdicts: HashMap<String, VerdictSummary> = HashMap::new();
     for row in sql.query(
         "SELECT content_hash, kind, track_count, medium_conflict, error_detail, kept_own_draft \
@@ -479,6 +481,7 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
     )? {
         let verdict = verdicts.remove(&content_hash);
         let metadata_provenance = provenances.remove(&content_hash);
+        let release_link = links.remove(&content_hash);
         let (album_title, draft_blank, metadata_draft_valid, metadata_author) =
             drafts.remove(&content_hash).ok_or_else(|| {
                 DbError::Message(format!(
@@ -493,7 +496,7 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
             album_title,
             album_artist_assignments,
             draft_blank,
-            metadata_provenance.as_ref(),
+            metadata_provenance.is_some() || release_link.is_some(),
         );
         states.insert(
             content_hash,
@@ -501,6 +504,7 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
                 edit_revision: to_u64(edit_revision, "a candidate's edit revision")?,
                 verdict,
                 metadata_provenance,
+                release_link,
                 metadata_author,
                 metadata_draft_valid,
                 metadata_summary,

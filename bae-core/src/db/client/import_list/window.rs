@@ -17,7 +17,7 @@ use crate::import::list::{window_refs, Flattened, ImportListItem, ItemRef};
 use crate::import::folder_scanner::FolderCandidate;
 use crate::import::search::MetadataResult;
 use crate::import::triage::MatchedRelease;
-use crate::import::CoverSelection;
+use crate::import::{CoverSelection, ReleaseLink};
 use crate::library::LibraryPageWindow;
 use std::path::PathBuf;
 
@@ -61,7 +61,7 @@ pub(super) fn materialise(
                         .remove(content_hash),
                     None => None,
                 };
-                let files = if row.metadata_provenance.is_some() {
+                let files = if row.release_link.is_some() {
                     Some(
                         load_candidate_on(sql, &scanned.path)?
                             .ok_or_else(|| {
@@ -77,16 +77,16 @@ pub(super) fn materialise(
                 } else {
                     None
                 };
-                // A decided identity outranks the verdict's lead. Its releases
+                // A linked release outranks the verdict's lead. Its releases
                 // are read in this snapshot and interpreted after it ends.
-                let picked = match row.metadata_provenance.as_ref() {
-                    Some(seed) => picked_release(
+                let picked = match row.release_link.as_ref() {
+                    Some(link) => Some(picked_release(
                         sql,
-                        seed,
+                        link,
                         files
                             .as_ref()
-                            .expect("a picked candidate has fetched files"),
-                    )?,
+                            .expect("a linked candidate has fetched files"),
+                    )?),
                     None => None,
                 };
                 let cover = selected
@@ -219,12 +219,13 @@ impl WindowItemRows {
                         // records; this is where the documents are read.
                         row.reading = crate::import::triage::TriageReading::of(
                             row.metadata_summary.as_ref(),
-                            row.metadata_provenance.as_ref(),
+                            row.release_link.as_ref(),
                             records,
                         );
                     }
-                    // File metadata names no external release, so nothing leads
-                    // the row: the verdict's lead does not stand in for a pick.
+                    // A draft read from somewhere with no link names no
+                    // release, so nothing leads the row: the verdict's lead
+                    // does not stand in for a pick.
                     None if row.metadata_provenance.is_some() => row.matched = None,
                     None => {}
                 }
@@ -239,7 +240,7 @@ impl WindowItemRows {
 }
 
 pub(super) struct PickedReleaseRows {
-    /// Every release the pick claims, the primary first and then its
+    /// Every release the link claims, the primary first and then its
     /// partners.
     claimed: Vec<crate::import::source_release::SourceRelease>,
     files: CategorizedFiles,
@@ -261,7 +262,7 @@ impl PickedReleaseRows {
         let records = crate::import::source_release::claimed_records(
             &self.claimed.iter().collect::<Vec<_>>(),
         );
-        // Only the release the draft was read from states the row's facts; a
+        // Only the link's primary release states the row's facts; a
         // partner's own release is not a second set of them. Its artwork is
         // another matter: a row's cover is the pick's, so the partners go to
         // the detail that carries the cover options.
@@ -342,28 +343,25 @@ fn row_cover_source(
 /// the folder is read as its own tags, which claims no release at all.
 fn picked_release(
     sql: &SqlReadContext<'_>,
-    pick: &MetadataProvenance,
+    link: &ReleaseLink,
     files: &CategorizedFiles,
-) -> Result<Option<PickedReleaseRows>, DbError> {
-    let MetadataProvenance::ExternalRelease { record, partners } = pick else {
-        return Ok(None);
-    };
-    let claimed = std::iter::once(record)
-        .chain(partners)
+) -> Result<PickedReleaseRows, DbError> {
+    let claimed = link
+        .claimed()
         .map(|release| {
             load_source_release_on(sql, release)?.ok_or_else(|| {
                 DbError::Message(format!(
-                    "{} release {} is picked but nothing stored it",
+                    "{} release {} is linked but nothing stored it",
                     release.catalog.as_str(),
                     release.key
                 ))
             })
         })
         .collect::<Result<Vec<_>, DbError>>()?;
-    Ok(Some(PickedReleaseRows {
+    Ok(PickedReleaseRows {
         claimed,
         files: files.clone(),
-    }))
+    })
 }
 
 /// One candidate, whole, before its runtime is folded in. `None` when the key
@@ -401,9 +399,12 @@ pub(super) fn load_candidate_detail_on(
     let state = load_states_on(sql, Some(&content_hash))?.remove(&content_hash);
     let current = state.filter(|state| state.file_edits.revision == candidate.file_edit_revision);
     let identify = current.as_ref().and_then(|state| state.identify.as_ref());
-    let picked = current
+    let metadata_provenance = current
         .as_ref()
         .and_then(|state| state.metadata_provenance.clone());
+    let release_link = current
+        .as_ref()
+        .and_then(|state| state.release_link.clone());
     let metadata_author = current
         .as_ref()
         .map_or(crate::import::MetadataAuthor::Nobody, |state| {
@@ -437,8 +438,26 @@ pub(super) fn load_candidate_detail_on(
         .transpose()?;
     // Only identity keys are needed for the next SQL query. Track and artwork
     // processing runs after the snapshot ends.
-    let claimed = claimed_releases_on(sql, &candidate, picked.as_ref())?;
-    // Every catalog record named by the picked releases.
+    let claimed = claimed_releases_on(sql, &candidate, release_link.as_ref())?;
+    // The release the draft's tracks were read from, whose track lengths the
+    // mapping sets beside the files': the linked one when the draft was read
+    // from it, which is the one already read above.
+    let draft_source = match &metadata_provenance {
+        Some(MetadataProvenance::ExternalRelease { record })
+            if claimed.first().map(|release| release.release()) != Some(record) =>
+        {
+            Some(load_source_release_on(sql, record)?.ok_or_else(|| {
+                DbError::Message(format!(
+                    "{} is read from {} release {} that nothing stored",
+                    candidate.key(),
+                    record.catalog.as_str(),
+                    record.key
+                ))
+            })?)
+        }
+        _ => None,
+    };
+    // Every catalog record named by the linked releases.
     let records =
         crate::import::source_release::claimed_records(&claimed.iter().collect::<Vec<_>>());
     let picked_library_status = match claimed.first() {
@@ -533,8 +552,22 @@ pub(super) fn load_candidate_detail_on(
                     .clone()
                     .resume_state(&status_of, text, audio.clone());
         }
+        let source_lengths = match (&metadata_provenance, &draft_source) {
+            (Some(MetadataProvenance::ExternalRelease { .. }), Some(source)) => {
+                crate::import::pane::track_lengths(Some(
+                    &source
+                        .detail_for_audio(&audio_durations, &[])
+                        .map_err(|error| DbError::Message(error.to_string()))?,
+                ))
+            }
+            (Some(MetadataProvenance::ExternalRelease { .. }), None) => {
+                crate::import::pane::track_lengths(release.as_ref())
+            }
+            (Some(MetadataProvenance::FileMetadata) | None, _) => Vec::new(),
+        };
         let pane = crate::import::pane::draft_pane(
             release,
+            &source_lengths,
             &candidate.files,
             durations,
             &pane_rows.draft,
@@ -563,7 +596,8 @@ pub(super) fn load_candidate_detail_on(
             skipped,
             resumed_identify_state,
             verdict,
-            metadata_provenance: picked,
+            metadata_provenance,
+            release_link,
             metadata_author,
             metadata_revision,
             imported_release,
@@ -594,15 +628,14 @@ pub(super) fn load_candidate_detail_on(
 fn claimed_releases_on(
     sql: &SqlReadContext<'_>,
     candidate: &FolderCandidate,
-    picked: Option<&MetadataProvenance>,
+    link: Option<&ReleaseLink>,
 ) -> Result<Vec<crate::import::source_release::SourceRelease>, DbError> {
-    let Some(MetadataProvenance::ExternalRelease { record, partners }) = picked else {
+    let Some(link) = link else {
         return Ok(Vec::new());
     };
-    std::iter::once(record.clone())
-        .chain(partners.iter().cloned())
+    link.claimed()
         .map(|release| {
-            load_source_release_on(sql, &release)?
+            load_source_release_on(sql, release)?
                 .ok_or_else(|| {
                     DbError::Message(format!(
                         "{} is claimed for {} but nothing fetched it",

@@ -158,7 +158,7 @@ pub struct BridgePressing {
     /// Why a record's full document could not be read when identification
     /// offered the row, which then shows what its search result said.
     pub document_failure: Option<BridgeLookupFailure>,
-    pub pick: crate::types::BridgeMetadataProvenance,
+    pub pick: crate::types::BridgeReleaseLink,
     /// Where the pressing was released and what it is made of, as its
     /// records together state it — the lead's facts, filled in where the lead
     /// is silent from the other records — worded as

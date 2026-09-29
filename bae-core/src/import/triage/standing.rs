@@ -12,7 +12,7 @@
 //! 3. **Error** — bae could not store a run's answer.
 //! 4. **Import error** — the last import failed, or the release cannot be
 //!    worked on as it stands.
-//! 5. **Identified** — the draft is read from a catalog.
+//! 5. **Identified** — the candidate is linked to a catalog release.
 //! 6. **Not looked up** — no lookup is stored for the folder's files.
 //! 7. **Unmatched** — the person kept their own draft over what the lookup
 //!    offered.
@@ -20,7 +20,7 @@
 //! 9. **Lookup error** — a catalog could not answer the stored lookup, or
 //!    could not hand over a release it found in full.
 //! 10. **Unmatched** — the lookup took its release for the folder and the
-//!     draft is no longer read from it: the person set it aside.
+//!     candidate is no longer linked to it: the person set it aside.
 //! 11. **Needs You** — the lookup left the answer to the person.
 //!
 //! A lookup error is a catalog's; an error is bae's own, which the row states
@@ -28,7 +28,7 @@
 
 use super::{IdentificationStatus, TriagePlacement, TriageRuntimeFacts};
 use crate::identify::{Declined, FolderCheck, MediumConflict, VerdictKind, VerdictSummary};
-use crate::import::MetadataProvenance;
+use crate::import::ReleaseLink;
 use crate::signals::InternalFailure;
 
 /// One state a Found row is in. Declared in the menu's order, which is the
@@ -171,12 +171,11 @@ impl PendingStanding {
         }
     }
 
-    /// Where the tables put a row placed at `placement`, whose draft was read
-    /// from `provenance` and whose stored lookup came to `verdict`; `None`
-    /// for a row off Found.
+    /// Where the tables put a row placed at `placement`, linked to `link`
+    /// and whose stored lookup came to `verdict`; `None` for a row off Found.
     pub(crate) fn stored(
         placement: TriagePlacement,
-        provenance: Option<&MetadataProvenance>,
+        link: Option<&ReleaseLink>,
         verdict: Option<&VerdictSummary>,
     ) -> Option<Self> {
         match placement {
@@ -184,11 +183,7 @@ impl PendingStanding {
             TriagePlacement::Failed => return Some(Self::ImportError),
             TriagePlacement::Pending => {}
         }
-        let identified = match provenance {
-            Some(MetadataProvenance::ExternalRelease { .. }) => true,
-            Some(MetadataProvenance::FileMetadata) | None => false,
-        };
-        if identified {
+        if link.is_some() {
             return Some(Self::Identified);
         }
         let Some(verdict) = verdict else {

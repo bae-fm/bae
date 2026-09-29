@@ -22,7 +22,7 @@ private final class Recorder {
     var discCalls: [(sheetFileId: String, disc: BridgeSheetDisc)] = []
     var trackEdits: [(key: String, track: BridgeRawTrackEdit)] = []
     var editFields: [(field: BridgeCandidateEditField, value: String)] = []
-    var externalMetadata: [BridgeMetadataProvenance] = []
+    var externalMetadata: [BridgeReleaseLink] = []
     var fileTagsApplications = 0
     var played: [BridgePreviewTarget] = []
     var stops = 0
@@ -43,9 +43,9 @@ private final class Recorder {
                     )
                 }
             },
-            applyCandidateExternalMetadata: { [self] _, provenance in
+            applyCandidateExternalMetadata: { [self] _, link in
                 try await MainActor.run {
-                    externalMetadata.append(provenance)
+                    externalMetadata.append(link)
                     if let pickFailure { throw pickFailure }
                     return .done
                 }
@@ -141,6 +141,7 @@ struct ImportMappingPaneTests {
         let store = MappingFixtures.store(
             mapping: MappingFixtures.thirteenFileTable,
             metadataProvenance: nil,
+            releaseLink: nil,
             edit: MappingFixtures.blankEdit
         )
         let candidate = try #require(
@@ -176,7 +177,8 @@ struct ImportMappingPaneTests {
             detail: MappingFixtures.detail(
                 mapping: MappingFixtures.thirteenFileTable,
                 edit: MappingFixtures.blankEdit,
-                metadataProvenance: nil
+                metadataProvenance: nil,
+                releaseLink: nil
             )
         )
         browsing.session.presentation = .findOnline
@@ -363,12 +365,14 @@ extension ImportMappingPaneTests {
             importStore: store,
             endEditing: {},
             key: MappingFixtures.candidateKey,
-            provenance: .externalRelease(
-                record: BridgeMetadataRef(
-                    catalog: MappingFixtures.source,
-                    key: "another-pressing"
-                ),
-                partners: []
+            application: .pick(
+                BridgeReleaseLink(
+                    record: BridgeMetadataRef(
+                        catalog: MappingFixtures.source,
+                        key: "another-pressing"
+                    ),
+                    partners: []
+                )
             )
         )
         try await Wait.until {
@@ -553,7 +557,7 @@ extension ImportMappingPaneTests {
             importStore: store,
             endEditing: {},
             key: MappingFixtures.candidateKey,
-            provenance: .fileMetadata
+            application: .fileTags
         )
         try await Wait.until { recorder.fileTagsApplications == 1 }
         #expect(recorder.fileTagsApplications == 1)
@@ -570,17 +574,20 @@ extension ImportMappingPaneTests {
         )
         #expect(candidate.metadataProvenance == .fileMetadata)
         #expect(candidate.mapping.trackMappings.count == 2)
-        #expect(candidate.pickedRelease == nil)
+        #expect(
+            candidate.releaseLink == MappingFixtures.link,
+            "reading the tags leaves the link as it is"
+        )
 
         ImportSearchFlow.applyMetadata(
             importer: recorder.importer,
             importStore: store,
             endEditing: {},
             key: MappingFixtures.candidateKey,
-            provenance: MappingFixtures.provenance
+            application: .pick(MappingFixtures.link)
         )
         try await Wait.until { !recorder.externalMetadata.isEmpty }
-        #expect(recorder.externalMetadata == [MappingFixtures.provenance])
+        #expect(recorder.externalMetadata == [MappingFixtures.link])
 
         store.applyCandidateDetail(
             key: MappingFixtures.candidateKey,
@@ -594,7 +601,7 @@ extension ImportMappingPaneTests {
         #expect(candidate.metadataProvenance == MappingFixtures.provenance)
         #expect(candidate.mapping.trackMappings.count == 13)
         #expect(
-            candidate.pickedRelease?.key == MappingFixtures.releaseId
+            candidate.releaseLink?.record.key == MappingFixtures.releaseId
         )
     }
 }

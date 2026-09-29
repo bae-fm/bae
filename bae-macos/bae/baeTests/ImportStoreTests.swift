@@ -167,8 +167,7 @@ private func identifiedRow(
         cover: cover,
         importStatus: nil,
         metadataProvenance: .externalRelease(
-            record: BridgeMetadataRef(catalog: .musicBrainz, key: "rel-\(key)"),
-            partners: []
+            record: BridgeMetadataRef(catalog: .musicBrainz, key: "rel-\(key)")
         ),
         reading: metadataSummary == nil
             ? .unidentified
@@ -245,6 +244,7 @@ private func detail(
         artistResolutions: [],
         metadataDraftIsBlank: false,
         metadataProvenance: MappingFixtures.provenance,
+        releaseLink: MappingFixtures.link,
         metadataAuthor: .person,
         metadataRevision: 1,
         mapping: BridgeMappingTable(

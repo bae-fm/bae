@@ -134,11 +134,10 @@ pub struct TriageMetadataSummary {
 }
 
 impl TriageMetadataSummary {
-    pub(crate) fn of(
-        draft: &crate::import::RawReleaseEdit,
-        provenance: Option<crate::import::MetadataProvenance>,
-    ) -> Option<Self> {
-        if draft.is_blank() && provenance.is_none() {
+    /// `None` for a blank draft of a candidate that is `answered` by nothing:
+    /// no draft read from anywhere and no release link.
+    pub(crate) fn of(draft: &crate::import::RawReleaseEdit, answered: bool) -> Option<Self> {
+        if draft.is_blank() && !answered {
             return None;
         }
         Some(Self {
@@ -152,9 +151,9 @@ impl TriageMetadataSummary {
         album_title: String,
         album_artist_assignments: Vec<crate::import::ArtistAssignment>,
         blank: bool,
-        provenance: Option<&crate::import::MetadataProvenance>,
+        answered: bool,
     ) -> Option<Self> {
-        if blank && provenance.is_none() {
+        if blank && !answered {
             return None;
         }
         Some(Self {
@@ -216,34 +215,34 @@ fn source_track_count(source_tracks: &Option<SourceTracks>) -> Option<u32> {
 }
 
 /// What a row's text column says about its release: nothing yet, a draft, or a
-/// draft read from catalog releases.
+/// draft of a candidate linked to a catalog release.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TriageReading {
     /// No draft, from tags or anywhere: the row leads with its folder.
     Unidentified,
-    /// A draft read off the files' tags, or typed in.
+    /// A draft of a candidate linked to no release.
     Prefilled,
-    /// A draft read from a catalog's release, with every catalog that
-    /// describes it.
+    /// A draft of a candidate linked to a catalog release, with every
+    /// catalog that describes that release.
     Identified {
         records: Vec<crate::import::ReleaseRecord>,
     },
 }
 
 impl TriageReading {
-    /// How a row reads from its draft, the draft's provenance, and the
-    /// catalog records the pick's releases are described in.
+    /// How a row reads from its draft, its release link, and the catalog
+    /// records the linked releases are described in.
     pub fn of(
         summary: Option<&TriageMetadataSummary>,
-        provenance: Option<&MetadataProvenance>,
+        link: Option<&ReleaseLink>,
         records: Vec<crate::import::ReleaseRecord>,
     ) -> Self {
         if summary.is_none() {
             return Self::Unidentified;
         }
-        match provenance {
-            Some(MetadataProvenance::ExternalRelease { .. }) => Self::Identified { records },
-            Some(MetadataProvenance::FileMetadata) | None => Self::Prefilled,
+        match link {
+            Some(_) => Self::Identified { records },
+            None => Self::Prefilled,
         }
     }
 }
@@ -272,6 +271,8 @@ pub struct TriageRow {
     pub import_status: Option<TriageImportStatus>,
     /// Where the candidate's draft was read from, once a source was applied.
     pub metadata_provenance: Option<crate::import::MetadataProvenance>,
+    /// The catalog release the candidate is linked to.
+    pub release_link: Option<ReleaseLink>,
     pub reading: TriageReading,
     /// Whether the person has selected the row.
     pub selected: bool,

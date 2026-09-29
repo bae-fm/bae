@@ -126,10 +126,8 @@ fn auto_importable_state(release_id: &str) -> CandidateStateListRow {
             unread_document: false,
             kept_own_draft: false,
         }),
-        metadata_provenance: Some(MetadataProvenance::ExternalRelease {
-            record: crate::import::MetadataRef::new(Catalog::MusicBrainz, release_id.to_string()),
-            partners: vec![],
-        }),
+        metadata_provenance: Some(external_release_seed(release_id)),
+        release_link: Some(release_link_to(release_id)),
         metadata_author: crate::import::MetadataAuthor::Identification,
         metadata_draft_valid: true,
         metadata_summary: None,
@@ -150,6 +148,7 @@ fn several_matches_state() -> CandidateStateListRow {
             kept_own_draft: false,
         }),
         metadata_provenance: None,
+        release_link: None,
         metadata_author: crate::import::MetadataAuthor::Nobody,
         metadata_draft_valid: false,
         metadata_summary: None,
@@ -170,6 +169,7 @@ fn not_found_state() -> CandidateStateListRow {
             kept_own_draft: false,
         }),
         metadata_provenance: None,
+        release_link: None,
         metadata_author: crate::import::MetadataAuthor::Nobody,
         metadata_draft_valid: false,
         metadata_summary: None,
@@ -183,6 +183,7 @@ fn prefilled_from_tags_state() -> CandidateStateListRow {
         edit_revision: 0,
         verdict: None,
         metadata_provenance: Some(MetadataProvenance::FileMetadata),
+        release_link: None,
         metadata_author: crate::import::MetadataAuthor::Prefill,
         metadata_draft_valid: true,
         metadata_summary: None,
@@ -192,6 +193,13 @@ fn prefilled_from_tags_state() -> CandidateStateListRow {
 /// The external release seed chosen from a release row.
 fn external_release_seed(release_id: &str) -> MetadataProvenance {
     MetadataProvenance::ExternalRelease {
+        record: crate::import::MetadataRef::new(Catalog::MusicBrainz, release_id.to_string()),
+    }
+}
+
+/// The link a pick of a release row stores.
+fn release_link_to(release_id: &str) -> crate::import::ReleaseLink {
+    crate::import::ReleaseLink {
         record: crate::import::MetadataRef::new(Catalog::MusicBrainz, release_id.to_string()),
         partners: vec![],
     }

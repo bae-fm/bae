@@ -140,10 +140,7 @@ async fn a_pane_edit_lands_while_a_scan_reads_another_folders_tags() {
     let handle = manager
         .start_import_service_reading_tags_with(tokio::runtime::Handle::current(), reader.clone());
     handle
-        .select_candidate_metadata_provenance(
-            key.clone(),
-            crate::import::MetadataProvenance::FileMetadata,
-        )
+        .select_candidate_file_tags(key.clone())
         .await
         .unwrap();
     handle
@@ -182,10 +179,7 @@ async fn two_candidates() -> (
     let handle = manager
         .start_import_service_reading_tags_with(tokio::runtime::Handle::current(), reader.clone());
     handle
-        .select_candidate_metadata_provenance(
-            edited_key.clone(),
-            crate::import::MetadataProvenance::FileMetadata,
-        )
+        .select_candidate_file_tags(edited_key.clone())
         .await
         .unwrap();
     (
@@ -211,10 +205,7 @@ async fn a_pane_edit_lands_while_a_pick_reads_another_folders_tags() {
         let handle = handle.clone();
         async move {
             handle
-                .select_candidate_metadata_provenance(
-                    held_key,
-                    crate::import::MetadataProvenance::FileMetadata,
-                )
+                .select_candidate_file_tags(held_key)
                 .await
         }
     });
@@ -240,10 +231,7 @@ async fn a_pane_edit_lands_while_a_file_decision_reads_another_folders_tags() {
         two_candidates().await;
     let _opens = OpensOnDrop(reader.clone());
     handle
-        .select_candidate_metadata_provenance(
-            held_key.clone(),
-            crate::import::MetadataProvenance::FileMetadata,
-        )
+        .select_candidate_file_tags(held_key.clone())
         .await
         .unwrap();
     handle

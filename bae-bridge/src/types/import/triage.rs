@@ -523,11 +523,43 @@ pub enum BridgeMetadataProvenance {
     ExternalRelease {
         /// The catalog's release the draft is read from.
         record: crate::types::BridgeMetadataRef,
-        /// The same pressing in the other catalogs, which the pick also
-        /// claims.
-        partners: Vec<crate::types::BridgeMetadataRef>,
     },
     FileMetadata,
+}
+
+/// The catalog release a candidate is linked to, independent of its draft.
+/// Mirrors `bae_core::import::ReleaseLink`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeReleaseLink {
+    /// The catalog's release the pick names first.
+    pub record: crate::types::BridgeMetadataRef,
+    /// The same pressing in the other catalogs, which the pick also claims.
+    pub partners: Vec<crate::types::BridgeMetadataRef>,
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeReleaseLink {
+    pub(crate) fn from_core(link: bae_core::import::ReleaseLink) -> Self {
+        Self {
+            record: crate::types::BridgeMetadataRef::from_core(link.record),
+            partners: link
+                .partners
+                .into_iter()
+                .map(crate::types::BridgeMetadataRef::from_core)
+                .collect(),
+        }
+    }
+
+    pub(crate) fn into_core(self) -> bae_core::import::ReleaseLink {
+        bae_core::import::ReleaseLink {
+            record: self.record.into_core(),
+            partners: self
+                .partners
+                .into_iter()
+                .map(crate::types::BridgeMetadataRef::into_core)
+                .collect(),
+        }
+    }
 }
 
 /// Who wrote the candidate's draft.
@@ -550,11 +582,9 @@ mirror_enum! {
     #[cfg(feature = "desktop")]
     BridgeMetadataProvenance = bae_core::import::MetadataProvenance,
     from_core: pub(crate) fn,
-    into_core: pub(crate) fn,
     variants: {
         ExternalRelease {
             record: (crate::types::BridgeMetadataRef),
-            partners: (each crate::types::BridgeMetadataRef),
         },
         FileMetadata,
     },
@@ -565,10 +595,10 @@ mirror_enum! {
 pub enum BridgeTriageReading {
     /// No draft, from tags or anywhere: the row leads with its folder.
     Unidentified,
-    /// A draft read off the files' tags, or typed in.
+    /// A draft of a candidate linked to no release.
     Prefilled,
-    /// A draft read from a catalog's release, with every catalog that
-    /// describes it.
+    /// A draft of a candidate linked to a catalog release, with every
+    /// catalog that describes that release.
     Identified {
         records: Vec<crate::types::BridgeReleaseRecord>,
     },

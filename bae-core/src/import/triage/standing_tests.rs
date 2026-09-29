@@ -54,19 +54,15 @@ fn of_kind(kind: VerdictKind) -> VerdictSummary {
     }
 }
 
-fn picked() -> MetadataProvenance {
-    MetadataProvenance::ExternalRelease {
+fn picked() -> ReleaseLink {
+    ReleaseLink {
         record: MetadataRef::new(Catalog::MusicBrainz, "mb-1"),
         partners: Vec::new(),
     }
 }
 
 fn pending(verdict: &VerdictSummary) -> Option<PendingStanding> {
-    PendingStanding::stored(
-        TriagePlacement::Pending,
-        Some(&MetadataProvenance::FileMetadata),
-        Some(verdict),
-    )
+    PendingStanding::stored(TriagePlacement::Pending, None, Some(verdict))
 }
 
 fn needs_you(reason: NeedsYouReason) -> Option<PendingStanding> {
@@ -84,7 +80,7 @@ fn rows_off_found_have_no_state() {
     }
 }
 
-/// A failed import is named over the release the draft is read from.
+/// A failed import is named over the release the candidate is linked to.
 #[test]
 fn a_failed_import_is_an_import_error_whatever_the_draft() {
     assert_eq!(
@@ -93,10 +89,10 @@ fn a_failed_import_is_an_import_error_whatever_the_draft() {
     );
 }
 
-/// A draft read from a catalog is identified whatever the lookup came to:
-/// the person's pick answers several matches and a failed lookup alike.
+/// A candidate linked to a release is identified whatever the lookup came
+/// to: the person's pick answers several matches and a failed lookup alike.
 #[test]
-fn a_draft_read_from_a_catalog_is_identified() {
+fn a_linked_candidate_is_identified() {
     for verdict in [
         None,
         Some(fits()),
@@ -114,12 +110,10 @@ fn a_draft_read_from_a_catalog_is_identified() {
 
 #[test]
 fn a_row_with_no_stored_lookup_is_not_looked_up() {
-    for provenance in [None, Some(MetadataProvenance::FileMetadata)] {
-        assert_eq!(
-            PendingStanding::stored(TriagePlacement::Pending, provenance.as_ref(), None),
-            Some(PendingStanding::NotLookedUp)
-        );
-    }
+    assert_eq!(
+        PendingStanding::stored(TriagePlacement::Pending, None, None),
+        Some(PendingStanding::NotLookedUp)
+    );
 }
 
 /// A lookup that failed, and one that could not read a release it found in

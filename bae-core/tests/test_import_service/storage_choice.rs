@@ -38,7 +38,7 @@ async fn an_import_goes_where_the_stored_choice_says_as_it_starts() {
         })
         .await;
         f.handle
-            .select_candidate_metadata_provenance(key.clone(), MetadataProvenance::FileMetadata)
+            .select_candidate_file_tags(key.clone())
             .await
             .unwrap();
     }

@@ -30,7 +30,7 @@
                         catalogNumbers: ["1871-2"]
                     )
                 ],
-                pick: .externalRelease(
+                pick: BridgeReleaseLink(
                     record: BridgeMetadataRef(
                         catalog: .musicBrainz,
                         key: "rel-123"
@@ -71,7 +71,7 @@
                         catalogNumbers: ["6006-2"]
                     )
                 ],
-                pick: .externalRelease(
+                pick: BridgeReleaseLink(
                     record: BridgeMetadataRef(
                         catalog: .musicBrainz,
                         key: "rel-456"
@@ -198,7 +198,7 @@
                                         catalogNumbers: ["6006-2"]
                                     )
                                 ],
-                                pick: .externalRelease(
+                                pick: BridgeReleaseLink(
                                     record: BridgeMetadataRef(
                                         catalog: .musicBrainz,
                                         key: "rel-aaa"
@@ -226,7 +226,7 @@
                                         catalogNumbers: ["AL-1234"]
                                     )
                                 ],
-                                pick: .externalRelease(
+                                pick: BridgeReleaseLink(
                                     record: BridgeMetadataRef(
                                         catalog: .musicBrainz,
                                         key: "rel-bbb"
@@ -298,7 +298,7 @@
                                         catalogNumbers: ["RR-500"]
                                     )
                                 ],
-                                pick: .externalRelease(
+                                pick: BridgeReleaseLink(
                                     record: BridgeMetadataRef(
                                         catalog: .musicBrainz,
                                         key: "rel-ccc"
@@ -362,7 +362,7 @@
                                     catalogNumbers: ["AAA-001"]
                                 )
                             ],
-                            pick: .externalRelease(
+                            pick: BridgeReleaseLink(
                                 record: BridgeMetadataRef(
                                     catalog: .musicBrainz,
                                     key: "rel-disc-1"
@@ -415,7 +415,7 @@
                                     catalogNumbers: ["BBB-002"]
                                 )
                             ],
-                            pick: .externalRelease(
+                            pick: BridgeReleaseLink(
                                 record: BridgeMetadataRef(
                                     catalog: .musicBrainz,
                                     key: "rel-bar-1"

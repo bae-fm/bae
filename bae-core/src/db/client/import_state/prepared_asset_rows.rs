@@ -181,8 +181,8 @@ pub(super) fn replace_asset_rows(
         [content_hash],
     )?;
     if let Some(source) = &assets.applied_source {
-        // The releases themselves are the provenance's to name, and its rows
-        // reference them; what the application adds is the lengths the draft
+        // The release itself is the provenance's to name, and its row
+        // references it; what the application adds is the lengths the draft
         // was laid out against.
         sql.execute(
             "INSERT INTO import_candidate_applied_source (content_hash) VALUES (?)",
@@ -317,9 +317,9 @@ fn load_asset_rows_unmarked(
     })
 }
 
-/// The releases the candidate's draft was applied from — the ones its
-/// provenance names, read from their stored rows — with the lengths it was
-/// laid out against. `None` when the draft was not applied from releases.
+/// The release the candidate's draft was applied from — the one its
+/// provenance names, read from its stored row — with the lengths it was laid
+/// out against. `None` when the draft was not applied from a release.
 fn load_applied_source_on(
     sql: &SqlReadContext<'_>,
     content_hash: &str,
@@ -336,21 +336,19 @@ fn load_applied_source_on(
         return Ok(None);
     }
     let provenance = super::load_provenance_on(sql, Some(content_hash))?.remove(content_hash);
-    let Some(crate::import::MetadataProvenance::ExternalRelease { record, partners }) = provenance
-    else {
+    let Some(crate::import::MetadataProvenance::ExternalRelease { record }) = provenance else {
         return Err(DbError::Message(format!(
-            "candidate {content_hash} applies releases its provenance does not name"
+            "candidate {content_hash} applies a release its provenance does not name"
         )));
     };
-    let stored = |release: &crate::import::MetadataRef| {
-        super::super::source_releases::load_source_release_on(sql, release)?.ok_or_else(|| {
+    let release = super::super::source_releases::load_source_release_on(sql, &record)?
+        .ok_or_else(|| {
             DbError::Message(format!(
                 "candidate {content_hash} applies {} release {} that nothing stored",
-                release.catalog.as_str(),
-                release.key
+                record.catalog.as_str(),
+                record.key
             ))
-        })
-    };
+        })?;
     let audio_durations_ms = sql
         .query(
             "SELECT duration_ms FROM import_candidate_applied_length \
@@ -366,8 +364,7 @@ fn load_applied_source_on(
         })
         .collect::<Result<_, _>>()?;
     Ok(Some(crate::import::source_release::AppliedSource {
-        primary: stored(&record)?,
-        partners: partners.iter().map(stored).collect::<Result<_, _>>()?,
+        release,
         audio_durations_ms,
     }))
 }

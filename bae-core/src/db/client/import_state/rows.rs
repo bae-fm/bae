@@ -1,5 +1,5 @@
 //! Reading a candidate back: its row, its verdict with the matches that hang
-//! off it, its draft's provenance, and its file decisions.
+//! off it, its draft's provenance, its release link, and its file decisions.
 
 use super::edit_rows::{apply_sheet_disc_row, read_sheet_disc_row};
 use super::lookup_choice_rows::load_lookup_choices_on;
@@ -10,10 +10,11 @@ use super::verdict_rows::{
     StoredMatches, VERDICT_COLUMNS,
 };
 use super::*;
-use crate::import::{Catalog, MetadataProvenance, MetadataRef};
+use crate::import::{Catalog, MetadataProvenance, MetadataRef, ReleaseLink};
 use std::str::FromStr;
 
 type CandidateProvenances = HashMap<String, MetadataProvenance>;
+type CandidateLinks = HashMap<String, ReleaseLink>;
 
 /// The provenance as its columns. Only an external release names a source and
 /// a release.
@@ -38,11 +39,10 @@ fn provenance_columns(provenance: &MetadataProvenance) -> ProvenanceColumns<'_> 
     }
 }
 
-/// Write the draft's provenance and the partner releases the same pick
-/// claimed.
+/// Write the draft's provenance.
 ///
 /// Called after the draft row is replaced, which cascades the previous
-/// provenance and its partners away, so this only ever inserts.
+/// provenance away, so this only ever inserts.
 pub(super) fn insert_provenance(
     sql: &SqlContext<'_, '_>,
     content_hash: &str,
@@ -60,21 +60,10 @@ pub(super) fn insert_provenance(
             columns.release_id
         ],
     )?;
-    let MetadataProvenance::ExternalRelease { partners, .. } = provenance else {
-        return Ok(());
-    };
-    for partner in partners {
-        sql.execute(
-            "INSERT INTO import_candidate_provenance_partner (content_hash, source, release_id) \
-             VALUES (?, ?, ?)",
-            params![content_hash, partner.catalog.as_str(), partner.key],
-        )?;
-    }
     Ok(())
 }
 
-/// Every candidate's draft provenance, or the one `only` names. The partner rows are read in the same pass, since only the
-/// provenance they belong to explains them.
+/// Every candidate's draft provenance, or the one `only` names.
 pub(crate) fn load_provenance_on(
     sql: &SqlReadContext<'_>,
     only: Option<&str>,
@@ -86,20 +75,6 @@ pub(crate) fn load_provenance_rows_on(
     sql: &SqlReadContext<'_>,
     only: Option<&str>,
 ) -> Result<impl FnOnce() -> Result<CandidateProvenances, DbError> + Send + 'static, DbError> {
-    let partners_rows = sql.query(
-        "SELECT content_hash, source, release_id FROM import_candidate_provenance_partner \
-         WHERE :only IS NULL OR content_hash = :only \
-         ORDER BY content_hash, source",
-        named_params! { ":only": only },
-        |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, String>(2)?,
-            ))
-        },
-    )?;
-
     let rows = sql.query(
         "SELECT content_hash, kind, source, release_id \
          FROM import_candidate_draft_provenance \
@@ -115,17 +90,8 @@ pub(crate) fn load_provenance_rows_on(
         },
     )?;
     Ok(move || {
-        let mut partners: HashMap<String, Vec<MetadataRef>> = HashMap::new();
-        for (content_hash, source, release_id) in partners_rows {
-            let source = Catalog::from_str(&source).map_err(DbError::Message)?;
-            partners
-                .entry(content_hash)
-                .or_default()
-                .push(MetadataRef::new(source, release_id));
-        }
         let mut out = HashMap::with_capacity(rows.len());
         for (content_hash, kind, source, release_id) in rows {
-            let partners = partners.remove(&content_hash).unwrap_or_default();
             let provenance = match kind.as_str() {
                 "file_tags" => MetadataProvenance::FileMetadata,
                 "external_release" => {
@@ -140,12 +106,100 @@ pub(crate) fn load_provenance_rows_on(
                                 .map_err(DbError::Message)?,
                             release_id.ok_or_else(|| missing("release"))?,
                         ),
-                        partners,
                     }
                 }
                 other => return Err(unreadable("provenance kind", other)),
             };
             out.insert(content_hash, provenance);
+        }
+        Ok(out)
+    })
+}
+
+/// Replace the candidate's release link with `link`, or remove it.
+pub(super) fn replace_release_link(
+    sql: &SqlContext<'_, '_>,
+    content_hash: &str,
+    link: Option<&ReleaseLink>,
+) -> Result<(), DbError> {
+    // The partners hang off the link row, so this clears them too.
+    sql.execute(
+        "DELETE FROM import_candidate_release_link WHERE content_hash = ?",
+        [content_hash],
+    )?;
+    let Some(link) = link else {
+        return Ok(());
+    };
+    sql.execute(
+        "INSERT INTO import_candidate_release_link (content_hash, source, release_id) \
+         VALUES (?, ?, ?)",
+        params![content_hash, link.record.catalog.as_str(), link.record.key],
+    )?;
+    for partner in &link.partners {
+        sql.execute(
+            "INSERT INTO import_candidate_release_link_partner \
+                 (content_hash, source, release_id) \
+             VALUES (?, ?, ?)",
+            params![content_hash, partner.catalog.as_str(), partner.key],
+        )?;
+    }
+    Ok(())
+}
+
+/// Every candidate's release link, or the one `only` names, each with its
+/// partners.
+pub(crate) fn load_release_links_on(
+    sql: &SqlReadContext<'_>,
+    only: Option<&str>,
+) -> Result<CandidateLinks, DbError> {
+    load_release_link_rows_on(sql, only)?()
+}
+
+pub(crate) fn load_release_link_rows_on(
+    sql: &SqlReadContext<'_>,
+    only: Option<&str>,
+) -> Result<impl FnOnce() -> Result<CandidateLinks, DbError> + Send + 'static, DbError> {
+    let read = |row: &Row<'_>| {
+        Ok((
+            row.get::<_, String>(0)?,
+            row.get::<_, String>(1)?,
+            row.get::<_, String>(2)?,
+        ))
+    };
+    let partner_rows = sql.query(
+        "SELECT content_hash, source, release_id FROM import_candidate_release_link_partner \
+         WHERE :only IS NULL OR content_hash = :only \
+         ORDER BY content_hash, source",
+        named_params! { ":only": only },
+        read,
+    )?;
+    let rows = sql.query(
+        "SELECT content_hash, source, release_id FROM import_candidate_release_link \
+         WHERE :only IS NULL OR content_hash = :only",
+        named_params! { ":only": only },
+        read,
+    )?;
+    Ok(move || {
+        let reference = |source: String, release_id: String| {
+            Ok::<_, DbError>(MetadataRef::new(
+                Catalog::from_str(&source).map_err(DbError::Message)?,
+                release_id,
+            ))
+        };
+        let mut partners: HashMap<String, Vec<MetadataRef>> = HashMap::new();
+        for (content_hash, source, release_id) in partner_rows {
+            partners
+                .entry(content_hash)
+                .or_default()
+                .push(reference(source, release_id)?);
+        }
+        let mut out = HashMap::with_capacity(rows.len());
+        for (content_hash, source, release_id) in rows {
+            let link = ReleaseLink {
+                record: reference(source, release_id)?,
+                partners: partners.remove(&content_hash).unwrap_or_default(),
+            };
+            out.insert(content_hash, link);
         }
         Ok(out)
     })
@@ -412,6 +466,7 @@ pub(crate) fn load_states_rows_on(
     let edits = load_edits_on(sql, only)?;
     let signals = load_signals_on(sql, only)?;
     let provenances = load_provenance_rows_on(sql, only)?;
+    let links = load_release_link_rows_on(sql, only)?;
     let authors = super::pane_rows::load_authors_on(sql, only)?;
     let lookup_choices = load_lookup_choices_on(sql, only)?;
 
@@ -421,6 +476,7 @@ pub(crate) fn load_states_rows_on(
         let mut edits = edits()?;
         let mut signals = signals()?;
         let mut provenances = provenances()?;
+        let mut links = links()?;
         let mut lookup_choices = lookup_choices()?;
         let mut out = HashMap::with_capacity(states.len());
         for state in states {
@@ -460,6 +516,7 @@ pub(crate) fn load_states_rows_on(
                     identify: verdicts.remove(&state.content_hash),
                     metadata_author: author,
                     metadata_provenance: provenance,
+                    release_link: links.remove(&state.content_hash),
                     content_hash: state.content_hash,
                     folder_path: state.folder_path,
                     file_edits,

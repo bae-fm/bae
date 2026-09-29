@@ -204,17 +204,28 @@ impl AutomationReleaseRecord {
     }
 }
 
-mirror_enum! {
-    AutomationMetadataProvenance = MetadataProvenance,
-    from_core: pub(crate) fn,
-    into_core: pub(crate) fn,
-    variants: {
-        ExternalRelease {
-            record: (AutomationMetadataRef),
-            partners: (each AutomationMetadataRef),
-        },
-        FileMetadata,
-    },
+impl AutomationReleaseLink {
+    pub(crate) fn from_core(link: ReleaseLink) -> Self {
+        Self {
+            record: AutomationMetadataRef::from_core(link.record),
+            partners: link
+                .partners
+                .into_iter()
+                .map(AutomationMetadataRef::from_core)
+                .collect(),
+        }
+    }
+
+    pub(crate) fn into_core(self) -> ReleaseLink {
+        ReleaseLink {
+            record: self.record.into_core(),
+            partners: self
+                .partners
+                .into_iter()
+                .map(AutomationMetadataRef::into_core)
+                .collect(),
+        }
+    }
 }
 
 mirror_enum! {
@@ -269,7 +280,7 @@ impl AutomationPressing {
     /// `pick` is derived by core from the row's releases, not stored.
     pub(crate) fn from_core(pressing: bae_core::import::release_group::Pressing) -> Self {
         Self {
-            pick: AutomationMetadataProvenance::from_core(pressing.pick()),
+            pick: AutomationReleaseLink::from_core(pressing.pick()),
             releases: pressing
                 .releases
                 .into_iter()

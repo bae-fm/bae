@@ -276,34 +276,25 @@ impl ImportServiceHandle {
         release: &crate::import::source_release::SourceRelease,
         partners: Vec<crate::import::source_release::SourceRelease>,
         durations: &crate::import::probe::SourceDurations,
-        provenance: crate::import::MetadataProvenance,
         current: &crate::import::CandidateDraft,
     ) -> Result<crate::import::CandidateMetadataDraft, crate::import::ImportError> {
         let source_draft = self.external_candidate_draft(release, durations, current)?;
-        self.external_candidate_assets(
-            source_draft,
-            release,
-            partners,
-            durations,
-            provenance,
-            current,
-        )
-        .await
+        self.external_candidate_assets(source_draft, release, partners, durations, current)
+            .await
     }
 
     /// The metadata `source_draft`, read from an external release, makes,
     /// with the artist images and cover it needs fetched.
     ///
-    /// The cover is the first one the release or its partners offer; when there
-    /// is none or it cannot be fetched, `cover` is `None` and the write keeps
-    /// the candidate's current cover.
+    /// The cover is the first one the release or the partners picked with it
+    /// offer; when there is none or it cannot be fetched, `cover` is `None`
+    /// and the write keeps the candidate's current cover.
     pub(crate) async fn external_candidate_assets(
         &self,
         source_draft: crate::import::pane::CandidateSourceDraft,
         release: &crate::import::source_release::SourceRelease,
         partners: Vec<crate::import::source_release::SourceRelease>,
         durations: &crate::import::probe::SourceDurations,
-        provenance: crate::import::MetadataProvenance,
         current: &crate::import::CandidateDraft,
     ) -> Result<crate::import::CandidateMetadataDraft, crate::import::ImportError> {
         let draft = source_draft.draft;
@@ -339,12 +330,13 @@ impl ImportServiceHandle {
         Ok(crate::import::CandidateMetadataDraft {
             draft,
             source_discogs_artist_ids,
-            provenance: Some(provenance),
+            provenance: Some(crate::import::MetadataProvenance::ExternalRelease {
+                record: release.release().clone(),
+            }),
             cover,
             assets: crate::import::CandidatePreparedAssets {
                 applied_source: Some(crate::import::source_release::AppliedSource {
-                    primary: release.clone(),
-                    partners,
+                    release: release.clone(),
                     audio_durations_ms: current.audio_durations(durations)?,
                 }),
                 remote_cover,
@@ -353,139 +345,154 @@ impl ImportServiceHandle {
         })
     }
 
-    pub(crate) async fn set_candidate_metadata_provenance(
+    /// The candidate's stored preparation, for a write about to replace its
+    /// draft.
+    async fn metadata_write_base(
         &self,
-        candidate_key: String,
-        provenance: crate::import::MetadataProvenance,
-    ) -> Result<u64, crate::import::ImportError> {
-        let Some(candidate) = self.get_release_candidate(&candidate_key).await? else {
+        candidate_key: &str,
+    ) -> Result<
+        (
+            crate::import::folder_scanner::FolderCandidate,
+            crate::db::DbCandidateImportPreparation,
+        ),
+        crate::import::ImportError,
+    > {
+        let Some(candidate) = self.get_release_candidate(candidate_key).await? else {
             return Err(crate::import::ImportError::Internal {
                 detail: format!("{candidate_key} is not an actionable folder candidate"),
             });
         };
-        let content_hash = candidate.files.content_hash();
         let current = self
             .library_manager
-            .load_import_candidate_preparation(&content_hash)
+            .load_import_candidate_preparation(&candidate.files.content_hash())
             .await?
             .ok_or_else(|| crate::import::ImportError::Internal {
                 detail: format!("{candidate_key} has no stored import preparation"),
             })?;
-        let expected_metadata_revision = current.metadata_revision;
-        let durations = crate::import::probe::source_durations(&candidate.files)?;
-        match &provenance {
-            crate::import::MetadataProvenance::FileMetadata => loop {
-                // Read tags before taking the commit lock: a network share can
-                // be slow, and every pane control waits on this lock.
-                let read = self
-                    .read_file_tag_snapshot(&candidate_key, self.file_tags.clone())
-                    .await?;
-                let seed = crate::import::file_metadata_seed::FileMetadataSeed::project(
-                    &read.candidate,
-                    read.snapshot,
-                    Some(&current.draft.tracks),
-                    self.clock.as_ref(),
-                    self.ids.as_ref(),
-                )?;
-                let commit = self
-                    .commit_lock_for_revision(
-                        "pick file tags",
-                        &candidate_key,
-                        &content_hash,
-                        current.file_edit_revision,
-                    )
-                    .await?;
-                // A scan that stored the candidate while its tags were read gave
-                // it a newer generation, and the write only accepts tags read at
-                // the current one: read again.
-                let stored_generation = self
-                    .library_manager
-                    .load_candidate_file_tag_snapshot(
-                        &read.candidate.watched_folder_path,
-                        &candidate_key,
-                    )
-                    .await?
-                    .map(|stored| stored.scan_generation);
-                if stored_generation != Some(seed.snapshot.scan_generation) {
-                    drop(commit);
-                    continue;
-                }
-                return Ok(self
-                    .preparations
-                    .apply_file_metadata(
-                        &read.candidate.watched_folder_path,
-                        &candidate_key,
-                        &crate::import::CandidateAsRead {
-                            content_hash: content_hash.clone(),
-                            file_edit_revision: current.file_edit_revision,
-                            metadata_revision: expected_metadata_revision,
-                        },
-                        &seed.snapshot,
-                        &seed.draft,
-                        seed.cover.as_ref(),
-                    )
-                    .await?);
-            },
-            crate::import::MetadataProvenance::ExternalRelease { record, partners } => {
-                let primary = record.clone();
-                let release = self
-                    .release_for_provenance(&candidate_key, &primary)
-                    .await?;
-                // A partner that fails to load fails the pick, leaving the
-                // previous one in place.
-                let prepared_partners = crate::import::service::prepare_partners(
-                    &self.library_manager,
-                    &primary,
-                    partners,
-                    CallPriority::Interactive,
+        Ok((candidate, current))
+    }
+
+    /// Read the candidate's draft from its files' own tags. The release link
+    /// stays as it is.
+    pub(super) async fn read_candidate_file_tags_write(
+        &self,
+        candidate_key: String,
+    ) -> Result<u64, crate::import::ImportError> {
+        let (candidate, current) = self.metadata_write_base(&candidate_key).await?;
+        let content_hash = candidate.files.content_hash();
+        loop {
+            // Read tags before taking the commit lock: a network share can be
+            // slow, and every pane control waits on this lock.
+            let read = self
+                .read_file_tag_snapshot(&candidate_key, self.file_tags.clone())
+                .await?;
+            let seed = crate::import::file_metadata_seed::FileMetadataSeed::project(
+                &read.candidate,
+                read.snapshot,
+                Some(&current.draft.tracks),
+                self.clock.as_ref(),
+                self.ids.as_ref(),
+            )?;
+            let commit = self
+                .commit_lock_for_revision(
+                    "pick file tags",
+                    &candidate_key,
+                    &content_hash,
+                    current.file_edit_revision,
                 )
                 .await?;
-                // The choice is stored as the candidate's result unless a run's
-                // result already stands.
-                let audio_durations =
-                    crate::import::audio_layout::audio_durations(&candidate.files, &durations)?;
-                let detail = release.detail_for_audio(&audio_durations, &prepared_partners)?;
-                let metadata = self
-                    .external_candidate_metadata(
-                        &release,
-                        prepared_partners,
-                        &durations,
-                        provenance.clone(),
-                        &current.draft,
-                    )
-                    .await?;
-                let settled_by_choice = crate::identify::TerminalVerdict::of_pick(
-                    crate::import::search::MetadataResult::of_pick(&detail),
-                    audio_durations.len() as u32,
-                );
-                let _commit = self
-                    .commit_lock_for_revision(
-                        "pick a release",
-                        &candidate_key,
-                        &content_hash,
-                        current.file_edit_revision,
-                    )
-                    .await?;
-                return Ok(self
-                    .preparations
-                    .apply_source_as_result(
-                        &candidate.watched_folder_path,
-                        &crate::import::CandidateAsRead {
-                            content_hash: content_hash.clone(),
-                            file_edit_revision: candidate.file_edit_revision,
-                            metadata_revision: expected_metadata_revision,
-                        },
-                        &candidate_key,
-                        &metadata,
-                        settled_by_choice,
-                    )
-                    .await?);
+            // A scan that stored the candidate while its tags were read gave it
+            // a newer generation, and the write only accepts tags read at the
+            // current one: read again.
+            let stored_generation = self
+                .library_manager
+                .load_candidate_file_tag_snapshot(&read.candidate.watched_folder_path, &candidate_key)
+                .await?
+                .map(|stored| stored.scan_generation);
+            if stored_generation != Some(seed.snapshot.scan_generation) {
+                drop(commit);
+                continue;
             }
+            return Ok(self
+                .preparations
+                .apply_file_metadata(
+                    &read.candidate.watched_folder_path,
+                    &candidate_key,
+                    &crate::import::CandidateAsRead {
+                        content_hash: content_hash.clone(),
+                        file_edit_revision: current.file_edit_revision,
+                        metadata_revision: current.metadata_revision,
+                    },
+                    &seed.snapshot,
+                    &seed.draft,
+                    seed.cover.as_ref(),
+                )
+                .await?);
         }
     }
 
-    /// Clear the candidate's source metadata, keeping its file decisions. Like
-    /// a pick, it ends the candidate's identification and announces the change.
+    /// Link the candidate to the release `link` names and read its draft
+    /// from that release.
+    pub(super) async fn pick_candidate_release_write(
+        &self,
+        candidate_key: String,
+        link: crate::import::ReleaseLink,
+    ) -> Result<u64, crate::import::ImportError> {
+        let (candidate, current) = self.metadata_write_base(&candidate_key).await?;
+        let content_hash = candidate.files.content_hash();
+        let durations = crate::import::probe::source_durations(&candidate.files)?;
+        let release = self
+            .release_for_pick(&candidate_key, &link.record)
+            .await?;
+        // A partner that fails to load fails the pick, leaving the previous
+        // one in place.
+        let prepared_partners = crate::import::service::prepare_partners(
+            &self.library_manager,
+            &link.record,
+            &link.partners,
+            CallPriority::Interactive,
+        )
+        .await?;
+        // The choice is stored as the candidate's result unless a run's result
+        // already stands.
+        let audio_durations =
+            crate::import::audio_layout::audio_durations(&candidate.files, &durations)?;
+        let detail = release.detail_for_audio(&audio_durations, &prepared_partners)?;
+        let metadata = self
+            .external_candidate_metadata(&release, prepared_partners, &durations, &current.draft)
+            .await?;
+        let settled_by_choice = crate::identify::TerminalVerdict::of_pick(
+            crate::import::search::MetadataResult::of_pick(&detail),
+            audio_durations.len() as u32,
+        );
+        let _commit = self
+            .commit_lock_for_revision(
+                "pick a release",
+                &candidate_key,
+                &content_hash,
+                current.file_edit_revision,
+            )
+            .await?;
+        Ok(self
+            .preparations
+            .apply_pick(
+                &candidate.watched_folder_path,
+                &crate::import::CandidateAsRead {
+                    content_hash: content_hash.clone(),
+                    file_edit_revision: candidate.file_edit_revision,
+                    metadata_revision: current.metadata_revision,
+                },
+                &candidate_key,
+                &link,
+                &metadata,
+                settled_by_choice,
+            )
+            .await?)
+    }
+
+    /// Clear the candidate's draft, keeping its file decisions and its release
+    /// link. Like a pick, it ends the candidate's identification and announces
+    /// the change.
     pub(crate) async fn clear_candidate_metadata(
         &self,
         candidate_key: String,
@@ -496,7 +503,7 @@ impl ImportServiceHandle {
                 .clear_candidate_metadata_write(candidate_key.clone())
                 .await?;
             this.cancel_identification(&candidate_key);
-            this.announce_metadata_provenance(candidate_key);
+            this.announce_metadata_changed(candidate_key);
             Ok(revision)
         })
         .await
@@ -552,8 +559,9 @@ impl ImportServiceHandle {
 
     /// Keep the candidate's own draft over what its stored lookup offered:
     /// none of the releases it found is the folder's, or it found none. The
-    /// draft stays as it is, and the decision goes with the verdict, so
-    /// identifying the candidate again starts without it.
+    /// candidate is linked to no release and the draft stays as it is; the
+    /// decision goes with the verdict, so identifying the candidate again
+    /// starts without it.
     pub(crate) async fn keep_candidate_draft(
         &self,
         candidate_key: String,
@@ -598,7 +606,45 @@ impl ImportServiceHandle {
             .await?)
     }
 
-    pub(crate) fn announce_metadata_provenance(&self, candidate_key: String) {
+    /// Unlink the candidate from its release. The draft stays as it is.
+    pub(crate) async fn unlink_candidate_release(
+        &self,
+        candidate_key: String,
+    ) -> Result<u64, crate::import::ImportError> {
+        let this = self.clone();
+        self.committed(async move {
+            let revision = this.unlink_candidate_release_write(candidate_key.clone()).await?;
+            this.announce_metadata_changed(candidate_key);
+            Ok(revision)
+        })
+        .await
+    }
+
+    async fn unlink_candidate_release_write(
+        &self,
+        candidate_key: String,
+    ) -> Result<u64, crate::import::ImportError> {
+        let (candidate, current) = self.metadata_write_base(&candidate_key).await?;
+        let content_hash = candidate.files.content_hash();
+        let _commit = self
+            .commit_lock_for_revision(
+                "unlink the release",
+                &candidate_key,
+                &content_hash,
+                current.file_edit_revision,
+            )
+            .await?;
+        Ok(self
+            .preparations
+            .unlink(&crate::import::CandidateAsRead {
+                content_hash,
+                file_edit_revision: candidate.file_edit_revision,
+                metadata_revision: current.metadata_revision,
+            })
+            .await?)
+    }
+
+    pub(crate) fn announce_metadata_changed(&self, candidate_key: String) {
         self.event_tx
             .send(ImportEvent::Scan(ScanEvent::CandidateMetadataChanged {
                 candidate_key,

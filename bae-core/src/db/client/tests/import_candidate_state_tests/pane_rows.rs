@@ -47,7 +47,7 @@ file_edit_revision: 0,
             folder_path: pane_candidate_path(),
             verdict: sample_verdict(),
             signals,
-            metadata: None,
+            pick: None,
         })
         .await
         .unwrap()
@@ -384,7 +384,7 @@ file_edit_revision: 0,
                 folder_path: pane_candidate_path(),
                 verdict: sample_verdict(),
                 signals: scanning,
-                metadata: None,
+                pick: None,
             })
             .await
             .expect_err("a scanning signal is not storable");

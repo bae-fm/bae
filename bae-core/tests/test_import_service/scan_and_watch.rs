@@ -514,10 +514,7 @@ async fn a_folder_holding_watched_folders_takes_them_over_and_keeps_what_was_dec
         .await
         .unwrap();
     f.handle
-        .select_candidate_metadata_provenance(
-            path_string(&picked),
-            MetadataProvenance::FileMetadata,
-        )
+        .select_candidate_file_tags(path_string(&picked))
         .await
         .unwrap();
     let combined = f
@@ -566,7 +563,7 @@ async fn a_folder_holding_watched_folders_takes_them_over_and_keeps_what_was_dec
         .expect("the picked album keeps its state");
     assert_eq!(
         state.metadata_provenance,
-        Some(MetadataProvenance::FileMetadata),
+        Some(bae_core::import::MetadataProvenance::FileMetadata),
         "the pick stays"
     );
 }
@@ -771,7 +768,7 @@ async fn a_done_row_follows_the_library_release_it_became() {
     .await;
 
     f.handle
-        .select_candidate_metadata_provenance(album_key.clone(), MetadataProvenance::FileMetadata)
+        .select_candidate_file_tags(album_key.clone())
         .await
         .unwrap();
     let import_id = f.handle.start_import(&album_key).await.unwrap();

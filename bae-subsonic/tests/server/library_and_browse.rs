@@ -9,7 +9,7 @@ use bae_core::db::{Database, DbAlbum, DbArtist, DbRelease, DbTrack};
 use bae_core::discogs::models::DiscogsRelease;
 use bae_core::import::release_candidate::CandidateSource;
 use bae_core::import::{
-    Catalog, ImportCommand, ImportDestination, MetadataProvenance, ReleaseFileScope,
+    Catalog, ImportCommand, ImportDestination, ReleaseFileScope,
 };
 use bae_core::library::{AppServices, LibraryManager};
 use bae_test_support as support;
@@ -208,7 +208,8 @@ async fn seed_library() -> Library {
             },
             selected_cover: None,
             destination: ImportDestination::Local,
-            metadata_provenance: Some(MetadataProvenance::FileMetadata),
+            pick: None,
+            read_file_tags: true,
             user_edit: None,
         })
         .await
@@ -246,7 +247,8 @@ async fn seed_library() -> Library {
             },
             selected_cover: None,
             destination: ImportDestination::Local,
-            metadata_provenance: Some(MetadataProvenance::ExternalRelease {
+            read_file_tags: false,
+            pick: Some(bae_core::import::ReleaseLink {
                 record: bae_core::import::MetadataRef::new(Catalog::Discogs, discogs_key),
                 partners: vec![],
             }),

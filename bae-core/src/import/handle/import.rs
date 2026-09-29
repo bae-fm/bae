@@ -309,7 +309,9 @@ impl ImportServiceHandle {
             selected_cover: None,
             destination: self.library_manager.get_config().import_destination(),
             #[cfg(any(test, feature = "test-utils"))]
-            metadata_provenance: None,
+            pick: None,
+            #[cfg(any(test, feature = "test-utils"))]
+            read_file_tags: false,
             #[cfg(any(test, feature = "test-utils"))]
             user_edit: None,
         };
@@ -486,11 +488,22 @@ impl ImportServiceHandle {
         }
         command.candidate_key = candidate_key;
         let content_hash = categorized.content_hash();
-        if let Some(provenance) = command.metadata_provenance.clone() {
-            self.set_candidate_metadata_provenance(command.candidate_key.clone(), provenance)
+        if let Some(link) = command.pick.clone() {
+            self.pick_candidate_release_write(command.candidate_key.clone(), link)
+                .await?;
+        }
+        if command.read_file_tags {
+            self.read_candidate_file_tags_write(command.candidate_key.clone())
                 .await?;
         }
         if let Some(edit) = command.user_edit.clone() {
+            let state = self
+                .library_manager
+                .load_import_candidate_state(&content_hash)
+                .await?
+                .ok_or_else(|| crate::import::ImportError::Internal {
+                    detail: "test import has no candidate state".into(),
+                })?;
             let rows = self
                 .library_manager
                 .load_import_candidate_pane_rows(&content_hash)
@@ -513,20 +526,18 @@ impl ImportServiceHandle {
                     &crate::import::CandidateAsRead {
                         content_hash: content_hash.clone(),
                         file_edit_revision: candidate.file_edit_revision,
-                        metadata_revision: self
-                            .library_manager
-                            .load_import_candidate_state(&content_hash)
-                            .await?
-                            .ok_or_else(|| crate::import::ImportError::Internal {
-                                detail: "test import has no candidate state".into(),
-                            })?
-                            .metadata_revision,
+                        metadata_revision: state.metadata_revision,
                     },
                     &command.candidate_key,
                     &crate::import::CandidateMetadataDraft {
                         draft: source_draft.draft,
                         source_discogs_artist_ids: Default::default(),
-                        provenance: command.metadata_provenance.clone(),
+                        // An edit of the draft the command applied, which
+                        // stays read from where it was; with none applied,
+                        // the draft is typed in, read from nowhere.
+                        provenance: state
+                            .metadata_provenance
+                            .filter(|_| command.pick.is_some() || command.read_file_tags),
                         cover: rows.cover,
                         assets,
                     },
@@ -545,10 +556,7 @@ impl ImportServiceHandle {
                 detail: "test import has no candidate state".into(),
             })?
             .metadata_revision;
-        let file_tag_snapshot = if matches!(
-            command.metadata_provenance,
-            Some(crate::import::MetadataProvenance::FileMetadata)
-        ) || matches!(
+        let file_tag_snapshot = if command.read_file_tags || matches!(
             command.selected_cover,
             Some(crate::import::CoverSelection::Embedded(_))
         ) {

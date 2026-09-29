@@ -40,7 +40,7 @@ pub(super) struct Finished {
 enum SettledLead {
     NoExternalRelease,
     ExternalRelease {
-        provenance: crate::import::MetadataProvenance,
+        link: crate::import::ReleaseLink,
         release: crate::import::source_release::SourceRelease,
         partners: Vec<crate::import::source_release::SourceRelease>,
     },
@@ -130,20 +130,18 @@ async fn settle_verdict(
         Err(settled) => return settled,
     };
 
-    let metadata = match settled_lead {
+    let pick = match settled_lead {
         SettledLead::NoExternalRelease => None,
         SettledLead::ExternalRelease {
-            provenance,
+            link,
             release,
             partners,
-        } => match lead_metadata(context, candidate, &durations, provenance, &release, partners)
-            .await
-        {
-            Ok(metadata) => Some(metadata),
+        } => match lead_metadata(context, candidate, &durations, &release, partners).await {
+            Ok(metadata) => Some(crate::db::VerdictPick { link, metadata }),
             Err(settled) => return settled,
         },
     };
-    save(context, token, run, candidate, &verdict, signals, metadata).await
+    save(context, token, run, candidate, &verdict, signals, pick).await
 }
 
 /// The draft the picked release reads into, with the artist images and cover
@@ -152,7 +150,6 @@ async fn lead_metadata(
     context: &Context,
     candidate: &FolderCandidate,
     durations: &crate::import::probe::SourceDurations,
-    provenance: crate::import::MetadataProvenance,
     release: &crate::import::source_release::SourceRelease,
     partners: Vec<crate::import::source_release::SourceRelease>,
 ) -> Result<crate::import::CandidateMetadataDraft, Settled> {
@@ -192,14 +189,7 @@ async fn lead_metadata(
         })?;
     context
         .import
-        .external_candidate_assets(
-            source_draft,
-            release,
-            partners,
-            durations,
-            provenance,
-            &current.draft,
-        )
+        .external_candidate_assets(source_draft, release, partners, durations, &current.draft)
         .await
         .map_err(|error| Settled::Unwritable {
             error: error.to_string(),
@@ -214,7 +204,7 @@ pub(super) async fn save(
     candidate: &FolderCandidate,
     verdict: &TerminalVerdict,
     signals: crate::signals::Signals,
-    metadata: Option<crate::import::CandidateMetadataDraft>,
+    pick: Option<crate::db::VerdictPick>,
 ) -> Settled {
     if token.is_cancelled() {
         return Settled::Abandoned;
@@ -222,14 +212,14 @@ pub(super) async fn save(
     let candidate_key = candidate.key();
     // Only the verdict's unattended pick is ever applied, so an applied
     // release is that pick, which automatic import then takes.
-    let picked_unattended = metadata.is_some();
+    let picked_unattended = pick.is_some();
     let row = NewImportCandidateVerdict {
         content_hash: candidate.files.content_hash(),
         file_edit_revision: candidate.file_edit_revision,
         folder_path: candidate_key.clone(),
         verdict: verdict.clone(),
         signals,
-        metadata,
+        pick,
     };
     let wrote = match context
         .import
@@ -320,7 +310,7 @@ async fn settle_lead(
         }
     };
     Ok(SettledLead::ExternalRelease {
-        provenance: pressing.pick(),
+        link: pressing.pick(),
         release,
         partners: prepared_partners,
     })

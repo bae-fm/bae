@@ -18,7 +18,8 @@ async fn direct_entry_import_records_no_catalog_and_reads_no_tags() {
             },
             selected_cover: None,
             destination: ImportDestination::Local,
-            metadata_provenance: None,
+            pick: None,
+            read_file_tags: false,
             user_edit: Some(ReleaseUserEdit {
                 album_title: "Album Title".to_string(),
                 album_artist_assignments: vec![ArtistAssignment::named("Artist Name")],

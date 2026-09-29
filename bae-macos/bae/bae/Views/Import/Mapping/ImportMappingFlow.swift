@@ -66,7 +66,7 @@ enum ImportMappingFlow {
             importStore: services.importStore,
             endEditing: services.endEditing,
             key: key,
-            provenance: .fileMetadata
+            application: .fileTags
         )
     }
 
@@ -85,6 +85,18 @@ enum ImportMappingFlow {
     ) {
         replaceMetadata(services: services) {
             _ = try await services.importer.clearCandidateMetadata(key)
+        }
+    }
+
+    /// Unlink the candidate from its release, a pane command: its failure is
+    /// stated on the pane, from what core stored. The draft stays as it is.
+    @MainActor
+    static func unlink(key: String, services: ImportMappingServices) {
+        Task { @MainActor in
+            await services.endEditing()
+            do { _ = try await services.importer.unlinkCandidateRelease(key) }
+            catch is CancellationError {}
+            catch { services.importStore.reportFailure(error) }
         }
     }
 

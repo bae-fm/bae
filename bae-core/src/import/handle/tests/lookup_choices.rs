@@ -242,7 +242,7 @@ async fn store_settled_text(handle: &ImportServiceHandle, hash: &str, printed: &
                 isrcs: Vec::new(),
                 track_titles: Vec::new(),
             },
-            metadata: None,
+            pick: None,
         })
         .await
         .unwrap();
@@ -251,9 +251,7 @@ async fn store_settled_text(handle: &ImportServiceHandle, hash: &str, printed: &
 
 pub(super) async fn pick(handle: &ImportServiceHandle, key: &str, release_id: &str) {
     handle
-        .select_candidate_metadata_provenance(
-            key.to_string(),
-            crate::import::MetadataProvenance::ExternalRelease {
+        .select_candidate_release(key.to_string(), crate::import::ReleaseLink {
                 record: crate::import::MetadataRef::new(
                     crate::import::Catalog::MusicBrainz,
                     release_id.to_string(),

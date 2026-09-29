@@ -150,6 +150,7 @@ pub(super) fn load_preparation_on(
             cover: rows.cover,
             assets,
         },
+        link: state.release_link,
         assets_prepared,
         identification: state.identify,
         signals: state.signals,
@@ -218,7 +219,8 @@ pub(super) fn save_preparation_on(
     if let Some(signals) = &prep.signals {
         insert_signals(sql, content_hash, signals)?;
     }
-    // Replacing the draft row cascades the provenance and its partners away;
+    super::rows::replace_release_link(sql, content_hash, prep.link.as_ref())?;
+    // Replacing the draft row cascades the provenance away;
     // `validate` has already refused an author the provenance cannot have.
     pane_rows::replace_draft(sql, content_hash, &prep.metadata.draft, prep.author)?;
     if let Some(provenance) = prep.metadata.provenance.as_ref() {

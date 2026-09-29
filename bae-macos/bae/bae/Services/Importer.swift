@@ -45,11 +45,13 @@ private struct ImportOperations: Sendable {
     let setSheetBinding:
         @Sendable (String, String, String, String?) async throws -> Void
     let applyCandidateExternalMetadata:
-        @Sendable (String, BridgeMetadataProvenance) async throws ->
+        @Sendable (String, BridgeReleaseLink) async throws ->
             BridgePaneOutcome
     let applyCandidateFileMetadata:
         @Sendable (String) async throws -> BridgePaneOutcome
     let keepCandidateDraft: @Sendable (String) async throws -> BridgePaneOutcome
+    let unlinkCandidateRelease:
+        @Sendable (String) async throws -> BridgePaneOutcome
     let resetCandidateSetup: @Sendable (String) async throws -> Void
     let clearCandidateMetadata: @Sendable (String) async throws -> UInt64
     let setSheetDisc:
@@ -142,19 +144,19 @@ extension ImportOperations {
                 )
             },
             applyCandidateExternalMetadata: {
-                try await handle.selectCandidateMetadataProvenance(
+                try await handle.selectCandidateRelease(
                     candidateKey: $0,
-                    provenance: $1
+                    link: $1
                 )
             },
             applyCandidateFileMetadata: {
-                try await handle.selectCandidateMetadataProvenance(
-                    candidateKey: $0,
-                    provenance: .fileMetadata
-                )
+                try await handle.readCandidateFileTags(candidateKey: $0)
             },
             keepCandidateDraft: {
                 try await handle.keepCandidateDraft(candidateKey: $0)
+            },
+            unlinkCandidateRelease: {
+                try await handle.unlinkCandidateRelease(candidateKey: $0)
             },
             resetCandidateSetup: {
                 try await handle.resetCandidateSetup(candidateKey: $0)
@@ -353,7 +355,7 @@ final class Importer: Sendable, Observable {
             -> Void =
             { _, _, _, _ in },
         applyCandidateExternalMetadata:
-            @escaping @Sendable (String, BridgeMetadataProvenance)
+            @escaping @Sendable (String, BridgeReleaseLink)
             async throws -> BridgePaneOutcome = { _, _ in
                 throw StubError.notImplemented
             },
@@ -362,6 +364,10 @@ final class Importer: Sendable, Observable {
                 _ in throw StubError.notImplemented
             },
         keepCandidateDraft:
+            @escaping @Sendable (String) async throws -> BridgePaneOutcome = {
+                _ in throw StubError.notImplemented
+            },
+        unlinkCandidateRelease:
             @escaping @Sendable (String) async throws -> BridgePaneOutcome = {
                 _ in throw StubError.notImplemented
             },
@@ -482,6 +488,7 @@ final class Importer: Sendable, Observable {
             applyCandidateExternalMetadata: applyCandidateExternalMetadata,
             applyCandidateFileMetadata: applyCandidateFileMetadata,
             keepCandidateDraft: keepCandidateDraft,
+            unlinkCandidateRelease: unlinkCandidateRelease,
             resetCandidateSetup: resetCandidateSetup,
             clearCandidateMetadata: clearCandidateMetadata,
             setSheetDisc: setSheetDisc,
@@ -569,15 +576,15 @@ extension Importer {
         )
     }
 
-    /// Replace the candidate's draft from the release a pick names, claiming
-    /// every source that pick carried.
+    /// Link the candidate to the release a pick names, claiming every source
+    /// that pick carried, and read its draft from it.
     func applyCandidateExternalMetadata(
         _ candidateKey: String,
-        provenance: BridgeMetadataProvenance
+        link: BridgeReleaseLink
     ) async throws -> BridgePaneOutcome {
         try await operations.applyCandidateExternalMetadata(
             candidateKey,
-            provenance
+            link
         )
     }
 
@@ -595,6 +602,14 @@ extension Importer {
         -> BridgePaneOutcome
     {
         try await operations.keepCandidateDraft(candidateKey)
+    }
+
+    /// Unlink the candidate from its release, a pane command whose failure is
+    /// stated on the pane. The draft stays as it is.
+    func unlinkCandidateRelease(_ candidateKey: String) async throws
+        -> BridgePaneOutcome
+    {
+        try await operations.unlinkCandidateRelease(candidateKey)
     }
 
     func resetCandidateSetup(_ candidateKey: String) async throws {

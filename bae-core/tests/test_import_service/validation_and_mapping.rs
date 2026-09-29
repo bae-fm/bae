@@ -70,7 +70,7 @@ async fn import_truncated_album(verify: bool) -> Result<(String, String), String
         .send_command(support::folder_import(
             &import_id,
             album_dir,
-            MetadataProvenance::FileMetadata,
+            support::DraftSource::FileTags,
         ))
         .await
         .unwrap();
@@ -162,9 +162,7 @@ async fn two_credit_mb_release_keeps_both_album_artists() {
 
     // Pick the release and change nothing.
     f.handle
-        .select_candidate_metadata_provenance(
-            candidate_key.clone(),
-            bae_core::import::MetadataProvenance::ExternalRelease {
+        .select_candidate_release(candidate_key.clone(), bae_core::import::ReleaseLink {
                 record: bae_core::import::MetadataRef::new(Catalog::MusicBrainz, mb_id.clone()),
                 partners: vec![],
             },
@@ -255,9 +253,7 @@ async fn pick_release_for_folder(
     .await;
 
     f.handle
-        .select_candidate_metadata_provenance(
-            candidate_key.clone(),
-            bae_core::import::MetadataProvenance::ExternalRelease {
+        .select_candidate_release(candidate_key.clone(), bae_core::import::ReleaseLink {
                 record: bae_core::import::MetadataRef::new(Catalog::MusicBrainz, mb_id.to_string()),
                 partners: vec![],
             },
@@ -310,9 +306,7 @@ async fn incompatible_source_counts_preserve_every_audio_backed_track() {
             .unwrap();
         let error = f
             .handle
-            .select_candidate_metadata_provenance(
-                candidate_key.clone(),
-                MetadataProvenance::ExternalRelease {
+            .select_candidate_release(candidate_key.clone(), bae_core::import::ReleaseLink {
                     record: bae_core::import::MetadataRef::new(Catalog::MusicBrainz, mb_id),
                     partners: vec![],
                 },
@@ -430,10 +424,10 @@ async fn an_import_with_no_cover_pick_takes_the_release_s_own_cover() {
         &album_dir,
         None,
         ImportDestination::Local,
-        MetadataProvenance::ExternalRelease {
+        support::DraftSource::Pick(bae_core::import::ReleaseLink {
             record: bae_core::import::MetadataRef::new(Catalog::MusicBrainz, release_id_key),
             partners: vec![],
-        },
+        }),
     )
     .await
     .expect("the import succeeds");
@@ -479,10 +473,10 @@ async fn an_import_fails_when_the_release_s_own_cover_will_not_download() {
         &album_dir,
         None,
         ImportDestination::Local,
-        MetadataProvenance::ExternalRelease {
+        support::DraftSource::Pick(bae_core::import::ReleaseLink {
             record: bae_core::import::MetadataRef::new(Catalog::MusicBrainz, release_id_key),
             partners: vec![],
-        },
+        }),
     )
     .await
     .expect_err("a cover the source says exists but cannot be fetched fails the import");

@@ -19,10 +19,7 @@ async fn a_pick_the_person_made_names_them_as_the_author() {
     );
 
     handle
-        .select_candidate_metadata_provenance(
-            key.clone(),
-            crate::import::MetadataProvenance::FileMetadata,
-        )
+        .select_candidate_file_tags(key.clone())
         .await
         .unwrap();
 

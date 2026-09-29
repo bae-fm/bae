@@ -423,17 +423,11 @@ struct FindOnlinePressingPickTests {
         let bridge = PreviewData.exactPressings[1]
         let pressing = try #require(Pressing(bridge: bridge))
 
-        #expect(pressing.provenance == bridge.pick)
-        guard
-            case .externalRelease(let record, let partners) =
-                pressing.provenance
-        else {
-            Issue.record("a picked row claims an external release")
-            return
-        }
-        #expect(partners.count == 1)
+        #expect(pressing.link == bridge.pick)
+        let link = pressing.link
+        #expect(link.partners.count == 1)
         #expect(
-            ([record] + partners).map(\.key)
+            ([link.record] + link.partners).map(\.key)
                 == bridge.releases.map(\.releaseId)
         )
     }
@@ -445,19 +439,13 @@ struct FindOnlinePressingPickTests {
         let bridge = PreviewData.exactPressings[1]
         let pressing = try #require(Pressing(bridge: bridge))
 
-        guard
-            case .externalRelease(let record, let partners) =
-                pressing.provenance
-        else {
-            Issue.record("a picked row claims an external release")
-            return
-        }
+        let link = pressing.link
         #expect(
             pressing.reseed
                 == .externalRelease(
-                    releaseId: record.key,
-                    source: record.catalog,
-                    partners: partners
+                    releaseId: link.record.key,
+                    source: link.record.catalog,
+                    partners: link.partners
                 )
         )
     }
@@ -468,16 +456,9 @@ struct FindOnlinePressingPickTests {
         let bridge = PreviewData.exactPressings[0]
         let pressing = try #require(Pressing(bridge: bridge))
 
-        #expect(pressing.provenance == bridge.pick)
-        guard
-            case .externalRelease(let record, let partners) =
-                pressing.provenance
-        else {
-            Issue.record("a picked row claims an external release")
-            return
-        }
-        #expect(partners.isEmpty)
-        #expect(record.key == bridge.releases[0].releaseId)
+        #expect(pressing.link == bridge.pick)
+        #expect(pressing.link.partners.isEmpty)
+        #expect(pressing.link.record.key == bridge.releases[0].releaseId)
     }
 }
 
@@ -496,7 +477,7 @@ struct FindOnlinePressingSourceTests {
             Pressing(
                 bridge: BridgePressing(
                     releases: [discogsLead, musicBrainzPartner],
-                    pick: .externalRelease(
+                    pick: BridgeReleaseLink(
                         record: BridgeMetadataRef(
                             catalog: discogsLead.source,
                             key: discogsLead.releaseId

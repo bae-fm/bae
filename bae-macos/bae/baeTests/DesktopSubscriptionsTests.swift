@@ -44,7 +44,7 @@ struct DesktopSubscriptionsTests {
         _ = try #require(
             store.beginMetadataApplication(
                 key: key,
-                provenance: MappingFixtures.provenance
+                application: .pick(MappingFixtures.link)
             )
         )
 

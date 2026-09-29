@@ -88,7 +88,7 @@ async fn import_progress_names_every_operation_before_loudness() {
         .send_command(support::folder_import(
             &import_id,
             album_dir,
-            MetadataProvenance::FileMetadata,
+            support::DraftSource::FileTags,
         ))
         .await
         .unwrap();

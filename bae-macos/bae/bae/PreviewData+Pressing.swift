@@ -42,7 +42,7 @@
             releases: [BridgeMetadataResult],
             labels: [BridgeLabelLine] = [],
             documentFailure: BridgeLookupFailure? = nil,
-            pick: BridgeMetadataProvenance
+            pick: BridgeReleaseLink
         ) {
             let facts = releases.first?.facts ?? PreviewData.pressingFacts()
             self.init(

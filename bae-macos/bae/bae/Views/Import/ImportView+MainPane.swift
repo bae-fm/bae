@@ -144,6 +144,12 @@ extension ImportView {
                     services: mappingServices
                 )
             },
+            onUnlink: {
+                ImportMappingFlow.unlink(
+                    key: candidate.key,
+                    services: mappingServices
+                )
+            },
             onEditCover: { presentCoverPicker(for: candidate) },
             onSelectCover: { selection in
                 selectCover(selection, for: candidate)

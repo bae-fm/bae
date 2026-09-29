@@ -15,12 +15,12 @@ extension ImportSearchFlow {
         importStore: ImportStore,
         endEditing: @escaping @MainActor () async -> Void,
         key: String,
-        provenance: BridgeMetadataProvenance
+        application: MetadataApplication
     ) {
         guard
             let session = importStore.beginMetadataApplication(
                 key: key,
-                provenance: provenance
+                application: application
             )
         else {
             logger.debug("Metadata application ignored for missing key: \(key)")
@@ -32,14 +32,14 @@ extension ImportSearchFlow {
             let result: Result<BridgePaneOutcome, Error>
             do {
                 result = .success(
-                    try await pick(provenance, key: key, importer: importer)
+                    try await pick(application, key: key, importer: importer)
                 )
             }
             catch { result = .failure(error) }
             guard let session else { return }
             settle(
                 result,
-                provenance: provenance,
+                application: application,
                 key: key,
                 session: session,
                 importStore: importStore
@@ -51,17 +51,14 @@ extension ImportSearchFlow {
     /// Run the pick core-side.
     @MainActor
     private static func pick(
-        _ provenance: BridgeMetadataProvenance,
+        _ application: MetadataApplication,
         key: String,
         importer: Importer
     ) async throws -> BridgePaneOutcome {
-        switch provenance {
-        case .externalRelease:
-            try await importer.applyCandidateExternalMetadata(
-                key,
-                provenance: provenance
-            )
-        case .fileMetadata:
+        switch application {
+        case .pick(let link):
+            try await importer.applyCandidateExternalMetadata(key, link: link)
+        case .fileTags:
             try await importer.applyCandidateFileMetadata(key)
         }
     }
@@ -72,7 +69,7 @@ extension ImportSearchFlow {
     @MainActor
     private static func settle(
         _ result: Result<BridgePaneOutcome, Error>,
-        provenance: BridgeMetadataProvenance,
+        application: MetadataApplication,
         key: String,
         session: CandidateMetadataApplicationSession,
         importStore: ImportStore
@@ -97,7 +94,7 @@ extension ImportSearchFlow {
             logger.error(
                 "Metadata application failed: \(error.localizedDescription)"
             )
-            if case .externalRelease = provenance {
+            if case .pick = application {
                 importStore.metadataApplicationFailed(
                     key: key,
                     session: session,

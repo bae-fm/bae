@@ -98,7 +98,7 @@ async fn an_imported_folder_is_refused_a_second_import() {
         &album_dir,
         None,
         ImportDestination::Local,
-        MetadataProvenance::FileMetadata,
+        support::DraftSource::FileTags,
     )
     .await
     .expect("initial import succeeds");
@@ -130,7 +130,7 @@ async fn an_imported_folder_is_refused_a_second_import() {
             &album_dir,
             cover,
             destination,
-            MetadataProvenance::FileMetadata,
+            support::DraftSource::FileTags,
         )
         .await
         .expect_err("an imported folder is refused a second import");
@@ -177,7 +177,7 @@ async fn a_remote_imported_folder_is_refused_a_second_import() {
         &album_dir,
         None,
         ImportDestination::Remote { pin: false },
-        MetadataProvenance::FileMetadata,
+        support::DraftSource::FileTags,
     )
     .await
     .expect("initial remote import queues upload");
@@ -202,7 +202,7 @@ async fn a_remote_imported_folder_is_refused_a_second_import() {
         &album_dir,
         None,
         ImportDestination::Local,
-        MetadataProvenance::FileMetadata,
+        support::DraftSource::FileTags,
     )
     .await
     .expect_err("an imported folder is refused a second import");
@@ -247,7 +247,7 @@ async fn a_remote_import_without_a_cloud_connection_queues_its_uploads() {
         &album_dir,
         None,
         ImportDestination::Remote { pin: false },
-        MetadataProvenance::FileMetadata,
+        support::DraftSource::FileTags,
     )
     .await
     .expect("a Remote import commits with no cloud connected");

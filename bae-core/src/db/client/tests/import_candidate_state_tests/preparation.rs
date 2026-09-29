@@ -780,12 +780,15 @@ file_edit_revision: 0,
             folder_path: pane_candidate_path(),
             verdict: sample_verdict(),
             signals: settled_signals(),
-            metadata: Some(crate::import::CandidateMetadataDraft {
+            pick: Some(crate::db::VerdictPick {
+                link: release_link("rel-1"),
+                metadata: crate::import::CandidateMetadataDraft {
                 draft: candidate_draft("Different album", "Different Artist"),
                 source_discogs_artist_ids: Default::default(),
                 provenance: Some(release_pick("rel-1")),
                 cover: None,
                 assets: crate::import::CandidatePreparedAssets::default(),
+            },
             }),
         })
         .await
@@ -823,12 +826,15 @@ file_edit_revision: 0,
             folder_path: pane_candidate_path(),
             verdict: sample_verdict(),
             signals: settled_signals(),
-            metadata: Some(crate::import::CandidateMetadataDraft {
+            pick: Some(crate::db::VerdictPick {
+                link: release_link("rel-first"),
+                metadata: crate::import::CandidateMetadataDraft {
                 draft: candidate_draft("First album", "Artist"),
                 source_discogs_artist_ids: Default::default(),
                 provenance: Some(first_pick.clone()),
                 cover: None,
                 assets: crate::import::CandidatePreparedAssets::default(),
+            },
             }),
         })
         .await
@@ -845,12 +851,15 @@ file_edit_revision: 0,
             folder_path: pane_candidate_path(),
             verdict: sample_verdict(),
             signals: settled_signals(),
-            metadata: Some(crate::import::CandidateMetadataDraft {
+            pick: Some(crate::db::VerdictPick {
+                link: release_link("rel-second"),
+                metadata: crate::import::CandidateMetadataDraft {
                 draft: candidate_draft("Second album", "Different Artist"),
                 source_discogs_artist_ids: Default::default(),
                 provenance: Some(release_pick("rel-second")),
                 cover: None,
                 assets: crate::import::CandidatePreparedAssets::default(),
+            },
             }),
         })
         .await

@@ -70,6 +70,7 @@ fn command_column(command: PaneCommand) -> &'static str {
         PaneCommand::ChangeSearchWords => "change_search_words",
         PaneCommand::ChangeAgreements => "change_agreements",
         PaneCommand::KeepOwnDraft => "keep_own_draft",
+        PaneCommand::Unlink => "unlink",
     }
 }
 
@@ -82,6 +83,7 @@ fn command_of(column: &str) -> Result<PaneCommand, DbError> {
         "change_search_words" => PaneCommand::ChangeSearchWords,
         "change_agreements" => PaneCommand::ChangeAgreements,
         "keep_own_draft" => PaneCommand::KeepOwnDraft,
+        "unlink" => PaneCommand::Unlink,
         other => {
             return Err(DbError::Message(format!(
                 "unreadable pane command {other:?}"
@@ -370,7 +372,7 @@ pub(super) fn move_pane_on(
         .optional()?
         .map(session_of)
         .transpose()?
-        .unwrap_or_else(|| CandidateSession::initial(None, false))
+        .unwrap_or_else(|| CandidateSession::initial(false, false))
         .moved(pane_move);
     save_session_on(sql, content_hash, &session)
 }

@@ -56,8 +56,8 @@ pub(crate) fn author_of(stored: &str) -> Result<MetadataAuthor, DbError> {
 }
 
 /// Replace the draft row and everything hanging off it: its tracks and their
-/// artist assignments, and the provenance with the partner releases the same
-/// pick claimed. The caller writes the new provenance after this returns.
+/// artist assignments, and its provenance. The caller writes the new
+/// provenance after this returns.
 pub(super) fn replace_draft(
     sql: &SqlContext<'_, '_>,
     content_hash: &str,

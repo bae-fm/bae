@@ -88,23 +88,32 @@ async fn pure_reads_use_the_read_connection() {
                 isrcs: Vec::new(),
                 track_titles: Vec::new(),
             },
-            metadata: Some(bae_core::import::CandidateMetadataDraft {
-                draft: bae_core::import::CandidateDraft {
-                    album_title: "Unwritten candidate".to_string(),
-                    album_artist_assignments: Vec::new(),
-                    album_year: String::new(),
-                    pressing: bae_core::import::RawPressingEdit {
-                        year: String::new(),
-                        labels: Vec::new(),
-                        facts: Default::default(),
-                        barcode: String::new(),
-                    },
-                    tracks: Vec::new(),
+            pick: Some(bae_core::db::VerdictPick {
+                link: bae_core::import::ReleaseLink {
+                    record: bae_core::import::MetadataRef::new(
+                        bae_core::import::Catalog::MusicBrainz,
+                        "unwritten-release",
+                    ),
+                    partners: Vec::new(),
                 },
-                source_discogs_artist_ids: Default::default(),
-                provenance: None,
-                cover: None,
-                assets: bae_core::import::CandidatePreparedAssets::default(),
+                metadata: bae_core::import::CandidateMetadataDraft {
+                    draft: bae_core::import::CandidateDraft {
+                        album_title: "Unwritten candidate".to_string(),
+                        album_artist_assignments: Vec::new(),
+                        album_year: String::new(),
+                        pressing: bae_core::import::RawPressingEdit {
+                            year: String::new(),
+                            labels: Vec::new(),
+                            facts: Default::default(),
+                            barcode: String::new(),
+                        },
+                        tracks: Vec::new(),
+                    },
+                    source_discogs_artist_ids: Default::default(),
+                    provenance: None,
+                    cover: None,
+                    assets: bae_core::import::CandidatePreparedAssets::default(),
+                },
             }),
         })
         .await
