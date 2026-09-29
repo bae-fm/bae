@@ -142,8 +142,8 @@ struct FindOnlineAutomaticSection: View {
                     FolderCheckNote(text: folderCheck)
                 }
                 narrowedOut
-                ForEach(missingSourceNotes, id: \.self) { note in
-                    MissingSourceNote(text: note)
+                ForEach(missingSourceNotes, id: \.search) { note in
+                    MissingSourceNote(text: note.text)
                 }
                 keepOwnDraft
                     .padding(.leading, ReleaseGroupSection.rowTextInset)
@@ -245,7 +245,7 @@ struct FindOnlineAutomaticSection: View {
     /// One line per failed lookup whose results the list is missing, closing
     /// it. Named by step as well as source: the source's other steps may have
     /// answered, and those results are on the list.
-    private var missingSourceNotes: [String] {
+    private var missingSourceNotes: [(search: FailedSearch, text: String)] {
         var seen: Set<FailedSearch> = []
         return state.identifyFailures.compactMap { failure in
             guard let search = failure.failedSearch,
@@ -253,9 +253,12 @@ struct FindOnlineAutomaticSection: View {
             else { return nil }
             let source = bridgeCatalogName(catalog: search.source)
             let step = SignalBadgeStyle.sentenceLabel(for: search.step)
-            return String(
-                localized:
-                    "\(source) \(step) results are missing from this list."
+            return (
+                search: search,
+                text: String(
+                    localized:
+                        "\(source) \(step) results are missing from this list."
+                )
             )
         }
     }

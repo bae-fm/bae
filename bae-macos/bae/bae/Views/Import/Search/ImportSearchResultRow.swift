@@ -160,7 +160,10 @@ struct ImportSearchResultRow: View {
                     .lineLimit(1)
                     .truncationMode(.tail)
                 }
-                ForEach(label.catalogNumbers, id: \.self) { catalogNumber in
+                ForEach(
+                    Array(label.catalogNumbers.enumerated()),
+                    id: \.offset
+                ) { _, catalogNumber in
                     StatusChip(verbatim: catalogNumber)
                 }
             }

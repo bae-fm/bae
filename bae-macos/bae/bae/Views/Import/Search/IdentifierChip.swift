@@ -313,7 +313,10 @@ struct LookupReleaseLine: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                 }
-                ForEach(label.catalogNumbers, id: \.self) { catalogNumber in
+                ForEach(
+                    Array(label.catalogNumbers.enumerated()),
+                    id: \.offset
+                ) { _, catalogNumber in
                     StatusChip(verbatim: catalogNumber)
                 }
             }
