@@ -52,7 +52,12 @@ class ImportStore {
         groupKeys: [],
         pendingCovers: [],
         pendingFilters: [],
-        narrowed: nil
+        narrowed: nil,
+        narrowing: BridgeImportListNarrowing(
+            tab: .pending,
+            filterText: "",
+            pendingFilters: []
+        )
     )
 
     /// The fault each watched root was last reported as having. A summary is

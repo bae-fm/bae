@@ -382,6 +382,29 @@ pub struct ImportQueueSummary {
     /// while the text filter or a state narrows it; `None` while nothing
     /// does.
     pub narrowed: Option<NarrowedCount>,
+    /// What the view asked the rows to be narrowed by when this read was
+    /// made: what `narrowed` counts under, so a surface shows the count only
+    /// beside the filter it is for.
+    pub narrowing: ImportListNarrowing,
+}
+
+/// What a view narrows its rows by: the tab, the text filter and the checked
+/// states, as the view states them.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ImportListNarrowing {
+    pub tab: TriageTab,
+    pub filter_text: String,
+    pub pending_filters: PendingFilters,
+}
+
+impl ImportListNarrowing {
+    pub(crate) fn of(view: &ImportListView) -> Self {
+        Self {
+            tab: view.tab,
+            filter_text: view.filter_text.clone(),
+            pending_filters: view.pending_filters.clone(),
+        }
+    }
 }
 
 /// How many of a tab's entries a narrowed list shows, of how many it has.

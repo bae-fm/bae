@@ -5,7 +5,8 @@
 
 use super::{
     GroupHeaderRow, ImportCandidateListLocation, ImportListItem, ImportListOrder,
-    ImportListRequest, ImportListView, ImportQueueSummary, NarrowedCount, PendingFilters, PlacedRow,
+    ImportListNarrowing, ImportListRequest, ImportListView, ImportQueueSummary, NarrowedCount,
+    PendingFilters, PlacedRow,
     UploadStanding,
 };
 use crate::db::{ImportQueueRows, ScanCandidateKind, ScanCandidateListRow};
@@ -687,6 +688,7 @@ fn summarise(
             .pending_filters_on(view.tab)
             .cloned()
             .unwrap_or_default(),
+        narrowing: ImportListNarrowing::of(view),
     }
 }
 

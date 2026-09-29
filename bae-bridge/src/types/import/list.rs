@@ -164,6 +164,18 @@ pub struct BridgeImportQueueSummary {
     /// while the text filter or a state narrows it; absent while nothing
     /// does.
     pub narrowed: Option<BridgeNarrowedCount>,
+    /// What the view asked the rows to be narrowed by when this read was
+    /// made: the filter `narrowed` counts under.
+    pub narrowing: BridgeImportListNarrowing,
+}
+
+/// What a view narrows its rows by. Mirrors
+/// `bae_core::import::ImportListNarrowing`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeImportListNarrowing {
+    pub tab: BridgeTriageTab,
+    pub filter_text: String,
+    pub pending_filters: Vec<BridgePendingState>,
 }
 
 /// How many of a tab's entries a narrowed list shows, of how many it has.

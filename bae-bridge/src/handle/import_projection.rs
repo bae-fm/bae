@@ -461,6 +461,16 @@ mirror_enum! {
 }
 
 mirror_struct! {
+    crate::types::BridgeImportListNarrowing = bae_core::import::ImportListNarrowing,
+    from_core: fn,
+    fields: {
+        tab: (crate::types::BridgeTriageTab),
+        filter_text,
+        pending_filters: (each crate::types::BridgePendingState),
+    },
+}
+
+mirror_struct! {
     crate::types::BridgeImportListView = bae_core::import::ImportListView,
     into_core: pub(super) fn,
     fields: {
@@ -556,6 +566,7 @@ impl crate::types::BridgeImportQueueSummary {
             pending_covers,
             pending_filters,
             narrowed,
+            narrowing,
         } = summary;
         let bae_core::import::FolderScanProgress { statuses, activity } = folder_scans;
         Self {
@@ -582,6 +593,7 @@ impl crate::types::BridgeImportQueueSummary {
                 .map(crate::types::BridgePendingState::from_core)
                 .collect(),
             narrowed: narrowed.map(crate::types::BridgeNarrowedCount::from_core),
+            narrowing: crate::types::BridgeImportListNarrowing::from_core(narrowing),
         }
     }
 }

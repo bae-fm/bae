@@ -577,7 +577,12 @@ struct ImportListPageSourceTests {
                 groupKeys: [],
                 pendingCovers: [],
                 pendingFilters: [],
-                narrowed: nil
+                narrowed: nil,
+                narrowing: BridgeImportListNarrowing(
+                    tab: .pending,
+                    filterText: "",
+                    pendingFilters: []
+                )
             ),
             selectionRevision: 0,
             requestRevision: requestRevision,

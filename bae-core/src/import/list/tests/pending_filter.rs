@@ -775,3 +775,27 @@ fn a_narrowed_tab_counts_what_it_shows_of_its_total() {
         "the states leave Done alone"
     );
 }
+
+/// The summary says which filter its count was made under, so a count is
+/// only ever shown beside the filter it is for.
+#[test]
+fn the_summary_names_the_filter_its_count_is_for() {
+    let mut rows = every_kind();
+    rows.candidates.retain(|row| row.display_path != "Imported");
+    rows.imported.clear();
+    let view = ImportListView {
+        filter_text: "album".to_string(),
+        pending_filters: checked(&[PendingState::NeedsYou]),
+        ..ImportListView::default()
+    };
+    let summary = flattened(&rows, &view).summary;
+    assert_eq!(
+        summary.narrowing,
+        crate::import::ImportListNarrowing {
+            tab: TriageTab::Pending,
+            filter_text: "album".to_string(),
+            pending_filters: checked(&[PendingState::NeedsYou]),
+        }
+    );
+    assert!(summary.narrowed.is_some());
+}

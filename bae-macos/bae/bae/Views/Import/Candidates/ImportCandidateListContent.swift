@@ -258,6 +258,16 @@ struct ImportCandidateListContent: View {
         importStore.summary
     }
 
+    /// What the list is narrowed by as the person has it now: the tab, the
+    /// typed text and the checked states.
+    private var shownNarrowing: BridgeImportListNarrowing {
+        BridgeImportListNarrowing(
+            tab: uiStore.importCandidateTab,
+            filterText: uiStore.importCandidateFilterText,
+            pendingFilters: uiStore.importCandidatePendingFilters
+        )
+    }
+
     private var pendingCovers: [ImageContent] {
         summary.pendingCovers.map { .remote($0) }
     }
@@ -304,7 +314,9 @@ struct ImportCandidateListContent: View {
                             text: filterTextBinding,
                             focused: $filterFocused,
                             pendingFilters: summary.pendingFilters,
-                            narrowed: summary.narrowed
+                            narrowed: summary.narrowedCount(
+                                under: shownNarrowing
+                            )
                         ) { filter in
                             cancelReveal()
                             listSlot.setPendingFilter(filter, checked: false)

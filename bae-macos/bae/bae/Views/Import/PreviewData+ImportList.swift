@@ -97,7 +97,8 @@
             groupKeys: [BridgeFolderReleaseDecisionKey] = [],
             pendingCovers: [BridgeRemoteImageSet] = [],
             pendingFilters: [BridgePendingState] = [],
-            narrowed: BridgeNarrowedCount? = nil
+            narrowed: BridgeNarrowedCount? = nil,
+            filterText: String = ""
         ) -> BridgeImportQueueSummary {
             BridgeImportQueueSummary(
                 counts: BridgeTriageTabCounts(
@@ -111,7 +112,12 @@
                 groupKeys: groupKeys,
                 pendingCovers: pendingCovers,
                 pendingFilters: pendingFilters,
-                narrowed: narrowed
+                narrowed: narrowed,
+                narrowing: BridgeImportListNarrowing(
+                    tab: .pending,
+                    filterText: filterText,
+                    pendingFilters: pendingFilters
+                )
             )
         }
 

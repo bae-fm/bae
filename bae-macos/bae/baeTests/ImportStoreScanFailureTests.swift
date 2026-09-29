@@ -19,7 +19,12 @@ struct ImportStoreScanFailureTests {
             groupKeys: [],
             pendingCovers: [],
             pendingFilters: [],
-            narrowed: nil
+            narrowed: nil,
+            narrowing: BridgeImportListNarrowing(
+                tab: .pending,
+                filterText: "",
+                pendingFilters: []
+            )
         )
     }
 
