@@ -32,9 +32,7 @@
                 ),
                 durationMs: UInt64(180_000 + index * 15000 + drift),
                 audioFormat: sourceAudioFormat,
-                role: .audio,
-                alternatives: [.audio, .notATrack],
-                roleChoice: .audio
+                role: .audio
             )
         }
 
@@ -55,9 +53,7 @@
                     ) : nil,
                 durationMs: nil,
                 audioFormat: file.file.audioFormat,
-                role: role,
-                alternatives: file.alternatives,
-                roleChoice: file.roleChoice
+                role: role
             )
         }
 
@@ -134,9 +130,7 @@
                 )
             ),
             role: .audio,
-            becomes: .slots(first: 1, last: 1),
-            alternatives: [.audio, .notATrack],
-            roleChoice: .audio
+            becomes: .slots(first: 1, last: 1)
         )
 
         static let moreTracksCandidateFiles = BridgeCandidateFiles(
@@ -219,9 +213,7 @@
                                     durationMs: 2_720_000,
                                     audioFormat: moreTracksAudio.file
                                         .audioFormat,
-                                    role: .audio,
-                                    alternatives: moreTracksAudio.alternatives,
-                                    roleChoice: moreTracksAudio.roleChoice
+                                    role: .audio
                                 )
                             ),
                             track: moreTracksEditValues.tracks[0],

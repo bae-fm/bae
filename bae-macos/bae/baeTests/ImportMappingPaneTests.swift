@@ -12,19 +12,12 @@ import Testing
 /// received, and the next value of the candidate is what would redraw it.
 @MainActor
 private final class Recorder {
-    struct RoleCall {
-        let key: String
-        let fileId: String
-        let choice: BridgeFileRoleChoice
-    }
-
     struct BindingCall {
         let sheetFileId: String
         let fileReference: String
         let audioFileId: String?
     }
 
-    var roleCalls: [RoleCall] = []
     var bindCalls: [BindingCall] = []
     var discCalls: [(sheetFileId: String, disc: BridgeSheetDisc)] = []
     var trackEdits: [(key: String, track: BridgeRawTrackEdit)] = []
@@ -67,13 +60,6 @@ private final class Recorder {
             setSheetDisc: { [self] _, sheetFileId, disc in
                 await MainActor.run {
                     discCalls.append((sheetFileId: sheetFileId, disc: disc))
-                }
-            },
-            setFileRole: { [self] key, fileId, choice in
-                await MainActor.run {
-                    roleCalls.append(
-                        RoleCall(key: key, fileId: fileId, choice: choice)
-                    )
                 }
             },
             setCandidateEditField: { [self] _, field, value in
@@ -335,30 +321,6 @@ struct ImportMappingPaneTests {
 }
 
 extension ImportMappingPaneTests {
-
-    // 3. Excluding a file is one write: the role. Its rows leave because the
-    //    folder they described is a different set now, which is core's answer
-    //    and not the pane's edit.
-    @MainActor
-    @Test("excluding a file writes only its role")
-    func excludingAFileWritesOnlyItsRole() async throws {
-        let store = MappingFixtures.store(
-            mapping: MappingFixtures.thirteenFileTable
-        )
-        let recorder = Recorder()
-        let actions = ImportMappingFlow.actions(
-            key: MappingFixtures.candidateKey,
-            services: recorder.services(store)
-        )
-
-        actions.setRole("13.flac", .notATrack)
-        try await Wait.until { !recorder.roleCalls.isEmpty }
-
-        #expect(recorder.roleCalls.count == 1)
-        #expect(recorder.roleCalls.first?.fileId == "13.flac")
-        #expect(recorder.roleCalls.first?.choice == .notATrack)
-        #expect(recorder.trackEdits.isEmpty)
-    }
 
     // Both standalone files and whole containers provide importable audio.
     @MainActor

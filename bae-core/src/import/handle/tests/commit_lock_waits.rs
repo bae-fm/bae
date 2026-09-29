@@ -175,7 +175,8 @@ async fn two_candidates() -> (
 ) {
     let (manager, tmp) = setup_test_manager().await;
     let other = TempDir::new().unwrap();
-    let (held_candidate, held_key, _) = picked_candidate(&manager, &tmp, "Held Album").await;
+    let (mut held_candidate, held_key, _) = picked_candidate(&manager, &tmp, "Held Album").await;
+    add_sheet(&manager, &mut held_candidate, SECOND_FILE_IN_TWO).await;
     let (_, edited_key, _) = picked_candidate(&manager, &other, "Edited Album").await;
     let (reader, entered) = HeldTagReader::new();
     let handle = manager
@@ -230,8 +231,8 @@ async fn a_pane_edit_lands_while_a_pick_reads_another_folders_tags() {
     picked.expect("the pick lands once its read finishes");
 }
 
-/// Taking a track out of a folder redraws its draft from the tags of the
-/// tracks left. While that read waits on the volume, an edit in another
+/// Ignoring a folder's sheet redraws its draft from the tags of the audio it
+/// gives back. While that read waits on the volume, an edit in another
 /// candidate's pane lands.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_pane_edit_lands_while_a_file_decision_reads_another_folders_tags() {
@@ -254,10 +255,10 @@ async fn a_pane_edit_lands_while_a_file_decision_reads_another_folders_tags() {
         let handle = handle.clone();
         async move {
             handle
-                .set_file_role(
+                .set_sheet_disc(
                     held_key,
-                    "01 Track.flac".to_string(),
-                    crate::import::folder_scanner::FileRoleChoice::NotATrack,
+                    "Disc.cue".to_string(),
+                    crate::import::folder_scanner::SheetDisc::Ignored,
                 )
                 .await
         }

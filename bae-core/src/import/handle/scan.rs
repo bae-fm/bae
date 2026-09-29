@@ -558,73 +558,11 @@ impl ImportServiceHandle {
             }));
     }
 
-    /// Make one of a candidate's audio files a track or not a track.
-    ///
-    /// Only files the scan read as audio have a choice; sheets are handled by
-    /// [`Self::set_sheet_binding`]. A file that is not a track still imports
-    /// with the folder, so the content hash the decision is stored under does
-    /// not change. Taking out the last track is refused.
-    pub async fn set_file_role(
-        &self,
-        candidate_key: String,
-        file_id: String,
-        choice: crate::import::folder_scanner::FileRoleChoice,
-    ) -> Result<(), crate::import::ImportError> {
-        let this = self.clone();
-        self.committed(async move {
-            this.set_file_role_write(candidate_key, file_id, choice)
-                .await
-        })
-        .await
-    }
-
-    async fn set_file_role_write(
-        &self,
-        candidate_key: String,
-        file_id: String,
-        choice: crate::import::folder_scanner::FileRoleChoice,
-    ) -> Result<(), crate::import::ImportError> {
-        let Some((files, offered_revision)) =
-            self.actionable_candidate_files(&candidate_key).await?
-        else {
-            return Err(crate::import::ImportError::FileRole {
-                detail: format!("{candidate_key} is not a folder candidate"),
-            });
-        };
-        let Some(entry) = files
-            .files
-            .iter()
-            .find(|entry| entry.file.relative_path == file_id)
-        else {
-            return Err(crate::import::ImportError::FileRole {
-                detail: format!("{candidate_key} has no file {file_id}"),
-            });
-        };
-        if !entry.role_alternatives().contains(&choice) {
-            return Err(crate::import::ImportError::FileRole {
-                detail: format!("{file_id} is not the folder's audio"),
-            });
-        }
-        // As in `set_sheet_disc`, re-picking the current role must not clear
-        // the verdict.
-        if entry.role_choice() == Some(choice) {
-            let _commit = self.folder_state_commit.lock("check a file role").await;
-            self.editable_candidate_for_commit(&candidate_key).await?;
-            debug!("{file_id} is already {choice:?}; nothing to write");
-            return Ok(());
-        }
-
-        self.write_file_edits(&candidate_key, files, offered_revision, |edits| {
-            edits.file_roles.set(file_id, choice);
-        })
-        .await
-    }
-
     /// Add one file decision to the candidate's stored ones, apply it to every
     /// scanned candidate with these files, store the result, and announce it.
     ///
     /// The decision is applied to copies first, so one the folder cannot take
-    /// (unreadable audio, no tracks left) fails with nothing written.
+    /// (unreadable audio) fails with nothing written.
     async fn write_file_edits(
         &self,
         candidate_key: &str,
@@ -639,15 +577,12 @@ impl ImportServiceHandle {
         let current_candidate = self.editable_candidate_for_commit(candidate_key).await?;
         let current_files = &current_candidate.files;
         let expected_revision = current_candidate.file_edit_revision;
-        if current_files.content_hash() != content_hash {
-            return Err(crate::import::ImportError::FileRole {
-                detail: format!("{candidate_key} changed before its file decision was written"),
-            });
-        }
-        if expected_revision != offered_revision {
-            return Err(crate::import::ImportError::FileRole {
-                detail: format!("{candidate_key} file decisions changed before the write"),
-            });
+        if current_files.content_hash() != content_hash || expected_revision != offered_revision {
+            return Err(crate::import::CandidateAsRead::files_moved(
+                offered_revision,
+                crate::import::preparation::CandidateWrite::FileDecisions,
+            )
+            .into());
         }
         let preparation = self
             .library_manager

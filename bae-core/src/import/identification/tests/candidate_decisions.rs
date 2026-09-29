@@ -98,7 +98,7 @@ async fn ignoring_a_cue_replaces_its_song_rows_with_whole_audio() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn a_claimed_candidate_refuses_sheet_and_role_decisions() {
+async fn a_claimed_candidate_refuses_sheet_decisions() {
     let fixture = Fixture::new("claimed-file-decisions").await;
     let dir = fixture.seed_cue_album("Album");
     fixture.scan(1).await;
@@ -127,14 +127,6 @@ async fn a_claimed_candidate_refuses_sheet_and_role_decisions() {
                 "Test Album.cue".to_string(),
                 "Test Album.flac".to_string(),
                 Some("Test Album.flac".to_string()),
-            )
-            .await,
-        fixture
-            .import
-            .set_file_role(
-                key,
-                "02 Test Artist - Track Two (White Noise).flac".to_string(),
-                crate::import::folder_scanner::FileRoleChoice::Audio,
             )
             .await,
     ] {

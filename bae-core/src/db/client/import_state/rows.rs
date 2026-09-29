@@ -1,7 +1,7 @@
 //! Reading a candidate back: its row, its verdict with the matches that hang
 //! off it, its draft's provenance, and its file decisions.
 
-use super::edit_rows::{apply_file_edit_row, read_file_edit_row};
+use super::edit_rows::{apply_sheet_disc_row, read_sheet_disc_row};
 use super::lookup_choice_rows::load_lookup_choices_on;
 use super::signal_rows::load_signals_on;
 use super::verdict_rows::{
@@ -209,8 +209,7 @@ const MATCH_COLUMNS: &str = "content_hash, position, pressing, source, release_i
      document_failure, document_failure_status, album_first_year, \
      track_titles, notes";
 
-const FILE_EDIT_COLUMNS: &str =
-    "content_hash, relative_path, role_choice, sheet_disc, sheet_disc_number";
+const SHEET_DISC_COLUMNS: &str = "content_hash, sheet_id, disc, disc_number";
 
 /// Every candidate's stored matches, keyed by content hash, or just the one
 /// `only` names.
@@ -472,7 +471,7 @@ pub(crate) fn load_states_rows_on(
     })
 }
 
-/// The per-file decisions of every candidate, or of the one `only` names.
+/// The sheet decisions of every candidate, or of the one `only` names.
 /// `CandidateFileEdits::revision` is left at zero — it lives on the state row,
 /// which is what fills it in.
 /// The file decisions a read fetched, still to be assembled — boxed so a read
@@ -485,12 +484,12 @@ fn load_edits_on(
 ) -> Result<FinishEdits<HashMap<String, CandidateFileEdits>>, DbError> {
     let rows = sql.query(
         &format!(
-            "SELECT {FILE_EDIT_COLUMNS} FROM import_candidate_file_edit \
+            "SELECT {SHEET_DISC_COLUMNS} FROM import_candidate_sheet_disc \
              WHERE :only IS NULL OR content_hash = :only \
-             ORDER BY content_hash, relative_path"
+             ORDER BY content_hash, sheet_id"
         ),
         named_params! { ":only": only },
-        |row| Ok(read_file_edit_row(row)),
+        |row| Ok(read_sheet_disc_row(row)),
     )?;
     let references = sql.query(
         "SELECT content_hash, sheet_id, file_reference, file_id FROM import_candidate_sheet_reference WHERE :only IS NULL OR content_hash = :only ORDER BY content_hash, sheet_id, file_reference",
@@ -502,7 +501,7 @@ fn load_edits_on(
         for row in rows {
             let row = row?;
             let entry = edits.entry(row.content_hash.clone()).or_default();
-            apply_file_edit_row(entry, row)?;
+            apply_sheet_disc_row(entry, row)?;
         }
         for (hash, sheet, reference, file) in references {
             use crate::import::folder_scanner::UserSheetBinding;

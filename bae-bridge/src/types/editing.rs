@@ -272,8 +272,7 @@ pub enum BridgeTrackArtistAssignments {
 
 /// The audio a track's samples come from. Mirrors
 /// `bae_core::import::AudioFile`. `file_id` is the file's identity within the
-/// release (its relative path), the same id the file-roles table and the sheet
-/// bindings use.
+/// release (its relative path), the same id the sheet bindings use.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeAudioFile {
     /// The whole file holds this one track.
@@ -322,7 +321,7 @@ pub enum BridgeMappingRole {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeMappingFile {
     /// The file's identity within the release (its relative path) — the id
-    /// `AppHandle::set_file_role` and the sheet bindings take.
+    /// the sheet bindings take.
     pub file_id: String,
     /// The file's own name, without its directory prefix.
     pub name: String,
@@ -336,12 +335,6 @@ pub struct BridgeMappingFile {
     pub duration_ms: Option<u64>,
     pub audio_format: Option<BridgeAudioFormat>,
     pub role: BridgeMappingRole,
-    /// The roles this file can be put in, the one in force first. Empty when
-    /// its role is nobody's decision to make.
-    pub alternatives: Vec<BridgeFileRoleChoice>,
-    /// The role in force as a choice — what a picker shows selected. `None`
-    /// exactly when `alternatives` is empty.
-    pub role_choice: Option<BridgeFileRoleChoice>,
 }
 
 /// One entry of a track sheet, as the mapping table's left half shows it.

@@ -196,7 +196,6 @@ fn sidecar_of(folder: &str, names: &[&str]) -> FolderSidecar {
                 .map(|name| CandidateFile {
                     file: ScannedFile::new(folder.join(name), name.to_string(), 10, 1),
                     role: FileRole::Artwork,
-                    proposed_audio: false,
                 })
                 .collect(),
         ),
@@ -354,12 +353,10 @@ fn sidecar_owner_files() -> crate::import::folder_scanner::CategorizedFiles {
                 file: ScannedFile::new(folder.join("00.flac"), "00.flac".into(), 1_000, 1)
                     .with_test_flac_audio(),
                 role: FileRole::Audio,
-                proposed_audio: true,
             },
             CandidateFile {
                 file: ScannedFile::new(folder.join("cover.jpg"), "cover.jpg".into(), 10, 1),
                 role: FileRole::Artwork,
-                proposed_audio: false,
             },
         ],
         parts: Vec::new(),

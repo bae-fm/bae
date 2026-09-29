@@ -5,10 +5,6 @@ import Foundation
 /// the left half's decisions about the folder, and the right half's about the
 /// tracklist being committed.
 struct ImportMappingActions {
-    /// Put a file in a role, or put it back: the file's id, then the choice.
-    /// Core persists it, and the table is re-read because a role change is a
-    /// different set of rows.
-    let setRole: (String, BridgeFileRoleChoice) -> Void
     /// Associate a sheet's FILE reference with audio: sheet id, reference,
     /// and audio id, or `nil` to clear that reference.
     let bindSheet: (String, String, String?) -> Void

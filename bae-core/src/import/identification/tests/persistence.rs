@@ -54,7 +54,6 @@ fn synthetic_candidate(path: &str, size: u64) -> FolderCandidate {
         name: path.trim_start_matches('/').to_string(),
         files: CategorizedFiles {
             files: vec![CandidateFile {
-                proposed_audio: true,
                 file: ScannedFile::new(
                     PathBuf::from(format!("{path}/01.flac")),
                     "01.flac".to_string(),
@@ -319,23 +318,13 @@ async fn restating_a_file_decision_changes_nothing() {
     let key = dir.to_string_lossy().into_owned();
     let mut events = fixture.import.every_event();
 
-    // The sheet already carves disc one, the loose file is already audio, and
-    // the sheet already binds its own container.
+    // The sheet already carves disc one and already binds its own container.
     fixture
         .import
         .set_sheet_disc(
             key.clone(),
             "Test Album.cue".to_string(),
             crate::import::folder_scanner::SheetDisc::Disc { number: 1 },
-        )
-        .await
-        .unwrap();
-    fixture
-        .import
-        .set_file_role(
-            key.clone(),
-            "02 Test Artist - Track Two (White Noise).flac".to_string(),
-            crate::import::folder_scanner::FileRoleChoice::Audio,
         )
         .await
         .unwrap();

@@ -55,9 +55,7 @@ extension MappingFixtures {
             ),
             durationMs: UInt64(200_000 + index * 1000),
             audioFormat: audioFormat,
-            role: .audio,
-            alternatives: [.audio, .notATrack],
-            roleChoice: .audio
+            role: .audio
         )
     }
 
@@ -148,9 +146,7 @@ extension MappingFixtures {
         ),
         durationMs: 2_400_000,
         audioFormat: audioFormat,
-        role: .audio,
-        alternatives: [.audio, .notATrack],
-        roleChoice: .audio
+        role: .audio
     )
 
     static let container = BridgeMappingContainer(

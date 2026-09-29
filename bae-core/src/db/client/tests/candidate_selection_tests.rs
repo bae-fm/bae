@@ -40,7 +40,6 @@ fn distinct(root: &str, name: &str, n: u64) -> FolderCandidate {
         name,
         CategorizedFiles {
             files: vec![CandidateFile {
-                proposed_audio: true,
                 file: ScannedFile::new(folder.join("01.flac"), "01.flac".to_string(), 1_000 + n, 1)
                     .with_test_flac_audio(),
                 role: FileRole::Audio,

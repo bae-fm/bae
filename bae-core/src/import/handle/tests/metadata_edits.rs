@@ -69,16 +69,6 @@ async fn assert_every_mutation_refused(
             .await
             .map(drop),
     );
-    refused(
-        handle
-            .set_file_role(
-                key.to_string(),
-                "02 Track.flac".to_string(),
-                crate::import::folder_scanner::FileRoleChoice::NotATrack,
-            )
-            .await
-            .map(drop),
-    );
 }
 
 /// A typed field replaces that one field of the form and leaves the rest to
@@ -271,21 +261,38 @@ async fn an_edited_track_row_redraws_alone() {
     shut_down(handle).await;
 }
 
+/// Ignoring a sheet gives its container back as one track; the audio the
+/// decision did not touch keeps the track a person named.
 #[tokio::test(flavor = "multi_thread")]
 async fn changing_audio_preserves_the_metadata_of_surviving_tracks() {
-    let (handle, _tmp, key, hash) = pane_fixture().await;
-    let mut tracks = track_rows(&pane(&handle, &key).await.mapping);
-    tracks[1].title = "Renamed".to_string();
+    let StoredCandidate {
+        handle,
+        candidate,
+        key,
+        tmp: _tmp,
+        ..
+    } = stored_candidate_with_sheet(SECOND_FILE_IN_TWO).await;
+    let hash = candidate.files.content_hash();
     handle
-        .set_candidate_track_edit(&key, tracks[1].clone())
+        .select_candidate_metadata_provenance(
+            key.clone(),
+            crate::import::MetadataProvenance::FileMetadata,
+        )
+        .await
+        .unwrap();
+    let mut tracks = track_rows(&pane(&handle, &key).await.mapping);
+    assert_eq!(tracks.len(), 3);
+    tracks[0].title = "Renamed".to_string();
+    handle
+        .set_candidate_track_edit(&key, tracks[0].clone())
         .await
         .unwrap();
 
     handle
-        .set_file_role(
+        .set_sheet_disc(
             key,
-            "01 Track.flac".to_string(),
-            crate::import::folder_scanner::FileRoleChoice::NotATrack,
+            "Disc.cue".to_string(),
+            crate::import::folder_scanner::SheetDisc::Ignored,
         )
         .await
         .unwrap();
@@ -297,12 +304,16 @@ async fn changing_audio_preserves_the_metadata_of_surviving_tracks() {
         .unwrap()
         .expect("the reshaped candidate remains prepared");
     assert_eq!(
-        preparation.draft.tracks[0].edit.file,
-        crate::import::AudioFile::Standalone {
-            file_id: "02 Track.flac".to_string(),
-        }
+        preparation
+            .draft
+            .tracks
+            .iter()
+            .map(|track| track.edit.file.clone())
+            .collect::<Vec<_>>(),
+        ["01 Track.flac", "02 Track.flac"].map(|file_id| crate::import::AudioFile::Standalone {
+            file_id: file_id.to_string(),
+        }),
     );
-    assert_eq!(preparation.draft.tracks.len(), 1);
     assert_eq!(preparation.draft.tracks[0].edit.title, "Renamed");
 
     shut_down(handle).await;

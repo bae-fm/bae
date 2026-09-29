@@ -402,7 +402,6 @@ mod tests {
         let categorized = CategorizedFiles {
             files: vec![
                 CandidateFile {
-                    proposed_audio: false,
                     file: cue.clone(),
                     role: FileRole::TrackSheet {
                         sheet: crate::cue_flac::CueSheet {
@@ -423,12 +422,10 @@ mod tests {
                     },
                 },
                 CandidateFile {
-                    proposed_audio: true,
                     file: flac.clone(),
                     role: FileRole::Audio,
                 },
                 CandidateFile {
-                    proposed_audio: false,
                     file: cover.clone(),
                     role: FileRole::Artwork,
                 },

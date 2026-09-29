@@ -12,7 +12,6 @@ fn draft(sides: &[Option<i32>]) -> CandidateDraft {
                     file: ScannedFile::new(name.clone().into(), name, 100, 1)
                         .with_test_flac_audio(),
                     role: FileRole::Audio,
-                    proposed_audio: true,
                 }
             })
             .collect(), parts: Vec::new(), 

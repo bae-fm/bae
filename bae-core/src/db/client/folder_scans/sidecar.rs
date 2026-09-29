@@ -65,7 +65,6 @@ pub(crate) fn load_sidecar(
                         "other" => FileRole::Other,
                         other => return Err(unreadable("scan_sidecar_file.role", other)),
                     },
-                    proposed_audio: false,
                 })
             })
             .collect::<Result<_, DbError>>()?,

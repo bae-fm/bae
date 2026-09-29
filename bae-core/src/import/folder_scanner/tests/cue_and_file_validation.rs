@@ -194,7 +194,6 @@ fn content_hash_is_location_independent_and_size_sensitive() {
 #[test]
 fn content_hash_changes_with_file_modification_time() {
     let entry = |modified_at_ns| CandidateFile {
-        proposed_audio: true,
         file: ScannedFile::new(
             PathBuf::from("/music/01.flac"),
             "01.flac".to_string(),
@@ -217,7 +216,6 @@ fn content_hash_changes_with_file_modification_time() {
 #[test]
 fn content_hash_is_independent_of_discovery_order() {
     let entry = |name: &str, size: u64, role: FileRole| CandidateFile {
-        proposed_audio: matches!(role, FileRole::Audio),
         file: ScannedFile::new(PathBuf::from(name), name.to_string(), size, 1),
         role,
     };

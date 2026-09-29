@@ -23,7 +23,6 @@ fn candidate(root: &str) -> FolderCandidate {
             )
             .with_test_flac_audio(),
             role: FileRole::Audio,
-            proposed_audio: true,
         })
         .collect();
     FolderCandidate {

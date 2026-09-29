@@ -198,15 +198,6 @@ pub enum ImportError {
     #[error("that audio can no longer back this sheet: {detail}")]
     SheetBinding { detail: String },
 
-    /// A file-role change could not be applied: the candidate or the file named
-    /// is not what it was when the roles table offered it, or the change would
-    /// leave the release with no tracks at all. Taking out the last of a
-    /// folder's audio is the one role change that is refused — the folder would
-    /// stop being a release, and there would be nothing left to import.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    #[error("that file's role can't be changed: {detail}")]
-    FileRole { detail: String },
-
     /// A watched root or a candidate path under one is spelled in a way the
     /// store refuses to key by: relative, climbing out of itself, or not the
     /// one canonical spelling.
@@ -317,7 +308,6 @@ impl ImportError {
             | Self::AlreadyInLibrary { .. }
             | Self::Edit(_)
             | Self::SheetBinding { .. }
-            | Self::FileRole { .. }
             | Self::WatchedFolder { .. }
             | Self::Watch { .. } => C::Import,
         };

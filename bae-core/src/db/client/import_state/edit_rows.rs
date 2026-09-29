@@ -1,16 +1,10 @@
-//! One candidate's per-file decisions as rows.
-//!
-//! The three things a person can settle about a file — its role, what a sheet
-//! describes, which disc a sheet is — are three columns of one row keyed by
-//! the file's relative path. An absent row is no decision at all; a column is
-//! NULL where nothing was decided about that aspect.
+//! One candidate's sheet decisions as rows: which disc each sheet is, and
+//! which audio each of its `FILE` references describes. An absent row is no
+//! decision at all.
 
 use super::verdict_rows::unreadable;
 use super::*;
-use crate::import::folder_scanner::{
-    CandidateFileEdits, FileRoleChoice, SheetDisc, UserSheetBinding,
-};
-use std::collections::BTreeSet;
+use crate::import::folder_scanner::{CandidateFileEdits, SheetDisc, UserSheetBinding};
 
 pub(super) fn delete_file_edits(
     sql: &SqlContext<'_, '_>,
@@ -21,7 +15,7 @@ pub(super) fn delete_file_edits(
         [content_hash],
     )?;
     sql.execute(
-        "DELETE FROM import_candidate_file_edit WHERE content_hash = ?",
+        "DELETE FROM import_candidate_sheet_disc WHERE content_hash = ?",
         [content_hash],
     )?;
     Ok(())
@@ -34,36 +28,15 @@ pub(super) fn insert_file_edits(
     content_hash: &str,
     edits: &CandidateFileEdits,
 ) -> Result<(), DbError> {
-    let decided: BTreeSet<&str> = edits
-        .file_roles
-        .iter()
-        .map(|(file_id, _)| file_id)
-        .chain(edits.sheet_discs.iter().map(|(file_id, _)| file_id))
-        .collect();
-    for relative_path in decided {
-        let role_choice = edits
-            .file_roles
-            .get(relative_path)
-            .map(|choice| match choice {
-                FileRoleChoice::Audio => "audio",
-                FileRoleChoice::NotATrack => "not_a_track",
-            });
-        let (sheet_disc, sheet_disc_number) = match edits.sheet_discs.get(relative_path) {
-            None => (None, None),
-            Some(SheetDisc::Ignored) => (Some("ignored"), None),
-            Some(SheetDisc::Disc { number }) => (Some("disc"), Some(*number)),
+    for (sheet_id, disc) in edits.sheet_discs.iter() {
+        let (kind, number) = match disc {
+            SheetDisc::Ignored => ("ignored", None),
+            SheetDisc::Disc { number } => ("disc", Some(*number)),
         };
         sql.execute(
-            "INSERT INTO import_candidate_file_edit \
-                 (content_hash, relative_path, role_choice, sheet_disc, sheet_disc_number) \
-             VALUES (?, ?, ?, ?, ?)",
-            params![
-                content_hash,
-                relative_path,
-                role_choice,
-                sheet_disc,
-                sheet_disc_number,
-            ],
+            "INSERT INTO import_candidate_sheet_disc \
+                 (content_hash, sheet_id, disc, disc_number) VALUES (?, ?, ?, ?)",
+            params![content_hash, sheet_id, kind, number],
         )?;
     }
     for (sheet_id, references) in edits.sheet_bindings.iter() {
@@ -79,59 +52,47 @@ pub(super) fn insert_file_edits(
     Ok(())
 }
 
-pub(super) struct FileEditRow {
+pub(super) struct SheetDiscRow {
     pub(super) content_hash: String,
-    relative_path: String,
-    role_choice: Option<String>,
-    sheet_disc: Option<String>,
-    sheet_disc_number: Option<i64>,
+    sheet_id: String,
+    disc: String,
+    disc_number: Option<i64>,
 }
 
-pub(super) fn read_file_edit_row(row: &Row<'_>) -> Result<FileEditRow, DbError> {
-    Ok(FileEditRow {
+pub(super) fn read_sheet_disc_row(row: &Row<'_>) -> Result<SheetDiscRow, DbError> {
+    Ok(SheetDiscRow {
         content_hash: row.get("content_hash")?,
-        relative_path: row.get("relative_path")?,
-        role_choice: row.get("role_choice")?,
-        sheet_disc: row.get("sheet_disc")?,
-        sheet_disc_number: row.get("sheet_disc_number")?,
+        sheet_id: row.get("sheet_id")?,
+        disc: row.get("disc")?,
+        disc_number: row.get("disc_number")?,
     })
 }
 
 /// Fold one stored row into the decisions being assembled for its candidate.
-pub(super) fn apply_file_edit_row(
+pub(super) fn apply_sheet_disc_row(
     edits: &mut CandidateFileEdits,
-    row: FileEditRow,
+    row: SheetDiscRow,
 ) -> Result<(), DbError> {
-    if let Some(role_choice) = row.role_choice {
-        let choice = match role_choice.as_str() {
-            "audio" => FileRoleChoice::Audio,
-            "not_a_track" => FileRoleChoice::NotATrack,
-            other => return Err(unreadable("role_choice", other)),
-        };
-        edits.file_roles.set(row.relative_path.clone(), choice);
-    }
-    if let Some(sheet_disc) = row.sheet_disc {
-        let disc = match sheet_disc.as_str() {
-            "ignored" => SheetDisc::Ignored,
-            "disc" => {
-                let number = row.sheet_disc_number.ok_or_else(|| {
+    let disc = match row.disc.as_str() {
+        "ignored" => SheetDisc::Ignored,
+        "disc" => {
+            let number = row.disc_number.ok_or_else(|| {
+                DbError::Message(format!(
+                    "the disc stored for {} states no number",
+                    row.sheet_id
+                ))
+            })?;
+            SheetDisc::Disc {
+                number: u32::try_from(number).map_err(|_| {
                     DbError::Message(format!(
-                        "the disc stored for {} states no number",
-                        row.relative_path
+                        "the disc stored for {} is numbered {number}",
+                        row.sheet_id
                     ))
-                })?;
-                SheetDisc::Disc {
-                    number: u32::try_from(number).map_err(|_| {
-                        DbError::Message(format!(
-                            "the disc stored for {} is numbered {number}",
-                            row.relative_path
-                        ))
-                    })?,
-                }
+                })?,
             }
-            other => return Err(unreadable("sheet_disc", other)),
-        };
-        edits.sheet_discs.set(row.relative_path, disc);
-    }
+        }
+        other => return Err(unreadable("disc", other)),
+    };
+    edits.sheet_discs.set(row.sheet_id, disc);
     Ok(())
 }

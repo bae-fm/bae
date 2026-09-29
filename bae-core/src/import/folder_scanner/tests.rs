@@ -17,7 +17,6 @@ fn audio_entry(path: &str, relative_path: &str, size: u64) -> CandidateFile {
         file: ScannedFile::new(PathBuf::from(path), relative_path.to_string(), size, 1)
             .with_test_flac_audio(),
         role: FileRole::Audio,
-        proposed_audio: true,
     }
 }
 

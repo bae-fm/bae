@@ -36,19 +36,8 @@ impl BridgeCandidateFile {
     ) -> Self {
         use bae_core::import::folder_scanner::{CandidateFile, FileRole};
 
-        let alternatives = entry
-            .role_alternatives()
-            .iter()
-            .copied()
-            .map(BridgeFileRoleChoice::from_core)
-            .collect();
-        let role_choice = entry.role_choice().map(BridgeFileRoleChoice::from_core);
         let cover_choice = entry.cover_choice().map(BridgeCoverChoice::from_core);
-        let CandidateFile {
-            file,
-            role,
-            proposed_audio: _,
-        } = entry;
+        let CandidateFile { file, role } = entry;
         let file = BridgeFileInfo::from_core(&file);
         let role = match role {
             FileRole::Audio => BridgeFileRole::Audio,
@@ -70,17 +59,8 @@ impl BridgeCandidateFile {
             file,
             role,
             becomes: BridgeFileBecomes::from_core(becomes),
-            alternatives,
-            role_choice,
         }
     }
-}
-
-mirror_enum! {
-    BridgeFileRoleChoice = bae_core::import::folder_scanner::FileRoleChoice,
-    from_core: pub(crate) fn,
-    into_core: pub(crate) fn,
-    variants: { Audio, NotATrack },
 }
 
 mirror_enum! {
@@ -208,8 +188,6 @@ impl BridgeMappingFile {
             duration_ms,
             audio_format,
             role,
-            alternatives,
-            role_choice,
         } = file;
         BridgeMappingFile {
             role: BridgeMappingRole::from_core(role),
@@ -220,11 +198,6 @@ impl BridgeMappingFile {
             size,
             duration_ms,
             audio_format: audio_format.map(BridgeAudioFormat::from_core),
-            alternatives: alternatives
-                .into_iter()
-                .map(BridgeFileRoleChoice::from_core)
-                .collect(),
-            role_choice: role_choice.map(BridgeFileRoleChoice::from_core),
         }
     }
 }
@@ -413,7 +386,6 @@ mod cover_projection_tests {
                         1,
                     ),
                     role: FileRole::Artwork,
-                    proposed_audio: false,
                 })
                 .collect(),
             parts: Vec::new(),

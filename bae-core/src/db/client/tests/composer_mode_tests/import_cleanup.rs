@@ -188,7 +188,6 @@ async fn finalize_refuses_metadata_that_changed_after_queue_admission() {
             )
             .with_test_flac_audio(),
             role: crate::import::folder_scanner::FileRole::Audio,
-            proposed_audio: true,
         }], parts: Vec::new(), 
     };
     let candidate = super::candidate_with(

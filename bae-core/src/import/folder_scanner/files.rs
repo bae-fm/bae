@@ -111,7 +111,7 @@ pub struct SheetAudioFile {
 }
 
 /// What a track sheet's `FILE` directives resolved to. The scan settles it
-/// once, against the roles in force, and every reader takes the settled
+/// once, against the folder's audio, and every reader takes the settled
 /// pairing from here rather than resolving the directives again. A sheet that
 /// describes nothing is a question for the user, never a verdict on the
 /// folder.
@@ -149,8 +149,7 @@ impl SheetBinding {
 ///
 /// Cue filenames are arbitrary — `CD1.cue` may hold disc two — so the mapping
 /// cannot read the order off the names. This is the answer, and like a sheet's
-/// binding and a file's role it is the user's to overrule and it survives a
-/// restart.
+/// binding it is the user's to overrule and it survives a restart.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum SheetDisc {
@@ -207,33 +206,6 @@ impl<V> Edits<V> {
 /// among the folder's bound sheets, in `relative_path` order.
 pub type SheetDiscEdits = Edits<SheetDisc>;
 
-/// A role a person can put a file in, as opposed to the whole [`FileRole`] the
-/// scan proposes.
-///
-/// Only audio is a decision here. Every other role either has no consequence to
-/// change — an image is an image — or already has its own editor: a track
-/// sheet's job is decided by what it is bound to, so taking a sheet out of the
-/// tracklist is clearing its binding, not a second control saying the same
-/// thing.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(tag = "kind", rename_all = "snake_case")]
-pub enum FileRoleChoice {
-    /// One of the release's tracks.
-    Audio,
-    /// Carried with the release — the folder is the release, so it still
-    /// imports, uploads, and comes back on export — but not one of its tracks.
-    /// This is what a slot's Exclude action writes.
-    NotATrack,
-}
-
-/// Every file role the user has decided for one candidate.
-///
-/// A file *absent* from this is not a decision — the scan's proposal stands.
-/// Both variants are therefore stored: putting a file back is as much a
-/// decision as taking it out, and re-guessing after either one is the answer
-/// that is certainly not what was asked for.
-pub type FileRoleEdits = Edits<FileRoleChoice>;
-
 /// One track sheet's binding as the *user* set it — the second writer of
 /// [`SheetBinding`], alongside the scan.
 ///
@@ -269,26 +241,23 @@ impl SheetBindingEdits {
     }
 }
 
-/// Everything the user has settled about one candidate's files: which audio
-/// each track sheet describes, which disc each sheet's entries become, and
-/// which files are the release's tracks.
+/// Everything the user has settled about one candidate's track sheets: which
+/// audio each `FILE` reference describes, and which disc each sheet's entries
+/// become.
 ///
-/// One value because they settle together — every part is keyed by the same
+/// One value because they settle together — both are keyed by the same
 /// content hash and read by the same scan, and asking for them separately
-/// would be several things to keep in step. On disk they are one
-/// `import_candidate_file_edit` row per file, its three columns holding
-/// whichever of the three that file has a decision about.
+/// would be two things to keep in step.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct CandidateFileEdits {
     pub sheet_bindings: SheetBindingEdits,
-    pub file_roles: FileRoleEdits,
     pub sheet_discs: SheetDiscEdits,
     pub revision: u64,
 }
 
 impl CandidateFileEdits {
     pub fn is_empty(&self) -> bool {
-        self.sheet_bindings.is_empty() && self.file_roles.is_empty() && self.sheet_discs.is_empty()
+        self.sheet_bindings.is_empty() && self.sheet_discs.is_empty()
     }
 
     /// These decisions as a release holding the files under `prefix` reads
@@ -298,9 +267,6 @@ impl CandidateFileEdits {
     pub(crate) fn under_prefix(&self, prefix: &str, disc: impl Fn(u32) -> u32) -> Self {
         let named = |file_id: &str| format!("{prefix}{file_id}");
         let mut edits = Self::default();
-        for (file_id, choice) in self.file_roles.iter() {
-            edits.file_roles.set(named(file_id), *choice);
-        }
         for (sheet_id, references) in self.sheet_bindings.iter() {
             for (reference, decision) in references.iter() {
                 let decision = match decision {
@@ -329,9 +295,6 @@ impl CandidateFileEdits {
     /// Every decision in `over` in place of whatever these say about the
     /// same file, taking `over`'s revision.
     pub(crate) fn overlay(&mut self, over: &Self) {
-        for (file_id, choice) in over.file_roles.iter() {
-            self.file_roles.set(file_id.to_string(), *choice);
-        }
         for (sheet_id, references) in over.sheet_bindings.iter() {
             for (reference, decision) in references.iter() {
                 self.sheet_bindings.set_reference(
@@ -419,20 +382,11 @@ pub struct SheetReferenceOptions {
     pub options: Vec<SheetBindingOption>,
 }
 
-/// A file the scan found, and the role in force for it — the scan's proposal,
-/// or the user's decision over it.
+/// A file the scan found, and its role.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct CandidateFile {
     pub file: ScannedFile,
     pub role: FileRole,
-    /// Whether the scan read this file as playable audio.
-    ///
-    /// Kept because [`Self::role`] does not say it once a decision has landed:
-    /// a track the user took out of the release reads [`FileRole::Other`],
-    /// which is also what an unrecognized sidecar reads. This is what makes
-    /// putting it back offerable, and what keeps a JPEG from being offered as
-    /// a track.
-    pub proposed_audio: bool,
 }
 
 impl CandidateFile {
@@ -449,28 +403,6 @@ impl CandidateFile {
             )
         })
     }
-
-    /// The roles this file can be put in, the one in force first, or empty
-    /// when its role is nobody's decision to make.
-    pub fn role_alternatives(&self) -> &'static [FileRoleChoice] {
-        if self.proposed_audio {
-            &[FileRoleChoice::Audio, FileRoleChoice::NotATrack]
-        } else {
-            &[]
-        }
-    }
-
-    /// The role in force as a choice — what a picker shows selected. `None`
-    /// exactly when [`Self::role_alternatives`] is empty.
-    pub fn role_choice(&self) -> Option<FileRoleChoice> {
-        if !self.proposed_audio {
-            return None;
-        }
-        Some(match self.role {
-            FileRole::Audio => FileRoleChoice::Audio,
-            _ => FileRoleChoice::NotATrack,
-        })
-    }
 }
 
 /// What a file's role makes of it in the release being imported — the "Becomes"
@@ -485,15 +417,11 @@ pub enum FileBecomes {
     /// `first == last` is the single-slot case a loose audio file produces.
     Slots { first: u32, last: u32 },
     /// Nothing in the tracklist: an image, a document, a sheet that describes
-    /// nothing, the container a bound sheet carves its slots out of, or a file
-    /// somebody took out. It is still carried with the release.
+    /// nothing, or the container a bound sheet carves its slots out of. It is
+    /// still carried with the release.
     NoSlots,
 }
 
-/// The job a collapsed directory's files share. Audio, track sheets and images
-/// are deliberately absent: a folder of tracks is exactly what the roles table
-/// exists to show one row at a time, and images live in one gallery however
-/// many directories they sit in.
 /// A track sheet the scan parsed, with whatever its `FILE` directive resolved to.
 #[derive(Debug, Clone, Copy)]
 pub struct TrackSheetFile<'a> {
@@ -733,10 +661,9 @@ impl CategorizedFiles {
     /// One parsed sheet with the audio its binding names, or `None` when it
     /// describes nothing.
     ///
-    /// The binding is settled against the roles in force — every file it
-    /// names has the audio role, because settling the bindings is what happens
-    /// after any role changes — so a name that finds no audio here is a
-    /// candidate written by something other than the scan.
+    /// The binding is settled against the folder's audio — every file it names
+    /// has the audio role — so a name that finds no audio here is a candidate
+    /// written by something other than the scan.
     pub fn bound_sheet<'a>(&'a self, sheet: TrackSheetFile<'a>) -> Option<BoundTrackSheet<'a>> {
         if !sheet.binding.is_resolved() {
             return None;
@@ -792,23 +719,18 @@ impl CategorizedFiles {
     /// payload, so the fingerprint cannot describe a different set of files
     /// than the one that gets stored.
     ///
-    /// It fingerprints **files**, never roles. A sheet's binding and a file's role
+    /// It fingerprints **files**, never decisions. A sheet's binding and disc
     /// are user decisions stored under this hash, so a hash that moved when one
     /// of them changed would orphan the very row it addresses on every edit.
-    ///
-    /// That holds only because no role decision removes a file from
-    /// [`Self::release_files`]. Taking a file out of the tracklist takes it out
-    /// of the *tracks*, not out of the release — the folder is the release, so
-    /// the file still imports, uploads and comes back on export. **For whoever
-    /// adds a role that does drop a file from the payload:** this stops
-    /// holding. Decide deliberately whether such a file leaves the payload, and
-    /// therefore whether this hash moves for it. It cannot be both.
+    /// That holds because no decision removes a file from
+    /// [`Self::release_files`]: the folder is the release, so every file
+    /// imports, uploads and comes back on export.
     pub fn content_hash(&self) -> String {
         content_hash_of(self.release_files())
     }
 
     /// Identity of the files whose tags populate the file-metadata preview.
-    /// Changing file metadata or which files have the audio role changes it.
+    /// Changing an audio file's metadata changes it.
     pub fn file_metadata_identity(&self) -> String {
         content_hash_of(self.audio())
     }
@@ -873,15 +795,11 @@ impl CategorizedFiles {
             .collect()
     }
 
-    /// Apply the user's file decisions over what the scan proposed, and
-    /// re-derive everything they decide: which files are audio, what each sheet
-    /// ends up naming, the probed codec that can refuse a binding, and the
-    /// release's source-audio summary.
+    /// Apply the user's sheet decisions over what the scan proposed, and
+    /// re-derive everything they decide: what each sheet ends up naming, the
+    /// probed codec that can refuse a binding, and which disc each sheet is.
     ///
-    /// Roles settle first. A file taken out of the tracklist stops being audio,
-    /// so a sheet bound to it describes nothing — settling the bindings against
-    /// the roles that are still standing is what keeps those two from
-    /// disagreeing. Disc assignments settle last, because the position a sheet
+    /// Disc assignments settle after bindings, because the position a sheet
     /// with no stored decision takes is a position among the sheets that ended
     /// up bound.
     ///
@@ -892,7 +810,6 @@ impl CategorizedFiles {
         &mut self,
         edits: &CandidateFileEdits,
     ) -> Result<(), InvalidReason> {
-        settle_file_roles(&mut self.files, &edits.file_roles);
         match settle_sheet_bindings(
             &mut self.files,
             &edits.sheet_bindings,
@@ -902,9 +819,6 @@ impl CategorizedFiles {
         {
             SettledBindings::Settled => {
                 settle_sheet_discs(&mut self.files, &self.parts, &edits.sheet_discs);
-                if self.audio().next().is_none() {
-                    return Err(InvalidReason::NoValidAudio);
-                }
                 Ok(())
             }
             SettledBindings::CorruptAudio { path } => Err(InvalidReason::CorruptAudioFile { path }),

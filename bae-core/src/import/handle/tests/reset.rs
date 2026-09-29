@@ -29,7 +29,7 @@ async fn reset_setup_restores_initial_metadata() {
     shut_down(handle).await;
 }
 
-use crate::import::folder_scanner::{FileRoleChoice, SheetDisc};
+use crate::import::folder_scanner::SheetDisc;
 use crate::import::{
     AudioFile, CandidateAsRead, CandidateMetadataDraft, CandidatePreparedAssets, MetadataProvenance,
 };
@@ -37,7 +37,7 @@ use crate::import::{
 #[tokio::test(flavor = "multi_thread")]
 async fn reset_setup_restores_cue_choices_and_saves_complete_tags() {
     for prefill in [false, true] {
-        for choice in ["retitled", "ignored", "binding", "role", "disc"] {
+        for choice in ["retitled", "ignored", "binding", "disc"] {
             let StoredCandidate {
                 mut handle,
                 manager,
@@ -58,14 +58,6 @@ async fn reset_setup_restores_cue_choices_and_saves_complete_tags() {
                     .unwrap(),
                 "binding" => handle
                     .set_sheet_binding(key.clone(), "Disc.cue".into(), "01 Track.flac".into(), None)
-                    .await
-                    .unwrap(),
-                "role" => handle
-                    .set_file_role(
-                        key.clone(),
-                        "01 Track.flac".into(),
-                        FileRoleChoice::NotATrack,
-                    )
                     .await
                     .unwrap(),
                 "disc" => handle
@@ -710,18 +702,15 @@ async fn reset_setup_resets_a_combination_sharing_the_same_files() {
     let (manager, _library) = setup_test_manager().await;
     let first_root = TempDir::new().unwrap();
     let second_root = TempDir::new().unwrap();
-    let (_, first_key, _) = picked_candidate(&manager, &first_root, "Volume A").await;
+    let (mut first, first_key, _) = picked_candidate(&manager, &first_root, "Volume A").await;
+    add_sheet(&manager, &mut first, SECOND_FILE_IN_TWO).await;
     let (_, second_key, _) = picked_candidate(&manager, &second_root, "Volume B").await;
     let handle = manager
         .start_import_service(tokio::runtime::Handle::current())
         .await
         .unwrap();
     handle
-        .set_file_role(
-            first_key.clone(),
-            "01 Track.flac".into(),
-            FileRoleChoice::NotATrack,
-        )
+        .set_sheet_disc(first_key.clone(), "Disc.cue".into(), SheetDisc::Ignored)
         .await
         .unwrap();
     let combined_key = handle
@@ -748,13 +737,17 @@ async fn reset_setup_resets_a_combination_sharing_the_same_files() {
             .unwrap();
     }
     let before = preparation(&handle, &folder.files.content_hash()).await;
-    assert_eq!(before.draft.tracks.len(), 3, "the folder's decision carried over");
+    assert_eq!(before.draft.tracks.len(), 4, "the folder's decision carried over");
     handle.reset_candidate_setup(&folder_key).await.unwrap();
     let after = preparation(&handle, &folder.files.content_hash()).await;
-    assert_eq!(after.draft.tracks.len(), 4);
+    assert_eq!(after.draft.tracks.len(), 5, "the sheet carves its file again");
     for key in [&folder_key, &combined_key] {
         let candidate = handle.get_release_candidate(key).await.unwrap().unwrap();
-        assert_eq!(candidate.files.audio().count(), 4, "{key}");
+        assert_eq!(
+            crate::import::audio_layout::audio_units(&candidate.files).len(),
+            5,
+            "{key}"
+        );
         assert_eq!(candidate.file_edit_revision, after.file_edit_revision);
     }
     assert!(combined.grouping.is_some());
@@ -959,28 +952,15 @@ async fn preparation(
 }
 
 async fn cue_candidate() -> StoredCandidate {
-    let mut fixture = stored_candidate().await;
-    std::fs::write(
-        fixture.candidate.path.join("Disc.cue"),
-        concat!(
-            "PERFORMER \"Cue Artist\"\nTITLE \"Cue Album\"\n",
-            "FILE \"01 Track.flac\" WAVE\n",
-            "  TRACK 07 AUDIO\n    TITLE \"Cue First\"\n    INDEX 01 00:00:00\n",
-            "  TRACK 08 AUDIO\n    PERFORMER \"Slice Artist\"\n    INDEX 01 00:00:30\n",
-            "FILE \"02 Track.flac\" WAVE\n",
-            "  TRACK 09 AUDIO\n    TITLE \"Cue Last\"\n    INDEX 01 00:00:00\n",
-        ),
-    )
-    .unwrap();
-    fixture.candidate.files =
-        crate::import::folder_scanner::collect_release_candidate_files_with_scope(
-            &fixture.candidate.path,
-            fixture.candidate.scope,
-            &crate::import::folder_scanner::StoredCandidateEdits::none(),
-        )
-        .unwrap();
-    rescan_into(&fixture.manager, fixture.candidate.clone()).await;
-    fixture
+    stored_candidate_with_sheet(concat!(
+        "PERFORMER \"Cue Artist\"\nTITLE \"Cue Album\"\n",
+        "FILE \"01 Track.flac\" WAVE\n",
+        "  TRACK 07 AUDIO\n    TITLE \"Cue First\"\n    INDEX 01 00:00:00\n",
+        "  TRACK 08 AUDIO\n    PERFORMER \"Slice Artist\"\n    INDEX 01 00:00:30\n",
+        "FILE \"02 Track.flac\" WAVE\n",
+        "  TRACK 09 AUDIO\n    TITLE \"Cue Last\"\n    INDEX 01 00:00:00\n",
+    ))
+    .await
 }
 
 

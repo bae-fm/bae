@@ -57,7 +57,6 @@ async fn picked_candidate(
         let modified_at_ns =
             crate::import::folder_scanner::file_modified_at_ns(&path, &metadata).unwrap();
         files.push(CandidateFile {
-            proposed_audio: true,
             file: ScannedFile::new(path.clone(), relative_path, size, modified_at_ns)
                 .with_test_flac_audio(),
             role: FileRole::Audio,
@@ -69,7 +68,6 @@ async fn picked_candidate(
     let cover_modified_at_ns =
         crate::import::folder_scanner::file_modified_at_ns(&cover_path, &cover_metadata).unwrap();
     files.push(CandidateFile {
-        proposed_audio: false,
         file: ScannedFile::new(
             cover_path.clone(),
             "cover.jpg".to_string(),
@@ -146,6 +144,34 @@ struct StoredCandidate {
 
 async fn stored_candidate() -> StoredCandidate {
     stored_candidate_with(crate::util::http::Http::for_test()).await
+}
+
+/// A sheet carving the second of [`picked_candidate`]'s two files into two
+/// tracks, leaving the first a track of its own.
+const SECOND_FILE_IN_TWO: &str = concat!(
+    "FILE \"02 Track.flac\" WAVE\n",
+    "  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n",
+    "  TRACK 02 AUDIO\n    INDEX 01 00:00:30\n",
+);
+
+/// Write `cue` beside `candidate`'s audio as `Disc.cue` and store the folder
+/// as a scan reads it now, so its sheet decisions have a sheet to act on.
+async fn add_sheet(manager: &LibraryManager, candidate: &mut FolderCandidate, cue: &str) {
+    std::fs::write(candidate.path.join("Disc.cue"), cue).unwrap();
+    candidate.files = crate::import::folder_scanner::collect_release_candidate_files_with_scope(
+        &candidate.path,
+        candidate.scope,
+        &crate::import::folder_scanner::StoredCandidateEdits::none(),
+    )
+    .unwrap();
+    rescan_into(manager, candidate.clone()).await;
+}
+
+/// [`stored_candidate`] holding a `Disc.cue` of `cue`.
+async fn stored_candidate_with_sheet(cue: &str) -> StoredCandidate {
+    let mut fixture = stored_candidate().await;
+    add_sheet(&fixture.manager, &mut fixture.candidate, cue).await;
+    fixture
 }
 
 async fn stored_candidate_with(http: crate::util::http::Http) -> StoredCandidate {
@@ -567,15 +593,15 @@ async fn a_file_decision_makes_the_tags_read_again() {
         key,
         tmp: _tmp,
         ..
-    } = stored_candidate().await;
+    } = stored_candidate_with_sheet(SECOND_FILE_IN_TWO).await;
     let reader = std::sync::Arc::new(CountingFileTagReader::immediate());
     pick_file_tags(&mut handle, &key, reader.clone()).await.unwrap();
 
     handle
-        .set_file_role(
+        .set_sheet_disc(
             key.clone(),
-            "02 Track.flac".to_string(),
-            crate::import::folder_scanner::FileRoleChoice::NotATrack,
+            "Disc.cue".to_string(),
+            crate::import::folder_scanner::SheetDisc::Ignored,
         )
         .await
         .unwrap();
@@ -585,18 +611,31 @@ async fn a_file_decision_makes_the_tags_read_again() {
         .await
         .unwrap()
         .snapshot;
-    assert_eq!(reader.read_count(), 3);
-    assert_eq!(after_file_edit.files.len(), 1);
+    assert_eq!(reader.read_count(), 4);
     assert_eq!(
-        after_file_edit.files[0].title.as_deref(),
-        Some("Track Title 3")
+        titles(&after_file_edit),
+        vec![Some("Track Title 3"), Some("Track Title 4")]
     );
     shut_down(handle).await;
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn file_tags_cannot_restore_mappings_read_before_a_file_decision() {
-    let (handle, tmp, key, hash) = pane_fixture().await;
+    let StoredCandidate {
+        handle,
+        candidate,
+        key,
+        tmp,
+        ..
+    } = stored_candidate_with_sheet(SECOND_FILE_IN_TWO).await;
+    let hash = candidate.files.content_hash();
+    handle
+        .select_candidate_metadata_provenance(
+            key.clone(),
+            crate::import::MetadataProvenance::FileMetadata,
+        )
+        .await
+        .unwrap();
     let stale = handle
         .library_manager
         .load_import_candidate_preparation(&hash)
@@ -604,10 +643,10 @@ async fn file_tags_cannot_restore_mappings_read_before_a_file_decision() {
         .unwrap()
         .expect("the candidate starts prepared");
     handle
-        .set_file_role(
+        .set_sheet_disc(
             key.clone(),
-            "01 Track.flac".to_string(),
-            crate::import::folder_scanner::FileRoleChoice::NotATrack,
+            "Disc.cue".to_string(),
+            crate::import::folder_scanner::SheetDisc::Ignored,
         )
         .await
         .unwrap();
@@ -643,34 +682,42 @@ async fn file_tags_cannot_restore_mappings_read_before_a_file_decision() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn file_role_changes_leave_complete_physical_mappings_for_the_settled_shape() {
-    let (handle, _tmp, key, hash) = pane_fixture().await;
+async fn sheet_decisions_leave_the_draft_drawn_over_the_settled_audio() {
+    let StoredCandidate {
+        handle,
+        candidate,
+        key,
+        tmp: _tmp,
+        ..
+    } = stored_candidate_with_sheet(SECOND_FILE_IN_TWO).await;
+    let hash = candidate.files.content_hash();
 
-    handle
-        .set_file_role(
-            key.clone(),
-            "02 Track.flac".to_string(),
-            crate::import::folder_scanner::FileRoleChoice::NotATrack,
-        )
-        .await
-        .unwrap();
-    handle
-        .set_file_role(
-            key,
-            "02 Track.flac".to_string(),
-            crate::import::folder_scanner::FileRoleChoice::Audio,
-        )
-        .await
-        .unwrap();
-
-    let preparation = handle
-        .library_manager
-        .load_import_candidate_preparation(&hash)
-        .await
-        .unwrap()
-        .expect("the candidate remains prepared");
-    let active = preparation.draft.release_edit();
-    assert!(active.tracks.iter().all(|track| track.file.is_some()));
+    for disc in [
+        crate::import::folder_scanner::SheetDisc::Ignored,
+        crate::import::folder_scanner::SheetDisc::Disc { number: 1 },
+    ] {
+        handle
+            .set_sheet_disc(key.clone(), "Disc.cue".to_string(), disc)
+            .await
+            .unwrap();
+        let settled = handle.get_release_candidate(&key).await.unwrap().unwrap();
+        let preparation = handle
+            .library_manager
+            .load_import_candidate_preparation(&hash)
+            .await
+            .unwrap()
+            .expect("the candidate remains prepared");
+        assert_eq!(
+            preparation
+                .draft
+                .tracks
+                .iter()
+                .map(|track| track.edit.file.clone())
+                .collect::<Vec<_>>(),
+            crate::import::audio_layout::audio_units(&settled.files),
+            "{disc:?}"
+        );
+    }
 
     shut_down(handle).await;
 }

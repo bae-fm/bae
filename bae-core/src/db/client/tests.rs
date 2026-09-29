@@ -111,7 +111,6 @@ fn candidate(root: &str, name: &str) -> FolderCandidate {
         name,
         CategorizedFiles {
             files: vec![CandidateFile {
-                proposed_audio: true,
                 file: ScannedFile::new(
                     folder_below(root, name).join("01.flac"),
                     "01.flac".to_string(),

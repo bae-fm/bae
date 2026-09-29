@@ -138,17 +138,6 @@ fn produced_keys() -> Vec<String> {
         keys.push(bridge_file_role_key(&role));
     }
 
-    // bridge_file_role_choice_key — the roles a person can pick between.
-    for choice in [BridgeFileRoleChoice::Audio, BridgeFileRoleChoice::NotATrack] {
-        keys.push(bridge_file_role_choice_key(choice));
-    }
-    // The picker's option and the column's label name one thing, so they read
-    // under one key.
-    assert_eq!(
-        bridge_file_role_choice_key(BridgeFileRoleChoice::Audio),
-        bridge_file_role_key(&BridgeFileRole::Audio)
-    );
-
     // bridge_file_becomes_key — one slot, a run of slots, or none. The
     // single-slot case has its own key because "slot 12" and "slots 1-11"
     // are different sentences, not one sentence with a range in it.

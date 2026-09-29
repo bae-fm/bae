@@ -519,7 +519,6 @@ struct FileRow {
     audio_channels: Option<i64>,
     file_name: String,
     dir_prefix: Option<String>,
-    proposed_audio: bool,
     role: String,
     sheet_binding: Option<String>,
     sheet_binding_codec: Option<String>,
@@ -536,7 +535,7 @@ pub(crate) fn load_files_rows(
         "SELECT candidate_path, relative_path, absolute_path, size, modified_at_ns, \
                 audio_content_type, audio_duration_ms, audio_sample_rate_hz, \
                 audio_bits_per_sample, audio_bitrate_kbps, audio_channels, file_name, dir_prefix, \
-                proposed_audio, role, sheet_binding, sheet_binding_codec, sheet_disc, \
+                role, sheet_binding, sheet_binding_codec, sheet_disc, \
                 sheet_disc_number \
          FROM scan_candidate_file \
          WHERE watched_folder_path = :root AND (:only IS NULL OR candidate_path = :only) \
@@ -557,12 +556,11 @@ pub(crate) fn load_files_rows(
                 audio_channels: row.get(10)?,
                 file_name: row.get(11)?,
                 dir_prefix: row.get(12)?,
-                proposed_audio: row.get(13)?,
-                role: row.get(14)?,
-                sheet_binding: row.get(15)?,
-                sheet_binding_codec: row.get(16)?,
-                sheet_disc: row.get(17)?,
-                sheet_disc_number: row.get(18)?,
+                role: row.get(13)?,
+                sheet_binding: row.get(14)?,
+                sheet_binding_codec: row.get(15)?,
+                sheet_disc: row.get(16)?,
+                sheet_disc_number: row.get(17)?,
             })
         },
     )?;
@@ -625,7 +623,6 @@ pub(crate) fn load_files_rows(
                         source_audio,
                     },
                     role,
-                    proposed_audio: row.proposed_audio,
                 });
         }
         for (candidate_path, files) in &files {
@@ -635,7 +632,7 @@ pub(crate) fn load_files_rows(
     })
 }
 
-/// A binding is settled against the roles in force, so every file it names
+/// A binding is settled against the folder's audio, so every file it names
 /// has the audio role. The table can only say the file exists; this says it
 /// is audio, so a candidate that violates it is refused here rather than
 /// panicking whoever reads the bound sheets.
@@ -674,7 +671,7 @@ fn source_audio_of(row: &FileRow) -> Result<Option<ScannedAudio>, DbError> {
         row.audio_bitrate_kbps,
         row.audio_channels,
     ) {
-        (None, None, None, None, None, None) if !row.proposed_audio => Ok(None),
+        (None, None, None, None, None, None) if row.role != "audio" => Ok(None),
         (
             Some(content_type),
             Some(duration_ms),
@@ -682,7 +679,7 @@ fn source_audio_of(row: &FileRow) -> Result<Option<ScannedAudio>, DbError> {
             bits_per_sample,
             bitrate_kbps,
             Some(channels),
-        ) if row.proposed_audio => {
+        ) if row.role == "audio" => {
             let content_type = ContentType::from_mime(content_type);
             if !content_type.is_audio() {
                 return Err(DbError::Message(format!(

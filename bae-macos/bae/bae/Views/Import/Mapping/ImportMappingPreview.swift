@@ -77,7 +77,6 @@
     /// without a store behind them.
     func inertMappingActions() -> ImportMappingActions {
         ImportMappingActions(
-            setRole: { _, _ in },
             bindSheet: { _, _, _ in },
             setSheetDisc: { _, _ in },
             openDocument: { _, _ in },

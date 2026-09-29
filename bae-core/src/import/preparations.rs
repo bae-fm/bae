@@ -111,7 +111,7 @@ impl CandidatePreparations {
     /// its verdict cleared it waits for the next run's checks rather than
     /// passing as the person's answer.
     ///
-    /// The content hash covers files, never role decisions, so this addresses
+    /// The content hash covers files, never decisions, so this addresses
     /// the same row the verdict lived in rather than orphaning it — and the
     /// scanned candidates that share the hash have their file rows rewritten
     /// to the settled shape in the same transaction.

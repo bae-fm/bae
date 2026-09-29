@@ -151,27 +151,7 @@ pub(super) enum SettledBindings {
     CorruptAudio { path: String },
 }
 
-/// Settle every file's role: the user's decision where they made one, the
-/// scan's proposal where they did not.
-///
-/// Only a file the scan read as audio can move, and only between being one of
-/// the release's tracks and not being one. Nothing else is a decision anyone
-/// makes here, and a decision about a file that has since stopped being audio —
-/// a stored row this build can no longer place — is ignored rather than
-/// applied to whatever now sits at that path.
-pub(super) fn settle_file_roles(files: &mut [CandidateFile], edits: &FileRoleEdits) {
-    for entry in files.iter_mut() {
-        if !entry.proposed_audio {
-            continue;
-        }
-        entry.role = match edits.get(&entry.file.relative_path) {
-            Some(FileRoleChoice::NotATrack) => FileRole::Other,
-            Some(FileRoleChoice::Audio) | None => FileRole::Audio,
-        };
-    }
-}
-
-/// Settle every parsed sheet's binding, against the roles in force.
+/// Settle every parsed sheet's binding, against the folder's audio.
 ///
 /// The user's decision wins where they made one; where they did not, the
 /// sheet's `FILE` directives resolve against the folder's audio. Either way
@@ -179,8 +159,8 @@ pub(super) fn settle_file_roles(files: &mut [CandidateFile], edits: &FileRoleEdi
 /// because bae can only carve
 /// tracks out of some containers, and a refusal keeps the codec so both the
 /// pane and the picker can say why. Total over the parsed sheets: whatever a
-/// sheet carried in is replaced, so a stale pairing cannot survive a role
-/// change.
+/// sheet carried in is replaced, so a stale pairing cannot survive a changed
+/// folder.
 pub(super) fn settle_sheet_bindings(
     files: &mut [CandidateFile],
     edits: &SheetBindingEdits,
@@ -604,11 +584,7 @@ pub(super) fn categorize_sidecar(
             ProposedRole::Image => FileRole::Artwork,
             ProposedRole::Other => FileRole::Other,
         };
-        files.push(CandidateFile {
-            file,
-            role,
-            proposed_audio: false,
-        });
+        files.push(CandidateFile { file, role });
     }
     // The release file order (see `categorize_files_from_tree`).
     files.sort_by(|a, b| natord::compare_ignore_case(&a.file.relative_path, &b.file.relative_path));
@@ -623,8 +599,8 @@ pub(super) fn categorize_sidecar(
 /// and a `.cue` that will not parse is a document. Only a real defect —
 /// unreadable audio or an unreadable image — returns `Invalid(reason)`.
 ///
-/// A sheet's binding is the one role detail the user also writes, so `stored`
-/// is applied over the proposals before anything downstream reads them: the
+/// A sheet's binding and disc are what the user also writes, so `stored` is
+/// applied over the proposals before anything downstream reads them: the
 /// candidate this returns is the folder as the *user* has settled it, not only
 /// as its filenames read.
 pub(super) fn categorize_files_from_tree(
@@ -690,20 +666,18 @@ pub(super) fn categorize_files_from_tree(
 
     let mut files: Vec<CandidateFile> = Vec::with_capacity(proposed.len());
     for (index, (file, proposed_role)) in proposed.into_iter().enumerate() {
-        let proposed_audio = proposed_role == ProposedRole::Audio;
         let role = match proposed_role {
             ProposedRole::Audio => FileRole::Audio,
             ProposedRole::Cue => FileRole::TrackSheet {
                 sheet: sheets
                     .remove(&index)
                     .expect("a file keeps the CUE role only when its sheet parsed"),
-                // The scan proposes neither a binding nor a disc here. A
-                // sheet's `FILE` directives resolve against the roles in
-                // force, which the user's decisions below decide, so
-                // `settle_sheet_bindings` binds every parsed sheet once those
-                // have landed; and a cue filename says nothing about which
-                // disc it holds, so `settle_sheet_discs` assigns every parsed
-                // sheet against the bindings that end up in force.
+                // The scan proposes neither a binding nor a disc here: the
+                // user's decisions below come first, so `settle_sheet_bindings`
+                // binds every parsed sheet once those have landed; and a cue
+                // filename says nothing about which disc it holds, so
+                // `settle_sheet_discs` assigns every parsed sheet against the
+                // bindings that end up in force.
                 binding: SheetBinding::Unresolved { files: Vec::new() },
                 disc: SheetDisc::Disc { number: 1 },
             },
@@ -711,11 +685,7 @@ pub(super) fn categorize_files_from_tree(
             ProposedRole::Document => FileRole::Document,
             ProposedRole::Other => FileRole::Other,
         };
-        files.push(CandidateFile {
-            file,
-            role,
-            proposed_audio,
-        });
+        files.push(CandidateFile { file, role });
     }
 
     // The user's decisions land over the proposals, and the codec probed for the
@@ -727,7 +697,6 @@ pub(super) fn categorize_files_from_tree(
         .for_hash(&content_hash_of(files.iter().map(|entry| &entry.file)))
         .cloned()
         .unwrap_or_default();
-    settle_file_roles(&mut files, &stored.file_roles);
     match settle_sheet_bindings(&mut files, &stored.sheet_bindings, cancellation)? {
         SettledBindings::Settled => {}
         SettledBindings::CorruptAudio { path } => {

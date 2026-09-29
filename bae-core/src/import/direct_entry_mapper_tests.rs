@@ -9,7 +9,6 @@ fn candidate() -> CategorizedFiles {
                 file: ScannedFile::new(name.into(), name.to_string(), 100, 1)
                     .with_test_flac_audio(),
                 role: FileRole::Audio,
-                proposed_audio: true,
             })
             .collect(), parts: Vec::new(), 
     }

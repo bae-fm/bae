@@ -49,9 +49,7 @@ private func bridgeFiles(fileMetadataIdentity: String) -> BridgeCandidateFiles {
                     audioFormat: nil
                 ),
                 role: .audio,
-                becomes: .slots(first: 1, last: 1),
-                alternatives: [.audio, .notATrack],
-                roleChoice: .audio
+                becomes: .slots(first: 1, last: 1)
             )
         ],
         coverFiles: [],

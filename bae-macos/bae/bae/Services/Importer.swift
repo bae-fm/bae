@@ -53,8 +53,6 @@ private struct ImportOperations: Sendable {
     let clearCandidateMetadata: @Sendable (String) async throws -> UInt64
     let setSheetDisc:
         @Sendable (String, String, BridgeSheetDisc) async throws -> Void
-    let setFileRole:
-        @Sendable (String, String, BridgeFileRoleChoice) async throws -> Void
     let autoIdentifyRelease: @Sendable (String, String) -> Void
     let editReleaseLookupChoices:
         @Sendable (String, String, BridgeLookupChoiceEdit) -> Void
@@ -165,13 +163,6 @@ extension ImportOperations {
                     candidateKey: $0,
                     sheetFileId: $1,
                     disc: $2
-                )
-            },
-            setFileRole: {
-                try await handle.setFileRole(
-                    candidateKey: $0,
-                    fileId: $1,
-                    choice: $2
                 )
             },
             autoIdentifyRelease: {
@@ -377,9 +368,6 @@ final class Importer: Sendable, Observable {
         setSheetDisc:
             @escaping @Sendable (String, String, BridgeSheetDisc) async throws
             -> Void = { _, _, _ in },
-        setFileRole:
-            @escaping @Sendable (String, String, BridgeFileRoleChoice)
-            async throws -> Void = { _, _, _ in },
         autoIdentifyRelease: @escaping @Sendable (String, String) -> Void = {
             _,
             _ in
@@ -488,7 +476,6 @@ final class Importer: Sendable, Observable {
             resetCandidateSetup: resetCandidateSetup,
             clearCandidateMetadata: clearCandidateMetadata,
             setSheetDisc: setSheetDisc,
-            setFileRole: setFileRole,
             autoIdentifyRelease: autoIdentifyRelease,
             editReleaseLookupChoices: editReleaseLookupChoices,
             endReleaseIdentification: endReleaseIdentification,
@@ -607,14 +594,6 @@ extension Importer {
         _ disc: BridgeSheetDisc
     ) async throws {
         try await operations.setSheetDisc(candidateKey, sheetFileId, disc)
-    }
-
-    func setFileRole(
-        _ candidateKey: String,
-        _ fileId: String,
-        _ choice: BridgeFileRoleChoice
-    ) async throws {
-        try await operations.setFileRole(candidateKey, fileId, choice)
     }
 
     /// Re-identify a library release, asking about what core holds for this

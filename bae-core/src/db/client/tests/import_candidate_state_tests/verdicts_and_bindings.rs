@@ -18,7 +18,6 @@ fn track_files_candidate(files: &[(&str, u64)]) -> CategorizedFiles {
                 file: ScannedFile::new(PathBuf::from(*name), name.to_string(), *size, 1)
                     .with_test_flac_audio(),
                 role: FileRole::Audio,
-                proposed_audio: true,
             })
             .collect(),
         parts: Vec::new(),

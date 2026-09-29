@@ -373,29 +373,6 @@ forward! {
                 .await?)
         }
 
-        /// Put one of a candidate's files in a role, or put it back in the one the
-        /// scan proposed. `choice` must be one of that file's
-        /// `BridgeCandidateFile::alternatives`.
-        ///
-        /// This is what a slot's Exclude action calls: taking a file out of the
-        /// tracklist is a fact about the folder, so it is stored rather than kept
-        /// in whichever pane happens to be open — a pane that dropped the row
-        /// locally would have it back the next time a release was picked.
-        ///
-        /// Persists the decision and clears the candidate's stored identify
-        /// verdict, because a folder with one fewer track is a different disc. The
-        /// candidate subscription carries the new roles to the import view.
-        fn set_file_role(
-            candidate_key: String,
-            file_id: String,
-            choice: crate::types::BridgeFileRoleChoice,
-        ) -> () {
-            Ok(this
-                .services
-                .import_set_file_role(candidate_key, file_id, choice.into_core())
-                .await?)
-        }
-
         /// Commit a candidate from what it stores, to where the stored storage
         /// choice says, a pane command.
         fn start_import(candidate_key: String) -> crate::types::BridgePaneOutcome {

@@ -606,7 +606,6 @@ async fn the_list_projects_the_applied_draft_and_cover() {
         .unwrap();
     let mut candidate = candidate(&root, "Album");
     candidate.files.files.push(CandidateFile {
-        proposed_audio: false,
         file: ScannedFile::new(
             PathBuf::from(format!("{root}/Album/cover.jpg")),
             "cover.jpg".to_string(),
@@ -616,7 +615,6 @@ async fn the_list_projects_the_applied_draft_and_cover() {
         role: FileRole::Artwork,
     });
     candidate.files.files.push(CandidateFile {
-        proposed_audio: false,
         file: ScannedFile::new(
             PathBuf::from(format!("{root}/Album/folder.jpg")),
             "folder.jpg".to_string(),
@@ -750,7 +748,6 @@ async fn the_scan_stores_the_folders_own_cover() {
         .unwrap();
     let mut candidate = candidate(&root, "Album");
     candidate.files.files.push(CandidateFile {
-        proposed_audio: false,
         file: ScannedFile::new(
             PathBuf::from(format!("{root}/Album/cover.jpg")),
             "cover.jpg".to_string(),

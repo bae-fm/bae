@@ -2,7 +2,7 @@ mod preparation;
 // What the pane stores under a candidate: the settled signals, the failure an import left, the cover, and the metadata and track
 // rows the user typed.
 
-use crate::import::folder_scanner::{CandidateFileEdits, FileRoleChoice};
+use crate::import::folder_scanner::{CandidateFileEdits, SheetDisc};
 use crate::import::{
     ArtistAssignment, AudioFile, CandidateEditField, CoverSelection,
     ExistingArtist, ImportFailure, ArtistCredit, RawPressingEdit, RawReleaseEdit, RawTrackEdit,

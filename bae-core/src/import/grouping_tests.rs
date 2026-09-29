@@ -22,7 +22,6 @@ fn folder_at(root: &str, relative: &str) -> FolderCandidate {
                     file: ScannedFile::new(path.join(name), name.into(), 100, 12)
                         .with_test_flac_audio(),
                     role: FileRole::Audio,
-                    proposed_audio: true,
                 })
                 .collect(),
             parts: Vec::new(),
@@ -187,41 +186,14 @@ fn file_metadata_keeps_the_releases_numbering_instead_of_the_tags() {
     assert_eq!(edit.tracks[2].title, "Tagged Track 2");
 }
 
-/// A file taken out of a folder's tracklist stays out of the release the
-/// folder joins: the folder's decisions are the release's starting point.
-#[test]
-fn a_members_file_decisions_carry_into_the_release() {
-    use crate::import::folder_scanner::FileRoleChoice;
-    let first = folder_at("/music", "Album/Disc 1");
-    let mut decided = CandidateFileEdits::default();
-    decided
-        .file_roles
-        .set("02.flac".into(), FileRoleChoice::NotATrack);
-    let members = vec![
-        (first, decided),
-        (folder_at("/music", "Album/Disc 2"), CandidateFileEdits::default()),
-    ];
-    let (mut release, inherited) =
-        compose("grouping:test", &host_root("/music"), &members, &[]).unwrap();
-    release.files.apply_candidate_file_edits(&inherited).unwrap();
-    assert_eq!(release.files.audio().count(), 3);
-    assert_eq!(
-        layout(&release),
-        [(Some(1), Some(1)), (Some(2), Some(1)), (Some(2), Some(2))]
-    );
-}
-
-/// A folder carved by track sheets takes a disc per sheet within its own run,
-/// after its loose audio; the next folder's run starts after them.
-#[test]
-fn sheets_take_discs_within_their_folders_run() {
+/// `folder` with a sheet carving its `01.flac` into one track.
+fn with_a_sheet_over_its_first_file(mut folder: FolderCandidate) -> FolderCandidate {
     use crate::cue_flac::{CuePregap, CueSheet, CueTrack, CueTrackMode};
     use crate::import::folder_scanner::SheetAudioFile;
 
-    let mut first = folder_at("/music", "Album/Disc 1");
     let sheet_name = "01.flac.cue".to_string();
-    first.files.files.push(CandidateFile {
-        file: ScannedFile::new(first.path.join(&sheet_name), sheet_name, 100, 12),
+    folder.files.files.push(CandidateFile {
+        file: ScannedFile::new(folder.path.join(&sheet_name), sheet_name, 100, 12),
         role: FileRole::TrackSheet {
             sheet: CueSheet {
                 title: None,
@@ -249,8 +221,39 @@ fn sheets_take_discs_within_their_folders_run() {
             },
             disc: SheetDisc::Disc { number: 1 },
         },
-        proposed_audio: false,
     });
+    folder
+}
+
+/// A folder's decisions about its sheets are the release's starting point: a
+/// sheet the folder ignores stays ignored in the release it joins.
+#[test]
+fn a_members_file_decisions_carry_into_the_release() {
+    let first = with_a_sheet_over_its_first_file(folder_at("/music", "Album/Disc 1"));
+    let mut decided = CandidateFileEdits::default();
+    decided
+        .sheet_discs
+        .set("01.flac.cue".into(), SheetDisc::Ignored);
+    let members = vec![
+        (first, decided),
+        (folder_at("/music", "Album/Disc 2"), CandidateFileEdits::default()),
+    ];
+    let (mut release, inherited) =
+        compose("grouping:test", &host_root("/music"), &members, &[]).unwrap();
+    release.files.apply_candidate_file_edits(&inherited).unwrap();
+    assert!(release.files.carving_sheets().is_empty());
+    assert_eq!(
+        crate::import::audio_layout::audio_units(&release.files).len(),
+        4,
+        "the ignored sheet's container is a track of its own again"
+    );
+}
+
+/// A folder carved by track sheets takes a disc per sheet within its own run,
+/// after its loose audio; the next folder's run starts after them.
+#[test]
+fn sheets_take_discs_within_their_folders_run() {
+    let first = with_a_sheet_over_its_first_file(folder_at("/music", "Album/Disc 1"));
     let release = composed(&[first, folder_at("/music", "Album/Disc 2")]);
     // Disc 1's loose `02.flac` is its first disc, its sheet the second, and
     // Disc 2's loose audio the third.
@@ -323,7 +326,6 @@ fn the_folder_the_releases_sit_in_gives_its_files_to_the_release() {
     let cover = CandidateFile {
         file: ScannedFile::new(album.join("cover.jpg"), "cover.jpg".into(), 10, 1),
         role: FileRole::Artwork,
-        proposed_audio: false,
     };
     let members = plain(&[
         folder_at("/music", "Album/Disc 1"),

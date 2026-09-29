@@ -153,8 +153,8 @@ async fn stale_metadata_revision_cannot_replace_prepared_file_mappings() {
 
     let mut edits = CandidateFileEdits::default();
     edits
-        .file_roles
-        .set("CDImage.flac".to_string(), FileRoleChoice::NotATrack);
+        .sheet_discs
+        .set("CDImage.cue".to_string(), SheetDisc::Ignored);
     let mut settled = files;
     settled.apply_candidate_file_edits(&edits).unwrap();
     let error = crate::import::CandidatePreparations::new(db.clone())
@@ -534,8 +534,8 @@ async fn a_file_decision_clears_what_the_reshaped_folder_invalidates() {
         .unwrap();
     let mut edits = CandidateFileEdits::default();
     edits
-        .file_roles
-        .set("CDImage.flac".to_string(), FileRoleChoice::NotATrack);
+        .sheet_discs
+        .set("CDImage.cue".to_string(), SheetDisc::Ignored);
     let mut settled = files;
     settled.apply_candidate_file_edits(&edits).unwrap();
     let (metadata_revision, mapping_preparation) = current_mapping_preparation(&db, &hash).await;
@@ -590,8 +590,8 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
         .unwrap();
     let mut file_edits = CandidateFileEdits::default();
     file_edits
-        .file_roles
-        .set("CDImage.flac".to_string(), FileRoleChoice::NotATrack);
+        .sheet_discs
+        .set("CDImage.cue".to_string(), SheetDisc::Ignored);
     let mut settled = files;
     settled.apply_candidate_file_edits(&file_edits).unwrap();
     let (metadata_revision, mapping_preparation) = current_mapping_preparation(&db, &hash).await;
@@ -658,8 +658,8 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
             .unwrap()
             .unwrap()
             .file_edits
-            .file_roles,
-        file_edits.file_roles
+            .sheet_discs,
+        file_edits.sheet_discs
     );
 
     crate::import::CandidatePreparations::new(db.clone())

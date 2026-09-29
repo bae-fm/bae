@@ -358,9 +358,7 @@ extension ImportMappingTracksLayoutTests {
                     previewTarget: previewTarget,
                     durationMs: 180_000,
                     audioFormat: MappingFixtures.audioFormat,
-                    role: .audio,
-                    alternatives: [.audio, .notATrack],
-                    roleChoice: .audio
+                    role: .audio
                 )
             ),
             track: BridgeRawTrackEdit(
@@ -527,7 +525,6 @@ extension ImportMappingTracksLayoutTests {
         recording recorder: MappingTrackActionRecorder
     ) -> ImportMappingActions {
         ImportMappingActions(
-            setRole: { _, _ in },
             bindSheet: { sheet, reference, audio in
                 MainActor.assumeIsolated {
                     recorder.sheetBindings.append(

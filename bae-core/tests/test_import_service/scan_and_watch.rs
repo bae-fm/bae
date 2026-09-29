@@ -330,7 +330,7 @@ async fn scan_whose_stored_decisions_cannot_be_read_records_the_failure() {
     generate_album_files(&album, &["01 Track.flac"]);
     let root_key = root.to_string_lossy().into_owned();
 
-    f.db.rename_host_table_for_test("import_candidate_file_edit")
+    f.db.rename_host_table_for_test("import_candidate_sheet_disc")
         .await
         .unwrap();
     f.handle.add_watched_folder(root_key.clone()).await.unwrap();
@@ -359,7 +359,7 @@ async fn scan_whose_stored_decisions_cannot_be_read_records_the_failure() {
         panic!("expected a failed scan, got {:?}", status.status);
     };
     assert!(
-        error.contains("import_candidate_file_edit"),
+        error.contains("import_candidate_sheet_disc"),
         "the failed status carries what went wrong, got {error:?}"
     );
 }

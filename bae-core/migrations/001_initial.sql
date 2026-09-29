@@ -686,7 +686,6 @@ CREATE TABLE IF NOT EXISTS scan_candidate_file (
     audio_channels        INTEGER CHECK (audio_channels IS NULL OR audio_channels > 0),
     file_name             TEXT NOT NULL,
     dir_prefix            TEXT,
-    proposed_audio        INTEGER NOT NULL CHECK (proposed_audio IN (0, 1)),
     role                  TEXT NOT NULL CHECK (role IN ('audio', 'track_sheet', 'artwork', 'document', 'other')),
     sheet_binding         TEXT CHECK (sheet_binding IS NULL OR sheet_binding IN ('resolved', 'override', 'unresolved', 'refused_codec')),
     sheet_binding_codec   TEXT,
@@ -698,11 +697,11 @@ CREATE TABLE IF NOT EXISTS scan_candidate_file (
     CHECK ((sheet_binding = 'refused_codec') = (sheet_binding_codec IS NOT NULL)),
     CHECK ((sheet_disc = 'disc') = (sheet_disc_number IS NOT NULL)),
     CHECK (
-        (proposed_audio = 0 AND audio_content_type IS NULL AND audio_duration_ms IS NULL
+        (role <> 'audio' AND audio_content_type IS NULL AND audio_duration_ms IS NULL
             AND audio_sample_rate_hz IS NULL AND audio_bits_per_sample IS NULL
             AND audio_bitrate_kbps IS NULL AND audio_channels IS NULL)
         OR
-        (proposed_audio = 1 AND audio_content_type IS NOT NULL AND audio_duration_ms IS NOT NULL
+        (role = 'audio' AND audio_content_type IS NOT NULL AND audio_duration_ms IS NOT NULL
             AND audio_sample_rate_hz IS NOT NULL AND audio_channels IS NOT NULL
             AND (
                 (audio_content_type IN (
@@ -1087,18 +1086,16 @@ CREATE TABLE IF NOT EXISTS import_candidate_track_artist_assignment (
     )
 ) STRICT;
 
--- The user's answers about a candidate's files: what a file is, and which disc
--- a CUE sheet describes.
-CREATE TABLE IF NOT EXISTS import_candidate_file_edit (
+-- Which disc of the release the user said each CUE sheet is, or that it is
+-- ignored.
+CREATE TABLE IF NOT EXISTS import_candidate_sheet_disc (
     content_hash TEXT NOT NULL,
-    relative_path TEXT NOT NULL,
-    role_choice TEXT CHECK (role_choice IS NULL OR role_choice IN ('audio', 'not_a_track')),
-    sheet_disc TEXT CHECK (sheet_disc IS NULL OR sheet_disc IN ('disc', 'ignored')),
-    sheet_disc_number INTEGER CHECK (sheet_disc_number IS NULL OR sheet_disc_number >= 1),
-    PRIMARY KEY (content_hash, relative_path),
+    sheet_id     TEXT NOT NULL,
+    disc         TEXT NOT NULL CHECK (disc IN ('disc', 'ignored')),
+    disc_number  INTEGER CHECK (disc_number IS NULL OR disc_number >= 1),
+    PRIMARY KEY (content_hash, sheet_id),
     FOREIGN KEY (content_hash) REFERENCES import_candidate_state(content_hash) ON DELETE CASCADE,
-    CHECK ((sheet_disc = 'disc') = (sheet_disc_number IS NOT NULL)),
-    CHECK (role_choice IS NOT NULL OR sheet_disc IS NOT NULL)
+    CHECK ((disc = 'disc') = (disc_number IS NOT NULL))
 ) STRICT;
 
 -- Which audio file the user bound each FILE reference of a CUE sheet to.

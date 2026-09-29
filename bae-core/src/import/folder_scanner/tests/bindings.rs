@@ -417,7 +417,7 @@ fn scan_with_binding(
     .expect("scan")
 }
 
-// ── What a role makes of a file, and which files are the release's tracks ────
+// ── Which slots each file backs ──────────────────────────────────────────────
 
 /// A folder holding a disc image, its sheet, and two loose bonus tracks. The
 /// "Becomes" column reads off the folder alone — no release has been picked —
@@ -449,121 +449,6 @@ fn becomes_names_the_slots_each_file_backs() {
             ("cover.jpg", FileBecomes::NoSlots),
         ],
     );
-}
-
-/// Taking a file out of the tracklist stops it producing a slot, and the file
-/// stays in the release: the folder is the release, so it still imports. The
-/// content hash is what the decision is stored under, so it must not move.
-#[test]
-fn a_file_taken_out_of_the_tracklist_stops_being_a_slot_and_stays_in_the_release() {
-    let (_tmp, album) = album_dir();
-    for index in 1..=3 {
-        std::fs::write(album.join(format!("{index:02}.flac")), fake_flac()).unwrap();
-    }
-
-    let mut files = scan_files(&album);
-    let hash = files.content_hash();
-    assert_eq!(files.track_count(), 3);
-
-    let mut roles = FileRoleEdits::default();
-    roles.set("03.flac".to_string(), FileRoleChoice::NotATrack);
-    files
-        .apply_candidate_file_edits(&CandidateFileEdits {
-            file_roles: roles.clone(),
-            ..Default::default()
-        })
-        .expect("taking one of three out is fine");
-
-    assert_eq!(files.track_count(), 2, "it stops being one of the tracks");
-    assert_eq!(
-        files.becomes().last(),
-        Some(&FileBecomes::NoSlots),
-        "and it backs no slot",
-    );
-    assert_eq!(
-        files.release_files().count(),
-        3,
-        "the folder is the release: the file is still carried, uploaded and exported",
-    );
-    assert_eq!(
-        files.content_hash(),
-        hash,
-        "the hash covers files, never role decisions, so the row stays addressable",
-    );
-
-    // And a fresh walk with the decision stored reads the same way, which is
-    // what makes an exclusion survive re-picking a release and relaunching.
-    let stored = StoredCandidateEdits::new(HashMap::from([(
-        hash,
-        CandidateFileEdits {
-            file_roles: roles,
-            ..Default::default()
-        },
-    )]));
-    let reopened = collect_release_candidate_files_with_scope(
-        &album,
-        crate::import::ReleaseFileScope::Recursive,
-        &stored,
-    )
-    .expect("scan");
-    assert_eq!(reopened.track_count(), 2);
-    assert_eq!(reopened.release_files().count(), 3);
-}
-
-/// Taking out the last audio a folder has is refused, and refused on a copy, so
-/// nothing is written and the candidate is left exactly as it was. A release
-/// with no tracks is not a state the rest of the import can describe.
-#[test]
-fn taking_out_the_last_audio_is_refused() {
-    let (_tmp, album) = album_dir();
-    std::fs::write(album.join("01.flac"), fake_flac()).unwrap();
-
-    let mut files = scan_files(&album);
-    let mut roles = FileRoleEdits::default();
-    roles.set("01.flac".to_string(), FileRoleChoice::NotATrack);
-
-    let err = files
-        .apply_candidate_file_edits(&CandidateFileEdits {
-            file_roles: roles,
-            ..Default::default()
-        })
-        .expect_err("there would be nothing left to import");
-    assert_eq!(err, InvalidReason::NoValidAudio);
-}
-
-/// A decision only ever moves a file the scan read as audio. A stored decision
-/// naming an image is ignored rather than applied to whatever now sits at that
-/// path, and an image is never offered the choice in the first place.
-#[test]
-fn only_audio_carries_a_role_decision() {
-    let (_tmp, album) = album_dir();
-    std::fs::write(album.join("01.flac"), fake_flac()).unwrap();
-    std::fs::write(album.join("cover.jpg"), fake_jpeg()).unwrap();
-
-    let mut files = scan_files(&album);
-    let alternatives: Vec<(&str, usize)> = files
-        .files
-        .iter()
-        .map(|entry| {
-            (
-                entry.file.relative_path.as_str(),
-                entry.role_alternatives().len(),
-            )
-        })
-        .collect();
-    assert_eq!(alternatives, vec![("01.flac", 2), ("cover.jpg", 0)]);
-
-    let mut roles = FileRoleEdits::default();
-    roles.set("cover.jpg".to_string(), FileRoleChoice::NotATrack);
-    files
-        .apply_candidate_file_edits(&CandidateFileEdits {
-            file_roles: roles,
-            ..Default::default()
-        })
-        .expect("a decision about a non-audio file changes nothing");
-
-    assert!(matches!(files.files[1].role, FileRole::Artwork));
-    assert_eq!(files.track_count(), 1);
 }
 
 /// The folder lists its files the way a person reads them: natural order
@@ -638,3 +523,4 @@ fn multi_file_cue_offers_bindings_for_each_reference() {
     assert_eq!(files.track_count(), 2);
     assert!(!files.sheet_binding_options("disc.cue").is_empty());
 }
+

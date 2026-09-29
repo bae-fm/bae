@@ -117,7 +117,6 @@ extension ImportMappingFlow {
         services: ImportMappingServices
     ) -> ImportMappingActions {
         ImportMappingActions(
-            setRole: roleAction(key: key, services: services),
             bindSheet: bindingAction(key: key, services: services),
             setSheetDisc: discAction(key: key, services: services),
             openDocument: services.openDocument,
@@ -145,23 +144,6 @@ extension ImportMappingFlow {
         _ work: @escaping @MainActor () async -> Void
     ) {
         Task { @MainActor in await work() }
-    }
-
-    @MainActor
-    private static func roleAction(
-        key: String,
-        services: ImportMappingServices
-    ) -> (String, BridgeFileRoleChoice) -> Void {
-        { fileId, choice in
-            start {
-                await setRole(
-                    key: key,
-                    fileId: fileId,
-                    choice: choice,
-                    services: services
-                )
-            }
-        }
     }
 
     @MainActor
@@ -197,23 +179,6 @@ extension ImportMappingFlow {
                 )
             }
         }
-    }
-
-    /// Put a file in a role, or put it back. Core persists the physical mapping
-    /// decision and the per-candidate read redraws the affected rows.
-    @MainActor
-    static func setRole(
-        key: String,
-        fileId: String,
-        choice: BridgeFileRoleChoice,
-        services: ImportMappingServices
-    ) async {
-        _ = await writeRole(
-            key: key,
-            fileId: fileId,
-            choice: choice,
-            services: services
-        )
     }
 
     /// Name the audio `sheetFileId` describes, or clear it with `nil`.
@@ -282,35 +247,6 @@ extension ImportMappingFlow {
                 )
             }
             return
-        }
-    }
-
-    /// Write a file's role through to core. Returns whether the call landed.
-    @MainActor
-    private static func writeRole(
-        key: String,
-        fileId: String,
-        choice: BridgeFileRoleChoice,
-        services: ImportMappingServices
-    ) async -> Bool {
-        await services.endEditing()
-        do {
-            try await services.importer.setFileRole(key, fileId, choice)
-            return true
-        }
-        catch is CancellationError {
-            return false
-        }
-        catch {
-            if let line = error.displayLine {
-                services.onError(
-                    String(
-                        localized:
-                            "Couldn't change what \(fileId) is: \(line)"
-                    )
-                )
-            }
-            return false
         }
     }
 }

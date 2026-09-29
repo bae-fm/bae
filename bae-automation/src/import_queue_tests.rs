@@ -129,7 +129,6 @@ fn candidate(root: &str, name: &str) -> FolderCandidate {
         name: name.to_string(),
         files: CategorizedFiles {
             files: vec![CandidateFile {
-                proposed_audio: true,
                 file: {
                     let mut file = ScannedFile::new(
                         PathBuf::from(format!("{root}/{name}/01.flac")),

@@ -168,29 +168,6 @@ pub fn bridge_lookup_catalogs() -> Vec<crate::types::BridgeCatalog> {
         .to_vec()
 }
 
-/// A role a person can put a file in, as opposed to the whole
-/// [`BridgeFileRole`] the scan proposes. Mirror of bae-core's
-/// `FileRoleChoice`. Only audio is a decision: an image is an image, and a
-/// track sheet's job is decided by what it is bound to.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeFileRoleChoice {
-    /// One of the release's tracks.
-    Audio,
-    /// Carried with the release — the folder is the release — but not one of
-    /// its tracks. What a slot's Exclude action writes.
-    NotATrack,
-}
-
-/// The catalog key naming one file-role choice.
-#[cfg_attr(feature = "desktop", uniffi::export)]
-pub fn bridge_file_role_choice_key(choice: BridgeFileRoleChoice) -> String {
-    match choice {
-        BridgeFileRoleChoice::Audio => "core.import.role.audio",
-        BridgeFileRoleChoice::NotATrack => "core.import.role.not_a_track",
-    }
-    .to_string()
-}
-
 /// What a file's role makes of it in the release being imported — the roles
 /// table's "Becomes" column, as a consequence rather than as prose. Mirror of
 /// bae-core's `FileBecomes`.
@@ -226,13 +203,6 @@ pub struct BridgeCandidateFile {
     /// role does not already say, and what makes the effect of a binding or an
     /// exclusion legible without reading the slot table below.
     pub becomes: BridgeFileBecomes,
-    /// The roles this file can be put in, the one in force first. Empty when
-    /// its role is nobody's decision to make, which is every file the scan did
-    /// not read as audio.
-    pub alternatives: Vec<BridgeFileRoleChoice>,
-    /// The role in force as a choice — what a picker shows selected. `None`
-    /// exactly when `alternatives` is empty.
-    pub role_choice: Option<BridgeFileRoleChoice>,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]

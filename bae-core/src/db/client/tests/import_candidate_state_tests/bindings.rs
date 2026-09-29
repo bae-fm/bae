@@ -129,7 +129,7 @@ async fn a_cleared_binding_survives_a_relaunch() {
 /// changing a binding leaves the row's key alone, **and** clears the
 /// verdict stored under it.
 ///
-/// The hash covers files and never role decisions, so the edit addresses
+/// The hash covers files and never decisions, so the edit addresses
 /// the same row rather than orphaning it — and that row's verdict was
 /// derived from the shape the folder no longer has, so the queue must
 /// answer the candidate again instead of trusting it.
@@ -218,7 +218,7 @@ async fn changing_a_binding_keeps_the_hash_and_clears_the_verdict() {
     assert_eq!(
         unbound.content_hash(),
         hash,
-        "the hash covers files, never role decisions, so the row stays addressable"
+        "the hash covers files, never decisions, so the row stays addressable"
     );
 
     let row = db

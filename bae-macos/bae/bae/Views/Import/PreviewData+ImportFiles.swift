@@ -19,8 +19,6 @@
             dirPrefix: String? = nil,
             localPath: String? = nil
         ) -> BridgeCandidateFile {
-            // Only audio is a decision, so only audio carries alternatives —
-            // the same rule core applies.
             BridgeCandidateFile(
                 file: BridgeFileInfo(
                     name: dirPrefix.map { $0 + name } ?? name,
@@ -31,9 +29,7 @@
                     audioFormat: role.isAudio ? previewSourceAudioFormat : nil
                 ),
                 role: role,
-                becomes: becomes,
-                alternatives: role.isAudio ? [.audio, .notATrack] : [],
-                roleChoice: role.isAudio ? .audio : nil
+                becomes: becomes
             )
         }
 

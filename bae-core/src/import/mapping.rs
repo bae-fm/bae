@@ -6,7 +6,7 @@
 //! joining separate lists.
 
 use crate::import::folder_scanner::{
-    BoundTrackSheet, CandidateFile, CategorizedFiles, FileRole, FileRoleChoice, ScannedFile,
+    BoundTrackSheet, CandidateFile, CategorizedFiles, FileRole, ScannedFile,
     SheetBinding, SheetDisc, SheetReferenceOptions, TrackSheetFile,
 };
 use crate::import::probe::SourceDurations;
@@ -140,12 +140,6 @@ pub struct MappingFile {
     pub duration_ms: Option<u64>,
     pub audio_format: Option<crate::album_detail::AudioFormat>,
     pub role: MappingRole,
-    /// The roles this file can be put in, the one in force first. Empty when
-    /// its role is nobody's decision to make.
-    pub alternatives: Vec<FileRoleChoice>,
-    /// The role in force as a choice — what a picker shows selected. `None`
-    /// exactly when [`Self::alternatives`] is empty.
-    pub role_choice: Option<FileRoleChoice>,
 }
 
 /// One entry of a track sheet, as the mapping table's left half shows it.
@@ -620,8 +614,7 @@ fn bound_sheet(sheet: &BoundTrackSheet<'_>) -> SheetBound {
     }
 }
 
-/// The left half of a file's row: what the folder holds, and the roles it may
-/// be put in.
+/// The left half of a file's row: what the folder holds.
 fn mapping_file(entry: &CandidateFile, role: MappingRole, duration_ms: Option<u64>) -> MappingFile {
     let preview_target = (role == MappingRole::Audio).then(|| {
         crate::playback::PreviewTarget::whole_file(entry.file.path.to_string_lossy().into_owned())
@@ -639,8 +632,6 @@ fn mapping_file(entry: &CandidateFile, role: MappingRole, duration_ms: Option<u6
             .as_ref()
             .map(|audio| audio.format.clone()),
         role,
-        alternatives: entry.role_alternatives().to_vec(),
-        role_choice: entry.role_choice(),
     }
 }
 
