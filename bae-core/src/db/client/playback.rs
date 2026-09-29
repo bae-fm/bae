@@ -33,6 +33,41 @@ impl Database {
             .process(|_, display| Ok(display))
     }
 
+    /// Follow the side facts of the tracks `initial` names, in its order,
+    /// leaving out a track the library no longer holds. The playback service
+    /// points it at the tracks whose crossing it has staged.
+    pub(crate) fn subscribe_playback_track_infos(
+        &self,
+        initial: Vec<String>,
+    ) -> coven::ReconfigurableLiveQuery<Vec<String>, Vec<crate::playback::PlaybackTrackInfo>> {
+        self.inner
+            .handle
+            .subscribe_reconfigurable(initial, |track_ids, sql| {
+                let mut infos = Vec::with_capacity(track_ids.len());
+                for track_id in track_ids {
+                    let track = sql
+                        .query_row(
+                            "SELECT * FROM tracks WHERE id = ?",
+                            params![track_id],
+                            row_to_track,
+                        )
+                        .optional()
+                        .map_err(DbError::from)?;
+                    let Some(track) = track else { continue };
+                    let release =
+                        find_release_by_id_on(&sql, &track.release_id)?.ok_or_else(|| {
+                            DbError::Message(format!(
+                                "track {track_id} names release {} the library does not hold",
+                                track.release_id
+                            ))
+                        })?;
+                    infos.push(crate::playback::PlaybackTrackInfo::of(&track, &release));
+                }
+                Ok(infos)
+            })
+            .process(|_, infos| Ok(infos))
+    }
+
     /// The display of `track_id` as the library holds it now, or `None` when it
     /// no longer holds the track.
     pub async fn track_display(

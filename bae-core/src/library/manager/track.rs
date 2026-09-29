@@ -167,8 +167,9 @@ impl LibraryManager {
         Ok(ResolvedTrackAudio::from_meta(&meta))
     }
 
-    /// What playback decides with about a track: its release and side.
-    /// Resolved here so `PlaybackService` never sees a `DbTrack`.
+    /// What playback decides a side or disc pause with about a track: its
+    /// release and side as the library holds them now. Resolved here so
+    /// `PlaybackService` never sees a `DbTrack`.
     pub async fn get_playback_track_info(
         &self,
         track_id: &str,
@@ -179,7 +180,7 @@ impl LibraryManager {
             .await?
             .ok_or_else(|| LibraryError::TrackMapping(format!("Track not found: {}", track_id)))?;
         let release = self.database.get_release_for_track(&track).await?;
-        Ok(playback_info_from_track_release(&track, &release))
+        Ok(crate::playback::PlaybackTrackInfo::of(&track, &release))
     }
 
     /// What surfaces show of a track, as the library holds it now.
@@ -200,17 +201,11 @@ impl LibraryManager {
         self.database.subscribe_track_display(initial)
     }
 
-    /// Both the audio aggregate and the playback facts in one pass, sparing
-    /// playback prep the `DbTrack`/`DbRelease` double-fetch that calling
-    /// `resolve_track_audio` and `get_playback_track_info` separately would cost.
-    pub(crate) async fn resolve_track_audio_and_info(
+    pub(crate) fn subscribe_playback_track_infos(
         &self,
-        track_id: &str,
-    ) -> Result<(ResolvedTrackAudio, crate::playback::PlaybackTrackInfo), LibraryError> {
-        let meta = TrackAudioMeta::resolve(&self.database, track_id).await?;
-        let audio = ResolvedTrackAudio::from_meta(&meta);
-        let info = playback_info_from_track_release(&meta.track, &meta.release);
-        Ok((audio, info))
+        initial: Vec<String>,
+    ) -> coven::ReconfigurableLiveQuery<Vec<String>, Vec<crate::playback::PlaybackTrackInfo>> {
+        self.database.subscribe_playback_track_infos(initial)
     }
 }
 
@@ -237,22 +232,4 @@ pub(crate) fn queue_catalog_request(
         projection.manual.iter().chain(context_window),
         context_release_id,
     )
-}
-
-/// `PlaybackTrackInfo` from an already-loaded track and release.
-fn playback_info_from_track_release(
-    track: &DbTrack,
-    release: &DbRelease,
-) -> crate::playback::PlaybackTrackInfo {
-    let side = release
-        .pressing
-        .facts
-        .physical_medium()
-        .zip(track.side)
-        .map(|(medium, number)| crate::playback::PlaybackTrackSide { medium, number });
-    crate::playback::PlaybackTrackInfo {
-        track_id: track.id.clone(),
-        release_id: release.id.clone(),
-        side,
-    }
 }

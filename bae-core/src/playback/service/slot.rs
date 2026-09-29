@@ -119,7 +119,7 @@ impl PlaybackSlot {
     /// the slot is Stopped or still resolving a fresh load.
     pub(super) fn current_track_id(&self) -> Option<&str> {
         match self {
-            PlaybackSlot::Active(cur) => Some(cur.prepared.track_info.track_id.as_str()),
+            PlaybackSlot::Active(cur) => Some(cur.prepared.track_id.as_str()),
             _ => None,
         }
     }

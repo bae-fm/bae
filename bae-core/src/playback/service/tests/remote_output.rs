@@ -701,13 +701,8 @@ async fn a_renamed_remote_track_is_loaded_again_with_its_new_title() {
         })
         .await;
 
-    service
-        .remote_display
-        .follow(service.remote_display_request());
-    let (track_id, display) = next_remote_display(&mut service).await;
-    service
-        .handle_remote_display(track_id.expect("the remote track is followed"), display)
-        .await;
+    service.follow_library();
+    handle_next_remote_display(&mut service).await;
     assert_eq!(
         state.lock().unwrap().loads.len(),
         1,
@@ -744,10 +739,7 @@ async fn a_renamed_remote_track_is_loaded_again_with_its_new_title() {
         )
         .await
         .unwrap();
-    let (track_id, display) = next_remote_display(&mut service).await;
-    service
-        .handle_remote_display(track_id.expect("the remote track is followed"), display)
-        .await;
+    handle_next_remote_display(&mut service).await;
 
     assert!(
         wait_until(|| {
@@ -762,14 +754,17 @@ async fn a_renamed_remote_track_is_loaded_again_with_its_new_title() {
     assert_eq!(s.loads[0].url, s.loads[1].url, "the same track is loaded");
 }
 
-/// The next display the service's remote-display follow reads.
-async fn next_remote_display(
-    service: &mut PlaybackService,
-) -> (Option<String>, Option<crate::playback::TrackDisplay>) {
-    tokio::time::timeout(
-        std::time::Duration::from_secs(5),
-        service.remote_display.next(),
-    )
-    .await
-    .expect("the remote display is read")
+/// The next display the service's library follows read for the track playing
+/// on the device, handled as the run loop handles it.
+async fn handle_next_remote_display(service: &mut PlaybackService) {
+    loop {
+        let change = tokio::time::timeout(std::time::Duration::from_secs(5), service.follows.next())
+            .await
+            .expect("the library follows read the remote display");
+        let is_remote_display = matches!(change, LibraryChange::RemoteDisplay { .. });
+        service.handle_library_change(change).await;
+        if is_remote_display {
+            return;
+        }
+    }
 }

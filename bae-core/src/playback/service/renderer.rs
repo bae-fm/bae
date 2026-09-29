@@ -204,7 +204,7 @@ impl RemoteRenderer {
         position: Duration,
         paused: bool,
     ) -> Result<(), String> {
-        let track_id = &prepared.track_info.track_id;
+        let track_id = &prepared.track_id;
         // Serving is resolved here, where the track's source codec is known, so
         // the flavor's format gate picks the URL and the MIME declared below from
         // the same decision.
@@ -278,18 +278,6 @@ pub(super) fn status_callback(
     Arc::new(move |status: RendererSessionStatus| {
         dispatch_command(&command_tx, PlaybackCommand::RemoteStatus(status));
     })
-}
-
-/// The service's follow of the library's display of the track playing on a
-/// remote device, reading nothing until a device plays.
-pub(super) fn remote_display_follow(
-    library_manager: &LibraryManager,
-) -> LibraryFollow<Option<String>, Option<crate::playback::TrackDisplay>> {
-    LibraryFollow::new(
-        library_manager.subscribe_track_display(None),
-        None,
-        "the remote track's display",
-    )
 }
 
 /// A no-op stand-in for the local decoder while playing remotely: the thread has
@@ -450,7 +438,7 @@ impl PlaybackService {
         let PlaybackSlot::Active(cur) = &self.slot else {
             return;
         };
-        let track_id = cur.prepared.track_info.track_id.clone();
+        let track_id = cur.prepared.track_id.clone();
         let raw_dur_ms = cur.prepared.duration.as_millis() as u64;
         let pregap_ms = cur.prepared.total_pregap_ms();
 
@@ -526,12 +514,8 @@ impl PlaybackService {
         };
         self.emit_state();
 
-        let (resolved, track_info) = match self
-            .library_manager
-            .resolve_track_audio_and_info(track_id)
-            .await
-        {
-            Ok(pair) => pair,
+        let resolved = match self.library_manager.resolve_track_audio(track_id).await {
+            Ok(resolved) => resolved,
             Err(e) => {
                 error!("remote: failed to resolve track {track_id}: {e}");
                 self.fail_remote(PlaybackError::database(e).ui_reason())
@@ -549,7 +533,8 @@ impl PlaybackService {
             }
         };
         let replay_gain_mode = self.library_manager.get_config().prefs.replay_gain_mode;
-        let prepared = finalize_playback_track(resolved, track_info, Vec::new(), replay_gain_mode);
+        let prepared =
+            finalize_playback_track(track_id.to_string(), resolved, Vec::new(), replay_gain_mode);
 
         let Renderer::Remote(remote) = &mut self.renderer else {
             // Raced out of remote playback before the resolve returned.
@@ -576,9 +561,7 @@ impl PlaybackService {
     /// playing remotely, and none otherwise.
     pub(super) fn remote_display_request(&self) -> Option<String> {
         match (&self.renderer, &self.slot) {
-            (Renderer::Remote(_), PlaybackSlot::Active(cur)) => {
-                Some(cur.prepared.track_info.track_id.clone())
-            }
+            (Renderer::Remote(_), PlaybackSlot::Active(cur)) => Some(cur.prepared.track_id.clone()),
             _ => None,
         }
     }
@@ -598,7 +581,7 @@ impl PlaybackService {
             debug!("remote: display for {track_id} arrived after remote playback moved on");
             return;
         };
-        if cur.prepared.track_info.track_id != track_id {
+        if cur.prepared.track_id != track_id {
             debug!("remote: display for {track_id} arrived after the device moved on");
             return;
         }

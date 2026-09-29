@@ -205,7 +205,7 @@ fn playback_service_over(
     let (progress_tx, progress_rx) = tokio_mpsc::unbounded_channel();
     let preview = PreviewPlayer::new(progress_tx.clone(), command_tx.clone(), 50);
     let playback_queue = PublishedQueue::new(queue_ids);
-    let remote_display = renderer::remote_display_follow(&library_manager);
+    let follows = ServiceFollows::new(&library_manager);
     let service = PlaybackService {
         library_manager,
         command_tx,
@@ -230,7 +230,7 @@ fn playback_service_over(
         first_audio_pending: None,
         renderer: Renderer::Local,
         clock: Arc::new(crate::playback::ManualPlaybackClock::new(test_clock_start())),
-        remote_display,
+        follows,
     };
     (service, progress_rx)
 }
@@ -303,7 +303,7 @@ fn test_prepared_track_with_file(
     buffer: SharedSparseBuffer,
 ) -> PlaybackPreparedTrack {
     PlaybackPreparedTrack {
-        track_info: test_track_info(track_id),
+        track_id: track_id.to_string(),
         segments: vec![PreparedAudioSegment {
             role: DbAudioSegmentRole::Main,
             file_id: file_id.to_string(),

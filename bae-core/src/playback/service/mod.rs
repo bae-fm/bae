@@ -89,7 +89,7 @@ pub use api::{
 };
 use api::{SideBoundary, SidePauseDecision};
 use file_buffers::{prepare_track_for_playback, FileBuffers};
-use library_follow::LibraryFollow;
+use library_follow::{LibraryChange, ServiceFollows};
 use renderer::{RemoteConnect, Renderer};
 use slot::{LoadGeneration, PausePhase, PlayIntent, PlayTarget, PlaybackSlot, TrackPhase};
 use starvation::StarvationEpisode;
@@ -146,7 +146,7 @@ impl PlaybackPreparedTrack {
     /// the in-track time the stream starts at.
     fn track_fmt(&self, position_offset: std::time::Duration) -> TrackFmt {
         TrackFmt {
-            track_id: self.track_info.track_id.clone(),
+            track_id: self.track_id.clone(),
             duration_ms: self.duration.as_millis() as u64,
             pregap_ms: self.total_pregap_ms(),
             position_offset,
@@ -207,7 +207,7 @@ impl PlaybackPreparedTrack {
         if let Some(samples) = self.generated_pregap_samples {
             if samples < 0 {
                 warn!(
-                    track_id = %self.track_info.track_id,
+                    track_id = %self.track_id,
                     generated_pregap_samples = samples,
                     "Ignoring negative generated pregap samples"
                 );
@@ -221,7 +221,7 @@ impl PlaybackPreparedTrack {
         };
         if ms < 0 {
             warn!(
-                track_id = %self.track_info.track_id,
+                track_id = %self.track_id,
                 generated_pregap_ms = ms,
                 "Ignoring negative generated pregap duration"
             );
@@ -258,7 +258,7 @@ struct PreparedAudioSegment {
 
 #[derive(Clone)]
 struct PlaybackPreparedTrack {
-    track_info: PlaybackTrackInfo,
+    track_id: String,
     segments: Vec<PreparedAudioSegment>,
     /// In Hz.
     sample_rate: u32,
@@ -323,7 +323,7 @@ impl TrackStart {
 
 impl PreloadedNext {
     fn track_id(&self) -> &str {
-        self.prepared.track_info.track_id.as_str()
+        self.prepared.track_id.as_str()
     }
 }
 
@@ -341,11 +341,11 @@ fn discard_preloaded_decoder(
     }
 }
 
-/// Assemble a `PlaybackPreparedTrack` from the resolved audio, its display info,
-/// and its segments' buffers.
+/// Assemble a `PlaybackPreparedTrack` from the resolved audio and its
+/// segments' buffers.
 fn finalize_playback_track(
+    track_id: String,
     resolved: ResolvedTrackAudio,
-    track_info: PlaybackTrackInfo,
     segments: Vec<PreparedAudioSegment>,
     replay_gain_mode: crate::config::ReplayGainMode,
 ) -> PlaybackPreparedTrack {
@@ -363,7 +363,7 @@ fn finalize_playback_track(
     let replay_gain_linear = resolved.replay_gain_linear(replay_gain_mode);
 
     PlaybackPreparedTrack {
-        track_info,
+        track_id,
         segments,
         sample_rate: resolved.sample_rate,
         channels: resolved.channels,
@@ -451,9 +451,8 @@ pub struct PlaybackService {
     /// The time source for the side-pause countdown's deadline and the wait for
     /// it.
     clock: crate::playback::PlaybackClockRef,
-    /// The library's display of the track playing on a remote device, which
-    /// the device is loaded with again when it changes.
-    remote_display: LibraryFollow<Option<String>, Option<crate::playback::TrackDisplay>>,
+    /// The library reads the service keeps pointed at what it plays.
+    follows: ServiceFollows,
 }
 
 /// A pending first-audio timing: the load whose arrival at Playing it measures,

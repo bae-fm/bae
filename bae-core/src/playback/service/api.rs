@@ -2,15 +2,31 @@ use super::*;
 
 use crate::util::worker_thread::WorkerThread;
 
-/// What the playback service decides with about a track, read when the track
-/// is prepared: which track, and the release and side it plays on. What a
-/// track shows — its names, album, cover — is not here: surfaces read that from
-/// the library as it stands (see [`crate::playback::TrackDisplay`]).
-#[derive(Debug, Clone)]
+/// What the playback service decides a side or disc pause with about a track:
+/// the release and side it plays on, read from the library when the decision
+/// is made.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlaybackTrackInfo {
     pub track_id: String,
     pub release_id: String,
     pub side: Option<PlaybackTrackSide>,
+}
+
+impl PlaybackTrackInfo {
+    /// The facts of `track`, which plays on `release`.
+    pub(crate) fn of(track: &crate::db::DbTrack, release: &crate::db::DbRelease) -> Self {
+        let side = release
+            .pressing
+            .facts
+            .physical_medium()
+            .zip(track.side)
+            .map(|(medium, number)| PlaybackTrackSide { medium, number });
+        Self {
+            track_id: track.id.clone(),
+            release_id: release.id.clone(),
+            side,
+        }
+    }
 }
 
 /// The side or disc a track is on, which decides where playback pauses.
@@ -23,7 +39,7 @@ pub struct PlaybackTrackSide {
 impl PlayingTrack {
     pub(super) fn from_prepared(prepared: &PlaybackPreparedTrack) -> Self {
         Self {
-            track_id: prepared.track_info.track_id.clone(),
+            track_id: prepared.track_id.clone(),
             duration_ms: track_duration_ms(prepared),
         }
     }

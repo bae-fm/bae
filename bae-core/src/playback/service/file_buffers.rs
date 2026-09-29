@@ -102,7 +102,7 @@ impl FileBuffers {
     pub(super) fn retired_track_ids(&self) -> Vec<&str> {
         self.retired
             .iter()
-            .map(|prepared| prepared.track_info.track_id.as_str())
+            .map(|prepared| prepared.track_id.as_str())
             .collect()
     }
 
@@ -126,8 +126,8 @@ pub(super) async fn prepare_track_for_playback(
     file_buffers: &mut FileBuffers,
     command_tx: &tokio_mpsc::UnboundedSender<PlaybackCommand>,
 ) -> Result<PlaybackPreparedTrack, PlaybackError> {
-    let (resolved, track_info) = library_manager
-        .resolve_track_audio_and_info(track_id)
+    let resolved = library_manager
+        .resolve_track_audio(track_id)
         .await
         .map_err(PlaybackError::database)?;
     ensure_resolved_audio_format(track_id, &resolved)?;
@@ -175,8 +175,8 @@ pub(super) async fn prepare_track_for_playback(
     let replay_gain_mode = library_manager.get_config().prefs.replay_gain_mode;
 
     Ok(finalize_playback_track(
+        track_id.to_string(),
         resolved,
-        track_info,
         prepared_segments,
         replay_gain_mode,
     ))

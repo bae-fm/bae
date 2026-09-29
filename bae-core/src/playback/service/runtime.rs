@@ -77,7 +77,7 @@ impl PlaybackService {
         outgoing_decoder: Option<(TrackDecoder, Vec<SharedSparseBuffer>)>,
     ) -> Result<(), PlaybackError> {
         let position_offset = fmt.position_offset;
-        let track_id = prepared.track_info.track_id.clone();
+        let track_id = prepared.track_id.clone();
         let sample_rate = prepared.sample_rate;
         let channels = prepared.channels;
 
@@ -180,7 +180,7 @@ impl PlaybackService {
         if let PlaybackSlot::Active(cur) = &self.slot {
             if cur.prepared.reads_buffer(buffer_id) {
                 error!(
-                    track_id = %cur.prepared.track_info.track_id,
+                    track_id = %cur.prepared.track_id,
                     "read failed for the playing track; halting playback"
                 );
                 emit_progress(
@@ -410,7 +410,7 @@ impl PlaybackService {
         let still_completed = matches!(
             &self.slot,
             PlaybackSlot::Active(cur)
-                if cur.prepared.track_info.track_id == track_id
+                if cur.prepared.track_id == track_id
                     && matches!(cur.phase, TrackPhase::Completed)
         );
         if !still_completed {
@@ -738,7 +738,7 @@ impl PlaybackService {
                             command_tx.clone(),
                             position_update_interval_ms,
                         );
-                        let remote_display = renderer::remote_display_follow(&library_manager);
+                        let follows = ServiceFollows::new(&library_manager);
                         let mut service = PlaybackService {
                             library_manager,
                             command_tx: command_tx.clone(),
@@ -761,7 +761,7 @@ impl PlaybackService {
                             first_audio_pending: None,
                             renderer: Renderer::Local,
                             clock,
-                            remote_display,
+                            follows,
                         };
                         // "Restore on launch" off starts with nothing in playback; the
                         // row is kept either way — it stays the crash-safe resume point.
@@ -801,12 +801,10 @@ impl PlaybackService {
         let mut countdown = side_countdown::SideCountdownWait::new();
         loop {
             countdown.follow(self.side_pause_countdown_deadline(), self.clock.as_ref());
-            self.remote_display.follow(self.remote_display_request());
+            self.follow_library();
             tokio::select! {
-                (track_id, display) = self.remote_display.next() => {
-                    if let Some(track_id) = track_id {
-                        self.handle_remote_display(track_id, display).await;
-                    }
+                change = self.follows.next() => {
+                    self.handle_library_change(change).await;
                 }
                 _ = audio_event_tick.tick(), if self.output.is_some() => {
                     self.drain_current_audio_events().await;

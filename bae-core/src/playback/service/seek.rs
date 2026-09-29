@@ -31,7 +31,7 @@ impl PlaybackService {
                 return;
             }
         };
-        let track_id = cur.prepared.track_info.track_id.clone();
+        let track_id = cur.prepared.track_id.clone();
 
         // Same-position seek (difference < 100ms): put the track back, refresh the
         // display, no rebuild.

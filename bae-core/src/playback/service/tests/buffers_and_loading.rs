@@ -105,7 +105,7 @@ async fn read_failure_on_the_preloaded_next_discards_it_and_keeps_playing() {
         matches!(
             &service.slot,
             PlaybackSlot::Active(cur)
-                if cur.prepared.track_info.track_id == "current-track"
+                if cur.prepared.track_id == "current-track"
                     && matches!(cur.phase, TrackPhase::Playing)
         ),
         "the playing track is untouched by the next track's read failure"
@@ -171,7 +171,7 @@ async fn read_failure_on_a_buffer_out_of_play_is_ignored() {
     assert!(
         matches!(
             &service.slot,
-            PlaybackSlot::Active(cur) if cur.prepared.track_info.track_id == "current-track"
+            PlaybackSlot::Active(cur) if cur.prepared.track_id == "current-track"
         ),
         "a failure from a buffer out of play leaves the current track alone"
     );
@@ -325,7 +325,7 @@ async fn next_after_natural_completion_resumes_audibly() {
         matches!(
             &service.slot,
             PlaybackSlot::Active(cur)
-                if cur.prepared.track_info.track_id == "next-track"
+                if cur.prepared.track_id == "next-track"
                     && matches!(cur.phase, TrackPhase::Playing)
         ),
         "the next track should be current and Playing"

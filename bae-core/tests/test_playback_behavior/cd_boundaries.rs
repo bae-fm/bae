@@ -115,3 +115,35 @@ async fn cd_manual_next_and_repeat_track_do_not_pause_at_disc_boundary() {
         fixture.playback_handle.shutdown().await;
     }
 }
+
+/// Moving the staged next track onto the next disc while the track before it
+/// plays pauses at the boundary the edit made: the gapless handoff staged when
+/// both were on one disc is taken back.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_disc_edit_mid_track_applies_at_the_boundary_it_makes() {
+    let mut fixture = SidePauseTestFixture::new("2xCD", ["1-1", "1-2", "2-1"], true)
+        .await
+        .expect("disc-pause fixture");
+    let first = fixture.track_ids[0].clone();
+    fixture.play_track_and_wait(0, &first).await;
+
+    let mut edit = fixture
+        .library_manager
+        .release_edit_seed(&fixture.release_id)
+        .await
+        .expect("read the release's edit form")
+        .edit;
+    assert_eq!(edit.tracks[1].side, Some(1), "the second track starts on disc 1");
+    edit.tracks[1].side = Some(2);
+    fixture
+        .library_manager
+        .apply_release_metadata_user_edit(&fixture.release_id, &edit.shape().expect("the edit shapes"))
+        .await
+        .expect("apply the edit");
+    // A seek would prepare the next track again and read its disc afresh, so
+    // the track plays out to its end.
+    fixture
+        .wait_for_side_pause("1", PlaybackPauseBoundary::Disc)
+        .await;
+    fixture.playback_handle.shutdown().await;
+}

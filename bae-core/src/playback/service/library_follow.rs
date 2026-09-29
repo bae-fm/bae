@@ -9,7 +9,74 @@
 
 use tracing::error;
 
-pub(super) struct LibraryFollow<Request, Value> {
+use crate::library::LibraryManager;
+use crate::playback::{PlaybackTrackInfo, TrackDisplay};
+
+/// The library reads the service keeps pointed at what it plays.
+pub(super) struct ServiceFollows {
+    /// The display of the track playing on a remote device, which the device
+    /// is loaded with again when it changes.
+    remote_display: LibraryFollow<Option<String>, Option<TrackDisplay>>,
+    /// The sides of the staged crossing's tracks, whose crossing is taken back
+    /// when an edit puts a side or disc boundary between them.
+    staged_sides: LibraryFollow<Vec<String>, Vec<PlaybackTrackInfo>>,
+}
+
+/// A change the library made to something the service plays.
+pub(super) enum LibraryChange {
+    /// What the track playing on a remote device shows; `None` when the
+    /// library no longer holds it.
+    RemoteDisplay {
+        track_id: String,
+        display: Option<TrackDisplay>,
+    },
+    /// The sides of the staged crossing's tracks, leaving out one the library
+    /// no longer holds.
+    StagedSides(Vec<PlaybackTrackInfo>),
+}
+
+impl ServiceFollows {
+    /// Follows that read nothing until the service plays.
+    pub(super) fn new(library_manager: &LibraryManager) -> Self {
+        Self {
+            remote_display: LibraryFollow::new(
+                library_manager.subscribe_track_display(None),
+                None,
+                "the remote track's display",
+            ),
+            staged_sides: LibraryFollow::new(
+                library_manager.subscribe_playback_track_infos(Vec::new()),
+                Vec::new(),
+                "the staged crossing's sides",
+            ),
+        }
+    }
+
+    /// Point the reads at the track playing on a remote device and the
+    /// staged crossing's tracks.
+    pub(super) fn follow(&mut self, remote_track: Option<String>, staged_crossing: Vec<String>) {
+        self.remote_display.follow(remote_track);
+        self.staged_sides.follow(staged_crossing);
+    }
+
+    /// The next change to what the reads follow.
+    pub(super) async fn next(&mut self) -> LibraryChange {
+        loop {
+            tokio::select! {
+                (track_id, display) = self.remote_display.next() => {
+                    if let Some(track_id) = track_id {
+                        return LibraryChange::RemoteDisplay { track_id, display };
+                    }
+                }
+                (_, sides) = self.staged_sides.next() => {
+                    return LibraryChange::StagedSides(sides);
+                }
+            }
+        }
+    }
+}
+
+struct LibraryFollow<Request, Value> {
     requests: coven::LiveQueryRequests<Request>,
     request: Request,
     reads: tokio::sync::mpsc::UnboundedReceiver<(Request, Value)>,
@@ -23,7 +90,7 @@ where
 {
     /// Follow `query` on a task of its own. A read that fails is logged under
     /// `what` and the follow keeps running: the next change reads again.
-    pub(super) fn new(
+    fn new(
         mut query: coven::ReconfigurableLiveQuery<Request, Value>,
         request: Request,
         what: &'static str,
@@ -53,7 +120,7 @@ where
     }
 
     /// Point the read at `request`, unless it already reads it.
-    pub(super) fn follow(&mut self, request: Request) {
+    fn follow(&mut self, request: Request) {
         if request != self.request {
             self.requests
                 .set(request.clone())
@@ -64,7 +131,7 @@ where
 
     /// The next value read for the current request. Reads that answer an
     /// earlier request are skipped.
-    pub(super) async fn next(&mut self) -> (Request, Value) {
+    async fn next(&mut self) -> (Request, Value) {
         loop {
             let Some((request, value)) = self.reads.recv().await else {
                 return std::future::pending().await;

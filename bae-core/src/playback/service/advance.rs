@@ -50,6 +50,21 @@ impl PlaybackService {
     pub(super) async fn preload_next_track(&mut self, track_id: &str) {
         self.clear_next_track_state();
 
+        // Whether a side or disc pause falls between the current track and this
+        // one, read before preparing it: a crossing that pauses is held for the
+        // rebuild path rather than staged gapless.
+        let hold_for_side_pause = match self.current_track_id().map(str::to_string) {
+            Some(current_id) => match self.side_boundary_between(&current_id, track_id).await {
+                Ok(boundary) => boundary.is_some(),
+                Err(e) => {
+                    error!("Failed to read the sides to preload track {track_id}: {e}");
+                    self.telemetry_playback_failed(crate::diagnostics::PlaybackOperation::Preload);
+                    return;
+                }
+            },
+            None => false,
+        };
+
         let prepared = prepare_track_for_playback(
             &self.library_manager,
             track_id,
@@ -99,7 +114,7 @@ impl PlaybackService {
                 if cur.prepared.sample_rate == prepared.sample_rate
                     && cur.prepared.channels == prepared.channels
                     && self.playback_queue.repeat_mode() != RepeatMode::Track
-                    && !self.should_hold_for_side_pause(&cur.prepared, &prepared) =>
+                    && !hold_for_side_pause =>
             {
                 self.output.as_ref().map(|o| o.source.clone())
             }
@@ -143,11 +158,8 @@ impl PlaybackService {
             return Ok(None);
         }
 
-        let Some(current) = (match &self.slot {
-            PlaybackSlot::Active(cur) => Some(cur.prepared.track_info.clone()),
-            _ => None,
-        }) else {
-            error!("side-pause decision requested without current track metadata");
+        let Some(current_id) = self.current_track_id().map(str::to_string) else {
+            error!("side-pause decision requested without a current track");
             self.telemetry_anomaly(AnomalyKind::SidePauseDesync);
             return Err(());
         };
@@ -160,28 +172,20 @@ impl PlaybackService {
             return Ok(None);
         };
 
-        let next_info = match self.preloaded_next.as_ref() {
-            Some(preloaded) if preloaded.track_id() == next_track_id => {
-                preloaded.prepared.track_info.clone()
-            }
-            Some(preloaded) => {
-                debug!(
-                    preloaded_track_id = %preloaded.track_id(),
-                    queue_next_track_id = %next_track_id,
-                    "side-pause decision ignoring stale preloaded next track"
+        let boundary = self
+            .side_boundary_between(&current_id, &next_track_id)
+            .await
+            .map_err(|error| {
+                error!(
+                    "failed to read the sides for the side-pause decision between \
+                     {current_id} and {next_track_id}: {error}"
                 );
-                self.playback_info_for_side_pause(&next_track_id).await?
-            }
-            None => self.playback_info_for_side_pause(&next_track_id).await?,
-        };
-
-        Ok(self
-            .side_boundary_for_infos(&current, &next_info)
-            .map(|boundary| SidePauseDecision {
-                track_id: next_track_id,
-                boundary,
-                resumes_at: self.side_pause_countdown_from_now(),
-            }))
+            })?;
+        Ok(boundary.map(|boundary| SidePauseDecision {
+            track_id: next_track_id,
+            boundary,
+            resumes_at: self.side_pause_countdown_from_now(),
+        }))
     }
 
     /// When a side pause starting now ends on its own, per the countdown
@@ -198,38 +202,26 @@ impl PlaybackService {
         Some(self.clock.now() + length)
     }
 
-    pub(super) async fn playback_info_for_side_pause(
+    /// The side or disc boundary playback pauses at between `current_id` and
+    /// `next_id`, as the library holds their sides now; `None` when it plays
+    /// straight on.
+    pub(super) async fn side_boundary_between(
         &self,
-        track_id: &str,
-    ) -> Result<PlaybackTrackInfo, ()> {
-        self.library_manager
-            .get_playback_track_info(track_id)
-            .await
-            .map_err(|error| {
-                error!(
-                    "failed to resolve playback metadata for side-pause decision on {track_id}: {error}"
-                );
-            })
-    }
-
-    pub(super) fn should_hold_for_side_pause(
-        &self,
-        current: &PlaybackPreparedTrack,
-        next: &PlaybackPreparedTrack,
-    ) -> bool {
-        self.side_boundary_for_infos(&current.track_info, &next.track_info)
-            .is_some()
-    }
-
-    pub(super) fn side_boundary_for_infos(
-        &self,
-        current: &PlaybackTrackInfo,
-        next: &PlaybackTrackInfo,
-    ) -> Option<SideBoundary> {
+        current_id: &str,
+        next_id: &str,
+    ) -> Result<Option<SideBoundary>, crate::library::LibraryError> {
         if !self.side_pause_enabled() {
-            return None;
+            return Ok(None);
         }
-        side_boundary_between(current, next)
+        let current = self
+            .library_manager
+            .get_playback_track_info(current_id)
+            .await?;
+        let next = self
+            .library_manager
+            .get_playback_track_info(next_id)
+            .await?;
+        Ok(side_boundary_between(&current, &next))
     }
 
     pub(super) fn side_pause_enabled(&self) -> bool {
@@ -240,35 +232,75 @@ impl PlaybackService {
     /// Re-run the staging decision for the preloaded next track after
     /// `pause_between_sides` turns on mid-track. `preload_next_track` reads the
     /// config once, at preload time, so a track already staged into the gapless
-    /// chain would otherwise keep crossing its boundary without a pause. If the
-    /// preload is `Staged` and the updated config says to hold it, discard it and
-    /// re-preload the same track — `preload_next_track` holds it this time. A
+    /// chain would otherwise keep crossing its boundary without a pause. A
     /// `Held` preload needs nothing (`side_pause_for_queue_front` re-reads the
-    /// config at drain time), and neither does no active track / no preload. If
-    /// the boundary was already crossed by the time this reaches the command loop,
-    /// the current track IS the next side, so no pause is due and this does
-    /// nothing — the toggle simply came too late for that boundary.
+    /// config and the sides at drain time), and neither does no active track /
+    /// no preload. If the boundary was already crossed by the time this reaches
+    /// the command loop, the current track IS the next side, so no pause is due
+    /// and this does nothing — the toggle simply came too late for that
+    /// boundary.
     pub(super) async fn reevaluate_side_pause_staging(&mut self) {
-        let Some(preloaded) = &self.preloaded_next else {
+        let Some([current_id, next_id]) = self.staged_crossing() else {
             return;
         };
-        if !matches!(preloaded.source, PreloadedNextSource::Staged) {
+        match self.side_boundary_between(&current_id, &next_id).await {
+            Ok(boundary) => self.hold_staged_crossing_for(boundary).await,
+            Err(e) => error!(
+                "failed to read the sides of the staged crossing {current_id} -> {next_id}: {e}"
+            ),
+        }
+    }
+
+    /// The library changed the sides of the staged crossing's tracks: a
+    /// crossing that now ends a side or disc is taken back and held, as when
+    /// `pause_between_sides` turns on. `infos` answers [`Self::staged_crossing`];
+    /// one that no longer does is stale, and one missing a track answers a
+    /// deletion, which moves playback off it.
+    pub(super) async fn handle_staged_crossing_sides(&mut self, infos: Vec<PlaybackTrackInfo>) {
+        let Some(crossing) = self.staged_crossing() else {
+            return;
+        };
+        let [current, next] = infos.as_slice() else {
+            debug!("the staged crossing {crossing:?} lost a track; its deletion moves playback on");
+            return;
+        };
+        if [&current.track_id, &next.track_id] != [&crossing[0], &crossing[1]] {
             return;
         }
-        let should_hold = match &self.slot {
-            PlaybackSlot::Active(cur) => {
-                self.should_hold_for_side_pause(&cur.prepared, &preloaded.prepared)
+        let boundary = if self.side_pause_enabled() {
+            side_boundary_between(current, next)
+        } else {
+            None
+        };
+        self.hold_staged_crossing_for(boundary).await;
+    }
+
+    /// The current track and the preloaded next one staged into the gapless
+    /// chain behind it, or `None` when no crossing is staged.
+    pub(super) fn staged_crossing(&self) -> Option<[String; 2]> {
+        match (&self.slot, &self.preloaded_next) {
+            (PlaybackSlot::Active(cur), Some(preloaded))
+                if matches!(preloaded.source, PreloadedNextSource::Staged) =>
+            {
+                Some([
+                    cur.prepared.track_id.clone(),
+                    preloaded.track_id().to_string(),
+                ])
             }
-            _ => return,
-        };
-        if !should_hold {
+            _ => None,
+        }
+    }
+
+    /// Take the staged next track back and preload it again held, when
+    /// `boundary` says playback pauses before it.
+    async fn hold_staged_crossing_for(&mut self, boundary: Option<SideBoundary>) {
+        if boundary.is_none() {
             return;
         }
-        let track_id = preloaded.track_id().to_string();
-        info!(
-            "pause_between_sides enabled mid-track: unstaging preloaded {} to hold for the side pause",
-            track_id
-        );
+        let Some([_, track_id]) = self.staged_crossing() else {
+            return;
+        };
+        info!("unstaging preloaded {track_id} to hold it for the side pause before it");
         self.clear_next_track_state();
         self.preload_next_track(&track_id).await;
     }
@@ -632,7 +664,7 @@ impl PlaybackService {
         } = preloaded;
 
         let pregap_ms = next_prepared.total_pregap_ms();
-        let track_id = next_prepared.track_info.track_id.clone();
+        let track_id = next_prepared.track_id.clone();
 
         // The preload decoded from the track's first sample (pregap included), so
         // a direct selection that skips the pregap can't use it: discard its
