@@ -127,6 +127,10 @@ struct SparseInner {
     /// ceiling is set), not at construction, so a freshly created reader that
     /// hasn't positioned itself yet doesn't pin the eviction floor at 0.
     demands: HashMap<u64, ReaderDemand>,
+    /// How many `read()` calls are parked on `data_available`. A test waits on
+    /// it to act only once a reader is provably blocked.
+    #[cfg(test)]
+    parked_reads: usize,
 }
 
 /// Thread-safe sparse streaming buffer: data storage only, no fetching.
@@ -177,6 +181,8 @@ impl SparseStreamingBuffer {
                 ranges: Vec::new(),
                 stop: None,
                 demands: HashMap::new(),
+                #[cfg(test)]
+                parked_reads: 0,
             }),
             total_size,
             data_available: Condvar::new(),
@@ -206,6 +212,26 @@ impl SparseStreamingBuffer {
     #[cfg(test)]
     pub fn read_log(&self) -> Vec<u64> {
         self.read_log.lock().unwrap().clone()
+    }
+
+    /// Test-only: return once `count` `read()` calls are parked waiting for
+    /// bytes. A read parks in the same step that releases the lock it
+    /// published its demand under, so whatever the caller does next reaches a
+    /// blocked reader. Panics after 10s.
+    #[cfg(test)]
+    pub fn wait_until_parked(&self, count: usize) {
+        let deadline = Instant::now() + Duration::from_secs(10);
+        loop {
+            let parked = self.inner.lock().unwrap().parked_reads;
+            if parked >= count {
+                return;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "{count} reads never parked; {parked} did"
+            );
+            std::thread::sleep(Duration::from_millis(1));
+        }
     }
 
     /// Create a reader with an independent read position over this buffer.
@@ -749,7 +775,15 @@ impl BufferReader {
                 self.last_wait_log = Some(now);
             }
             self.buffer.wake_fill();
+            #[cfg(test)]
+            {
+                inner.parked_reads += 1;
+            }
             inner = self.buffer.data_available.wait(inner).unwrap();
+            #[cfg(test)]
+            {
+                inner.parked_reads -= 1;
+            }
         }
     }
 

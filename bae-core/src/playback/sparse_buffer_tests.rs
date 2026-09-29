@@ -82,7 +82,7 @@ fn test_read_blocks_until_data_available() {
         reader.read(&mut data).ok()
     });
 
-    thread::sleep(Duration::from_millis(10));
+    buffer.wait_until_parked(1);
     buffer.append_at(0, b"hello");
 
     assert_eq!(handle.join().unwrap(), Some(5));
@@ -133,7 +133,7 @@ fn test_cancel_unblocks_reader() {
         matches!(reader.read(&mut data), Err(BufferStop::Cancelled))
     });
 
-    thread::sleep(Duration::from_millis(10));
+    buffer.wait_until_parked(1);
     buffer.cancel();
 
     assert!(
@@ -232,7 +232,7 @@ fn token_cancel_only_affects_one_reader() {
         matches!(reader1.read(&mut buf), Err(BufferStop::Cancelled))
     });
 
-    thread::sleep(Duration::from_millis(10));
+    buffer.wait_until_parked(1);
     cancel1.store(true, std::sync::atomic::Ordering::Release);
     buffer.wake_readers();
 
@@ -260,7 +260,7 @@ fn a_failed_buffer_hands_readers_the_read_error_and_the_first_stop_wins() {
         }
     });
 
-    thread::sleep(Duration::from_millis(10));
+    buffer.wait_until_parked(1);
     let full = Arc::new(PlaybackError::io(
         "Failed to read 100 bytes at 0 from /volume/track.flac",
         std::io::Error::from(std::io::ErrorKind::StorageFull),
@@ -481,8 +481,8 @@ fn blocked_reader_publishes_demand_at_its_blocked_position() {
         reader.read(&mut out).ok()
     });
 
-    // Let the reader reach its blocked wait, then inspect its published demand.
-    thread::sleep(Duration::from_millis(50));
+    // Once the reader is blocked in its read, inspect its published demand.
+    buffer.wait_until_parked(1);
     assert_eq!(
         buffer.demands_sorted(),
         vec![500],
