@@ -626,9 +626,9 @@ async fn two_distinct_pressings_are_read_in_full_and_do_not_settle() {
     fixture.provider.route(
         "/release?",
         200,
-        barcode_search_json(&[
-            ("mb-two-1", "rg-two-1", PAIRED_BARCODE),
-            ("mb-two-2", "rg-two-1", "9876543210987"),
+        barcode_search_json_placed(&[
+            ("mb-two-1", "rg-two-1", PAIRED_BARCODE, "GB"),
+            ("mb-two-2", "rg-two-1", "9876543210987", "DE"),
         ]),
     );
     fixture.scan(1).await;
@@ -720,9 +720,9 @@ async fn a_row_whose_document_cannot_be_read_keeps_its_search_facts() {
     fixture.provider.route(
         "/release?",
         200,
-        barcode_search_json(&[
-            ("mb-read", "rg-read", PAIRED_BARCODE),
-            ("mb-unread", "rg-read", "9876543210987"),
+        barcode_search_json_placed(&[
+            ("mb-read", "rg-read", PAIRED_BARCODE, "GB"),
+            ("mb-unread", "rg-read", "9876543210987", "DE"),
         ]),
     );
     fixture.scan(1).await;
@@ -783,9 +783,9 @@ async fn the_pressing_whose_tracklist_fits_the_folder_is_offered() {
     fixture.provider.route(
         "/release?",
         200,
-        barcode_search_json(&[
-            ("mb-long", "rg-fit", PAIRED_BARCODE),
-            ("mb-fits", "rg-fit", PAIRED_BARCODE),
+        barcode_search_json_placed(&[
+            ("mb-long", "rg-fit", PAIRED_BARCODE, "GB"),
+            ("mb-fits", "rg-fit", PAIRED_BARCODE, "DE"),
         ]),
     );
     fixture.scan(1).await;

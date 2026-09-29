@@ -22,7 +22,10 @@ use crate::signals::LookupFailure;
 /// and past this many rows the folder has not told the pressings apart — the
 /// documents rarely leave one standing — so the person picks among them, which
 /// reads only the row picked. A run with more rows tied reads none, and no
-/// fact only a document states ranks its rows.
+/// fact only a document states ranks its rows. The rows counted are those
+/// still offered after everything the search results tell apart: the
+/// folder's facts, the notes and years they carry, and look-alike rows listed
+/// once (see `identify::look_alike`).
 pub(crate) const MOST_ROWS_READ: usize = 5;
 
 /// Where a run is with its offered rows' documents.

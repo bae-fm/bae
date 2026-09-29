@@ -198,10 +198,11 @@ fn a_download_offers_the_digital_release() {
     assert_eq!(offered(&outcome), vec!["rel-undescribed"]);
 
     let outcome = by_catalog(
-        vec![
-            pressing("rel-cd", made_of(&[Medium::Cd])),
-            pressing("rel-cd-2", made_of(&[Medium::Cd])),
-        ],
+        vec![pressing("rel-cd", made_of(&[Medium::Cd])), {
+            let (mut result, status) = pressing("rel-cd-2", made_of(&[Medium::Cd]));
+            result.packaging = Some(crate::pressing::Packaging::Digipak);
+            (result, status)
+        }],
         &HI_RES_DOWNLOAD,
     );
     assert_eq!(offered(&outcome), vec!["rel-cd", "rel-cd-2"]);

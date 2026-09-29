@@ -8,6 +8,15 @@ fn first_label_only(release_id: &str) -> (MetadataResult, LibraryStatus) {
     (result, status)
 }
 
+/// `row` in `packaging`, so it shows other than a look-alike beside it.
+fn packed(
+    (mut result, status): (MetadataResult, LibraryStatus),
+    packaging: crate::pressing::Packaging,
+) -> (MetadataResult, LibraryStatus) {
+    result.packaging = Some(packaging);
+    (result, status)
+}
+
 /// A run whose barcode found `results` on Discogs, holding at the read of
 /// its offered records' documents, with the records it asks for.
 fn reading_documents(
@@ -59,7 +68,10 @@ fn read(
 #[test]
 fn every_offered_row_is_read_in_full_before_the_run_settles() {
     let (state, releases) =
-        reading_documents(vec![first_label_only("dg-1"), first_label_only("dg-2")]);
+        reading_documents(vec![
+            first_label_only("dg-1"),
+            packed(first_label_only("dg-2"), crate::pressing::Packaging::Digipak),
+        ]);
     assert_eq!(releases.len(), 2, "both tied rows are read");
     assert!(matches!(state, IdentifyState::Triangulating { .. }));
     let full = document(&[("Label One", "AB-100"), ("Label One", "CD-200")], 5);
@@ -87,7 +99,10 @@ fn every_offered_row_is_read_in_full_before_the_run_settles() {
 #[test]
 fn the_row_whose_tracklist_fits_the_folder_ranks_first() {
     let (state, releases) =
-        reading_documents(vec![first_label_only("dg-long"), first_label_only("dg-fits")]);
+        reading_documents(vec![
+            first_label_only("dg-long"),
+            packed(first_label_only("dg-fits"), crate::pressing::Packaging::Digipak),
+        ]);
     let (state, _) = super::step(
         state,
         IdentifyEvent::ReleasesRead {
@@ -119,7 +134,10 @@ fn the_row_whose_tracklist_fits_the_folder_ranks_first() {
 #[test]
 fn a_row_whose_document_cannot_be_read_keeps_its_search_facts() {
     let (state, releases) =
-        reading_documents(vec![first_label_only("dg-read"), first_label_only("dg-unread")]);
+        reading_documents(vec![
+            first_label_only("dg-read"),
+            packed(first_label_only("dg-unread"), crate::pressing::Packaging::Digipak),
+        ]);
     let full = document(&[("Label One", "AB-100"), ("Label One", "CD-200")], 5);
     let (state, _) = super::step(
         state,
@@ -223,9 +241,18 @@ fn every_pressing_of_the_named_album_is_read_before_its_tracks_rank_it() {
             DG,
             vec![
                 titled("dg-cassette", "1990-2000 Album"),
-                titled("dg-cd-1", "Album 1990-2000"),
-                titled("dg-cd-2", "Album 1990-2000"),
-                titled("dg-lp", "Album 1990-2000"),
+                packed(
+                    titled("dg-cd-1", "Album 1990-2000"),
+                    crate::pressing::Packaging::JewelCase,
+                ),
+                packed(
+                    titled("dg-cd-2", "Album 1990-2000"),
+                    crate::pressing::Packaging::Digipak,
+                ),
+                packed(
+                    titled("dg-lp", "Album 1990-2000"),
+                    crate::pressing::Packaging::GatefoldCover,
+                ),
             ],
         ),
     );
@@ -264,7 +291,10 @@ fn rows_the_documents_raise_are_read_before_the_run_settles() {
             vec![
                 in_country("dg-us"),
                 titled("dg-elsewhere-1", "1990-2000 Album"),
-                titled("dg-elsewhere-2", "1990-2000 Album"),
+                packed(
+                    titled("dg-elsewhere-2", "1990-2000 Album"),
+                    crate::pressing::Packaging::Digipak,
+                ),
             ],
         ),
     );
@@ -325,8 +355,11 @@ fn tied_rows_rank_on_the_documents_this_run_reads() {
     known.0.source_tracks = Some(crate::import::search::SourceTracks::Listed { count: 5 });
     let (state, releases) = reading_documents(vec![
         known,
-        first_label_only("dg-other-1"),
-        first_label_only("dg-other-2"),
+        packed(first_label_only("dg-other-1"), crate::pressing::Packaging::Digipak),
+        packed(
+            first_label_only("dg-other-2"),
+            crate::pressing::Packaging::GatefoldCover,
+        ),
     ]);
     let mut asked: Vec<&str> = releases.iter().map(|release| release.key.as_str()).collect();
     asked.sort();
@@ -343,7 +376,11 @@ fn tied_rows_rank_on_the_documents_this_run_reads() {
 #[test]
 fn more_tied_rows_than_a_run_reads_are_left_for_the_person() {
     let tied: Vec<(MetadataResult, LibraryStatus)> = (1..=crate::identify::documents::MOST_ROWS_READ + 1)
-        .map(|at| first_label_only(&format!("dg-{at}")))
+        .map(|at| {
+            let (mut result, status) = first_label_only(&format!("dg-{at}"));
+            result.year = Some(2000 + at as i32);
+            (result, status)
+        })
         .collect();
     let (state, _) = update(
         started_with(vec![DG]),
@@ -367,5 +404,21 @@ fn more_tied_rows_than_a_run_reads_are_left_for_the_person() {
     assert!(
         !crate::identify::VerdictSummary::of(&verdict, false).judgement().0,
         "tied rows are the person's to pick"
+    );
+}
+
+/// More rows tie than a run reads, but they look alike and are listed once:
+/// the one row left is what the limit counts, and it is read.
+#[test]
+fn look_alike_rows_listed_once_are_read() {
+    let tied: Vec<(MetadataResult, LibraryStatus)> = (1..=crate::identify::documents::MOST_ROWS_READ
+        + 1)
+        .map(|at| first_label_only(&format!("dg-{at}")))
+        .collect();
+    let (_, releases) = reading_documents(tied);
+    assert_eq!(
+        releases,
+        vec![crate::import::MetadataRef::new(DG, "dg-1")],
+        "the look-alike kept, the lowest id, is read"
     );
 }

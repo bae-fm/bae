@@ -104,9 +104,15 @@ fn the_row_listing_the_folder_s_titles_in_order_ranks_first() {
 fn agreeing_lifts_no_row_above_one_left_unread() {
     let (state, releases) = reading_titled_documents(vec![
         first_label_only("dg-in-order"),
-        first_label_only("dg-spelled"),
-        first_label_only("dg-reordered"),
-        first_label_only("dg-unread"),
+        packed(first_label_only("dg-spelled"), crate::pressing::Packaging::Digipak),
+        packed(
+            first_label_only("dg-reordered"),
+            crate::pressing::Packaging::GatefoldCover,
+        ),
+        packed(
+            first_label_only("dg-unread"),
+            crate::pressing::Packaging::CardboardSleeve,
+        ),
     ]);
     let titled = |titles: &[&str]| crate::identify::documents::ReleaseDocument {
         track_titles: titles.iter().map(|title| title.to_string()).collect(),

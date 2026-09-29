@@ -18,7 +18,7 @@ fn folder(line: &str) -> CandidateText {
 }
 
 /// A pressing of Album One on Label One, L1-100, whose read document writes
-/// `notes`.
+/// `notes`, each in its own packaging so no two look alike.
 fn pressing(release_id: &str, notes: &[&str]) -> (MetadataResult, LibraryStatus) {
     (
         MetadataResult {
@@ -30,6 +30,12 @@ fn pressing(release_id: &str, notes: &[&str]) -> (MetadataResult, LibraryStatus)
                 Some("L1-100"),
             )],
             notes: notes.iter().map(|note| note.to_string()).collect(),
+            packaging: Some(match release_id {
+                "rel-alpha" => crate::pressing::Packaging::JewelCase,
+                "rel-beta" => crate::pressing::Packaging::Digipak,
+                "rel-gamma" => crate::pressing::Packaging::GatefoldCover,
+                _ => crate::pressing::Packaging::CardboardSleeve,
+            }),
             ..MetadataResult::for_test(Catalog::MusicBrainz, release_id, Some("rg-album-one"))
         },
         LibraryStatus::absent(release_id),

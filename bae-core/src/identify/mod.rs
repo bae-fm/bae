@@ -12,6 +12,7 @@ pub mod combine;
 pub mod discid;
 pub mod documents;
 pub mod fit;
+pub(crate) mod look_alike;
 pub(crate) mod medium;
 mod not_asked;
 pub(crate) mod notes;

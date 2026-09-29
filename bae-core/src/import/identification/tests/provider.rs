@@ -129,13 +129,25 @@ fn search_json(release_id: &str, group_id: &str) -> String {
 /// a MusicBrainz release with the Discogs record of the same pressing, and
 /// what tells two different pressings apart.
 fn barcode_search_json(releases: &[(&str, &str, &str)]) -> String {
+    barcode_search_json_placed(
+        &releases
+            .iter()
+            .map(|(release_id, group_id, barcode)| (*release_id, *group_id, *barcode, ""))
+            .collect::<Vec<_>>(),
+    )
+}
+
+/// The same, each release stating the country it was released in; an empty
+/// country states none.
+fn barcode_search_json_placed(releases: &[(&str, &str, &str, &str)]) -> String {
     let releases: Vec<String> = releases
         .iter()
-        .map(|(release_id, group_id, barcode)| {
+        .map(|(release_id, group_id, barcode, country)| {
             format!(
                 r#"{{"id":"{release_id}","title":"Album",
                     "artist-credit":[{{"name":"Artist"}}],
                     "release-group":{{"id":"{group_id}"}},
+                    "country":"{country}",
                     "barcode":"{barcode}","label-info":[]}}"#
             )
         })
