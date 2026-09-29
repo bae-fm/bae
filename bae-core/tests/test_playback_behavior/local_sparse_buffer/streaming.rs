@@ -347,11 +347,9 @@ async fn auto_advance_crosses_gaplessly_within_a_multi_window_file() {
         "the second boundary is gapless: the crossing handler re-preloaded track 3"
     );
 
-    let position = position_after(&mut playback.progress_rx, Duration::from_secs(1)).await;
-    assert!(
-        position > 0,
-        "the third track's position advances — samples are flowing after two crossings"
-    );
+    wait_for_track_position_where(&mut playback.progress_rx, &third, |ms| ms > 0)
+        .await
+        .expect("the third track's position advances — samples are flowing after two crossings");
 }
 
 /// A manual Next into a track WITH a pregap can't use the preloaded stream
@@ -384,11 +382,9 @@ async fn manual_next_into_a_pregap_track_rebuilds_and_keeps_streaming() {
         "a pregap skip rebuilds through play_track, which surfaces a Loading arc"
     );
 
-    let position = position_after(&mut playback.progress_rx, Duration::from_secs(1)).await;
-    assert!(
-        position > 0,
-        "the rebuilt track's position advances — its bytes are fetched on demand"
-    );
+    wait_for_track_position_where(&mut playback.progress_rx, &second, |ms| ms > 0)
+        .await
+        .expect("the rebuilt track's position advances — its bytes are fetched on demand");
 }
 
 /// A manual Next into a track WITHOUT a pregap promotes the preloaded stream:
@@ -420,11 +416,9 @@ async fn manual_next_into_a_clean_track_promotes_the_preload() {
         "a pregap-free Next promotes the preloaded stream — no Loading arc, got {states:?}"
     );
 
-    let position = position_after(&mut playback.progress_rx, Duration::from_secs(1)).await;
-    assert!(
-        position > 0,
-        "the promoted track's position advances — its bytes are fetched on demand"
-    );
+    wait_for_track_position_where(&mut playback.progress_rx, &third, |ms| ms > 0)
+        .await
+        .expect("the promoted track's position advances — its bytes are fetched on demand");
 }
 
 /// Every seek test elsewhere in this suite runs on a single-window fixture
@@ -695,12 +689,15 @@ async fn direct_play_skips_pregap_over_sparse_buffer() {
     let pregapped_track = playback.track_ids[1].clone();
     playback.play_and_wait(&pregapped_track).await;
 
-    let position_ms = position_after(&mut playback.progress_rx, Duration::from_millis(1200)).await;
+    let first_position = first_position_of(&mut playback.progress_rx, &pregapped_track).await;
     assert!(
-        position_ms > 600,
-        "direct play should skip the 2s pregap and let position climb from 0; \
-         got {position_ms}ms ~1.2s in (a played pregap would keep it pinned at 0)",
+        first_position >= 0,
+        "direct play should skip the 2s pregap and start the track at 0; \
+         got {first_position}ms (a played pregap starts below zero)",
     );
+    wait_for_track_position_where(&mut playback.progress_rx, &pregapped_track, |ms| ms > 600)
+        .await
+        .expect("the position should climb into the track after the skipped pregap");
 }
 
 /// Multi-window port of `test_auto_advance_plays_pregap`'s negative position
@@ -725,13 +722,12 @@ async fn auto_advance_plays_pregap_over_sparse_buffer() {
     .await
     .expect("playback should auto-advance into the pregapped track");
 
-    // ~1s into track 2 the 2s pregap is still playing: position remains below zero.
-    let during_pregap =
-        position_after(&mut playback.progress_rx, Duration::from_millis(1000)).await;
+    // Track 2 starts in its 2s pregap: the position counts up from below zero.
+    let first_position = first_position_of(&mut playback.progress_rx, &second).await;
     assert!(
-        during_pregap < 0,
+        first_position < 0,
         "auto-advance should play the pregap with a negative countdown; \
-         got {during_pregap}ms ~1s in",
+         the track's first position was {first_position}ms",
     );
 }
 

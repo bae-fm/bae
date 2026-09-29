@@ -286,11 +286,11 @@ async fn manual_next_into_a_pregap_track_over_remote_cloud() {
     .await
     .expect("the second track reaches Playing after a manual Next over a real ranged cloud read");
 
-    let position = position_after(&mut playback.progress_rx, Duration::from_secs(3)).await;
-    assert!(
-        position > 0,
-        "the rebuilt track's position advances — its bytes are fetched over the real cloud path"
-    );
+    wait_for_track_position_where(&mut playback.progress_rx, &second, |ms| ms > 0)
+        .await
+        .expect(
+            "the rebuilt track's position advances — its bytes are fetched over the real cloud path",
+        );
 }
 
 /// Remote-cloud port of `manual_next_into_a_clean_track_promotes_the_preload`.
@@ -311,11 +311,11 @@ async fn manual_next_into_a_clean_track_over_remote_cloud() {
     .await
     .expect("the third track reaches Playing after a manual Next over a real ranged cloud read");
 
-    let position = position_after(&mut playback.progress_rx, Duration::from_secs(3)).await;
-    assert!(
-        position > 0,
-        "the promoted track's position advances — its bytes are fetched over the real cloud path"
-    );
+    wait_for_track_position_where(&mut playback.progress_rx, &third, |ms| ms > 0)
+        .await
+        .expect(
+            "the promoted track's position advances — its bytes are fetched over the real cloud path",
+        );
 }
 
 /// Remote-cloud seek port: seeking within the last track over a real ranged

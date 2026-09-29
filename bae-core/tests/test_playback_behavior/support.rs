@@ -74,30 +74,43 @@ async fn next_position(
     .await
 }
 
-/// Wait for the first position update, then return the last `position_ms` seen
-/// `settle` later. This tells a skipped pregap (position climbs from 0) from a
-/// played one (position counts up from a negative value).
-async fn position_after(
+/// How long a playing track's position may take to reach the mark a test waits
+/// for before the wait counts as a stall. Tests assert only that the position
+/// gets there, not how fast.
+const POSITION_BACKSTOP: Duration = Duration::from_secs(10);
+
+/// The first `position_ms` reported for `track_id`. Where a track starts is
+/// what tells a skipped pregap (it starts at 0) from a played one (it starts
+/// counting up from a negative value).
+async fn first_position_of(
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
-    settle: Duration,
+    track_id: &str,
 ) -> i64 {
-    let mut latest = next_position(progress_rx, Duration::from_secs(30))
+    wait_for_track_position(progress_rx, track_id, Duration::from_secs(30))
         .await
-        .expect("no position update arrived within 30s of requesting one");
-    // The predicate never accepts, so this samples the whole settle window.
-    support::next_matching(progress_rx, settle, |event| {
-        if let PlaybackProgress::PositionUpdate { position_ms, .. } = event {
-            latest = position_ms;
-        }
-        None::<()>
+        .unwrap_or_else(|| panic!("no position update for {track_id} arrived within 30s"))
+}
+
+/// The first `position_ms` reported for `track_id` that satisfies `reached`,
+/// or `None` if none does within `POSITION_BACKSTOP`.
+async fn wait_for_track_position_where(
+    progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
+    track_id: &str,
+    reached: impl Fn(i64) -> bool,
+) -> Option<i64> {
+    support::next_matching(progress_rx, POSITION_BACKSTOP, |event| match event {
+        PlaybackProgress::PositionUpdate {
+            position_ms,
+            track_id: tid,
+            ..
+        } if tid == track_id && reached(position_ms) => Some(position_ms),
+        _ => None,
     })
-    .await;
-    latest
+    .await
 }
 
 /// Return the first `position_ms` greater than the first position update seen,
-/// or `None` if the position does not advance. Use `position_after` when the
-/// elapsed time is itself what the test measures.
+/// or `None` if the position does not advance.
 async fn wait_for_position_advance(
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
 ) -> Option<i64> {

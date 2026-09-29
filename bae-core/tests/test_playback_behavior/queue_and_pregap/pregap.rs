@@ -1,6 +1,6 @@
 // Pregap tests. The CUE/FLAC fixture's track 2 has a 2s pregap (INDEX 00 at
-// 8s, INDEX 01 at 10s). Play and Next skip it, so the position is positive
-// partway in; auto-advance plays it, so the position is still negative.
+// 8s, INDEX 01 at 10s). Play and Next skip it, so the track's first position
+// is 0 or later; auto-advance plays it, so its first position is negative.
 
 #[tokio::test]
 async fn test_direct_play_skips_pregap() {
@@ -21,12 +21,16 @@ async fn test_direct_play_skips_pregap() {
     .await
     .expect("the pregapped track should start playing");
 
-    let position_ms = position_after(&mut fixture.progress_rx, Duration::from_millis(1200)).await;
+    let first_position =
+        first_position_of(&mut fixture.progress_rx, &pregapped_track_id).await;
     assert!(
-        position_ms > 600,
-        "direct play should skip the 2s pregap and let position climb from 0; \
-         got {position_ms}ms ~1.2s in (a played pregap would keep it pinned at 0)",
+        first_position >= 0,
+        "direct play should skip the 2s pregap and start the track at 0; \
+         got {first_position}ms (a played pregap starts below zero)",
     );
+    wait_for_track_position_where(&mut fixture.progress_rx, &pregapped_track_id, |ms| ms > 600)
+        .await
+        .expect("the position should climb into the track after the skipped pregap");
 }
 
 #[tokio::test]
@@ -59,12 +63,16 @@ async fn test_next_button_skips_pregap() {
     .await
     .expect("Next should switch to the pregapped track");
 
-    let position_ms = position_after(&mut fixture.progress_rx, Duration::from_millis(1200)).await;
+    let first_position =
+        first_position_of(&mut fixture.progress_rx, &pregapped_track_id).await;
     assert!(
-        position_ms > 600,
-        "Next should skip the 2s pregap and let position climb from 0; \
-         got {position_ms}ms ~1.2s in (a played pregap would keep it pinned at 0)",
+        first_position >= 0,
+        "Next should skip the 2s pregap and start the track at 0; \
+         got {first_position}ms (a played pregap starts below zero)",
     );
+    wait_for_track_position_where(&mut fixture.progress_rx, &pregapped_track_id, |ms| ms > 600)
+        .await
+        .expect("the position should climb into the track after the skipped pregap");
 }
 
 #[tokio::test]
@@ -100,19 +108,17 @@ async fn test_auto_advance_plays_pregap() {
     .await
     .expect("playback should auto-advance into the pregapped track");
 
-    // ~1s in, the pregap is still playing, so the position is below zero.
-    let during_pregap = position_after(&mut fixture.progress_rx, Duration::from_millis(1000)).await;
+    let first_position =
+        first_position_of(&mut fixture.progress_rx, &pregapped_track_id).await;
     assert!(
-        during_pregap < 0,
+        first_position < 0,
         "auto-advance should play the pregap with a negative countdown; \
-         got {during_pregap}ms ~1s in",
+         the track's first position was {first_position}ms",
     );
 
-    let after_pregap = position_after(&mut fixture.progress_rx, Duration::from_millis(2500)).await;
-    assert!(
-        after_pregap > 600,
-        "once the pregap passes, position should climb into the track; got {after_pregap}ms",
-    );
+    wait_for_track_position_where(&mut fixture.progress_rx, &pregapped_track_id, |ms| ms > 600)
+        .await
+        .expect("once the pregap passes, position should climb into the track");
 }
 
 /// Seeking within CUE/FLAC track 2, which starts mid-album, plays audio from the

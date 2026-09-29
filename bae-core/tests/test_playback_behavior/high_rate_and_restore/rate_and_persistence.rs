@@ -484,51 +484,41 @@ async fn test_position_persists_periodically_while_playing() {
         .await
         .expect("the track should start playing");
 
-    // Let playback advance past the periodic-persist threshold. No Shutdown,
-    // no SaveState — only the ordinary play-progress ticks.
-    let live_position_ms =
-        position_after(&mut fixture.progress_rx, Duration::from_millis(1500)).await;
-    assert!(
-        live_position_ms > 0,
-        "sanity: playback should have advanced, got {live_position_ms}ms"
-    );
+    // No Shutdown, no SaveState — only the ordinary play-progress ticks. The
+    // track's load persisted position 0, so a later position is a periodic
+    // write.
+    let first_persisted_ms = persisted_position_past(&mut fixture, 0).await;
 
-    let bae_core::db::LoadedPlaybackState::Present(row) = fixture
-        .library_manager
-        .load_playback_state()
-        .await
-        .expect("load_playback_state should succeed")
-    else {
-        panic!(
-            "a playback_state row should be persisted while playing, \
-             with no Shutdown/SaveState sent"
-        );
-    };
-    let first_persisted_ms = row
-        .position_ms
-        .expect("position_ms must be recorded while playing");
-    assert!(
-        first_persisted_ms > 0,
-        "persisted position should be > 0 after ~1.5s of playback, got {first_persisted_ms}ms"
-    );
+    // The stored position keeps climbing — proof this is a periodic write, not
+    // a one-shot at track start.
+    persisted_position_past(&mut fixture, first_persisted_ms).await;
+}
 
-    // Advance further and confirm the stored position keeps climbing — proof
-    // this is a periodic write, not a one-shot at track start.
-    let _ = position_after(&mut fixture.progress_rx, Duration::from_millis(1500)).await;
-    let bae_core::db::LoadedPlaybackState::Present(row) = fixture
-        .library_manager
-        .load_playback_state()
-        .await
-        .expect("load_playback_state should succeed")
-    else {
-        panic!("the playback_state row should still be present");
-    };
-    let second_persisted_ms = row.position_ms.expect("position_ms must still be recorded");
-    assert!(
-        second_persisted_ms > first_persisted_ms,
-        "persisted position must keep advancing while playing: \
-         {first_persisted_ms}ms then {second_persisted_ms}ms"
-    );
+/// The `playback_state` row's position once it passes `floor_ms`, read again
+/// after each position update. Panics if it hasn't within `POSITION_BACKSTOP`.
+async fn persisted_position_past(fixture: &mut PlaybackTestFixture, floor_ms: i64) -> i64 {
+    let deadline = Instant::now() + POSITION_BACKSTOP;
+    loop {
+        let remaining = deadline.saturating_duration_since(Instant::now());
+        next_position(&mut fixture.progress_rx, remaining)
+            .await
+            .unwrap_or_else(|| {
+                panic!(
+                    "the persisted position should pass {floor_ms}ms while playing, \
+                     with no Shutdown/SaveState sent"
+                )
+            });
+        let state = fixture
+            .library_manager
+            .load_playback_state()
+            .await
+            .expect("load_playback_state should succeed");
+        if let bae_core::db::LoadedPlaybackState::Present(row) = state {
+            if let Some(persisted_ms) = row.position_ms.filter(|ms| *ms > floor_ms) {
+                return persisted_ms;
+            }
+        }
+    }
 }
 
 /// An imported test library with no playback service running, so a test can

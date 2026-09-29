@@ -96,9 +96,10 @@ async fn previous_navigation_over_sparse_buffer() {
     .await
     .expect("Next should switch to the second track");
 
-    // Pressed promptly (well inside the 3s window): Previous steps back.
+    // Pressed as soon as the seek lands (well inside the 3s window): Previous
+    // steps back.
     playback.playback_handle.seek(Duration::from_secs(1));
-    position_after(&mut playback.progress_rx, Duration::from_millis(500)).await;
+    support::wait_for_seek(&mut playback.progress_rx, &second).await;
     playback.playback_handle.previous();
     wait_for_state_on(
         &mut playback.progress_rx,
@@ -108,9 +109,13 @@ async fn previous_navigation_over_sparse_buffer() {
     .await
     .expect("Previous called early in the track should go to the previous track");
 
-    // Pressed late in the track: Previous restarts the current one.
+    // Pressed late in the track: Previous restarts the current one. A position
+    // past the seek target is reported after every update the stream before
+    // the seek queued, so none of those can be read as the restart's.
     playback.playback_handle.seek(Duration::from_secs(10));
-    position_after(&mut playback.progress_rx, Duration::from_millis(500)).await;
+    wait_for_track_position_where(&mut playback.progress_rx, &first, |ms| ms >= 10_000)
+        .await
+        .expect("the seek to 10s lands and plays on");
     playback.playback_handle.previous();
     wait_for_state_on(
         &mut playback.progress_rx,
@@ -119,12 +124,9 @@ async fn previous_navigation_over_sparse_buffer() {
     )
     .await
     .expect("Previous called late in the track should restart it");
-    let restart_position =
-        position_after(&mut playback.progress_rx, Duration::from_millis(800)).await;
-    assert!(
-        restart_position < 3_000,
-        "restart should reset position near 0, got {restart_position}ms",
-    );
+    wait_for_track_position_where(&mut playback.progress_rx, &first, |ms| ms < 3_000)
+        .await
+        .expect("restart should reset the position from 10s to near 0");
 }
 
 /// Multi-window port of `seek_preserves_staged_next_for_a_gapless_advance`:
