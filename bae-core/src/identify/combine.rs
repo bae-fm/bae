@@ -2,10 +2,12 @@
 //! Pure: no I/O, no state.
 //!
 //! Every record is first paired into pressing rows — two sources' records of
-//! one object are one row, picked whole — and each row is scored by
-//! `Support`. The rows tied at the top are offered; the rest are set aside
-//! under "N more releases". A record read through another release's link
-//! rather than returned by a lookup counts for no lookup.
+//! one object are one row, picked whole. A row whose read tracklist holds
+//! other tracks than the folder is not a match and is left out (see
+//! `fit::rules_out`); each row left is scored by `Support`. The rows
+//! tied at the top are offered; the rest are set aside under "N more
+//! releases". A record read through another release's link rather than
+//! returned by a lookup counts for no lookup.
 
 use super::agreements::{agreements_of, CandidateText};
 use super::medium::{agrees_with_mono, FolderAudio, RippedFrom};
@@ -238,9 +240,11 @@ pub fn combine_results(
             )
         })
         .collect();
+    // Neither offered nor set aside: a row the folder cannot be is no answer.
     let rows: Vec<Pressing> = group_results(judged, Some(folder.track_count))
         .into_iter()
         .flat_map(ReleaseGroup::into_pressings)
+        .filter(|row| !super::fit::rules_out(&row.releases, folder.track_count))
         .collect();
     let in_library: HashSet<ReleaseKey> = all
         .iter()
@@ -343,15 +347,17 @@ struct Support {
     /// say which of its lines is the title or the artist, so a row's title it
     /// does not write contradicts nothing.
     names_album: u32,
-    /// Whether nothing read says the row holds other tracks than the folder,
-    /// by [`super::fit::TracklistFit::admits`] of the row's lead — the record
-    /// that fits best, so a row one of whose records fits or is not read yet
-    /// is admitted. A row whose document is not in, or could not be had,
-    /// never loses to one whose is. Below the album's names, so a row for some
-    /// other album that happens to hold as many tracks never passes the
-    /// right album; above the channels and the country, because a different
-    /// tracklist is a different edition, where those only say where or how
-    /// one edition was cut.
+    /// Whether the row states tracks the folder could be, by
+    /// [`super::fit::TracklistFit::admits`] of the row's lead — the record
+    /// that fits best. A row that lists other tracks than the folder is not
+    /// here at all (see [`super::fit::rules_out`]), so what this sets below
+    /// is a row whose records list no tracks: it proves nothing, and ranks
+    /// under one whose tracklist fits or is not read yet. A row whose
+    /// document is not in, or could not be had, never loses to one whose is.
+    /// Below the album's names, so a row for some other album that happens
+    /// to hold as many tracks never passes the right album; above the
+    /// channels and the country, which only say where or how one edition was
+    /// cut.
     fits_the_tracks: bool,
     /// Whether the titles a row's read document lists run in the order the
     /// folder's do — see [`super::row_facts::track_titles`]. Agreeing counts

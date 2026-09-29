@@ -39,7 +39,6 @@ pub enum AutomationLookupState {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationFolderCheck {
-    TrackCountDisagrees { local: u32, source: u32 },
     SourceTracksUnknown,
     MediumDisagrees { folder: AutomationMediumConflict },
 }

@@ -40,7 +40,7 @@ async fn a_settled_pick_that_asks_nothing_opens_the_pane_on_the_draft() {
 }
 
 /// A picked release that failed a check against the folder — here, it lists
-/// three tracks against the folder's two — leaves the pane where the person
+/// no tracks to count against the folder's — leaves the pane where the person
 /// left it.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_settled_pick_that_asks_something_leaves_the_pane_where_it_was() {
@@ -62,16 +62,13 @@ async fn a_settled_pick_that_asks_something_leaves_the_pane_where_it_was() {
             &dir,
             "mb-settled-2",
             "rg-settled-2",
-            crate::import::search::SourceTracks::Listed { count: 3 },
+            crate::import::search::SourceTracks::Nothing,
         )
         .await;
 
     assert_eq!(
         fixture.judgement_for(&dir).await,
-        (false, Some(crate::identify::FolderCheck::TrackCountDisagrees {
-            local: 2,
-            source: 3
-        }))
+        (false, Some(crate::identify::FolderCheck::SourceTracksUnknown))
     );
     assert_eq!(
         fixture

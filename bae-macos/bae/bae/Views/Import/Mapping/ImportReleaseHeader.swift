@@ -6,7 +6,8 @@ import SwiftUI
 struct ImportCommitControls {
     let unansweredCount: Int
     /// Why the folder keeps this candidate out of a bulk import, such as a
-    /// track count mismatch; shown beside Import, which stays available.
+    /// release that lists no tracks; shown beside Import, which stays
+    /// available.
     let folderCheck: BridgeFolderCheck?
     /// What the last import left: a failure, which Import retries, or
     /// nothing.

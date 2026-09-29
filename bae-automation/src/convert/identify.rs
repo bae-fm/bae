@@ -38,7 +38,6 @@ mirror_enum! {
     AutomationFolderCheck = bae_core::identify::FolderCheck,
     from_core: pub(crate) fn,
     variants: {
-        TrackCountDisagrees { local, source },
         SourceTracksUnknown,
         MediumDisagrees { folder: (AutomationMediumConflict) },
     },

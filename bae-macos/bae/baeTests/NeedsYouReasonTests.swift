@@ -25,7 +25,6 @@ struct NeedsYouReasonTests {
     func eachReasonHasItsOwnBadge() {
         let reasons: [BridgeNeedsYouReason] = [
             .matches(count: 3),
-            .trackCountMismatch(local: 11, source: 12),
             .noTracklist,
             .mediumMismatch(folder: .cdRip, releases: 2),
             .notFound,
@@ -45,14 +44,6 @@ struct NeedsYouReasonTests {
             BridgeNeedsYouReason.matches(count: 4).sentence
                 == String(
                     localized: "We found \(4) releases that could be this."
-                )
-        )
-        #expect(
-            BridgeNeedsYouReason.trackCountMismatch(local: 11, source: 12)
-                .sentence
-                == String(
-                    localized:
-                        "This release has \(12) tracks; your folder has \(11)."
                 )
         )
     }
@@ -83,7 +74,6 @@ struct NeedsYouReasonTests {
     func offeredReleasesDecideTheWording() {
         let offered: [BridgeNeedsYouReason] = [
             .matches(count: 2),
-            .trackCountMismatch(local: 11, source: 12),
             .noTracklist,
             .mediumMismatch(folder: .notCdAudio, releases: 1),
         ]

@@ -621,16 +621,16 @@ struct ImportCommitControlsTests {
             )
         )
         candidate.placement = .pending(
-            folderCheck: .trackCountDisagrees(local: 13, source: 12),
+            folderCheck: .sourceTracksUnknown,
             records: []
         )
-        let disagreeing =
+        let unchecked =
             try await SnapshotTestSupport.recognizedText(
                 in: captureMappingPane(candidate: candidate, runtime: nil),
                 languages: ["en-US"]
             )
             .map(\.text)
-        #expect(disagreeing.carrying("13 in the folder, 12 on the release"))
+        #expect(unchecked.carrying("The release lists no tracks"))
 
         candidate.placement = .pending(folderCheck: nil, records: [])
         let ready =
@@ -639,7 +639,7 @@ struct ImportCommitControlsTests {
                 languages: ["en-US"]
             )
             .map(\.text)
-        #expect(!ready.carrying("in the folder"))
+        #expect(!ready.carrying("lists no tracks"))
     }
 
     /// The pane is shown only before an import runs or after one fails, so

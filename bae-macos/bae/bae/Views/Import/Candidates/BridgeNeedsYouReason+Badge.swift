@@ -8,8 +8,6 @@ extension BridgeNeedsYouReason {
         switch self {
         case .matches(let count):
             String(localized: "\(Int(count)) matches")
-        case .trackCountMismatch:
-            String(localized: "Track count mismatch")
         case .noTracklist:
             String(localized: "No tracklist")
         case .mediumMismatch:
@@ -30,11 +28,6 @@ extension BridgeNeedsYouReason {
         case .matches(let count):
             String(
                 localized: "We found \(Int(count)) releases that could be this."
-            )
-        case .trackCountMismatch(let local, let source):
-            String(
-                localized:
-                    "This release has \(Int(source)) tracks; your folder has \(Int(local))."
             )
         case .noTracklist:
             String(
@@ -77,7 +70,7 @@ extension BridgeNeedsYouReason {
     /// keeping the folder's own draft is worded: none of these, or keep mine.
     var offeredReleases: Bool {
         switch self {
-        case .matches, .trackCountMismatch, .noTracklist, .mediumMismatch:
+        case .matches, .noTracklist, .mediumMismatch:
             true
         case .notFound, .nothingToLookUp:
             false

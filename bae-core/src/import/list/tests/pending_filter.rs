@@ -260,17 +260,21 @@ fn every_row_is_in_exactly_one_state() {
     assert_eq!(seen, every, "each row shows under exactly one state");
 }
 
-/// A sole release that does not fit the folder is not picked for it, so the
+/// A sole release that lists no tracks is not picked for the folder, so the
 /// row waits on the person as several releases do.
 #[test]
-fn a_sole_release_that_does_not_fit_the_folder_needs_you() {
+fn a_sole_release_that_lists_no_tracks_needs_you() {
     let mut rows = queue();
-    rows.candidates = vec![candidate("Unfit")];
+    rows.candidates = vec![candidate("Unchecked")];
     rows.states.insert(
-        "hash-Unfit".to_string(),
+        "hash-Unchecked".to_string(),
         with_verdict(several_matches_state(), |verdict| {
             verdict.pressing_count = 1;
-            verdict.track_count = Some(10);
+            verdict
+                .lead
+                .as_mut()
+                .expect("the state leads with a match")
+                .source_tracks = Some(crate::import::search::SourceTracks::Nothing);
         }),
     );
     assert_eq!(
@@ -279,7 +283,7 @@ fn a_sole_release_that_does_not_fit_the_folder_needs_you() {
             TriageTab::Pending,
             checked(&[PendingState::NeedsYou])
         ),
-        vec!["candidate Unfit"]
+        vec!["candidate Unchecked"]
     );
 }
 

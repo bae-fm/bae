@@ -183,7 +183,7 @@ struct ImportPreviewDataTests {
         #expect(rows.contains { $0.placement == .skipped })
         #expect(
             scene.store.selectedCandidates.values.contains { candidate in
-                if case .pending(.trackCountDisagrees, _) = candidate.placement
+                if case .pending(.sourceTracksUnknown, _) = candidate.placement
                 {
                     return true
                 }

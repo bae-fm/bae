@@ -230,9 +230,3 @@ zh-Hant	S3-compatible
 zh-Hant	cloud_provider_s3
 da	Pause uploads
 da	settings_pause_uploads
-
-# The Needs You track-count sentence: "source" and "local" are its
-# substitution names, not words; Dutch keeps the loanword "release" its other
-# entries use, and "folder" is the Polish word.
-nl	This release has %lld tracks; your folder has %lld.
-pl	This release has %lld tracks; your folder has %lld.

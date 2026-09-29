@@ -67,12 +67,13 @@ pub struct MetadataResult {
     /// albums on one card.
     pub album_links: AlbumLinks,
     /// What the source says about this release's own tracklist, read against
-    /// the folder's audio: what ranks a row that fits the folder above one
-    /// that does not, and the other half of the auto-import check. `None`
-    /// until the release's document is read — a search result lists no
-    /// tracklist — which the run does for every row it offers before it
-    /// settles (see [`crate::identify::documents`]); a disc-ID result carries
-    /// its matched medium's count from the start.
+    /// the folder's audio: what rules out a row that holds other tracks than
+    /// the folder, and the other half of the auto-import check. `None` until
+    /// the release's document is read, which the run does for every row it
+    /// offers before it settles (see [`crate::identify::documents`]). No
+    /// lookup's answer states it: a search result lists no tracklist, and the
+    /// medium a disc ID names is one disc of what the folder may hold, where
+    /// the document is read against all of the folder's audio.
     pub source_tracks: Option<SourceTracks>,
     /// Why this record's full document could not be read when the run offered
     /// its row, which then states what the result said. `None` when it was
@@ -361,43 +362,40 @@ pub(crate) fn discogs_notes(formats: &[crate::discogs::DiscogsFormat]) -> Vec<St
         .collect()
 }
 
-fn source_tracks_from_mb_tracks<'a>(
-    tracks: impl Iterator<Item = &'a crate::musicbrainz::MbTrack>,
-) -> SourceTracks {
-    let tracks: Vec<_> = tracks.collect();
-    if tracks.is_empty() {
-        return SourceTracks::Nothing;
-    }
-    SourceTracks::Listed {
-        count: tracks.len() as u32,
-    }
-}
-
+/// A release a disc-ID lookup answered, when exactly one of its mediums is the
+/// disc: a release that registers the disc on none of them, or on several,
+/// is skipped.
 fn mb_discid_release_to_metadata(discid: &str, r: MbReleaseResponse) -> Option<MetadataResult> {
-    let mut matching_media = r.media.iter().filter(|medium| {
-        medium
-            .discs
-            .iter()
-            .any(|registered| registered.id == discid)
-    });
-    let Some(medium) = matching_media.next() else {
-        warn!(
-            discid,
-            musicbrainz_release_id = %r.id,
-            "Skipping MusicBrainz DiscID result without a matching medium"
-        );
-        return None;
-    };
-    if matching_media.next().is_some() {
-        warn!(
-            discid,
-            musicbrainz_release_id = %r.id,
-            "Skipping MusicBrainz DiscID result with multiple matching media"
-        );
-        return None;
+    let matching_media = r
+        .media
+        .iter()
+        .filter(|medium| {
+            medium
+                .discs
+                .iter()
+                .any(|registered| registered.id == discid)
+        })
+        .count();
+    match matching_media {
+        1 => {}
+        0 => {
+            warn!(
+                discid,
+                musicbrainz_release_id = %r.id,
+                "Skipping MusicBrainz DiscID result without a matching medium"
+            );
+            return None;
+        }
+        _ => {
+            warn!(
+                discid,
+                musicbrainz_release_id = %r.id,
+                "Skipping MusicBrainz DiscID result with multiple matching media"
+            );
+            return None;
+        }
     }
 
-    let source_tracks = Some(source_tracks_from_mb_tracks(medium.tracks.iter()));
     let (pressing, media) = crate::import::musicbrainz_mapper::pressing(&r);
     let links = release_links_of(&r.relations);
     let cover_art = crate::import::cover_art::musicbrainz_release_cover(&r);
@@ -420,7 +418,7 @@ fn mb_discid_release_to_metadata(discid: &str, r: MbReleaseResponse) -> Option<M
         // Read from the group's own document once the list it lands on holds
         // the other catalog's releases too.
         album_links: AlbumLinks::NotAsked,
-        source_tracks,
+        source_tracks: None,
         document_failure: None,
         album_first_year: None,
         track_titles: Vec::new(),

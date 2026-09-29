@@ -399,18 +399,6 @@ fn a_document_lists_its_tracks_titles() {
     assert_eq!(document.track_titles, vec!["Track 1", "Track 2", "Track 3"]);
 }
 
-/// A count disagreement is named as one, with both counts.
-#[test]
-fn a_count_disagreement_is_named_as_one() {
-    assert_eq!(
-        crate::identify::VerdictSummary::of(&found_verdict(11, Some(SourceTracks::Listed { count: 12 })), false).judgement(),
-        (false, Some(FolderCheck::TrackCountDisagrees {
-            local: 11,
-            source: 12
-        }))
-    );
-}
-
 // ── 6. A skipped candidate is not identified ────────────────────────────────
 
 /// Skipped is a decision the user already made, so automatic identification

@@ -14,7 +14,7 @@
             artist: String? = "Artist Name",
             year: Int32? = 1997,
             media: [BridgeMediaCount] = PreviewData.media(.cd),
-            trackCount: UInt32 = 12,
+            trackCount: UInt32? = 12,
             source: BridgeCatalog = .musicBrainz,
             signal: BridgeMatchedSignal? = .discId
         ) -> BridgeMatchedRelease {
@@ -121,9 +121,9 @@
             identifyState: searchStateDisagreement.identifyState
         )
 
-        private static let trackMismatchGroup = ReleaseGroup(
+        private static let noTracklistGroup = ReleaseGroup(
             bridge: BridgeReleaseGroup(
-                id: "group-track-mismatch",
+                id: "group-no-tracklist",
                 title: "Album Title Seven",
                 artist: "Artist Name",
                 label: "Label Name",
@@ -132,7 +132,7 @@
                     BridgeReleaseGroupSource(
                         source: .musicBrainz,
                         groupUrl:
-                            "https://musicbrainz.org/release-group/group-track-mismatch",
+                            "https://musicbrainz.org/release-group/group-no-tracklist",
                         albumLinksUnread: false
                     )
                 ],
@@ -148,19 +148,19 @@
             )
         )
 
-        static let importTabTrackMismatchCandidate = importTabFolder(
-            path: "Album Title Seven - Partial",
-            name: "Album Title Seven - Partial",
-            trackCount: 1,
+        static let importTabNoTracklistCandidate = importTabFolder(
+            path: "Album Title Seven",
+            name: "Album Title Seven",
+            trackCount: 10,
             identifyState: .found(
                 run: identifyRunFound,
-                groups: [trackMismatchGroup],
+                groups: [noTracklistGroup],
                 libraryStatuses: [:],
-                trackCount: 1,
+                trackCount: 10,
                 agreements: [:],
                 narrowedOutCount: 0,
                 catalogAgreements: [],
-                folderCheck: .trackCountDisagrees(local: 1, source: 10),
+                folderCheck: .sourceTracksUnknown,
                 picksUnattended: false,
                 offersSharedAlbum: false
             )
@@ -411,14 +411,14 @@
             metadataSummary: nil
         )
 
-        static let triageRowTrackMismatch = triageRow(
-            for: importTabTrackMismatchCandidate,
+        static let triageRowNoTracklist = triageRow(
+            for: importTabNoTracklistCandidate,
             placement: .pending,
             matched: triageMatch(
-                releaseId: "rel-track-mismatch",
+                releaseId: "rel-no-tracklist",
                 title: "Album Title Seven",
                 year: 1994,
-                trackCount: 10
+                trackCount: nil
             ),
             metadataSummary: nil
         )
@@ -602,7 +602,7 @@
                 importTabCandidate,
                 importTabSeveralMatchesCandidate,
                 importTabDisagreementCandidate,
-                importTabTrackMismatchCandidate,
+                importTabNoTracklistCandidate,
                 importTabAlreadyInLibraryCandidate,
                 importTabNoMatchCandidate,
                 importTabIdentifyingCandidate,
@@ -622,7 +622,7 @@
             triageRowIdentified,
             triageRowPickAPressing,
             triageRowSeveralMatchesFromSignals,
-            triageRowTrackMismatch,
+            triageRowNoTracklist,
             triageRowAlreadyInLibrary,
             triageRowNoMatch,
             triageRowIdentifying,
@@ -714,7 +714,7 @@
                     triageRowSeveralMatchesFromSignals,
                     triageLive(identifiedDraftCommands)
                 ),
-                (triageRowTrackMismatch, triageLive(identifiedDraftCommands)),
+                (triageRowNoTracklist, triageLive(identifiedDraftCommands)),
                 (
                     triageRowAlreadyInLibrary,
                     triageLive([.import] + identifiedDraftCommands)
@@ -763,10 +763,7 @@
 
         /// The failed folder check the pane states for a preview candidate.
         static let importTabFolderChecks: [String: BridgeFolderCheck] = [
-            importTabTrackMismatchCandidate.key: .trackCountDisagrees(
-                local: 1,
-                source: 10
-            )
+            importTabNoTracklistCandidate.key: .sourceTracksUnknown
         ]
 
         /// Where the pane places a preview candidate, from its list row.

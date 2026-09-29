@@ -267,8 +267,6 @@ pub enum BridgePendingStanding {
 pub enum BridgeNeedsYouReason {
     /// Several pressings could be the folder's: `count` of them.
     Matches { count: u32 },
-    /// The one release found lists `source` tracks; the folder holds `local`.
-    TrackCountMismatch { local: u32, source: u32 },
     /// The one release found lists no tracks.
     NoTracklist,
     /// The folder's own files rule out every release found, of which there
@@ -422,10 +420,6 @@ pub enum BridgeIdentificationStatus {
 /// operands the UI formats into the `bridge_folder_check_key` message.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeFolderCheck {
-    TrackCountDisagrees {
-        local: u32,
-        source: u32,
-    },
     SourceTracksUnknown,
     /// The folder's own files rule out every release found.
     MediumDisagrees {
@@ -447,7 +441,6 @@ pub enum BridgeMediumConflict {
 impl BridgeFolderCheck {
     pub(crate) fn loc_key(&self) -> &'static str {
         match self {
-            Self::TrackCountDisagrees { .. } => "core.import.triage.track_count_disagrees",
             Self::SourceTracksUnknown => "core.import.triage.source_tracks_unknown",
             Self::MediumDisagrees {
                 folder: BridgeMediumConflict::CdRip,

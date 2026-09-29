@@ -307,7 +307,6 @@ mirror_enum! {
     into_core: pub(crate) fn,
     variants: {
         Matches { count },
-        TrackCountMismatch { local, source },
         NoTracklist,
         MediumMismatch { folder: (crate::types::BridgeMediumMismatch), releases },
         NotFound,
@@ -374,9 +373,6 @@ impl crate::types::BridgeFolderCheck {
     pub(crate) fn with_rate(check: bae_core::identify::FolderCheck, rate: Option<u32>) -> Self {
         use bae_core::identify::FolderCheck;
         match check {
-            FolderCheck::TrackCountDisagrees { local, source } => {
-                Self::TrackCountDisagrees { local, source }
-            }
             FolderCheck::SourceTracksUnknown => Self::SourceTracksUnknown,
             FolderCheck::MediumDisagrees { folder } => Self::MediumDisagrees {
                 folder: match folder {

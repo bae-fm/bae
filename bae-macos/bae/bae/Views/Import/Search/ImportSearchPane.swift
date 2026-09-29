@@ -321,8 +321,8 @@ struct ImportSearchPane: View {
             .importPreviewEnvironment()
     }
 
-    #Preview("Find online — a sole match that does not fit") {
-        ImportSearchPane.preview(state: PreviewData.searchStateSoleUnfit)
+    #Preview("Find online — a sole match that lists no tracks") {
+        ImportSearchPane.preview(state: PreviewData.searchStateSoleUnchecked)
             .frame(width: 900, height: 620)
             .importPreviewEnvironment()
     }

@@ -829,9 +829,9 @@
             isFinalizing: true
         )
 
-        /// A sole match whose tracklist does not fit the folder: offered, not
-        /// picked, with the check it failed under its row.
-        static let searchStateSoleUnfit = searchState(
+        /// A sole match whose release lists no tracks: offered, not picked,
+        /// with the check it failed under its row.
+        static let searchStateSoleUnchecked = searchState(
             identifyState: .found(
                 run: identifyRunFound,
                 groups: [
@@ -860,7 +860,7 @@
                 agreements: searchAgreementsExact,
                 narrowedOutCount: 0,
                 catalogAgreements: catalogAgreements,
-                folderCheck: .trackCountDisagrees(local: 13, source: 12),
+                folderCheck: .sourceTracksUnknown,
                 picksUnattended: false,
                 offersSharedAlbum: false
             ),

@@ -16,12 +16,6 @@ extension BridgeFolderCheck {
             comment: ""
         )
         switch self {
-        case .trackCountDisagrees(let local, let source):
-            return String.localizedStringWithFormat(
-                template,
-                Int(local),
-                Int(source)
-            )
         case .mediumDisagrees(.notCdAudio(let sampleRateHz)):
             guard let sampleRateHz else { return nil }
             let kilohertz = (Double(sampleRateHz) / 1000)

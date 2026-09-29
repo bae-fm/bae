@@ -138,13 +138,6 @@ fn each_answer_left_to_the_person_names_why() {
     for (verdict, reason) in [
         (found(3, None), NeedsYouReason::Matches { count: 3 }),
         (
-            found(1, Some(SourceTracks::Listed { count: 12 })),
-            NeedsYouReason::TrackCountMismatch {
-                local: 11,
-                source: 12,
-            },
-        ),
-        (
             found(1, Some(SourceTracks::Nothing)),
             NeedsYouReason::NoTracklist,
         ),

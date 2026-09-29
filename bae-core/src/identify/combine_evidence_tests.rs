@@ -496,7 +496,10 @@ fn mono_audio_against_stereo_listings_can_still_be_ready() {
         },
         Vec::new(),
         &folder(),
-        MONO_FILES,
+        FolderAudio {
+            track_count: 11,
+            ..MONO_FILES
+        },
     );
     assert_eq!(findings.medium_conflict, None);
     let verdict = crate::identify::TerminalVerdict::Found {

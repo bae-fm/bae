@@ -308,19 +308,18 @@ fn a_match_listing_no_tracks_is_never_admitted() {
     }
 }
 
-/// The count is the whole check: a release listing a different number of
-/// tracks names both counts.
+/// Only a release a person picked leads with another count than the
+/// folder's — a run leaves every such row out — and what the person picked is
+/// theirs: the count is no check it failed.
 #[test]
-fn a_count_mismatch_names_both_counts() {
+fn a_picked_release_s_count_is_no_check_it_failed() {
     assert_eq!(
-        VerdictSummary::of(&found(vec![result("mb-1", listing(12))], 11), false).judgement(),
-        (
-            false,
-            Some(FolderCheck::TrackCountDisagrees {
-                local: 11,
-                source: 12
-            })
+        VerdictSummary::of(
+            &TerminalVerdict::of_pick(result("mb-1", listing(12)), 11),
+            false
         )
+        .judgement(),
+        (true, None)
     );
 }
 

@@ -1,10 +1,11 @@
 //! Whether what a run found fits the folder, decided once.
 //!
 //! [`TracklistFit`] is the one reading of a record's tracklist against the
-//! folder's audio, and [`unattended_pick`] the one rule for whether a found
-//! verdict picks its release without a person: the release the settle applies
-//! to the draft is the release automatic import takes, and the reason it
-//! picks none is the check the pane states.
+//! folder's audio, `rules_out` the one rule for when that reading says a
+//! row is not the folder's, and [`unattended_pick`] the one rule for whether
+//! a found verdict picks its release without a person: the release the settle
+//! applies to the draft is the release automatic import takes, and the reason
+//! it picks none is the check the pane states.
 
 use super::verdict_summary::FolderCheck;
 use super::MediumConflict;
@@ -39,9 +40,10 @@ impl TracklistFit {
         }
     }
 
-    /// Whether nothing read rules the record out. A record whose document is
-    /// not in stands beside one whose document fits: what is offered errs on
-    /// showing a release, and only a fit that was read is ever picked.
+    /// Whether the record states tracks the folder could be: it fits, or its
+    /// document is not in. A record whose document could not be read stands
+    /// beside one whose document fits: what is offered errs on showing a
+    /// release, and only a fit that was read is ever picked.
     pub fn admits(self) -> bool {
         match self {
             Self::Fits | Self::Unread => true,
@@ -60,6 +62,23 @@ impl TracklistFit {
             Self::Disagrees { .. } | Self::ListsNothing => 2,
         }
     }
+}
+
+/// Whether a row's read tracklists say it is not the folder's: one of its
+/// records lists another number of tracks than the folder holds, and none
+/// fits or is still to be read. Such a row is not a match — the run neither
+/// offers it nor sets it aside. A row whose records list no tracks proves
+/// nothing either way and stands; so does a row one of whose sources fits
+/// where another disagrees, since the row is picked whole and the fitting
+/// record leads it.
+pub(crate) fn rules_out(records: &[MetadataResult], folder_track_count: u32) -> bool {
+    let fits = || {
+        records
+            .iter()
+            .map(|record| TracklistFit::of(record.source_tracks.as_ref(), folder_track_count))
+    };
+    !fits().any(TracklistFit::admits)
+        && fits().any(|fit| matches!(fit, TracklistFit::Disagrees { .. }))
 }
 
 /// Why a found verdict picks none of its releases unattended.
@@ -109,7 +128,6 @@ pub fn unattended_pick<'a>(
         matches
             .iter()
             .any(|record| record.document_failure.is_some()),
-        folder_track_count,
     );
     match declined {
         Some(declined) => Err(declined),
@@ -130,7 +148,6 @@ pub(crate) fn decline(
     pressing_count: usize,
     lead: Option<TracklistFit>,
     unread_document: bool,
-    folder_track_count: u32,
 ) -> Option<Declined> {
     // A release the folder's own files rule out is never picked, however well
     // the lookups agree on it: the person reads the evidence and picks, or
@@ -148,14 +165,12 @@ pub(crate) fn decline(
         return Some(Declined::Several);
     }
     match (lead, unread_document) {
-        (TracklistFit::Disagrees { source }, _) => {
-            Some(Declined::FolderCheck(FolderCheck::TrackCountDisagrees {
-                local: folder_track_count,
-                source,
-            }))
-        }
         (_, true) => Some(Declined::UnreadDocument),
         (TracklistFit::Fits, false) => None,
+        // Only a release a person picked leads with a tracklist that numbers
+        // other than the folder's: a run leaves out every row [`rules_out`]
+        // names. What the person picked is theirs, whatever it lists.
+        (TracklistFit::Disagrees { .. }, false) => None,
         // Not read, or read and listing nothing: the count is unchecked, and
         // a release is never admitted unverified.
         (TracklistFit::Unread | TracklistFit::ListsNothing, false) => {
@@ -189,24 +204,32 @@ mod tests {
         assert_eq!(pick.pressing().lead().release_id, "mb-1");
     }
 
-    /// A count that disagrees is the reason named, even beside a document
-    /// that went unread; an unread document is named over a count nobody
-    /// could check.
+    /// A document that went unread is named over a count nobody could
+    /// check.
     #[test]
-    fn a_disagreeing_count_is_named_before_an_unread_document() {
-        let mut unread = listing("mb-1", 12);
+    fn an_unread_document_is_named_over_an_unchecked_count() {
+        let mut unread = MetadataResult::for_test(Catalog::MusicBrainz, "mb-1", Some("g"));
         unread.document_failure = Some(crate::signals::LookupFailure::Network);
-        assert_eq!(
-            unattended_pick(std::slice::from_ref(&unread), &[0], None, 11),
-            Err(Declined::FolderCheck(FolderCheck::TrackCountDisagrees {
-                local: 11,
-                source: 12
-            }))
-        );
-        unread.source_tracks = None;
         assert_eq!(
             unattended_pick(std::slice::from_ref(&unread), &[0], None, 11),
             Err(Declined::UnreadDocument)
         );
+    }
+
+    /// A row is ruled out only by a count its read tracklists disagree on,
+    /// with no record left that fits or is still to be read.
+    #[test]
+    fn a_row_is_ruled_out_only_by_a_read_count_that_disagrees() {
+        let lists_nothing = MetadataResult {
+            source_tracks: Some(SourceTracks::Nothing),
+            ..MetadataResult::for_test(Catalog::Discogs, "dg-1", None)
+        };
+        let unread = MetadataResult::for_test(Catalog::Discogs, "dg-2", None);
+        assert!(rules_out(&[listing("mb-1", 12)], 11));
+        assert!(rules_out(&[listing("mb-1", 12), lists_nothing.clone()], 11));
+        assert!(!rules_out(&[listing("mb-1", 12), listing("mb-2", 11)], 11));
+        assert!(!rules_out(&[listing("mb-1", 12), unread.clone()], 11));
+        assert!(!rules_out(&[lists_nothing], 11));
+        assert!(!rules_out(&[unread], 11));
     }
 }

@@ -59,16 +59,15 @@ final class FindOnlinePaneTests: XCTestCase {
         )
     }
 
-    /// A sole match that does not fit the folder says why it was not picked,
-    /// under its row, in the words the pane uses beside Import.
-    func testASoleMatchThatDoesNotFitSaysWhy() async throws {
-        let lines = try await renderedText(of: PreviewData.searchStateSoleUnfit)
+    /// A sole match whose release lists no tracks says why it was not
+    /// picked, under its row, in the words the pane uses beside Import.
+    func testASoleMatchThatListsNoTracksSaysWhy() async throws {
+        let lines = try await renderedText(
+            of: PreviewData.searchStateSoleUnchecked
+        )
 
         XCTAssertTrue(
-            lines.contains {
-                $0.contains("13 in the folder")
-                    && $0.contains("12 on the release")
-            },
+            lines.contains { $0.contains("The release lists no tracks") },
             "the pane reads: \(lines)"
         )
     }
@@ -761,11 +760,11 @@ struct FindOnlineFinalizingTests {
         #expect(PreviewData.searchStateFoundExact.finalizingPressing == nil)
     }
 
-    /// A sole match that does not fit the folder is not picked, so no row
+    /// A sole match whose release lists no tracks is not picked, so no row
     /// spins while the answer saves.
-    @Test("a sole match that does not fit does not select itself")
-    func aSoleMatchThatDoesNotFitStaysUnselected() {
-        #expect(PreviewData.searchStateSoleUnfit.finalizingPressing == nil)
+    @Test("a sole match that lists no tracks does not select itself")
+    func aSoleMatchThatListsNoTracksStaysUnselected() {
+        #expect(PreviewData.searchStateSoleUnchecked.finalizingPressing == nil)
     }
 }
 

@@ -68,8 +68,7 @@ struct TriageRowIdentifiedTests {
     @Test(
         "every folder check resolves to its own sentence",
         arguments: [
-            BridgeFolderCheck.trackCountDisagrees(local: 13, source: 12),
-            .sourceTracksUnknown,
+            BridgeFolderCheck.sourceTracksUnknown,
             .mediumDisagrees(folder: .cdRip),
             .mediumDisagrees(folder: .notCdAudio(sampleRateHz: 96_000)),
         ]

@@ -1,14 +1,16 @@
 //! The full documents of the rows a run offers, read before it settles.
 //!
 //! A search result states less than its release's document: a Discogs result
-//! names only its first label, no search result lists a tracklist, and a
-//! result may leave out the barcode its document states. Every record of
-//! every offered row is fetched in full and stored where a pick reads it (see
-//! `crate::import::service::prepare_release`), and what the document states
-//! replaces what the result stated before the rows are ranked again. A row
-//! the documents raise to the top is read in turn, so the run settles once
-//! every offered row's records are read — or once more rows are offered than
-//! `MOST_ROWS_READ`, which it leaves for the person to pick among. A document that cannot be read
+//! names only its first label, no lookup's answer lists the tracklist read
+//! against the folder's audio, and a result may leave out the barcode its
+//! document states. Every record of every offered row is fetched in full and
+//! stored where a pick reads it (see `crate::import::service::prepare_release`),
+//! and what the document states replaces what the result stated before the
+//! rows are ranked again. A row whose tracklist then holds other tracks than
+//! the folder is no longer a match (see `identify::fit::rules_out`), and the
+//! rows ranked below it move up; a row the documents raise to the top is read
+//! in turn. The run settles once every offered row's records are read, however
+//! many rows that is, or once no row is left. A document that cannot be read
 //! leaves its record as the result stated it, with why it could not be read;
 //! the run settles on what it did read.
 
@@ -16,17 +18,6 @@ use crate::import::search::{MetadataResult, SourceTracks};
 use crate::import::MetadataRef;
 use crate::pressing::ReleaseLabel;
 use crate::signals::LookupFailure;
-
-/// The most rows tied at the top a run reads the full documents of. Each row
-/// read is at least one request to a catalog that answers about one a second,
-/// and past this many rows the folder has not told the pressings apart — the
-/// documents rarely leave one standing — so the person picks among them, which
-/// reads only the row picked. A run with more rows tied reads none, and no
-/// fact only a document states ranks its rows. The rows counted are those
-/// still offered after everything the search results tell apart: the
-/// folder's facts, the notes and years they carry, and look-alike rows listed
-/// once (see `identify::look_alike`).
-pub(crate) const MOST_ROWS_READ: usize = 5;
 
 /// Where a run is with its offered rows' documents.
 #[derive(Clone, Debug, PartialEq)]
@@ -37,8 +28,7 @@ pub enum DocumentReading {
     /// before.
     Reading(Vec<ReleaseReading>),
     /// Fetched, record by record: every record of every row offered as they
-    /// rank with them, unless more rows are offered than `MOST_ROWS_READ`.
-    /// Empty when nothing was offered, or too much was.
+    /// rank with them. Empty when nothing was offered.
     Read(Vec<ReleaseReading>),
 }
 

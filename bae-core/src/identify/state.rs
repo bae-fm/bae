@@ -6,7 +6,8 @@
 //! searches by the candidate's title. Once every lookup settles, the run
 //! reads its MusicBrainz albums' links to Discogs (see
 //! [`crate::import::album_links`]), then the full documents of the rows it
-//! offers, then what the list's releases print for the albums no link joins;
+//! offers — ranking again after each read, until every offered row is read —
+//! then what the list's releases print for the albums no link joins;
 //! it combines the results into a terminal state, and records the ledger it
 //! showed.
 
@@ -787,12 +788,13 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
     }
 
     // The albums are read: fetch every offered record's document and rank
-    // once more with what they state, until every offered row's records are
-    // read — a row the documents raise to the top is read in turn — or more
-    // rows are offered than a run reads, which then leaves them to the
-    // person. Then read what the list's releases print for the albums no
-    // catalog's document links, once for the run, keep what each group was
-    // read to be, and read any row those joins raise.
+    // once more with what they state. A row whose tracklist holds other
+    // tracks than the folder drops out, and the rows below it move up; a row
+    // the documents raise to the top is read in turn. This goes on until
+    // every offered row's records are read, or no row is left. Then read
+    // what the list's releases print for the albums no catalog's document
+    // links, once for the run, keep what each group was read to be, and read
+    // any row those joins raise.
     let mut effects = Vec::new();
     if matches!(context.documents, DocumentReading::Reading(_)) {
         return (
@@ -816,7 +818,7 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
             .filter(|release| !read.iter().any(|reading| reading.release == **release))
             .cloned()
             .collect();
-        if !releases.is_empty() && offered.len() <= super::documents::MOST_ROWS_READ {
+        if !releases.is_empty() {
             context.documents = DocumentReading::Reading(read);
             effects.push(Effect::ReadReleases {
                 releases,

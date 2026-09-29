@@ -783,15 +783,15 @@ fn the_disc_id_s_release_outranks_a_barcode_that_named_another() {
 
 // ── Why nothing was picked ──────────────────────────────────────────────────
 
-/// A found sole release that does not fit the folder states the check it
-/// failed, which says why nothing was picked; one that fits states none and
-/// picks itself.
+/// A found sole release that lists no tracks states the check it failed,
+/// which says why nothing was picked; one that fits states none and picks
+/// itself.
 #[test]
 fn a_found_release_states_the_check_against_the_folder_it_failed() {
-    let lone = |listed: u32| TerminalVerdict::Found {
+    let lone = |listed: crate::import::search::SourceTracks| TerminalVerdict::Found {
         findings: Findings {
             matches: vec![MetadataResult {
-                source_tracks: Some(crate::import::search::SourceTracks::Listed { count: listed }),
+                source_tracks: Some(listed),
                 ..MetadataResult::for_test(DG, "dg-1", Some("g"))
             }],
             provenance: vec![LookupProvenance {
@@ -826,16 +826,18 @@ fn a_found_release_states_the_check_against_the_folder_it_failed() {
         (picks_unattended, folder_check)
     };
     assert_eq!(
-        judged(lone(12)),
+        judged(lone(crate::import::search::SourceTracks::Nothing)),
         (
             false,
-            Some(crate::identify::FolderCheck::TrackCountDisagrees {
-                local: 13,
-                source: 12
-            })
+            Some(crate::identify::FolderCheck::SourceTracksUnknown)
         )
     );
-    assert_eq!(judged(lone(13)), (true, None));
+    assert_eq!(
+        judged(lone(crate::import::search::SourceTracks::Listed {
+            count: 13
+        })),
+        (true, None)
+    );
 }
 
 /// The Notes badge is on the row the folder names by what only its notes

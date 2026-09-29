@@ -218,7 +218,7 @@ mod tests {
     /// their answer and states none.
     #[test]
     fn a_person_s_draft_states_no_folder_check() {
-        let disagrees = VerdictSummary {
+        let unchecked = VerdictSummary {
             kind: crate::identify::VerdictKind::Found,
             track_count: Some(12),
             pressing_count: 1,
@@ -231,7 +231,7 @@ mod tests {
                 year: None,
                 media: Vec::new(),
                 cover: None,
-                source_tracks: Some(SourceTracks::Listed { count: 13 }),
+                source_tracks: Some(SourceTracks::Nothing),
                 by_disc_id: true,
                 by_barcode: false,
                 by_isrc: false,
@@ -241,10 +241,7 @@ mod tests {
             unread_document: false,
             kept_own_draft: false,
         };
-        let check = Some(FolderCheck::TrackCountDisagrees {
-            local: 12,
-            source: 13,
-        });
+        let check = Some(FolderCheck::SourceTracksUnknown);
         for (author, draft_valid, stated) in [
             (MetadataAuthor::Identification, true, check.clone()),
             (MetadataAuthor::Nobody, false, check.clone()),
@@ -253,7 +250,7 @@ mod tests {
             (MetadataAuthor::Prefill, true, None),
         ] {
             assert_eq!(
-                stated_folder_check(author, draft_valid, Some(&disagrees)),
+                stated_folder_check(author, draft_valid, Some(&unchecked)),
                 stated,
                 "{author:?}, valid: {draft_valid}"
             );

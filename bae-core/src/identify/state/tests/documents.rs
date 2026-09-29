@@ -95,7 +95,8 @@ fn every_offered_row_is_read_in_full_before_the_run_settles() {
 }
 
 /// Of two rows the lookups tie, the one whose tracklist holds as many tracks
-/// as the folder is offered, and the other is set aside.
+/// as the folder is offered. The other is no match: it is not set aside
+/// under "N more releases" either.
 #[test]
 fn the_row_whose_tracklist_fits_the_folder_ranks_first() {
     let (state, releases) =
@@ -125,7 +126,7 @@ fn the_row_whose_tracklist_fits_the_folder_ranks_first() {
             .collect::<Vec<_>>()
     };
     assert_eq!(ids(&findings.matches), vec!["dg-fits"]);
-    assert_eq!(ids(&findings.narrowed_out.matches), vec!["dg-long"]);
+    assert!(ids(&findings.narrowed_out.matches).is_empty());
 }
 
 /// A row whose document cannot be read keeps what its search result said and
@@ -270,8 +271,8 @@ fn every_pressing_of_the_named_album_is_read_before_its_tracks_rank_it() {
     assert_eq!(offered_ids(&state), vec!["dg-cassette", "dg-cd-1", "dg-cd-2"]);
 }
 
-/// A row the documents knock off the top lets up rows ranked below it on
-/// something the tracks outrank; those are read in turn before the run
+/// A row whose document lists other tracks than the folder drops out, and
+/// the rows ranked below it move up; those are read in turn before the run
 /// settles, so no row is offered on a tracklist nobody read.
 #[test]
 fn rows_the_documents_raise_are_read_before_the_run_settles() {
@@ -347,8 +348,8 @@ fn a_document_s_barcode_joins_its_result_s() {
 
 /// A row whose record arrives already stating its tracklist ranks on what
 /// this run reads of it, like the rows tied beside it: all three are read, and
-/// the one whose document lists other tracks than the folder holds is set
-/// aside, whatever it stated before.
+/// the one whose document lists other tracks than the folder holds drops out,
+/// whatever it stated before.
 #[test]
 fn tied_rows_rank_on_the_documents_this_run_reads() {
     let mut known = first_label_only("dg-known");
@@ -371,35 +372,22 @@ fn tied_rows_rank_on_the_documents_this_run_reads() {
     assert_eq!(offered_ids(&state), vec!["dg-other-1", "dg-other-2"]);
 }
 
-/// More rows tied at the top than a run reads: none is read, nothing only a
-/// document states ranks them, and they stay tied for the person to pick.
+/// However many rows tie at the top, every one is read before any is
+/// offered, and those that fit stay tied for the person to pick.
 #[test]
-fn more_tied_rows_than_a_run_reads_are_left_for_the_person() {
-    let tied: Vec<(MetadataResult, LibraryStatus)> = (1..=crate::identify::documents::MOST_ROWS_READ + 1)
+fn every_row_of_a_wide_tie_is_read_before_it_is_offered() {
+    let tied: Vec<(MetadataResult, LibraryStatus)> = (1..=8)
         .map(|at| {
             let (mut result, status) = first_label_only(&format!("dg-{at}"));
-            result.year = Some(2000 + at as i32);
+            result.year = Some(2000 + at);
             (result, status)
         })
         .collect();
-    let (state, _) = update(
-        started_with(vec![DG]),
-        signals(
-            DiscIdSignal::Absent,
-            BarcodeSignal::Settled {
-                codes: artwork_codes(&["A"]),
-            },
-            &[],
-        ),
-    );
-    let (state, effects) = super::step(state, barcode_matched(DG, "A", tied));
-    assert!(
-        !effects
-            .iter()
-            .any(|effect| matches!(effect, Effect::ReadReleases { .. })),
-        "{effects:?}"
-    );
-    assert_eq!(offered_ids(&state).len(), crate::identify::documents::MOST_ROWS_READ + 1);
+    let (state, releases) = reading_documents(tied);
+    assert_eq!(releases.len(), 8, "every tied row is read");
+    let (state, effects) = super::step(state, read_with_tracks(&releases, |_| 5));
+    assert!(effects.is_empty(), "{effects:?}");
+    assert_eq!(offered_ids(&state).len(), 8);
     let verdict = crate::identify::TerminalVerdict::try_from(state).expect("the run settled");
     assert!(
         !crate::identify::VerdictSummary::of(&verdict, false).judgement().0,
@@ -407,18 +395,82 @@ fn more_tied_rows_than_a_run_reads_are_left_for_the_person() {
     );
 }
 
-/// More rows tie than a run reads, but they look alike and are listed once:
-/// the one row left is what the limit counts, and it is read.
+/// Rows that tie and look alike are listed once, and only the one kept is
+/// read.
 #[test]
 fn look_alike_rows_listed_once_are_read() {
-    let tied: Vec<(MetadataResult, LibraryStatus)> = (1..=crate::identify::documents::MOST_ROWS_READ
-        + 1)
-        .map(|at| first_label_only(&format!("dg-{at}")))
-        .collect();
+    let tied: Vec<(MetadataResult, LibraryStatus)> =
+        (1..=6).map(|at| first_label_only(&format!("dg-{at}"))).collect();
     let (_, releases) = reading_documents(tied);
     assert_eq!(
         releases,
         vec![crate::import::MetadataRef::new(DG, "dg-1")],
         "the look-alike kept, the lowest id, is read"
+    );
+}
+
+/// Every row read lists other tracks than the folder: nothing is left, and
+/// the folder is not found.
+#[test]
+fn a_run_whose_every_row_lists_other_tracks_finds_nothing() {
+    let (state, releases) = reading_documents(vec![
+        first_label_only("dg-long"),
+        packed(first_label_only("dg-short"), crate::pressing::Packaging::Digipak),
+    ]);
+    let (state, effects) = super::step(
+        state,
+        read_with_tracks(&releases, |id| if id == "dg-long" { 6 } else { 4 }),
+    );
+    assert!(effects.is_empty(), "{effects:?}");
+    assert!(
+        matches!(state, IdentifyState::NotFoundAnywhere { .. }),
+        "expected NotFoundAnywhere, got {state:?}"
+    );
+}
+
+/// A row read with another count than the folder's drops out and the row
+/// ranked below it is read next: here a row whose title the folder states
+/// but whose tracks number other, then a row the folder names less of whose
+/// tracks fit. The one left is offered alone and picked.
+#[test]
+fn a_row_that_lists_other_tracks_lets_the_next_best_row_be_read() {
+    let state = started_searching(vec![DG], "1990-2000 Album", "Artist");
+    let (state, _) = update(state, titled_folder());
+    let (state, effects) = super::step(
+        state,
+        search_answered(
+            DG,
+            vec![
+                titled("dg-named", "1990-2000 Album"),
+                titled("dg-other", "Another Title"),
+            ],
+        ),
+    );
+    let [Effect::ReadReleases { releases, .. }] = effects.as_slice() else {
+        panic!("the run reads its offered records' documents, got {effects:?}");
+    };
+    assert_eq!(
+        releases.iter().map(|release| release.key.as_str()).collect::<Vec<_>>(),
+        vec!["dg-named"]
+    );
+    let (state, effects) = super::step(state, read_with_tracks(releases, |_| 3));
+    let [Effect::ReadReleases { releases, .. }] = effects.as_slice() else {
+        panic!("the row below is read next, got {effects:?}");
+    };
+    assert_eq!(
+        releases.iter().map(|release| release.key.as_str()).collect::<Vec<_>>(),
+        vec!["dg-other"]
+    );
+    let (state, effects) = super::step(state, read_with_tracks(releases, |_| 5));
+    assert!(effects.is_empty(), "{effects:?}");
+    assert_eq!(offered_ids(&state), vec!["dg-other"]);
+    let IdentifyState::Found { findings, .. } = &state else {
+        unreachable!("offered_ids checked it");
+    };
+    assert!(findings.narrowed_out.is_empty(), "{:?}", findings.narrowed_out);
+    let verdict = crate::identify::TerminalVerdict::try_from(state).expect("the run settled");
+    assert!(
+        crate::identify::VerdictSummary::of(&verdict, false).judgement().0,
+        "the one row left fits, and is picked"
     );
 }

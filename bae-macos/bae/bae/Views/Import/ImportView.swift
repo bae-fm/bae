@@ -295,10 +295,10 @@ struct ImportView: View {
             .importTabPreviewEnvironment(scene: scene, preview: preview)
     }
 
-    #Preview("Import tab — track counts disagree") {
+    #Preview("Import tab — the release lists no tracks") {
         let preview = ImportTabPreview(
             tab: .pending,
-            selected: PreviewData.importTabTrackMismatchCandidate.key
+            selected: PreviewData.importTabNoTracklistCandidate.key
         )
         let scene = PreviewData.importTabScene()
         ImportView(endEditing: {})

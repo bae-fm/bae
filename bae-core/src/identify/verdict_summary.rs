@@ -21,8 +21,6 @@ use crate::import::Catalog;
 /// carrying what it takes to state the disagreement beside Import.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FolderCheck {
-    /// The source's track count differs from the folder's.
-    TrackCountDisagrees { local: u32, source: u32 },
     /// The release lists no tracks, so its count cannot be checked against
     /// the folder's. Not admitted unverified.
     SourceTracksUnknown,
@@ -207,7 +205,6 @@ impl VerdictSummary {
                 .as_ref()
                 .map(|lead| super::fit::TracklistFit::of(lead.source_tracks.as_ref(), track_count)),
             self.unread_document,
-            track_count,
         )
     }
 

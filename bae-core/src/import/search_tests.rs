@@ -203,11 +203,10 @@ fn discid_metadata_links_the_releases_its_document_names() {
     assert_eq!(metadata.media, StatedMedia::PerMedium(vec![Some(Medium::Cd)]));
 }
 
-/// A disc ID names one medium of a release that has several. The matching
-/// medium's tracks are what the auto-import check counts, but the pressing is made of
-/// every medium the response lists: the Discogs record of the same two media
-/// is this object and one naming a cassette is not, whichever medium the
-/// response lists first.
+/// A disc ID names one medium of a release that has several. The pressing is
+/// made of every medium the response lists: the Discogs record of the same
+/// two media is this object and one naming a cassette is not, whichever
+/// medium the response lists first.
 #[test]
 fn discid_metadata_carries_every_medium_into_pairing() {
     let barcode = "012345678905";
@@ -252,10 +251,6 @@ fn discid_metadata_carries_every_medium_into_pairing() {
                 },
             ],
             "the pressing is every medium the release lists, not the one the disc is"
-        );
-        assert_eq!(
-            release.source_tracks,
-            Some(SourceTracks::Listed { count: 1 })
         );
     }
 
@@ -421,8 +416,11 @@ fn discogs_search_result_carries_remote_cover_pair() {
     );
 }
 
+/// The medium a disc ID names is one disc of what the folder may hold, so
+/// its tracks are not the release's tracklist read against the folder's
+/// audio: the result states none until the release's document is read.
 #[test]
-fn discid_metadata_uses_the_medium_that_contains_the_disc() {
+fn discid_metadata_states_no_tracklist_of_the_medium_it_names() {
     let response: MbReleaseResponse = serde_json::from_value(serde_json::json!({
         "id": "mb-release-1",
         "title": "Album Title",
@@ -454,10 +452,7 @@ fn discid_metadata_uses_the_medium_that_contains_the_disc() {
     let metadata = mb_discid_release_to_metadata("disc-1", response)
         .expect("the release contains the queried disc");
 
-    assert_eq!(
-        metadata.source_tracks,
-        Some(SourceTracks::Listed { count: 1 })
-    );
+    assert_eq!(metadata.source_tracks, None);
 }
 
 #[test]

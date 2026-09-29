@@ -5,10 +5,11 @@
 
 /// One release lookup per settled lead, whichever signal found it.
 ///
-/// The disc-ID response already carries a tracklist, but not the rest of what
-/// opening the candidate needs — the release-level relations the commit maps,
-/// the release group, the cover options. A lead is settled by fetching the
-/// release itself, once, and both candidates in this pass cost exactly that.
+/// The disc-ID response lists the disc's tracks, but not the tracklist read
+/// against the folder's audio nor the rest of what opening the candidate
+/// needs — the release-level relations the commit maps, the release group,
+/// the cover options. A lead is settled by fetching the release itself, once,
+/// and both candidates in this pass cost exactly that.
 #[tokio::test(flavor = "multi_thread")]
 async fn settling_a_lead_costs_one_release_lookup_whichever_signal_found_it() {
     let fixture = Fixture::new("settle-lead").await;
@@ -745,134 +746,6 @@ async fn a_row_whose_document_cannot_be_read_keeps_its_search_facts() {
     assert!(
         unread.document_failure.is_some(),
         "it says its document could not be read"
-    );
-}
-
-/// The folder's track count breaks a tie the lookups leave: of two pressings
-/// a barcode names alike, the one whose tracklist holds as many tracks as the
-/// folder is offered, and the run settles on it.
-#[tokio::test(flavor = "multi_thread")]
-async fn the_pressing_whose_tracklist_fits_the_folder_is_offered() {
-    let fixture = Fixture::new("fitting-pressing").await;
-    fixture
-        .import
-        .register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
-            barcode: PAIRED_BARCODE.to_string(),
-        }));
-    let dir = fixture.barcode_candidate("From Barcode");
-    let probed = fixture.probed_total_ms(&dir);
-    fixture.provider.route(
-        "/release/mb-long?",
-        200,
-        release_json("mb-long", "rg-fit", &[probed, 0, 1_000]),
-    );
-    fixture.provider.route(
-        "/release/mb-fits?",
-        200,
-        release_json("mb-fits", "rg-fit", &[probed, 0]),
-    );
-    fixture.provider.route(
-        "/release?",
-        200,
-        barcode_search_json_placed(&[
-            ("mb-long", "rg-fit", PAIRED_BARCODE, "GB"),
-            ("mb-fits", "rg-fit", PAIRED_BARCODE, "DE"),
-        ]),
-    );
-    fixture.scan(1).await;
-
-    fixture.drain_automatic().await;
-
-    let row = fixture
-        .stored_for(&dir)
-        .await
-        .expect("the candidate stores a row");
-    let verdict = identify_result(&row).verdict.clone();
-    let TerminalVerdict::Found {
-        findings:
-            crate::identify::Findings {
-                matches,
-                narrowed_out,
-                ..
-            },
-        ..
-    } = &verdict
-    else {
-        panic!("expected a Found verdict, got {verdict:?}");
-    };
-    assert_eq!(
-        matches
-            .iter()
-            .map(|result| result.release_id.as_str())
-            .collect::<Vec<_>>(),
-        vec!["mb-fits"]
-    );
-    assert_eq!(
-        narrowed_out
-            .matches
-            .iter()
-            .map(|result| result.release_id.as_str())
-            .collect::<Vec<_>>(),
-        vec!["mb-long"]
-    );
-    assert_eq!(
-        row.metadata_author,
-        crate::import::MetadataAuthor::Identification,
-        "the one fitting pressing settles the draft"
-    );
-    assert_eq!(fixture.count_release_lookups("mb-fits"), 1);
-}
-
-/// A sole release listing more tracks than the folder holds is offered and
-/// not applied: the verdict stays Found with the release it found, and the
-/// failed check says why nothing was picked.
-#[tokio::test(flavor = "multi_thread")]
-async fn a_sole_release_that_does_not_fit_the_folder_is_offered_unapplied() {
-    let fixture = Fixture::new("unfit-sole").await;
-    fixture
-        .import
-        .register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
-            barcode: PAIRED_BARCODE.to_string(),
-        }));
-    let dir = fixture.barcode_candidate("From Barcode");
-    let probed = fixture.probed_total_ms(&dir);
-    fixture.provider.route(
-        "/release/mb-long?",
-        200,
-        release_json("mb-long", "rg-long", &[probed, 0, 1_000]),
-    );
-    fixture.provider.route(
-        "/release?",
-        200,
-        barcode_search_json(&[("mb-long", "rg-long", PAIRED_BARCODE)]),
-    );
-    fixture.scan(1).await;
-
-    fixture.drain_automatic().await;
-
-    let row = fixture
-        .stored_for(&dir)
-        .await
-        .expect("the candidate stores a row");
-    let verdict = identify_result(&row).verdict.clone();
-    let TerminalVerdict::Found { findings, .. } = &verdict else {
-        panic!("a release that does not fit is still found, got {verdict:?}");
-    };
-    assert_eq!(findings.matches[0].release_id, "mb-long");
-    assert_ne!(
-        row.metadata_author,
-        crate::import::MetadataAuthor::Identification,
-        "the release is not applied"
-    );
-    assert_eq!(
-        fixture.judgement_for(&dir).await,
-        (
-            false,
-            Some(FolderCheck::TrackCountDisagrees {
-                local: 2,
-                source: 3
-            })
-        )
     );
 }
 

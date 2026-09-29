@@ -139,9 +139,6 @@ pub enum PendingStanding {
 pub enum NeedsYouReason {
     /// Several pressings could be the folder's: `count` of them.
     Matches { count: u32 },
-    /// The one release found lists `source` tracks; the folder holds
-    /// `local`.
-    TrackCountMismatch { local: u32, source: u32 },
     /// The one release found lists no tracks, so whether it fits the folder
     /// was never checked.
     NoTracklist,
@@ -210,9 +207,6 @@ impl PendingStanding {
                     count: verdict.pressing_count,
                 },
                 Some(Declined::FolderCheck(check)) => match check {
-                    FolderCheck::TrackCountDisagrees { local, source } => {
-                        NeedsYouReason::TrackCountMismatch { local, source }
-                    }
                     FolderCheck::SourceTracksUnknown => NeedsYouReason::NoTracklist,
                     FolderCheck::MediumDisagrees { folder } => NeedsYouReason::MediumMismatch {
                         folder,

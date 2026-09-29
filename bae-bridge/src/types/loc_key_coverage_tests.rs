@@ -187,10 +187,6 @@ fn produced_keys() -> Vec<String> {
 
     // bridge_folder_check_key — every variant carries a key.
     for folder_check in [
-        BridgeFolderCheck::TrackCountDisagrees {
-            local: 0,
-            source: 0,
-        },
         BridgeFolderCheck::SourceTracksUnknown,
         BridgeFolderCheck::MediumDisagrees {
             folder: BridgeMediumConflict::CdRip,
