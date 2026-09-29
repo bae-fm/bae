@@ -31,9 +31,15 @@ enum TrackSavePanel {
     @MainActor
     static func make(
         saveChoices: [TrackSaveChoice],
-        selectedIndex: Int
+        selectedPresetId: String
     ) -> SaveFilePanel {
-        let selected = saveChoices[selectedIndex]
+        guard
+            let selected = saveChoices.first(where: {
+                $0.choice.presetId == selectedPresetId
+            })
+        else {
+            preconditionFailure("the selected preset is one of the choices")
+        }
         let stem = selected.suggestedStem
 
         let panel = NSSavePanel()
@@ -47,12 +53,11 @@ enum TrackSavePanel {
             saveChoices: saveChoices,
             lastSuggestion: stem
         )
-        let formatPopup = NSPopUpButton(
-            frame: NSRect(x: 0, y: 0, width: 200, height: 24),
-            pullsDown: false
+        let formatPopup = SaveFormatPopup.make(
+            choices: saveChoices.map(\.choice),
+            selectedPresetId: selectedPresetId,
+            frame: NSRect(x: 54, y: 5, width: 190, height: 24)
         )
-        formatPopup.addItems(withTitles: saveChoices.map(\.choice.title))
-        formatPopup.selectItem(at: selectedIndex)
         formatPopup.target = formatDelegate
         formatPopup.action = #selector(SaveFormatDelegate.formatChanged(_:))
 
@@ -61,7 +66,6 @@ enum TrackSavePanel {
         )
         let label = NSTextField(labelWithString: String(localized: "Format:"))
         label.frame = NSRect(x: 0, y: 7, width: 50, height: 20)
-        formatPopup.frame = NSRect(x: 54, y: 5, width: 190, height: 24)
         accessoryContainer.addSubview(label)
         accessoryContainer.addSubview(formatPopup)
         panel.accessoryView = accessoryContainer
@@ -108,7 +112,14 @@ class SaveFormatDelegate: NSObject {
         guard let panel else {
             return
         }
-        let selected = saveChoices[sender.indexOfSelectedItem]
+        let presetId = SaveFormatPopup.selectedPresetId(of: sender)
+        guard
+            let selected = saveChoices.first(where: {
+                $0.choice.presetId == presetId
+            })
+        else {
+            preconditionFailure("the popup offers only the panel's choices")
+        }
         let currentStem =
             (panel.nameFieldStringValue as NSString).deletingPathExtension
         var stem = currentStem

@@ -738,7 +738,7 @@ class BaeCorePlayer(
         val item = mediaItems.getOrNull(startIndex) ?: mediaItems.firstOrNull()
         val mediaId = item?.mediaId
         when (val browseId = mediaId?.let { BrowseId.parse(it) }) {
-            is BrowseId.Track -> appHandle.playRelease(browseId.releaseId, browseId.index.toUInt(), false)
+            is BrowseId.Track -> appHandle.playRelease(browseId.releaseId, browseId.trackId, false)
             else -> logger.warning("handleSetMediaItems ignored non-track media id: $mediaId")
         }
         return Futures.immediateVoidFuture()

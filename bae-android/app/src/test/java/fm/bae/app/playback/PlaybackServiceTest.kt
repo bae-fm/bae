@@ -206,7 +206,7 @@ internal class FakeAppHandle(
      *  browse-paging tests assert the requested window reached the bridge
      *  unaltered. */
     val albumPageWindows = mutableListOf<Pair<ULong, ULong>>()
-    val playReleaseCalls = mutableListOf<Triple<String, UInt?, Boolean>>()
+    val playReleaseCalls = mutableListOf<Triple<String, String?, Boolean>>()
     val liveSubscriptions = mutableListOf<FakeLiveSubscription>()
     val albumBrowseSubscriptions = mutableListOf<FakeAlbumBrowseSubscription>()
     val composerBrowseSubscriptions = mutableListOf<FakeComposerBrowseSubscription>()
@@ -294,10 +294,10 @@ internal class FakeAppHandle(
 
     override fun playRelease(
         releaseId: String,
-        startTrackIndex: UInt?,
+        startTrackId: String?,
         shuffle: Boolean,
     ) {
-        playReleaseCalls.add(Triple(releaseId, startTrackIndex, shuffle))
+        playReleaseCalls.add(Triple(releaseId, startTrackId, shuffle))
     }
 }
 

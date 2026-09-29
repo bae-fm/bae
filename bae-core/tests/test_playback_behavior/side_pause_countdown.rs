@@ -13,7 +13,8 @@ impl SidePauseTestFixture {
     /// Play side A's last track (A2) to its side pause and return that state.
     async fn pause_after_side_a(&mut self) -> PlaybackState {
         let side_a_track_id = self.track_ids[1].clone();
-        self.play_to_side_pause(1, &side_a_track_id, "A", PlaybackPauseBoundary::Side)
+        self.play_to_side_pause(
+            &side_a_track_id, "A", PlaybackPauseBoundary::Side)
             .await
     }
 

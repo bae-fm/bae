@@ -43,13 +43,18 @@ struct CastSettingsTests {
     @Test("the cast status drives the picker's active device")
     func statusCarriesTheCastingDevice() {
         let store = CastStore()
-        #expect(store.castingDeviceName == nil)
+        #expect(store.castingDevice == nil)
 
-        store.applyStatus(deviceName: "Living Room Speaker")
+        let device = BridgeRemoteDevice(
+            id: "cast-living-room",
+            name: "Living Room Speaker"
+        )
+        store.applyStatus(device: device)
+        #expect(store.castingDevice == device)
         #expect(store.castingDeviceName == "Living Room Speaker")
 
-        store.applyStatus(deviceName: nil)
-        #expect(store.castingDeviceName == nil)
+        store.applyStatus(device: nil)
+        #expect(store.castingDevice == nil)
     }
 
     @Test("the cast strings ship in every locale")
@@ -83,8 +88,7 @@ struct CastSettingsTests {
             in: catalogStrings("bae/Localizable.xcstrings")
         )
         let plistStrings = try catalogStrings("bae/InfoPlist.xcstrings")
-        for key in ["NSCameraUsageDescription", "NSLocalNetworkUsageDescription"]
-        {
+        for key in ["NSCameraUsageDescription", "NSLocalNetworkUsageDescription"] {
             #expect(
                 try locales(of: key, in: plistStrings) == reference,
                 "\(key) is missing locales"

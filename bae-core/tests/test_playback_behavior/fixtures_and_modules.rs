@@ -355,9 +355,9 @@ impl SidePauseTestFixture {
         support::next_capture_stream(&mut self.capture_stream_rx).await
     }
 
-    fn play_release_from(&self, start_track_index: usize) {
+    fn play_release_from(&self, track_id: &str) {
         self.playback_handle
-            .play_release(self.release_id.clone(), Some(start_track_index), false);
+            .play_release(self.release_id.clone(), Some(track_id.to_string()), false);
     }
 
     /// Seek to 200 ms before the end of the 5 s track. Commands run in order, so
@@ -381,8 +381,8 @@ impl SidePauseTestFixture {
         .expect(message);
     }
 
-    async fn play_track_and_wait(&mut self, start_track_index: usize, track_id: &str) {
-        self.play_release_from(start_track_index);
+    async fn play_track_and_wait(&mut self, track_id: &str) {
+        self.play_release_from(track_id);
         self.wait_for_playing_track(
             track_id,
             Duration::from_secs(5),
@@ -415,12 +415,11 @@ impl SidePauseTestFixture {
 
     async fn play_to_side_pause(
         &mut self,
-        start_track_index: usize,
         track_id: &str,
         expected_side_label: &str,
         expected_boundary: PlaybackPauseBoundary,
     ) -> PlaybackState {
-        self.play_track_and_wait(start_track_index, track_id).await;
+        self.play_track_and_wait(track_id).await;
         self.seek_to_auto_advance();
         self.wait_for_side_pause(expected_side_label, expected_boundary)
             .await

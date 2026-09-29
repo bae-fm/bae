@@ -8,7 +8,7 @@ struct ReleaseMetadataEditorContent: View {
 
     let session: ReleaseMetadataEditSession
     var onEditCover: (() -> Void)?
-    var onPlayTrack: ((Int) -> Void)?
+    var onPlayTrack: ((String) -> Void)?
 
     @State
     private var availableWidth = ReleaseMetadataTrackColumns.minimumTableWidth
@@ -220,7 +220,7 @@ struct ReleaseMetadataEditorContent: View {
     ) -> some View {
         HStack(spacing: ThemeSpace.related) {
             Button {
-                onPlayTrack?(item.index)
+                onPlayTrack?(item.context.trackId)
             } label: {
                 Image(systemName: "play.fill")
                     .themeIcon(.small)

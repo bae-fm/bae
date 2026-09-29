@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import uniffi.bae_bridge.BridgeCastDevice
 import uniffi.bae_bridge.BridgeCastStatus
+import uniffi.bae_bridge.BridgeRemoteDevice
 
 /**
  * Cast state for the playback surfaces: which device playback is on, and what
@@ -17,10 +18,10 @@ class CastStore {
     private val _devices = MutableStateFlow<List<BridgeCastDevice>>(emptyList())
     val devices: StateFlow<List<BridgeCastDevice>> = _devices.asStateFlow()
 
-    /** Apply the retained status: a name while casting, null on local output. */
-    fun applyStatus(deviceName: String?) {
+    /** Apply the retained status: the device while casting, null on local output. */
+    fun applyStatus(device: BridgeRemoteDevice?) {
         _status.value =
-            deviceName?.let { BridgeCastStatus.Casting(it) } ?: BridgeCastStatus.NotCasting
+            device?.let { BridgeCastStatus.Casting(it) } ?: BridgeCastStatus.NotCasting
     }
 
     fun setDevices(devices: List<BridgeCastDevice>) {
@@ -29,11 +30,17 @@ class CastStore {
 }
 
 /**
- * The device name while casting, else null — what drives the cast button's
- * active state, the "Casting to …" row, and the settings confirmation.
+ * The device playback is on, else null. The picker marks the device whose id
+ * matches; device names need not be unique.
  */
-fun castingDeviceName(status: BridgeCastStatus): String? =
+fun castingDevice(status: BridgeCastStatus): BridgeRemoteDevice? =
     when (status) {
-        is BridgeCastStatus.Casting -> status.deviceName
+        is BridgeCastStatus.Casting -> status.device
         BridgeCastStatus.NotCasting -> null
     }
+
+/**
+ * The casting device's name — what drives the cast button's active state, the
+ * "Casting to …" row, and the settings confirmation.
+ */
+fun castingDeviceName(status: BridgeCastStatus): String? = castingDevice(status)?.name

@@ -270,7 +270,9 @@ impl BridgeCastDevice {
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeCastStatus {
     NotCasting,
-    Casting { device_name: String },
+    Casting {
+        device: crate::types::BridgeRemoteDevice,
+    },
 }
 
 /// A service type a renderer advertises itself on, tagging which mapping a

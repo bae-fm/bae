@@ -7,11 +7,10 @@ package fm.bae.app.playback
  * by its parent's [mediaId], and asks to play a track by the track node's
  * [mediaId]. [parse] turns a client-supplied id back into the typed node.
  *
- * The encoding is `<prefix>:<payload>`. Fixed-charset parts come first so the
- * payload — a library id whose bytes we don't constrain — can be anything: for
- * a [Track] the numeric [index] precedes the release id, so splitting on the
- * first `:` after the prefix recovers the index and leaves the release id
- * (colons and all) intact.
+ * The encoding is `<prefix>:<payload>`. A payload is a library id whose bytes
+ * we don't constrain, so a [Track], which names two of them, spells the length
+ * of its release id first: splitting on the first `:` after the prefix recovers
+ * that length, and the release id and track id follow it (colons and all).
  */
 internal sealed interface BrowseId {
     val mediaId: String
@@ -38,14 +37,15 @@ internal sealed interface BrowseId {
         override val mediaId: String get() = "$ALBUM_PREFIX$albumId"
     }
 
-    /** One playable track: the release it belongs to and its release-wide flat
-     *  index (across track groups), the pair [play_release][uniffi.bae_bridge.AppHandle.playRelease]
-     *  takes to start the release at that track. */
+    /** One playable track: the release it belongs to and the track's own id,
+     *  the pair [play_release][uniffi.bae_bridge.AppHandle.playRelease] takes to
+     *  start the release at that track. A client saves this id, so it names the
+     *  track itself: a later edit to the tracklist cannot point it elsewhere. */
     data class Track(
         val releaseId: String,
-        val index: Int,
+        val trackId: String,
     ) : BrowseId {
-        override val mediaId: String get() = "$TRACK_PREFIX$index:$releaseId"
+        override val mediaId: String get() = "$TRACK_PREFIX${releaseId.length}:$releaseId$trackId"
     }
 
     /** One composer. Its children are the composer's works and credited albums. */
@@ -85,9 +85,13 @@ internal sealed interface BrowseId {
             }
 
         private fun parseTrack(payload: String): Track? {
-            val index = payload.substringBefore(':').toIntOrNull()
-            val releaseId = payload.substringAfter(':', missingDelimiterValue = "")
-            return if (index != null && releaseId.isNotEmpty()) Track(releaseId, index) else null
+            val releaseIdLength = payload.substringBefore(':').toIntOrNull()
+            val ids = payload.substringAfter(':', missingDelimiterValue = "")
+            return if (releaseIdLength != null && releaseIdLength > 0 && ids.length > releaseIdLength) {
+                Track(ids.take(releaseIdLength), ids.drop(releaseIdLength))
+            } else {
+                null
+            }
         }
     }
 }

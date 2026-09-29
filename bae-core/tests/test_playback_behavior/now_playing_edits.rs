@@ -20,7 +20,11 @@ async fn paused_on_first_track(
         .expect("read the first track's release")
         .release_id;
     let mut progress = services.subscribe_playback_progress();
-    services.playback_play_release(release_id.clone(), Some(0), false);
+    services.playback_play_release(
+        release_id.clone(),
+        Some(fixture.track_ids[0].clone()),
+        false,
+    );
     assert!(
         support::wait_until_playing(&mut progress, &fixture.track_ids[0], PLAY_START_BACKSTOP)
             .await,

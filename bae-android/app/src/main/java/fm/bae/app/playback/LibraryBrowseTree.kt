@@ -210,7 +210,7 @@ internal class LibraryBrowseTree<Owner : Any>(
 
             is BrowseId.Track -> {
                 releaseDetails.value(id.releaseId)?.let { release ->
-                    flatTracks(release).getOrNull(id.index)?.let { nodes.track(release, it, id.index) }
+                    flatTracks(release).firstOrNull { it.id == id.trackId }?.let { nodes.track(release, it) }
                 }
             }
         }
@@ -361,14 +361,13 @@ internal class LibraryBrowseTree<Owner : Any>(
         val firstAlbum = results.albums.firstOrNull()
         return when {
             firstTrack != null -> {
-                albumDetails.value(firstTrack.albumId)?.let(::primaryRelease)?.let { release ->
-                    val index = flatTracks(release).indexOfFirst { it.id == firstTrack.id }.coerceAtLeast(0)
-                    BrowseId.Track(release.id, index)
-                }
+                BrowseId.Track(firstTrack.releaseId, firstTrack.id)
             }
 
             firstAlbum != null -> {
-                albumDetails.value(firstAlbum.id)?.let(::primaryRelease)?.let { BrowseId.Track(it.id, 0) }
+                albumDetails.value(firstAlbum.id)?.let(::primaryRelease)?.let { release ->
+                    flatTracks(release).firstOrNull()?.let { BrowseId.Track(release.id, it.id) }
+                }
             }
 
             else -> {
@@ -473,7 +472,7 @@ internal class LibraryBrowseTree<Owner : Any>(
                     detail
                         ?.let(::primaryRelease)
                         ?.let { release ->
-                            flatTracks(release).mapIndexed { index, track -> nodes.track(release, track, index) }
+                            flatTracks(release).map { track -> nodes.track(release, track) }
                         }.orEmpty()
                 }
             }

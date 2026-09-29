@@ -24,7 +24,12 @@
         @MainActor
         static func castStore() -> CastStore {
             let store = CastStore()
-            store.applyStatus(deviceName: "Living Room Speaker")
+            store.applyStatus(
+                device: BridgeRemoteDevice(
+                    id: "cast-living-room",
+                    name: "Living Room Speaker"
+                )
+            )
             return store
         }
 

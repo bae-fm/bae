@@ -1,41 +1,30 @@
 import BaeKit
 import SwiftUI
 
-/// Side-grouped track list. Flattens groups to a release-wide index so a tap
-/// maps to the ordered list the player builds from the same flattening.
+/// Side-grouped track list. A tap plays the release from that track, named by
+/// its id.
 struct TrackList: View {
     let detail: ReleaseDetail
     let artistDisplay: TrackArtistDisplay
-    let onPlayTrackAt: (Int) -> Void
+    let onPlayTrack: (String) -> Void
     let onPlayNext: (String) -> Void
     let onAddToQueue: (String) -> Void
 
     var body: some View {
         let groups = detail.trackGroups
-        var runningOffset = 0
-        let offsets = groups.map { group -> Int in
-            let offset = runningOffset
-            runningOffset += group.tracks.count
-            return offset
-        }
 
         VStack(alignment: .leading, spacing: 0) {
-            ForEach(Array(groups.enumerated()), id: \.offset) {
-                groupIndex,
-                group in
-                let groupOffset = offsets[groupIndex]
+            ForEach(Array(groups.enumerated()), id: \.offset) { _, group in
                 if !group.sideHeaderText.isEmpty {
                     Eyebrow(verbatim: group.sideHeaderText)
                         .padding(.top, ThemeSpace.group)
                         .padding(.bottom, ThemeSpace.inline)
                 }
-                ForEach(Array(group.tracks.enumerated()), id: \.element.id) {
-                    localIndex,
-                    track in
+                ForEach(group.tracks, id: \.id) { track in
                     TrackRow(
                         track: track,
                         artist: artistDisplay.artist(for: track),
-                        onPlay: { onPlayTrackAt(groupOffset + localIndex) },
+                        onPlay: { onPlayTrack(track.id) },
                         onPlayNext: { onPlayNext(track.id) },
                         onAddToQueue: { onAddToQueue(track.id) }
                     )
@@ -145,7 +134,7 @@ private struct TrackRow: View {
         TrackList(
             detail: PreviewData.releaseDetail,
             artistDisplay: .album,
-            onPlayTrackAt: { _ in },
+            onPlayTrack: { _ in },
             onPlayNext: { _ in },
             onAddToQueue: { _ in }
         )

@@ -57,6 +57,7 @@ impl SearchResults {
                         id: raw.id,
                         title: raw.title,
                         duration_ms: raw.duration_ms,
+                        release_id: raw.release_id,
                         album_id: raw.album_id,
                         album_title: raw.album_title,
                         artist_name: raw.artist_name,
@@ -116,6 +117,8 @@ pub struct TrackSearchResult {
     pub id: String,
     pub title: String,
     pub duration_ms: Option<i64>,
+    /// The release the track is on — what playing it from a search starts.
+    pub release_id: String,
     pub album_id: String,
     pub album_title: String,
     pub artist_name: String,

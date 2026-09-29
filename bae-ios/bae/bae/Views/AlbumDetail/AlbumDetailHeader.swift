@@ -126,7 +126,7 @@ private struct AlbumActionRow<Content: View>: View {
 #if DEBUG
 #Preview {
     AlbumDetailHeader(
-        display: AlbumDetailDisplay(summary: PreviewData.albumSummary),
+        display: .album(PreviewData.albumSummary),
         releaseId: "rel-a-1",
         detail: PreviewData.releaseDetail,
         showGallery: .constant(false)

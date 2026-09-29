@@ -37,14 +37,14 @@ class BrowsePlaybackTest {
     private fun mediaItem(mediaId: String): MediaItem = MediaItem.Builder().setMediaId(mediaId).build()
 
     @Test
-    fun playingATrackItemForwardsPlayReleaseAtItsIndex() {
+    fun playingATrackItemForwardsPlayReleaseAtItsTrack() {
         val handle = FakeAppHandle()
         val player = player(handle)
 
-        player.setMediaItem(mediaItem(BrowseId.Track(releaseId = "rel-1", index = 3).mediaId))
+        player.setMediaItem(mediaItem(BrowseId.Track(releaseId = "rel-1", trackId = "track-3").mediaId))
         shadowOf(Looper.getMainLooper()).idle()
 
-        assertEquals(Triple("rel-1", 3u, false), handle.playReleaseCalls.single())
+        assertEquals(Triple("rel-1", "track-3", false), handle.playReleaseCalls.single())
     }
 
     @Test

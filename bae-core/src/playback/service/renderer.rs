@@ -18,6 +18,7 @@ use std::sync::atomic::AtomicBool;
 use std::time::Duration;
 
 use super::*;
+use crate::playback::RemoteDevice;
 use crate::renderer::{
     RendererMedia, RendererMediaSource, RendererPlayerState, RendererSession, RendererSessionStatus,
 };
@@ -139,23 +140,23 @@ impl AirPlayRenderer {
 
 /// Everything a `PlayOnAirPlay` command carries: the sink that opens the RAOP
 /// session (built off the service thread by bae-desktop with the device's
-/// address, encryption, and latency), the device's display name, and the
-/// receiver latency. A manual `Debug` keeps `PlaybackCommand`'s derive working.
+/// address, encryption, and latency), the device, and the receiver latency. A
+/// manual `Debug` keeps `PlaybackCommand`'s derive working.
 pub(crate) struct AirPlayConnect {
     sink: Box<dyn crate::playback::airplay_output::AirPlaySink>,
-    device_name: String,
+    device: RemoteDevice,
     latency_frames: u32,
 }
 
 impl AirPlayConnect {
     pub(super) fn new(
         sink: Box<dyn crate::playback::airplay_output::AirPlaySink>,
-        device_name: String,
+        device: RemoteDevice,
         latency_frames: u32,
     ) -> Self {
         Self {
             sink,
-            device_name,
+            device,
             latency_frames,
         }
     }
@@ -164,7 +165,7 @@ impl AirPlayConnect {
 impl std::fmt::Debug for AirPlayConnect {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("AirPlayConnect")
-            .field("device_name", &self.device_name)
+            .field("device", &self.device)
             .field("latency_frames", &self.latency_frames)
             .finish_non_exhaustive()
     }
@@ -173,7 +174,7 @@ impl std::fmt::Debug for AirPlayConnect {
 /// A live remote-renderer session and the state the service needs to keep serving
 /// it: where the device reaches this library's media (to mint each track's media
 /// as the queue advances) and the device's last reported position (for the
-/// handoff back to local playback when remote playback stops). The device name
+/// handoff back to local playback when remote playback stops). The device
 /// isn't held here — it rides the `RemoteStatusChanged` event out to the UI,
 /// which caches it.
 pub(super) struct RemoteRenderer {
@@ -237,25 +238,24 @@ impl RemoteRenderer {
 }
 
 /// Everything a `PlayOn` command carries to start remote playback: the connected
-/// channel (built off the service thread by bae-desktop), the device's display
-/// name, and where that device reaches this library's media. A manual `Debug`
-/// keeps `PlaybackCommand`'s derive working without the un-`Debug`
-/// channel/closures.
+/// channel (built off the service thread by bae-desktop), the device, and where
+/// that device reaches this library's media. A manual `Debug` keeps
+/// `PlaybackCommand`'s derive working without the un-`Debug` channel/closures.
 pub(crate) struct RemoteConnect {
     channel: Box<dyn crate::renderer::RendererChannel>,
-    device_name: String,
+    device: RemoteDevice,
     media_source: RendererMediaSource,
 }
 
 impl RemoteConnect {
     pub(super) fn new(
         channel: Box<dyn crate::renderer::RendererChannel>,
-        device_name: String,
+        device: RemoteDevice,
         media_source: RendererMediaSource,
     ) -> Self {
         Self {
             channel,
-            device_name,
+            device,
             media_source,
         }
     }
@@ -264,7 +264,7 @@ impl RemoteConnect {
 impl std::fmt::Debug for RemoteConnect {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("RemoteConnect")
-            .field("device_name", &self.device_name)
+            .field("device", &self.device)
             .finish_non_exhaustive()
     }
 }
@@ -297,7 +297,7 @@ impl PlaybackService {
     pub(super) async fn handle_play_on(&mut self, connect: RemoteConnect) {
         let RemoteConnect {
             channel,
-            device_name,
+            device,
             media_source,
         } = connect;
 
@@ -324,7 +324,7 @@ impl PlaybackService {
             last_position: position,
             loaded: None,
         });
-        self.hand_over_to_device(device_name, current, position, target)
+        self.hand_over_to_device(device, current, position, target)
             .await;
     }
 
@@ -333,7 +333,7 @@ impl PlaybackService {
     /// reached. Nothing playing leaves the device armed but idle.
     async fn hand_over_to_device(
         &mut self,
-        device_name: String,
+        device: RemoteDevice,
         current: Option<String>,
         position: Duration,
         target: PlayTarget,
@@ -341,7 +341,7 @@ impl PlaybackService {
         emit_progress(
             &self.progress_tx,
             PlaybackProgress::RemoteStatusChanged {
-                device_name: Some(device_name),
+                device: Some(device),
             },
         );
 
@@ -412,7 +412,7 @@ impl PlaybackService {
         self.renderer = Renderer::Local;
         emit_progress(
             &self.progress_tx,
-            PlaybackProgress::RemoteStatusChanged { device_name: None },
+            PlaybackProgress::RemoteStatusChanged { device: None },
         );
         self.teardown_local_playback();
 
@@ -617,7 +617,7 @@ impl PlaybackService {
         self.renderer = Renderer::Local;
         emit_progress(
             &self.progress_tx,
-            PlaybackProgress::RemoteStatusChanged { device_name: None },
+            PlaybackProgress::RemoteStatusChanged { device: None },
         );
         self.stop().await;
     }
@@ -629,7 +629,7 @@ impl PlaybackService {
     pub(super) async fn handle_play_on_airplay(&mut self, connect: AirPlayConnect) {
         let AirPlayConnect {
             sink,
-            device_name,
+            device,
             latency_frames,
         } = connect;
 
@@ -653,7 +653,7 @@ impl PlaybackService {
         let saved_output = std::mem::replace(&mut self.audio_output, Box::new(airplay_output));
         self.renderer =
             Renderer::AirPlay(AirPlayRenderer::new(control, saved_output, latency_frames));
-        self.hand_over_to_device(device_name, current, position, target)
+        self.hand_over_to_device(device, current, position, target)
             .await;
     }
 
@@ -684,7 +684,7 @@ impl PlaybackService {
         self.audio_output = saved_output;
         emit_progress(
             &self.progress_tx,
-            PlaybackProgress::RemoteStatusChanged { device_name: None },
+            PlaybackProgress::RemoteStatusChanged { device: None },
         );
 
         match current {

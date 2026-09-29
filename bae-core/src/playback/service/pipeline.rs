@@ -184,7 +184,7 @@ impl PlaybackService {
         if was_playing_on_device {
             emit_progress(
                 &self.progress_tx,
-                PlaybackProgress::RemoteStatusChanged { device_name: None },
+                PlaybackProgress::RemoteStatusChanged { device: None },
             );
         }
         // Tear the local pipeline down: preview, current decoder, preload, the

@@ -768,12 +768,42 @@ async fn remove_currently_playing_entry_stops_playback() {
         .expect("removing the currently-playing entry stops playback");
 }
 
+/// A release plays from the track named by its id.
 #[tokio::test]
-async fn play_release_clamps_an_out_of_range_start_index() {
+async fn play_release_starts_at_the_named_track() {
     let mut fixture = PlaybackTestFixture::new().await;
     let first = fixture.track_ids[0].clone();
     let third = fixture.track_ids[2].clone();
-    // Start on the third track so a clamp-to-first is observable.
+    fixture.playback_handle.play(first.clone());
+    fixture
+        .wait_for_state(
+            |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == first),
+            Duration::from_secs(5),
+        )
+        .await
+        .expect("the first track plays");
+    let release_id = current_release_id(&fixture.playback_handle).await;
+
+    fixture
+        .playback_handle
+        .play_release(release_id, Some(third.clone()), false);
+
+    fixture
+        .wait_for_state(
+            |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == third),
+            Duration::from_secs(5),
+        )
+        .await
+        .expect("the named track plays");
+}
+
+/// A track the release does not have — an edit removed it after the caller
+/// read it — starts nothing: some other track of the release is not what was
+/// asked for.
+#[tokio::test]
+async fn play_release_from_a_track_it_does_not_have_plays_nothing() {
+    let mut fixture = PlaybackTestFixture::new().await;
+    let third = fixture.track_ids[2].clone();
     fixture.playback_handle.play(third.clone());
     fixture
         .wait_for_state(
@@ -783,16 +813,20 @@ async fn play_release_clamps_an_out_of_range_start_index() {
         .await
         .expect("the third track plays");
     let release_id = current_release_id(&fixture.playback_handle).await;
-    fixture
-        .playback_handle
-        .play_release(release_id, Some(99), false);
-    fixture
+
+    fixture.playback_handle.play_release(
+        release_id,
+        Some("7a4c2c2e-5d0b-4f55-9c1b-0f2f6b7f3a11".to_string()),
+        false,
+    );
+
+    let changed = fixture
         .wait_for_state(
-            |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == first),
-            Duration::from_secs(5),
+            |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id != third),
+            Duration::from_millis(500),
         )
-        .await
-        .expect("an out-of-range start index clamps to the first track");
+        .await;
+    assert!(changed.is_none(), "no other track starts: {changed:?}");
 }
 
 /// A deletion of tracks, both branches. Two releases share one library so

@@ -209,6 +209,20 @@ pub enum BridgeMediaControlPlayback {
     },
 }
 
+/// The remote renderer playback is on: its stable id, which the UI matches
+/// against the device list, and its name, which it shows.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeRemoteDevice {
+    pub id: String,
+    pub name: String,
+}
+
+mirror_struct! {
+    BridgeRemoteDevice = bae_core::playback::RemoteDevice,
+    from_core: pub(crate) fn,
+    fields: { id, name },
+}
+
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgePlaybackValues {
     pub state: BridgePlaybackValueState,
@@ -217,7 +231,7 @@ pub struct BridgePlaybackValues {
     pub volume: f32,
     pub is_muted: bool,
     pub repeat_mode: BridgeRepeatMode,
-    pub remote_device_name: Option<String>,
+    pub remote_device: Option<BridgeRemoteDevice>,
     pub preview: BridgePreviewValues,
     pub media_control: BridgeMediaControlValues,
 }
@@ -341,7 +355,7 @@ impl BridgePlaybackValues {
             volume: value.volume,
             is_muted: value.is_muted,
             repeat_mode: BridgeRepeatMode::from_core(value.repeat_mode),
-            remote_device_name: value.remote_device_name,
+            remote_device: value.remote_device.map(BridgeRemoteDevice::from_core),
             preview: BridgePreviewValues::from_core(value.preview),
             media_control,
         }

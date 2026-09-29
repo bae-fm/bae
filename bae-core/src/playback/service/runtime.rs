@@ -826,7 +826,7 @@ impl PlaybackService {
                 PlaybackCommand::Play(track_id) => {
                     self.handle_play(track_id).await;
                 }
-                PlaybackCommand::PlayRelease { release_id, start_track_index, shuffle } => {
+                PlaybackCommand::PlayRelease { release_id, start_track_id, shuffle } => {
                     let track_ids = match self.library_manager.get_track_ids(&release_id).await {
                         Ok(ids) => ids,
                         Err(e) => {
@@ -841,7 +841,6 @@ impl PlaybackService {
                         continue;
                     }
 
-                    self.stop_preview_for_main_playback();
                     let start = if shuffle {
                         // The seed is minted once, here, and carried into the
                         // context, so the order is reproducible and `Context`
@@ -850,21 +849,27 @@ impl PlaybackService {
                             seed: rand::random(),
                         }
                     } else {
-                        // `None` means "from the first track"; an out-of-range
-                        // index is a bad caller value — clamp and log.
-                        let index = match start_track_index {
-                            Some(i) if i < track_ids.len() => i,
-                            Some(i) => {
-                                warn!(
-                                    "PlayRelease: start index {i} out of range for {} tracks; starting at 0",
-                                    track_ids.len()
-                                );
-                                0
-                            }
+                        // `None` means "from the first track". A named track the
+                        // release no longer has — an edit removed it since the
+                        // caller read it — plays nothing rather than some
+                        // other track.
+                        let index = match &start_track_id {
                             None => 0,
+                            Some(track_id) => match track_ids.iter().position(|id| id == track_id)
+                            {
+                                Some(index) => index,
+                                None => {
+                                    error!(
+                                        "PlayRelease: track {track_id} is not on release {release_id}"
+                                    );
+                                    self.telemetry_playback_failed(PlaybackOperation::LoadContext);
+                                    continue;
+                                }
+                            },
                         };
                         ContextStart::Index(index)
                     };
+                    self.stop_preview_for_main_playback();
                     let track_count = track_ids.len();
                     let first_track = self.playback_queue.apply(|queue| {
                         queue.play_release(ContextSource::Release(release_id), track_ids, start)

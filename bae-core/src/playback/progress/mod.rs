@@ -112,8 +112,18 @@ pub struct PlaybackValues<Track = crate::playback::PlayingTrack> {
     pub volume: f32,
     pub is_muted: bool,
     pub repeat_mode: RepeatMode,
-    pub remote_device_name: Option<String>,
+    /// The remote renderer playback is on, `None` on local output.
+    pub remote_device: Option<RemoteDevice>,
     pub preview: PreviewValues,
+}
+
+/// A remote renderer playback moved to: its stable id, which the UI matches
+/// against the device list, and its name, which it shows. Names need not be
+/// unique across devices.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RemoteDevice {
+    pub id: String,
+    pub name: String,
 }
 
 impl PlaybackValues {
@@ -125,7 +135,7 @@ impl PlaybackValues {
             volume: 1.0,
             is_muted: false,
             repeat_mode: RepeatMode::Off,
-            remote_device_name: None,
+            remote_device: None,
             preview: PreviewValues {
                 state: PreviewState::Idle,
                 position_ms: 0,
@@ -176,8 +186,8 @@ impl PlaybackValues {
             PlaybackProgress::RepeatModeChanged { mode } => next.repeat_mode = *mode,
             PlaybackProgress::VolumeChanged { volume } => next.volume = *volume,
             PlaybackProgress::MuteChanged { is_muted } => next.is_muted = *is_muted,
-            PlaybackProgress::RemoteStatusChanged { device_name } => {
-                next.remote_device_name.clone_from(device_name);
+            PlaybackProgress::RemoteStatusChanged { device } => {
+                next.remote_device.clone_from(device);
             }
             PlaybackProgress::PreviewStateChanged(state) => {
                 next.preview.state = state.clone();
@@ -216,7 +226,7 @@ impl<Track: Clone> PlaybackValues<Track> {
             volume,
             is_muted,
             repeat_mode,
-            remote_device_name,
+            remote_device,
             preview,
         } = self;
         Ok(PlaybackValues {
@@ -226,7 +236,7 @@ impl<Track: Clone> PlaybackValues<Track> {
             volume,
             is_muted,
             repeat_mode,
-            remote_device_name,
+            remote_device,
             preview,
         })
     }
@@ -300,12 +310,13 @@ pub enum PlaybackProgress {
     MuteChanged {
         is_muted: bool,
     },
-    /// The active renderer changed: `Some(name)` when playback moved to a remote
-    /// renderer (Cast or DLNA), `None` when it returned to local output (a user
-    /// stop or a device-side end). The UI reflects the speaker button's active
-    /// state and the "Playing on `<name>`" row from this.
+    /// The active renderer changed: `Some(device)` when playback moved to a
+    /// remote renderer (Cast, DLNA, or AirPlay), `None` when it returned to local
+    /// output (a user stop or a device-side end). The UI reflects the speaker
+    /// button's active state, the picker's active device, and the "Playing on
+    /// `<name>`" row from this.
     RemoteStatusChanged {
-        device_name: Option<String>,
+        device: Option<RemoteDevice>,
     },
     /// Playback error (e.g. storage offline) — a typed reason the UI renders
     /// for its locale.

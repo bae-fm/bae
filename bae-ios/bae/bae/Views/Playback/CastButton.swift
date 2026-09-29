@@ -36,7 +36,7 @@ struct CastButton: View {
             .sheet(isPresented: $showPicker) {
                 CastPickerView(
                     devices: castStore.devices,
-                    castingDeviceName: castingName,
+                    castingDevice: castStore.castingDevice,
                     onCast: castTo,
                     onDisconnect: {
                         cast.stopCasting()
@@ -83,7 +83,7 @@ struct CastButton: View {
 /// devices, or an empty-state line while none have answered.
 private struct CastPickerView: View {
     let devices: [BridgeCastDevice]
-    let castingDeviceName: String?
+    let castingDevice: BridgeRemoteDevice?
     let onCast: (String) -> Void
     let onDisconnect: () -> Void
 
@@ -93,9 +93,9 @@ private struct CastPickerView: View {
     var body: some View {
         NavigationStack {
             List {
-                if let castingDeviceName {
+                if let castingDevice {
                     Section {
-                        castingRow(castingDeviceName)
+                        castingRow(castingDevice.name)
                     }
                 }
                 Section {
@@ -144,7 +144,7 @@ private struct CastPickerView: View {
                 Spacer(minLength: ThemeSpace.related)
                 Image(systemName: "checkmark")
                     .foregroundStyle(Theme.accent)
-                    .opacity(device.name == castingDeviceName ? 1 : 0)
+                    .opacity(device.id == castingDevice?.id ? 1 : 0)
             }
             .contentShape(Rectangle())
         }

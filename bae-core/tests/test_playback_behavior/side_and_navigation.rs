@@ -36,7 +36,6 @@ async fn assert_sided_boundary_pauses(
 
     let paused = fixture
         .play_to_side_pause(
-            start_track_index,
             &side_track_id,
             expected_side_label,
             expected_boundary,
@@ -59,7 +58,7 @@ async fn same_side_auto_advance_does_not_side_pause() {
     let first_side_track_id = fixture.track_ids[0].clone();
     let same_side_track_id = fixture.track_ids[1].clone();
 
-    fixture.play_track_and_wait(0, &first_side_track_id).await;
+    fixture.play_track_and_wait(&first_side_track_id).await;
 
     fixture.seek_to_auto_advance();
 
@@ -92,7 +91,7 @@ async fn setting_off_auto_advances_across_sided_boundary() {
     let side_a_track_id = fixture.track_ids[1].clone();
     let next_side_track_id = fixture.track_ids[2].clone();
 
-    fixture.play_track_and_wait(1, &side_a_track_id).await;
+    fixture.play_track_and_wait(&side_a_track_id).await;
 
     fixture.seek_to_auto_advance();
 
@@ -114,7 +113,7 @@ async fn enabling_setting_mid_track_pauses_at_the_imminent_boundary() {
         .expect("side-pause fixture");
     let side_a_track_id = fixture.track_ids[1].clone();
 
-    fixture.play_track_and_wait(1, &side_a_track_id).await;
+    fixture.play_track_and_wait(&side_a_track_id).await;
 
     fixture.set_pause_between_sides_mid_track(true).await;
 
@@ -135,7 +134,7 @@ async fn disabling_setting_mid_track_keeps_playing_across_the_boundary() {
     let side_a_track_id = fixture.track_ids[1].clone();
     let next_side_track_id = fixture.track_ids[2].clone();
 
-    fixture.play_track_and_wait(1, &side_a_track_id).await;
+    fixture.play_track_and_wait(&side_a_track_id).await;
 
     fixture.set_pause_between_sides_mid_track(false).await;
 
@@ -157,7 +156,7 @@ async fn repeat_track_does_not_side_pause_at_boundary() {
         .expect("side-pause fixture");
     let repeated_track_id = fixture.track_ids[1].clone();
 
-    fixture.play_track_and_wait(1, &repeated_track_id).await;
+    fixture.play_track_and_wait(&repeated_track_id).await;
     fixture.playback_handle.set_repeat_mode(RepeatMode::Track);
 
     fixture.seek_to_auto_advance();
@@ -180,7 +179,8 @@ async fn resume_from_side_pause_starts_next_side() {
     let next_side_track_id = fixture.track_ids[2].clone();
 
     fixture
-        .play_to_side_pause(1, &side_a_track_id, "A", PlaybackPauseBoundary::Side)
+        .play_to_side_pause(
+            &side_a_track_id, "A", PlaybackPauseBoundary::Side)
         .await;
 
     fixture.playback_handle.resume();
@@ -202,7 +202,7 @@ async fn side_boundary_pause_prevents_gapless_stream_handoff() {
     let side_a_track_id = fixture.track_ids[1].clone();
     let side_b_track_id = fixture.track_ids[2].clone();
 
-    fixture.play_track_and_wait(1, &side_a_track_id).await;
+    fixture.play_track_and_wait(&side_a_track_id).await;
     let _side_a_stream = fixture.next_capture_stream().await;
 
     fixture.seek_to_auto_advance();

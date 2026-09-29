@@ -128,12 +128,14 @@ object BridgeFixtures {
 
     fun trackSearchResult(
         id: String = "trk-1",
+        releaseId: String = "rel-1",
         albumId: String = "alb-1",
     ): BridgeTrackSearchResult =
         BridgeTrackSearchResult(
             id = id,
             title = "Track Title",
             durationClock = null,
+            releaseId = releaseId,
             albumId = albumId,
             albumTitle = "Album Title",
             artistName = "Artist Name",

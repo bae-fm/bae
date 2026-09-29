@@ -79,10 +79,10 @@ struct AlbumDetailView: View {
                         onShuffle: {
                             playback.playRelease(selectedReleaseId, nil, true)
                         },
-                        onPlayFromTrack: { index in
+                        onPlayFromTrack: { trackId in
                             playback.playRelease(
                                 selectedReleaseId,
-                                UInt32(index),
+                                trackId,
                                 false
                             )
                         },
@@ -540,10 +540,8 @@ extension AlbumDetailView {
             let choices = SaveFormatChoice.trackChoices(
                 presets: configStore.config.savePresets
             )
-            guard
-                let selectedIndex = choices.firstIndex(where: {
-                    $0.presetId == configStore.config.defaultTrackSavePreset
-                })
+            let defaultPresetId = configStore.config.defaultTrackSavePreset
+            guard choices.contains(where: { $0.presetId == defaultPresetId })
             else {
                 exportError = String(localized: "Default format")
                 return
@@ -558,7 +556,7 @@ extension AlbumDetailView {
 
             let panel = TrackSavePanel.make(
                 saveChoices: saveChoices,
-                selectedIndex: selectedIndex
+                selectedPresetId: defaultPresetId
             )
             let formatPopup = panel.formatPopup
             let response = panel.savePanel.runModal()
@@ -574,8 +572,7 @@ extension AlbumDetailView {
                 return
             }
 
-            let presetId =
-                saveChoices[formatPopup.indexOfSelectedItem].choice.presetId
+            let presetId = SaveFormatPopup.selectedPresetId(of: formatPopup)
             let outputPath = url.path(percentEncoded: false)
             do {
                 try await export.saveTrack(trackId, outputPath, presetId)

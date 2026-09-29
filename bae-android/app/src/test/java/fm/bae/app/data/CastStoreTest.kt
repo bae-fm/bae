@@ -5,6 +5,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import uniffi.bae_bridge.BridgeRemoteDevice
 
 /**
  * The cast button and the picker's active row read the casting device off the
@@ -15,13 +16,15 @@ class CastStoreTest {
     @Test
     fun statusCarriesTheCastingDevice() {
         val store = CastStore()
-        assertNull(castingDeviceName(store.status.value))
+        assertNull(castingDevice(store.status.value))
 
-        store.applyStatus("Living Room Speaker")
-        assertEquals("Living Room Speaker", castingDeviceName(store.status.value))
+        val device = BridgeRemoteDevice(id = "cast-2", name = "Speaker Name")
+        store.applyStatus(device)
+        assertEquals(device, castingDevice(store.status.value))
+        assertEquals("Speaker Name", castingDeviceName(store.status.value))
 
         store.applyStatus(null)
-        assertNull(castingDeviceName(store.status.value))
+        assertNull(castingDevice(store.status.value))
     }
 
     @Test

@@ -32,7 +32,7 @@ struct CastButton: View {
         .popover(isPresented: $showPicker, arrowEdge: .top) {
             CastPickerPopover(
                 devices: castStore.devices,
-                castingDeviceName: castingName,
+                castingDevice: castStore.castingDevice,
                 onCast: castTo,
                 onDisconnect: {
                     cast.stopCasting()
@@ -82,14 +82,14 @@ struct CastButton: View {
 /// devices.
 private struct CastPickerPopover: View {
     let devices: [BridgeCastDevice]
-    let castingDeviceName: String?
+    let castingDevice: BridgeRemoteDevice?
     let onCast: (String) -> Void
     let onDisconnect: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.compact) {
-            if let castingDeviceName {
-                castingRow(castingDeviceName)
+            if let castingDevice {
+                castingRow(castingDevice.name)
                 Divider()
             }
             if devices.isEmpty {
@@ -127,7 +127,7 @@ private struct CastPickerPopover: View {
     }
 
     private func deviceRow(_ device: BridgeCastDevice) -> some View {
-        let isActive = device.name == castingDeviceName
+        let isActive = device.id == castingDevice?.id
         return Button(action: { onCast(device.id) }) {
             HStack(spacing: ThemeSpace.inline) {
                 Image(systemName: deviceIcon(device.kind))

@@ -10,7 +10,7 @@ struct AlbumTrackListView: View {
     let currentTrackId: String?
     let loadingTrackId: String?
     let isPlaying: Bool
-    let onPlayFromTrack: (Int) -> Void
+    let onPlayFromTrack: (String) -> Void
     let onTogglePlayPause: () -> Void
     let onAddNext: (String) -> Void
     let onAddToQueue: (String) -> Void
@@ -23,18 +23,11 @@ struct AlbumTrackListView: View {
 
     var body: some View {
         let groups = release.trackGroups
-        var runningOffset = 0
-        let offsets = groups.map { group -> Int in
-            let offset = runningOffset
-            runningOffset += group.tracks.count
-            return offset
-        }
 
         VStack(alignment: .leading, spacing: 0) {
             ForEach(Array(groups.enumerated()), id: \.offset) {
                 groupIndex,
                 group in
-                let globalOffset = offsets[groupIndex]
                 if !group.sideHeaderText.isEmpty {
                     Eyebrow(verbatim: group.sideHeaderText)
                         .padding(.top, groupIndex == 0 ? 0 : ThemeSpace.edge)
@@ -46,7 +39,7 @@ struct AlbumTrackListView: View {
                 let left = Array(group.tracks.prefix(mid))
                 let right = Array(group.tracks.dropFirst(mid))
                 HStack(alignment: .top, spacing: ThemeSpace.page) {
-                    trackColumn(tracks: left, globalOffset: globalOffset)
+                    trackColumn(tracks: left)
                     if right.isEmpty {
                         // Not a `Spacer`: its default minimum length would
                         // claim its own width rather than take the share a
@@ -54,10 +47,7 @@ struct AlbumTrackListView: View {
                         Color.clear.frame(maxWidth: .infinity)
                     }
                     else {
-                        trackColumn(
-                            tracks: right,
-                            globalOffset: globalOffset + mid
-                        )
+                        trackColumn(tracks: right)
                     }
                 }
                 // The album's play time sits in the header; only a multi-side
@@ -72,12 +62,10 @@ struct AlbumTrackListView: View {
         }
     }
 
-    private func trackColumn(tracks: [Track], globalOffset: Int) -> some View {
+    private func trackColumn(tracks: [Track]) -> some View {
         let height = isCompilation ? rowHeightCompilation : rowHeight
         return VStack(alignment: .leading, spacing: 0) {
-            ForEach(Array(tracks.enumerated()), id: \.element.id) {
-                localIndex,
-                track in
+            ForEach(tracks, id: \.id) { track in
                 TrackRowView(
                     track: track,
                     // Core sets this only for a compilation.
@@ -85,7 +73,7 @@ struct AlbumTrackListView: View {
                     isCurrent: currentTrackId == track.id,
                     isLoading: loadingTrackId == track.id,
                     isPlaying: isPlaying,
-                    onPlay: { onPlayFromTrack(globalOffset + localIndex) },
+                    onPlay: { onPlayFromTrack(track.id) },
                     onTogglePlayPause: onTogglePlayPause,
                     onAddNext: onAddNext,
                     onAddToQueue: onAddToQueue,

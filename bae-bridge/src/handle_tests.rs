@@ -85,6 +85,7 @@ fn track_search_result(duration_ms: Option<i64>) -> bae_core::album_detail::Trac
         id: "track-1".to_string(),
         title: "Track".to_string(),
         duration_ms,
+        release_id: "release-1".to_string(),
         album_id: "album-1".to_string(),
         album_title: "Album".to_string(),
         artist_name: "Artist".to_string(),

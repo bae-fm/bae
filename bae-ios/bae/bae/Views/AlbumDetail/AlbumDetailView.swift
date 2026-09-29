@@ -5,7 +5,7 @@ import SwiftUI
 /// releases, and the selected release's tracks grouped by side.
 struct AlbumDetailView: View {
     let albumId: String
-    private let context: AlbumDetailContext?
+    private let entry: AlbumDetailEntry
 
     @Environment(LibraryStore.self)
     private var libraryStore
@@ -29,42 +29,44 @@ struct AlbumDetailView: View {
     init(
         albumId: String,
         initialReleaseId: String? = nil,
-        context: AlbumDetailContext? = nil
+        entry: AlbumDetailEntry = .album
     ) {
         self.albumId = albumId
-        self.context = context
+        self.entry = entry
         _selectedReleaseId = State(initialValue: initialReleaseId)
     }
 
     var body: some View {
         Group {
-            if let context {
-                if let releaseId = selectedReleaseId,
-                    let detail = libraryStore.releaseDetails[releaseId]
-                {
-                    content(
-                        display: AlbumDetailDisplay(context: context),
-                        releasePickerSummary: nil,
-                        releaseId: releaseId,
-                        detail: detail
-                    )
-                }
-                else {
-                    detailPlaceholder()
-                }
-            }
-            else if let summary = libraryStore.albumSummaries[albumId] {
-                let releaseId = activeReleaseId(summary: summary)
-                if let detail = libraryStore.releaseDetails[releaseId] {
-                    content(
-                        display: AlbumDetailDisplay(summary: summary),
-                        releasePickerSummary: summary,
-                        releaseId: releaseId,
-                        detail: detail
-                    )
-                }
-                else {
-                    detailPlaceholder()
+            if let summary = libraryStore.albumSummaries[albumId] {
+                switch entry {
+                case .album:
+                    let releaseId = activeReleaseId(summary: summary)
+                    if let detail = libraryStore.releaseDetails[releaseId] {
+                        content(
+                            display: .album(summary),
+                            releasePickerSummary: summary,
+                            releaseId: releaseId,
+                            detail: detail
+                        )
+                    }
+                    else {
+                        detailPlaceholder()
+                    }
+                case .workRelease:
+                    if let releaseId = selectedReleaseId,
+                        let detail = libraryStore.releaseDetails[releaseId]
+                    {
+                        content(
+                            display: .workRelease(summary),
+                            releasePickerSummary: nil,
+                            releaseId: releaseId,
+                            detail: detail
+                        )
+                    }
+                    else {
+                        detailPlaceholder()
+                    }
                 }
             }
             else {
@@ -127,8 +129,8 @@ struct AlbumDetailView: View {
                 TrackList(
                     detail: detail,
                     artistDisplay: display.trackArtistDisplay,
-                    onPlayTrackAt: { index in
-                        playback.playRelease(releaseId, UInt32(index), false)
+                    onPlayTrack: { trackId in
+                        playback.playRelease(releaseId, trackId, false)
                     },
                     onPlayNext: { trackId in queue.addNext([trackId]) },
                     onAddToQueue: { trackId in queue.addToQueue([trackId]) }
@@ -201,24 +203,22 @@ struct AlbumDetailView: View {
     }
 }
 
+/// How the screen was reached: from the album list, or from a work as one
+/// release of it. The route carries only this and ids; the header reads the
+/// album's live summary either way.
+enum AlbumDetailEntry: Hashable {
+    case album
+    case workRelease
+}
+
 enum AlbumDetailDisplay {
     case album(AlbumSummary)
-    case workRelease(AlbumDetailContext)
-
-    init(summary: AlbumSummary) {
-        self = .album(summary)
-    }
-
-    init(context: AlbumDetailContext) {
-        self = .workRelease(context)
-    }
+    case workRelease(AlbumSummary)
 
     var title: String {
         switch self {
-        case .album(let summary):
+        case .album(let summary), .workRelease(let summary):
             summary.title
-        case .workRelease(let context):
-            context.title
         }
     }
 
@@ -241,14 +241,6 @@ enum AlbumDetailDisplay {
         case .workRelease:
             .workRelease
         }
-    }
-}
-
-struct AlbumDetailContext: Hashable {
-    let title: String
-
-    init(workRelease: BridgeWorkReleaseSummary) {
-        title = workRelease.albumTitle
     }
 }
 

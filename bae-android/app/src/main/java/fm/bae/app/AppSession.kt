@@ -184,7 +184,7 @@ class OpenLibrary internal constructor(
                     override fun onValue(value: uniffi.bae_bridge.BridgePlaybackValues) {
                         scope.launch(Dispatchers.Main.immediate) {
                             playback.applyValues(value)
-                            stores.cast.applyStatus(value.remoteDeviceName)
+                            stores.cast.applyStatus(value.remoteDevice)
                         }
                     }
 

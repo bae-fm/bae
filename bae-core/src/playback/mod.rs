@@ -46,6 +46,7 @@ pub use preview_player::PreviewTarget;
 pub use progress::{
     MediaControlPlayback, MediaControlPosition, MediaControlValues, PlaybackPosition,
     PlaybackProgress, PlaybackQueueProjection, PlaybackValues, PreviewState, PreviewValues,
+    RemoteDevice,
 };
 pub use published_queue::PublishedQueue;
 pub use queue::{

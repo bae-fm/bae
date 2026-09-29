@@ -18,7 +18,7 @@ private enum LibraryRoute: Hashable {
     case album(
         albumId: String,
         initialReleaseId: String?,
-        context: AlbumDetailContext?
+        entry: AlbumDetailEntry
     )
     case composer(String)
     case work(String)
@@ -34,11 +34,11 @@ private struct LibraryRouteDestination: View {
 
     var body: some View {
         switch route {
-        case .album(let albumId, let releaseId, let context):
+        case .album(let albumId, let releaseId, let entry):
             AlbumDetailView(
                 albumId: albumId,
                 initialReleaseId: releaseId,
-                context: context
+                entry: entry
             )
         case .composer(let artistId):
             ComposerDetailScreen(
@@ -48,7 +48,7 @@ private struct LibraryRouteDestination: View {
                     routePath.appendAlbum(
                         albumId: albumId,
                         initialReleaseId: releaseId,
-                        context: nil
+                        entry: .album
                     )
                 }
             )
@@ -60,7 +60,7 @@ private struct LibraryRouteDestination: View {
                     routePath.appendAlbum(
                         albumId: release.albumId,
                         initialReleaseId: release.releaseId,
-                        context: AlbumDetailContext(workRelease: release)
+                        entry: .workRelease
                     )
                 }
             )
@@ -71,7 +71,7 @@ private struct LibraryRouteDestination: View {
                     routePath.appendAlbum(
                         albumId: albumId,
                         initialReleaseId: nil,
-                        context: nil
+                        entry: .album
                     )
                 }
             )
@@ -230,7 +230,7 @@ extension LibraryView {
                 routePath.appendAlbum(
                     albumId: $0,
                     initialReleaseId: nil,
-                    context: nil
+                    entry: .album
                 )
             },
             onSelectComposer: { routePath.append(.composer($0)) },
@@ -390,13 +390,13 @@ private extension Array where Element == LibraryRoute {
     mutating func appendAlbum(
         albumId: String,
         initialReleaseId: String?,
-        context: AlbumDetailContext?
+        entry: AlbumDetailEntry
     ) {
         append(
             .album(
                 albumId: albumId,
                 initialReleaseId: initialReleaseId,
-                context: context
+                entry: entry
             )
         )
     }

@@ -118,9 +118,10 @@ impl SidePauseDecision {
 #[derive(Debug)]
 pub(crate) enum PlaybackCommand {
     Play(String),
+    /// Play a release from `start_track_id`, or from its first track.
     PlayRelease {
         release_id: String,
-        start_track_index: Option<usize>,
+        start_track_id: Option<String>,
         shuffle: bool,
     },
     /// Play several releases in order as one context, from the first track.
@@ -340,15 +341,10 @@ impl PlaybackHandle {
     pub fn play(&self, track_id: String) {
         self.dispatch(PlaybackCommand::Play(track_id));
     }
-    pub fn play_release(
-        &self,
-        release_id: String,
-        start_track_index: Option<usize>,
-        shuffle: bool,
-    ) {
+    pub fn play_release(&self, release_id: String, start_track_id: Option<String>, shuffle: bool) {
         self.dispatch(PlaybackCommand::PlayRelease {
             release_id,
-            start_track_index,
+            start_track_id,
             shuffle,
         });
     }
@@ -395,12 +391,12 @@ impl PlaybackHandle {
     pub fn play_on(
         &self,
         channel: Box<dyn crate::renderer::RendererChannel>,
-        device_name: String,
+        device: crate::playback::RemoteDevice,
         media_source: crate::renderer::RendererMediaSource,
     ) {
         self.dispatch(PlaybackCommand::PlayOn(Box::new(RemoteConnect::new(
             channel,
-            device_name,
+            device,
             media_source,
         ))));
     }
@@ -409,11 +405,11 @@ impl PlaybackHandle {
     pub fn play_on_airplay(
         &self,
         sink: Box<dyn crate::playback::airplay_output::AirPlaySink>,
-        device_name: String,
+        device: crate::playback::RemoteDevice,
         latency_frames: u32,
     ) {
         self.dispatch(PlaybackCommand::PlayOnAirPlay(Box::new(
-            renderer::AirPlayConnect::new(sink, device_name, latency_frames),
+            renderer::AirPlayConnect::new(sink, device, latency_frames),
         )));
     }
     /// Stop remote or AirPlay playback and resume local playback, paused at the

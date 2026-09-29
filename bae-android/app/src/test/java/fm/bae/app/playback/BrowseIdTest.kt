@@ -29,8 +29,8 @@ class BrowseIdTest {
     }
 
     @Test
-    fun trackIdRoundTripsIndexAndRelease() {
-        val track = BrowseId.Track(releaseId = "rel-1", index = 7)
+    fun trackIdRoundTripsReleaseAndTrack() {
+        val track = BrowseId.Track(releaseId = "rel-1", trackId = "track-7")
         assertEquals(track, BrowseId.parse(track.mediaId))
     }
 
@@ -38,7 +38,7 @@ class BrowseIdTest {
     fun idsWithColonsInPayloadRoundTrip() {
         // A library id is opaque; the encoding must survive a `:` in it.
         val album = BrowseId.Album("prefix:album:9")
-        val track = BrowseId.Track(releaseId = "rel:a:b", index = 3)
+        val track = BrowseId.Track(releaseId = "rel:a:b", trackId = "track:c:3")
         assertEquals(album, BrowseId.parse(album.mediaId))
         assertEquals(track, BrowseId.parse(track.mediaId))
     }
@@ -51,9 +51,11 @@ class BrowseIdTest {
 
     @Test
     fun malformedTrackIdParsesToNull() {
-        // Non-numeric index, and a missing release id.
-        assertNull(BrowseId.parse("track:notanumber:rel-1"))
+        // A non-numeric length, a missing payload, and a release id with no
+        // track id after it.
+        assertNull(BrowseId.parse("track:notanumber:rel-1track-1"))
         assertNull(BrowseId.parse("track:5"))
+        assertNull(BrowseId.parse("track:5:rel-1"))
     }
 
     @Test

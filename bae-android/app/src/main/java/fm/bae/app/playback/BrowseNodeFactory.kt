@@ -68,12 +68,11 @@ internal class BrowseNodeFactory(
             subtitle = work.composerNames,
         )
 
-    /** A playable track node, carrying its release-wide flat [index] so the
-     *  player starts the release at that track. */
+    /** A playable track node, carrying its release and track ids so the player
+     *  starts the release at that track. */
     fun track(
         release: BridgeRelease,
         track: BridgeTrack,
-        index: Int,
     ): MediaItem {
         val metadata =
             baseMetadata(track.title, release.cover)
@@ -85,7 +84,7 @@ internal class BrowseNodeFactory(
                 .build()
         return MediaItem
             .Builder()
-            .setMediaId(BrowseId.Track(release.id, index).mediaId)
+            .setMediaId(BrowseId.Track(release.id, track.id).mediaId)
             .setMediaMetadata(metadata)
             .build()
     }

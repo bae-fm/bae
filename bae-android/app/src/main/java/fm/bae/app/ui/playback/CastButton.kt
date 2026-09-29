@@ -41,7 +41,7 @@ import androidx.compose.ui.res.stringResource
 import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
-import fm.bae.app.data.castingDeviceName
+import fm.bae.app.data.castingDevice
 import fm.bae.app.localizedLine
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
@@ -49,6 +49,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeCastDevice
 import uniffi.bae_bridge.BridgeException
+import uniffi.bae_bridge.BridgeRemoteDevice
 import uniffi.bae_bridge.BridgeRendererKind
 
 private val logger = BaeLogger("bae.CastButton")
@@ -61,7 +62,7 @@ fun CastButton(session: OpenLibrary) {
         return
     }
     val status by session.castStore.status.collectAsState()
-    val castingTo = castingDeviceName(status)
+    val castingTo = castingDevice(status)
     var pickerOpen by remember { mutableStateOf(false) }
 
     if (pickerOpen) {
@@ -99,7 +100,7 @@ fun CastButton(session: OpenLibrary) {
 @Composable
 private fun CastPickerSheet(
     session: OpenLibrary,
-    castingTo: String?,
+    castingTo: BridgeRemoteDevice?,
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -153,12 +154,12 @@ private fun CastPickerSheet(
 @Composable
 private fun CastDeviceRows(
     devices: List<BridgeCastDevice>,
-    castingTo: String?,
+    castingTo: BridgeRemoteDevice?,
     onDisconnect: () -> Unit,
     onCast: (BridgeCastDevice) -> Unit,
 ) {
     if (castingTo != null) {
-        CastingRow(deviceName = castingTo, onDisconnect = onDisconnect)
+        CastingRow(deviceName = castingTo.name, onDisconnect = onDisconnect)
     }
     if (devices.isEmpty()) {
         Text(
@@ -171,7 +172,7 @@ private fun CastDeviceRows(
         devices.forEach { device ->
             DeviceRow(
                 device = device,
-                isActive = device.name == castingTo,
+                isActive = device.id == castingTo?.id,
                 onCast = { onCast(device) },
             )
         }

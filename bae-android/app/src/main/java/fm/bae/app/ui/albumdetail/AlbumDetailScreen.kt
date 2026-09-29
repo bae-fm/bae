@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
@@ -84,7 +84,7 @@ internal data class AlbumPlaybackState(
 internal data class AlbumDetailCallbacks(
     val onSelectRelease: (String) -> Unit,
     val onTogglePlayPause: () -> Unit,
-    val onPlayTrackAt: (Int) -> Unit,
+    val onPlayTrack: (String) -> Unit,
     val onPlayRelease: () -> Unit,
     val onShuffleRelease: () -> Unit,
     val onPlayReleaseNext: () -> Unit,
@@ -207,12 +207,12 @@ private fun buildAlbumDetailCallbacks(
 ): AlbumDetailCallbacks {
     fun runPlayReleaseCommand(
         operation: (BridgeRelease) -> String,
-        startIndex: UInt?,
+        startTrackId: String?,
         shuffled: Boolean,
     ) {
         release?.let {
             runLoggedBridgeCommand(logger, operation(it)) {
-                session.appHandle.playRelease(it.id, startIndex, shuffled)
+                session.appHandle.playRelease(it.id, startTrackId, shuffled)
             }
         }
     }
@@ -241,24 +241,24 @@ private fun buildAlbumDetailCallbacks(
     return AlbumDetailCallbacks(
         onSelectRelease = onSelectRelease,
         onTogglePlayPause = { session.playback.togglePlayPause() },
-        onPlayTrackAt = { index ->
+        onPlayTrack = { trackId ->
             runPlayReleaseCommand(
-                operation = { "playRelease ${it.id} track $index" },
-                startIndex = index.toUInt(),
+                operation = { "playRelease ${it.id} track $trackId" },
+                startTrackId = trackId,
                 shuffled = false,
             )
         },
         onPlayRelease = {
             runPlayReleaseCommand(
                 operation = { "playRelease ${it.id}" },
-                startIndex = null,
+                startTrackId = null,
                 shuffled = false,
             )
         },
         onShuffleRelease = {
             runPlayReleaseCommand(
                 operation = { "shuffleRelease ${it.id}" },
-                startIndex = null,
+                startTrackId = null,
                 shuffled = true,
             )
         },
@@ -435,8 +435,6 @@ private fun androidx.compose.foundation.lazy.LazyListScope.albumTrackGroups(
     callbacks: AlbumDetailCallbacks,
     context: android.content.Context,
 ) {
-    // Track indices run across all groups, the order the player plays them in.
-    var runningIndex = 0
     release.trackGroups.forEach { group ->
         val header = group.sideHeaderText(context)
         if (header.isNotEmpty()) {
@@ -444,8 +442,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.albumTrackGroups(
                 Eyebrow(text = header, modifier = Modifier.padding(top = ThemeSpace.related))
             }
         }
-        val groupOffset = runningIndex
-        itemsIndexed(group.tracks, key = { _, t -> t.id }) { localIndex, track ->
+        items(group.tracks, key = { it.id }) { track ->
             val isCurrent = track.id == playback.currentTrackId
             TrackRow(
                 data =
@@ -463,7 +460,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.albumTrackGroups(
                             if (isCurrent) {
                                 callbacks.onTogglePlayPause()
                             } else {
-                                callbacks.onPlayTrackAt(groupOffset + localIndex)
+                                callbacks.onPlayTrack(track.id)
                             }
                         },
                         onPlayNext = { callbacks.onPlayTrackNext(track.id) },
@@ -471,7 +468,6 @@ private fun androidx.compose.foundation.lazy.LazyListScope.albumTrackGroups(
                     ),
             )
         }
-        runningIndex += group.tracks.size
         // The header shows the total, so only a multi-side release lists each
         // side's play time.
         val groupDurationLabel = context.durationUnitsText(group.totalDuration)
@@ -525,7 +521,7 @@ internal fun inertAlbumDetailCallbacks(): AlbumDetailCallbacks =
     AlbumDetailCallbacks(
         onSelectRelease = {},
         onTogglePlayPause = {},
-        onPlayTrackAt = {},
+        onPlayTrack = {},
         onPlayRelease = {},
         onShuffleRelease = {},
         onPlayReleaseNext = {},

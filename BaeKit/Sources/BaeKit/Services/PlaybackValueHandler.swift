@@ -16,7 +16,7 @@ final class PlaybackValueHandler {
         playbackStore.volume = values.volume
         playbackStore.isMuted = values.isMuted
         playbackStore.repeatMode = values.repeatMode
-        castStore.applyStatus(deviceName: values.remoteDeviceName)
+        castStore.applyStatus(device: values.remoteDevice)
 
         applyPlaybackState(values.state)
         applyPosition(values)

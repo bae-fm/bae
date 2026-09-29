@@ -27,7 +27,7 @@ internal fun playbackValues(
         volume = volume,
         isMuted = isMuted,
         repeatMode = repeatMode,
-        remoteDeviceName = null,
+        remoteDevice = null,
         preview = BridgePreviewValues(BridgePreviewState.Idle, 0uL, 0.0),
         mediaControl =
             BridgeMediaControlValues(

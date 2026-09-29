@@ -424,7 +424,7 @@ impl AppServices {
     #[cfg(any(test, feature = "test-utils"))]
     delegate_sync!(manager, is_sync_configured => is_sync_configured() -> bool);
 
-    delegate_sync!(playback, playback_play_release => play_release(release_id: String, start_track_index: Option<usize>, shuffle: bool) -> ());
+    delegate_sync!(playback, playback_play_release => play_release(release_id: String, start_track_id: Option<String>, shuffle: bool) -> ());
     delegate_sync!(playback, playback_play_releases => play_releases(release_ids: Vec<String>) -> ());
     delegate_sync!(playback, playback_play_library_shuffled => play_library_shuffled() -> ());
     delegate_sync!(playback, playback_pause => pause() -> ());
@@ -437,8 +437,8 @@ impl AppServices {
     delegate_sync!(playback, playback_set_volume => set_volume(volume: f32) -> ());
     delegate_async!(playback, playback_get_volume => get_volume() -> f32);
     delegate_sync!(playback, playback_set_muted => set_muted(muted: bool) -> ());
-    delegate_sync!(playback, playback_play_on => play_on(channel: Box<dyn crate::renderer::RendererChannel>, device_name: String, media_source: crate::renderer::RendererMediaSource) -> ());
-    delegate_sync!(playback, playback_play_on_airplay => play_on_airplay(sink: Box<dyn crate::playback::airplay_output::AirPlaySink>, device_name: String, latency_frames: u32) -> ());
+    delegate_sync!(playback, playback_play_on => play_on(channel: Box<dyn crate::renderer::RendererChannel>, device: crate::playback::RemoteDevice, media_source: crate::renderer::RendererMediaSource) -> ());
+    delegate_sync!(playback, playback_play_on_airplay => play_on_airplay(sink: Box<dyn crate::playback::airplay_output::AirPlaySink>, device: crate::playback::RemoteDevice, latency_frames: u32) -> ());
     delegate_sync!(playback, playback_stop_remote => stop_remote() -> ());
     delegate_sync!(playback, playback_preview_play => preview_play(target: crate::playback::PreviewTarget) -> ());
     delegate_sync!(playback, playback_preview_stop => preview_stop() -> ());

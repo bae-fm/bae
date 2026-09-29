@@ -90,7 +90,7 @@ struct AppServiceMediaControlTests {
                 volume: 1,
                 isMuted: false,
                 repeatMode: .off,
-                remoteDeviceName: nil,
+                remoteDevice: nil,
                 preview: BridgePreviewValues(
                     state: .idle,
                     positionMs: 0,

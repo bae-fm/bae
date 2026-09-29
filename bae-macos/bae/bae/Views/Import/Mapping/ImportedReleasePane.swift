@@ -20,7 +20,7 @@ struct ImportedReleasePane: View {
     let onViewInLibrary: (String) -> Void
     let onOpenImages: ([BridgeMappingImage], String) -> Void
     let onOpenDocument: (String, String) -> Void
-    let onPlayTrack: (Int) -> Void
+    let onPlayTrack: (String) -> Void
 
     /// The height the loading and failed states hold.
     private static let placeholderHeight: CGFloat = 280

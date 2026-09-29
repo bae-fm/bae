@@ -23,7 +23,7 @@ use bae_core::config::SubsonicCredential;
 use bae_core::dlna::DlnaChannel;
 use bae_core::library::AppServices;
 use bae_core::playback::airplay_output::{AirPlaySink, Ap2Sink, RaopSink};
-use bae_core::playback::PlaybackProgress;
+use bae_core::playback::{PlaybackProgress, RemoteDevice};
 use bae_core::renderer::{
     cast_stream_format, dlna_stream_format, CoverUrlProvider, MediaUrlProvider, RendererChannel,
     RendererConnection, RendererDevice, RendererDiscovery, RendererMediaSource,
@@ -266,7 +266,7 @@ impl CastController {
         let slot = self.server.clone();
         self.runtime.spawn(async move {
             while let Some(event) = progress.recv().await {
-                let PlaybackProgress::RemoteStatusChanged { device_name: None } = event else {
+                let PlaybackProgress::RemoteStatusChanged { device: None } = event else {
                     continue;
                 };
                 // Take the server out under the lock, then stop it off the lock
@@ -354,8 +354,14 @@ impl CastController {
         } = &device.connection
         {
             let sink = build_airplay_sink(*addr, *port, capabilities)?;
-            self.services
-                .playback_play_on_airplay(sink, device.name, AIRPLAY_LATENCY_FRAMES);
+            self.services.playback_play_on_airplay(
+                sink,
+                RemoteDevice {
+                    id: device.id,
+                    name: device.name,
+                },
+                AIRPLAY_LATENCY_FRAMES,
+            );
             return Ok(());
         }
 
@@ -411,7 +417,10 @@ impl CastController {
 
         self.services.playback_play_on(
             channel,
-            device.name,
+            RemoteDevice {
+                id: device.id,
+                name: device.name,
+            },
             RendererMediaSource::new(stream_provider, cover_provider, stream_format),
         );
         Ok(())

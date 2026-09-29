@@ -39,6 +39,48 @@ struct SaveFormatChoice {
     }
 }
 
+/// The format popup of a save panel. Each item is keyed by its preset's id,
+/// never by its title: preset names need not be unique, and
+/// `NSPopUpButton.addItems(withTitles:)` keeps only one item per title.
+enum SaveFormatPopup {
+    @MainActor
+    static func make(
+        choices: [SaveFormatChoice],
+        selectedPresetId: String,
+        frame: NSRect
+    ) -> NSPopUpButton {
+        let popup = NSPopUpButton(frame: frame, pullsDown: false)
+        for choice in choices {
+            let item = NSMenuItem(
+                title: choice.title,
+                action: nil,
+                keyEquivalent: ""
+            )
+            item.representedObject = choice.presetId
+            popup.menu?.addItem(item)
+        }
+        popup.select(
+            popup.itemArray.first {
+                $0.representedObject as? String == selectedPresetId
+            }
+        )
+        return popup
+    }
+
+    /// The preset id of the selected item. Every item `make` builds carries
+    /// one, and a popup with items always has one selected.
+    @MainActor
+    static func selectedPresetId(of popup: NSPopUpButton) -> String {
+        guard let presetId = popup.selectedItem?.representedObject as? String
+        else {
+            preconditionFailure(
+                "a save-format popup item carries its preset id"
+            )
+        }
+        return presetId
+    }
+}
+
 /// A resolved release-save destination: the chosen folder plus the preset to
 /// render with.
 struct ReleaseSaveTarget {
@@ -77,7 +119,7 @@ enum OutputTarget {
             presets: config.savePresets
         )
         guard
-            let selectedIndex = choices.firstIndex(where: {
+            choices.contains(where: {
                 $0.presetId == config.defaultReleaseSavePreset
             })
         else {
@@ -86,9 +128,10 @@ enum OutputTarget {
         }
 
         let panel = makeFolderPanel()
-        let popup = makeFormatPopup(
+        let popup = SaveFormatPopup.make(
             choices: choices,
-            selectedIndex: selectedIndex
+            selectedPresetId: config.defaultReleaseSavePreset,
+            frame: NSRect(x: 54, y: 5, width: 190, height: 24)
         )
         panel.accessoryView = formatAccessoryView(popup: popup)
         guard panel.runModal() == .OK, let url = panel.url else {
@@ -98,7 +141,7 @@ enum OutputTarget {
         UserDefaults.standard.set(dir, forKey: lastOutputFolderKey)
         return ReleaseSaveTarget(
             targetDir: dir,
-            presetId: choices[popup.indexOfSelectedItem].presetId
+            presetId: SaveFormatPopup.selectedPresetId(of: popup)
         )
     }
 
@@ -124,20 +167,6 @@ enum OutputTarget {
         alert.informativeText = String(localized: "Default format")
         alert.addButton(withTitle: String(localized: "OK"))
         alert.runModal()
-    }
-
-    @MainActor
-    private static func makeFormatPopup(
-        choices: [SaveFormatChoice],
-        selectedIndex: Int
-    ) -> NSPopUpButton {
-        let popup = NSPopUpButton(
-            frame: NSRect(x: 54, y: 5, width: 190, height: 24),
-            pullsDown: false
-        )
-        popup.addItems(withTitles: choices.map(\.title))
-        popup.selectItem(at: selectedIndex)
-        return popup
     }
 
     @MainActor

@@ -12,18 +12,24 @@ public final class CastStore {
 
     public init() {}
 
-    /// The device name when casting, else `nil` — drives the cast button's
-    /// active state and the "Casting to …" row.
-    public var castingDeviceName: String? {
-        if case .casting(let deviceName) = status {
-            return deviceName
+    /// The device playback is on, else `nil`. The picker marks the device whose
+    /// id matches; device names need not be unique.
+    public var castingDevice: BridgeRemoteDevice? {
+        if case .casting(let device) = status {
+            return device
         }
         return nil
     }
 
-    /// Apply the retained playback value: `Some(name)` while casting, `nil` back
+    /// The casting device's name, for the cast button's active state and the
+    /// "Casting to …" row.
+    public var castingDeviceName: String? {
+        castingDevice?.name
+    }
+
+    /// Apply the retained playback value: the device while casting, `nil` back
     /// on local output.
-    public func applyStatus(deviceName: String?) {
-        status = deviceName.map { .casting(deviceName: $0) } ?? .notCasting
+    public func applyStatus(device: BridgeRemoteDevice?) {
+        status = device.map { .casting(device: $0) } ?? .notCasting
     }
 }

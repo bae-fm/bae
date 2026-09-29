@@ -258,6 +258,7 @@ enum PreviewData {
                     id: "t-1",
                     title: "Track Title 1",
                     durationClock: bridgeClock(ms: 195_000),
+                    releaseId: "r-1",
                     albumId: "a-1",
                     albumTitle: "Album Title 1",
                     artistName: "Artist Name 1",

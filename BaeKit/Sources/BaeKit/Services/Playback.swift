@@ -21,7 +21,7 @@ public final class Playback: Sendable, Observable {
     public let setRepeatMode: @Sendable (_ mode: BridgeRepeatMode) -> Void
     public let playRelease:
         @Sendable (
-            _ releaseId: String, _ startTrackIndex: UInt32?, _ shuffle: Bool
+            _ releaseId: String, _ startTrackId: String?, _ shuffle: Bool
         ) -> Void
     /// Play several releases as one context, concatenated in the given order.
     /// A single release behaves exactly like `playRelease`; core skips any
@@ -52,7 +52,7 @@ public final class Playback: Sendable, Observable {
         setRepeatMode: @escaping @Sendable (BridgeRepeatMode) -> Void = {
             _ in
         },
-        playRelease: @escaping @Sendable (String, UInt32?, Bool) -> Void = {
+        playRelease: @escaping @Sendable (String, String?, Bool) -> Void = {
             _,
             _,
             _ in
@@ -104,7 +104,7 @@ public final class Playback: Sendable, Observable {
             playRelease: {
                 handle.playRelease(
                     releaseId: $0,
-                    startTrackIndex: $1,
+                    startTrackId: $1,
                     shuffle: $2
                 )
             },

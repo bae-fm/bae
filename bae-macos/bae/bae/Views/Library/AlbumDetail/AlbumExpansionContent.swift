@@ -18,7 +18,7 @@ struct AlbumExpansionContent: View {
     let onClose: () -> Void
     let onPlay: () -> Void
     let onShuffle: () -> Void
-    let onPlayFromTrack: (Int) -> Void
+    let onPlayFromTrack: (String) -> Void
     let onTogglePlayPause: () -> Void
     let onAddNext: (String) -> Void
     let onAddToQueue: (String) -> Void

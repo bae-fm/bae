@@ -81,10 +81,17 @@ fn test_stream_provider() -> crate::renderer::MediaUrlProvider {
     Arc::new(|track_id: &str, _format| Ok(format!("http://renderer.local/stream?id={track_id}")))
 }
 
+fn test_device() -> crate::playback::RemoteDevice {
+    crate::playback::RemoteDevice {
+        id: "renderer-device-id".to_string(),
+        name: "Speaker Name".to_string(),
+    }
+}
+
 fn remote_connect(channel: FakeChannel) -> RemoteConnect {
     RemoteConnect::new(
         Box::new(channel),
-        "Living Room".to_string(),
+        test_device(),
         crate::renderer::RendererMediaSource::new(
             test_stream_provider(),
             Arc::new(|cover| format!("http://renderer.local/cover?id={}&v={}", cover.id, cover.version)),
@@ -241,6 +248,23 @@ async fn remote_status_feeds_progress() {
     );
 }
 
+/// Handing playback to a device announces that device by its id as well as its
+/// name: the UI matches the id against the device list, since names need not
+/// be unique.
+#[tokio::test]
+async fn handing_over_announces_the_device_by_id() {
+    let (_home, _service, _state, mut rx) =
+        playing_remote_fixture(&["08c7ff07-b56a-4e16-8df6-ae2967fa0806"], None).await;
+
+    let mut announced = None;
+    while let Ok(progress) = rx.try_recv() {
+        if let PlaybackProgress::RemoteStatusChanged { device } = progress {
+            announced = device;
+        }
+    }
+    assert_eq!(announced, Some(test_device()));
+}
+
 /// Stopping remote playback stops the device, drops the renderer back to Local,
 /// and announces `RemoteStatusChanged(None)` so the UI leaves the remote state.
 #[tokio::test]
@@ -262,7 +286,7 @@ async fn stop_remote_stops_device_and_returns_to_local() {
     );
     let mut saw_not_remote = false;
     while let Ok(progress) = rx.try_recv() {
-        if let PlaybackProgress::RemoteStatusChanged { device_name: None } = progress {
+        if let PlaybackProgress::RemoteStatusChanged { device: None } = progress {
             saw_not_remote = true;
         }
     }
@@ -300,7 +324,7 @@ async fn stop_while_remote_stops_device_and_returns_to_local() {
     );
     let mut saw_not_remote = false;
     while let Ok(progress) = rx.try_recv() {
-        if let PlaybackProgress::RemoteStatusChanged { device_name: None } = progress {
+        if let PlaybackProgress::RemoteStatusChanged { device: None } = progress {
             saw_not_remote = true;
         }
     }
@@ -632,7 +656,7 @@ async fn play_on_airplay_swaps_the_sink_and_keeps_decode_local() {
     service
         .handle_play_on_airplay(renderer::AirPlayConnect::new(
             Box::new(NoopAirPlaySink),
-            "Living Room".to_string(),
+            test_device(),
             88_200,
         ))
         .await;

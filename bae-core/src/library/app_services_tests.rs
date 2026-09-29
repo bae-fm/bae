@@ -94,7 +94,7 @@ async fn playing_app_services(track_count: usize) -> (AppServices, Vec<String>, 
     #[cfg(any(target_os = "ios", target_os = "android"))]
     let services = AppServices::new(manager, playback);
 
-    services.playback_play_release(release.id.clone(), Some(0), false);
+    services.playback_play_release(release.id.clone(), Some(track_ids[0].clone()), false);
 
     (services, track_ids, temp_dir)
 }

@@ -28,6 +28,8 @@ pub struct BridgeTrackSearchResult {
     /// is nothing to label. The raw milliseconds do not cross — the search row
     /// only ever shows the clock, never the number.
     pub duration_clock: Option<BridgeDurationClock>,
+    /// The release the track is on — what playing it from a search starts.
+    pub release_id: String,
     pub album_id: String,
     pub album_title: String,
     pub artist_name: String,

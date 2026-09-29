@@ -230,12 +230,10 @@ forward! { sync this => {
     // Playback
     // =========================================================================
 
-    fn play_release(release_id: String, start_track_index: Option<u32>, shuffle: bool) {
-        this.services.playback_play_release(
-            release_id,
-            start_track_index.map(|i| i as usize),
-            shuffle,
-        );
+    /// Play a release from `start_track_id`, or from its first track.
+    fn play_release(release_id: String, start_track_id: Option<String>, shuffle: bool) {
+        this.services
+            .playback_play_release(release_id, start_track_id, shuffle);
     }
 
     fn play_releases(release_ids: Vec<String>) {

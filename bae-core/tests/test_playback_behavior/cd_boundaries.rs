@@ -10,7 +10,7 @@ async fn cd_auto_advance_respects_disc_boundaries_and_setting() {
             .expect("disc-pause fixture");
         let first = fixture.track_ids[0].clone();
         let second = fixture.track_ids[1].clone();
-        fixture.play_track_and_wait(0, &first).await;
+        fixture.play_track_and_wait(&first).await;
         fixture.seek_to_auto_advance();
         fixture
             .wait_for_playing_track(
@@ -32,7 +32,6 @@ async fn cd_disc_pause_resumes_at_next_disc() {
     let second = fixture.track_ids[1].clone();
     let paused = fixture
         .play_to_side_pause(
-            0,
             &first,
             "1",
             PlaybackPauseBoundary::Disc,
@@ -68,7 +67,7 @@ async fn cd_setting_changes_mid_track_apply_at_disc_boundary() {
             .expect("disc-pause fixture");
         let first = fixture.track_ids[0].clone();
         let second = fixture.track_ids[1].clone();
-        fixture.play_track_and_wait(0, &first).await;
+        fixture.play_track_and_wait(&first).await;
         fixture.set_pause_between_sides_mid_track(enabled).await;
         fixture.seek_to_auto_advance();
         if enabled {
@@ -96,7 +95,7 @@ async fn cd_manual_next_and_repeat_track_do_not_pause_at_disc_boundary() {
             .expect("disc-pause fixture");
         let first = fixture.track_ids[0].clone();
         let second = fixture.track_ids[1].clone();
-        fixture.play_track_and_wait(0, &first).await;
+        fixture.play_track_and_wait(&first).await;
         let expected = if repeat_track {
             fixture.playback_handle.set_repeat_mode(RepeatMode::Track);
             fixture.seek_to_auto_advance();
@@ -125,7 +124,7 @@ async fn a_disc_edit_mid_track_applies_at_the_boundary_it_makes() {
         .await
         .expect("disc-pause fixture");
     let first = fixture.track_ids[0].clone();
-    fixture.play_track_and_wait(0, &first).await;
+    fixture.play_track_and_wait(&first).await;
 
     let mut edit = fixture
         .library_manager
