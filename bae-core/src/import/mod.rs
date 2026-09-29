@@ -43,8 +43,6 @@ desktop_only! {
     // import pane's one structure, and desktop-only like the slots it reads.
     pub(crate) mod direct_entry_mapper;
     pub mod mapping;
-    /// The carriers MusicBrainz and Discogs name, in each catalog's own
-    /// closed list of format names.
     /// Which of a release's mediums a folder's audio is a rip of.
     pub(crate) mod medium_coverage;
     pub mod musicbrainz_mapper;
