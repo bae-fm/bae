@@ -1,20 +1,11 @@
-//! The file↔release mapping, as a value.
+//! The folder's audio, laid down as the units a release's tracks play.
 //!
-//! A **track slot** is one row of the release's track table: the audio on disk
-//! and the track the source names for it, laid alongside each other. The
-//! mapping is computed when a release is picked, so it is something to look at
-//! and correct before anything is written, and the commit consumes what the
-//! user saw rather than re-deriving it.
-//!
-//! Slots are **additive**: a bound track sheet carves one slot per track it
-//! describes out of one container, a standalone audio file makes one, and they
-//! land in the same ordered list. A folder holding a disc image plus loose
-//! bonus tracks maps both — neither set is dropped for the other.
-//!
-//! A disagreement between the two sides is a slot, never an error.
-//! [`TrackSlot::FileOnly`] is audio the source's tracklist does not account
-//! for; [`TrackSlot::TrackOnly`] is a track no audio backs. The only refusal
-//! left here is audio that will not decode.
+//! An **audio unit** is what one track's samples come from: a whole file, or
+//! one slice a bound track sheet carves out of a container. Units are
+//! **additive**: a bound sheet carves one unit per track it describes, a loose
+//! audio file makes one, and they land in one ordered list. A folder holding a
+//! disc image plus loose bonus tracks offers both — neither set is dropped for
+//! the other. A candidate's draft holds one track per unit, in this order.
 
 use crate::db::DbTrack;
 use crate::import::folder_scanner::{BoundTrackSheet, CategorizedFiles, ScannedFile};
@@ -23,49 +14,7 @@ use crate::import::types::{AudioFile, CueFlacAnalysis, TrackAudio, TrackFile};
 use crate::import::{ImportError, TrackUserEdit};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
-use tracing::{debug, warn};
-
-/// Where one row sits in the run of rows a single container is carved into.
-///
-/// The mapping pane renders this as the link glyph's shape, which is the only
-/// place a reader can see that eleven rows come out of one file rather than
-/// eleven. Every row a whole file of its own backs is [`Whole`](Self::Whole).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SlotSpan {
-    /// One file, one row.
-    Whole,
-    /// The first of several rows carved out of one container.
-    ContainerStart,
-    /// Neither the first nor the last of them.
-    ContainerMiddle,
-    /// The last of them.
-    ContainerEnd,
-}
-
-/// The audio behind one slot row, as the row displays it.
-///
-/// Everything here is a fact about the file rather than about the release, so
-/// it is the same whichever release is picked — which is why picking a
-/// different pressing replaces only the source's half of the table.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SlotFile {
-    /// Which of the folder's audio this row's samples come from. Equal to the
-    /// row's [`TrackUserEdit::file`], and it is the value a "choose file" pick
-    /// writes there.
-    pub audio: AudioFile,
-    /// The file's own name, without its directory prefix.
-    pub name: String,
-    /// The whole container's size in bytes, even where the row is one slice of
-    /// it: a slice has no size of its own on disk.
-    pub size: u64,
-    /// Absolute path — what auditioning this row plays.
-    pub path: std::path::PathBuf,
-    /// This row's own playing time from the scan facts or sheet timing. `None`
-    /// when a sheet gives the row no timing; inventing one would make a wrong
-    /// pairing look right.
-    pub duration_ms: Option<u64>,
-    pub span: SlotSpan,
-}
+use tracing::debug;
 
 /// How far a row's two lengths may differ before the row says so.
 ///
@@ -79,94 +28,16 @@ pub struct SlotFile {
 /// and the row shows both numbers regardless — this only decides whether to
 /// point at them, with no consequence beyond a mark: nothing here disables the
 /// commit.
-pub const LENGTH_DISAGREEMENT_MS: u64 = 3_000;
+pub(crate) const LENGTH_DISAGREEMENT_MS: u64 = 3_000;
 
 /// Whether a row's two lengths are far enough apart to be worth pointing at.
-///
-/// Asked per row as it renders rather than settled when the mapping is
-/// computed: re-pointing a row at a different file gives it two new lengths,
-/// and an answer stored at selection would still be describing the pairing it
-/// replaced.
-pub fn lengths_disagree(file_ms: Option<u64>, release_ms: Option<u64>) -> bool {
+/// `false` when either side has no number: there is nothing to compare, which
+/// is not the same as agreeing.
+pub(crate) fn lengths_disagree(file_ms: Option<u64>, release_ms: Option<u64>) -> bool {
     let (Some(file), Some(release)) = (file_ms, release_ms) else {
         return false;
     };
     file.abs_diff(release) > LENGTH_DISAGREEMENT_MS
-}
-
-/// One track as the source names it: the editable row projected from it, plus
-/// the facts only the source knows.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SourceTrack {
-    pub edit: TrackUserEdit,
-    /// How long the source says this track runs.
-    pub duration_ms: Option<u64>,
-}
-
-/// One row of the file↔release mapping.
-///
-/// Every variant carries the editable track row, whose
-/// [`file`](TrackUserEdit::file) names the audio bound to it. That binding is
-/// the part that survives: it rides the edit to the commit, so a pairing the
-/// user corrected is the one that gets written.
-///
-/// The rest is what the row shows. A paired row carries **both** durations —
-/// the file's own and the source's — because that pair is the only thing that
-/// catches a pairing which is complete but wrong, and counting cannot see it.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum TrackSlot {
-    /// The source names this track and audio on disk backs it.
-    Paired {
-        track: TrackUserEdit,
-        source_duration_ms: Option<u64>,
-        file: SlotFile,
-    },
-    /// Audio on disk the source's tracklist does not account for. Its title is
-    /// blank until someone names it, and it has no position and no length in
-    /// the source because the source says nothing about it.
-    FileOnly {
-        track: TrackUserEdit,
-        file: SlotFile,
-    },
-    /// A track the source names with no audio bound to it.
-    TrackOnly {
-        track: TrackUserEdit,
-        source_duration_ms: Option<u64>,
-    },
-}
-
-impl TrackSlot {
-    pub fn track(&self) -> &TrackUserEdit {
-        match self {
-            Self::Paired { track, .. }
-            | Self::FileOnly { track, .. }
-            | Self::TrackOnly { track, .. } => track,
-        }
-    }
-
-    pub fn into_track(self) -> TrackUserEdit {
-        match self {
-            Self::Paired { track, .. }
-            | Self::FileOnly { track, .. }
-            | Self::TrackOnly { track, .. } => track,
-        }
-    }
-
-    /// The audio this slot is bound to — `None` exactly for
-    /// [`TrackOnly`](Self::TrackOnly).
-    pub fn file(&self) -> Option<&AudioFile> {
-        self.track().file.as_ref()
-    }
-}
-
-/// The whole slot table for one folder and one picked release.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SlotTable {
-    pub rows: Vec<TrackSlot>,
-    /// Every audio unit the folder offers, in disk order — what a row with no
-    /// file is offered to choose from, and what re-pairing two rows swaps
-    /// between them.
-    pub audio: Vec<SlotFile>,
 }
 
 /// What one of the folder's audio files contributes to the unit list.
@@ -244,7 +115,7 @@ pub(crate) fn audio_layout(files: &CategorizedFiles) -> Vec<(&ScannedFile, UnitC
 
 /// The audio the folder offers, one entry per track it can produce, in the
 /// order [`audio_layout`] lays it down.
-pub(crate) fn units_of(layout: &[(&ScannedFile, UnitContribution<'_>)]) -> Vec<AudioFile> {
+fn units_of(layout: &[(&ScannedFile, UnitContribution<'_>)]) -> Vec<AudioFile> {
     let mut units = Vec::new();
     for (file, contribution) in layout {
         match contribution {
@@ -379,162 +250,6 @@ fn sheet_audio_ids<'a>(bound: &BoundTrackSheet<'a>) -> Vec<&'a str> {
         .collect()
 }
 
-/// The file↔release mapping's rows, as editable tracks.
-///
-/// The folder's audio (in disk order) and `source_tracks` (in the source's own
-/// order) are laid alongside each other: row `i` binds source track `i` to
-/// audio unit `i`, and whichever side runs out first leaves its leftovers at
-/// the tail — audio with no track carries a blank title and a file, tracks with
-/// no audio carry a title and no file.
-///
-/// Two consequences the callers rely on. Row `i` stands for source track `i`
-/// for every `i` the source names, so the row the commit writes and the track
-/// the source described stay together without either side carrying an index.
-/// And the leftovers sit next to the rows they follow on disk rather than in a
-/// footer of their own.
-///
-/// This is the whole mapping, and it costs nothing: no file is opened. The
-/// display facts a slot row shows — sizes, spans, probed lengths — are hung on
-/// these rows by [`slot_table`], which is the one that pays for them.
-pub(crate) fn map_source_rows(
-    source_tracks: &[TrackUserEdit],
-    units: &[AudioFile],
-) -> Vec<TrackUserEdit> {
-    let mut rows: Vec<TrackUserEdit> = Vec::with_capacity(units.len().max(source_tracks.len()));
-
-    for (index, unit) in units.iter().enumerate() {
-        match source_tracks.get(index) {
-            Some(track) => {
-                let mut track = track.clone();
-                track.file = Some(unit.clone());
-                rows.push(track);
-            }
-            None => {
-                // The source says nothing about this audio, so the row starts
-                // blank and continues the numbering of the row above it.
-                let (side, track_number) = match rows.last() {
-                    Some(previous) => (previous.side, previous.track_number.map(|n| n + 1)),
-                    None => (None, Some(1)),
-                };
-                rows.push(TrackUserEdit {
-                    title: String::new(),
-                    side,
-                    track_number,
-                    artist_assignments: crate::import::TrackArtistAssignments::AlbumArtists,
-                    file: Some(unit.clone()),
-                });
-            }
-        }
-    }
-
-    for track in source_tracks.iter().skip(units.len()) {
-        let mut track = track.clone();
-        track.file = None;
-        rows.push(track);
-    }
-
-    rows
-}
-
-/// The file↔release mapping the pane renders: every row with the two sides it
-/// pairs, and the audio a row with no file can be pointed at.
-///
-/// Opens nothing. The playing times come from `durations`, which
-/// identification measured and stored; a unit with no row there shows no
-/// length until something reads it.
-pub(crate) fn slot_table(
-    source_tracks: &[SourceTrack],
-    files: &CategorizedFiles,
-    durations: &SourceDurations,
-) -> SlotTable {
-    let audio = slot_files(files, durations);
-    let units: Vec<AudioFile> = audio.iter().map(|file| file.audio.clone()).collect();
-    let source_edits: Vec<TrackUserEdit> = source_tracks
-        .iter()
-        .map(|track| track.edit.clone())
-        .collect();
-
-    let rows = map_source_rows(&source_edits, &units)
-        .into_iter()
-        .enumerate()
-        .map(|(index, track)| {
-            match (source_tracks.get(index), audio.get(index)) {
-                (Some(source), Some(file)) => TrackSlot::Paired {
-                    track,
-                    source_duration_ms: source.duration_ms,
-                    file: file.clone(),
-                },
-                (None, Some(file)) => TrackSlot::FileOnly {
-                    track,
-                    file: file.clone(),
-                },
-                (Some(source), None) => TrackSlot::TrackOnly {
-                    track,
-                    source_duration_ms: source.duration_ms,
-                },
-                // `map_source_rows` yields exactly `max(len, len)` rows, so an
-                // index past both sides cannot be produced.
-                (None, None) => unreachable!("a row belongs to at least one side"),
-            }
-        })
-        .collect();
-
-    SlotTable { rows, audio }
-}
-
-/// Every audio unit the folder offers, with the facts a slot row shows about
-/// it: name, size, where to play it from, its span in a container's run, and
-/// its own playing time as `durations` records it.
-///
-/// Same order and same entries as [`audio_units`] — this is that list with the
-/// stored measurements hung on it.
-pub(crate) fn slot_files(files: &CategorizedFiles, durations: &SourceDurations) -> Vec<SlotFile> {
-    let units = audio_units(files);
-    let by_path: HashMap<&str, &ScannedFile> = files
-        .audio()
-        .map(|file| (file.relative_path.as_str(), file))
-        .collect();
-
-    let mut out = Vec::with_capacity(units.len());
-    for (index, unit) in units.iter().enumerate() {
-        let Some(file) = by_path.get(unit.file_id()) else {
-            // `audio_units` reads the same list, so a unit naming audio that is
-            // not there cannot happen. Skipping keeps this total rather than
-            // panicking on a state the type does not forbid.
-            warn!("{} is not this folder's audio", unit.file_id());
-            continue;
-        };
-        out.push(SlotFile {
-            audio: unit.clone(),
-            name: file.file_name.clone(),
-            size: file.size,
-            path: file.path.clone(),
-            duration_ms: durations.duration_of(unit),
-            span: span_at(&units, index),
-        });
-    }
-    out
-}
-
-/// Where the unit at `index` sits in the run of units one container is carved
-/// into. A run is the contiguous stretch of slices naming the same sheet —
-/// contiguous by construction, since [`audio_units`] emits a sheet's slices
-/// together at its container's position.
-fn span_at(units: &[AudioFile], index: usize) -> SlotSpan {
-    let AudioFile::SheetSlice { sheet_id, .. } = &units[index] else {
-        return SlotSpan::Whole;
-    };
-    let same = |unit: Option<&AudioFile>| matches!(unit, Some(AudioFile::SheetSlice { sheet_id: other, .. }) if other == sheet_id);
-    let leads = !same(index.checked_sub(1).map(|before| &units[before]));
-    let trails = !same(units.get(index + 1));
-    match (leads, trails) {
-        (true, true) => SlotSpan::Whole,
-        (true, false) => SlotSpan::ContainerStart,
-        (false, false) => SlotSpan::ContainerMiddle,
-        (false, true) => SlotSpan::ContainerEnd,
-    }
-}
-
 /// Bind each track to the audio holding its samples and yield the
 /// [`TrackFile`]s the run pass consumes.
 ///
@@ -547,11 +262,11 @@ fn span_at(units: &[AudioFile], index: usize) -> SlotSpan {
 /// A row whose title is blank is titled after its audio file's name. An empty
 /// title is a track nobody can find again: it renders as a blank row in every
 /// list, sorts nowhere, and matches no search. The file's own name is the one
-/// fact about that track that is certainly true, and it is what the slot table
-/// showed on that very row — so it is what gets written. Reading the file's
-/// embedded tag instead would let a second metadata authority into an import
-/// whose authority the user already chose, and would write something the slot
-/// table never displayed.
+/// fact about that track that is certainly true, and it is what the mapping
+/// table showed on that very row — so it is what gets written. Reading the
+/// file's embedded tag instead would let a second metadata authority into an
+/// import whose authority the user already chose, and would write something
+/// the table never displayed.
 pub(crate) fn resolve_track_files(
     rows: Vec<(DbTrack, AudioFile)>,
     files: &CategorizedFiles,
@@ -637,7 +352,7 @@ fn audio_file<'a>(
         })
 }
 
-/// A file's name without its extension — the title an unnamed slot writes.
+/// A file's name without its extension — the title an unnamed row writes.
 fn file_title(file: &ScannedFile) -> String {
     std::path::Path::new(&file.file_name)
         .file_stem()
@@ -647,5 +362,5 @@ fn file_title(file: &ScannedFile) -> String {
 }
 
 #[cfg(test)]
-#[path = "track_slots_tests.rs"]
+#[path = "audio_layout_tests.rs"]
 mod tests;

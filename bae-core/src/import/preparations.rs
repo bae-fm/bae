@@ -197,7 +197,7 @@ impl CandidatePreparations {
     }
 
     /// Replace the candidate's draft and its provenance as one transaction,
-    /// carrying the stored rows' file decisions onto the new tracks. File
+    /// laying the new tracks over the stored rows' audio. File
     /// decisions about the folder itself live in other tables and are
     /// deliberately untouched.
     #[cfg(any(test, feature = "test-utils"))]
@@ -217,11 +217,9 @@ impl CandidatePreparations {
                     "metadata replacement has no candidate state row".into(),
                 )
             })?;
-        let mut draft = crate::import::pane::candidate_draft_from_edit(draft.clone())
+        let draft = super::pane::metadata_over_audio(draft.clone(), &prep.metadata.draft)
             .map_err(|error| LibraryError::Import(error.to_string()))?
             .draft;
-        super::pane::apply_metadata_tracks(&mut draft, &prep.metadata.draft)
-            .map_err(|error| LibraryError::Import(error.to_string()))?;
         let metadata = crate::import::CandidateMetadataDraft {
             draft,
             source_discogs_artist_ids: Default::default(),

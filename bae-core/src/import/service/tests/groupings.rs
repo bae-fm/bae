@@ -206,7 +206,7 @@ async fn a_folder_read_as_one_release_takes_its_own_files_and_numbers_its_discs(
         .release_files()
         .any(|file| file.relative_path == "notes.txt"));
     assert_eq!(
-        crate::import::track_slots::direct_entry_track_rows(&release.files)
+        crate::import::audio_layout::direct_entry_track_rows(&release.files)
             .iter()
             .map(|track| (track.side, track.track_number))
             .collect::<Vec<_>>(),

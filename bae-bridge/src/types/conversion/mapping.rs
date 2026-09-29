@@ -92,21 +92,18 @@ mirror_enum! {
 mirror_enum! {
     BridgeSheetBindingOffer = bae_core::import::folder_scanner::SheetBindingOffer,
     from_core: fn,
-    into_core: fn,
     variants: { Offered, RefusedCodec { codec }, RefusedTiming, RefusedUnreadable },
 }
 
 mirror_struct! {
     BridgeSheetBindingOption = bae_core::import::folder_scanner::SheetBindingOption,
     from_core: pub(crate) fn,
-    into_core: fn,
     fields: { file_id, offer: (BridgeSheetBindingOffer) },
 }
 
 mirror_struct! {
     BridgeSheetReferenceOptions = bae_core::import::folder_scanner::SheetReferenceOptions,
     from_core: pub(crate) fn,
-    into_core: fn,
     fields: { file_reference, file_id, options: (each BridgeSheetBindingOption) },
 }
 
@@ -197,7 +194,6 @@ mirror_enum! {
 mirror_enum! {
     BridgeMappingRole = bae_core::import::MappingRole,
     from_core: fn,
-    into_core: fn,
     variants: { Audio, Document, Other },
 }
 
@@ -231,36 +227,6 @@ impl BridgeMappingFile {
             role_choice: role_choice.map(BridgeFileRoleChoice::from_core),
         }
     }
-
-    fn into_core(self) -> bae_core::import::MappingFile {
-        let BridgeMappingFile {
-            file_id,
-            name,
-            size,
-            local_path,
-            preview_target,
-            duration_ms,
-            audio_format,
-            role,
-            alternatives,
-            role_choice,
-        } = self;
-        bae_core::import::MappingFile {
-            file_id,
-            name,
-            size,
-            path: std::path::PathBuf::from(local_path),
-            preview_target: preview_target.map(BridgePreviewTarget::into_core),
-            duration_ms,
-            audio_format: audio_format.map(BridgeAudioFormat::into_core),
-            role: role.into_core(),
-            alternatives: alternatives
-                .into_iter()
-                .map(BridgeFileRoleChoice::into_core)
-                .collect(),
-            role_choice: role_choice.map(BridgeFileRoleChoice::into_core),
-        }
-    }
 }
 
 impl BridgeMappingEntry {
@@ -290,79 +256,32 @@ impl BridgeMappingEntry {
             audio_format: BridgeAudioFormat::from_core(audio_format),
         }
     }
-
-    fn into_core(self) -> bae_core::import::MappingEntry {
-        let BridgeMappingEntry {
-            sheet_id,
-            index,
-            number,
-            title,
-            duration_ms,
-            container_id,
-            container_name,
-            container_local_path,
-            preview_target,
-            audio_format,
-        } = self;
-        bae_core::import::MappingEntry {
-            sheet_id,
-            index,
-            number,
-            title,
-            duration_ms,
-            container_id,
-            container_name,
-            container_path: std::path::PathBuf::from(container_local_path),
-            preview_target: preview_target.into_core(),
-            audio_format: audio_format.into_core(),
-        }
-    }
 }
 
 mirror_enum! {
     BridgeMappingSource = bae_core::import::MappingSource,
     from_core: fn,
-    into_core: fn,
     variants: {
         File(file: (BridgeMappingFile)),
         SheetEntry(entry: (BridgeMappingEntry)),
-        Missing,
-    },
-}
-
-mirror_struct! {
-    BridgeCandidateAsRead = bae_core::import::CandidateAsRead,
-    from_core: fn,
-    into_core: pub(crate) fn,
-    fields: { content_hash, file_edit_revision, metadata_revision },
-}
-
-mirror_enum! {
-    BridgeMappingBecomes = bae_core::import::MappingBecomes,
-    from_core: fn,
-    into_core: fn,
-    variants: {
-        Track { track: (BridgeRawTrackEdit), position },
-        NotIncluded { audio: (BridgeAudioFile), candidate: (BridgeCandidateAsRead) },
-        AwaitingPick,
     },
 }
 
 mirror_struct! {
     BridgeTrackMapping = bae_core::import::TrackMapping,
     from_core: fn,
-    into_core: fn,
     fields: {
         source: (BridgeMappingSource),
-        becomes: (BridgeMappingBecomes),
+        track: (BridgeRawTrackEdit),
+        position,
         duration_ms,
+        lengths_disagree,
     },
 }
 
 mirror_struct! {
     BridgeMappingContainer = bae_core::import::MappingContainer,
     from_core: fn,
-    into_core: fn,
     fields: { file_id, name, size, audio_format: (BridgeAudioFormat) },
 }
 
@@ -392,38 +311,11 @@ impl BridgeSheetGroup {
             disc_options,
         }
     }
-
-    fn into_core(self) -> bae_core::import::SheetGroup {
-        let BridgeSheetGroup {
-            sheet_id,
-            name,
-            size,
-            local_path,
-            bound,
-            reference_options,
-            assignment,
-            disc_options,
-        } = self;
-        bae_core::import::SheetGroup {
-            sheet_id,
-            name,
-            size,
-            path: std::path::PathBuf::from(local_path),
-            bound: bound.into_core(),
-            reference_options: reference_options
-                .into_iter()
-                .map(BridgeSheetReferenceOptions::into_core)
-                .collect(),
-            assignment: assignment.into_core(),
-            disc_options,
-        }
-    }
 }
 
 mirror_enum! {
     BridgeSheetBound = bae_core::import::SheetBound,
     from_core: fn,
-    into_core: fn,
     variants: {
         Describes(container: (BridgeMappingContainer)),
         DescribesFiles { audio_file_count },
@@ -448,27 +340,11 @@ impl BridgeMappingImage {
             local_path: path.to_string_lossy().to_string(),
         }
     }
-
-    fn into_core(self) -> bae_core::import::MappingImage {
-        let BridgeMappingImage {
-            file_id,
-            name,
-            size,
-            local_path,
-        } = self;
-        bae_core::import::MappingImage {
-            file_id,
-            name,
-            size,
-            path: std::path::PathBuf::from(local_path),
-        }
-    }
 }
 
 mirror_enum! {
     BridgeMappingTrackSectionContent = bae_core::import::MappingTrackSectionContent,
     from_core: fn,
-    into_core: fn,
     variants: {
         Tracks(mappings: (each BridgeTrackMapping)),
         Sheet {
@@ -488,19 +364,11 @@ impl BridgeMappingTrackSection {
             content: BridgeMappingTrackSectionContent::from_core(content),
         }
     }
-
-    fn into_core(self) -> bae_core::import::MappingTrackSection {
-        bae_core::import::MappingTrackSection {
-            side: self.side.into_core(),
-            content: self.content.into_core(),
-        }
-    }
 }
 
 mirror_enum! {
     BridgeMappingFileRow = bae_core::import::MappingFileRow,
     from_core: fn,
-    into_core: fn,
     variants: {
         File(file: (BridgeMappingFile)),
         Sheet(sheet: (BridgeSheetGroup)),
@@ -510,7 +378,6 @@ mirror_enum! {
 mirror_struct! {
     BridgeMappingTable = bae_core::import::MappingTable,
     from_core: pub(crate) fn,
-    into_core: pub(crate) fn,
     fields: {
         images: (each BridgeMappingImage),
         track_sections: (each BridgeMappingTrackSection),

@@ -133,31 +133,6 @@ extension ImportMappingFlow {
                     )
                 }
             },
-            chooseFile: { trackId, audio in
-                start {
-                    await chooseFile(
-                        key: key,
-                        trackId: trackId,
-                        audio: audio,
-                        services: services
-                    )
-                }
-            },
-            addTrack: { audio, candidate in
-                start {
-                    await addTrack(
-                        key: key,
-                        audio: audio,
-                        candidate: candidate,
-                        services: services
-                    )
-                }
-            },
-            drop: { trackId in
-                start {
-                    await drop(key: key, trackId: trackId, services: services)
-                }
-            },
         )
     }
 

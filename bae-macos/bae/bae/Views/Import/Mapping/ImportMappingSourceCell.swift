@@ -2,8 +2,7 @@ import BaeKit
 import SwiftUI
 
 /// The left half of a mapping row: what the folder offers for it — a file
-/// whole, one entry of a track sheet, or nothing at all where the release names
-/// a track this folder has no audio for.
+/// whole, or one entry of a track sheet.
 struct ImportMappingSourceCell: View {
     static let auditionTargetSize = ThemeSize.hitTarget
 
@@ -27,19 +26,6 @@ struct ImportMappingSourceCell: View {
                 fileCell(file)
             case .sheetEntry(let entry):
                 entryCell(entry)
-            case .missing:
-                Text(coreString("ui.import.slots.no_file"))
-                    .themeText(.body)
-                    .foregroundStyle(.quaternary)
-                    .padding(.horizontal, ThemeSpace.related)
-                    .padding(.vertical, ThemeSpace.line)
-                    .overlay {
-                        RoundedRectangle(cornerRadius: ThemeRadius.chip)
-                            .strokeBorder(
-                                style: StrokeStyle(lineWidth: 1, dash: [3, 3])
-                            )
-                            .foregroundStyle(.quaternary)
-                    }
             }
         }
         .frame(minHeight: Self.auditionTargetSize)

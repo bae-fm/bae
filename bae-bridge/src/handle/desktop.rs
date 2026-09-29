@@ -522,7 +522,8 @@ forward! {
                 .await?)
         }
 
-        /// Record one mapping-table row as the user left it.
+        /// Record one mapping-table row's title and artists as the user left
+        /// them.
         fn set_candidate_track_edit(
             candidate_key: String,
             track: crate::types::BridgeRawTrackEdit,
@@ -564,26 +565,6 @@ forward! {
                         .map(crate::types::BridgeArtistAssignment::into_core)
                         .collect(),
                 )
-                .await?)
-        }
-
-        /// Include the exact source audio offered by a viewed candidate revision.
-        fn add_candidate_track(
-            candidate_key: String,
-            audio: crate::types::BridgeAudioFile,
-            candidate: crate::types::BridgeCandidateAsRead,
-        ) -> () {
-            Ok(this
-                .services
-                .import_add_candidate_track(&candidate_key, audio.into_core(), candidate.into_core())
-                .await?)
-        }
-
-        /// Take one mapping-table row out of the import.
-        fn drop_candidate_track(candidate_key: String, track_id: String) -> () {
-            Ok(this
-                .services
-                .import_drop_candidate_track(&candidate_key, track_id)
                 .await?)
         }
 

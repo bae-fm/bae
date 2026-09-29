@@ -38,8 +38,6 @@ pub(super) struct FileTagSnapshotRead {
     /// The candidate as stored when its reading was looked up.
     pub(super) candidate: crate::import::folder_scanner::FolderCandidate,
     pub(super) snapshot: crate::import::file_tag_snapshot::FileTagSnapshot,
-    /// Whether the files were read, rather than the stored reading kept.
-    pub(super) extracted: bool,
 }
 
 /// How an import was asked for, which decides whether a running
@@ -55,51 +53,6 @@ enum ImportRequest {
 }
 
 impl ImportServiceHandle {
-    pub(super) async fn file_tag_snapshot(
-        &self,
-        candidate_key: &str,
-    ) -> Result<
-        (
-            crate::import::folder_scanner::FolderCandidate,
-            crate::import::file_tag_snapshot::FileTagSnapshot,
-        ),
-        crate::import::ImportError,
-    > {
-        self.file_tag_snapshot_with_reader(candidate_key, self.file_tags.clone())
-            .await
-    }
-
-    pub(super) async fn file_tag_snapshot_with_reader(
-        &self,
-        candidate_key: &str,
-        reader: std::sync::Arc<dyn crate::import::file_tag_snapshot::FileTagReader>,
-    ) -> Result<
-        (
-            crate::import::folder_scanner::FolderCandidate,
-            crate::import::file_tag_snapshot::FileTagSnapshot,
-        ),
-        crate::import::ImportError,
-    > {
-        let read = self.read_file_tag_snapshot(candidate_key, reader).await?;
-        if read.extracted
-            && !self
-                .library_manager
-                .replace_candidate_file_tag_snapshot(
-                    &read.candidate.watched_folder_path,
-                    candidate_key,
-                    &read.snapshot,
-                )
-                .await?
-        {
-            return Err(crate::import::ImportError::FileTags {
-                detail: format!(
-                    "{candidate_key} changed while its file tags were being read; open it again"
-                ),
-            });
-        }
-        Ok((read.candidate, read.snapshot))
-    }
-
     /// The stored reading while the candidate and its audio files are unchanged,
     /// a new reading otherwise. Stores nothing; the caller decides whether the
     /// reading is kept.
@@ -130,7 +83,7 @@ impl ImportServiceHandle {
         } = stored;
         let audio_files = candidate.files.audio().cloned().collect::<Vec<_>>();
         let file_edit_revision = candidate.file_edit_revision;
-        let (snapshot, extracted) = tokio::task::spawn_blocking(move || {
+        let snapshot = tokio::task::spawn_blocking(move || {
             let observations = crate::import::file_tag_snapshot::observe_audio_files(&audio_files)?;
             if let Some(snapshot) = stored_snapshot.filter(|snapshot| {
                 file_tag_snapshot_match(
@@ -140,17 +93,14 @@ impl ImportServiceHandle {
                     &observations,
                 ) == FileTagSnapshotMatch::Current
             }) {
-                return Ok::<_, crate::import::ImportError>((snapshot, false));
+                return Ok::<_, crate::import::ImportError>(snapshot);
             }
-            Ok((
-                crate::import::file_tag_snapshot::extract_file_tag_snapshot(
-                    &audio_files,
-                    scan_generation,
-                    file_edit_revision,
-                    reader.as_ref(),
-                )?,
-                true,
-            ))
+            crate::import::file_tag_snapshot::extract_file_tag_snapshot(
+                &audio_files,
+                scan_generation,
+                file_edit_revision,
+                reader.as_ref(),
+            )
         })
         .await
         .map_err(|error| crate::import::ImportError::Internal {
@@ -159,7 +109,6 @@ impl ImportServiceHandle {
         Ok(FileTagSnapshotRead {
             candidate,
             snapshot,
-            extracted,
         })
     }
 
@@ -550,8 +499,9 @@ impl ImportServiceHandle {
                 .library_manager
                 .load_import_candidate_prepared_assets(&content_hash)
                 .await?;
-            let source_draft = crate::import::pane::candidate_draft_from_edit(
+            let source_draft = crate::import::pane::metadata_over_audio(
                 crate::import::RawReleaseEdit::from_user_edit(edit, "test-import-track"),
+                &rows.draft,
             )?;
             assets.artist_images = self
                 .library_manager

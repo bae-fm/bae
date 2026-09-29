@@ -1,16 +1,13 @@
 import BaeKit
 import SwiftUI
 
-/// An available audio source alongside its included track, or an action to add
-/// it. Included tracks edit their title and artist in place; unused sources
-/// retain their audition target without carrying editable metadata.
+/// One of the folder's audio units alongside the track it becomes. The track's
+/// title and artist edit in place; its audio is the folder's.
 struct ImportMappingTrackRow: View {
     let mapping: BridgeTrackMapping
     /// The widths the table resolved for this pane, so the row's cells land
     /// under the header's.
     let columns: ReleaseMetadataTrackColumns
-    /// Included audio units available for swapping between tracks.
-    let audioChoices: [ImportAudioChoice]
     let previewingTarget: BridgePreviewTarget?
     let editingCommands: EditingCommitCommands
     /// Identifying signals extracted from this row's file. Empty for every
@@ -18,73 +15,19 @@ struct ImportMappingTrackRow: View {
     var evidence: [BridgeFileEvidence]
     let actions: ImportMappingActions
 
-    @State
-    private var hovering = false
-
-    /// Whether the folder and the release disagree about how long this row
-    /// runs, as core judges it.
-    private var lengthsDiverge: Bool {
-        mapping.durationsDiverge
-    }
-
-    /// The track this row writes, where a release has named one.
-    private var track: BridgeRawTrackEdit? {
-        if case .track(let track, _) = mapping.becomes { return track }
-        return nil
-    }
-
     var body: some View {
         HStack(spacing: ImportMappingColumns.spacing) {
             sourceCell
-            switch mapping.becomes {
-            case .track(let track, let position):
-                ReleaseMetadataTrackRow(
-                    track: track,
-                    duration: mapping.displayedDuration,
-                    durationDiverges: lengthsDiverge,
-                    columns: columns,
-                    editingCommands: editingCommands,
-                    displayedPosition: position,
-                    onChange: { actions.editTrack($0) }
-                )
-            case .awaitingPick:
-                unassignedTrackCells(awaitingPick: true)
-            case .notIncluded:
-                unassignedTrackCells(awaitingPick: false)
-            }
-            actionCell
-        }
-        // The gaps between cells hover too, so crossing one on the way to
-        // the removal X does not hide it.
-        .contentShape(Rectangle())
-        .onHover {
-            hovering = $0
-        }
-        .contextMenu {
-            if let track, !audioChoices.isEmpty {
-                chooseFileButtons(track)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func unassignedTrackCells(awaitingPick: Bool) -> some View {
-        Color.clear.frame(width: ReleaseMetadataTrackColumns.track)
-        Text(coreString("ui.import.becomes.awaiting_pick"))
-            .themeText(.body)
-            .foregroundStyle(.tertiary)
-            .lineLimit(1)
-            .frame(width: columns.title, alignment: .leading)
-            .opacity(awaitingPick ? 1 : 0)
-            .accessibilityHidden(!awaitingPick)
-        Color.clear.frame(width: columns.artist)
-        Text(mapping.displayedDuration)
-            .themeText(.body)
-            .monospacedDigit()
-            .frame(
-                width: ReleaseMetadataTrackColumns.length,
-                alignment: .trailing
+            ReleaseMetadataTrackRow(
+                track: mapping.track,
+                duration: mapping.displayedDuration,
+                durationDiverges: mapping.lengthsDisagree,
+                columns: columns,
+                editingCommands: editingCommands,
+                displayedPosition: mapping.position,
+                onChange: { actions.editTrack($0) }
             )
+        }
     }
 
     /// The file or CUE slice that supplies this track's audio.
@@ -109,64 +52,4 @@ struct ImportMappingTrackRow: View {
                 }
         )
     }
-
-    /// Inclusion changes the action, without changing the source or row width.
-    private var actionCell: some View {
-        ZStack {
-            switch mapping.becomes {
-            case .track(let track, _):
-                if let removal = removal(track) {
-                    ImportMappingRowRemovalButton(
-                        removal: removal,
-                        offered: hovering
-                    )
-                }
-            case .notIncluded(let audio, let candidate):
-                Button {
-                    actions.addTrack(audio, candidate)
-                } label: {
-                    Image(systemName: "plus")
-                        .themeIcon(.small)
-                        .foregroundStyle(Theme.accent)
-                        .frame(
-                            width: ImportMappingColumns.action,
-                            height: ImportMappingColumns.action
-                        )
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(PressableIconButtonStyle())
-                .help("Add track")
-                .accessibilityLabel("Add track")
-            case .awaitingPick:
-                EmptyView()
-            }
-        }
-        .frame(
-            width: ImportMappingColumns.action,
-            height: ImportMappingColumns.action
-        )
-    }
-
-    private func removal(
-        _ track: BridgeRawTrackEdit
-    ) -> ImportMappingRowRemoval? {
-        ImportMappingRowRemoval(
-            label: coreString("ui.import.slots.drop"),
-            help: coreString("ui.import.slots.remove_help")
-        ) {
-            actions.drop(track.id)
-        }
-    }
-
-    @ViewBuilder
-    private func chooseFileButtons(_ track: BridgeRawTrackEdit) -> some View {
-        ForEach(audioChoices) { choice in
-            Button {
-                actions.chooseFile(track.id, choice.audio)
-            } label: {
-                Text(verbatim: choice.label)
-            }
-        }
-    }
-
 }

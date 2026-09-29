@@ -115,7 +115,6 @@ struct ReleaseMetadataTrackColumns {
 
     static let track: CGFloat = 52
     static let length: CGFloat = 88
-    static let action: CGFloat = 24
     static let spacing = ThemeSpace.related
     static let rowPadding = ThemeSpace.line
 
@@ -126,8 +125,8 @@ struct ReleaseMetadataTrackColumns {
     private static let idealSource: CGFloat = 260
     private static let floorSource: CGFloat = 160
 
-    private static let chrome: CGFloat = rowPadding * 2 + spacing * 5
-    private static let rigid: CGFloat = track + length + action
+    private static let chrome: CGFloat = rowPadding * 2 + spacing * 4
+    private static let rigid: CGFloat = track + length
 
     static let idealTableWidth: CGFloat =
         idealTitle + idealArtist + idealSource + rigid + chrome

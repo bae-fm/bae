@@ -1,27 +1,14 @@
 import BaeKit
 import Foundation
 
-/// Reading and editing the mapping table. Every value here is either one core
-/// already decided — which track a row commits, what its source is, which
-/// catalog message names the tally — or a count over the table's own rows.
-/// Nothing here works out a pairing.
+/// Reading the mapping table. Every value here is either one core already
+/// decided — which track a row commits, what its source is, which catalog
+/// message names the tally — or a count over the table's own rows.
 
 extension BridgeTrackMapping {
-    /// The track this row commits, where it commits one.
-    var track: BridgeRawTrackEdit? {
-        guard case .track(let track, _) = becomes else { return nil }
-        return track
-    }
-
-    /// Whether committing writes a track for this row: the rows carrying audio
-    /// do, and a track the folder has nothing behind is carried without one.
-    var writesTrack: Bool { track?.file != nil }
-
-    /// A row that will write a track nobody has named.
+    /// A row whose track nobody has named.
     var isUnanswered: Bool {
-        guard writesTrack, let track else { return false }
-        return track.title.trimmingCharacters(in: .whitespacesAndNewlines)
-            .isEmpty
+        track.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 }
 
@@ -32,7 +19,6 @@ extension BridgeMappingSource {
         switch self {
         case .file(let file): file.durationMs
         case .sheetEntry(let entry): entry.durationMs
-        case .missing: nil
         }
     }
 
@@ -41,7 +27,6 @@ extension BridgeMappingSource {
         switch self {
         case .file(let file): file.previewTarget
         case .sheetEntry(let entry): entry.previewTarget
-        case .missing: nil
         }
     }
 
@@ -67,41 +52,9 @@ extension BridgeMappingTable {
         trackSections.flatMap(\.mappings)
     }
 
-    /// Rows that will write a track.
-    var willWriteCount: Int { trackMappings.count(where: \.writesTrack) }
-
-    /// Rows that will write a track whose title is still blank.
+    /// Rows whose track's title is still blank.
     var unansweredCount: Int {
         trackMappings.count(where: \.isUnanswered)
-    }
-
-    /// Included audio units available for swapping between draft tracks.
-    var audioChoices: [ImportAudioChoice] {
-        trackMappings.compactMap(ImportAudioChoice.init(mapping:))
-    }
-
-}
-
-/// One of the folder's audio units as the "Choose file…" menu offers it: what
-/// picking it writes onto a row, and what to call it.
-struct ImportAudioChoice: Identifiable {
-    let audio: BridgeAudioFile
-    /// The container's name, and for a sheet entry the entry it names.
-    let label: String
-
-    var id: BridgeAudioFile { audio }
-
-    init?(mapping: BridgeTrackMapping) {
-        guard let audio = mapping.track?.file else { return nil }
-        self.audio = audio
-        switch mapping.source {
-        case .file(let file):
-            label = "\(file.name), \(file.sizeText)"
-        case .sheetEntry(let entry):
-            label = "\(entry.containerName), \(entry.number)"
-        case .missing:
-            return nil
-        }
     }
 }
 
@@ -149,24 +102,13 @@ extension BridgeMappingRole {
     }
 }
 
-/// A duration in milliseconds as a clock label, or an em dash where there is no
-/// number. Never a zero: an unknown length and a zero-length file are different
-/// facts, and only one of them is real.
 extension BridgeTrackMapping {
-    /// Whether the source probe and selected metadata disagree by more than
-    /// core's tolerance.
-    var durationsDiverge: Bool {
-        bridgeLengthsDisagree(
-            fileMs: source.durationMs,
-            releaseMs: durationMs
-        )
-    }
-
     /// The value this row exposes in the Length column and to accessibility:
-    /// one duration when the facts agree, source → metadata when they do not.
+    /// one duration when the facts agree, source → metadata when core says
+    /// they do not.
     var displayedDuration: String {
         switch (source.durationMs, durationMs) {
-        case (let sourceMs?, let metadataMs?) where durationsDiverge:
+        case (let sourceMs?, let metadataMs?) where lengthsDisagree:
             return
                 "\(releaseDurationText(sourceMs)) → \(releaseDurationText(metadataMs))"
         case (_, let metadataMs?):

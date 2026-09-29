@@ -240,7 +240,7 @@ pub struct CandidateMetadataDraft {
 }
 
 /// The portion of a prepared candidate that changes when file roles or sheet
-/// bindings reshape its physical track slots.
+/// bindings reshape its audio units.
 ///
 /// Replacing audio replaces its draft rows; unaffected tracks retain their
 /// identities and metadata.

@@ -287,23 +287,6 @@ pub enum BridgeAudioFile {
     },
 }
 
-/// Whether a slot row's two lengths — the folder's own and the selected
-/// release's — are far enough apart that the row should say so.
-///
-/// Core's judgement, not each surface's: how much two rips of one track may
-/// legitimately differ is one question, and two UIs each picking a number is
-/// two answers to it. `false` when either side has no number, because there is
-/// nothing to compare, which is not the same as agreeing.
-///
-/// Asked per row as it renders rather than carried on the slot, so a row the
-/// user re-points at a different file is answered about the pairing it has now.
-/// It marks a row; it disables nothing.
-#[cfg(feature = "desktop")]
-#[uniffi::export]
-pub fn bridge_lengths_disagree(file_ms: Option<u64>, release_ms: Option<u64>) -> bool {
-    bae_core::import::lengths_disagree(file_ms, release_ms)
-}
-
 /// Which disc of the release one track sheet's entries become. Mirror of
 /// bae-core's `SheetDisc`.
 ///
@@ -394,41 +377,6 @@ pub enum BridgeMappingSource {
     File { file: BridgeMappingFile },
     /// One entry of a track sheet, carved out of the container it is bound to.
     SheetEntry { entry: BridgeMappingEntry },
-    /// The source names a track this folder has nothing for: the left half is
-    /// empty, and the row is offered the folder's audio to point it at.
-    Missing,
-}
-
-/// The exact candidate revisions on which a rendered source offer is based.
-#[cfg(feature = "desktop")]
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct BridgeCandidateAsRead {
-    pub content_hash: String,
-    pub file_edit_revision: u64,
-    pub metadata_revision: u64,
-}
-
-/// The right half of a mapping row: what committing makes of the source unit.
-/// Mirror of bae-core's `MappingBecomes`.
-#[cfg(feature = "desktop")]
-#[derive(Debug, Clone, uniffi::Enum)]
-pub enum BridgeMappingBecomes {
-    /// A track of the release being committed. The row edits it in place, and
-    /// `bridge_mapping_tracks` reads the edited rows back out in commit order.
-    Track {
-        track: BridgeRawTrackEdit,
-        /// The position this row commits, rendered by core from the track's
-        /// own side and number and the release's format — `8`, `A1`, or `3`
-        /// beneath a `Disc 2` heading.
-        position: String,
-    },
-    /// Available audio omitted from the release, and the read that offered it.
-    NotIncluded {
-        audio: BridgeAudioFile,
-        candidate: BridgeCandidateAsRead,
-    },
-    /// No release is picked yet, so what this becomes is the open question.
-    AwaitingPick,
 }
 
 /// One source-to-track mapping row. Mirror of bae-core's `TrackMapping`.
@@ -436,10 +384,19 @@ pub enum BridgeMappingBecomes {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeTrackMapping {
     pub source: BridgeMappingSource,
-    pub becomes: BridgeMappingBecomes,
-    /// The duration to render: metadata's value where present, otherwise the
-    /// candidate's stored probe. Available before metadata is chosen.
+    /// The track of the release being committed. The row edits it in place.
+    pub track: BridgeRawTrackEdit,
+    /// The position this row commits, rendered by core from the track's own
+    /// side and number and the release's format — `8`, `A1`, or `3` beneath a
+    /// `Disc 2` heading.
+    pub position: String,
+    /// The duration to render: the applied release's length for the track
+    /// where it lists one, otherwise the candidate's stored probe.
     pub duration_ms: Option<u64>,
+    /// Whether the folder's length for this row and the applied release's are
+    /// far enough apart for the row to say so — core's judgement, so every
+    /// surface marks the same rows. It marks a row; it disables nothing.
+    pub lengths_disagree: bool,
 }
 
 /// The audio a track sheet describes. Mirror of bae-core's `MappingContainer`.
@@ -560,9 +517,6 @@ pub enum BridgeMappingFileRow {
 
 /// The mapping table: every source unit the folder offers, alongside the track
 /// committing makes of it. Mirror of bae-core's `MappingTable`.
-///
-/// Each source carries either its included editable track or the exact offer
-/// that can add it. Removing a track leaves the available audio visible.
 #[cfg(feature = "desktop")]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeMappingTable {
@@ -570,18 +524,6 @@ pub struct BridgeMappingTable {
     pub images: Vec<BridgeMappingImage>,
     pub track_sections: Vec<BridgeMappingTrackSection>,
     pub files: Vec<BridgeMappingFileRow>,
-}
-
-/// The table's track rows in commit order — what the editor shapes into the
-/// release it writes. Core decides the order, so the two desktop surfaces
-/// cannot commit two different tracklists from one table.
-#[cfg(feature = "desktop")]
-#[uniffi::export]
-pub fn bridge_mapping_tracks(table: BridgeMappingTable) -> Vec<BridgeRawTrackEdit> {
-    bae_core::import::mapping_tracks(&table.into_core())
-        .into_iter()
-        .map(BridgeRawTrackEdit::from_core)
-        .collect()
 }
 
 /// One album-level text field of the import pane's metadata form.

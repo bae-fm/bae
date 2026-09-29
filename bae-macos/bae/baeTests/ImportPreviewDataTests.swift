@@ -126,19 +126,13 @@ struct ImportPreviewDataTests {
             guard case .file(let file) = mapping.source else { return nil }
             return file
         }
-        let missingSources = mappings.count {
-            if case .missing = $0.source { return true }
-            return false
-        }
-        let commitTracks = bridgeMappingTracks(table: mapping)
+        let commitTracks = mappings.map(\.track)
 
         #expect(candidate.files.files.count == 1)
         #expect(candidate.files.files[0].file.name == fileSources.first?.fileId)
         #expect(candidate.release?.trackCount == 10)
         #expect(fileSources.count == 1)
-        #expect(missingSources == 0)
         #expect(commitTracks.count == 1)
-        #expect(commitTracks.count { $0.file != nil } == 1)
         #expect(commitTracks[0].title == "Album Image.flac")
     }
 

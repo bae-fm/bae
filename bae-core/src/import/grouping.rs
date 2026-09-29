@@ -181,7 +181,7 @@ pub fn compose(
         // The member's own discs, in its own order, become a run of discs
         // starting where the run before it ended.
         let discs: std::collections::BTreeSet<Option<i32>> =
-            super::track_slots::direct_entry_track_rows(&member.files)
+            super::audio_layout::direct_entry_track_rows(&member.files)
                 .iter()
                 .map(|track| track.side)
                 .collect();

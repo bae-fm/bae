@@ -402,14 +402,14 @@ async fn picked_artist_assignments_resolve_the_canonical_artist_row() {
     let stored = db.load_import_candidate_pane_rows(&hash).await.unwrap();
     assert_eq!(stored.draft.album_artist_assignments, assignments);
 
-    let explicit_empty = CandidateTrackEdit::edited(RawTrackEdit {
+    let explicit_empty = RawTrackEdit {
         id: "candidate-track-0".to_string(),
         title: "Track Title".to_string(),
         artist_assignments: TrackArtistAssignments::Explicit(Vec::new()),
         side: Some(1),
         track_number: Some(1),
         file: Some(stored.draft.tracks[0].edit.file.clone()),
-    });
+    };
     crate::import::CandidatePreparations::new(db.clone())
         .set_track_edit(&hash, &explicit_empty)
         .await
@@ -450,8 +450,8 @@ async fn a_picked_artist_assignment_to_a_missing_row_is_rejected() {
     );
 }
 
-/// A track metadata edit and its physical mapping are stored through their
-/// independent tables and rejoin in the candidate pane.
+/// A track metadata edit is stored over the row's audio and rejoins it in the
+/// candidate pane.
 #[tokio::test]
 async fn a_track_row_round_trips_metadata_and_mapping() {
     let (db, _tmp) = empty_db().await;
@@ -466,14 +466,11 @@ async fn a_track_row_round_trips_metadata_and_mapping() {
         )
         .await
         .unwrap();
+    let before = db.load_import_candidate_pane_rows(&hash).await.unwrap();
     let edit = edited_row(
         "candidate-track-0",
         "Edited title",
-        Some(AudioFile::SheetSlice {
-            file_id: "CDImage.flac".to_string(),
-            sheet_id: "CDImage.cue".to_string(),
-            index: 4,
-        }),
+        Some(before.draft.tracks[0].edit.file.clone()),
     );
     crate::import::CandidatePreparations::new(db.clone())
         .set_track_edit(&hash, &edit)
@@ -483,10 +480,7 @@ async fn a_track_row_round_trips_metadata_and_mapping() {
     let stored = db.load_import_candidate_pane_rows(&hash).await.unwrap();
     assert_eq!(stored.draft.tracks.len(), 1);
     assert_eq!(stored.draft.tracks[0].edit.title, "Edited title");
-    assert_eq!(
-        stored.draft.tracks[0].edit.file,
-        edit.file().cloned().unwrap()
-    );
+    assert_eq!(Some(stored.draft.tracks[0].edit.file.clone()), edit.file);
 }
 
 /// A file decision reshapes the folder, so the extracted signals go with it. The caller's replacement mappings, metadata,
@@ -520,7 +514,7 @@ async fn a_file_decision_clears_what_the_reshaped_folder_invalidates() {
         .unwrap()
         .expect("the candidate has a stored preparation");
     crate::import::CandidatePreparations::new(db.clone())
-        .set_track_edits_prepared(
+        .set_track_edit_prepared(
             &host_root("/music"),
             &pane_candidate_path(),
             &crate::import::CandidateAsRead {
@@ -528,11 +522,11 @@ async fn a_file_decision_clears_what_the_reshaped_folder_invalidates() {
                 file_edit_revision: preparation.file_edit_revision,
                 metadata_revision: preparation.metadata_revision,
             },
-            &[edited_row(
+            &edited_row(
                 "candidate-track-0",
                 "Track Title",
                 Some(preparation.draft.tracks[0].edit.file.clone()),
-            )],
+            ),
             &preparation.source_discogs_artist_ids,
             &preparation.assets.artist_images,
         )
@@ -618,9 +612,16 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
     let mapping = edited_row(
         "candidate-track-0",
         "Track Title",
-        Some(AudioFile::Standalone {
-            file_id: "01 Track.flac".to_string(),
-        }),
+        Some(
+            db.load_import_candidate_pane_rows(&hash)
+                .await
+                .unwrap()
+                .draft
+                .tracks[0]
+                .edit
+                .file
+                .clone(),
+        ),
     );
     crate::import::CandidatePreparations::new(db.clone())
         .set_track_edit(&hash, &mapping)
@@ -639,7 +640,7 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
         .unwrap();
     let applied = db.load_import_candidate_pane_rows(&hash).await.unwrap();
     let mut expected = new_draft;
-    expected.tracks[0].file = mapping.file().cloned();
+    expected.tracks[0].file = mapping.file.clone();
     assert_eq!(
         applied.draft.release_edit(),
         expected,
@@ -679,10 +680,7 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
         .unwrap();
     let cleared = db.load_import_candidate_pane_rows(&hash).await.unwrap();
     assert!(cleared.draft.release_edit().is_blank());
-    assert_eq!(
-        cleared.draft.tracks[0].edit.file,
-        mapping.file().cloned().unwrap()
-    );
+    assert_eq!(Some(cleared.draft.tracks[0].edit.file.clone()), mapping.file);
     assert_eq!(cleared_revision, 6);
     assert_eq!(
         cleared.cover,

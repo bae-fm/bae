@@ -28,14 +28,6 @@ private final class Recorder {
     var bindCalls: [BindingCall] = []
     var discCalls: [(sheetFileId: String, disc: BridgeSheetDisc)] = []
     var trackEdits: [(key: String, track: BridgeRawTrackEdit)] = []
-    struct AddedTrack {
-        let key: String
-        let audio: BridgeAudioFile
-        let candidate: BridgeCandidateAsRead
-    }
-
-    var addedTracks: [AddedTrack] = []
-    var droppedTracks: [(key: String, trackId: String)] = []
     var editFields: [(field: BridgeCandidateEditField, value: String)] = []
     var externalMetadata: [BridgeMetadataProvenance] = []
     var fileTagsApplications = 0
@@ -92,18 +84,6 @@ private final class Recorder {
             setCandidateTrackEdit: { [self] key, track in
                 await MainActor.run {
                     trackEdits.append((key: key, track: track))
-                }
-            },
-            addCandidateTrack: { [self] key, audio, candidate in
-                await MainActor.run {
-                    addedTracks.append(
-                        AddedTrack(key: key, audio: audio, candidate: candidate)
-                    )
-                }
-            },
-            dropCandidateTrack: { [self] key, trackId in
-                await MainActor.run {
-                    droppedTracks.append((key: key, trackId: trackId))
                 }
             }
         )
@@ -262,7 +242,7 @@ struct ImportMappingPaneTests {
         let store = MappingFixtures.store(
             mapping: MappingFixtures.unboundSheetTable
         )
-        #expect(MappingFixtures.mapping(of: store).willWriteCount == 1)
+        #expect(MappingFixtures.mapping(of: store).trackMappings.count == 1)
 
         let recorder = Recorder()
         await ImportMappingFlow.bindSheet(
@@ -283,7 +263,7 @@ struct ImportMappingPaneTests {
         )
         // The pane does not rewrite its own table: it still shows what it was
         // handed, and the next read replaces it whole.
-        #expect(MappingFixtures.mapping(of: store).willWriteCount == 1)
+        #expect(MappingFixtures.mapping(of: store).trackMappings.count == 1)
 
         // What that read comes back with is the sheet's group.
         store.applyCandidateDetail(
@@ -308,7 +288,7 @@ struct ImportMappingPaneTests {
         }
         #expect(container.fileId == MappingFixtures.containerId)
         #expect(entries.count == 12)
-        #expect(after.willWriteCount == 12)
+        #expect(after.trackMappings.count == 12)
     }
 
     // 2. Naming a row writes that row. The count the bar states comes from the
@@ -320,7 +300,7 @@ struct ImportMappingPaneTests {
         let store = MappingFixtures.store(
             mapping: MappingFixtures.thirteenFileTable
         )
-        #expect(MappingFixtures.mapping(of: store).willWriteCount == 13)
+        #expect(MappingFixtures.mapping(of: store).trackMappings.count == 13)
         #expect(MappingFixtures.mapping(of: store).unansweredCount == 1)
 
         let unnamed = try #require(
@@ -349,104 +329,8 @@ struct ImportMappingPaneTests {
                 )
             )
         )
-        #expect(MappingFixtures.mapping(of: store).willWriteCount == 13)
+        #expect(MappingFixtures.mapping(of: store).trackMappings.count == 13)
         #expect(MappingFixtures.mapping(of: store).unansweredCount == 0)
-    }
-
-    // 2b. Pointing a row at a different file writes the whole row with its new
-    //     audio — a binding is part of the row, not a second thing to store.
-    @MainActor
-    @Test("pointing a row at a file writes the row with that audio")
-    func choosingAFileWritesTheRow() async throws {
-        let store = MappingFixtures.store(
-            mapping: MappingFixtures.thirteenFileTable
-        )
-        let recorder = Recorder()
-        let target = try #require(
-            MappingFixtures.mapping(of: store).trackMappings.first?.track
-        )
-
-        await ImportMappingFlow.chooseFile(
-            key: MappingFixtures.candidateKey,
-            trackId: target.id,
-            audio: .standalone(fileId: "13.flac"),
-            services: recorder.services(store)
-        )
-
-        #expect(recorder.trackEdits.count == 1)
-        #expect(recorder.trackEdits.first?.track.id == target.id)
-        #expect(
-            recorder.trackEdits.first?.track.file
-                == .standalone(fileId: "13.flac")
-        )
-    }
-
-    @MainActor
-    @Test(
-        "adding source audio carries its viewed revision without reapplying metadata"
-    )
-    func addingSourceUsesTheViewedOffer() async throws {
-        let store = MappingFixtures.store(
-            mapping: MappingFixtures.thirteenFileTable
-        )
-        let before = try #require(
-            store.selectedCandidates[MappingFixtures.candidateKey]?.detail
-        )
-        let recorder = Recorder()
-        let read = BridgeCandidateAsRead(
-            contentHash: "viewed-source-hash",
-            fileEditRevision: 3,
-            metadataRevision: 7
-        )
-        let audio = BridgeAudioFile.sheetSlice(
-            fileId: "disc.flac",
-            sheetId: "disc.cue",
-            index: 4
-        )
-
-        await ImportMappingFlow.addTrack(
-            key: MappingFixtures.candidateKey,
-            audio: audio,
-            candidate: read,
-            services: recorder.services(store)
-        )
-
-        #expect(recorder.addedTracks.count == 1)
-        #expect(recorder.addedTracks.first?.key == MappingFixtures.candidateKey)
-        #expect(recorder.addedTracks.first?.audio == audio)
-        #expect(recorder.addedTracks.first?.candidate == read)
-        #expect(recorder.trackEdits.isEmpty)
-        #expect(recorder.externalMetadata.isEmpty)
-        #expect(recorder.fileTagsApplications == 0)
-        #expect(
-            store.selectedCandidates[MappingFixtures.candidateKey]?.detail
-                == before
-        )
-    }
-
-    // 2c. Dropping a row takes it out of the import and nothing on disk
-    //     changes, so the whole of it is one write core keys by the row.
-    @MainActor
-    @Test("dropping a row writes the drop")
-    func droppingARowWritesTheDrop() async throws {
-        let store = MappingFixtures.store(
-            mapping: MappingFixtures.thirteenFileTable
-        )
-        let recorder = Recorder()
-        let target = try #require(
-            MappingFixtures.mapping(of: store).trackMappings.last?.track
-        )
-
-        await ImportMappingFlow.drop(
-            key: MappingFixtures.candidateKey,
-            trackId: target.id,
-            services: recorder.services(store)
-        )
-
-        #expect(
-            recorder.droppedTracks.map(\.trackId) == [target.id]
-        )
-        #expect(recorder.trackEdits.isEmpty)
     }
 }
 
@@ -474,7 +358,6 @@ extension ImportMappingPaneTests {
         #expect(recorder.roleCalls.first?.fileId == "13.flac")
         #expect(recorder.roleCalls.first?.choice == .notATrack)
         #expect(recorder.trackEdits.isEmpty)
-        #expect(recorder.droppedTracks.isEmpty)
     }
 
     // Both standalone files and whole containers provide importable audio.
@@ -486,8 +369,7 @@ extension ImportMappingPaneTests {
         )
         #expect(MappingFixtures.isCommittable(unanswered))
         #expect(
-            bridgeMappingTracks(table: MappingFixtures.mapping(of: unanswered))
-                .count == 13
+            MappingFixtures.mapping(of: unanswered).trackMappings.count == 13
         )
 
         // An inactive CUE leaves one whole container track.
@@ -495,11 +377,7 @@ extension ImportMappingPaneTests {
             mapping: MappingFixtures.unboundSheetTable
         )
         #expect(MappingFixtures.isCommittable(unbacked))
-        #expect(MappingFixtures.mapping(of: unbacked).willWriteCount == 1)
-        #expect(
-            bridgeMappingTracks(table: MappingFixtures.mapping(of: unbacked))
-                .count == 1
-        )
+        #expect(MappingFixtures.mapping(of: unbacked).trackMappings.count == 1)
     }
 
     // A failed release read leaves the draft unchanged and names the failed
@@ -695,7 +573,7 @@ extension ImportMappingPaneTests {
             return
         }
         #expect(sheet.assignment == .ignored)
-        #expect(mapping.willWriteCount == 1)
+        #expect(mapping.trackMappings.count == 1)
     }
 
     // 8. Applying each source writes that source. Browsing either source does
@@ -753,7 +631,6 @@ extension ImportMappingPaneTests {
         )
         #expect(candidate.metadataProvenance == MappingFixtures.provenance)
         #expect(candidate.mapping.trackMappings.count == 13)
-        #expect(candidate.mapping.willWriteCount == 13)
         #expect(
             candidate.pickedRelease?.key == MappingFixtures.releaseId
         )

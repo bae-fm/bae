@@ -527,18 +527,6 @@ impl LibraryManager {
             .await?)
     }
 
-    pub(crate) async fn replace_candidate_file_tag_snapshot(
-        &self,
-        watched_folder_path: &str,
-        candidate_path: &str,
-        snapshot: &crate::import::file_tag_snapshot::FileTagSnapshot,
-    ) -> Result<bool, LibraryError> {
-        Ok(self
-            .database
-            .replace_candidate_file_tag_snapshot(watched_folder_path, candidate_path, snapshot)
-            .await?)
-    }
-
     /// Insert all of an import's data in one transaction, so the release exists
     /// complete or not at all. A Remote import (`destination`) records its
     /// make-Remote in the same write and gets back the outbox revision that

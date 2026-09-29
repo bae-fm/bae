@@ -140,7 +140,6 @@ struct ImportMappingTable: View {
         ImportMappingTrackRow(
             mapping: mapping,
             columns: columns,
-            audioChoices: table.audioChoices,
             previewingTarget: previewingTarget,
             editingCommands: editingCommands,
             evidence: evidenceFor(mapping),
@@ -177,8 +176,6 @@ struct ImportMappingTable: View {
                     width: ReleaseMetadataTrackColumns.length,
                     alignment: .trailing
                 )
-            Color.clear
-                .frame(width: ImportMappingColumns.action)
         }
     }
 
@@ -251,7 +248,6 @@ extension View {
 }
 
 enum ImportMappingColumns {
-    static let action = ReleaseMetadataTrackColumns.action
     static let spacing = ReleaseMetadataTrackColumns.spacing
     static let rowPadding = ReleaseMetadataTrackColumns.rowPadding
 }
@@ -271,7 +267,6 @@ extension BridgeTrackMapping {
         switch source {
         case .file(let file): "file:\(file.fileId)"
         case .sheetEntry(let entry): "entry:\(entry.sheetId):\(entry.index)"
-        case .missing: "track:\(track?.id ?? "")"
         }
     }
 }

@@ -31,7 +31,7 @@ impl FolderCandidate {
         )?;
         let mut edit = super::parsed_album_to_user_edit(&parsed);
         if !self.files.parts.is_empty() {
-            let layout = super::track_slots::direct_entry_track_rows(&self.files);
+            let layout = super::audio_layout::direct_entry_track_rows(&self.files);
             if edit.tracks.len() != layout.len() {
                 return Err(super::ImportError::Internal {
                     detail: "file metadata does not match the release's track count".into(),

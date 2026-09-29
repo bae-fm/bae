@@ -330,7 +330,7 @@ fn multi_file_cue_resolves_each_reference_by_unique_stem() {
             .is_some_and(|computed| computed.source_file.as_deref() == Some("Album.cue")),
         "a one-file-per-track rip lays its files end to end into a disc ID",
     );
-    let units = crate::import::track_slots::audio_units(files);
+    let units = crate::import::audio_layout::audio_units(files);
     assert_eq!(
         units,
         vec![
@@ -357,7 +357,13 @@ fn multi_file_cue_resolves_each_reference_by_unique_stem() {
     assert!(units
         .iter()
         .all(|unit| durations.duration_of(unit).is_some()));
-    let table = crate::import::mapping::mapping_table(files, None, &durations);
+    let table = crate::import::mapping::mapping_table(
+        files,
+        &durations,
+        &crate::import::pane::blank_candidate_draft(files),
+        &[],
+    )
+    .expect("a blank draft is drawn over its own folder");
     let crate::import::MappingTrackSectionContent::Sheet { sheet, entries } =
         &table.track_sections[0].content
     else {

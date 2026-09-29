@@ -12,7 +12,7 @@ use {
         DbTrackArtistRole,
     },
     crate::import::folder_scanner::{ScanItem, ScannedFile},
-    crate::import::track_slots::resolve_track_files,
+    crate::import::audio_layout::resolve_track_files,
     crate::import::types::{
         AudioFile, Catalog, CoverSelection, ImportPhase, PrepareStep, TrackFile,
     },

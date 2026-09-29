@@ -34,14 +34,14 @@ desktop_only! {
     // The import pipeline (scanning, transcoding, identify orchestration) is
     // desktop-only; mobile is a sync/playback client. Only the shared domain
     // types below (re-exported from `types`) compile on mobile.
-    mod edits;
+    mod import_failure;
     mod handle;
     pub mod list;
     pub(crate) mod local_artwork;
     mod loudness;
-    // Projects the folder's audio units against a picked tracklist — the desktop
-    // import pane's one structure, and desktop-only like the slots it reads.
     pub(crate) mod direct_entry_mapper;
+    // The folder's audio units beside the draft's tracks — the desktop import
+    // pane's one structure, and desktop-only like the scan it reads.
     pub mod mapping;
     /// Which of a release's mediums a folder's audio is a rip of.
     pub(crate) mod medium_coverage;
@@ -63,7 +63,7 @@ pub mod lookup_choices;
 pub mod session;
 desktop_only! {
     pub mod identification;
-    pub mod track_slots;
+    pub mod audio_layout;
     pub mod triage;
 }
 mod types;
@@ -172,10 +172,7 @@ desktop_only! {
         WatchedFolderScanStatus,
     };
     pub use cover_art::{CoverChoice, CoverImageSource};
-    pub use edits::{
-        CandidateTrackEdit, ImportFailure,
-        TrackEditState,
-    };
+    pub use import_failure::ImportFailure;
 }
 pub(crate) use error::artist_source_ids_are_compatible;
 pub use error::ArtistIdentityConflict;
@@ -204,10 +201,9 @@ desktop_only! {
         ImportQueueSummary, NarrowedCount, PendingFilters,
     };
     pub use mapping::{
-        mapping_table, mapping_tracks, MappingBecomes,
-        MappingContainer, MappingEntry, MappingFile, MappingFileRow, MappingImage, MappingRole,
-        MappingSource, MappingTable, MappingTrackSection, MappingTrackSectionContent,
-        PickedTracklist, SheetBound, SheetGroup, TrackMapping,
+        mapping_tracks, MappingContainer, MappingEntry, MappingFile, MappingFileRow, MappingImage,
+        MappingRole, MappingSource, MappingTable, MappingTrackSection, MappingTrackSectionContent,
+        SheetBound, SheetGroup, TrackMapping,
     };
     pub use preparation::{CandidateAsRead, CandidatePreparation, MetadataAuthor};
     pub use preparations::CandidatePreparations;
@@ -221,9 +217,6 @@ pub use session::{
 };
 desktop_only! {
     pub use identification::IdentificationHandle;
-    pub use track_slots::{
-        lengths_disagree, SlotFile, SlotSpan, SlotTable, SourceTrack, TrackSlot,
-    };
     pub use triage::{
         CandidateAction, CandidateActionBasis, CandidateLiveState, IdentificationStatus,
         ImportedReleaseSummary, ImportedReleaseText, ImportedRow, MatchEvidence, MatchedPressing, MatchedRelease,

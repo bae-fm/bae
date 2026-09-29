@@ -50,7 +50,7 @@ fn plain(members: &[FolderCandidate]) -> Vec<(FolderCandidate, CandidateFileEdit
 }
 
 fn layout(release: &FolderCandidate) -> Vec<(Option<i32>, Option<i32>)> {
-    crate::import::track_slots::direct_entry_track_rows(&release.files)
+    crate::import::audio_layout::direct_entry_track_rows(&release.files)
         .iter()
         .map(|track| (track.side, track.track_number))
         .collect()
@@ -259,8 +259,8 @@ fn sheets_take_discs_within_their_folders_run() {
     assert_eq!(sides.iter().filter(|side| **side == Some(2)).count(), 1);
     assert_eq!(sides.iter().filter(|side| **side == Some(3)).count(), 2);
     assert_eq!(
-        crate::import::track_slots::audio_units(&release.files),
-        crate::import::track_slots::direct_entry_track_rows(&release.files)
+        crate::import::audio_layout::audio_units(&release.files),
+        crate::import::audio_layout::direct_entry_track_rows(&release.files)
             .into_iter()
             .map(|track| track.file.unwrap())
             .collect::<Vec<_>>()

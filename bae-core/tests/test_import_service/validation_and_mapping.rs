@@ -339,11 +339,11 @@ async fn incompatible_source_counts_preserve_every_audio_backed_track() {
     }
 }
 
-/// A rip whose files are named in the wrong order. The user re-pairs two slots
-/// in the mapping, and the commit binds the files they chose — not the ones
-/// their positions would have given them.
+/// A track plays the folder's audio unit at its position: an edit that names
+/// another row's audio is refused, and the commit binds each track to the
+/// file in its place.
 #[tokio::test]
-async fn a_corrected_pairing_survives_the_commit() {
+async fn the_commit_binds_each_track_to_the_audio_in_its_place() {
     support::tracing_init();
     let f = ImportFixture::new().await;
     let mb_id = seed_mb_release_with_track_count(&f, "mb-rel-repair", "mb-group-repair", 3);
@@ -358,20 +358,12 @@ async fn a_corrected_pairing_survives_the_commit() {
 
     let mut tracks = bae_core::import::mapping_tracks(&pane.mapping);
     assert_eq!(tracks.len(), 3);
-    // Re-pairing moves the bindings, not the tracks: the first two source
-    // tracks keep their titles and numbers and swap the audio behind them.
-    let first = tracks[0].file.clone();
     tracks[0].file = tracks[1].file.clone();
-    tracks[1].file = first;
-
-    f.handle
+    assert!(f
+        .handle
         .set_candidate_track_edit(&candidate_key, tracks[0].clone())
         .await
-        .unwrap();
-    f.handle
-        .set_candidate_track_edit(&candidate_key, tracks[1].clone())
-        .await
-        .unwrap();
+        .is_err());
     let import_id = f.handle.start_import(&candidate_key).await.unwrap();
     let mut rx = f.handle.subscribe_import(import_id);
     let (release_id, _album_id) = support::wait_for_import_complete(&mut rx).await;
@@ -379,8 +371,8 @@ async fn a_corrected_pairing_survives_the_commit() {
     assert_eq!(
         committed_track_files(&f, &release_id).await,
         vec![
-            ("Source Track 1".to_string(), "02 Track.flac".to_string()),
-            ("Source Track 2".to_string(), "01 Track.flac".to_string()),
+            ("Source Track 1".to_string(), "01 Track.flac".to_string()),
+            ("Source Track 2".to_string(), "02 Track.flac".to_string()),
             ("Source Track 3".to_string(), "03 Track.flac".to_string()),
         ],
     );

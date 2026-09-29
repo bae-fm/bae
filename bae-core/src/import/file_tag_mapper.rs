@@ -243,7 +243,7 @@ pub(crate) fn map_file_metadata_to_db(
         });
     }
 
-    use super::track_slots::{audio_layout, UnitContribution};
+    use super::audio_layout::{audio_layout, UnitContribution};
     let layout = audio_layout(categorized);
     let loose_facts = layout
         .iter()
@@ -313,7 +313,7 @@ pub(crate) fn map_file_metadata_to_db(
 /// `TITLE`, per-track artist from each `PERFORMER`. Album-level fields come from
 /// the sheet header (`TITLE` / `PERFORMER` / `REM DATE`), the title falling back
 /// to the folder name. `sheets` and `audio_files` are one-per-pair in disc order
-/// — the same order `track_slots` lays the folder's audio down — so side is the
+/// — the same order `audio_layout` lays the folder's audio down — so side is the
 /// 1-based disc index and track numbers run per sheet.
 pub fn map_cue_sheets_to_db(
     sheets: &[&CueSheet],

@@ -231,53 +231,6 @@ async fn a_cleared_sheet_can_be_bound_again() {
         .expect("the rebound candidate is prepared");
     assert_eq!(preparation.draft.tracks.len(), 5);
 }
-#[tokio::test(flavor = "multi_thread")]
-async fn deleting_audio_removes_the_row_and_metadata_cannot_restore_it() {
-    let fixture = Fixture::new("delete-audio-row").await;
-    let dir = fixture.seed_cue_album("Album");
-    fixture.scan(1).await;
-    let hash = fixture.content_hash(&dir);
-    let key = dir.to_string_lossy().into_owned();
-    let before = fixture
-        .manager
-        .load_import_candidate_preparation(&hash)
-        .await
-        .unwrap()
-        .unwrap()
-        .draft;
-    let removed = before.tracks[1].edit.id.clone();
-    fixture
-        .import
-        .drop_candidate_track(&key, removed.clone())
-        .await
-        .unwrap();
-    let after = fixture
-        .manager
-        .load_import_candidate_preparation(&hash)
-        .await
-        .unwrap()
-        .unwrap()
-        .draft;
-    assert_eq!(after.tracks.len(), before.tracks.len() - 1);
-    assert!(after.tracks.iter().all(|track| track.edit.id != removed));
-    fixture
-        .import
-        .select_candidate_metadata_provenance(key, crate::import::MetadataProvenance::FileMetadata)
-        .await
-        .unwrap();
-    let reapplied = fixture
-        .manager
-        .load_import_candidate_preparation(&hash)
-        .await
-        .unwrap()
-        .unwrap()
-        .draft;
-    assert_eq!(reapplied.tracks.len(), after.tracks.len());
-    for (actual, expected) in reapplied.tracks.iter().zip(&after.tracks) {
-        assert_eq!(actual.edit.id, expected.edit.id);
-        assert_eq!(actual.edit.file, expected.edit.file);
-    }
-}
 
 #[tokio::test(flavor = "multi_thread")]
 async fn changing_a_cues_disc_preserves_titles_but_updates_its_group() {

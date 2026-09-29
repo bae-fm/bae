@@ -1,22 +1,20 @@
 //! The mapping table: every source unit the folder offers, alongside the track
 //! committing makes of it.
 //!
-//! The source remains available independently of inclusion. Included rows carry
-//! their editable track; omitted audio carries an exact, revision-bound offer
-//! to add it. Surfaces render this projection without joining separate lists.
+//! The draft holds one track per audio unit, in the folder's order, so row `i`
+//! pairs unit `i` with draft track `i`. Surfaces render this projection without
+//! joining separate lists.
 
 use crate::import::folder_scanner::{
     BoundTrackSheet, CandidateFile, CategorizedFiles, FileRole, FileRoleChoice, ScannedFile,
     SheetBinding, SheetDisc, SheetReferenceOptions, TrackSheetFile,
 };
 use crate::import::probe::SourceDurations;
-use crate::import::track_slots::{
-    SlotTable, TrackSlot, UnitContribution, audio_layout, units_of,
-};
-use crate::import::types::{AudioFile, RawTrackEdit};
+use crate::import::audio_layout::{audio_layout, UnitContribution};
+use crate::import::types::{AudioFile, CandidateDraft, CandidateTrack, RawTrackEdit};
+use crate::import::ImportError;
 use std::collections::{BTreeSet, HashMap};
 use std::path::PathBuf;
-use tracing::warn;
 
 /// The mapping table: every source unit the folder offers, alongside the track
 /// committing makes of it.
@@ -29,18 +27,6 @@ pub struct MappingTable {
     pub track_sections: Vec<MappingTrackSection>,
     /// Files carried with the release but not represented by track rows.
     pub files: Vec<MappingFileRow>,
-}
-
-impl MappingTable {
-    /// No folder behind the pick, so no mapping: re-identify chooses a release
-    /// for a release already in the library, whose files are bound already.
-    pub fn empty() -> Self {
-        Self {
-            images: Vec::new(),
-            track_sections: Vec::new(),
-            files: Vec::new(),
-        }
-    }
 }
 
 /// One side or disc in the track table.
@@ -95,15 +81,23 @@ pub struct MappingImage {
     pub path: PathBuf,
 }
 
-/// One source-to-track mapping row.
+/// One source-to-track mapping row: an audio unit of the folder, and the
+/// draft track committing makes of it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct TrackMapping {
     pub source: MappingSource,
-    pub becomes: MappingBecomes,
-    /// The duration this row displays: the metadata source's value where one
-    /// exists, otherwise the candidate's stored probe. This remains available
-    /// while the row is waiting for metadata.
+    /// The track of the release being committed. The row edits it in place.
+    pub track: RawTrackEdit,
+    /// The position this row commits, rendered from the track's own side and
+    /// number and the release's format — `8`, `A1`, or `3` beneath a `Disc 2`
+    /// heading.
+    pub position: String,
+    /// The duration this row displays: the applied release's length for the
+    /// track where it lists one, otherwise the candidate's stored probe.
     pub duration_ms: Option<u64>,
+    /// Whether the folder's length for this row and the applied release's
+    /// are far enough apart for the row to say so.
+    pub lengths_disagree: bool,
 }
 
 /// The left half of a row: what the folder offers for it.
@@ -113,9 +107,6 @@ pub enum MappingSource {
     File(MappingFile),
     /// One entry of a track sheet, carved out of the container it is bound to.
     SheetEntry(MappingEntry),
-    /// The source names a track this folder has nothing for: the left half is
-    /// empty, and the row is offered the folder's audio to point it at.
-    Missing,
 }
 
 /// What one of the folder's files is, as a row of the mapping table.
@@ -179,27 +170,6 @@ pub struct MappingEntry {
     pub audio_format: crate::album_detail::AudioFormat,
 }
 
-/// The right half of a row: what committing makes of the source unit.
-#[derive(Debug, Clone, PartialEq)]
-pub enum MappingBecomes {
-    /// A track of the release being committed. The row edits it in place.
-    Track {
-        track: RawTrackEdit,
-        /// The position this row commits, rendered from the track's own side
-        /// and number and the release's format — `8`, `A1`, or `3` beneath a
-        /// `Disc 2` heading. The same fact in every metadata mode, because it
-        /// reads the draft rather than the picked source.
-        position: String,
-    },
-    /// Available audio omitted from the release, with the read that offered it.
-    NotIncluded {
-        audio: AudioFile,
-        candidate: crate::import::CandidateAsRead,
-    },
-    /// No release is picked yet, so what this becomes is the open question.
-    AwaitingPick,
-}
-
 /// A track sheet, as the header of the group of rows it carves.
 #[derive(Debug, Clone, PartialEq)]
 pub struct SheetGroup {
@@ -252,40 +222,22 @@ pub struct MappingContainer {
     pub audio_format: crate::album_detail::AudioFormat,
 }
 
-/// The tracklist a folder is being committed as, and the row identities the
-/// editor addresses it by.
-#[derive(Debug, Clone, Copy)]
-pub struct PickedTracklist<'a> {
-    /// The file↔tracklist pairing, whose rows correspond one-for-one and in
-    /// order with the folder's audio units.
-    pub slots: &'a SlotTable,
-    /// Track row `n` of the table is addressed as `{track_id_prefix}-{n}`.
-    pub track_id_prefix: &'a str,
-    /// The physical medium of the release being committed — what decides
-    /// whether a row's position reads `8`, `A1`, or `2-3`.
-    pub medium: Option<crate::pressing::PhysicalMedium>,
-}
-
-/// Project the mapping table for one folder, against the tracklist picked for
-/// it.
+/// Project the mapping table for one folder and the draft committing it.
 ///
-/// `picked` is `None` in the identify phase: every audio row then reads
-/// [`MappingBecomes::AwaitingPick`], and a cover or a document still says what
-/// it becomes, because a role is a fact about the folder and needs no release.
-pub fn mapping_table(
+/// Refuses a draft whose tracks are not the folder's audio units in order: the
+/// draft is redrawn with every change to the folder's files, so a mismatch is a
+/// stored state that contradicts itself.
+///
+/// `source_lengths` are the lengths the applied release lists for its tracks,
+/// by the source index a track keeps; empty when no release was applied. A row
+/// one names shows that length beside its file's own.
+pub(crate) fn mapping_table(
     files: &CategorizedFiles,
-    picked: Option<PickedTracklist<'_>>,
     durations: &SourceDurations,
-) -> MappingTable {
+    draft: &CandidateDraft,
+    source_lengths: &[Option<u64>],
+) -> Result<MappingTable, ImportError> {
     let layout = audio_layout(files);
-    let units = units_of(&layout);
-    // Slot row `i` is audio unit `i`: the two are the same list, so position is
-    // the whole correspondence between them.
-    let slot_of: HashMap<AudioFile, usize> = units
-        .iter()
-        .enumerate()
-        .map(|(index, unit)| (unit.clone(), index))
-        .collect();
     let contributions: HashMap<&str, &UnitContribution<'_>> = layout
         .iter()
         .map(|(file, contribution)| (file.relative_path.as_str(), contribution))
@@ -299,23 +251,17 @@ pub fn mapping_table(
         .flatten()
         .map(|sheet| sheet.file.relative_path.as_str())
         .collect();
-
-    let disc_options = disc_options(files, picked.as_ref());
-
-    let multi_side = picked.as_ref().is_some_and(|picked| {
-        let mut sides = picked.slots.rows.iter().map(|slot| slot.track().side);
-        let first = sides.next();
-        sides.any(|side| Some(side) != first)
-    });
-    let mut builder = RowBuilder {
-        picked,
+    let disc_options = disc_options(files);
+    let sides: BTreeSet<_> = draft.tracks.iter().map(|track| track.edit.side).collect();
+    let mut rows = RowBuilder {
         durations,
-        slot_of,
-        next_track: 0,
-        multi_side,
+        source_lengths,
+        medium: draft.pressing.facts.physical_medium(),
+        multi_side: sides.len() > 1,
+        tracks: draft.tracks.iter(),
     };
-    let mut track_sections = Vec::with_capacity(units.len());
-    let mut file_rows = Vec::with_capacity(files.files.len().saturating_sub(units.len()));
+    let mut track_sections = Vec::new();
+    let mut file_rows = Vec::new();
     // The folder's images become one gallery beside the rows while retaining
     // the scan's order.
     let mut images: Vec<MappingImage> = Vec::new();
@@ -354,63 +300,56 @@ pub fn mapping_table(
             FileRole::Audio => match contributions.get(entry.file.relative_path.as_str()) {
                 Some(UnitContribution::Runs(sheets)) => {
                     for sheet in sheets.iter() {
-                        let side = builder.side_for_sheet(sheet.disc);
-                        track_sections.push(MappingTrackSection {
-                            side,
-                            content: MappingTrackSectionContent::Sheet {
-                                sheet: SheetGroup {
-                                    sheet_id: sheet.file.relative_path.clone(),
-                                    name: sheet.file.relative_path.clone(),
-                                    size: sheet.file.size,
-                                    path: sheet.file.path.clone(),
-                                    bound: bound_sheet(sheet),
-                                    reference_options: files
-                                        .sheet_binding_options(&sheet.file.relative_path),
-                                    assignment: sheet.disc,
-                                    disc_options: disc_options.clone(),
-                                },
-                                entries: builder.sheet_entries(sheet),
-                            },
-                        });
+                        let group = SheetGroup {
+                            sheet_id: sheet.file.relative_path.clone(),
+                            name: sheet.file.relative_path.clone(),
+                            size: sheet.file.size,
+                            path: sheet.file.path.clone(),
+                            bound: bound_sheet(sheet),
+                            reference_options: files
+                                .sheet_binding_options(&sheet.file.relative_path),
+                            assignment: sheet.disc,
+                            disc_options: disc_options.clone(),
+                        };
+                        for (side, mapping) in rows.sheet_entries(sheet)? {
+                            push_sheet_entry(&mut track_sections, &group, side, mapping);
+                        }
                     }
                 }
                 Some(UnitContribution::Whole) => {
-                    let projected = builder.audio_row(entry);
-                    push_track_mapping(&mut track_sections, projected);
+                    let (side, mapping) = rows.audio_row(entry)?;
+                    push_track_mapping(&mut track_sections, side, mapping);
                 }
                 // A carving sheet speaks for this file, so the sheet's rows are
                 // what it contributes and it has none of its own.
                 Some(UnitContribution::SpokenFor) => {}
-                None => warn!(
-                    "{} carries the audio role but the folder's layout does not place it",
+                None => unreachable!(
+                    "{} carries the audio role, and the layout places every audio file",
                     entry.file.relative_path
                 ),
             },
-            // Nothing else the folder holds is in the tracklist, and no release
-            // has to be picked to know it — the role says so on its own. The
-            // folder is the release, so all of it is still carried.
-            FileRole::Artwork => {
-                images.push(mapping_image(entry));
-            }
+            // Nothing else the folder holds is in the tracklist — the role says
+            // so on its own. The folder is the release, so all of it is still
+            // carried.
+            FileRole::Artwork => images.push(mapping_image(entry)),
             FileRole::Document => file_rows.push(carried(entry, MappingRole::Document)),
             FileRole::Other => file_rows.push(carried(entry, MappingRole::Other)),
         }
     }
-
-    // The tracks the source names and the folder has nothing for. They sit past
-    // every unit in the slot table, so they close the table.
-    if let Some(picked) = picked {
-        for index in units.len()..picked.slots.rows.len() {
-            let projected = builder.track_at(index, MappingSource::Missing, None);
-            push_track_mapping(&mut track_sections, projected);
-        }
+    if let Some(extra) = rows.tracks.next() {
+        return Err(ImportError::Internal {
+            detail: format!(
+                "draft track {} has no audio unit of the folder behind it",
+                extra.edit.id
+            ),
+        });
     }
 
-    MappingTable {
+    Ok(MappingTable {
         images,
         track_sections,
         files: file_rows,
-    }
+    })
 }
 
 /// The table's track rows in commit order — what the editor shapes into the
@@ -420,197 +359,33 @@ pub fn mapping_tracks(table: &MappingTable) -> Vec<RawTrackEdit> {
         .track_sections
         .iter()
         .flat_map(MappingTrackSection::mappings)
-        .filter_map(|mapping| match &mapping.becomes {
-            MappingBecomes::Track { track, .. } => Some(track.clone()),
-            MappingBecomes::AwaitingPick | MappingBecomes::NotIncluded { .. } => None,
-        })
+        .map(|mapping| mapping.track.clone())
         .collect()
 }
 
-/// Render included tracks in their stored order, with omitted audio inserted
-/// at its source position. Every offer retains the read that produced it.
-///
-/// `source_lengths` are the lengths the applied release lists for its
-/// tracks, by the source index a track keeps; empty when no release was
-/// applied. A row one names shows that length beside its file's own.
-pub(crate) fn draft_mapping_table(
-    files: &CategorizedFiles,
-    durations: &SourceDurations,
-    draft: &crate::import::CandidateDraft,
-    read: &crate::import::CandidateAsRead,
-    source_lengths: &[Option<u64>],
-) -> MappingTable {
-    let mut table = mapping_table(files, None, durations);
-    let mut sources = Vec::new();
-    let mut sheets = HashMap::new();
-    for section in &table.track_sections {
-        if let MappingTrackSectionContent::Sheet { sheet, .. } = &section.content {
-            sheets.insert(sheet.sheet_id.clone(), sheet.clone());
-        }
-        for row in section.mappings() {
-            let audio = match &row.source {
-                MappingSource::File(file) => AudioFile::Standalone {
-                    file_id: file.file_id.clone(),
-                },
-                MappingSource::SheetEntry(entry) => AudioFile::SheetSlice {
-                    file_id: entry.container_id.clone(),
-                    sheet_id: entry.sheet_id.clone(),
-                    index: entry.index,
-                },
-                MappingSource::Missing => {
-                    unreachable!("an audio projection has no missing sources")
-                }
-            };
-            sources.push((audio, row.clone()));
-        }
-    }
-    let source_positions: HashMap<_, _> = sources
-        .iter()
-        .enumerate()
-        .map(|(position, (audio, _))| (audio, position))
-        .collect();
-    let included: std::collections::HashSet<_> =
-        draft.tracks.iter().map(|track| &track.edit.file).collect();
-    let mut omitted = sources
-        .iter()
-        .enumerate()
-        .filter(|(_, (audio, _))| !included.contains(audio))
-        .peekable();
-    table.track_sections.clear();
-    let sides: BTreeSet<_> = draft.tracks.iter().map(|track| track.edit.side).collect();
-    let multi_side = sides.len() > 1;
-    let source_sides: BTreeSet<_> = sheets
-        .values()
-        .map(|sheet| match sheet.assignment {
-            SheetDisc::Disc { number } => number,
-            SheetDisc::Ignored => unreachable!("an available slice belongs to an active sheet"),
-        })
-        .collect();
-    let push_omitted = |table: &mut MappingTable, audio: &AudioFile, source: &TrackMapping| {
-        let mut row = source.clone();
-        row.becomes = MappingBecomes::NotIncluded {
-            audio: audio.clone(),
-            candidate: read.clone(),
-        };
-        let side = match audio {
-            AudioFile::Standalone { .. } => crate::album_detail::TrackSide::Flat,
-            AudioFile::SheetSlice { sheet_id, .. } => {
-                let sheet = &sheets[sheet_id];
-                let SheetDisc::Disc { number } = sheet.assignment else {
-                    unreachable!("an available slice belongs to an active sheet")
-                };
-                if source_sides.len() > 1 {
-                    crate::album_detail::TrackSide::Disc {
-                        disc: number as i32,
-                    }
-                } else {
-                    crate::album_detail::TrackSide::Flat
-                }
-            }
-        };
-        push_draft_mapping(&mut table.track_sections, &sheets, audio, side, row);
-    };
-    for track in &draft.tracks {
-        let position = *source_positions
-            .get(&track.edit.file)
-            .expect("draft audio belongs to the candidate's selected audio");
-        while omitted.peek().is_some_and(|(index, _)| *index < position) {
-            let (_, (audio, source)) = omitted.next().expect("the omitted source was observed");
-            push_omitted(&mut table, audio, source);
-        }
-        let mut row = sources[position].1.clone();
-        if let Some(length) = track
-            .source_index
-            .and_then(|index| source_lengths.get(index as usize).copied().flatten())
-        {
-            row.duration_ms = Some(length);
-        }
-        let position = crate::util::format::compute_track_position(
-            draft.pressing.facts.physical_medium(),
-            track.edit.side,
-            Some(track.edit.track_number),
-            multi_side,
-        );
-        let side = crate::util::format::track_side(&position);
-        row.becomes = MappingBecomes::Track {
-            track: track.edit.as_edit(),
-            position: crate::util::format::track_position_text(&position),
-        };
-        push_draft_mapping(
-            &mut table.track_sections,
-            &sheets,
-            &track.edit.file,
-            side,
-            row,
-        );
-    }
-    for (_, (audio, source)) in omitted {
-        push_omitted(&mut table, audio, source);
-    }
-    table
-}
-
-fn push_draft_mapping(
-    sections: &mut Vec<MappingTrackSection>,
-    sheets: &HashMap<String, SheetGroup>,
-    audio: &AudioFile,
-    side: crate::album_detail::TrackSide,
-    row: TrackMapping,
-) {
-    match audio {
-        AudioFile::Standalone { .. } => {
-            push_track_mapping(sections, PositionedTrackMapping { side, mapping: row })
-        }
-        AudioFile::SheetSlice { sheet_id, .. } => {
-            if let Some(MappingTrackSection {
-                side: existing_side,
-                content: MappingTrackSectionContent::Sheet { sheet, entries },
-            }) = sections.last_mut()
-            {
-                if sheet.sheet_id == *sheet_id && *existing_side == side {
-                    entries.push(row);
-                    return;
-                }
-            }
-            sections.push(MappingTrackSection {
-                side,
-                content: MappingTrackSectionContent::Sheet {
-                    sheet: sheets
-                        .get(sheet_id)
-                        .expect("selected slice has a sheet")
-                        .clone(),
-                    entries: vec![row],
-                },
-            });
-        }
-    }
-}
-
-/// The running state of one projection: which tracklist it is pairing against,
-/// and how many track rows it has emitted.
+/// Pairs the folder's audio units, as the walk over its files reaches them,
+/// with the draft's tracks in order.
 struct RowBuilder<'a> {
-    picked: Option<PickedTracklist<'a>>,
     durations: &'a SourceDurations,
-    slot_of: HashMap<AudioFile, usize>,
-    next_track: usize,
-    /// Whether the tracklist spans more than one side or disc — what decides
-    /// that a row's position carries its side.
+    source_lengths: &'a [Option<u64>],
+    medium: Option<crate::pressing::PhysicalMedium>,
+    /// Whether the draft spans more than one side or disc — what decides that
+    /// a row's position carries its side.
     multi_side: bool,
-}
-
-struct PositionedTrackMapping {
-    side: crate::album_detail::TrackSide,
-    mapping: TrackMapping,
+    tracks: std::slice::Iter<'a, CandidateTrack>,
 }
 
 impl RowBuilder<'_> {
     /// One row for a loose audio file.
-    fn audio_row(&mut self, entry: &CandidateFile) -> PositionedTrackMapping {
+    fn audio_row(
+        &mut self,
+        entry: &CandidateFile,
+    ) -> Result<(crate::album_detail::TrackSide, TrackMapping), ImportError> {
         let unit = AudioFile::Standalone {
             file_id: entry.file.relative_path.clone(),
         };
-        let duration_ms = self.duration_ms(&unit);
-        self.mapping(
+        let duration_ms = self.durations.duration_of(&unit);
+        self.row(
             &unit,
             MappingSource::File(mapping_file(entry, MappingRole::Audio, duration_ms)),
             duration_ms,
@@ -618,7 +393,10 @@ impl RowBuilder<'_> {
     }
 
     /// One row per entry a carving sheet describes.
-    fn sheet_entries(&mut self, sheet: &BoundTrackSheet<'_>) -> Vec<TrackMapping> {
+    fn sheet_entries(
+        &mut self,
+        sheet: &BoundTrackSheet<'_>,
+    ) -> Result<Vec<(crate::album_detail::TrackSide, TrackMapping)>, ImportError> {
         sheet
             .sheet
             .playable_tracks()
@@ -630,16 +408,15 @@ impl RowBuilder<'_> {
                     sheet_id: sheet.file.relative_path.clone(),
                     index: index as u32,
                 };
-                let duration_ms = self.duration_ms(&unit);
-                let sample_rate = u64::try_from(
-                    audio
-                        .source_audio
-                        .as_ref()
-                        .expect("a scanned audio file has source facts")
-                        .format
-                        .sample_rate_hz,
-                )
-                .expect("a scanned audio file has a non-negative sample rate");
+                let duration_ms = self.durations.duration_of(&unit);
+                let format = audio
+                    .source_audio
+                    .as_ref()
+                    .expect("a scanned audio file has source facts")
+                    .format
+                    .clone();
+                let sample_rate = u64::try_from(format.sample_rate_hz)
+                    .expect("a scanned audio file has a non-negative sample rate");
                 let preview_target = crate::playback::PreviewTarget::sample_range(
                     audio.path.to_string_lossy().into_owned(),
                     crate::cue_flac::cue_frames_to_samples(track.start_cue_frames, sample_rate),
@@ -647,7 +424,7 @@ impl RowBuilder<'_> {
                         .end_cue_frames
                         .map(|frames| crate::cue_flac::cue_frames_to_samples(frames, sample_rate)),
                 );
-                self.mapping(
+                self.row(
                     &unit,
                     MappingSource::SheetEntry(MappingEntry {
                         sheet_id: sheet.file.relative_path.clone(),
@@ -658,149 +435,109 @@ impl RowBuilder<'_> {
                         container_id: audio.relative_path.clone(),
                         container_name: audio.file_name.clone(),
                         container_path: audio.path.clone(),
-                        audio_format: audio
-                            .source_audio
-                            .as_ref()
-                            .expect("a scanned audio file has source facts")
-                            .format
-                            .clone(),
+                        audio_format: format,
                         preview_target,
                     }),
                     duration_ms,
                 )
-                .mapping
             })
             .collect()
     }
 
-    /// This unit's playing time as the stored measurements record it. A unit
-    /// nothing has read yet shows none, whether or not a release is picked.
-    fn duration_ms(&self, unit: &AudioFile) -> Option<u64> {
-        self.durations.duration_of(unit)
-    }
-
-    /// Pair one source unit with the picked track occupying its slot, or leave
-    /// it awaiting a pick.
-    fn mapping(
+    /// Pair `unit` with the next draft track, and say which side it sits on.
+    fn row(
         &mut self,
         unit: &AudioFile,
         source: MappingSource,
         probed_duration_ms: Option<u64>,
-    ) -> PositionedTrackMapping {
-        if self.picked.is_none() {
-            return PositionedTrackMapping {
-                side: crate::album_detail::TrackSide::Flat,
-                mapping: TrackMapping {
-                    source,
-                    becomes: MappingBecomes::AwaitingPick,
-                    duration_ms: probed_duration_ms,
-                },
-            };
-        }
-        let Some(&index) = self.slot_of.get(unit) else {
-            // Every unit this asks about was read off the same layout the index
-            // was built from, so a unit missing from it cannot be produced.
-            warn!("{unit:?} is not one of this folder's audio units");
-            return PositionedTrackMapping {
-                side: crate::album_detail::TrackSide::Flat,
-                mapping: TrackMapping {
-                    source,
-                    becomes: MappingBecomes::AwaitingPick,
-                    duration_ms: probed_duration_ms,
-                },
-            };
-        };
-        self.track_at(index, source, probed_duration_ms)
-    }
-
-    /// The track at slot row `index`, taking the next row identity.
-    fn track_at(
-        &mut self,
-        index: usize,
-        source: MappingSource,
-        probed_duration_ms: Option<u64>,
-    ) -> PositionedTrackMapping {
-        let Some(picked) = self.picked else {
-            unreachable!("track_at is called only with a picked tracklist");
-        };
-        let Some(slot) = picked.slots.rows.get(index) else {
-            // Slot row `i` is audio unit `i` and the table is never shorter
-            // than the folder's units, so a caller that pairs a folder with
-            // another folder's slots is the only way here.
-            warn!(
-                "the picked tracklist has no row {index}; it does not describe this folder's audio"
-            );
-            return PositionedTrackMapping {
-                side: crate::album_detail::TrackSide::Flat,
-                mapping: TrackMapping {
-                    source,
-                    becomes: MappingBecomes::AwaitingPick,
-                    duration_ms: probed_duration_ms,
-                },
-            };
-        };
-        let id = format!("{}-{}", picked.track_id_prefix, self.next_track);
-        self.next_track += 1;
-        let source_duration_ms = match slot {
-            TrackSlot::Paired {
-                source_duration_ms, ..
+    ) -> Result<(crate::album_detail::TrackSide, TrackMapping), ImportError> {
+        let track = match self.tracks.next() {
+            Some(track) if track.edit.file == *unit => track,
+            Some(track) => {
+                return Err(ImportError::Internal {
+                    detail: format!(
+                        "draft track {} plays {:?} where the folder's next audio is {unit:?}",
+                        track.edit.id, track.edit.file
+                    ),
+                })
             }
-            | TrackSlot::TrackOnly {
-                source_duration_ms, ..
-            } => *source_duration_ms,
-            TrackSlot::FileOnly { .. } => None,
+            None => {
+                return Err(ImportError::Internal {
+                    detail: format!("the draft has no track for {unit:?}"),
+                })
+            }
         };
-        let edit = slot.track();
+        let source_length = track
+            .source_index
+            .and_then(|index| self.source_lengths.get(index as usize).copied().flatten());
         let position = crate::util::format::compute_track_position(
-            picked.medium,
-            edit.side,
-            edit.track_number,
+            self.medium,
+            track.edit.side,
+            Some(track.edit.track_number),
             self.multi_side,
         );
-        PositionedTrackMapping {
-            side: crate::util::format::track_side(&position),
-            mapping: TrackMapping {
+        Ok((
+            crate::util::format::track_side(&position),
+            TrackMapping {
                 source,
-                becomes: MappingBecomes::Track {
-                    track: RawTrackEdit::from_user_edit(edit.clone(), id),
-                    position: crate::util::format::track_position_text(&position),
-                },
-                duration_ms: source_duration_ms.or(probed_duration_ms),
+                track: track.edit.as_edit(),
+                position: crate::util::format::track_position_text(&position),
+                duration_ms: source_length.or(probed_duration_ms),
+                lengths_disagree: crate::import::audio_layout::lengths_disagree(
+                    probed_duration_ms,
+                    source_length,
+                ),
             },
-        }
-    }
-
-    fn side_for_sheet(&self, assignment: SheetDisc) -> crate::album_detail::TrackSide {
-        let Some(picked) = self.picked else {
-            return crate::album_detail::TrackSide::Flat;
-        };
-        let SheetDisc::Disc { number } = assignment else {
-            unreachable!("only a sheet assigned to a disc can carve track rows");
-        };
-        let side = i32::try_from(number).expect("a sheet disc number fits in i32");
-        crate::util::format::track_side(&crate::util::format::compute_track_position(
-            picked.medium,
-            Some(side),
-            None,
-            self.multi_side,
         ))
     }
 }
 
-fn push_track_mapping(sections: &mut Vec<MappingTrackSection>, projected: PositionedTrackMapping) {
+/// Append a loose row to the last run of loose rows on its side, or start one.
+fn push_track_mapping(
+    sections: &mut Vec<MappingTrackSection>,
+    side: crate::album_detail::TrackSide,
+    mapping: TrackMapping,
+) {
     if let Some(MappingTrackSection {
-        side,
+        side: existing,
         content: MappingTrackSectionContent::Tracks(mappings),
     }) = sections.last_mut()
     {
-        if *side == projected.side {
-            mappings.push(projected.mapping);
+        if *existing == side {
+            mappings.push(mapping);
             return;
         }
     }
     sections.push(MappingTrackSection {
-        side: projected.side,
-        content: MappingTrackSectionContent::Tracks(vec![projected.mapping]),
+        side,
+        content: MappingTrackSectionContent::Tracks(vec![mapping]),
+    });
+}
+
+/// Append a sheet's entry under its sheet on its side, or start a group there:
+/// a sheet the release splits across sides heads one group per side.
+fn push_sheet_entry(
+    sections: &mut Vec<MappingTrackSection>,
+    sheet: &SheetGroup,
+    side: crate::album_detail::TrackSide,
+    mapping: TrackMapping,
+) {
+    if let Some(MappingTrackSection {
+        side: existing,
+        content: MappingTrackSectionContent::Sheet { sheet: group, entries },
+    }) = sections.last_mut()
+    {
+        if group.sheet_id == sheet.sheet_id && *existing == side {
+            entries.push(mapping);
+            return;
+        }
+    }
+    sections.push(MappingTrackSection {
+        side,
+        content: MappingTrackSectionContent::Sheet {
+            sheet: sheet.clone(),
+            entries: vec![mapping],
+        },
     });
 }
 
@@ -907,27 +644,16 @@ fn mapping_file(entry: &CandidateFile, role: MappingRole, duration_ms: Option<u6
     }
 }
 
-/// The discs a sheet of this folder may be assigned to.
-///
-/// One per disc the picked tracklist names, and never fewer than one per track
-/// sheet the folder binds: a folder holding three sheets can always be told
-/// which sheet is which, whatever the release the metadata came from says.
-fn disc_options(files: &CategorizedFiles, picked: Option<&PickedTracklist<'_>>) -> Vec<u32> {
-    let named = picked.map_or(0, |picked| {
-        picked
-            .slots
-            .rows
-            .iter()
-            .map(|row| row.track().side)
-            .collect::<BTreeSet<_>>()
-            .len()
-    }) as u32;
+/// The discs a sheet of this folder may be assigned to: never fewer than one
+/// per track sheet the folder binds, so a folder holding three sheets can
+/// always be told which sheet is which, and every disc a sheet already has.
+fn disc_options(files: &CategorizedFiles) -> Vec<u32> {
     let bound = files.bound_sheets().len() as u32;
     let assigned = files.track_sheets().filter_map(|sheet| match sheet.disc {
         SheetDisc::Disc { number } => Some(number),
         SheetDisc::Ignored => None,
     });
-    let mut options = (1..=named.max(bound).max(1)).collect::<BTreeSet<_>>();
+    let mut options = (1..=bound.max(1)).collect::<BTreeSet<_>>();
     options.extend(assigned);
     options.into_iter().collect()
 }

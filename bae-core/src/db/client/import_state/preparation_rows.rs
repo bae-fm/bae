@@ -294,19 +294,15 @@ pub(super) fn save_preparation_on(
             )?
         }
     };
+    // The draft holds one track per audio unit, in the folder's order, so a
+    // reshape lands only with a draft redrawn over the files it produced.
     for candidate in &reshaped {
-        let available = crate::import::track_slots::audio_units(&candidate.files);
-        if let Some(track) = prep
-            .metadata
-            .draft
-            .tracks
-            .iter()
-            .find(|track| !available.contains(&track.edit.file))
-        {
+        let units = crate::import::audio_layout::audio_units(&candidate.files);
+        let drawn = prep.metadata.draft.tracks.iter().map(|track| &track.edit.file);
+        if !drawn.eq(units.iter()) {
             return Err(DbError::Message(format!(
-                "candidate {} does not expose the prepared audio {:?}",
+                "the draft stored for candidate {} is not drawn over its audio",
                 candidate.key(),
-                track.edit.file,
             )));
         }
     }

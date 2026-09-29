@@ -4,7 +4,7 @@ mod preparation;
 
 use crate::import::folder_scanner::{CandidateFileEdits, FileRoleChoice};
 use crate::import::{
-    ArtistAssignment, AudioFile, CandidateEditField, CandidateTrackEdit, CoverSelection,
+    ArtistAssignment, AudioFile, CandidateEditField, CoverSelection,
     ExistingArtist, ImportFailure, ArtistCredit, RawPressingEdit, RawReleaseEdit, RawTrackEdit,
     TrackArtistAssignments,
 };
@@ -53,15 +53,15 @@ file_edit_revision: 0,
         .unwrap()
 }
 
-fn edited_row(id: &str, title: &str, file: Option<AudioFile>) -> CandidateTrackEdit {
-    CandidateTrackEdit::edited(RawTrackEdit {
+fn edited_row(id: &str, title: &str, file: Option<AudioFile>) -> RawTrackEdit {
+    RawTrackEdit {
         id: id.to_string(),
         title: title.to_string(),
         artist_assignments: TrackArtistAssignments::Explicit(vec![credit_named("Artist Name")]),
         side: Some(1),
         track_number: Some(1),
         file,
-    })
+    }
 }
 
 fn credit_named(name: &str) -> ArtistAssignment {

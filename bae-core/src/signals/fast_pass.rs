@@ -229,7 +229,7 @@ fn track_titles(
 ) -> Vec<String> {
     let mut titles = Vec::new();
     let mut previous: Option<(u32, u32)> = None;
-    for unit in crate::import::track_slots::audio_units(categorized) {
+    for unit in crate::import::audio_layout::audio_units(categorized) {
         let crate::import::AudioFile::Standalone { file_id } = unit else {
             return Vec::new();
         };

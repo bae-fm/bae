@@ -24,7 +24,6 @@ struct ImportMappingTracksLayoutTests {
             ImportMappingTrackRow(
                 mapping: pairedMapping,
                 columns: columns,
-                audioChoices: [],
                 previewingTarget: nil,
                 editingCommands: EditingCommitCommands(),
                 evidence: [],
@@ -81,7 +80,6 @@ struct ImportMappingTracksLayoutTests {
             ImportMappingTrackRow(
                 mapping: pairedMapping,
                 columns: columns,
-                audioChoices: [],
                 previewingTarget: nil,
                 editingCommands: EditingCommitCommands(),
                 evidence: [],
@@ -147,7 +145,7 @@ struct ImportMappingTracksLayoutTests {
     }
 
     @MainActor
-    @Test("playback and unavailable Source states keep one row height")
+    @Test("playback states keep one Source row height")
     func sourceStatesKeepOneRowHeight() {
         let stopped = sourceCellHeight(
             source: pairedMapping.source,
@@ -157,11 +155,9 @@ struct ImportMappingTracksLayoutTests {
             source: pairedMapping.source,
             previewing: previewTarget
         )
-        let unavailable = sourceCellHeight(source: .missing, previewing: nil)
 
         #expect(stopped == playing)
-        #expect(playing == unavailable)
-        #expect(unavailable >= ImportMappingSourceCell.auditionTargetSize)
+        #expect(playing >= ImportMappingSourceCell.auditionTargetSize)
     }
 
     @MainActor
@@ -170,14 +166,12 @@ struct ImportMappingTracksLayoutTests {
         let columns = ReleaseMetadataTrackColumns.resolved(
             tableWidth: ReleaseMetadataTrackColumns.idealTableWidth
         )
-        let track = try #require(pairedMapping.track)
         let mapping = BridgeTrackMapping(
             source: pairedMapping.source,
-            becomes: .track(
-                track: track,
-                position: "1"
-            ),
-            durationMs: 180_000
+            track: pairedMapping.track,
+            position: "1",
+            durationMs: 180_000,
+            lengthsDisagree: false
         )
         let size = NSSize(
             width: ReleaseMetadataTrackColumns.idealTableWidth,
@@ -187,7 +181,6 @@ struct ImportMappingTracksLayoutTests {
             ImportMappingTrackRow(
                 mapping: mapping,
                 columns: columns,
-                audioChoices: [],
                 previewingTarget: nil,
                 editingCommands: EditingCommitCommands(),
                 evidence: [],
@@ -205,159 +198,16 @@ struct ImportMappingTracksLayoutTests {
     }
 
     @Test("Length shows source and metadata when they disagree")
-    func lengthShowsSourceAndMetadataWhenTheyDisagree() throws {
-        let track = try #require(pairedMapping.track)
+    func lengthShowsSourceAndMetadataWhenTheyDisagree() {
         let mapping = BridgeTrackMapping(
             source: pairedMapping.source,
-            becomes: .track(track: track, position: "1"),
-            durationMs: 210_000
+            track: pairedMapping.track,
+            position: "1",
+            durationMs: 210_000,
+            lengthsDisagree: true
         )
 
         #expect(mapping.displayedDuration == "3:00 → 3:30")
-    }
-
-    @MainActor
-    @Test(
-        "awaiting release keeps Source in the same leading cell",
-        arguments: [
-            ReleaseMetadataTrackColumns.minimumTableWidth,
-            ReleaseMetadataTrackColumns.idealTableWidth,
-        ] as [CGFloat]
-    )
-    func awaitingReleaseKeepsSourceLeading(tableWidth: CGFloat) async throws {
-        let columns = ReleaseMetadataTrackColumns.resolved(
-            tableWidth: tableWidth
-        )
-        let recorder = MappingTrackActionRecorder()
-        let size = NSSize(width: tableWidth, height: 40)
-        let mapping = BridgeTrackMapping(
-            source: pairedMapping.source,
-            becomes: .awaitingPick,
-            durationMs: 180_000
-        )
-        try await SnapshotTestSupport.withHostedWindow(
-            ImportMappingTrackRow(
-                mapping: mapping,
-                columns: columns,
-                audioChoices: [],
-                previewingTarget: nil,
-                editingCommands: EditingCommitCommands(),
-                evidence: [],
-                actions: actions(recording: recorder)
-            )
-            .padding(.horizontal, ImportMappingColumns.rowPadding)
-            .frame(width: tableWidth, height: size.height, alignment: .leading)
-            .environment(Library.stub())
-            .environment(UiStore()),
-            size: size
-        ) { window, host in
-            try await SnapshotTestSupport.settle(host)
-
-            try HostedInput.click(
-                at: NSPoint(
-                    x: ImportMappingColumns.rowPadding + 22,
-                    y: size.height / 2
-                ),
-                in: window
-            )
-            try await Wait.until { !recorder.previewed.isEmpty }
-
-            #expect(recorder.previewed == [previewTarget])
-            #expect(mapping.displayedDuration == "3:00")
-        }
-    }
-}
-
-extension ImportMappingTracksLayoutTests {
-    @MainActor
-    @Test(
-        "unused file and CUE sources can be auditioned and added without metadata edits",
-        arguments: [false, true]
-    )
-    func unusedSourceCanBeAdded(sheet: Bool) async throws {
-        let original =
-            sheet
-            ? sheetEntryMapping(number: 3, title: "Source Title")
-            : pairedMapping
-        let track = try #require(original.track)
-        let audio = try #require(track.file)
-        let target = try #require(original.source.previewTarget)
-        let candidate = BridgeCandidateAsRead(
-            contentHash: "observed-files",
-            fileEditRevision: 4,
-            metadataRevision: 9
-        )
-        let mapping = BridgeTrackMapping(
-            source: original.source,
-            becomes: .notIncluded(audio: audio, candidate: candidate),
-            durationMs: original.durationMs
-        )
-        let recorder = MappingTrackActionRecorder()
-        let width = ReleaseMetadataTrackColumns.idealTableWidth
-        let size = NSSize(width: width, height: 40)
-        try await withHostedUnusedSource(
-            mapping,
-            recorder: recorder,
-            size: size
-        ) { window, host in
-            try await SnapshotTestSupport.settle(host)
-            let height = host.fittingSize.height
-            #expect(
-                SnapshotTestSupport.descendants(of: host)
-                    .compactMap { $0 as? NSTextField }
-                    .allSatisfy { !$0.isEditable }
-            )
-            try HostedInput.click(
-                at: NSPoint(
-                    x: width - ImportMappingColumns.rowPadding
-                        - ImportMappingColumns.action / 2,
-                    y: size.height / 2
-                ),
-                in: window
-            )
-            try await Wait.until { !recorder.addedAudio.isEmpty }
-            #expect(recorder.addedAudio == [audio])
-            #expect(recorder.addedCandidates == [candidate])
-            #expect(recorder.edits == 0)
-            #expect(recorder.drops == 0)
-            try HostedInput.click(
-                at: NSPoint(
-                    x: ImportMappingColumns.rowPadding + 22,
-                    y: size.height / 2
-                ),
-                in: window
-            )
-            try await Wait.until { !recorder.previewed.isEmpty }
-            #expect(recorder.previewed == [target])
-            #expect(host.fittingSize.height == height)
-        }
-    }
-
-    @MainActor
-    private func withHostedUnusedSource<Value>(
-        _ mapping: BridgeTrackMapping,
-        recorder: MappingTrackActionRecorder,
-        size: NSSize,
-        _ body: (NSWindow, NSView) async throws -> Value
-    ) async throws -> Value {
-        try await SnapshotTestSupport.withHostedWindow(
-            ImportMappingTrackRow(
-                mapping: mapping,
-                columns: .resolved(tableWidth: size.width),
-                audioChoices: [],
-                previewingTarget: nil,
-                editingCommands: EditingCommitCommands(),
-                evidence: [],
-                actions: actions(recording: recorder)
-            )
-            .padding(.horizontal, ImportMappingColumns.rowPadding)
-            .frame(width: size.width, height: size.height, alignment: .leading)
-            .environment(Library.stub())
-            .environment(UiStore()),
-            size: size
-        ) {
-            try await body($0, $1)
-        }
     }
 }
 
@@ -513,22 +363,21 @@ extension ImportMappingTracksLayoutTests {
                     roleChoice: .audio
                 )
             ),
-            becomes: .track(
-                track: BridgeRawTrackEdit(
-                    id: "track-1",
-                    title: "Track Title",
-                    artistAssignments: .explicit(
-                        assignments: [
-                            MappingFixtures.artistCredit("Artist Name")
-                        ]
-                    ),
-                    side: 1,
-                    trackNumber: 1,
-                    file: .standalone(fileId: "track.flac")
+            track: BridgeRawTrackEdit(
+                id: "track-1",
+                title: "Track Title",
+                artistAssignments: .explicit(
+                    assignments: [
+                        MappingFixtures.artistCredit("Artist Name")
+                    ]
                 ),
-                position: "1"
+                side: 1,
+                trackNumber: 1,
+                file: .standalone(fileId: "track.flac")
             ),
-            durationMs: 180_000
+            position: "1",
+            durationMs: 180_000,
+            lengthsDisagree: false
         )
     }
 
@@ -588,26 +437,25 @@ extension ImportMappingTracksLayoutTests {
         )
         return BridgeTrackMapping(
             source: .sheetEntry(entry: entry),
-            becomes: .track(
-                track: BridgeRawTrackEdit(
-                    id: "sheet-track-\(number)",
-                    title: "Track Title",
-                    artistAssignments: .explicit(
-                        assignments: [
-                            MappingFixtures.artistCredit("Artist Name")
-                        ]
-                    ),
-                    side: 1,
-                    trackNumber: Int32(number),
-                    file: .sheetSlice(
-                        fileId: entry.containerId,
-                        sheetId: entry.sheetId,
-                        index: entry.index
-                    )
+            track: BridgeRawTrackEdit(
+                id: "sheet-track-\(number)",
+                title: "Track Title",
+                artistAssignments: .explicit(
+                    assignments: [
+                        MappingFixtures.artistCredit("Artist Name")
+                    ]
                 ),
-                position: String(number)
+                side: 1,
+                trackNumber: Int32(number),
+                file: .sheetSlice(
+                    fileId: entry.containerId,
+                    sheetId: entry.sheetId,
+                    index: entry.index
+                )
             ),
-            durationMs: entry.durationMs
+            position: String(number),
+            durationMs: entry.durationMs,
+            lengthsDisagree: false
         )
     }
 
@@ -625,7 +473,6 @@ extension ImportMappingTracksLayoutTests {
             ImportMappingTrackRow(
                 mapping: pairedMapping,
                 columns: columns,
-                audioChoices: [],
                 previewingTarget: previewingTarget,
                 editingCommands: EditingCommitCommands(),
                 evidence: [],
@@ -703,19 +550,7 @@ extension ImportMappingTracksLayoutTests {
             stopPreview: {
                 MainActor.assumeIsolated { recorder.stops += 1 }
             },
-            editTrack: { _ in
-                MainActor.assumeIsolated { recorder.edits += 1 }
-            },
-            chooseFile: { _, _ in },
-            addTrack: { audio, candidate in
-                MainActor.assumeIsolated {
-                    recorder.addedAudio.append(audio)
-                    recorder.addedCandidates.append(candidate)
-                }
-            },
-            drop: { _ in
-                MainActor.assumeIsolated { recorder.drops += 1 }
-            },
+            editTrack: { _ in },
         )
     }
 }
@@ -724,10 +559,6 @@ extension ImportMappingTracksLayoutTests {
 final class MappingTrackActionRecorder {
     var previewed: [BridgePreviewTarget] = []
     var stops = 0
-    var addedAudio: [BridgeAudioFile] = []
-    var addedCandidates: [BridgeCandidateAsRead] = []
-    var edits = 0
-    var drops = 0
     var sheetBindings: [SheetAssignmentChange] = []
 }
 

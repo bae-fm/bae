@@ -80,30 +80,6 @@ fn write_sheet_audio(path: &Path, track_count: usize) {
     fs::write(path, synthetic_flac_bytes(duration_ms)).expect("write sheet audio");
 }
 
-fn source_tracks(count: usize) -> Vec<SourceTrack> {
-    (0..count)
-        .map(|index| SourceTrack {
-            edit: TrackUserEdit {
-                title: format!("Track Title {}", index + 1),
-                side: Some(1),
-                track_number: Some(index as i32 + 1),
-                artist_assignments: crate::import::TrackArtistAssignments::AlbumArtists,
-                file: None,
-            },
-            // Three minutes each, which is what the synthetic sheets lay
-            // their tracks out at.
-            duration_ms: Some(180_000),
-        })
-        .collect()
-}
-
-/// The table's rows for `source` against the folder at `root`, with the
-/// folder's audio measured — the table itself opens nothing.
-fn slots(source: &[SourceTrack], files: &CategorizedFiles) -> Vec<TrackSlot> {
-    let durations = source_durations(files).expect("scanned fixture audio has durations");
-    slot_table(source, files, &durations).rows
-}
-
 fn scan(root: &Path) -> CategorizedFiles {
     collect_release_candidate_files_with_scope(
         root,
@@ -113,84 +89,61 @@ fn scan(root: &Path) -> CategorizedFiles {
     .expect("scan succeeds")
 }
 
-fn file_ids(slots: &[TrackSlot]) -> Vec<Option<&str>> {
-    slots
-        .iter()
-        .map(|slot| slot.file().map(AudioFile::file_id))
+fn file_ids(units: &[AudioFile]) -> Vec<&str> {
+    units.iter().map(AudioFile::file_id).collect()
+}
+
+/// A blank row over every unit, in the units' order — what the draft commits
+/// when nobody named anything.
+fn rows_for(units: Vec<AudioFile>) -> Vec<(DbTrack, AudioFile)> {
+    let now = chrono::Utc::now();
+    units
+        .into_iter()
+        .enumerate()
+        .map(|(index, unit)| {
+            (
+                DbTrack {
+                    id: format!("track-{index}"),
+                    release_id: "release-1".to_string(),
+                    title: format!("Track Title {}", index + 1),
+                    side: Some(1),
+                    track_number: Some(index as i32 + 1),
+                    duration_ms: None,
+                    discogs_position: None,
+                    created_at: now,
+                },
+                unit,
+            )
+        })
         .collect()
 }
 
-/// Thirteen files against a twelve-track source: twelve rows agree and the
-/// thirteenth file gets a slot of its own, at the end of the folder's own
-/// order rather than in a footer. Nothing fails.
+/// Loose audio is one unit per file, in the folder's own order.
 #[test]
-fn extra_audio_becomes_a_file_only_slot_in_disk_order() {
+fn loose_audio_is_one_unit_per_file_in_disk_order() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     for index in 1..=13 {
         write_flac(&tmp.path().join(format!("{index:02}.flac")));
     }
 
-    let slots = slots(&source_tracks(12), &scan(tmp.path()));
+    let units = audio_units(&scan(tmp.path()));
 
-    assert_eq!(slots.len(), 13);
     assert_eq!(
-        slots
-            .iter()
-            .filter(|slot| matches!(slot, TrackSlot::Paired { .. }))
-            .count(),
-        12,
-    );
-    assert!(matches!(slots[12], TrackSlot::FileOnly { .. }));
-    assert_eq!(
-        file_ids(&slots),
+        file_ids(&units),
         (1..=13)
             .map(|index| format!("{index:02}.flac"))
-            .collect::<Vec<_>>()
-            .iter()
-            .map(|id| Some(id.as_str()))
             .collect::<Vec<_>>(),
     );
-    // The unnamed slot keeps a place in the numbering rather than
-    // restarting it.
-    let unnamed = slots[12].track();
-    assert_eq!(unnamed.title, "");
-    assert_eq!(unnamed.side, Some(1));
-    assert_eq!(unnamed.track_number, Some(13));
-}
-
-/// Fourteen source tracks against thirteen files: the fourteenth is a slot
-/// with no audio, and every other row still pairs.
-#[test]
-fn a_track_with_no_audio_becomes_a_track_only_slot() {
-    let tmp = tempfile::TempDir::new().expect("tempdir");
-    for index in 1..=13 {
-        write_flac(&tmp.path().join(format!("{index:02}.flac")));
-    }
-
-    let slots = slots(&source_tracks(14), &scan(tmp.path()));
-
-    assert_eq!(slots.len(), 14);
-    assert_eq!(
-        slots
-            .iter()
-            .filter(|slot| matches!(slot, TrackSlot::Paired { .. }))
-            .count(),
-        13,
-    );
-    match &slots[13] {
-        TrackSlot::TrackOnly { track, .. } => {
-            assert_eq!(track.title, "Track Title 14");
-            assert!(track.file.is_none());
-        }
-        other => panic!("expected a TrackOnly slot, got {other:?}"),
-    }
+    assert!(units
+        .iter()
+        .all(|unit| matches!(unit, AudioFile::Standalone { .. })));
 }
 
 /// A disc image plus two loose bonus tracks. The sheet's slices and the two
 /// standalone files coexist, in disk order — neither set is dropped for the
 /// other, which is the additive property.
 #[test]
-fn a_disc_image_and_loose_audio_produce_slots_for_both() {
+fn a_disc_image_and_loose_audio_both_become_units() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     write_sheet_audio(&tmp.path().join("CDImage.flac"), 11);
     fs::write(
@@ -201,83 +154,23 @@ fn a_disc_image_and_loose_audio_produce_slots_for_both() {
     write_flac(&tmp.path().join("bonus-1.flac"));
     write_flac(&tmp.path().join("bonus-2.flac"));
 
-    let files = scan(tmp.path());
-    let slots = slots(&source_tracks(13), &files);
+    let units = audio_units(&scan(tmp.path()));
 
-    assert_eq!(slots.len(), 13);
     // Disk order (case-insensitive): the bonus files sort before the disc
-    // image, so their slots lead. The image's eleven slices follow in sheet
+    // image, so their units lead. The image's eleven slices follow in sheet
     // order.
-    assert_eq!(
-        file_ids(&slots),
-        vec![
-            Some("bonus-1.flac"),
-            Some("bonus-2.flac"),
-            Some("CDImage.flac"),
-            Some("CDImage.flac"),
-            Some("CDImage.flac"),
-            Some("CDImage.flac"),
-            Some("CDImage.flac"),
-            Some("CDImage.flac"),
-            Some("CDImage.flac"),
-            Some("CDImage.flac"),
-            Some("CDImage.flac"),
-            Some("CDImage.flac"),
-            Some("CDImage.flac"),
-        ],
-    );
-    let slice_indices: Vec<u32> = slots
+    let mut expected = vec!["bonus-1.flac", "bonus-2.flac"];
+    expected.extend(std::iter::repeat_n("CDImage.flac", 11));
+    assert_eq!(file_ids(&units), expected);
+    let slice_indices: Vec<u32> = units
         .iter()
-        .filter_map(|slot| match slot.file() {
-            Some(AudioFile::SheetSlice { index, .. }) => Some(*index),
-            _ => None,
+        .filter_map(|unit| match unit {
+            AudioFile::SheetSlice { index, .. } => Some(*index),
+            AudioFile::Standalone { .. } => None,
         })
         .collect();
     assert_eq!(slice_indices, (0..11).collect::<Vec<_>>());
-    assert!(slots
-        .iter()
-        .all(|slot| matches!(slot, TrackSlot::Paired { .. })));
-    // The loose files are standalone slots, not slices of the image.
-    assert!(matches!(
-        slots[0].file(),
-        Some(AudioFile::Standalone { .. })
-    ));
-}
-
-/// A sheet describing more tracks than the source names lands in the same
-/// table as any other disagreement: extra slices become `FileOnly` slots,
-/// and nothing errors on the way.
-#[test]
-fn a_sheet_disagreeing_with_the_source_lands_in_the_same_table() {
-    let tmp = tempfile::TempDir::new().expect("tempdir");
-    write_sheet_audio(&tmp.path().join("CDImage.flac"), 12);
-    fs::write(
-        tmp.path().join("CDImage.cue"),
-        cue_sheet_text("CDImage.flac", 12),
-    )
-    .expect("write cue");
-
-    let files = scan(tmp.path());
-
-    let more_slices_than_tracks = slots(&source_tracks(10), &files);
-    assert_eq!(more_slices_than_tracks.len(), 12);
-    assert_eq!(
-        more_slices_than_tracks
-            .iter()
-            .filter(|slot| matches!(slot, TrackSlot::FileOnly { .. }))
-            .count(),
-        2,
-    );
-
-    let fewer_slices_than_tracks = slots(&source_tracks(14), &files);
-    assert_eq!(fewer_slices_than_tracks.len(), 14);
-    assert_eq!(
-        fewer_slices_than_tracks
-            .iter()
-            .filter(|slot| matches!(slot, TrackSlot::TrackOnly { .. }))
-            .count(),
-        2,
-    );
+    assert!(matches!(units[0], AudioFile::Standalone { .. }));
 }
 
 /// Multi-disc rips lay their discs down in the order a person reads them:
@@ -296,20 +189,15 @@ fn discs_are_laid_down_in_natural_order() {
         .expect("write cue");
     }
 
-    let total: usize = (1..=10).sum();
-    let slots = slots(&source_tracks(total), &scan(tmp.path()));
+    let units = audio_units(&scan(tmp.path()));
 
-    assert_eq!(slots.len(), total);
     let mut expected = Vec::new();
     for disc in 1..=10 {
         for _ in 0..disc {
-            expected.push(Some(format!("CD{disc}/CDImage.flac")));
+            expected.push(format!("CD{disc}/CDImage.flac"));
         }
     }
-    assert_eq!(
-        file_ids(&slots),
-        expected.iter().map(|id| id.as_deref()).collect::<Vec<_>>(),
-    );
+    assert_eq!(file_ids(&units), expected);
 }
 
 /// Settle `files` as if the user had made these disc assignments.
@@ -399,80 +287,6 @@ fn an_ignored_sheet_leaves_its_container_a_track_of_its_own() {
     );
 }
 
-/// Re-pairing two slots is a swap of their bindings, and the swapped rows
-/// are what `resolve_track_files` binds — the correction is not re-derived
-/// away by position.
-#[test]
-fn a_corrected_pairing_is_what_gets_bound() {
-    let tmp = tempfile::TempDir::new().expect("tempdir");
-    for index in 1..=3 {
-        write_flac(&tmp.path().join(format!("{index:02}.flac")));
-    }
-    let files = scan(tmp.path());
-    let mut slots = slots(&source_tracks(3), &files);
-
-    // The rip named its files in the wrong order: track 1 is really 02.flac
-    // and track 2 is really 01.flac.
-    let first = slots[0].track().file.clone();
-    let second = slots[1].track().file.clone();
-    match &mut slots[0] {
-        TrackSlot::Paired { track, .. } => track.file = second,
-        other => panic!("expected a Paired slot, got {other:?}"),
-    }
-    match &mut slots[1] {
-        TrackSlot::Paired { track, .. } => track.file = first,
-        other => panic!("expected a Paired slot, got {other:?}"),
-    }
-
-    let now = chrono::Utc::now();
-    let rows: Vec<(DbTrack, AudioFile)> = slots
-        .into_iter()
-        .enumerate()
-        .map(|(index, slot)| {
-            let track = slot.into_track();
-            (
-                DbTrack {
-                    id: format!("track-{index}"),
-                    release_id: "release-1".to_string(),
-                    title: track.title.clone(),
-                    side: track.side,
-                    track_number: track.track_number,
-                    duration_ms: None,
-                    discogs_position: None,
-                    created_at: now,
-                },
-                track.file.expect("every row is paired"),
-            )
-        })
-        .collect();
-
-    let track_files = resolve_track_files(rows, &files).expect("binding succeeds");
-    let bound: Vec<(&str, String)> = track_files
-        .iter()
-        .map(|track_file| {
-            let TrackAudio::Standalone { file_path, .. } = &track_file.audio else {
-                panic!("expected standalone audio");
-            };
-            (
-                track_file.db_track.id.as_str(),
-                file_path
-                    .file_name()
-                    .expect("file name")
-                    .to_string_lossy()
-                    .into_owned(),
-            )
-        })
-        .collect();
-    assert_eq!(
-        bound,
-        vec![
-            ("track-0", "02.flac".to_string()),
-            ("track-1", "01.flac".to_string()),
-            ("track-2", "03.flac".to_string()),
-        ],
-    );
-}
-
 /// A slot nobody named commits under its file's own name. An empty title is
 /// a track that cannot be found again, and the file name is what the slot
 /// table showed on that row.
@@ -517,29 +331,7 @@ fn sheet_slices_bind_to_their_container_and_share_one_analysis() {
     )
     .expect("write cue");
     let files = scan(tmp.path());
-    let slots = slots(&source_tracks(4), &files);
-
-    let now = chrono::Utc::now();
-    let rows: Vec<(DbTrack, AudioFile)> = slots
-        .into_iter()
-        .enumerate()
-        .map(|(index, slot)| {
-            let track = slot.into_track();
-            (
-                DbTrack {
-                    id: format!("track-{index}"),
-                    release_id: "release-1".to_string(),
-                    title: track.title.clone(),
-                    side: track.side,
-                    track_number: track.track_number,
-                    duration_ms: None,
-                    discogs_position: None,
-                    created_at: now,
-                },
-                track.file.expect("every row is paired"),
-            )
-        })
-        .collect();
+    let rows = rows_for(audio_units(&files));
 
     let track_files = resolve_track_files(rows, &files).expect("binding succeeds");
     assert_eq!(track_files.len(), 4);
@@ -569,38 +361,6 @@ fn sheet_slices_bind_to_their_container_and_share_one_analysis() {
         analyses.windows(2).all(|pair| pair[0] == pair[1]),
         "one sheet is parsed and probed once for all its slices",
     );
-}
-
-/// Every paired row carries both lengths — the file's own, probed off disk,
-/// and the one the source states. That pair is what catches a pairing which
-/// is complete but wrong; counting cannot see it, and neither number is
-/// derivable from the other side.
-#[test]
-fn a_paired_row_carries_the_probed_length_and_the_source_s() {
-    let tmp = tempfile::TempDir::new().expect("tempdir");
-    for index in 1..=3 {
-        write_flac(&tmp.path().join(format!("{index:02}.flac")));
-    }
-
-    let rows = slots(&source_tracks(3), &scan(tmp.path()));
-
-    for row in &rows {
-        match row {
-            TrackSlot::Paired {
-                source_duration_ms,
-                file,
-                ..
-            } => {
-                // The synthetic FLAC declares one second of audio; the
-                // source says three minutes. The row shows both, and says
-                // they disagree — which is the whole point of showing two.
-                assert_eq!(file.duration_ms, Some(1_000));
-                assert_eq!(*source_duration_ms, Some(180_000));
-                assert!(lengths_disagree(file.duration_ms, *source_duration_ms));
-            }
-            other => panic!("expected a Paired row, got {other:?}"),
-        }
-    }
 }
 
 /// The row decides one way for both surfaces. A rip that differs by a
@@ -642,9 +402,11 @@ fn a_sheet_s_slices_each_carry_their_own_length() {
 
     let files = scan(tmp.path());
     let durations = source_durations(&files).expect("scanned fixture audio has durations");
-    let table = slot_table(&source_tracks(2), &files, &durations);
 
-    let lengths: Vec<Option<u64>> = table.audio.iter().map(|file| file.duration_ms).collect();
+    let lengths: Vec<Option<u64>> = audio_units(&files)
+        .iter()
+        .map(|unit| durations.duration_of(unit))
+        .collect();
     // 38 frames of 1/75s is ~506ms; the tail is what is left of the second.
     assert_eq!(lengths.len(), 2);
     assert_eq!(lengths[0], Some(506));
@@ -680,39 +442,6 @@ fn a_sheet_whose_timing_exceeds_its_audio_leaves_the_container_standalone() {
             offer: SheetBindingOffer::RefusedTiming,
         }] if file_id == "CDImage.flac"
     ));
-}
-
-/// One container carved into several rows reads as one run down the link
-/// column: first, middle, last. A file backing a row on its own is whole.
-#[test]
-fn a_container_s_rows_read_as_one_run() {
-    let tmp = tempfile::TempDir::new().expect("tempdir");
-    write_sheet_audio(&tmp.path().join("CDImage.flac"), 3);
-    fs::write(
-        tmp.path().join("CDImage.cue"),
-        cue_sheet_text("CDImage.flac", 3),
-    )
-    .expect("write cue");
-    write_flac(&tmp.path().join("bonus.flac"));
-
-    let files = scan(tmp.path());
-    let durations = source_durations(&files).expect("scanned fixture audio has durations");
-    let table = slot_table(&source_tracks(4), &files, &durations);
-
-    assert_eq!(
-        table.audio.iter().map(|file| file.span).collect::<Vec<_>>(),
-        vec![
-            SlotSpan::Whole,
-            SlotSpan::ContainerStart,
-            SlotSpan::ContainerMiddle,
-            SlotSpan::ContainerEnd,
-        ],
-    );
-    // Every slice names the container, which is what a reader is being told
-    // by the run: three rows, one file.
-    assert!(table.audio[1..]
-        .iter()
-        .all(|file| file.name == "CDImage.flac"));
 }
 
 /// Audio a binding names that is no longer in the folder is the one thing

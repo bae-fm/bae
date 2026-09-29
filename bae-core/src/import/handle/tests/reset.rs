@@ -1,7 +1,7 @@
 use super::*;
 
 #[tokio::test(flavor = "multi_thread")]
-async fn reset_setup_restores_removed_audio_and_initial_metadata() {
+async fn reset_setup_restores_initial_metadata() {
     let StoredCandidate {
         handle,
         key,
@@ -9,10 +9,7 @@ async fn reset_setup_restores_removed_audio_and_initial_metadata() {
         ..
     } = stored_candidate().await;
     let initial = pane(&handle, &key).await;
-    handle
-        .drop_candidate_track(&key, initial.metadata_draft.tracks[0].id.clone())
-        .await
-        .unwrap();
+    retitle(&handle, &key, initial.metadata_draft.tracks[0].clone()).await;
     handle
         .set_candidate_edit_field(
             &key,
@@ -25,17 +22,13 @@ async fn reset_setup_restores_removed_audio_and_initial_metadata() {
         .unwrap();
     handle.reset_candidate_setup(&key).await.unwrap();
     let restored = pane(&handle, &key).await;
-    assert_eq!(
-        restored.metadata_draft.tracks.len(),
-        2,
-        "Reset must restore every source track"
-    );
+    assert_eq!(restored.metadata_draft.tracks.len(), 2);
+    assert_eq!(restored.metadata_draft.tracks[0].title, "");
     assert_eq!(restored.metadata_draft.album_title, "");
     assert_eq!(restored.metadata_provenance, None);
     shut_down(handle).await;
 }
 
-use super::track_restoration::{cue_candidate, preparation};
 use crate::import::folder_scanner::{FileRoleChoice, SheetDisc};
 use crate::import::{
     AudioFile, CandidateAsRead, CandidateMetadataDraft, CandidatePreparedAssets, MetadataProvenance,
@@ -44,7 +37,7 @@ use crate::import::{
 #[tokio::test(flavor = "multi_thread")]
 async fn reset_setup_restores_cue_choices_and_saves_complete_tags() {
     for prefill in [false, true] {
-        for choice in ["removed", "ignored", "binding", "role", "disc"] {
+        for choice in ["retitled", "ignored", "binding", "role", "disc"] {
             let StoredCandidate {
                 mut handle,
                 manager,
@@ -54,9 +47,9 @@ async fn reset_setup_restores_cue_choices_and_saves_complete_tags() {
             } = cue_candidate().await;
             let original_files = candidate.files.clone();
             match choice {
-                "removed" => {
+                "retitled" => {
                     for row in pane(&handle, &key).await.metadata_draft.tracks {
-                        handle.drop_candidate_track(&key, row.id).await.unwrap();
+                        retitle(&handle, &key, row).await;
                     }
                 }
                 "ignored" => handle
@@ -194,10 +187,7 @@ async fn reset_setup_preserves_combination_members_and_disc_layout() {
         let source = handle.get_release_candidate(&key).await.unwrap().unwrap();
         let initial = pane(&handle, &key).await;
         let rows = initial.metadata_draft.tracks;
-        handle
-            .drop_candidate_track(&key, rows[2].id.clone())
-            .await
-            .unwrap();
+        retitle(&handle, &key, rows[2].clone()).await;
         handle
             .set_candidate_edit_field(
             &key,
@@ -263,10 +253,7 @@ async fn reset_setup_tag_failure_keeps_source_preparation_and_snapshot() {
         .await
         .unwrap();
     let initial = pane(&handle, &key).await;
-    handle
-        .drop_candidate_track(&key, initial.metadata_draft.tracks[0].id.clone())
-        .await
-        .unwrap();
+    retitle(&handle, &key, initial.metadata_draft.tracks[0].clone()).await;
     let before = preparation(&handle, &candidate.files.content_hash()).await;
     let snapshot = manager
         .load_candidate_file_tag_snapshot(&candidate.watched_folder_path, &key)
@@ -672,18 +659,16 @@ async fn reset_setup_updates_compatible_folder_and_combination_identities_togeth
             &combined_key
         };
         let before = preparation(&handle, &folder.files.content_hash()).await;
-        handle
-            .drop_candidate_track(key, before.draft.tracks[1].edit.id.clone())
-            .await
-            .unwrap();
+        retitle(&handle, key, before.draft.tracks[1].edit.as_edit()).await;
         let mut events = handle.every_event();
         handle.reset_candidate_setup(key).await.unwrap();
         let after = preparation(&handle, &folder.files.content_hash()).await;
         assert_eq!(after.draft.tracks.len(), 4);
+        assert_eq!(after.draft.tracks[1].edit.title, "");
         for key in [&folder_key, &combined_key] {
             let candidate = handle.get_release_candidate(key).await.unwrap().unwrap();
             assert_eq!(candidate.file_edit_revision, after.file_edit_revision);
-            let available = crate::import::track_slots::audio_units(&candidate.files);
+            let available = crate::import::audio_layout::audio_units(&candidate.files);
             assert!(after
                 .draft
                 .tracks
@@ -943,10 +928,11 @@ async fn reset_setup_without_tags_keeps_a_combination_snapshot_ineligible_until_
         stale.candidate.file_edit_revision
     );
     let reader = Arc::new(CountingFileTagReader::immediate());
-    let (_, reread) = handle
-        .file_tag_snapshot_with_reader(&key, reader.clone())
+    let reread = handle
+        .read_file_tag_snapshot(&key, reader.clone())
         .await
-        .unwrap();
+        .unwrap()
+        .snapshot;
     assert_eq!(reader.read_count(), 4);
     assert_eq!(
         reread.file_edit_revision,
@@ -958,4 +944,48 @@ async fn reset_setup_without_tags_keeps_a_combination_snapshot_ineligible_until_
         saved
     );
     shut_down(handle).await;
+}
+
+async fn preparation(
+    handle: &ImportServiceHandle,
+    hash: &str,
+) -> crate::db::DbCandidateImportPreparation {
+    handle
+        .library_manager
+        .load_import_candidate_preparation(hash)
+        .await
+        .unwrap()
+        .unwrap()
+}
+
+async fn cue_candidate() -> StoredCandidate {
+    let mut fixture = stored_candidate().await;
+    std::fs::write(
+        fixture.candidate.path.join("Disc.cue"),
+        concat!(
+            "PERFORMER \"Cue Artist\"\nTITLE \"Cue Album\"\n",
+            "FILE \"01 Track.flac\" WAVE\n",
+            "  TRACK 07 AUDIO\n    TITLE \"Cue First\"\n    INDEX 01 00:00:00\n",
+            "  TRACK 08 AUDIO\n    PERFORMER \"Slice Artist\"\n    INDEX 01 00:00:30\n",
+            "FILE \"02 Track.flac\" WAVE\n",
+            "  TRACK 09 AUDIO\n    TITLE \"Cue Last\"\n    INDEX 01 00:00:00\n",
+        ),
+    )
+    .unwrap();
+    fixture.candidate.files =
+        crate::import::folder_scanner::collect_release_candidate_files_with_scope(
+            &fixture.candidate.path,
+            fixture.candidate.scope,
+            &crate::import::folder_scanner::StoredCandidateEdits::none(),
+        )
+        .unwrap();
+    rescan_into(&fixture.manager, fixture.candidate.clone()).await;
+    fixture
+}
+
+
+/// Give one row of the draft a title of the person's own.
+async fn retitle(handle: &ImportServiceHandle, key: &str, mut row: crate::import::RawTrackEdit) {
+    row.title = "Retitled".into();
+    handle.set_candidate_track_edit(key, row).await.unwrap();
 }

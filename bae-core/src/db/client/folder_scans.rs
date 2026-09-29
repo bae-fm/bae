@@ -129,8 +129,9 @@ fn generation_column(generation: u64) -> Result<i64, DbError> {
     })
 }
 
-/// [`Database::replace_candidate_file_tag_snapshot`] inside the caller's
-/// transaction.
+/// Replace a candidate's file-tag snapshot, inside the caller's transaction,
+/// if its scan generation and file edit revision still match the snapshot's.
+/// `false` means the candidate changed first and nothing was written.
 pub(super) fn replace_candidate_file_tag_snapshot_on(
     sql: &SqlContext<'_, '_>,
     watched_folder_path: &str,
@@ -209,9 +210,8 @@ impl Database {
         .await
     }
 
-    /// Replace a candidate's file-tag snapshot if its scan generation and file
-    /// edit revision still match the snapshot's. `false` means the candidate
-    /// changed first and nothing was written.
+    /// [`replace_candidate_file_tag_snapshot_on`] in a transaction of its own.
+    #[cfg(test)]
     pub(crate) async fn replace_candidate_file_tag_snapshot(
         &self,
         watched_folder_path: &str,

@@ -185,7 +185,6 @@ struct ReleaseMetadataEditorContent: View {
                     width: ReleaseMetadataTrackColumns.length,
                     alignment: .trailing
                 )
-            Color.clear.frame(width: ReleaseMetadataTrackColumns.action)
         }
         .padding(.horizontal, ReleaseMetadataTrackColumns.rowPadding)
         .padding(.top, ThemeSpace.inline)
@@ -206,7 +205,6 @@ struct ReleaseMetadataEditorContent: View {
                 editingCommands: session.editingCommands,
                 onChange: { session.updateTrack($0) }
             )
-            Color.clear.frame(width: ReleaseMetadataTrackColumns.action)
         }
         .padding(.horizontal, ReleaseMetadataTrackColumns.rowPadding)
         .padding(.vertical, ThemeSpace.compact)

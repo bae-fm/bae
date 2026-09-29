@@ -98,7 +98,7 @@ pub enum ImportError {
 
     /// A file the import must read cannot be used: audio that will not decode,
     /// a codec bae can't play, bytes that could not be hashed, or audio a track
-    /// slot named that is no longer in the folder.
+    /// named that is no longer in the folder.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     #[error("{detail}")]
     UnusableFile { detail: String },

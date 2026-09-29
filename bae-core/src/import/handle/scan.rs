@@ -273,22 +273,12 @@ impl ImportServiceHandle {
     ) -> Result<crate::import::pane::CandidateSourceDraft, crate::import::ImportError> {
         let audio_durations = current.audio_durations(durations)?;
         let parsed = release.parsed(&audio_durations, self.clock.as_ref(), self.ids.as_ref())?;
-        let mut edit = crate::import::RawReleaseEdit::from_user_edit(
+        let edit = crate::import::RawReleaseEdit::from_user_edit(
             crate::import::parsed_album_to_user_edit(&parsed),
             crate::import::pane::CANDIDATE_TRACK_ID_PREFIX,
         );
-        if edit.tracks.len() != current.tracks.len() {
-            return Err(crate::import::ImportError::MetadataTrackCount {
-                metadata_tracks: edit.tracks.len(),
-                audio_tracks: current.tracks.len(),
-            });
-        }
-        for (metadata, track) in edit.tracks.iter_mut().zip(&current.tracks) {
-            metadata.file = Some(track.edit.file.clone());
-        }
-        let mut source = crate::import::pane::candidate_draft_from_edit(edit)?;
+        let mut source = crate::import::pane::metadata_over_audio(edit, current)?;
         source.source_discogs_artist_ids = crate::import::pane::source_discogs_artist_ids(&parsed);
-        crate::import::pane::apply_metadata_tracks(&mut source.draft, current)?;
         for (index, track) in source.draft.tracks.iter_mut().enumerate() {
             track.source_index = Some(u32::try_from(index).expect("source track index fits u32"));
         }
@@ -398,7 +388,6 @@ impl ImportServiceHandle {
                 let seed = crate::import::file_metadata_seed::FileMetadataSeed::project(
                     &read.candidate,
                     read.snapshot,
-                    &durations,
                     Some(&current.draft.tracks),
                     self.clock.as_ref(),
                     self.ids.as_ref(),
@@ -459,7 +448,7 @@ impl ImportServiceHandle {
                 // The choice is stored as the candidate's result unless a run's
                 // result already stands.
                 let audio_durations =
-                    crate::import::track_slots::audio_durations(&candidate.files, &durations)?;
+                    crate::import::audio_layout::audio_durations(&candidate.files, &durations)?;
                 let detail = release.detail_for_audio(&audio_durations, &prepared_partners)?;
                 let metadata = self
                     .external_candidate_metadata(
@@ -536,8 +525,7 @@ impl ImportServiceHandle {
                 detail: format!("{candidate_key} has no stored import preparation"),
             })?;
         let mut draft = candidate.blank_source().draft;
-        draft.tracks =
-            crate::import::pane::file_metadata_tracks(&draft.tracks, &current.draft.tracks);
+        crate::import::pane::keep_row_identities(&mut draft.tracks, &current.draft.tracks)?;
         let _commit = self
             .commit_lock_for_revision(
 "clear metadata",&candidate_key, &content_hash, current.file_edit_revision)

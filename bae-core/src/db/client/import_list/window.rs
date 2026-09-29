@@ -256,7 +256,7 @@ impl PickedReleaseRows {
     fn process(self) -> Result<PickedRelease, DbError> {
         let durations = crate::import::probe::source_durations(&self.files)
             .map_err(|error| DbError::Message(error.to_string()))?;
-        let audio_durations = crate::import::track_slots::audio_durations(&self.files, &durations)
+        let audio_durations = crate::import::audio_layout::audio_durations(&self.files, &durations)
             .map_err(|error| DbError::Message(error.to_string()))?;
         let records = crate::import::source_release::claimed_records(
             &self.claimed.iter().collect::<Vec<_>>(),
@@ -482,7 +482,7 @@ pub(super) fn load_candidate_detail_on(
             .map_err(|error| DbError::Message(error.to_string()))?;
         let durations = &audio.durations;
         let audio_durations =
-            crate::import::track_slots::audio_durations(&candidate.files, durations)
+            crate::import::audio_layout::audio_durations(&candidate.files, durations)
                 .map_err(|error| DbError::Message(error.to_string()))?;
         let release = claimed
             .split_first()
@@ -537,12 +537,13 @@ pub(super) fn load_candidate_detail_on(
             &candidate.files,
             durations,
             &pane_rows.draft,
-            &crate::import::CandidateAsRead {
-                content_hash,
-                file_edit_revision: candidate.file_edit_revision,
-                metadata_revision,
-            },
-        );
+        )
+        .map_err(|error| {
+            DbError::Message(format!(
+                "candidate {} cannot be drawn: {error}",
+                candidate.key()
+            ))
+        })?;
         let remote_covers = pane
             .release
             .as_ref()

@@ -67,11 +67,11 @@
         ) -> BridgeTrackMapping {
             BridgeTrackMapping(
                 source: .file(file: mappingAudio(index)),
-                becomes: .track(
-                    track: confirmEditValues.tracks[index - 1],
-                    position: "\(index)"
-                ),
-                durationMs: UInt64(180_000 + index * 15000)
+                track: confirmEditValues.tracks[index - 1],
+                position: "\(index)",
+                durationMs: UInt64(180_000 + index * 15000),
+                // Track 4's file runs long against the release.
+                lengthsDisagree: index == 4
             )
         }
 
@@ -224,11 +224,10 @@
                                     roleChoice: moreTracksAudio.roleChoice
                                 )
                             ),
-                            becomes: .track(
-                                track: moreTracksEditValues.tracks[0],
-                                position: "1"
-                            ),
-                            durationMs: 2_720_000
+                            track: moreTracksEditValues.tracks[0],
+                            position: "1",
+                            durationMs: 2_720_000,
+                            lengthsDisagree: false
                         )
                     ])
                 )
@@ -259,11 +258,10 @@
             )
             return BridgeTrackMapping(
                 source: .sheetEntry(entry: entry),
-                becomes: .track(
-                    track: confirmEditValues.tracks[index],
-                    position: "\(index + 1)"
-                ),
-                durationMs: durationMs
+                track: confirmEditValues.tracks[index],
+                position: "\(index + 1)",
+                durationMs: durationMs,
+                lengthsDisagree: false
             )
         }
 
@@ -347,20 +345,19 @@
                             .map { index in
                                 BridgeTrackMapping(
                                     source: .file(file: mappingAudio(index)),
-                                    becomes: .track(
-                                        track: BridgeRawTrackEdit(
-                                            id: "file-tags-track-\(index - 1)",
-                                            title: "Track Title \(index)",
-                                            artistAssignments: .albumArtists,
-                                            side: 1,
-                                            trackNumber: Int32(index),
-                                            file: .standalone(
-                                                fileId: "Track \(index).flac"
-                                            )
-                                        ),
-                                        position: "\(index)"
+                                    track: BridgeRawTrackEdit(
+                                        id: "file-tags-track-\(index - 1)",
+                                        title: "Track Title \(index)",
+                                        artistAssignments: .albumArtists,
+                                        side: 1,
+                                        trackNumber: Int32(index),
+                                        file: .standalone(
+                                            fileId: "Track \(index).flac"
+                                        )
                                     ),
-                                    durationMs: mappingAudio(index).durationMs
+                                    position: "\(index)",
+                                    durationMs: mappingAudio(index).durationMs,
+                                    lengthsDisagree: false
                                 )
                             }
                     )
@@ -702,12 +699,11 @@
                                     source: .file(
                                         file: mappingAudio(index + 1)
                                     ),
-                                    becomes: .track(
-                                        track: track,
-                                        position: "\(index + 1)"
-                                    ),
+                                    track: track,
+                                    position: "\(index + 1)",
                                     durationMs: mappingAudio(index + 1)
-                                        .durationMs
+                                        .durationMs,
+                                    lengthsDisagree: false
                                 )
                             }
                     )

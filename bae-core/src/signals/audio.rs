@@ -30,7 +30,7 @@ impl AudioFacts {
     /// A candidate's audio, from the facts its scan stored for each file.
     pub fn of_files(files: &CategorizedFiles) -> Result<Self, crate::import::ImportError> {
         let durations = crate::import::probe::source_durations(files)?;
-        let track_lengths_ms = crate::import::track_slots::audio_durations(files, &durations)?;
+        let track_lengths_ms = crate::import::audio_layout::audio_durations(files, &durations)?;
         Ok(Self::of(
             files.track_count(),
             durations,

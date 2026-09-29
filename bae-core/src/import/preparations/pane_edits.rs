@@ -165,32 +165,30 @@ impl CandidatePreparations {
         .await
     }
 
-    /// Record one mapping-table row the user changed, or dropped.
+    /// Record one mapping-table row the user changed.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn set_track_edit(
         &self,
         content_hash: &str,
-        edit: &crate::import::CandidateTrackEdit,
+        row: &crate::import::RawTrackEdit,
     ) -> Result<u64, LibraryError> {
-        let edit = edit.clone();
+        let row = row.clone();
         self.edit_candidate(None, content_hash, None, None, move |prep| {
-            apply_track_edit(&mut prep.metadata.draft, &edit)?;
+            apply_track_edit(&mut prep.metadata.draft, &row)?;
             prep.assets_prepared = false;
             Ok(())
         })
         .await
     }
 
-    /// Record the mapping-table rows one gesture changed, as one write: a
-    /// plain row edit is one entry, and a file choice that displaces another
-    /// row's audio is two. The rows land together or not at all, so the table
-    /// can never be read with only half a swap applied.
-    pub async fn set_track_edits_prepared(
+    /// Record one mapping-table row the user changed, with the artist answers
+    /// its credits need, as one write.
+    pub async fn set_track_edit_prepared(
         &self,
         watched_folder_path: &str,
         candidate_path: &str,
         read: &CandidateAsRead,
-        edits: &[crate::import::CandidateTrackEdit],
+        row: &crate::import::RawTrackEdit,
         source_discogs_artist_ids: &std::collections::BTreeSet<String>,
         assets: &[crate::import::PreparedArtistImage],
     ) -> Result<u64, LibraryError> {
@@ -200,50 +198,7 @@ impl CandidatePreparations {
             read,
             source_discogs_artist_ids,
             assets,
-            |prep| {
-                for edit in edits {
-                    apply_track_edit(&mut prep.metadata.draft, edit)?;
-                }
-                Ok(())
-            },
-        )
-        .await
-    }
-
-    /// Insert a newly initialized row and its required artist answers together.
-    /// The read revision pins the surviving rows and their insertion position.
-    pub async fn add_track_prepared(
-        &self,
-        watched_folder_path: &str,
-        candidate_path: &str,
-        read: &CandidateAsRead,
-        track: &crate::import::CandidateTrack,
-        position: usize,
-        source_discogs_artist_ids: &std::collections::BTreeSet<String>,
-        assets: &[crate::import::PreparedArtistImage],
-    ) -> Result<u64, LibraryError> {
-        self.edit_prepared_candidate(
-            watched_folder_path,
-            candidate_path,
-            read,
-            source_discogs_artist_ids,
-            assets,
-            |prep| {
-                let tracks = &mut prep.metadata.draft.tracks;
-                if tracks
-                    .iter()
-                    .any(|included| included.edit.file == track.edit.file)
-                {
-                    return Err(LibraryError::Import("audio is already included".into()));
-                }
-                if position > tracks.len() {
-                    return Err(LibraryError::Import(
-                        "track insertion position is unavailable".into(),
-                    ));
-                }
-                tracks.insert(position, track.clone());
-                Ok(())
-            },
+            |prep| apply_track_edit(&mut prep.metadata.draft, row),
         )
         .await
     }
@@ -388,34 +343,27 @@ fn require_prepared(prep: &CandidatePreparation) -> Result<(), LibraryError> {
     }
 }
 
-/// Delete a row, or replace its metadata while retaining its audio identity.
+/// Replace one row's title and artists. Its audio and numbering are the
+/// folder's, so a row edit that changes either is refused.
 fn apply_track_edit(
     draft: &mut CandidateDraft,
-    edit: &crate::import::CandidateTrackEdit,
+    row: &crate::import::RawTrackEdit,
 ) -> Result<(), LibraryError> {
-    if matches!(edit.state, crate::import::TrackEditState::Dropped) {
-        draft.tracks.retain(|track| track.edit.id != edit.track_id);
-        return Ok(());
-    }
     let track = draft
         .tracks
         .iter_mut()
-        .find(|track| track.edit.id == edit.track_id)
-        .ok_or_else(|| {
-            LibraryError::Import(format!("{} is not included in this draft", edit.track_id))
-        })?;
-    let crate::import::TrackEditState::Edited(row) = &edit.state else {
-        unreachable!()
-    };
+        .find(|track| track.edit.id == row.id)
+        .ok_or_else(|| LibraryError::Import(format!("{} is not a row of this draft", row.id)))?;
     if row.track_number != Some(track.edit.track_number) {
         return Err(LibraryError::Import(
             "track metadata edits cannot change numbering".into(),
         ));
     }
-    track.edit.file = row
-        .file
-        .clone()
-        .ok_or_else(|| LibraryError::Import("an included track requires audio".into()))?;
+    if row.file.as_ref() != Some(&track.edit.file) {
+        return Err(LibraryError::Import(
+            "track metadata edits cannot change a track's audio".into(),
+        ));
+    }
     track.edit.title.clone_from(&row.title);
     track
         .edit

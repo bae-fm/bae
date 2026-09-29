@@ -25,15 +25,9 @@ struct ImportMappingActions {
     let preview: (BridgePreviewTarget) -> Void
     /// Stop whatever is auditioning.
     let stopPreview: () -> Void
-    /// Write a row's edited track back onto the row that commits it.
+    /// Write a row's edited title and artists back onto the row that commits
+    /// it.
     let editTrack: (BridgeRawTrackEdit) -> Void
-    /// Point a row at one of the folder's audio units: the row's track id,
-    /// then the unit.
-    let chooseFile: (String, BridgeAudioFile) -> Void
-    /// Include the source audio offered by the revision the person viewed.
-    let addTrack: (BridgeAudioFile, BridgeCandidateAsRead) -> Void
-    /// Remove a track without changing the file on disk.
-    let drop: (String) -> Void
 }
 
 /// What the commit bar calls back into.

@@ -102,12 +102,9 @@ impl ImportServiceHandle {
                     .collect::<Vec<_>>();
                 let snapshot =
                     extract_file_tag_snapshot(&audio, generation, next_revision, reader.as_ref())?;
-                let durations =
-                    crate::import::probe::source_durations(&initialized_candidate.files)?;
                 let seed = FileMetadataSeed::project(
                     &initialized_candidate,
                     snapshot,
-                    &durations,
                     None,
                     clock.as_ref(),
                     ids.as_ref(),

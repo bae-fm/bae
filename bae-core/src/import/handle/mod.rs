@@ -918,7 +918,7 @@ pub fn parsed_album_to_user_edit(parsed: &super::ParsedAlbum) -> crate::import::
                 track_number: t.track_number,
                 artist_assignments,
                 // A seed does not say which audio file backs each track; the
-                // track slots settle that.
+                // folder's audio units settle that.
                 file: None,
             }
         })

@@ -33,9 +33,9 @@ pub struct RawReleaseEditOf<Track> {
 pub type RawReleaseEdit = RawReleaseEditOf<RawTrackEdit>;
 
 /// A candidate's stored draft: the same album fields over one
-/// [`CandidateTrack`] per audio slot, each carrying its physical decision
-/// beside its metadata. One row per slot is what makes "every track has one
-/// file binding" true by construction rather than by a check.
+/// [`CandidateTrack`] per audio unit of the folder, in the folder's order.
+/// Track `i` plays unit `i`; the folder's order, not an edit, decides which
+/// audio a track plays.
 pub type CandidateDraft = RawReleaseEditOf<CandidateTrack>;
 
 /// A track included in the candidate. Its audio and number are required.
@@ -43,7 +43,8 @@ pub type CandidateDraft = RawReleaseEditOf<CandidateTrack>;
 pub struct CandidateTrack {
     pub edit: RawTrackEdit<AudioFile, i32>,
     /// The track in the applied source document that supplied supplemental
-    /// credits. Audio replacements have no corresponding source track.
+    /// credits. Audio the folder gained after the source was applied has
+    /// none.
     pub source_index: Option<u32>,
 }
 
@@ -228,9 +229,8 @@ pub struct RawTrackEdit<Audio = Option<AudioFile>, Number = Option<i32>> {
     pub artist_assignments: TrackArtistAssignments,
     pub side: Option<i32>,
     pub track_number: Number,
-    /// The audio bound to this row, carried through editing untouched. This is
-    /// what makes a pairing correctable: `shape` keeps it, so what the user
-    /// left in the slot table is what the commit writes.
+    /// The audio bound to this row, carried through editing untouched, so the
+    /// row the editor hands back names the audio it was drawn over.
     pub file: Audio,
 }
 

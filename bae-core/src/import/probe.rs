@@ -1,8 +1,8 @@
 //! What the folder's audio plays for, derived from the scan's stored facts.
 //!
 //! The scan opens each physical audio file and stores its facts on the
-//! candidate. The mapping table and slot table project their per-file and
-//! per-sheet-entry durations from that one stored shape.
+//! candidate. The mapping table projects its per-file and per-sheet-entry
+//! durations from that one stored shape.
 //!
 //! Two kinds of row, matching the two kinds of [`AudioFile`]:
 //!
@@ -18,7 +18,7 @@
 
 use crate::audio_codec::ProbeResult;
 use crate::import::folder_scanner::CategorizedFiles;
-use crate::import::track_slots::{audio_layout, UnitContribution};
+use crate::import::audio_layout::{audio_layout, UnitContribution};
 use crate::import::types::{AudioFile, CueAnalyzedAudioFile, CueFlacAnalysis};
 use crate::import::ImportError;
 

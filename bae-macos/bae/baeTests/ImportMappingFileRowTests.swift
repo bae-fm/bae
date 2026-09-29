@@ -69,9 +69,6 @@ struct ImportMappingFileRowTests {
             preview: { _ in },
             stopPreview: {},
             editTrack: { _ in },
-            chooseFile: { _, _ in },
-            addTrack: { _, _ in },
-            drop: { _ in },
         )
     }
 }

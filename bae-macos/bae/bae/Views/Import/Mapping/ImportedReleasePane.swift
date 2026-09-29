@@ -383,7 +383,6 @@ private struct ReadOnlyCandidateMappingTable: View {
                 .frame(width: columns.artist, alignment: .leading)
             Eyebrow(verbatim: coreString("ui.import.slots.column.length"))
                 .frame(width: ReleaseMetadataTrackColumns.length)
-            Color.clear.frame(width: ReleaseMetadataTrackColumns.action)
         }
         .padding(.vertical, ThemeSpace.compact)
     }
@@ -402,29 +401,20 @@ private struct ReadOnlyCandidateMappingTable: View {
         HStack(spacing: ReleaseMetadataTrackColumns.spacing) {
             readOnlySource(mapping.source)
                 .frame(width: columns.source, alignment: .leading)
-            if let track = mapping.track {
-                Text(track.trackNumber?.formatted() ?? "\u{2014}")
-                    .frame(width: ReleaseMetadataTrackColumns.track)
-                Text(track.title)
-                    .frame(width: columns.title, alignment: .leading)
-                    .lineLimit(1)
-                Text(trackArtistText(track.artistAssignments))
-                    .frame(width: columns.artist, alignment: .leading)
-                    .lineLimit(1)
-            }
-            else {
-                Color.clear.frame(width: ReleaseMetadataTrackColumns.track)
-                Text(coreString("ui.import.becomes.awaiting_pick"))
-                    .frame(width: columns.title, alignment: .leading)
-                Color.clear.frame(width: columns.artist)
-            }
+            Text(mapping.track.trackNumber?.formatted() ?? "\u{2014}")
+                .frame(width: ReleaseMetadataTrackColumns.track)
+            Text(mapping.track.title)
+                .frame(width: columns.title, alignment: .leading)
+                .lineLimit(1)
+            Text(trackArtistText(mapping.track.artistAssignments))
+                .frame(width: columns.artist, alignment: .leading)
+                .lineLimit(1)
             Text(mapping.displayedDuration)
                 .monospacedDigit()
                 .frame(
                     width: ReleaseMetadataTrackColumns.length,
                     alignment: .trailing
                 )
-            Color.clear.frame(width: ReleaseMetadataTrackColumns.action)
         }
         .themeText(.body)
         .padding(.vertical, ThemeSpace.related)
@@ -458,7 +448,6 @@ private struct ReadOnlyCandidateMappingTable: View {
         switch source {
         case .file(let file): file.name
         case .sheetEntry(let entry): entry.title ?? entry.containerName
-        case .missing: coreString("ui.import.slots.no_file")
         }
     }
 

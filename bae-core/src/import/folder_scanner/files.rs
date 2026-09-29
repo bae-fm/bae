@@ -772,7 +772,7 @@ impl CategorizedFiles {
 
     /// Total playable tracks, including loose audio beside carving sheets.
     pub fn track_count(&self) -> u32 {
-        u32::try_from(crate::import::track_slots::audio_units(self).len())
+        u32::try_from(crate::import::audio_layout::audio_units(self).len())
             .expect("release track count fits u32")
     }
 
@@ -923,7 +923,7 @@ impl CategorizedFiles {
     /// its bound sheets, never by the tracklist laid alongside them.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub fn becomes(&self) -> Vec<FileBecomes> {
-        let units = crate::import::track_slots::audio_units(self);
+        let units = crate::import::audio_layout::audio_units(self);
 
         // Which slots each file and each sheet produced, as the half-open run
         // it occupies in the unit list. A sheet's slices are contiguous by

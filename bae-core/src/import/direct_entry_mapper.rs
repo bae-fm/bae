@@ -2,14 +2,15 @@
 
 use super::assemble::{assemble_parsed_album, AlbumArtistScope, ArtistRef, ReleaseIr, TrackIr};
 use super::folder_scanner::CategorizedFiles;
-use super::track_slots::direct_entry_track_rows;
+use super::audio_layout::direct_entry_track_rows;
 use super::ParsedAlbum;
 use crate::pressing::Pressing;
 use coven::{Clock, IdProvider};
 
 /// Build blank release metadata without reading filenames, CUE titles, embedded
-/// tags, or provider documents. Only track slots, disc assignment, and track
-/// numbering come from the candidate because they describe its audio layout.
+/// tags, or provider documents. Only the audio units, disc assignment, and
+/// track numbering come from the candidate because they describe its audio
+/// layout.
 pub(crate) fn map_direct_entry_candidate_to_db(
     files: &CategorizedFiles,
     clock: &dyn Clock,

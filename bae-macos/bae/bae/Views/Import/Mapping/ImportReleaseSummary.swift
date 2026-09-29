@@ -24,7 +24,7 @@ struct ImportReleaseSummary {
         artist =
             artistNames.isEmpty
             ? nil : ListFormatter.localizedString(byJoining: artistNames)
-        let count = candidate.mapping.willWriteCount
+        let count = candidate.mapping.trackMappings.count
         let trackText = String(localized: "\(count) tracks")
         switch provenance {
         case .externalRelease:

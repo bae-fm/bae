@@ -80,15 +80,14 @@ extension MappingFixtures {
     static func pairedRow(_ index: Int) -> BridgeTrackMapping {
         BridgeTrackMapping(
             source: .file(file: audioFile(index)),
-            becomes: .track(
-                track: trackEdit(
-                    index - 1,
-                    title: "Track \(index)",
-                    file: .standalone(fileId: "\(index).flac")
-                ),
-                position: "\(index)"
+            track: trackEdit(
+                index - 1,
+                title: "Track \(index)",
+                file: .standalone(fileId: "\(index).flac")
             ),
-            durationMs: UInt64(200_000 + index * 1000)
+            position: "\(index)",
+            durationMs: UInt64(200_000 + index * 1000),
+            lengthsDisagree: false
         )
     }
 
@@ -115,15 +114,14 @@ extension MappingFixtures {
                         + [
                             BridgeTrackMapping(
                                 source: .file(file: audioFile(13)),
-                                becomes: .track(
-                                    track: trackEdit(
-                                        12,
-                                        title: lastTitle,
-                                        file: .standalone(fileId: "13.flac")
-                                    ),
-                                    position: "13"
+                                track: trackEdit(
+                                    12,
+                                    title: lastTitle,
+                                    file: .standalone(fileId: "13.flac")
                                 ),
-                                durationMs: audioFile(13).durationMs
+                                position: "13",
+                                durationMs: audioFile(13).durationMs,
+                                lengthsDisagree: false
                             )
                         ]
                 )
@@ -198,15 +196,14 @@ extension MappingFixtures {
                 [
                     BridgeTrackMapping(
                         source: .file(file: containerFile),
-                        becomes: .track(
-                            track: trackEdit(
-                                0,
-                                title: containerId,
-                                file: .standalone(fileId: containerId)
-                            ),
-                            position: "1"
+                        track: trackEdit(
+                            0,
+                            title: containerId,
+                            file: .standalone(fileId: containerId)
                         ),
-                        durationMs: containerFile.durationMs
+                        position: "1",
+                        durationMs: containerFile.durationMs,
+                        lengthsDisagree: false
                     )
                 ]
             )
@@ -262,19 +259,18 @@ extension MappingFixtures {
                     audioFormat: audioFormat
                 )
             ),
-            becomes: .track(
-                track: trackEdit(
-                    index,
-                    title: "Track \(index + 1)",
-                    file: .sheetSlice(
-                        fileId: containerId,
-                        sheetId: sheetId,
-                        index: UInt32(index)
-                    )
-                ),
-                position: "\(index + 1)"
+            track: trackEdit(
+                index,
+                title: "Track \(index + 1)",
+                file: .sheetSlice(
+                    fileId: containerId,
+                    sheetId: sheetId,
+                    index: UInt32(index)
+                )
             ),
-            durationMs: UInt64(200_000 + index * 1000)
+            position: "\(index + 1)",
+            durationMs: UInt64(200_000 + index * 1000),
+            lengthsDisagree: false
         )
     }
 
@@ -311,18 +307,17 @@ extension MappingFixtures {
                     .map { index in
                         BridgeTrackMapping(
                             source: .file(file: audioFile(index)),
-                            becomes: .track(
-                                track: BridgeRawTrackEdit(
-                                    id: "file-tags-track-\(index - 1)",
-                                    title: "Track \(index)",
-                                    artistAssignments: .albumArtists,
-                                    side: 1,
-                                    trackNumber: Int32(index),
-                                    file: .standalone(fileId: "\(index).flac")
-                                ),
-                                position: "\(index)"
+                            track: BridgeRawTrackEdit(
+                                id: "file-tags-track-\(index - 1)",
+                                title: "Track \(index)",
+                                artistAssignments: .albumArtists,
+                                side: 1,
+                                trackNumber: Int32(index),
+                                file: .standalone(fileId: "\(index).flac")
                             ),
-                            durationMs: audioFile(index).durationMs
+                            position: "\(index)",
+                            durationMs: audioFile(index).durationMs,
+                            lengthsDisagree: false
                         )
                     }
             )
@@ -568,7 +563,7 @@ extension MappingFixtures {
         guard let candidate = store.selectedCandidates[candidateKey],
             var edit = candidate.edit
         else { return false }
-        edit.tracks = bridgeMappingTracks(table: candidate.mapping)
+        edit.tracks = candidate.mapping.trackMappings.map(\.track)
         if case .valid = shapeReleaseEdit(raw: edit) { return true }
         return false
     }

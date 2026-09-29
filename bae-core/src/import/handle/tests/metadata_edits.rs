@@ -53,7 +53,6 @@ async fn assert_every_mutation_refused(
             .await
             .map(drop),
     );
-    refused(handle.drop_candidate_track(key, track.id).await.map(drop));
     refused(handle.set_candidate_cover(key, cover).await.map(drop));
     refused(
         handle
@@ -193,32 +192,42 @@ async fn album_artist_assignments_preserve_existing_and_new_artist_choices() {
     shut_down(handle).await;
 }
 
-/// Pointing a row at audio another row holds swaps the two rows' bindings in
-/// one write: the displaced row takes the chosen row's previous audio, so two
-/// rows never hold one file and the displaced file never silently unbinds.
+/// A row's audio is the folder's to decide: an edit naming other audio is
+/// refused and the draft is left as it was.
 #[tokio::test(flavor = "multi_thread")]
-async fn choosing_audio_another_row_holds_swaps_the_two_rows() {
-    let (handle, _tmp, key, _hash) = pane_fixture().await;
+async fn a_track_edit_cannot_change_the_audio_it_plays() {
+    let (handle, _tmp, key, hash) = pane_fixture().await;
     let before = track_rows(&pane(&handle, &key).await.mapping);
-    let first_file = before[0].file.clone().expect("row 0 is paired");
-    let second_file = before[1].file.clone().expect("row 1 is paired");
+    let stored = handle
+        .library_manager
+        .load_import_candidate_preparation(&hash)
+        .await
+        .unwrap()
+        .unwrap();
 
-    handle
+    let error = handle
         .set_candidate_track_edit(
             &key,
             crate::import::RawTrackEdit {
-                file: Some(second_file.clone()),
+                title: "Renamed".to_string(),
+                file: before[1].file.clone(),
                 ..before[0].clone()
             },
         )
         .await
-        .unwrap();
+        .unwrap_err();
 
-    let after = track_rows(&pane(&handle, &key).await.mapping);
-    assert_eq!(after[0].file, Some(second_file));
-    assert_eq!(after[1].file, Some(first_file));
-    assert_eq!(after[1].title, before[1].title);
-
+    assert!(error.to_string().contains("audio"), "{error}");
+    assert_eq!(
+        handle
+            .library_manager
+            .load_import_candidate_preparation(&hash)
+            .await
+            .unwrap()
+            .unwrap()
+            .draft,
+        stored.draft
+    );
     shut_down(handle).await;
 }
 
@@ -703,43 +712,27 @@ async fn track_artist_assignments_fill_across_named_rows() {
     shut_down(handle).await;
 }
 
-/// A dropped row leaves the table: the release commits without that track.
+/// Applying and clearing metadata replaces what the rows say, never which
+/// audio they play or which row they are.
 #[tokio::test(flavor = "multi_thread")]
-async fn a_dropped_track_leaves_the_table() {
-    let (handle, _tmp, key, _hash) = pane_fixture().await;
-    let before = track_rows(&pane(&handle, &key).await.mapping);
-    let dropped = before[0].id.clone();
-    let kept = before[1].id.clone();
-
-    handle
-        .drop_candidate_track(&key, dropped.clone())
-        .await
-        .unwrap();
-
-    let after = track_rows(&pane(&handle, &key).await.mapping);
-    assert!(
-        !after.iter().any(|track| track.id == dropped),
-        "the dropped row is gone"
-    );
-    assert!(after.iter().any(|track| track.id == kept));
-
-    shut_down(handle).await;
-}
-
-#[tokio::test(flavor = "multi_thread")]
-async fn metadata_source_changes_preserve_explicit_track_file_mappings() {
+async fn metadata_source_changes_keep_each_row_on_its_audio() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
-    let mut tracks = track_rows(&pane(&handle, &key).await.mapping);
-    let first_file = tracks[0].file.clone().unwrap();
-    let second_file = tracks[1].file.clone().unwrap();
-    tracks[0].file = Some(second_file.clone());
-    tracks[1].file = Some(first_file.clone());
-    for track in &tracks {
-        handle
-            .set_candidate_track_edit(&key, track.clone())
+    let rows = |draft: &crate::import::CandidateDraft| {
+        draft
+            .tracks
+            .iter()
+            .map(|track| (track.edit.id.clone(), track.edit.file.clone()))
+            .collect::<Vec<_>>()
+    };
+    let before = rows(
+        &handle
+            .library_manager
+            .load_import_candidate_preparation(&hash)
             .await
-            .unwrap();
-    }
+            .unwrap()
+            .unwrap()
+            .draft,
+    );
 
     handle
         .select_candidate_metadata_provenance(
@@ -754,8 +747,7 @@ async fn metadata_source_changes_preserve_explicit_track_file_mappings() {
         .await
         .unwrap()
         .expect("the reapplied source remains prepared");
-    assert_eq!(reapplied.draft.tracks[0].edit.file, second_file);
-    assert_eq!(reapplied.draft.tracks[1].edit.file, first_file);
+    assert_eq!(rows(&reapplied.draft), before);
 
     handle.clear_candidate_metadata(key).await.unwrap();
     let cleared = handle
@@ -764,37 +756,7 @@ async fn metadata_source_changes_preserve_explicit_track_file_mappings() {
         .await
         .unwrap()
         .expect("the cleared source remains prepared");
-    assert_eq!(cleared.draft.tracks[0].edit.file, second_file);
-    assert_eq!(cleared.draft.tracks[1].edit.file, first_file);
-    shut_down(handle).await;
-}
-
-#[tokio::test(flavor = "multi_thread")]
-async fn a_file_decision_after_a_drop_preserves_every_mapping_identity() {
-    let (handle, _tmp, key, hash) = pane_fixture().await;
-    let tracks = track_rows(&pane(&handle, &key).await.mapping);
-    let dropped_id = tracks[0].id.clone();
-    handle
-        .drop_candidate_track(&key, dropped_id.clone())
-        .await
-        .unwrap();
-
-    handle
-        .set_file_role(
-            key,
-            "02 Track.flac".to_string(),
-            crate::import::folder_scanner::FileRoleChoice::NotATrack,
-        )
-        .await
-        .unwrap();
-
-    let preparation = handle
-        .library_manager
-        .load_import_candidate_preparation(&hash)
-        .await
-        .unwrap()
-        .expect("the reshaped candidate remains prepared");
-    assert!(preparation.draft.tracks.is_empty());
+    assert_eq!(rows(&cleared.draft), before);
     shut_down(handle).await;
 }
 
@@ -824,19 +786,14 @@ async fn file_tags_uses_the_conventional_folder_cover() {
 #[tokio::test(flavor = "multi_thread")]
 async fn file_tags_persist_the_front_cover_image_ahead_of_embedded_artwork() {
     let StoredCandidate {
-        handle,
+        mut handle,
         manager,
         key,
         tmp: _tmp,
         ..
     } = stored_candidate().await;
-    handle
-        .file_tag_snapshot_with_reader(
-            &key,
-            std::sync::Arc::new(CountingFileTagReader::with_embedded_cover(vec![1, 2, 3, 4])),
-        )
-        .await
-        .unwrap();
+    handle.file_tags =
+        std::sync::Arc::new(CountingFileTagReader::with_embedded_cover(vec![1, 2, 3, 4]));
     handle
         .select_candidate_metadata_provenance(
             key.clone(),

@@ -6,18 +6,17 @@ import Testing
 /// The mapping table's column widths, against the width the table has to lay
 /// them out in.
 ///
-/// The one that matters is that the tracks section adds up: five columns plus
-/// the action slot, never reserving an invisible slice past the pane's right
-/// edge. Files rows are not columnar.
+/// The one that matters is that the tracks section adds up: five columns,
+/// never reserving an invisible slice past the pane's right edge. Files rows
+/// are not columnar.
 struct ImportMappingColumnsTests {
-    /// Every column, the action slot, the gaps between them and the row's two
-    /// leading edges, as the row lays them out.
+    /// Every column, the gaps between them and the row's two leading edges, as
+    /// the row lays them out.
     private func rowWidth(_ columns: ReleaseMetadataTrackColumns) -> CGFloat {
         columns.title + columns.artist + columns.source
             + ReleaseMetadataTrackColumns.track
             + ReleaseMetadataTrackColumns.length
-            + ReleaseMetadataTrackColumns.action
-            + ReleaseMetadataTrackColumns.spacing * 5
+            + ReleaseMetadataTrackColumns.spacing * 4
             + ReleaseMetadataTrackColumns.rowPadding * 2
     }
 
