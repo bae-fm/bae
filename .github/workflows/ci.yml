@@ -66,14 +66,38 @@ jobs:
           -derivedDataPath .build/derivedData \
           -resultBundlePath "$RUNNER_TEMP/baeTests.xcresult" test
 
-    # The log does not say why a UI test's app stopped; the bundle holds its
-    # crash report and screenshots.
+    # The log does not say why a UI test's app stopped. The bundle holds the
+    # screen recording and snapshots, but a crash report only when XCTest
+    # finds one within its own wait, so the system's reports and the app's own
+    # log are kept too.
     - name: Keep the macOS test results
       if: ${{ failure() && steps.build_macos.conclusion == 'success' }}
       uses: actions/upload-artifact@v7
       with:
         name: baeTests-xcresult
         path: ${{ runner.temp }}/baeTests.xcresult
+        retention-days: 7
+
+    - name: Collect the app's crash reports and log
+      if: ${{ failure() && steps.build_macos.conclusion == 'success' }}
+      run: |
+        out="$RUNNER_TEMP/baeTests-diagnostics"
+        mkdir -p "$out"
+        for dir in ~/Library/Logs/DiagnosticReports /Library/Logs/DiagnosticReports; do
+          if [ -d "$dir" ]; then
+            find "$dir" -name 'bae*' -exec cp {} "$out/" \;
+          fi
+        done
+        log show --last 45m --style compact --info --debug \
+          --predicate 'process == "bae" OR process == "ReportCrash" OR eventMessage CONTAINS "fm.bae.desktop"' \
+          > "$out/unified.log"
+
+    - name: Keep the app's crash reports and log
+      if: ${{ failure() && steps.build_macos.conclusion == 'success' }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: baeTests-diagnostics
+        path: ${{ runner.temp }}/baeTests-diagnostics
         retention-days: 7
 
     - name: Check Swift formatting
