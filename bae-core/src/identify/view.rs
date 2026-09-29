@@ -376,14 +376,13 @@ fn live_findings(
 }
 
 /// What the folder's text agrees with about one row: its badges.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RowAgreements {
     /// The fields of its pressing the text states.
     pub fields: Agreements,
-    /// Whether the text names a word only this row's notes write among the
-    /// rows offered, as the ranking's notes point reads it. Never true of a
-    /// row set aside.
-    pub notes: bool,
+    /// The note of its records the ranking's notes point went to it for —
+    /// see [`Findings::named_notes`]. Never stated of a row set aside.
+    pub notes: Option<String>,
 }
 
 /// A state's answers as cards, with every row's library status and badges.
@@ -412,6 +411,7 @@ fn fold(
         pressings,
         narrowed_out,
         medium_conflict: _,
+        named_notes,
     } = findings;
     let offered = judged_results(matches, &provenance, text, &facts);
     let set_aside = judged_results(narrowed_out.matches, &narrowed_out.provenance, text, &facts);
@@ -430,29 +430,29 @@ fn fold(
         &narrowed_out.pressings,
         Some(track_count),
     );
-    let offered: Vec<&Pressing> = cards.iter().flat_map(ReleaseGroup::pressings).collect();
-    let named = super::notes::names_what_sets_each_apart(
-        offered.iter().map(|pressing| pressing.releases.as_slice()),
-        text,
-    );
-    let agreements = offered
-        .into_iter()
-        .zip(named)
-        .chain(
-            cards
+    let named_note = |pressing: &Pressing| {
+        pressing.releases.iter().find_map(|release| {
+            named_notes
                 .iter()
-                .flat_map(ReleaseGroup::narrowed_out)
-                .map(|pressing| (pressing, false)),
-        )
-        .flat_map(|(pressing, notes)| {
+                .find(|named| {
+                    named.release.catalog == release.source
+                        && named.release.key == release.release_id
+                })
+                .map(|named| named.note.clone())
+        })
+    };
+    let agreements = cards
+        .iter()
+        .flat_map(|group| group.pressings().chain(group.narrowed_out()))
+        .flat_map(|pressing| {
             let agreements = RowAgreements {
                 fields: pressing.agreements(&judgements),
-                notes,
+                notes: named_note(pressing),
             };
             pressing
                 .releases
                 .iter()
-                .map(move |release| (release.release_id.clone(), agreements))
+                .map(move |release| (release.release_id.clone(), agreements.clone()))
         })
         .collect();
     let narrowed_out_count = cards

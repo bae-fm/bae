@@ -8,7 +8,7 @@
 use super::*;
 use super::super::album_link_rows::{AlbumLinkRow, StatementColumns};
 use crate::signals::InternalFailure;
-use crate::identify::{MediumConflict, 
+use crate::identify::{MediumConflict, NamedNote, 
     Findings, IdentifyFailure, IdentifyRunView, LookupProvenance, NarrowedOut, TerminalVerdict,
 };
 use crate::import::album_links::AlbumLinks;
@@ -135,10 +135,30 @@ fn insert_matches(
         pressings,
         narrowed_out,
         medium_conflict: _,
+        named_notes,
     }) = verdict.findings()
     else {
         return Ok(());
     };
+    let named_note = |result: &MetadataResult| {
+        named_notes
+            .iter()
+            .find(|named| {
+                named.release.catalog == result.source && named.release.key == result.release_id
+            })
+            .map(|named| named.note.as_str())
+    };
+    if let Some(stray) = named_notes.iter().find(|named| {
+        !matches.iter().any(|result| {
+            named.release.catalog == result.source && named.release.key == result.release_id
+        })
+    }) {
+        return Err(DbError::Message(format!(
+            "a verdict for {content_hash} names a note of {} {}, which it does not offer",
+            stray.release.catalog.as_str(),
+            stray.release.key
+        )));
+    }
     let aligned = |what: &str, results: &[MetadataResult], provenance: &[LookupProvenance]| {
         if results.len() == provenance.len() {
             return Ok(());
@@ -195,6 +215,7 @@ fn insert_matches(
             result,
             provenance,
             narrowed_out,
+            if narrowed_out { None } else { named_note(result) },
         )?;
     }
     Ok(())
@@ -208,6 +229,7 @@ fn insert_match(
     result: &MetadataResult,
     provenance: &LookupProvenance,
     narrowed_out: bool,
+    named_note: Option<&str>,
 ) -> Result<(), DbError> {
     let position = i64::try_from(position)
         .map_err(|_| DbError::Message("a match list is longer than SQLite counts".to_string()))?;
@@ -247,9 +269,9 @@ fn insert_match(
               cover_standing, source_group_id, album_links, source_tracks_kind, \
               source_tracks_count, by_disc_id, by_barcode, by_catalog, by_isrc, by_search, \
               named_by_catalog, named_by_key, narrowed_out, document_failure, \
-              document_failure_status, album_first_year, track_titles, notes) \
+              document_failure_status, album_first_year, track_titles, notes, named_note) \
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \
-                 ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                 ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         params![
             content_hash,
             position,
@@ -287,6 +309,7 @@ fn insert_match(
             result.album_first_year,
             serde_json::to_string(&result.track_titles).expect("titles serialize"),
             serde_json::to_string(&result.notes).expect("notes serialize"),
+            named_note,
         ],
     )?;
     if let Some(cover) = cover {
@@ -410,6 +433,9 @@ pub(crate) struct StoredMatch {
     /// read, never re-formed: a list of a run's answers does not hold what
     /// the run decided its rows against.
     pub(crate) pressing: u32,
+    /// The note the folder's text names its row by — see
+    /// [`crate::identify::Findings::named_notes`].
+    pub(crate) named_note: Option<String>,
 }
 
 /// One candidate's stored releases, each list in the order it was written: the
@@ -443,6 +469,7 @@ pub(super) struct MatchColumns {
     result: MetadataResult,
     provenance: LookupProvenance,
     narrowed_out: bool,
+    named_note: Option<String>,
 }
 
 /// The match its columns and its child rows describe. The media kind and the
@@ -459,6 +486,7 @@ pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<M
         mut result,
         provenance,
         narrowed_out,
+        named_note,
     } = columns;
     let MatchEntries {
         barcodes,
@@ -542,6 +570,7 @@ pub(super) fn match_of(columns: MatchColumns, entries: MatchEntries) -> Result<M
             result,
             provenance,
             pressing: row,
+            named_note,
         },
         narrowed_out,
     })
@@ -639,6 +668,7 @@ fn read_match_columns(row: &Row<'_>, pressing: i64) -> Result<MatchColumns, DbEr
             },
         },
         narrowed_out: row.get("narrowed_out")?,
+        named_note: row.get("named_note")?,
     })
 }
 
@@ -716,10 +746,29 @@ pub(super) fn identification_of(
     // Only the verdicts that hold findings may have match rows under them; a
     // row under any other kind is one no writer here produces.
     let findings_of = |found: StoredMatches| {
+        if found
+            .narrowed_out
+            .iter()
+            .any(|stored| stored.named_note.is_some())
+        {
+            return Err(DbError::Message(format!(
+                "a release {content_hash} set aside holds a named note"
+            )));
+        }
+        let named_notes = found
+            .found
+            .iter()
+            .filter_map(|stored| {
+                stored.named_note.as_ref().map(|note| NamedNote {
+                    release: MetadataRef::new(stored.result.source, &stored.result.release_id),
+                    note: note.clone(),
+                })
+            })
+            .collect();
         let (matches, provenance, pressings) = unzip_stored(found.found);
         let (narrowed_matches, narrowed_provenance, narrowed_pressings) =
             unzip_stored(found.narrowed_out);
-        Findings {
+        Ok(Findings {
             matches,
             provenance,
             pressings,
@@ -729,7 +778,8 @@ pub(super) fn identification_of(
                 pressings: narrowed_pressings,
             },
             medium_conflict,
-        }
+            named_notes,
+        })
     };
     let no_matches = |found: &StoredMatches| {
         if found.found.is_empty() && found.narrowed_out.is_empty() {
@@ -741,7 +791,7 @@ pub(super) fn identification_of(
     };
     let verdict = match kind.as_str() {
         "found" => TerminalVerdict::Found {
-            findings: findings_of(found),
+            findings: findings_of(found)?,
             track_count: count_of()?,
             ledger,
         },
@@ -774,7 +824,7 @@ pub(super) fn identification_of(
             }
             TerminalVerdict::Failed {
                 failures,
-                findings: findings_of(found),
+                findings: findings_of(found)?,
                 track_count: count_of()?,
                 ledger,
             }

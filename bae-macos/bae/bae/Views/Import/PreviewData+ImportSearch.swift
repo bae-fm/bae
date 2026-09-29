@@ -143,7 +143,7 @@
                 label: true,
                 year: true,
                 country: false,
-                notes: false
+                notes: nil
             ),
             "rel-456": BridgeAgreements(
                 discId: false,
@@ -152,7 +152,7 @@
                 label: false,
                 year: false,
                 country: false,
-                notes: false
+                notes: nil
             ),
         ]
 
@@ -438,7 +438,7 @@
                 label: false,
                 year: true,
                 country: false,
-                notes: false
+                notes: nil
             ),
             "rel-bar-1": BridgeAgreements(
                 discId: false,
@@ -447,7 +447,7 @@
                 label: false,
                 year: false,
                 country: false,
-                notes: false
+                notes: nil
             ),
         ]
 

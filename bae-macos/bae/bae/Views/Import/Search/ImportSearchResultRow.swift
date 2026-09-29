@@ -60,7 +60,6 @@ struct ImportSearchResultRow: View {
                     .opacity(isInLibrary ? 0.55 : 1)
                     .allowsHitTesting(false)
                 signalBadges
-                    .allowsHitTesting(false)
                 Spacer(minLength: ThemeSpace.related)
                 libraryMarker
                     .allowsHitTesting(false)
@@ -198,7 +197,17 @@ struct ImportSearchResultRow: View {
                 agreementBadge(.label, on: agreements.label)
                 agreementBadge(.year, on: agreements.year)
                 agreementBadge(.country, on: agreements.country)
-                agreementBadge(.notes, on: agreements.notes)
+                if let note = agreements.notes {
+                    // Takes the pointer so its note shows on hover; a click
+                    // on it picks the row like a click anywhere else on it.
+                    agreementChip(.notes)
+                        .help(note)
+                        .onTapGesture {
+                            if isPickable {
+                                onSelect(pressing)
+                            }
+                        }
+                }
             }
         }
     }
@@ -212,6 +221,7 @@ struct ImportSearchResultRow: View {
     ) -> some View {
         if on {
             agreementChip(agreement)
+                .allowsHitTesting(false)
         }
     }
 
@@ -295,7 +305,7 @@ struct ImportSearchResultRow: View {
                     label: true,
                     year: true,
                     country: false,
-                    notes: true
+                    notes: "Small label"
                 ),
                 isSelected: true,
                 onSelect: { _ in },

@@ -1494,6 +1494,10 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     -- a JSON array of strings, empty where it was not read or writes none.
     notes                   TEXT NOT NULL DEFAULT '[]'
         CHECK (json_valid(notes) AND json_type(notes) = 'array'),
+    -- The note of this release the folder's text names its row by, where the
+    -- ranking's notes point went to that row; NULL otherwise, and always for a
+    -- release set aside.
+    named_note              TEXT CHECK (named_note IS NULL OR named_note <> ''),
     PRIMARY KEY (content_hash, position),
     -- Referenced by the medium rows with the media kind, so a medium row always
     -- belongs to a match of its kind.
@@ -1504,6 +1508,7 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     CHECK ((cover_url IS NULL) = (cover_label IS NULL) AND (cover_url IS NULL) = (cover_source IS NULL) AND (cover_url IS NULL) = (cover_standing IS NULL)),
     CHECK ((source_tracks_kind = 'listed') = (source_tracks_count IS NOT NULL)),
     CHECK ((named_by_catalog IS NULL) = (named_by_key IS NULL)),
+    CHECK (narrowed_out = 0 OR named_note IS NULL),
     CHECK (named_by_catalog IS NULL
            OR (by_disc_id = 0 AND by_barcode = 0 AND by_catalog = 0 AND by_isrc = 0
                AND by_search = 0)),

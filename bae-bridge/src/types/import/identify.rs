@@ -315,9 +315,9 @@ pub struct BridgeAgreements {
     pub label: bool,
     pub year: bool,
     pub country: bool,
-    /// The folder names a word only this row's notes write among the rows
-    /// offered.
-    pub notes: bool,
+    /// The note of the row's records the folder names it by, where the
+    /// ranking's notes point went to it: the Notes badge and its tooltip.
+    pub notes: Option<String>,
 }
 
 /// One candidate's identify state. A settled state carries the run it settled

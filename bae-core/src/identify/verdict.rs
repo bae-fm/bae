@@ -117,6 +117,8 @@ impl TerminalVerdict {
                 // A person's pick is theirs to make, whatever the folder's
                 // medium; nothing is left to hold back.
                 medium_conflict: None,
+                // Nothing ranked it, so nothing named it.
+                named_notes: Vec::new(),
             },
             track_count,
             ledger: None,

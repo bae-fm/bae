@@ -78,6 +78,7 @@ fn resumed(
                 matches: narrowed_out,
             },
             medium_conflict: None,
+            named_notes: Vec::new(),
         },
         track_count: 9,
         ledger,

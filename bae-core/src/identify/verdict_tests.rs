@@ -62,6 +62,7 @@ fn one_disc_id_match() -> Findings {
         pressings: vec![0],
         narrowed_out: NarrowedOut::default(),
         medium_conflict: None,
+        named_notes: Vec::new(),
     }
 }
 
@@ -302,6 +303,7 @@ fn signals_that_share_no_result_store_as_one_match_list() {
                     pressings: vec![0],
                 },
                 medium_conflict: None,
+                named_notes: Vec::new(),
             },
             track_count: 9,
             ledger: None,

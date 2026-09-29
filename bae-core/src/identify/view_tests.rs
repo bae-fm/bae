@@ -653,6 +653,7 @@ fn a_resumed_verdict_shows_the_ledger_its_run_recorded() {
                 pressings: vec![0],
             },
             medium_conflict: None,
+            named_notes: Vec::new(),
         },
         track_count: 9,
         ledger: Some(recorded_ledger()),
@@ -804,6 +805,7 @@ fn a_found_release_states_the_check_against_the_folder_it_failed() {
             pressings: vec![0],
             narrowed_out: NarrowedOut::default(),
             medium_conflict: None,
+            named_notes: Vec::new(),
         },
         track_count: 13,
         ledger: None,
@@ -876,9 +878,54 @@ fn the_notes_badge_is_on_the_row_the_folder_names_by_its_notes() {
         agreements
             .iter()
             .find(|(id, _)| id == release_id)
-            .map(|(_, row)| row.notes)
+            .map(|(_, row)| row.notes.clone())
             .expect("every row is badged")
     };
-    assert!(notes("mb-beta"));
-    assert!(!notes("mb-alpha"));
+    assert_eq!(
+        notes("mb-beta").as_deref(),
+        Some("Made In Nordland By Plant Beta")
+    );
+    assert_eq!(notes("mb-alpha"), None);
+}
+
+/// The badge says what the ranking weighed: a word an undated look-alike's
+/// notes share cancels in the ranking, and the badge stays off once that row
+/// is set aside for its missing year.
+#[test]
+fn the_notes_badge_reads_the_ranking_s_answer() {
+    let mut context = context();
+    context.disc.signal = DiscIdSignal::Computed {
+        disc_id: "d".to_string(),
+        source_file: None,
+    };
+    let noted = |release_id: &str, year: Option<i32>, note: &str| {
+        (
+            MetadataResult {
+                year,
+                notes: vec![note.to_string()],
+                ..MetadataResult::for_test(MB, release_id, Some("g"))
+            },
+            LibraryStatus::absent(release_id),
+        )
+    };
+    context.disc.results = vec![
+        noted("mb-alpha", Some(1987), "Plant Alpha"),
+        noted("mb-alpha-undated", None, "Plant Alpha"),
+        noted("mb-beta", Some(1987), "Plant Beta"),
+    ];
+    context.text = crate::identify::CandidateText::of(
+        &[crate::signals::TextLine {
+            text: "Album (Alpha)".to_string(),
+            origin: crate::signals::TextOrigin::FolderName,
+        }],
+        &[],
+        &[],
+    );
+
+    let IdentifyStateView::Found { agreements, .. } =
+        IdentifyStateView::from(crate::identify::state::re_derive_for_tests(context))
+    else {
+        panic!("the disc ID found every pressing");
+    };
+    assert!(agreements.iter().all(|(_, row)| row.notes.is_none()));
 }

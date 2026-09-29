@@ -68,6 +68,7 @@ fn verdict(release_id: &str, ledger: Option<crate::identify::IdentifyRunView>) -
             pressings: vec![0],
             narrowed_out: crate::identify::NarrowedOut::default(),
             medium_conflict: None,
+            named_notes: Vec::new(),
         },
         track_count: 1,
         ledger,

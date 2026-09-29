@@ -93,6 +93,10 @@ fn sample_findings() -> Findings {
         pressings: vec![0],
         narrowed_out: NarrowedOut::default(),
         medium_conflict: None,
+        named_notes: vec![crate::identify::NamedNote {
+            release: crate::import::MetadataRef::new(Catalog::MusicBrainz, "rel-1"),
+            note: "Pressed By Plant Name".to_string(),
+        }],
     }
 }
 
@@ -300,6 +304,7 @@ async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
             matches: matches.clone(),
             narrowed_out: NarrowedOut::default(),
             medium_conflict: None,
+            named_notes: Vec::new(),
         },
         track_count: 11,
         ledger: None,

@@ -62,6 +62,19 @@ pub struct Findings {
     /// What the folder's files prove when they rule out every row. The rows
     /// are still offered, but nothing picks one unattended.
     pub medium_conflict: Option<super::MediumConflict>,
+    /// The note of each offered release that writes a word the folder states
+    /// and no other row tied with its row writes — why the ranking's notes
+    /// point went to its row (see `identify::notes`), and what the Notes badge
+    /// shows. Kept rather than read again, since which rows it was weighed
+    /// among is the ranking's alone. Empty where the folder named none.
+    pub named_notes: Vec<NamedNote>,
+}
+
+/// A note of an offered release the folder's text names its row by.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct NamedNote {
+    pub release: crate::import::MetadataRef,
+    pub note: String,
 }
 
 impl Findings {
@@ -229,7 +242,7 @@ pub fn combine_results(
         .into_iter()
         .flat_map(ReleaseGroup::into_pressings)
         .collect();
-    let (offered, set_aside, medium_conflict) = split_rows(
+    let (offered, set_aside, medium_conflict, notes) = split_rows(
         rows,
         &judgements,
         &returned_by,
@@ -262,6 +275,17 @@ pub fn combine_results(
     };
 
     let (combined, pressings) = records(offered);
+    let named_notes = combined
+        .iter()
+        .filter_map(|(result, _)| {
+            notes
+                .get(&(result.source, result.release_id.clone()))
+                .map(|note| NamedNote {
+                    release: crate::import::MetadataRef::new(result.source, &result.release_id),
+                    note: note.clone(),
+                })
+        })
+        .collect();
     let (left_out, narrowed_out_pressings) = records(set_aside);
     let provenance = combined.iter().map(|(r, _)| lookup_of(r)).collect();
     let narrowed_out_provenance = left_out.iter().map(|(r, _)| lookup_of(r)).collect();
@@ -278,6 +302,7 @@ pub fn combine_results(
                 pressings: narrowed_out_pressings,
             },
             medium_conflict,
+            named_notes,
         },
         LibraryStatuses {
             matches: library_statuses,
@@ -450,15 +475,20 @@ fn split_rows(
     folder: FolderAudio<'_>,
     text: &CandidateText,
     facts: &FolderFacts,
-) -> (Vec<Pressing>, Vec<Pressing>, Option<super::MediumConflict>) {
+) -> (
+    Vec<Pressing>,
+    Vec<Pressing>,
+    Option<super::MediumConflict>,
+    HashMap<ReleaseKey, String>,
+) {
     let mut support: Vec<Support> = rows
         .iter()
         .map(|row| support_of(row, judgements, provenance, ripped_from, folder, facts))
         .collect();
     weigh_title_agreement(&rows, &mut support);
-    weigh_notes(&rows, &mut support, text);
+    let notes = weigh_notes(&rows, &mut support, text);
     let Some(best) = support.iter().copied().max() else {
-        return (Vec::new(), Vec::new(), None);
+        return (Vec::new(), Vec::new(), None, notes);
     };
     // The best row failing the medium means every row does.
     let medium_conflict = if best.medium {
@@ -474,7 +504,7 @@ fn split_rows(
             false => set_aside.push(row),
         }
     }
-    (offered, set_aside, medium_conflict)
+    (offered, set_aside, medium_conflict, notes)
 }
 
 impl Support {
@@ -530,24 +560,34 @@ fn weigh_title_agreement(rows: &[Pressing], support: &mut [Support]) {
     }
 }
 
-/// Give each row tied at the top on every other field the point for the
-/// folder naming what sets it apart from the others tied there. The rows
-/// below are out already, and what their notes share with these says nothing
-/// about which of these is on the desk.
-fn weigh_notes(rows: &[Pressing], support: &mut [Support], text: &CandidateText) {
+/// Give each row tied at the top on every field above the notes the point
+/// for the folder naming what sets it apart from the others tied there, and
+/// return the note of each of their records it names. The rows below are out
+/// already, and what their notes share with these says nothing about which
+/// of these is on the desk.
+fn weigh_notes(
+    rows: &[Pressing],
+    support: &mut [Support],
+    text: &CandidateText,
+) -> HashMap<ReleaseKey, String> {
+    let mut notes = HashMap::new();
     let Some(best) = support.iter().map(Support::above_notes).max() else {
-        return;
+        return notes;
     };
     let tied: Vec<usize> = (0..rows.len())
         .filter(|row| support[*row].above_notes() == best)
         .collect();
-    let named = super::notes::names_what_sets_each_apart(
-        tied.iter().map(|row| rows[*row].releases.as_slice()),
-        text,
-    );
+    let named =
+        super::notes::named_notes(tied.iter().map(|row| rows[*row].releases.as_slice()), text);
     for (row, named) in tied.into_iter().zip(named) {
-        support[row].names_what_sets_it_apart = named;
+        for (release, note) in rows[row].releases.iter().zip(named) {
+            if let Some(note) = note {
+                support[row].names_what_sets_it_apart = true;
+                notes.insert((release.source, release.release_id.clone()), note);
+            }
+        }
     }
+    notes
 }
 
 fn release_keys(results: &Results) -> HashSet<ReleaseKey> {

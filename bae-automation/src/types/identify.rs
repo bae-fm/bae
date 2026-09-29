@@ -180,7 +180,7 @@ pub struct AutomationAgreements {
     pub country: bool,
     pub title: bool,
     pub artist: bool,
-    pub notes: bool,
+    pub notes: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
