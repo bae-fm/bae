@@ -245,10 +245,8 @@ pub(crate) async fn playback_info_from_track_release(
     };
 
     let track_artists = database.get_artists_for_track(&track.id).await?;
-    let (artist_id, artist_names) = if !track_artists.is_empty() {
-        let id = track_artists[0].id.clone();
-        let names = join_artist_names(&track_artists);
-        (id, names)
+    let artist_names = if !track_artists.is_empty() {
+        join_artist_names(&track_artists)
     } else {
         let album_artists = database.get_artists_for_album(&album_id).await?;
         if album_artists.is_empty() {
@@ -257,9 +255,7 @@ pub(crate) async fn playback_info_from_track_release(
                 track.id, album_id
             )));
         }
-        let id = album_artists[0].id.clone();
-        let names = join_artist_names(&album_artists);
-        (id, names)
+        join_artist_names(&album_artists)
     };
 
     let side = release
@@ -273,7 +269,6 @@ pub(crate) async fn playback_info_from_track_release(
         track_id: track.id.clone(),
         track_title: track.title.clone(),
         artist_names,
-        artist_id,
         album_id,
         album_title,
         cover_image,

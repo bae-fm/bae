@@ -288,7 +288,6 @@ fn test_track_info(track_id: &str) -> PlaybackTrackInfo {
         track_id: track_id.to_string(),
         track_title: "Track Title".to_string(),
         artist_names: "Artist Name".to_string(),
-        artist_id: "artist-id".to_string(),
         album_id: "album-id".to_string(),
         album_title: "Album Title".to_string(),
         cover_image: None,

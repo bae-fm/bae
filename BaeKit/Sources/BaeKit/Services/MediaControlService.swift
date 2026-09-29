@@ -158,7 +158,6 @@ public final class MediaControlService: @unchecked Sendable {
             let trackTitle,
             let artistNames,
             _,
-            _,
             let albumTitle,
             let coverImage,
             let durationMs
@@ -167,7 +166,6 @@ public final class MediaControlService: @unchecked Sendable {
                 _,
                 let trackTitle,
                 let artistNames,
-                _,
                 _,
                 let albumTitle,
                 let coverImage,

@@ -9,7 +9,6 @@ pub struct PlaybackTrackInfo {
     pub track_id: String,
     pub track_title: String,
     pub artist_names: String,
-    pub artist_id: String,
     pub album_id: String,
     pub album_title: String,
     /// The track's release cover, or `None` when it has none. Versioned, so new

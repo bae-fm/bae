@@ -98,7 +98,6 @@ class SeekToMediaItemTest {
                 trackId = "cur",
                 trackTitle = "Title cur",
                 artistNames = "Artist Name",
-                artistId = "artist-1",
                 albumId = "album-1",
                 albumTitle = "Album Title",
                 coverImage = null,
