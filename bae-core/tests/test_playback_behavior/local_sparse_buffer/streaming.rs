@@ -656,15 +656,18 @@ async fn pause_seek_resume_advances_position_over_sparse_buffer() {
         "should land near {seek_target:?}, got {landed}ms"
     );
 
-    let auto_played = wait_for_state_on(
+    // The seek holds Loading until the target's window is fetched and decoded,
+    // then settles on the pause it had.
+    let settled = wait_for_state_on(
         &mut playback.progress_rx,
-        |s| matches!(s, PlaybackState::Playing { .. }),
-        Duration::from_millis(500),
+        |s| !matches!(s, PlaybackState::Loading { .. }),
+        Duration::from_secs(20),
     )
-    .await;
+    .await
+    .expect("the seek settles");
     assert!(
-        auto_played.is_none(),
-        "should still be paused after seek, not auto-playing"
+        matches!(settled, PlaybackState::Paused { .. }),
+        "should still be paused after seek, not auto-playing, got {settled:?}"
     );
 
     playback.playback_handle.resume();

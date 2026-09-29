@@ -354,15 +354,18 @@ async fn pause_and_seek_interact_in_both_orderings() {
         "seek should land near 2s, got {seeked_ms}ms"
     );
 
+    // The seek holds Loading until the rebuilt decoder is ready, then settles
+    // on the pause it had.
+    let settled = fixture
+        .wait_for_state(
+            |s| !matches!(s, PlaybackState::Loading { .. }),
+            Duration::from_secs(5),
+        )
+        .await
+        .expect("the seek settles");
     assert!(
-        fixture
-            .wait_for_state(
-                |s| matches!(s, PlaybackState::Playing { .. }),
-                Duration::from_millis(200),
-            )
-            .await
-            .is_none(),
-        "should stay paused after seek, not auto-play"
+        matches!(settled, PlaybackState::Paused { .. }),
+        "should stay paused after seek, not auto-play, got {settled:?}"
     );
 
     fixture.playback_handle.resume();

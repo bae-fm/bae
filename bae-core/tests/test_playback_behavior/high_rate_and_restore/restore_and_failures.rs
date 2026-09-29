@@ -169,10 +169,19 @@ async fn test_restore_corrupt_row_starts_fresh() {
     let mut progress_rx = handle.subscribe_progress();
 
     // A discarded resume cache restores nothing: no playback state may surface.
-    let restored = wait_for_state_on(&mut progress_rx, |_| true, Duration::from_millis(500)).await;
+    // The restore runs before the service handles its first command, so it is
+    // over once the sentinel is; the values carry whatever it emitted before
+    // this subscription existed.
+    let events = settled_events_on(&handle, &mut progress_rx).await;
+    let restored = states_in(&events);
     assert!(
-        restored.is_none(),
+        restored.is_empty(),
         "a discarded resume cache leaves nothing playing (fresh start), got {restored:?}"
+    );
+    let state = handle.subscribe_values().borrow().state.clone();
+    assert!(
+        matches!(state, PlaybackState::Stopped),
+        "a discarded resume cache leaves nothing playing (fresh start), got {state:?}"
     );
     let queue = handle.queue_projection().await.expect("queue projection");
     assert!(
@@ -398,15 +407,19 @@ async fn mid_flight_cloud_read_failure_ends_in_stopped() {
         "Playing must never be emitted for a track whose audio never became ready, got {states:?}"
     );
 
-    // And it must not bounce back into Playing afterwards.
-    let resurfaced = wait_for_state_on(
-        &mut fixture.progress_rx,
-        |s| matches!(s, PlaybackState::Playing { .. }),
-        Duration::from_millis(300),
-    )
-    .await;
+    // And it must not bounce back into Playing afterwards: nothing the service
+    // had queued by the time it stopped restarts it.
+    let events = settled_events_on(&fixture.playback_handle, &mut fixture.progress_rx).await;
+    let resurfaced = states_in(&events);
     assert!(
-        resurfaced.is_none(),
-        "playback must stay stopped after the failure, not flip back to Playing"
+        resurfaced
+            .iter()
+            .all(|s| matches!(s, PlaybackState::Stopped)),
+        "playback must stay stopped after the failure, got {resurfaced:?}"
+    );
+    let state = fixture.playback_handle.subscribe_values().borrow().state.clone();
+    assert!(
+        matches!(state, PlaybackState::Stopped),
+        "playback must stay stopped after the failure, not flip back to Playing, got {state:?}"
     );
 }
