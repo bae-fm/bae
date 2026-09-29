@@ -3,12 +3,20 @@ import XCTest
 final class MainMenuTests: XCTestCase {
     @MainActor
     func testLibraryShortcutKeepsTheFocusedMainWindow() throws {
-        try assertSectionShortcutKeepsTheFocusedMainWindow("1")
+        try assertSectionShortcutKeepsTheFocusedMainWindow(
+            "1",
+            from: .importing,
+            to: .library
+        )
     }
 
     @MainActor
     func testImportShortcutKeepsTheFocusedMainWindow() throws {
-        try assertSectionShortcutKeepsTheFocusedMainWindow("2")
+        try assertSectionShortcutKeepsTheFocusedMainWindow(
+            "2",
+            from: .library,
+            to: .importing
+        )
     }
 
     @MainActor
@@ -57,9 +65,26 @@ final class MainMenuTests: XCTestCase {
         XCTAssertEqual(primaryWindow.frame.width, 900, accuracy: 2)
     }
 
+    /// A main-window section of the empty library a test launches on: the
+    /// title-bar segment that selects it, and the text only it shows.
+    private struct Section {
+        let segment: String
+        let shows: String
+
+        static let library = Section(segment: "Library", shows: "No albums")
+        static let importing = Section(
+            segment: "Import",
+            shows: "Add a folder to import music from"
+        )
+    }
+
+    /// Start on `start`, press Command-`key`, and once `target` shows, the
+    /// window that showed it is still the only one.
     @MainActor
     private func assertSectionShortcutKeepsTheFocusedMainWindow(
         _ key: String,
+        from start: Section,
+        to target: Section,
         file: StaticString = #filePath,
         line: UInt = #line
     ) throws {
@@ -90,10 +115,18 @@ final class MainMenuTests: XCTestCase {
         )
         XCTAssertEqual(app.windows.count, 1, file: file, line: line)
 
+        primaryWindow.buttons[start.segment].click()
+        XCTAssertTrue(
+            primaryWindow.staticTexts[start.shows]
+                .waitForExistence(timeout: 20),
+            file: file,
+            line: line
+        )
+
         app.typeKey(key, modifierFlags: .command)
 
-        XCTAssertFalse(
-            app.windows.element(boundBy: 1).waitForExistence(timeout: 2),
+        XCTAssertTrue(
+            app.staticTexts[target.shows].waitForExistence(timeout: 20),
             file: file,
             line: line
         )
