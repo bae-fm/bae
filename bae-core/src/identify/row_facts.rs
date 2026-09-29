@@ -6,7 +6,7 @@
 use super::agreements::CandidateText;
 use crate::import::search::MetadataResult;
 use crate::pressing::{Country, ReleaseArea};
-use crate::text_match::track_title_key;
+use crate::text_match::{squash, track_title_key};
 
 /// What a row's fact says against the folder's, worst first, so the derived
 /// order ranks rows.
@@ -40,6 +40,13 @@ pub(crate) struct FolderFacts {
     /// ("CD" is the Congo's). A country no record states still counts: it is
     /// a fact about the copy, and every row of another country disagrees.
     area: Option<ReleaseArea>,
+    /// The catalog numbers the folder states, squashed: those of the records
+    /// on the list its highest-standing text stating any of them states. A
+    /// label, a matrix or a second label can each print a number, so a copy
+    /// may state several, where it has one country. Only a list's numbers are
+    /// looked for — a number no record carries, or a short form of one,
+    /// states nothing and leaves the next standing to speak.
+    catalogs: Vec<String>,
 }
 
 impl FolderFacts {
@@ -61,6 +68,21 @@ impl FolderFacts {
             }
             named
         });
+        let numbers: Vec<&str> = results
+            .iter()
+            .flat_map(|result| &result.labels)
+            .filter_map(crate::pressing::ReleaseLabel::catalog_number)
+            .collect();
+        let catalogs = text.highest_stating(|lines| {
+            let mut stated: Vec<String> = Vec::new();
+            for number in &numbers {
+                let key = squash(number);
+                if !stated.contains(&key) && lines.states_catalog(number) {
+                    stated.push(key);
+                }
+            }
+            stated
+        });
         let mut album_years: Vec<((crate::import::Catalog, String), i32)> = Vec::new();
         for result in results {
             if let (Some(group), Some(year)) = (&result.source_group_id, result.album_first_year) {
@@ -77,6 +99,7 @@ impl FolderFacts {
                 [one] => Some(*one),
                 _ => None,
             },
+            catalogs,
         }
     }
 
@@ -152,6 +175,11 @@ impl FolderFacts {
             .filter(|year| !titled.contains(year))
             .collect();
         (years, self.album_first_year(records))
+    }
+
+    /// Whether the folder states `number` as its catalog number.
+    pub(crate) fn states_catalog(&self, number: &str) -> bool {
+        self.catalogs.contains(&squash(number))
     }
 
     /// Whether `area` is where the folder says the copy was released.

@@ -864,6 +864,7 @@ fn the_notes_badge_is_on_the_row_the_folder_names_by_its_notes() {
             origin: crate::signals::TextOrigin::FolderName,
         }],
         &[],
+        &[],
     );
 
     let IdentifyStateView::Found { agreements, .. } =

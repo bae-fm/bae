@@ -5,7 +5,7 @@ use super::combine::LookupProvenance;
 use super::row_facts::FolderFacts;
 use crate::import::search::MetadataResult;
 use crate::pressing::{ReleaseArea, ReleaseLabel};
-use crate::signals::{TextLine, TextOrigin};
+use crate::signals::{SourcedValue, TextLine, TextOrigin};
 use crate::text_match::{bare_album_title, is_stop_word, squash, words, written_words, LabelName};
 use std::collections::HashSet;
 
@@ -100,7 +100,7 @@ pub(crate) fn agreements_of(
             .labels
             .iter()
             .filter_map(ReleaseLabel::catalog_number)
-            .any(|value| text.states_catalog(value)),
+            .any(|value| facts.states_catalog(value)),
         label: result
             .labels
             .iter()
@@ -137,26 +137,40 @@ pub(crate) fn judged_results(
         .collect()
 }
 
-/// The candidate's own text, normalized once, and the catalog numbers the
-/// person struck out. A value is stated when, lowercased and stripped of all
-/// but letters and digits, it spans whole words of a line: `16033-2` states
-/// `16033 2`, and "blues" does not state `US`.
+/// The candidate's own text, normalized once, the catalog numbers the person
+/// struck out, and the barcodes the folder carries. A value is stated when,
+/// lowercased and stripped of all but letters and digits, it spans whole
+/// words of a line: `16033-2` states `16033 2`, and "blues" does not state
+/// `US`.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct CandidateText {
     lines: Vec<NormalizedLine>,
     /// Normalized, so the comparison is the one `states` makes.
     struck_out: HashSet<String>,
+    /// The digits of each barcode read off the folder's files.
+    barcodes: Vec<String>,
 }
 
 impl CandidateText {
-    /// The pooled lines and the struck-out catalog numbers.
-    pub fn of(pool: &[TextLine], struck_out: &[String]) -> Self {
+    /// The pooled lines, the struck-out catalog numbers, and the barcodes the
+    /// folder's files carry.
+    pub fn of(pool: &[TextLine], struck_out: &[String], barcodes: &[SourcedValue]) -> Self {
         Self {
             lines: pool.iter().filter_map(NormalizedLine::of).collect(),
             struck_out: struck_out
                 .iter()
                 .map(|value| squash(value))
                 .filter(|value| !value.is_empty())
+                .collect(),
+            barcodes: barcodes
+                .iter()
+                .map(|code| {
+                    code.value
+                        .chars()
+                        .filter(char::is_ascii_digit)
+                        .collect::<String>()
+                })
+                .filter(|digits| !digits.is_empty())
                 .collect(),
         }
     }
@@ -183,9 +197,23 @@ impl CandidateText {
     }
 
     /// Whether the text states `value` as a catalog number: printed there,
-    /// and not struck out.
+    /// not struck out, and not the digits of the folder's own barcode. A
+    /// barcode's digits are printed beneath it — whole, or without the first
+    /// and last digit, as some labels' catalog numbers are ("0 7599-27320-2
+    /// 4") — and read there they are the barcode again, not a catalog
+    /// number the copy states.
     pub fn states_catalog(&self, value: &str) -> bool {
-        !self.is_struck_out(value) && self.states(value)
+        !self.is_struck_out(value) && !self.is_barcode_digits(value) && self.states(value)
+    }
+
+    fn is_barcode_digits(&self, value: &str) -> bool {
+        let digits = squash(value);
+        !digits.is_empty()
+            && digits.chars().all(|c| c.is_ascii_digit())
+            && self
+                .barcodes
+                .iter()
+                .any(|code| code.contains(&digits) && digits.len() + 2 >= code.len())
     }
 
     /// Whether the text states `value` as a label name, without the trade
@@ -236,6 +264,7 @@ impl CandidateText {
                         .cloned()
                         .collect(),
                     struck_out: self.struck_out.clone(),
+                    barcodes: self.barcodes.clone(),
                 })
             })
             .find(|found| !found.is_empty())

@@ -19,6 +19,7 @@ fn folder() -> CandidateText {
             origin: TextOrigin::FolderName,
         }],
         &[],
+        &[],
     )
 }
 
@@ -290,6 +291,7 @@ fn a_sleeve_saying_where_it_was_made_offers_that_pressing() {
             ),
         ],
         &[],
+        &[],
     );
     let released_in = |release_id: &str, area: &str| {
         let (result, status) = pressing(release_id, made_of(&[Medium::Cd]));
@@ -348,7 +350,7 @@ fn stating_no_country_or_both_leaves_the_pressings_tied() {
                 ..LookupAnswers::default()
             },
             Vec::new(),
-            &CandidateText::of(&sleeve, &[]),
+            &CandidateText::of(&sleeve, &[], &[]),
             FolderAudio::UNPROVEN,
         );
         assert_eq!(offered(&outcome).len(), 2, "{sleeve:?}");
@@ -517,6 +519,7 @@ fn the_album_the_folder_names_outranks_another_on_the_same_label() {
             origin: TextOrigin::FolderName,
         }],
         &[],
+        &[],
     );
     let on_label = |release_id: &str, title: &str, artist: &str| {
         let (result, status) = pressing(release_id, made_of(&[Medium::Vinyl]));
@@ -612,6 +615,7 @@ fn the_folder_naming_a_country_outranks_where_the_recordings_were_registered() {
             text: "Artist One - Album One [L1-100] (Germany)".to_string(),
             origin: TextOrigin::FolderName,
         }],
+        &[],
         &[],
     );
     let outcome = combine_results(

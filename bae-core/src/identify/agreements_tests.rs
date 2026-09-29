@@ -10,7 +10,11 @@ fn line(text: &str) -> TextLine {
 }
 
 fn text(lines: &[&str]) -> CandidateText {
-    CandidateText::of(&lines.iter().copied().map(line).collect::<Vec<_>>(), &[])
+    CandidateText::of(
+        &lines.iter().copied().map(line).collect::<Vec<_>>(),
+        &[],
+        &[],
+    )
 }
 
 fn result() -> MetadataResult {
@@ -219,6 +223,7 @@ fn a_struck_out_catalog_number_states_nothing() {
     let folder = CandidateText::of(
         &[line("Artist - Album [10101-2]")],
         &["10101-2".to_string()],
+        &[],
     );
     let judged = judge(
         &MetadataResult {
@@ -235,7 +240,7 @@ fn a_struck_out_catalog_number_states_nothing() {
 /// still state a year.
 #[test]
 fn striking_out_a_value_leaves_the_other_fields_alone() {
-    let folder = CandidateText::of(&[line("Harbor 1976 US")], &["1976".to_string()]);
+    let folder = CandidateText::of(&[line("Harbor 1976 US")], &["1976".to_string()], &[]);
     let judged = judge(
         &MetadataResult {
             labels: vec![ReleaseLabel::of(None, Some("1976"))],
@@ -253,7 +258,7 @@ fn striking_out_a_value_leaves_the_other_fields_alone() {
 /// returned a release under it.
 #[test]
 fn striking_out_a_number_takes_its_agreement_away() {
-    let folder = CandidateText::of(&[line("[LBL-1]")], &["LBL-1".to_string()]);
+    let folder = CandidateText::of(&[line("[LBL-1]")], &["LBL-1".to_string()], &[]);
     let judged = judge(
         &MetadataResult {
             labels: vec![ReleaseLabel::of(None, Some("LBL-1"))],
@@ -308,7 +313,7 @@ fn states_country(code: &str, lines: &[TextLine]) -> bool {
             area: Some(crate::pressing::area(code)),
             ..result()
         },
-        &CandidateText::of(lines, &[]),
+        &CandidateText::of(lines, &[], &[]),
         &NO_LOOKUP,
     )
     .country

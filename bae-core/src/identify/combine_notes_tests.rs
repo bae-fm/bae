@@ -13,6 +13,7 @@ fn folder(line: &str) -> CandidateText {
             origin: TextOrigin::FolderName,
         }],
         &[],
+        &[],
     )
 }
 

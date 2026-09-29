@@ -12,6 +12,7 @@ fn text(lines: &[&str]) -> CandidateText {
             })
             .collect::<Vec<_>>(),
         &[],
+        &[],
     )
 }
 
@@ -205,6 +206,7 @@ fn read(lines: &[(TextOrigin, &str)]) -> CandidateText {
             })
             .collect::<Vec<_>>(),
         &[],
+        &[],
     )
 }
 
@@ -294,4 +296,86 @@ fn a_country_no_row_has_disagrees_with_every_row() {
         facts.country(std::slice::from_ref(&unplaced)),
         Fact::StatesNothing
     );
+}
+
+/// A row carrying `numbers` as its catalog numbers.
+fn numbered(release_id: &str, numbers: &[&str]) -> MetadataResult {
+    MetadataResult {
+        labels: numbers
+            .iter()
+            .map(|number| crate::pressing::ReleaseLabel::of(Some("Label One"), Some(number)))
+            .collect(),
+        ..MetadataResult::for_test(Catalog::MusicBrainz, release_id, Some("rg-1"))
+    }
+}
+
+/// The folder's name outranks the artwork: a number only the artwork prints
+/// states nothing where the name states one.
+#[test]
+fn the_folder_s_name_outranks_the_artwork_s_catalog_number() {
+    let named = numbered("rel-a", &["LBL-100"]);
+    let printed = numbered("rel-b", &["LBL-200"]);
+    let facts = FolderFacts::of(
+        &read(&[
+            (
+                TextOrigin::FolderName,
+                "Artist - Album (Label One, LBL-100)",
+            ),
+            (TextOrigin::Artwork, "LBL-200"),
+        ]),
+        [&named, &printed],
+    );
+    assert!(facts.states_catalog("LBL-100"));
+    assert!(!facts.states_catalog("LBL-200"));
+}
+
+/// The digits beneath the folder's barcode are the barcode printed again: a
+/// number spelling them states nothing, even where only the artwork speaks.
+#[test]
+fn a_barcode_s_digits_state_no_catalog_number() {
+    let named = numbered("rel-a", &["LBL-100"]);
+    let barcoded = numbered("rel-b", &["1234-56789-0"]);
+    let text = CandidateText::of(
+        &[TextLine {
+            text: "LBL-100 0 1234-56789-0 5".to_string(),
+            origin: TextOrigin::Artwork,
+        }],
+        &[],
+        &[crate::signals::SourcedValue::new(
+            "012345678905".to_string(),
+        )],
+    );
+    let facts = FolderFacts::of(&text, [&named, &barcoded]);
+    assert!(facts.states_catalog("LBL-100"));
+    assert!(!facts.states_catalog("1234-56789-0"));
+}
+
+/// A copy can state several numbers: a row carrying either agrees.
+#[test]
+fn every_number_the_folder_states_counts() {
+    let first = numbered("rel-a", &["LBL-100"]);
+    let second = numbered("rel-b", &["ALT-300"]);
+    let facts = FolderFacts::of(
+        &read(&[(TextOrigin::FolderName, "Album (LBL-100 / ALT-300)")]),
+        [&first, &second],
+    );
+    assert!(facts.states_catalog("LBL-100"));
+    assert!(facts.states_catalog("ALT-300"));
+}
+
+/// A number the folder's name writes that no row carries does not silence
+/// the artwork: the row whose number the artwork prints agrees.
+#[test]
+fn a_number_no_row_carries_leaves_the_next_standing_to_speak() {
+    let first = numbered("rel-a", &["LBL-100", "12-90329-2"]);
+    let second = numbered("rel-b", &["LBL-200"]);
+    let facts = FolderFacts::of(
+        &read(&[
+            (TextOrigin::FolderName, "Artist - Album (Label One 90329-2)"),
+            (TextOrigin::Artwork, "12-90329-2 YS"),
+        ]),
+        [&first, &second],
+    );
+    assert!(facts.states_catalog("12-90329-2"));
+    assert!(!facts.states_catalog("LBL-200"));
 }

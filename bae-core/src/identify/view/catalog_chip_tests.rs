@@ -20,7 +20,7 @@ fn folder(lines: &[&str], struck_out: &[&str]) -> CandidateText {
         .iter()
         .map(|value| (*value).to_string())
         .collect();
-    CandidateText::of(&pool, &struck_out)
+    CandidateText::of(&pool, &struck_out, &[])
 }
 
 /// One pressing with the fields the folder's text may agree with.

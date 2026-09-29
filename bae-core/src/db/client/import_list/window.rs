@@ -524,6 +524,7 @@ pub(super) fn load_candidate_detail_on(
                         crate::identify::CandidateText::of(
                             &signals.text_pool,
                             &lookup_choices.discounted_catalogs,
+                            signals.barcode.codes(),
                         )
                     });
             resumed_identify_state =

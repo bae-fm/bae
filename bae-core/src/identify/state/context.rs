@@ -476,7 +476,11 @@ impl SignalsContext {
         self.disc.refresh_input(&signals.disc_id);
         self.barcode.refresh_input(&signals.barcode);
         self.catalog.refresh_input(&signals.text);
-        self.text = CandidateText::of(&signals.text_pool, &self.catalog.struck_out);
+        self.text = CandidateText::of(
+            &signals.text_pool,
+            &self.catalog.struck_out,
+            signals.barcode.codes(),
+        );
         self.text_settled = !matches!(signals.text, TextSignal::Scanning { .. });
     }
 

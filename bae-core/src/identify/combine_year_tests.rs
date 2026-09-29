@@ -14,6 +14,7 @@ fn folder(line: &str) -> CandidateText {
             origin: TextOrigin::FolderName,
         }],
         &[],
+        &[],
     )
 }
 
@@ -144,6 +145,7 @@ fn the_folder_s_name_outranks_a_year_the_artwork_prints() {
                 origin: TextOrigin::Artwork,
             },
         ],
+        &[],
         &[],
     );
     let results = vec![

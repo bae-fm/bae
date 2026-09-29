@@ -259,7 +259,7 @@ fn folder(lines: &[&str]) -> CandidateText {
             origin: crate::signals::TextOrigin::FolderName,
         })
         .collect();
-    CandidateText::of(&pool, &[])
+    CandidateText::of(&pool, &[], &[])
 }
 
 /// A pressing of Album One whose catalog number, label and country the
