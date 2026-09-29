@@ -37,7 +37,14 @@ FILE "03 - Track Three.m4a" WAVE
     assert_eq!(sheet.tracks[0].file_reference, "01 - Track One.m4a");
     assert_eq!(sheet.tracks[1].file_reference, "02 - Track Two.m4a");
     assert_eq!(sheet.tracks[2].file_reference, "03 - Track Three.m4a");
-    assert!(sheet.single_file().is_none());
+    assert_eq!(
+        sheet.audio_file_references(),
+        [
+            "01 - Track One.m4a",
+            "02 - Track Two.m4a",
+            "03 - Track Three.m4a"
+        ]
+    );
 }
 
 #[test]
@@ -57,7 +64,7 @@ FILE "Album.flac" WAVE
     for track in &sheet.tracks {
         assert_eq!(track.file_reference, "Album.flac");
     }
-    assert_eq!(sheet.single_file(), Some("Album.flac"));
+    assert_eq!(sheet.audio_file_references(), ["Album.flac"]);
 }
 
 #[test]
@@ -113,10 +120,7 @@ FILE "03.wav" WAVE
     assert_eq!(track2.file_reference, "02.wav");
     assert_eq!(track2.index(0).unwrap().file_reference, "01.wav");
     assert_eq!(track2.index(1).unwrap().file_reference, "02.wav");
-    assert_eq!(
-        track2.pregap_start_cue_frames(),
-        Some((2 * 60 + 55) * 75 + 33)
-    );
+    assert_eq!(track2.index(0).unwrap().frames, (2 * 60 + 55) * 75 + 33);
 }
 
 #[test]
@@ -178,12 +182,9 @@ FILE "test.flac" WAVE
     assert_eq!(cue_sheet.performer.as_deref(), Some("Test Artist"));
     assert_eq!(cue_sheet.tracks.len(), 2);
     assert_eq!(cue_sheet.tracks[0].title.as_deref(), Some("Track 1"));
-    assert_eq!(cue_sheet.tracks[0].start_time_ms(), 0);
+    assert_eq!(cue_sheet.tracks[0].start_cue_frames, 0);
     assert_eq!(cue_sheet.tracks[1].title.as_deref(), Some("Track 2"));
-    assert_eq!(
-        cue_sheet.tracks[1].start_time_ms(),
-        3 * 60 * 1000 + 45 * 1000
-    );
+    assert_eq!(cue_sheet.tracks[1].start_cue_frames, (3 * 60 + 45) * 75);
 }
 #[test]
 fn test_parse_cue_sheet_with_catalog_line() {
@@ -223,10 +224,10 @@ FILE "Artist Name - Album Title.flac" WAVE
     assert_eq!(cue_sheet.tracks.len(), 3);
     assert_eq!(cue_sheet.tracks[0].title.as_deref(), Some("Track One"));
     // Track 1 has pregap at 00:00:00, INDEX 01 at 00:00:37
-    assert_eq!(cue_sheet.tracks[0].pregap_start_cue_frames(), Some(0));
+    assert_eq!(cue_sheet.tracks[0].index(0).unwrap().frames, 0);
     assert_eq!(cue_sheet.tracks[0].start_cue_frames, 37);
     // Track 2 has pregap
-    assert!(cue_sheet.tracks[1].pregap_start_cue_frames().is_some());
+    assert!(cue_sheet.tracks[1].index(0).is_some());
 }
 
 #[test]
@@ -286,9 +287,9 @@ FILE "test.flac" WAVE
     let result = parse_cue_content(cue_content);
     assert!(result.is_ok());
     let cue_sheet = result.unwrap();
-    assert_eq!(cue_sheet.tracks[0].end_time_ms(), Some(3 * 60 * 1000));
-    assert_eq!(cue_sheet.tracks[1].end_time_ms(), Some(6 * 60 * 1000));
-    assert_eq!(cue_sheet.tracks[2].end_time_ms(), None);
+    assert_eq!(cue_sheet.tracks[0].end_cue_frames, Some(3 * 60 * 75));
+    assert_eq!(cue_sheet.tracks[1].end_cue_frames, Some(6 * 60 * 75));
+    assert_eq!(cue_sheet.tracks[2].end_cue_frames, None);
 }
 #[test]
 fn test_parse_cue_sheet_without_per_track_performer() {
@@ -467,7 +468,7 @@ FILE "Album.flac" WAVE
 "#;
     let sheet = parse_cue_content(cue_content).unwrap();
     assert_eq!(sheet.tracks.len(), 2);
-    assert!(!sheet.tracks[0].is_playable_audio());
+    assert!(!sheet.tracks[0].mode.is_audio());
     assert_eq!(sheet.playable_track_count(), 1);
     assert_eq!(sheet.audio_file_references(), vec!["Album.flac"]);
 }
@@ -514,8 +515,8 @@ FILE "Test Artist - Test Album.flac" WAVE
     let cue_sheet = result.unwrap();
 
     // Track 1 should end at track 2's pregap (INDEX 00), not INDEX 01
-    let track1_end_ms = cue_sheet.tracks[0].end_time_ms().unwrap();
-    let track2_pregap_frames = cue_sheet.tracks[1].pregap_start_cue_frames().unwrap();
+    let track1_end_frames = cue_sheet.tracks[0].end_cue_frames.unwrap();
+    let track2_pregap_frames = cue_sheet.tracks[1].index(0).unwrap().frames;
     let track2_start_frames = cue_sheet.tracks[1].start_cue_frames;
 
     // Verify pregap was parsed correctly (INDEX 00 = 2:46:00 = 12450 CUE frames)
@@ -525,8 +526,7 @@ FILE "Test Artist - Test Album.flac" WAVE
 
     // THE KEY ASSERTION: Track 1 ends at pregap, not at start
     assert_eq!(
-        track1_end_ms,
-        track2_pregap_frames * 1000 / 75,
+        track1_end_frames, track2_pregap_frames,
         "Track 1 should end at track 2's INDEX 00 (pregap), not INDEX 01"
     );
 }
@@ -550,7 +550,7 @@ FILE "test.flac" WAVE
     let cue_sheet = result.unwrap();
 
     let track2 = &cue_sheet.tracks[1];
-    let pregap_frames = track2.pregap_start_cue_frames().unwrap();
+    let pregap_frames = track2.index(0).unwrap().frames;
     let start_frames = track2.start_cue_frames;
 
     // Pregap duration should be 3 seconds (3:03 - 3:00 = 225 CUE frames = 3s)
@@ -595,45 +595,6 @@ FILE "test.flac" WAVE
 }
 
 #[test]
-fn test_cue_track_audio_methods() {
-    // Track 2 has pregap at 2:46 (INDEX 00) and start at 2:49 (INDEX 01)
-    // Track 3 starts at 9:31, so track 2 ends at 9:31
-    let cue_content = r#"PERFORMER "Test Artist"
-TITLE "Test Album"
-FILE "test.flac" WAVE
-  TRACK 01 AUDIO
-    TITLE "Track 1"
-    INDEX 01 00:00:00
-  TRACK 02 AUDIO
-    TITLE "Track 2"
-    INDEX 00 02:46:00
-    INDEX 01 02:49:00
-  TRACK 03 AUDIO
-    TITLE "Track 3"
-    INDEX 01 09:31:00
-"#;
-    let cue_sheet = parse_cue_content(cue_content).unwrap();
-
-    // Track 1: no pregap
-    let track1 = &cue_sheet.tracks[0];
-    assert_eq!(track1.audio_start_ms(), 0);
-    assert_eq!(track1.pregap_duration_ms(), None);
-
-    // Track 2: has pregap
-    let track2 = &cue_sheet.tracks[1];
-    assert_eq!(track2.audio_start_ms(), 166000); // 2:46 (INDEX 00)
-    assert_eq!(track2.pregap_duration_ms(), Some(3000)); // 3 seconds
-                                                         // Track duration excludes pregap: 9:31 - 2:49 = 402 seconds
-    assert_eq!(track2.track_duration_ms(), Some(402000));
-
-    // Track 3: last track, no end time
-    let track3 = &cue_sheet.tracks[2];
-    assert_eq!(track3.audio_start_ms(), 571000); // 9:31
-    assert_eq!(track3.pregap_duration_ms(), None);
-    assert_eq!(track3.track_duration_ms(), None);
-}
-
-#[test]
 fn test_parse_cue_with_rem_between_title_and_file() {
     let cue_content = r#"REM DATE 1970
 REM DISCID A1B2C3D4
@@ -674,10 +635,10 @@ FILE "Test Artist - Test Album.flac" WAVE
         cue_sheet.tracks[2].title.as_deref(),
         Some("Track 3 With Multiple Sections")
     );
-    assert_eq!(cue_sheet.tracks[0].start_time_ms(), 0);
+    assert_eq!(cue_sheet.tracks[0].start_cue_frames, 0);
     assert_eq!(
-        cue_sheet.tracks[1].start_time_ms(),
-        6 * 60 * 1000 + 17 * 1000 + 53 * 1000 / 75,
+        cue_sheet.tracks[1].start_cue_frames,
+        (6 * 60 + 17) * 75 + 53
     );
 }
 
@@ -708,48 +669,32 @@ FILE "test.ape" WAVE
 "#;
     let cue_sheet = parse_cue_content(cue_content).unwrap();
 
-    // Track 1: end should be track 2's start (no pregap on track 2)
+    let length = |track: &CueTrack| track.end_cue_frames.unwrap() - track.start_cue_frames;
+
+    // Track 1 ends at track 2's INDEX 01: track 2 has no pregap.
     let track1 = &cue_sheet.tracks[0];
-    assert_eq!(track1.start_time_ms(), 426); // INDEX 01 00:00:32 = 32 frames = 426.67ms
-    let track1_dur = track1.track_duration_ms().unwrap();
-    assert!(
-        track1_dur > 300_000,
-        "Track 1 should be ~5min, got {}ms",
-        track1_dur
-    );
+    assert_eq!(track1.start_cue_frames, 32);
+    assert!(length(track1) > 300 * 75, "track 1 runs about five minutes");
 
-    // Track 2: end should NOT use track 3's bogus pregap (05:05:00 = same as track 2 start)
-    // It should use track 3's INDEX 01 instead
+    // Track 2 ends at track 3's INDEX 01, not at its bogus INDEX 00, which
+    // sits on track 2's own start.
     let track2 = &cue_sheet.tracks[1];
-    assert_eq!(track2.start_time_ms(), 305_000); // 5:05:00
-    let track2_dur = track2.track_duration_ms().unwrap();
+    assert_eq!(track2.start_cue_frames, (5 * 60 + 5) * 75);
     assert!(
-        track2_dur > 200_000,
-        "Track 2 should be ~3.5min, got {}ms",
-        track2_dur
+        length(track2) > 200 * 75,
+        "track 2 runs about three and a half minutes"
     );
 
-    // Track 3: end should use track 4's INDEX 01 (not bogus pregap)
+    // Track 3 ends at track 4's INDEX 01, not at its bogus pregap.
     let track3 = &cue_sheet.tracks[2];
-    assert_eq!(track3.start_time_ms(), 511_266); // 8:31:20
-    let track3_dur = track3.track_duration_ms().unwrap();
+    assert_eq!(track3.start_cue_frames, (8 * 60 + 31) * 75 + 20);
     assert!(
-        track3_dur > 140_000,
-        "Track 3 should be ~2.5min, got {}ms",
-        track3_dur
+        length(track3) > 140 * 75,
+        "track 3 runs about two and a half minutes"
     );
 
-    // audio_start_ms must ignore bogus pregap and use INDEX 01
-    assert_eq!(
-        track3.audio_start_ms(),
-        track3.start_time_ms(),
-        "Track 3 audio_start_ms should use INDEX 01, not bogus INDEX 00"
-    );
-    assert_eq!(
-        track3.pregap_duration_ms(),
-        None,
-        "Bogus pregap should be cleared, leaving no duration"
-    );
+    // The bogus pregap is gone from the track and from its indexes.
+    assert_eq!(track3.pregap, CuePregap::None);
     assert!(
         track3.index(0).is_none(),
         "Bogus INDEX 00 should be removed from the raw index list"

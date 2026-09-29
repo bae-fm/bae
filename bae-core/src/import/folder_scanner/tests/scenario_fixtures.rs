@@ -367,9 +367,9 @@ fn assert_kind_invariant(path: &Path, kind: FileKind) {
                 n_tracks,
             );
             assert_eq!(
-                sheet.single_file(),
-                Some(file_reference as &str),
-                "fixture builder bug: headerless CUE at {:?} single_file mismatch",
+                sheet.audio_file_references(),
+                [file_reference as &str],
+                "fixture builder bug: headerless CUE at {:?} names other audio",
                 path,
             );
         }

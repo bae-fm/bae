@@ -70,30 +70,8 @@ pub struct CueTrack {
 }
 
 impl CueTrack {
-    pub fn is_playable_audio(&self) -> bool {
-        self.mode.is_audio()
-    }
-
     pub fn index(&self, number: u32) -> Option<&CueIndex> {
         self.indexes.iter().find(|index| index.number == number)
-    }
-
-    /// Where audio bytes begin, in CUE frames: INDEX 00 when the pregap is real
-    /// audio, else INDEX 01.
-    pub fn audio_start_cue_frames(&self) -> u64 {
-        match &self.pregap {
-            CuePregap::Audio(index) => index.frames,
-            CuePregap::None | CuePregap::Silence { .. } => self.start_cue_frames,
-        }
-    }
-
-    /// INDEX 00 position in CUE frames when the pregap is real audio in the
-    /// container; `None` for no pregap or a generated (`PREGAP` directive) one.
-    pub fn pregap_start_cue_frames(&self) -> Option<u64> {
-        match &self.pregap {
-            CuePregap::Audio(index) => Some(index.frames),
-            CuePregap::None | CuePregap::Silence { .. } => None,
-        }
     }
 
     /// Silent pregap length in CUE frames from a `PREGAP` directive.
@@ -102,26 +80,6 @@ impl CueTrack {
             CuePregap::Silence { frames } => Some(frames),
             CuePregap::None | CuePregap::Audio(_) => None,
         }
-    }
-
-    /// INDEX 01 position in ms. Lossy — UI display only, as with the three below.
-    pub fn start_time_ms(&self) -> u64 {
-        self.start_cue_frames * 1000 / 75
-    }
-
-    /// Where the track's audio bytes begin, in ms — the pregap when there is one.
-    pub fn audio_start_ms(&self) -> u64 {
-        self.audio_start_cue_frames() * 1000 / 75
-    }
-
-    pub fn end_time_ms(&self) -> Option<u64> {
-        self.end_cue_frames.map(|f| f * 1000 / 75)
-    }
-
-    /// INDEX 01 to end, in ms — excludes the pregap.
-    pub fn track_duration_ms(&self) -> Option<u64> {
-        self.end_cue_frames
-            .map(|end| (end * 1000 / 75).saturating_sub(self.start_time_ms()))
     }
 
     /// This track's duration against the probed length of the audio file it
@@ -164,13 +122,6 @@ impl CueTrack {
                 self.number
             ))
         })
-    }
-
-    /// Pregap duration in ms; `None` when the track has no pregap (no INDEX 00,
-    /// or the bogus-pregap corrector cleared it).
-    pub fn pregap_duration_ms(&self) -> Option<u64> {
-        self.pregap_start_cue_frames()
-            .map(|pregap| self.start_time_ms().saturating_sub(pregap * 1000 / 75))
     }
 
     pub fn generated_pregap_duration_ms(&self) -> Option<u64> {
@@ -229,7 +180,7 @@ impl CdRipper {
 
 impl CueSheet {
     pub fn playable_tracks(&self) -> impl Iterator<Item = &CueTrack> {
-        self.tracks.iter().filter(|track| track.is_playable_audio())
+        self.tracks.iter().filter(|track| track.mode.is_audio())
     }
 
     pub fn playable_track_count(&self) -> usize {
@@ -249,17 +200,6 @@ impl CueSheet {
             }
         }
         refs
-    }
-
-    /// `Some(filename)` if every track refers to the same `FILE` (single-FILE
-    /// CUE — one concatenated audio container per release, the EAC shape).
-    /// `None` for multi-FILE CUEs (one FILE per TRACK, the lossy-rip shape).
-    /// The discriminator for "is this a CUE+single-audio pair candidate?".
-    pub fn single_file(&self) -> Option<&str> {
-        let first = self.playable_tracks().next()?.file_reference.as_str();
-        self.playable_tracks()
-            .all(|t| t.file_reference == first)
-            .then_some(first)
     }
 }
 
@@ -330,23 +270,9 @@ impl PendingCueTrack {
         })
     }
 }
+/// Read and parse the sheet at `cue_path`, whatever its text encoding.
 pub fn parse_cue_sheet(cue_path: &Path) -> Result<CueSheet, CueFlacError> {
-    use tracing::{debug, error};
-    debug!("Attempting to parse CUE sheet: {:?}", cue_path);
-    debug!("CUE path exists: {}", cue_path.exists());
-    debug!("CUE path absolute: {:?}", cue_path.canonicalize());
-    let content = crate::text_encoding::read_text_file(cue_path)
-        .map(|d| d.text)
-        .map_err(|e| {
-            error!(
-                "Failed to read CUE file {:?}: {} (os error {})",
-                cue_path,
-                e,
-                e.raw_os_error().unwrap_or(-1)
-            );
-            e
-        })?;
-    parse_cue_content(&content)
+    parse_cue_content(&crate::text_encoding::read_text_file(cue_path)?.text)
 }
 /// Parse CUE sheet content.
 ///

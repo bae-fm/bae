@@ -40,7 +40,7 @@ fn test_cue_parser_counts_audio_tracks_and_captures_file_reference() {
     std::fs::write(&cue, content).unwrap();
 
     let sheet = parse_cue_sheet(&cue).unwrap();
-    assert_eq!(sheet.single_file(), Some("album.flac"));
+    assert_eq!(sheet.audio_file_references(), ["album.flac"]);
     assert_eq!(sheet.tracks.len(), 3);
 }
 
@@ -56,7 +56,7 @@ fn test_cue_parser_tolerates_missing_performer_title() {
     let sheet = parse_cue_sheet(&cue).unwrap();
     assert!(sheet.title.is_none());
     assert!(sheet.performer.is_none());
-    assert_eq!(sheet.single_file(), Some("dummy.flac"));
+    assert_eq!(sheet.audio_file_references(), ["dummy.flac"]);
     assert_eq!(sheet.tracks.len(), 1);
 }
 

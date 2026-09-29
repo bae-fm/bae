@@ -383,8 +383,7 @@ fn stored_binding(
             .find(|sheet| sheet.file.relative_path == sheet_file_id)
             .unwrap()
             .sheet
-            .single_file()
-            .unwrap()
+            .audio_file_references()[0]
             .to_owned(),
         match audio_file_id {
             Some(file_id) => UserSheetBinding::Describes {
