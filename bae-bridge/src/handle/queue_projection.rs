@@ -25,9 +25,9 @@ impl crate::types::BridgeUploadFileOp {
         let bar = state.bar().map(crate::types::BridgeUploadBar::from_core);
         let (state, last_error) = match state {
             UploadState::Queued => (crate::types::BridgeUploadFileState::Queued, None),
-            UploadState::Preparing { .. } => (crate::types::BridgeUploadFileState::Preparing, None),
+            UploadState::Preparing(_) => (crate::types::BridgeUploadFileState::Preparing, None),
             UploadState::Prepared { .. } => (crate::types::BridgeUploadFileState::Prepared, None),
-            UploadState::Uploading { .. } => (crate::types::BridgeUploadFileState::Uploading, None),
+            UploadState::Uploading(_) => (crate::types::BridgeUploadFileState::Uploading, None),
             UploadState::RetryingPreparation { last_error }
             | UploadState::RetryingUpload { last_error, .. }
             | UploadState::RetryingPublication { last_error, .. } => (

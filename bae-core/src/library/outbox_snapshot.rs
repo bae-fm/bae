@@ -15,7 +15,9 @@
 
 use std::{collections::HashMap, path::PathBuf};
 
-use crate::db::DbOutboxQueue;
+use tracing::debug;
+
+use crate::db::{DbOutboxQueue, DbUploadPhase};
 use crate::library::upload_throughput::{UploadRates, UploadThroughput};
 
 /// One immutable cloud blob identity. A row can be repointed at a replacement
@@ -85,6 +87,51 @@ impl UploadFileLabel {
     }
 }
 
+/// Bytes one phase has moved against that phase's exact total. The count
+/// never exceeds the total: a report that would say otherwise is refused
+/// where it arrives, so everything downstream can rely on it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ByteProgress {
+    done: u64,
+    total: u64,
+}
+
+impl ByteProgress {
+    /// `None` when `done` exceeds `total`.
+    pub fn new(done: u64, total: u64) -> Option<Self> {
+        (done <= total).then_some(Self { done, total })
+    }
+
+    /// The start of a phase: nothing of `total` moved yet.
+    pub fn none_of(total: u64) -> Self {
+        Self { done: 0, total }
+    }
+
+    pub fn done(self) -> u64 {
+        self.done
+    }
+
+    pub fn total(self) -> u64 {
+        self.total
+    }
+
+    pub fn is_complete(self) -> bool {
+        self.done == self.total
+    }
+
+    /// Move to a later report of the same phase and answer how many bytes it
+    /// adds. `None`, leaving this unchanged, when the report changes the total,
+    /// goes backwards, or overshoots.
+    pub(crate) fn advance(&mut self, done: u64, total: u64) -> Option<u64> {
+        if total != self.total || done < self.done || done > total {
+            return None;
+        }
+        let delta = done - self.done;
+        self.done = done;
+        Some(delta)
+    }
+}
+
 /// What an upload is doing right now, derived from coven's durable phase and
 /// buffer-cadence callbacks. Preparation counts plaintext source bytes; upload
 /// counts encrypted provider bytes, so each active phase carries its own exact
@@ -92,17 +139,11 @@ impl UploadFileLabel {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UploadState {
     Queued,
-    Preparing {
-        bytes_done: u64,
-        bytes_total: u64,
-    },
+    Preparing(ByteProgress),
     Prepared {
         bytes_total: u64,
     },
-    Uploading {
-        bytes_done: u64,
-        bytes_total: u64,
-    },
+    Uploading(ByteProgress),
     RetryingPreparation {
         last_error: String,
     },
@@ -143,15 +184,11 @@ pub struct UploadBar {
 }
 
 impl UploadBar {
-    fn new(phase: UploadPhase, bytes_done: u64, bytes_total: u64) -> Self {
-        assert!(
-            bytes_done <= bytes_total,
-            "upload progress cannot exceed its exact total"
-        );
+    fn new(phase: UploadPhase, progress: ByteProgress) -> Self {
         Self {
             phase,
-            bytes_done,
-            bytes_total,
+            bytes_done: progress.done(),
+            bytes_total: progress.total(),
         }
     }
 }
@@ -162,22 +199,8 @@ impl UploadState {
     /// its size instead: a bar there would draw motion that is not happening.
     pub fn bar(&self) -> Option<UploadBar> {
         match self {
-            Self::Preparing {
-                bytes_done,
-                bytes_total,
-            } => Some(UploadBar::new(
-                UploadPhase::Preparing,
-                *bytes_done,
-                *bytes_total,
-            )),
-            Self::Uploading {
-                bytes_done,
-                bytes_total,
-            } => Some(UploadBar::new(
-                UploadPhase::Uploading,
-                *bytes_done,
-                *bytes_total,
-            )),
+            Self::Preparing(progress) => Some(UploadBar::new(UploadPhase::Preparing, *progress)),
+            Self::Uploading(progress) => Some(UploadBar::new(UploadPhase::Uploading, *progress)),
             Self::Queued
             | Self::Prepared { .. }
             | Self::RetryingPreparation { .. }
@@ -192,17 +215,25 @@ impl UploadState {
 /// Coven's durable upload phase remains the restart truth.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum TransientUploadState {
-    Preparing {
-        bytes_done: u64,
-        bytes_total: u64,
-    },
+    Preparing(ByteProgress),
     /// The provider write began but has not delivered its first exact byte
     /// report. The durable Prepared row owns the denominator in this interval.
     UploadStarted,
-    Uploading {
-        bytes_done: u64,
-        bytes_total: u64,
-    },
+    Uploading(ByteProgress),
+    /// The attempt's callbacks contradicted themselves — out of order, going
+    /// backwards, or changing their total — so its bytes are not tracked and
+    /// its row renders from coven's durable phase until the next attempt.
+    Untracked,
+}
+
+impl TransientUploadState {
+    /// Whether the throughput tracker holds a measurement for this state.
+    pub(crate) fn is_measured(self) -> bool {
+        match self {
+            Self::Preparing(_) | Self::UploadStarted | Self::Uploading(_) => true,
+            Self::Untracked => false,
+        }
+    }
 }
 
 /// The dominant activity of one release transition or the whole cloud queue.
@@ -290,17 +321,19 @@ impl UploadProgress {
         if self.preparation_bytes_total == 0 || self.cancelling > 0 {
             return None;
         }
+        // Every folded file contributes a done count within its total, so the
+        // sums keep that too.
         Some(if self.upload_bytes_total_complete {
             UploadBar::new(
                 UploadPhase::Uploading,
-                self.upload_bytes_done,
-                self.upload_bytes_total,
+                ByteProgress::new(self.upload_bytes_done, self.upload_bytes_total)
+                    .expect("folded provider progress stays within its total"),
             )
         } else {
             UploadBar::new(
                 UploadPhase::Preparing,
-                self.preparation_bytes_done,
-                self.preparation_bytes_total,
+                ByteProgress::new(self.preparation_bytes_done, self.preparation_bytes_total)
+                    .expect("folded preparation progress stays within its total"),
             )
         })
     }
@@ -363,20 +396,9 @@ impl UploadProgress {
             .expect("upload byte total overflow");
         let (count, preparation_done, upload) = match state {
             UploadState::Queued => (&mut self.queued, 0, None),
-            UploadState::Preparing {
-                bytes_done,
-                bytes_total: preparation_total,
-            } => {
-                assert_eq!(
-                    *preparation_total, bytes_total,
-                    "preparation progress must use the source's exact plaintext total"
-                );
-                assert!(
-                    *bytes_done <= *preparation_total,
-                    "preparation progress cannot exceed its exact total"
-                );
-                (&mut self.preparing, *bytes_done, None)
-            }
+            // Resolution refines a Pending row with preparation progress only
+            // over the source's own plaintext total.
+            UploadState::Preparing(progress) => (&mut self.preparing, progress.done(), None),
             UploadState::RetryingPreparation { .. } => (&mut self.retrying, 0, None),
             UploadState::Prepared {
                 bytes_total: upload_total,
@@ -385,20 +407,11 @@ impl UploadProgress {
                 bytes_total: upload_total,
                 ..
             } => (&mut self.retrying, bytes_total, Some((0, *upload_total))),
-            UploadState::Uploading {
-                bytes_done,
-                bytes_total: upload_total,
-            } => {
-                assert!(
-                    *bytes_done <= *upload_total,
-                    "provider progress cannot exceed its exact total"
-                );
-                (
-                    &mut self.uploading,
-                    bytes_total,
-                    Some((*bytes_done, *upload_total)),
-                )
-            }
+            UploadState::Uploading(progress) => (
+                &mut self.uploading,
+                bytes_total,
+                Some((progress.done(), progress.total())),
+            ),
             // Both of these have written every provider byte; publication is
             // what has not finished.
             UploadState::RetryingPublication {
@@ -667,7 +680,7 @@ fn build_outbox_snapshot_from_rates(
                 });
         let state = resolve_upload_state(
             upload.phase,
-            upload.provider_bytes_total,
+            bytes_total,
             transient.get(&blob_key).copied(),
             upload.last_failure.map(|failure| failure.message),
         );
@@ -770,89 +783,97 @@ fn build_outbox_snapshot_from_rates(
     }
 }
 
+/// A file's state from coven's durable phase, refined by this process's live
+/// callbacks where they agree with it.
+///
+/// The durable queue query and the in-process callback stream are independent
+/// feeds, so a transient can be one step ahead of or behind the row it
+/// refines: a provider write's first callback can arrive before the requery
+/// delivers the Prepared row, and a failed attempt's rollback can land while
+/// its last callback is still in flight — after which a retried preparation
+/// can produce a provider object of another size. The durable phase is the
+/// truth; a transient that disagrees with it in phase or total refines nothing
+/// and the row renders from its durable state alone until the feeds agree.
 fn resolve_upload_state(
-    phase: coven::QueuedUploadPhase,
-    provider_bytes_total: Option<u64>,
+    phase: DbUploadPhase,
+    source_bytes_total: u64,
     transient: Option<TransientUploadState>,
     last_error: Option<String>,
 ) -> UploadState {
-    if phase == coven::QueuedUploadPhase::Created {
-        let bytes_total =
-            provider_bytes_total.expect("a Created upload requires a durable provider total");
-        return match last_error {
-            Some(last_error) => UploadState::RetryingPublication {
-                last_error,
-                bytes_total,
+    let refined = match (phase, transient) {
+        // A Created row has written every provider byte; no transient refines it.
+        (DbUploadPhase::Created { .. }, _) => None,
+        (
+            DbUploadPhase::Prepared {
+                provider_bytes_total,
             },
-            None => UploadState::Uploaded { bytes_total },
-        };
-    }
-    // The durable queue query and the in-process callback stream are
-    // independent feeds, so a transient can be one step ahead of or behind
-    // the row it refines: a provider write's first callback can arrive
-    // before the requery delivers the Prepared row, and a failed attempt's
-    // rollback can land while its last callback is still in flight. The
-    // durable phase is the truth; a transient that disagrees with it refines
-    // nothing and the row renders from its durable state alone until the
-    // feeds agree again.
-    match transient {
-        Some(TransientUploadState::Uploading {
-            bytes_done,
-            bytes_total,
-        }) if phase == coven::QueuedUploadPhase::Prepared => {
-            let exact_total =
-                provider_bytes_total.expect("a Prepared upload requires a durable provider total");
-            assert_eq!(
-                bytes_total, exact_total,
-                "provider callback total must match coven's durable provider total"
-            );
-            return UploadState::Uploading {
-                bytes_done,
-                bytes_total: exact_total,
-            };
-        }
-        Some(TransientUploadState::UploadStarted)
-            if phase == coven::QueuedUploadPhase::Prepared =>
+            Some(TransientUploadState::Uploading(progress)),
+        ) if progress.total() == provider_bytes_total => Some(UploadState::Uploading(progress)),
+        (
+            DbUploadPhase::Prepared {
+                provider_bytes_total,
+            },
+            Some(TransientUploadState::UploadStarted),
+        ) => Some(UploadState::Uploading(ByteProgress::none_of(
+            provider_bytes_total,
+        ))),
+        (DbUploadPhase::Pending, Some(TransientUploadState::Preparing(progress)))
+            if progress.total() == source_bytes_total =>
         {
-            let bytes_total =
-                provider_bytes_total.expect("a Prepared upload requires a durable provider total");
-            return UploadState::Uploading {
-                bytes_done: 0,
-                bytes_total,
-            };
+            Some(UploadState::Preparing(progress))
         }
-        Some(TransientUploadState::Preparing {
-            bytes_done,
-            bytes_total,
-        }) if phase == coven::QueuedUploadPhase::Pending => {
-            assert!(
-                provider_bytes_total.is_none(),
-                "a Pending upload cannot already have a prepared provider object"
+        (_, None | Some(TransientUploadState::Untracked)) => None,
+        (phase, Some(straggler)) => {
+            debug!(
+                ?phase,
+                ?straggler,
+                "a live upload report disagrees with its durable row"
             );
-            return UploadState::Preparing {
-                bytes_done,
-                bytes_total,
-            };
+            None
         }
-        Some(_) | None => {}
+    };
+    if let Some(state) = refined {
+        return state;
     }
-    match (phase, provider_bytes_total, last_error) {
-        (coven::QueuedUploadPhase::Pending, None, Some(last_error)) => {
+    match (phase, last_error) {
+        (
+            DbUploadPhase::Created {
+                provider_bytes_total,
+            },
+            Some(last_error),
+        ) => UploadState::RetryingPublication {
+            last_error,
+            bytes_total: provider_bytes_total,
+        },
+        (
+            DbUploadPhase::Created {
+                provider_bytes_total,
+            },
+            None,
+        ) => UploadState::Uploaded {
+            bytes_total: provider_bytes_total,
+        },
+        (
+            DbUploadPhase::Prepared {
+                provider_bytes_total,
+            },
+            Some(last_error),
+        ) => UploadState::RetryingUpload {
+            last_error,
+            bytes_total: provider_bytes_total,
+        },
+        (
+            DbUploadPhase::Prepared {
+                provider_bytes_total,
+            },
+            None,
+        ) => UploadState::Prepared {
+            bytes_total: provider_bytes_total,
+        },
+        (DbUploadPhase::Pending, Some(last_error)) => {
             UploadState::RetryingPreparation { last_error }
         }
-        (coven::QueuedUploadPhase::Prepared, Some(bytes_total), Some(last_error)) => {
-            UploadState::RetryingUpload {
-                last_error,
-                bytes_total,
-            }
-        }
-        (coven::QueuedUploadPhase::Pending, None, None) => UploadState::Queued,
-        (coven::QueuedUploadPhase::Prepared, Some(bytes_total), None) => {
-            UploadState::Prepared { bytes_total }
-        }
-        (phase, provider_bytes_total, _) => panic!(
-            "coven upload phase {phase:?} has invalid durable provider total {provider_bytes_total:?}"
-        ),
+        (DbUploadPhase::Pending, None) => UploadState::Queued,
     }
 }
 

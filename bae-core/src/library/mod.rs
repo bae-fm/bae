@@ -44,8 +44,8 @@ pub use live_read::{LiveRead, LiveReadError};
 pub use local_lifecycle::remove_local_library;
 pub use manager::*;
 pub use outbox_snapshot::{
-    OutboxPauseState, OutboxSnapshot, UploadActivity, UploadBar, UploadFileLabel, UploadFileOp,
-    UploadIssue, UploadPhase, UploadProgress, UploadReleaseGroup, UploadState,
+    ByteProgress, OutboxPauseState, OutboxSnapshot, UploadActivity, UploadBar, UploadFileLabel,
+    UploadFileOp, UploadIssue, UploadPhase, UploadProgress, UploadReleaseGroup, UploadState,
 };
 pub use output_snapshot::{OutputKind, OutputOp, OutputProgress, OutputSnapshot, OutputState};
 pub use queue_upcoming::{QueueUpcomingSnapshot, QueueUpcomingSubscription, QueueUpcomingWindow};

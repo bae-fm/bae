@@ -372,7 +372,7 @@ fn extracted_signals_cross_with_their_key() {
 #[test]
 fn upload_file_op_flattens_state_into_fields() {
     use crate::types::{BridgeUploadBar, BridgeUploadFileState, BridgeUploadPhase};
-    use bae_core::library::{UploadFileOp, UploadState};
+    use bae_core::library::{ByteProgress, UploadFileOp, UploadState};
 
     let convert = |state: UploadState| {
         crate::types::BridgeUploadFileOp::from_core(UploadFileOp {
@@ -394,10 +394,9 @@ fn upload_file_op_flattens_state_into_fields() {
     assert_eq!(queued.state, BridgeUploadFileState::Queued);
     assert_eq!((queued.bar, queued.last_error), (None, None));
 
-    let preparing = convert(UploadState::Preparing {
-        bytes_done: 400,
-        bytes_total: 1000,
-    });
+    let preparing = convert(UploadState::Preparing(
+        ByteProgress::new(400, 1000).unwrap(),
+    ));
     assert_eq!(preparing.state, BridgeUploadFileState::Preparing);
     assert_eq!(
         preparing.bar,
@@ -412,10 +411,9 @@ fn upload_file_op_flattens_state_into_fields() {
     assert_eq!(prepared.state, BridgeUploadFileState::Prepared);
     assert_eq!(prepared.bar, None);
 
-    let uploading = convert(UploadState::Uploading {
-        bytes_done: 420,
-        bytes_total: 1016,
-    });
+    let uploading = convert(UploadState::Uploading(
+        ByteProgress::new(420, 1016).unwrap(),
+    ));
     assert_eq!(uploading.state, BridgeUploadFileState::Uploading);
     assert_eq!(uploading.throughput_bps, 250);
     assert_eq!(

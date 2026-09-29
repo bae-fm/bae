@@ -1,11 +1,14 @@
 //! The cloud-upload pipeline's live state, as one owner.
 
-use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
+use tracing::error;
+
 use crate::db::DbOutboxQueue;
-use crate::library::outbox_snapshot::{build_outbox_snapshot, TransientUploadState, UploadBlobKey};
+use crate::library::outbox_snapshot::{
+    build_outbox_snapshot, ByteProgress, TransientUploadState, UploadBlobKey,
+};
 use crate::library::{OutboxSnapshot, UploadThroughput};
 
 /// coven's durable outbox says what is queued and survives a restart. These
@@ -59,24 +62,24 @@ impl LiveUploads {
         self.changed.send_replace(());
     }
 
-    /// coven began consuming this blob's plaintext into its durable spool.
+    /// coven began consuming this blob's plaintext into its durable spool. A
+    /// start begins a new attempt, whatever the blob's previous attempt left.
     pub(crate) fn preparation_started(&self, upload: &coven::RowBlobRef) {
         let blob_key = UploadBlobKey::from_row(upload);
         {
             let mut transient = self.transient.lock().unwrap();
-            match transient.entry(blob_key.clone()) {
-                Entry::Vacant(entry) => {
-                    entry.insert(TransientUploadState::Preparing {
-                        bytes_done: 0,
-                        bytes_total: upload.plaintext_size(),
-                    });
-                }
-                Entry::Occupied(entry) => panic!(
-                    "preparation started while the same blob already had transient state for {}:{}; state: {:?}",
+            let start =
+                TransientUploadState::Preparing(ByteProgress::none_of(upload.plaintext_size()));
+            if let Some(previous) = transient.insert(blob_key.clone(), start) {
+                error!(
+                    "preparation of {}:{} started while its previous attempt never reported \
+                     its end; that attempt's state: {previous:?}",
                     upload.table(),
-                    upload.row_id(),
-                    entry.get()
-                ),
+                    upload.row_id()
+                );
+                if previous.is_measured() {
+                    self.throughput.end(&blob_key);
+                }
             }
         }
         self.throughput.begin_preparation(blob_key);
@@ -84,8 +87,9 @@ impl LiveUploads {
     }
 
     /// Advance the blob's preparation bytes and feed the tracker only what is
-    /// new since the last report. The counts are cumulative within an attempt;
-    /// anything else is a coven contract violation and fails loudly.
+    /// new since the last report. The counts are cumulative within an attempt
+    /// against one exact plaintext total; a report that breaks that leaves the
+    /// attempt untracked rather than showing bytes that cannot be trusted.
     pub(crate) fn preparation_progress(
         &self,
         upload: &coven::RowBlobRef,
@@ -96,41 +100,37 @@ impl LiveUploads {
         let delta = {
             let mut transient = self.transient.lock().unwrap();
             match transient.get_mut(&blob_key) {
-                Some(TransientUploadState::Preparing {
-                    bytes_done: previous,
-                    bytes_total: exact_total,
-                }) => {
-                    if bytes_total != *exact_total || bytes_total != upload.plaintext_size() {
-                        panic!(
-                            "preparation progress changed its exact plaintext total for {}:{}: \
-                             expected {}, received {bytes_total}",
-                            upload.table(),
-                            upload.row_id(),
-                            *exact_total
+                Some(TransientUploadState::Preparing(progress)) => {
+                    let delta = progress.advance(bytes_done, bytes_total);
+                    if delta.is_none() {
+                        let previous = *progress;
+                        self.untrack(
+                            &mut transient,
+                            upload,
+                            format_args!(
+                                "preparation progress {bytes_done} of {bytes_total} does not \
+                                 follow {previous:?}"
+                            ),
                         );
                     }
-                    if bytes_done < *previous || bytes_done > bytes_total {
-                        panic!(
-                            "preparation progress regressed or exceeded its exact total for {}:{}: \
-                             previous {}, received {bytes_done} of {bytes_total}",
-                            upload.table(),
-                            upload.row_id(),
-                            *previous
-                        );
-                    }
-                    let delta = bytes_done - *previous;
-                    *previous = bytes_done;
                     delta
                 }
-                state => panic!(
-                    "preparation progress arrived without a preparation-start state for {}:{}; \
-                     transient state: {state:?}",
-                    upload.table(),
-                    upload.row_id()
-                ),
+                Some(TransientUploadState::Untracked) => None,
+                state => {
+                    let state = state.map(|state| *state);
+                    self.untrack(
+                        &mut transient,
+                        upload,
+                        format_args!(
+                            "preparation progress arrived without a preparation start; state: \
+                             {state:?}"
+                        ),
+                    );
+                    None
+                }
             }
         };
-        if delta > 0 {
+        if let Some(delta) = delta.filter(|delta| *delta > 0) {
             self.throughput.record_preparation(&blob_key, delta);
         }
         self.mark_changed();
@@ -143,23 +143,22 @@ impl LiveUploads {
         let blob_key = UploadBlobKey::from_row(upload);
         {
             let mut transient = self.transient.lock().unwrap();
-            match transient.entry(blob_key.clone()) {
-                Entry::Vacant(entry) => {
-                    entry.insert(TransientUploadState::UploadStarted);
-                }
-                Entry::Occupied(mut entry) => match entry.get() {
-                    TransientUploadState::Preparing {
-                        bytes_done,
-                        bytes_total,
-                    } if bytes_done == bytes_total => {
-                        entry.insert(TransientUploadState::UploadStarted);
-                    }
-                    state => panic!(
-                        "upload started while the same blob already had transient state for {}:{}; state: {state:?}",
+            if let Some(previous) =
+                transient.insert(blob_key.clone(), TransientUploadState::UploadStarted)
+            {
+                match previous {
+                    TransientUploadState::Preparing(progress) if progress.is_complete() => {}
+                    TransientUploadState::Untracked => {}
+                    previous => error!(
+                        "upload of {}:{} started while its previous attempt never reported \
+                         its end; that attempt's state: {previous:?}",
                         upload.table(),
                         upload.row_id()
                     ),
-                },
+                }
+                if previous.is_measured() {
+                    self.throughput.end(&blob_key);
+                }
             }
         }
         self.throughput.begin_upload(blob_key);
@@ -168,59 +167,67 @@ impl LiveUploads {
 
     /// Advance the blob's provider bytes and feed the tracker only what is new
     /// since the last report. coven coalesces these calls to a tick, so each is
-    /// already throttled.
+    /// already throttled. A report that goes backwards, overshoots, or changes
+    /// the exact provider total leaves the attempt untracked.
     pub(crate) fn upload_progress(
         &self,
         upload: &coven::RowBlobRef,
         bytes_done: u64,
         bytes_total: u64,
     ) {
-        if bytes_total == 0 || bytes_done > bytes_total {
-            panic!(
-                "provider progress regressed or changed its exact total for {}:{}: \
-                 received {bytes_done} of {bytes_total}",
-                upload.table(),
-                upload.row_id()
-            );
-        }
         let blob_key = UploadBlobKey::from_row(upload);
         let delta = {
             let mut transient = self.transient.lock().unwrap();
             match transient.get_mut(&blob_key) {
                 Some(state @ TransientUploadState::UploadStarted) => {
-                    *state = TransientUploadState::Uploading {
-                        bytes_done,
-                        bytes_total,
-                    };
-                    bytes_done
+                    match ByteProgress::new(bytes_done, bytes_total).filter(|_| bytes_total > 0) {
+                        Some(progress) => {
+                            *state = TransientUploadState::Uploading(progress);
+                            Some(bytes_done)
+                        }
+                        None => {
+                            self.untrack(
+                                &mut transient,
+                                upload,
+                                format_args!(
+                                    "provider progress {bytes_done} of {bytes_total} is not a \
+                                     byte count within a provider total"
+                                ),
+                            );
+                            None
+                        }
+                    }
                 }
-                Some(TransientUploadState::Uploading {
-                    bytes_done: previous,
-                    bytes_total: previous_total,
-                }) => {
-                    if bytes_done < *previous || bytes_total != *previous_total {
-                        panic!(
-                            "provider progress regressed or changed its exact total for {}:{}: \
-                             previous {} of {}, received {bytes_done} of {bytes_total}",
-                            upload.table(),
-                            upload.row_id(),
-                            *previous,
-                            *previous_total
+                Some(TransientUploadState::Uploading(progress)) => {
+                    let delta = progress.advance(bytes_done, bytes_total);
+                    if delta.is_none() {
+                        let previous = *progress;
+                        self.untrack(
+                            &mut transient,
+                            upload,
+                            format_args!(
+                                "provider progress {bytes_done} of {bytes_total} does not follow \
+                                 {previous:?}"
+                            ),
                         );
                     }
-                    let delta = bytes_done - *previous;
-                    *previous = bytes_done;
                     delta
                 }
-                state => panic!(
-                    "upload progress arrived without an upload-start state for {}:{}; \
-                     transient state: {state:?}",
-                    upload.table(),
-                    upload.row_id()
-                ),
+                Some(TransientUploadState::Untracked) => None,
+                state => {
+                    let state = state.map(|state| *state);
+                    self.untrack(
+                        &mut transient,
+                        upload,
+                        format_args!(
+                            "provider progress arrived without an upload start; state: {state:?}"
+                        ),
+                    );
+                    None
+                }
             }
         };
-        if delta > 0 {
+        if let Some(delta) = delta.filter(|delta| *delta > 0) {
             self.throughput.record_upload(&blob_key, delta);
         }
         self.mark_changed();
@@ -229,25 +236,25 @@ impl LiveUploads {
     /// coven committed this row journal as Created before reporting completion,
     /// so the durable outbox now owns the blob's Uploaded state: keep no
     /// transient terminal copy that could survive or disagree with that commit.
-    ///
-    /// The final provider-progress report with the exact encrypted total is
-    /// required. Substituting the plaintext source size here would make both the
-    /// file row and the throughput false.
+    /// The attempt should have reported its exact final provider bytes first;
+    /// when it did not, the durable row still reads Uploaded, and the gap is
+    /// logged.
     pub(crate) fn upload_finished(&self, upload: &coven::RowBlobRef) {
         let blob_key = UploadBlobKey::from_row(upload);
-        match self.transient.lock().unwrap().remove(&blob_key) {
-            Some(TransientUploadState::Uploading {
-                bytes_done,
-                bytes_total,
-            }) if bytes_total > 0 && bytes_done == bytes_total => {}
-            state => panic!(
-                "upload completion arrived without exact provider byte progress for {}:{}; \
-                 transient state: {state:?}",
+        let removed = self.transient.lock().unwrap().remove(&blob_key);
+        match removed {
+            Some(TransientUploadState::Uploading(progress))
+                if progress.total() > 0 && progress.is_complete() => {}
+            state => error!(
+                "upload of {}:{} finished without exact final provider progress; state: \
+                 {state:?}",
                 upload.table(),
                 upload.row_id()
             ),
         }
-        self.throughput.end(&blob_key);
+        if removed.is_some_and(TransientUploadState::is_measured) {
+            self.throughput.end(&blob_key);
+        }
         self.mark_changed();
     }
 
@@ -259,10 +266,33 @@ impl LiveUploads {
     pub(crate) fn upload_ended(&self, upload: &coven::RowBlobRef) {
         let blob_key = UploadBlobKey::from_row(upload);
         let removed = self.transient.lock().unwrap().remove(&blob_key);
-        if removed.is_some() {
+        if removed.is_some_and(TransientUploadState::is_measured) {
             self.throughput.end(&blob_key);
         }
         self.mark_changed();
+    }
+
+    /// Stop tracking the blob's current attempt: its callbacks contradicted
+    /// themselves, so its bytes and rate are dropped and its row renders from
+    /// coven's durable phase until the next attempt starts.
+    fn untrack(
+        &self,
+        transient: &mut HashMap<UploadBlobKey, TransientUploadState>,
+        upload: &coven::RowBlobRef,
+        why: std::fmt::Arguments<'_>,
+    ) {
+        error!(
+            "no longer tracking the upload attempt of {}:{}: {why}",
+            upload.table(),
+            upload.row_id()
+        );
+        let blob_key = UploadBlobKey::from_row(upload);
+        if transient
+            .insert(blob_key.clone(), TransientUploadState::Untracked)
+            .is_some_and(TransientUploadState::is_measured)
+        {
+            self.throughput.end(&blob_key);
+        }
     }
 
     /// Whether the person has paused the pipeline. The snapshot reports it and

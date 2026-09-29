@@ -103,8 +103,7 @@ fn queued_upload(file_id: &str, file_name: &str, file_size: u64) -> DbOutboxUplo
             file_id,
             file_size,
         ),
-        phase: coven::QueuedUploadPhase::Pending,
-        provider_bytes_total: None,
+        phase: crate::db::DbUploadPhase::Pending,
         attempt_count: 0,
         last_failure: None,
         created_at: 1_700_000_000_000,
@@ -129,10 +128,7 @@ fn build(
 fn a_provider_transient_on_a_pending_row_is_a_stale_straggler() {
     for straggler in [
         TransientUploadState::UploadStarted,
-        TransientUploadState::Uploading {
-            bytes_done: 250,
-            bytes_total: 1016,
-        },
+        TransientUploadState::Uploading(ByteProgress::new(250, 1016).unwrap()),
     ] {
         let transient = HashMap::from([(
             UploadBlobKey::new(crate::sync::RELEASE_FILES_NAMESPACE, LARGE_FILE),
@@ -257,14 +253,12 @@ fn live_bytes_ride_the_active_file_and_the_totals() {
     // The large file is uploading right now (250 of 1000 bytes done); the
     // small file is still queued.
     let mut queue = two_queued_uploads();
-    queue.uploads[1].phase = coven::QueuedUploadPhase::Prepared;
-    queue.uploads[1].provider_bytes_total = Some(1016);
+    queue.uploads[1].phase = crate::db::DbUploadPhase::Prepared {
+        provider_bytes_total: 1016,
+    };
     let transient = HashMap::from([(
         UploadBlobKey::new(crate::sync::RELEASE_FILES_NAMESPACE, LARGE_FILE),
-        TransientUploadState::Uploading {
-            bytes_done: 250,
-            bytes_total: 1016,
-        },
+        TransientUploadState::Uploading(ByteProgress::new(250, 1016).unwrap()),
     )]);
     let snapshot = build(queue, &transient);
 
@@ -286,24 +280,19 @@ fn live_bytes_ride_the_active_file_and_the_totals() {
         .expect("active file listed");
     assert_eq!(
         active.state,
-        UploadState::Uploading {
-            bytes_done: 250,
-            bytes_total: 1016
-        }
+        UploadState::Uploading(ByteProgress::new(250, 1016).unwrap())
     );
 }
 
 #[test]
 fn pause_state_is_absolute_while_transfer_work_is_active() {
     let mut queue = two_queued_uploads();
-    queue.uploads[1].phase = coven::QueuedUploadPhase::Prepared;
-    queue.uploads[1].provider_bytes_total = Some(1016);
+    queue.uploads[1].phase = crate::db::DbUploadPhase::Prepared {
+        provider_bytes_total: 1016,
+    };
     let transient = HashMap::from([(
         UploadBlobKey::new(crate::sync::RELEASE_FILES_NAMESPACE, LARGE_FILE),
-        TransientUploadState::Uploading {
-            bytes_done: 250,
-            bytes_total: 1016,
-        },
+        TransientUploadState::Uploading(ByteProgress::new(250, 1016).unwrap()),
     )]);
 
     let paused_during_upload =
@@ -315,10 +304,7 @@ fn pause_state_is_absolute_while_transfer_work_is_active() {
 
     let preparing = HashMap::from([(
         UploadBlobKey::new(crate::sync::RELEASE_FILES_NAMESPACE, SMALL_FILE),
-        TransientUploadState::Preparing {
-            bytes_done: 20,
-            bytes_total: 100,
-        },
+        TransientUploadState::Preparing(ByteProgress::new(20, 100).unwrap()),
     )]);
     let paused_during_preparation = build_outbox_snapshot(
         two_queued_uploads(),
@@ -361,10 +347,7 @@ fn upload_state_uses_the_blob_bearing_table_and_row() {
     queue.uploads[1].release_id = RELEASE.to_string();
     let transient = HashMap::from([(
         UploadBlobKey::new(crate::sync::COVERS_NAMESPACE, cover_blob_id),
-        TransientUploadState::Preparing {
-            bytes_done: 10,
-            bytes_total: 20,
-        },
+        TransientUploadState::Preparing(ByteProgress::new(10, 20).unwrap()),
     )]);
 
     let snapshot = build(queue, &transient);
@@ -384,10 +367,7 @@ fn upload_state_uses_the_blob_bearing_table_and_row() {
         .expect("cover upload");
     assert_eq!(
         cover.state,
-        UploadState::Preparing {
-            bytes_done: 10,
-            bytes_total: 20
-        }
+        UploadState::Preparing(ByteProgress::new(10, 20).unwrap())
     );
 }
 
@@ -430,8 +410,9 @@ fn a_recorded_failure_derives_retrying_with_its_error() {
 #[test]
 fn created_file_with_lingering_entry_derives_uploaded() {
     let mut queue = two_queued_uploads();
-    queue.uploads[0].phase = coven::QueuedUploadPhase::Created;
-    queue.uploads[0].provider_bytes_total = Some(116);
+    queue.uploads[0].phase = crate::db::DbUploadPhase::Created {
+        provider_bytes_total: 116,
+    };
     let snapshot = build(queue, &HashMap::new());
 
     let group = &snapshot.upload_groups[0];
@@ -454,14 +435,12 @@ fn created_file_with_lingering_entry_derives_uploaded() {
 fn created_handoff_outranks_final_transient_progress() {
     let mut queue = two_queued_uploads();
     queue.uploads.truncate(1);
-    queue.uploads[0].phase = coven::QueuedUploadPhase::Created;
-    queue.uploads[0].provider_bytes_total = Some(116);
+    queue.uploads[0].phase = crate::db::DbUploadPhase::Created {
+        provider_bytes_total: 116,
+    };
     let transient = HashMap::from([(
         UploadBlobKey::new(crate::sync::RELEASE_FILES_NAMESPACE, SMALL_FILE),
-        TransientUploadState::Uploading {
-            bytes_done: 116,
-            bytes_total: 116,
-        },
+        TransientUploadState::Uploading(ByteProgress::new(116, 116).unwrap()),
     )]);
 
     let snapshot = build(queue, &transient);
@@ -476,8 +455,9 @@ fn created_handoff_outranks_final_transient_progress() {
 fn created_file_with_a_terminalization_error_remains_retryable() {
     let mut queue = two_queued_uploads();
     queue.uploads.truncate(1);
-    queue.uploads[0].phase = coven::QueuedUploadPhase::Created;
-    queue.uploads[0].provider_bytes_total = Some(116);
+    queue.uploads[0].phase = crate::db::DbUploadPhase::Created {
+        provider_bytes_total: 116,
+    };
     queue.uploads[0].attempt_count = 1;
     queue.uploads[0].last_failure = Some(coven::OutboxFailure::other("publication failed"));
 
@@ -537,10 +517,7 @@ fn fully_done_group_is_dropped_while_queue_busy() {
 fn idle_durable_queue_is_terminal() {
     let transient = HashMap::from([(
         UploadBlobKey::new(crate::sync::RELEASE_FILES_NAMESPACE, SMALL_FILE),
-        TransientUploadState::Uploading {
-            bytes_done: 116,
-            bytes_total: 116,
-        },
+        TransientUploadState::Uploading(ByteProgress::new(116, 116).unwrap()),
     )]);
     let snapshot = build(DbOutboxQueue::default(), &transient);
 
@@ -550,16 +527,15 @@ fn idle_durable_queue_is_terminal() {
 #[test]
 fn durable_and_streamed_upload_phases_never_collapse_back_to_queued() {
     let mut queue = two_queued_uploads();
-    queue.uploads[0].phase = coven::QueuedUploadPhase::Prepared;
-    queue.uploads[0].provider_bytes_total = Some(1016);
-    queue.uploads[1].phase = coven::QueuedUploadPhase::Created;
-    queue.uploads[1].provider_bytes_total = Some(1000);
+    queue.uploads[0].phase = crate::db::DbUploadPhase::Prepared {
+        provider_bytes_total: 1016,
+    };
+    queue.uploads[1].phase = crate::db::DbUploadPhase::Created {
+        provider_bytes_total: 1000,
+    };
     let transient = HashMap::from([(
         UploadBlobKey::new(crate::sync::RELEASE_FILES_NAMESPACE, SMALL_FILE),
-        TransientUploadState::Uploading {
-            bytes_done: 400,
-            bytes_total: 1016,
-        },
+        TransientUploadState::Uploading(ByteProgress::new(400, 1016).unwrap()),
     )]);
 
     let snapshot = build_outbox_snapshot(queue, &transient, &UploadThroughput::new(), false);
@@ -602,15 +578,13 @@ fn eta_never_reports_zero_while_provider_bytes_remain() {
 #[test]
 fn queue_eta_is_hidden_until_every_provider_denominator_is_known() {
     let mut queue = two_queued_uploads();
-    queue.uploads[1].phase = coven::QueuedUploadPhase::Prepared;
-    queue.uploads[1].provider_bytes_total = Some(1016);
+    queue.uploads[1].phase = crate::db::DbUploadPhase::Prepared {
+        provider_bytes_total: 1016,
+    };
     let key = UploadBlobKey::new(crate::sync::RELEASE_FILES_NAMESPACE, LARGE_FILE);
     let transient = HashMap::from([(
         key.clone(),
-        TransientUploadState::Uploading {
-            bytes_done: 250,
-            bytes_total: 1016,
-        },
+        TransientUploadState::Uploading(ByteProgress::new(250, 1016).unwrap()),
     )]);
     let throughput = UploadThroughput::with_window(std::time::Duration::from_secs(10));
     throughput.begin_upload(key.clone());
@@ -624,17 +598,16 @@ fn queue_eta_is_hidden_until_every_provider_denominator_is_known() {
 #[test]
 fn queue_eta_uses_every_exact_provider_denominator_when_they_are_known() {
     let mut queue = two_queued_uploads();
-    queue.uploads[0].phase = coven::QueuedUploadPhase::Prepared;
-    queue.uploads[0].provider_bytes_total = Some(116);
-    queue.uploads[1].phase = coven::QueuedUploadPhase::Prepared;
-    queue.uploads[1].provider_bytes_total = Some(1016);
+    queue.uploads[0].phase = crate::db::DbUploadPhase::Prepared {
+        provider_bytes_total: 116,
+    };
+    queue.uploads[1].phase = crate::db::DbUploadPhase::Prepared {
+        provider_bytes_total: 1016,
+    };
     let key = UploadBlobKey::new(crate::sync::RELEASE_FILES_NAMESPACE, LARGE_FILE);
     let transient = HashMap::from([(
         key.clone(),
-        TransientUploadState::Uploading {
-            bytes_done: 250,
-            bytes_total: 1016,
-        },
+        TransientUploadState::Uploading(ByteProgress::new(250, 1016).unwrap()),
     )]);
     let throughput = UploadThroughput::with_window(std::time::Duration::from_secs(10));
     throughput.begin_upload(key.clone());
@@ -654,22 +627,17 @@ fn each_release_group_carries_only_its_own_upload_rate() {
     let first = queued_upload(LARGE_FILE, "01 Track Title.flac", 1000);
     let mut second = queued_upload(OTHER_FILE, "02 Track Title.flac", 2000);
     second.release_id = OTHER_RELEASE.to_string();
-    second.phase = coven::QueuedUploadPhase::Prepared;
-    second.provider_bytes_total = Some(2016);
+    second.phase = crate::db::DbUploadPhase::Prepared {
+        provider_bytes_total: 2016,
+    };
     let transient = HashMap::from([
         (
             first_key.clone(),
-            TransientUploadState::Preparing {
-                bytes_done: 500,
-                bytes_total: 1000,
-            },
+            TransientUploadState::Preparing(ByteProgress::new(500, 1000).unwrap()),
         ),
         (
             second_key.clone(),
-            TransientUploadState::Uploading {
-                bytes_done: 200,
-                bytes_total: 2016,
-            },
+            TransientUploadState::Uploading(ByteProgress::new(200, 2016).unwrap()),
         ),
     ]);
     let throughput = UploadThroughput::with_window(std::time::Duration::from_secs(10));
@@ -708,28 +676,67 @@ fn each_release_group_carries_only_its_own_upload_rate() {
 }
 
 #[test]
-#[should_panic(expected = "preparation progress must use the source's exact plaintext total")]
-fn preparation_progress_rejects_a_changed_denominator() {
-    let mut progress = UploadProgress::default();
-    progress.add_upload(
-        &UploadState::Preparing {
-            bytes_done: 40,
-            bytes_total: 90,
-        },
-        100,
+fn byte_progress_never_counts_past_its_total() {
+    assert_eq!(ByteProgress::new(101, 100), None);
+
+    let mut progress = ByteProgress::none_of(100);
+    assert_eq!(progress.advance(40, 100), Some(40));
+    assert_eq!(
+        progress.advance(30, 100),
+        None,
+        "a report cannot go backwards"
     );
+    assert_eq!(
+        progress.advance(50, 90),
+        None,
+        "a report cannot change its total"
+    );
+    assert_eq!(
+        progress.advance(101, 100),
+        None,
+        "a report cannot overshoot"
+    );
+    assert_eq!(progress, ByteProgress::new(40, 100).unwrap());
+    assert_eq!(progress.advance(100, 100), Some(60));
+    assert!(progress.is_complete());
 }
 
+/// Preparation reads the source's own plaintext, so a preparation report over
+/// any other total describes some other attempt and refines nothing.
 #[test]
-#[should_panic(expected = "provider progress cannot exceed its exact total")]
-fn provider_progress_rejects_bytes_beyond_its_denominator() {
-    let mut progress = UploadProgress::default();
-    progress.add_upload(
-        &UploadState::Uploading {
-            bytes_done: 101,
-            bytes_total: 100,
-        },
-        100,
+fn a_preparation_transient_over_another_total_is_a_stale_straggler() {
+    let transient = HashMap::from([(
+        UploadBlobKey::new(crate::sync::RELEASE_FILES_NAMESPACE, LARGE_FILE),
+        TransientUploadState::Preparing(ByteProgress::new(40, 90).unwrap()),
+    )]);
+
+    let snapshot = build(two_queued_uploads(), &transient);
+
+    assert_eq!(
+        snapshot.upload_groups[0].files[1].state,
+        UploadState::Queued
+    );
+    assert_eq!(snapshot.total.preparation_bytes_done, 0);
+}
+
+/// An attempt whose callbacks stopped making sense is left untracked; its
+/// row renders the durable state with no bar.
+#[test]
+fn an_untracked_attempt_renders_its_durable_row() {
+    let mut queue = two_queued_uploads();
+    queue.uploads[1].phase = crate::db::DbUploadPhase::Prepared {
+        provider_bytes_total: 1016,
+    };
+    let transient = HashMap::from([(
+        UploadBlobKey::new(crate::sync::RELEASE_FILES_NAMESPACE, LARGE_FILE),
+        TransientUploadState::Untracked,
+    )]);
+
+    let snapshot = build(queue, &transient);
+
+    assert_eq!(
+        snapshot.upload_groups[0].files[1].state,
+        UploadState::Prepared { bytes_total: 1016 }
     );
 }
 
@@ -738,14 +745,12 @@ fn a_slice_counts_source_bytes_until_every_provider_size_is_exact() {
     // The large file is uploading; the small one has not been prepared, so no
     // exact provider denominator exists for the slice yet.
     let mut queue = two_queued_uploads();
-    queue.uploads[1].phase = coven::QueuedUploadPhase::Prepared;
-    queue.uploads[1].provider_bytes_total = Some(1016);
+    queue.uploads[1].phase = crate::db::DbUploadPhase::Prepared {
+        provider_bytes_total: 1016,
+    };
     let transient = HashMap::from([(
         UploadBlobKey::new(crate::sync::RELEASE_FILES_NAMESPACE, LARGE_FILE),
-        TransientUploadState::Uploading {
-            bytes_done: 250,
-            bytes_total: 1016,
-        },
+        TransientUploadState::Uploading(ByteProgress::new(250, 1016).unwrap()),
     )]);
 
     let snapshot = build(queue, &transient);
@@ -767,15 +772,13 @@ fn a_slice_counts_source_bytes_until_every_provider_size_is_exact() {
 fn a_slice_counts_provider_bytes_once_every_upload_is_prepared() {
     let mut queue = two_queued_uploads();
     for (upload, provider_total) in queue.uploads.iter_mut().zip([116, 1016]) {
-        upload.phase = coven::QueuedUploadPhase::Prepared;
-        upload.provider_bytes_total = Some(provider_total);
+        upload.phase = crate::db::DbUploadPhase::Prepared {
+            provider_bytes_total: provider_total,
+        };
     }
     let transient = HashMap::from([(
         UploadBlobKey::new(crate::sync::RELEASE_FILES_NAMESPACE, LARGE_FILE),
-        TransientUploadState::Uploading {
-            bytes_done: 250,
-            bytes_total: 1016,
-        },
+        TransientUploadState::Uploading(ByteProgress::new(250, 1016).unwrap()),
     )]);
 
     let snapshot = build(queue, &transient);
@@ -827,11 +830,7 @@ fn cancelling_and_publishing_slices_carry_no_byte_counters() {
 #[test]
 fn a_files_bar_counts_the_phase_that_file_is_in() {
     assert_eq!(
-        UploadState::Preparing {
-            bytes_done: 40,
-            bytes_total: 100,
-        }
-        .bar(),
+        UploadState::Preparing(ByteProgress::new(40, 100).unwrap()).bar(),
         Some(UploadBar {
             phase: UploadPhase::Preparing,
             bytes_done: 40,
@@ -839,11 +838,7 @@ fn a_files_bar_counts_the_phase_that_file_is_in() {
         })
     );
     assert_eq!(
-        UploadState::Uploading {
-            bytes_done: 40,
-            bytes_total: 116,
-        }
-        .bar(),
+        UploadState::Uploading(ByteProgress::new(40, 116).unwrap()).bar(),
         Some(UploadBar {
             phase: UploadPhase::Uploading,
             bytes_done: 40,
@@ -873,7 +868,7 @@ fn a_files_bar_counts_the_phase_that_file_is_in() {
 }
 
 #[test]
-#[should_panic(expected = "upload progress cannot exceed its exact total")]
+#[should_panic(expected = "folded provider progress stays within its total")]
 fn a_bar_rejects_progress_beyond_its_denominator() {
     let progress = UploadProgress {
         uploaded: 1,
@@ -942,4 +937,44 @@ fn one_release_groups_its_uploads_whatever_labels_the_queue_rows_carry() {
     assert_eq!(snapshot.upload_groups.len(), 1);
     assert_eq!(snapshot.upload_groups[0].release_id, RELEASE);
     assert_eq!(snapshot.upload_groups[0].files.len(), 2);
+}
+
+/// coven's durable row pairs each phase past preparation with the provider
+/// size preparation produced. A row that does not is a broken queue, which
+/// the projection reports rather than the snapshot crashing on it.
+#[test]
+fn a_created_upload_without_a_provider_size_fails_the_projection() {
+    let mut upload = coven_queued_upload(SMALL_FILE, RELEASE);
+    upload.phase = coven::QueuedUploadPhase::Created;
+    let durable = coven::CloudOutboxSnapshot {
+        uploads: vec![upload],
+        make_remotes: Vec::new(),
+    };
+    let context = crate::db::OutboxDisplayContext {
+        file_names: HashMap::from([(SMALL_FILE.to_string(), "01 Track Title.flac".to_string())]),
+    };
+
+    assert!(crate::db::Database::outbox_queue_from_context(durable, context).is_err());
+}
+
+/// A retried preparation can produce a provider object of a different size
+/// while the previous attempt's last provider callback is still in flight.
+/// That straggler refines nothing; the row renders its durable state.
+#[test]
+fn a_provider_transient_with_another_total_is_a_stale_straggler() {
+    let mut queue = two_queued_uploads();
+    queue.uploads[1].phase = crate::db::DbUploadPhase::Prepared {
+        provider_bytes_total: 1016,
+    };
+    let transient = HashMap::from([(
+        UploadBlobKey::new(crate::sync::RELEASE_FILES_NAMESPACE, LARGE_FILE),
+        TransientUploadState::Uploading(ByteProgress::new(250, 1032).unwrap()),
+    )]);
+
+    let snapshot = build(queue, &transient);
+
+    assert_eq!(
+        snapshot.upload_groups[0].files[1].state,
+        UploadState::Prepared { bytes_total: 1016 }
+    );
 }

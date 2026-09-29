@@ -92,6 +92,8 @@ impl coven::BlobTransitionObserver for ReleaseUploadObserver {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::library::outbox_snapshot::TransientUploadState;
+    use crate::library::ByteProgress;
     use coven::BlobTransitionObserver;
     use std::sync::Arc;
 
@@ -152,14 +154,47 @@ mod tests {
             .expect("resume waiter task");
     }
 
+    /// A second start begins a new attempt; the first one's measurement is
+    /// dropped rather than left to collide with it.
     #[tokio::test]
-    #[should_panic(expected = "upload started while the same blob already had transient state")]
-    async fn one_blob_cannot_start_two_provider_transfers() {
-        let (observer, _) = observer();
+    async fn a_second_provider_start_begins_a_new_attempt() {
+        let (observer, uploads) = observer();
         let blob = test_blob();
 
         observer.on_blob_upload_started(&blob).await;
+        observer.on_blob_upload_progress(&blob, 600, 1016).await;
         observer.on_blob_upload_started(&blob).await;
+
+        assert_eq!(
+            uploads.transient_state_for_test(&blob),
+            Some(TransientUploadState::UploadStarted)
+        );
+        observer.on_blob_upload_progress(&blob, 100, 1016).await;
+        assert_eq!(
+            uploads.transient_state_for_test(&blob),
+            Some(TransientUploadState::Uploading(
+                ByteProgress::new(100, 1016).unwrap()
+            ))
+        );
+    }
+
+    /// A preparation start with the previous attempt still recorded begins a
+    /// new attempt too.
+    #[tokio::test]
+    async fn a_second_preparation_start_begins_a_new_attempt() {
+        let (observer, uploads) = observer();
+        let blob = test_blob();
+
+        observer.on_blob_preparation_started(&blob).await;
+        observer
+            .on_blob_preparation_progress(&blob, 500, 1000)
+            .await;
+        observer.on_blob_preparation_started(&blob).await;
+
+        assert_eq!(
+            uploads.transient_state_for_test(&blob),
+            Some(TransientUploadState::Preparing(ByteProgress::none_of(1000)))
+        );
     }
 
     #[tokio::test]
@@ -171,12 +206,9 @@ mod tests {
         observer.on_blob_upload_progress(&blob, 600, 1016).await;
         assert_eq!(
             uploads.transient_state_for_test(&blob),
-            Some(
-                crate::library::outbox_snapshot::TransientUploadState::Uploading {
-                    bytes_done: 600,
-                    bytes_total: 1016,
-                }
-            )
+            Some(TransientUploadState::Uploading(
+                ByteProgress::new(600, 1016).unwrap()
+            ))
         );
         assert!(uploads.rates_for_test().aggregate_bps > 0);
 
@@ -218,7 +250,7 @@ mod tests {
 
         assert_eq!(
             uploads.transient_state_for_test(&blob),
-            Some(crate::library::outbox_snapshot::TransientUploadState::UploadStarted)
+            Some(TransientUploadState::UploadStarted)
         );
         assert_eq!(uploads.rates_for_test().aggregate_bps, 0);
     }
@@ -241,43 +273,77 @@ mod tests {
         assert_eq!(uploads.rates_for_test().aggregate_bps, 0);
     }
 
+    /// Callbacks that contradict themselves leave the attempt untracked: its
+    /// row renders coven's durable phase, and later reports of that attempt
+    /// change nothing until the next start.
     #[tokio::test]
-    #[should_panic(expected = "upload progress arrived without an upload-start state")]
-    async fn provider_progress_requires_upload_start() {
-        let (observer, _) = observer();
-        let blob = test_blob();
+    async fn contradictory_provider_callbacks_leave_the_attempt_untracked() {
+        for (name, script) in [
+            ("progress without a start", vec![(600, 1016)]),
+            ("progress beyond its total", vec![(1_017, 1_016)]),
+            ("progress going backwards", vec![(600, 1016), (500, 1016)]),
+            (
+                "progress changing its total",
+                vec![(600, 1016), (700, 1032)],
+            ),
+        ] {
+            let (observer, uploads) = observer();
+            let blob = test_blob();
+            if name != "progress without a start" {
+                observer.on_blob_upload_started(&blob).await;
+            }
+            for (done, total) in script {
+                observer.on_blob_upload_progress(&blob, done, total).await;
+            }
 
-        observer.on_blob_upload_progress(&blob, 600, 1016).await;
+            assert_eq!(
+                uploads.transient_state_for_test(&blob),
+                Some(TransientUploadState::Untracked),
+                "{name}"
+            );
+            assert_eq!(uploads.rates_for_test().aggregate_bps, 0, "{name}");
+            observer.on_blob_upload_progress(&blob, 900, 1016).await;
+            assert_eq!(
+                uploads.transient_state_for_test(&blob),
+                Some(TransientUploadState::Untracked),
+                "{name}"
+            );
+            observer.on_blob_upload_abandoned(&blob);
+            assert_eq!(uploads.transient_state_for_test(&blob), None, "{name}");
+        }
     }
 
     #[tokio::test]
-    #[should_panic(expected = "upload completion arrived without exact provider byte progress")]
-    async fn provider_completion_requires_the_exact_final_progress() {
-        let (observer, _) = observer();
+    async fn contradictory_preparation_callbacks_leave_the_attempt_untracked() {
+        let (observer, uploads) = observer();
+        let blob = test_blob();
+
+        observer.on_blob_preparation_started(&blob).await;
+        observer.on_blob_preparation_progress(&blob, 500, 999).await;
+
+        assert_eq!(
+            uploads.transient_state_for_test(&blob),
+            Some(TransientUploadState::Untracked)
+        );
+        assert_eq!(uploads.rates_for_test().aggregate_bps, 0);
+        observer.on_blob_upload_started(&blob).await;
+        assert_eq!(
+            uploads.transient_state_for_test(&blob),
+            Some(TransientUploadState::UploadStarted)
+        );
+    }
+
+    /// Completion without the exact final provider report still clears the
+    /// attempt: coven's durable Created row says Uploaded.
+    #[tokio::test]
+    async fn completion_without_the_final_progress_clears_the_attempt() {
+        let (observer, uploads) = observer();
         let blob = test_blob();
 
         observer.on_blob_upload_started(&blob).await;
         observer.on_blob_uploaded(&blob).await;
-    }
 
-    #[tokio::test]
-    #[should_panic(expected = "provider progress regressed or changed its exact total")]
-    async fn first_provider_progress_cannot_exceed_its_total() {
-        let (observer, _) = observer();
-        let blob = test_blob();
-
-        observer.on_blob_upload_started(&blob).await;
-        observer.on_blob_upload_progress(&blob, 1_017, 1_016).await;
-    }
-
-    #[tokio::test]
-    #[should_panic(expected = "provider progress regressed or changed its exact total")]
-    async fn provider_progress_is_monotonic_with_one_exact_total() {
-        let (observer, _) = observer();
-        let blob = test_blob();
-
-        observer.on_blob_upload_started(&blob).await;
-        observer.on_blob_upload_progress(&blob, 600, 1016).await;
-        observer.on_blob_upload_progress(&blob, 500, 1016).await;
+        assert_eq!(uploads.transient_state_for_test(&blob), None);
+        assert_eq!(uploads.rates_for_test().aggregate_bps, 0);
     }
 }

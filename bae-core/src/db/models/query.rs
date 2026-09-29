@@ -315,6 +315,17 @@ pub struct DbOutboxQueue {
     pub make_remotes: Vec<coven::QueuedMakeRemote>,
 }
 
+/// Where coven's durable handoff has taken one queued upload. Each phase past
+/// preparation carries the exact encrypted/browsable object size preparation
+/// produced; pending preparation has no provider size yet. A queue row whose
+/// phase and provider size disagree fails the outbox projection.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DbUploadPhase {
+    Pending,
+    Prepared { provider_bytes_total: u64 },
+    Created { provider_bytes_total: u64 },
+}
+
 /// One queued blob upload plus its bae context.
 #[derive(Debug, Clone)]
 pub struct DbOutboxUpload {
@@ -329,10 +340,7 @@ pub struct DbOutboxUpload {
     /// Coven's durable upload handoff. Transient preparation/upload callbacks
     /// refine this while work is moving, but never replace it as the restart
     /// truth.
-    pub phase: coven::QueuedUploadPhase,
-    /// Exact encrypted/browsable object bytes once preparation has produced
-    /// the provider payload. Pending preparation has no provider denominator.
-    pub provider_bytes_total: Option<u64>,
+    pub phase: DbUploadPhase,
     /// Failed transfer attempts so far; 0 for one never yet tried.
     pub attempt_count: u64,
     /// Why the last attempt failed, if one has. Coven preserves the failure's

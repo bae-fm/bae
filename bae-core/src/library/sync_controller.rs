@@ -10,7 +10,7 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
-use tracing::{debug, info, warn};
+use tracing::{debug, error, info, warn};
 
 use crate::config::{CloudProvider, ConfigHandle};
 use crate::db::{Database, DbOutboxQueue, OutboxDisplayContext, OutboxDisplayRequest};
@@ -319,7 +319,7 @@ impl SyncController {
                 self.publish(projection, Ok(snapshot));
             }
             Err(error) => {
-                warn!(%error, "Failed to label the durable cloud outbox");
+                error!(%error, "Failed to label the durable cloud outbox");
                 self.publish(projection, Err(error.to_string()));
             }
         }
@@ -341,7 +341,7 @@ impl SyncController {
                         self.publish(projection, Ok(snapshot))
                     }
                     Err(error) => {
-                        warn!(%error, "Failed to label the durable cloud outbox");
+                        error!(%error, "Failed to label the durable cloud outbox");
                         self.publish(projection, Err(error.to_string()))
                     }
                 }

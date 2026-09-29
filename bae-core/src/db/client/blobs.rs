@@ -418,11 +418,31 @@ impl Database {
                         )));
                     }
                 };
+                let phase = match (upload.phase, upload.provider_bytes_total) {
+                    (coven::QueuedUploadPhase::Pending, None) => DbUploadPhase::Pending,
+                    (coven::QueuedUploadPhase::Prepared, Some(provider_bytes_total)) => {
+                        DbUploadPhase::Prepared {
+                            provider_bytes_total,
+                        }
+                    }
+                    (coven::QueuedUploadPhase::Created, Some(provider_bytes_total)) => {
+                        DbUploadPhase::Created {
+                            provider_bytes_total,
+                        }
+                    }
+                    (phase, provider_bytes_total) => {
+                        return Err(DbError::Message(format!(
+                            "queued upload {}:{} is {phase:?} with provider size \
+                             {provider_bytes_total:?}",
+                            upload.blob.table(),
+                            upload.blob.row_id()
+                        )));
+                    }
+                };
                 Ok(DbOutboxUpload {
                     release_id: upload.root_id,
                     blob: upload.blob,
-                    phase: upload.phase,
-                    provider_bytes_total: upload.provider_bytes_total,
+                    phase,
                     attempt_count: upload.attempt_count,
                     last_failure: upload.last_failure,
                     created_at: stamp_millis(&upload.created_at)?,
