@@ -3,14 +3,10 @@ import Combine
 import SwiftUI
 import UniformTypeIdentifiers
 
-struct SearchFieldAnchorKey: PreferenceKey {
-    nonisolated(unsafe) static var defaultValue: Anchor<CGRect>?
-    static func reduce(
-        value: inout Anchor<CGRect>?,
-        nextValue: () -> Anchor<CGRect>?
-    ) {
-        value = nextValue() ?? value
-    }
+/// The space the search dropdown is placed in: the whole window's content,
+/// where the title bar reports the search field's frame.
+enum SearchOverlaySpace {
+    static let name = "searchOverlay"
 }
 
 struct MainAppView: View {
@@ -32,6 +28,12 @@ struct MainAppView: View {
     /// dismiss monitor so interactions inside the card don't close it.
     @State
     private var searchCardFrame: CGRect = .zero
+    /// The search field's frame in `SearchOverlaySpace`, as the title bar
+    /// reports it when its own layout moves the field. Read from the field
+    /// alone rather than gathered as a preference over the whole window,
+    /// which every layout below — each scrolled list row — combined again.
+    @State
+    private var searchFieldFrame: CGRect?
 
     private var queueActions: QueueActions {
         QueueActions(library: library, queue: queue, uiStore: uiStore)
@@ -41,7 +43,10 @@ struct MainAppView: View {
         ZStack {
             // Title bar, the active section beside the queue, now playing bar.
             VStack(spacing: 0) {
-                TitleBar(searchText: $searchText)
+                TitleBar(
+                    searchText: $searchText,
+                    onSearchFieldFrame: { searchFieldFrame = $0 }
+                )
                 ArtworkLoadingBanner()
 
                 HStack(spacing: 0) {
@@ -108,50 +113,46 @@ struct MainAppView: View {
             }
         }
         .animation(.easeInOut(duration: 0.2), value: uiStore.lightbox != nil)
-        .overlayPreferenceValue(SearchFieldAnchorKey.self) { anchor in
+        .overlay {
             if uiStore.showSearchPopover, uiStore.searchResults != nil,
-                let anchor
+                let rect = searchFieldFrame
             {
-                GeometryReader { proxy in
-                    let rect = proxy[anchor]
-
-                    // Hangs under the field, trailing edges aligned; the
-                    // monitor below dismisses it and lets the click through.
-                    SearchView(
-                        results: uiStore.searchResults,
-                        onSelectAlbum: selectAlbum,
-                        onSelectArtist: selectArtist,
-                        onSelectComposer: selectComposer,
-                        onSelectWork: selectWork,
-                    )
-                    .onGeometryChange(for: CGRect.self) { geo in
-                        geo.frame(in: .named("searchOverlay"))
-                    } action: {
-                        searchCardFrame = $0
-                    }
-                    .padding(.leading, rect.maxX - SearchView.width)
-                    .padding(.top, rect.maxY + ThemeSpace.inline)
-                    .frame(
-                        maxWidth: .infinity,
-                        maxHeight: .infinity,
-                        alignment: .topLeading
-                    )
-                    .background(
-                        SearchDismissMonitor(
-                            insideRects: [searchCardFrame, rect],
-                            onClickAway: {
-                                uiStore.showSearchPopover = false
-                                NSApp.keyWindow?.makeFirstResponder(nil)
-                            },
-                            onScrollAway: {
-                                uiStore.showSearchPopover = false
-                            }
-                        )
-                    )
+                // Hangs under the field, trailing edges aligned; the monitor
+                // below dismisses it and lets the click through.
+                SearchView(
+                    results: uiStore.searchResults,
+                    onSelectAlbum: selectAlbum,
+                    onSelectArtist: selectArtist,
+                    onSelectComposer: selectComposer,
+                    onSelectWork: selectWork,
+                )
+                .onGeometryChange(for: CGRect.self) { geo in
+                    geo.frame(in: .named(SearchOverlaySpace.name))
+                } action: {
+                    searchCardFrame = $0
                 }
-                .coordinateSpace(name: "searchOverlay")
+                .padding(.leading, rect.maxX - SearchView.width)
+                .padding(.top, rect.maxY + ThemeSpace.inline)
+                .frame(
+                    maxWidth: .infinity,
+                    maxHeight: .infinity,
+                    alignment: .topLeading
+                )
+                .background(
+                    SearchDismissMonitor(
+                        insideRects: [searchCardFrame, rect],
+                        onClickAway: {
+                            uiStore.showSearchPopover = false
+                            NSApp.keyWindow?.makeFirstResponder(nil)
+                        },
+                        onScrollAway: {
+                            uiStore.showSearchPopover = false
+                        }
+                    )
+                )
             }
         }
+        .coordinateSpace(name: SearchOverlaySpace.name)
         // Clicking anywhere that is not a text field ends the active field
         // edit, in this window and in popovers alike.
         .background(FieldClickAwayMonitor())

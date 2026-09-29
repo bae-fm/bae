@@ -18,6 +18,9 @@ struct TitleBar: View {
     private var openSettings
     @Binding
     var searchText: String
+    /// Told the search field's frame in `SearchOverlaySpace` whenever it
+    /// moves, so the search dropdown can hang under it.
+    let onSearchFieldFrame: (CGRect) -> Void
     @FocusState
     private var searchFocused: Bool
     var body: some View {
@@ -44,10 +47,11 @@ struct TitleBar: View {
                     }
                 )
                 .frame(width: 300)
-                .anchorPreference(
-                    key: SearchFieldAnchorKey.self,
-                    value: .bounds
-                ) { $0 }
+                .onGeometryChange(for: CGRect.self) { geometry in
+                    geometry.frame(in: .named(SearchOverlaySpace.name))
+                } action: { frame in
+                    onSearchFieldFrame(frame)
+                }
 
                 Button(action: { openSettings() }) {
                     Image(systemName: "gearshape")
@@ -178,7 +182,7 @@ private struct SectionSegmentedControl: View {
         private var searchText = ""
 
         var body: some View {
-            TitleBar(searchText: $searchText)
+            TitleBar(searchText: $searchText, onSearchFieldFrame: { _ in })
                 .frame(width: 1100)
         }
     }
