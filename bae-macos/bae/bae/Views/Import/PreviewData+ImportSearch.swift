@@ -679,25 +679,6 @@
             offersSharedAlbum: false
         )
 
-        /// Several pressings of one album offered to a folder waiting on the
-        /// person, which it can be linked to with its pressing unknown.
-        static let searchStateSharedAlbum = searchState(
-            identifyState: .found(
-                run: identifyRunFound,
-                groups: [searchGroupExact],
-                libraryStatuses: [:],
-                trackCount: 11,
-                agreements: searchAgreementsExact,
-                narrowedOutCount: 0,
-                catalogAgreements: catalogAgreements,
-                folderCheck: nil,
-                picksUnattended: false,
-                offersSharedAlbum: true
-            ),
-            signals: settledSignals,
-            needsYou: .matches(count: 2)
-        )
-
         /// Both signals ran and neither source knew them.
         static let searchStateNotFound = searchState(
             identifyState: .notFoundAnywhere(run: identifyRunNothingFound),
