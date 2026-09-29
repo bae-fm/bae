@@ -354,8 +354,8 @@ struct Support {
     /// Whether the folder's text names a word only this row's notes write
     /// among the rows tied with it on every field above — see
     /// [`super::notes`] and [`weigh_notes`]. Last, so it only breaks a tie:
-    /// the catalogs often say where one of two look-alike pressings was made
-    /// only in free text, which is read here as nothing more than words.
+    /// words shared by every tied row cancel out, and a word matched by chance
+    /// costs only the order of rows that were equal anyway.
     names_what_sets_it_apart: bool,
 }
 

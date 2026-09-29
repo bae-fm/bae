@@ -2,6 +2,12 @@
 //! it in its catalogs' notes — the free text a record's document writes about
 //! which pressing it is (see [`crate::import::search::MetadataResult::notes`]).
 //!
+//! Catalogs often write what tells look-alike pressings apart — where one was
+//! made, who pressed it — only as free text, so the text is read as nothing
+//! more than words: no country or company is parsed out of it, on purpose.
+//! The point it gives is the ranking's last, so a word matched by chance only
+//! reorders rows that were equal on everything else.
+//!
 //! A row's words are its records' notes split by [`words`]. The words another
 //! of the rows writes too say nothing about which of them is on the desk; the
 //! rest set the row apart, and the row is named when the folder's text states
