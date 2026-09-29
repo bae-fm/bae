@@ -4,7 +4,7 @@
 
 use super::columns::*;
 use super::*;
-use crate::cue_flac::{CuePregap, CueSheet};
+use crate::cue_flac::CueSheet;
 use crate::import::folder_scanner::{
     CandidateFile, Coverage, FileRole, FolderCandidate, InvalidCandidate, ScanItem,
 };
@@ -542,29 +542,12 @@ fn insert_cue_sheet(
             crate::cue_flac::CueTrackMode::Audio => ("audio", None),
             crate::cue_flac::CueTrackMode::Other(other) => ("other", Some(other.as_str())),
         };
-        let (pregap_kind, pregap_frames, pregap_index_number, pregap_index_file_reference) =
-            match &track.pregap {
-                CuePregap::None => ("none", None, None, None),
-                CuePregap::Audio(index) => (
-                    "audio",
-                    Some(to_i64(index.frames, "a pregap's frame position")?),
-                    Some(index.number),
-                    Some(index.file_reference.as_str()),
-                ),
-                CuePregap::Silence { frames } => (
-                    "silence",
-                    Some(to_i64(*frames, "a generated pregap's length")?),
-                    None,
-                    None,
-                ),
-            };
         sql.execute(
             "INSERT INTO scan_cue_track \
                  (watched_folder_path, candidate_path, sheet_relative_path, position, number, \
                   mode, mode_other, title, performer, file_reference, start_cue_frames, \
-                  end_cue_frames, pregap_kind, pregap_frames, pregap_index_number, \
-                  pregap_index_file_reference) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                  end_cue_frames, generated_pregap_frames) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             params![
                 watched_folder_path,
                 candidate_path,
@@ -581,10 +564,10 @@ fn insert_cue_sheet(
                     .end_cue_frames
                     .map(|frames| to_i64(frames, "a cue track's end"))
                     .transpose()?,
-                pregap_kind,
-                pregap_frames,
-                pregap_index_number,
-                pregap_index_file_reference,
+                track
+                    .generated_pregap_frames
+                    .map(|frames| to_i64(frames, "a generated pregap's length"))
+                    .transpose()?,
             ],
         )?;
         for (index_position, index) in track.indexes.iter().enumerate() {

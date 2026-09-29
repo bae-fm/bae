@@ -693,8 +693,7 @@ FILE "test.ape" WAVE
         "track 3 runs about two and a half minutes"
     );
 
-    // The bogus pregap is gone from the track and from its indexes.
-    assert_eq!(track3.pregap, CuePregap::None);
+    // The bogus pregap is gone.
     assert!(
         track3.index(0).is_none(),
         "Bogus INDEX 00 should be removed from the raw index list"

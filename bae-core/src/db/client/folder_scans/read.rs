@@ -11,13 +11,13 @@ use super::columns::*;
 use super::write::StoredEntry;
 use super::*;
 use crate::album_detail::AudioFormat;
-use crate::cue_flac::{CueIndex, CuePregap, CueSheet, CueTrack, CueTrackMode};
+use crate::cue_flac::{CueIndex, CueSheet, CueTrack, CueTrackMode};
 use crate::import::file_tag_snapshot::{
     EmbeddedCoverFact, FileObservation, FileTagFact, FileTagSnapshot,
 };
 use crate::import::folder_scanner::{
     CandidateFile, CategorizedFiles, Coverage, FileRole, FolderCandidate, InvalidCandidate,
-    ReleasePart, ReleaseFileScope, ScanItem, ScannedAudio, ScannedFile, SheetAudioFile,
+    ReleaseFileScope, ReleasePart, ScanItem, ScannedAudio, ScannedFile, SheetAudioFile,
 };
 use crate::util::content_type::ContentType;
 use track_sheets::{load_cue_sheets, load_sheet_audio_files, SheetKey};
@@ -331,12 +331,11 @@ fn load_file_tag_facts(
                     copyright,
                     store: store
                         .map(|key| {
-                            crate::signals::StoreMarker::from_key(&key)
-                                .ok_or_else(|| {
-                                    DbError::Message(format!(
-                                        "a file-tag store {key:?} is no store bae reads"
-                                    ))
-                                })
+                            crate::signals::StoreMarker::from_key(&key).ok_or_else(|| {
+                                DbError::Message(format!(
+                                    "a file-tag store {key:?} is no store bae reads"
+                                ))
+                            })
                         })
                         .transpose()?,
                 })

@@ -145,7 +145,7 @@ fn cue_audio_pregap(
     cue_index: usize,
 ) -> Result<Option<CueAudioPregap>, ImportError> {
     let cue_track = cue_track_by_playable_index(cue_pair, cue_index)?;
-    let crate::cue_flac::CuePregap::Audio(index) = &cue_track.pregap else {
+    let Some(index) = cue_track.audio_pregap() else {
         return Ok(None);
     };
     let audio = cue_audio_file(cue_pair, &index.file_reference)?;
@@ -213,7 +213,7 @@ fn cue_backed_audio_format(
         .map(|samples| cue_audio_measure(samples, "pregap samples"))
         .transpose()?;
     let generated_pregap_samples = cue_track
-        .generated_pregap_frames()
+        .generated_pregap_frames
         .filter(|&frames| frames > 0)
         .map(|frames| {
             cue_audio_measure(

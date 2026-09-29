@@ -125,10 +125,7 @@ struct CueTrackRow {
     file_reference: String,
     start_cue_frames: i64,
     end_cue_frames: Option<i64>,
-    pregap_kind: String,
-    pregap_frames: Option<i64>,
-    pregap_index_number: Option<i64>,
-    pregap_index_file_reference: Option<String>,
+    generated_pregap_frames: Option<i64>,
 }
 
 fn load_cue_tracks(
@@ -139,7 +136,7 @@ fn load_cue_tracks(
     let rows = sql.query(
         "SELECT candidate_path, sheet_relative_path, position, number, mode, mode_other, \
                 title, performer, file_reference, start_cue_frames, end_cue_frames, \
-                pregap_kind, pregap_frames, pregap_index_number, pregap_index_file_reference \
+                generated_pregap_frames \
          FROM scan_cue_track \
          WHERE watched_folder_path = :root AND (:only IS NULL OR candidate_path = :only) \
          ORDER BY candidate_path, sheet_relative_path, position",
@@ -157,10 +154,7 @@ fn load_cue_tracks(
                 file_reference: row.get(8)?,
                 start_cue_frames: row.get(9)?,
                 end_cue_frames: row.get(10)?,
-                pregap_kind: row.get(11)?,
-                pregap_frames: row.get(12)?,
-                pregap_index_number: row.get(13)?,
-                pregap_index_file_reference: row.get(14)?,
+                generated_pregap_frames: row.get(11)?,
             })
         },
     )?;
@@ -169,35 +163,6 @@ fn load_cue_tracks(
         let mut indexes = indexes()?;
         let mut tracks: TracksBySheet = HashMap::new();
         for row in rows {
-            let pregap = match row.pregap_kind.as_str() {
-                "none" => CuePregap::None,
-                "silence" => CuePregap::Silence {
-                    frames: to_u64(
-                        row.pregap_frames.ok_or_else(|| {
-                            DbError::Message("a silent pregap states no length".to_string())
-                        })?,
-                        "a generated pregap's length",
-                    )?,
-                },
-                "audio" => {
-                    let missing =
-                        |what: &str| DbError::Message(format!("an audio pregap states no {what}"));
-                    CuePregap::Audio(CueIndex {
-                        number: to_u32(
-                            row.pregap_index_number.ok_or_else(|| missing("index"))?,
-                            "a pregap's index number",
-                        )?,
-                        frames: to_u64(
-                            row.pregap_frames.ok_or_else(|| missing("position"))?,
-                            "a pregap's frame position",
-                        )?,
-                        file_reference: row
-                            .pregap_index_file_reference
-                            .ok_or_else(|| missing("file"))?,
-                    })
-                }
-                other => return Err(unreadable("pregap_kind", other)),
-            };
             let sheet = SheetKey {
                 candidate_path: row.candidate_path,
                 sheet_relative_path: row.sheet_relative_path,
@@ -222,7 +187,10 @@ fn load_cue_tracks(
                 indexes,
                 file_reference: row.file_reference,
                 start_cue_frames: to_u64(row.start_cue_frames, "a cue track's start")?,
-                pregap,
+                generated_pregap_frames: row
+                    .generated_pregap_frames
+                    .map(|frames| to_u64(frames, "a generated pregap's length"))
+                    .transpose()?,
                 end_cue_frames: row
                     .end_cue_frames
                     .map(|frames| to_u64(frames, "a cue track's end"))

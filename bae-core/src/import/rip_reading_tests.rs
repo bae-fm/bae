@@ -2,7 +2,7 @@
 //! track sheet is hashed into a disc ID because of it.
 
 use super::*;
-use crate::cue_flac::{CdRipper, CueIndex, CuePregap, CueTrack, CueTrackMode};
+use crate::cue_flac::{CdRipper, CueIndex, CueTrack, CueTrackMode};
 
 fn track(number: u32, start_cue_frames: u64) -> CueTrack {
     CueTrack {
@@ -17,7 +17,7 @@ fn track(number: u32, start_cue_frames: u64) -> CueTrack {
         }],
         file_reference: "Album.flac".to_string(),
         start_cue_frames,
-        pregap: CuePregap::None,
+        generated_pregap_frames: None,
         end_cue_frames: None,
     }
 }

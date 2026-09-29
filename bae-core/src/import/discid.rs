@@ -227,7 +227,7 @@ fn calculate_mb_discid_from_cue(
     let mut generated = 0u64;
     let mut raw_track_sectors = Vec::with_capacity(sheet.playable_track_count());
     for track in sheet.playable_tracks() {
-        generated += track.generated_pregap_frames().unwrap_or(0);
+        generated += track.generated_pregap_frames.unwrap_or(0);
         raw_track_sectors.push(sector(
             file_start[track.file_reference.as_str()] + track.start_cue_frames + generated,
         )?);
@@ -263,9 +263,9 @@ fn read_document(path: &Path) -> Option<String> {
 /// report. AccurateRip's database holds CDs alone, so a disc found in it is
 /// a CD.
 fn reports_accuraterip_found(text: &str) -> bool {
-    text.lines().map(str::trim).any(|line| {
-        line.starts_with("[AccurateRip ID:") && line.ends_with("] found.")
-    })
+    text.lines()
+        .map(str::trim)
+        .any(|line| line.starts_with("[AccurateRip ID:") && line.ends_with("] found."))
 }
 
 /// A disc ID and the file it was derived from — the rip log, or the sheet that
@@ -379,7 +379,9 @@ fn read(mut artifacts: RipArtifacts<'_>) -> RipReading {
     let not_cd_rate = rate_ruling_out_cd(artifacts.audio.iter().copied());
     // Logs first: a log's table of contents is the disc ID as well as the
     // proof, which a report is not.
-    artifacts.documents.sort_by_key(|document| !document.is_log());
+    artifacts
+        .documents
+        .sort_by_key(|document| !document.is_log());
     let mut report = None;
     for document in &artifacts.documents {
         let Some(text) = read_document(document.path) else {
@@ -478,13 +480,15 @@ pub fn read_rip_artifacts_from_paths(
         .collect::<Vec<_>>();
     let parsed: Vec<(&PathBuf, CueSheet)> = cue_paths
         .iter()
-        .filter_map(|cue_path| match crate::cue_flac::parse_cue_sheet(cue_path) {
-            Ok(sheet) => Some((cue_path, sheet)),
-            Err(e) => {
-                debug!("Skipping unparseable CUE {:?}: {}", cue_path, e);
-                None
-            }
-        })
+        .filter_map(
+            |cue_path| match crate::cue_flac::parse_cue_sheet(cue_path) {
+                Ok(sheet) => Some((cue_path, sheet)),
+                Err(e) => {
+                    debug!("Skipping unparseable CUE {:?}: {}", cue_path, e);
+                    None
+                }
+            },
+        )
         .collect();
     let sheets = parsed
         .iter()

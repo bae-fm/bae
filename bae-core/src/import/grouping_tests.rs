@@ -35,9 +35,17 @@ fn composed(members: &[FolderCandidate]) -> FolderCandidate {
         .iter()
         .map(|member| (member.clone(), CandidateFileEdits::default()))
         .collect();
-    let (mut release, inherited) =
-        compose("grouping:test", &members[0].0.watched_folder_path, &members, &[]).unwrap();
-    release.files.apply_candidate_file_edits(&inherited).unwrap();
+    let (mut release, inherited) = compose(
+        "grouping:test",
+        &members[0].0.watched_folder_path,
+        &members,
+        &[],
+    )
+    .unwrap();
+    release
+        .files
+        .apply_candidate_file_edits(&inherited)
+        .unwrap();
     release
 }
 
@@ -66,7 +74,10 @@ fn folders_under_one_folder_keep_their_paths_below_it_and_a_disc_each() {
     ];
     let release = composed(&members);
 
-    assert_eq!(release.path, PathBuf::from(host_root("/music")).join("Artist/Album"));
+    assert_eq!(
+        release.path,
+        PathBuf::from(host_root("/music")).join("Artist/Album")
+    );
     assert_eq!(release.display_path, "Artist/Album/Disc 1");
     assert_eq!(release.key(), "grouping:test");
     assert_eq!(
@@ -75,7 +86,12 @@ fn folders_under_one_folder_keep_their_paths_below_it_and_a_disc_each() {
             .release_files()
             .map(|file| file.relative_path.as_str())
             .collect::<Vec<_>>(),
-        ["Disc 1/01.flac", "Disc 1/02.flac", "Disc 2/01.flac", "Disc 2/02.flac"]
+        [
+            "Disc 1/01.flac",
+            "Disc 1/02.flac",
+            "Disc 2/01.flac",
+            "Disc 2/02.flac"
+        ]
     );
     assert_eq!(
         release
@@ -90,11 +106,19 @@ fn folders_under_one_folder_keep_their_paths_below_it_and_a_disc_each() {
     );
     assert_eq!(
         release.source_folders(),
-        members.iter().map(|member| member.path.clone()).collect::<Vec<_>>()
+        members
+            .iter()
+            .map(|member| member.path.clone())
+            .collect::<Vec<_>>()
     );
     assert_eq!(
         layout(&release),
-        [(Some(1), Some(1)), (Some(1), Some(2)), (Some(2), Some(1)), (Some(2), Some(2))]
+        [
+            (Some(1), Some(1)),
+            (Some(1), Some(2)),
+            (Some(2), Some(1)),
+            (Some(2), Some(2))
+        ]
     );
 }
 
@@ -121,17 +145,34 @@ fn folders_under_different_roots_take_their_position_and_name() {
     );
     assert_eq!(
         layout(&release),
-        [(Some(1), Some(1)), (Some(1), Some(2)), (Some(2), Some(1)), (Some(2), Some(2))]
+        [
+            (Some(1), Some(1)),
+            (Some(1), Some(2)),
+            (Some(2), Some(1)),
+            (Some(2), Some(2))
+        ]
     );
 }
 
 #[test]
 fn rejects_duplicate_members_and_overlapping_files() {
     let first = folder_at("/music", "Volume A");
-    assert!(compose("grouping:test", &host_root("/music"), &plain(&[first.clone(), first.clone()]), &[]).is_err());
+    assert!(compose(
+        "grouping:test",
+        &host_root("/music"),
+        &plain(&[first.clone(), first.clone()]),
+        &[]
+    )
+    .is_err());
     let mut second = folder_at("/music", "Volume B");
     second.files.files[0] = first.files.files[0].clone();
-    assert!(compose("grouping:test", &host_root("/music"), &plain(&[first, second]), &[]).is_err());
+    assert!(compose(
+        "grouping:test",
+        &host_root("/music"),
+        &plain(&[first, second]),
+        &[]
+    )
+    .is_err());
 }
 
 /// A folder read from its file tags keeps the release's own disc layout,
@@ -144,7 +185,10 @@ fn file_metadata_keeps_the_releases_numbering_instead_of_the_tags() {
             .unwrap()
             .with_timezone(&chrono::Utc),
     );
-    let release = composed(&[folder_at("/music", "Volume B"), folder_at("/archive", "Volume A")]);
+    let release = composed(&[
+        folder_at("/music", "Volume B"),
+        folder_at("/archive", "Volume A"),
+    ]);
     let snapshot = FileTagSnapshot {
         scan_generation: 1,
         file_edit_revision: 0,
@@ -188,7 +232,7 @@ fn file_metadata_keeps_the_releases_numbering_instead_of_the_tags() {
 
 /// `folder` with a sheet carving its `01.flac` into one track.
 fn with_a_sheet_over_its_first_file(mut folder: FolderCandidate) -> FolderCandidate {
-    use crate::cue_flac::{CuePregap, CueSheet, CueTrack, CueTrackMode};
+    use crate::cue_flac::{CueSheet, CueTrack, CueTrackMode};
     use crate::import::folder_scanner::SheetAudioFile;
 
     let sheet_name = "01.flac.cue".to_string();
@@ -209,7 +253,7 @@ fn with_a_sheet_over_its_first_file(mut folder: FolderCandidate) -> FolderCandid
                     indexes: Vec::new(),
                     file_reference: "01.flac".into(),
                     start_cue_frames: 0,
-                    pregap: CuePregap::None,
+                    generated_pregap_frames: None,
                     end_cue_frames: None,
                 }],
             },
@@ -236,11 +280,17 @@ fn a_members_file_decisions_carry_into_the_release() {
         .set("01.flac.cue".into(), SheetDisc::Ignored);
     let members = vec![
         (first, decided),
-        (folder_at("/music", "Album/Disc 2"), CandidateFileEdits::default()),
+        (
+            folder_at("/music", "Album/Disc 2"),
+            CandidateFileEdits::default(),
+        ),
     ];
     let (mut release, inherited) =
         compose("grouping:test", &host_root("/music"), &members, &[]).unwrap();
-    release.files.apply_candidate_file_edits(&inherited).unwrap();
+    release
+        .files
+        .apply_candidate_file_edits(&inherited)
+        .unwrap();
     assert!(release.files.carving_sheets().is_empty());
     assert_eq!(
         crate::import::audio_layout::audio_units(&release.files).len(),
@@ -272,11 +322,12 @@ fn sheets_take_discs_within_their_folders_run() {
 
 /// The folder picked releases all sit directly in, as the rule reads it.
 fn parent_of(members: &[FolderCandidate]) -> Option<PathBuf> {
-    shared_parent(
-        members
-            .iter()
-            .map(|member| (member.watched_folder_path.as_str(), member.file_root.as_path())),
-    )
+    shared_parent(members.iter().map(|member| {
+        (
+            member.watched_folder_path.as_str(),
+            member.file_root.as_path(),
+        )
+    }))
 }
 
 /// Releases sit in one folder when each is directly in it — two discs of
@@ -304,7 +355,10 @@ fn releases_sit_in_one_folder_only_when_each_is_directly_in_it() {
         None
     );
     assert_eq!(
-        parent_of(&[disc("Artist/Album/Disc 1"), disc("Artist/Album/Disc 2/Bonus")]),
+        parent_of(&[
+            disc("Artist/Album/Disc 1"),
+            disc("Artist/Album/Disc 2/Bonus")
+        ]),
         None
     );
     assert_eq!(
@@ -312,7 +366,10 @@ fn releases_sit_in_one_folder_only_when_each_is_directly_in_it() {
         None
     );
     assert_eq!(
-        parent_of(&[folder_at("/music", "Album/Disc 1"), folder_at("/other", "Album/Disc 2")]),
+        parent_of(&[
+            folder_at("/music", "Album/Disc 1"),
+            folder_at("/other", "Album/Disc 2")
+        ]),
         None
     );
     assert_eq!(parent_of(&[disc("Album A"), disc("Album B")]), None);
@@ -376,5 +433,11 @@ fn the_folder_the_releases_sit_in_gives_its_files_to_the_release() {
         ),
         ..cover
     };
-    assert!(compose("grouping:test", &host_root("/music"), &members, &[elsewhere]).is_err());
+    assert!(compose(
+        "grouping:test",
+        &host_root("/music"),
+        &members,
+        &[elsewhere]
+    )
+    .is_err());
 }

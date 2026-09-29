@@ -145,7 +145,7 @@ INDEX 01 00:00:00
 /// segment spanning `[INDEX 00, INDEX 01)` ahead of the `Main` segment —
 /// the branch `cue_backed_segments_ignore_rejected_index00_boundaries` never
 /// reaches, because its INDEX 00 values are all bogus (before the prior
-/// track) and get rejected to `CuePregap::None`.
+/// track) and the parse drops them.
 ///
 /// Backed by the real APE CUE fixture so `seek_landing_bytes` produces real
 /// byte offsets: asserts the sample windows *and* the byte windows,

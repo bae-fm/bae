@@ -833,7 +833,8 @@ CREATE TABLE IF NOT EXISTS scan_cue_sheet (
         REFERENCES scan_candidate_file (watched_folder_path, candidate_path, relative_path) ON DELETE CASCADE
 ) STRICT;
 
--- One track of a CUE sheet, with the span and pregap it declares.
+-- One track of a CUE sheet, with the span it declares and the silence a PREGAP
+-- directive puts before it. An audio pregap is the track's INDEX 00.
 CREATE TABLE IF NOT EXISTS scan_cue_track (
     watched_folder_path         TEXT NOT NULL,
     candidate_path              TEXT NOT NULL,
@@ -847,16 +848,11 @@ CREATE TABLE IF NOT EXISTS scan_cue_track (
     file_reference              TEXT NOT NULL,
     start_cue_frames            INTEGER NOT NULL CHECK (start_cue_frames >= 0),
     end_cue_frames              INTEGER CHECK (end_cue_frames IS NULL OR end_cue_frames >= 0),
-    pregap_kind                 TEXT NOT NULL CHECK (pregap_kind IN ('none', 'audio', 'silence')),
-    pregap_frames               INTEGER CHECK (pregap_frames IS NULL OR pregap_frames >= 0),
-    pregap_index_number         INTEGER,
-    pregap_index_file_reference TEXT,
+    generated_pregap_frames     INTEGER CHECK (generated_pregap_frames IS NULL OR generated_pregap_frames >= 0),
     PRIMARY KEY (watched_folder_path, candidate_path, sheet_relative_path, position),
     FOREIGN KEY (watched_folder_path, candidate_path, sheet_relative_path)
         REFERENCES scan_cue_sheet (watched_folder_path, candidate_path, sheet_relative_path) ON DELETE CASCADE,
-    CHECK ((mode = 'other') = (mode_other IS NOT NULL)),
-    CHECK ((pregap_kind = 'none') = (pregap_frames IS NULL)),
-    CHECK ((pregap_kind = 'audio') = (pregap_index_number IS NOT NULL AND pregap_index_file_reference IS NOT NULL))
+    CHECK ((mode = 'other') = (mode_other IS NOT NULL))
 ) STRICT;
 
 -- Every INDEX line of a CUE track, in the order the sheet stated them.

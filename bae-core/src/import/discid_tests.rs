@@ -102,7 +102,7 @@ fn test_discid_from_log_text() {
 /// wrappers produce the same disc ID.
 #[test]
 fn test_cue_duration_discid_matches_across_codecs() {
-    use crate::cue_flac::{CueIndex, CuePregap, CueSheet, CueTrack, CueTrackMode};
+    use crate::cue_flac::{CueIndex, CueSheet, CueTrack, CueTrackMode};
 
     // Three tracks, 75 CUE frames/sec → minute 0, minute 3, minute 6.
     let sheet = CueSheet {
@@ -124,7 +124,7 @@ fn test_cue_duration_discid_matches_across_codecs() {
                 }],
                 file_reference: "Album.flac".to_string(),
                 start_cue_frames: 0,
-                pregap: CuePregap::None,
+                generated_pregap_frames: None,
                 end_cue_frames: Some(3 * 60 * 75),
             },
             CueTrack {
@@ -139,7 +139,7 @@ fn test_cue_duration_discid_matches_across_codecs() {
                 }],
                 file_reference: "Album.flac".to_string(),
                 start_cue_frames: 3 * 60 * 75,
-                pregap: CuePregap::None,
+                generated_pregap_frames: None,
                 end_cue_frames: Some(6 * 60 * 75),
             },
             CueTrack {
@@ -154,7 +154,7 @@ fn test_cue_duration_discid_matches_across_codecs() {
                 }],
                 file_reference: "Album.flac".to_string(),
                 start_cue_frames: 6 * 60 * 75,
-                pregap: CuePregap::None,
+                generated_pregap_frames: None,
                 end_cue_frames: None,
             },
         ],
@@ -179,7 +179,7 @@ fn test_cue_duration_discid_matches_across_codecs() {
 
 #[test]
 fn cue_duration_discid_ignores_non_audio_tracks() {
-    use crate::cue_flac::{CueIndex, CuePregap, CueSheet, CueTrack, CueTrackMode};
+    use crate::cue_flac::{CueIndex, CueSheet, CueTrack, CueTrackMode};
 
     fn track(number: u32, mode: CueTrackMode, start_cue_frames: u64) -> CueTrack {
         CueTrack {
@@ -194,7 +194,7 @@ fn cue_duration_discid_ignores_non_audio_tracks() {
             }],
             file_reference: "disc-image.bin".to_string(),
             start_cue_frames,
-            pregap: CuePregap::None,
+            generated_pregap_frames: None,
             end_cue_frames: None,
         }
     }
@@ -296,7 +296,7 @@ fn generated_pregap_shifts_every_later_offset() {
     .expect("the image computes");
 
     let mut second = audio_cue_track(2, "02.flac");
-    second.pregap = crate::cue_flac::CuePregap::Silence { frames: 150 };
+    second.generated_pregap_frames = Some(150);
     let gap_left_out = cue_sheet_with(vec![audio_cue_track(1, "01.flac"), second]);
     let computed = calculate_mb_discid_from_cue(
         &gap_left_out,
@@ -317,11 +317,14 @@ fn generated_pregap_shifts_every_later_offset() {
 #[test]
 fn audio_pregap_in_the_previous_file_is_already_laid() {
     let mut second = audio_cue_track(2, "02.flac");
-    second.pregap = crate::cue_flac::CuePregap::Audio(crate::cue_flac::CueIndex {
-        number: 0,
-        frames: 3 * 60 * 75 - 150,
-        file_reference: "01.flac".to_string(),
-    });
+    second.indexes.insert(
+        0,
+        crate::cue_flac::CueIndex {
+            number: 0,
+            frames: 3 * 60 * 75 - 150,
+            file_reference: "01.flac".to_string(),
+        },
+    );
     let gaps_appended = cue_sheet_with(vec![audio_cue_track(1, "01.flac"), second]);
     let durations = ["01.flac", "02.flac"].map(|file_reference| SheetAudioDuration {
         file_reference,
@@ -427,11 +430,10 @@ fn test_compute_discid_routes_cue_ape() {
     .unwrap();
     let audio_path = folder.join("Test Album.ape");
     let opens_before = crate::audio_codec::probe_opens_for(&audio_path);
-    let computed =
-        read_rip_artifacts(&categorized)
-            .disc_id
-            .computed()
-            .expect("CUE+APE pair must compute a disc ID");
+    let computed = read_rip_artifacts(&categorized)
+        .disc_id
+        .computed()
+        .expect("CUE+APE pair must compute a disc ID");
     assert_eq!(
         crate::audio_codec::probe_opens_for(&audio_path),
         opens_before,
@@ -569,7 +571,7 @@ fn audio_cue_track_at(
     file_reference: &str,
     start_cue_frames: u64,
 ) -> crate::cue_flac::CueTrack {
-    use crate::cue_flac::{CueIndex, CuePregap, CueTrack, CueTrackMode};
+    use crate::cue_flac::{CueIndex, CueTrack, CueTrackMode};
     CueTrack {
         number,
         mode: CueTrackMode::Audio,
@@ -582,7 +584,7 @@ fn audio_cue_track_at(
         }],
         file_reference: file_reference.to_string(),
         start_cue_frames,
-        pregap: CuePregap::None,
+        generated_pregap_frames: None,
         end_cue_frames: None,
     }
 }

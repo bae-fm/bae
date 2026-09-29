@@ -45,7 +45,8 @@ fn cue_and_loose_audio_both_keep_their_metadata_in_playback_order() {
                     disc: SheetDisc::Disc { number: 2 },
                 },
             },
-        ], parts: Vec::new(), 
+        ],
+        parts: Vec::new(),
     };
     let snapshot = FileTagSnapshot {
         scan_generation: 1,
@@ -131,7 +132,8 @@ fn stored_file_tag_facts_project_without_opening_the_source_file() {
         files: vec![CandidateFile {
             file: ScannedFile::new(path, "01.flac".to_string(), 123, 1).with_test_flac_audio(),
             role: FileRole::Audio,
-        }], parts: Vec::new(), 
+        }],
+        parts: Vec::new(),
     };
     let snapshot = crate::import::file_tag_snapshot::FileTagSnapshot {
         scan_generation: 7,
@@ -173,7 +175,7 @@ fn stored_file_tag_facts_project_without_opening_the_source_file() {
 
 #[test]
 fn cue_sheet_seeds_one_track_per_cue_entry_not_per_image_file() {
-    use crate::cue_flac::{CueIndex, CuePregap, CueSheet, CueTrack, CueTrackMode};
+    use crate::cue_flac::{CueIndex, CueSheet, CueTrack, CueTrackMode};
     let mk = |number: u32, title: &str| CueTrack {
         number,
         mode: CueTrackMode::Audio,
@@ -186,7 +188,7 @@ fn cue_sheet_seeds_one_track_per_cue_entry_not_per_image_file() {
         }],
         file_reference: "image.flac".to_string(),
         start_cue_frames: 0,
-        pregap: CuePregap::None,
+        generated_pregap_frames: None,
         end_cue_frames: None,
     };
     let sheet = CueSheet {
@@ -226,7 +228,7 @@ fn cue_sheet_seeds_one_track_per_cue_entry_not_per_image_file() {
 }
 
 fn cue_track(number: u32, title: &str) -> crate::cue_flac::CueTrack {
-    use crate::cue_flac::{CueIndex, CuePregap, CueTrack, CueTrackMode};
+    use crate::cue_flac::{CueIndex, CueTrack, CueTrackMode};
     CueTrack {
         number,
         mode: CueTrackMode::Audio,
@@ -239,7 +241,7 @@ fn cue_track(number: u32, title: &str) -> crate::cue_flac::CueTrack {
         }],
         file_reference: "image.flac".to_string(),
         start_cue_frames: 0,
-        pregap: CuePregap::None,
+        generated_pregap_frames: None,
         end_cue_frames: None,
     }
 }

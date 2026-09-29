@@ -42,13 +42,6 @@ impl CueTrackMode {
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
-pub enum CuePregap {
-    None,
-    Audio(CueIndex),
-    Silence { frames: u64 },
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct CueTrack {
     pub number: u32,
     pub mode: CueTrackMode,
@@ -63,8 +56,10 @@ pub struct CueTrack {
     pub file_reference: String,
     /// INDEX 01 position in CUE frames
     pub start_cue_frames: u64,
-    /// Pregap source for this track.
-    pub pregap: CuePregap,
+    /// The silence a `PREGAP` directive puts before this track, in CUE frames:
+    /// on the disc, in no file. A track has this or an audio pregap (its
+    /// INDEX 00, [`Self::audio_pregap`]), never both.
+    pub generated_pregap_frames: Option<u64>,
     /// Next track's boundary in CUE frames (None for last track)
     pub end_cue_frames: Option<u64>,
 }
@@ -74,12 +69,10 @@ impl CueTrack {
         self.indexes.iter().find(|index| index.number == number)
     }
 
-    /// Silent pregap length in CUE frames from a `PREGAP` directive.
-    pub fn generated_pregap_frames(&self) -> Option<u64> {
-        match self.pregap {
-            CuePregap::Silence { frames } => Some(frames),
-            CuePregap::None | CuePregap::Audio(_) => None,
-        }
+    /// Where this track's pregap audio starts: its INDEX 00, which can sit in
+    /// the file before the one its INDEX 01 is in.
+    pub fn audio_pregap(&self) -> Option<&CueIndex> {
+        self.index(0)
     }
 
     /// This track's duration against the probed length of the audio file it
@@ -125,7 +118,7 @@ impl CueTrack {
     }
 
     pub fn generated_pregap_duration_ms(&self) -> Option<u64> {
-        self.generated_pregap_frames()
+        self.generated_pregap_frames
             .map(|frames| frames * 1000 / 75)
     }
 }
@@ -210,7 +203,6 @@ struct PendingCueTrack {
     title: Option<String>,
     performer: Option<String>,
     indexes: Vec<CueIndex>,
-    pregap: Option<(u64, String)>,
     generated_pregap_frames: Option<u64>,
     start: Option<(u64, String)>,
     file_reference: String,
@@ -224,7 +216,6 @@ impl PendingCueTrack {
             title: None,
             performer: None,
             indexes: Vec::new(),
-            pregap: None,
             generated_pregap_frames: None,
             start: None,
             file_reference,
@@ -242,21 +233,14 @@ impl PendingCueTrack {
                 )));
             }
         };
-        let pregap = match (self.pregap, self.generated_pregap_frames) {
-            (Some(_), Some(_)) => {
-                return Err(CueFlacError::CueParsing(format!(
-                    "TRACK {} has both INDEX 00 and PREGAP",
-                    self.number
-                )));
-            }
-            (Some((frames, pregap_file_reference)), None) => CuePregap::Audio(CueIndex {
-                number: 0,
-                frames,
-                file_reference: pregap_file_reference,
-            }),
-            (None, Some(frames)) => CuePregap::Silence { frames },
-            (None, None) => CuePregap::None,
-        };
+        if self.generated_pregap_frames.is_some()
+            && self.indexes.iter().any(|index| index.number == 0)
+        {
+            return Err(CueFlacError::CueParsing(format!(
+                "TRACK {} has both INDEX 00 and PREGAP",
+                self.number
+            )));
+        }
         Ok(CueTrack {
             number: self.number,
             mode: self.mode,
@@ -265,7 +249,7 @@ impl PendingCueTrack {
             indexes: self.indexes,
             file_reference,
             start_cue_frames,
-            pregap,
+            generated_pregap_frames: self.generated_pregap_frames,
             end_cue_frames: None,
         })
     }
@@ -355,22 +339,17 @@ fn parse_cue_content(input: &str) -> Result<CueSheet, CueFlacError> {
     // INDEX 01. Drop those here, so every downstream boundary reader sees one
     // already-corrected shape.
     for i in 1..tracks.len() {
-        let bogus = match &tracks[i].pregap {
-            CuePregap::Audio(index) => index.frames <= tracks[i - 1].start_cue_frames,
-            CuePregap::None | CuePregap::Silence { .. } => false,
-        };
+        let bogus = tracks[i]
+            .audio_pregap()
+            .is_some_and(|index| index.frames <= tracks[i - 1].start_cue_frames);
         if bogus {
-            tracks[i].pregap = CuePregap::None;
             tracks[i].indexes.retain(|index| index.number != 0);
         }
     }
     for i in 0..tracks.len() {
         if i + 1 < tracks.len() {
             let next_track = &tracks[i + 1];
-            let boundary_index = match &next_track.pregap {
-                CuePregap::Audio(index) => Some(index),
-                CuePregap::None | CuePregap::Silence { .. } => next_track.index(1),
-            };
+            let boundary_index = next_track.audio_pregap().or_else(|| next_track.index(1));
             tracks[i].end_cue_frames = boundary_index
                 .filter(|index| index.file_reference == tracks[i].file_reference)
                 .map(|index| index.frames);
@@ -433,12 +412,8 @@ fn apply_track_line(
                 frames: cue_frames,
                 file_reference: current_file.to_string(),
             });
-            match index_number {
-                0 => track.pregap = Some((cue_frames, current_file.to_string())),
-                1 => {
-                    track.start = Some((cue_frames, current_file.to_string()));
-                }
-                _ => {}
+            if index_number == 1 {
+                track.start = Some((cue_frames, current_file.to_string()));
             }
         }
         Some(("PREGAP", rest)) => {
