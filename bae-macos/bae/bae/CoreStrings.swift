@@ -10,7 +10,8 @@ import Foundation
 /// `bae-loc`'s Apple emitter (`bae-loc/src/emit.rs`, `apple_flat`) numbers a
 /// message's `%N$` specifiers by the order its arguments first appear in the
 /// value it is rendering, and every translation in the catalog keeps the
-/// English order — so `core.import.becomes.slots` takes `first` then `last`.
+/// English order — so a message whose English names `{first}` before `{last}`
+/// takes `first` then `last`.
 ///
 /// A message whose value names one argument twice needs that argument passed
 /// twice: Apple's plural variations carry one specifier number, so a repeated

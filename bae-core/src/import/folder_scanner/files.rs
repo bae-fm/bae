@@ -275,9 +275,11 @@ impl CandidateFileEdits {
                     },
                     UserSheetBinding::Cleared => UserSheetBinding::Cleared,
                 };
-                edits
-                    .sheet_bindings
-                    .set_reference(named(sheet_id), reference.to_string(), decision);
+                edits.sheet_bindings.set_reference(
+                    named(sheet_id),
+                    reference.to_string(),
+                    decision,
+                );
             }
         }
         for (sheet_id, assigned) in self.sheet_discs.iter() {
@@ -403,23 +405,6 @@ impl CandidateFile {
             )
         })
     }
-}
-
-/// What a file's role makes of it in the release being imported — the "Becomes"
-/// column, as a consequence rather than as prose.
-///
-/// Only the tracklist is in it. Which slots a file backs is the one thing the
-/// role does not already say, and it is what makes the effect of a binding or
-/// an exclusion legible without reading the slot table below.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum FileBecomes {
-    /// Track slots `first`..=`last`, counting the release's slots from one.
-    /// `first == last` is the single-slot case a loose audio file produces.
-    Slots { first: u32, last: u32 },
-    /// Nothing in the tracklist: an image, a document, a sheet that describes
-    /// nothing, or the container a bound sheet carves its slots out of. It is
-    /// still carried with the release.
-    NoSlots,
 }
 
 /// A track sheet the scan parsed, with whatever its `FILE` directive resolved to.
@@ -823,58 +808,6 @@ impl CategorizedFiles {
             }
             SettledBindings::CorruptAudio { path } => Err(InvalidReason::CorruptAudioFile { path }),
         }
-    }
-
-    /// What each file's role makes of it, in [`Self::files`] order — one entry
-    /// per file, so the two lists index together.
-    ///
-    /// Desktop only, like the rest of the import: it reads the same audio-unit
-    /// list the track slots are laid out from, so the two cannot disagree about
-    /// which slot a file backs.
-    ///
-    /// The slot numbering is the folder's own, and it exists before any release
-    /// is picked: which slots a file backs is decided by the folder's audio and
-    /// its bound sheets, never by the tracklist laid alongside them.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub fn becomes(&self) -> Vec<FileBecomes> {
-        let units = crate::import::audio_layout::audio_units(self);
-
-        // Which slots each file and each sheet produced, as the half-open run
-        // it occupies in the unit list. A sheet's slices are contiguous by
-        // construction, and so are a file's, so a first and a last say it all.
-        let mut runs: HashMap<&str, (u32, u32)> = HashMap::new();
-        let mut spoken_for: BTreeSet<&str> = BTreeSet::new();
-        for (index, unit) in units.iter().enumerate() {
-            let slot = index as u32 + 1;
-            let owner = match unit {
-                crate::import::types::AudioFile::Standalone { file_id } => file_id.as_str(),
-                crate::import::types::AudioFile::SheetSlice {
-                    file_id, sheet_id, ..
-                } => {
-                    // The container is the sheet's to speak for; its own row
-                    // says so by carving nothing.
-                    spoken_for.insert(file_id.as_str());
-                    sheet_id.as_str()
-                }
-            };
-            runs.entry(owner)
-                .and_modify(|(_, last)| *last = slot)
-                .or_insert((slot, slot));
-        }
-
-        self.files
-            .iter()
-            .map(|entry| {
-                let id = entry.file.relative_path.as_str();
-                match runs.get(id) {
-                    Some((first, last)) if !spoken_for.contains(id) => FileBecomes::Slots {
-                        first: *first,
-                        last: *last,
-                    },
-                    _ => FileBecomes::NoSlots,
-                }
-            })
-            .collect()
     }
 }
 

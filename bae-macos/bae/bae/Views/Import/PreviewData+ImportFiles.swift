@@ -15,7 +15,6 @@
             name: String,
             size: UInt64,
             role: BridgeFileRole,
-            becomes: BridgeFileBecomes = .noSlots,
             dirPrefix: String? = nil,
             localPath: String? = nil
         ) -> BridgeCandidateFile {
@@ -28,8 +27,7 @@
                     localPath: localPath ?? "/tmp/fake/\(name)",
                     audioFormat: role.isAudio ? previewSourceAudioFormat : nil
                 ),
-                role: role,
-                becomes: becomes
+                role: role
             )
         }
 
@@ -53,19 +51,17 @@
         }
 
         /// A sheet bound to `Album Title.flac`, carving the release's nine
-        /// slots out of it.
+        /// tracks out of it.
         static let boundTrackSheet = previewFile(
             name: "Album Title.cue",
             size: 1200,
-            role: .trackSheet(trackCount: 9),
-            becomes: .slots(first: 1, last: 9)
+            role: .trackSheet(trackCount: 9)
         )
 
         static let mappedAudioContainer = previewFile(
             name: "Album Title.flac",
             size: 340_000_000,
-            role: .audio,
-            becomes: .slots(first: 1, last: 9)
+            role: .audio
         )
 
         static let backImage = previewImage(
@@ -210,12 +206,10 @@
         /// counterpart to `bridgeCandidateFiles`.
         private static let trackAudioFiles: [BridgeCandidateFile] = (1...9)
             .map { (i: Int) -> BridgeCandidateFile in
-                let slot = UInt32(i)
-                return previewFile(
+                previewFile(
                     name: "Track \(i).flac",
                     size: UInt64(35_000_000 + i * 2_000_000),
-                    role: .audio,
-                    becomes: .slots(first: slot, last: slot)
+                    role: .audio
                 )
             }
 

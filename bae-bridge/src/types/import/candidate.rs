@@ -123,21 +123,6 @@ pub enum BridgeFileRole {
     Other,
 }
 
-/// The catalog key naming the role in force for a file — the roles table's
-/// Role column. Core's concept, so core's wording: two UIs naming these
-/// differently is two answers about what the release holds.
-#[cfg_attr(feature = "desktop", uniffi::export)]
-pub fn bridge_file_role_key(role: &BridgeFileRole) -> String {
-    match role {
-        BridgeFileRole::Audio => "core.import.role.audio",
-        BridgeFileRole::TrackSheet { .. } => "core.import.role.track_sheet",
-        BridgeFileRole::Artwork { .. } => "core.import.role.artwork",
-        BridgeFileRole::Document => "core.import.role.document",
-        BridgeFileRole::Other => "core.import.role.other",
-    }
-    .to_string()
-}
-
 /// The name of the catalog a description came from — "MusicBrainz",
 /// "Discogs", "Rate Your Music".
 ///
@@ -168,41 +153,11 @@ pub fn bridge_lookup_catalogs() -> Vec<crate::types::BridgeCatalog> {
         .to_vec()
 }
 
-/// What a file's role makes of it in the release being imported — the roles
-/// table's "Becomes" column, as a consequence rather than as prose. Mirror of
-/// bae-core's `FileBecomes`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeFileBecomes {
-    /// Track slots `first`..=`last`, counting the release's slots from one.
-    /// `first == last` is the single-slot case a loose audio file produces.
-    Slots { first: u32, last: u32 },
-    /// Nothing in the tracklist. Still carried with the release.
-    NoSlots,
-}
-
-/// The catalog key naming what a file becomes. The single-slot case has its own
-/// key because "slot 12" and "slots 1–11" are different sentences in most
-/// languages, not one sentence with a range in it.
-#[cfg_attr(feature = "desktop", uniffi::export)]
-pub fn bridge_file_becomes_key(becomes: BridgeFileBecomes) -> String {
-    match becomes {
-        BridgeFileBecomes::Slots { first, last } if first == last => "core.import.becomes.slot",
-        BridgeFileBecomes::Slots { .. } => "core.import.becomes.slots",
-        BridgeFileBecomes::NoSlots => "core.import.becomes.not_a_track",
-    }
-    .to_string()
-}
-
-/// One file of a candidate, with the role in force for it and what that role
-/// makes of it.
+/// One file of a candidate, with its role.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeCandidateFile {
     pub file: BridgeFileInfo,
     pub role: BridgeFileRole,
-    /// Which of the release's track slots this file backs. The one fact the
-    /// role does not already say, and what makes the effect of a binding or an
-    /// exclusion legible without reading the slot table below.
-    pub becomes: BridgeFileBecomes,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]

@@ -89,19 +89,6 @@ extension BridgeSheetBound {
     }
 }
 
-extension BridgeMappingRole {
-    /// The same role the scan proposed, which is what carries the localization
-    /// key. A mapping row's role is that role narrowed to the ones a row can
-    /// hold, so every case has an exact counterpart.
-    var fileRole: BridgeFileRole {
-        switch self {
-        case .audio: .audio
-        case .document: .document
-        case .other: .other
-        }
-    }
-}
-
 extension BridgeTrackMapping {
     /// The value this row exposes in the Length column and to accessibility:
     /// one duration when the facts agree, source → metadata when core says

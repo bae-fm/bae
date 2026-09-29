@@ -416,40 +416,6 @@ fn scan_with_binding(
     .expect("scan")
 }
 
-// ── Which slots each file backs ──────────────────────────────────────────────
-
-/// A folder holding a disc image, its sheet, and two loose bonus tracks. The
-/// "Becomes" column reads off the folder alone — no release has been picked —
-/// and it says which slots each file backs: the sheet carves the first eleven,
-/// the bonus files take one each, and the container the sheet speaks for backs
-/// none of its own.
-#[test]
-fn becomes_names_the_slots_each_file_backs() {
-    let (_tmp, album) = cue_flac_album("CDImage.flac", "CDImage.flac", 11);
-    std::fs::write(album.join("bonus-1.flac"), fake_flac()).unwrap();
-    std::fs::write(album.join("bonus-2.flac"), fake_flac()).unwrap();
-    std::fs::write(album.join("cover.jpg"), fake_jpeg()).unwrap();
-
-    let files = scan_files(&album);
-    let becomes: Vec<(&str, FileBecomes)> = files
-        .files
-        .iter()
-        .map(|entry| entry.file.relative_path.as_str())
-        .zip(files.becomes())
-        .collect();
-
-    assert_eq!(
-        becomes,
-        vec![
-            ("bonus-1.flac", FileBecomes::Slots { first: 1, last: 1 }),
-            ("bonus-2.flac", FileBecomes::Slots { first: 2, last: 2 }),
-            ("CDImage.cue", FileBecomes::Slots { first: 3, last: 13 }),
-            ("CDImage.flac", FileBecomes::NoSlots),
-            ("cover.jpg", FileBecomes::NoSlots),
-        ],
-    );
-}
-
 /// The folder lists its files the way a person reads them: natural order
 /// (`2` before `10`) and case-insensitive, so `cover.jpg` sits among the
 /// names starting with `c`, not after every capitalized one.

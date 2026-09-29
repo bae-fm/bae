@@ -146,7 +146,7 @@ struct ImportedReleasePane: View {
     private func completedFileRow(_ row: BridgeMappingFileRow) -> some View {
         switch row {
         case .file(let file):
-            if file.role.fileRole.isDocument {
+            if file.role == .document {
                 Button {
                     onOpenDocument(file.name, file.localPath)
                 } label: {
@@ -476,7 +476,7 @@ private struct ReadOnlyCandidateMappingTable: View {
                 switch fileRow {
                 case .file(let file):
                     HStack {
-                        if file.role.fileRole.isDocument {
+                        if file.role == .document {
                             Button(file.name) {
                                 onOpenDocument(file.name, file.localPath)
                             }

@@ -30,10 +30,7 @@ impl BridgeCandidateSourceAudio {
 }
 
 impl BridgeCandidateFile {
-    fn from_core(
-        entry: bae_core::import::folder_scanner::CandidateFile,
-        becomes: bae_core::import::folder_scanner::FileBecomes,
-    ) -> Self {
+    fn from_core(entry: bae_core::import::folder_scanner::CandidateFile) -> Self {
         use bae_core::import::folder_scanner::{CandidateFile, FileRole};
 
         let cover_choice = entry.cover_choice().map(BridgeCoverChoice::from_core);
@@ -55,18 +52,8 @@ impl BridgeCandidateFile {
             FileRole::Document => BridgeFileRole::Document,
             FileRole::Other => BridgeFileRole::Other,
         };
-        BridgeCandidateFile {
-            file,
-            role,
-            becomes: BridgeFileBecomes::from_core(becomes),
-        }
+        BridgeCandidateFile { file, role }
     }
-}
-
-mirror_enum! {
-    BridgeFileBecomes = bae_core::import::folder_scanner::FileBecomes,
-    from_core: fn,
-    variants: { Slots { first, last }, NoSlots },
 }
 
 mirror_enum! {
@@ -89,21 +76,14 @@ mirror_struct! {
 
 impl BridgeCandidateFiles {
     pub(crate) fn from_core(files: bae_core::import::folder_scanner::CategorizedFiles) -> Self {
-        // Derived from the whole set before it is taken apart: which slots a
-        // file backs is a fact about the folder, not about any one file.
-        let becomes = files.becomes();
         let source_audio = files
             .source_audio()
             .map(BridgeCandidateSourceAudio::from_core);
         let file_metadata_identity = files.file_metadata_identity();
         let cover_files = files
             .cover_files()
-            .map(|entry| {
-                BridgeCandidateFile::from_core(
-                    entry.clone(),
-                    bae_core::import::folder_scanner::FileBecomes::NoSlots,
-                )
-            })
+            .cloned()
+            .map(BridgeCandidateFile::from_core)
             .collect();
         let bae_core::import::folder_scanner::CategorizedFiles { files, .. } = files;
         BridgeCandidateFiles {
@@ -111,8 +91,7 @@ impl BridgeCandidateFiles {
             cover_files,
             files: files
                 .into_iter()
-                .zip(becomes)
-                .map(|(entry, becomes)| BridgeCandidateFile::from_core(entry, becomes))
+                .map(BridgeCandidateFile::from_core)
                 .collect(),
             source_audio,
         }

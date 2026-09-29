@@ -76,7 +76,7 @@ struct ImportMappingSourceCell: View {
     }
 
     private func openAction(_ file: BridgeMappingFile) -> (() -> Void)? {
-        guard file.role.fileRole.isDocument else { return nil }
+        guard file.role == .document else { return nil }
         return { actions.openDocument(file.name, file.localPath) }
     }
 

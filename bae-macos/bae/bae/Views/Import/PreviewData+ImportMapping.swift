@@ -129,8 +129,7 @@
                     channels: 2
                 )
             ),
-            role: .audio,
-            becomes: .slots(first: 1, last: 1)
+            role: .audio
         )
 
         static let moreTracksCandidateFiles = BridgeCandidateFiles(

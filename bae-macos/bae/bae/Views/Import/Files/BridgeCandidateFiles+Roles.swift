@@ -16,11 +16,6 @@ extension BridgeFileRole {
         if case .artwork = self { return true }
         return false
     }
-
-    var isDocument: Bool {
-        if case .document = self { return true }
-        return false
-    }
 }
 
 extension BridgeCandidateFile {

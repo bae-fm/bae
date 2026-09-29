@@ -75,18 +75,6 @@ const DIRECT_KEYS: &[&str] = &[
     "core.release.numbered",
 ];
 
-/// A stand-in cover choice; a role's key does not depend on it.
-fn loc_cover_choice() -> BridgeCoverChoice {
-    BridgeCoverChoice {
-        selection: BridgeCoverSelection::ReleaseImage {
-            file_id: String::new(),
-        },
-        image: BridgeCoverImageSource::Local {
-            path: String::new(),
-        },
-    }
-}
-
 /// Every key the `bridge_*_key` functions can emit. The assertions beside the
 /// loops check what neither catalog direction can see: that a value names no
 /// key, or that two values share one.
@@ -123,30 +111,6 @@ fn produced_keys() -> Vec<String> {
             value: "5099969394522".to_string(),
             file_id: "Back.jpg".to_string(),
         }));
-    }
-
-    // bridge_file_role_key — every role the scan can propose has a name.
-    for role in [
-        BridgeFileRole::Audio,
-        BridgeFileRole::TrackSheet { track_count: 0 },
-        BridgeFileRole::Artwork {
-            choice: Some(loc_cover_choice()),
-        },
-        BridgeFileRole::Document,
-        BridgeFileRole::Other,
-    ] {
-        keys.push(bridge_file_role_key(&role));
-    }
-
-    // bridge_file_becomes_key — one slot, a run of slots, or none. The
-    // single-slot case has its own key because "slot 12" and "slots 1-11"
-    // are different sentences, not one sentence with a range in it.
-    for becomes in [
-        BridgeFileBecomes::Slots { first: 3, last: 3 },
-        BridgeFileBecomes::Slots { first: 1, last: 11 },
-        BridgeFileBecomes::NoSlots,
-    ] {
-        keys.push(bridge_file_becomes_key(becomes));
     }
 
     // bridge_sheet_binding_offer_key — an offered file needs no reason.

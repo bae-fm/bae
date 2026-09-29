@@ -48,8 +48,7 @@ private func bridgeFiles(fileMetadataIdentity: String) -> BridgeCandidateFiles {
                     localPath: "/music/01.flac",
                     audioFormat: nil
                 ),
-                role: .audio,
-                becomes: .slots(first: 1, last: 1)
+                role: .audio
             )
         ],
         coverFiles: [],
