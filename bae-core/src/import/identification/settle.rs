@@ -37,9 +37,6 @@ pub(super) struct Finished {
     pub(super) settled: Settled,
 }
 
-/// The answer was given up while its lead was being settled.
-struct Superseded;
-
 enum SettledLead {
     NoExternalRelease,
     ExternalRelease {
@@ -128,8 +125,9 @@ async fn settle_verdict(
             ),
         };
     };
-    let Ok(settled_lead) = settle_lead(context, &mut verdict, priority, token).await else {
-        return Settled::Abandoned;
+    let settled_lead = match settle_lead(context, &mut verdict, priority, token).await {
+        Ok(settled_lead) => settled_lead,
+        Err(settled) => return settled,
     };
 
     let metadata = match settled_lead {
@@ -258,13 +256,15 @@ pub(super) async fn save(
 /// Settle a candidate's lead: the stored releases of the pressing the verdict
 /// picks unattended, primary and partners, which the run already fetched and
 /// stored. A verdict that picks none stands as the run found it, for the
-/// person to pick from or not.
+/// person to pick from or not. A provider that fails to answer for the lead
+/// fails the verdict as a lookup; anything else that stops the settle is what
+/// becomes of the answer.
 async fn settle_lead(
     context: &Context,
     verdict: &mut TerminalVerdict,
     priority: CallPriority,
     token: &CancellationToken,
-) -> Result<SettledLead, Superseded> {
+) -> Result<SettledLead, Settled> {
     let TerminalVerdict::Found {
         findings,
         track_count,
@@ -300,19 +300,22 @@ async fn settle_lead(
     let prepared = tokio::select! {
         biased;
         // Shutdown is not a provider answer and writes nothing.
-        _ = token.cancelled() => return Err(Superseded),
+        _ = token.cancelled() => return Err(Settled::Abandoned),
         prepared = settle => prepared,
     };
     let (release, prepared_partners) = match prepared {
         Ok(prepared) => prepared,
         Err(error) => {
+            let Some(failure) = crate::import::search::provider_failure(&error) else {
+                return Err(Settled::Unwritable {
+                    error: format!("could not settle {}: {error}", primary.key),
+                });
+            };
             debug!(
                 "identification: could not settle {} ({error}); storing the failure",
                 primary.key
             );
-            verdict.fail(crate::identify::IdentifyFailure::ReleaseDetails(
-                crate::import::search::import_error_to_lookup_failure(&error),
-            ));
+            verdict.fail(crate::identify::IdentifyFailure::ReleaseDetails(failure));
             return Ok(SettledLead::NoExternalRelease);
         }
     };

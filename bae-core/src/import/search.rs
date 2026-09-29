@@ -525,7 +525,15 @@ fn mb_error_to_lookup_failure(e: &musicbrainz::MusicBrainzError) -> LookupFailur
 /// Preserve provider failures while lifting the import service's typed error
 /// into the identify state machine.
 pub(crate) fn import_error_to_lookup_failure(error: &ImportError) -> LookupFailure {
-    match error {
+    provider_failure(error).unwrap_or_else(|| LookupFailure::Diagnostic {
+        detail: error.to_string(),
+    })
+}
+
+/// The failure a provider answered with, which is a lookup that failed, or
+/// `None` for an error bae met on its own side.
+pub(crate) fn provider_failure(error: &ImportError) -> Option<LookupFailure> {
+    Some(match error {
         ImportError::MusicBrainz(error) => mb_error_to_lookup_failure(error),
         ImportError::CoverArtRequest { failure, .. } => failure.clone(),
         ImportError::Discogs(error) => match error {
@@ -545,10 +553,8 @@ pub(crate) fn import_error_to_lookup_failure(error: &ImportError) -> LookupFailu
                 detail: error.to_string(),
             },
         },
-        _ => LookupFailure::Diagnostic {
-            detail: error.to_string(),
-        },
-    }
+        _ => return None,
+    })
 }
 
 /// One provider's answer to one lookup.

@@ -384,4 +384,20 @@ mod tests {
         };
         assert!(detail.contains("RelativeUrlWithoutBase"), "{detail}");
     }
+
+    /// Only an error a provider answered with is a lookup that failed; one
+    /// bae met on its own side is not, however it happened on the way to a
+    /// lookup.
+    #[test]
+    fn only_a_provider_s_error_is_a_failed_lookup() {
+        let refused: ImportError = crate::musicbrainz::MusicBrainzError::Timeout.into();
+        assert_eq!(
+            crate::import::search::provider_failure(&refused),
+            Some(crate::signals::LookupFailure::Timeout)
+        );
+        let local = ImportError::Internal {
+            detail: "the release was stored and did not read back".to_string(),
+        };
+        assert_eq!(crate::import::search::provider_failure(&local), None);
+    }
 }
