@@ -177,6 +177,8 @@ pub enum Ap2Error {
     Rejected { step: &'static str, status: u16 },
     #[error("AirPlay 2 response body: {0}")]
     BadBody(&'static str),
+    #[error("AirPlay 2 response body is not a readable bplist: {0}")]
+    BodyDecode(#[from] bplist::BplistError),
     /// Transient pair-setup or pair-verify failed.
     #[error("AirPlay 2 pairing failed: {0}")]
     Pairing(#[from] PairingError),
@@ -354,7 +356,7 @@ impl Ap2Control {
             bplist::encode(body),
         );
         let response = self.request_expecting(&request, step)?;
-        bplist::decode(&response.body).map_err(|_| Ap2Error::BadBody("response was not a bplist"))
+        Ok(bplist::decode(&response.body)?)
     }
 
     /// Send a request and require a 2xx status.

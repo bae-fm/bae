@@ -8,8 +8,6 @@
 //! are handled; the format is otherwise the documented `bplist00` layout: an
 //! 8-byte header, the packed objects, an offset table, and a 32-byte trailer.
 
-use std::collections::BTreeMap;
-
 /// A property-list value.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Plist {
@@ -221,50 +219,108 @@ pub enum BplistError {
     /// An object marker named a type this codec doesn't handle.
     #[error("unsupported bplist marker {0:#04x}")]
     UnsupportedType(u8),
+    /// The trailer's widths, object count, or top object disagree with the
+    /// payload they describe.
+    #[error("bplist trailer does not describe its payload")]
+    BadTrailer,
+    /// An integer or real marker named a byte width this codec doesn't read.
+    #[error("bplist marker {0:#04x} has an unsupported width")]
+    BadWidth(u8),
+    /// A dictionary key was not a string.
+    #[error("bplist dictionary key is not a string")]
+    NonStringKey,
+    /// Objects nest deeper than any AirPlay body does, which includes a
+    /// collection that contains itself.
+    #[error("bplist objects nest too deep")]
+    TooDeep,
+    /// Shared references name more objects than any AirPlay body holds.
+    #[error("bplist references too many objects")]
+    TooManyObjects,
 }
 
-/// Decode a `bplist00` payload to a value tree.
+/// How deep objects may nest. AirPlay bodies nest a few levels; anything
+/// deeper is malformed, and a collection that contains itself reaches it too.
+const MAX_DEPTH: usize = 32;
+
+/// How many objects one decode may produce. A payload's objects are few, but
+/// shared references can name one object many times; this bounds the tree that
+/// sharing can multiply out to.
+const MAX_DECODED_OBJECTS: usize = 1 << 16;
+
+/// Decode a `bplist00` payload to a value tree. Every count, width, and
+/// reference is checked against the payload before it is used, so a malformed
+/// receiver response is an error, never an oversized allocation or a runaway
+/// recursion.
 pub fn decode(bytes: &[u8]) -> Result<Plist, BplistError> {
     if bytes.len() < 8 + 32 || &bytes[..8] != b"bplist00" {
         return Err(BplistError::BadHeader);
     }
-    let trailer = &bytes[bytes.len() - 32..];
-    let offset_size = trailer[6] as usize;
-    let ref_size = trailer[7] as usize;
-    let num_objects = u64::from_be_bytes(trailer[8..16].try_into().unwrap()) as usize;
-    let top = u64::from_be_bytes(trailer[16..24].try_into().unwrap()) as usize;
-    let table_offset = u64::from_be_bytes(trailer[24..32].try_into().unwrap()) as usize;
-
-    // The offset table: `num_objects` entries of `offset_size` bytes each.
-    let mut offsets = Vec::with_capacity(num_objects);
-    for i in 0..num_objects {
-        let start = table_offset + i * offset_size;
-        let slice = bytes
-            .get(start..start + offset_size)
-            .ok_or(BplistError::Truncated)?;
-        offsets.push(read_int_be(slice));
+    let body_end = bytes.len() - 32;
+    let trailer = &bytes[body_end..];
+    let offset_size = usize::from(trailer[6]);
+    let ref_size = usize::from(trailer[7]);
+    if !(1..=8).contains(&offset_size) || !(1..=8).contains(&ref_size) {
+        return Err(BplistError::BadTrailer);
     }
+    let num_objects = be_u64(&trailer[8..16]);
+    let top = be_u64(&trailer[16..24]);
+    let table_offset = be_u64(&trailer[24..32]);
+    if top >= num_objects {
+        return Err(BplistError::BadTrailer);
+    }
+
+    // The offset table: `num_objects` entries of `offset_size` bytes each,
+    // all before the trailer.
+    let table_end = num_objects
+        .checked_mul(offset_size as u64)
+        .and_then(|len| len.checked_add(table_offset))
+        .filter(|end| *end <= body_end as u64)
+        .ok_or(BplistError::BadTrailer)?;
+    let table = &bytes[table_offset as usize..table_end as usize];
+    let offsets = table
+        .chunks_exact(offset_size)
+        .map(read_uint)
+        .collect::<Result<Vec<_>, _>>()?;
 
     let ctx = DecodeCtx {
         bytes,
         offsets: &offsets,
         ref_size,
+        decoded: std::cell::Cell::new(0),
     };
-    ctx.object(top)
+    ctx.object(top as usize, 0)
+}
+
+/// A big-endian unsigned integer of at most eight bytes.
+fn be_u64(field: &[u8]) -> u64 {
+    field
+        .iter()
+        .fold(0, |value, &byte| (value << 8) | u64::from(byte))
 }
 
 struct DecodeCtx<'a> {
     bytes: &'a [u8],
     offsets: &'a [usize],
     ref_size: usize,
+    /// Objects produced so far, against [`MAX_DECODED_OBJECTS`].
+    decoded: std::cell::Cell<usize>,
 }
 
 impl DecodeCtx<'_> {
-    fn object(&self, index: usize) -> Result<Plist, BplistError> {
+    fn object(&self, index: usize, depth: usize) -> Result<Plist, BplistError> {
+        if depth > MAX_DEPTH {
+            return Err(BplistError::TooDeep);
+        }
+        let decoded = self.decoded.get() + 1;
+        if decoded > MAX_DECODED_OBJECTS {
+            return Err(BplistError::TooManyObjects);
+        }
+        self.decoded.set(decoded);
+
         let at = *self.offsets.get(index).ok_or(BplistError::Truncated)?;
         let marker = *self.bytes.get(at).ok_or(BplistError::Truncated)?;
         let ty = marker >> 4;
-        let low = (marker & 0x0F) as usize;
+        let low = marker & 0x0F;
         match ty {
             0x0 => match marker {
                 0x08 => Ok(Plist::Bool(false)),
@@ -272,113 +328,120 @@ impl DecodeCtx<'_> {
                 _ => Err(BplistError::UnsupportedType(marker)),
             },
             0x1 => {
-                let width = 1usize << low;
-                let slice = self
-                    .bytes
-                    .get(at + 1..at + 1 + width)
-                    .ok_or(BplistError::Truncated)?;
-                Ok(Plist::Integer(read_int_be(slice) as u64))
+                let width = integer_width(marker)?;
+                Ok(Plist::Integer(be_u64(self.span(at + 1, width)?)))
             }
             0x2 => {
-                let width = 1usize << low;
-                let slice = self
-                    .bytes
-                    .get(at + 1..at + 1 + width)
-                    .ok_or(BplistError::Truncated)?;
-                let real = if width == 4 {
-                    f64::from(f32::from_be_bytes(slice.try_into().unwrap()))
-                } else {
-                    f64::from_be_bytes(slice.try_into().unwrap())
+                let real = match low {
+                    2 => f64::from(f32::from_bits(be_u64(self.span(at + 1, 4)?) as u32)),
+                    3 => f64::from_bits(be_u64(self.span(at + 1, 8)?)),
+                    _ => return Err(BplistError::BadWidth(marker)),
                 };
                 Ok(Plist::Real(real))
             }
             0x4 => {
                 let (count, data_at) = self.count(at, low)?;
-                let slice = self
-                    .bytes
-                    .get(data_at..data_at + count)
-                    .ok_or(BplistError::Truncated)?;
-                Ok(Plist::Data(slice.to_vec()))
+                Ok(Plist::Data(self.span(data_at, count)?.to_vec()))
             }
             0x5 => {
                 let (count, data_at) = self.count(at, low)?;
-                let slice = self
-                    .bytes
-                    .get(data_at..data_at + count)
-                    .ok_or(BplistError::Truncated)?;
+                let slice = self.span(data_at, count)?;
                 Ok(Plist::String(String::from_utf8_lossy(slice).into_owned()))
             }
             0x6 => {
                 let (count, data_at) = self.count(at, low)?;
-                let mut units = Vec::with_capacity(count);
-                for i in 0..count {
-                    let s = data_at + i * 2;
-                    let pair = self.bytes.get(s..s + 2).ok_or(BplistError::Truncated)?;
-                    units.push(u16::from_be_bytes(pair.try_into().unwrap()));
-                }
+                let byte_len = count.checked_mul(2).ok_or(BplistError::Truncated)?;
+                let units: Vec<u16> = self
+                    .span(data_at, byte_len)?
+                    .chunks_exact(2)
+                    .map(|pair| u16::from_be_bytes([pair[0], pair[1]]))
+                    .collect();
                 Ok(Plist::String(String::from_utf16_lossy(&units)))
             }
             0xA => {
                 let (count, refs_at) = self.count(at, low)?;
-                let mut items = Vec::with_capacity(count);
-                for i in 0..count {
-                    items.push(self.object(self.reference(refs_at, i)?)?);
-                }
+                let items = self
+                    .references(refs_at, count)?
+                    .map(|index| self.object(index?, depth + 1))
+                    .collect::<Result<Vec<_>, _>>()?;
                 Ok(Plist::Array(items))
             }
             0xD => {
                 let (count, refs_at) = self.count(at, low)?;
-                let mut entries = Vec::with_capacity(count);
-                // Preserve wire order but expose deterministically: keys then vals.
-                let mut keyed = BTreeMap::new();
-                for i in 0..count {
-                    let key = self.object(self.reference(refs_at, i)?)?;
-                    let val = self.object(self.reference(refs_at, count + i)?)?;
-                    if let Plist::String(k) = key {
-                        keyed.insert(i, (k, val));
-                    }
-                }
-                for (_, (k, v)) in keyed {
-                    entries.push((k, v));
-                }
-                Ok(Plist::Dict(entries))
+                let refs_len = count.checked_mul(2).ok_or(BplistError::Truncated)?;
+                let refs = self
+                    .references(refs_at, refs_len)?
+                    .collect::<Result<Vec<_>, _>>()?;
+                let (keys, values) = refs.split_at(count);
+                keys.iter()
+                    .zip(values)
+                    .map(|(&key, &value)| {
+                        let Plist::String(key) = self.object(key, depth + 1)? else {
+                            return Err(BplistError::NonStringKey);
+                        };
+                        Ok((key, self.object(value, depth + 1)?))
+                    })
+                    .collect::<Result<Vec<_>, _>>()
+                    .map(Plist::Dict)
             }
             _ => Err(BplistError::UnsupportedType(marker)),
         }
     }
 
+    /// `len` bytes starting at `start`, or `Truncated` when the payload ends
+    /// first.
+    fn span(&self, start: usize, len: usize) -> Result<&[u8], BplistError> {
+        start
+            .checked_add(len)
+            .and_then(|end| self.bytes.get(start..end))
+            .ok_or(BplistError::Truncated)
+    }
+
     /// The element count for a collection/string/data marker and the offset just
     /// past the count (where the payload or refs begin).
-    fn count(&self, at: usize, low: usize) -> Result<(usize, usize), BplistError> {
+    fn count(&self, at: usize, low: u8) -> Result<(usize, usize), BplistError> {
         if low != 0x0F {
-            return Ok((low, at + 1));
+            return Ok((usize::from(low), at + 1));
         }
         // An inline integer object holds the real count.
         let int_marker = *self.bytes.get(at + 1).ok_or(BplistError::Truncated)?;
-        let width = 1usize << (int_marker & 0x0F);
-        let slice = self
-            .bytes
-            .get(at + 2..at + 2 + width)
-            .ok_or(BplistError::Truncated)?;
-        Ok((read_int_be(slice), at + 2 + width))
+        if int_marker >> 4 != 0x1 {
+            return Err(BplistError::UnsupportedType(int_marker));
+        }
+        let width = integer_width(int_marker)?;
+        Ok((read_uint(self.span(at + 2, width)?)?, at + 2 + width))
     }
 
-    fn reference(&self, refs_at: usize, i: usize) -> Result<usize, BplistError> {
-        let start = refs_at + i * self.ref_size;
-        let slice = self
-            .bytes
-            .get(start..start + self.ref_size)
+    /// The `count` object references starting at `refs_at`, each checked to lie
+    /// inside the payload before any is followed.
+    fn references(
+        &self,
+        refs_at: usize,
+        count: usize,
+    ) -> Result<impl Iterator<Item = Result<usize, BplistError>> + '_, BplistError> {
+        let len = count
+            .checked_mul(self.ref_size)
             .ok_or(BplistError::Truncated)?;
-        Ok(read_int_be(slice))
+        Ok(self
+            .span(refs_at, len)?
+            .chunks_exact(self.ref_size)
+            .map(read_uint))
     }
 }
 
-fn read_int_be(bytes: &[u8]) -> usize {
-    let mut v = 0usize;
-    for &b in bytes {
-        v = (v << 8) | b as usize;
+/// The byte width an integer marker names: 1, 2, 4, or 8. The format's 16-byte
+/// integers carry negative values, which no AirPlay body uses.
+fn integer_width(marker: u8) -> Result<usize, BplistError> {
+    match marker & 0x0F {
+        low @ 0..=3 => Ok(1 << low),
+        _ => Err(BplistError::BadWidth(marker)),
     }
-    v
+}
+
+/// A big-endian unsigned integer of at most eight bytes, as an index or length.
+fn read_uint(bytes: &[u8]) -> Result<usize, BplistError> {
+    let value = be_u64(bytes);
+    usize::try_from(value).map_err(|_| BplistError::Truncated)
 }
 
 #[cfg(test)]
@@ -475,5 +538,83 @@ mod tests {
     #[test]
     fn rejects_non_bplist() {
         assert_eq!(decode(b"not a plist").unwrap_err(), BplistError::BadHeader);
+    }
+
+    /// A payload laid out by hand: `objects` packed after the header, a
+    /// one-byte offset table, and a trailer with one-byte refs. `num_objects`
+    /// is what the trailer claims, which a malformed payload need not match.
+    fn assemble(objects: &[&[u8]], num_objects: u64) -> Vec<u8> {
+        let mut out = b"bplist00".to_vec();
+        let mut offsets = Vec::new();
+        for object in objects {
+            offsets.push(u8::try_from(out.len()).expect("test payload fits one-byte offsets"));
+            out.extend_from_slice(object);
+        }
+        let table_offset = out.len() as u64;
+        out.extend_from_slice(&offsets);
+        out.extend_from_slice(&[0; 6]);
+        out.push(1);
+        out.push(1);
+        out.extend_from_slice(&num_objects.to_be_bytes());
+        out.extend_from_slice(&0u64.to_be_bytes());
+        out.extend_from_slice(&table_offset.to_be_bytes());
+        out
+    }
+
+    #[test]
+    fn rejects_an_object_count_the_payload_cannot_hold() {
+        let bytes = assemble(&[&[0x09]], u64::MAX);
+        assert_eq!(decode(&bytes).unwrap_err(), BplistError::BadTrailer);
+    }
+
+    #[test]
+    fn rejects_a_real_of_a_width_that_is_not_four_or_eight_bytes() {
+        let bytes = assemble(&[&[0x21, 0x00, 0x00]], 1);
+        assert_eq!(decode(&bytes).unwrap_err(), BplistError::BadWidth(0x21));
+    }
+
+    #[test]
+    fn rejects_an_integer_wider_than_eight_bytes() {
+        let bytes = assemble(&[&[0x1F]], 1);
+        assert_eq!(decode(&bytes).unwrap_err(), BplistError::BadWidth(0x1F));
+    }
+
+    #[test]
+    fn rejects_a_collection_count_the_payload_cannot_hold() {
+        // An array whose inline count is 2^64 - 1 refs.
+        let array = [0xAF, 0x13, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF];
+        let bytes = assemble(&[&array], 1);
+        assert_eq!(decode(&bytes).unwrap_err(), BplistError::Truncated);
+    }
+
+    #[test]
+    fn rejects_a_utf16_string_longer_than_the_payload() {
+        let string = [0x6F, 0x13, 0x7F, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF];
+        let bytes = assemble(&[&string], 1);
+        assert_eq!(decode(&bytes).unwrap_err(), BplistError::Truncated);
+    }
+
+    #[test]
+    fn rejects_an_array_that_contains_itself() {
+        let bytes = assemble(&[&[0xA1, 0x00]], 1);
+        assert_eq!(decode(&bytes).unwrap_err(), BplistError::TooDeep);
+    }
+
+    /// Twenty arrays, each holding the next one twice, name 2^20 objects
+    /// through shared references while the payload holds twenty-one.
+    #[test]
+    fn rejects_shared_references_that_multiply_into_too_many_objects() {
+        let arrays: Vec<[u8; 3]> = (1..=20u8).map(|next| [0xA2, next, next]).collect();
+        let mut objects: Vec<&[u8]> = arrays.iter().map(|array| array.as_slice()).collect();
+        objects.push(&[0x09]);
+        let bytes = assemble(&objects, objects.len() as u64);
+        assert_eq!(decode(&bytes).unwrap_err(), BplistError::TooManyObjects);
+    }
+
+    #[test]
+    fn rejects_a_dict_key_that_is_not_a_string() {
+        // {1: true}
+        let bytes = assemble(&[&[0xD1, 0x01, 0x02], &[0x10, 0x01], &[0x09]], 3);
+        assert_eq!(decode(&bytes).unwrap_err(), BplistError::NonStringKey);
     }
 }
