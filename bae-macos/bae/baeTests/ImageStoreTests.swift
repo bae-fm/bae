@@ -64,6 +64,42 @@ private actor FetchCount {
     }
 }
 
+/// Holds every fetch that reaches it until `open`, so a test decides when a load
+/// in flight may finish.
+private actor FetchGate {
+    private var isOpen = false
+    private var held: [CheckedContinuation<Void, Never>] = []
+
+    func pass() async {
+        if isOpen {
+            return
+        }
+        await withCheckedContinuation { held.append($0) }
+    }
+
+    func open() {
+        isOpen = true
+        for fetch in held {
+            fetch.resume()
+        }
+        held = []
+    }
+}
+
+/// Runs its jobs one at a time, in the order they were enqueued.
+private final class SerialTaskExecutor: TaskExecutor {
+    private let queue = DispatchQueue(
+        label: "ImageStoreTests.SerialTaskExecutor"
+    )
+
+    func enqueue(_ job: consuming ExecutorJob) {
+        let job = UnownedJob(job)
+        queue.async {
+            job.runSynchronously(on: self.asUnownedTaskExecutor())
+        }
+    }
+}
+
 private actor PixelReads {
     private(set) var pixels: [UInt32?] = []
 
@@ -171,25 +207,34 @@ struct ImageStoreCacheTests {
     func concurrentRequestsShareLoad() async throws {
         let bytes = try makePngBytes(width: 8, height: 8)
         let fetchCount = FetchCount()
+        let gate = FetchGate()
         let store = ImageStore(fetchLibraryImageBytes: { _ in
             await fetchCount.increment()
-            try await Task.sleep(for: .milliseconds(100))
+            await gate.pass()
             return bytes
         })
         let content = ImageContent.libraryImage(coverRef(version: "1"))
 
-        async let first = store.image(
-            content,
-            pointSize: 56,
-            displayScale: 2
-        )
-        async let second = store.image(
-            content,
-            pointSize: 56,
-            displayScale: 2
-        )
-
-        let images = try await [first, second]
+        // Both requests and this body share one serial executor. Each request
+        // runs until it waits on a load, and the yield queues this body behind
+        // them, so the fetch is let go only once both requests are in flight.
+        let images = try await withTaskExecutorPreference(
+            SerialTaskExecutor()
+        ) {
+            async let first = store.image(
+                content,
+                pointSize: 56,
+                displayScale: 2
+            )
+            async let second = store.image(
+                content,
+                pointSize: 56,
+                displayScale: 2
+            )
+            await Task.yield()
+            await gate.open()
+            return try await [first, second]
+        }
         #expect(images[0] === images[1])
         #expect(await fetchCount.read() == 1)
     }
