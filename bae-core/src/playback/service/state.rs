@@ -1,22 +1,6 @@
 use super::*;
 
 impl PlaybackService {
-    /// Point the library follows at what the service plays now.
-    pub(super) fn follow_library(&mut self) {
-        let remote_track = self.remote_display_request();
-        let staged_crossing = self.staged_crossing().map(Vec::from).unwrap_or_default();
-        self.follows.follow(remote_track, staged_crossing);
-    }
-
-    pub(super) async fn handle_library_change(&mut self, change: LibraryChange) {
-        match change {
-            LibraryChange::RemoteDisplay { track_id, display } => {
-                self.handle_remote_display(track_id, display).await;
-            }
-            LibraryChange::StagedSides(sides) => self.handle_staged_crossing_sides(sides).await,
-        }
-    }
-
     /// The current track's id, once one exists (Active in any phase). None while
     /// the slot is Stopped or still resolving a fresh load.
     pub(super) fn current_track_id(&self) -> Option<&str> {

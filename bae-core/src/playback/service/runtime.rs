@@ -738,7 +738,7 @@ impl PlaybackService {
                             command_tx.clone(),
                             position_update_interval_ms,
                         );
-                        let follows = ServiceFollows::new(&library_manager);
+                        let staged_sides = advance::staged_sides_follow(&library_manager);
                         let mut service = PlaybackService {
                             library_manager,
                             command_tx: command_tx.clone(),
@@ -761,7 +761,7 @@ impl PlaybackService {
                             first_audio_pending: None,
                             renderer: Renderer::Local,
                             clock,
-                            follows,
+                            staged_sides,
                         };
                         // "Restore on launch" off starts with nothing in playback; the
                         // row is kept either way — it stays the crash-safe resume point.
@@ -801,10 +801,10 @@ impl PlaybackService {
         let mut countdown = side_countdown::SideCountdownWait::new();
         loop {
             countdown.follow(self.side_pause_countdown_deadline(), self.clock.as_ref());
-            self.follow_library();
+            self.follow_staged_sides();
             tokio::select! {
-                change = self.follows.next() => {
-                    self.handle_library_change(change).await;
+                (_, sides) = self.staged_sides.next() => {
+                    self.handle_staged_crossing_sides(sides).await;
                 }
                 _ = audio_event_tick.tick(), if self.output.is_some() => {
                     self.drain_current_audio_events().await;

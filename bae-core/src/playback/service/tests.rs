@@ -205,7 +205,7 @@ fn playback_service_over(
     let (progress_tx, progress_rx) = tokio_mpsc::unbounded_channel();
     let preview = PreviewPlayer::new(progress_tx.clone(), command_tx.clone(), 50);
     let playback_queue = PublishedQueue::new(queue_ids);
-    let follows = ServiceFollows::new(&library_manager);
+    let staged_sides = advance::staged_sides_follow(&library_manager);
     let service = PlaybackService {
         library_manager,
         command_tx,
@@ -230,7 +230,7 @@ fn playback_service_over(
         first_audio_pending: None,
         renderer: Renderer::Local,
         clock: Arc::new(crate::playback::ManualPlaybackClock::new(test_clock_start())),
-        follows,
+        staged_sides,
     };
     (service, progress_rx)
 }

@@ -89,7 +89,7 @@ pub use api::{
 };
 use api::{SideBoundary, SidePauseDecision};
 use file_buffers::{prepare_track_for_playback, FileBuffers};
-use library_follow::{LibraryChange, ServiceFollows};
+use library_follow::LibraryFollow;
 use renderer::{RemoteConnect, Renderer};
 use slot::{LoadGeneration, PausePhase, PlayIntent, PlayTarget, PlaybackSlot, TrackPhase};
 use starvation::StarvationEpisode;
@@ -443,8 +443,9 @@ pub struct PlaybackService {
     /// The time source for the side-pause countdown's deadline and the wait for
     /// it.
     clock: crate::playback::PlaybackClockRef,
-    /// The library reads the service keeps pointed at what it plays.
-    follows: ServiceFollows,
+    /// The sides of the staged crossing's tracks, whose crossing is taken back
+    /// when an edit puts a side or disc boundary between them.
+    staged_sides: LibraryFollow<Vec<String>, Vec<PlaybackTrackInfo>>,
 }
 
 /// A pending first-audio timing: the load whose arrival at Playing it measures,

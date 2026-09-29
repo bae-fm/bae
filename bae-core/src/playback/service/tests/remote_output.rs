@@ -703,35 +703,21 @@ async fn airplay_receiver_death_ends_airplay_and_returns_to_local() {
     );
 }
 
-/// Renaming the track playing on a device loads it onto the device again with
-/// the new title, at the device's position, since a device shows the metadata
-/// it was loaded with. The display the device already shows loads nothing.
+/// A queued track renamed while an earlier one plays on a device reaches the
+/// device when it loads: each load reads the track's display from the library
+/// then, not from a copy taken when the queue was filled or the device was
+/// handed playback. The device is not loaded again mid-track.
 #[tokio::test]
-async fn a_renamed_remote_track_is_loaded_again_with_its_new_title() {
+async fn a_queued_track_renamed_while_another_plays_remotely_loads_with_its_new_title() {
     const RELEASE: &str = "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e";
-    let (_home, mut service, state, _rx) = playing_remote_fixture(
-        &["08c7ff07-b56a-4e16-8df6-ae2967fa0806"],
-        Some(std::time::Duration::from_secs(30)),
-    )
-    .await;
-    assert!(wait_until(|| state.lock().unwrap().loads.len() == 1));
-    service
-        .handle_remote_status(RendererSessionStatus {
-            player_state: RendererPlayerState::Playing,
-            position: Some(std::time::Duration::from_secs(42)),
-            duration: None,
-            volume: Some(1.0),
-            ended: false,
-        })
-        .await;
-
-    service.follow_library();
-    handle_next_remote_display(&mut service).await;
-    assert_eq!(
-        state.lock().unwrap().loads.len(),
-        1,
-        "the display the device shows loads nothing"
-    );
+    const FIRST: &str = "08c7ff07-b56a-4e16-8df6-ae2967fa0806";
+    const SECOND: &str = "08c7fe07-b56a-4c63-8df6-ad2967fa0653";
+    let (_home, mut service, state, _rx) =
+        playing_remote_fixture(&[FIRST, SECOND], Some(std::time::Duration::ZERO)).await;
+    let (load_tx, mut loads) = tokio_mpsc::unbounded_channel();
+    state.lock().unwrap().load_events = Some(load_tx);
+    let first_url = format!("http://renderer.local/stream?id={FIRST}");
+    let second_url = format!("http://renderer.local/stream?id={SECOND}");
 
     service
         .library_manager
@@ -752,43 +738,56 @@ async fn a_renamed_remote_track_is_loaded_again_with_its_new_title() {
                 }],
                 album_year: None,
                 pressing: crate::pressing::Pressing::blank(),
-                tracks: vec![crate::import::TrackUserEdit {
-                    title: "Renamed Track".to_string(),
-                    side: None,
-                    track_number: Some(1),
-                    artist_assignments: crate::import::TrackArtistAssignments::AlbumArtists,
-                    file: None,
-                }],
+                tracks: vec![
+                    crate::import::TrackUserEdit {
+                        title: "Track Title".to_string(),
+                        side: None,
+                        track_number: Some(1),
+                        artist_assignments: crate::import::TrackArtistAssignments::AlbumArtists,
+                        file: None,
+                    },
+                    crate::import::TrackUserEdit {
+                        title: "Renamed Track".to_string(),
+                        side: None,
+                        track_number: Some(2),
+                        artist_assignments: crate::import::TrackArtistAssignments::AlbumArtists,
+                        file: None,
+                    },
+                ],
             },
         )
         .await
         .unwrap();
-    handle_next_remote_display(&mut service).await;
 
-    assert!(
-        wait_until(|| {
-            let s = state.lock().unwrap();
-            s.loads.len() == 2
-                && s.loads[1].title == "Renamed Track"
-                && s.seeks.last() == Some(&std::time::Duration::from_secs(42))
-        }),
-        "the device is loaded again with the new title at its position"
-    );
-    let s = state.lock().unwrap();
-    assert_eq!(s.loads[0].url, s.loads[1].url, "the same track is loaded");
-}
+    service
+        .handle_remote_status(RendererSessionStatus {
+            player_state: RendererPlayerState::Finished,
+            position: None,
+            duration: None,
+            volume: Some(1.0),
+            ended: false,
+        })
+        .await;
 
-/// The next display the service's library follows read for the track playing
-/// on the device, handled as the run loop handles it.
-async fn handle_next_remote_display(service: &mut PlaybackService) {
-    loop {
-        let change = tokio::time::timeout(std::time::Duration::from_secs(5), service.follows.next())
+    let second = loop {
+        let media = tokio::time::timeout(std::time::Duration::from_secs(5), loads.recv())
             .await
-            .expect("the library follows read the remote display");
-        let is_remote_display = matches!(change, LibraryChange::RemoteDisplay { .. });
-        service.handle_library_change(change).await;
-        if is_remote_display {
-            return;
+            .expect("the device is loaded with the next track")
+            .expect("the fake channel keeps its load sender");
+        if media.url == second_url {
+            break media;
         }
-    }
+        assert_eq!(
+            media.url, first_url,
+            "only the handoff's load of the first track comes before the next track's"
+        );
+    };
+    assert_eq!(second.title, "Renamed Track");
+    let s = state.lock().unwrap();
+    let urls: Vec<&str> = s.loads.iter().map(|m| m.url.as_str()).collect();
+    assert_eq!(
+        urls,
+        [first_url.as_str(), second_url.as_str()],
+        "the first track is loaded once, at the handoff, and never again"
+    );
 }

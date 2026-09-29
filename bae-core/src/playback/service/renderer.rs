@@ -183,23 +183,14 @@ pub(super) struct RemoteRenderer {
     /// The device's most recent playback position, updated from each status.
     /// Local playback resumes here when remote playback ends.
     last_position: Duration,
-    /// The track the device was last loaded with and what it was told that
-    /// track shows; `None` until the first load.
-    loaded: Option<LoadedMedia>,
-}
-
-/// A track loaded onto the device, and the display it was loaded with. The
-/// device shows that display until it is loaded again.
-struct LoadedMedia {
-    track_id: String,
-    display: crate::playback::TrackDisplay,
 }
 
 impl RemoteRenderer {
-    /// Load `track_id` onto the device showing `display`, from `position`, and
-    /// paused when `paused`. The error is why its media URL could not be built.
+    /// Load `prepared` onto the device showing `display`, from `position`, and
+    /// paused when `paused`. The device shows `display` until the next load.
+    /// The error is why its media URL could not be built.
     fn load(
-        &mut self,
+        &self,
         prepared: &PlaybackPreparedTrack,
         display: crate::playback::TrackDisplay,
         position: Duration,
@@ -217,9 +208,9 @@ impl RemoteRenderer {
         self.session.load(RendererMedia {
             url: served.url,
             content_type: served.content_type,
-            title: display.title.clone(),
-            artist: display.artist_names.clone(),
-            album: display.album_title.clone(),
+            title: display.title,
+            artist: display.artist_names,
+            album: display.album_title,
             cover_url: served.cover_url,
             duration: Some(prepared.duration),
         });
@@ -229,10 +220,6 @@ impl RemoteRenderer {
         if paused {
             self.session.pause();
         }
-        self.loaded = Some(LoadedMedia {
-            track_id: track_id.clone(),
-            display,
-        });
         Ok(())
     }
 }
@@ -322,7 +309,6 @@ impl PlaybackService {
             session,
             media_source,
             last_position: position,
-            loaded: None,
         });
         self.hand_over_to_device(device, current, position, target)
             .await;
@@ -523,6 +509,9 @@ impl PlaybackService {
                 return;
             }
         };
+        // What the device shows is read now, as the library holds it at load,
+        // so an edit made while an earlier track played reaches this one. A
+        // device keeps what it was loaded with until the next load.
         let display = match self.library_manager.get_track_display(track_id).await {
             Ok(display) => display,
             Err(e) => {
@@ -536,7 +525,7 @@ impl PlaybackService {
         let prepared =
             finalize_playback_track(track_id.to_string(), resolved, Vec::new(), replay_gain_mode);
 
-        let Renderer::Remote(remote) = &mut self.renderer else {
+        let Renderer::Remote(remote) = &self.renderer else {
             // Raced out of remote playback before the resolve returned.
             return;
         };
@@ -555,56 +544,6 @@ impl PlaybackService {
         self.install_active_track(prepared, stub_decoder(), target.into_track_phase());
         self.emit_state();
         self.persist_playback_state().await;
-    }
-
-    /// The track whose display the device should show: the current track while
-    /// playing remotely, and none otherwise.
-    pub(super) fn remote_display_request(&self) -> Option<String> {
-        match (&self.renderer, &self.slot) {
-            (Renderer::Remote(_), PlaybackSlot::Active(cur)) => Some(cur.prepared.track_id.clone()),
-            _ => None,
-        }
-    }
-
-    /// The library changed what `track_id` shows while it plays on the device:
-    /// load it again with the new display at the device's position, keeping
-    /// its play/pause. A device shows the metadata it was loaded with, and
-    /// neither Cast nor UPnP takes new metadata for loaded media any other way.
-    pub(super) async fn handle_remote_display(
-        &mut self,
-        track_id: String,
-        display: Option<crate::playback::TrackDisplay>,
-    ) {
-        let (Renderer::Remote(remote), PlaybackSlot::Active(cur)) =
-            (&mut self.renderer, &self.slot)
-        else {
-            debug!("remote: display for {track_id} arrived after remote playback moved on");
-            return;
-        };
-        if cur.prepared.track_id != track_id {
-            debug!("remote: display for {track_id} arrived after the device moved on");
-            return;
-        }
-        let Some(display) = display else {
-            debug!("remote: {track_id} left the library; the deletion moves playback off it");
-            return;
-        };
-        if remote
-            .loaded
-            .as_ref()
-            .is_some_and(|loaded| loaded.track_id == track_id && loaded.display == display)
-        {
-            return;
-        }
-        let paused = cur.phase.intent() == PlayIntent::Paused;
-        let position = remote.last_position;
-        if let Err(reason) = remote.load(&cur.prepared, display, position, paused) {
-            error!("remote: failed to mint media URL for {track_id}: {reason}");
-            self.fail_remote(crate::ui::PlaybackErrorReason::internal(
-                "Couldn't build the audio URL for the renderer.",
-            ))
-            .await;
-        }
     }
 
     /// A remote track load failed: surface the error and stop remote playback,

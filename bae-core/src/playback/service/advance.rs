@@ -1,5 +1,17 @@
 use super::*;
 
+/// The service's follow of the sides of the staged crossing's tracks, reading
+/// nothing until a crossing is staged.
+pub(super) fn staged_sides_follow(
+    library_manager: &LibraryManager,
+) -> LibraryFollow<Vec<String>, Vec<PlaybackTrackInfo>> {
+    LibraryFollow::new(
+        library_manager.subscribe_playback_track_infos(Vec::new()),
+        Vec::new(),
+        "the staged crossing's sides",
+    )
+}
+
 impl PlaybackService {
     pub(super) fn next_track_id(&self) -> Option<&str> {
         self.preloaded_next.as_ref().map(PreloadedNext::track_id)
@@ -273,6 +285,13 @@ impl PlaybackService {
             None
         };
         self.hold_staged_crossing_for(boundary).await;
+    }
+
+    /// Point the staged-sides follow at the staged crossing's tracks, or at
+    /// none when no crossing is staged.
+    pub(super) fn follow_staged_sides(&mut self) {
+        let crossing = self.staged_crossing().map(Vec::from).unwrap_or_default();
+        self.staged_sides.follow(crossing);
     }
 
     /// The current track and the preloaded next one staged into the gapless

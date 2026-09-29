@@ -119,6 +119,8 @@ pub(crate) struct FakeChannelState {
     pub(crate) poll_script: std::collections::VecDeque<Result<ReceiverStatus, RendererError>>,
     /// What a poll returns once the script is drained. `None` means playing.
     pub(crate) default_status: Option<ReceiverStatus>,
+    /// Sent each load as it arrives, for a test that waits on one.
+    pub(crate) load_events: Option<tokio::sync::mpsc::UnboundedSender<RendererMedia>>,
 }
 
 #[cfg(test)]
@@ -150,7 +152,12 @@ pub(crate) fn fake_status(player_state: RendererPlayerState) -> ReceiverStatus {
 #[cfg(test)]
 impl RendererChannel for FakeChannel {
     fn load(&mut self, media: &RendererMedia) -> Result<(), RendererError> {
-        self.state.lock().unwrap().loads.push(media.clone());
+        let mut state = self.state.lock().unwrap();
+        state.loads.push(media.clone());
+        if let Some(load_events) = &state.load_events {
+            // A test that dropped its receiver no longer waits on loads.
+            let _ = load_events.send(media.clone());
+        }
         Ok(())
     }
     fn play(&mut self) -> Result<(), RendererError> {
