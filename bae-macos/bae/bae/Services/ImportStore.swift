@@ -51,7 +51,8 @@ class ImportStore {
         folderScanActivity: nil,
         groupKeys: [],
         pendingCovers: [],
-        pendingFilters: []
+        pendingFilters: [],
+        narrowed: nil
     )
 
     /// The fault each watched root was last reported as having. A summary is

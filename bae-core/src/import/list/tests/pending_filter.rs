@@ -614,3 +614,55 @@ fn the_summary_names_the_states_narrowing_the_tab_on_show() {
     assert!(narrowing(TriageTab::Done, &[PendingFilter::NeedsYou]).is_empty());
     assert!(narrowing(TriageTab::Skipped, &[PendingFilter::NeedsYou]).is_empty());
 }
+
+/// While the text filter or a state narrows the tab on show, the summary
+/// counts the tab's entries the list shows beside the tab's total; while
+/// nothing narrows it, there is no count.
+#[test]
+fn a_narrowed_tab_counts_what_it_shows_of_its_total() {
+    let mut rows = every_kind();
+    rows.candidates.retain(|row| row.display_path != "Imported");
+    rows.imported.clear();
+    let narrowed = |tab, filters: &[PendingFilter], text: &str| {
+        flattened(
+            &rows,
+            &ImportListView {
+                tab,
+                pending_filters: checked(filters),
+                filter_text: text.to_string(),
+                ..ImportListView::default()
+            },
+        )
+        .summary
+        .narrowed
+    };
+    assert_eq!(
+        narrowed(
+            TriageTab::Pending,
+            &[PendingFilter::NeedsYou, PendingFilter::LookupError],
+            ""
+        ),
+        Some(NarrowedCount {
+            shown: 3,
+            total: 10
+        })
+    );
+    assert_eq!(
+        narrowed(TriageTab::Pending, &[], "several"),
+        Some(NarrowedCount {
+            shown: 1,
+            total: 10
+        }),
+        "only the row with no draft reads its folder's name"
+    );
+    assert_eq!(
+        narrowed(TriageTab::Skipped, &[], "set aside"),
+        Some(NarrowedCount { shown: 1, total: 1 })
+    );
+    assert_eq!(narrowed(TriageTab::Pending, &[], ""), None);
+    assert_eq!(
+        narrowed(TriageTab::Done, &[PendingFilter::NeedsYou], ""),
+        None,
+        "the states leave Done alone"
+    );
+}

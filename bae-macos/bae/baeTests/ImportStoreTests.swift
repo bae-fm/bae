@@ -577,7 +577,8 @@ struct ImportListPageSourceTests {
                 folderScanActivity: nil,
                 groupKeys: [],
                 pendingCovers: [],
-                pendingFilters: []
+                pendingFilters: [],
+                narrowed: nil
             ),
             selectionRevision: 0,
             requestRevision: requestRevision,

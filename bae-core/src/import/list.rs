@@ -79,6 +79,14 @@ impl ImportListView {
         !self.filter_text.is_empty()
     }
 
+    /// Whether the text filter or a state narrows the tab on show.
+    pub(crate) fn narrows(&self) -> bool {
+        self.filters()
+            || self
+                .pending_filters_on(self.tab)
+                .is_some_and(PendingFilters::narrows)
+    }
+
     /// The states narrowing `tab`'s rows: the view's on Pending, none on Done
     /// and Skipped, whose rows are past identification.
     pub(crate) fn pending_filters_on(&self, tab: TriageTab) -> Option<&PendingFilters> {
@@ -440,6 +448,17 @@ pub struct ImportQueueSummary {
     pub pending_covers: Vec<crate::import::cover_art::RemoteImageSet>,
     /// The states narrowing the tab on show, in the menu's order.
     pub pending_filters: PendingFilters,
+    /// How many of the tab's entries the list shows, of how many it has,
+    /// while the text filter or a state narrows it; `None` while nothing
+    /// does.
+    pub narrowed: Option<NarrowedCount>,
+}
+
+/// How many of a tab's entries a narrowed list shows, of how many it has.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct NarrowedCount {
+    pub shown: u32,
+    pub total: u32,
 }
 
 /// Where each watched folder's scan stands, for the chrome around the list.

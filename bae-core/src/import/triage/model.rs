@@ -363,6 +363,15 @@ pub struct TriageTabCounts {
 }
 
 impl TriageTabCounts {
+    /// How many entries `tab` holds.
+    pub(crate) fn of(&self, tab: TriageTab) -> u32 {
+        match tab {
+            TriageTab::Pending => self.pending,
+            TriageTab::Done => self.done,
+            TriageTab::Skipped => self.skipped,
+        }
+    }
+
     pub(crate) fn bump(&mut self, tab: TriageTab) {
         match tab {
             TriageTab::Pending => self.pending += 1,

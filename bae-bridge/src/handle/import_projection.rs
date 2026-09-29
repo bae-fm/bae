@@ -481,6 +481,12 @@ mirror_struct! {
     },
 }
 
+mirror_struct! {
+    crate::types::BridgeNarrowedCount = bae_core::import::NarrowedCount,
+    from_core: fn,
+    fields: { shown, total },
+}
+
 impl crate::types::BridgeImportQueueSummary {
     /// The list's summary and where the folder scans stand.
     fn from_core(
@@ -493,6 +499,7 @@ impl crate::types::BridgeImportQueueSummary {
             group_keys,
             pending_covers,
             pending_filters,
+            narrowed,
         } = summary;
         let bae_core::import::FolderScanProgress { statuses, activity } = folder_scans;
         Self {
@@ -518,6 +525,7 @@ impl crate::types::BridgeImportQueueSummary {
                 .into_iter()
                 .map(crate::types::BridgePendingFilter::from_core)
                 .collect(),
+            narrowed: narrowed.map(crate::types::BridgeNarrowedCount::from_core),
         }
     }
 }

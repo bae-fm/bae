@@ -153,6 +153,18 @@ pub struct BridgeImportQueueSummary {
     /// The states narrowing the tab on show, in the menu's order: the view's
     /// own on Pending, none on Done and Skipped.
     pub pending_filters: Vec<BridgePendingFilter>,
+    /// How many of the tab's entries the list shows, of how many it has,
+    /// while the text filter or a state narrows it; absent while nothing
+    /// does.
+    pub narrowed: Option<BridgeNarrowedCount>,
+}
+
+/// How many of a tab's entries a narrowed list shows, of how many it has.
+/// Mirrors `bae_core::import::NarrowedCount`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeNarrowedCount {
+    pub shown: u32,
+    pub total: u32,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]

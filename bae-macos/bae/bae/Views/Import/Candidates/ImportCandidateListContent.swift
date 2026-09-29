@@ -300,35 +300,14 @@ struct ImportCandidateListContent: View {
                     Divider()
 
                     HStack(spacing: ThemeSpace.related) {
-                        Image(systemName: "magnifyingglass")
-                            .themeIcon(ImportFilterBarLayout.glyph)
-                            .foregroundStyle(.tertiary)
-                        if !summary.pendingFilters.isEmpty {
-                            PendingFilterChips(
-                                filters: summary.pendingFilters
-                            ) { filter in
-                                cancelReveal()
-                                listSlot.setPendingFilter(
-                                    filter,
-                                    checked: false
-                                )
-                            }
-                        }
-                        TextField("Filter...", text: filterTextBinding)
-                            .textFieldStyle(.plain)
-                            .themeText(.body)
-                            .focused($filterFocused)
-                        if !uiStore.importCandidateFilterText.isEmpty {
-                            Button {
-                                cancelReveal()
-                                listSlot.setFilterText("")
-                            } label: {
-                                Image(systemName: "xmark.circle.fill")
-                                    .themeIcon(ImportFilterBarLayout.glyph)
-                                    .foregroundStyle(.tertiary)
-                                    .filterBarControl()
-                            }
-                            .buttonStyle(.plain)
+                        ImportListFilterField(
+                            text: filterTextBinding,
+                            focused: $filterFocused,
+                            pendingFilters: summary.pendingFilters,
+                            narrowed: summary.narrowed
+                        ) { filter in
+                            cancelReveal()
+                            listSlot.setPendingFilter(filter, checked: false)
                         }
                         if let progress = importStore.identificationProgress,
                             progress.total > 0

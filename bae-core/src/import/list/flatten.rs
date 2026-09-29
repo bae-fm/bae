@@ -5,7 +5,7 @@
 
 use super::{
     GroupHeaderRow, ImportCandidateListLocation, ImportListItem, ImportListOrder,
-    ImportListRequest, ImportListView, ImportQueueSummary, PendingFilters, PlacedRow,
+    ImportListRequest, ImportListView, ImportQueueSummary, NarrowedCount, PendingFilters, PlacedRow,
     UploadStanding,
 };
 use crate::db::{ImportQueueRows, ScanCandidateKind, ScanCandidateListRow};
@@ -670,7 +670,15 @@ fn summarise(
             );
         }
     }
+    let narrowed = view.narrows().then(|| NarrowedCount {
+        shown: ordered
+            .iter()
+            .filter(|entry| entry.tab == view.tab && entry.matches_filter)
+            .count() as u32,
+        total: counts.of(view.tab),
+    });
     ImportQueueSummary {
+        narrowed,
         counts,
         watched_folders: rows.watched_folders.clone(),
         group_keys,
