@@ -100,8 +100,6 @@ async fn test_high_sample_rate_position_calculation() {
             }
         })
         .await;
-    // Give any final position update time to arrive behind the completion.
-    tokio::time::sleep(Duration::from_millis(100)).await;
 
     assert!(track_completed.is_some(), "Track should complete");
 
