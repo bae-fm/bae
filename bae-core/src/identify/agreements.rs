@@ -108,7 +108,7 @@ pub(crate) fn agreements_of(
             .any(|value| text.states_label(value)),
         year: result
             .year
-            .is_some_and(|year| text.states(&year.to_string())),
+            .is_some_and(|year| facts.pressing_year(std::slice::from_ref(result)) == Some(year)),
         country: result.area.is_some_and(|area| facts.names_area(area)),
         title: text.states_title(&result.title),
         artist: result

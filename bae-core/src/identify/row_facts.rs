@@ -22,7 +22,9 @@ pub(crate) enum Fact {
 /// What the folder's own text states that rows are weighed against, and the
 /// year each album on the list first came out, read once for the run.
 pub(crate) struct FolderFacts {
-    /// Every year its text writes as a word of its own.
+    /// Every year its highest-standing text writing any writes as a word of
+    /// its own: a sleeve prints copyright years of other editions as readily
+    /// as its own.
     years: Vec<i32>,
     /// The year each album first came out, by its catalog and group, as any
     /// record of it whose full document was read states it: every pressing of
@@ -69,7 +71,7 @@ impl FolderFacts {
             }
         }
         Self {
-            years: text.years(),
+            years: text.highest_stating(CandidateText::years),
             album_years,
             area: match named.as_slice() {
                 [one] => Some(*one),
@@ -99,37 +101,57 @@ impl FolderFacts {
         })
     }
 
-    /// Whether the row was released in the year the folder names its edition
-    /// by.
+    /// The year the folder names the row's pressing by: one answer, which
+    /// the Year badge and the ranking both read.
     ///
-    /// A folder year later than the album's first year names an edition — the
-    /// latest of them, where it writes two ("1963 … 2005 remaster"). A row
-    /// stating that year agrees, one stating another disagrees, and an undated
-    /// row states nothing. A year its own title writes ("1990-2000") is the
-    /// title's, not an edition's. Where the row's album year is not known, no
-    /// year here is known to name an edition, and the row states nothing — its
-    /// year counts as before, toward whether it is offered.
+    /// Where the folder writes two years ("1963 … 2005 remaster"), the later
+    /// names the pressing and the earlier is the album's. A year no later than
+    /// the album's first year names the album, not a pressing, and a year the
+    /// row's own title writes ("1990-2000") is the title's. Where the album's
+    /// first year is not known, the latest year the folder writes is the one
+    /// that may name the pressing.
+    pub(crate) fn pressing_year(&self, records: &[MetadataResult]) -> Option<i32> {
+        let (years, first) = self.years_against(records);
+        years
+            .into_iter()
+            .filter(|year| first.is_none_or(|first| *year > first))
+            .max()
+    }
+
+    /// Whether the row was released in the year the folder names its pressing
+    /// by — see [`Self::pressing_year`]. A row stating that year agrees, one
+    /// stating another disagrees, and an undated row states nothing. A lone
+    /// year, where the album's first year is not known, is as often the
+    /// album's as the pressing's, so it ranks nothing here: it counts toward
+    /// whether a row is offered instead.
     pub(crate) fn edition_year(&self, records: &[MetadataResult]) -> Fact {
         let stated: Vec<i32> = records.iter().filter_map(|record| record.year).collect();
-        let Some(first) = self.album_first_year(records) else {
+        let (years, first) = self.years_against(records);
+        if first.is_none() && years.len() < 2 {
             return Fact::StatesNothing;
-        };
+        }
+        match self.pressing_year(records) {
+            None => Fact::StatesNothing,
+            Some(_) if stated.is_empty() => Fact::StatesNothing,
+            Some(year) if stated.contains(&year) => Fact::Agrees,
+            Some(_) => Fact::Disagrees,
+        }
+    }
+
+    /// The folder's years the row's title does not write, each once, and the
+    /// year the row's album first came out.
+    fn years_against(&self, records: &[MetadataResult]) -> (Vec<i32>, Option<i32>) {
         let titled: Vec<i32> = records
             .iter()
             .flat_map(|record| title_years(&record.title))
             .collect();
-        let edition = self
+        let years = self
             .years
             .iter()
             .copied()
-            .filter(|year| *year > first && !titled.contains(year))
-            .max();
-        match edition {
-            None => Fact::StatesNothing,
-            Some(_) if stated.is_empty() => Fact::StatesNothing,
-            Some(edition) if stated.contains(&edition) => Fact::Agrees,
-            Some(_) => Fact::Disagrees,
-        }
+            .filter(|year| !titled.contains(year))
+            .collect();
+        (years, self.album_first_year(records))
     }
 
     /// Whether `area` is where the folder says the copy was released.

@@ -98,3 +98,60 @@ fn a_later_year_picks_the_edition() {
     );
     assert_eq!(offered(&outcome), vec!["rel-undated"]);
 }
+
+/// Whether the Year badge shows on the row of `result` among `results`.
+fn year_badge(
+    result: &MetadataResult,
+    results: &[(MetadataResult, LibraryStatus)],
+    text: &CandidateText,
+) -> bool {
+    let facts = FolderFacts::of(text, results.iter().map(|(result, _)| result));
+    agreements_of(result, text, &facts, &LookupProvenance::CHOSEN).year
+}
+
+/// Two folder years: the earlier is the album's, the later names the
+/// pressing. Only the pressing of the later year ranks first and carries the
+/// Year badge, whether or not the album's first year is known.
+#[test]
+fn the_later_of_two_folder_years_names_the_pressing() {
+    let text = folder("Artist One - Album One 1963 (1987 Nordland Pressing)");
+    for first in [Some(1963), None] {
+        let dated = |release_id: &str, year: i32| {
+            let (mut result, status) = pressing(release_id, Some(year));
+            result.album_first_year = first;
+            (result, status)
+        };
+        let results = vec![dated("rel-1963", 1963), dated("rel-1987", 1987)];
+        let outcome = search(results.clone(), &text);
+        assert_eq!(offered(&outcome), vec!["rel-1987"], "first year {first:?}");
+        assert!(year_badge(&results[1].0, &results, &text));
+        assert!(!year_badge(&results[0].0, &results, &text));
+    }
+}
+
+/// A year the artwork prints counts for nothing where the folder's name
+/// writes one: the copyright year of another edition names no pressing.
+#[test]
+fn the_folder_s_name_outranks_a_year_the_artwork_prints() {
+    let text = CandidateText::of(
+        &[
+            TextLine {
+                text: "1987 Album One".to_string(),
+                origin: TextOrigin::FolderName,
+            },
+            TextLine {
+                text: "(C) 1995 Label One".to_string(),
+                origin: TextOrigin::Artwork,
+            },
+        ],
+        &[],
+    );
+    let results = vec![
+        pressing("rel-1987", Some(1987)),
+        pressing("rel-1995", Some(1995)),
+    ];
+    let outcome = search(results.clone(), &text);
+    assert_eq!(offered(&outcome), vec!["rel-1987"]);
+    assert!(year_badge(&results[0].0, &results, &text));
+    assert!(!year_badge(&results[1].0, &results, &text));
+}
