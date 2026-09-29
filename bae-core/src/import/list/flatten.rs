@@ -80,8 +80,22 @@ pub(crate) fn flatten(
         placed,
         counts,
     } = order(rows, request)?;
-    let summary = summarise(rows, &request.view, &ordered, &placed, counts);
     let (items, headers) = emit(&request.view, &ordered);
+    let first_selected_position = items
+        .iter()
+        .position(|item| match item {
+            ItemRef::Candidate { index, .. } => placed[*index].row.selected,
+            ItemRef::Header(_) | ItemRef::Invalid { .. } => false,
+        })
+        .map(|position| position as u64);
+    let summary = summarise(
+        rows,
+        &request.view,
+        &ordered,
+        &placed,
+        counts,
+        first_selected_position,
+    );
     Ok(Flattened {
         items,
         headers,
@@ -649,6 +663,7 @@ fn summarise(
     ordered: &[OrderedEntry],
     placed: &[PlacedRow],
     counts: TriageTabCounts,
+    first_selected_position: Option<u64>,
 ) -> ImportQueueSummary {
     let mut group_keys = Vec::new();
     let mut seen_groups = HashSet::new();
@@ -689,6 +704,7 @@ fn summarise(
             .cloned()
             .unwrap_or_default(),
         narrowing: ImportListNarrowing::of(view),
+        first_selected_position,
     }
 }
 

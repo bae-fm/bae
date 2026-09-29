@@ -93,9 +93,20 @@ struct ImportCandidateListGeometryKey: PreferenceKey {
     }
 }
 
+/// What a delivery of the list's content was read as: the revision it
+/// brought the list to, what the view narrowed it by, and where the first
+/// selected row sits in it.
+struct ImportCandidateListContentRead: Equatable {
+    let revision: UInt64
+    let narrowing: BridgeImportListNarrowing
+    let firstSelected: Int?
+}
+
 struct ImportCandidateListViewport {
     private var anchorKey: String?
     private var appliedContentRevision: UInt64?
+    /// What the list was narrowed by when its content last changed.
+    private var appliedNarrowing: BridgeImportListNarrowing?
     /// Set while a restore's scroll has not run yet, when layouts still
     /// measure the list where it stood before and cannot pick the anchor.
     private var awaitingRestoreScroll = false
@@ -105,17 +116,25 @@ struct ImportCandidateListViewport {
         awaitingRestoreScroll = false
     }
 
-    private mutating func accept(contentRevision: UInt64) {
+    private mutating func accept(
+        contentRevision: UInt64,
+        narrowing: BridgeImportListNarrowing
+    ) {
         appliedContentRevision = contentRevision
+        appliedNarrowing = narrowing
     }
 
     private mutating func observe(
         _ rows: [ImportCandidateListRowBounds],
         viewport: CGRect,
-        contentRevision: UInt64
+        contentRevision: UInt64,
+        narrowing: BridgeImportListNarrowing
     ) {
         if appliedContentRevision == nil {
             appliedContentRevision = contentRevision
+        }
+        if appliedNarrowing == nil {
+            appliedNarrowing = narrowing
         }
         guard appliedContentRevision == contentRevision else { return }
         anchorKey =
@@ -128,36 +147,63 @@ struct ImportCandidateListViewport {
             .stableKey
     }
 
+    /// Where the list scrolls once its content changes. Narrowed anew — a
+    /// different tab, filter text or checked states — it shows its first
+    /// selected row, or its top where no selected row is in it: the row on top
+    /// before may be gone, or anywhere. Otherwise it keeps the row that was
+    /// on top.
     private mutating func contentChanged(
         to revision: UInt64,
+        narrowing: BridgeImportListNarrowing,
+        firstSelected: Int?,
         positionOf: (String) -> Int?
     ) -> Int? {
         guard revision != appliedContentRevision else { return nil }
         appliedContentRevision = revision
+        let narrowedAnew = appliedNarrowing.map { $0 != narrowing } ?? false
+        appliedNarrowing = narrowing
+        if narrowedAnew {
+            return firstSelected ?? 0
+        }
         return anchorKey.flatMap(positionOf)
     }
 
     mutating func update(
         rows: [ImportCandidateListRowBounds],
         viewport: CGRect,
-        contentRevision: UInt64,
+        content: ImportCandidateListContentRead,
         revealInProgress: Bool,
         positionOf: (String) -> Int?
     ) -> Int? {
+        let contentRevision = content.revision
+        let narrowing = content.narrowing
+        let firstSelected = content.firstSelected
         if revealInProgress {
-            accept(contentRevision: contentRevision)
-            observe(rows, viewport: viewport, contentRevision: contentRevision)
+            accept(contentRevision: contentRevision, narrowing: narrowing)
+            observe(
+                rows,
+                viewport: viewport,
+                contentRevision: contentRevision,
+                narrowing: narrowing
+            )
             return nil
         }
         if let restore = contentChanged(
             to: contentRevision,
+            narrowing: narrowing,
+            firstSelected: firstSelected,
             positionOf: positionOf
         ) {
             awaitingRestoreScroll = true
             return restore
         }
         guard !awaitingRestoreScroll else { return nil }
-        observe(rows, viewport: viewport, contentRevision: contentRevision)
+        observe(
+            rows,
+            viewport: viewport,
+            contentRevision: contentRevision,
+            narrowing: narrowing
+        )
         return nil
     }
 }
@@ -516,7 +562,7 @@ extension ImportCandidateListContent {
             if let target = viewport.update(
                 rows: geometry.rows,
                 viewport: bounds,
-                contentRevision: list.contentRevision,
+                content: contentRead(list),
                 revealInProgress: revealOperation != nil,
                 positionOf: { list.position(of: $0) }
             ) {
@@ -530,6 +576,17 @@ extension ImportCandidateListContent {
         }
         .scrollContentBackground(.hidden)
         .background(Theme.surface)
+    }
+
+    /// What the list's content was last read as.
+    private func contentRead(
+        _ list: PaginatedList<BridgeImportListItem>
+    ) -> ImportCandidateListContentRead {
+        ImportCandidateListContentRead(
+            revision: list.contentRevision,
+            narrowing: summary.narrowing,
+            firstSelected: summary.firstSelectedPosition.map { Int($0) }
+        )
     }
 
     private func rowGeometry(stableKey: String) -> some View {

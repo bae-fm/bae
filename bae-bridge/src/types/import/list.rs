@@ -167,6 +167,9 @@ pub struct BridgeImportQueueSummary {
     /// What the view asked the rows to be narrowed by when this read was
     /// made: the filter `narrowed` counts under.
     pub narrowing: BridgeImportListNarrowing,
+    /// Where the first selected row sits in this read's list; `None` with no
+    /// selected row in it.
+    pub first_selected_position: Option<u64>,
 }
 
 /// What a view narrows its rows by. Mirrors

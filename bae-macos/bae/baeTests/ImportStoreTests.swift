@@ -582,7 +582,8 @@ struct ImportListPageSourceTests {
                     tab: .pending,
                     filterText: "",
                     pendingFilters: []
-                )
+                ),
+                firstSelectedPosition: nil
             ),
             selectionRevision: 0,
             requestRevision: requestRevision,

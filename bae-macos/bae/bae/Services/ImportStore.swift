@@ -57,7 +57,8 @@ class ImportStore {
             tab: .pending,
             filterText: "",
             pendingFilters: []
-        )
+        ),
+        firstSelectedPosition: nil
     )
 
     /// The fault each watched root was last reported as having. A summary is

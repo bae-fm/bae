@@ -117,7 +117,8 @@
                     tab: .pending,
                     filterText: filterText,
                     pendingFilters: pendingFilters
-                )
+                ),
+                firstSelectedPosition: nil
             )
         }
 

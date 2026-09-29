@@ -192,7 +192,7 @@ final class ImportCandidateViewportTests: XCTestCase {
             state.update(
                 rows: rows,
                 viewport: viewportBounds,
-                contentRevision: 1,
+                content: read(1),
                 revealInProgress: false,
                 positionOf: { _ in nil }
             )
@@ -201,7 +201,7 @@ final class ImportCandidateViewportTests: XCTestCase {
             state.update(
                 rows: rows,
                 viewport: viewportBounds,
-                contentRevision: 2,
+                content: read(2),
                 revealInProgress: false,
                 positionOf: { $0 == self.viewportCandidateKey(30) ? 30 : nil }
             ),
@@ -218,7 +218,7 @@ final class ImportCandidateViewportTests: XCTestCase {
             state.update(
                 rows: [viewportRow(anchorKey, y: 84)],
                 viewport: viewportBounds,
-                contentRevision: 1,
+                content: read(1),
                 revealInProgress: false,
                 positionOf: { _ in nil }
             )
@@ -227,7 +227,7 @@ final class ImportCandidateViewportTests: XCTestCase {
             state.update(
                 rows: [viewportRow(anchorKey, y: 84)],
                 viewport: viewportBounds,
-                contentRevision: 2,
+                content: read(2),
                 revealInProgress: false,
                 positionOf: { $0 == anchorKey ? 30 : nil }
             ),
@@ -238,7 +238,7 @@ final class ImportCandidateViewportTests: XCTestCase {
             state.update(
                 rows: [viewportRow(viewportCandidateKey(45), y: 84)],
                 viewport: viewportBounds,
-                contentRevision: 2,
+                content: read(2),
                 revealInProgress: false,
                 positionOf: { _ in nil }
             )
@@ -248,7 +248,7 @@ final class ImportCandidateViewportTests: XCTestCase {
             state.update(
                 rows: [viewportRow(viewportCandidateKey(45), y: 84)],
                 viewport: viewportBounds,
-                contentRevision: 3,
+                content: read(3),
                 revealInProgress: false,
                 positionOf: { $0 == anchorKey ? 30 : 45 }
             ),
@@ -265,7 +265,7 @@ final class ImportCandidateViewportTests: XCTestCase {
             state.update(
                 rows: [viewportRow(anchorKey, y: 84)],
                 viewport: viewportBounds,
-                contentRevision: 1,
+                content: read(1),
                 revealInProgress: false,
                 positionOf: { _ in nil }
             )
@@ -274,7 +274,7 @@ final class ImportCandidateViewportTests: XCTestCase {
             state.update(
                 rows: [viewportRow(anchorKey, y: 84)],
                 viewport: viewportBounds,
-                contentRevision: 2,
+                content: read(2),
                 revealInProgress: false,
                 positionOf: { $0 == anchorKey ? 30 : nil }
             ),
@@ -286,7 +286,7 @@ final class ImportCandidateViewportTests: XCTestCase {
             state.update(
                 rows: [viewportRow(scrolledKey, y: 84)],
                 viewport: viewportBounds,
-                contentRevision: 2,
+                content: read(2),
                 revealInProgress: false,
                 positionOf: { _ in nil }
             )
@@ -296,7 +296,7 @@ final class ImportCandidateViewportTests: XCTestCase {
             state.update(
                 rows: [viewportRow(scrolledKey, y: 84)],
                 viewport: viewportBounds,
-                contentRevision: 3,
+                content: read(3),
                 revealInProgress: false,
                 positionOf: { $0 == scrolledKey ? 45 : 30 }
             ),
@@ -317,7 +317,7 @@ final class ImportCandidateViewportTests: XCTestCase {
                     )
                 ],
                 viewport: CGRect(x: 0, y: 0, width: 400, height: 600),
-                contentRevision: 1,
+                content: read(1),
                 revealInProgress: false,
                 positionOf: { _ in nil }
             )
@@ -331,7 +331,7 @@ final class ImportCandidateViewportTests: XCTestCase {
                     )
                 ],
                 viewport: CGRect(x: 0, y: 0, width: 400, height: 600),
-                contentRevision: 2,
+                content: read(2),
                 revealInProgress: true,
                 positionOf: { _ in nil }
             )
@@ -345,7 +345,7 @@ final class ImportCandidateViewportTests: XCTestCase {
                     )
                 ],
                 viewport: CGRect(x: 0, y: 0, width: 400, height: 600),
-                contentRevision: 2,
+                content: read(2),
                 revealInProgress: true,
                 positionOf: { _ in nil }
             )
@@ -360,14 +360,90 @@ final class ImportCandidateViewportTests: XCTestCase {
                     )
                 ],
                 viewport: CGRect(x: 0, y: 0, width: 400, height: 600),
-                contentRevision: 3,
+                content: read(3),
                 revealInProgress: false,
                 positionOf: { $0 == targetKey ? targetIndex : nil }
             ),
             targetIndex
         )
     }
+}
 
+// MARK: - A list narrowed anew
+
+extension ImportCandidateViewportTests {
+    /// Narrowed anew — the text changed — the list opens at its top, where
+    /// the first rows and their group header are, not at the row it showed
+    /// before.
+    func testANarrowedListOpensAtItsTop() {
+        var state = ImportCandidateListViewport()
+        let anchorKey = viewportCandidateKey(30)
+        let typed = BridgeImportListNarrowing(
+            tab: .pending,
+            filterText: "melv",
+            pendingFilters: []
+        )
+        XCTAssertNil(
+            state.update(
+                rows: [viewportRow(anchorKey, y: 84)],
+                viewport: viewportBounds,
+                content: read(1),
+                revealInProgress: false,
+                positionOf: { _ in nil }
+            )
+        )
+        XCTAssertEqual(
+            state.update(
+                rows: [viewportRow(anchorKey, y: 84)],
+                viewport: viewportBounds,
+                content: ImportCandidateListContentRead(
+                    revision: 2,
+                    narrowing: typed,
+                    firstSelected: nil
+                ),
+                revealInProgress: false,
+                positionOf: { $0 == anchorKey ? 30 : nil }
+            ),
+            0
+        )
+    }
+
+    /// Narrowed anew with a selected row still in the result, the list shows
+    /// that row.
+    func testANarrowedListKeepsTheSelectedRowInView() {
+        var state = ImportCandidateListViewport()
+        XCTAssertNil(
+            state.update(
+                rows: [viewportRow(viewportCandidateKey(30), y: 84)],
+                viewport: viewportBounds,
+                content: ImportCandidateListContentRead(
+                    revision: 1,
+                    narrowing: viewportNarrowing,
+                    firstSelected: 30
+                ),
+                revealInProgress: false,
+                positionOf: { _ in nil }
+            )
+        )
+        XCTAssertEqual(
+            state.update(
+                rows: [viewportRow(viewportCandidateKey(30), y: 84)],
+                viewport: viewportBounds,
+                content: ImportCandidateListContentRead(
+                    revision: 2,
+                    narrowing: BridgeImportListNarrowing(
+                        tab: .pending,
+                        filterText: "",
+                        pendingFilters: [.needsYou]
+                    ),
+                    firstSelected: 4
+                ),
+                revealInProgress: false,
+                positionOf: { _ in 30 }
+            ),
+            4
+        )
+    }
 }
 
 // MARK: - Fixtures and layout helpers
@@ -460,6 +536,25 @@ extension ImportCandidateViewportTests {
 
     private func viewportCandidateKey(_ index: Int) -> String {
         "/library/release-\(index)"
+    }
+
+    /// A delivery at `revision` under the narrowing a test keeps the same,
+    /// with no selected row.
+    private func read(_ revision: UInt64) -> ImportCandidateListContentRead {
+        ImportCandidateListContentRead(
+            revision: revision,
+            narrowing: viewportNarrowing,
+            firstSelected: nil
+        )
+    }
+
+    /// What the list is narrowed by while a test keeps it narrowed the same.
+    private var viewportNarrowing: BridgeImportListNarrowing {
+        BridgeImportListNarrowing(
+            tab: .pending,
+            filterText: "",
+            pendingFilters: []
+        )
     }
 
     /// The list's frame below the sidebar's 84-point header.

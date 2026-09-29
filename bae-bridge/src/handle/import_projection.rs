@@ -567,6 +567,7 @@ impl crate::types::BridgeImportQueueSummary {
             pending_filters,
             narrowed,
             narrowing,
+            first_selected_position,
         } = summary;
         let bae_core::import::FolderScanProgress { statuses, activity } = folder_scans;
         Self {
@@ -594,6 +595,7 @@ impl crate::types::BridgeImportQueueSummary {
                 .collect(),
             narrowed: narrowed.map(crate::types::BridgeNarrowedCount::from_core),
             narrowing: crate::types::BridgeImportListNarrowing::from_core(narrowing),
+            first_selected_position,
         }
     }
 }

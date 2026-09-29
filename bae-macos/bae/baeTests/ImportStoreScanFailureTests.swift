@@ -24,7 +24,8 @@ struct ImportStoreScanFailureTests {
                 tab: .pending,
                 filterText: "",
                 pendingFilters: []
-            )
+            ),
+            firstSelectedPosition: nil
         )
     }
 

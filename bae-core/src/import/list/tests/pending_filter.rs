@@ -799,3 +799,37 @@ fn the_summary_names_the_filter_its_count_is_for() {
     );
     assert!(summary.narrowed.is_some());
 }
+
+/// The summary says where the first selected row sits in the list it
+/// shows, which a list narrowed anew keeps in view; none while no selected
+/// row is in it.
+#[test]
+fn the_summary_places_the_first_selected_row_in_the_list_it_shows() {
+    let mut rows = every_kind();
+    rows.selected.insert(key("Unidentified"));
+    let not_looked_up = flattened(
+        &rows,
+        &ImportListView {
+            pending_filters: checked(&[PendingState::NotLookedUp]),
+            ..ImportListView::default()
+        },
+    );
+    let position = not_looked_up
+        .summary
+        .first_selected_position
+        .expect("the selected row is shown") as usize;
+    match not_looked_up.items[position] {
+        ItemRef::Candidate { index, .. } => {
+            assert_eq!(not_looked_up.rows[index].row.candidate_key, key("Unidentified"))
+        }
+        other => panic!("the position names a header or invalid row: {other:?}"),
+    }
+    let needs_you = flattened(
+        &rows,
+        &ImportListView {
+            pending_filters: checked(&[PendingState::NeedsYou]),
+            ..ImportListView::default()
+        },
+    );
+    assert_eq!(needs_you.summary.first_selected_position, None);
+}
