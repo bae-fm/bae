@@ -338,6 +338,9 @@ pub enum BridgeIdentifyState {
         folder_check: Option<crate::types::BridgeFolderCheck>,
         /// Whether the verdict picks its one release unattended.
         picks_unattended: bool,
+        /// Whether the offered rows are several pressings of one album, which
+        /// the folder can be linked to with its pressing unknown.
+        offers_shared_album: bool,
     },
     NotFoundAnywhere {
         run: Option<BridgeIdentifyRun>,
@@ -369,6 +372,9 @@ pub enum BridgeIdentifyState {
         agreements: std::collections::HashMap<String, BridgeAgreements>,
         narrowed_out_count: u32,
         catalog_agreements: Vec<BridgeCatalogAgreement>,
+        /// Whether the offered rows are several pressings of one album, as
+        /// for `Found`.
+        offers_shared_album: bool,
     },
 }
 

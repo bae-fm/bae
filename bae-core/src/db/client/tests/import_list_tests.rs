@@ -221,10 +221,12 @@ async fn a_picked_row_leads_with_the_stored_release() {
     crate::import::CandidatePreparations::new(db.clone())
         .replace_link(
             &candidate.files.content_hash(),
-            Some(&crate::import::ReleaseLink {
-                record: crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-picked"),
-                partners: vec![],
-            }),
+            Some(&crate::import::ReleaseLink::Pressing(
+                crate::import::PressingLink {
+                    record: crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-picked"),
+                    partners: vec![],
+                },
+            )),
         )
         .await
         .unwrap();

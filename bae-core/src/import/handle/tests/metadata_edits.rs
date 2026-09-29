@@ -436,7 +436,7 @@ async fn discogs_artist_image_is_prepared_with_the_candidate_and_materialized_by
     );
 
     handle
-        .select_candidate_release(key.clone(), crate::import::ReleaseLink {
+        .select_candidate_release(key.clone(), crate::import::PressingLink {
                 record: crate::import::MetadataRef::new(
                     crate::import::Catalog::Discogs,
                     source_release_id.clone(),

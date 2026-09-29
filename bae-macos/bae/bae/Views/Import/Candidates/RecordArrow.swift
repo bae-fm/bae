@@ -24,10 +24,10 @@ struct RecordArrow: View {
 }
 
 extension BridgeTriageReading {
-    /// Whether the candidate's draft was read from a catalog's release.
+    /// Whether the candidate is linked to a catalog's pressing or album.
     var readFromRecord: Bool {
         switch self {
-        case .identified: true
+        case .identified, .identifiedAlbum: true
         case .prefilled, .unidentified: false
         }
     }

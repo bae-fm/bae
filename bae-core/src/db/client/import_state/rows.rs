@@ -10,7 +10,7 @@ use super::verdict_rows::{
     StoredMatches, VERDICT_COLUMNS,
 };
 use super::*;
-use crate::import::{Catalog, MetadataProvenance, MetadataRef, ReleaseLink};
+use crate::import::{AlbumLink, Catalog, MetadataProvenance, MetadataRef, PressingLink, ReleaseLink};
 use std::str::FromStr;
 
 type CandidateProvenances = HashMap<String, MetadataProvenance>;
@@ -122,32 +122,55 @@ pub(super) fn replace_release_link(
     content_hash: &str,
     link: Option<&ReleaseLink>,
 ) -> Result<(), DbError> {
-    // The partners hang off the link row, so this clears them too.
+    // The partner and album rows hang off the link row, so this clears them
+    // too.
     sql.execute(
         "DELETE FROM import_candidate_release_link WHERE content_hash = ?",
         [content_hash],
     )?;
-    let Some(link) = link else {
-        return Ok(());
-    };
-    sql.execute(
-        "INSERT INTO import_candidate_release_link (content_hash, source, release_id) \
-         VALUES (?, ?, ?)",
-        params![content_hash, link.record.catalog.as_str(), link.record.key],
-    )?;
-    for partner in &link.partners {
-        sql.execute(
-            "INSERT INTO import_candidate_release_link_partner \
-                 (content_hash, source, release_id) \
-             VALUES (?, ?, ?)",
-            params![content_hash, partner.catalog.as_str(), partner.key],
-        )?;
+    match link {
+        None => {}
+        Some(ReleaseLink::Pressing(pressing)) => {
+            sql.execute(
+                "INSERT INTO import_candidate_release_link \
+                     (content_hash, kind, source, release_id) \
+                 VALUES (?, 'pressing', ?, ?)",
+                params![
+                    content_hash,
+                    pressing.record.catalog.as_str(),
+                    pressing.record.key
+                ],
+            )?;
+            for partner in &pressing.partners {
+                sql.execute(
+                    "INSERT INTO import_candidate_release_link_partner \
+                         (content_hash, kind, source, release_id) \
+                     VALUES (?, 'pressing', ?, ?)",
+                    params![content_hash, partner.catalog.as_str(), partner.key],
+                )?;
+            }
+        }
+        Some(ReleaseLink::Album(album)) => {
+            sql.execute(
+                "INSERT INTO import_candidate_release_link (content_hash, kind) \
+                 VALUES (?, 'album')",
+                [content_hash],
+            )?;
+            for album in album.albums() {
+                sql.execute(
+                    "INSERT INTO import_candidate_release_link_album \
+                         (content_hash, kind, catalog, album_id) \
+                     VALUES (?, 'album', ?, ?)",
+                    params![content_hash, album.catalog.as_str(), album.key],
+                )?;
+            }
+        }
     }
     Ok(())
 }
 
 /// Every candidate's release link, or the one `only` names, each with its
-/// partners.
+/// partners or its albums.
 pub(crate) fn load_release_links_on(
     sql: &SqlReadContext<'_>,
     only: Option<&str>,
@@ -173,17 +196,30 @@ pub(crate) fn load_release_link_rows_on(
         named_params! { ":only": only },
         read,
     )?;
-    let rows = sql.query(
-        "SELECT content_hash, source, release_id FROM import_candidate_release_link \
+    let album_rows = sql.query(
+        "SELECT content_hash, catalog, album_id FROM import_candidate_release_link_album \
          WHERE :only IS NULL OR content_hash = :only",
         named_params! { ":only": only },
         read,
     )?;
+    let rows = sql.query(
+        "SELECT content_hash, kind, source, release_id FROM import_candidate_release_link \
+         WHERE :only IS NULL OR content_hash = :only",
+        named_params! { ":only": only },
+        |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, Option<String>>(2)?,
+                row.get::<_, Option<String>>(3)?,
+            ))
+        },
+    )?;
     Ok(move || {
-        let reference = |source: String, release_id: String| {
+        let reference = |catalog: String, key: String| {
             Ok::<_, DbError>(MetadataRef::new(
-                Catalog::from_str(&source).map_err(DbError::Message)?,
-                release_id,
+                Catalog::from_str(&catalog).map_err(DbError::Message)?,
+                key,
             ))
         };
         let mut partners: HashMap<String, Vec<MetadataRef>> = HashMap::new();
@@ -193,11 +229,31 @@ pub(crate) fn load_release_link_rows_on(
                 .or_default()
                 .push(reference(source, release_id)?);
         }
+        let mut albums: HashMap<String, Vec<MetadataRef>> = HashMap::new();
+        for (content_hash, catalog, album_id) in album_rows {
+            albums
+                .entry(content_hash)
+                .or_default()
+                .push(reference(catalog, album_id)?);
+        }
         let mut out = HashMap::with_capacity(rows.len());
-        for (content_hash, source, release_id) in rows {
-            let link = ReleaseLink {
-                record: reference(source, release_id)?,
-                partners: partners.remove(&content_hash).unwrap_or_default(),
+        for (content_hash, kind, source, release_id) in rows {
+            let link = match (kind.as_str(), source, release_id) {
+                ("pressing", Some(source), Some(release_id)) => {
+                    ReleaseLink::Pressing(PressingLink {
+                        record: reference(source, release_id)?,
+                        partners: partners.remove(&content_hash).unwrap_or_default(),
+                    })
+                }
+                ("album", None, None) => ReleaseLink::Album(
+                    AlbumLink::new(albums.remove(&content_hash).unwrap_or_default())
+                        .ok_or_else(|| {
+                            DbError::Message(format!(
+                                "{content_hash} is linked to an album no catalog names"
+                            ))
+                        })?,
+                ),
+                (other, _, _) => return Err(unreadable("release link", other)),
             };
             out.insert(content_hash, link);
         }

@@ -70,7 +70,7 @@ impl CandidatePreparations {
         prep.signals = Some(verdict.signals.clone());
         if let Some(pick) = &verdict.pick {
             prep.author = MetadataAuthor::Identification;
-            prep.link = Some(pick.link.clone());
+            prep.link = Some(crate::import::ReleaseLink::Pressing(pick.link.clone()));
             let mut metadata = pick.metadata.clone();
             settle_cover(&mut metadata, &mut prep.metadata);
             prep.assets_prepared = assets_are_prepared(&metadata);
@@ -309,12 +309,12 @@ impl CandidatePreparations {
         watched_folder_path: &str,
         read: &CandidateAsRead,
         folder_path: &str,
-        link: &crate::import::ReleaseLink,
+        link: &crate::import::PressingLink,
         metadata: &crate::import::CandidateMetadataDraft,
         settled_by_choice: crate::identify::TerminalVerdict,
     ) -> Result<u64, LibraryError> {
         let mut prep = self.loaded_at(read).await?;
-        prep.link = Some(link.clone());
+        prep.link = Some(crate::import::ReleaseLink::Pressing(link.clone()));
         let scanned = ScannedCandidateKey {
             watched_folder_path: watched_folder_path.to_string(),
             candidate_path: folder_path.to_string(),
@@ -333,6 +333,63 @@ impl CandidatePreparations {
         }
         self.apply_metadata(prep, Some(scanned), folder_path, metadata.clone(), None)
             .await
+    }
+
+    /// The person could not tell which of the pressings the stored verdict
+    /// offered their copy is: the candidate is linked to the album those
+    /// pressings are of, and `draft` — the draft with what they agree on in
+    /// it — replaces the draft, with the artist answers it needs, in one
+    /// write. What the draft was read from stays as it is: the fields the
+    /// pressings disagree on are still read from there.
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) async fn apply_shared_album(
+        &self,
+        watched_folder_path: &str,
+        read: &CandidateAsRead,
+        folder_path: &str,
+        link: &crate::import::AlbumLink,
+        draft: crate::import::CandidateDraft,
+        source_discogs_artist_ids: std::collections::BTreeSet<String>,
+        artist_images: Vec<crate::import::PreparedArtistImage>,
+    ) -> Result<u64, LibraryError> {
+        let mut prep = self.loaded_at(read).await?;
+        // Linking the album answers the folder, so the person keeping their
+        // own draft over the verdict stands no more.
+        let identification = prep.identification.as_mut().ok_or_else(|| {
+            LibraryError::Import(format!(
+                "{} has no lookup whose pressings to link the album of",
+                read.content_hash
+            ))
+        })?;
+        identification.kept_own_draft = false;
+        let expected = CandidateSaveExpectation {
+            edit_revision: prep.file_edits.revision,
+            metadata_revision: prep.metadata_revision,
+            scanned: Some(CandidateScanExpectation::Current(ScannedCandidateKey {
+                watched_folder_path: watched_folder_path.to_string(),
+                candidate_path: folder_path.to_string(),
+            })),
+        };
+        prep.link = Some(crate::import::ReleaseLink::Album(link.clone()));
+        prep.folder_path = folder_path.to_string();
+        prep.author = MetadataAuthor::Person;
+        prep.metadata.draft = draft;
+        prep.metadata.source_discogs_artist_ids = source_discogs_artist_ids;
+        prep.metadata.assets.artist_images = artist_images;
+        prep.assets_prepared = assets_are_prepared(&prep.metadata);
+        prep.metadata_revision += 1;
+        let revision = prep.metadata_revision;
+        match self
+            .database
+            .save_candidate_preparation(prep, expected, CandidateSaveExtras::default())
+            .await?
+        {
+            CandidateSaved::Landed(_) => Ok(revision),
+            CandidateSaved::Superseded => Err(LibraryError::Import(format!(
+                "{} changed while its album was being linked",
+                read.content_hash
+            ))),
+        }
     }
 
     /// The person keeps their own draft over what the stored verdict offered:

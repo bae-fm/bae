@@ -159,7 +159,7 @@ pub struct CandidatePreparation {
     /// The draft, its provenance, its cover, and the provider answers
     /// prepared for it.
     pub metadata: CandidateMetadataDraft,
-    /// The catalog release the candidate is linked to. Independent of
+    /// What the candidate is linked to in the catalogs. Independent of
     /// `metadata`: no draft write changes it.
     pub link: Option<crate::import::ReleaseLink>,
     /// Whether `metadata.assets` is a complete answer set for this draft: an

@@ -5,7 +5,7 @@
 
 use super::*;
 use crate::import::{
-    ImportError, LookupChoiceEdit, PaneCommand, PaneMove, PaneOutcome, ReleaseLink, SearchQuery,
+    ImportError, LookupChoiceEdit, PaneCommand, PaneMove, PaneOutcome, PressingLink, SearchQuery,
 };
 
 impl AppServices {
@@ -44,7 +44,7 @@ impl AppServices {
     pub async fn pane_select_release(
         &self,
         candidate_key: String,
-        link: ReleaseLink,
+        link: PressingLink,
     ) -> Result<PaneOutcome, ImportError> {
         let import = &self.inner.import;
         import.clear_pane_failure(&candidate_key).await?;
@@ -107,6 +107,29 @@ impl AppServices {
                 candidate_key,
                 PaneCommand::KeepOwnDraft,
                 import.keep_candidate_draft(candidate_key.to_string()),
+            )
+            .await?;
+        if outcome == PaneOutcome::Done {
+            import
+                .move_candidate_pane(candidate_key, PaneMove::Picked)
+                .await?;
+        }
+        Ok(outcome)
+    }
+
+    /// Link the candidate to the album the pressings its lookup offers are
+    /// of, its pressing unknown, taking what they agree on into its draft,
+    /// and go back to the draft.
+    pub async fn pane_link_shared_album(
+        &self,
+        candidate_key: &str,
+    ) -> Result<PaneOutcome, ImportError> {
+        let import = &self.inner.import;
+        let outcome = import
+            .run_pane_command(
+                candidate_key,
+                PaneCommand::LinkSharedAlbum,
+                import.link_candidate_shared_album(candidate_key.to_string()),
             )
             .await?;
         if outcome == PaneOutcome::Done {

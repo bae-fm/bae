@@ -495,7 +495,7 @@ pub struct AutomationReleaseGroupSource {
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationPressing {
     pub releases: Vec<AutomationMetadataResult>,
-    pub pick: AutomationReleaseLink,
+    pub pick: AutomationPressingLink,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -684,9 +684,9 @@ pub struct CandidateSkipSetInput {
     pub skipped: bool,
 }
 
-/// The catalog release a pick links a candidate to.
+/// The pressing a pick links a candidate to.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-pub struct AutomationReleaseLink {
+pub struct AutomationPressingLink {
     /// The catalog's release the draft is read from.
     pub record: AutomationMetadataRef,
     /// The other catalogs' releases the picked pressing paired with, which
@@ -704,7 +704,7 @@ pub struct AutomationMetadataRef {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct CandidateReleaseInput {
     pub candidate_key: String,
-    pub link: AutomationReleaseLink,
+    pub link: AutomationPressingLink,
 }
 
 /// One text field of a candidate's metadata form. Years are text because the

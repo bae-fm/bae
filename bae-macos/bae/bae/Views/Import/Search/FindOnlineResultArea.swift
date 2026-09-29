@@ -32,7 +32,7 @@ enum FindOnlineResultArea: Equatable {
             self = .notStarted
         case .triangulating:
             self = .identifying
-        case .found(_, let groups, _, _, _, _, _, _, _):
+        case .found(_, let groups, _, _, _, _, _, _, _, _):
             self = groups.isEmpty ? .nothingFound : .groups
         case .notFoundAnywhere:
             self = .nothingFound
@@ -40,7 +40,7 @@ enum FindOnlineResultArea: Equatable {
             self = run == nil ? .noSignals : .awaitingCatalog
         case .error(let failure):
             self = .error(failure)
-        case .failed(_, _, let groups, _, _, _, _):
+        case .failed(_, _, let groups, _, _, _, _, _):
             // One source failing leaves the other's matches standing: show
             // them, with the failure named under the list.
             self = groups.isEmpty ? .failureLines : .groups

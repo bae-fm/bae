@@ -105,7 +105,7 @@ async fn a_pick_stores_the_result_and_automatic_identification_leaves_it_alone()
 
     fixture
         .import
-        .select_candidate_release(key.clone(), crate::import::ReleaseLink {
+        .select_candidate_release(key.clone(), crate::import::PressingLink {
                 record: crate::import::MetadataRef::new(
                     crate::import::Catalog::MusicBrainz,
                     "mb-chosen".to_string(),
@@ -145,13 +145,13 @@ async fn a_pick_stores_the_result_and_automatic_identification_leaves_it_alone()
             .await
             .expect("the candidate is still stored")
             .release_link,
-        Some(crate::import::ReleaseLink {
+        Some(crate::import::ReleaseLink::Pressing(crate::import::PressingLink {
             record: crate::import::MetadataRef::new(
                 crate::import::Catalog::MusicBrainz,
                 "mb-chosen".to_string()
             ),
             partners: Vec::new(),
-        })
+        }))
     );
 }
 

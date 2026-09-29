@@ -17,7 +17,7 @@ use bae_core::import::search::{ImportSearchReleaseDetail, MetadataResult};
 use bae_core::import::{
     CandidateEditField, CandidateImportStatus, CandidateRuntimeSnapshot, Catalog, CoverSelection,
     GroupedSearchResults, ImportCandidateDetail, ImportError, ImportInFlight, ImportListItem,
-    ImportListView, ImportPhase, ImportStep, MetadataRef, PrepareStep, ReleaseLink, ReleaseReseed,
+    ImportListView, ImportPhase, ImportStep, MetadataRef, PrepareStep, PressingLink, ReleaseReseed,
     SearchQuery, TrackUserEdit, TriageTab,
 };
 use bae_core::library::{AppServices, LibraryError};

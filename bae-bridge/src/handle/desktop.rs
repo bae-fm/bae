@@ -230,6 +230,15 @@ forward! {
             ))
         }
 
+        /// Link the candidate to the album the pressings its lookup offers are
+        /// of, its pressing unknown, taking what they agree on into its draft
+        /// — a pane command that goes back to the draft.
+        fn link_candidate_shared_album(candidate_key: String) -> crate::types::BridgePaneOutcome {
+            Ok(crate::types::BridgePaneOutcome::from_core(
+                this.services.pane_link_shared_album(&candidate_key).await?,
+            ))
+        }
+
         /// Link the candidate to the release `link` names and read its draft
         /// from it, a pane command. The release's documents land before the
         /// link does, so the next value draws whole. Identification writes the
@@ -239,7 +248,7 @@ forward! {
         /// to say.
         fn select_candidate_release(
             candidate_key: String,
-            link: crate::types::BridgeReleaseLink,
+            link: crate::types::BridgePressingLink,
         ) -> crate::types::BridgePaneOutcome {
             Ok(crate::types::BridgePaneOutcome::from_core(
                 this.services

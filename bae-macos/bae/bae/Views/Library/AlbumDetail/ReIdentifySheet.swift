@@ -168,6 +168,8 @@ struct ReIdentifySheet: View {
                     onOpenSection: { openSection = $0 },
                     // A library release has no folder draft to keep.
                     onKeepOwnDraft: nil,
+                    // Nor a folder to link to an album.
+                    onLinkSharedAlbum: nil,
                     liveSignals: signals
                 ),
                 openSettings: {

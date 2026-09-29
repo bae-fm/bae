@@ -244,7 +244,7 @@ private func detail(
         artistResolutions: [],
         metadataDraftIsBlank: false,
         metadataProvenance: MappingFixtures.provenance,
-        releaseLink: MappingFixtures.link,
+        releaseLink: MappingFixtures.releaseLink,
         metadataAuthor: .person,
         metadataRevision: 1,
         mapping: BridgeMappingTable(

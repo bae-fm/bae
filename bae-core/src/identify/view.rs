@@ -19,6 +19,7 @@ use crate::db::LibraryStatus;
 use crate::import::release_group::{
     group_formed_rows, group_results, Judgements, Pressing, ReleaseGroup,
 };
+use crate::import::shared_album::SharedAlbum;
 use crate::import::Catalog;
 use crate::pressing::ReleaseLabel;
 use crate::signals::{ArtworkScan, DiscIdSignal, LookupFailure};
@@ -225,6 +226,9 @@ pub enum IdentifyStateView {
         folder_check: Option<super::FolderCheck>,
         /// Whether the verdict picks its one release unattended.
         picks_unattended: bool,
+        /// Whether the offered rows are several pressings of one album,
+        /// which the folder can be linked to with its pressing unknown.
+        offers_shared_album: bool,
     },
 
     NotFoundAnywhere {
@@ -252,6 +256,9 @@ pub enum IdentifyStateView {
         narrowed_out_count: u32,
         /// The Catalog # row's chips.
         catalog_agreements: Vec<CatalogAgreementView>,
+        /// Whether the offered rows are several pressings of one album, as
+        /// for `Found`.
+        offers_shared_album: bool,
     },
 }
 
@@ -305,6 +312,7 @@ impl From<IdentifyState> for IdentifyStateView {
                     catalog_agreements,
                     folder_check: summary.folder_check(),
                     picks_unattended: summary.picks_unattended(),
+                    offers_shared_album: folded.offers_shared_album,
                 }
             }
 
@@ -344,6 +352,7 @@ impl From<IdentifyState> for IdentifyStateView {
                     agreements: folded.agreements,
                     narrowed_out_count: folded.narrowed_out_count,
                     catalog_agreements,
+                    offers_shared_album: folded.offers_shared_album,
                 }
             }
         }
@@ -391,18 +400,21 @@ struct Folded {
     library_statuses: Vec<LibraryStatus>,
     agreements: Vec<(String, RowAgreements)>,
     narrowed_out_count: u32,
+    /// Whether the offered rows are several pressings of one album.
+    offers_shared_album: bool,
+}
+
+/// A state's answers as cards, and what the cards' badges are read from.
+struct Cards {
+    groups: Vec<ReleaseGroup>,
+    judgements: Judgements,
+    named_notes: Vec<super::combine::NamedNote>,
 }
 
 /// Judge the offered and set-aside releases against the candidate's text and
 /// fold both into album cards as one grouping, so an album is one card either
-/// way. Badges belong to a row, so every release id in a row answers with the
-/// row's badges.
-fn fold(
-    findings: Findings,
-    library_statuses: LibraryStatuses,
-    text: &CandidateText,
-    track_count: u32,
-) -> Folded {
+/// way.
+fn cards(findings: Findings, text: &CandidateText, track_count: u32) -> Cards {
     let facts = FolderFacts::of(text, findings.releases());
     // The medium conflict is stated by the folder check, not here.
     let Findings {
@@ -423,13 +435,59 @@ fn fold(
             .collect::<Vec<_>>(),
         Some(track_count),
     );
-    let cards = group_formed_rows(
+    let groups = group_formed_rows(
         offered,
         &pressings,
         set_aside,
         &narrowed_out.pressings,
         Some(track_count),
     );
+    Cards {
+        groups,
+        judgements,
+        named_notes,
+    }
+}
+
+/// The album a stored verdict's offered rows are several pressings of, as
+/// the candidate's text ranks and cards them: what the pane offers to link
+/// the folder to, its pressing unknown. `None` for a verdict that offers no
+/// rows.
+pub(crate) fn shared_album_of(
+    verdict: super::TerminalVerdict,
+    text: &CandidateText,
+) -> Option<SharedAlbum> {
+    match verdict {
+        super::TerminalVerdict::Found {
+            findings,
+            track_count,
+            ..
+        }
+        | super::TerminalVerdict::Failed {
+            findings,
+            track_count,
+            ..
+        } => SharedAlbum::of(&cards(findings, text, track_count).groups),
+        super::TerminalVerdict::NotFoundAnywhere { .. }
+        | super::TerminalVerdict::ManualOnly { .. }
+        | super::TerminalVerdict::Error { .. } => None,
+    }
+}
+
+/// A state's answers as cards, with every row's library status and badges.
+/// Badges belong to a row, so every release id in a row answers with the
+/// row's badges.
+fn fold(
+    findings: Findings,
+    library_statuses: LibraryStatuses,
+    text: &CandidateText,
+    track_count: u32,
+) -> Folded {
+    let Cards {
+        groups: cards,
+        judgements,
+        named_notes,
+    } = cards(findings, text, track_count);
     let named_note = |pressing: &Pressing| {
         pressing.releases.iter().find_map(|release| {
             named_notes
@@ -460,6 +518,7 @@ fn fold(
         .map(|group| group.narrowed_out().count() as u32)
         .sum();
     Folded {
+        offers_shared_album: SharedAlbum::of(&cards).is_some(),
         groups: cards,
         library_statuses: library_statuses
             .matches

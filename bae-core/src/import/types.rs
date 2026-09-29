@@ -211,16 +211,77 @@ pub enum MetadataProvenance {
     FileMetadata,
 }
 
-/// The catalog release an import candidate is linked to: the pressing a
-/// person picked, or identification picked unattended, for its folder.
+/// What an import candidate is linked to in the catalogs: the pressing a
+/// person picked, or identification picked unattended, for its folder; or,
+/// where the person could not tell which of the pressings offered their copy
+/// is, the album those pressings are of.
 ///
 /// Independent of the draft. Only explicit actions set or clear it — a pick,
-/// identification applying its pick, keeping the folder's own draft over the
-/// lookup, unlinking — so editing, clearing, or re-reading the draft leaves
-/// it standing. Importing takes the draft's values and this link's catalog
-/// identities.
+/// identification applying its pick, linking the album, keeping the
+/// folder's own draft over the lookup, unlinking — so editing, clearing, or
+/// re-reading the draft leaves it standing. Importing takes the draft's
+/// values and this link's catalog identities.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ReleaseLink {
+pub enum ReleaseLink {
+    Pressing(PressingLink),
+    Album(AlbumLink),
+}
+
+impl ReleaseLink {
+    /// The pressing the link names, where it names one.
+    pub fn pressing(&self) -> Option<&PressingLink> {
+        match self {
+            Self::Pressing(pressing) => Some(pressing),
+            Self::Album(_) => None,
+        }
+    }
+}
+
+/// The album a candidate is linked to while its pressing is unknown: one
+/// album per catalog that files it — a MusicBrainz release group, a Discogs
+/// master — in catalog order, at least one.
+///
+/// It claims no pressing, not even one of the pressings it was chosen among:
+/// the folder's copy may be one no catalog lists.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AlbumLink {
+    albums: Vec<MetadataRef>,
+}
+
+impl AlbumLink {
+    /// The link naming `albums`, put in catalog order. `None` for no album,
+    /// or for two albums of one catalog: a link names the album once per
+    /// catalog.
+    pub fn new(albums: impl IntoIterator<Item = MetadataRef>) -> Option<Self> {
+        let mut albums: Vec<MetadataRef> = albums.into_iter().collect();
+        albums.sort_by_key(|album| {
+            Catalog::ALL
+                .iter()
+                .position(|catalog| *catalog == album.catalog)
+        });
+        let repeated = albums
+            .windows(2)
+            .any(|pair| pair[0].catalog == pair[1].catalog);
+        (!albums.is_empty() && !repeated).then_some(Self { albums })
+    }
+
+    /// The album in each catalog, in catalog order.
+    pub fn albums(&self) -> &[MetadataRef] {
+        &self.albums
+    }
+
+    /// Every catalog's record of the album, in catalog order: what an import
+    /// of a candidate linked to it stores.
+    pub fn records(&self) -> Vec<ReleaseRecord> {
+        self.albums.iter().map(ReleaseRecord::album).collect()
+    }
+}
+
+/// The pressing a candidate is linked to: the row a person picked, or
+/// identification picked unattended, under every catalog's record of it that
+/// the pick claims.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PressingLink {
     /// The catalog's release the pick names first.
     pub record: MetadataRef,
     /// The other catalogs' releases the picked pressing paired with. Find
@@ -235,7 +296,7 @@ pub struct ReleaseLink {
     pub partners: Vec<MetadataRef>,
 }
 
-impl ReleaseLink {
+impl PressingLink {
     /// Every release the link claims, the primary first.
     pub fn claimed(&self) -> impl Iterator<Item = &MetadataRef> {
         std::iter::once(&self.record).chain(&self.partners)
@@ -413,7 +474,7 @@ pub enum ReleaseReseed {
     ExternalRelease {
         release_ref: MetadataRef,
         /// The other sources' releases the picked pressing paired with — the
-        /// same claim a [`ReleaseLink`] records for an import candidate.
+        /// same claim a [`PressingLink`] records for an import candidate.
         partners: Vec<MetadataRef>,
     },
     FileMetadata,
@@ -666,7 +727,7 @@ pub struct ImportCommand {
     pub destination: ImportDestination,
     /// The release a test import picks for the candidate first.
     #[cfg(any(test, feature = "test-utils"))]
-    pub pick: Option<ReleaseLink>,
+    pub pick: Option<PressingLink>,
     /// Whether a test import then reads the draft from the files' tags.
     #[cfg(any(test, feature = "test-utils"))]
     pub read_file_tags: bool,

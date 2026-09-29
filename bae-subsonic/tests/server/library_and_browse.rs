@@ -248,7 +248,7 @@ async fn seed_library() -> Library {
             selected_cover: None,
             destination: ImportDestination::Local,
             read_file_tags: false,
-            pick: Some(bae_core::import::ReleaseLink {
+            pick: Some(bae_core::import::PressingLink {
                 record: bae_core::import::MetadataRef::new(Catalog::Discogs, discogs_key),
                 partners: vec![],
             }),

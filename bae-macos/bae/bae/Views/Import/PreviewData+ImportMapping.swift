@@ -461,12 +461,14 @@
                     key: releaseDetailBridge.releaseId
                 )
             ),
-            releaseLink: BridgeReleaseLink(
-                record: BridgeMetadataRef(
-                    catalog: releaseDetailBridge.source,
-                    key: releaseDetailBridge.releaseId
-                ),
-                partners: []
+            releaseLink: .pressing(
+                link: BridgePressingLink(
+                    record: BridgeMetadataRef(
+                        catalog: releaseDetailBridge.source,
+                        key: releaseDetailBridge.releaseId
+                    ),
+                    partners: []
+                )
             ),
             release: releaseDetailBridge,
             edit: confirmEditValues,
@@ -495,12 +497,14 @@
                     key: discogsReleaseDetail.releaseId
                 )
             ),
-            releaseLink: BridgeReleaseLink(
-                record: BridgeMetadataRef(
-                    catalog: discogsReleaseDetail.source,
-                    key: discogsReleaseDetail.releaseId
-                ),
-                partners: []
+            releaseLink: .pressing(
+                link: BridgePressingLink(
+                    record: BridgeMetadataRef(
+                        catalog: discogsReleaseDetail.source,
+                        key: discogsReleaseDetail.releaseId
+                    ),
+                    partners: []
+                )
             ),
             release: discogsReleaseDetail,
             edit: confirmEditValues,
@@ -522,17 +526,19 @@
                     key: releaseDetailBridge.releaseId
                 )
             ),
-            releaseLink: BridgeReleaseLink(
-                record: BridgeMetadataRef(
-                    catalog: releaseDetailBridge.source,
-                    key: releaseDetailBridge.releaseId
-                ),
-                partners: [
-                    BridgeMetadataRef(
-                        catalog: discogsReleaseDetail.source,
-                        key: discogsReleaseDetail.releaseId
-                    )
-                ]
+            releaseLink: .pressing(
+                link: BridgePressingLink(
+                    record: BridgeMetadataRef(
+                        catalog: releaseDetailBridge.source,
+                        key: releaseDetailBridge.releaseId
+                    ),
+                    partners: [
+                        BridgeMetadataRef(
+                            catalog: discogsReleaseDetail.source,
+                            key: discogsReleaseDetail.releaseId
+                        )
+                    ]
+                )
             ),
             release: releaseDetailBridge,
             edit: confirmEditValues,
@@ -580,7 +586,8 @@
                 narrowedOutCount: 0,
                 catalogAgreements: catalogAgreements,
                 folderCheck: nil,
-                picksUnattended: false
+                picksUnattended: false,
+                offersSharedAlbum: false
             )
             return candidate
         }()
@@ -599,12 +606,14 @@
                     key: releaseDetailBridge.releaseId
                 )
             ),
-            releaseLink: BridgeReleaseLink(
-                record: BridgeMetadataRef(
-                    catalog: releaseDetailBridge.source,
-                    key: releaseDetailBridge.releaseId
-                ),
-                partners: []
+            releaseLink: .pressing(
+                link: BridgePressingLink(
+                    record: BridgeMetadataRef(
+                        catalog: releaseDetailBridge.source,
+                        key: releaseDetailBridge.releaseId
+                    ),
+                    partners: []
+                )
             ),
             release: releaseDetailBridge,
             edit: confirmEditValues,
@@ -632,12 +641,14 @@
                     key: moreTracksReleaseDetail.releaseId
                 )
             ),
-            releaseLink: BridgeReleaseLink(
-                record: BridgeMetadataRef(
-                    catalog: moreTracksReleaseDetail.source,
-                    key: moreTracksReleaseDetail.releaseId
-                ),
-                partners: []
+            releaseLink: .pressing(
+                link: BridgePressingLink(
+                    record: BridgeMetadataRef(
+                        catalog: moreTracksReleaseDetail.source,
+                        key: moreTracksReleaseDetail.releaseId
+                    ),
+                    partners: []
+                )
             ),
             release: moreTracksReleaseDetail,
             edit: moreTracksEditValues,
@@ -661,12 +672,14 @@
                     key: releaseDetailBridge.releaseId
                 )
             ),
-            releaseLink: BridgeReleaseLink(
-                record: BridgeMetadataRef(
-                    catalog: releaseDetailBridge.source,
-                    key: releaseDetailBridge.releaseId
-                ),
-                partners: []
+            releaseLink: .pressing(
+                link: BridgePressingLink(
+                    record: BridgeMetadataRef(
+                        catalog: releaseDetailBridge.source,
+                        key: releaseDetailBridge.releaseId
+                    ),
+                    partners: []
+                )
             ),
             release: releaseDetailBridge,
             edit: confirmEditValues,

@@ -8,7 +8,7 @@ import XCTest
 
 private struct ExternalMetadataApplication: Equatable {
     let key: String
-    let link: BridgeReleaseLink
+    let link: BridgePressingLink
 }
 
 @MainActor
@@ -339,6 +339,7 @@ struct ImportReleaseEntryTests {
                 hasCoverOptions: true,
                 editValues: PreviewData.confirmEditValues,
                 records: [],
+                releaseLink: nil,
                 editActions: ReleaseFieldWriter { _, _ in },
                 editingCommands: EditingCommitCommands(),
                 commit: nil,
@@ -581,6 +582,7 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
             hasCoverOptions: false,
             editValues: editValues,
             records: [],
+            releaseLink: nil,
             editActions: ReleaseFieldWriter { _, _ in },
             editingCommands: EditingCommitCommands(),
             commit: nil,

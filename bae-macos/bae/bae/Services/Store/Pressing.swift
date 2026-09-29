@@ -17,7 +17,7 @@ struct Pressing: Equatable, Identifiable {
     /// row then shows as its search result stated it.
     let documentFailure: BridgeLookupFailure?
     /// What picking this row claims, as core settled it.
-    let link: BridgeReleaseLink
+    let link: BridgePressingLink
     /// Where it was released and what it is made of: "Japan · 2×CD".
     let summaryText: String
     /// What sets it apart beyond that: "Promo · Reissue".

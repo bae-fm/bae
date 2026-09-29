@@ -53,6 +53,9 @@ enum IdentifyState: Equatable {
         folderCheck: BridgeFolderCheck?,
         /// Whether core picks the one release for the folder on its own.
         picksUnattended: Bool,
+        /// Whether the offered rows are several pressings of one album, which
+        /// the folder can be linked to with its pressing unknown.
+        offersSharedAlbum: Bool,
     )
     case notFoundAnywhere(run: BridgeIdentifyRun?)
     /// Nothing to look up — no disc-ID artifact and no barcode source. The UI
@@ -75,6 +78,7 @@ enum IdentifyState: Equatable {
         agreements: [String: BridgeAgreements],
         narrowedOutCount: UInt32,
         catalogAgreements: [BridgeCatalogAgreement],
+        offersSharedAlbum: Bool,
     )
 
     // One case per bridge variant, copied field for field.
@@ -105,7 +109,8 @@ enum IdentifyState: Equatable {
             let narrowedOutCount,
             let catalogAgreements,
             let folderCheck,
-            let picksUnattended
+            let picksUnattended,
+            let offersSharedAlbum
         ):
             self = .found(
                 run: run,
@@ -117,6 +122,7 @@ enum IdentifyState: Equatable {
                 catalogAgreements: catalogAgreements,
                 folderCheck: folderCheck,
                 picksUnattended: picksUnattended,
+                offersSharedAlbum: offersSharedAlbum,
             )
         case .notFoundAnywhere(let run): self = .notFoundAnywhere(run: run)
         case .manualOnly(let trackCount, let run):
@@ -129,7 +135,8 @@ enum IdentifyState: Equatable {
             let libraryStatuses,
             let agreements,
             let narrowedOutCount,
-            let catalogAgreements
+            let catalogAgreements,
+            let offersSharedAlbum
         ):
             self = .failed(
                 run: run,
@@ -139,6 +146,7 @@ enum IdentifyState: Equatable {
                 agreements: agreements,
                 narrowedOutCount: narrowedOutCount,
                 catalogAgreements: catalogAgreements,
+                offersSharedAlbum: offersSharedAlbum,
             )
         }
     }
@@ -147,8 +155,8 @@ enum IdentifyState: Equatable {
     /// verdict settled, keyed by release id. A live subscription outranks it.
     var libraryStatuses: [String: BridgeLibraryStatus] {
         switch self {
-        case .found(_, _, let statuses, _, _, _, _, _, _): statuses
-        case .failed(_, _, _, let statuses, _, _, _): statuses
+        case .found(_, _, let statuses, _, _, _, _, _, _, _): statuses
+        case .failed(_, _, _, let statuses, _, _, _, _): statuses
         case .triangulating(_, _, let statuses, _, _): statuses
         case .idle, .notFoundAnywhere, .manualOnly, .error: [:]
         }
@@ -158,8 +166,8 @@ enum IdentifyState: Equatable {
     /// the pane's disclosure counts.
     var narrowedOutCount: UInt32 {
         switch self {
-        case .found(_, _, _, _, _, let count, _, _, _): count
-        case .failed(_, _, _, _, _, let count, _): count
+        case .found(_, _, _, _, _, let count, _, _, _, _): count
+        case .failed(_, _, _, _, _, let count, _, _): count
         case .triangulating(_, _, _, _, let count): count
         case .idle, .notFoundAnywhere, .manualOnly, .error: 0
         }
@@ -170,8 +178,8 @@ enum IdentifyState: Equatable {
     /// which numbers these are follows from the releases it settles on.
     var catalogAgreements: [BridgeCatalogAgreement] {
         switch self {
-        case .found(_, _, _, _, _, _, let chips, _, _): chips
-        case .failed(_, _, _, _, _, _, let chips): chips
+        case .found(_, _, _, _, _, _, let chips, _, _, _): chips
+        case .failed(_, _, _, _, _, _, let chips, _): chips
         case .idle, .triangulating, .notFoundAnywhere, .manualOnly, .error:
             []
         }
@@ -181,17 +189,28 @@ enum IdentifyState: Equatable {
     /// why nothing was picked.
     var folderCheck: BridgeFolderCheck? {
         switch self {
-        case .found(_, _, _, _, _, _, _, let folderCheck, _): folderCheck
+        case .found(_, _, _, _, _, _, _, let folderCheck, _, _): folderCheck
         case .idle, .triangulating, .notFoundAnywhere, .manualOnly, .failed,
             .error:
             nil
         }
     }
 
+    /// Whether the offered rows are several pressings of one album, which
+    /// the folder can be linked to with its pressing unknown.
+    var offersSharedAlbum: Bool {
+        switch self {
+        case .found(_, _, _, _, _, _, _, _, _, let offers): offers
+        case .failed(_, _, _, _, _, _, _, let offers): offers
+        case .idle, .triangulating, .notFoundAnywhere, .manualOnly, .error:
+            false
+        }
+    }
+
     /// Whether core picks the found release for the folder on its own.
     var picksUnattended: Bool {
         switch self {
-        case .found(_, _, _, _, _, _, _, _, let picks): picks
+        case .found(_, _, _, _, _, _, _, _, let picks, _): picks
         case .idle, .triangulating, .notFoundAnywhere, .manualOnly, .failed,
             .error:
             false
@@ -202,10 +221,10 @@ enum IdentifyState: Equatable {
     var run: BridgeIdentifyRun? {
         switch self {
         case .triangulating(let run, _, _, _, _): run
-        case .found(let run, _, _, _, _, _, _, _, _): run
+        case .found(let run, _, _, _, _, _, _, _, _, _): run
         case .notFoundAnywhere(let run): run
         case .manualOnly(_, let run): run
-        case .failed(let run, _, _, _, _, _, _): run
+        case .failed(let run, _, _, _, _, _, _, _): run
         case .idle, .error: nil
         }
     }

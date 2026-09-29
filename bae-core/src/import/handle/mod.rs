@@ -21,6 +21,7 @@ mod reset;
 mod scan;
 mod search;
 mod session;
+mod shared_album;
 mod watch;
 
 use super::candidate_runtime::CandidateRuntime;

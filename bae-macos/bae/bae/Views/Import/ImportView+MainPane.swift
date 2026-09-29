@@ -220,10 +220,10 @@ extension ImportView {
         }
     }
 
-    /// Whether the cover is worth opening a picker for: the picked release's
-    /// remote art, or artwork found in the folder.
+    /// Whether the cover is worth opening a picker for: the linked pressing's
+    /// or album's remote art, or artwork found in the folder.
     private func hasCoverOptions(_ candidate: Candidate) -> Bool {
-        candidate.release != nil || !candidate.files.coverFiles.isEmpty
+        candidate.releaseLink != nil || !candidate.files.coverFiles.isEmpty
     }
 
     private func presentCoverPicker(for candidate: Candidate) {

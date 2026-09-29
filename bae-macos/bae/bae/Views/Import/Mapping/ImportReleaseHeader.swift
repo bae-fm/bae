@@ -48,6 +48,9 @@ struct ImportReleaseHeader: View {
     /// Every catalog that describes the release the candidate is linked to.
     /// Empty for a candidate linked to no release.
     let records: [BridgeReleaseRecord]
+    /// What the candidate is linked to: an album link says its pressing is
+    /// unknown beside the album's records.
+    let releaseLink: BridgeReleaseLink?
     /// Where a typed field's value goes.
     let editActions: ReleaseFieldWriter
     let editingCommands: EditingCommitCommands
@@ -104,6 +107,12 @@ struct ImportReleaseHeader: View {
                         .frame(height: 1)
                     HStack(alignment: .firstTextBaseline) {
                         ReleaseRecordsRow(records: records, scale: .pane)
+                        if case .album = releaseLink {
+                            Text("Pressing unknown")
+                                .themeText(.detail)
+                                .foregroundStyle(.secondary)
+                                .fixedSize()
+                        }
                         Spacer(minLength: ThemeSpace.group)
                         Button("Unlink") {
                             sourceActions.unlink()
@@ -362,6 +371,7 @@ struct ImportCoverWell: View {
             hasCoverOptions: true,
             editValues: PreviewData.confirmEditValues,
             records: PreviewData.releaseRecordsPair,
+            releaseLink: nil,
             editActions: ReleaseFieldWriter { _, _ in },
             editingCommands: EditingCommitCommands(),
             commit: nil,

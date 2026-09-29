@@ -39,8 +39,8 @@ struct ImportSearchState {
     /// far; a failed run still carries whatever the surviving source found.
     var identifiedGroups: [ReleaseGroup] {
         switch identifyState {
-        case .found(_, let groups, _, _, _, _, _, _, _): groups
-        case .failed(_, _, let groups, _, _, _, _): groups
+        case .found(_, let groups, _, _, _, _, _, _, _, _): groups
+        case .failed(_, _, let groups, _, _, _, _, _): groups
         case .triangulating(_, let groups, _, _, _): groups
         case .idle, .notFoundAnywhere, .manualOnly, .error: []
         }
@@ -56,8 +56,8 @@ struct ImportSearchState {
     /// keyed by release id — the row badges, and what ordered the rows.
     var identifiedAgreements: [String: BridgeAgreements] {
         switch identifyState {
-        case .found(_, _, _, _, let agreements, _, _, _, _): agreements
-        case .failed(_, _, _, _, let agreements, _, _): agreements
+        case .found(_, _, _, _, let agreements, _, _, _, _, _): agreements
+        case .failed(_, _, _, _, let agreements, _, _, _): agreements
         case .triangulating(_, _, _, let agreements, _): agreements
         case .idle, .notFoundAnywhere, .manualOnly, .error: [:]
         }
@@ -69,6 +69,12 @@ struct ImportSearchState {
         identifyState.catalogAgreements
     }
 
+    /// Whether the offered rows are several pressings of one album, which
+    /// the folder can be linked to with its pressing unknown.
+    var offersSharedAlbum: Bool {
+        identifyState.offersSharedAlbum
+    }
+
     /// The check against the folder the found release failed: why nothing
     /// was picked.
     var folderCheck: BridgeFolderCheck? {
@@ -78,7 +84,7 @@ struct ImportSearchState {
     /// The automatic lookups that failed, each naming what it was and why.
     var identifyFailures: [BridgeIdentifyFailure] {
         guard
-            case .failed(_, let failures, _, _, _, _, _) = identifyState
+            case .failed(_, let failures, _, _, _, _, _, _) = identifyState
         else {
             return []
         }

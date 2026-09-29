@@ -104,7 +104,7 @@ enum CandidateMetadataPresentation: Equatable {
 /// which the candidate is then linked to, or the files' own tags, which leave
 /// the link as it is.
 enum MetadataApplication: Equatable, Sendable {
-    case pick(BridgeReleaseLink)
+    case pick(BridgePressingLink)
     case fileTags
 }
 
@@ -231,7 +231,7 @@ extension BridgePaneFailure {
         guard let displayed = DisplayError(error) else { return nil }
         let why = displayed.line
         switch command {
-        case .import, .mergeArtists, .keepOwnDraft, .unlink:
+        case .import, .mergeArtists, .keepOwnDraft, .linkSharedAlbum, .unlink:
             return why
         case .readFileTags:
             if case .Diagnostic(.metadataTrackCount, _) = error {
@@ -488,8 +488,9 @@ struct Candidate: Equatable, Identifiable {
         }
     }
 
-    /// The catalog release the candidate is linked to: the pick, whatever
-    /// its draft was read from since.
+    /// What the candidate is linked to in the catalogs: the pressing picked,
+    /// or the album whose pressing is unknown, whatever its draft was read
+    /// from since.
     var releaseLink: BridgeReleaseLink? {
         detail?.releaseLink
     }
@@ -500,4 +501,15 @@ struct Candidate: Equatable, Identifiable {
         detail?.signals.map(Signals.init(bridge:))
     }
 
+}
+
+extension BridgeReleaseLink {
+    /// The pressing the link names; `nil` for an album, whose pressing is
+    /// unknown.
+    var pressing: BridgePressingLink? {
+        switch self {
+        case .pressing(let link): link
+        case .album: nil
+        }
+    }
 }

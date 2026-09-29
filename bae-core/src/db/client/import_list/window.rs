@@ -17,7 +17,7 @@ use crate::import::list::{window_refs, Flattened, ImportListItem, ItemRef};
 use crate::import::folder_scanner::FolderCandidate;
 use crate::import::search::MetadataResult;
 use crate::import::triage::MatchedRelease;
-use crate::import::{CoverSelection, ReleaseLink};
+use crate::import::{CoverSelection, PressingLink, ReleaseLink};
 use crate::library::LibraryPageWindow;
 use std::path::PathBuf;
 
@@ -61,7 +61,8 @@ pub(super) fn materialise(
                         .remove(content_hash),
                     None => None,
                 };
-                let files = if row.release_link.is_some() {
+                let pressing = row.release_link.as_ref().and_then(ReleaseLink::pressing);
+                let files = if pressing.is_some() {
                     Some(
                         load_candidate_on(sql, &scanned.path)?
                             .ok_or_else(|| {
@@ -77,16 +78,20 @@ pub(super) fn materialise(
                 } else {
                     None
                 };
-                // A linked release outranks the verdict's lead. Its releases
-                // are read in this snapshot and interpreted after it ends.
+                // A linked release outranks the verdict's lead. A pressing's
+                // releases are read in this snapshot and interpreted after it
+                // ends; an album names its records itself.
                 let picked = match row.release_link.as_ref() {
-                    Some(link) => Some(picked_release(
-                        sql,
-                        link,
-                        files
-                            .as_ref()
-                            .expect("a linked candidate has fetched files"),
-                    )?),
+                    Some(ReleaseLink::Pressing(pressing)) => Some(LinkedRows::Pressing(
+                        picked_release(
+                            sql,
+                            pressing,
+                            files
+                                .as_ref()
+                                .expect("a candidate linked to a pressing has fetched files"),
+                        )?,
+                    )),
+                    Some(ReleaseLink::Album(album)) => Some(LinkedRows::Album(album.records())),
                     None => None,
                 };
                 let cover = selected
@@ -192,7 +197,7 @@ pub(super) enum WindowItemRows {
     Ready(ImportListItem),
     Candidate {
         row: crate::import::triage::TriageRow,
-        picked: Option<PickedReleaseRows>,
+        picked: Option<LinkedRows>,
         /// The candidate's stored cover selection, as the row draws it.
         /// Nothing stands in for an empty one: the row shows what the
         /// candidate would commit with.
@@ -212,11 +217,22 @@ impl WindowItemRows {
                 is_group_member,
             } => {
                 match picked {
-                    Some(picked) => {
+                    Some(LinkedRows::Pressing(picked)) => {
                         let PickedRelease { matched, records } = picked.process()?;
                         row.matched = Some(matched);
                         // The reading the queue placed the row with named no
                         // records; this is where the documents are read.
+                        row.reading = crate::import::triage::TriageReading::of(
+                            row.metadata_summary.as_ref(),
+                            row.release_link.as_ref(),
+                            records,
+                        );
+                    }
+                    // An album is no pressing, so nothing leads the row: the
+                    // verdict's lead is one of the pressings the person could
+                    // not tell their copy from.
+                    Some(LinkedRows::Album(records)) => {
+                        row.matched = None;
                         row.reading = crate::import::triage::TriageReading::of(
                             row.metadata_summary.as_ref(),
                             row.release_link.as_ref(),
@@ -237,6 +253,13 @@ impl WindowItemRows {
             }
         }
     }
+}
+
+/// What a linked row's link reads: a pressing's stored releases, or an
+/// album's records, which the link names itself.
+pub(super) enum LinkedRows {
+    Pressing(PickedReleaseRows),
+    Album(Vec<crate::import::ReleaseRecord>),
 }
 
 pub(super) struct PickedReleaseRows {
@@ -339,11 +362,10 @@ fn row_cover_source(
     }
 }
 
-/// Every release a pick claims, with the stored release for each. `None` when
-/// the folder is read as its own tags, which claims no release at all.
+/// Every release a linked pressing claims, with the stored release for each.
 fn picked_release(
     sql: &SqlReadContext<'_>,
-    link: &ReleaseLink,
+    link: &PressingLink,
     files: &CategorizedFiles,
 ) -> Result<PickedReleaseRows, DbError> {
     let claimed = link
@@ -438,7 +460,11 @@ pub(super) fn load_candidate_detail_on(
         .transpose()?;
     // Only identity keys are needed for the next SQL query. Track and artwork
     // processing runs after the snapshot ends.
-    let claimed = claimed_releases_on(sql, &candidate, release_link.as_ref())?;
+    let claimed = claimed_releases_on(
+        sql,
+        &candidate,
+        release_link.as_ref().and_then(ReleaseLink::pressing),
+    )?;
     // The release the draft's tracks were read from, whose track lengths the
     // mapping sets beside the files': the linked one when the draft was read
     // from it, which is the one already read above.
@@ -457,9 +483,14 @@ pub(super) fn load_candidate_detail_on(
         }
         _ => None,
     };
-    // Every catalog record named by the linked releases.
-    let records =
-        crate::import::source_release::claimed_records(&claimed.iter().collect::<Vec<_>>());
+    // Every catalog record of what the candidate is linked to: the linked
+    // pressing's releases describe it, an album names its own.
+    let records = match &release_link {
+        Some(ReleaseLink::Album(album)) => album.records(),
+        Some(ReleaseLink::Pressing(_)) | None => {
+            crate::import::source_release::claimed_records(&claimed.iter().collect::<Vec<_>>())
+        }
+    };
     let picked_library_status = match claimed.first() {
         Some(release) => check_releases_in_library_on(sql, &[release.library_check()])?
             .into_iter()
@@ -530,22 +561,10 @@ pub(super) fn load_candidate_detail_on(
             };
             verdict = Some(VerdictSummary::of(&identify.verdict, identify.kept_own_draft));
             // The candidate's own text is what the rows are judged and ordered
-            // against, live or resumed, with the numbers the person struck out
-            // of it. Both are the candidate's rather than the run's, so the
-            // ranking is this read's, not the run's: striking a number out
-            // re-orders the rows the next time they are read, with nothing
-            // asked again. A candidate whose extraction never stored any text
-            // offers its rows unranked rather than none.
+            // against, live or resumed: striking a number out re-orders the
+            // rows the next time they are read, with nothing asked again.
             let text =
-                signals
-                    .as_ref()
-                    .map_or_else(crate::identify::CandidateText::default, |signals| {
-                        crate::identify::CandidateText::of(
-                            &signals.text_pool,
-                            &lookup_choices.discounted_catalogs,
-                            signals.barcode.codes(),
-                        )
-                    });
+                crate::identify::CandidateText::of_stored(signals.as_ref(), &lookup_choices);
             resumed_identify_state =
                 identify
                     .verdict
@@ -617,8 +636,9 @@ pub(super) fn load_candidate_detail_on(
     }))
 }
 
-/// Read every release the pick claims in the pane's SQL snapshot, the primary
-/// first and then its partners.
+/// Read every release the linked pressing claims in the pane's SQL snapshot,
+/// the primary first and then its partners. None for a candidate linked to no
+/// pressing.
 ///
 /// The primary is what the draft was read from and what the pane leads with;
 /// together with the partners it is what the release's records are read off.
@@ -628,7 +648,7 @@ pub(super) fn load_candidate_detail_on(
 fn claimed_releases_on(
     sql: &SqlReadContext<'_>,
     candidate: &FolderCandidate,
-    link: Option<&ReleaseLink>,
+    link: Option<&PressingLink>,
 ) -> Result<Vec<crate::import::source_release::SourceRelease>, DbError> {
     let Some(link) = link else {
         return Ok(Vec::new());

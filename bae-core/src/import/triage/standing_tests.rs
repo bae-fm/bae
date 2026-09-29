@@ -1,7 +1,7 @@
 use super::*;
 use crate::identify::LeadMatch;
 use crate::import::search::SourceTracks;
-use crate::import::{Catalog, ImportStanding, MetadataRef, SaveFailure};
+use crate::import::{Catalog, ImportStanding, MetadataRef, PressingLink, SaveFailure};
 use crate::signals::InternalFailure;
 
 fn lead(source_tracks: Option<SourceTracks>) -> LeadMatch {
@@ -55,10 +55,10 @@ fn of_kind(kind: VerdictKind) -> VerdictSummary {
 }
 
 fn picked() -> ReleaseLink {
-    ReleaseLink {
+    ReleaseLink::Pressing(PressingLink {
         record: MetadataRef::new(Catalog::MusicBrainz, "mb-1"),
         partners: Vec::new(),
-    }
+    })
 }
 
 fn pending(verdict: &VerdictSummary) -> Option<PendingStanding> {

@@ -216,8 +216,15 @@ impl ImportServiceHandle {
             .library_manager
             .load_import_candidate_state(&candidate.files.content_hash())
             .await?;
-        let Some(link) = state.and_then(|state| state.release_link) else {
-            return Ok(RemoteCoverGallery::Unlinked);
+        let link = match state.and_then(|state| state.release_link) {
+            None => return Ok(RemoteCoverGallery::Unlinked),
+            // An album's artwork is what each catalog shows for the album.
+            Some(crate::import::ReleaseLink::Album(album)) => {
+                return Ok(RemoteCoverGallery::Linked(
+                    self.records_gallery(&album.records()).await?,
+                ));
+            }
+            Some(crate::import::ReleaseLink::Pressing(pressing)) => pressing,
         };
         let mut claimed_releases = Vec::new();
         for claimed in link.claimed() {
@@ -253,9 +260,18 @@ impl ImportServiceHandle {
         if records.is_empty() {
             return Ok(RemoteCoverGallery::Unlinked);
         }
+        Ok(RemoteCoverGallery::Linked(
+            self.records_gallery(&records).await?,
+        ))
+    }
 
+    /// Every image the lookup catalogs among `records` show for what each
+    /// record names, each once, in the records' order.
+    async fn records_gallery(
+        &self,
+        records: &[crate::import::ReleaseRecord],
+    ) -> Result<Vec<crate::import::cover_art::RemoteCover>, crate::import::ImportError> {
         let mut covers = Vec::new();
-
         for record in records
             .iter()
             .filter(|record| Catalog::LOOKUP.contains(&record.catalog()))
@@ -294,8 +310,7 @@ impl ImportServiceHandle {
                 crate::import::cover_art::push_unique_cover(&mut covers, cover);
             }
         }
-
-        Ok(RemoteCoverGallery::Linked(covers))
+        Ok(covers)
     }
 
     /// Prepare the release an explicit metadata application reads. A settled
@@ -385,7 +400,7 @@ impl ImportServiceHandle {
     pub async fn select_candidate_release(
         &self,
         candidate_key: String,
-        link: crate::import::ReleaseLink,
+        link: crate::import::PressingLink,
     ) -> Result<u64, crate::import::ImportError> {
         let this = self.clone();
         self.committed(async move {

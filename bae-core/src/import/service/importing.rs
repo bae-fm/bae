@@ -894,9 +894,12 @@ impl ImportService {
     }
 }
 
-/// The records an import of a candidate linked to `link` stores: every catalog
-/// its stored releases describe it in. The linked primary's record reads the
-/// draft only while the draft is still read from that release; a draft
+/// The records an import of a candidate linked to `link` stores.
+///
+/// A linked album is stored as each catalog's album record, none of which
+/// the draft is read from. A linked pressing is stored as every catalog its
+/// stored releases describe it in; the linked primary's record reads the
+/// draft only while the draft is still read from that release, and a draft
 /// re-read from the files or from another release makes none of them the
 /// draft's source.
 async fn linked_records(
@@ -904,6 +907,10 @@ async fn linked_records(
     link: &crate::import::ReleaseLink,
     provenance: Option<&crate::import::MetadataProvenance>,
 ) -> Result<Vec<crate::import::ReleaseRecord>, crate::import::ImportError> {
+    let link = match link {
+        crate::import::ReleaseLink::Album(album) => return Ok(album.records()),
+        crate::import::ReleaseLink::Pressing(pressing) => pressing,
+    };
     let mut claimed = Vec::new();
     for release in link.claimed() {
         claimed.push(

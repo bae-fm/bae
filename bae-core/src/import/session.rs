@@ -53,6 +53,9 @@ pub enum PaneCommand {
     ChangeAgreements,
     /// Keep the folder's own draft over what its lookup offered.
     KeepOwnDraft,
+    /// Link the folder to the album its lookup's offered pressings are of,
+    /// its pressing unknown.
+    LinkSharedAlbum,
     /// Unlink the candidate from its release.
     Unlink,
 }

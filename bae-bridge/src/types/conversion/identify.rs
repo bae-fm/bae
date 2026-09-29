@@ -391,7 +391,7 @@ impl BridgePressing {
                 .into_iter()
                 .map(BridgeLabelLine::from_core)
                 .collect(),
-            pick: crate::types::BridgeReleaseLink::from_core(pressing.pick()),
+            pick: crate::types::BridgePressingLink::from_core(pressing.pick()),
             summary: crate::types::bridge_pressing_summary(facts.clone()),
             details: crate::types::bridge_pressing_details(facts),
             releases: pressing
@@ -499,6 +499,7 @@ impl BridgeIdentifyState {
                 catalog_agreements,
                 folder_check,
                 picks_unattended,
+                offers_shared_album,
             } => BridgeIdentifyState::Found {
                 run: run.map(|run| BridgeIdentifyRun::from_core(run, rate)),
                 groups: groups
@@ -519,6 +520,7 @@ impl BridgeIdentifyState {
                 folder_check: folder_check
                     .map(|check| crate::types::BridgeFolderCheck::with_rate(check, rate)),
                 picks_unattended,
+                offers_shared_album,
             },
             IdentifyStateView::NotFoundAnywhere { run } => BridgeIdentifyState::NotFoundAnywhere {
                 run: run.map(|run| BridgeIdentifyRun::from_core(run, rate)),
@@ -535,6 +537,7 @@ impl BridgeIdentifyState {
                 agreements,
                 narrowed_out_count,
                 catalog_agreements,
+                offers_shared_album,
             } => BridgeIdentifyState::Failed {
                 run: run.map(|run| BridgeIdentifyRun::from_core(run, rate)),
                 failures: failures.into_iter().map(identify_failure).collect(),
@@ -552,6 +555,7 @@ impl BridgeIdentifyState {
                     .into_iter()
                     .map(BridgeCatalogAgreement::from_core)
                     .collect(),
+                offers_shared_album,
             },
         }
     }

@@ -152,6 +152,24 @@ pub struct CandidateText {
 }
 
 impl CandidateText {
+    /// The text a stored candidate's rows are judged and ordered against: its
+    /// stored signals' text, with the numbers the person struck out of it.
+    /// Both are the candidate's rather than a run's, so the ranking is this
+    /// read's. A candidate whose extraction never stored any text offers its
+    /// rows unranked rather than none.
+    pub fn of_stored(
+        signals: Option<&crate::signals::Signals>,
+        choices: &crate::import::LookupChoices,
+    ) -> Self {
+        signals.map_or_else(Self::default, |signals| {
+            Self::of(
+                &signals.text_pool,
+                &choices.discounted_catalogs,
+                signals.barcode.codes(),
+            )
+        })
+    }
+
     /// The pooled lines, the struck-out catalog numbers, and the barcodes the
     /// folder's files carry.
     pub fn of(pool: &[TextLine], struck_out: &[String], barcodes: &[SourcedValue]) -> Self {

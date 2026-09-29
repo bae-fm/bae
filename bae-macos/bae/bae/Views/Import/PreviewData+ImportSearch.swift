@@ -30,7 +30,7 @@
                         catalogNumbers: ["1871-2"]
                     )
                 ],
-                pick: BridgeReleaseLink(
+                pick: BridgePressingLink(
                     record: BridgeMetadataRef(
                         catalog: .musicBrainz,
                         key: "rel-123"
@@ -71,7 +71,7 @@
                         catalogNumbers: ["6006-2"]
                     )
                 ],
-                pick: BridgeReleaseLink(
+                pick: BridgePressingLink(
                     record: BridgeMetadataRef(
                         catalog: .musicBrainz,
                         key: "rel-456"
@@ -198,7 +198,7 @@
                                         catalogNumbers: ["6006-2"]
                                     )
                                 ],
-                                pick: BridgeReleaseLink(
+                                pick: BridgePressingLink(
                                     record: BridgeMetadataRef(
                                         catalog: .musicBrainz,
                                         key: "rel-aaa"
@@ -226,7 +226,7 @@
                                         catalogNumbers: ["AL-1234"]
                                     )
                                 ],
-                                pick: BridgeReleaseLink(
+                                pick: BridgePressingLink(
                                     record: BridgeMetadataRef(
                                         catalog: .musicBrainz,
                                         key: "rel-bbb"
@@ -298,7 +298,7 @@
                                         catalogNumbers: ["RR-500"]
                                     )
                                 ],
-                                pick: BridgeReleaseLink(
+                                pick: BridgePressingLink(
                                     record: BridgeMetadataRef(
                                         catalog: .musicBrainz,
                                         key: "rel-ccc"
@@ -362,7 +362,7 @@
                                     catalogNumbers: ["AAA-001"]
                                 )
                             ],
-                            pick: BridgeReleaseLink(
+                            pick: BridgePressingLink(
                                 record: BridgeMetadataRef(
                                     catalog: .musicBrainz,
                                     key: "rel-disc-1"
@@ -415,7 +415,7 @@
                                     catalogNumbers: ["BBB-002"]
                                 )
                             ],
-                            pick: BridgeReleaseLink(
+                            pick: BridgePressingLink(
                                 record: BridgeMetadataRef(
                                     catalog: .musicBrainz,
                                     key: "rel-bar-1"
@@ -605,7 +605,8 @@
                 narrowedOutCount: 0,
                 catalogAgreements: catalogAgreements,
                 folderCheck: nil,
-                picksUnattended: false
+                picksUnattended: false,
+                offersSharedAlbum: false
             ),
             signals: settledSignals
         )
@@ -653,7 +654,8 @@
                 narrowedOutCount: 3,
                 catalogAgreements: catalogAgreements,
                 folderCheck: nil,
-                picksUnattended: false
+                picksUnattended: false,
+                offersSharedAlbum: false
             ),
             signals: settledSignals
         )
@@ -673,7 +675,27 @@
             narrowedOutCount: 0,
             catalogAgreements: catalogAgreements,
             folderCheck: nil,
-            picksUnattended: false
+            picksUnattended: false,
+            offersSharedAlbum: false
+        )
+
+        /// Several pressings of one album offered to a folder waiting on the
+        /// person, which it can be linked to with its pressing unknown.
+        static let searchStateSharedAlbum = searchState(
+            identifyState: .found(
+                run: identifyRunFound,
+                groups: [searchGroupExact],
+                libraryStatuses: [:],
+                trackCount: 11,
+                agreements: searchAgreementsExact,
+                narrowedOutCount: 0,
+                catalogAgreements: catalogAgreements,
+                folderCheck: nil,
+                picksUnattended: false,
+                offersSharedAlbum: true
+            ),
+            signals: settledSignals,
+            needsYou: .matches(count: 2)
         )
 
         /// Both signals ran and neither source knew them.
@@ -708,7 +730,8 @@
                 libraryStatuses: [:],
                 agreements: searchAgreementsExact,
                 narrowedOutCount: 0,
-                catalogAgreements: catalogAgreements
+                catalogAgreements: catalogAgreements,
+                offersSharedAlbum: false
             )
         )
 
@@ -746,7 +769,8 @@
                 libraryStatuses: [:],
                 agreements: [:],
                 narrowedOutCount: 0,
-                catalogAgreements: []
+                catalogAgreements: [],
+                offersSharedAlbum: false
             )
         )
 
@@ -762,7 +786,8 @@
                 libraryStatuses: [:],
                 agreements: [:],
                 narrowedOutCount: 0,
-                catalogAgreements: []
+                catalogAgreements: [],
+                offersSharedAlbum: false
             )
         )
 
@@ -797,7 +822,8 @@
                 narrowedOutCount: 0,
                 catalogAgreements: catalogAgreements,
                 folderCheck: nil,
-                picksUnattended: true
+                picksUnattended: true,
+                offersSharedAlbum: false
             ),
             signals: settledSignals,
             isFinalizing: true
@@ -835,7 +861,8 @@
                 narrowedOutCount: 0,
                 catalogAgreements: catalogAgreements,
                 folderCheck: .trackCountDisagrees(local: 13, source: 12),
-                picksUnattended: false
+                picksUnattended: false,
+                offersSharedAlbum: false
             ),
             signals: settledSignals,
             isFinalizing: true
@@ -852,7 +879,8 @@
                 narrowedOutCount: 0,
                 catalogAgreements: catalogAgreements,
                 folderCheck: nil,
-                picksUnattended: false
+                picksUnattended: false,
+                offersSharedAlbum: false
             ),
             search: searchRunInFlight,
             signals: settledSignals
@@ -869,7 +897,8 @@
                 narrowedOutCount: 0,
                 catalogAgreements: catalogAgreements,
                 folderCheck: nil,
-                picksUnattended: false
+                picksUnattended: false,
+                offersSharedAlbum: false
             ),
             search: manualSearchRun,
             signals: settledSignals
@@ -886,7 +915,8 @@
                 narrowedOutCount: 0,
                 catalogAgreements: catalogAgreements,
                 folderCheck: nil,
-                picksUnattended: false
+                picksUnattended: false,
+                offersSharedAlbum: false
             ),
             search: searchRunSourceFailed,
             signals: settledSignals
@@ -903,7 +933,8 @@
                 narrowedOutCount: 0,
                 catalogAgreements: catalogAgreements,
                 folderCheck: nil,
-                picksUnattended: false
+                picksUnattended: false,
+                offersSharedAlbum: false
             ),
             search: searchRunEmpty,
             signals: settledSignals

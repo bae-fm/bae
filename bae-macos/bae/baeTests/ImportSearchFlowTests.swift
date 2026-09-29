@@ -299,7 +299,7 @@ extension ImportSearchFlowMetadataApplicationTests {
                 endEditing: {},
                 key: MappingFixtures.candidateKey,
                 application: .pick(
-                    BridgeReleaseLink(
+                    BridgePressingLink(
                         record: BridgeMetadataRef(
                             catalog: .musicBrainz,
                             key: release
@@ -377,7 +377,7 @@ final class MetadataApplicationEditingTests: XCTestCase {
         for application in [
             MetadataApplication.fileTags,
             .pick(
-                BridgeReleaseLink(
+                BridgePressingLink(
                     record: BridgeMetadataRef(
                         catalog: .musicBrainz,
                         key: "release-mb"
@@ -386,7 +386,7 @@ final class MetadataApplicationEditingTests: XCTestCase {
                 )
             ),
             .pick(
-                BridgeReleaseLink(
+                BridgePressingLink(
                     record: BridgeMetadataRef(
                         catalog: .discogs,
                         key: "release-discogs"
@@ -514,9 +514,9 @@ private final class MetadataApplicationEditingModel {
 
 @MainActor
 private final class PickRecorder {
-    var links: [BridgeReleaseLink] = []
+    var links: [BridgePressingLink] = []
 
-    func record(_ link: BridgeReleaseLink) {
+    func record(_ link: BridgePressingLink) {
         links.append(link)
     }
 }
@@ -668,7 +668,7 @@ struct ImportSearchFlowLibraryStatusTests {
                                                 sourceGroupId: "group-live"
                                             )
                                         ],
-                                        pick: BridgeReleaseLink(
+                                        pick: BridgePressingLink(
                                             record: BridgeMetadataRef(
                                                 catalog: .musicBrainz,
                                                 key: "rel-live"

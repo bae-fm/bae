@@ -256,6 +256,7 @@ pub(crate) fn automation_identify_state(
             catalog_agreements,
             folder_check,
             picks_unattended,
+            offers_shared_album,
         } => AutomationIdentifyState::Found {
             run: run.map(AutomationIdentifyRun::from_core),
             groups: groups
@@ -275,6 +276,7 @@ pub(crate) fn automation_identify_state(
                 .collect(),
             folder_check: folder_check.map(AutomationFolderCheck::from_core),
             picks_unattended,
+            offers_shared_album,
         },
         IdentifyStateView::NotFoundAnywhere { run } => AutomationIdentifyState::NotFoundAnywhere {
             run: run.map(AutomationIdentifyRun::from_core),
@@ -294,6 +296,7 @@ pub(crate) fn automation_identify_state(
             agreements,
             narrowed_out_count,
             catalog_agreements,
+            offers_shared_album,
         } => AutomationIdentifyState::Failed {
             run: run.map(AutomationIdentifyRun::from_core),
             failures: failures
@@ -314,6 +317,7 @@ pub(crate) fn automation_identify_state(
                 .into_iter()
                 .map(AutomationCatalogAgreement::from_core)
                 .collect(),
+            offers_shared_album,
         },
     }
 }

@@ -95,7 +95,7 @@ async fn work_mbid_is_stored_beside_a_minted_row_id_and_shared_across_releases()
         &first_dir,
         None,
         ImportDestination::Local,
-        support::DraftSource::Pick(bae_core::import::ReleaseLink {
+        support::DraftSource::Pick(bae_core::import::PressingLink {
             record: bae_core::import::MetadataRef::new(Catalog::MusicBrainz, first_mb),
             partners: vec![],
         }),
@@ -121,7 +121,7 @@ async fn work_mbid_is_stored_beside_a_minted_row_id_and_shared_across_releases()
         &second_dir,
         None,
         ImportDestination::Local,
-        support::DraftSource::Pick(bae_core::import::ReleaseLink {
+        support::DraftSource::Pick(bae_core::import::PressingLink {
             record: bae_core::import::MetadataRef::new(Catalog::MusicBrainz, second_mb),
             partners: vec![],
         }),

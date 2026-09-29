@@ -45,11 +45,13 @@ private struct ImportOperations: Sendable {
     let setSheetBinding:
         @Sendable (String, String, String, String?) async throws -> Void
     let applyCandidateExternalMetadata:
-        @Sendable (String, BridgeReleaseLink) async throws ->
+        @Sendable (String, BridgePressingLink) async throws ->
             BridgePaneOutcome
     let applyCandidateFileMetadata:
         @Sendable (String) async throws -> BridgePaneOutcome
     let keepCandidateDraft: @Sendable (String) async throws -> BridgePaneOutcome
+    let linkCandidateSharedAlbum:
+        @Sendable (String) async throws -> BridgePaneOutcome
     let unlinkCandidateRelease:
         @Sendable (String) async throws -> BridgePaneOutcome
     let resetCandidateSetup: @Sendable (String) async throws -> Void
@@ -154,6 +156,9 @@ extension ImportOperations {
             },
             keepCandidateDraft: {
                 try await handle.keepCandidateDraft(candidateKey: $0)
+            },
+            linkCandidateSharedAlbum: {
+                try await handle.linkCandidateSharedAlbum(candidateKey: $0)
             },
             unlinkCandidateRelease: {
                 try await handle.unlinkCandidateRelease(candidateKey: $0)
@@ -355,7 +360,7 @@ final class Importer: Sendable, Observable {
             -> Void =
             { _, _, _, _ in },
         applyCandidateExternalMetadata:
-            @escaping @Sendable (String, BridgeReleaseLink)
+            @escaping @Sendable (String, BridgePressingLink)
             async throws -> BridgePaneOutcome = { _, _ in
                 throw StubError.notImplemented
             },
@@ -364,6 +369,10 @@ final class Importer: Sendable, Observable {
                 _ in throw StubError.notImplemented
             },
         keepCandidateDraft:
+            @escaping @Sendable (String) async throws -> BridgePaneOutcome = {
+                _ in throw StubError.notImplemented
+            },
+        linkCandidateSharedAlbum:
             @escaping @Sendable (String) async throws -> BridgePaneOutcome = {
                 _ in throw StubError.notImplemented
             },
@@ -488,6 +497,7 @@ final class Importer: Sendable, Observable {
             applyCandidateExternalMetadata: applyCandidateExternalMetadata,
             applyCandidateFileMetadata: applyCandidateFileMetadata,
             keepCandidateDraft: keepCandidateDraft,
+            linkCandidateSharedAlbum: linkCandidateSharedAlbum,
             unlinkCandidateRelease: unlinkCandidateRelease,
             resetCandidateSetup: resetCandidateSetup,
             clearCandidateMetadata: clearCandidateMetadata,
@@ -580,7 +590,7 @@ extension Importer {
     /// that pick carried, and read its draft from it.
     func applyCandidateExternalMetadata(
         _ candidateKey: String,
-        link: BridgeReleaseLink
+        link: BridgePressingLink
     ) async throws -> BridgePaneOutcome {
         try await operations.applyCandidateExternalMetadata(
             candidateKey,
@@ -602,6 +612,16 @@ extension Importer {
         -> BridgePaneOutcome
     {
         try await operations.keepCandidateDraft(candidateKey)
+    }
+
+    /// Link the candidate to the album the pressings its lookup offers are
+    /// of, its pressing unknown, taking what they agree on into its draft — a
+    /// pane command that goes back to the draft; its failure is stated on the
+    /// pane.
+    func linkCandidateSharedAlbum(_ candidateKey: String) async throws
+        -> BridgePaneOutcome
+    {
+        try await operations.linkCandidateSharedAlbum(candidateKey)
     }
 
     /// Unlink the candidate from its release, a pane command whose failure is

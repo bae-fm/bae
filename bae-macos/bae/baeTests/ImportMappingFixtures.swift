@@ -17,10 +17,12 @@ enum MappingFixtures {
     static let provenance: BridgeMetadataProvenance = .externalRelease(
         record: BridgeMetadataRef(catalog: source, key: releaseId)
     )
-    static let link = BridgeReleaseLink(
+    /// The pick of the fixture's release, and the link it leaves.
+    static let link = BridgePressingLink(
         record: BridgeMetadataRef(catalog: source, key: releaseId),
         partners: []
     )
+    static let releaseLink = BridgeReleaseLink.pressing(link: link)
 
     static let audioFormat = BridgeAudioFormat(
         codec: "FLAC",
@@ -420,7 +422,7 @@ extension MappingFixtures {
         mapping: BridgeMappingTable?,
         edit: BridgeRawReleaseEdit = albumEdit,
         metadataProvenance: BridgeMetadataProvenance? = provenance,
-        releaseLink: BridgeReleaseLink? = link,
+        releaseLink: BridgeReleaseLink? = releaseLink,
         metadataAuthor: BridgeMetadataAuthor? = nil,
         metadataRevision: UInt64 = 1,
         failure: BridgeImportFailure? = nil,
@@ -522,7 +524,7 @@ extension MappingFixtures {
     static func store(
         mapping: BridgeMappingTable?,
         metadataProvenance: BridgeMetadataProvenance? = provenance,
-        releaseLink: BridgeReleaseLink? = link,
+        releaseLink: BridgeReleaseLink? = releaseLink,
         edit: BridgeRawReleaseEdit = albumEdit,
         presentation: BridgeMetadataPresentation = .draft,
         records: [BridgeReleaseRecord] = []

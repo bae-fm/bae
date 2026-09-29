@@ -633,7 +633,7 @@ fn the_discogs_record_of_the_pressing_the_disc_id_named_is_offered_with_it() {
     );
     assert_eq!(
         offered[0].0.pick(),
-        crate::import::ReleaseLink {
+        crate::import::PressingLink {
             record: crate::import::MetadataRef::new(
                 Catalog::MusicBrainz,
                 "mb-album-two".to_string()

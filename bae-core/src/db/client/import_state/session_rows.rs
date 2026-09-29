@@ -70,6 +70,7 @@ fn command_column(command: PaneCommand) -> &'static str {
         PaneCommand::ChangeSearchWords => "change_search_words",
         PaneCommand::ChangeAgreements => "change_agreements",
         PaneCommand::KeepOwnDraft => "keep_own_draft",
+        PaneCommand::LinkSharedAlbum => "link_shared_album",
         PaneCommand::Unlink => "unlink",
     }
 }
@@ -83,6 +84,7 @@ fn command_of(column: &str) -> Result<PaneCommand, DbError> {
         "change_search_words" => PaneCommand::ChangeSearchWords,
         "change_agreements" => PaneCommand::ChangeAgreements,
         "keep_own_draft" => PaneCommand::KeepOwnDraft,
+        "link_shared_album" => PaneCommand::LinkSharedAlbum,
         "unlink" => PaneCommand::Unlink,
         other => {
             return Err(DbError::Message(format!(

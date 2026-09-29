@@ -214,24 +214,30 @@ fn source_track_count(source_tracks: &Option<SourceTracks>) -> Option<u32> {
     }
 }
 
-/// What a row's text column says about its release: nothing yet, a draft, or a
-/// draft of a candidate linked to a catalog release.
+/// What a row's text column says about its release: nothing yet, a draft, a
+/// draft of a candidate linked to a catalog pressing, or one linked to an
+/// album whose pressing is unknown.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TriageReading {
     /// No draft, from tags or anywhere: the row leads with its folder.
     Unidentified,
     /// A draft of a candidate linked to no release.
     Prefilled,
-    /// A draft of a candidate linked to a catalog release, with every
-    /// catalog that describes that release.
+    /// A draft of a candidate linked to a catalog pressing, with every
+    /// catalog that describes that pressing.
     Identified {
+        records: Vec<crate::import::ReleaseRecord>,
+    },
+    /// A draft of a candidate linked to an album, with every catalog's record
+    /// of the album: the row says its pressing is unknown.
+    IdentifiedAlbum {
         records: Vec<crate::import::ReleaseRecord>,
     },
 }
 
 impl TriageReading {
     /// How a row reads from its draft, its release link, and the catalog
-    /// records the linked releases are described in.
+    /// records what it is linked to is described in.
     pub fn of(
         summary: Option<&TriageMetadataSummary>,
         link: Option<&ReleaseLink>,
@@ -241,8 +247,17 @@ impl TriageReading {
             return Self::Unidentified;
         }
         match link {
-            Some(_) => Self::Identified { records },
+            Some(ReleaseLink::Pressing(_)) => Self::Identified { records },
+            Some(ReleaseLink::Album(_)) => Self::IdentifiedAlbum { records },
             None => Self::Prefilled,
+        }
+    }
+
+    /// Every catalog record the row names: none unless it is linked.
+    pub fn records(self) -> Vec<crate::import::ReleaseRecord> {
+        match self {
+            Self::Identified { records } | Self::IdentifiedAlbum { records } => records,
+            Self::Unidentified | Self::Prefilled => Vec::new(),
         }
     }
 }
@@ -271,7 +286,7 @@ pub struct TriageRow {
     pub import_status: Option<TriageImportStatus>,
     /// Where the candidate's draft was read from, once a source was applied.
     pub metadata_provenance: Option<crate::import::MetadataProvenance>,
-    /// The catalog release the candidate is linked to.
+    /// What the candidate is linked to in the catalogs.
     pub release_link: Option<ReleaseLink>,
     pub reading: TriageReading,
     /// Whether the person has selected the row.

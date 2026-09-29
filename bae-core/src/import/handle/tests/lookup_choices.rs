@@ -251,7 +251,7 @@ async fn store_settled_text(handle: &ImportServiceHandle, hash: &str, printed: &
 
 pub(super) async fn pick(handle: &ImportServiceHandle, key: &str, release_id: &str) {
     handle
-        .select_candidate_release(key.to_string(), crate::import::ReleaseLink {
+        .select_candidate_release(key.to_string(), crate::import::PressingLink {
                 record: crate::import::MetadataRef::new(
                     crate::import::Catalog::MusicBrainz,
                     release_id.to_string(),

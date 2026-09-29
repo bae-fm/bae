@@ -412,7 +412,7 @@ fn a_stated_link_pairs_despite_the_text_and_the_facts() {
     assert_eq!(groups[0].title, "Album Title: Subtitle");
     assert_eq!(
         groups[0].sections[0].pressings[0].pick(),
-        crate::import::ReleaseLink {
+        crate::import::PressingLink {
             record: crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-1".to_string()),
             partners: vec![crate::import::MetadataRef::new(Catalog::Discogs, "dg-1")],
         }
@@ -442,7 +442,7 @@ fn a_stated_link_names_the_record_that_stands_for_its_catalog() {
     );
     assert_eq!(
         groups[0].sections[0].pressings[0].pick(),
-        crate::import::ReleaseLink {
+        crate::import::PressingLink {
             record: crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-1".to_string()),
             partners: vec![crate::import::MetadataRef::new(
                 Catalog::Discogs,
@@ -674,7 +674,7 @@ fn a_paired_row_is_picked_with_its_partner() {
     let groups = grouped(vec![one, other]);
     assert_eq!(
         groups[0].sections[0].pressings[0].pick(),
-        crate::import::ReleaseLink {
+        crate::import::PressingLink {
             record: crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-1".to_string()),
             partners: vec![crate::import::MetadataRef::new(Catalog::Discogs, "dg-1")],
         }
@@ -687,7 +687,7 @@ fn a_lone_row_is_picked_with_no_partner() {
     let groups = grouped(vec![discogs("dg-1", Some("master-7"), Some(1992))]);
     assert_eq!(
         groups[0].sections[0].pressings[0].pick(),
-        crate::import::ReleaseLink {
+        crate::import::PressingLink {
             record: crate::import::MetadataRef::new(Catalog::Discogs, "dg-1".to_string()),
             partners: vec![],
         }

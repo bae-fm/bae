@@ -213,6 +213,45 @@ final class FindOnlinePaneTests: XCTestCase {
     }
 
     /// Every line of text the pane draws for `state`.
+    /// Several pressings of one album offer the way to answer without saying
+    /// which, with what it does; a list core says is not that offers none.
+    func testSeveralPressingsOfOneAlbumOfferNotSure() async throws {
+        let offered = try await renderedText(
+            of: PreviewData.searchStateSharedAlbum
+        )
+        XCTAssertTrue(
+            offered.contains {
+                $0.localizedCaseInsensitiveContains(
+                    String(localized: "Not sure")
+                )
+            },
+            "the pane reads: \(offered)"
+        )
+        XCTAssertTrue(
+            offered.contains {
+                $0.localizedCaseInsensitiveContains("these releases share")
+            },
+            "the pane reads: \(offered)"
+        )
+
+        let notOffered = try await renderedText(
+            of: PreviewData.searchState(
+                identifyState: IdentifyState(
+                    bridge: PreviewData.bridgeDisagreementState
+                ),
+                needsYou: .matches(count: 2)
+            )
+        )
+        XCTAssertFalse(
+            notOffered.contains {
+                $0.localizedCaseInsensitiveContains(
+                    String(localized: "Not sure")
+                )
+            },
+            "the pane reads: \(notOffered)"
+        )
+    }
+
     private func renderedText(
         of state: ImportSearchState
     ) async throws -> [String] {
@@ -325,6 +364,7 @@ struct NarrowedOutDisclosureTests {
             onSelect: { _ in },
             onSearchManually: {},
             onKeepOwnDraft: nil,
+            onLinkSharedAlbum: nil,
             narrowedOutExpanded: .constant(isExpanded)
         )
         .importPreviewEnvironment()
@@ -477,7 +517,7 @@ struct FindOnlinePressingSourceTests {
             Pressing(
                 bridge: BridgePressing(
                     releases: [discogsLead, musicBrainzPartner],
-                    pick: BridgeReleaseLink(
+                    pick: BridgePressingLink(
                         record: BridgeMetadataRef(
                             catalog: discogsLead.source,
                             key: discogsLead.releaseId

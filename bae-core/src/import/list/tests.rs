@@ -199,10 +199,10 @@ fn external_release_seed(release_id: &str) -> MetadataProvenance {
 
 /// The link a pick of a release row stores.
 fn release_link_to(release_id: &str) -> crate::import::ReleaseLink {
-    crate::import::ReleaseLink {
+    crate::import::ReleaseLink::Pressing(crate::import::PressingLink {
         record: crate::import::MetadataRef::new(Catalog::MusicBrainz, release_id.to_string()),
         partners: vec![],
-    }
+    })
 }
 
 /// Mark `display_path`'s candidate imported as `release_id` at `imported_at`

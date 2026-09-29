@@ -109,7 +109,8 @@
                 narrowedOutCount: 0,
                 catalogAgreements: catalogAgreements,
                 folderCheck: nil,
-                picksUnattended: false
+                picksUnattended: false,
+                offersSharedAlbum: false
             )
         )
 
@@ -160,7 +161,8 @@
                 narrowedOutCount: 0,
                 catalogAgreements: [],
                 folderCheck: .trackCountDisagrees(local: 1, source: 10),
-                picksUnattended: false
+                picksUnattended: false,
+                offersSharedAlbum: false
             )
         )
 
@@ -189,7 +191,8 @@
                 narrowedOutCount: 0,
                 catalogAgreements: catalogAgreements,
                 folderCheck: nil,
-                picksUnattended: false
+                picksUnattended: false,
+                offersSharedAlbum: false
             )
         )
 
@@ -264,7 +267,8 @@
                 narrowedOutCount: 0,
                 catalogAgreements: catalogAgreements,
                 folderCheck: nil,
-                picksUnattended: false
+                picksUnattended: false,
+                offersSharedAlbum: false
             )
         )
 
@@ -281,7 +285,8 @@
                     narrowedOutCount: 0,
                     catalogAgreements: catalogAgreements,
                     folderCheck: nil,
-                    picksUnattended: false
+                    picksUnattended: false,
+                    offersSharedAlbum: false
                 )
             )
 
@@ -769,8 +774,11 @@
             of row: BridgeTriageRow
         ) -> BridgeCandidatePanePlacement {
             let records: [BridgeReleaseRecord] =
-                if case .identified(let records) = row.reading { records }
-                else { [] }
+                switch row.reading {
+                case .identified(let records), .identifiedAlbum(let records):
+                    records
+                case .prefilled, .unidentified: []
+                }
             return switch row.placement {
             case .pending:
                 .pending(

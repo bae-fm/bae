@@ -256,7 +256,8 @@ pub struct BridgeImportCandidateDetail {
     pub metadata_draft_is_blank: bool,
     /// Where the current draft began, absent for direct entry and after clear.
     pub metadata_provenance: Option<BridgeMetadataProvenance>,
-    /// The catalog release the candidate is linked to, which Unlink clears.
+    /// What the candidate is linked to in the catalogs — a pressing, or an
+    /// album whose pressing is unknown — which Unlink clears.
     pub release_link: Option<crate::types::BridgeReleaseLink>,
     /// Who wrote it. Find online returns to the draft when this becomes
     /// `Identification`: the run wrote the pick a click there would have
@@ -380,6 +381,9 @@ pub enum BridgePaneCommand {
     ChangeAgreements,
     /// Keep the folder's own draft over what its lookup offered.
     KeepOwnDraft,
+    /// Link the folder to the album its lookup's offered pressings are of,
+    /// its pressing unknown.
+    LinkSharedAlbum,
     /// Unlink the candidate from its release.
     Unlink,
 }
@@ -412,6 +416,7 @@ mirror_enum! {
         ChangeSearchWords,
         ChangeAgreements,
         KeepOwnDraft,
+        LinkSharedAlbum,
         Unlink,
     },
 }

@@ -305,15 +305,34 @@ mod tests {
     /// read into — the reading names them, it does not derive them.
     #[test]
     fn a_link_reads_as_identified_in_the_records_it_is_handed() {
-        let pick = ReleaseLink {
+        let pick = ReleaseLink::Pressing(crate::import::PressingLink {
             record: crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-1".to_string()),
             partners: Vec::new(),
-        };
+        });
         assert_eq!(
             TriageReading::of(Some(&a_draft()), Some(&pick), described_in()),
             TriageReading::Identified {
                 records: described_in()
             }
+        );
+    }
+
+    /// An album link reads as the album, pressing unknown, in its records.
+    #[test]
+    fn an_album_link_reads_as_its_album() {
+        let album = crate::import::AlbumLink::new([crate::import::MetadataRef::new(
+            Catalog::MusicBrainz,
+            "group-1",
+        )])
+        .expect("one album");
+        let records = album.records();
+        assert_eq!(
+            TriageReading::of(
+                Some(&a_draft()),
+                Some(&ReleaseLink::Album(album)),
+                records.clone()
+            ),
+            TriageReading::IdentifiedAlbum { records }
         );
     }
 }

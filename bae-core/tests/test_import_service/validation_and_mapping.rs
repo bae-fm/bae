@@ -162,7 +162,7 @@ async fn two_credit_mb_release_keeps_both_album_artists() {
 
     // Pick the release and change nothing.
     f.handle
-        .select_candidate_release(candidate_key.clone(), bae_core::import::ReleaseLink {
+        .select_candidate_release(candidate_key.clone(), bae_core::import::PressingLink {
                 record: bae_core::import::MetadataRef::new(Catalog::MusicBrainz, mb_id.clone()),
                 partners: vec![],
             },
@@ -253,7 +253,7 @@ async fn pick_release_for_folder(
     .await;
 
     f.handle
-        .select_candidate_release(candidate_key.clone(), bae_core::import::ReleaseLink {
+        .select_candidate_release(candidate_key.clone(), bae_core::import::PressingLink {
                 record: bae_core::import::MetadataRef::new(Catalog::MusicBrainz, mb_id.to_string()),
                 partners: vec![],
             },
@@ -306,7 +306,7 @@ async fn incompatible_source_counts_preserve_every_audio_backed_track() {
             .unwrap();
         let error = f
             .handle
-            .select_candidate_release(candidate_key.clone(), bae_core::import::ReleaseLink {
+            .select_candidate_release(candidate_key.clone(), bae_core::import::PressingLink {
                     record: bae_core::import::MetadataRef::new(Catalog::MusicBrainz, mb_id),
                     partners: vec![],
                 },
@@ -424,7 +424,7 @@ async fn an_import_with_no_cover_pick_takes_the_release_s_own_cover() {
         &album_dir,
         None,
         ImportDestination::Local,
-        support::DraftSource::Pick(bae_core::import::ReleaseLink {
+        support::DraftSource::Pick(bae_core::import::PressingLink {
             record: bae_core::import::MetadataRef::new(Catalog::MusicBrainz, release_id_key),
             partners: vec![],
         }),
@@ -473,7 +473,7 @@ async fn an_import_fails_when_the_release_s_own_cover_will_not_download() {
         &album_dir,
         None,
         ImportDestination::Local,
-        support::DraftSource::Pick(bae_core::import::ReleaseLink {
+        support::DraftSource::Pick(bae_core::import::PressingLink {
             record: bae_core::import::MetadataRef::new(Catalog::MusicBrainz, release_id_key),
             partners: vec![],
         }),

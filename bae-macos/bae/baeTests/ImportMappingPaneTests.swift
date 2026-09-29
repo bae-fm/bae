@@ -22,7 +22,7 @@ private final class Recorder {
     var discCalls: [(sheetFileId: String, disc: BridgeSheetDisc)] = []
     var trackEdits: [(key: String, track: BridgeRawTrackEdit)] = []
     var editFields: [(field: BridgeCandidateEditField, value: String)] = []
-    var externalMetadata: [BridgeReleaseLink] = []
+    var externalMetadata: [BridgePressingLink] = []
     var fileTagsApplications = 0
     var played: [BridgePreviewTarget] = []
     var stops = 0
@@ -366,7 +366,7 @@ extension ImportMappingPaneTests {
             endEditing: {},
             key: MappingFixtures.candidateKey,
             application: .pick(
-                BridgeReleaseLink(
+                BridgePressingLink(
                     record: BridgeMetadataRef(
                         catalog: MappingFixtures.source,
                         key: "another-pressing"
@@ -575,7 +575,7 @@ extension ImportMappingPaneTests {
         #expect(candidate.metadataProvenance == .fileMetadata)
         #expect(candidate.mapping.trackMappings.count == 2)
         #expect(
-            candidate.releaseLink == MappingFixtures.link,
+            candidate.releaseLink == MappingFixtures.releaseLink,
             "reading the tags leaves the link as it is"
         )
 
@@ -601,7 +601,8 @@ extension ImportMappingPaneTests {
         #expect(candidate.metadataProvenance == MappingFixtures.provenance)
         #expect(candidate.mapping.trackMappings.count == 13)
         #expect(
-            candidate.releaseLink?.record.key == MappingFixtures.releaseId
+            candidate.releaseLink?.pressing?.record.key
+                == MappingFixtures.releaseId
         )
     }
 }

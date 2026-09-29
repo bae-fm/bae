@@ -527,10 +527,42 @@ pub enum BridgeMetadataProvenance {
     FileMetadata,
 }
 
-/// The catalog release a candidate is linked to, independent of its draft.
+/// What a candidate is linked to in the catalogs, independent of its draft.
 /// Mirrors `bae_core::import::ReleaseLink`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeReleaseLink {
+    /// The pressing picked for the folder.
+    Pressing { link: BridgePressingLink },
+    /// The album the folder's copy is a pressing of, its pressing unknown:
+    /// the album in each catalog that files it, in catalog order.
+    Album {
+        albums: Vec<crate::types::BridgeMetadataRef>,
+    },
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeReleaseLink {
+    pub(crate) fn from_core(link: bae_core::import::ReleaseLink) -> Self {
+        match link {
+            bae_core::import::ReleaseLink::Pressing(pressing) => Self::Pressing {
+                link: BridgePressingLink::from_core(pressing),
+            },
+            bae_core::import::ReleaseLink::Album(album) => Self::Album {
+                albums: album
+                    .albums()
+                    .iter()
+                    .cloned()
+                    .map(crate::types::BridgeMetadataRef::from_core)
+                    .collect(),
+            },
+        }
+    }
+}
+
+/// The pressing a pick links a candidate to. Mirrors
+/// `bae_core::import::PressingLink`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct BridgeReleaseLink {
+pub struct BridgePressingLink {
     /// The catalog's release the pick names first.
     pub record: crate::types::BridgeMetadataRef,
     /// The same pressing in the other catalogs, which the pick also claims.
@@ -538,8 +570,8 @@ pub struct BridgeReleaseLink {
 }
 
 #[cfg(feature = "desktop")]
-impl BridgeReleaseLink {
-    pub(crate) fn from_core(link: bae_core::import::ReleaseLink) -> Self {
+impl BridgePressingLink {
+    pub(crate) fn from_core(link: bae_core::import::PressingLink) -> Self {
         Self {
             record: crate::types::BridgeMetadataRef::from_core(link.record),
             partners: link
@@ -550,8 +582,8 @@ impl BridgeReleaseLink {
         }
     }
 
-    pub(crate) fn into_core(self) -> bae_core::import::ReleaseLink {
-        bae_core::import::ReleaseLink {
+    pub(crate) fn into_core(self) -> bae_core::import::PressingLink {
+        bae_core::import::PressingLink {
             record: self.record.into_core(),
             partners: self
                 .partners
@@ -597,9 +629,14 @@ pub enum BridgeTriageReading {
     Unidentified,
     /// A draft of a candidate linked to no release.
     Prefilled,
-    /// A draft of a candidate linked to a catalog release, with every
-    /// catalog that describes that release.
+    /// A draft of a candidate linked to a catalog pressing, with every
+    /// catalog that describes that pressing.
     Identified {
+        records: Vec<crate::types::BridgeReleaseRecord>,
+    },
+    /// A draft of a candidate linked to an album, its pressing unknown, with
+    /// every catalog's record of the album.
+    IdentifiedAlbum {
         records: Vec<crate::types::BridgeReleaseRecord>,
     },
 }
@@ -612,6 +649,7 @@ mirror_enum! {
         Unidentified,
         Prefilled,
         Identified { records: (each crate::types::BridgeReleaseRecord) },
+        IdentifiedAlbum { records: (each crate::types::BridgeReleaseRecord) },
     },
 }
 

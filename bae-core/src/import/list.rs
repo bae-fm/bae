@@ -518,7 +518,7 @@ pub struct ImportCandidateDetailProjection {
     /// stored verdict for the candidate's current file shape.
     pub verdict: Option<VerdictSummary>,
     pub metadata_provenance: Option<MetadataProvenance>,
-    /// The catalog release the candidate is linked to.
+    /// What the candidate is linked to in the catalogs.
     pub release_link: Option<ReleaseLink>,
     /// Who wrote the draft, which decides whether a valid one is the answer.
     pub metadata_author: crate::import::MetadataAuthor,
@@ -635,15 +635,12 @@ impl ImportCandidateDetailProjection {
         let draft_records = || {
             let linked = release_link.as_ref().filter(|_| actionable);
             let answered = linked.is_some() || metadata_provenance.is_some();
-            match super::triage::TriageReading::of(
+            super::triage::TriageReading::of(
                 TriageMetadataSummary::of(&metadata_draft, answered).as_ref(),
                 linked,
                 records,
-            ) {
-                super::triage::TriageReading::Identified { records } => records,
-                super::triage::TriageReading::Unidentified
-                | super::triage::TriageReading::Prefilled => Vec::new(),
-            }
+            )
+            .records()
         };
         let pane_placement = match placement.tab() {
             TriageTab::Pending => CandidatePanePlacement::Pending {
@@ -778,7 +775,7 @@ pub struct ImportCandidateDetail {
     pub artist_resolutions: Vec<crate::import::ResolvedCredit>,
     pub metadata_draft_is_blank: bool,
     pub metadata_provenance: Option<MetadataProvenance>,
-    /// The catalog release the candidate is linked to, which Unlink clears.
+    /// What the candidate is linked to in the catalogs, which Unlink clears.
     pub release_link: Option<ReleaseLink>,
     /// Who wrote the draft: nobody, the tag prefill, identification's own
     /// pick, or the person.

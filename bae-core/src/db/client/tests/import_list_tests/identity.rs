@@ -51,10 +51,12 @@ async fn the_row_and_the_pane_name_the_same_records() {
     crate::import::CandidatePreparations::new(db.clone())
         .replace_link(
             &candidate.files.content_hash(),
-            Some(&crate::import::ReleaseLink {
-                record: crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-linked"),
-                partners: vec![],
-            }),
+            Some(&crate::import::ReleaseLink::Pressing(
+                crate::import::PressingLink {
+                    record: crate::import::MetadataRef::new(Catalog::MusicBrainz, "mb-linked"),
+                    partners: vec![],
+                },
+            )),
         )
         .await
         .unwrap();

@@ -207,8 +207,8 @@ impl AutomationReleaseRecord {
     }
 }
 
-impl AutomationReleaseLink {
-    pub(crate) fn from_core(link: ReleaseLink) -> Self {
+impl AutomationPressingLink {
+    pub(crate) fn from_core(link: PressingLink) -> Self {
         Self {
             record: AutomationMetadataRef::from_core(link.record),
             partners: link
@@ -219,8 +219,8 @@ impl AutomationReleaseLink {
         }
     }
 
-    pub(crate) fn into_core(self) -> ReleaseLink {
-        ReleaseLink {
+    pub(crate) fn into_core(self) -> PressingLink {
+        PressingLink {
             record: self.record.into_core(),
             partners: self
                 .partners
@@ -283,7 +283,7 @@ impl AutomationPressing {
     /// `pick` is derived by core from the row's releases, not stored.
     pub(crate) fn from_core(pressing: bae_core::import::release_group::Pressing) -> Self {
         Self {
-            pick: AutomationReleaseLink::from_core(pressing.pick()),
+            pick: AutomationPressingLink::from_core(pressing.pick()),
             releases: pressing
                 .releases
                 .into_iter()

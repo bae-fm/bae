@@ -247,9 +247,9 @@ impl Pressing {
 
     /// What picking this row claims — the primary release and each other
     /// catalog's record of the same pressing — as the link a pick stores.
-    pub fn pick(&self) -> crate::import::ReleaseLink {
+    pub fn pick(&self) -> crate::import::PressingLink {
         let (primary, partners) = self.claims();
-        crate::import::ReleaseLink {
+        crate::import::PressingLink {
             record: primary,
             partners,
         }

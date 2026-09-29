@@ -802,7 +802,7 @@ impl Fixture {
                             release_id.to_string(),
                         );
                         crate::db::VerdictPick {
-                            link: crate::import::ReleaseLink {
+                            link: crate::import::PressingLink {
                                 record: record.clone(),
                                 partners: vec![],
                             },

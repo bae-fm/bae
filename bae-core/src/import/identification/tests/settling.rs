@@ -142,7 +142,7 @@ async fn applying_a_settled_candidate_refetches_a_missing_parent_then_reads_offl
 
     fixture
         .import
-        .select_candidate_release(dir.to_string_lossy().into_owned(), crate::import::ReleaseLink {
+        .select_candidate_release(dir.to_string_lossy().into_owned(), crate::import::PressingLink {
                 record: crate::import::MetadataRef::new(
                     crate::import::Catalog::MusicBrainz,
                     "mb-offline-1".to_string(),
@@ -219,7 +219,7 @@ async fn a_settled_lead_with_no_stored_release_fails_loud() {
 
     let error = fixture
         .import
-        .select_candidate_release(dir.to_string_lossy().into_owned(), crate::import::ReleaseLink {
+        .select_candidate_release(dir.to_string_lossy().into_owned(), crate::import::PressingLink {
                 record: crate::import::MetadataRef::new(
                     crate::import::Catalog::MusicBrainz,
                     "mb-missing-1".to_string(),
@@ -256,7 +256,7 @@ async fn a_pick_outside_the_verdict_archives_what_it_fetched() {
         "nothing has fetched this release yet"
     );
 
-    let pick = || crate::import::ReleaseLink {
+    let pick = || crate::import::PressingLink {
         record: crate::import::MetadataRef::new(
             crate::import::Catalog::MusicBrainz,
             "mb-manual-1".to_string(),
@@ -362,7 +362,7 @@ async fn matches_that_pair_into_one_pressing_settle_as_one_pick() {
     );
     assert_eq!(
         row.release_link,
-        Some(crate::import::ReleaseLink {
+        Some(crate::import::ReleaseLink::Pressing(crate::import::PressingLink {
             record: crate::import::MetadataRef::new(
                 crate::import::Catalog::MusicBrainz,
                 "mb-paired-1".to_string()
@@ -371,7 +371,7 @@ async fn matches_that_pair_into_one_pressing_settle_as_one_pick() {
                 crate::import::Catalog::Discogs,
                 "70000101"
             )],
-        }),
+        })),
         "the stored pick claims the Discogs record of the same pressing"
     );
     assert!(
@@ -468,7 +468,7 @@ async fn a_disc_id_lead_settles_with_the_discogs_record_of_its_pressing() {
     );
     assert_eq!(
         row.release_link,
-        Some(crate::import::ReleaseLink {
+        Some(crate::import::ReleaseLink::Pressing(crate::import::PressingLink {
             record: crate::import::MetadataRef::new(
                 crate::import::Catalog::MusicBrainz,
                 "mb-paired-2".to_string()
@@ -477,7 +477,7 @@ async fn a_disc_id_lead_settles_with_the_discogs_record_of_its_pressing() {
                 crate::import::Catalog::Discogs,
                 "70000102"
             )],
-        }),
+        })),
         "the stored pick claims the Discogs record the barcode alone found"
     );
     assert!(
@@ -566,7 +566,7 @@ async fn the_record_the_folder_agrees_with_settles_as_the_lead() {
     );
     assert_eq!(
         row.release_link,
-        Some(crate::import::ReleaseLink {
+        Some(crate::import::ReleaseLink::Pressing(crate::import::PressingLink {
             record: crate::import::MetadataRef::new(
                 crate::import::Catalog::Discogs,
                 "70000103".to_string()
@@ -575,7 +575,7 @@ async fn the_record_the_folder_agrees_with_settles_as_the_lead() {
                 crate::import::Catalog::MusicBrainz,
                 "mb-paired-3"
             )],
-        }),
+        })),
         "so the pick names it primary and the MusicBrainz record its partner"
     );
     assert_eq!(
@@ -670,7 +670,7 @@ async fn two_distinct_pressings_are_read_in_full_and_do_not_settle() {
     let before_pick = fixture.provider.requests().len();
     fixture
         .import
-        .select_candidate_release(dir.to_string_lossy().into_owned(), crate::import::ReleaseLink {
+        .select_candidate_release(dir.to_string_lossy().into_owned(), crate::import::PressingLink {
                 record: crate::import::MetadataRef::new(
                     crate::import::Catalog::MusicBrainz,
                     "mb-two-2".to_string(),
@@ -906,13 +906,13 @@ async fn settling_a_lead_leaves_the_lookup_choices_alone() {
         .expect("the settled candidate has a pane");
     assert_eq!(
         pane.release_link,
-        Some(crate::import::ReleaseLink {
+        Some(crate::import::ReleaseLink::Pressing(crate::import::PressingLink {
             record: crate::import::MetadataRef::new(
                 crate::import::Catalog::MusicBrainz,
                 "mb-catalog-1".to_string()
             ),
             partners: vec![],
-        })
+        }))
     );
     assert_eq!(
         pane.lookup_choices,

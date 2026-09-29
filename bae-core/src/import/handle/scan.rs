@@ -347,7 +347,7 @@ impl ImportServiceHandle {
 
     /// The candidate's stored preparation, for a write about to replace its
     /// draft.
-    async fn metadata_write_base(
+    pub(super) async fn metadata_write_base(
         &self,
         candidate_key: &str,
     ) -> Result<
@@ -436,7 +436,7 @@ impl ImportServiceHandle {
     pub(super) async fn pick_candidate_release_write(
         &self,
         candidate_key: String,
-        link: crate::import::ReleaseLink,
+        link: crate::import::PressingLink,
     ) -> Result<u64, crate::import::ImportError> {
         let (candidate, current) = self.metadata_write_base(&candidate_key).await?;
         let content_hash = candidate.files.content_hash();

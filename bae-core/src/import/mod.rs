@@ -56,6 +56,7 @@ desktop_only! {
     pub mod release_group;
     pub mod search;
     pub mod selection;
+    pub mod shared_album;
     pub(crate) mod service;
     pub mod source_release;
 }
@@ -228,13 +229,13 @@ desktop_only! {
     pub use types::ImportCommand;
 }
 pub use types::{
-    artists_standing, asked_sources, is_the_only_asked_source, parse_catalog_url, ArtistAssignment,
-    ArtistCredit, ArtistStanding, ArtistsStanding, AudioFile, CandidateDraft, CandidateEditField,
-    CandidateTrack, Catalog, CatalogAvailability, CatalogPage, CreditResolution, DraftFieldEdit,
-    EditValidationError, ExistingArtist, MetadataProvenance, MetadataRef, PressingFactEdit,
-    RawLabelEdit, RawPressingEdit, RawReleaseEdit, RawReleaseEditOf, RawTrackEdit, ReleaseEditSeed,
-    ReleaseLink, ReleaseRecord, ReleaseUserEdit, ResolvedCredit, SourceAvailability,
-    TrackArtistAssignments, TrackUserEdit,
+    artists_standing, asked_sources, is_the_only_asked_source, parse_catalog_url, AlbumLink,
+    ArtistAssignment, ArtistCredit, ArtistStanding, ArtistsStanding, AudioFile, CandidateDraft,
+    CandidateEditField, CandidateTrack, Catalog, CatalogAvailability, CatalogPage,
+    CreditResolution, DraftFieldEdit, EditValidationError, ExistingArtist, MetadataProvenance,
+    MetadataRef, PressingFactEdit, PressingLink, RawLabelEdit, RawPressingEdit, RawReleaseEdit,
+    RawReleaseEditOf, RawTrackEdit, ReleaseEditSeed, ReleaseLink, ReleaseRecord, ReleaseUserEdit,
+    ResolvedCredit, SourceAvailability, TrackArtistAssignments, TrackUserEdit,
 };
 desktop_only! {
     pub use types::{

@@ -51,7 +51,7 @@ pub struct NewImportCandidateVerdict {
 /// read from it.
 #[derive(Debug, Clone)]
 pub struct VerdictPick {
-    pub link: crate::import::ReleaseLink,
+    pub link: crate::import::PressingLink,
     pub metadata: crate::import::CandidateMetadataDraft,
 }
 
@@ -93,7 +93,7 @@ pub struct DbImportCandidateState {
     /// What the draft's values were read from, or `None` for a draft typed
     /// in, cleared, or blank.
     pub metadata_provenance: Option<crate::import::MetadataProvenance>,
-    /// The catalog release the candidate is linked to, or `None` while it is
+    /// What the candidate is linked to in the catalogs, or `None` while it is
     /// linked to none. It names a release, not a shape, so file decisions
     /// and draft edits leave it standing.
     pub release_link: Option<crate::import::ReleaseLink>,

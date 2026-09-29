@@ -30,6 +30,10 @@ extension ImportSearchFlow {
         /// Keep the folder's own draft over what its lookup offered; `nil`
         /// for a library release, which has no folder draft to keep.
         let onKeepOwnDraft: (() -> Void)?
+        /// Link the folder to the album the offered pressings are of, its
+        /// pressing unknown; `nil` for a library release, which has no folder
+        /// to link.
+        let onLinkSharedAlbum: (() -> Void)?
         /// What extraction has found for this key so far, feeding the form's
         /// suggestion pools and its scanning indicator. `nil` before
         /// extraction has reported any, and for a candidate whose run settled
@@ -101,6 +105,7 @@ extension ImportSearchFlow {
             },
             onSelect: onSelect,
             onKeepOwnDraft: input.onKeepOwnDraft,
+            onLinkSharedAlbum: input.onLinkSharedAlbum,
             openSection: input.openSection,
             onOpenSection: input.onOpenSection,
         )

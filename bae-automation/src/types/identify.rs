@@ -236,6 +236,9 @@ pub enum AutomationIdentifyState {
         /// the folder failed.
         folder_check: Option<AutomationFolderCheck>,
         picks_unattended: bool,
+        /// Whether the offered rows are several pressings of one album, which
+        /// the folder can be linked to with its pressing unknown.
+        offers_shared_album: bool,
     },
     NotFoundAnywhere {
         run: Option<AutomationIdentifyRun>,
@@ -257,5 +260,8 @@ pub enum AutomationIdentifyState {
         agreements: Vec<AutomationAgreements>,
         narrowed_out_count: u32,
         catalog_agreements: Vec<AutomationCatalogAgreement>,
+        /// Whether the offered rows are several pressings of one album, as for
+        /// `Found`.
+        offers_shared_album: bool,
     },
 }

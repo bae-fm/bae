@@ -49,13 +49,13 @@ async fn a_pick_reads_back_as_the_same_answer() {
         .expect("the row carries the decision");
     assert_eq!(
         picked,
-        crate::import::ReleaseLink {
+        crate::import::ReleaseLink::Pressing(crate::import::PressingLink {
             record: crate::import::MetadataRef::new(
                 crate::import::Catalog::MusicBrainz,
                 "mb-answer-1".to_string()
             ),
             partners: vec![],
-        }
+        })
     );
 
     // A person reading the draft from the folder's own files replaces the
@@ -143,7 +143,7 @@ async fn a_picked_release_is_what_the_row_leads_with() {
         let key = key.clone();
         tokio::spawn(async move {
             import
-                .select_candidate_release(key, crate::import::ReleaseLink {
+                .select_candidate_release(key, crate::import::PressingLink {
                         record: crate::import::MetadataRef::new(
                             crate::import::Catalog::MusicBrainz,
                             "mb-picked-1".to_string(),
@@ -226,7 +226,7 @@ async fn a_pick_reads_back_as_the_identity_it_commits() {
         .store_settled_verdict(&dir, "mb-answer-1", "rg-answer-1",)
         .await;
 
-    let pick = crate::import::ReleaseLink {
+    let pick = crate::import::PressingLink {
         record: crate::import::MetadataRef::new(
             crate::import::Catalog::MusicBrainz,
             "mb-answer-1".to_string(),
@@ -253,7 +253,7 @@ async fn a_pick_reads_back_as_the_identity_it_commits() {
 
     // The row carries the draft and provenance the pane and bulk import consume.
     let row = queue_row(&fixture, &key).await;
-    assert_eq!(row.release_link, Some(pick));
+    assert_eq!(row.release_link, Some(crate::import::ReleaseLink::Pressing(pick)));
 }
 
 /// Once a run's verdict lands in its row, the recorded runtime state clears:
@@ -564,7 +564,7 @@ async fn a_picked_row_states_what_each_claimed_source_says() {
 
     fixture
         .import
-        .select_candidate_release(key.clone(), crate::import::ReleaseLink {
+        .select_candidate_release(key.clone(), crate::import::PressingLink {
                 record: crate::import::MetadataRef::new(
                     crate::import::Catalog::MusicBrainz,
                     "mb-stated-1".to_string(),

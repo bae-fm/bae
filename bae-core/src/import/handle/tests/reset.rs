@@ -437,7 +437,7 @@ async fn reset_setup_discards_selected_release_assets_and_identification() {
     manager.providers().musicbrainz().seed_discogs_url_lookup(id, None);
     manager.providers().discogs().seed_artist_image_response(id, None);
     handle
-        .select_candidate_release(key.clone(), crate::import::ReleaseLink {
+        .select_candidate_release(key.clone(), crate::import::PressingLink {
                 record: crate::import::MetadataRef::new(crate::import::Catalog::Discogs, id),
                 partners: vec![],
             },

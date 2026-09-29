@@ -12,7 +12,8 @@
 //! 3. **Error** — bae could not store a run's answer.
 //! 4. **Import error** — the last import failed, or the release cannot be
 //!    worked on as it stands.
-//! 5. **Identified** — the candidate is linked to a catalog release.
+//! 5. **Identified** — the candidate is linked to a catalog pressing, or to
+//!    an album whose pressing is unknown.
 //! 6. **Not looked up** — no lookup is stored for the folder's files.
 //! 7. **Unmatched** — the person kept their own draft over what the lookup
 //!    offered.

@@ -32,6 +32,9 @@ struct FindOnlineAutomaticSection: View {
     /// Keep the folder's own draft over what the lookup offered; `nil` where
     /// the surface has no draft of its own to keep.
     let onKeepOwnDraft: (() -> Void)?
+    /// Link the folder to the album the offered pressings are of, its
+    /// pressing unknown; `nil` where the surface has no folder to link.
+    let onLinkSharedAlbum: (() -> Void)?
     /// Whether the releases agreement narrowed out are showing. Held by the
     /// pane, which outlives this section: collapsing AUTOMATIC and opening it
     /// again leaves the disclosure as the person left it.
@@ -141,6 +144,10 @@ struct FindOnlineAutomaticSection: View {
                 {
                     FolderCheckNote(text: folderCheck)
                 }
+                // Right under the offered rows, above the ones agreement set
+                // aside: the answer for a person who cannot tell them apart.
+                linkSharedAlbum
+                    .padding(.leading, ReleaseGroupSection.rowTextInset)
                 narrowedOut
                 ForEach(missingSourceNotes, id: \.search) { note in
                     MissingSourceNote(text: note.text)
@@ -175,11 +182,32 @@ struct FindOnlineAutomaticSection: View {
     @ViewBuilder
     private var keepOwnDraft: some View {
         if let needsYou = state.needsYou, let onKeepOwnDraft {
-            KeepOwnDraftAction(
+            PaneAnswerAction(
                 title: needsYou.offeredReleases
                     ? String(localized: "None of these")
                     : String(localized: "Keep my info"),
+                subtitle: String(
+                    localized: "Keep my info; it's not in the catalogs"
+                ),
                 action: onKeepOwnDraft
+            )
+            .disabled(state.isImporting)
+        }
+    }
+
+    /// The way to answer a folder whose copy is one of several pressings of
+    /// one album, without saying which: offered where core says the rows
+    /// are that.
+    @ViewBuilder
+    private var linkSharedAlbum: some View {
+        if state.offersSharedAlbum, let onLinkSharedAlbum {
+            PaneAnswerAction(
+                title: String(localized: "Not sure"),
+                subtitle: String(
+                    localized:
+                        "Use what these releases share; leave the rest as is"
+                ),
+                action: onLinkSharedAlbum
             )
             .disabled(state.isImporting)
         }
@@ -264,16 +292,18 @@ struct FindOnlineAutomaticSection: View {
     }
 }
 
-/// Keeping the folder's own draft: the button, and what it does beneath it.
-private struct KeepOwnDraftAction: View {
+/// A way to answer the folder other than picking a row: the button, and
+/// what it does beneath it.
+private struct PaneAnswerAction: View {
     let title: String
+    let subtitle: String
     let action: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.hairline) {
             Button(title, action: action)
                 .controlSize(.small)
-            Text("Keep my info; it's not in the catalogs")
+            Text(subtitle)
                 .themeText(.detail)
                 .foregroundStyle(.tertiary)
         }

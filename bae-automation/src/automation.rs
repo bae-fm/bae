@@ -192,7 +192,7 @@ impl Automation {
     pub async fn select_candidate_release(
         &self,
         candidate_key: String,
-        link: AutomationReleaseLink,
+        link: AutomationPressingLink,
     ) -> Result<EmptyResponse, AutomationError> {
         // Resolve the candidate first, and hand core the key the snapshot
         // resolved rather than the caller's string, so a typo is refused here

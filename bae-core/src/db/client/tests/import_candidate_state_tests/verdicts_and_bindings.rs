@@ -620,8 +620,8 @@ async fn fetched(db: &Database, release_id: &str) {
     .unwrap();
 }
 
-fn release_link(release_id: &str) -> crate::import::ReleaseLink {
-    crate::import::ReleaseLink {
+fn release_link(release_id: &str) -> crate::import::PressingLink {
+    crate::import::PressingLink {
         record: crate::import::MetadataRef::new(
             crate::import::Catalog::MusicBrainz,
             release_id.to_string(),
