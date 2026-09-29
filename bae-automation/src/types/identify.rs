@@ -173,8 +173,8 @@ pub struct AutomationIdentifyRun {
     pub search: AutomationSearchStep,
 }
 
-/// Mirrors bae-core's `identify::Agreements`, with the release id it belongs
-/// to.
+/// Mirrors bae-core's `identify::RowAgreements`, with the release id it
+/// belongs to.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationAgreements {
     pub release_id: String,
@@ -186,6 +186,7 @@ pub struct AutomationAgreements {
     pub country: bool,
     pub title: bool,
     pub artist: bool,
+    pub notes: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]

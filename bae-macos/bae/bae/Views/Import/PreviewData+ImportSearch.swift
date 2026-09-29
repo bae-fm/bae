@@ -142,7 +142,8 @@
                 catalog: true,
                 label: true,
                 year: true,
-                country: false
+                country: false,
+                notes: false
             ),
             "rel-456": BridgeAgreements(
                 discId: false,
@@ -150,7 +151,8 @@
                 catalog: false,
                 label: false,
                 year: false,
-                country: false
+                country: false,
+                notes: false
             ),
         ]
 
@@ -435,7 +437,8 @@
                 catalog: false,
                 label: false,
                 year: true,
-                country: false
+                country: false,
+                notes: false
             ),
             "rel-bar-1": BridgeAgreements(
                 discId: false,
@@ -443,7 +446,8 @@
                 catalog: false,
                 label: false,
                 year: false,
-                country: false
+                country: false,
+                notes: false
             ),
         ]
 

@@ -437,9 +437,10 @@ impl BridgeSignals {
 }
 
 impl BridgeAgreements {
-    /// The pressing's agreements the list shows as badges. The album's title
-    /// and artist rank the rows but are no badge.
-    fn from_core(agreements: bae_core::identify::Agreements) -> Self {
+    /// The row's agreements the list shows as badges. The album's title and
+    /// artist rank the rows but are no badge.
+    fn from_core(agreements: bae_core::identify::RowAgreements) -> Self {
+        let bae_core::identify::RowAgreements { fields, notes } = agreements;
         let bae_core::identify::Agreements {
             disc_id,
             barcode,
@@ -449,7 +450,7 @@ impl BridgeAgreements {
             country,
             title: _,
             artist: _,
-        } = agreements;
+        } = fields;
         Self {
             disc_id,
             barcode,
@@ -457,6 +458,7 @@ impl BridgeAgreements {
             label,
             year,
             country,
+            notes,
         }
     }
 }

@@ -16,6 +16,7 @@ enum SignalBadgeStyle {
         case label
         case year
         case country
+        case notes
     }
 
     /// The agreement's name on its own — a badge.
@@ -27,6 +28,7 @@ enum SignalBadgeStyle {
         case .label: String(localized: "Label")
         case .year: String(localized: "Year")
         case .country: String(localized: "Country")
+        case .notes: String(localized: "Notes")
         }
     }
 

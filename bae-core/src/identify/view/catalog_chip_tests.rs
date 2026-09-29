@@ -187,14 +187,18 @@ fn striking_a_number_out_drops_its_agreement_and_re_ranks() {
     let IdentifyStateView::Found { agreements, .. } = &counted else {
         panic!("a settled verdict");
     };
-    assert!(agreements.iter().any(|(id, a)| id == "rel-a" && a.catalog));
+    assert!(agreements
+        .iter()
+        .any(|(id, a)| id == "rel-a" && a.fields.catalog));
     assert_eq!(card_ids(&counted), vec!["rel-a", "rel-b"]);
 
     let struck = resumed(matches(), Vec::new(), None, folder(lines, &["16033-2"]));
     let IdentifyStateView::Found { agreements, .. } = &struck else {
         panic!("a settled verdict");
     };
-    assert!(agreements.iter().any(|(id, a)| id == "rel-a" && !a.catalog));
+    assert!(agreements
+        .iter()
+        .any(|(id, a)| id == "rel-a" && !a.fields.catalog));
     assert_eq!(card_ids(&struck), vec!["rel-b", "rel-a"]);
     assert_eq!(chips(&struck), vec![("16033-2", true)]);
 }

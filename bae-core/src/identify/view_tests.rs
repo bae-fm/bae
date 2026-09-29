@@ -114,7 +114,7 @@ fn a_landed_provider_s_matches_show_before_the_other_answers() {
     );
     assert_eq!(agreements.len(), 1);
     assert_eq!(agreements[0].0, "dg-1");
-    assert!(agreements[0].1.barcode);
+    assert!(agreements[0].1.fields.barcode);
 }
 
 /// A code left out is still a row, its cells saying it was left out, beside the
@@ -750,8 +750,8 @@ fn what_agreement_narrowed_out_stays_on_its_album_s_card() {
         .iter()
         .find(|(release_id, _)| release_id == "mb-only")
         .expect("a row set aside is badged");
-    assert!(only.1.disc_id);
-    assert!(!only.1.barcode);
+    assert!(only.1.fields.disc_id);
+    assert!(!only.1.fields.barcode);
 }
 
 /// When the disc ID and barcode name different releases, the disc ID's is
@@ -834,4 +834,50 @@ fn a_found_release_states_the_check_against_the_folder_it_failed() {
         )
     );
     assert_eq!(judged(lone(13)), (true, None));
+}
+
+/// The Notes badge is on the row the folder names by what only its notes
+/// write, and never on the row that ranking set aside for it.
+#[test]
+fn the_notes_badge_is_on_the_row_the_folder_names_by_its_notes() {
+    let mut context = context();
+    context.disc.signal = DiscIdSignal::Computed {
+        disc_id: "d".to_string(),
+        source_file: None,
+    };
+    let noted = |release_id: &str, note: &str| {
+        (
+            MetadataResult {
+                notes: vec![note.to_string()],
+                ..MetadataResult::for_test(MB, release_id, Some("g"))
+            },
+            LibraryStatus::absent(release_id),
+        )
+    };
+    context.disc.results = vec![
+        noted("mb-alpha", "Pressed By Plant Alpha"),
+        noted("mb-beta", "Made In Nordland By Plant Beta"),
+    ];
+    context.text = crate::identify::CandidateText::of(
+        &[crate::signals::TextLine {
+            text: "Album (Nordland)".to_string(),
+            origin: crate::signals::TextOrigin::FolderName,
+        }],
+        &[],
+    );
+
+    let IdentifyStateView::Found { agreements, .. } =
+        IdentifyStateView::from(crate::identify::state::re_derive_for_tests(context))
+    else {
+        panic!("the disc ID found both pressings");
+    };
+    let notes = |release_id: &str| {
+        agreements
+            .iter()
+            .find(|(id, _)| id == release_id)
+            .map(|(_, row)| row.notes)
+            .expect("every row is badged")
+    };
+    assert!(notes("mb-beta"));
+    assert!(!notes("mb-alpha"));
 }

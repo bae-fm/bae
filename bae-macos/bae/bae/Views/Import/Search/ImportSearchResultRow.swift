@@ -187,6 +187,7 @@ struct ImportSearchResultRow: View {
                 agreementBadge(.label, on: agreements.label)
                 agreementBadge(.year, on: agreements.year)
                 agreementBadge(.country, on: agreements.country)
+                agreementBadge(.notes, on: agreements.notes)
             }
         }
     }
@@ -282,7 +283,8 @@ struct ImportSearchResultRow: View {
                     catalog: true,
                     label: true,
                     year: true,
-                    country: false
+                    country: false,
+                    notes: true
                 ),
                 isSelected: true,
                 onSelect: { _ in },

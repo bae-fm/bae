@@ -192,11 +192,12 @@ impl AutomationIdentifyFailure {
 /// Moves each pair's release id inside its entry.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 fn automation_agreements(
-    agreements: Vec<(String, bae_core::identify::Agreements)>,
+    agreements: Vec<(String, bae_core::identify::RowAgreements)>,
 ) -> Vec<AutomationAgreements> {
     agreements
         .into_iter()
         .map(|(release_id, agreements)| {
+            let bae_core::identify::RowAgreements { fields, notes } = agreements;
             let bae_core::identify::Agreements {
                 disc_id,
                 barcode,
@@ -206,7 +207,7 @@ fn automation_agreements(
                 country,
                 title,
                 artist,
-            } = agreements;
+            } = fields;
             AutomationAgreements {
                 release_id,
                 disc_id,
@@ -217,6 +218,7 @@ fn automation_agreements(
                 country,
                 title,
                 artist,
+                notes,
             }
         })
         .collect()

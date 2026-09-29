@@ -315,7 +315,7 @@ pub struct BridgeSignals {
 }
 
 /// What the candidate agrees with about one result: a row's badges, and what
-/// ordered the rows. Mirrors `bae_core::identify::Agreements`.
+/// ordered the rows. Mirrors `bae_core::identify::RowAgreements`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeAgreements {
     pub disc_id: bool,
@@ -324,6 +324,9 @@ pub struct BridgeAgreements {
     pub label: bool,
     pub year: bool,
     pub country: bool,
+    /// The folder names a word only this row's notes write among the rows
+    /// offered.
+    pub notes: bool,
 }
 
 /// One candidate's identify state. A settled state carries the run it settled

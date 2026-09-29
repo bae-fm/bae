@@ -15,7 +15,9 @@ use super::state::{
 };
 use super::NotAskedReason;
 use crate::db::LibraryStatus;
-use crate::import::release_group::{group_formed_rows, group_results, Judgements, ReleaseGroup};
+use crate::import::release_group::{
+    group_formed_rows, group_results, Judgements, Pressing, ReleaseGroup,
+};
 use crate::import::Catalog;
 use crate::pressing::ReleaseLabel;
 use crate::signals::{ArtworkScan, DiscIdSignal, LookupFailure};
@@ -207,7 +209,7 @@ pub enum IdentifyStateView {
         run: IdentifyRunView,
         groups: Vec<ReleaseGroup>,
         library_statuses: Vec<LibraryStatus>,
-        agreements: Vec<(String, Agreements)>,
+        agreements: Vec<(String, RowAgreements)>,
         narrowed_out_count: u32,
     },
 
@@ -219,7 +221,7 @@ pub enum IdentifyStateView {
         library_statuses: Vec<LibraryStatus>,
         track_count: u32,
         /// Each row's badges, keyed by release id.
-        agreements: Vec<(String, Agreements)>,
+        agreements: Vec<(String, RowAgreements)>,
         narrowed_out_count: u32,
         /// The Catalog # row's chips.
         catalog_agreements: Vec<CatalogAgreementView>,
@@ -246,7 +248,7 @@ pub enum IdentifyStateView {
         failures: Vec<super::IdentifyFailure>,
         groups: Vec<ReleaseGroup>,
         library_statuses: Vec<LibraryStatus>,
-        agreements: Vec<(String, Agreements)>,
+        agreements: Vec<(String, RowAgreements)>,
         narrowed_out_count: u32,
         /// The Catalog # row's chips.
         catalog_agreements: Vec<CatalogAgreementView>,
@@ -368,11 +370,22 @@ fn live_findings(
     )
 }
 
+/// What the folder's text agrees with about one row: its badges.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RowAgreements {
+    /// The fields of its pressing the text states.
+    pub fields: Agreements,
+    /// Whether the text names a word only this row's notes write among the
+    /// rows offered, as the ranking's notes point reads it. Never true of a
+    /// row set aside.
+    pub notes: bool,
+}
+
 /// A state's answers as cards, with every row's library status and badges.
 struct Folded {
     groups: Vec<ReleaseGroup>,
     library_statuses: Vec<LibraryStatus>,
-    agreements: Vec<(String, Agreements)>,
+    agreements: Vec<(String, RowAgreements)>,
     narrowed_out_count: u32,
 }
 
@@ -411,11 +424,25 @@ fn fold(
         &narrowed_out.pressings,
         Some(track_count),
     );
-    let agreements = cards
-        .iter()
-        .flat_map(|group| group.pressings().chain(group.narrowed_out()))
-        .flat_map(|pressing| {
-            let agreements = pressing.agreements(&judgements);
+    let offered: Vec<&Pressing> = cards.iter().flat_map(ReleaseGroup::pressings).collect();
+    let named = super::notes::names_what_sets_each_apart(
+        offered.iter().map(|pressing| pressing.releases.as_slice()),
+        text,
+    );
+    let agreements = offered
+        .into_iter()
+        .zip(named)
+        .chain(
+            cards
+                .iter()
+                .flat_map(ReleaseGroup::narrowed_out)
+                .map(|pressing| (pressing, false)),
+        )
+        .flat_map(|(pressing, notes)| {
+            let agreements = RowAgreements {
+                fields: pressing.agreements(&judgements),
+                notes,
+            };
             pressing
                 .releases
                 .iter()
