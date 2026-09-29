@@ -167,8 +167,8 @@ impl LibraryManager {
         Ok(ResolvedTrackAudio::from_meta(&meta))
     }
 
-    /// A track's display metadata (artist names, album, cover) at playback-prep
-    /// time. Resolved here so `PlaybackService` never sees a `DbTrack`.
+    /// What playback decides with about a track: its release and side.
+    /// Resolved here so `PlaybackService` never sees a `DbTrack`.
     pub async fn get_playback_track_info(
         &self,
         track_id: &str,
@@ -179,10 +179,28 @@ impl LibraryManager {
             .await?
             .ok_or_else(|| LibraryError::TrackMapping(format!("Track not found: {}", track_id)))?;
         let release = self.database.get_release_for_track(&track).await?;
-        playback_info_from_track_release(&self.database, &track, &release).await
+        Ok(playback_info_from_track_release(&track, &release))
     }
 
-    /// Both the audio aggregate and the display metadata in one pass, sparing
+    /// What surfaces show of a track, as the library holds it now.
+    pub async fn get_track_display(
+        &self,
+        track_id: &str,
+    ) -> Result<crate::playback::TrackDisplay, LibraryError> {
+        self.database
+            .track_display(track_id)
+            .await?
+            .ok_or_else(|| LibraryError::TrackMapping(format!("Track not found: {track_id}")))
+    }
+
+    pub(crate) fn subscribe_track_display(
+        &self,
+        initial: Option<String>,
+    ) -> coven::ReconfigurableLiveQuery<Option<String>, Option<crate::playback::TrackDisplay>> {
+        self.database.subscribe_track_display(initial)
+    }
+
+    /// Both the audio aggregate and the playback facts in one pass, sparing
     /// playback prep the `DbTrack`/`DbRelease` double-fetch that calling
     /// `resolve_track_audio` and `get_playback_track_info` separately would cost.
     pub(crate) async fn resolve_track_audio_and_info(
@@ -191,8 +209,7 @@ impl LibraryManager {
     ) -> Result<(ResolvedTrackAudio, crate::playback::PlaybackTrackInfo), LibraryError> {
         let meta = TrackAudioMeta::resolve(&self.database, track_id).await?;
         let audio = ResolvedTrackAudio::from_meta(&meta);
-        let info =
-            playback_info_from_track_release(&self.database, &meta.track, &meta.release).await?;
+        let info = playback_info_from_track_release(&meta.track, &meta.release);
         Ok((audio, info))
     }
 }
@@ -222,57 +239,20 @@ pub(crate) fn queue_catalog_request(
     )
 }
 
-/// `PlaybackTrackInfo` from an already-loaded track and release: queries only the
-/// album title and artists, reusing what it is passed.
-pub(crate) async fn playback_info_from_track_release(
-    database: &Database,
+/// `PlaybackTrackInfo` from an already-loaded track and release.
+fn playback_info_from_track_release(
     track: &DbTrack,
     release: &DbRelease,
-) -> Result<crate::playback::PlaybackTrackInfo, LibraryError> {
-    // Cover comes from the track's own release so playing a non-primary
-    // release shows that release's art, not the album-level primary. The version
-    // rides along, so the UI's art cache invalidates when the cover changes.
-    let cover_image = super::release::cover_ref_for(database, &track.release_id).await?;
-    let album_id = release.album_id.clone();
-    let album_title = match database.find_album_by_id(&album_id).await? {
-        Some(album) => album.title,
-        None => {
-            return Err(LibraryError::TrackMapping(format!(
-                "album not found for track {} album {}",
-                track.id, album_id
-            )));
-        }
-    };
-
-    let track_artists = database.get_artists_for_track(&track.id).await?;
-    let artist_names = if !track_artists.is_empty() {
-        join_artist_names(&track_artists)
-    } else {
-        let album_artists = database.get_artists_for_album(&album_id).await?;
-        if album_artists.is_empty() {
-            return Err(LibraryError::TrackMapping(format!(
-                "no artist found for track {} album {}",
-                track.id, album_id
-            )));
-        }
-        join_artist_names(&album_artists)
-    };
-
+) -> crate::playback::PlaybackTrackInfo {
     let side = release
         .pressing
         .facts
         .physical_medium()
         .zip(track.side)
         .map(|(medium, number)| crate::playback::PlaybackTrackSide { medium, number });
-
-    Ok(crate::playback::PlaybackTrackInfo {
+    crate::playback::PlaybackTrackInfo {
         track_id: track.id.clone(),
-        track_title: track.title.clone(),
-        artist_names,
-        album_id,
-        album_title,
-        cover_image,
         release_id: release.id.clone(),
         side,
-    })
+    }
 }

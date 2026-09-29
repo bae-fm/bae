@@ -43,8 +43,8 @@ pub async fn wait_until_playing(
     use bae_core::playback::{PlaybackProgress, PlaybackState};
     next_matching(progress_rx, timeout_duration, |event| match event {
         PlaybackProgress::StateChanged {
-            state: PlaybackState::Playing { track_info, .. },
-        } if track_info.track_id == track_id => Some(()),
+            state: PlaybackState::Playing { track },
+        } if track.track_id == track_id => Some(()),
         _ => None,
     })
     .await

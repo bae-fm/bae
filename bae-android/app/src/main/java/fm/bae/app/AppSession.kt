@@ -187,6 +187,12 @@ class OpenLibrary internal constructor(
                             stores.cast.applyStatus(value.remoteDeviceName)
                         }
                     }
+
+                    override fun onError(error: uniffi.bae_bridge.BridgeException) {
+                        scope.launch(Dispatchers.Main.immediate) {
+                            stores.config.showError(LocaleErrorLines(appContext).line(error))
+                        }
+                    }
                 },
             )
         valueSubscriptions +=

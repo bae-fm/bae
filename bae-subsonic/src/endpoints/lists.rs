@@ -173,6 +173,10 @@ pub(crate) async fn get_song(state: AppState, params: Params) -> Result<Option<E
         .get_files_for_release(&info.release_id)
         .await
         .map_err(lib_err)?;
+    let display = services
+        .get_track_display(&track_id)
+        .await
+        .map_err(lib_err)?;
     let has_cover_art = release_album_id3_with(services, &release)
         .await?
         .cover_art
@@ -182,7 +186,7 @@ pub(crate) async fn get_song(state: AppState, params: Params) -> Result<Option<E
         services,
         track,
         &release,
-        &info.album_title,
+        &display.album_title,
         &files,
         has_cover_art,
     )
@@ -321,17 +325,17 @@ async fn whole_library(
     // Songs.
     let track_ids = services.get_all_track_ids().await.map_err(lib_err)?;
     for track_id in page(&track_ids, songs) {
-        let info = services
-            .get_playback_track_info(track_id)
+        let display = services
+            .get_track_display(track_id)
             .await
             .map_err(lib_err)?;
         payload = payload.child(
             search_track_child(
                 services,
                 track_id,
-                &info.track_title,
-                &info.album_title,
-                &info.artist_names,
+                &display.title,
+                &display.album_title,
+                &display.artist_names,
             )
             .await?
             .to_element(),

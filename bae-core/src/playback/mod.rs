@@ -9,6 +9,7 @@ pub mod cpal_output;
 pub mod data_source;
 mod error;
 pub mod format;
+mod now_playing;
 mod persisted;
 mod preview_player;
 pub mod progress;
@@ -39,6 +40,7 @@ pub(crate) use clock::WallPlaybackClock;
 pub use clock::{PlaybackClock, PlaybackClockRef, PlaybackSleep};
 pub use context::{ContextSource, ContextStart};
 pub use error::PlaybackError;
+pub use now_playing::{NowPlayingTrack, NowPlayingValues, PlayingTrack, TrackDisplay};
 pub use persisted::{repeat_to_str, source_to_str, PersistedPlayback};
 pub use preview_player::PreviewTarget;
 pub use progress::{
@@ -52,7 +54,7 @@ pub use queue::{
 };
 pub use repeat_mode::RepeatMode;
 pub use service::{
-    LoadingTrack, PlaybackHandle, PlaybackPauseBoundary, PlaybackPauseReason, PlaybackService,
+    PlaybackHandle, PlaybackPauseBoundary, PlaybackPauseReason, PlaybackService,
     PlaybackSideCountdown, PlaybackSidePausePrompt, PlaybackState, PlaybackTrackInfo,
     PlaybackTrackSide,
 };

@@ -44,8 +44,8 @@ async fn assert_sided_boundary_pauses(
         .await;
 
     match paused {
-        PlaybackState::Paused { track_info, .. } => {
-            assert_eq!(track_info.track_id, side_track_id);
+        PlaybackState::Paused { track, .. } => {
+            assert_eq!(track.track_id, side_track_id);
         }
         other => panic!("expected side-ended pause, got {other:?}"),
     }
@@ -253,8 +253,8 @@ async fn assert_skip_preserves_play_state(direction: SkipDirection, start_paused
     fixture
         .wait_for_state(
             |s| {
-                matches!(s, PlaybackState::Playing { track_info, .. }
-                    if track_info.track_id == start_track_id)
+                matches!(s, PlaybackState::Playing { track, .. }
+                    if track.track_id == start_track_id)
             },
             Duration::from_secs(5),
         )
@@ -281,12 +281,12 @@ async fn assert_skip_preserves_play_state(direction: SkipDirection, start_paused
     let landed = fixture
         .wait_for_state(
             |s| {
-                let (track_info, is_paused) = match s {
-                    PlaybackState::Playing { track_info, .. } => (track_info, false),
-                    PlaybackState::Paused { track_info, .. } => (track_info, true),
+                let (track, is_paused) = match s {
+                    PlaybackState::Playing { track, .. } => (track, false),
+                    PlaybackState::Paused { track, .. } => (track, true),
                     _ => return false,
                 };
-                track_info.track_id == target_track_id && is_paused == start_paused
+                track.track_id == target_track_id && is_paused == start_paused
             },
             Duration::from_secs(5),
         )
@@ -461,8 +461,8 @@ async fn test_fresh_play_always_starts_playing() {
     let new_play_state = fixture
         .wait_for_state(
             |s| {
-                if let PlaybackState::Playing { track_info, .. } = s {
-                    track_info.track_id == second_track_id
+                if let PlaybackState::Playing { track, .. } = s {
+                    track.track_id == second_track_id
                 } else {
                     false
                 }
@@ -531,7 +531,7 @@ async fn gapless_boundary_hands_off_without_rebuild() {
     fixture.playback_handle.play(first.clone());
     fixture
         .wait_for_state(
-            |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == first),
+            |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == first),
             Duration::from_secs(5),
         )
         .await
@@ -597,7 +597,7 @@ async fn gapless_boundary_repreloads_following_track() {
     fixture.playback_handle.play(first.clone());
     fixture
         .wait_for_state(
-            |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == first),
+            |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == first),
             Duration::from_secs(5),
         )
         .await
@@ -658,7 +658,7 @@ async fn boundary_advances_to_next_track_after_late_seek() {
     fixture.playback_handle.play(first.clone());
     fixture
         .wait_for_state(
-            |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == first),
+            |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == first),
             Duration::from_secs(5),
         )
         .await
@@ -673,7 +673,7 @@ async fn boundary_advances_to_next_track_after_late_seek() {
 
     fixture
         .wait_for_state(
-            |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == second),
+            |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == second),
             Duration::from_secs(10),
         )
         .await
@@ -699,7 +699,7 @@ async fn seek_preserves_staged_next_for_a_gapless_advance() {
     fixture.playback_handle.play(first.clone());
     fixture
         .wait_for_state(
-            |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == first),
+            |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == first),
             Duration::from_secs(5),
         )
         .await
@@ -763,7 +763,7 @@ async fn seek_with_dropped_capture_receiver_keeps_playing() {
     handle.play(first.clone());
     wait_for_state_on(
         &mut progress_rx,
-        |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == first),
+        |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == first),
         Duration::from_secs(5),
     )
     .await

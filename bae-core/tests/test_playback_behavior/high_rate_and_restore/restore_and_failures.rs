@@ -107,7 +107,7 @@ async fn test_restore_drops_deleted_context_keeps_manual() {
     // restored (Paused) current track.
     wait_for_state_on(
         &mut progress_rx,
-        |s| matches!(s, PlaybackState::Paused { track_info, .. } if track_info.track_id == track_id),
+        |s| matches!(s, PlaybackState::Paused { track, .. } if track.track_id == track_id),
         Duration::from_secs(20),
     )
     .await

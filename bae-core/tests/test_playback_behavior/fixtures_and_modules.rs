@@ -1,5 +1,5 @@
-/// Playing a track emits `Loading` without metadata, then `Loading` with the
-/// track's metadata so the UI can show it while audio fills, then `Playing`.
+/// Playing a track emits a bare `Loading`, then `Loading` with the prepared
+/// track so the UI can show it while audio fills, then `Playing`.
 #[tokio::test]
 async fn play_emits_bare_loading_then_loading_with_metadata_then_playing() {
     let mut fixture = PlaybackTestFixture::new().await;
@@ -23,41 +23,41 @@ async fn play_emits_bare_loading_then_loading_with_metadata_then_playing() {
         .collect();
     assert!(
         loading.len() >= 2,
-        "expected a bare Loading then a Loading with metadata, got {states:?}"
+        "expected a bare Loading then a Loading with the prepared track, got {states:?}"
     );
 
     match loading[0] {
         PlaybackState::Loading {
             track_id: id,
-            resolved,
+            prepared,
         } => {
             assert_eq!(id, &track_id);
             assert!(
-                resolved.is_none(),
-                "first Loading is emitted before prepare resolves metadata"
+                prepared.is_none(),
+                "first Loading is emitted before the track is prepared"
             );
         }
         other => panic!("expected Loading, got {other:?}"),
     }
 
-    let resolved_loading = loading
+    let prepared_loading = loading
         .iter()
         .find_map(|s| match s {
             PlaybackState::Loading {
                 track_id: id,
-                resolved: Some(info),
-            } => Some((id, info)),
+                prepared: Some(track),
+            } => Some((id, track)),
             _ => None,
         })
-        .expect("a Loading carrying resolved metadata must be emitted");
-    assert_eq!(resolved_loading.0, &track_id);
-    assert_eq!(resolved_loading.1.track_info.track_id, track_id);
+        .expect("a Loading carrying the prepared track must be emitted");
+    assert_eq!(prepared_loading.0, &track_id);
+    assert_eq!(prepared_loading.1.track_id, track_id);
 
     let playing = states
         .last()
         .expect("at least one state should be collected");
     assert!(
-        matches!(playing, PlaybackState::Playing { track_info, .. } if track_info.track_id == track_id),
+        matches!(playing, PlaybackState::Playing { track, .. } if track.track_id == track_id),
         "the terminal state must be Playing for the requested track, got {playing:?}"
     );
 }
@@ -374,7 +374,7 @@ impl SidePauseTestFixture {
         message: &str,
     ) {
         self.wait_for_state(
-            |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == track_id),
+            |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == track_id),
             timeout_duration,
         )
         .await
@@ -459,3 +459,4 @@ include!("queue_and_pregap.rs");
 include!("high_rate_and_restore.rs");
 include!("local_sparse_buffer.rs");
 include!("remote_sparse_buffer.rs");
+include!("now_playing_edits.rs");

@@ -457,7 +457,7 @@ impl PlaybackService {
 
         self.slot = PlaybackSlot::Loading {
             track_id: track_id.to_string(),
-            resolved: None,
+            prepared: None,
         };
         self.emit_state();
 
@@ -469,6 +469,15 @@ impl PlaybackService {
             Ok(pair) => pair,
             Err(e) => {
                 error!("remote: failed to resolve track {track_id}: {e}");
+                self.fail_remote(PlaybackError::database(e).ui_reason())
+                    .await;
+                return;
+            }
+        };
+        let display = match self.library_manager.get_track_display(track_id).await {
+            Ok(display) => display,
+            Err(e) => {
+                error!("remote: failed to read what track {track_id} shows: {e}");
                 self.fail_remote(PlaybackError::database(e).ui_reason())
                     .await;
                 return;
@@ -499,9 +508,9 @@ impl PlaybackService {
         let media = RendererMedia {
             url: served.url,
             content_type: served.content_type,
-            title: prepared.track_info.track_title.clone(),
-            artist: prepared.track_info.artist_names.clone(),
-            album: prepared.track_info.album_title.clone(),
+            title: display.title,
+            artist: display.artist_names,
+            album: display.album_title,
             cover_url: served.cover_url,
             duration: Some(prepared.duration),
         };

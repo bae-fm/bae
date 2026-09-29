@@ -224,7 +224,7 @@ async fn switching_tracks_within_a_multi_window_file_over_remote_cloud() {
     playback.playback_handle.play(middle_track.clone());
     let playing = wait_for_state_on(
         &mut playback.progress_rx,
-        |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == middle_track),
+        |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == middle_track),
         Duration::from_secs(30),
     )
     .await;
@@ -280,7 +280,7 @@ async fn manual_next_into_a_pregap_track_over_remote_cloud() {
     playback.playback_handle.next();
     wait_for_state_on(
         &mut playback.progress_rx,
-        |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == second),
+        |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == second),
         Duration::from_secs(30),
     )
     .await
@@ -305,7 +305,7 @@ async fn manual_next_into_a_clean_track_over_remote_cloud() {
     playback.playback_handle.next();
     wait_for_state_on(
         &mut playback.progress_rx,
-        |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == third),
+        |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == third),
         Duration::from_secs(30),
     )
     .await

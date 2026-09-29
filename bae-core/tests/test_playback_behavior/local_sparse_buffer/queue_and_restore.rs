@@ -38,12 +38,12 @@ async fn assert_skip_preserves_play_state_over_sparse_buffer(
     let landed = wait_for_state_on(
         &mut playback.progress_rx,
         |s| {
-            let (track_info, is_paused) = match s {
-                PlaybackState::Playing { track_info, .. } => (track_info, false),
-                PlaybackState::Paused { track_info, .. } => (track_info, true),
+            let (track, is_paused) = match s {
+                PlaybackState::Playing { track, .. } => (track, false),
+                PlaybackState::Paused { track, .. } => (track, true),
                 _ => return false,
             };
-            track_info.track_id == target_track_id && is_paused == start_paused
+            track.track_id == target_track_id && is_paused == start_paused
         },
         Duration::from_secs(25),
     )
@@ -90,7 +90,7 @@ async fn previous_navigation_over_sparse_buffer() {
     playback.playback_handle.next();
     wait_for_state_on(
         &mut playback.progress_rx,
-        |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == second),
+        |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == second),
         Duration::from_secs(25),
     )
     .await
@@ -102,7 +102,7 @@ async fn previous_navigation_over_sparse_buffer() {
     playback.playback_handle.previous();
     wait_for_state_on(
         &mut playback.progress_rx,
-        |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == first),
+        |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == first),
         Duration::from_secs(25),
     )
     .await
@@ -114,7 +114,7 @@ async fn previous_navigation_over_sparse_buffer() {
     playback.playback_handle.previous();
     wait_for_state_on(
         &mut playback.progress_rx,
-        |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == first),
+        |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == first),
         Duration::from_secs(25),
     )
     .await
@@ -195,7 +195,7 @@ async fn restore_at_position_over_sparse_buffer_resumes_and_advances() {
 
     wait_for_state_on(
         &mut progress_rx,
-        |s| matches!(s, PlaybackState::Paused { track_info, .. } if track_info.track_id == last_track),
+        |s| matches!(s, PlaybackState::Paused { track, .. } if track.track_id == last_track),
         Duration::from_secs(20),
     )
     .await
@@ -204,7 +204,7 @@ async fn restore_at_position_over_sparse_buffer_resumes_and_advances() {
     handle.resume();
     wait_for_state_on(
         &mut progress_rx,
-        |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == last_track),
+        |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == last_track),
         Duration::from_secs(20),
     )
     .await
@@ -321,8 +321,8 @@ async fn assert_preload_refreshed_over_sparse_buffer<F>(
     let next_state = wait_for_state_on(
         &mut playback.progress_rx,
         |s| match s {
-            PlaybackState::Playing { track_info, .. }
-            | PlaybackState::Paused { track_info, .. } => track_info.track_id != track0,
+            PlaybackState::Playing { track, .. }
+            | PlaybackState::Paused { track, .. } => track.track_id != track0,
             _ => false,
         },
         Duration::from_secs(25),
@@ -330,8 +330,8 @@ async fn assert_preload_refreshed_over_sparse_buffer<F>(
     .await;
     let state = next_state.expect("Next should switch off track0 after the queue mutation");
     let playing_id = match &state {
-        PlaybackState::Playing { track_info, .. } => track_info.track_id.clone(),
-        PlaybackState::Paused { track_info, .. } => track_info.track_id.clone(),
+        PlaybackState::Playing { track, .. } => track.track_id.clone(),
+        PlaybackState::Paused { track, .. } => track.track_id.clone(),
         _ => unreachable!(),
     };
     assert_eq!(playing_id, expected);
@@ -439,7 +439,7 @@ async fn skip_to_entry_jumps_to_that_queue_entry_over_sparse_buffer() {
     playback.playback_handle.skip_to_entry(target.id.clone());
     wait_for_state_on(
         &mut playback.progress_rx,
-        |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == third),
+        |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == third),
         Duration::from_secs(25),
     )
     .await

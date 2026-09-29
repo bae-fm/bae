@@ -50,7 +50,7 @@ callbacks! {
     ConfigCallback: on_value(config: BridgeConfig);
     SyncStatusCallback: on_value(value: BridgeSyncStatusSnapshot);
     EagerCacheFillStatusCallback: on_value(value: BridgeEagerCacheFillStatus);
-    PlaybackValuesCallback: on_value(value: BridgePlaybackValues);
+    PlaybackValuesCallback: on_value(value: BridgePlaybackValues) + on_error;
     DownloadCallback: on_value(value: BridgeDownloadSnapshot);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     OutputCallback: on_value(value: BridgeOutputSnapshot);

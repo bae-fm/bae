@@ -873,17 +873,14 @@ pub(super) fn replace_track_artists(
     Ok(())
 }
 
-/// Per-track display metadata: one row per distinct track in the queue, fetched
+/// Per-track queue metadata: one row per distinct track in the queue, fetched
 /// once and joined onto every queue entry that plays that track. Carries no
 /// identity (no entry id, no track id) — `resolve_queue_entries` supplies those
 /// from the entries.
 #[derive(Debug, Clone, PartialEq)]
 pub(super) struct TrackQueueMeta {
-    pub(super) title: String,
-    pub(super) artist_names: String,
+    pub(super) display: crate::playback::TrackDisplay,
     pub(super) duration_ms: Option<i64>,
-    pub(super) album_title: String,
-    pub(super) cover_image: Option<crate::album_detail::ImageRef>,
 }
 
 /// Join per-track metadata onto each queue entry, preserving order and duplicates.
@@ -913,11 +910,11 @@ pub(super) fn resolve_queue_entries(
             Some(QueueItem {
                 entry_id: entry.id.0.clone(),
                 track_id: entry.track_id.clone(),
-                title: meta.title.clone(),
-                artist_names: meta.artist_names.clone(),
+                title: meta.display.title.clone(),
+                artist_names: meta.display.artist_names.clone(),
                 duration_ms: meta.duration_ms,
-                album_title: meta.album_title.clone(),
-                cover_image: meta.cover_image.clone(),
+                album_title: meta.display.album_title.clone(),
+                cover_image: meta.display.cover_image.clone(),
             })
         })
         .collect()

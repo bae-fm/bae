@@ -18,8 +18,8 @@ async fn test_previous_track_navigation() {
     let second_track_state = fixture
         .wait_for_state(
             |s| {
-                if let PlaybackState::Playing { track_info, .. } = s {
-                    track_info.track_id == second_track_id
+                if let PlaybackState::Playing { track, .. } = s {
+                    track.track_id == second_track_id
                 } else {
                     false
                 }
@@ -39,8 +39,8 @@ async fn test_previous_track_navigation() {
     let previous_track_state = fixture
         .wait_for_state(
             |s| {
-                if let PlaybackState::Playing { track_info, .. } = s {
-                    track_info.track_id == first_track_id
+                if let PlaybackState::Playing { track, .. } = s {
+                    track.track_id == first_track_id
                 } else {
                     false
                 }
@@ -60,8 +60,8 @@ async fn test_previous_track_navigation() {
     let restart_state = fixture
         .wait_for_state(
             |s| {
-                if let PlaybackState::Playing { track_info, .. } = s {
-                    track_info.track_id == first_track_id
+                if let PlaybackState::Playing { track, .. } = s {
+                    track.track_id == first_track_id
                 } else {
                     false
                 }
@@ -138,8 +138,8 @@ async fn test_queue_maintained_after_previous_navigation() {
     let _first_track_state = fixture
         .wait_for_state(
             |s| {
-                if let PlaybackState::Playing { track_info, .. } = s {
-                    track_info.track_id == first_track_id
+                if let PlaybackState::Playing { track, .. } = s {
+                    track.track_id == first_track_id
                 } else {
                     false
                 }
@@ -151,8 +151,8 @@ async fn test_queue_maintained_after_previous_navigation() {
     let second_track_state = fixture
         .wait_for_state(
             |s| {
-                if let PlaybackState::Playing { track_info, .. } = s {
-                    track_info.track_id == second_track_id
+                if let PlaybackState::Playing { track, .. } = s {
+                    track.track_id == second_track_id
                 } else {
                     false
                 }
@@ -172,8 +172,8 @@ async fn test_queue_maintained_after_previous_navigation() {
     let back_to_first_state = fixture
         .wait_for_state(
             |s| {
-                if let PlaybackState::Playing { track_info, .. } = s {
-                    track_info.track_id == first_track_id
+                if let PlaybackState::Playing { track, .. } = s {
+                    track.track_id == first_track_id
                 } else {
                     false
                 }
@@ -193,8 +193,8 @@ async fn test_queue_maintained_after_previous_navigation() {
     let should_be_second_state = fixture
         .wait_for_state(
             |s| {
-                if let PlaybackState::Playing { track_info, .. } = s {
-                    track_info.track_id == second_track_id
+                if let PlaybackState::Playing { track, .. } = s {
+                    track.track_id == second_track_id
                 } else {
                     false
                 }
@@ -238,8 +238,8 @@ async fn assert_preload_refreshed_after_queue_mutation<F>(
     let next_state = fixture
         .wait_for_state(
             |s| match s {
-                PlaybackState::Playing { track_info, .. }
-                | PlaybackState::Paused { track_info, .. } => track_info.track_id != track0,
+                PlaybackState::Playing { track, .. }
+                | PlaybackState::Paused { track, .. } => track.track_id != track0,
                 _ => false,
             },
             Duration::from_secs(5),
@@ -248,8 +248,8 @@ async fn assert_preload_refreshed_after_queue_mutation<F>(
 
     let state = next_state.expect("Next should switch off track0 after the queue mutation");
     let playing_id = match &state {
-        PlaybackState::Playing { track_info, .. } => track_info.track_id.clone(),
-        PlaybackState::Paused { track_info, .. } => track_info.track_id.clone(),
+        PlaybackState::Playing { track, .. } => track.track_id.clone(),
+        PlaybackState::Paused { track, .. } => track.track_id.clone(),
         _ => unreachable!(),
     };
     assert_eq!(playing_id, expected);
@@ -370,7 +370,7 @@ async fn set_shuffle_permutes_and_unpermutes_the_context_lane_in_place() {
     fixture.playback_handle.play(first.clone());
     fixture
         .wait_for_state(
-            |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == first),
+            |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == first),
             Duration::from_secs(5),
         )
         .await
@@ -430,7 +430,7 @@ async fn shuffling_makes_the_next_track_follow_the_reshuffled_queue_front() {
     fixture.playback_handle.play(first.clone());
     fixture
         .wait_for_state(
-            |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == first),
+            |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == first),
             Duration::from_secs(5),
         )
         .await
@@ -470,7 +470,7 @@ async fn shuffling_makes_the_next_track_follow_the_reshuffled_queue_front() {
 
     fixture
         .wait_for_state(
-            |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == shuffled_next),
+            |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == shuffled_next),
             Duration::from_secs(10),
         )
         .await
@@ -584,7 +584,7 @@ async fn skip_to_entry_jumps_to_that_queue_entry() {
     fixture.playback_handle.skip_to_entry(target.id.clone());
     fixture
         .wait_for_state(
-            |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == third),
+            |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == third),
             Duration::from_secs(5),
         )
         .await
@@ -602,7 +602,7 @@ async fn clear_up_next_empties_the_manual_lane_keeping_the_context() {
     fixture.playback_handle.play(first.clone());
     fixture
         .wait_for_state(
-            |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == first),
+            |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == first),
             Duration::from_secs(5),
         )
         .await
@@ -645,7 +645,7 @@ async fn clear_playing_from_drops_the_context_while_the_track_keeps_playing() {
     fixture.playback_handle.play(first.clone());
     fixture
         .wait_for_state(
-            |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == first),
+            |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == first),
             Duration::from_secs(5),
         )
         .await
@@ -681,7 +681,7 @@ async fn add_release_to_queue_appends_its_tracks_to_the_manual_lane() {
     fixture.playback_handle.play(first.clone());
     fixture
         .wait_for_state(
-            |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == first),
+            |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == first),
             Duration::from_secs(5),
         )
         .await
@@ -708,7 +708,7 @@ async fn add_release_next_puts_its_tracks_at_the_front_of_the_manual_lane() {
     fixture.playback_handle.play(first.clone());
     fixture
         .wait_for_state(
-            |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == first),
+            |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == first),
             Duration::from_secs(5),
         )
         .await
@@ -752,7 +752,7 @@ async fn remove_currently_playing_entry_stops_playback() {
     fixture.playback_handle.skip_to_entry(entry.id.clone());
     fixture
         .wait_for_state(
-            |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == second),
+            |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == second),
             Duration::from_secs(5),
         )
         .await
@@ -777,7 +777,7 @@ async fn play_release_clamps_an_out_of_range_start_index() {
     fixture.playback_handle.play(third.clone());
     fixture
         .wait_for_state(
-            |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == third),
+            |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == third),
             Duration::from_secs(5),
         )
         .await
@@ -788,7 +788,7 @@ async fn play_release_clamps_an_out_of_range_start_index() {
         .play_release(release_id, Some(99), false);
     fixture
         .wait_for_state(
-            |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == first),
+            |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == first),
             Duration::from_secs(5),
         )
         .await
@@ -822,7 +822,7 @@ async fn tracks_deleted_clears_a_preloaded_next_then_stops_on_the_current() {
     handle.play(first.clone());
     wait_for_state_on(
         &mut progress,
-        |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == first),
+        |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == first),
         Duration::from_secs(5),
     )
     .await

@@ -13,8 +13,8 @@ async fn test_direct_play_skips_pregap() {
     wait_for_state_on(
         &mut fixture.progress_rx,
         |s| {
-            matches!(s, PlaybackState::Playing { track_info, .. }
-                if track_info.track_id == pregapped_track_id)
+            matches!(s, PlaybackState::Playing { track, .. }
+                if track.track_id == pregapped_track_id)
         },
         Duration::from_secs(5),
     )
@@ -51,8 +51,8 @@ async fn test_next_button_skips_pregap() {
     wait_for_state_on(
         &mut fixture.progress_rx,
         |s| {
-            matches!(s, PlaybackState::Playing { track_info, .. }
-                if track_info.track_id == pregapped_track_id)
+            matches!(s, PlaybackState::Playing { track, .. }
+                if track.track_id == pregapped_track_id)
         },
         Duration::from_secs(5),
     )
@@ -79,8 +79,8 @@ async fn test_auto_advance_plays_pregap() {
     wait_for_state_on(
         &mut fixture.progress_rx,
         |s| {
-            matches!(s, PlaybackState::Playing { track_info, .. }
-                if track_info.track_id == first_track_id)
+            matches!(s, PlaybackState::Playing { track, .. }
+                if track.track_id == first_track_id)
         },
         Duration::from_secs(5),
     )
@@ -92,8 +92,8 @@ async fn test_auto_advance_plays_pregap() {
     wait_for_state_on(
         &mut fixture.progress_rx,
         |s| {
-            matches!(s, PlaybackState::Playing { track_info, .. }
-                if track_info.track_id == pregapped_track_id)
+            matches!(s, PlaybackState::Playing { track, .. }
+                if track.track_id == pregapped_track_id)
         },
         Duration::from_secs(10),
     )

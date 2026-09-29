@@ -38,22 +38,20 @@ impl PlaybackService {
     pub(super) fn playback_state(&self) -> PlaybackState {
         match &self.slot {
             PlaybackSlot::Stopped => PlaybackState::Stopped,
-            PlaybackSlot::Loading { track_id, resolved } => PlaybackState::Loading {
+            PlaybackSlot::Loading { track_id, prepared } => PlaybackState::Loading {
                 track_id: track_id.clone(),
-                resolved: resolved.clone(),
+                prepared: prepared.clone(),
             },
             PlaybackSlot::Active(cur) => match &cur.phase {
                 TrackPhase::Loading { .. } => PlaybackState::Loading {
                     track_id: cur.prepared.track_info.track_id.clone(),
-                    resolved: Some(LoadingTrack::from_prepared(&cur.prepared)),
+                    prepared: Some(PlayingTrack::from_prepared(&cur.prepared)),
                 },
                 TrackPhase::Playing => PlaybackState::Playing {
-                    track_info: cur.prepared.track_info.clone(),
-                    duration_ms: track_duration_ms(&cur.prepared),
+                    track: PlayingTrack::from_prepared(&cur.prepared),
                 },
                 TrackPhase::Paused(pause) => PlaybackState::Paused {
-                    track_info: cur.prepared.track_info.clone(),
-                    duration_ms: track_duration_ms(&cur.prepared),
+                    track: PlayingTrack::from_prepared(&cur.prepared),
                     reason: pause.to_reason(),
                 },
                 // A Completed track emits no public state — the machine leaves

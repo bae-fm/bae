@@ -17,6 +17,33 @@ impl Database {
             .process(|_, projection| Ok(projection))
     }
 
+    /// Follow the display of the track `initial` names, `None` when it names
+    /// none or the library no longer holds it. The playing track changes by
+    /// pointing the same query at the new track through its request handle.
+    pub(crate) fn subscribe_track_display(
+        &self,
+        initial: Option<String>,
+    ) -> coven::ReconfigurableLiveQuery<Option<String>, Option<crate::playback::TrackDisplay>> {
+        self.inner
+            .handle
+            .subscribe_reconfigurable(initial, |track_id, sql| match track_id {
+                Some(track_id) => track_display_on(&sql, track_id).map_err(CovenError::from),
+                None => Ok(None),
+            })
+            .process(|_, display| Ok(display))
+    }
+
+    /// The display of `track_id` as the library holds it now, or `None` when it
+    /// no longer holds the track.
+    pub async fn track_display(
+        &self,
+        track_id: &str,
+    ) -> Result<Option<crate::playback::TrackDisplay>, DbError> {
+        let track_id = track_id.to_string();
+        self.read(move |sql| track_display_on(&sql, &track_id))
+            .await
+    }
+
     /// Write the single device-local `playback_state` row (id = 'current'),
     /// replacing any existing one. Never synced.
     pub async fn save_playback_state(&self, state: &DbPlaybackState) -> Result<(), DbError> {
@@ -140,14 +167,15 @@ impl Database {
     }
 }
 
-/// Each track's queue display metadata: its album and artist names, duration,
-/// and its own release's cover. The cover is the track's own release's, not
-/// the album's primary release's, so a queued track from a non-primary release
-/// shows that release's art — the same rule `playback_info_from_track_release`
-/// applies to the playing track. Its `covers` row joins in here rather than in
-/// a second query, giving each entry the versioned reference the UI caches art
-/// under; a release with no cover row yields `None`.
-fn queue_metadata_on(
+/// Each requested track's display, and its catalog duration the queue rows
+/// show: its title, its credited artists (the album's when the track credits
+/// none), its album, and its own release's cover. The cover is the track's
+/// own release's, not the album's primary release's, so a track from a
+/// non-primary release shows that release's art. Its `covers` row joins in
+/// here rather than in a second query, giving each track the versioned
+/// reference the UI caches art under; a release with no cover row yields
+/// `None`. A requested track the library no longer holds is absent.
+fn track_displays_on(
     sql: &SqlReadContext<'_>,
     track_ids: &BTreeSet<String>,
 ) -> Result<HashMap<String, TrackQueueMeta>, DbError> {
@@ -157,8 +185,8 @@ fn queue_metadata_on(
         let placeholders = in_clause_placeholders(chunk.len());
         let query = format!(
             "SELECT \
-                t.id AS track_id, t.title, t.duration_ms, a.title AS album_title, \
-                r.id AS cover_image_id, c.blob_id AS cover_version, \
+                t.id AS track_id, t.title, t.duration_ms, a.id AS album_id, \
+                a.title AS album_title, r.id AS cover_image_id, c.blob_id AS cover_version, \
                 COALESCE( \
                     NULLIF(( \
                         SELECT GROUP_CONCAT(art.name, ', ' ORDER BY credit.position) \
@@ -170,7 +198,21 @@ fn queue_metadata_on(
                         ) credit \
                         JOIN artists art ON art.id = credit.artist_id \
                     ), ''), \
-                    (SELECT art_primary.name FROM artists art_primary WHERE art_primary.id = {primary}) \
+                    ( \
+                        SELECT GROUP_CONCAT(art.name, ', ' ORDER BY credit.position) \
+                        FROM ( \
+                            SELECT album_credit.artist_id, MIN(album_credit.position) AS position \
+                            FROM ( \
+                                SELECT {primary} AS artist_id, -1 AS position \
+                                UNION ALL \
+                                SELECT {album_artist} AS artist_id, aa.position \
+                                FROM album_artists aa \
+                                WHERE aa.album_id = a.id \
+                            ) album_credit \
+                            GROUP BY 1 \
+                        ) credit \
+                        JOIN artists art ON art.id = credit.artist_id \
+                    ) \
                 ) AS artist_names \
              FROM tracks t \
              JOIN releases r ON r.id = t.release_id \
@@ -179,6 +221,7 @@ fn queue_metadata_on(
              WHERE t.id IN ({placeholders})",
             track_artist = shown_artist_id("ta.artist_id"),
             primary = shown_artist_id("a.artist_id"),
+            album_artist = shown_artist_id("aa.artist_id"),
         );
         meta_by_track.extend(sql.query(
             &query,
@@ -190,15 +233,20 @@ fn queue_metadata_on(
                 Ok((
                     track_id,
                     TrackQueueMeta {
-                        title: row.get("title")?,
-                        artist_names: row.get("artist_names")?,
+                        display: crate::playback::TrackDisplay {
+                            title: row.get("title")?,
+                            artist_names: row.get("artist_names")?,
+                            album_id: row.get("album_id")?,
+                            album_title: row.get("album_title")?,
+                            cover_image: cover_version.map(|version| {
+                                crate::album_detail::ImageRef {
+                                    id: cover_image_id,
+                                    version,
+                                    image_type: LibraryImageType::Cover,
+                                }
+                            }),
+                        },
                         duration_ms: row.get("duration_ms")?,
-                        album_title: row.get("album_title")?,
-                        cover_image: cover_version.map(|version| crate::album_detail::ImageRef {
-                            id: cover_image_id,
-                            version,
-                            image_type: LibraryImageType::Cover,
-                        }),
                     },
                 ))
             },
@@ -207,11 +255,23 @@ fn queue_metadata_on(
     Ok(meta_by_track)
 }
 
+/// The display of `track_id`, or `None` when the library no longer holds it.
+fn track_display_on(
+    sql: &SqlReadContext<'_>,
+    track_id: &str,
+) -> Result<Option<crate::playback::TrackDisplay>, DbError> {
+    Ok(
+        track_displays_on(sql, &BTreeSet::from([track_id.to_string()]))?
+            .remove(track_id)
+            .map(|meta| meta.display),
+    )
+}
+
 fn queue_catalog_on(
     sql: &SqlReadContext<'_>,
     request: &QueueCatalogRequest,
 ) -> Result<QueueCatalogProjection, DbError> {
-    let tracks = queue_metadata_on(sql, &request.track_ids)?;
+    let tracks = track_displays_on(sql, &request.track_ids)?;
     let source_title = match request.context_release_id.as_deref() {
         None => None,
         Some(release_id) => {

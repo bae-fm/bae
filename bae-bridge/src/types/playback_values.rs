@@ -251,50 +251,52 @@ pub enum BridgePlaybackValueState {
 }
 
 impl BridgeLoadingTrackInfo {
-    pub(crate) fn from_core(value: bae_core::playback::LoadingTrack) -> Self {
+    pub(crate) fn from_core(value: bae_core::playback::NowPlayingTrack) -> Self {
+        let bae_core::playback::NowPlayingTrack { track, display } = value;
         Self {
-            track_title: value.track_info.track_title,
-            artist_names: value.track_info.artist_names,
-            album_id: value.track_info.album_id,
-            album_title: value.track_info.album_title,
-            cover_image: value.track_info.cover_image.map(BridgeImageRef::from_core),
-            duration_ms: value.duration_ms,
+            track_title: display.title,
+            artist_names: display.artist_names,
+            album_id: display.album_id,
+            album_title: display.album_title,
+            cover_image: display.cover_image.map(BridgeImageRef::from_core),
+            duration_ms: track.duration_ms,
         }
     }
 }
 
 impl BridgePlaybackValueState {
-    fn from_core(value: bae_core::playback::PlaybackState) -> Self {
+    fn from_core(
+        value: bae_core::playback::PlaybackState<bae_core::playback::NowPlayingTrack>,
+    ) -> Self {
+        use bae_core::playback::{NowPlayingTrack, PlaybackState};
         match value {
-            bae_core::playback::PlaybackState::Stopped => Self::Stopped,
-            bae_core::playback::PlaybackState::Loading { track_id, resolved } => Self::Loading {
+            PlaybackState::Stopped => Self::Stopped,
+            PlaybackState::Loading { track_id, prepared } => Self::Loading {
                 track_id,
-                track: resolved.map(BridgeLoadingTrackInfo::from_core),
+                track: prepared.map(BridgeLoadingTrackInfo::from_core),
             },
-            bae_core::playback::PlaybackState::Playing {
-                track_info,
-                duration_ms,
+            PlaybackState::Playing {
+                track: NowPlayingTrack { track, display },
             } => Self::Playing {
-                track_id: track_info.track_id,
-                track_title: track_info.track_title,
-                artist_names: track_info.artist_names,
-                album_id: track_info.album_id,
-                album_title: track_info.album_title,
-                cover_image: track_info.cover_image.map(BridgeImageRef::from_core),
-                duration_ms,
+                track_id: track.track_id,
+                track_title: display.title,
+                artist_names: display.artist_names,
+                album_id: display.album_id,
+                album_title: display.album_title,
+                cover_image: display.cover_image.map(BridgeImageRef::from_core),
+                duration_ms: track.duration_ms,
             },
-            bae_core::playback::PlaybackState::Paused {
-                track_info,
-                duration_ms,
+            PlaybackState::Paused {
+                track: NowPlayingTrack { track, display },
                 reason,
             } => Self::Paused {
-                track_id: track_info.track_id,
-                track_title: track_info.track_title,
-                artist_names: track_info.artist_names,
-                album_id: track_info.album_id,
-                album_title: track_info.album_title,
-                cover_image: track_info.cover_image.map(BridgeImageRef::from_core),
-                duration_ms,
+                track_id: track.track_id,
+                track_title: display.title,
+                artist_names: display.artist_names,
+                album_id: display.album_id,
+                album_title: display.album_title,
+                cover_image: display.cover_image.map(BridgeImageRef::from_core),
+                duration_ms: track.duration_ms,
                 reason: BridgePlaybackPauseReason::from_core(reason),
             },
         }
@@ -330,7 +332,7 @@ mirror_enum! {
 }
 
 impl BridgePlaybackValues {
-    pub(crate) fn from_core(value: bae_core::playback::PlaybackValues) -> Self {
+    pub(crate) fn from_core(value: bae_core::playback::NowPlayingValues) -> Self {
         let media_control = BridgeMediaControlValues::from_core(value.media_control_values());
         Self {
             state: BridgePlaybackValueState::from_core(value.state),
@@ -347,7 +349,7 @@ impl BridgePlaybackValues {
 }
 
 mirror_struct! {
-    BridgeMediaControlValues = bae_core::playback::MediaControlValues,
+    BridgeMediaControlValues = bae_core::playback::MediaControlValues<bae_core::playback::NowPlayingTrack>,
     from_core: fn,
     fields: {
         playback: (BridgeMediaControlPlayback),
@@ -357,7 +359,7 @@ mirror_struct! {
 }
 
 mirror_enum! {
-    BridgeMediaControlPlayback = bae_core::playback::MediaControlPlayback,
+    BridgeMediaControlPlayback = bae_core::playback::MediaControlPlayback<bae_core::playback::NowPlayingTrack>,
     from_core: fn,
     variants: {
         Library {

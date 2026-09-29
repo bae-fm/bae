@@ -76,7 +76,7 @@ impl PlaybackService {
         // First Loading emission: bare, before the metadata lookup.
         self.slot = PlaybackSlot::Loading {
             track_id: track_id.to_string(),
-            resolved: None,
+            prepared: None,
         };
         self.sync_audio_state();
         self.emit_state();
@@ -114,7 +114,7 @@ impl PlaybackService {
         // switches from the prior track to the target while audio still downloads.
         self.slot = PlaybackSlot::Loading {
             track_id: track_id.to_string(),
-            resolved: Some(LoadingTrack::from_prepared(&prepared)),
+            prepared: Some(PlayingTrack::from_prepared(&prepared)),
         };
         self.emit_state();
 

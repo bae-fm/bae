@@ -49,13 +49,22 @@ private final class PlaybackValuesSink: PlaybackValuesCallback,
     @unchecked Sendable
 {
     private let apply: @MainActor @Sendable (BridgePlaybackValues) -> Void
+    private let fail: @MainActor @Sendable (any Error) -> Void
 
-    init(apply: @escaping @MainActor @Sendable (BridgePlaybackValues) -> Void) {
+    init(
+        apply: @escaping @MainActor @Sendable (BridgePlaybackValues) -> Void,
+        fail: @escaping @MainActor @Sendable (any Error) -> Void
+    ) {
         self.apply = apply
+        self.fail = fail
     }
 
     func onValue(value: BridgePlaybackValues) {
         Task { @MainActor in apply(value) }
+    }
+
+    func onError(error: BridgeError) {
+        Task { @MainActor in fail(error) }
     }
 }
 
@@ -187,7 +196,10 @@ final class CommonSubscriptions {
                 }
             ),
             appHandle.subscribePlaybackValues(
-                callback: PlaybackValuesSink(apply: applyPlayback)
+                callback: PlaybackValuesSink(
+                    apply: applyPlayback,
+                    fail: onError
+                )
             ),
             appHandle.subscribeQueue(
                 callback: QueueValueSink(

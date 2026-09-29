@@ -78,16 +78,16 @@ pub struct PreviewValues {
 /// show. Core resolves library versus preview ownership so platform adapters
 /// never race two independent players onto one system slot.
 #[derive(Debug, Clone)]
-pub struct MediaControlValues {
-    pub playback: MediaControlPlayback,
+pub struct MediaControlValues<Track = crate::playback::PlayingTrack> {
+    pub playback: MediaControlPlayback<Track>,
     pub volume: f32,
     pub is_muted: bool,
 }
 
 #[derive(Debug, Clone)]
-pub enum MediaControlPlayback {
+pub enum MediaControlPlayback<Track = crate::playback::PlayingTrack> {
     Library {
-        state: PlaybackState,
+        state: PlaybackState<Track>,
         position: Option<MediaControlPosition>,
         seek_revision: u64,
     },
@@ -99,9 +99,11 @@ pub enum MediaControlPlayback {
     },
 }
 
+/// `Track` is what the state holds of the playing track; see
+/// [`PlaybackState`].
 #[derive(Debug, Clone)]
-pub struct PlaybackValues {
-    pub state: PlaybackState,
+pub struct PlaybackValues<Track = crate::playback::PlayingTrack> {
+    pub state: PlaybackState<Track>,
     pub position: Option<PlaybackPosition>,
     /// Monotonic acknowledgement of an applied seek. It remains at the latest
     /// value across ordinary position ticks so consumers cannot miss the seek
@@ -136,7 +138,7 @@ impl PlaybackValues {
         let mut next = self.clone();
         match event {
             PlaybackProgress::StateChanged { state } => {
-                if playback_track_id(&next.state) != playback_track_id(state) {
+                if next.state.track_id() != state.track_id() {
                     next.position = None;
                 }
                 next.state = state.clone();
@@ -198,8 +200,38 @@ impl PlaybackValues {
         }
         Some(next)
     }
+}
 
-    pub fn media_control_values(&self) -> MediaControlValues {
+impl<Track: Clone> PlaybackValues<Track> {
+    /// The same values holding `f`'s result for the state's track, or `f`'s
+    /// error.
+    pub fn try_map_track<Mapped, Error>(
+        self,
+        f: impl FnMut(Track) -> Result<Mapped, Error>,
+    ) -> Result<PlaybackValues<Mapped>, Error> {
+        let Self {
+            state,
+            position,
+            seek_revision,
+            volume,
+            is_muted,
+            repeat_mode,
+            remote_device_name,
+            preview,
+        } = self;
+        Ok(PlaybackValues {
+            state: state.try_map_track(f)?,
+            position,
+            seek_revision,
+            volume,
+            is_muted,
+            repeat_mode,
+            remote_device_name,
+            preview,
+        })
+    }
+
+    pub fn media_control_values(&self) -> MediaControlValues<Track> {
         let playback = match &self.preview.state {
             PreviewState::Playing {
                 target,
@@ -232,16 +264,6 @@ impl PlaybackValues {
             playback,
             volume: self.volume,
             is_muted: self.is_muted,
-        }
-    }
-}
-
-fn playback_track_id(state: &PlaybackState) -> Option<&str> {
-    match state {
-        PlaybackState::Stopped => None,
-        PlaybackState::Loading { track_id, .. } => Some(track_id),
-        PlaybackState::Playing { track_info, .. } | PlaybackState::Paused { track_info, .. } => {
-            Some(&track_info.track_id)
         }
     }
 }

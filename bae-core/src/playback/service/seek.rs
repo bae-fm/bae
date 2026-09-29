@@ -87,7 +87,7 @@ impl PlaybackService {
         // decoder fills, so nothing leaks from the old ring before the swap.
         self.slot = PlaybackSlot::Loading {
             track_id: track_id.clone(),
-            resolved: Some(LoadingTrack::from_prepared(&prepared)),
+            prepared: Some(PlayingTrack::from_prepared(&prepared)),
         };
         self.sync_audio_state();
         self.emit_state();

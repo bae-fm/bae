@@ -22,7 +22,7 @@ impl SidePauseTestFixture {
         let side_b_track_id = self.track_ids[2].clone();
         let started = self
             .wait_for_state(
-                |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == side_b_track_id),
+                |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == side_b_track_id),
                 Duration::from_millis(500),
             )
             .await;

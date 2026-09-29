@@ -273,7 +273,7 @@ async fn switching_tracks_within_a_multi_window_file_keeps_streaming() {
     playback.playback_handle.play(middle_track.clone());
     let playing = wait_for_state_on(
         &mut playback.progress_rx,
-        |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == middle_track),
+        |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == middle_track),
         Duration::from_secs(20),
     )
     .await;
@@ -369,12 +369,12 @@ async fn manual_next_into_a_pregap_track_rebuilds_and_keeps_streaming() {
     playback.playback_handle.next();
     let states = collect_states_on(
         &mut playback.progress_rx,
-        |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == second),
+        |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == second),
         Duration::from_secs(20),
     )
     .await;
     assert!(
-        matches!(&states.last(), Some(PlaybackState::Playing { track_info, .. }) if track_info.track_id == second),
+        matches!(&states.last(), Some(PlaybackState::Playing { track, .. }) if track.track_id == second),
         "the second track reaches Playing after a manual Next, got {states:?}"
     );
     assert!(
@@ -405,12 +405,12 @@ async fn manual_next_into_a_clean_track_promotes_the_preload() {
     playback.playback_handle.next();
     let states = collect_states_on(
         &mut playback.progress_rx,
-        |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == third),
+        |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == third),
         Duration::from_secs(20),
     )
     .await;
     assert!(
-        matches!(&states.last(), Some(PlaybackState::Playing { track_info, .. }) if track_info.track_id == third),
+        matches!(&states.last(), Some(PlaybackState::Playing { track, .. }) if track.track_id == third),
         "the third track reaches Playing after a manual Next, got {states:?}"
     );
     assert!(
@@ -486,7 +486,7 @@ async fn seek_immediately_after_playing_lands_and_plays_over_sparse_buffer() {
     playback.playback_handle.play(last_track.clone());
     let playing = wait_for_state_on(
         &mut playback.progress_rx,
-        |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == last_track),
+        |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == last_track),
         Duration::from_secs(20),
     )
     .await;
@@ -508,7 +508,7 @@ async fn seek_immediately_after_playing_lands_and_plays_over_sparse_buffer() {
 }
 
 /// A seek into an unbuffered region surfaces a buffering state before it
-/// confirms: the seek target shows as `Loading { resolved: Some(..) }` (the
+/// confirms: the seek target shows as `Loading { prepared: Some(..) }` (the
 /// metadata is already known — this is a seek, not a fresh play), and `Seeked`
 /// follows only once the demanded window lands and the ready-watcher fires. A
 /// fully-buffered file already has the window, so this arc only appears over a
@@ -531,7 +531,7 @@ async fn seek_into_an_unbuffered_region_emits_resolved_loading_before_seeked() {
                 state:
                     PlaybackState::Loading {
                         track_id,
-                        resolved: Some(_),
+                        prepared: Some(_),
                     },
             } if track_id == last_track => {
                 saw_loading = true;
@@ -716,7 +716,7 @@ async fn auto_advance_plays_pregap_over_sparse_buffer() {
     playback.playback_handle.seek(Duration::from_secs(56));
     wait_for_state_on(
         &mut playback.progress_rx,
-        |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == second),
+        |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == second),
         Duration::from_secs(25),
     )
     .await

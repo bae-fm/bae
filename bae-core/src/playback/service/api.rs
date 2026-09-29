@@ -2,18 +2,13 @@ use super::*;
 
 use crate::util::worker_thread::WorkerThread;
 
-/// Track metadata resolved when the track is prepared, so `PlaybackState`
-/// carries it and the bridge needs no database access.
+/// What the playback service decides with about a track, read when the track
+/// is prepared: which track, and the release and side it plays on. What a
+/// track shows — its names, album, cover — is not here: surfaces read that from
+/// the library as it stands (see [`crate::playback::TrackDisplay`]).
 #[derive(Debug, Clone)]
 pub struct PlaybackTrackInfo {
     pub track_id: String,
-    pub track_title: String,
-    pub artist_names: String,
-    pub album_id: String,
-    pub album_title: String,
-    /// The track's release cover, or `None` when it has none. Versioned, so new
-    /// bytes for the same release replace the copy a UI decoded.
-    pub cover_image: Option<crate::album_detail::ImageRef>,
     pub release_id: String,
     pub side: Option<PlaybackTrackSide>,
 }
@@ -25,18 +20,10 @@ pub struct PlaybackTrackSide {
     pub number: i32,
 }
 
-/// The prepared track a `Loading` state carries, so the bar can show it before
-/// its audio starts. The duration is the one `Playing` and `Paused` carry.
-#[derive(Debug, Clone)]
-pub struct LoadingTrack {
-    pub track_info: PlaybackTrackInfo,
-    pub duration_ms: u64,
-}
-
-impl LoadingTrack {
+impl PlayingTrack {
     pub(super) fn from_prepared(prepared: &PlaybackPreparedTrack) -> Self {
         Self {
-            track_info: prepared.track_info.clone(),
+            track_id: prepared.track_info.track_id.clone(),
             duration_ms: track_duration_ms(prepared),
         }
     }
@@ -230,27 +217,62 @@ pub(crate) enum PlaybackCommand {
     /// device. Ignored when playing locally (a late update from an ended session).
     RemoteStatus(crate::renderer::RendererSessionStatus),
 }
-/// Current playback state: the track and its duration. Position flows through
+/// Current playback state: the track and its phase. Position flows through
 /// `PlaybackProgress::PositionUpdate` and `PlaybackProgress::Seeked` instead, so
 /// the frequent position updates stay apart from this rarer event.
+///
+/// `Track` is what the state holds of its track: the service's
+/// [`PlayingTrack`], or the [`NowPlayingTrack`](crate::playback::NowPlayingTrack)
+/// surfaces show, which joins the library's current display onto it.
 #[derive(Debug, Clone)]
-pub enum PlaybackState {
+pub enum PlaybackState<Track = PlayingTrack> {
     Stopped,
     Playing {
-        track_info: PlaybackTrackInfo,
-        duration_ms: u64,
+        track: Track,
     },
     Paused {
-        track_info: PlaybackTrackInfo,
-        duration_ms: u64,
+        track: Track,
         reason: PlaybackPauseReason,
     },
     Loading {
         track_id: String,
         /// The target track once prepared; `None` until its lookup finishes.
-        resolved: Option<LoadingTrack>,
+        prepared: Option<Track>,
     },
 }
+
+impl<Track> PlaybackState<Track> {
+    /// The same state holding `f`'s result for its track, or `f`'s error.
+    pub fn try_map_track<Mapped, Error>(
+        self,
+        mut f: impl FnMut(Track) -> Result<Mapped, Error>,
+    ) -> Result<PlaybackState<Mapped>, Error> {
+        Ok(match self {
+            Self::Stopped => PlaybackState::Stopped,
+            Self::Playing { track } => PlaybackState::Playing { track: f(track)? },
+            Self::Paused { track, reason } => PlaybackState::Paused {
+                track: f(track)?,
+                reason,
+            },
+            Self::Loading { track_id, prepared } => PlaybackState::Loading {
+                track_id,
+                prepared: prepared.map(f).transpose()?,
+            },
+        })
+    }
+}
+
+impl PlaybackState {
+    /// The id of the track the state names, or `None` when stopped.
+    pub fn track_id(&self) -> Option<&str> {
+        match self {
+            Self::Stopped => None,
+            Self::Loading { track_id, .. } => Some(track_id),
+            Self::Playing { track } | Self::Paused { track, .. } => Some(&track.track_id),
+        }
+    }
+}
+
 /// Send a command to the playback service, warning if the service has shut
 /// down.
 pub(crate) fn dispatch_command(

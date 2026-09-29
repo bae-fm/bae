@@ -250,12 +250,6 @@ impl AppServices {
         self.inner.playback.subscribe_progress()
     }
 
-    pub fn subscribe_playback_values(
-        &self,
-    ) -> tokio::sync::watch::Receiver<crate::playback::PlaybackValues> {
-        self.inner.playback.subscribe_values()
-    }
-
     /// What the UI hears outside its value subscriptions, from now on.
     pub fn subscribe_ui_events(&self) -> crate::ui::UiEvents {
         crate::ui::UiEvents::of(self)
@@ -372,6 +366,7 @@ impl AppServices {
     delegate_async!(manager, resolve_track_audio => resolve_track_audio(track_id: &str) -> Result<crate::library::ResolvedTrackAudio, crate::library::LibraryError>);
     delegate_async!(manager, resolve_to_track_ids => resolve_to_track_ids(ids: &[String]) -> Result<Vec<String>, crate::library::LibraryError>);
     delegate_async!(manager, get_playback_track_info => get_playback_track_info(track_id: &str) -> Result<crate::playback::PlaybackTrackInfo, crate::library::LibraryError>);
+    delegate_async!(manager, get_track_display => get_track_display(track_id: &str) -> Result<crate::playback::TrackDisplay, crate::library::LibraryError>);
     delegate_async!(manager, change_cover => change_cover(release_id: &str, selection: crate::library::CoverSelection) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, set_album_primary_release => set_album_primary_release(album_id: &str, primary_release_id: &str) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, unpin_release => unpin_release(release_id: &str) -> Result<(), crate::library::LibraryError>);
@@ -599,6 +594,7 @@ mod import;
 mod live_query_events;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod pane;
+mod playback_reads;
 mod queue_reads;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod selection;

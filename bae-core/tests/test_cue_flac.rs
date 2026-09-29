@@ -287,13 +287,8 @@ async fn test_cue_flac_decoded_duration_matches_cue_timing() {
         Duration::from_secs(5),
         |event| match event {
             bae_core::playback::PlaybackProgress::StateChanged {
-                state:
-                    bae_core::playback::PlaybackState::Playing {
-                        track_info,
-                        duration_ms,
-                        ..
-                    },
-            } if track_info.track_id == track1.id => Some(duration_ms),
+                state: bae_core::playback::PlaybackState::Playing { track },
+            } if track.track_id == track1.id => Some(track.duration_ms),
             _ => None,
         },
     )

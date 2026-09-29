@@ -126,7 +126,7 @@ async fn play_and_wait_on(
     handle.play(track_id.to_string());
     let playing = wait_for_state_on(
         progress_rx,
-        |s| matches!(s, PlaybackState::Playing { track_info, .. } if track_info.track_id == track_id),
+        |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == track_id),
         PLAY_START_BACKSTOP,
     )
     .await;
@@ -283,8 +283,8 @@ async fn observe_boundary(
                 outcome.loading_for_incoming = true;
             }
             PlaybackProgress::StateChanged {
-                state: PlaybackState::Playing { track_info, .. },
-            } if track_info.track_id == incoming => {
+                state: PlaybackState::Playing { track, .. },
+            } if track.track_id == incoming => {
                 outcome.reached_incoming = true;
                 return Some(());
             }

@@ -31,9 +31,12 @@ impl AppHandle {
         &self,
         callback: Box<dyn crate::types::PlaybackValuesCallback>,
     ) -> std::sync::Arc<crate::LiveSubscription> {
-        self.subscribe_watch(
-            |services| services.subscribe_playback_values(),
-            move |value| callback.on_value(BridgePlaybackValues::from_core(value.clone())),
+        self.subscribe_channel(
+            |services, runtime| services.subscribe_playback_values(runtime),
+            move |value| match value {
+                Ok(value) => callback.on_value(BridgePlaybackValues::from_core(value)),
+                Err(error) => callback.on_error(BridgeError::internal(error)),
+            },
         )
     }
 

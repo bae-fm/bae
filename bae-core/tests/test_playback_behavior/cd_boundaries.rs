@@ -40,11 +40,11 @@ async fn cd_disc_pause_resumes_at_next_disc() {
         .await;
     match paused {
         PlaybackState::Paused {
-            track_info,
+            track,
             reason: PlaybackPauseReason::SideEnded(prompt),
             ..
         } => {
-            assert_eq!(track_info.track_id, first);
+            assert_eq!(track.track_id, first);
             assert_eq!(prompt.boundary, PlaybackPauseBoundary::Disc);
         }
         other => panic!("expected disc-ended pause, got {other:?}"),

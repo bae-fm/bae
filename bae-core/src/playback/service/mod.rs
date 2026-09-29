@@ -54,7 +54,7 @@ use crate::playback::progress::{
 use crate::playback::source;
 use crate::playback::source::{TrackCrossing, TrackFmt};
 use crate::playback::sparse_buffer::{create_sparse_buffer, SharedSparseBuffer};
-use crate::playback::TrackStream;
+use crate::playback::{PlayingTrack, TrackStream};
 use crate::pressing::PhysicalMedium;
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
@@ -83,9 +83,8 @@ use crate::playback::stream_pipeline::{
 };
 pub(crate) use api::{dispatch_command, PlaybackCommand};
 pub use api::{
-    LoadingTrack, PlaybackHandle, PlaybackPauseBoundary, PlaybackPauseReason,
-    PlaybackSideCountdown, PlaybackSidePausePrompt, PlaybackState, PlaybackTrackInfo,
-    PlaybackTrackSide,
+    PlaybackHandle, PlaybackPauseBoundary, PlaybackPauseReason, PlaybackSideCountdown,
+    PlaybackSidePausePrompt, PlaybackState, PlaybackTrackInfo, PlaybackTrackSide,
 };
 use api::{SideBoundary, SidePauseDecision};
 use file_buffers::{prepare_track_for_playback, FileBuffers};
