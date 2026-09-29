@@ -15,8 +15,8 @@ pub(crate) struct ReleaseIdentity {
 /// Resolve the release's local files, pick out its rip documents, track
 /// sheets and audio, and read them the way a folder's are read (see
 /// [`crate::import::discid::read_rip_artifacts_from_paths`]). The track count
-/// comes from the DB's track rows, not the files — those rows are the user's
-/// truth.
+/// and lengths come from the DB's track rows, not the files — those rows are
+/// the user's truth.
 ///
 /// A cloud-only release with no local copy has no files to read, so its
 /// reading proves nothing and computes no disc ID.
@@ -33,11 +33,14 @@ pub(crate) async fn resolve_release_identity(
         .get_files_for_release(release_id)
         .await
         .map_err(|e| format!("Failed to load release files: {e}"))?;
-    let track_count = library_manager
+    let tracks = library_manager
         .get_tracks_for_release(release_id)
         .await
-        .map_err(|e| format!("Failed to load tracks: {e}"))?
-        .len() as u32;
+        .map_err(|e| format!("Failed to load tracks: {e}"))?;
+    // The lengths a pick of this release is laid out against, so a document
+    // is read against the discs these tracks are; a release with a track
+    // nothing measured is read whole, as a MusicBrainz pick of it is.
+    let track_lengths_ms = crate::library::stored_track_lengths(&tracks).unwrap_or_default();
     // On-disk paths come from coven's external refs (a Local release's files are
     // the user's own, in place). A remote file has no external ref and is skipped,
     // so a cloud-only release yields no paths and thus no disc ID.
@@ -79,7 +82,8 @@ pub(crate) async fn resolve_release_identity(
     }
 
     let audio = super::AudioFacts::of_release(
-        track_count,
+        tracks.len() as u32,
+        track_lengths_ms,
         audio_files.iter().map(|file| &file.format),
     );
     let rip = tokio::task::spawn_blocking(move || {
@@ -454,8 +458,9 @@ mod tests {
                 .unwrap();
         }
 
-        // Two track rows, so the assertion below pins the count to the DB rather
-        // than to whatever a folder walk would have counted.
+        // Two track rows, so the assertion below pins the count and the
+        // lengths to the DB rather than to whatever a folder walk would have
+        // read.
         for n in 1..=2 {
             let track = DbTrack {
                 id: Uuid::new_v4().to_string(),
@@ -463,7 +468,7 @@ mod tests {
                 title: format!("Track {n}"),
                 side: Some(1),
                 track_number: Some(n),
-                duration_ms: None,
+                duration_ms: Some(180_000 + n as i64),
                 discogs_position: None,
                 created_at: Utc::now(),
             };
@@ -480,5 +485,10 @@ mod tests {
             "LOG file in local folder must produce a disc ID"
         );
         assert_eq!(track_count, 2, "track count comes from the DB tracks");
+        assert_eq!(
+            identity.audio.track_lengths_ms,
+            vec![180_001, 180_002],
+            "a document is read against the lengths a pick lays the release out on"
+        );
     }
 }

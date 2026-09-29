@@ -12,11 +12,12 @@ use crate::import::probe::SourceDurations;
 pub struct AudioFacts {
     pub track_count: u32,
     /// How long each audio unit plays, which a lead's tracklist is fitted to.
-    /// Empty for a library release, which is not fitted.
+    /// Empty for a library release, which no settle fits.
     pub durations: SourceDurations,
     /// The same lengths in the order the tracks are laid out, which a
     /// release's tracklist is read against to count the tracks it holds for
-    /// this audio. Empty for a library release, whose tracklist is read whole.
+    /// this audio. A library release's are its tracks' stored lengths, empty
+    /// where one was never measured, and its tracklist is then read whole.
     pub track_lengths_ms: Vec<u64>,
     /// Every audio file carries one channel.
     pub mono: bool,
@@ -41,12 +42,14 @@ impl AudioFacts {
         ))
     }
 
-    /// A library release's audio: its track count and its files' formats.
+    /// A library release's audio: its track count, its tracks' lengths, and
+    /// its files' formats.
     pub(crate) fn of_release<'a>(
         track_count: u32,
+        track_lengths_ms: Vec<u64>,
         formats: impl IntoIterator<Item = &'a AudioFormat>,
     ) -> Self {
-        Self::of(track_count, SourceDurations::default(), Vec::new(), formats)
+        Self::of(track_count, SourceDurations::default(), track_lengths_ms, formats)
     }
 
     fn of<'a>(
@@ -86,14 +89,14 @@ mod tests {
     fn the_facts_are_read_off_every_format() {
         let mono = format(96_000, 1);
         let stereo = format(96_000, 2);
-        let facts = AudioFacts::of_release(2, [&mono, &mono]);
+        let facts = AudioFacts::of_release(2, Vec::new(), [&mono, &mono]);
         assert!(facts.mono);
         assert_eq!(facts.rate_ruling_out_cd, Some(96_000));
         assert_eq!(facts.track_count, 2);
-        assert!(!AudioFacts::of_release(2, [&mono, &stereo]).mono);
-        assert!(!AudioFacts::of_release(0, []).mono);
+        assert!(!AudioFacts::of_release(2, Vec::new(), [&mono, &stereo]).mono);
+        assert!(!AudioFacts::of_release(0, Vec::new(), []).mono);
         assert_eq!(
-            AudioFacts::of_release(1, [&format(44_100, 1)]).rate_ruling_out_cd,
+            AudioFacts::of_release(1, Vec::new(), [&format(44_100, 1)]).rate_ruling_out_cd,
             None
         );
     }

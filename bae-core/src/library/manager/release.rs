@@ -259,23 +259,30 @@ impl LibraryManager {
                 )
                 .await?;
                 let existing_tracks = self.database.get_tracks_for_release(release_id).await?;
-                let parsed = parsed_for_existing_release(
-                    &release,
+                // Re-identify changes record associations without changing
+                // existing audio rows, so the picked release's tracklist,
+                // read against those rows' lengths as identification reads
+                // it, must fit them.
+                let existing_track_count = existing_tracks.len() as u32;
+                let listed = release.source_tracks_for_audio(&layout_lengths(
                     release_ref.catalog,
                     &existing_tracks,
-                    self.clock.as_ref(),
-                    self.ids.as_ref(),
-                )?;
-
-                // Re-identify changes record associations without changing
-                // existing audio rows, so the source track count must match.
-                let existing_track_count = existing_tracks.len();
-                let new_track_count = parsed.tracks.len();
-                if existing_track_count != new_track_count {
-                    return Err(LibraryError::Import(format!(
-                        "Track count mismatch: release has {existing_track_count} tracks, \
-                         picked release has {new_track_count}"
-                    )));
+                )?);
+                match crate::identify::TracklistFit::of(Some(&listed), existing_track_count) {
+                    crate::identify::TracklistFit::Fits => {}
+                    crate::identify::TracklistFit::Disagrees { source } => {
+                        return Err(LibraryError::Import(format!(
+                            "Track count mismatch: release has {existing_track_count} tracks, \
+                             picked release has {source}"
+                        )));
+                    }
+                    crate::identify::TracklistFit::ListsNothing
+                    | crate::identify::TracklistFit::Unread => {
+                        return Err(LibraryError::Import(format!(
+                            "Track count mismatch: release has {existing_track_count} tracks, \
+                             picked release lists none"
+                        )));
+                    }
                 }
 
                 crate::import::service::records_for_commit(&release, &prepared_partners)
@@ -795,25 +802,35 @@ fn parsed_for_existing_release(
     clock: &dyn coven::Clock,
     ids: &dyn coven::IdProvider,
 ) -> Result<crate::import::ParsedAlbum, LibraryError> {
-    // The stored durations say which of the release's mediums these tracks
-    // are: one disc of a box, the CD layer of a hybrid SACD. A Discogs
-    // tracklist is also laid out against them, and reads none of its own, so
-    // it alone refuses a release whose files were never measured. A
-    // MusicBrainz document states its own track times, so a release with a
-    // track nothing measured is read as the whole release, which is what a
-    // single-medium release is either way.
-    let audio_durations = match source {
-        crate::import::Catalog::MusicBrainz => stored_track_durations(tracks).unwrap_or_default(),
-        crate::import::Catalog::Discogs => stored_track_durations(tracks)?,
-        other => unreachable!("nothing fetches documents from {}", other.as_str()),
-    };
     release
-        .parsed(&audio_durations, clock, ids)
+        .parsed(&layout_lengths(source, tracks)?, clock, ids)
         .map_err(LibraryError::from)
 }
 
+/// The lengths a picked release's tracklist is laid out against for a library
+/// release's `tracks`. The stored durations say which of the release's mediums
+/// these tracks are: one disc of a box, the CD layer of a hybrid SACD. A
+/// Discogs tracklist is also laid out against them, and reads none of its own,
+/// so it alone refuses a release whose files were never measured. A
+/// MusicBrainz document states its own track times, so a release with a track
+/// nothing measured is read as the whole release, which is what a
+/// single-medium release is either way.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-fn stored_track_durations(tracks: &[DbTrack]) -> Result<Vec<u64>, LibraryError> {
+fn layout_lengths(
+    source: crate::import::Catalog,
+    tracks: &[DbTrack],
+) -> Result<Vec<u64>, LibraryError> {
+    Ok(match source {
+        crate::import::Catalog::MusicBrainz => stored_track_lengths(tracks).unwrap_or_default(),
+        crate::import::Catalog::Discogs => stored_track_lengths(tracks)?,
+        other => unreachable!("nothing fetches documents from {}", other.as_str()),
+    })
+}
+
+/// Each of a library release's tracks' stored length, in track order, or why
+/// one has none.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub(crate) fn stored_track_lengths(tracks: &[DbTrack]) -> Result<Vec<u64>, LibraryError> {
     tracks
         .iter()
         .map(|track| {
