@@ -22,7 +22,7 @@ fn add_artist(
         params![
             id,
             name,
-            crate::text_match::normalize(name),
+            crate::text_match::artist_name_key(name),
             discogs_artist_id,
             musicbrainz_artist_id,
             NOW,

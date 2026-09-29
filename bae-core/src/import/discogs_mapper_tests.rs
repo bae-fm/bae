@@ -618,6 +618,28 @@ fn id_less_role_credit_reuses_release_artist_by_name() {
     assert_eq!(role.artist_id, parsed.album.artist_id);
 }
 
+/// An id-less credit names the release artist however it is accented or
+/// spaced, as a library artist is found by its name.
+#[test]
+fn id_less_role_credit_reuses_release_artist_however_it_is_accented() {
+    let mut release = make_release(vec![make_track("1", "Track 1")]);
+    release.extraartists = Some(vec![DiscogsRoleArtist {
+        id: None,
+        name: "Ärtist  Name A".to_string(),
+        role: "Composed By".to_string(),
+        credited_name: None,
+    }]);
+
+    let parsed = map(&release).unwrap();
+
+    assert_eq!(parsed.artists.len(), 1);
+    let role = parsed
+        .release_artist_roles
+        .first()
+        .expect("composer role imported");
+    assert_eq!(role.artist_id, parsed.album.artist_id);
+}
+
 /// An id-less Discogs role credit dedups on its *credited* name — the name
 /// actually stored on the artist row. Two id-less composer credits sharing a
 /// credited name but with different canonical names collapse into one

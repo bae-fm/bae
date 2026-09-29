@@ -61,9 +61,8 @@ const STOP_WORDS: &[&str] = &[
 /// dropped (so diacritics go), lowercased, whitespace runs collapsed to one
 /// space, and leading and trailing non-alphanumerics stripped. Never displayed.
 ///
-/// The one normalization of a name: candidate text clusters by it, and a
-/// library artist's `name_key` is it, so a credit meets the library artist it
-/// names however either is cased or accented.
+/// The one normalization of a name: candidate text clusters by it, and an
+/// artist is found by it — see [`super::artist_name_key`].
 pub(crate) fn normalize(text: &str) -> String {
     let decomposed: String = text
         .nfd()

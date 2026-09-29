@@ -23,22 +23,25 @@
 //! - [`album_title_words`]: the words of an album's title that say which
 //!   album it is.
 //! - [`LabelName`] and [`same_label_name`]: two label names name one label.
+//! - [`artist_name_key`] and [`same_artist_name`]: two artist names name one
+//!   artist, as a library artist is found by its name.
 //! - [`is_various_artists`]: a credit that names a compilation, not an
 //!   artist.
 //!
 //! A barcode is compared by [`crate::barcode::comparison_key`], which lives
 //! with the symbology rules it is built on.
 
+mod artist;
 mod catalog_number;
 mod fold;
 mod label;
 
+pub(crate) use artist::{artist_name_key, same_artist_name};
 pub(crate) use catalog_number::catalog_key;
 pub(crate) use fold::{is_stop_word, normalize, squash, words, written_words};
 pub(crate) use label::same_label_name;
 
 desktop_only! {
-    mod artist;
     mod title;
 
     pub(crate) use artist::is_various_artists;

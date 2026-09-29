@@ -379,13 +379,11 @@ fn resolve_by_name_on<Q: QueryOne + QueryRows>(
     inserts: &mut Vec<DbArtist>,
     external_id_updates: &mut Vec<(String, DbArtist)>,
 ) -> Result<String, ArtistWriteError> {
-    let key = crate::text_match::normalize(&credit.name);
     let pending: Vec<usize> = inserts
         .iter()
         .enumerate()
         .filter(|(_, pending)| {
-            !key.is_empty()
-                && crate::text_match::normalize(&pending.name) == key
+            crate::text_match::same_artist_name(&pending.name, &credit.name)
                 && ids_agree(pending, credit)
         })
         .map(|(index, _)| index)
@@ -612,7 +610,7 @@ pub(super) fn name_matches_on<Q: QueryRows>(
     credit: &DbArtist,
     staged: &[(String, DbArtist)],
 ) -> Result<Vec<DbArtist>, DbError> {
-    let key = crate::text_match::normalize(&credit.name);
+    let key = crate::text_match::artist_name_key(&credit.name);
     if key.is_empty() {
         return Ok(Vec::new());
     }

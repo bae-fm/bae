@@ -5,7 +5,7 @@
 
 -- Every artist the library knows. A lookup matches an incoming artist by
 -- provider id first, then by `name_key`: `name` with case, accents and spacing
--- folded by `util::text::normalize`, always written together with `name`.
+-- folded by `text_match::artist_name_key`, always written together with `name`.
 CREATE TABLE IF NOT EXISTS artists (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,

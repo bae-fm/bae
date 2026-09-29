@@ -183,7 +183,8 @@ fn push_artist(
 ///   - ref has a musicbrainz id → an existing artist with the same musicbrainz
 ///     id;
 ///   - else ref has a discogs id → an existing artist with the same discogs id;
-///   - else (no source ids) → a case-insensitive name match. For
+///   - else (no source ids) → the same name, as
+///     [`crate::text_match::same_artist_name`] compares artist names. For
 ///     MusicBrainz provenance the match is restricted to existing
 ///     artists that also lack a musicbrainz id (an id-less credit never merges
 ///     into an id-bearing artist); Discogs / file metadata match any artist by name.
@@ -200,7 +201,7 @@ fn find_or_push_artist(
         } else if let Some(discogs_id) = artist_ref.discogs_artist_id.as_ref() {
             artist.discogs_artist_id.as_ref() == Some(discogs_id)
         } else {
-            let name_matches = artist.name.eq_ignore_ascii_case(&artist_ref.name);
+            let name_matches = crate::text_match::same_artist_name(&artist.name, &artist_ref.name);
             match source {
                 // An id-less MusicBrainz credit only merges into an artist that
                 // also lacks a musicbrainz id.
