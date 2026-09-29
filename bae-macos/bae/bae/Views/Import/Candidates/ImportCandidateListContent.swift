@@ -418,12 +418,11 @@ struct ImportCandidateListContent: View {
         }
     }
 
-    /// The empty tab, or a filter with no matches.
+    /// The empty tab, or a narrowed list with no matches.
     private var emptyState: some View {
         ContentUnavailableView(
-            uiStore.importCandidateFilterText.isEmpty
-                ? "Nothing here yet" : "No matches",
-            systemImage: uiStore.importCandidateFilterText.isEmpty
+            summary.narrowed == nil ? "Nothing here yet" : "No matches",
+            systemImage: summary.narrowed == nil
                 ? emptyTabSymbol : "magnifyingglass"
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
