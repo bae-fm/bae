@@ -319,8 +319,8 @@ struct ImageStoreContentIdentityTests {
         )
     }
 
-    @Test("a local cache hit does not read the source file again")
-    func localCacheHitDoesNotReadSource() async throws {
+    @Test("an unchanged local file is served from the cache")
+    func unchangedLocalFileHitsTheCache() async throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(
@@ -334,15 +334,44 @@ struct ImageStoreContentIdentityTests {
         let store = ImageStore()
         let content = ImageContent.localFile(path: file.path)
         _ = try await store.image(content, pointSize: 56, displayScale: 2)
+
         #expect(
             store.cachedImage(content, pointSize: 56, displayScale: 2) != nil
         )
+    }
 
-        try FileManager.default.removeItem(at: file)
+    @Test("a file replaced at the same path misses the old file's decode")
+    func replacedLocalFileMissesTheCache() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(
+            at: directory,
+            withIntermediateDirectories: true
+        )
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let file = directory.appendingPathComponent("candidate.png")
+        try makePngBytes(width: 8, height: 8).write(to: file)
+
+        let store = ImageStore()
+        let content = ImageContent.localFile(path: file.path)
+        _ = try await store.image(content, pointSize: 56, displayScale: 2)
+
+        try makePngBytes(width: 16, height: 16).write(to: file)
+        try FileManager.default.setAttributes(
+            [.modificationDate: Date().addingTimeInterval(60)],
+            ofItemAtPath: file.path
+        )
 
         #expect(
-            store.cachedImage(content, pointSize: 56, displayScale: 2) != nil,
-            "the content address remains the cache identity"
+            store.cachedImage(content, pointSize: 56, displayScale: 2) == nil,
+            "the replaced file is new content"
+        )
+        let replaced = try #require(
+            try await store.image(content, pointSize: 56, displayScale: 2)
+        )
+        #expect(
+            store.cachedImage(content, pointSize: 56, displayScale: 2)
+                === replaced
         )
     }
 }

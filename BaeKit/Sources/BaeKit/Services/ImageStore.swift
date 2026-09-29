@@ -28,7 +28,9 @@ public enum ImageContent: Equatable, Hashable, Sendable {
     /// draw one too small for it.
     case remote(BridgeRemoteImageSet)
     /// A file on disk the user is previewing before it enters the library — an
-    /// import candidate's cover or folder image.
+    /// import candidate's cover or folder image. A path names whatever file is
+    /// there now, so its decodes are keyed by the file's modification date and
+    /// size too: a file replaced at the same path is new content.
     case localFile(path: String)
     /// Bytes already in hand. Decoded on demand and never cached: the caller
     /// holds the only identity these bytes have.
@@ -111,8 +113,10 @@ public struct ImageStoreBudgets: Equatable, Sendable {
 /// decode logic of their own.
 ///
 /// A decode is keyed by the content reference the caller supplied and its pixel
-/// size. Content at one reference is stable for the lifetime of an image in bae;
-/// a workflow that replaces it supplies a new reference.
+/// size. Content at one library, release, or remote reference is stable for the
+/// lifetime of an image in bae; a workflow that replaces it supplies a new
+/// reference. A local file's key also carries its modification date and size,
+/// since whatever replaces it keeps its path.
 public final class ImageStore: Sendable, Observable {
     /// Bytes of a curated library image, or nil when no such image exists.
     private let fetchLibraryImageBytes:
@@ -433,10 +437,37 @@ extension ImageStore {
             // key already separates the copies decoded for different slots.
             return "remote:\(image.url)"
         case .localFile(let path):
-            return "path:\(path)"
+            return Self.localFileToken(path)
         case .bytes:
             return nil
         }
+    }
+
+    /// The path plus the file's modification date and size. Nil when the file
+    /// can't be read; the load then reports why, and nothing is cached.
+    fileprivate static func localFileToken(_ path: String) -> String? {
+        let values: URLResourceValues
+        do {
+            values = try URL(fileURLWithPath: path)
+                .resourceValues(
+                    forKeys: [.contentModificationDateKey, .fileSizeKey]
+                )
+        }
+        catch {
+            logger.debug(
+                "Not caching \(path): its attributes can't be read: \(error)"
+            )
+            return nil
+        }
+        guard let modified = values.contentModificationDate,
+            let size = values.fileSize
+        else {
+            logger.debug(
+                "Not caching \(path): it has no modification date or size"
+            )
+            return nil
+        }
+        return "path:\(path)@\(modified.timeIntervalSinceReferenceDate):\(size)"
     }
 
     fileprivate static func libraryToken(_ image: BridgeImageRef) -> String {
