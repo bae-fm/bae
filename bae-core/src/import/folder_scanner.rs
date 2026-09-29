@@ -109,14 +109,14 @@ fn resolve_cue_audio_path<'a>(
             if let Some(exact) = audio_files.iter().find(|path| **path == referenced) {
                 return Some(exact);
             }
-            let reference_dir = spelled(&referenced.parent()?.to_string_lossy());
-            let same_path = spelled(&referenced.to_string_lossy());
+            let reference_dir = spelled_path(referenced.parent()?);
+            let same_path = spelled_path(&referenced);
             let same_name = audio_files
                 .iter()
-                .filter(|path| spelled(&path.to_string_lossy()) == same_path);
+                .filter(|path| spelled_path(path) == same_path);
             let same_stem = audio_files.iter().filter(|path| {
                 path.parent()
-                    .is_some_and(|dir| spelled(&dir.to_string_lossy()) == reference_dir)
+                    .is_some_and(|dir| spelled_path(dir) == reference_dir)
                     && path
                         .file_stem()
                         .is_some_and(|stem| spelled(&stem.to_string_lossy()) == file_stem)
@@ -144,6 +144,16 @@ fn resolve_cue_audio_path<'a>(
 fn spelled(name: &str) -> String {
     use unicode_normalization::UnicodeNormalization;
     name.nfc().flat_map(char::to_lowercase).collect()
+}
+
+/// How a path reads once case and Unicode normalization are set aside, one
+/// component at a time. Comparing components rather than the path's text keeps
+/// `a\b` and `a/b` the same path on Windows, where a pushed component is
+/// joined with `\` and a path read from elsewhere may carry `/`.
+fn spelled_path(path: &Path) -> Vec<String> {
+    path.components()
+        .map(|component| spelled(&component.as_os_str().to_string_lossy()))
+        .collect()
 }
 
 /// A single file entry in a candidate's selected file set.
