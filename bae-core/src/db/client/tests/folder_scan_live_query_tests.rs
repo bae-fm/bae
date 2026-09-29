@@ -1,5 +1,5 @@
 use super::import_list_live_query_tests::{candidate_names, list_request, scan_candidate};
-use super::live_query_tests::live_db;
+use super::live_query_tests::{live_db, next_run_is_only_the_request};
 use std::time::Duration;
 
 /// The list is a live query over the scan tables, so a scan item written while
@@ -189,12 +189,14 @@ async fn import_list_sleeps_through_a_rescan_that_reconfirms_its_candidates() {
             .await
             .unwrap();
     }
-    assert!(
-        tokio::time::timeout(Duration::from_millis(500), live.next())
-            .await
-            .is_err(),
-        "re-confirming unchanged folders delivers no list value"
-    );
+    let moved = next_run_is_only_the_request(
+        &mut live,
+        list_request(crate::import::TriageTab::Pending, [(0, 49)]),
+    )
+    .await
+    .into_result()
+    .unwrap();
+    assert_eq!(moved.windows[0].items, initial.windows[0].items);
 }
 
 /// The list subscription delivers a scan's progress beside the rows it

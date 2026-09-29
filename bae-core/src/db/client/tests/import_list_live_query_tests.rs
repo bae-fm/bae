@@ -3,7 +3,9 @@
 
 use super::super::*;
 use super::exec;
-use super::live_query_tests::{live_db, ALBUM_ID, IDENTITY_ID, RELEASE_ID};
+use super::live_query_tests::{
+    live_db, next_run_is_only_the_request, ALBUM_ID, IDENTITY_ID, RELEASE_ID,
+};
 use std::time::Duration;
 /// The import list's request carries the view and the windows, so every test
 /// below states both.
@@ -358,9 +360,8 @@ async fn import_list_moving_the_window_reruns_without_a_commit() {
     );
 }
 
-/// A commit that touches a table the list does not read leaves the projection
-/// equal, and coven withholds it: the tab does not re-render for a write it
-/// cannot show.
+/// A commit that touches a table the list does not read does not read the list
+/// again: the tab does not re-render for a write it cannot show.
 #[tokio::test]
 async fn import_list_withholds_a_commit_that_changes_nothing_it_reads() {
     let (db, _temp) = live_db().await;
@@ -392,12 +393,14 @@ async fn import_list_withholds_a_commit_that_changes_nothing_it_reads() {
     )
     .await;
 
-    assert!(
-        tokio::time::timeout(Duration::from_millis(500), live.next())
-            .await
-            .is_err(),
-        "a commit the list reads nothing from delivers no value"
-    );
+    let moved = next_run_is_only_the_request(
+        &mut live,
+        list_request(crate::import::TriageTab::Pending, [(0, 1), (1, 1)]),
+    )
+    .await
+    .into_result()
+    .unwrap();
+    assert_eq!(moved.windows[0].items, initial.windows[0].items);
 }
 
 /// The pane's candidate read moves between candidates on one subscription:

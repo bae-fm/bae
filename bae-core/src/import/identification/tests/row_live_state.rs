@@ -36,10 +36,9 @@ async fn next_live_state(
         .expect("the row's live-state subscription stays open")
 }
 
-/// An import claiming a candidate moves no row: the list delivers nothing and
-/// reads nothing again, and the row's own subscription is what says the import
-/// owns it — waiting for the worker, then taken up, then writing — and what
-/// it offers at each.
+/// An import claiming a candidate moves no row: the list reads nothing again,
+/// and the row's own subscription is what says the import owns it — waiting
+/// for the worker, then taken up, then writing — and what it offers at each.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_claimed_import_reaches_its_row_and_not_the_list() {
     let fixture = Fixture::new("live-state-not-the-list").await;
@@ -141,11 +140,33 @@ async fn a_claimed_import_reaches_its_row_and_not_the_list() {
         vec![crate::import::CandidateAction::RevealFolder],
         "an import writing its release offers no cancel it would refuse"
     );
-    assert!(
-        tokio::time::timeout(Duration::from_millis(500), list.next())
-            .await
-            .is_err(),
-        "a claimed import delivers no list value"
+    // A window move is the next thing the list reads, and whatever the claim
+    // changed that the list follows is read with it.
+    list.set_windows(
+        std::iter::once(crate::library::LibraryPageWindow {
+            offset: 0,
+            limit: 49,
+        })
+        .collect(),
+    )
+    .unwrap();
+    let moved = tokio::time::timeout(Duration::from_secs(20), list.next())
+        .await
+        .expect("a window move reads the list")
+        .expect("the list answers");
+    assert_eq!(
+        moved.request_revision,
+        initial.request_revision + 1,
+        "a claimed import moved the list's request"
+    );
+    assert_eq!(
+        moved.cause,
+        coven::ReconfigurableLiveQueryCause::RequestChanged,
+        "a claimed import read the list again"
+    );
+    assert_eq!(
+        moved.windows[0].items, initial.windows[0].items,
+        "a claimed import moved its row"
     );
 }
 

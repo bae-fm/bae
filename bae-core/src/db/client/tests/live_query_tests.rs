@@ -60,6 +60,94 @@ async fn browsable_sync_db(path: &std::path::Path, device_id: &str) -> Database 
     .unwrap()
 }
 
+/// Move `live` to `request` and return the event answering it, asserting the
+/// move alone caused that run. Every commit since the query's last value is
+/// read into the same run, so one touching anything the query reads makes the
+/// cause `RequestAndDatabaseChanged`.
+pub(super) async fn next_run_is_only_the_request<Request, Value>(
+    live: &mut coven::ReconfigurableLiveQuery<Request, Value>,
+    request: Request,
+) -> coven::ReconfigurableLiveQueryEvent<Request, Value>
+where
+    Request: Clone + PartialEq + Send + Sync + 'static,
+    Value: Clone + PartialEq + Send + 'static,
+{
+    let revision = live
+        .requests()
+        .set(request)
+        .expect("the subscription is open");
+    let event = tokio::time::timeout(Duration::from_secs(2), live.next())
+        .await
+        .expect("a new request reruns the query");
+    assert_eq!(event.revision(), revision);
+    assert_eq!(
+        event.cause(),
+        coven::ReconfigurableLiveQueryCause::RequestChanged,
+        "a commit since the last value touched what the query reads"
+    );
+    event
+}
+
+/// Rename the one album `shown` holds, and assert the next page delivered is
+/// `shown` with that title and nothing else. The browse reads every commit
+/// since its last page in one run, so a change it should not follow, committed
+/// before the rename, would show in that page too.
+async fn next_album_page_is_only_a_rename(
+    db: &Database,
+    live: &mut coven::ReconfigurableLiveQuery<
+        crate::library::LibraryPageWindows,
+        AlbumBrowseProjection,
+    >,
+    shown: AlbumBrowseProjection,
+    title: &str,
+) -> AlbumBrowseProjection {
+    let album_id = shown.windows[0].rows[0].id.clone();
+    exec(
+        db,
+        "UPDATE albums SET title = ?1 WHERE id = ?2",
+        &[title, album_id.as_str()],
+    )
+    .await;
+    let renamed = tokio::time::timeout(Duration::from_secs(2), live.next())
+        .await
+        .expect("renaming the shown album wakes album browse")
+        .into_result()
+        .unwrap();
+    let mut expected = shown;
+    expected.windows[0].rows[0].title = title.to_string();
+    assert_eq!(renamed, expected, "the page carries more than the rename");
+    renamed
+}
+
+/// [`next_album_page_is_only_a_rename`] for the composer grid: rename the one
+/// composer `shown` holds.
+async fn next_composer_page_is_only_a_rename(
+    db: &Database,
+    live: &mut coven::ReconfigurableLiveQuery<
+        crate::library::LibraryPageWindows,
+        ComposerBrowseProjection,
+    >,
+    shown: ComposerBrowseProjection,
+    name: &str,
+) -> ComposerBrowseProjection {
+    let composer_id = shown.windows[0].rows[0].artist.id.clone();
+    exec(
+        db,
+        "UPDATE artists SET name = ?1 WHERE id = ?2",
+        &[name, composer_id.as_str()],
+    )
+    .await;
+    let renamed = tokio::time::timeout(Duration::from_secs(2), live.next())
+        .await
+        .expect("renaming the shown composer wakes composer browse")
+        .into_result()
+        .unwrap();
+    let mut expected = shown;
+    expected.windows[0].rows[0].artist.name = name.to_string();
+    assert_eq!(renamed, expected, "the page carries more than the rename");
+    renamed
+}
+
 /// The first page of a list, as the one window a browse query reads.
 fn first_page() -> BTreeSet<LibraryPageWindow> {
     [LibraryPageWindow {
@@ -137,13 +225,8 @@ async fn album_browse_reads_only_the_primary_releases_cover() {
         }
     };
     insert_cover(OTHER_RELEASE_ID, "2b8f0c6e-4a1d-4c3e-8f5a-6d7e8f9a0b1c").await;
-    assert!(
-        tokio::time::timeout(Duration::from_millis(500), live.next())
-            .await
-            .is_err(),
-        "a cover on a release the grid does not show wakes nothing"
-    );
-
+    // Read in the same run as the next cover, so a browse following the other
+    // release's cover would name it in the page below.
     insert_cover(RELEASE_ID, "9c1d2e3f-4a5b-4c6d-8e7f-0a1b2c3d4e5f").await;
     let updated = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
@@ -259,20 +342,17 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
     let hidden_other_album = live.next().await.into_result().unwrap();
     assert_eq!(hidden_other_album.windows[0].rows[0].id, ALBUM_ID);
 
+    // The edited album is outside the requested window, so its metadata
+    // changes nothing the browse delivers.
     exec(
         &db,
         "UPDATE albums SET title = 'Album Title Hidden' WHERE id = ?1",
         &[OTHER_ALBUM_ID],
     )
     .await;
-    // The edited album is outside the requested window, so the rerun
-    // produces the page already delivered and coven withholds it.
-    assert!(
-        tokio::time::timeout(Duration::from_millis(100), live.next())
-            .await
-            .is_err(),
-        "unrequested album metadata leaves the delivered page unchanged"
-    );
+    let shown =
+        next_album_page_is_only_a_rename(&db, &mut live, hidden_other_album, "Album Title Shown")
+            .await;
 
     exec(
         &db,
@@ -280,11 +360,18 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
         &[OTHER_ALBUM_ID],
     )
     .await;
-    assert!(
-        tokio::time::timeout(Duration::from_millis(100), live.next())
-            .await
-            .is_err()
-    );
+    let second_and_beyond = [LibraryPageWindow {
+        offset: 1,
+        limit: 2,
+    }]
+    .into_iter()
+    .collect::<BTreeSet<_>>();
+    let shown_again = next_run_is_only_the_request(&mut live, second_and_beyond)
+        .await
+        .into_result()
+        .unwrap();
+    assert_eq!(shown_again.windows[0].rows, shown.windows[0].rows);
+    let shown = shown_again;
 
     let cover_hash = crate::util::fs::hash_bytes(b"other cover fixture");
     exec(
@@ -301,12 +388,7 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
     .await;
     // Only the requested rows' covers are read, so a cover on the album
     // outside the window changes nothing the browse delivers.
-    assert!(
-        tokio::time::timeout(Duration::from_millis(100), live.next())
-            .await
-            .is_err(),
-        "an unrequested album's cover leaves the delivered page unchanged"
-    );
+    next_album_page_is_only_a_rename(&db, &mut live, shown, "Album Title Shown Again").await;
     let other_album_page = [LibraryPageWindow {
         offset: 0,
         limit: 1,
@@ -446,20 +528,21 @@ async fn composer_browse_subscription_reconfigures_bounded_windows() {
         COMPOSER_ID
     );
 
+    // The edited composer is outside the requested window, so its metadata
+    // changes nothing the browse delivers.
     exec(
         &db,
         "UPDATE artists SET sort_name = 'Composer Sort Hidden' WHERE id = ?1",
         &[OTHER_COMPOSER_ID],
     )
     .await;
-    // The edited composer is outside the requested window, so the rerun
-    // produces the page already delivered and coven withholds it.
-    assert!(
-        tokio::time::timeout(Duration::from_millis(100), live.next())
-            .await
-            .is_err(),
-        "unrequested composer metadata leaves the delivered page unchanged"
-    );
+    let shown = next_composer_page_is_only_a_rename(
+        &db,
+        &mut live,
+        hidden_other_composer,
+        "Composer Name First Shown",
+    )
+    .await;
 
     let image_hash = crate::util::fs::hash_bytes(b"other artist fixture");
     exec(
@@ -476,12 +559,7 @@ async fn composer_browse_subscription_reconfigures_bounded_windows() {
     .await;
     // Only the requested rows' images are read, so an image on the composer
     // outside the window changes nothing the browse delivers.
-    assert!(
-        tokio::time::timeout(Duration::from_millis(100), live.next())
-            .await
-            .is_err(),
-        "an unrequested composer's image leaves the delivered page unchanged"
-    );
+    next_composer_page_is_only_a_rename(&db, &mut live, shown, "Composer Name First Again").await;
     let other_composer_page = [LibraryPageWindow {
         offset: 0,
         limit: 1,
@@ -644,7 +722,7 @@ async fn library_search_moves_between_queries_on_one_subscription() {
 async fn album_browse_ignores_an_unread_table() {
     let (db, _temp) = live_db().await;
     let mut live = db.subscribe_album_browse(&[], first_page());
-    live.next().await.into_result().unwrap();
+    let initial = live.next().await.into_result().unwrap();
 
     exec(
         &db,
@@ -655,11 +733,15 @@ async fn album_browse_ignores_an_unread_table() {
     )
     .await;
 
-    assert!(
-        tokio::time::timeout(Duration::from_millis(100), live.next())
-            .await
-            .is_err()
-    );
+    let window = LibraryPageWindow {
+        offset: 0,
+        limit: 49,
+    };
+    let moved = next_run_is_only_the_request(&mut live, [window].into_iter().collect())
+        .await
+        .into_result()
+        .unwrap();
+    assert_eq!(moved.windows[0].rows, initial.windows[0].rows);
 }
 
 #[tokio::test]
@@ -675,11 +757,7 @@ async fn album_detail_subscription_ignores_an_unread_column() {
     )
     .await;
 
-    assert!(
-        tokio::time::timeout(Duration::from_millis(100), live.next())
-            .await
-            .is_err()
-    );
+    next_run_is_only_the_request(&mut live, Some(OTHER_ALBUM_ID.to_string())).await;
 }
 
 #[tokio::test]
@@ -693,7 +771,9 @@ async fn single_table_subscription_ignores_a_different_primary_key() {
         &[OTHER_ALBUM_ID, ARTIST_ID],
     )
     .await;
-    let mut live = db.inner.handle.subscribe(|sql| {
+    // The request only gives the test a change of its own to make; the query
+    // reads the same row whatever it is.
+    let mut live = db.inner.handle.subscribe_reconfigurable(0_u8, |_, sql| {
         sql.query_row(
             "SELECT title FROM albums WHERE id = ?1",
             params![ALBUM_ID],
@@ -701,7 +781,7 @@ async fn single_table_subscription_ignores_a_different_primary_key() {
         )
         .map_err(CovenError::from)
     });
-    assert_eq!(live.next().await.unwrap(), "Album Title");
+    assert_eq!(live.next().await.into_result().unwrap(), "Album Title");
 
     exec(
         &db,
@@ -710,11 +790,8 @@ async fn single_table_subscription_ignores_a_different_primary_key() {
     )
     .await;
 
-    assert!(
-        tokio::time::timeout(Duration::from_millis(100), live.next())
-            .await
-            .is_err()
-    );
+    let moved = next_run_is_only_the_request(&mut live, 1).await;
+    assert_eq!(moved.into_result().unwrap(), "Album Title");
 }
 
 #[tokio::test]
