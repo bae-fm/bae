@@ -55,13 +55,30 @@ impl PlaybackClock for WallPlaybackClock {
 #[cfg(any(test, feature = "test-utils"))]
 pub struct ManualPlaybackClock {
     now: tokio::sync::watch::Sender<DateTime<Utc>>,
+    /// One entry per wait handed out; it upgrades while the wait is pending.
+    waits: std::sync::Mutex<Vec<std::sync::Weak<DateTime<Utc>>>>,
 }
 
 #[cfg(any(test, feature = "test-utils"))]
 impl ManualPlaybackClock {
     pub fn new(start: DateTime<Utc>) -> Self {
         let (now, _) = tokio::sync::watch::channel(start);
-        Self { now }
+        Self {
+            now,
+            waits: std::sync::Mutex::new(Vec::new()),
+        }
+    }
+
+    /// The deadlines of the waits handed out that have neither completed nor
+    /// been dropped, in the order they were handed out. A holder that gives up
+    /// a wait drops it, so this is what the clock's users are still waiting on.
+    pub fn pending_waits(&self) -> Vec<DateTime<Utc>> {
+        let mut waits = self.waits.lock().unwrap();
+        waits.retain(|wait| wait.strong_count() > 0);
+        waits
+            .iter()
+            .filter_map(|wait| wait.upgrade().map(|deadline| *deadline))
+            .collect()
     }
 
     pub fn advance(&self, by: std::time::Duration) {
@@ -78,12 +95,15 @@ impl PlaybackClock for ManualPlaybackClock {
 
     fn sleep_until(&self, deadline: DateTime<Utc>) -> PlaybackSleep {
         let mut now = self.now.subscribe();
+        let wait = Arc::new(deadline);
+        self.waits.lock().unwrap().push(Arc::downgrade(&wait));
         Box::pin(async move {
             // The sender lives as long as the clock; a clock dropped mid-wait
             // never reaches the deadline, so the wait stays pending.
             if now.wait_for(|now| *now >= deadline).await.is_err() {
                 std::future::pending::<()>().await;
             }
+            drop(wait);
         })
     }
 }
@@ -115,6 +135,31 @@ mod tests {
             .await
             .expect("the wait completes at the deadline");
         assert_eq!(clock.now(), deadline);
+    }
+
+    #[tokio::test]
+    async fn manual_clock_lists_only_the_waits_still_pending() {
+        let clock = ManualPlaybackClock::new(start());
+        let soon = start() + chrono::Duration::seconds(5);
+        let later = start() + chrono::Duration::seconds(60);
+        let dropped = clock.sleep_until(start() + chrono::Duration::seconds(30));
+        let mut completes = clock.sleep_until(soon);
+        let _held = clock.sleep_until(later);
+        assert_eq!(
+            clock.pending_waits(),
+            vec![start() + chrono::Duration::seconds(30), soon, later]
+        );
+
+        drop(dropped);
+        clock.advance(Duration::from_secs(5));
+        tokio::time::timeout(Duration::from_secs(1), &mut completes)
+            .await
+            .expect("the wait completes at its deadline");
+        assert_eq!(
+            clock.pending_waits(),
+            vec![later],
+            "a dropped wait and a completed one (still held) are no longer pending"
+        );
     }
 
     #[tokio::test]

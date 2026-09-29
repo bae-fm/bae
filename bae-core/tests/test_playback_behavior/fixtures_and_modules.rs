@@ -351,6 +351,11 @@ impl SidePauseTestFixture {
         wait_for_state_on(&mut self.progress_rx, predicate, timeout_duration).await
     }
 
+    /// See `settled_events_on`.
+    async fn settled_events(&mut self) -> Vec<PlaybackProgress> {
+        settled_events_on(&self.playback_handle, &mut self.progress_rx).await
+    }
+
     async fn next_capture_stream(&mut self) -> Arc<std::sync::Mutex<Vec<f32>>> {
         support::next_capture_stream(&mut self.capture_stream_rx).await
     }

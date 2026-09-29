@@ -18,16 +18,28 @@ impl SidePauseTestFixture {
             .await
     }
 
-    /// Assert side B (B1) does not start within a short real-time window.
-    async fn assert_next_side_waits(&mut self, message: &str) {
+    /// Assert side B (B1) has not started and the service waits on a countdown
+    /// ending at `countdown_end`, or on none — then no move of the clock can
+    /// start side B. The run loop matches its wait to the side pause at the
+    /// start of every turn, so once the sentinel command is handled the clock
+    /// holds exactly the wait the earlier commands left.
+    async fn assert_next_side_waits(
+        &mut self,
+        countdown_end: Option<chrono::DateTime<chrono::Utc>>,
+        message: &str,
+    ) {
         let side_b_track_id = self.track_ids[2].clone();
-        let started = self
-            .wait_for_state(
-                |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == side_b_track_id),
-                Duration::from_millis(500),
-            )
-            .await;
-        assert!(started.is_none(), "{message}");
+        let events = self.settled_events().await;
+        let started: Vec<_> = states_in(&events)
+            .into_iter()
+            .filter(|s| s.track_id() == Some(side_b_track_id.as_str()))
+            .collect();
+        assert!(started.is_empty(), "{message}: side B started: {started:?}");
+        assert_eq!(
+            self.clock.pending_waits(),
+            Vec::from_iter(countdown_end),
+            "{message}"
+        );
     }
 
     async fn wait_for_next_side(&mut self, message: &str) {
@@ -71,7 +83,10 @@ async fn side_pause_countdown_starts_the_next_side_when_it_runs_out() {
 
     fixture.clock.advance(Duration::from_secs(4));
     fixture
-        .assert_next_side_waits("a second before the countdown ends, side B waits")
+        .assert_next_side_waits(
+            Some(side_pause_clock_start() + chrono::Duration::seconds(5)),
+            "a second before the countdown ends, side B waits",
+        )
         .await;
 
     fixture.clock.advance(Duration::from_secs(1));
@@ -89,9 +104,8 @@ async fn side_pause_without_a_countdown_waits_for_play() {
     let paused = fixture.pause_after_side_a().await;
     assert_eq!(side_pause_countdown(&paused), None);
 
-    fixture.clock.advance(Duration::from_secs(3600));
     fixture
-        .assert_next_side_waits("with the countdown off, side B waits however long it takes")
+        .assert_next_side_waits(None, "with the countdown off, side B waits however long it takes")
         .await;
 
     fixture.playback_handle.resume();
@@ -108,9 +122,8 @@ async fn closing_the_prompt_stops_the_countdown_and_keeps_the_pause() {
     fixture.playback_handle.cancel_side_pause_countdown();
     fixture.wait_for_countdown_cancelled().await;
 
-    fixture.clock.advance(Duration::from_secs(60));
     fixture
-        .assert_next_side_waits("a closed prompt's countdown never starts side B")
+        .assert_next_side_waits(None, "a closed prompt's countdown never starts side B")
         .await;
 
     fixture.playback_handle.resume();
@@ -142,9 +155,8 @@ async fn seeking_during_the_countdown_stops_it() {
     fixture.playback_handle.seek(Duration::from_secs(1));
     fixture.wait_for_countdown_cancelled().await;
 
-    fixture.clock.advance(Duration::from_secs(30));
     fixture
-        .assert_next_side_waits("a seek stops the countdown")
+        .assert_next_side_waits(None, "a seek stops the countdown")
         .await;
 }
 
@@ -158,9 +170,8 @@ async fn pausing_during_the_countdown_stops_it() {
     fixture.playback_handle.pause();
     fixture.wait_for_countdown_cancelled().await;
 
-    fixture.clock.advance(Duration::from_secs(30));
     fixture
-        .assert_next_side_waits("a pause stops the countdown")
+        .assert_next_side_waits(None, "a pause stops the countdown")
         .await;
 }
 
@@ -176,8 +187,7 @@ async fn a_queue_edit_during_the_countdown_stops_it() {
         .add_to_queue(vec![fixture.track_ids[0].clone()]);
     fixture.wait_for_countdown_cancelled().await;
 
-    fixture.clock.advance(Duration::from_secs(30));
     fixture
-        .assert_next_side_waits("a queue edit stops the countdown")
+        .assert_next_side_waits(None, "a queue edit stops the countdown")
         .await;
 }
