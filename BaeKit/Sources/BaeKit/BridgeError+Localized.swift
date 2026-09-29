@@ -7,12 +7,24 @@ public func localizedCoreString(_ key: String) -> String {
 }
 
 extension BridgeErrorCategory {
-    /// The generic, user-facing line for this category, resolved from the
-    /// generated `Core` string table via the key bae-core owns. The underlying
-    /// Rust error chain travels separately as opaque `detail` and is never
+    /// The user-facing line for this category, resolved from the generated
+    /// `Core` string table via the key bae-core owns, with the counts a
+    /// category carries formatted for the current locale. The underlying Rust
+    /// error chain travels separately as opaque `detail` and is never
     /// translated.
     public var localizedLine: String {
-        localizedCoreString(bridgeErrorCategoryKey(category: self))
+        let line = localizedCoreString(bridgeErrorCategoryKey(category: self))
+        switch self {
+        case .metadataTrackCount(let folderTracks, let releaseTracks):
+            return String(
+                format: line,
+                locale: Locale.current,
+                Int(folderTracks),
+                Int(releaseTracks)
+            )
+        default:
+            return line
+        }
     }
 }
 
@@ -33,7 +45,13 @@ extension BridgeError {
     /// happens to be blank, and it used to open the error alert with an empty
     /// message.
     public var localizedLine: String? {
-        bridgeErrorLineKey(error: self).map(localizedCoreString)
+        guard let key = bridgeErrorLineKey(error: self) else { return nil }
+        // A diagnostic's key is its category's, whose line also takes the
+        // counts the category carries.
+        if case .Diagnostic(let category, _) = self {
+            return category.localizedLine
+        }
+        return localizedCoreString(key)
     }
 
     /// The opaque Rust error chain, for logs and a copyable disclosure. Present

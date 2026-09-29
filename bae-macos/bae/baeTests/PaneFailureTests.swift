@@ -54,19 +54,11 @@ struct PaneFailureTests {
         )
     }
 
-    @Test("reading the file tags says so, unless the track count is why")
+    @Test("reading the file tags says so")
     func readingFileTagsSaysSo() {
         #expect(
             Self.line(.readFileTags)
                 == String(localized: "Couldn't read file tags: \(Self.why)")
-        )
-        let trackCount = BridgeError.Diagnostic(
-            category: .metadataTrackCount,
-            detail: "13 tracks, 12 files"
-        )
-        #expect(
-            BridgePaneFailure(command: .readFileTags, error: trackCount).line
-                == DisplayError(trackCount)?.line
         )
     }
 }

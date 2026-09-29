@@ -64,8 +64,9 @@ extension ImportSearchFlow {
     }
 
     /// End the pick as it came out. A pane command's failure is stated on the
-    /// pane from what core stored; a catalog release that failed to load says
-    /// so on its own row; any other failure is told to the person.
+    /// pane from what core stored; a catalog release that failed to load, or
+    /// that core refused for its track count, says so on its own row; any
+    /// other failure is told to the person.
     @MainActor
     private static func settle(
         _ result: Result<BridgePaneOutcome, Error>,
@@ -111,21 +112,23 @@ extension ImportSearchFlow {
         }
     }
 
-    /// A catalog release that failed to load, as its row says it.
+    /// A catalog release that failed to load, or that core refused because
+    /// it lists another number of tracks than the folder holds, as its row
+    /// says it.
     private static func metadataApplicationError(_ error: Error)
         -> DisplayError?
     {
         guard let displayed = DisplayError(error) else { return nil }
         let detail: String?
         if case BridgeError.Diagnostic(let category, let diagnostic) = error {
+            if case .metadataTrackCount = category {
+                return DisplayError(line: displayed.line)
+            }
             switch category {
             case .importData, .database, .internal, .config:
                 detail = diagnostic
             default:
                 detail = nil
-            }
-            if category == .metadataTrackCount {
-                return DisplayError(line: displayed.line)
             }
         }
         else {

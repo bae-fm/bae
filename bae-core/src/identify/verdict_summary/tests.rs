@@ -308,19 +308,13 @@ fn a_match_listing_no_tracks_is_never_admitted() {
     }
 }
 
-/// Only a release a person picked leads with another count than the
-/// folder's — a run leaves every such row out — and what the person picked is
-/// theirs: the count is no check it failed.
+/// A lead listing another count than the folder's is no match, so nothing
+/// was found: neither a run nor a pick stores one, and none is picked.
 #[test]
-fn a_picked_release_s_count_is_no_check_it_failed() {
-    assert_eq!(
-        VerdictSummary::of(
-            &TerminalVerdict::of_pick(result("mb-1", listing(12)), 11),
-            false
-        )
-        .judgement(),
-        (true, None)
-    );
+fn a_lead_the_folder_s_count_rules_out_is_no_match() {
+    let summary = VerdictSummary::of(&found(vec![result("mb-1", listing(12))], 11), false);
+    assert_eq!(summary.declined(), Some(Declined::NothingFound));
+    assert_eq!(summary.judgement(), (false, None));
 }
 
 /// A pressing one of whose records' documents could not be read is not

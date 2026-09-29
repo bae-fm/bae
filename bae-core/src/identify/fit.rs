@@ -84,7 +84,7 @@ pub(crate) fn rules_out(records: &[MetadataResult], folder_track_count: u32) -> 
 /// Why a found verdict picks none of its releases unattended.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Declined {
-    /// It found no release.
+    /// It found no release that could be the folder's.
     NothingFound,
     /// It found several pressings: picking between them is the person's.
     Several,
@@ -167,10 +167,11 @@ pub(crate) fn decline(
     match (lead, unread_document) {
         (_, true) => Some(Declined::UnreadDocument),
         (TracklistFit::Fits, false) => None,
-        // Only a release a person picked leads with a tracklist that numbers
-        // other than the folder's: a run leaves out every row [`rules_out`]
-        // names. What the person picked is theirs, whatever it lists.
-        (TracklistFit::Disagrees { .. }, false) => None,
+        // A lead whose read tracklist numbers other than the folder's is no
+        // match, so nothing was found: a run leaves out every row
+        // [`rules_out`] names, and a person's pick of one is refused before
+        // anything is stored.
+        (TracklistFit::Disagrees { .. }, false) => Some(Declined::NothingFound),
         // Not read, or read and listing nothing: the count is unchecked, and
         // a release is never admitted unverified.
         (TracklistFit::Unread | TracklistFit::ListsNothing, false) => {

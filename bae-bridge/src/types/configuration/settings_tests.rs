@@ -106,10 +106,13 @@ fn expected_local_and_draft_failures_keep_their_presentation() {
         ),
         (
             ImportError::MetadataTrackCount {
-                metadata_tracks: 15,
-                audio_tracks: 14,
+                folder_tracks: 14,
+                release_tracks: 15,
             },
-            BridgeErrorCategory::MetadataTrackCount,
+            BridgeErrorCategory::MetadataTrackCount {
+                folder_tracks: 14,
+                release_tracks: 15,
+            },
         ),
         (
             ImportError::AlreadyInLibrary {

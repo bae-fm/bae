@@ -109,9 +109,10 @@ impl MetadataResult {
 
     /// The release a person chose, as a result. No lookup produced it — they
     /// found it — so it carries the release document's own facts and nothing
-    /// about a signal. Its tracklist is listed because choosing a release is
-    /// what fetches and stores it.
-    pub(crate) fn of_pick(detail: &ImportSearchReleaseDetail) -> Self {
+    /// about a signal. `source_tracks` is its tracklist as the pick read it
+    /// against the folder's audio: choosing a release is what fetches and
+    /// stores it.
+    pub(crate) fn of_pick(detail: &ImportSearchReleaseDetail, source_tracks: SourceTracks) -> Self {
         Self {
             source: detail.source,
             release_id: detail.release_id.clone(),
@@ -131,9 +132,7 @@ impl MetadataResult {
             // One release a person chose is the whole list; there is no other
             // catalog's album on it to join.
             album_links: AlbumLinks::NotAsked,
-            source_tracks: Some(SourceTracks::Listed {
-                count: detail.track_count,
-            }),
+            source_tracks: Some(source_tracks),
             document_failure: None,
             album_first_year: None,
             track_titles: Vec::new(),

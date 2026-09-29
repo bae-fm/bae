@@ -247,8 +247,9 @@ impl ImportServiceHandle {
     }
 
     /// Build a candidate draft from an external release, keeping each current
-    /// track on its file. Refuses a release whose track count differs from the
-    /// candidate's.
+    /// track on its file. A release that lists tracks lays them over the
+    /// folder's audio, and is refused when it lists another number of them;
+    /// one that lists none leaves the draft's tracks as they are.
     pub(crate) fn external_candidate_draft(
         &self,
         release: &crate::import::source_release::SourceRelease,
@@ -261,11 +262,17 @@ impl ImportServiceHandle {
             crate::import::parsed_album_to_user_edit(&parsed),
             crate::import::pane::CANDIDATE_TRACK_ID_PREFIX,
         );
-        let mut source = crate::import::pane::metadata_over_audio(edit, current)?;
+        let mut source = if edit.tracks.is_empty() {
+            crate::import::pane::album_over_draft(edit, current)?
+        } else {
+            let mut laid = crate::import::pane::metadata_over_audio(edit, current)?;
+            for (index, track) in laid.draft.tracks.iter_mut().enumerate() {
+                track.source_index =
+                    Some(u32::try_from(index).expect("source track index fits u32"));
+            }
+            laid
+        };
         source.source_discogs_artist_ids = crate::import::pane::source_discogs_artist_ids(&parsed);
-        for (index, track) in source.draft.tracks.iter_mut().enumerate() {
-            track.source_index = Some(u32::try_from(index).expect("source track index fits u32"));
-        }
         Ok(source)
     }
 
@@ -444,6 +451,24 @@ impl ImportServiceHandle {
         let release = self
             .release_for_pick(&candidate_key, &link.record)
             .await?;
+        let audio_durations =
+            crate::import::audio_layout::audio_durations(&candidate.files, &durations)?;
+        let folder_tracks = u32::try_from(audio_durations.len()).expect("a folder's tracks fit u32");
+        // A release whose tracklist, read against the folder's audio, lists
+        // another number of tracks than the folder holds is not the folder's,
+        // however a person found it: the pick is refused before anything else
+        // is fetched or written; only the folder's files, changed outside bae,
+        // can make it fit. One that lists no tracks says nothing either way
+        // and is applied.
+        let listed = release.source_tracks_for_audio(&audio_durations);
+        if let crate::identify::TracklistFit::Disagrees { source } =
+            crate::identify::TracklistFit::of(Some(&listed), folder_tracks)
+        {
+            return Err(crate::import::ImportError::MetadataTrackCount {
+                folder_tracks,
+                release_tracks: source,
+            });
+        }
         // A partner that fails to load fails the pick, leaving the previous
         // one in place.
         let prepared_partners = crate::import::service::prepare_partners(
@@ -455,15 +480,13 @@ impl ImportServiceHandle {
         .await?;
         // The choice is stored as the candidate's result unless a run's result
         // already stands.
-        let audio_durations =
-            crate::import::audio_layout::audio_durations(&candidate.files, &durations)?;
         let detail = release.detail_for_audio(&audio_durations, &prepared_partners)?;
         let metadata = self
             .external_candidate_metadata(&release, prepared_partners, &durations, &current.draft)
             .await?;
         let settled_by_choice = crate::identify::TerminalVerdict::of_pick(
-            crate::import::search::MetadataResult::of_pick(&detail),
-            audio_durations.len() as u32,
+            crate::import::search::MetadataResult::of_pick(&detail, listed),
+            folder_tracks,
         );
         let _commit = self
             .commit_lock_for_revision(

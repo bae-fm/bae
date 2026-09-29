@@ -2,6 +2,7 @@ package fm.bae.app
 
 import android.content.Context
 import kotlinx.coroutines.CancellationException
+import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgePlaybackErrorReason
 import uniffi.bae_bridge.bridgeErrorLineKey
@@ -24,7 +25,25 @@ import uniffi.bae_bridge.bridgePlaybackErrorReasonKey
  * only stayed invisible here because [fm.bae.app.data.UiEventAdapter] happened to
  * catch Cancelled separately before ever asking.
  */
-fun Context.localizedLine(error: BridgeException): String? = bridgeErrorLineKey(error)?.let { coreString(it) }
+fun Context.localizedLine(error: BridgeException): String? =
+    bridgeErrorLineKey(error)?.let { key ->
+        // The line takes the counts its category carries, formatted for the locale.
+        when (val category = (error as? BridgeException.Diagnostic)?.category) {
+            is BridgeErrorCategory.MetadataTrackCount -> {
+                coreString(
+                    key,
+                    mapOf(
+                        "folder_tracks" to category.folderTracks.toLong(),
+                        "release_tracks" to category.releaseTracks.toLong(),
+                    ),
+                )
+            }
+
+            else -> {
+                coreString(key)
+            }
+        }
+    }
 
 /**
  * The localized, user-facing line for a [BridgePlaybackErrorReason]. The two

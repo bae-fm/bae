@@ -198,6 +198,16 @@ fn seed_mb_release_with_track_count(
             track
         })
         .collect();
+    seed_mb_release_with_media(f, mb_release_id, mb_group_id, vec![support::mb_medium(tracks)])
+}
+
+/// Seed a plain MusicBrainz release on `media`, credited to one artist.
+fn seed_mb_release_with_media(
+    f: &ImportFixture,
+    mb_release_id: &str,
+    mb_group_id: &str,
+    media: Vec<bae_core::musicbrainz::MbMedium>,
+) -> String {
     let response = MbReleaseResponse {
         date: Some("2004".to_string()),
         country: Some("GB".to_string()),
@@ -211,7 +221,7 @@ fn seed_mb_release_with_track_count(
                 sort_name: Some("Artist Name".to_string()),
             }),
         }],
-        media: vec![support::mb_medium(tracks)],
+        media,
         cover_art_archive: bae_core::musicbrainz::MbCoverArtArchive {
             front: true,
             darkened: false,
@@ -269,68 +279,181 @@ async fn pick_release_for_folder(
     (candidate_key, pane)
 }
 
-/// A source with fewer or more tracks than the audio is refused and leaves the
-/// draft as it was.
+/// Scan in a folder of `track_count` audio files and return its candidate key.
+async fn scanned_folder_of(f: &ImportFixture, track_count: usize) -> String {
+    let collection = f.temp_path().join("collection");
+    let album_dir = collection.join("album");
+    fs::create_dir_all(&album_dir).unwrap();
+    let names: Vec<String> = (1..=track_count).map(|n| format!("{n:02} Track.flac")).collect();
+    generate_album_files(
+        &album_dir,
+        &names.iter().map(String::as_str).collect::<Vec<_>>(),
+    );
+    let mut scan_rx = f.handle.every_scan_event_for_test();
+    f.handle
+        .add_watched_folder(collection.to_string_lossy().into_owned())
+        .await
+        .unwrap();
+    let expected = album_dir.clone();
+    wait_for_scan_event(&mut scan_rx, "the candidate", move |event| {
+        matches!(event, ScanEvent::FolderCandidate { candidate, .. } if candidate.path == expected)
+    })
+    .await;
+    album_dir.to_string_lossy().into_owned()
+}
+
+/// A person's pick of MusicBrainz release `mb_id` for the candidate.
+async fn pick_release(
+    f: &ImportFixture,
+    candidate_key: &str,
+    mb_id: &str,
+) -> Result<u64, bae_core::import::ImportError> {
+    f.handle
+        .select_candidate_release(candidate_key.to_string(), pressing_link(mb_id))
+        .await
+}
+
+fn pressing_link(mb_id: &str) -> bae_core::import::PressingLink {
+    bae_core::import::PressingLink {
+        record: bae_core::import::MetadataRef::new(Catalog::MusicBrainz, mb_id.to_string()),
+        partners: vec![],
+    }
+}
+
+async fn candidate_pane(
+    f: &ImportFixture,
+    candidate_key: &str,
+) -> bae_core::import::ImportCandidateDetail {
+    f.handle
+        .candidate_pane(candidate_key)
+        .await
+        .unwrap()
+        .expect("the candidate reads back")
+}
+
+/// A release listing another number of tracks than the folder holds is
+/// refused whatever the person picked it from, naming both counts, and
+/// nothing changes: the draft, its cover, the release the folder is linked to
+/// and the result it stored stay as the pick before left them.
 #[tokio::test]
-async fn incompatible_source_counts_preserve_every_audio_backed_track() {
+async fn a_release_listing_another_track_count_is_refused_and_changes_nothing() {
     support::tracing_init();
-    for source_count in [12, 14] {
+    for release_tracks in [10, 14] {
         let f = ImportFixture::new().await;
-        let mb_id = seed_mb_release_with_track_count(&f,
-            &format!("mb-rel-count-{source_count}"),
-            &format!("mb-group-count-{source_count}"),
-            source_count,
+        let fitting = seed_mb_release_with_track_count(&f, "mb-rel-fits", "mb-group-fits", 12);
+        let other = seed_mb_release_with_track_count(
+            &f,
+            &format!("mb-rel-count-{release_tracks}"),
+            &format!("mb-group-count-{release_tracks}"),
+            release_tracks,
         );
-        let collection = f.temp_path().join("collection");
-        let album_dir = collection.join("album");
-        fs::create_dir_all(&album_dir).unwrap();
-        let names: Vec<String> = (1..=13).map(|n| format!("{n:02} Track.flac")).collect();
-        generate_album_files(
-            &album_dir,
-            &names.iter().map(String::as_str).collect::<Vec<_>>(),
-        );
-        let candidate_key = album_dir.to_string_lossy().into_owned();
-        let mut scan_rx = f.handle.every_scan_event_for_test();
-        f.handle
-            .add_watched_folder(collection.to_string_lossy().into_owned())
+        let candidate_key = scanned_folder_of(&f, 12).await;
+        pick_release(&f, &candidate_key, &fitting).await.unwrap();
+        let before = candidate_pane(&f, &candidate_key).await;
+
+        let error = pick_release(&f, &candidate_key, &other)
             .await
-            .unwrap();
-        wait_for_scan_event(&mut scan_rx, "the candidate", |event| {
-            matches!(event, ScanEvent::FolderCandidate { candidate, .. } if candidate.path == album_dir)
-        }).await;
-        let before = f
-            .handle
-            .candidate_pane(&candidate_key)
-            .await
-            .unwrap()
-            .unwrap();
-        let error = f
-            .handle
-            .select_candidate_release(candidate_key.clone(), bae_core::import::PressingLink {
-                    record: bae_core::import::MetadataRef::new(Catalog::MusicBrainz, mb_id),
-                    partners: vec![],
-                },
-            )
-            .await
-            .expect_err("different counts refuse metadata application");
+            .expect_err("a release of another track count is refused");
+
         assert!(
-            matches!(error, bae_core::import::ImportError::MetadataTrackCount {
-            metadata_tracks, audio_tracks: 13
-        } if metadata_tracks == source_count)
+            matches!(
+                error,
+                bae_core::import::ImportError::MetadataTrackCount {
+                    folder_tracks: 12,
+                    release_tracks: listed,
+                } if listed as usize == release_tracks
+            ),
+            "{error:?}"
         );
-        let after = f
-            .handle
-            .candidate_pane(&candidate_key)
-            .await
-            .unwrap()
-            .unwrap();
+        assert_eq!(
+            error.ui_error(),
+            bae_core::ui::UiError::Diagnostic {
+                category: bae_core::ui::UiErrorCategory::MetadataTrackCount {
+                    folder_tracks: 12,
+                    release_tracks: release_tracks as u32,
+                },
+                detail: error.to_string(),
+            }
+        );
+        let after = candidate_pane(&f, &candidate_key).await;
+        assert_eq!(
+            after.release_link,
+            Some(bae_core::import::ReleaseLink::Pressing(pressing_link(&fitting)))
+        );
+        assert_eq!(after.release_link, before.release_link);
         assert_eq!(after.metadata_draft, before.metadata_draft);
         assert_eq!(after.metadata_provenance, before.metadata_provenance);
+        assert_eq!(after.metadata_revision, before.metadata_revision);
         assert_eq!(after.cover, before.cover);
+        assert_eq!(after.resumed_identify_state, before.resumed_identify_state);
         let tracks = bae_core::import::mapping_tracks(&after.mapping);
-        assert_eq!(tracks.len(), 13);
+        assert_eq!(tracks.len(), 12);
         assert!(tracks.iter().all(|track| track.file.is_some()));
     }
+}
+
+/// A release listing as many tracks as the folder holds is applied: the
+/// folder is linked to it and the draft is read from it.
+#[tokio::test]
+async fn a_release_listing_the_folder_s_track_count_applies() {
+    support::tracing_init();
+    let f = ImportFixture::new().await;
+    let fitting = seed_mb_release_with_track_count(&f, "mb-rel-fits", "mb-group-fits", 12);
+    let candidate_key = scanned_folder_of(&f, 12).await;
+
+    pick_release(&f, &candidate_key, &fitting).await.unwrap();
+
+    let pane = candidate_pane(&f, &candidate_key).await;
+    assert_eq!(
+        pane.release_link,
+        Some(bae_core::import::ReleaseLink::Pressing(pressing_link(&fitting)))
+    );
+    assert_eq!(
+        pane.metadata_provenance,
+        Some(bae_core::import::MetadataProvenance::ExternalRelease {
+            record: bae_core::import::MetadataRef::new(Catalog::MusicBrainz, fitting.clone()),
+        })
+    );
+    let titles: Vec<_> = pane
+        .metadata_draft
+        .tracks
+        .iter()
+        .map(|track| track.title.as_str())
+        .collect();
+    let listed: Vec<_> = (1..=12).map(|n| format!("Source Track {n}")).collect();
+    assert_eq!(titles, listed.iter().map(String::as_str).collect::<Vec<_>>());
+}
+
+/// A release that lists no tracks says nothing about the folder's count, so
+/// it is not refused: the folder is linked to it, the draft takes its album
+/// fields, and each track keeps what it had, on the audio it plays.
+#[tokio::test]
+async fn a_release_listing_no_tracks_applies() {
+    support::tracing_init();
+    let f = ImportFixture::new().await;
+    let lists_nothing =
+        seed_mb_release_with_media(&f, "mb-rel-no-tracks", "mb-group-no-tracks", vec![]);
+    let candidate_key = scanned_folder_of(&f, 12).await;
+    let before = candidate_pane(&f, &candidate_key).await;
+
+    pick_release(&f, &candidate_key, &lists_nothing).await.unwrap();
+
+    let after = candidate_pane(&f, &candidate_key).await;
+    assert_eq!(
+        after.release_link,
+        Some(bae_core::import::ReleaseLink::Pressing(pressing_link(&lists_nothing)))
+    );
+    assert_eq!(
+        after.metadata_provenance,
+        Some(bae_core::import::MetadataProvenance::ExternalRelease {
+            record: bae_core::import::MetadataRef::new(Catalog::MusicBrainz, lists_nothing.clone()),
+        })
+    );
+    assert_eq!(after.metadata_draft.album_title, "Album Title");
+    assert_eq!(after.metadata_draft.tracks, before.metadata_draft.tracks);
+    let tracks = bae_core::import::mapping_tracks(&after.mapping);
+    assert_eq!(tracks.len(), 12);
+    assert!(tracks.iter().all(|track| track.file.is_some()));
 }
 
 /// A track plays the folder's audio unit at its position: an edit that names

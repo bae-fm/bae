@@ -39,8 +39,9 @@ impl AppServices {
     }
 
     /// Link the candidate to the release `link` names and read its draft from
-    /// it. A catalog release that fails to load is told on that release's own
-    /// row, so its failure comes back as the error.
+    /// it. A catalog release that fails to load, or that lists another number
+    /// of tracks than the folder holds, is told on that release's own row, so
+    /// its failure comes back as the error.
     pub async fn pane_select_release(
         &self,
         candidate_key: String,

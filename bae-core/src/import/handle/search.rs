@@ -384,7 +384,8 @@ impl ImportServiceHandle {
     /// **The release lands before the link does.** A stored link is the
     /// promise that opening that candidate needs no network, so the fetch goes
     /// first and a failure stores nothing: the pane keeps whatever it had and
-    /// says the source failed. Identification writes the same record itself
+    /// says the source failed. A release whose tracklist lists another number
+    /// of tracks than the folder holds is refused the same way. Identification writes the same record itself
     /// when a verdict settles on exactly one match; this is the path for the
     /// choices only a person can make.
     ///

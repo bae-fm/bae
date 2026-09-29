@@ -122,7 +122,7 @@ fn cloud_setup_column(failure: coven::CloudHomeSetupFailure) -> &'static str {
 }
 
 /// How a failure's class is stored: its name, and for a class that carries a
-/// reason, the reason after a dot.
+/// reason or counts, each after a dot.
 fn category_column(category: UiErrorCategory) -> String {
     use UiErrorCategory as C;
     match category {
@@ -135,7 +135,10 @@ fn category_column(category: UiErrorCategory) -> String {
         C::CandidateImportInProgress => "candidate_import_in_progress".to_string(),
         C::CandidateBeingIdentified => "candidate_being_identified".to_string(),
         C::CandidateAlreadyImported => "candidate_already_imported".to_string(),
-        C::MetadataTrackCount => "metadata_track_count".to_string(),
+        C::MetadataTrackCount {
+            folder_tracks,
+            release_tracks,
+        } => format!("metadata_track_count.{folder_tracks}.{release_tracks}"),
         C::AlreadyInLibrary => "already_in_library".to_string(),
         C::GroupingBlocked(reason) => format!("grouping_blocked.{}", block_column(reason)),
         C::Export => "export".to_string(),
@@ -186,6 +189,13 @@ fn category_of(column: &str) -> Result<UiErrorCategory, DbError> {
             .find(|failure| cloud_setup_column(*failure) == stored)
             .ok_or_else(unreadable)?,
         ),
+        Some(("metadata_track_count", stored)) => {
+            let (folder_tracks, release_tracks) = stored.split_once('.').ok_or_else(unreadable)?;
+            C::MetadataTrackCount {
+                folder_tracks: folder_tracks.parse().map_err(|_| unreadable())?,
+                release_tracks: release_tracks.parse().map_err(|_| unreadable())?,
+            }
+        }
         Some(_) => return Err(unreadable()),
         None => match column {
             "database" => C::Database,
@@ -197,7 +207,6 @@ fn category_of(column: &str) -> Result<UiErrorCategory, DbError> {
             "candidate_import_in_progress" => C::CandidateImportInProgress,
             "candidate_being_identified" => C::CandidateBeingIdentified,
             "candidate_already_imported" => C::CandidateAlreadyImported,
-            "metadata_track_count" => C::MetadataTrackCount,
             "already_in_library" => C::AlreadyInLibrary,
             "export" => C::Export,
             "save" => C::Save,
@@ -434,7 +443,10 @@ mod tests {
             C::CandidateImportInProgress,
             C::CandidateBeingIdentified,
             C::CandidateAlreadyImported,
-            C::MetadataTrackCount,
+            C::MetadataTrackCount {
+                folder_tracks: 12,
+                release_tracks: 10,
+            },
             C::GroupingBlocked(B::SourceChanged),
             C::GroupingBlocked(B::SourceGone),
             C::GroupingBlocked(B::FolderFilesTaken),

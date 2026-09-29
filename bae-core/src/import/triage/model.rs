@@ -187,8 +187,13 @@ impl MatchedRelease {
         })
     }
 
-    /// The release the person picked, as its documents describe it.
-    pub fn of_pick(source: Catalog, detail: &ImportSearchReleaseDetail) -> Self {
+    /// The release the person picked, as its documents describe it, its
+    /// tracklist `source_tracks` as read against the folder's audio.
+    pub fn of_pick(
+        source: Catalog,
+        detail: &ImportSearchReleaseDetail,
+        source_tracks: SourceTracks,
+    ) -> Self {
         Self {
             release_id: detail.release_id.clone(),
             title: detail.title.clone(),
@@ -196,7 +201,7 @@ impl MatchedRelease {
             pressing: Some(MatchedPressing {
                 year: detail.year,
                 media: detail.facts.media.clone(),
-                track_count: Some(detail.track_count),
+                track_count: source_track_count(&Some(source_tracks)),
             }),
             cover: detail.default_cover().map(|cover| cover.image.clone()),
             evidence: MatchEvidence {

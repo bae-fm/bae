@@ -111,7 +111,7 @@ impl From<bae_core::ui::UiError> for AutomationError {
             | UiErrorCategory::CandidateImportInProgress
             | UiErrorCategory::CandidateBeingIdentified
             | UiErrorCategory::CandidateAlreadyImported
-            | UiErrorCategory::MetadataTrackCount
+            | UiErrorCategory::MetadataTrackCount { .. }
             | UiErrorCategory::AlreadyInLibrary
             | UiErrorCategory::GroupingBlocked(_) => Self::Import(detail),
             UiErrorCategory::Config => Self::Validation(detail),

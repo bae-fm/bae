@@ -244,8 +244,9 @@ forward! {
         /// link does, so the next value draws whole. Identification writes the
         /// same record itself when a verdict settles on exactly one match; this
         /// is the path for the choices only a person can make. A catalog
-        /// release that fails to load comes back as the error, for its own row
-        /// to say.
+        /// release that fails to load, or that lists another number of tracks
+        /// than the folder holds, comes back as the error, for its own row to
+        /// say.
         fn select_candidate_release(
             candidate_key: String,
             link: crate::types::BridgePressingLink,

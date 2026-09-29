@@ -89,8 +89,8 @@ fn metadata_with_a_different_track_count_is_refused() {
     assert!(matches!(
         metadata_over_audio(metadata(&[None, None]), &current),
         Err(ImportError::MetadataTrackCount {
-            metadata_tracks: 2,
-            audio_tracks: 3,
+            folder_tracks: 3,
+            release_tracks: 2,
         })
     ));
 }

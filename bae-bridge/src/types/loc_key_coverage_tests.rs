@@ -245,7 +245,10 @@ fn produced_keys() -> Vec<String> {
         BridgeErrorCategory::SyncUpdateRequired,
         BridgeErrorCategory::Import,
         BridgeErrorCategory::ImportData,
-        BridgeErrorCategory::MetadataTrackCount,
+        BridgeErrorCategory::MetadataTrackCount {
+            folder_tracks: 12,
+            release_tracks: 10,
+        },
         BridgeErrorCategory::AlreadyInLibrary,
         BridgeErrorCategory::CandidateImportInProgress,
         BridgeErrorCategory::CandidateBeingIdentified,

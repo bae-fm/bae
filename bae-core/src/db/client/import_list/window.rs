@@ -297,7 +297,11 @@ impl PickedReleaseRows {
             .detail_for_audio(&audio_durations, partners)
             .map_err(|error| DbError::Message(error.to_string()))?;
         Ok(PickedRelease {
-            matched: MatchedRelease::of_pick(primary.release().catalog, &detail),
+            matched: MatchedRelease::of_pick(
+                primary.release().catalog,
+                &detail,
+                primary.source_tracks_for_audio(&audio_durations),
+            ),
             records,
         })
     }

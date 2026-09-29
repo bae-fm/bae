@@ -18,8 +18,12 @@ pub enum UiErrorCategory {
     CandidateBeingIdentified,
     /// The candidate's files are already imported.
     CandidateAlreadyImported,
-    /// The metadata read for the candidate has a different number of tracks.
-    MetadataTrackCount,
+    /// The release read for the candidate lists another number of tracks than
+    /// its folder holds; the line names both counts.
+    MetadataTrackCount {
+        folder_tracks: u32,
+        release_tracks: u32,
+    },
     /// An exact identity of the candidate's release is already in the library.
     AlreadyInLibrary,
     /// A release read from several folders cannot be worked on as it stands,

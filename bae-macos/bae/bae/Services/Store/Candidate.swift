@@ -234,9 +234,6 @@ extension BridgePaneFailure {
         case .import, .mergeArtists, .keepOwnDraft, .linkSharedAlbum, .unlink:
             return why
         case .readFileTags:
-            if case .Diagnostic(.metadataTrackCount, _) = error {
-                return why
-            }
             return String(localized: "Couldn't read file tags: \(why)")
         case .changeLookups:
             return String(

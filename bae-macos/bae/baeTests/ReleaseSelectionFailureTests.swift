@@ -37,6 +37,27 @@ struct ReleaseSelectionFailureTests {
         )
     }
 
+    @Test("A release refused for its track count says both counts on its row")
+    func trackCountRefusalStatesBothCounts() async throws {
+        let groups = PreviewData.searchStateFoundExact.identifiedGroups
+        let pressing = try #require(groups.first?.pressings.first)
+        let category = BridgeErrorCategory.metadataTrackCount(
+            folderTracks: 12,
+            releaseTracks: 10
+        )
+        let failure = try await failedSelection(
+            pressing: pressing,
+            error: .Diagnostic(
+                category: category,
+                detail: "12 tracks in the folder, 10 on the release"
+            )
+        )
+        #expect(failure.error.line == category.localizedLine)
+        #expect(failure.error.line.contains("12"))
+        #expect(failure.error.line.contains("10"))
+        #expect(failure.error.detail == nil)
+    }
+
     @Test("Retry replaces the failed selection and ignores an older completion")
     func retryReplacesFailure() throws {
         let store = MappingFixtures.store(mapping: nil)

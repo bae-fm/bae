@@ -72,8 +72,8 @@ pub(crate) fn metadata_over_audio(
 ) -> Result<CandidateSourceDraft, ImportError> {
     if metadata.tracks.len() != current.tracks.len() {
         return Err(ImportError::MetadataTrackCount {
-            metadata_tracks: metadata.tracks.len(),
-            audio_tracks: current.tracks.len(),
+            folder_tracks: track_count(current.tracks.len()),
+            release_tracks: track_count(metadata.tracks.len()),
         });
     }
     for (track, existing) in metadata.tracks.iter_mut().zip(&current.tracks) {
@@ -84,6 +84,26 @@ pub(crate) fn metadata_over_audio(
         track.edit.id.clone_from(&existing.edit.id);
     }
     Ok(source)
+}
+
+/// `metadata`'s album fields over the draft's own tracks, for a release that
+/// lists no tracks: it says nothing about them, so each keeps what it has,
+/// read from no release's tracklist.
+pub(crate) fn album_over_draft(
+    metadata: RawReleaseEdit,
+    current: &CandidateDraft,
+) -> Result<CandidateSourceDraft, ImportError> {
+    let edit = RawReleaseEdit {
+        tracks: current.release_edit().tracks,
+        ..metadata
+    };
+    let mut source = candidate_draft_from_edit(edit)?;
+    keep_row_identities(&mut source.draft.tracks, &current.tracks)?;
+    Ok(source)
+}
+
+fn track_count(tracks: usize) -> u32 {
+    u32::try_from(tracks).expect("a tracklist's length fits u32")
 }
 
 /// Carry the draft's row identities onto tracks read afresh from the same

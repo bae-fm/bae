@@ -82,12 +82,13 @@ pub enum ImportError {
     #[error("{} release data cannot be mapped: {detail}", catalog.as_str())]
     SourceData { catalog: Catalog, detail: String },
 
-    /// Metadata cannot describe the included audio without adding or losing tracks.
+    /// The release lists another number of tracks than the folder holds, so
+    /// it cannot describe the folder's audio without adding or losing tracks.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    #[error("release has {metadata_tracks} tracks; the draft includes {audio_tracks}")]
+    #[error("{folder_tracks} tracks in the folder, {release_tracks} on the release")]
     MetadataTrackCount {
-        metadata_tracks: usize,
-        audio_tracks: usize,
+        folder_tracks: u32,
+        release_tracks: u32,
     },
 
     /// Local file-tag evidence can't seed a file-metadata import (no audio files,
@@ -274,7 +275,13 @@ impl ImportError {
             Self::CandidateImportInProgress => C::CandidateImportInProgress,
             Self::CandidateBeingIdentified => C::CandidateBeingIdentified,
             Self::CandidateAlreadyImported => C::CandidateAlreadyImported,
-            Self::MetadataTrackCount { .. } => C::MetadataTrackCount,
+            Self::MetadataTrackCount {
+                folder_tracks,
+                release_tracks,
+            } => C::MetadataTrackCount {
+                folder_tracks: *folder_tracks,
+                release_tracks: *release_tracks,
+            },
             Self::AlreadyInLibrary { .. } => C::AlreadyInLibrary,
             Self::SourceData { .. } | Self::CoverArt { .. } => C::ImportData,
             Self::MusicBrainz(error) => match error {
