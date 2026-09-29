@@ -276,7 +276,8 @@ private class BridgeArtistBrowseQuery(
 
 /** A live library search: point it at a query, take each value, which names the query it answers. */
 internal interface LibrarySearch {
-    fun setQuery(query: String)
+    /** Search for [query] from now on; returns the request revision its answers will carry. */
+    fun setQuery(query: String): ULong
 
     suspend fun next(): BridgeLibrarySearchSnapshot
 
@@ -289,9 +290,7 @@ internal interface LibrarySearch {
 private class BridgeLibrarySearch(
     private val subscription: LibrarySearchSubscription,
 ) : LibrarySearch {
-    override fun setQuery(query: String) {
-        subscription.setQuery(query)
-    }
+    override fun setQuery(query: String): ULong = subscription.setQuery(query)
 
     override suspend fun next(): BridgeLibrarySearchSnapshot = subscription.next()
 

@@ -241,11 +241,14 @@ internal class FakeAppHandle(
 
     override suspend fun fetchLibraryImageBytes(image: BridgeImageRef): ByteArray? = imageBytes[image.id]
 
+    /** Deliver [value] on a search, as the answer to its newest request unless [revision] names
+     *  an earlier one. */
     fun emitSearchResults(
         subscription: Int,
         value: BridgeSearchResults,
+        revision: ULong? = null,
     ) {
-        searchSubscriptions[subscription].emit(Result.success(value))
+        searchSubscriptions[subscription].emit(Result.success(value), revision)
     }
 
     override fun subscribeAlbumBrowse(sortCriteria: List<BridgeSortCriterion>): AlbumBrowseSubscription =
@@ -467,6 +470,8 @@ internal class FakeLibrarySearchSubscription(
     private var revision = 0uL
     var cancelled = false
         private set
+    var closed = false
+        private set
 
     init {
         events.trySend(Result.success(BridgeLibrarySearchSnapshot("", BridgeFixtures.searchResults(), revision)))
@@ -489,10 +494,14 @@ internal class FakeLibrarySearchSubscription(
 
     override fun close() {
         cancelled = true
+        closed = true
     }
 
-    fun emit(value: Result<BridgeSearchResults>) {
-        events.trySend(value.map { BridgeLibrarySearchSnapshot(query, it, revision) })
+    fun emit(
+        value: Result<BridgeSearchResults>,
+        revision: ULong? = null,
+    ) {
+        events.trySend(value.map { BridgeLibrarySearchSnapshot(query, it, revision ?: this.revision) })
     }
 }
 

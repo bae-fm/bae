@@ -256,8 +256,6 @@ internal class FixedProjection<Value : Any>(
     flow: Flow<LiveQueryEvent<Value>>,
     private val onChanged: (Value) -> Unit,
     private val onError: (BridgeException) -> Unit,
-    private val notifyInitialValue: Boolean = false,
-    startImmediately: Boolean = true,
 ) {
     private val lock = Any()
     private val ready = CompletableDeferred<Unit>()
@@ -265,14 +263,14 @@ internal class FixedProjection<Value : Any>(
     private var initial = true
     private var closed = false
     private val job =
-        scope.launch(start = CoroutineStart.LAZY) {
+        scope.launch {
             flow.collect { event ->
                 val notify =
                     synchronized(lock) {
                         if (closed) return@collect
                         latest = event
                         ready.complete(Unit)
-                        (notifyInitialValue || !initial).also { initial = false }
+                        (!initial).also { initial = false }
                     }
                 when (event) {
                     is LiveQueryEvent.Value -> if (notify) onChanged(event.value)
@@ -280,14 +278,6 @@ internal class FixedProjection<Value : Any>(
                 }
             }
         }
-
-    init {
-        if (startImmediately) job.start()
-    }
-
-    fun start() {
-        job.start()
-    }
 
     suspend fun value(): Value {
         ready.await()

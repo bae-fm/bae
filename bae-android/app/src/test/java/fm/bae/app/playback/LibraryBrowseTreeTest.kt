@@ -249,7 +249,7 @@ class LibraryBrowseTreeTest {
         }
 
     @Test
-    fun replacingSearchRejectsOldDeliveriesAndClearsItsKnownCount() =
+    fun aControllersNextSearchMovesItsOneQueryRejectingOldDeliveriesAndItsKnownCount() =
         runBlocking {
             val handle =
                 FakeAppHandle(
@@ -269,21 +269,28 @@ class LibraryBrowseTreeTest {
             tree.subscribeSearch(owner, "first", notifications::add)
 
             assertTrue(runCatching { tree.subscribeSearch(owner, "second", notifications::add) }.isFailure)
-            handle.failSearchResults(1, queryFailure())
+            assertEquals("a controller keeps one search across its phrases", 1, handle.searchSubscriptions.size)
+            handle.failSearchResults(0, queryFailure())
             handle.emitSearchResults(
                 0,
                 BridgeFixtures.searchResults(
                     albums = List(9) { BridgeFixtures.albumSearchResult(id = "stale-$it") },
                 ),
+                revision = 1uL,
             )
             assertEquals(listOf(2), notifications)
 
             handle.emitSearchResults(
-                1,
+                0,
                 BridgeFixtures.searchResults(albums = listOf(BridgeFixtures.albumSearchResult(id = "recovered"))),
             )
             assertEquals(listOf(2, 1), notifications)
+            assertEquals(
+                BrowseId.Album("recovered").mediaId,
+                tree.search("second", 0, 20).single().mediaId,
+            )
             tree.close()
+            assertTrue(handle.searchSubscriptions.single().closed)
         }
 
     @Test
