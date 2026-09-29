@@ -1,16 +1,17 @@
 import BaeKit
 import SwiftUI
 
-/// The states Pending's rows can be narrowed to, each checked or not, under
-/// All, which is checked while none narrows them. The states, their order and
-/// what checking one does to the rest are core's.
+/// The states Found's rows can be narrowed to, each checked or not, under
+/// All, which is checked while none narrows them. Every row is in exactly one
+/// state. The states, their order and what checking one does to the rest are
+/// core's.
 struct PendingFilterSection: View {
-    let filters: [BridgePendingFilter]
-    let onSetFilter: (_ filter: BridgePendingFilter, _ checked: Bool) -> Void
+    let filters: [BridgePendingState]
+    let onSetFilter: (_ filter: BridgePendingState, _ checked: Bool) -> Void
     let onShowAll: () -> Void
 
     /// Core's groups, each set apart from the one before it.
-    static let groups = bridgePendingFilterGroups()
+    static let groups = bridgePendingStateGroups()
 
     var body: some View {
         Section("Filter") {
@@ -39,14 +40,16 @@ struct PendingFilterSection: View {
     }
 }
 
-extension BridgePendingFilter {
+extension BridgePendingState {
     var label: String {
         switch self {
-        case .identified: String(localized: "Identified")
-        case .needsYou: String(localized: "Needs You")
+        case .notLookedUp: String(localized: "Not Looked Up")
         case .identifying: String(localized: "Identifying")
-        case .importing: String(localized: "Importing")
+        case .needsYou: String(localized: "Needs You")
+        case .identified: String(localized: "Identified")
+        case .unmatched: String(localized: "Unmatched")
         case .lookupError: String(localized: "Lookup Error")
+        case .importing: String(localized: "Importing")
         case .importError: String(localized: "Import Error")
         }
     }

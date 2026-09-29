@@ -22,68 +22,72 @@ pub enum BridgeImportListOrder {
 pub struct BridgeImportListView {
     pub tab: BridgeTriageTab,
     pub filter_text: String,
-    /// The states Pending's rows are narrowed to, in the menu's order: the
-    /// list shows the rows any of them keeps, and every row when empty.
-    /// Changed through `bridge_pending_filters_with`.
-    pub pending_filters: Vec<BridgePendingFilter>,
+    /// The states Found's rows are narrowed to, in the menu's order: the
+    /// list shows the rows in any of them, and every row when empty. Changed
+    /// through `bridge_pending_filters_with`.
+    pub pending_filters: Vec<BridgePendingState>,
     /// The groups folded shut. Their entries are not in the list at all, which
     /// is why this is part of the request rather than a rendering decision.
     pub collapsed_groups: Vec<BridgeFolderReleaseDecisionKey>,
     pub order: BridgeImportListOrder,
 }
 
-/// One state Pending's rows can be narrowed to. Mirrors
-/// `bae_core::import::PendingFilter`.
+/// One state a Found row is in; every row is in exactly one. Mirrors
+/// `bae_core::import::PendingState`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, uniffi::Enum)]
-pub enum BridgePendingFilter {
-    /// A catalog release is matched.
-    Identified,
-    /// Several releases were found and none is picked yet.
-    NeedsYou,
+pub enum BridgePendingState {
+    /// No lookup has run for the folder's files.
+    NotLookedUp,
     /// An identification is queued, running, or writing its answer.
     Identifying,
+    /// The lookup left the answer to the person.
+    NeedsYou,
+    /// The draft is read from a catalog.
+    Identified,
+    /// The person's own draft is the answer.
+    Unmatched,
+    /// A lookup failed, or could not read a release it found.
+    LookupError,
     /// An import is queued or running.
     Importing,
-    /// A lookup failed to answer.
-    LookupError,
     /// The last import failed.
     ImportError,
 }
 
-/// Every pending filter, in the groups the menu sets apart, each group in the
-/// order the menu lists it.
+/// Every state, in the groups the menu sets apart, each group in the order
+/// the menu lists it.
 #[cfg(feature = "desktop")]
 #[uniffi::export]
-pub fn bridge_pending_filter_groups() -> Vec<Vec<BridgePendingFilter>> {
-    bae_core::import::PendingFilter::GROUPS
+pub fn bridge_pending_state_groups() -> Vec<Vec<BridgePendingState>> {
+    bae_core::import::PendingState::GROUPS
         .iter()
         .map(|group| {
             group
                 .iter()
                 .copied()
-                .map(BridgePendingFilter::from_core)
+                .map(BridgePendingState::from_core)
                 .collect()
         })
         .collect()
 }
 
-/// `filters` after the person checks (`true`) or clears `filter`. Checking
+/// `filters` after the person checks (`true`) or clears `state`. Checking
 /// the last unchecked state and clearing the last checked one both come to
 /// every row: an empty list.
 #[cfg(feature = "desktop")]
 #[uniffi::export]
 pub fn bridge_pending_filters_with(
-    filters: Vec<BridgePendingFilter>,
-    filter: BridgePendingFilter,
+    filters: Vec<BridgePendingState>,
+    state: BridgePendingState,
     checked: bool,
-) -> Vec<BridgePendingFilter> {
+) -> Vec<BridgePendingState> {
     filters
         .into_iter()
-        .map(BridgePendingFilter::into_core)
+        .map(BridgePendingState::into_core)
         .collect::<bae_core::import::PendingFilters>()
-        .with_checked(filter.into_core(), checked)
+        .with_checked(state.into_core(), checked)
         .into_iter()
-        .map(BridgePendingFilter::from_core)
+        .map(BridgePendingState::from_core)
         .collect()
 }
 
@@ -152,7 +156,7 @@ pub struct BridgeImportQueueSummary {
     pub pending_covers: Vec<BridgeRemoteImageSet>,
     /// The states narrowing the tab on show, in the menu's order: the view's
     /// own on Pending, none on Done and Skipped.
-    pub pending_filters: Vec<BridgePendingFilter>,
+    pub pending_filters: Vec<BridgePendingState>,
     /// How many of the tab's entries the list shows, of how many it has,
     /// while the text filter or a state narrows it; absent while nothing
     /// does.

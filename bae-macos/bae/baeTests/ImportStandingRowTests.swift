@@ -87,7 +87,8 @@ struct ImportStandingRowTests {
                 live: BridgeCandidateLiveState(
                     identification: nil,
                     import: standing,
-                    actions: []
+                    actions: [],
+                    standing: .notLookedUp
                 ),
                 coverContent: nil,
                 isGroupMember: false,

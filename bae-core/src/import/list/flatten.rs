@@ -9,10 +9,10 @@ use super::{
     UploadStanding,
 };
 use crate::db::{ImportQueueRows, ScanCandidateKind, ScanCandidateListRow};
-use crate::identify::VerdictSummary;
 use crate::import::triage::{
-    import_status_of, place, CandidateActionBasis, MatchedRelease, TriageGroup, TriageImportStatus,
-    TriagePlacement, TriageReading, TriageRow, TriageTab, TriageTabCounts,
+    import_status_of, place, CandidateActionBasis, MatchedRelease, PendingStanding, StoredLookup,
+    TriageGroup, TriageImportStatus, TriagePlacement, TriageReading, TriageRow, TriageTab,
+    TriageTabCounts,
 };
 use crate::import::watched_folder::candidate_relative_path;
 use crate::import::FolderReleaseDecisionKey;
@@ -133,7 +133,7 @@ pub(crate) fn selected_candidates(
         if row.kind != ScanCandidateKind::Valid || !rows.selected.contains(&row.path) {
             continue;
         }
-        let (placed, _) = place_row(rows, row)?;
+        let placed = place_row(rows, row)?;
         selected.push(crate::import::selection::SelectedCandidate {
             candidate_key: placed.candidate_key,
             name: placed.folder_name,
@@ -200,10 +200,10 @@ fn order(rows: &ImportQueueRows, request: &ImportListRequest) -> Result<Ordered,
             // what encloses it.
             ScanCandidateKind::Tentative => {}
             ScanCandidateKind::Valid => {
-                let (triage_row, verdict) = place_row(rows, row)?;
+                let triage_row = place_row(rows, row)?;
                 let tab = triage_row.placement.tab();
                 counts.bump(tab);
-                let matches_filter = request.keeps_pending(tab, &triage_row, verdict)
+                let matches_filter = request.keeps_pending(tab, &triage_row)
                     && filter.keeps(|| shown_text(rows, &triage_row))?;
                 ordered.push(OrderedEntry {
                     watched_folder_path: row.watched_folder_path.clone(),
@@ -388,16 +388,15 @@ fn unfiltered(request: &ImportListRequest) -> ImportListRequest {
     let mut request = request.clone();
     request.view.filter_text.clear();
     request.view.pending_filters = PendingFilters::default();
-    request.live_matches.clear();
+    request.live_standings.clear();
     request
 }
 
-/// One settled candidate's row, as the tables place it, and its stored lookup
-/// result.
-pub(super) fn place_row<'a>(
-    rows: &'a ImportQueueRows,
+/// One settled candidate's row, as the tables place it.
+pub(super) fn place_row(
+    rows: &ImportQueueRows,
     row: &ScanCandidateListRow,
-) -> Result<(TriageRow, Option<&'a VerdictSummary>), LibraryError> {
+) -> Result<TriageRow, LibraryError> {
     let content_hash = row.content_hash.as_deref().ok_or_else(|| {
         LibraryError::Internal(format!(
             "scanned candidate {} states no content hash",
@@ -431,8 +430,9 @@ pub(super) fn place_row<'a>(
         actionable,
         &placement,
         draft_valid,
-        verdict.map(|verdict| verdict.kind),
+        verdict.map(StoredLookup::of),
         row.grouping.is_some(),
+        PendingStanding::stored(placement, metadata_provenance.as_ref(), verdict),
     );
     let triage_row = TriageRow {
         candidate_key: row.path.clone(),
@@ -456,7 +456,7 @@ pub(super) fn place_row<'a>(
         metadata_provenance,
         selected: rows.selected.contains(&row.path),
     };
-    Ok((triage_row, verdict))
+    Ok(triage_row)
 }
 
 /// The order tabs' entries run in the sorted list.

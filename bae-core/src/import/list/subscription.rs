@@ -4,9 +4,9 @@
 //! Upload standing orders the Done tab — what is moving now, then what is
 //! waiting, then what is settled — and the upload pipeline holds it. What is
 //! running for each candidate is the candidate runtime's; the request carries
-//! only the candidates the view's live filter keeps, so a run starting or
-//! ending reruns the list only while such a filter is chosen. The bridge and
-//! the UIs never see either.
+//! the state it puts each candidate in only while a state narrows the view,
+//! so a run starting or ending reruns the list only then. The bridge and the
+//! UIs never see either.
 //!
 //! The folder scans are a second live query the subscription reads beside the
 //! list: a scan moves its found count with every folder it walks, and that
@@ -38,8 +38,8 @@ struct StandingRequest {
     query: CancellableLiveQuery<ImportListRequest, ImportListProjection>,
 }
 
-/// The request, and every candidate's runtime facts its live matches are read
-/// from.
+/// The request, and every candidate's runtime facts its live standings are
+/// read from.
 struct Standing {
     request: ImportListRequest,
     runtime_facts: HashMap<String, TriageRuntimeFacts>,
@@ -47,7 +47,7 @@ struct Standing {
 
 impl StandingRequest {
     /// Replace part of the standing and hand the whole request to the query,
-    /// its live matches read afresh.
+    /// its live standings read afresh.
     ///
     /// Handed over under the lock, so two changes reach the query in the order
     /// they were made to the request. Repeating the request the query already
@@ -65,10 +65,10 @@ impl StandingRequest {
             request,
             runtime_facts,
         } = &mut *standing;
-        request.live_matches = request
+        request.live_standings = request
             .view
             .pending_filters
-            .live_matches(runtime_facts.iter());
+            .live_standings(runtime_facts.iter());
         self.query
             .set(request.clone())
             .map_err(|_| ImportListSubscriptionError::Cancelled)
@@ -137,9 +137,9 @@ enum Arrival {
 
 impl ImportListSubscription {
     /// Start the subscription and the merges that keep its upload standing
-    /// and live matches current. A watch channel always holds its current
+    /// and live standings current. A watch channel always holds its current
     /// value, so the outbox merge reads it once before it waits; `initial`'s
-    /// live matches were read from `runtime_facts` as it stands.
+    /// live standings were read from `runtime_facts` as it stands.
     pub(crate) fn start(
         query: coven::ReconfigurableLiveQuery<ImportListRequest, ImportListProjection>,
         folder_scans: coven::LiveQuery<FolderScanProgress>,
@@ -270,12 +270,12 @@ impl Drop for ImportListSubscription {
 }
 
 /// Keep the request's upload standing current with the cloud outbox, and its
-/// live matches with the candidate runtime.
+/// live standings with the candidate runtime.
 ///
 /// Byte progress republishes the whole outbox snapshot several times a second;
 /// one that moves no release between working, queued and settled hands the
 /// query the request it already has, which reruns nothing — as does a run
-/// starting or ending while no live filter is chosen.
+/// starting or ending while no state narrows the view.
 ///
 /// A failed outbox read says nothing about where an upload stands, so the order
 /// keeps what it had rather than reporting everything settled.

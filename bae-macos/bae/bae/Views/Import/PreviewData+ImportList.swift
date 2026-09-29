@@ -96,7 +96,7 @@
             folderScanActivity: BridgeFolderScanActivity? = nil,
             groupKeys: [BridgeFolderReleaseDecisionKey] = [],
             pendingCovers: [BridgeRemoteImageSet] = [],
-            pendingFilters: [BridgePendingFilter] = [],
+            pendingFilters: [BridgePendingState] = [],
             narrowed: BridgeNarrowedCount? = nil
         ) -> BridgeImportQueueSummary {
             BridgeImportQueueSummary(

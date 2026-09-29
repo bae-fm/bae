@@ -133,13 +133,13 @@ final class ImportListSlot {
         updateView { $0.filterText = text }
     }
 
-    /// Check or clear one state Pending's rows are narrowed to; core says
+    /// Check or clear one state Found's rows are narrowed to; core says
     /// what that leaves narrowing them.
-    func setPendingFilter(_ filter: BridgePendingFilter, checked: Bool) {
+    func setPendingFilter(_ state: BridgePendingState, checked: Bool) {
         setPendingFilters(
             bridgePendingFiltersWith(
                 filters: view.pendingFilters,
-                filter: filter,
+                state: state,
                 checked: checked
             )
         )
@@ -150,7 +150,7 @@ final class ImportListSlot {
         setPendingFilters([])
     }
 
-    private func setPendingFilters(_ filters: [BridgePendingFilter]) {
+    private func setPendingFilters(_ filters: [BridgePendingState]) {
         uiStore.setImportCandidatePendingFilters(filters)
         updateView { $0.pendingFilters = filters }
     }

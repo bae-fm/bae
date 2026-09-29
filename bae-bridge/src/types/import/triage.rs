@@ -226,6 +226,8 @@ pub struct BridgeCandidateActionBasis {
     /// none when none is stored.
     pub lookup: Option<BridgeStoredLookup>,
     pub separable: bool,
+    /// Where the tables put the row among Found's states; `None` off Found.
+    pub standing: Option<BridgePendingStanding>,
 }
 
 /// What a candidate's stored lookup came to.
@@ -233,8 +235,56 @@ pub struct BridgeCandidateActionBasis {
 pub enum BridgeStoredLookup {
     /// It found a release, found none, or left the choice to the person.
     Answered,
-    /// A source it asked could not answer.
+    /// A source it asked could not answer, or a release it found could not
+    /// be read in full.
     Failed,
+}
+
+/// Where one Found row stands: its state, and why a row that needs the
+/// person does. Mirrors `bae_core::import::PendingStanding`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, uniffi::Enum)]
+pub enum BridgePendingStanding {
+    NotLookedUp,
+    Identifying,
+    NeedsYou { reason: BridgeNeedsYouReason },
+    Identified,
+    Unmatched,
+    LookupError,
+    Importing,
+    ImportError,
+}
+
+/// Why the lookup left a folder's answer to the person, with the numbers a
+/// UI formats for its locale.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, uniffi::Enum)]
+pub enum BridgeNeedsYouReason {
+    /// Several pressings could be the folder's: `count` of them.
+    Matches { count: u32 },
+    /// The one release found lists `source` tracks; the folder holds `local`.
+    TrackCountMismatch { local: u32, source: u32 },
+    /// The one release found lists no tracks.
+    NoTracklist,
+    /// The folder's own files rule out every release found, of which there
+    /// are `releases`.
+    MediumMismatch {
+        folder: BridgeMediumMismatch,
+        releases: u32,
+    },
+    /// No catalog has the folder.
+    NotFound,
+    /// The folder has nothing to look it up by.
+    NothingToLookUp,
+}
+
+/// What the folder's own files prove against the releases found. Mirrors
+/// `bae_core::identify::MediumConflict`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, uniffi::Enum)]
+pub enum BridgeMediumMismatch {
+    /// The folder is a CD rip, and no release could be a CD.
+    CdRip,
+    /// The folder's audio is at a rate no CD plays at, and every release is
+    /// a CD.
+    NotCdAudio,
 }
 
 /// One selected candidate and the actions its live state offers.
@@ -326,13 +376,15 @@ impl BridgeSelectionOffer {
 }
 
 /// What is running for one candidate right now, and the commands its row
-/// offers.
+/// offers and the state it is in with it.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeCandidateLiveState {
     pub identification: Option<BridgeIdentificationStatus>,
     /// Where the import that owns the candidate stands; `None` when none does.
     pub import: Option<BridgeImportStanding>,
     pub actions: Vec<BridgeCandidateAction>,
+    /// Where the row stands among Found's states; `None` off Found.
+    pub standing: Option<BridgePendingStanding>,
 }
 
 /// Where the import that owns a candidate stands.

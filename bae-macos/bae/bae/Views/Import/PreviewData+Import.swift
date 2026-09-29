@@ -229,7 +229,8 @@
                     placement: .pending,
                     draftValid: true,
                     lookup: nil,
-                    separable: separable
+                    separable: separable,
+                    standing: nil
                 ),
                 matched: nil,
                 metadataSummary: nil,

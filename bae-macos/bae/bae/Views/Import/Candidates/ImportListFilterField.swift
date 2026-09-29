@@ -8,9 +8,9 @@ struct ImportListFilterField: View {
     var text: String
     var focused: FocusState<Bool>.Binding
     /// The states narrowing the tab on show, in the menu's order.
-    let pendingFilters: [BridgePendingFilter]
+    let pendingFilters: [BridgePendingState]
     let narrowed: BridgeNarrowedCount?
-    let onClearPendingFilter: (BridgePendingFilter) -> Void
+    let onClearPendingFilter: (BridgePendingState) -> Void
 
     var body: some View {
         HStack(spacing: ThemeSpace.related) {

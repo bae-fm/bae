@@ -271,6 +271,7 @@ mirror_struct! {
         draft_valid,
         lookup: (opt crate::types::BridgeStoredLookup),
         separable,
+        standing: (opt crate::types::BridgePendingStanding),
     },
 }
 
@@ -281,9 +282,50 @@ mirror_enum! {
     variants: { Answered, Failed },
 }
 
+mirror_enum! {
+    crate::types::BridgePendingStanding = bae_core::import::PendingStanding,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    variants: {
+        NotLookedUp,
+        Identifying,
+        NeedsYou { reason: (crate::types::BridgeNeedsYouReason) },
+        Identified,
+        Unmatched,
+        LookupError,
+        Importing,
+        ImportError,
+    },
+}
+
+mirror_enum! {
+    crate::types::BridgeNeedsYouReason = bae_core::import::NeedsYouReason,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    variants: {
+        Matches { count },
+        TrackCountMismatch { local, source },
+        NoTracklist,
+        MediumMismatch { folder: (crate::types::BridgeMediumMismatch), releases },
+        NotFound,
+        NothingToLookUp,
+    },
+}
+
+mirror_enum! {
+    crate::types::BridgeMediumMismatch = bae_core::identify::MediumConflict,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    variants: { CdRip, NotCdAudio },
+}
+
 impl crate::types::BridgeCandidateLiveState {
     pub(crate) fn from_core(live: bae_core::import::CandidateLiveState) -> Self {
-        let bae_core::import::CandidateLiveState { facts, actions } = live;
+        let bae_core::import::CandidateLiveState {
+            facts,
+            actions,
+            standing,
+        } = live;
         let bae_core::import::TriageRuntimeFacts {
             identification,
             import,
@@ -295,6 +337,7 @@ impl crate::types::BridgeCandidateLiveState {
                 .into_iter()
                 .map(crate::types::BridgeCandidateAction::from_core)
                 .collect(),
+            standing: standing.map(crate::types::BridgePendingStanding::from_core),
         }
     }
 }
@@ -400,10 +443,19 @@ mirror_enum! {
 }
 
 mirror_enum! {
-    crate::types::BridgePendingFilter = bae_core::import::PendingFilter,
+    crate::types::BridgePendingState = bae_core::import::PendingState,
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
-    variants: { Identified, NeedsYou, Identifying, Importing, LookupError, ImportError },
+    variants: {
+        NotLookedUp,
+        Identifying,
+        NeedsYou,
+        Identified,
+        Unmatched,
+        LookupError,
+        Importing,
+        ImportError,
+    },
 }
 
 mirror_struct! {
@@ -412,7 +464,7 @@ mirror_struct! {
     fields: {
         tab: (crate::types::BridgeTriageTab),
         filter_text,
-        pending_filters: (each crate::types::BridgePendingFilter),
+        pending_filters: (each crate::types::BridgePendingState),
         collapsed_groups: (each crate::types::BridgeFolderReleaseDecisionKey),
         order: (crate::types::BridgeImportListOrder),
     },
@@ -525,7 +577,7 @@ impl crate::types::BridgeImportQueueSummary {
                 .collect(),
             pending_filters: pending_filters
                 .into_iter()
-                .map(crate::types::BridgePendingFilter::from_core)
+                .map(crate::types::BridgePendingState::from_core)
                 .collect(),
             narrowed: narrowed.map(crate::types::BridgeNarrowedCount::from_core),
         }

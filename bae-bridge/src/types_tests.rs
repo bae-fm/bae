@@ -326,10 +326,16 @@ mod conversion_roundtrip {
     fn candidate_action_basis_round_trips() {
         let core = bae_core::import::CandidateActionBasis {
             actionable: true,
-            placement: bae_core::import::TriagePlacement::Failed,
+            placement: bae_core::import::TriagePlacement::Pending,
             draft_valid: true,
-            lookup: Some(bae_core::import::StoredLookup::Failed),
+            lookup: Some(bae_core::import::StoredLookup::Answered),
             separable: true,
+            standing: Some(bae_core::import::PendingStanding::NeedsYou {
+                reason: bae_core::import::NeedsYouReason::MediumMismatch {
+                    folder: bae_core::identify::MediumConflict::NotCdAudio,
+                    releases: 2,
+                },
+            }),
         };
         assert_eq!(
             core,

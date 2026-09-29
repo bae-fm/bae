@@ -45,7 +45,8 @@
             cover: BridgeCoverImageSource? = nil,
             importStatus: BridgeTriageImportStatus? = nil,
             metadataProvenance: BridgeMetadataProvenance? = nil,
-            reading: BridgeTriageReading = .unidentified
+            reading: BridgeTriageReading = .unidentified,
+            standing: BridgePendingStanding? = nil
         ) -> BridgeTriageRow {
             BridgeTriageRow(
                 candidateKey: candidate.key,
@@ -59,7 +60,8 @@
                     placement: placement,
                     draftValid: metadataSummary != nil,
                     lookup: nil,
-                    separable: false
+                    separable: false,
+                    standing: standing
                 ),
                 matched: matched,
                 metadataSummary: metadataSummary,
@@ -540,7 +542,8 @@
                     placement: .done,
                     draftValid: false,
                     lookup: nil,
-                    separable: false
+                    separable: false,
+                    standing: nil
                 ),
                 release: BridgeImportedReleaseSummary(
                     releaseId: "preview-release",
@@ -685,12 +688,14 @@
         static func triageLive(
             _ actions: [BridgeCandidateAction],
             identification: BridgeIdentificationStatus? = nil,
-            importStanding: BridgeImportStanding? = nil
+            importStanding: BridgeImportStanding? = nil,
+            standing: BridgePendingStanding? = nil
         ) -> BridgeCandidateLiveState {
             BridgeCandidateLiveState(
                 identification: identification,
                 import: importStanding,
-                actions: actions
+                actions: actions,
+                standing: standing
             )
         }
 

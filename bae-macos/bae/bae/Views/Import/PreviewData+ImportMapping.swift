@@ -433,7 +433,8 @@
                             + [
                                 .identify, .resetToFileMetadata,
                                 .clearMetadata, .combine, .skip, .revealFolder,
-                            ]
+                            ],
+                        standing: .notLookedUp
                     ),
                     importStatus: nil,
                     release: release,

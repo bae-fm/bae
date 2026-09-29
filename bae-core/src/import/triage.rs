@@ -28,10 +28,12 @@ use crate::identify::{FolderCheck, LeadMatch, VerdictSummary};
 mod actions;
 mod model;
 mod selection;
+mod standing;
 
 pub use actions::{CandidateAction, CandidateActionBasis, CandidateLiveState, StoredLookup};
 pub use model::*;
 pub use selection::{keys_for, selection_offers, SelectionMember, SelectionOffer};
+pub use standing::{LiveStanding, NeedsYouReason, PendingStanding, PendingState};
 
 /// Which tab a candidate belongs to, checked in one order:
 ///

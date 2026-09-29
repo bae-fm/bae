@@ -1,4 +1,4 @@
-//! Filtering Pending's rows, and importing a selection of them.
+//! Filtering Found's rows by state, and importing a selection of them.
 
 use super::*;
 use crate::import::triage::{
@@ -46,6 +46,9 @@ fn every_kind() -> ImportQueueRows {
         candidate("Failed Import"),
         candidate("Tagged"),
         candidate("Unidentified"),
+        candidate("Pick Set Aside"),
+        candidate("Unread"),
+        candidate("Nothing To Look Up"),
         candidate("Imported"),
         candidate("Set Aside"),
     ];
@@ -72,6 +75,32 @@ fn every_kind() -> ImportQueueRows {
         ),
         ("Failed Import", drafted(auto_importable_state("mb-3"))),
         ("Tagged", drafted(prefilled_from_tags_state())),
+        (
+            "Pick Set Aside",
+            drafted(CandidateStateListRow {
+                metadata_provenance: Some(MetadataProvenance::FileMetadata),
+                metadata_author: crate::import::MetadataAuthor::Person,
+                ..auto_importable_state("mb-4")
+            }),
+        ),
+        (
+            "Unread",
+            with_verdict(not_found_state(), |verdict| {
+                *verdict = VerdictSummary {
+                    unread_document: true,
+                    ..auto_importable_state("mb-6")
+                        .verdict
+                        .expect("the state has a verdict")
+                };
+            }),
+        ),
+        (
+            "Nothing To Look Up",
+            with_verdict(not_found_state(), |verdict| {
+                verdict.kind = VerdictKind::ManualOnly;
+                verdict.track_count = Some(11);
+            }),
+        ),
     ];
     for (name, state) in states {
         rows.states.insert(format!("hash-{name}"), state);
@@ -86,7 +115,7 @@ fn every_kind() -> ImportQueueRows {
 }
 
 /// The filters with each of `checked` checked, as the person checks them.
-fn checked(checked: &[PendingFilter]) -> PendingFilters {
+fn checked(checked: &[PendingState]) -> PendingFilters {
     checked
         .iter()
         .fold(PendingFilters::default(), |filters, &filter| {
@@ -108,73 +137,111 @@ fn shown(rows: &ImportQueueRows, tab: TriageTab, filters: PendingFilters) -> Vec
     shown
 }
 
-/// Each filter keeps exactly its own rows, wherever automatic import would or would not take them
-/// them; a row can match more than one.
+/// Each state keeps exactly its own rows, one state per row, whatever
+/// automatic import would or would not take them.
 #[test]
-fn each_filter_keeps_exactly_its_own_rows() {
+fn each_state_keeps_exactly_its_own_rows() {
     let rows = every_kind();
     let cases = [
         (
-            &[][..],
+            PendingState::NotLookedUp,
+            vec!["candidate Tagged", "candidate Unidentified"],
+        ),
+        (PendingState::Identifying, vec![]),
+        (
+            PendingState::NeedsYou,
             vec![
-                "candidate Failed Import",
-                "candidate Identified",
-                "candidate Lookup Failed",
                 "candidate Nothing Found",
-                "candidate Picked Among Several",
-                "candidate Several",
-                "candidate Several Tagged",
-                "candidate Tagged",
-                "candidate Track Count Differs",
-                "candidate Unidentified",
-            ],
-        ),
-        (
-            &[PendingFilter::Identified][..],
-            vec![
-                "candidate Failed Import",
-                "candidate Identified",
-                "candidate Picked Among Several",
-                "candidate Track Count Differs",
-            ],
-        ),
-        (
-            &[PendingFilter::NeedsYou][..],
-            vec!["candidate Several", "candidate Several Tagged"],
-        ),
-        (
-            &[PendingFilter::LookupError][..],
-            vec!["candidate Lookup Failed"],
-        ),
-        (
-            &[PendingFilter::ImportError][..],
-            vec!["candidate Failed Import"],
-        ),
-        (
-            &[PendingFilter::NeedsYou, PendingFilter::LookupError][..],
-            vec![
-                "candidate Lookup Failed",
+                "candidate Nothing To Look Up",
                 "candidate Several",
                 "candidate Several Tagged",
             ],
         ),
         (
-            &[PendingFilter::Identified, PendingFilter::ImportError][..],
+            PendingState::Identified,
             vec![
-                "candidate Failed Import",
                 "candidate Identified",
                 "candidate Picked Among Several",
                 "candidate Track Count Differs",
             ],
         ),
+        (PendingState::Unmatched, vec!["candidate Pick Set Aside"]),
+        (
+            PendingState::LookupError,
+            vec!["candidate Lookup Failed", "candidate Unread"],
+        ),
+        (PendingState::Importing, vec![]),
+        (PendingState::ImportError, vec!["candidate Failed Import"]),
     ];
-    for (filters, expected) in cases {
+    for (state, expected) in cases {
         assert_eq!(
-            shown(&rows, TriageTab::Pending, checked(filters)),
+            shown(&rows, TriageTab::Pending, checked(&[state])),
             expected,
-            "{filters:?}"
+            "{state:?}"
         );
     }
+    assert_eq!(
+        shown(
+            &rows,
+            TriageTab::Pending,
+            checked(&[PendingState::NeedsYou, PendingState::LookupError])
+        ),
+        vec![
+            "candidate Lookup Failed",
+            "candidate Nothing Found",
+            "candidate Nothing To Look Up",
+            "candidate Several",
+            "candidate Several Tagged",
+            "candidate Unread",
+        ]
+    );
+}
+
+/// Every row on Found is in exactly one state, with what is running for some
+/// of them joined: each shows under exactly one filter.
+#[test]
+fn every_row_is_in_exactly_one_state() {
+    let rows = every_kind();
+    let identifying = TriageRuntimeFacts {
+        identification: Some(crate::import::IdentificationStatus::Running),
+        import: None,
+    };
+    let importing = TriageRuntimeFacts {
+        identification: Some(crate::import::IdentificationStatus::Queued),
+        import: Some(crate::import::ImportStanding::Running),
+    };
+    let facts: std::collections::HashMap<String, TriageRuntimeFacts> = [
+        (key("Several"), identifying),
+        (key("Failed Import"), importing),
+    ]
+    .into_iter()
+    .collect();
+    let every = shown(&rows, TriageTab::Pending, PendingFilters::default());
+    let mut seen: Vec<String> = Vec::new();
+    for &state in PendingState::GROUPS.iter().copied().flatten() {
+        let filters = checked(&[state]);
+        let flat = flatten(
+            &rows,
+            &ImportListRequest {
+                live_standings: filters.live_standings(&facts),
+                view: ImportListView {
+                    pending_filters: filters,
+                    ..ImportListView::default()
+                },
+                ..ImportListRequest::default()
+            },
+        )
+        .expect("the queue flattens");
+        let shown = sequence(&rows, &flat);
+        match state {
+            PendingState::Identifying => assert_eq!(shown, vec!["candidate Several"]),
+            PendingState::Importing => assert_eq!(shown, vec!["candidate Failed Import"]),
+            _ => {}
+        }
+        seen.extend(shown);
+    }
+    seen.sort();
+    assert_eq!(seen, every, "each row shows under exactly one state");
 }
 
 /// A sole release that does not fit the folder is not picked for it, so the
@@ -194,7 +261,7 @@ fn a_sole_release_that_does_not_fit_the_folder_needs_you() {
         shown(
             &rows,
             TriageTab::Pending,
-            checked(&[PendingFilter::NeedsYou])
+            checked(&[PendingState::NeedsYou])
         ),
         vec!["candidate Unfit"]
     );
@@ -205,7 +272,7 @@ fn a_sole_release_that_does_not_fit_the_folder_needs_you() {
 #[test]
 fn the_pending_filter_leaves_done_and_skipped_alone() {
     let rows = every_kind();
-    for &filter in PendingFilter::GROUPS.iter().copied().flatten() {
+    for &filter in PendingState::GROUPS.iter().copied().flatten() {
         assert_eq!(
             shown(&rows, TriageTab::Done, checked(&[filter])),
             vec!["candidate Imported"]
@@ -223,7 +290,7 @@ fn the_text_filter_composes_with_the_pending_filter() {
     let mut rows = every_kind();
     rows.candidates.retain(|row| row.display_path != "Imported");
     rows.imported.clear();
-    let texted = |filters: &[PendingFilter], text: &str| {
+    let texted = |filters: &[PendingState], text: &str| {
         flattened(
             &rows,
             &ImportListView {
@@ -233,17 +300,17 @@ fn the_text_filter_composes_with_the_pending_filter() {
             },
         )
     };
-    let needs_you = texted(&[PendingFilter::NeedsYou], "album");
+    let needs_you = texted(&[PendingState::NeedsYou], "album");
     assert_eq!(
         sequence(&rows, &needs_you),
         vec!["candidate Several Tagged"],
-        "of the two Needs you rows only the drafted one reads Album"
+        "of the Needs You rows only the drafted one reads Album"
     );
     assert_eq!(
-        needs_you.summary.counts.pending, 10,
+        needs_you.summary.counts.pending, 13,
         "the tab counts are the whole queue's, whatever the list shows"
     );
-    assert!(texted(&[PendingFilter::Identified], "nothing")
+    assert!(texted(&[PendingState::Identified], "nothing")
         .items
         .is_empty());
 }
@@ -256,7 +323,7 @@ fn locating_a_candidate_ignores_the_pending_filter() {
     let location = locate_candidate(
         &rows,
         &request(ImportListView {
-            pending_filters: checked(&[PendingFilter::Identified]),
+            pending_filters: checked(&[PendingState::Identified]),
             ..ImportListView::default()
         }),
         &key("Unidentified"),
@@ -267,15 +334,15 @@ fn locating_a_candidate_ignores_the_pending_filter() {
 }
 
 /// Selecting every identified row and importing them takes each one — a pick
-/// among several releases and a track count that differs as much as an auto-importable
-/// row — and a tags-only row selected beside them imports too.
+/// among several releases and a track count that differs as much as an
+/// auto-importable row — and a tags-only row selected beside them imports too.
 #[test]
 fn importing_a_selection_takes_every_row_with_a_draft_to_import() {
     let rows = every_kind();
     let identified = flattened(
         &rows,
         &ImportListView {
-            pending_filters: checked(&[PendingFilter::Identified]),
+            pending_filters: checked(&[PendingState::Identified]),
             ..ImportListView::default()
         },
     );
@@ -290,7 +357,6 @@ fn importing_a_selection_takes_every_row_with_a_draft_to_import() {
     let mut imported = keys_for(&members, CandidateAction::Import);
     imported.sort();
     let mut expected: Vec<String> = [
-        "Failed Import",
         "Identified",
         "Picked Among Several",
         "Tagged",
@@ -329,7 +395,7 @@ fn importing_all_identified_rows_takes_exactly_the_shown_ones() {
     let identified = flattened(
         &rows,
         &ImportListView {
-            pending_filters: checked(&[PendingFilter::Identified]),
+            pending_filters: checked(&[PendingState::Identified]),
             ..ImportListView::default()
         },
     );
@@ -348,10 +414,13 @@ fn selecting_all_identifying_rows_offers_their_cancel_and_no_import() {
         &rows,
         &ImportListRequest {
             view: ImportListView {
-                pending_filters: checked(&[PendingFilter::Identifying]),
+                pending_filters: checked(&[PendingState::Identifying]),
                 ..ImportListView::default()
             },
-            live_matches: [key("Identified"), key("Tagged")].into_iter().collect(),
+            live_standings: [key("Identified"), key("Tagged")]
+                .into_iter()
+                .map(|key| (key, crate::import::LiveStanding::Identifying))
+                .collect(),
             ..ImportListRequest::default()
         },
     )
@@ -378,7 +447,7 @@ fn selecting_all_identifying_rows_offers_their_cancel_and_no_import() {
     assert_eq!(cancel.count, 2);
 }
 
-/// What each filter's rows offer at rest is their own: Needs you imports
+/// What each state's rows offer at rest is their own: Needs You imports
 /// whatever draft it has, a failed lookup imports a valid draft and offers
 /// the retry, and a failed import imports again.
 #[test]
@@ -396,42 +465,47 @@ fn each_filter_s_rows_offer_what_their_drafts_and_lookups_allow() {
     };
     let keys = |members: &[SelectionMember], action| keys_for(members, action);
 
-    let needs_you = offers_of(PendingFilter::NeedsYou);
+    let needs_you = offers_of(PendingState::NeedsYou);
     assert_eq!(
         keys(&needs_you, CandidateAction::Import),
         vec![key("Several Tagged")],
         "the tags' draft imports; no draft, no import"
     );
 
-    let lookup_error = offers_of(PendingFilter::LookupError);
+    let lookup_error = offers_of(PendingState::LookupError);
     assert!(keys(&lookup_error, CandidateAction::Import).is_empty());
+    let mut retried = keys(&lookup_error, CandidateAction::RetryIdentification);
+    retried.sort();
     assert_eq!(
-        keys(&lookup_error, CandidateAction::RetryIdentification),
-        vec![key("Lookup Failed")]
+        retried,
+        vec![key("Lookup Failed"), key("Unread")],
+        "a release the lookup could not read is retried as a failed lookup is"
     );
 
-    let import_error = offers_of(PendingFilter::ImportError);
+    let import_error = offers_of(PendingState::ImportError);
     assert_eq!(
         keys(&import_error, CandidateAction::Import),
         vec![key("Failed Import")]
     );
 }
 
-/// Every filter is in exactly one group, and the groups keep the order the
+/// Every state is in exactly one group, and the groups keep the order the
 /// menu lists them in: identification's, then the import's, each ending with
 /// its failure.
 #[test]
-fn every_filter_is_in_one_group_in_the_menu_s_order() {
+fn every_state_is_in_one_group_in_the_menu_s_order() {
     assert_eq!(
-        PendingFilter::GROUPS,
+        PendingState::GROUPS,
         [
             &[
-                PendingFilter::Identifying,
-                PendingFilter::NeedsYou,
-                PendingFilter::Identified,
-                PendingFilter::LookupError,
+                PendingState::NotLookedUp,
+                PendingState::Identifying,
+                PendingState::NeedsYou,
+                PendingState::Identified,
+                PendingState::Unmatched,
+                PendingState::LookupError,
             ][..],
-            &[PendingFilter::Importing, PendingFilter::ImportError][..],
+            &[PendingState::Importing, PendingState::ImportError][..],
         ]
     );
 }
@@ -440,7 +514,7 @@ fn every_filter_is_in_one_group_in_the_menu_s_order() {
 /// row, with no state left narrowing it, in whichever order they were checked.
 #[test]
 fn checking_every_state_is_all() {
-    let every: Vec<PendingFilter> = PendingFilter::GROUPS
+    let every: Vec<PendingState> = PendingState::GROUPS
         .iter()
         .copied()
         .flatten()
@@ -464,15 +538,15 @@ fn checking_every_state_is_all() {
 /// Clearing a state leaves the others; clearing the last one shows every row.
 #[test]
 fn clearing_the_last_state_returns_to_all() {
-    let two = checked(&[PendingFilter::NeedsYou, PendingFilter::LookupError]);
-    let one = two.with_checked(PendingFilter::NeedsYou, false);
-    assert_eq!(one, checked(&[PendingFilter::LookupError]));
+    let two = checked(&[PendingState::NeedsYou, PendingState::LookupError]);
+    let one = two.with_checked(PendingState::NeedsYou, false);
+    assert_eq!(one, checked(&[PendingState::LookupError]));
     assert_eq!(
-        one.with_checked(PendingFilter::LookupError, false),
+        one.with_checked(PendingState::LookupError, false),
         PendingFilters::default()
     );
     assert_eq!(
-        PendingFilters::default().with_checked(PendingFilter::Identified, false),
+        PendingFilters::default().with_checked(PendingState::Identified, false),
         PendingFilters::default()
     );
 }
@@ -480,9 +554,9 @@ fn clearing_the_last_state_returns_to_all() {
 /// Checking a state already checked changes nothing.
 #[test]
 fn checking_a_checked_state_again_changes_nothing() {
-    let once = checked(&[PendingFilter::Importing]);
+    let once = checked(&[PendingState::Importing]);
     assert_eq!(
-        once.clone().with_checked(PendingFilter::Importing, true),
+        once.clone().with_checked(PendingState::Importing, true),
         once
     );
 }
@@ -492,44 +566,50 @@ fn checking_a_checked_state_again_changes_nothing() {
 #[test]
 fn the_checked_states_list_in_the_menu_s_order() {
     let filters = checked(&[
-        PendingFilter::ImportError,
-        PendingFilter::Identified,
-        PendingFilter::Identifying,
+        PendingState::ImportError,
+        PendingState::Identified,
+        PendingState::Identifying,
     ]);
     assert_eq!(
         filters.into_iter().collect::<Vec<_>>(),
         vec![
-            PendingFilter::Identifying,
-            PendingFilter::Identified,
-            PendingFilter::ImportError,
+            PendingState::Identifying,
+            PendingState::Identified,
+            PendingState::ImportError,
         ]
     );
 }
 
-/// Select All under several states selects exactly the rows any of them
-/// keeps — the keys a view change keeps selected.
+/// Select All under several states selects exactly the rows in any of them —
+/// the keys a view change keeps selected.
 #[test]
 fn select_all_under_several_states_takes_the_rows_any_of_them_keeps() {
     let rows = every_kind();
     let mut keys = shown_candidate_keys(
         &rows,
         &request(ImportListView {
-            pending_filters: checked(&[PendingFilter::NeedsYou, PendingFilter::ImportError]),
+            pending_filters: checked(&[PendingState::NeedsYou, PendingState::ImportError]),
             ..ImportListView::default()
         }),
     )
     .expect("the queue flattens");
     keys.sort();
-    let mut expected: Vec<String> = ["Failed Import", "Several", "Several Tagged"]
-        .into_iter()
-        .map(key)
-        .collect();
+    let mut expected: Vec<String> = [
+        "Failed Import",
+        "Nothing Found",
+        "Nothing To Look Up",
+        "Several",
+        "Several Tagged",
+    ]
+    .into_iter()
+    .map(key)
+    .collect();
     expected.sort();
     assert_eq!(keys, expected);
 }
 
-/// A state the runtime answers and one the tables answer each keep their own
-/// rows.
+/// A state what is running decides and one the tables decide each keep their
+/// own rows.
 #[test]
 fn a_live_state_and_a_stored_state_keep_the_rows_of_either() {
     let rows = every_kind();
@@ -537,23 +617,32 @@ fn a_live_state_and_a_stored_state_keep_the_rows_of_either() {
         &rows,
         &ImportListRequest {
             view: ImportListView {
-                pending_filters: checked(&[PendingFilter::Identifying, PendingFilter::LookupError]),
+                pending_filters: checked(&[PendingState::Identifying, PendingState::LookupError]),
                 ..ImportListView::default()
             },
-            live_matches: [key("Tagged")].into_iter().collect(),
+            live_standings: [(key("Tagged"), crate::import::LiveStanding::Identifying)]
+                .into_iter()
+                .collect(),
             ..ImportListRequest::default()
         },
     )
     .expect("the queue flattens");
     let mut shown = sequence(&rows, &flat);
     shown.sort();
-    assert_eq!(shown, vec!["candidate Lookup Failed", "candidate Tagged"]);
+    assert_eq!(
+        shown,
+        vec![
+            "candidate Lookup Failed",
+            "candidate Tagged",
+            "candidate Unread"
+        ]
+    );
 }
 
-/// The live matches are the candidates any checked live state keeps by what
-/// is running for them, and none while no live state is checked.
+/// While a state narrows the rows, every candidate something is running for
+/// is in the state it puts it in; while none does, nothing running is read.
 #[test]
-fn live_matches_are_the_candidates_any_checked_live_state_keeps() {
+fn live_standings_are_read_only_while_a_state_narrows() {
     let identifying = TriageRuntimeFacts {
         identification: Some(crate::import::IdentificationStatus::Running),
         import: None,
@@ -569,19 +658,25 @@ fn live_matches_are_the_candidates_any_checked_live_state_keeps() {
     ]
     .into_iter()
     .collect();
-    let matches = |filters: &[PendingFilter]| {
-        checked(filters)
-            .live_matches(&facts)
+    let standings = |states: &[PendingState]| {
+        checked(states)
+            .live_standings(&facts)
             .into_iter()
             .collect::<Vec<_>>()
     };
-    assert_eq!(matches(&[PendingFilter::Identifying]), vec!["identifying"]);
-    assert_eq!(
-        matches(&[PendingFilter::Identifying, PendingFilter::Importing]),
-        vec!["identifying", "importing"]
-    );
-    assert!(matches(&[PendingFilter::Identified]).is_empty());
-    assert!(matches(&[]).is_empty());
+    let running = vec![
+        (
+            "identifying".to_string(),
+            crate::import::LiveStanding::Identifying,
+        ),
+        (
+            "importing".to_string(),
+            crate::import::LiveStanding::Importing,
+        ),
+    ];
+    assert_eq!(standings(&[PendingState::Identifying]), running);
+    assert_eq!(standings(&[PendingState::Identified]), running);
+    assert!(standings(&[]).is_empty());
 }
 
 /// The summary names the states narrowing the tab on show, in the menu's
@@ -589,7 +684,7 @@ fn live_matches_are_the_candidates_any_checked_live_state_keeps() {
 #[test]
 fn the_summary_names_the_states_narrowing_the_tab_on_show() {
     let rows = every_kind();
-    let narrowing = |tab, filters: &[PendingFilter]| {
+    let narrowing = |tab, filters: &[PendingState]| {
         flattened(
             &rows,
             &ImportListView {
@@ -606,13 +701,13 @@ fn the_summary_names_the_states_narrowing_the_tab_on_show() {
     assert_eq!(
         narrowing(
             TriageTab::Pending,
-            &[PendingFilter::ImportError, PendingFilter::NeedsYou]
+            &[PendingState::ImportError, PendingState::NeedsYou]
         ),
-        vec![PendingFilter::NeedsYou, PendingFilter::ImportError]
+        vec![PendingState::NeedsYou, PendingState::ImportError]
     );
     assert!(narrowing(TriageTab::Pending, &[]).is_empty());
-    assert!(narrowing(TriageTab::Done, &[PendingFilter::NeedsYou]).is_empty());
-    assert!(narrowing(TriageTab::Skipped, &[PendingFilter::NeedsYou]).is_empty());
+    assert!(narrowing(TriageTab::Done, &[PendingState::NeedsYou]).is_empty());
+    assert!(narrowing(TriageTab::Skipped, &[PendingState::NeedsYou]).is_empty());
 }
 
 /// While the text filter or a state narrows the tab on show, the summary
@@ -623,7 +718,7 @@ fn a_narrowed_tab_counts_what_it_shows_of_its_total() {
     let mut rows = every_kind();
     rows.candidates.retain(|row| row.display_path != "Imported");
     rows.imported.clear();
-    let narrowed = |tab, filters: &[PendingFilter], text: &str| {
+    let narrowed = |tab, filters: &[PendingState], text: &str| {
         flattened(
             &rows,
             &ImportListView {
@@ -639,19 +734,19 @@ fn a_narrowed_tab_counts_what_it_shows_of_its_total() {
     assert_eq!(
         narrowed(
             TriageTab::Pending,
-            &[PendingFilter::NeedsYou, PendingFilter::LookupError],
+            &[PendingState::NeedsYou, PendingState::LookupError],
             ""
         ),
         Some(NarrowedCount {
-            shown: 3,
-            total: 10
+            shown: 6,
+            total: 13
         })
     );
     assert_eq!(
         narrowed(TriageTab::Pending, &[], "several"),
         Some(NarrowedCount {
             shown: 1,
-            total: 10
+            total: 13
         }),
         "only the row with no draft reads its folder's name"
     );
@@ -661,7 +756,7 @@ fn a_narrowed_tab_counts_what_it_shows_of_its_total() {
     );
     assert_eq!(narrowed(TriageTab::Pending, &[], ""), None);
     assert_eq!(
-        narrowed(TriageTab::Done, &[PendingFilter::NeedsYou], ""),
+        narrowed(TriageTab::Done, &[PendingState::NeedsYou], ""),
         None,
         "the states leave Done alone"
     );

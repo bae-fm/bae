@@ -1,8 +1,9 @@
 //! The Identifying and Importing filters follow the candidate runtime: a row
-//! shows while its run or import is queued or going, and leaves when it ends.
+//! shows while its run or import is queued or going, and leaves when it ends —
+//! and leaves the state the tables put it in for as long.
 
 use super::*;
-use crate::import::{ImportListSubscription, ImportListView, PendingFilter, PendingFilters};
+use crate::import::{ImportListSubscription, ImportListView, PendingState, PendingFilters};
 
 /// The list under a live filter, and the keys its last snapshot showed.
 struct LiveList {
@@ -11,7 +12,7 @@ struct LiveList {
 }
 
 impl LiveList {
-    fn new(handle: &ImportServiceHandle, filters: &[PendingFilter]) -> Self {
+    fn new(handle: &ImportServiceHandle, filters: &[PendingState]) -> Self {
         Self {
             list: handle.subscribe_whole_list(ImportListView {
                 pending_filters: filters.iter().copied().collect::<PendingFilters>(),
@@ -64,7 +65,7 @@ fn import_event(key: &str, progress: crate::import::ImportProgress) -> ImportEve
 #[tokio::test(flavor = "multi_thread")]
 async fn importing_shows_a_queued_and_a_running_import_until_it_ends() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
-    let mut list = LiveList::new(&handle, &[PendingFilter::Importing]);
+    let mut list = LiveList::new(&handle, &[PendingState::Importing]);
     list.shows(&[]).await;
 
     handle.claim_candidate_for_import(&key, "import-1").await;
@@ -96,7 +97,7 @@ async fn importing_shows_a_queued_and_a_running_import_until_it_ends() {
 #[tokio::test(flavor = "multi_thread")]
 async fn identifying_shows_a_queued_and_a_running_run_until_it_ends() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
-    let mut list = LiveList::new(&handle, &[PendingFilter::Identifying]);
+    let mut list = LiveList::new(&handle, &[PendingState::Identifying]);
     list.shows(&[]).await;
 
     handle.admit_identification(vec![key.clone()], crate::import::Admission::Requested);
@@ -122,7 +123,7 @@ async fn identifying_and_importing_show_a_candidate_while_either_goes() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
     let mut list = LiveList::new(
         &handle,
-        &[PendingFilter::Identifying, PendingFilter::Importing],
+        &[PendingState::Identifying, PendingState::Importing],
     );
     list.shows(&[]).await;
 
@@ -146,5 +147,37 @@ async fn identifying_and_importing_show_a_candidate_while_either_goes() {
         },
     ));
     list.shows(&[]).await;
+    shut_down(handle).await;
+}
+
+/// A row an import owns is Importing, not the state the tables put it in: it
+/// leaves that state while the import goes and is back once it ends, so no
+/// row is ever in two states.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_row_leaves_its_stored_state_while_an_import_owns_it() {
+    let (handle, _tmp, key, _hash) = pane_fixture().await;
+    let stored = handle
+        .candidate_pane(&key)
+        .await
+        .unwrap()
+        .expect("the candidate reads back")
+        .live
+        .standing
+        .expect("the candidate is on Found")
+        .state();
+    assert_ne!(stored, PendingState::Importing);
+    let mut list = LiveList::new(&handle, &[stored]);
+    list.shows(&[&key]).await;
+
+    handle.claim_candidate_for_import(&key, "import-1").await;
+    list.shows(&[]).await;
+
+    handle.event_tx.send(import_event(
+        &key,
+        crate::import::ImportProgress::Cancelled {
+            import_id: "import-1".to_string(),
+        },
+    ));
+    list.shows(&[&key]).await;
     shut_down(handle).await;
 }

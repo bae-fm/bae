@@ -201,7 +201,7 @@ desktop_only! {
         ImportCandidateDetailProjection, ImportCandidateListLocation, ImportListItem,
         ImportListOrder, ImportListProjection, ImportListRequest, ImportListSnapshot,
         ImportListSubscription, ImportListSubscriptionError, ImportListView, ImportListWindow,
-        ImportQueueSummary, NarrowedCount, PendingFilter, PendingFilters,
+        ImportQueueSummary, NarrowedCount, PendingFilters,
     };
     pub use mapping::{
         mapping_table, mapping_tracks, MappingBecomes,
@@ -229,7 +229,7 @@ desktop_only! {
         ImportedReleaseSummary, ImportedReleaseText, ImportedRow, MatchEvidence, MatchedPressing, MatchedRelease,
         MatchedSignal, TriageGroup, TriageImportStatus, TriageMetadataSummary, TriagePlacement,
         TriageRow, TriageRuntimeFacts, TriageSkipAction, TriageTab, TriageTabCounts,
-        ImportStanding, StoredLookup,
+        ImportStanding, LiveStanding, NeedsYouReason, PendingStanding, PendingState, StoredLookup,
     };
     pub(crate) use types::CandidateMappingPreparation;
     pub use types::ImportCommand;

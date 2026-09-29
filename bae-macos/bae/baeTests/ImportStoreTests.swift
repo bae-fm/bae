@@ -158,7 +158,8 @@ private func identifiedRow(
             placement: .pending,
             draftValid: true,
             lookup: nil,
-            separable: false
+            separable: false,
+            standing: .notLookedUp
         ),
         matched: matchedRelease(
             releaseId: "rel-\(key)",
@@ -197,7 +198,8 @@ private func skippedRow(_ key: String, title: String) -> BridgeTriageRow {
             placement: .skipped,
             draftValid: false,
             lookup: nil,
-            separable: false
+            separable: false,
+            standing: .notLookedUp
         ),
         matched: nil,
         metadataSummary: nil,
@@ -235,7 +237,8 @@ private func detail(
             actions: [
                 .import, .identify, .resetToFileMetadata, .clearMetadata,
                 .skip,
-            ]
+            ],
+            standing: .notLookedUp
         ),
         importStatus: nil,
         release: release,

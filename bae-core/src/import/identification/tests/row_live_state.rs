@@ -55,7 +55,7 @@ async fn a_claimed_import_reaches_its_row_and_not_the_list() {
         })
         .collect(),
         upload_standing: Default::default(),
-        live_matches: Default::default(),
+        live_standings: Default::default(),
     };
     let list = crate::import::ImportListSubscription::start(
         fixture.manager.subscribe_import_list(request.clone()),

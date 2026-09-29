@@ -13,7 +13,7 @@ import Testing
 struct PendingFilterMenuTests {
     /// What one entry of the menu was told to do.
     enum Sent: Equatable {
-        case set(BridgePendingFilter, Bool)
+        case set(BridgePendingState, Bool)
         case showAll
     }
 
@@ -22,7 +22,7 @@ struct PendingFilterMenuTests {
     }
 
     private func menu(
-        _ filters: [BridgePendingFilter],
+        _ filters: [BridgePendingState],
         recorder: Recorder = Recorder()
     ) -> NSMenu {
         let menu = NSHostingMenu(
@@ -72,7 +72,7 @@ struct PendingFilterMenuTests {
 
     @Test("every checked state is checked, and All is not")
     func checkedStatesAreChecked() {
-        let checked: [BridgePendingFilter] = [.needsYou, .importError]
+        let checked: [BridgePendingState] = [.needsYou, .importError]
         let menu = menu(checked)
         #expect(
             menu.items[index(of: String(localized: "All"), in: menu)].state
@@ -91,10 +91,10 @@ struct PendingFilterMenuTests {
         let recorder = Recorder()
         let menu = menu([.needsYou], recorder: recorder)
         menu.performActionForItem(
-            at: index(of: BridgePendingFilter.identified.label, in: menu)
+            at: index(of: BridgePendingState.identified.label, in: menu)
         )
         menu.performActionForItem(
-            at: index(of: BridgePendingFilter.needsYou.label, in: menu)
+            at: index(of: BridgePendingState.needsYou.label, in: menu)
         )
         #expect(
             recorder.sent == [.set(.identified, true), .set(.needsYou, false)]

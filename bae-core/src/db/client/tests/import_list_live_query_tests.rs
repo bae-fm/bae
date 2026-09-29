@@ -22,7 +22,7 @@ pub(super) fn list_request(
             .map(|(offset, limit)| crate::library::LibraryPageWindow { offset, limit })
             .collect(),
         upload_standing: Default::default(),
-        live_matches: Default::default(),
+        live_standings: Default::default(),
     }
 }
 

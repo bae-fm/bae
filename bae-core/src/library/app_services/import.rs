@@ -239,7 +239,7 @@ impl AppServices {
         let outbox = self.subscribe_outbox_values();
         let runtime_facts = self.inner.import.watch_runtime_facts();
         let request = ImportListRequest {
-            live_matches: view.pending_filters.live_matches(runtime_facts.facts()),
+            live_standings: view.pending_filters.live_standings(runtime_facts.facts()),
             view,
             windows: crate::library::LibraryPageWindows::new(),
             upload_standing: upload_standing_of(&outbox),
@@ -263,7 +263,7 @@ impl AppServices {
         windows: crate::library::LibraryPageWindows,
     ) -> ImportListRequest {
         ImportListRequest {
-            live_matches: view.pending_filters.live_matches(&self.runtime_facts()),
+            live_standings: view.pending_filters.live_standings(&self.runtime_facts()),
             view,
             windows,
             upload_standing: upload_standing_of(&self.subscribe_outbox_values()),

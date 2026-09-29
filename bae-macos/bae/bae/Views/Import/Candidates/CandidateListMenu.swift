@@ -21,11 +21,11 @@ struct CandidateListMenu: View, Equatable {
     let sortOrder: BridgeImportListOrder
     let onSetSortOrder: (BridgeImportListOrder) -> Void
     /// The states Pending's rows are narrowed to; empty shows them all.
-    let pendingFilters: [BridgePendingFilter]
+    let pendingFilters: [BridgePendingState]
     /// Whether the tab on show is Pending, the one tab the filter applies to.
     let pendingFilterApplies: Bool
     let onSetPendingFilter:
-        (_ filter: BridgePendingFilter, _ checked: Bool) -> Void
+        (_ filter: BridgePendingState, _ checked: Bool) -> Void
     let onShowAllPending: () -> Void
     let onAddFolder: () -> Void
     /// Fold every folder group in the queue open (`true`) or shut (`false`).

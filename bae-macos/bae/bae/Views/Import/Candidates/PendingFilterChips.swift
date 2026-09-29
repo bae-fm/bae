@@ -5,8 +5,8 @@ import SwiftUI
 /// that state. Scrolls sideways when they outgrow the field.
 struct PendingFilterChips: View {
     /// The states narrowing the list, in the menu's order.
-    let filters: [BridgePendingFilter]
-    let onClear: (BridgePendingFilter) -> Void
+    let filters: [BridgePendingState]
+    let onClear: (BridgePendingState) -> Void
 
     var body: some View {
         ViewThatFits(in: .horizontal) {

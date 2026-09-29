@@ -161,7 +161,7 @@ async fn request(tab: TriageTab) -> ImportListRequest {
         })
         .collect(),
         upload_standing: Default::default(),
-        live_matches: Default::default(),
+        live_standings: Default::default(),
     }
 }
 
@@ -290,10 +290,10 @@ async fn a_row_without_a_pick_leads_with_the_verdicts_lead_match() {
 }
 
 /// A sole release whose document could not be read is not picked for the
-/// folder, and the stored rows the list reads say so: the row needs the
-/// person.
+/// folder, and the stored rows the list reads say so: the lookup failed to
+/// read it, which a retry answers.
 #[tokio::test]
-async fn a_sole_release_with_an_unread_document_reads_back_as_needing_you() {
+async fn a_sole_release_with_an_unread_document_reads_back_as_a_lookup_error() {
     let (db, _tmp, root) = watched_root().await;
     let candidate = scanned(&db, &root, "Album").await;
     let mut unread = verdict("mb-verdict", None);
@@ -303,10 +303,10 @@ async fn a_sole_release_with_an_unread_document_reads_back_as_needing_you() {
     findings.matches[0].document_failure = Some(crate::signals::LookupFailure::Network);
     store_verdict(&db, &candidate, unread).await;
 
-    let mut needs_you = request(TriageTab::Pending).await;
-    needs_you.view.pending_filters = crate::import::PendingFilters::default()
-        .with_checked(crate::import::PendingFilter::NeedsYou, true);
-    let projection = db.load_import_list(needs_you).await.unwrap();
+    let mut lookup_error = request(TriageTab::Pending).await;
+    lookup_error.view.pending_filters = crate::import::PendingFilters::default()
+        .with_checked(crate::import::PendingState::LookupError, true);
+    let projection = db.load_import_list(lookup_error).await.unwrap();
     assert_eq!(
         rows(&projection)
             .iter()

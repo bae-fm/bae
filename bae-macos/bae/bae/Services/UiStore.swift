@@ -136,7 +136,7 @@ class UiStore: @unchecked Sendable {
     /// filter still hiding rows would read as rows gone missing.
     var importCandidateTab: BridgeTriageTab = .pending
     var importCandidateFilterText: String = ""
-    var importCandidatePendingFilters: [BridgePendingFilter] = []
+    var importCandidatePendingFilters: [BridgePendingState] = []
 
     private var releaseGroupDisclosureState: [ReleaseGroupDisclosureID: Bool] =
         [:]
@@ -315,7 +315,7 @@ class UiStore: @unchecked Sendable {
         importCandidateFilterText = text
     }
 
-    func setImportCandidatePendingFilters(_ filters: [BridgePendingFilter]) {
+    func setImportCandidatePendingFilters(_ filters: [BridgePendingState]) {
         importCandidatePendingFilters = filters
     }
 

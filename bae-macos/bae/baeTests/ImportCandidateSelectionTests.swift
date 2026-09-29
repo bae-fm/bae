@@ -74,7 +74,8 @@ struct ImportCandidateSelectionTests {
                     value: BridgeCandidateLiveState(
                         identification: .running,
                         import: nil,
-                        actions: [.skip]
+                        actions: [.skip],
+                        standing: .notLookedUp
                     )
                 )
                 return asked

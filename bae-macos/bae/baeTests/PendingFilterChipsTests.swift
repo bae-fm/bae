@@ -10,7 +10,7 @@ import Testing
 @Suite("The Pending filter chips")
 struct PendingFilterChipsTests {
     final class Recorder {
-        var cleared: [BridgePendingFilter] = []
+        var cleared: [BridgePendingState] = []
     }
 
     /// A click on the last chip's ✕, which ends the row of chips, clears

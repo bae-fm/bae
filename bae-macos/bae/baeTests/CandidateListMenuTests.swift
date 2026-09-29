@@ -24,7 +24,7 @@ final class CandidateListMenuTests: XCTestCase {
     private func menu(
         status: BridgeFolderScanStatus,
         sortOrder: BridgeImportListOrder = .newestFirst,
-        pendingFilters: [BridgePendingFilter] = []
+        pendingFilters: [BridgePendingState] = []
     ) -> CandidateListMenu {
         CandidateListMenu(
             watchedFolders: [
