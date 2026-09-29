@@ -109,7 +109,6 @@ fn queued_upload(file_id: &str, file_name: &str, file_size: u64) -> DbOutboxUplo
         last_failure: None,
         created_at: 1_700_000_000_000,
         label: UploadFileLabel::Filename(file_name.to_string()),
-        album_title: "Album Title".to_string(),
     }
 }
 
@@ -220,7 +219,6 @@ fn upload_groups_group_a_releases_files_with_aggregate_progress() {
     assert_eq!(snapshot.upload_groups.len(), 1);
     let group = &snapshot.upload_groups[0];
     assert_eq!(group.release_id, RELEASE);
-    assert_eq!(group.display_title, "Album Title");
     assert_eq!(group.files.len(), 2);
     assert_eq!(
         group.files[0].label,
@@ -578,15 +576,12 @@ fn durable_and_streamed_upload_phases_never_collapse_back_to_queued() {
 fn publishing_intent_keeps_the_release_visible_after_upload_rows_leave() {
     let queue = DbOutboxQueue {
         uploads: Vec::new(),
-        make_remotes: vec![crate::db::DbMakeRemote {
-            transition: coven::QueuedMakeRemote {
-                root_table: "releases".to_string(),
-                root_id: RELEASE.to_string(),
-                root_label: "Album Title".to_string(),
-                retain_pinned: false,
-                progress: coven::MakeRemoteProgress::Publishing,
-            },
-            album_title: "Album Title".to_string(),
+        make_remotes: vec![coven::QueuedMakeRemote {
+            root_table: "releases".to_string(),
+            root_id: RELEASE.to_string(),
+            root_label: RELEASE.to_string(),
+            retain_pinned: false,
+            progress: coven::MakeRemoteProgress::Publishing,
         }],
     };
 
@@ -891,4 +886,60 @@ fn a_bar_rejects_progress_beyond_its_denominator() {
     };
 
     progress.bar();
+}
+
+fn coven_queued_upload(file_id: &str, root_label: &str) -> coven::QueuedUpload {
+    coven::QueuedUpload {
+        blob: row_blob(
+            crate::sync::RELEASE_FILES_NAMESPACE,
+            file_id,
+            crate::sync::RELEASE_FILES_NAMESPACE,
+            file_id,
+            100,
+        ),
+        root_table: "releases".to_string(),
+        root_id: RELEASE.to_string(),
+        root_label: root_label.to_string(),
+        retain_pinned: false,
+        phase: coven::QueuedUploadPhase::Pending,
+        provider_bytes_total: None,
+        attempt_count: 0,
+        last_failure: None,
+        created_at: "0000000001000-0000-device-a".to_string(),
+        last_attempt_at: None,
+    }
+}
+
+/// coven rewrites a row's label whenever the host queues it again, so one
+/// release's queue rows can carry different labels after an album rename.
+/// The queue groups by release id and never reads a title off its rows.
+#[test]
+fn one_release_groups_its_uploads_whatever_labels_the_queue_rows_carry() {
+    let durable = coven::CloudOutboxSnapshot {
+        uploads: vec![
+            coven_queued_upload(SMALL_FILE, "Album Title"),
+            coven_queued_upload(LARGE_FILE, "Album Title Renamed"),
+        ],
+        make_remotes: vec![coven::QueuedMakeRemote {
+            root_table: "releases".to_string(),
+            root_id: RELEASE.to_string(),
+            root_label: "Album Title Renamed Again".to_string(),
+            retain_pinned: false,
+            progress: coven::MakeRemoteProgress::Uploading,
+        }],
+    };
+    let context = crate::db::OutboxDisplayContext {
+        file_names: HashMap::from([
+            (SMALL_FILE.to_string(), "01 Track Title.flac".to_string()),
+            (LARGE_FILE.to_string(), "02 Track Title.flac".to_string()),
+        ]),
+    };
+    let queue =
+        crate::db::Database::outbox_queue_from_context(durable, context).expect("queue projection");
+
+    let snapshot = build(queue, &HashMap::new());
+
+    assert_eq!(snapshot.upload_groups.len(), 1);
+    assert_eq!(snapshot.upload_groups[0].release_id, RELEASE);
+    assert_eq!(snapshot.upload_groups[0].files.len(), 2);
 }

@@ -36,8 +36,8 @@ async fn make_remote_pins_as_the_stored_choice_says() {
         queue
             .make_remotes
             .iter()
-            .find(|entry| entry.transition.root_id == release_id)
-            .map(|entry| entry.transition.retain_pinned)
+            .find(|entry| entry.root_id == release_id)
+            .map(|entry| entry.retain_pinned)
     };
     assert_eq!(retained(&kept.id), Some(true));
     assert_eq!(retained(&evictable.id), Some(false));

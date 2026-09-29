@@ -45,7 +45,6 @@ async fn storage_page_uploading_filter_preserves_transition_admission_order() {
 fn transitioning_release_ids_preserve_upload_group_order() {
     let group = |release_id: &str| crate::library::UploadReleaseGroup {
         release_id: release_id.to_string(),
-        display_title: "Album Title".to_string(),
         files: Vec::new(),
         progress: crate::library::UploadProgress::default(),
         throughput_bps: 0,

@@ -275,7 +275,6 @@ async fn outbox_snapshot_tracks_queued_active_failed_and_cancel() {
     assert_eq!(snap.total.upload_bytes_done, 0);
     assert_eq!(snap.upload_groups.len(), 1);
     let group = &snap.upload_groups[0];
-    assert_eq!(group.display_title, "Test Album");
     assert_eq!(group.release_id, release.id);
     assert_eq!(group.files.len(), 1);
     assert_eq!(
@@ -429,7 +428,6 @@ async fn deleting_a_release_mid_upload_leaves_no_orphan() {
         .await
         .expect("the outbox still reads after the release it queued work for is gone");
     assert_eq!(snapshot.upload_groups.len(), 1);
-    assert_eq!(snapshot.upload_groups[0].display_title, "Test Album");
     assert_eq!(snapshot.total.cancelling, 1);
 
     manager.drain_uploads_for_test().await.unwrap();
@@ -647,13 +645,8 @@ async fn a_move_to_cloud_batch_refuses_duplicate_release_ids_without_admission()
     );
 }
 
-/// The queue names the release it was queued under, and keeps that name.
-///
-/// It has to: what the queue outlives is the release row, so a title read at
-/// render time is exactly the one a removal cannot produce. The trade is that
-/// renaming an album does not retitle work already queued for it — the queue
-/// says what was queued, which is also what it is removing. The file names it
-/// does read live are still its own rows' and still wake it.
+/// The queue names each queued file by its row's current original filename,
+/// and a rename of that file wakes it.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn outbox_subscription_reacts_to_release_display_context_changes() {
@@ -689,17 +682,6 @@ async fn outbox_subscription_reacts_to_release_display_context_changes() {
     })
     .await
     .expect("durable enqueue reaches the outbox subscription");
-
-    manager
-        .database
-        .rename_album_for_test(&release.album_id, "Renamed Album")
-        .await
-        .unwrap();
-    assert_eq!(
-        manager.outbox_snapshot().await.unwrap().upload_groups[0].display_title,
-        "Album Title",
-        "the queue keeps the name the work was queued under",
-    );
 
     let file = release_files(&manager, &release.id)
         .await

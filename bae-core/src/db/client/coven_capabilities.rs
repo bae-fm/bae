@@ -236,17 +236,18 @@ impl Database {
         self.inner.handle.evict_blob(blob).await
     }
 
+    /// coven labels queue rows with the root's id: bae reads a release's title
+    /// live wherever the release is rendered, never off the queue.
     pub(crate) async fn make_remote(
         &self,
         root_table: &str,
         root_id: &str,
-        root_label: &str,
         pin: bool,
         refs: Vec<coven::RowBlobRef>,
     ) -> Result<(), coven::MakeRemoteError> {
         self.inner
             .handle
-            .make_remote(root_table, root_id, root_label, pin, refs)
+            .make_remote(root_table, root_id, root_id, pin, refs)
             .await
     }
 

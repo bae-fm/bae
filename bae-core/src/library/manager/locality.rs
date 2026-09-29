@@ -14,10 +14,6 @@ impl LibraryManager {
         release_id: &str,
         pin: bool,
     ) -> Result<u64, LibraryError> {
-        // The album title rides onto the queue rows here, while the release is
-        // certainly there to read it from — the queue outliving that row is the
-        // whole reason the rows carry a name of their own.
-        let album_title = self.database.release_album_title(release_id).await?;
         let ordered_blobs = self
             .release_pinnable_blobs(release_id)
             .await?
@@ -25,7 +21,7 @@ impl LibraryManager {
             .map(|entry| entry.blob)
             .collect();
         self.database
-            .make_remote("releases", release_id, &album_title, pin, ordered_blobs)
+            .make_remote("releases", release_id, pin, ordered_blobs)
             .await
             .map_err(|error| LibraryError::MakeRemote {
                 operation: MakeRemoteOperation::Make,

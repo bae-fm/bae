@@ -304,14 +304,15 @@ pub enum StorageFilter {
 /// it: pending uploads and pending make-Remote transitions, each oldest first.
 ///
 /// coven owns the queue itself — which blob, under which gated root, how many
-/// attempts and why the last one failed. bae owns only the context a person
-/// reads: the file's name and size, its release, and that release's album
-/// title. [`Database::outbox_queue`](crate::db::Database::outbox_queue) reads
-/// the first from coven and joins the second from bae's own tables.
+/// attempts and why the last one failed. bae joins only each file's name from
+/// its own tables; a release's album title is read live wherever the release is
+/// rendered, never off the queue.
+/// [`Database::outbox_queue`](crate::db::Database::outbox_queue) reads the first
+/// from coven and joins the second.
 #[derive(Debug, Clone, Default)]
 pub struct DbOutboxQueue {
     pub uploads: Vec<DbOutboxUpload>,
-    pub make_remotes: Vec<DbMakeRemote>,
+    pub make_remotes: Vec<coven::QueuedMakeRemote>,
 }
 
 /// One queued blob upload plus its bae context.
@@ -342,13 +343,4 @@ pub struct DbOutboxUpload {
     /// The domain label for this upload. Platforms localize the named image
     /// kinds and render an original filename verbatim.
     pub label: crate::library::UploadFileLabel,
-    /// The album title of `release_id`, for the group heading.
-    pub album_title: String,
-}
-
-/// One durable make-Remote intent plus the bae title its release group renders.
-#[derive(Debug, Clone)]
-pub struct DbMakeRemote {
-    pub transition: coven::QueuedMakeRemote,
-    pub album_title: String,
 }

@@ -3,7 +3,6 @@ mirror_struct! {
     from_core: pub(super) fn,
     fields: {
         release_id,
-        display_title,
         files: (each crate::types::BridgeUploadFileOp),
         progress: (crate::types::BridgeUploadProgress),
         throughput_bps,

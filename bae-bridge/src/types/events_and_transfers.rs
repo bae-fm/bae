@@ -400,7 +400,6 @@ pub struct BridgeUploadFileOp {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeUploadReleaseGroup {
     pub release_id: String,
-    pub display_title: String,
     pub files: Vec<BridgeUploadFileOp>,
     pub progress: BridgeUploadProgress,
     /// The release's current transfer rate.

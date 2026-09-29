@@ -703,11 +703,6 @@ impl Database {
                     // the release never commits Local with the choice lost, and
                     // recording needs no cloud connection.
                     if let crate::import::ImportDestination::Remote { pin } = destination {
-                        let album_title: String = tx.query_row(
-                            "SELECT title FROM albums WHERE id = ?",
-                            params![release.album_id],
-                            |row| row.get(0),
-                        )?;
                         let mut blob_rows: Vec<(&str, &str)> = Vec::new();
                         if library_image.is_some() {
                             blob_rows.push(("covers", release.id.as_str()));
@@ -717,7 +712,9 @@ impl Database {
                                 .iter()
                                 .map(|(_, id)| ("release_files", id.as_str())),
                         );
-                        tx.make_remote("releases", &release.id, &album_title, pin, &blob_rows)?;
+                        // The queue row's label is the release id, as
+                        // `Database::make_remote` gives it.
+                        tx.make_remote("releases", &release.id, &release.id, pin, &blob_rows)?;
                     }
 
 

@@ -246,8 +246,6 @@
 
         static let uploadGroup = BridgeUploadReleaseGroup(
             releaseId: "rel-row-1",
-            displayTitle:
-                "Album Title with an Intentionally Long Descriptive Subtitle",
             files: uploadFileOps,
             progress: uploadProgress(activity: .uploading),
             throughputBps: 3_200_000
@@ -256,7 +254,6 @@
         /// A second group whose blobs landed and whose release is publishing.
         static let uploadGroupDone = BridgeUploadReleaseGroup(
             releaseId: "rel-row-2",
-            displayTitle: "Album Title B",
             files: [
                 BridgeUploadFileOp(
                     fileId: "release_files:rel-row-2-audio",
@@ -291,7 +288,6 @@
 
         static let uploadGroupSourceUnavailable = BridgeUploadReleaseGroup(
             releaseId: "rel-row-3",
-            displayTitle: "Album Title C",
             files: [
                 BridgeUploadFileOp(
                     fileId: "release_files:rel-row-3-audio",

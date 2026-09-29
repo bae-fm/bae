@@ -39,7 +39,6 @@ struct OutboxStoreHasPendingCloudWorkTests {
             snapshot.uploadGroups = [
                 BridgeUploadReleaseGroup(
                     releaseId: "release-a",
-                    displayTitle: "Release A",
                     files: [
                         BridgeUploadFileOp(
                             fileId: "file-1",

@@ -499,15 +499,14 @@ pub struct UploadFileOp {
 }
 
 /// A release's uploads, grouped so the queue pane renders one expandable row per
-/// release (matching the storage table) with the files inside. Every durable
-/// upload is rooted at a live release; missing release/title context fails the
-/// database projection before this value can exist. Files are listed by name —
+/// release (matching the storage table) with the files inside. The group carries
+/// the release id only: whatever renders it reads the album title live from the
+/// library, so a rename shows at once. Files are listed by name —
 /// naturally and ignoring case, with the release's own artwork ahead of them —
 /// not in the order the queue happened to enqueue them.
 #[derive(Debug, Clone)]
 pub struct UploadReleaseGroup {
     pub release_id: String,
-    pub display_title: String,
     pub files: Vec<UploadFileOp>,
     pub progress: UploadProgress,
     /// Rolling-window preparation or provider-upload rate for this release's
@@ -560,17 +559,15 @@ pub enum OutboxPauseState {
 
 struct GroupBuilder {
     release_id: String,
-    display_title: String,
     files: Vec<UploadFileOp>,
     progress: UploadProgress,
     blob_keys: Vec<UploadBlobKey>,
 }
 
 impl GroupBuilder {
-    fn new(release_id: String, display_title: String) -> Self {
+    fn new(release_id: String) -> Self {
         Self {
             release_id,
-            display_title,
             files: Vec::new(),
             progress: UploadProgress::default(),
             blob_keys: Vec::new(),
@@ -677,17 +674,10 @@ fn build_outbox_snapshot_from_rates(
         let idx = *group_index
             .entry(upload.release_id.clone())
             .or_insert_with(|| {
-                groups.push(GroupBuilder::new(
-                    upload.release_id.clone(),
-                    upload.album_title.clone(),
-                ));
+                groups.push(GroupBuilder::new(upload.release_id.clone()));
                 groups.len() - 1
             });
         let group = &mut groups[idx];
-        assert_eq!(
-            group.display_title, upload.album_title,
-            "one release cannot have conflicting queued album titles"
-        );
         let file_id = blob_key.stable_id();
         let throughput_bps = if pause_requested || state.bar().is_none() {
             0
@@ -708,20 +698,12 @@ fn build_outbox_snapshot_from_rates(
     }
 
     for make_remote in queue.make_remotes {
-        let release_id = make_remote.transition.root_id.clone();
+        let release_id = make_remote.root_id;
         let idx = *group_index.entry(release_id.clone()).or_insert_with(|| {
-            groups.push(GroupBuilder::new(
-                release_id,
-                make_remote.album_title.clone(),
-            ));
+            groups.push(GroupBuilder::new(release_id));
             groups.len() - 1
         });
-        let group = &mut groups[idx];
-        assert_eq!(
-            group.display_title, make_remote.album_title,
-            "one release cannot have conflicting queued album titles"
-        );
-        group.set_transition(make_remote.transition.progress);
+        groups[idx].set_transition(make_remote.progress);
     }
 
     let upload_groups: Vec<UploadReleaseGroup> = groups
@@ -737,7 +719,6 @@ fn build_outbox_snapshot_from_rates(
             };
             UploadReleaseGroup {
                 release_id: group.release_id,
-                display_title: group.display_title,
                 files,
                 progress: group.progress,
                 throughput_bps,
