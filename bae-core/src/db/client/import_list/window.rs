@@ -509,7 +509,7 @@ pub(super) fn load_candidate_detail_on(
                     .expect("the library check covers every release the verdict names")
                     .clone()
             };
-            verdict = Some(VerdictSummary::of(&identify.verdict));
+            verdict = Some(VerdictSummary::of(&identify.verdict, identify.kept_own_draft));
             // The candidate's own text is what the rows are judged and ordered
             // against, live or resumed, with the numbers the person struck out
             // of it. Both are the candidate's rather than the run's, so the

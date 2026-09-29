@@ -551,6 +551,54 @@ impl ImportServiceHandle {
             .await?)
     }
 
+    /// Keep the candidate's own draft over what its stored lookup offered:
+    /// none of the releases it found is the folder's, or it found none. The
+    /// draft stays as it is, and the decision goes with the verdict, so
+    /// identifying the candidate again starts without it.
+    pub(crate) async fn keep_candidate_draft(
+        &self,
+        candidate_key: String,
+    ) -> Result<u64, crate::import::ImportError> {
+        let this = self.clone();
+        self.committed(async move { this.keep_candidate_draft_write(candidate_key).await })
+            .await
+    }
+
+    async fn keep_candidate_draft_write(
+        &self,
+        candidate_key: String,
+    ) -> Result<u64, crate::import::ImportError> {
+        let Some(candidate) = self.get_release_candidate(&candidate_key).await? else {
+            return Err(crate::import::ImportError::Internal {
+                detail: format!("{candidate_key} is not an actionable folder candidate"),
+            });
+        };
+        let content_hash = candidate.files.content_hash();
+        let current = self
+            .library_manager
+            .load_import_candidate_preparation(&content_hash)
+            .await?
+            .ok_or_else(|| crate::import::ImportError::Internal {
+                detail: format!("{candidate_key} has no stored import preparation"),
+            })?;
+        let _commit = self
+            .commit_lock_for_revision(
+                "keep the folder's own draft",
+                &candidate_key,
+                &content_hash,
+                current.file_edit_revision,
+            )
+            .await?;
+        Ok(self
+            .preparations
+            .keep_own_draft(&crate::import::CandidateAsRead {
+                content_hash: content_hash.clone(),
+                file_edit_revision: candidate.file_edit_revision,
+                metadata_revision: current.metadata_revision,
+            })
+            .await?)
+    }
+
     pub(crate) fn announce_metadata_provenance(&self, candidate_key: String) {
         self.event_tx
             .send(ImportEvent::Scan(ScanEvent::CandidateMetadataChanged {

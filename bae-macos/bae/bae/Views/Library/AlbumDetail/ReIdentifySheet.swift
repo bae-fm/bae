@@ -166,6 +166,8 @@ struct ReIdentifySheet: View {
                     runtime: runtime,
                     openSection: openSection,
                     onOpenSection: { openSection = $0 },
+                    // A library release has no folder draft to keep.
+                    onKeepOwnDraft: nil,
                     liveSignals: signals
                 ),
                 openSettings: {
@@ -179,7 +181,7 @@ struct ReIdentifySheet: View {
                 // No confirm page: the footer commits the picked pressing.
                 onSelect: { pressing in
                     selectedPressing = pressing
-                },
+                }
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             if let selectedPressing {

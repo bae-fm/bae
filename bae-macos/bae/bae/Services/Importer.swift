@@ -49,6 +49,7 @@ private struct ImportOperations: Sendable {
             BridgePaneOutcome
     let applyCandidateFileMetadata:
         @Sendable (String) async throws -> BridgePaneOutcome
+    let keepCandidateDraft: @Sendable (String) async throws -> BridgePaneOutcome
     let resetCandidateSetup: @Sendable (String) async throws -> Void
     let clearCandidateMetadata: @Sendable (String) async throws -> UInt64
     let setSheetDisc:
@@ -151,6 +152,9 @@ extension ImportOperations {
                     candidateKey: $0,
                     provenance: .fileMetadata
                 )
+            },
+            keepCandidateDraft: {
+                try await handle.keepCandidateDraft(candidateKey: $0)
             },
             resetCandidateSetup: {
                 try await handle.resetCandidateSetup(candidateKey: $0)
@@ -357,6 +361,10 @@ final class Importer: Sendable, Observable {
             @escaping @Sendable (String) async throws -> BridgePaneOutcome = {
                 _ in throw StubError.notImplemented
             },
+        keepCandidateDraft:
+            @escaping @Sendable (String) async throws -> BridgePaneOutcome = {
+                _ in throw StubError.notImplemented
+            },
         resetCandidateSetup:
             @escaping @Sendable (String) async throws -> Void = { _ in
                 throw StubError.notImplemented
@@ -473,6 +481,7 @@ final class Importer: Sendable, Observable {
             setSheetBinding: setSheetBinding,
             applyCandidateExternalMetadata: applyCandidateExternalMetadata,
             applyCandidateFileMetadata: applyCandidateFileMetadata,
+            keepCandidateDraft: keepCandidateDraft,
             resetCandidateSetup: resetCandidateSetup,
             clearCandidateMetadata: clearCandidateMetadata,
             setSheetDisc: setSheetDisc,
@@ -578,6 +587,14 @@ extension Importer {
         -> BridgePaneOutcome
     {
         try await operations.applyCandidateFileMetadata(candidateKey)
+    }
+
+    /// Keep the candidate's own draft over what its lookup offered, a pane
+    /// command that goes back to the draft; its failure is stated on the pane.
+    func keepCandidateDraft(_ candidateKey: String) async throws
+        -> BridgePaneOutcome
+    {
+        try await operations.keepCandidateDraft(candidateKey)
     }
 
     func resetCandidateSetup(_ candidateKey: String) async throws {

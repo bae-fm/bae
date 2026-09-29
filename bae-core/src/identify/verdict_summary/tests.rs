@@ -82,7 +82,10 @@ fn failed_with_findings(matches: Vec<MetadataResult>, track_count: u32) -> Termi
 #[test]
 fn a_failed_verdict_is_never_auto_importable_whatever_it_found() {
     let verdict = failed_with_findings(vec![result("rel-a", listing(11))], 11);
-    assert_eq!(VerdictSummary::of(&verdict).judgement(), (false, None));
+    assert_eq!(
+        VerdictSummary::of(&verdict, false).judgement(),
+        (false, None)
+    );
 }
 
 /// The barcode printed on the sleeve, which both sources state.
@@ -113,7 +116,10 @@ fn listing(count: u32) -> Option<SourceTracks> {
 #[test]
 fn one_verified_match_is_auto_importable() {
     let verdict = found(vec![result("mb-1", listing(11))], 11);
-    assert_eq!(VerdictSummary::of(&verdict).judgement(), (true, None));
+    assert_eq!(
+        VerdictSummary::of(&verdict, false).judgement(),
+        (true, None)
+    );
 }
 
 /// A lone match the title search found is admitted like any other: the
@@ -136,7 +142,10 @@ fn a_lone_match_found_by_title_is_auto_importable() {
         by_search: true,
         named_by: None,
     };
-    assert_eq!(VerdictSummary::of(&verdict).judgement(), (true, None));
+    assert_eq!(
+        VerdictSummary::of(&verdict, false).judgement(),
+        (true, None)
+    );
 }
 
 /// The releases agreement narrowed out are not answers: only the matches
@@ -180,7 +189,10 @@ fn what_agreement_narrowed_out_is_not_a_match() {
         track_count,
         ledger: None,
     };
-    assert_eq!(VerdictSummary::of(&verdict).judgement(), (true, None));
+    assert_eq!(
+        VerdictSummary::of(&verdict, false).judgement(),
+        (true, None)
+    );
 }
 
 /// Two sources' records of one physical pressing are one row on the list,
@@ -197,7 +209,10 @@ fn two_sources_agreeing_on_a_barcode_are_one_pressing() {
         ],
         11,
     );
-    assert_eq!(VerdictSummary::of(&verdict).judgement(), (true, None));
+    assert_eq!(
+        VerdictSummary::of(&verdict, false).judgement(),
+        (true, None)
+    );
 }
 
 /// The count is the rows the run recorded, not the rows this list would form
@@ -233,8 +248,11 @@ fn the_pressing_count_is_the_rows_the_run_recorded() {
         track_count,
         ledger: None,
     };
-    assert_eq!(VerdictSummary::of(&verdict).pressing_count, 2);
-    assert_eq!(VerdictSummary::of(&verdict).judgement(), (false, None));
+    assert_eq!(VerdictSummary::of(&verdict, false).pressing_count, 2);
+    assert_eq!(
+        VerdictSummary::of(&verdict, false).judgement(),
+        (false, None)
+    );
 }
 
 /// Two sources naming *different* pressings is still the user's choice, and
@@ -248,7 +266,10 @@ fn two_sources_naming_different_pressings_stay_a_choice() {
         ],
         11,
     );
-    assert_eq!(VerdictSummary::of(&verdict).judgement(), (false, None));
+    assert_eq!(
+        VerdictSummary::of(&verdict, false).judgement(),
+        (false, None)
+    );
 }
 
 /// An exact signal is not a unique result: a disc ID routinely returns several
@@ -260,7 +281,10 @@ fn several_matches_are_a_choice_for_the_user() {
         vec![result("mb-1", listing(11)), result("mb-2", listing(11))],
         11,
     );
-    assert_eq!(VerdictSummary::of(&verdict).judgement(), (false, None));
+    assert_eq!(
+        VerdictSummary::of(&verdict, false).judgement(),
+        (false, None)
+    );
 }
 
 /// A release that lists no tracks has no count to check the folder's against,
@@ -270,7 +294,11 @@ fn several_matches_are_a_choice_for_the_user() {
 fn a_match_listing_no_tracks_is_never_admitted() {
     for source_tracks in [None, Some(SourceTracks::Nothing)] {
         assert_eq!(
-            VerdictSummary::of(&found(vec![result("mb-1", source_tracks.clone())], 11)).judgement(),
+            VerdictSummary::of(
+                &found(vec![result("mb-1", source_tracks.clone())], 11),
+                false
+            )
+            .judgement(),
             (false, Some(FolderCheck::SourceTracksUnknown)),
             "{source_tracks:?}"
         );
@@ -282,7 +310,7 @@ fn a_match_listing_no_tracks_is_never_admitted() {
 #[test]
 fn a_count_mismatch_names_both_counts() {
     assert_eq!(
-        VerdictSummary::of(&found(vec![result("mb-1", listing(12))], 11)).judgement(),
+        VerdictSummary::of(&found(vec![result("mb-1", listing(12))], 11), false).judgement(),
         (
             false,
             Some(FolderCheck::TrackCountDisagrees {
@@ -310,7 +338,7 @@ fn a_pressing_with_an_unread_document_is_not_picked_unattended() {
         ],
     ] {
         assert_eq!(
-            VerdictSummary::of(&found(matches.clone(), 11)).judgement(),
+            VerdictSummary::of(&found(matches.clone(), 11), false).judgement(),
             (false, None),
             "{matches:?}"
         );
@@ -324,14 +352,17 @@ fn a_pressing_with_an_unread_document_is_not_picked_unattended() {
 #[test]
 fn a_verdict_that_found_nothing_fails_no_folder_check() {
     assert_eq!(
-        VerdictSummary::of(&TerminalVerdict::NotFoundAnywhere { ledger: None }).judgement(),
+        VerdictSummary::of(&TerminalVerdict::NotFoundAnywhere { ledger: None }, false).judgement(),
         (false, None)
     );
     assert_eq!(
-        VerdictSummary::of(&TerminalVerdict::ManualOnly {
-            track_count: 11,
-            ledger: None,
-        },)
+        VerdictSummary::of(
+            &TerminalVerdict::ManualOnly {
+                track_count: 11,
+                ledger: None,
+            },
+            false
+        )
         .judgement(),
         (false, None)
     );
@@ -391,7 +422,7 @@ fn a_summary_keeps_every_fact_the_judgements_consult() {
     ];
 
     for (verdict, pressings) in verdicts {
-        let summary = VerdictSummary::of(&verdict);
+        let summary = VerdictSummary::of(&verdict, false);
         assert_eq!(summary.pressing_count, pressings, "{verdict:?}");
         match &verdict {
             TerminalVerdict::Found {
@@ -436,7 +467,11 @@ fn a_summary_keeps_every_fact_the_judgements_consult() {
 #[test]
 fn a_release_the_folder_rules_out_fails_its_check() {
     assert_eq!(
-        VerdictSummary::of(&ruled_out_by_the_folder(vec![result("mb-1", listing(11))])).judgement(),
+        VerdictSummary::of(
+            &ruled_out_by_the_folder(vec![result("mb-1", listing(11))]),
+            false
+        )
+        .judgement(),
         (
             false,
             Some(FolderCheck::MediumDisagrees {
@@ -452,10 +487,13 @@ fn a_release_the_folder_rules_out_fails_its_check() {
 #[test]
 fn a_medium_the_folder_rules_out_is_named_over_several_pressings() {
     assert_eq!(
-        VerdictSummary::of(&ruled_out_by_the_folder(vec![
-            result("mb-1", listing(11)),
-            result("mb-2", listing(11)),
-        ]))
+        VerdictSummary::of(
+            &ruled_out_by_the_folder(vec![
+                result("mb-1", listing(11)),
+                result("mb-2", listing(11)),
+            ]),
+            false
+        )
         .judgement(),
         (
             false,

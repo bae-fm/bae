@@ -115,6 +115,7 @@ private struct ImportOnlineMetadataBrowser: View {
                         onOpenSection: {
                             onMovePane(.openSection(section: $0))
                         },
+                        onKeepOwnDraft: keepOwnDraft,
                         liveSignals: signals
                     ),
                     openSettings: {
@@ -137,6 +138,17 @@ private struct ImportOnlineMetadataBrowser: View {
             }
             .frame(maxWidth: .infinity)
             .card()
+        }
+    }
+
+    /// Keep the candidate's own draft over what its lookup offered. Its
+    /// failure is stated on the pane, from what core stored.
+    private func keepOwnDraft() {
+        Task { @MainActor in
+            await endEditing()
+            do { _ = try await importer.keepCandidateDraft(candidateKey) }
+            catch is CancellationError {}
+            catch { importStore.reportFailure(error) }
         }
     }
 }

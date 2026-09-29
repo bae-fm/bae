@@ -27,6 +27,9 @@ extension ImportSearchFlow {
         let openSection: BridgeFindOnlineSection
         /// Open one section: for a folder candidate, a move core makes.
         let onOpenSection: (BridgeFindOnlineSection) -> Void
+        /// Keep the folder's own draft over what its lookup offered; `nil`
+        /// for a library release, which has no folder draft to keep.
+        let onKeepOwnDraft: (() -> Void)?
         /// What extraction has found for this key so far, feeding the form's
         /// suggestion pools and its scanning indicator. `nil` before
         /// extraction has reported any, and for a candidate whose run settled
@@ -97,6 +100,7 @@ extension ImportSearchFlow {
                 )
             },
             onSelect: onSelect,
+            onKeepOwnDraft: input.onKeepOwnDraft,
             openSection: input.openSection,
             onOpenSection: input.onOpenSection,
         )

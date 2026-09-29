@@ -126,10 +126,14 @@ pub struct VerdictSummary {
     /// A record the `found` list names whose full document could not be
     /// read: what it states was never checked against the folder.
     pub unread_document: bool,
+    /// The person kept their own draft over what the verdict offered.
+    pub kept_own_draft: bool,
 }
 
 impl VerdictSummary {
-    pub fn of(verdict: &TerminalVerdict) -> Self {
+    /// A stored verdict's summary, with whether the person kept their own
+    /// draft over it.
+    pub fn of(verdict: &TerminalVerdict, kept_own_draft: bool) -> Self {
         let kind = match verdict {
             TerminalVerdict::Found { .. } => VerdictKind::Found,
             TerminalVerdict::NotFoundAnywhere { .. } => VerdictKind::NotFound,
@@ -147,21 +151,24 @@ impl VerdictSummary {
         };
         // A failed verdict leads with what its answering lookups found, as a
         // found one does; its kind is what keeps it from being auto-importable.
-        Self::with_findings(kind, track_count, verdict.findings())
+        Self::with_findings(kind, track_count, verdict.findings(), kept_own_draft)
     }
 
     /// A found verdict's summary, from what its lookups found and the
-    /// folder's track count.
+    /// folder's track count. It was just reached, so nobody has decided
+    /// anything about it.
     pub(crate) fn of_found(findings: &super::Findings, track_count: u32) -> Self {
-        Self::with_findings(VerdictKind::Found, Some(track_count), Some(findings))
+        Self::with_findings(VerdictKind::Found, Some(track_count), Some(findings), false)
     }
 
     fn with_findings(
         kind: VerdictKind,
         track_count: Option<u32>,
         findings: Option<&super::Findings>,
+        kept_own_draft: bool,
     ) -> Self {
         Self {
+            kept_own_draft,
             kind,
             track_count,
             pressing_count: findings.map_or(0, |findings| {

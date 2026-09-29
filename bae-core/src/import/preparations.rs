@@ -64,6 +64,7 @@ impl CandidatePreparations {
         prep.identification = Some(DbCandidateIdentifyResult {
             verdict: verdict.verdict.clone(),
             identified_at: self.database.now(),
+            kept_own_draft: false,
         });
         prep.signals = Some(verdict.signals.clone());
         if let Some(metadata) = &verdict.metadata {
@@ -278,14 +279,51 @@ impl CandidatePreparations {
             watched_folder_path: watched_folder_path.to_string(),
             candidate_path: folder_path.to_string(),
         };
-        if prep.identification.is_none() {
-            prep.identification = Some(DbCandidateIdentifyResult {
-                verdict: settled_by_choice,
-                identified_at: self.database.now(),
-            });
+        // A pick answers the folder, so the person keeping their own draft
+        // over the verdict stands no more.
+        match &mut prep.identification {
+            Some(identification) => identification.kept_own_draft = false,
+            None => {
+                prep.identification = Some(DbCandidateIdentifyResult {
+                    verdict: settled_by_choice,
+                    identified_at: self.database.now(),
+                    kept_own_draft: false,
+                })
+            }
         }
         self.apply_metadata(prep, Some(scanned), folder_path, metadata.clone(), None)
             .await
+    }
+
+    /// The person keeps their own draft over what the stored verdict offered:
+    /// none of its releases is the folder's, or it found none. The draft stays
+    /// as it is.
+    pub(crate) async fn keep_own_draft(&self, read: &CandidateAsRead) -> Result<u64, LibraryError> {
+        let mut prep = self.loaded_at(read).await?;
+        let identification = prep.identification.as_mut().ok_or_else(|| {
+            LibraryError::Import(format!(
+                "{} has no lookup whose offer to set aside",
+                read.content_hash
+            ))
+        })?;
+        identification.kept_own_draft = true;
+        let expected = CandidateSaveExpectation {
+            edit_revision: prep.file_edits.revision,
+            metadata_revision: prep.metadata_revision,
+            scanned: None,
+        };
+        let revision = prep.metadata_revision;
+        match self
+            .database
+            .save_candidate_preparation(prep, expected, CandidateSaveExtras::default())
+            .await?
+        {
+            CandidateSaved::Landed(_) => Ok(revision),
+            CandidateSaved::Superseded => Err(LibraryError::Import(format!(
+                "{} changed while its own draft was being kept",
+                read.content_hash
+            ))),
+        }
     }
 
     /// Store the exact file metadata reading and replace the candidate metadata it

@@ -367,7 +367,7 @@ fn the_lengths_a_source_states_do_not_decide() {
     let source = payloads.extract().unwrap().source_tracks_for_audio(&[]);
     assert_eq!(source, SourceTracks::Listed { count: 3 });
     assert_eq!(
-        crate::identify::VerdictSummary::of(&found_verdict(3, Some(source))).judgement(),
+        crate::identify::VerdictSummary::of(&found_verdict(3, Some(source)), false).judgement(),
         (true, None),
         "the counts agree, whatever the lengths"
     );
@@ -392,7 +392,7 @@ fn a_document_lists_its_tracks_titles() {
 #[test]
 fn a_count_disagreement_is_named_as_one() {
     assert_eq!(
-        crate::identify::VerdictSummary::of(&found_verdict(11, Some(SourceTracks::Listed { count: 12 })),).judgement(),
+        crate::identify::VerdictSummary::of(&found_verdict(11, Some(SourceTracks::Listed { count: 12 })), false).judgement(),
         (false, Some(FolderCheck::TrackCountDisagrees {
             local: 11,
             source: 12

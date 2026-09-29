@@ -239,6 +239,7 @@ mod tests {
             }),
             medium_conflict: None,
             unread_document: false,
+            kept_own_draft: false,
         };
         let check = Some(FolderCheck::TrackCountDisagrees {
             local: 12,

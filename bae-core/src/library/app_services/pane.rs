@@ -90,6 +90,28 @@ impl AppServices {
         }
     }
 
+    /// Keep the candidate's own draft over what its lookup offered, and go
+    /// back to the draft.
+    pub async fn pane_keep_own_draft(
+        &self,
+        candidate_key: &str,
+    ) -> Result<PaneOutcome, ImportError> {
+        let import = &self.inner.import;
+        let outcome = import
+            .run_pane_command(
+                candidate_key,
+                PaneCommand::KeepOwnDraft,
+                import.keep_candidate_draft(candidate_key.to_string()),
+            )
+            .await?;
+        if outcome == PaneOutcome::Done {
+            import
+                .move_candidate_pane(candidate_key, PaneMove::Picked)
+                .await?;
+        }
+        Ok(outcome)
+    }
+
     /// Make one change to what the candidate's identification asks about or
     /// counts, and run it again when what it looks up changed.
     pub async fn pane_edit_lookup_choices(

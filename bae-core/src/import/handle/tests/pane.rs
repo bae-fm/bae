@@ -2,6 +2,7 @@ mod candidate_mutation_race;
 mod commit_lock_waits;
 mod import_cancellation;
 mod import_ownership;
+mod kept_draft;
 mod live_filters;
 mod lookup_choices;
 mod metadata_application;

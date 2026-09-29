@@ -221,6 +221,15 @@ forward! {
                 .await?)
         }
 
+        /// Keep the candidate's own draft over what its lookup offered — none
+        /// of the releases it found is the folder's, or it found none — a pane
+        /// command that goes back to the draft.
+        fn keep_candidate_draft(candidate_key: String) -> crate::types::BridgePaneOutcome {
+            Ok(crate::types::BridgePaneOutcome::from_core(
+                this.services.pane_keep_own_draft(&candidate_key).await?,
+            ))
+        }
+
         /// Replace candidate metadata from a source, a pane command. An
         /// external release's documents land before provenance does, so the
         /// next value draws whole. Identification writes the same record itself

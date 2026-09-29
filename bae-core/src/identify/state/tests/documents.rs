@@ -365,7 +365,7 @@ fn more_tied_rows_than_a_run_reads_are_left_for_the_person() {
     assert_eq!(offered_ids(&state).len(), crate::identify::documents::MOST_ROWS_READ + 1);
     let verdict = crate::identify::TerminalVerdict::try_from(state).expect("the run settled");
     assert!(
-        !crate::identify::VerdictSummary::of(&verdict).judgement().0,
+        !crate::identify::VerdictSummary::of(&verdict, false).judgement().0,
         "tied rows are the person's to pick"
     );
 }

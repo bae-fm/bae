@@ -89,6 +89,7 @@ fn every_kind() -> ImportQueueRows {
             with_verdict(not_found_state(), |verdict| {
                 *verdict = VerdictSummary {
                     unread_document: true,
+                    kept_own_draft: false,
                     ..auto_importable_state("mb-6")
                         .verdict
                         .expect("the state has a verdict")

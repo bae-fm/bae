@@ -29,6 +29,9 @@ struct FindOnlineAutomaticSection: View {
     let onSelect: (Pressing) -> Void
     /// Hand the pane over to SEARCH with the cursor in its first field.
     let onSearchManually: () -> Void
+    /// Keep the folder's own draft over what the lookup offered; `nil` where
+    /// the surface has no draft of its own to keep.
+    let onKeepOwnDraft: (() -> Void)?
     /// Whether the releases agreement narrowed out are showing. Held by the
     /// pane, which outlives this section: collapsing AUTOMATIC and opening it
     /// again leaves the disclosure as the person left it.
@@ -82,6 +85,7 @@ struct FindOnlineAutomaticSection: View {
                         .foregroundStyle(.secondary)
                 }
                 SearchManuallyButton(action: onSearchManually)
+                keepOwnDraft
             }
         case .error(let failure):
             FindOnlineEmptyZone {
@@ -141,6 +145,8 @@ struct FindOnlineAutomaticSection: View {
                 ForEach(missingSourceNotes, id: \.self) { note in
                     MissingSourceNote(text: note)
                 }
+                keepOwnDraft
+                    .padding(.leading, ReleaseGroupSection.rowTextInset)
             }
         case .nothingFound:
             FindOnlineEmptyZone {
@@ -153,11 +159,29 @@ struct FindOnlineAutomaticSection: View {
                         .foregroundStyle(.secondary)
                 }
                 SearchManuallyButton(action: onSearchManually)
+                keepOwnDraft
             }
         case .failureLines:
             failureLines
-        case .awaitingCatalog, .notStarted, .noSignals, .error:
+        case .awaitingCatalog:
+            FindOnlineEmptyZone { keepOwnDraft }
+        case .notStarted, .noSignals, .error:
             EmptyView()
+        }
+    }
+
+    /// The way to answer a folder waiting on the person with its own draft,
+    /// worded for whether the page offered releases to pick from.
+    @ViewBuilder
+    private var keepOwnDraft: some View {
+        if let needsYou = state.needsYou, let onKeepOwnDraft {
+            KeepOwnDraftAction(
+                title: needsYou.offeredReleases
+                    ? String(localized: "None of these")
+                    : String(localized: "Keep my info"),
+                action: onKeepOwnDraft
+            )
+            .disabled(state.isImporting)
         }
     }
 
@@ -233,6 +257,22 @@ struct FindOnlineAutomaticSection: View {
                 localized:
                     "\(source) \(step) results are missing from this list."
             )
+        }
+    }
+}
+
+/// Keeping the folder's own draft: the button, and what it does beneath it.
+private struct KeepOwnDraftAction: View {
+    let title: String
+    let action: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: ThemeSpace.hairline) {
+            Button(title, action: action)
+                .controlSize(.small)
+            Text("Keep my info; it's not in the catalogs")
+                .themeText(.detail)
+                .foregroundStyle(.tertiary)
         }
     }
 }

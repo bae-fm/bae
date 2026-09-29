@@ -94,8 +94,25 @@ final class FindOnlinePaneTests: XCTestCase {
             "the pane reads: \(matches)"
         )
 
+        XCTAssertTrue(
+            matches.contains {
+                $0.localizedCaseInsensitiveContains(
+                    String(localized: "None of these")
+                )
+            },
+            "a page that offered releases reads: \(matches)"
+        )
+
         let notFound = try await renderedText(
             of: PreviewData.searchStateNeedsYouNotFound
+        )
+        XCTAssertTrue(
+            notFound.contains {
+                $0.localizedCaseInsensitiveContains(
+                    String(localized: "Keep my info")
+                )
+            },
+            "a page that offered none reads: \(notFound)"
         )
         XCTAssertTrue(
             notFound.contains {
@@ -293,6 +310,7 @@ struct NarrowedOutDisclosureTests {
             onEditTitleSearch: { _, _ in },
             onSelect: { _ in },
             onSearchManually: {},
+            onKeepOwnDraft: nil,
             narrowedOutExpanded: .constant(isExpanded)
         )
         .importPreviewEnvironment()

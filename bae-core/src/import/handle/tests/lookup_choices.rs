@@ -249,7 +249,7 @@ async fn store_settled_text(handle: &ImportServiceHandle, hash: &str, printed: &
     assert!(stored, "the settled signals land on the fixture candidate");
 }
 
-async fn pick(handle: &ImportServiceHandle, key: &str, release_id: &str) {
+pub(super) async fn pick(handle: &ImportServiceHandle, key: &str, release_id: &str) {
     handle
         .select_candidate_metadata_provenance(
             key.to_string(),
@@ -267,7 +267,7 @@ async fn pick(handle: &ImportServiceHandle, key: &str, release_id: &str) {
 
 /// A two-track MusicBrainz release carrying `catalog_number`, in no release
 /// group so the pick fetches no cover.
-fn seed_mb_release_with_catalog(
+pub(super) fn seed_mb_release_with_catalog(
     providers: &crate::providers::Providers,
     release_id: &str, catalog_number: &str) {
     let response = crate::musicbrainz::MbReleaseResponse {

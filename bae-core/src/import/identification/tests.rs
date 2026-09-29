@@ -821,7 +821,7 @@ impl Fixture {
     /// against the folder it failed.
     async fn judgement_for(&self, dir: &Path) -> (bool, Option<FolderCheck>) {
         let row = self.stored_for(dir).await.expect("a row was stored");
-        VerdictSummary::of(&identify_result(&row).verdict).judgement()
+        VerdictSummary::of(&identify_result(&row).verdict, false).judgement()
     }
 }
 

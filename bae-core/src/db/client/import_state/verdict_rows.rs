@@ -103,8 +103,8 @@ pub(super) fn insert_verdict(
     sql.execute(
         "INSERT INTO import_candidate_verdict \
              (content_hash, kind, track_count, failures_json, error_detail, \
-              ledger_json, identified_at, medium_conflict) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+              ledger_json, identified_at, medium_conflict, kept_own_draft) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
         params![
             content_hash,
             kind,
@@ -114,6 +114,7 @@ pub(super) fn insert_verdict(
             ledger_json,
             identification.identified_at.to_rfc3339(),
             medium_conflict,
+            identification.kept_own_draft,
         ],
     )?;
     insert_matches(sql, content_hash, verdict)
@@ -651,10 +652,11 @@ pub(super) struct VerdictRow {
     pub(super) ledger_json: Option<String>,
     pub(super) identified_at: DateTime<Utc>,
     pub(super) medium_conflict: Option<MediumConflict>,
+    pub(super) kept_own_draft: bool,
 }
 
 pub(super) const VERDICT_COLUMNS: &str = "content_hash, kind, track_count, \
-     failures_json, error_detail, ledger_json, identified_at, medium_conflict";
+     failures_json, error_detail, ledger_json, identified_at, medium_conflict, kept_own_draft";
 
 
 pub(super) fn read_verdict_row(row: &Row<'_>) -> Result<VerdictRow, DbError> {
@@ -667,6 +669,7 @@ pub(super) fn read_verdict_row(row: &Row<'_>) -> Result<VerdictRow, DbError> {
         ledger_json: row.get("ledger_json")?,
         identified_at: super::rfc3339_column(row, "identified_at")?,
         medium_conflict: super::medium_conflict_of(row.get("medium_conflict")?)?,
+        kept_own_draft: row.get("kept_own_draft")?,
     })
 }
 
@@ -684,6 +687,7 @@ pub(super) fn identification_of(
         ledger_json,
         identified_at,
         medium_conflict,
+        kept_own_draft,
     } = row;
     let ledger: Option<IdentifyRunView> = ledger_json
         .map(|json| {
@@ -791,6 +795,7 @@ pub(super) fn identification_of(
     Ok(DbCandidateIdentifyResult {
         verdict,
         identified_at,
+        kept_own_draft,
     })
 }
 

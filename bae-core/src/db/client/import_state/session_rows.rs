@@ -69,6 +69,7 @@ fn command_column(command: PaneCommand) -> &'static str {
         PaneCommand::ChangeLookups => "change_lookups",
         PaneCommand::ChangeSearchWords => "change_search_words",
         PaneCommand::ChangeAgreements => "change_agreements",
+        PaneCommand::KeepOwnDraft => "keep_own_draft",
     }
 }
 
@@ -80,6 +81,7 @@ fn command_of(column: &str) -> Result<PaneCommand, DbError> {
         "change_lookups" => PaneCommand::ChangeLookups,
         "change_search_words" => PaneCommand::ChangeSearchWords,
         "change_agreements" => PaneCommand::ChangeAgreements,
+        "keep_own_draft" => PaneCommand::KeepOwnDraft,
         other => {
             return Err(DbError::Message(format!(
                 "unreadable pane command {other:?}"

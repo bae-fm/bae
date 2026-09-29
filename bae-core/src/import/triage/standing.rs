@@ -14,12 +14,14 @@
 //!    worked on as it stands.
 //! 5. **Identified** — the draft is read from a catalog.
 //! 6. **Not looked up** — no lookup is stored for the folder's files.
-//! 7. **Error** — bae broke on its own side and the stored run ended there.
-//! 8. **Lookup error** — a catalog could not answer the stored lookup, or
+//! 7. **Unmatched** — the person kept their own draft over what the lookup
+//!    offered.
+//! 8. **Error** — bae broke on its own side and the stored run ended there.
+//! 9. **Lookup error** — a catalog could not answer the stored lookup, or
 //!    could not hand over a release it found in full.
-//! 9. **Unmatched** — the lookup took its release for the folder and the
-//!    draft is no longer read from it: the person set it aside.
-//! 10. **Needs You** — the lookup left the answer to the person.
+//! 10. **Unmatched** — the lookup took its release for the folder and the
+//!     draft is no longer read from it: the person set it aside.
+//! 11. **Needs You** — the lookup left the answer to the person.
 //!
 //! A lookup error is a catalog's; an error is bae's own, which the row states
 //! with its text.
@@ -192,6 +194,9 @@ impl PendingStanding {
         let Some(verdict) = verdict else {
             return Some(Self::NotLookedUp);
         };
+        if verdict.kept_own_draft {
+            return Some(Self::Unmatched);
+        }
         let reason = match &verdict.kind {
             VerdictKind::Error { failure } => {
                 return Some(Self::Error {

@@ -713,7 +713,7 @@ fn the_record_whose_tracklist_fits_the_folder_leads_its_pressing() {
         ledger: None,
     };
     assert_eq!(
-        crate::identify::VerdictSummary::of(&verdict).judgement(),
+        crate::identify::VerdictSummary::of(&verdict, false).judgement(),
         (true, None)
     );
 }

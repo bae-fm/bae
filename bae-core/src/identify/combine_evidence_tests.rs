@@ -504,7 +504,7 @@ fn mono_audio_against_stereo_listings_can_still_be_ready() {
         ledger: None,
     };
     assert_eq!(
-        crate::identify::VerdictSummary::of(&verdict).judgement(),
+        crate::identify::VerdictSummary::of(&verdict, false).judgement(),
         (true, None)
     );
 }

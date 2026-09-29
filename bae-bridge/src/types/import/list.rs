@@ -361,6 +361,8 @@ pub enum BridgePaneCommand {
     ChangeLookups,
     ChangeSearchWords,
     ChangeAgreements,
+    /// Keep the folder's own draft over what its lookup offered.
+    KeepOwnDraft,
 }
 
 /// The pane's last command, which failed, and why. Mirrors
@@ -390,6 +392,7 @@ mirror_enum! {
         ChangeLookups,
         ChangeSearchWords,
         ChangeAgreements,
+        KeepOwnDraft,
     },
 }
 

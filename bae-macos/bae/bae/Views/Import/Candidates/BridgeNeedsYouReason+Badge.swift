@@ -72,6 +72,19 @@ extension BridgeNeedsYouReason {
     }
 }
 
+extension BridgeNeedsYouReason {
+    /// Whether the lookup offered releases to pick from, which decides how
+    /// keeping the folder's own draft is worded: none of these, or keep mine.
+    var offeredReleases: Bool {
+        switch self {
+        case .matches, .trackCountMismatch, .noTracklist, .mediumMismatch:
+            true
+        case .notFound, .nothingToLookUp:
+            false
+        }
+    }
+}
+
 extension BridgePendingStanding {
     /// Why the folder waits on the person, for a row that does.
     var needsYou: BridgeNeedsYouReason? {

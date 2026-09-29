@@ -76,4 +76,21 @@ struct NeedsYouReasonTests {
             .sentence != two.sentence
         )
     }
+
+    /// Keeping the folder's own draft reads "None of these" where the page
+    /// offered releases, and "Keep my info" where it offered none.
+    @Test("only a page that offered releases says none of these")
+    func offeredReleasesDecideTheWording() {
+        let offered: [BridgeNeedsYouReason] = [
+            .matches(count: 2),
+            .trackCountMismatch(local: 11, source: 12),
+            .noTracklist,
+            .mediumMismatch(folder: .notCdAudio, releases: 1),
+        ]
+        for reason in offered {
+            #expect(reason.offeredReleases, "\(reason)")
+        }
+        #expect(!BridgeNeedsYouReason.notFound.offeredReleases)
+        #expect(!BridgeNeedsYouReason.nothingToLookUp.offeredReleases)
+    }
 }

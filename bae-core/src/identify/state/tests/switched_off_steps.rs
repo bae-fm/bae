@@ -186,7 +186,7 @@ fn a_run_whose_lookups_are_all_off_offers_manual_search() {
         "got {state:?}"
     );
     assert_eq!(
-        crate::identify::VerdictSummary::of(&crate::identify::TerminalVerdict::try_from(state).unwrap()).judgement(),
+        crate::identify::VerdictSummary::of(&crate::identify::TerminalVerdict::try_from(state).unwrap(), false).judgement(),
         (false, None)
     );
 }

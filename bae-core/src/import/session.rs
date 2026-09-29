@@ -53,6 +53,8 @@ pub enum PaneCommand {
     ChangeSearchWords,
     /// Change which catalog numbers count as the folder's own.
     ChangeAgreements,
+    /// Keep the folder's own draft over what its lookup offered.
+    KeepOwnDraft,
 }
 
 /// The pane's last command, which failed, and why.

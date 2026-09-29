@@ -29,6 +29,9 @@ struct ImportSearchPane: View {
     let onEditTitleSearch: (_ album: String, _ artist: String) -> Void
     /// A pressing row was picked.
     let onSelect: (Pressing) -> Void
+    /// Keep the folder's own draft over what the lookup offered; `nil` for a
+    /// surface with no draft of its own to keep.
+    let onKeepOwnDraft: (() -> Void)?
     /// Which section is open, as the candidate's session says.
     let openSection: BridgeFindOnlineSection
     /// Open one section.
@@ -54,6 +57,7 @@ struct ImportSearchPane: View {
         onEditTitleSearch:
             @escaping (_ album: String, _ artist: String) -> Void,
         onSelect: @escaping (Pressing) -> Void,
+        onKeepOwnDraft: (() -> Void)?,
         openSection: BridgeFindOnlineSection,
         onOpenSection: @escaping (BridgeFindOnlineSection) -> Void
     ) {
@@ -69,6 +73,7 @@ struct ImportSearchPane: View {
         self.onRetryFailed = onRetryFailed
         self.onEditTitleSearch = onEditTitleSearch
         self.onSelect = onSelect
+        self.onKeepOwnDraft = onKeepOwnDraft
         self.openSection = openSection
         self.onOpenSection = onOpenSection
     }
@@ -104,6 +109,7 @@ struct ImportSearchPane: View {
                     onEditTitleSearch: onEditTitleSearch,
                     onSelect: onSelect,
                     onSearchManually: searchManually,
+                    onKeepOwnDraft: onKeepOwnDraft,
                     narrowedOutExpanded: $narrowedOutExpanded,
                 )
                 .frame(
@@ -229,6 +235,7 @@ struct ImportSearchPane: View {
                 onRetryFailed: onRetryFailed,
                 onEditTitleSearch: { _, _ in },
                 onSelect: { _ in },
+                onKeepOwnDraft: {},
                 openSection: openSection,
                 onOpenSection: { _ in }
             )

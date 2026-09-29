@@ -1232,7 +1232,7 @@ CREATE TABLE IF NOT EXISTS import_candidate_session (
     -- its failure, and the failure's untranslated text.
     error_command  TEXT CHECK (error_command IN (
         'import', 'merge_artists', 'read_file_tags',
-        'change_lookups', 'change_search_words', 'change_agreements')),
+        'change_lookups', 'change_search_words', 'change_agreements', 'keep_own_draft')),
     error_category TEXT,
     error_detail   TEXT,
     CHECK ((error_command IS NULL) = (error_category IS NULL)),
@@ -1399,6 +1399,10 @@ CREATE TABLE IF NOT EXISTS import_candidate_verdict (
     -- How bae broke on its own side, for an 'error' verdict: the error chain
     -- the person is shown.
     error_detail  TEXT CHECK (error_detail IS NULL OR error_detail <> ''),
+    -- The person kept their own draft over what this verdict offered: none of
+    -- its releases is the folder's, or it found none. It goes with the
+    -- verdict, so the next identification starts without it.
+    kept_own_draft INTEGER NOT NULL CHECK (kept_own_draft IN (0, 1)),
     identified_at TEXT NOT NULL,
     -- The folder's own files rule out every row found: a CD rip where no row
     -- could be a CD, or a sample rate no CD holds where every row is a CD.

@@ -53,6 +53,10 @@ pub struct NewImportCandidateVerdict {
 pub struct DbCandidateIdentifyResult {
     pub verdict: crate::identify::TerminalVerdict,
     pub identified_at: DateTime<Utc>,
+    /// The person kept their own draft over what the verdict offered: none
+    /// of its releases is the folder's, or it found none. A decision about
+    /// this verdict, so the next one starts without it.
+    pub kept_own_draft: bool,
 }
 
 /// One loaded candidate, as

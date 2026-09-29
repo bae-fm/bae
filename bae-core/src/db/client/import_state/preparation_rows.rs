@@ -262,7 +262,10 @@ pub(super) fn save_preparation_on(
                     "candidate {content_hash} opens on a result it stores none of"
                 ))
             })?;
-            if crate::identify::VerdictSummary::of(&identification.verdict)
+            if crate::identify::VerdictSummary::of(
+                &identification.verdict,
+                identification.kept_own_draft,
+            )
                 .folder_check()
                 .is_none()
             {

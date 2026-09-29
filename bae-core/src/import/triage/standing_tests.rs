@@ -31,6 +31,7 @@ fn found(pressing_count: u32, listed: Option<SourceTracks>) -> VerdictSummary {
         lead: Some(lead(listed)),
         medium_conflict: None,
         unread_document: false,
+        kept_own_draft: false,
     }
 }
 
@@ -49,6 +50,7 @@ fn of_kind(kind: VerdictKind) -> VerdictSummary {
         lead: None,
         medium_conflict: None,
         unread_document: false,
+        kept_own_draft: false,
     }
 }
 
@@ -240,6 +242,28 @@ fn an_answer_that_did_not_save_is_an_error() {
                     detail: failure.error().to_string()
                 }
             }
+        );
+    }
+}
+
+/// The person keeping their own draft over what the lookup offered is the
+/// answer, whatever the lookup found; a pick after it is identified.
+#[test]
+fn a_kept_draft_is_unmatched_until_a_catalog_is_read() {
+    for mut verdict in [
+        found(3, None),
+        of_kind(VerdictKind::NotFound),
+        of_kind(VerdictKind::ManualOnly),
+    ] {
+        verdict.kept_own_draft = true;
+        assert_eq!(
+            pending(&verdict),
+            Some(PendingStanding::Unmatched),
+            "{verdict:?}"
+        );
+        assert_eq!(
+            PendingStanding::stored(TriagePlacement::Pending, Some(&picked()), Some(&verdict)),
+            Some(PendingStanding::Identified)
         );
     }
 }
