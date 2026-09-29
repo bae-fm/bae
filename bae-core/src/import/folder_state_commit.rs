@@ -8,7 +8,9 @@
 //! for a click queued behind it to be felt.
 
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
+// Tokio's clock, so a test can hold the lock for a given time without waiting it.
+use tokio::time::Instant;
 
 /// A hold at least this long is a click queued behind it that the person
 /// notices, and is logged as a warning naming the operation that held it.
@@ -74,12 +76,14 @@ mod tests {
     fn logs_of_a_hold(level: tracing::Level, held_for: Duration) -> String {
         crate::test_logs::capture_logs_at(level, || {
             tokio::runtime::Builder::new_current_thread()
+                .enable_time()
+                .start_paused(true)
                 .build()
                 .unwrap()
                 .block_on(async {
                     let commit = FolderStateCommit::default();
                     let guard = commit.lock("store a scan item").await;
-                    std::thread::sleep(held_for);
+                    tokio::time::advance(held_for).await;
                     drop(guard);
                 });
         })
@@ -102,7 +106,7 @@ mod tests {
         assert!(logs.contains("operation=\"store a scan item\""), "{logs}");
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn the_wait_is_how_long_the_lock_was_held_by_another() {
         let commit = FolderStateCommit::default();
         let first = commit.lock("hold for a test").await;
@@ -110,8 +114,11 @@ mod tests {
             let commit = commit.clone();
             async move { commit.lock("wait for a test").await.waited }
         });
-        tokio::time::sleep(Duration::from_millis(30)).await;
+        // On this one-thread runtime the waiter runs when the test yields, and
+        // parks on the lock after taking the time it asked.
+        tokio::task::yield_now().await;
+        tokio::time::advance(Duration::from_millis(30)).await;
         drop(first);
-        assert!(waiter.await.unwrap() >= Duration::from_millis(30));
+        assert_eq!(waiter.await.unwrap(), Duration::from_millis(30));
     }
 }
