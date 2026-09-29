@@ -73,6 +73,64 @@ fn digits_inside_a_longer_run_state_no_catalog_number() {
     assert!(!judged.catalog);
 }
 
+/// Whether a row carrying `number` agrees with a folder of `lines` about its
+/// catalog number.
+fn catalog_agrees(number: &str, lines: &[&str]) -> bool {
+    judge(
+        &MetadataResult {
+            labels: vec![ReleaseLabel::of(None, Some(number))],
+            ..result()
+        },
+        &text(lines),
+        &NO_LOOKUP,
+    )
+    .catalog
+}
+
+/// A catalog number is read against the folder's whole numbers: a hyphen,
+/// dot or slash between letters or digits keeps a number whole, so a
+/// shorter number is never read out of a longer one printed there.
+#[test]
+fn a_catalog_number_is_never_a_piece_of_a_longer_one() {
+    assert!(!catalog_agrees("AB12", &["Artist - Album [AB12-2]"]));
+    assert!(!catalog_agrees("12345-2", &["Artist - Album 6789-12345-2"]));
+    assert!(!catalog_agrees("12345-2", &["6789.12345/2"]));
+    assert!(catalog_agrees("AB12-2", &["Artist - Album [AB12-2]"]));
+    assert!(catalog_agrees("6789-12345-2", &["6789-12345-2"]));
+}
+
+/// Spaces cut a number the way brackets do, and a number printed with them
+/// is read whole across them.
+#[test]
+fn a_catalog_number_printed_with_spaces_is_read_whole() {
+    assert!(catalog_agrees("XYZ 100", &["Label One XYZ 100 (1999)"]));
+    assert!(catalog_agrees("XYZ-100", &["Label One XYZ 100 (1999)"]));
+    assert!(catalog_agrees("AB12-2", &["AB12 - 2"]));
+    assert!(!catalog_agrees("XYZ 100", &["Label One XYZ 100-2"]));
+}
+
+/// A number is found wherever it begins in the line, including where an
+/// earlier, longer run of the same characters overlaps it.
+#[test]
+fn a_catalog_number_overlapping_an_earlier_run_is_found() {
+    assert!(catalog_agrees("121", &["12 121"]));
+}
+
+/// The Catalog # chips read the text as the agreement does, struck-out
+/// numbers included.
+#[test]
+fn the_text_prints_a_catalog_number_only_whole() {
+    let folder = CandidateText::of(
+        &[line("Artist - Album [AB12-2]")],
+        &["AB12-2".to_string()],
+        &[],
+    );
+    assert!(folder.prints_catalog("AB12-2"));
+    assert!(!folder.states_catalog("AB12-2"));
+    assert!(!folder.prints_catalog("AB12"));
+    assert!(!folder.prints_catalog("none"));
+}
+
 /// A field the result does not state cannot be agreed with.
 #[test]
 fn a_field_the_result_leaves_out_is_no_agreement() {

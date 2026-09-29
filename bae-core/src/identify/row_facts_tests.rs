@@ -363,6 +363,27 @@ fn every_number_the_folder_states_counts() {
     assert!(facts.states_catalog("ALT-300"));
 }
 
+/// A row's number read out of a longer one the folder's name prints is no
+/// number the name states: the name states nothing, and the artwork, which
+/// prints the row's number whole, speaks.
+#[test]
+fn a_piece_of_a_longer_number_is_no_number_the_folder_states() {
+    let short = numbered("rel-a", &["AB12"]);
+    let named = FolderFacts::of(
+        &read(&[(TextOrigin::FolderName, "Artist - Album [AB12-2]")]),
+        [&short],
+    );
+    assert!(!named.states_catalog("AB12"));
+    let printed = FolderFacts::of(
+        &read(&[
+            (TextOrigin::FolderName, "Artist - Album [AB12-2]"),
+            (TextOrigin::Artwork, "AB12"),
+        ]),
+        [&short],
+    );
+    assert!(printed.states_catalog("AB12"));
+}
+
 /// A number the folder's name writes that no row carries does not silence
 /// the artwork: the row whose number the artwork prints agrees.
 #[test]

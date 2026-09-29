@@ -542,7 +542,7 @@ fn catalog_agreements(findings: &Findings, text: &CandidateText) -> Vec<CatalogA
         .filter(|(_, lookup)| !lookup.by_catalog)
         .flat_map(|(result, _)| &result.labels)
         .filter_map(ReleaseLabel::catalog_number)
-        .filter(|value| text.states(value) && seen.insert(squash(value)))
+        .filter(|value| text.prints_catalog(value) && seen.insert(squash(value)))
         .map(|value| CatalogAgreementView {
             discounted: text.is_struck_out(value),
             value: value.to_string(),

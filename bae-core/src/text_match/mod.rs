@@ -17,6 +17,8 @@
 //! The rules for each kind of value:
 //!
 //! - [`catalog_key`]: two catalog numbers are one number.
+//! - [`catalog_words`]: the whole numbers a line prints, which a catalog
+//!   number is read against — never a piece of a longer one.
 //! - [`strip_trailing_brackets`]: an album title or folder name without the
 //!   bracketed tails that name its edition or catalog number.
 //! - [`bare_album_title`]: an album's title as it names the album — the
@@ -47,6 +49,7 @@ desktop_only! {
     mod title;
 
     pub(crate) use artist::is_various_artists;
+    pub(crate) use catalog_number::catalog_words;
     pub(crate) use label::LabelName;
     pub(crate) use title::{
         album_title_words, bare_album_title, strip_trailing_brackets, track_title_key,

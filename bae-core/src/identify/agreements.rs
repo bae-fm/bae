@@ -6,7 +6,10 @@ use super::row_facts::FolderFacts;
 use crate::import::search::MetadataResult;
 use crate::pressing::{ReleaseArea, ReleaseLabel};
 use crate::signals::{SourcedValue, TextLine, TextOrigin};
-use crate::text_match::{bare_album_title, is_stop_word, squash, words, written_words, LabelName};
+use crate::text_match::{
+    bare_album_title, catalog_key, catalog_words, is_stop_word, squash, words, written_words,
+    LabelName,
+};
 use std::collections::HashSet;
 
 /// Which of one result's fields the folder confirms. A field the result does
@@ -141,7 +144,8 @@ pub(crate) fn judged_results(
 /// struck out, and the barcodes the folder carries. A value is stated when,
 /// lowercased and stripped of all but letters and digits, it spans whole
 /// words of a line: `16033-2` states `16033 2`, and "blues" does not state
-/// `US`.
+/// `US`. A catalog number is held to whole numbers instead of whole words —
+/// see [`Self::prints_catalog`].
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct CandidateText {
     lines: Vec<NormalizedLine>,
@@ -221,7 +225,16 @@ impl CandidateText {
     /// 4") — and read there they are the barcode again, not a catalog
     /// number the copy states.
     pub fn states_catalog(&self, value: &str) -> bool {
-        !self.is_struck_out(value) && !self.is_barcode_digits(value) && self.states(value)
+        !self.is_struck_out(value) && !self.is_barcode_digits(value) && self.prints_catalog(value)
+    }
+
+    /// Whether one of the text's lines prints `value` as a whole catalog
+    /// number, struck out or not: never a piece of a longer one, so
+    /// `AB12-2` prints neither `AB12` nor `12-2` — see
+    /// `text_match::catalog_words`. A number printed with spaces
+    /// prints the one written without them: "XYZ 100" prints `XYZ-100`.
+    pub fn prints_catalog(&self, value: &str) -> bool {
+        catalog_key(value).is_some_and(|key| self.lines.iter().any(|line| line.prints(&key)))
     }
 
     fn is_barcode_digits(&self, value: &str) -> bool {
@@ -337,14 +350,18 @@ impl Standing {
     }
 }
 
-/// One line: its words run together, where each begins and ends, and the
-/// words it writes in capitals.
+/// One line: its words run together, where each word and each whole number
+/// begins and ends, and the words it writes in capitals.
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct NormalizedLine {
     standing: Standing,
     run: String,
     starts: Vec<usize>,
     ends: Vec<usize>,
+    /// Where each of the line's [`catalog_words`] begins and ends in `run`,
+    /// which they run together to as its words do.
+    number_starts: Vec<usize>,
+    number_ends: Vec<usize>,
     /// Dots between letters dropped: "E.U." is `EU`.
     capitals: Vec<String>,
 }
@@ -360,6 +377,14 @@ impl NormalizedLine {
             run.push_str(&word);
             ends.push(run.len());
         }
+        let mut number_starts = Vec::new();
+        let mut number_ends = Vec::new();
+        let mut at = 0;
+        for number in catalog_words(text) {
+            number_starts.push(at);
+            at += number.len();
+            number_ends.push(at);
+        }
         let capitals = written_words(text)
             .into_iter()
             .filter(|word| word.chars().all(char::is_uppercase))
@@ -369,6 +394,8 @@ impl NormalizedLine {
             run,
             starts,
             ends,
+            number_starts,
+            number_ends,
             capitals,
         })
     }
@@ -420,10 +447,24 @@ impl NormalizedLine {
 
     /// Whether `value` — already squashed — spans whole words of this line.
     fn states(&self, value: &str) -> bool {
-        self.run.match_indices(value).any(|(at, _)| {
-            self.starts.binary_search(&at).is_ok()
-                && self.ends.binary_search(&(at + value.len())).is_ok()
-        })
+        self.spans(value, &self.starts, &self.ends)
+    }
+
+    /// Whether `number` — a [`catalog_key`] — spans whole numbers of this
+    /// line.
+    fn prints(&self, number: &str) -> bool {
+        self.spans(number, &self.number_starts, &self.number_ends)
+    }
+
+    /// Whether `value` sits in the run beginning at one of `starts` and
+    /// ending at one of `ends`. Every start is tried, not only where a search
+    /// of the run finds `value`, which skips an occurrence overlapping one it
+    /// found.
+    fn spans(&self, value: &str, starts: &[usize], ends: &[usize]) -> bool {
+        !value.is_empty()
+            && starts.iter().any(|&at| {
+                self.run[at..].starts_with(value) && ends.binary_search(&(at + value.len())).is_ok()
+            })
     }
 }
 

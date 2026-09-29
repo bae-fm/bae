@@ -5,7 +5,7 @@ use unicode_normalization::UnicodeNormalization;
 
 /// The text decomposed, its combining marks dropped (so diacritics go), and
 /// lowercased one character at a time.
-fn folded(text: &str) -> impl Iterator<Item = char> + '_ {
+pub(super) fn folded(text: &str) -> impl Iterator<Item = char> + '_ {
     text.nfd()
         .filter(|c| !unicode_normalization::char::is_combining_mark(*c))
         .flat_map(char::to_lowercase)
