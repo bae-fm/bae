@@ -585,8 +585,8 @@ pub(super) fn insert_audio_format_row(
             af.content_type.as_str(),
             af.pregap_ms,
             af.generated_pregap_ms,
-            af.pregap_samples,
-            af.generated_pregap_samples,
+            optional_sqlite_count(af.pregap_samples, "pregap_samples")?,
+            optional_sqlite_count(af.generated_pregap_samples, "generated_pregap_samples")?,
             af.sample_rate,
             af.bits_per_sample,
             af.channels,
@@ -622,16 +622,37 @@ pub(super) fn insert_audio_segment_row(
             segment.segment_index,
             segment.role.as_str(),
             segment.file_id,
-            segment.start_sample,
-            segment.end_sample,
-            segment.start_byte,
-            segment.end_byte,
+            sqlite_count(segment.start_sample, "start_sample")?,
+            optional_sqlite_count(segment.end_sample, "end_sample")?,
+            optional_sqlite_count(segment.start_byte, "start_byte")?,
+            optional_sqlite_count(segment.end_byte, "end_byte")?,
             reg,
             segment.created_at.to_rfc3339(),
         ],
     )
     .map(|_| ())
     .map_err(DbError::from)
+}
+
+/// A count or a position as SQLite's signed integer. One past `i64::MAX`
+/// cannot be stored and fails the write.
+#[cfg(any(
+    test,
+    feature = "test-utils",
+    not(any(target_os = "ios", target_os = "android"))
+))]
+fn sqlite_count(value: u64, what: &str) -> Result<i64, DbError> {
+    i64::try_from(value)
+        .map_err(|_| DbError::Message(format!("{what} {value} exceeds SQLite's integer range")))
+}
+
+#[cfg(any(
+    test,
+    feature = "test-utils",
+    not(any(target_os = "ios", target_os = "android"))
+))]
+fn optional_sqlite_count(value: Option<u64>, what: &str) -> Result<Option<i64>, DbError> {
+    value.map(|value| sqlite_count(value, what)).transpose()
 }
 
 pub(super) fn upsert_library_image_row(

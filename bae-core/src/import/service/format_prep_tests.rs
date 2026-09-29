@@ -233,7 +233,7 @@ INDEX 01 01:00:00
     assert_eq!(pregap.file_id, "file-id");
 
     // Sample windows: INDEX 00 (0:20) .. INDEX 01 (0:30), frames -> samples.
-    let sample_rate = built.audio_formats[1].sample_rate;
+    let sample_rate = u64::try_from(built.audio_formats[1].sample_rate).unwrap();
     assert_eq!(pregap.start_sample, (20 * 75) * sample_rate / 75);
     assert_eq!(pregap.end_sample, Some((30 * 75) * sample_rate / 75));
 

@@ -142,7 +142,7 @@ struct ImageTrack {
     track_id: String,
     title: String,
     performer: String,
-    audio_pregap_samples: Option<i64>,
+    audio_pregap_samples: Option<u64>,
     decode: crate::playback::stream_pipeline::StreamDecodeParams,
     reply: tokio::sync::oneshot::Sender<Result<CueTrack, String>>,
 }
@@ -458,7 +458,7 @@ fn encode_image_track(
     let pregap_sample_frames = track
         .decode
         .leading_silence_frames()
-        .checked_add(non_negative_samples(track.audio_pregap_samples)?)
+        .checked_add(track.audio_pregap_samples.unwrap_or(0))
         .ok_or_else(|| "CUE pregap sample count overflow".to_string())?;
 
     let frames_before = encoder.frames_accepted();
@@ -656,15 +656,6 @@ fn cue_string(value: &str) -> String {
             }
         })
         .collect()
-}
-
-fn non_negative_samples(samples: Option<i64>) -> Result<u64, String> {
-    match samples {
-        Some(sample) => {
-            u64::try_from(sample).map_err(|_| "audio pregap sample count is negative".to_string())
-        }
-        None => Ok(0),
-    }
 }
 
 /// Write every known metadata tag that describes this exported file. Cover art

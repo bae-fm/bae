@@ -205,15 +205,7 @@ impl PlaybackPreparedTrack {
 
     fn generated_pregap_samples(&self) -> u64 {
         if let Some(samples) = self.generated_pregap_samples {
-            if samples < 0 {
-                warn!(
-                    track_id = %self.track_id,
-                    generated_pregap_samples = samples,
-                    "Ignoring negative generated pregap samples"
-                );
-                return 0;
-            }
-            return samples as u64;
+            return samples;
         }
 
         let Some(ms) = self.generated_pregap_ms else {
@@ -268,7 +260,7 @@ struct PlaybackPreparedTrack {
     /// Silent pregap to generate, from a CUE `PREGAP` directive.
     generated_pregap_ms: Option<i64>,
     /// The same generated pregap in exact samples.
-    generated_pregap_samples: Option<i64>,
+    generated_pregap_samples: Option<u64>,
     duration: std::time::Duration,
     /// Picks how a track start seeks: by byte to `start_byte`, except APE, which
     /// seeks by sample.

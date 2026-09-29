@@ -671,7 +671,7 @@ fn build_audio_formats_gives_ape_cue_tracks_real_end_bytes() {
 
     let file_size = std::fs::metadata(format!("{dir}/Test Album.ape"))
         .unwrap()
-        .len() as i64;
+        .len();
     let mut file_ids = HashMap::new();
     file_ids.insert(
         PathBuf::from(format!("{dir}/Test Album.ape")),
@@ -691,7 +691,7 @@ fn build_audio_formats_gives_ape_cue_tracks_real_end_bytes() {
         .iter()
         .filter(|segment| segment.role == crate::db::DbAudioSegmentRole::Main)
         .collect();
-    let ends: Vec<Option<i64>> = main_segments
+    let ends: Vec<Option<u64>> = main_segments
         .iter()
         .map(|segment| segment.end_byte)
         .collect();

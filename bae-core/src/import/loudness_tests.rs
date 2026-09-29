@@ -610,8 +610,8 @@ async fn measure_loudness_reads_a_cue_image_through_one_open_file() {
     for n in 0..count {
         audio_formats.push(audio_format(&format!("track-{n}"), &format!("af-{n}")));
         let mut segment = whole_file_main_segment(&format!("af-{n}"), "image");
-        segment.start_sample = (n * 2 * 44_100) as i64;
-        segment.end_sample = Some(((n * 2 + 1) * 44_100) as i64);
+        segment.start_sample = n * 2 * 44_100;
+        segment.end_sample = Some((n * 2 + 1) * 44_100);
         audio_segments.push(segment);
         tracks.push(standalone_track(&format!("track-{n}"), &image));
     }

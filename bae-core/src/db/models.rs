@@ -403,9 +403,9 @@ pub struct DbAudioFormat {
     pub generated_pregap_ms: Option<i64>,
     /// Exact audio pregap length in source samples. Millisecond fields are for
     /// display/progress; export uses sample counts to place CUE gaps.
-    pub pregap_samples: Option<i64>,
+    pub pregap_samples: Option<u64>,
     /// Exact generated-silence pregap length in source samples.
-    pub generated_pregap_samples: Option<i64>,
+    pub generated_pregap_samples: Option<u64>,
     /// Sample rate in Hz (for time-to-sample conversion during seek).
     pub sample_rate: i64,
     /// Bits per sample (16, 24, etc.). None for lossy codecs where FFmpeg can't determine it.
@@ -476,8 +476,8 @@ impl SegmentSpan {
 }
 
 /// One ordered file-backed window that supplies samples for an audio format.
-/// The window columns stay `i64` (SQLite's integer type); [`Self::span`] is the
-/// single conversion to the unsigned [`SegmentSpan`] everything above reads.
+/// The schema keeps every position non-negative, and the row reader refuses a
+/// negative one, so the positions are unsigned here.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbAudioSegment {
     pub id: String,
@@ -486,30 +486,24 @@ pub struct DbAudioSegment {
     pub role: DbAudioSegmentRole,
     pub file_id: String,
     /// First sample of this segment within its backing file.
-    pub start_sample: i64,
+    pub start_sample: u64,
     /// One past this segment's last sample within its backing file.
-    pub end_sample: Option<i64>,
+    pub end_sample: Option<u64>,
     /// Byte this segment begins at within its backing file. `None` means byte 0.
-    pub start_byte: Option<i64>,
+    pub start_byte: Option<u64>,
     /// One past this segment's last byte within its backing file.
-    pub end_byte: Option<i64>,
+    pub end_byte: Option<u64>,
     pub created_at: DateTime<Utc>,
 }
 
 impl DbAudioSegment {
-    /// The row's window in unsigned coordinates. A negative stored value is a
-    /// corrupt row; fail loud rather than wrap.
+    /// The row's window within its backing file.
     pub fn span(&self) -> SegmentSpan {
-        let non_negative = |what: &str, value: i64| {
-            u64::try_from(value).unwrap_or_else(|_| {
-                panic!("audio segment {} has negative {what}: {value}", self.id)
-            })
-        };
         SegmentSpan {
-            start_sample: non_negative("start_sample", self.start_sample),
-            end_sample: self.end_sample.map(|v| non_negative("end_sample", v)),
-            start_byte: self.start_byte.map(|v| non_negative("start_byte", v)),
-            end_byte: self.end_byte.map(|v| non_negative("end_byte", v)),
+            start_sample: self.start_sample,
+            end_sample: self.end_sample,
+            start_byte: self.start_byte,
+            end_byte: self.end_byte,
         }
     }
 }
@@ -787,8 +781,8 @@ impl DbAudioFormat {
         mut self,
         pregap_ms: Option<i64>,
         generated_pregap_ms: Option<i64>,
-        pregap_samples: Option<i64>,
-        generated_pregap_samples: Option<i64>,
+        pregap_samples: Option<u64>,
+        generated_pregap_samples: Option<u64>,
     ) -> Self {
         self.pregap_ms = pregap_ms;
         self.generated_pregap_ms = generated_pregap_ms;

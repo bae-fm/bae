@@ -117,3 +117,52 @@ fn only_audio_has_a_layout_and_audio_left_out_of_the_tracklist_has_none() {
         .expect("the facts of carried audio read back");
     assert_eq!(audio.layout, None);
 }
+
+/// A track of the seeded release with one audio format and one main segment
+/// over a seeded file, all with valid non-negative positions.
+fn seeded_audio_segment() -> Connection {
+    let conn = seeded_conn();
+    let now = "2026-01-01T00:00:00Z";
+    insert_file(&conn, "file-1", Some("file"), Some(("audio/flac", 16))).unwrap();
+    conn.execute(
+        "INSERT INTO tracks (id, release_id, title, _updated_at, created_at) \
+         VALUES ('track-1', 'cccb6034-5922-40d2-8d0b-d94619230882', 'Track Title', ?1, ?1)",
+        params![now],
+    )
+    .unwrap();
+    conn.execute(
+        "INSERT INTO audio_formats (id, track_id, content_type, sample_rate, channels, \
+         _updated_at, created_at) VALUES ('format-1', 'track-1', 'audio/flac', 44100, 2, ?1, ?1)",
+        params![now],
+    )
+    .unwrap();
+    conn.execute(
+        "INSERT INTO audio_format_segments (id, audio_format_id, segment_index, role, file_id, \
+         start_sample, end_sample, start_byte, end_byte, _updated_at, created_at) \
+         VALUES ('segment-1', 'format-1', 0, 'main', 'file-1', 0, 44100, 0, 1000, ?1, ?1)",
+        params![now],
+    )
+    .unwrap();
+    conn
+}
+
+/// Sample and byte positions count from the start of a file, so no row may
+/// hold a negative one — whichever device wrote it.
+#[test]
+fn the_schema_refuses_negative_audio_positions() {
+    let conn = seeded_audio_segment();
+    for column in ["start_sample", "end_sample", "start_byte", "end_byte"] {
+        let update = conn.execute(
+            &format!("UPDATE audio_format_segments SET {column} = -1 WHERE id = 'segment-1'"),
+            [],
+        );
+        assert!(update.is_err(), "a negative {column} was stored");
+    }
+    for column in ["pregap_samples", "generated_pregap_samples"] {
+        let update = conn.execute(
+            &format!("UPDATE audio_formats SET {column} = -1 WHERE id = 'format-1'"),
+            [],
+        );
+        assert!(update.is_err(), "a negative {column} was stored");
+    }
+}

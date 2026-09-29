@@ -394,9 +394,7 @@ impl SaveTrackPlan {
         match &self.window {
             SaveWindow::ImageTrack => SaveSegments {
                 segments: meta.audio_segments.iter().collect(),
-                leading_silence_frames: non_negative_samples(
-                    meta.audio_format.generated_pregap_samples,
-                ),
+                leading_silence_frames: pregap_frames(meta.audio_format.generated_pregap_samples),
                 trailing_silence_frames: 0,
             },
             SaveWindow::TrackFile {
@@ -406,7 +404,7 @@ impl SaveTrackPlan {
             } => {
                 use crate::config::SavePregapPlacement;
 
-                let own_audio_pregap = non_negative_samples(meta.audio_format.pregap_samples);
+                let own_audio_pregap = pregap_frames(meta.audio_format.pregap_samples);
                 let includes_htoa = *is_first_track
                     && *placement == SavePregapPlacement::AppendToPreviousIncludingHtoa;
                 let include_own_pregap = includes_htoa || own_audio_pregap == 0;
@@ -418,7 +416,7 @@ impl SaveTrackPlan {
                     })
                     .collect();
                 let leading_silence_frames = if includes_htoa {
-                    non_negative_samples(meta.audio_format.generated_pregap_samples)
+                    pregap_frames(meta.audio_format.generated_pregap_samples)
                 } else {
                     0
                 };
@@ -429,13 +427,13 @@ impl SaveTrackPlan {
                         | SavePregapPlacement::AppendToPreviousIncludingHtoa
                 ) {
                     if let Some(next) = next {
-                        if non_negative_samples(next.audio_format.pregap_samples) > 0 {
+                        if pregap_frames(next.audio_format.pregap_samples) > 0 {
                             segments.extend(next.audio_segments.iter().filter(|segment| {
                                 segment.role == crate::db::DbAudioSegmentRole::AudioPregap
                             }));
                         }
                         trailing_silence_frames =
-                            non_negative_samples(next.audio_format.generated_pregap_samples);
+                            pregap_frames(next.audio_format.generated_pregap_samples);
                     }
                 }
                 SaveSegments {
@@ -491,10 +489,9 @@ fn byte_seekable(meta: &TrackAudioMeta) -> bool {
     meta.audio_format.content_type != crate::util::content_type::ContentType::Ape
 }
 
-fn non_negative_samples(samples: Option<i64>) -> u64 {
-    samples.map_or(0, |sample| {
-        u64::try_from(sample).expect("audio_format pregap samples are non-negative")
-    })
+/// A format with no recorded pregap has none.
+fn pregap_frames(samples: Option<u64>) -> u64 {
+    samples.unwrap_or(0)
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

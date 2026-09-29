@@ -321,6 +321,26 @@ pub(super) fn rfc3339_column(row: &Row, column: &str) -> coven::rusqlite::Result
         })
 }
 
+/// Read a named integer column that holds a count or a position, which the
+/// schema keeps non-negative, surfacing a negative one as a column-conversion
+/// error.
+pub(super) fn count_column(row: &Row, column: &str) -> coven::rusqlite::Result<u64> {
+    let raw: i64 = row.get(column)?;
+    u64::try_from(raw)
+        .map_err(|_| column_conversion_error(row, column, format!("{column} {raw} is negative")))
+}
+
+/// [`count_column`] for a nullable column.
+pub(super) fn optional_count_column(
+    row: &Row,
+    column: &str,
+) -> coven::rusqlite::Result<Option<u64>> {
+    match row.get::<_, Option<i64>>(column)? {
+        None => Ok(None),
+        Some(_) => count_column(row, column).map(Some),
+    }
+}
+
 /// Read a named text column back into the type whose `FromStr` it was written
 /// from, surfacing a word no variant answers to as a column-conversion error.
 pub(super) fn parsed_column<T>(row: &Row, column: &str) -> coven::rusqlite::Result<T>
@@ -491,8 +511,8 @@ pub(super) fn row_to_audio_format(row: &Row) -> coven::rusqlite::Result<DbAudioF
         content_type: ContentType::from_mime(&row.get::<_, String>("content_type")?),
         pregap_ms: row.get("pregap_ms")?,
         generated_pregap_ms: row.get("generated_pregap_ms")?,
-        pregap_samples: row.get("pregap_samples")?,
-        generated_pregap_samples: row.get("generated_pregap_samples")?,
+        pregap_samples: optional_count_column(row, "pregap_samples")?,
+        generated_pregap_samples: optional_count_column(row, "generated_pregap_samples")?,
         sample_rate: row.get("sample_rate")?,
         bits_per_sample: row.get("bits_per_sample")?,
         channels: row.get("channels")?,
@@ -517,10 +537,10 @@ pub(super) fn row_to_audio_segment(row: &Row) -> coven::rusqlite::Result<DbAudio
         segment_index: row.get("segment_index")?,
         role,
         file_id: row.get("file_id")?,
-        start_sample: row.get("start_sample")?,
-        end_sample: row.get("end_sample")?,
-        start_byte: row.get("start_byte")?,
-        end_byte: row.get("end_byte")?,
+        start_sample: count_column(row, "start_sample")?,
+        end_sample: optional_count_column(row, "end_sample")?,
+        start_byte: optional_count_column(row, "start_byte")?,
+        end_byte: optional_count_column(row, "end_byte")?,
         created_at: rfc3339_column(row, "created_at")?,
     })
 }

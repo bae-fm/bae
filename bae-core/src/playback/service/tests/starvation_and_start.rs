@@ -387,15 +387,6 @@ fn natural_start_includes_audio_and_generated_pregap_segments() {
     assert_eq!(decode.segment_seek_to_byte(0), Some(100));
 }
 
-#[test]
-fn generated_pregap_samples_clamps_negative_sample_value() {
-    let buffer = create_sparse_buffer(1_024);
-    let mut prepared = test_prepared_track("track", buffer);
-    prepared.generated_pregap_samples = Some(-1);
-    prepared.generated_pregap_ms = Some(10);
-
-    assert_eq!(prepared.generated_pregap_samples(), 0);
-}
 
 #[test]
 fn generated_pregap_samples_clamps_negative_millisecond_value() {

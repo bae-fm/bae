@@ -206,19 +206,11 @@ fn cue_backed_audio_format(
     let audio_pregap_samples = audio_pregap
         .as_ref()
         .map(|pregap| pregap.end_sample - pregap.start_sample)
-        .filter(|&samples| samples > 0)
-        .map(|samples| cue_audio_measure(samples, "pregap samples"))
-        .transpose()?;
+        .filter(|&samples| samples > 0);
     let generated_pregap_samples = cue_track
         .generated_pregap_frames
         .filter(|&frames| frames > 0)
-        .map(|frames| {
-            cue_audio_measure(
-                crate::cue_flac::cue_frames_to_samples(frames, u64::from(probe.sample_rate)),
-                "generated pregap samples",
-            )
-        })
-        .transpose()?;
+        .map(|frames| crate::cue_flac::cue_frames_to_samples(frames, u64::from(probe.sample_rate)));
 
     Ok(DbAudioFormat::new(
         db_track_id,
@@ -315,10 +307,10 @@ impl ImportService {
             segment_index,
             role,
             file_id: file_id.to_string(),
-            start_sample: span.start_sample as i64,
-            end_sample: span.end_sample.map(|sample| sample as i64),
-            start_byte: span.start_byte.map(|byte| byte as i64),
-            end_byte: span.end_byte.map(|byte| byte as i64),
+            start_sample: span.start_sample,
+            end_sample: span.end_sample,
+            start_byte: span.start_byte,
+            end_byte: span.end_byte,
             created_at: now,
         }
     }

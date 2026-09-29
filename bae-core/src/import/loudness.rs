@@ -480,7 +480,7 @@ pub(super) async fn measure_loudness(
                 .try_fold(0u64, |total, segment| {
                     segment.end_sample.map(|end| {
                         total.saturating_add(
-                            (end as u64).saturating_sub(segment.start_sample as u64),
+                            end.saturating_sub(segment.start_sample),
                         )
                     })
                 })
