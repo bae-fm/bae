@@ -275,3 +275,7 @@ mod supplemental_tests;
 #[cfg(test)]
 #[path = "payloads/ambiguity_tests.rs"]
 mod ambiguity_tests;
+
+#[cfg(test)]
+#[path = "payloads/statements_tests.rs"]
+mod statements_tests;

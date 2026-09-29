@@ -90,7 +90,7 @@ pub struct AlbumLink {
 /// Which statement names the album.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum AlbumStatement {
-    /// The release group's own page links it.
+    /// The release group's page, or the release's own, links it.
     Page,
     /// The group's page links this Wikidata item, which states it.
     Wikidata { item: String },
@@ -419,13 +419,13 @@ pub(crate) fn to_keep<Status>(read: &[GroupReading<Status>]) -> Vec<(String, Vec
 /// The statements read so far, and whether one that was asked for could not
 /// be had.
 #[derive(Default)]
-struct Found {
-    links: Vec<AlbumLink>,
-    unread: bool,
+pub(crate) struct Found {
+    pub(crate) links: Vec<AlbumLink>,
+    pub(crate) unread: bool,
 }
 
 impl Found {
-    fn push(&mut self, album: MetadataRef, stated: AlbumStatement) {
+    pub(crate) fn push(&mut self, album: MetadataRef, stated: AlbumStatement) {
         if !self.links.iter().any(|link| link.album == album) {
             self.links.push(AlbumLink { album, stated });
         }
@@ -433,7 +433,7 @@ impl Found {
 
     /// What was read: the albums named, or — where none was named — that
     /// nothing is stated, unless something asked for could not be had.
-    fn settle(self) -> AlbumLinks {
+    pub(crate) fn settle(self) -> AlbumLinks {
         if self.links.is_empty() && self.unread {
             AlbumLinks::Unread
         } else {
@@ -781,7 +781,7 @@ fn through_browsed(
 
 /// Whether a page of `catalog` names an album this reading joins: one of
 /// another lookup catalog's.
-fn names_other_album(catalog: Catalog) -> bool {
+pub(crate) fn names_other_album(catalog: Catalog) -> bool {
     catalog != Catalog::MusicBrainz && Catalog::LOOKUP.contains(&catalog)
 }
 

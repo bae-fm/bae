@@ -313,7 +313,7 @@ fn selected_album_url_precedes_counterpart_parent_inference() {
 }
 
 #[test]
-fn conflicting_counterpart_parents_block_weaker_wikidata_parent() {
+fn a_wikidata_item_is_taken_over_linked_releases_that_disagree() {
     for missing in [false, true] {
         let mut payloads = selected(&[
             "https://www.discogs.com/release/11",
@@ -330,13 +330,15 @@ fn conflicting_counterpart_parents_block_weaker_wikidata_parent() {
         }
         payloads.supporting = vec![pressing(11, Some(101)), pressing(12, Some(102)), master(101, 1971), master(102, 1982), SourcePayload::new(PayloadSource::Wikidata, "Q101", json!({"entities":{"Q101":{"claims":{"P1954":[{"mainsnak":{"datavalue":{"value":"101"}}}]}}}}).to_string())];
         assert_permutation(&payloads, |payloads| {
-            assert_eq!(parsed(payloads).album.year, Some(2005));
-            assert!(!payloads
-                .extract().unwrap()
-                .records()
-                .iter()
-                .any(|record| record.catalog() == Catalog::Discogs));
-            assert!(payloads.extract().unwrap().covers().is_empty());
+            assert_eq!(parsed(payloads).album.year, Some(1971));
+            assert_eq!(
+                payloads.album_links().unwrap(),
+                vec![
+                    MetadataRef::new(Catalog::Discogs, "101"),
+                    MetadataRef::new(Catalog::Wikidata, "Q101")
+                ]
+            );
+            assert_eq!(payloads.extract().unwrap().covers().len(), 1);
         });
     }
 }

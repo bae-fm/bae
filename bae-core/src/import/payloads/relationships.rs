@@ -1,16 +1,17 @@
 use super::*;
+use crate::import::album_links::{names_other_album, AlbumLinks, AlbumStatement, Found};
 use std::collections::{HashMap, HashSet};
 
 /// The strongest album claims encountered while following this release's links.
 /// An ambiguous claim occupies its catalog so weaker links cannot choose for it.
-struct AlbumLinks(HashMap<Catalog, AlbumIdentity>);
+struct AlbumClaims(HashMap<Catalog, AlbumIdentity>);
 
 enum AlbumIdentity {
     Known(String),
     Ambiguous,
 }
 
-impl AlbumLinks {
+impl AlbumClaims {
     fn admit(&mut self, claims: impl IntoIterator<Item = MetadataRef>) {
         let mut candidates: HashMap<Catalog, HashSet<String>> = HashMap::new();
         for claim in claims {
@@ -75,70 +76,179 @@ impl ReleasePayloads {
         Ok(keys)
     }
 
-    /// Multiple pressing links establish an album only when every named release
-    /// resolves and independently states that same parent.
-    fn counterpart_parents(&self) -> Result<Vec<MetadataRef>, ImportError> {
-        match self.release.catalog {
-            Catalog::Discogs => Ok(self
-                .musicbrainz_xref()?
-                .and_then(|release| {
-                    release
-                        .release_group
-                        .map(|group| MetadataRef::new(Catalog::MusicBrainz, group.id))
-                })
-                .into_iter()
-                .collect()),
-            Catalog::MusicBrainz => {
-                let keys = self.discogs_counterpart_keys()?;
-                let mut parents = Vec::new();
-                let mut incomplete = false;
-                for key in &keys {
-                    let Some(json) = self.document(PayloadSource::Discogs, key) else {
-                        tracing::debug!(discogs_release = key, "Cannot infer album from an unavailable linked release");
-                        incomplete = true;
-                        continue;
-                    };
-                    let Some(parent) =
-                        crate::discogs::client::parse_discogs_release_json(json)?.master_id
-                    else {
-                        tracing::debug!(discogs_release = key, "Linked release has no known album parent");
-                        incomplete = true;
-                        continue;
-                    };
-                    parents.push(parent);
-                }
-                if incomplete && parents.iter().collect::<HashSet<_>>().len() < 2 {
-                    return Ok(Vec::new());
-                }
-                Ok(parents
-                    .into_iter()
-                    .map(|key| MetadataRef::new(Catalog::Discogs, key))
-                    .collect())
+    /// The MusicBrainz release group cross-linked to a Discogs-seeded release,
+    /// through the MusicBrainz release linked to it.
+    fn counterpart_group(&self) -> Result<Option<MetadataRef>, ImportError> {
+        Ok(self.musicbrainz_xref()?.and_then(|release| {
+            release
+                .release_group
+                .map(|group| MetadataRef::new(Catalog::MusicBrainz, group.id))
+        }))
+    }
+
+    /// What this MusicBrainz release's documents state its album is on the
+    /// other lookup catalog: the one rule set a stored release's records and
+    /// an identify run's rows both read (see [`crate::import::album_links`]).
+    /// Three statements, strongest first; the first that names an album is
+    /// the one taken:
+    ///
+    /// 1. The release group's page — the group's document, and the group
+    ///    relations the release embeds — or the release's own page links the
+    ///    album.
+    /// 2. A Wikidata item that page links states the album.
+    /// 3. The release links a Discogs release as itself, and that release's
+    ///    document files it under the album. Where it links several, they name
+    ///    an album only when every one was read and files it under one, or
+    ///    when those read already disagree: one that could not be read, or is
+    ///    filed under none, may be of another album.
+    ///
+    /// `Unread` when nothing named an album and a document one of them reads
+    /// was not fetched. Only called down the MusicBrainz arm of a
+    /// `self.release.catalog` match.
+    pub(crate) fn album_statements(&self) -> Result<AlbumLinks, ImportError> {
+        let anchor = self.musicbrainz_anchor()?;
+        let mut found = Found::default();
+
+        let mut pages: Vec<CatalogPage> = crate::musicbrainz::relation_urls(&anchor.relations)
+            .filter_map(parse_catalog_url)
+            .collect();
+        if let Some(group) = &anchor.release_group {
+            if let Some(relations) = &group.relations {
+                pages.extend(crate::musicbrainz::relation_urls(relations).filter_map(parse_catalog_url));
             }
-            other => not_fetched(other),
+            match self.document(PayloadSource::MusicBrainzReleaseGroup, &group.id) {
+                Some(json) => {
+                    let document = crate::musicbrainz::parse_release_group(json)
+                        .map_err(|error| self.source_data(error.to_string()))?;
+                    pages.extend(
+                        crate::musicbrainz::relation_urls(&document.relations)
+                            .filter_map(parse_catalog_url),
+                    );
+                }
+                None if group.relations.is_none() => {
+                    found.unread |= self.was_unfetched(PayloadSource::MusicBrainzReleaseGroup, &group.id);
+                }
+                None => {}
+            }
         }
+        for page in &pages {
+            if let CatalogPage::Group { catalog, key } = page {
+                if names_other_album(*catalog) {
+                    found.push(MetadataRef::new(*catalog, key.clone()), AlbumStatement::Page);
+                }
+            }
+        }
+        if !found.links.is_empty() {
+            return Ok(found.settle());
+        }
+
+        let mut items: Vec<&str> = Vec::new();
+        for page in &pages {
+            if let CatalogPage::Group {
+                catalog: Catalog::Wikidata,
+                key,
+            } = page
+            {
+                if !items.contains(&key.as_str()) {
+                    items.push(key);
+                }
+            }
+        }
+        for item in items {
+            let Some(json) = self.document(PayloadSource::Wikidata, item) else {
+                found.unread |= self.was_unfetched(PayloadSource::Wikidata, item);
+                continue;
+            };
+            let entity = crate::wikidata::parse_entity(json)
+                .map_err(|error| self.source_data(error.to_string()))?;
+            for page in entity.catalog_pages() {
+                if let CatalogPage::Group { catalog, key } = page {
+                    if names_other_album(catalog) {
+                        found.push(
+                            MetadataRef::new(catalog, key),
+                            AlbumStatement::Wikidata {
+                                item: item.to_string(),
+                            },
+                        );
+                    }
+                }
+            }
+        }
+        if !found.links.is_empty() {
+            return Ok(found.settle());
+        }
+
+        let mut filed: Vec<(String, String)> = Vec::new();
+        let mut incomplete = false;
+        for key in self.discogs_counterpart_keys()? {
+            let Some(json) = self.document(PayloadSource::Discogs, &key) else {
+                found.unread |= self.was_unfetched(PayloadSource::Discogs, &key);
+                incomplete = true;
+                continue;
+            };
+            match crate::discogs::client::parse_discogs_release_json(json)?.master_id {
+                Some(master) => filed.push((key, master)),
+                None => incomplete = true,
+            }
+        }
+        let masters: HashSet<&str> = filed.iter().map(|(_, master)| master.as_str()).collect();
+        if !incomplete || masters.len() > 1 {
+            for (twin, master) in &filed {
+                found.push(
+                    MetadataRef::new(Catalog::Discogs, master.clone()),
+                    AlbumStatement::Release {
+                        musicbrainz_release: self.release.key.clone(),
+                        twin: MetadataRef::new(Catalog::Discogs, twin.clone()),
+                    },
+                );
+            }
+        }
+        Ok(found.settle())
+    }
+
+    /// Whether the walk named this document and could not get it.
+    fn was_unfetched(&self, document: PayloadSource, key: &str) -> bool {
+        self.unfetched
+            .iter()
+            .any(|unfetched| unfetched.document == document && unfetched.key == key)
     }
 
     /// Resolve whole groups of equally strong claims before following their
     /// documents. Archive order and URL order cannot select an album identity.
     pub(super) fn album_links(&self) -> Result<Vec<MetadataRef>, ImportError> {
-        let mut links = AlbumLinks(HashMap::new());
+        let mut links = AlbumClaims(HashMap::new());
         links.admit(self.anchor_parent()?);
         let musicbrainz = match self.release.catalog {
             Catalog::MusicBrainz => Some(self.musicbrainz_anchor()?),
             Catalog::Discogs => self.musicbrainz_xref()?,
             other => not_fetched(other),
         };
-        if self.release.catalog == Catalog::MusicBrainz {
-            links.admit(album_urls(
-                &musicbrainz.as_ref().expect("selected MB release").relations,
-            ));
-        }
-        links.admit(self.counterpart_parents()?);
-        if self.release.catalog == Catalog::Discogs {
-            if let Some(release) = &musicbrainz {
-                links.admit(album_urls(&release.relations));
+        // A MusicBrainz release's album on the other lookup catalog is what
+        // its statements name, and nothing the walk below reaches.
+        let walked = |claim: &MetadataRef| {
+            self.release.catalog != Catalog::MusicBrainz || !names_other_album(claim.catalog)
+        };
+        match self.release.catalog {
+            Catalog::MusicBrainz => {
+                links.admit(
+                    self.album_statements()?
+                        .read()
+                        .iter()
+                        .map(|link| link.album.clone()),
+                );
+                links.admit(
+                    album_urls(&musicbrainz.as_ref().expect("selected MB release").relations)
+                        .into_iter()
+                        .filter(walked),
+                );
             }
+            Catalog::Discogs => {
+                links.admit(self.counterpart_group()?);
+                if let Some(release) = &musicbrainz {
+                    links.admit(album_urls(&release.relations));
+                }
+            }
+            other => not_fetched(other),
         }
         let mut visited = HashSet::new();
         loop {
@@ -196,7 +306,7 @@ impl ReleasePayloads {
                     _ => {}
                 }
             }
-            links.admit(claims);
+            links.admit(claims.into_iter().filter(walked));
         }
         Ok(links.known())
     }
