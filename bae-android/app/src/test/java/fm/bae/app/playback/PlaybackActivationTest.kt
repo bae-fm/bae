@@ -80,14 +80,9 @@ class PlaybackActivationTest {
         // resolves (the bare loading event carries no track).
         player.applyPlaybackState(
             playingState(
-                "t1",
-                "First Title",
-                "Artist Name",
-                "artist-1",
-                "album-1",
-                "Album Title",
-                null,
-                200_000uL,
+                trackId = "t1",
+                trackTitle = "First Title",
+                durationMs = 200_000uL,
             ),
         )
         player.applyPlaybackState(loadingState("t2", null))
@@ -136,14 +131,8 @@ class PlaybackActivationTest {
 
         player.applyPlaybackState(
             playingState(
-                "t1",
-                "Track Title",
-                "Artist Name",
-                "artist-1",
-                "album-1",
-                "Album Title",
-                null,
-                200_000uL,
+                trackId = "t1",
+                durationMs = 200_000uL,
             ),
         )
         shadowOf(Looper.getMainLooper()).idle()
@@ -163,14 +152,8 @@ class PlaybackActivationTest {
         // began on screen keeps the audio alive.
         player.applyPlaybackState(
             playingState(
-                "t1",
-                "Track Title",
-                "Artist Name",
-                "artist-1",
-                "album-1",
-                "Album Title",
-                null,
-                200_000uL,
+                trackId = "t1",
+                durationMs = 200_000uL,
             ),
         )
         shadowOf(Looper.getMainLooper()).idle()

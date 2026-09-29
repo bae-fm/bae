@@ -40,29 +40,17 @@ class AudioFocusResumeTest {
     private fun BaeCorePlayer.startPlaying() =
         applyPlaybackState(
             playingState(
-                "t1",
-                "Track Title",
-                "Artist Name",
-                "artist-1",
-                "album-1",
-                "Album Title",
-                null,
-                200_000uL,
+                trackId = "t1",
+                durationMs = 200_000uL,
             ),
         )
 
     private fun BaeCorePlayer.reportPaused() =
         applyPlaybackState(
             pausedState(
-                "t1",
-                "Track Title",
-                "Artist Name",
-                "artist-1",
-                "album-1",
-                "Album Title",
-                null,
-                200_000uL,
-                BridgePlaybackPauseReason.Manual,
+                trackId = "t1",
+                durationMs = 200_000uL,
+                reason = BridgePlaybackPauseReason.Manual,
             ),
         )
 

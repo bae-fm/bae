@@ -111,14 +111,8 @@ class PlaybackServiceTest {
         // new event would throw "Player is released".
         session.playback.applyPlaybackState(
             playingState(
-                "t1",
-                "Track Title",
-                "Artist Name",
-                "artist-1",
-                "album-1",
-                "Album Title",
-                null,
-                200_000uL,
+                trackId = "t1",
+                durationMs = 200_000uL,
             ),
         )
         shadowOf(looper).idle()
