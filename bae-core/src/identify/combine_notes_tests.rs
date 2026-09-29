@@ -135,3 +135,74 @@ fn the_notes_never_outrank_an_earlier_field() {
     );
     assert_eq!(offered(&outcome), vec!["rel-alpha"]);
 }
+
+/// Where nothing else tells two look-alike rows apart, the dated one is
+/// offered and the undated one set aside.
+#[test]
+fn an_undated_look_alike_folds_below_a_dated_one() {
+    let (dated, dated_status) = pressing("rel-dated", &[]);
+    let undated = MetadataResult {
+        year: None,
+        ..pressing("rel-undated", &[]).0
+    };
+    let outcome = by_catalog(
+        vec![
+            (undated, LibraryStatus::absent("rel-undated")),
+            (dated, dated_status),
+        ],
+        &folder("Label One L1-100"),
+    );
+    assert_eq!(offered(&outcome), vec!["rel-dated"]);
+    assert_eq!(
+        outcome
+            .0
+            .narrowed_out
+            .matches
+            .iter()
+            .map(|result| result.release_id.as_str())
+            .collect::<Vec<_>>(),
+        vec!["rel-undated"]
+    );
+}
+
+/// Stating a year only breaks a tie: an undated row better on an earlier
+/// field is offered over a dated one.
+#[test]
+fn stating_a_year_never_outranks_an_earlier_field() {
+    let undated = MetadataResult {
+        year: None,
+        ..pressing("rel-undated", &[]).0
+    };
+    let dated = MetadataResult {
+        labels: vec![crate::pressing::ReleaseLabel::of(Some("Label One"), None)],
+        ..pressing("rel-dated", &[]).0
+    };
+    let outcome = by_catalog(
+        vec![
+            (undated, LibraryStatus::absent("rel-undated")),
+            (dated, LibraryStatus::absent("rel-dated")),
+        ],
+        &folder("Label One L1-100"),
+    );
+    assert_eq!(offered(&outcome), vec!["rel-undated"]);
+}
+
+/// The notes are weighed among every row tied above them, dated or not: an
+/// undated look-alike's notes cancel the word it shares with a dated row, so
+/// the folder naming that word sets neither apart.
+#[test]
+fn the_notes_are_weighed_before_the_year() {
+    let undated = MetadataResult {
+        year: None,
+        ..pressing("rel-undated", &["Plant Beta"]).0
+    };
+    let outcome = by_catalog(
+        vec![
+            pressing("rel-alpha", &["Plant Alpha"]),
+            pressing("rel-beta", &["Plant Beta"]),
+            (undated, LibraryStatus::absent("rel-undated")),
+        ],
+        &folder("Label One L1-100 Beta"),
+    );
+    assert_eq!(offered(&outcome), vec!["rel-alpha", "rel-beta"]);
+}

@@ -365,6 +365,11 @@ struct Support {
     /// words shared by every tied row cancel out, and a word matched by chance
     /// costs only the order of rows that were equal anyway.
     names_what_sets_it_apart: bool,
+    /// Whether any of the row's records states a release year. Last: where
+    /// nothing the folder says decides between look-alike rows, the person
+    /// picks the entry that tells them the most, and an undated duplicate of
+    /// a dated entry is never that pick.
+    states_a_year: bool,
 }
 
 /// What stands behind one row, over all its records.
@@ -431,6 +436,7 @@ fn support_of(
         offered,
         // Weighed once every row's other fields are.
         names_what_sets_it_apart: false,
+        states_a_year: row.releases.iter().any(|release| release.year.is_some()),
     }
 }
 
@@ -472,6 +478,16 @@ fn split_rows(
 }
 
 impl Support {
+    /// The fields declared above `names_what_sets_it_apart`, the rest as
+    /// though no row had them.
+    fn above_notes(&self) -> Self {
+        Self {
+            names_what_sets_it_apart: false,
+            states_a_year: false,
+            ..*self
+        }
+    }
+
     /// The fields declared above `track_titles`: what a row ties with the
     /// others on before its titles are weighed.
     fn above_track_titles(&self) -> (bool, u32, u32, bool, u32, bool) {
@@ -519,11 +535,11 @@ fn weigh_title_agreement(rows: &[Pressing], support: &mut [Support]) {
 /// below are out already, and what their notes share with these says nothing
 /// about which of these is on the desk.
 fn weigh_notes(rows: &[Pressing], support: &mut [Support], text: &CandidateText) {
-    let Some(best) = support.iter().copied().max() else {
+    let Some(best) = support.iter().map(Support::above_notes).max() else {
         return;
     };
     let tied: Vec<usize> = (0..rows.len())
-        .filter(|row| support[*row] == best)
+        .filter(|row| support[*row].above_notes() == best)
         .collect();
     let named = super::notes::names_what_sets_each_apart(
         tied.iter().map(|row| rows[*row].releases.as_slice()),

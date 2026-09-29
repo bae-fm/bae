@@ -59,7 +59,8 @@ fn offered(outcome: &Outcome) -> Vec<&str> {
 }
 
 /// A folder naming the year the album first came out names no edition: the
-/// original, a reissue and an undated one are offered together.
+/// original and a reissue are offered together, and only an undated one,
+/// which tells the person less, is set aside.
 #[test]
 fn the_album_s_first_year_offers_every_edition() {
     let outcome = search(
@@ -70,10 +71,7 @@ fn the_album_s_first_year_offers_every_edition() {
         ],
         &folder("1963 Album One"),
     );
-    assert_eq!(
-        offered(&outcome),
-        vec!["rel-1963", "rel-2005", "rel-undated"]
-    );
+    assert_eq!(offered(&outcome), vec!["rel-1963", "rel-2005"]);
 }
 
 /// A later year names the edition: the pressing of that year is offered, and
