@@ -415,8 +415,7 @@ struct Candidate: Equatable, Identifiable {
             ?? BridgeMappingTable(
                 images: [],
                 trackSections: [],
-                files: [],
-                reconciliation: nil
+                files: []
             )
     }
 

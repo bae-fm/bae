@@ -263,10 +263,6 @@ struct ImportMappingPaneTests {
             mapping: MappingFixtures.unboundSheetTable
         )
         #expect(MappingFixtures.mapping(of: store).willWriteCount == 1)
-        #expect(
-            MappingFixtures.mapping(of: store).reconciliation
-                == nil
-        )
 
         let recorder = Recorder()
         await ImportMappingFlow.bindSheet(
@@ -313,7 +309,6 @@ struct ImportMappingPaneTests {
         #expect(container.fileId == MappingFixtures.containerId)
         #expect(entries.count == 12)
         #expect(after.willWriteCount == 12)
-        #expect(after.reconciliation == .agrees(count: 12))
     }
 
     // 2. Naming a row writes that row. The count the bar states comes from the
@@ -735,7 +730,6 @@ extension ImportMappingPaneTests {
         )
         #expect(candidate.metadataProvenance == .fileMetadata)
         #expect(candidate.mapping.trackMappings.count == 2)
-        #expect(candidate.mapping.reconciliation == nil)
         #expect(candidate.pickedRelease == nil)
 
         ImportSearchFlow.applyMetadata(

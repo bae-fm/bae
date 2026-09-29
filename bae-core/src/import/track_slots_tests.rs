@@ -90,7 +90,6 @@ fn source_tracks(count: usize) -> Vec<SourceTrack> {
                 artist_assignments: crate::import::TrackArtistAssignments::AlbumArtists,
                 file: None,
             },
-            named_by_source: true,
             // Three minutes each, which is what the synthetic sheets lay
             // their tracks out at.
             duration_ms: Some(180_000),
@@ -714,37 +713,6 @@ fn a_container_s_rows_read_as_one_run() {
     assert!(table.audio[1..]
         .iter()
         .all(|file| file.name == "CDImage.flac"));
-}
-
-/// The tally names which way the two sides disagree, and says so without
-/// refusing anything.
-#[test]
-fn the_tally_names_the_disagreement() {
-    let tmp = tempfile::TempDir::new().expect("tempdir");
-    for index in 1..=13 {
-        write_flac(&tmp.path().join(format!("{index:02}.flac")));
-    }
-    let files = scan(tmp.path());
-    let durations = source_durations(&files).expect("scanned fixture audio has durations");
-
-    assert_eq!(
-        slot_table(&source_tracks(13), &files, &durations).reconciliation,
-        SlotReconciliation::Agrees { count: 13 },
-    );
-    assert_eq!(
-        slot_table(&source_tracks(12), &files, &durations).reconciliation,
-        SlotReconciliation::MoreFiles {
-            files: 13,
-            tracks: 12,
-        },
-    );
-    assert_eq!(
-        slot_table(&source_tracks(14), &files, &durations).reconciliation,
-        SlotReconciliation::MoreTracks {
-            files: 13,
-            tracks: 14,
-        },
-    );
 }
 
 /// Audio a binding names that is no longer in the folder is the one thing

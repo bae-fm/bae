@@ -152,21 +152,11 @@ struct ImportMappingTable: View {
         )
     }
 
-    // The leading cell names the section and states how the folder and the
-    // release disagree about the track count, when they do.
+    // The leading cell names the section.
     private var trackHeaderRow: some View {
         headerRow {
             HStack(alignment: .firstTextBaseline, spacing: ThemeSpace.related) {
                 Eyebrow("Source")
-                if let reconciliation = table.reconciliation
-                    .flatMap(bridgeSlotReconciliationText)
-                {
-                    Text(reconciliation)
-                        .themeText(.detail)
-                        .monospacedDigit()
-                        .foregroundStyle(.tertiary)
-                        .lineLimit(1)
-                }
                 Spacer(minLength: 0)
             }
             .frame(width: columns.source, alignment: .leading)

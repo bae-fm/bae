@@ -9,7 +9,7 @@ import Foundation
 extension BridgeTrackMapping {
     /// The track this row commits, where it commits one.
     var track: BridgeRawTrackEdit? {
-        guard case .track(let track, _, _) = becomes else { return nil }
+        guard case .track(let track, _) = becomes else { return nil }
         return track
     }
 
@@ -146,25 +146,6 @@ extension BridgeMappingRole {
         case .document: .document
         case .other: .other
         }
-    }
-}
-
-/// The tally above the mapping table, in the user's language, or nothing where
-/// there is no line to draw — core says which by naming a key or not, and two
-/// sides that account for the same rows name none. Each message takes its own
-/// numbers, in the order the English value names them.
-func bridgeSlotReconciliationText(
-    _ value: BridgeSlotReconciliation
-) -> String? {
-    guard let key = bridgeSlotReconciliationKey(reconciliation: value) else {
-        return nil
-    }
-    switch value {
-    case .agrees:
-        return nil
-    case .moreFiles(let files, let tracks),
-        .moreTracks(let files, let tracks):
-        return coreString(key, Int(files), Int(tracks))
     }
 }
 

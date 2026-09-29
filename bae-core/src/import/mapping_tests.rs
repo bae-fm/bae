@@ -77,7 +77,6 @@ fn external_table(
         Some(PickedTracklist {
             slots,
             track_id_prefix: "import-track",
-            source: TracklistSource::ExternalRelease,
             medium,
         }),
         durations,
@@ -94,7 +93,6 @@ fn source_tracks(count: usize) -> Vec<SourceTrack> {
                 artist_assignments: crate::import::TrackArtistAssignments::AlbumArtists,
                 file: None,
             },
-            named_by_source: true,
             duration_ms: Some(180_000),
         })
         .collect()
@@ -145,7 +143,6 @@ fn with_no_pick_the_audio_rows_await_one_and_the_rest_still_say_what_they_become
     let table = mapping_table(&scan(tmp.path()), None, &SourceDurations::default());
     let mappings = mappings(&table);
 
-    assert!(table.reconciliation.is_none());
     assert_eq!(table.images.len(), 1);
     assert!(matches!(mappings[0].becomes, MappingBecomes::AwaitingPick));
     assert_eq!(track_file(mappings[0]).name, "01.flac");
@@ -176,7 +173,6 @@ fn a_track_without_a_metadata_duration_uses_its_stored_probe() {
         Some(PickedTracklist {
             slots: &slots,
             track_id_prefix: "candidate-track",
-            source: TracklistSource::CandidateFiles,
             medium: None,
         }),
         &durations,
@@ -321,10 +317,6 @@ fn a_sheet_s_entries_carry_its_own_titles_and_bind_to_its_slices() {
         // The right half is the release's tracklist, not the sheet's.
         assert_eq!(track.title, format!("Track Title {}", index + 1));
     }
-    assert_eq!(
-        table.reconciliation,
-        Some(SlotReconciliation::Agrees { count: 3 }),
-    );
 }
 
 #[test]
@@ -456,13 +448,6 @@ fn tracks_the_folder_has_nothing_for_close_the_table() {
     };
     assert_eq!(track.title, "Track Title 4");
     assert_eq!(track.file, None, "nothing on disk backs it");
-    assert_eq!(
-        table.reconciliation,
-        Some(SlotReconciliation::MoreTracks {
-            files: 2,
-            tracks: 4,
-        }),
-    );
 }
 
 /// The tracks the commit writes are the table's own rows, in the order the

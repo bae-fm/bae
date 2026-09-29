@@ -188,17 +188,6 @@ mirror_enum! {
 }
 
 mirror_enum! {
-    BridgeSlotReconciliation = bae_core::import::SlotReconciliation,
-    from_core: fn,
-    into_core: fn,
-    variants: {
-        Agrees { count },
-        MoreFiles { files, tracks },
-        MoreTracks { files, tracks },
-    },
-}
-
-mirror_enum! {
     BridgeSheetDisc = bae_core::import::folder_scanner::SheetDisc,
     from_core: fn,
     into_core: pub(crate) fn,
@@ -353,7 +342,7 @@ mirror_enum! {
     from_core: fn,
     into_core: fn,
     variants: {
-        Track { track: (BridgeRawTrackEdit), position, named_by_source },
+        Track { track: (BridgeRawTrackEdit), position },
         NotIncluded { audio: (BridgeAudioFile), candidate: (BridgeCandidateAsRead) },
         AwaitingPick,
     },
@@ -526,7 +515,6 @@ mirror_struct! {
         images: (each BridgeMappingImage),
         track_sections: (each BridgeMappingTrackSection),
         files: (each BridgeMappingFileRow),
-        reconciliation: (opt BridgeSlotReconciliation),
     },
 }
 

@@ -163,25 +163,6 @@ fn produced_keys() -> Vec<String> {
         keys.push(bridge_file_becomes_key(becomes));
     }
 
-    // bridge_slot_reconciliation_key — the tally above the slot table.
-    for reconciliation in [
-        BridgeSlotReconciliation::Agrees { count: 12 },
-        BridgeSlotReconciliation::MoreFiles {
-            files: 13,
-            tracks: 12,
-        },
-        BridgeSlotReconciliation::MoreTracks {
-            files: 11,
-            tracks: 12,
-        },
-    ] {
-        keys.extend(bridge_slot_reconciliation_key(reconciliation));
-    }
-    // An agreement draws no line, so it names no key.
-    assert!(
-        bridge_slot_reconciliation_key(BridgeSlotReconciliation::Agrees { count: 12 }).is_none()
-    );
-
     // bridge_sheet_binding_offer_key — an offered file needs no reason.
     for o in [
         BridgeSheetBindingOffer::Offered,

@@ -137,7 +137,6 @@ struct ImportPreviewDataTests {
         #expect(candidate.release?.trackCount == 10)
         #expect(fileSources.count == 1)
         #expect(missingSources == 0)
-        #expect(mapping.reconciliation == nil)
         #expect(commitTracks.count == 1)
         #expect(commitTracks.count { $0.file != nil } == 1)
         #expect(commitTracks[0].title == "Album Image.flac")

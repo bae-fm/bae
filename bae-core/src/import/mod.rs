@@ -206,7 +206,7 @@ desktop_only! {
         mapping_table, mapping_tracks, MappingBecomes,
         MappingContainer, MappingEntry, MappingFile, MappingFileRow, MappingImage, MappingRole,
         MappingSource, MappingTable, MappingTrackSection, MappingTrackSectionContent,
-        PickedTracklist, SheetBound, SheetGroup, TrackMapping, TracklistSource,
+        PickedTracklist, SheetBound, SheetGroup, TrackMapping,
     };
     pub use preparation::{CandidateAsRead, CandidatePreparation, MetadataAuthor};
     pub use preparations::CandidatePreparations;
@@ -221,7 +221,7 @@ pub use session::{
 desktop_only! {
     pub use identification::IdentificationHandle;
     pub use track_slots::{
-        lengths_disagree, SlotFile, SlotReconciliation, SlotSpan, SlotTable, SourceTrack, TrackSlot,
+        lengths_disagree, SlotFile, SlotSpan, SlotTable, SourceTrack, TrackSlot,
     };
     pub use triage::{
         CandidateAction, CandidateActionBasis, CandidateLiveState, IdentificationStatus,

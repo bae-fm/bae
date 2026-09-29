@@ -86,8 +86,7 @@ extension MappingFixtures {
                     title: "Track \(index)",
                     file: .standalone(fileId: "\(index).flac")
                 ),
-                position: "\(index)",
-                namedBySource: true
+                position: "\(index)"
             ),
             durationMs: UInt64(200_000 + index * 1000)
         )
@@ -122,16 +121,14 @@ extension MappingFixtures {
                                         title: lastTitle,
                                         file: .standalone(fileId: "13.flac")
                                     ),
-                                    position: "13",
-                                    namedBySource: false
+                                    position: "13"
                                 ),
                                 durationMs: audioFile(13).durationMs
                             )
                         ]
                 )
             ],
-            files: [],
-            reconciliation: nil
+            files: []
         )
     }
 
@@ -207,8 +204,7 @@ extension MappingFixtures {
                                 title: containerId,
                                 file: .standalone(fileId: containerId)
                             ),
-                            position: "1",
-                            namedBySource: true
+                            position: "1"
                         ),
                         durationMs: containerFile.durationMs
                     )
@@ -228,8 +224,7 @@ extension MappingFixtures {
                     assignment: .ignored
                 )
             )
-        ],
-        reconciliation: nil
+        ]
     )
 
     /// An ignored sheet speaks for nothing either, so its container is loose
@@ -241,8 +236,7 @@ extension MappingFixtures {
             .sheet(
                 sheet: sheetGroup(container: container, assignment: .ignored)
             )
-        ],
-        reconciliation: nil
+        ]
     )
 
     /// One entry of the bound sheet, carved out of the container.
@@ -278,8 +272,7 @@ extension MappingFixtures {
                         index: UInt32(index)
                     )
                 ),
-                position: "\(index + 1)",
-                namedBySource: true
+                position: "\(index + 1)"
             ),
             durationMs: UInt64(200_000 + index * 1000)
         )
@@ -304,8 +297,7 @@ extension MappingFixtures {
                     )
                 )
             ],
-            files: [],
-            reconciliation: .agrees(count: 12)
+            files: []
         )
     }
 
@@ -328,16 +320,14 @@ extension MappingFixtures {
                                     trackNumber: Int32(index),
                                     file: .standalone(fileId: "\(index).flac")
                                 ),
-                                position: "\(index)",
-                                namedBySource: true
+                                position: "\(index)"
                             ),
                             durationMs: audioFile(index).durationMs
                         )
                     }
             )
         ],
-        files: [],
-        reconciliation: nil
+        files: []
     )
 }
 
@@ -485,8 +475,7 @@ extension MappingFixtures {
                 ?? BridgeMappingTable(
                     images: [],
                     trackSections: [],
-                    files: [],
-                    reconciliation: nil
+                    files: []
                 ),
             cover: nil,
             signals: nil,
@@ -566,8 +555,7 @@ extension MappingFixtures {
             ?? BridgeMappingTable(
                 images: [],
                 trackSections: [],
-                files: [],
-                reconciliation: nil
+                files: []
             )
     }
 

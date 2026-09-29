@@ -6,7 +6,6 @@
 use crate::import::folder_scanner::CategorizedFiles;
 use crate::import::mapping::{
     mapping_table, MappingBecomes, MappingTable, MappingTrackSection, PickedTracklist,
-    TracklistSource,
 };
 use crate::import::probe::SourceDurations;
 use crate::import::search::ImportSearchReleaseDetail;
@@ -68,19 +67,6 @@ pub(crate) struct CandidateSourceDraft {
 pub(crate) fn candidate_draft_from_source(
     pane: PanePick,
 ) -> Result<CandidateSourceDraft, ImportError> {
-    if let Some(reconciliation) = pane.mapping.reconciliation {
-        use crate::import::track_slots::SlotReconciliation;
-        match reconciliation {
-            SlotReconciliation::Agrees { .. } => {}
-            SlotReconciliation::MoreFiles { files, tracks }
-            | SlotReconciliation::MoreTracks { files, tracks } => {
-                return Err(ImportError::MetadataTrackCount {
-                    metadata_tracks: tracks as usize,
-                    audio_tracks: files as usize,
-                });
-            }
-        }
-    }
     let mut draft = pane.edit;
     draft
         .album_artist_assignments
@@ -281,7 +267,6 @@ pub(crate) fn file_metadata_pane(
         .iter()
         .map(|edit| SourceTrack {
             edit: edit.clone(),
-            named_by_source: true,
             duration_ms: None,
         })
         .collect();
@@ -290,7 +275,6 @@ pub(crate) fn file_metadata_pane(
         durations,
         &source_tracks,
         FILE_TAG_TRACK_ID_PREFIX,
-        TracklistSource::CandidateFiles,
         seed.pressing.facts.physical_medium(),
     );
     Ok(PanePick {
@@ -316,7 +300,6 @@ fn table_for(
     durations: &SourceDurations,
     source_tracks: &[SourceTrack],
     track_id_prefix: &str,
-    source: TracklistSource,
     medium: Option<crate::pressing::PhysicalMedium>,
 ) -> MappingTable {
     let slots = slot_table(source_tracks, files, durations);
@@ -325,7 +308,6 @@ fn table_for(
         Some(PickedTracklist {
             slots: &slots,
             track_id_prefix,
-            source,
             medium,
         }),
         durations,

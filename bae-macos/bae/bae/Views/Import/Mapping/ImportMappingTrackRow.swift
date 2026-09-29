@@ -29,7 +29,7 @@ struct ImportMappingTrackRow: View {
 
     /// The track this row writes, where a release has named one.
     private var track: BridgeRawTrackEdit? {
-        if case .track(let track, _, _) = mapping.becomes { return track }
+        if case .track(let track, _) = mapping.becomes { return track }
         return nil
     }
 
@@ -37,7 +37,7 @@ struct ImportMappingTrackRow: View {
         HStack(spacing: ImportMappingColumns.spacing) {
             sourceCell
             switch mapping.becomes {
-            case .track(let track, let position, _):
+            case .track(let track, let position):
                 ReleaseMetadataTrackRow(
                     track: track,
                     duration: mapping.displayedDuration,
@@ -114,7 +114,7 @@ struct ImportMappingTrackRow: View {
     private var actionCell: some View {
         ZStack {
             switch mapping.becomes {
-            case .track(let track, _, _):
+            case .track(let track, _):
                 if let removal = removal(track) {
                     ImportMappingRowRemovalButton(
                         removal: removal,

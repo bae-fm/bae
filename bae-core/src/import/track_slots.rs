@@ -99,10 +99,6 @@ pub fn lengths_disagree(file_ms: Option<u64>, release_ms: Option<u64>) -> bool {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SourceTrack {
     pub edit: TrackUserEdit,
-    /// Whether the source's tracklist contains this track. False exactly for
-    /// a row that exists only because audio was found for it — the tally and
-    /// nothing else turns on this.
-    pub named_by_source: bool,
     /// How long the source says this track runs.
     pub duration_ms: Option<u64>,
 }
@@ -122,7 +118,6 @@ pub enum TrackSlot {
     /// The source names this track and audio on disk backs it.
     Paired {
         track: TrackUserEdit,
-        named_by_source: bool,
         source_duration_ms: Option<u64>,
         file: SlotFile,
     },
@@ -136,7 +131,6 @@ pub enum TrackSlot {
     /// A track the source names with no audio bound to it.
     TrackOnly {
         track: TrackUserEdit,
-        named_by_source: bool,
         source_duration_ms: Option<u64>,
     },
 }
@@ -165,27 +159,10 @@ impl TrackSlot {
     }
 }
 
-/// The tally above the slot table: how many files the folder offers against how
-/// many tracks the source names, and which way they disagree.
-///
-/// Computed rather than left to each UI to subtract, and stated rather than
-/// enforced — a disagreement is something to read, never something that
-/// disables the commit.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SlotReconciliation {
-    /// Both sides account for every row.
-    Agrees { count: u32 },
-    /// Audio the source's tracklist does not reach.
-    MoreFiles { files: u32, tracks: u32 },
-    /// Tracks the source names with nothing on disk behind them.
-    MoreTracks { files: u32, tracks: u32 },
-}
-
 /// The whole slot table for one folder and one picked release.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SlotTable {
     pub rows: Vec<TrackSlot>,
-    pub reconciliation: SlotReconciliation,
     /// Every audio unit the folder offers, in disk order — what a row with no
     /// file is offered to choose from, and what re-pairing two rows swaps
     /// between them.
@@ -460,8 +437,7 @@ pub(crate) fn map_source_rows(
 }
 
 /// The file↔release mapping the pane renders: every row with the two sides it
-/// pairs, the tally above them, and the audio a row with no file can be
-/// pointed at.
+/// pairs, and the audio a row with no file can be pointed at.
 ///
 /// Opens nothing. The playing times come from `durations`, which
 /// identification measured and stored; a unit with no row there shows no
@@ -485,7 +461,6 @@ pub(crate) fn slot_table(
             match (source_tracks.get(index), audio.get(index)) {
                 (Some(source), Some(file)) => TrackSlot::Paired {
                     track,
-                    named_by_source: source.named_by_source,
                     source_duration_ms: source.duration_ms,
                     file: file.clone(),
                 },
@@ -495,7 +470,6 @@ pub(crate) fn slot_table(
                 },
                 (Some(source), None) => TrackSlot::TrackOnly {
                     track,
-                    named_by_source: source.named_by_source,
                     source_duration_ms: source.duration_ms,
                 },
                 // `map_source_rows` yields exactly `max(len, len)` rows, so an
@@ -505,25 +479,7 @@ pub(crate) fn slot_table(
         })
         .collect();
 
-    let files_count = audio.len() as u32;
-    let tracks_count = source_tracks.len() as u32;
-    let reconciliation = match files_count.cmp(&tracks_count) {
-        std::cmp::Ordering::Equal => SlotReconciliation::Agrees { count: files_count },
-        std::cmp::Ordering::Greater => SlotReconciliation::MoreFiles {
-            files: files_count,
-            tracks: tracks_count,
-        },
-        std::cmp::Ordering::Less => SlotReconciliation::MoreTracks {
-            files: files_count,
-            tracks: tracks_count,
-        },
-    };
-
-    SlotTable {
-        rows,
-        reconciliation,
-        audio,
-    }
+    SlotTable { rows, audio }
 }
 
 /// Every audio unit the folder offers, with the facts a slot row shows about

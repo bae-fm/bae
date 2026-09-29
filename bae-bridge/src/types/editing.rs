@@ -287,21 +287,6 @@ pub enum BridgeAudioFile {
     },
 }
 
-/// The tally above the slot table: how many files the folder offers against how
-/// many tracks the source names, and which way they disagree. Mirror of
-/// bae-core's `SlotReconciliation`.
-///
-/// Arrives computed rather than left to each UI to subtract, and it is stated
-/// rather than enforced — a disagreement is something to read, never something
-/// that disables the commit.
-#[cfg(feature = "desktop")]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeSlotReconciliation {
-    Agrees { count: u32 },
-    MoreFiles { files: u32, tracks: u32 },
-    MoreTracks { files: u32, tracks: u32 },
-}
-
 /// Whether a slot row's two lengths — the folder's own and the selected
 /// release's — are far enough apart that the row should say so.
 ///
@@ -317,27 +302,6 @@ pub enum BridgeSlotReconciliation {
 #[uniffi::export]
 pub fn bridge_lengths_disagree(file_ms: Option<u64>, release_ms: Option<u64>) -> bool {
     bae_core::import::lengths_disagree(file_ms, release_ms)
-}
-
-/// The catalog key naming the reconciliation line, or `None` where there is no
-/// line to draw.
-///
-/// Two sides that account for the same rows say nothing the table is not
-/// already showing, so an agreement draws nothing. The tally itself stays whole
-/// in core — it is what a later edit re-derives a disagreement from — and this
-/// is where the decision not to state it lives, once, for both desktops.
-#[cfg(feature = "desktop")]
-#[uniffi::export]
-pub fn bridge_slot_reconciliation_key(reconciliation: BridgeSlotReconciliation) -> Option<String> {
-    match reconciliation {
-        BridgeSlotReconciliation::Agrees { .. } => None,
-        BridgeSlotReconciliation::MoreFiles { .. } => {
-            Some("core.import.reconciliation.more_files".to_string())
-        }
-        BridgeSlotReconciliation::MoreTracks { .. } => {
-            Some("core.import.reconciliation.more_tracks".to_string())
-        }
-    }
 }
 
 /// Which disc of the release one track sheet's entries become. Mirror of
@@ -457,9 +421,6 @@ pub enum BridgeMappingBecomes {
         /// own side and number and the release's format — `8`, `A1`, or `3`
         /// beneath a `Disc 2` heading.
         position: String,
-        /// Whether the source's tracklist contains this track — false exactly
-        /// for a row that exists only because audio was found for it.
-        named_by_source: bool,
     },
     /// Available audio omitted from the release, and the read that offered it.
     NotIncluded {
@@ -609,10 +570,6 @@ pub struct BridgeMappingTable {
     pub images: Vec<BridgeMappingImage>,
     pub track_sections: Vec<BridgeMappingTrackSection>,
     pub files: Vec<BridgeMappingFileRow>,
-    /// The tally over the rows that become tracks. `None` when there is nothing
-    /// to reconcile the folder against — no release is picked, or the tracklist
-    /// was read off the folder's own files and so cannot disagree with it.
-    pub reconciliation: Option<BridgeSlotReconciliation>,
 }
 
 /// The table's track rows in commit order — what the editor shapes into the

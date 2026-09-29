@@ -250,8 +250,7 @@ private func detail(
         mapping: BridgeMappingTable(
             images: [],
             trackSections: [],
-            files: [],
-            reconciliation: nil
+            files: []
         ),
         cover: cover,
         signals: nil,

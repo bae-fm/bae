@@ -69,8 +69,7 @@
                 source: .file(file: mappingAudio(index)),
                 becomes: .track(
                     track: confirmEditValues.tracks[index - 1],
-                    position: "\(index)",
-                    namedBySource: true
+                    position: "\(index)"
                 ),
                 durationMs: UInt64(180_000 + index * 15000)
             )
@@ -116,8 +115,7 @@
                     )
                 )
             ],
-            files: [carriedRow(infoLog, role: .document)],
-            reconciliation: .agrees(count: 9)
+            files: [carriedRow(infoLog, role: .document)]
         )
 
         private static let moreTracksAudio = BridgeCandidateFile(
@@ -228,16 +226,14 @@
                             ),
                             becomes: .track(
                                 track: moreTracksEditValues.tracks[0],
-                                position: "1",
-                                namedBySource: false
+                                position: "1"
                             ),
                             durationMs: 2_720_000
                         )
                     ])
                 )
             ],
-            files: [],
-            reconciliation: nil
+            files: []
         )
 
         /// One entry the folder's sheet carves out of its single container.
@@ -265,8 +261,7 @@
                 source: .sheetEntry(entry: entry),
                 becomes: .track(
                     track: confirmEditValues.tracks[index],
-                    position: "\(index + 1)",
-                    namedBySource: true
+                    position: "\(index + 1)"
                 ),
                 durationMs: durationMs
             )
@@ -306,8 +301,7 @@
             ],
             files: previewLogDocuments.map {
                 carriedRow($0, role: .document)
-            },
-            reconciliation: .agrees(count: 9)
+            }
         )
 
         /// Every row kind the table draws, with the folder's gallery beside it:
@@ -337,8 +331,7 @@
                 }
                 + [
                     carriedRow(supplementalVideo, role: .other)
-                ],
-            reconciliation: .agrees(count: 9)
+                ]
         )
 
         /// What the folder's own tags say it is: nine tracks, and no release to
@@ -365,8 +358,7 @@
                                                 fileId: "Track \(index).flac"
                                             )
                                         ),
-                                        position: "\(index)",
-                                        namedBySource: true
+                                        position: "\(index)"
                                     ),
                                     durationMs: mappingAudio(index).durationMs
                                 )
@@ -374,8 +366,7 @@
                     )
                 )
             ],
-            files: [],
-            reconciliation: nil
+            files: []
         )
 
         // MARK: - Mapping pane candidates
@@ -712,8 +703,7 @@
                                     ),
                                     becomes: .track(
                                         track: track,
-                                        position: "\(index + 1)",
-                                        namedBySource: true
+                                        position: "\(index + 1)"
                                     ),
                                     durationMs: mappingAudio(index + 1)
                                         .durationMs
@@ -728,8 +718,7 @@
             ]
                 + previewLogDocuments.map {
                     carriedRow($0, role: .document)
-                },
-            reconciliation: nil
+                }
         )
 
     }

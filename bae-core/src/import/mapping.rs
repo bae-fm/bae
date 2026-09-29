@@ -11,7 +11,7 @@ use crate::import::folder_scanner::{
 };
 use crate::import::probe::SourceDurations;
 use crate::import::track_slots::{
-    SlotReconciliation, SlotTable, TrackSlot, UnitContribution, audio_layout, units_of,
+    SlotTable, TrackSlot, UnitContribution, audio_layout, units_of,
 };
 use crate::import::types::{AudioFile, RawTrackEdit};
 use std::collections::{BTreeSet, HashMap};
@@ -29,10 +29,6 @@ pub struct MappingTable {
     pub track_sections: Vec<MappingTrackSection>,
     /// Files carried with the release but not represented by track rows.
     pub files: Vec<MappingFileRow>,
-    /// The tally over the rows that become tracks. `None` when there is nothing
-    /// to reconcile the folder against — no release is picked, or the tracklist
-    /// was read off the folder's own files and so cannot disagree with it.
-    pub reconciliation: Option<SlotReconciliation>,
 }
 
 impl MappingTable {
@@ -43,7 +39,6 @@ impl MappingTable {
             images: Vec::new(),
             track_sections: Vec::new(),
             files: Vec::new(),
-            reconciliation: None,
         }
     }
 }
@@ -195,9 +190,6 @@ pub enum MappingBecomes {
         /// `Disc 2` heading. The same fact in every metadata mode, because it
         /// reads the draft rather than the picked source.
         position: String,
-        /// Whether the source's tracklist contains this track. False exactly
-        /// for a row that exists only because audio was found for it.
-        named_by_source: bool,
     },
     /// Available audio omitted from the release, with the read that offered it.
     NotIncluded {
@@ -260,19 +252,6 @@ pub struct MappingContainer {
     pub audio_format: crate::album_detail::AudioFormat,
 }
 
-/// Where the tracklist a folder is being committed as came from.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TracklistSource {
-    /// A release picked from a metadata source. Its tracklist and the folder's
-    /// audio are two independent accounts of one disc, so the table tallies
-    /// them against each other.
-    ExternalRelease,
-    /// Track rows derived from the candidate's files, either from their tags
-    /// or as blank manual rows. They cannot disagree with the candidate because
-    /// the candidate itself determines their physical slots.
-    CandidateFiles,
-}
-
 /// The tracklist a folder is being committed as, and the row identities the
 /// editor addresses it by.
 #[derive(Debug, Clone, Copy)]
@@ -282,7 +261,6 @@ pub struct PickedTracklist<'a> {
     pub slots: &'a SlotTable,
     /// Track row `n` of the table is addressed as `{track_id_prefix}-{n}`.
     pub track_id_prefix: &'a str,
-    pub source: TracklistSource,
     /// The physical medium of the release being committed — what decides
     /// whether a row's position reads `8`, `A1`, or `2-3`.
     pub medium: Option<crate::pressing::PhysicalMedium>,
@@ -428,14 +406,10 @@ pub fn mapping_table(
         }
     }
 
-    let reconciliation = picked
-        .filter(|picked| picked.source == TracklistSource::ExternalRelease)
-        .map(|_| tally(&track_sections));
     MappingTable {
         images,
         track_sections,
         files: file_rows,
-        reconciliation,
     }
 }
 
@@ -550,7 +524,6 @@ pub(crate) fn draft_mapping_table(
         row.becomes = MappingBecomes::Track {
             track: track.edit.as_edit(),
             position: crate::util::format::track_position_text(&position),
-            named_by_source: track.source_index.is_some(),
         };
         push_draft_mapping(
             &mut table.track_sections,
@@ -757,18 +730,14 @@ impl RowBuilder<'_> {
         };
         let id = format!("{}-{}", picked.track_id_prefix, self.next_track);
         self.next_track += 1;
-        let (named_by_source, source_duration_ms) = match slot {
+        let source_duration_ms = match slot {
             TrackSlot::Paired {
-                named_by_source,
-                source_duration_ms,
-                ..
+                source_duration_ms, ..
             }
             | TrackSlot::TrackOnly {
-                named_by_source,
-                source_duration_ms,
-                ..
-            } => (*named_by_source, *source_duration_ms),
-            TrackSlot::FileOnly { .. } => (false, None),
+                source_duration_ms, ..
+            } => *source_duration_ms,
+            TrackSlot::FileOnly { .. } => None,
         };
         let edit = slot.track();
         let position = crate::util::format::compute_track_position(
@@ -784,7 +753,6 @@ impl RowBuilder<'_> {
                 becomes: MappingBecomes::Track {
                     track: RawTrackEdit::from_user_edit(edit.clone(), id),
                     position: crate::util::format::track_position_text(&position),
-                    named_by_source,
                 },
                 duration_ms: source_duration_ms.or(probed_duration_ms),
             },
@@ -901,41 +869,6 @@ fn bound_sheet(sheet: &BoundTrackSheet<'_>) -> SheetBound {
                 .expect("sheet audio file count fits u32"),
         },
         [] => unreachable!("a bound sheet resolves at least one audio file"),
-    }
-}
-
-/// The tally over a table's rows: how many will write a track against how many
-/// the picked release names.
-///
-/// The same rule [`slot_table`](crate::import::track_slots::slot_table) states
-/// over its own two sides, asked of the rows that are left — so a table nobody
-/// has edited restates the number it was built with, and one a row has left
-/// restates it without re-opening the folder.
-fn tally(sections: &[MappingTrackSection]) -> SlotReconciliation {
-    let mappings: Vec<&TrackMapping> = sections
-        .iter()
-        .flat_map(MappingTrackSection::mappings)
-        .collect();
-    let files = mappings
-        .iter()
-        .filter(|mapping| matches!(&mapping.becomes, MappingBecomes::Track { track, .. } if track.file.is_some()))
-        .count() as u32;
-    let tracks = mappings
-        .iter()
-        .filter(|mapping| {
-            matches!(
-                &mapping.becomes,
-                MappingBecomes::Track {
-                    named_by_source: true,
-                    ..
-                }
-            )
-        })
-        .count() as u32;
-    match files.cmp(&tracks) {
-        std::cmp::Ordering::Equal => SlotReconciliation::Agrees { count: files },
-        std::cmp::Ordering::Greater => SlotReconciliation::MoreFiles { files, tracks },
-        std::cmp::Ordering::Less => SlotReconciliation::MoreTracks { files, tracks },
     }
 }
 
