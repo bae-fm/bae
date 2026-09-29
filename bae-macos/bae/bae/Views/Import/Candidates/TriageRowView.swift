@@ -212,7 +212,9 @@ extension TriageRowContent {
     private var placementTrailing: some View {
         switch row.placement {
         case .pending:
-            EmptyView()
+            if let badge = live?.standing?.badge {
+                StatusChip(verbatim: badge, tone: .warning)
+            }
         case .failed, .done:
             importTrailing
         case .skipped:
