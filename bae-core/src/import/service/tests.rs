@@ -191,7 +191,12 @@ struct FakeStartedScan {
     /// The folders this pass reads again because they changed on disk.
     folders: Option<std::collections::BTreeSet<String>>,
     cancellation: crate::import::folder_scanner::ScanCancellation,
-    completion: Option<tokio::sync::oneshot::Sender<()>>,
+    /// Ends the pass's task, then tells the coordinator the pass is over.
+    completion: Option<(
+        tokio::sync::oneshot::Sender<()>,
+        tokio::sync::mpsc::UnboundedSender<RootScanCompletion>,
+        RootScanCompletion,
+    )>,
     abort: tokio::task::AbortHandle,
 }
 
@@ -210,9 +215,6 @@ impl FakeScanStarter {
                 finished
                     .await
                     .expect("fake scan completion sender was retained");
-                completion
-                    .send(RootScanCompletion { id, path })
-                    .expect("coordinator still receives completions");
             });
             let (reading, folders) = match pass {
                 RootPass::WholeRoot => (None, None),
@@ -224,7 +226,7 @@ impl FakeScanStarter {
                 reading,
                 folders,
                 cancellation: cancellation.clone(),
-                completion: Some(finish),
+                completion: Some((finish, completion, RootScanCompletion { id, path })),
                 abort: task.abort_handle(),
             });
             captured.started.notify_one();
@@ -243,16 +245,24 @@ impl FakeScanStarter {
 
     /// End the scan at `index`, telling a folder decision's caller it was
     /// stored.
+    ///
+    /// The pass's end is queued to the coordinator before this returns, so a
+    /// watch report sent afterwards is taken after it: the coordinator hears a
+    /// pass end ahead of the watch.
     fn complete(&self, index: usize) {
         if let Some(reading) = self.scans.lock().unwrap()[index].reading.take() {
             reading.answer(Ok(()));
         }
-        self.scans.lock().unwrap()[index]
+        let (finish, completions, completion) = self.scans.lock().unwrap()[index]
             .completion
             .take()
-            .expect("fake scan has not completed")
+            .expect("fake scan has not completed");
+        finish
             .send(())
-            .expect("coordinator still waits for the fake scan");
+            .expect("the fake scan's task is still running");
+        completions
+            .send(completion)
+            .expect("coordinator still receives completions");
     }
 
     /// The folder decision the pass at `index` stores, if it is one.
@@ -451,6 +461,13 @@ impl CoordinatorHarness {
             .await
             .expect("the coordinator takes the watch report")
             .expect("the coordinator is running");
+    }
+
+    /// Wait until the coordinator has handled every command sent before this
+    /// one: commands are taken in order, and a report of no changes asks for
+    /// nothing.
+    async fn commands_handled(&self) {
+        self.watch_report(Ok(Vec::new())).await;
     }
 
     async fn shutdown(&self) {

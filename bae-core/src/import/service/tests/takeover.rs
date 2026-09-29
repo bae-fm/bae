@@ -25,13 +25,15 @@ async fn a_takeover_stops_the_inner_read_then_reads_the_parent() {
     let harness = CoordinatorHarness::with_roots(&["/music/one", "/music/two"]).await;
     rescan_and_wait(&harness, "/music/one").await;
 
-    let taken_over = request_takeover(&harness, "/music", &["/music/one", "/music/two"]);
+    let mut taken_over = request_takeover(&harness, "/music", &["/music/one", "/music/two"]);
     harness.scans.wait_for_cancellation(0).await;
-    let mut taken_over = Box::pin(taken_over);
+    harness.commands_handled().await;
     assert!(
-        tokio::time::timeout(Duration::from_millis(50), taken_over.as_mut())
-            .await
-            .is_err(),
+        harness.removal_backend.calls.lock().unwrap().is_empty(),
+        "the takeover took the inner watches down while their pass still ran"
+    );
+    assert!(
+        !is_answered(&mut taken_over),
         "the takeover waits for the pass it cancelled"
     );
 
@@ -54,11 +56,10 @@ async fn a_refresh_during_a_takeover_waits_for_the_parent_read() {
     rescan_and_wait(&harness, "/music/one").await;
     let taken_over = request_takeover(&harness, "/music", &["/music/one", "/music/two"]);
     harness.scans.wait_for_cancellation(0).await;
-    let mut refreshed = Box::pin(request_refresh(&harness, "/music/two"));
+    let mut refreshed = request_refresh(&harness, "/music/two");
+    harness.commands_handled().await;
     assert!(
-        tokio::time::timeout(Duration::from_millis(50), refreshed.as_mut())
-            .await
-            .is_err(),
+        !is_answered(&mut refreshed),
         "the refresh waits for the takeover"
     );
 
@@ -66,10 +67,9 @@ async fn a_refresh_during_a_takeover_waits_for_the_parent_read() {
     assert_eq!(taken_over.await.unwrap(), Ok(()));
     harness.scans.wait_for_count(2).await;
     assert_eq!(harness.scans.scans.lock().unwrap()[1].path, root_path("/music"));
+    harness.commands_handled().await;
     assert!(
-        tokio::time::timeout(Duration::from_millis(50), refreshed.as_mut())
-            .await
-            .is_err(),
+        !is_answered(&mut refreshed),
         "the refresh waits for the parent's read"
     );
     harness.scans.complete(1);

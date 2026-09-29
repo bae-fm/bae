@@ -67,6 +67,35 @@ fn request_group_decision(
     result
 }
 
+/// Report a file created in a folder of `/music` nothing else touches, and
+/// assert that the pass it starts, the `index`th, is the root's next one and
+/// reads that folder alone. The coordinator takes a completed pass's end
+/// before this report, so a pass that end still owed would start first.
+async fn assert_next_pass_reads_only_a_later_change(harness: &CoordinatorHarness, index: usize) {
+    harness
+        .fs_events
+        .send(Ok(vec![watch_event(
+            notify::EventKind::Create(notify::event::CreateKind::File),
+            root_path("/music").join("Later").join("01.flac"),
+        )]))
+        .unwrap();
+    harness.scans.wait_for_count(index + 1).await;
+    assert_eq!(
+        harness.scans.folders(index),
+        Some(vec!["Later".to_string()]),
+        "a pass was owed before the later change"
+    );
+    harness.scans.complete(index);
+}
+
+/// Whether `result` has been answered yet.
+fn is_answered(result: &mut tokio::sync::oneshot::Receiver<Result<(), String>>) -> bool {
+    !matches!(
+        result.try_recv(),
+        Err(tokio::sync::oneshot::error::TryRecvError::Empty)
+    )
+}
+
 #[tokio::test]
 async fn coordinator_coalesces_same_root_to_one_followup_scan() {
     let harness = CoordinatorHarness::new().await;
@@ -79,21 +108,22 @@ async fn coordinator_coalesces_same_root_to_one_followup_scan() {
     harness.scans.complete(0);
     harness.scans.wait_for_count(2).await;
     harness.scans.complete(1);
-    tokio::task::yield_now().await;
-    assert_eq!(harness.scans.scans.lock().unwrap().len(), 2);
+    assert_next_pass_reads_only_a_later_change(&harness, 2).await;
     harness.shutdown().await;
 }
 
 #[tokio::test]
 async fn coordinator_removal_waits_for_the_active_scan_to_finish() {
     let harness = CoordinatorHarness::new().await;
-    let result = removal_awaiting_its_cancelled_scan(&harness, "/music").await;
+    let mut result = removal_awaiting_its_cancelled_scan(&harness, "/music").await;
 
-    let mut result = Box::pin(result);
+    harness.commands_handled().await;
     assert!(
-        tokio::time::timeout(Duration::from_millis(50), result.as_mut())
-            .await
-            .is_err(),
+        harness.removal_backend.calls.lock().unwrap().is_empty(),
+        "the watch was taken down while the scan could still install a late one"
+    );
+    assert!(
+        !is_answered(&mut result),
         "removal completed while the scan could still install a late watch"
     );
 
@@ -129,7 +159,7 @@ async fn coordinator_coalesces_duplicate_removals_for_one_root() {
 #[tokio::test]
 async fn coordinator_blocked_root_removal_does_not_block_another_roots_refresh() {
     let harness = CoordinatorHarness::with_roots(&["/music/one", "/music/two"]).await;
-    let remove_result = removal_awaiting_its_cancelled_scan(&harness, "/music/one").await;
+    let mut remove_result = removal_awaiting_its_cancelled_scan(&harness, "/music/one").await;
 
     let refresh_result = request_refresh(&harness, "/music/two");
     harness.scans.wait_for_count(2).await;
@@ -142,10 +172,9 @@ async fn coordinator_blocked_root_removal_does_not_block_another_roots_refresh()
         Ok(())
     );
 
+    harness.commands_handled().await;
     assert!(
-        tokio::time::timeout(Duration::from_millis(50), remove_result)
-            .await
-            .is_err(),
+        !is_answered(&mut remove_result),
         "removal completed before its blocked scan"
     );
     harness.scans.complete(0);
@@ -231,12 +260,13 @@ async fn coordinator_blocked_reinstall_does_not_block_another_roots_persistence(
 
     let refresh_result = request_refresh(&harness, "/music/two");
     harness.scans.wait_for_count(2).await;
-    let other_root_commit = tokio::time::timeout(
-        Duration::from_millis(50),
-        harness.folder_state_commit.lock("hold for a test"),
-    )
+    // Asked once: the blocked reinstall holds whatever it holds until released.
+    let mut other_root_commit = std::pin::pin!(harness.folder_state_commit.lock("hold for a test"));
+    let other_root_commit = tokio::task::unconstrained(std::future::poll_fn(|cx| {
+        std::task::Poll::Ready(std::future::Future::poll(other_root_commit.as_mut(), cx))
+    }))
     .await;
-    let other_root_was_blocked = other_root_commit.is_err();
+    let other_root_was_blocked = other_root_commit.is_pending();
     drop(other_root_commit);
 
     harness.removal_backend.release_reinstall.notify_one();
@@ -398,8 +428,7 @@ async fn changes_during_a_folder_reading_are_read_once_afterwards() {
         Some(vec!["One".to_string(), "Two".to_string()])
     );
     harness.scans.complete(1);
-    tokio::time::sleep(Duration::from_millis(20)).await;
-    assert_eq!(harness.scans.scans.lock().unwrap().len(), 2);
+    assert_next_pass_reads_only_a_later_change(&harness, 2).await;
     harness.shutdown().await;
 }
 
@@ -455,8 +484,7 @@ async fn a_watch_that_lost_track_inside_one_folder_reads_only_that_folder() {
     assert_eq!(harness.scans.folders(0), Some(vec!["Artist".to_string()]));
 
     harness.scans.complete(0);
-    tokio::time::sleep(Duration::from_millis(20)).await;
-    assert_eq!(harness.scans.scans.lock().unwrap().len(), 1);
+    assert_next_pass_reads_only_a_later_change(&harness, 1).await;
     harness.shutdown().await;
 }
 
@@ -551,7 +579,7 @@ async fn cancelled_scan_task_does_not_begin_a_durable_generation() {
 async fn coordinator_decision_replaces_a_running_root_pass_and_owes_it_again() {
     let harness = CoordinatorHarness::new().await;
     let root = rescan_and_wait(&harness, "/music").await;
-    let mut decision_result = Box::pin(request_group_decision(&harness, &root));
+    let mut decision_result = request_group_decision(&harness, &root);
     harness.scans.wait_for_cancellation(0).await;
     assert_eq!(harness.scans.scans.lock().unwrap().len(), 1);
 
@@ -562,10 +590,9 @@ async fn coordinator_decision_replaces_a_running_root_pass_and_owes_it_again() {
         Some("Group".to_string()),
         "the pass after the cancelled one is the folder reading"
     );
+    // The reading is the fake pass's to answer now, and it has not.
     assert!(
-        tokio::time::timeout(Duration::from_millis(50), decision_result.as_mut())
-            .await
-            .is_err(),
+        !is_answered(&mut decision_result),
         "the decision was answered before its reading was stored"
     );
     harness.scans.complete(1);
@@ -587,7 +614,7 @@ async fn coordinator_decisions_on_an_idle_root_run_one_after_another() {
     harness.scans.wait_for_count(1).await;
     assert!(harness.scans.reading(0).is_some());
     let second = request_group_decision(&harness, &root);
-    tokio::time::sleep(Duration::from_millis(20)).await;
+    harness.commands_handled().await;
     assert!(!harness.scans.cancellation(0).is_cancelled());
     assert_eq!(harness.scans.scans.lock().unwrap().len(), 1);
 
@@ -597,8 +624,7 @@ async fn coordinator_decisions_on_an_idle_root_run_one_after_another() {
     assert!(harness.scans.reading(1).is_some());
     harness.scans.complete(1);
     assert_eq!(second.await.unwrap(), Ok(()));
-    tokio::time::sleep(Duration::from_millis(20)).await;
-    assert_eq!(harness.scans.scans.lock().unwrap().len(), 2);
+    assert_next_pass_reads_only_a_later_change(&harness, 2).await;
     harness.shutdown().await;
 }
 
