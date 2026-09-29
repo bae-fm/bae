@@ -13,7 +13,7 @@ use super::agreements::{agreements_of, CandidateText};
 use super::medium::{agrees_with_mono, FolderAudio, RippedFrom};
 use super::row_facts::{Fact, FolderFacts};
 use crate::db::LibraryStatus;
-use crate::import::album_links::Twin;
+use crate::identify::documents::Twin;
 use crate::import::release_group::{group_results, Judged, Judgements, Pressing, ReleaseGroup};
 use crate::import::search::MetadataResult;
 use crate::import::Catalog;
@@ -191,7 +191,7 @@ pub fn combine_results(
     let mut all = union_all(&present);
     let answered: Vec<&MetadataResult> = all.iter().map(|(result, _)| result).collect();
     let twins: Vec<(MetadataResult, LibraryStatus, crate::import::MetadataRef)> =
-        crate::import::album_links::beside(&twins, &answered)
+        crate::identify::documents::beside(&twins, &answered)
             .into_iter()
             .map(|twin| {
                 (

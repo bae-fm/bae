@@ -261,7 +261,6 @@ async fn an_ending_ends_the_run_it_names_and_not_the_answer_being_saved() {
                 track_count: 0,
                 ..Default::default()
             },
-            album_links: crate::identify::state::AlbumLinkReading::Pending,
             documents: crate::identify::documents::DocumentReading::Pending,
             isrc: Default::default(),
             track_titles: Vec::new(),

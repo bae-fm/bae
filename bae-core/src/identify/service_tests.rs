@@ -326,17 +326,17 @@ async fn a_cancel_mid_run_reports_idle_and_deregisters() {
     assert!(handle.running_keys().is_empty());
 }
 
-/// The step that settles a run also asks to keep what its reading found
-/// each album to be. The run ends on that step, and what it asked for is
-/// kept all the same: a stored release of the album then names the other.
+/// The step that settles a run also asks to keep what its documents state
+/// each album is. The run ends on that step, and what it asked for is kept
+/// all the same: a stored release of the album then names the other.
 #[tokio::test(flavor = "multi_thread")]
 async fn what_a_run_keeps_is_kept_by_the_step_that_ends_it() {
-    use crate::identify::documents::DocumentReading;
+    use crate::identify::documents::{DocumentReading, Documents, ReleaseDocument, ReleaseReading};
     use crate::identify::state::{
-        AlbumLinkReading, BarcodeProgress, CatalogProgress, DiscidProgress, IsrcProgress,
-        SearchProgress, SignalsContext,
+        BarcodeProgress, CatalogProgress, DiscidProgress, IsrcProgress, SearchProgress,
+        SignalsContext,
     };
-    use crate::import::album_links::{AlbumLink, AlbumLinks, AlbumStatement, GroupReading};
+    use crate::import::album_links::{AlbumLink, AlbumLinks, AlbumStatement};
     use crate::import::{MetadataRef, SourcePayload};
 
     let (inner, _tmp) = setup_inner().await;
@@ -360,24 +360,37 @@ async fn what_a_run_keeps_is_kept_by_the_step_that_ends_it() {
         .await
         .unwrap();
 
+    let found = crate::import::search::MetadataResult::for_test(
+        Catalog::MusicBrainz,
+        "mb-release",
+        Some("mb-group"),
+    );
     let reading = IdentifyState::Triangulating {
-        discid: DiscidProgress::Skipped,
+        discid: DiscidProgress::Done {
+            results: vec![(found, crate::db::LibraryStatus::absent("mb-release"))],
+        },
         barcode: BarcodeProgress::Skipped,
         catalog: CatalogProgress::Skipped,
         isrc: IsrcProgress::Skipped,
         search: SearchProgress::Skipped,
         context: SignalsContext {
             text_settled: true,
-            album_links: AlbumLinkReading::LinksRead(vec![GroupReading::of_links(
-                "mb-group",
-                AlbumLinks::Read(vec![AlbumLink {
-                    album: MetadataRef::new(Catalog::Discogs, "909"),
-                    stated: AlbumStatement::Page,
-                }]),
-            )]),
-            documents: DocumentReading::Reading(Vec::new()),
+            documents: DocumentReading::Reading(Documents::default()),
             ..SignalsContext::default()
         },
+    };
+    let document = ReleaseDocument {
+        labels: Vec::new(),
+        barcode: None,
+        album_first_year: None,
+        source_tracks: crate::import::search::SourceTracks::Listed { count: 1 },
+        track_titles: Vec::new(),
+        notes: Vec::new(),
+        links: Vec::new(),
+        album_links: AlbumLinks::Read(vec![AlbumLink {
+            album: MetadataRef::new(Catalog::Discogs, "909"),
+            stated: AlbumStatement::Page,
+        }]),
     };
     let (event_tx, _event_rx) = mpsc::unbounded_channel();
     let driver = Driver {
@@ -388,7 +401,16 @@ async fn what_a_run_keeps_is_kept_by_the_step_that_ends_it() {
         event_tx,
         token: CancellationToken::new(),
     };
-    let settled = driver.advance(reading, IdentifyEvent::ReleasesRead { read: Vec::new() });
+    let settled = driver.advance(
+        reading,
+        IdentifyEvent::ReleasesRead {
+            read: vec![ReleaseReading {
+                release: MetadataRef::new(Catalog::MusicBrainz, "mb-release"),
+                document: Ok(document),
+            }],
+            twins: Vec::new(),
+        },
+    );
     assert!(settled.is_terminal(), "the step ends the run: {settled:?}");
 
     drivers_ended(&inner).await;

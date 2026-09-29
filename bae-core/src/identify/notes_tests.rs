@@ -3,7 +3,7 @@
 //! disambiguation and annotation.
 
 use super::*;
-use crate::import::search::{discogs_release_to_metadata, musicbrainz_release_notes};
+use crate::import::search::musicbrainz_release_notes;
 use crate::import::Catalog;
 use crate::signals::{TextLine, TextOrigin};
 
@@ -18,11 +18,21 @@ fn folder(line: &str) -> CandidateText {
     )
 }
 
-/// A Discogs release document as its catalog serves it, read as a result.
+/// A Discogs release document as its catalog serves it, stored and read as
+/// a result.
 fn discogs(document: serde_json::Value) -> MetadataResult {
-    let release = crate::discogs::client::parse_discogs_release_json(&document.to_string())
-        .expect("the release document parses");
-    discogs_release_to_metadata(&release)
+    let id = match &document["id"] {
+        serde_json::Value::String(id) => id.clone(),
+        id => id.to_string(),
+    };
+    let release = crate::import::payloads::ReleasePayloads::for_test(
+        crate::import::MetadataRef::new(Catalog::Discogs, id),
+        document.to_string(),
+        Vec::<crate::import::SourcePayload>::new(),
+    )
+    .extract()
+    .expect("the release document is read");
+    MetadataResult::of_release(&release)
 }
 
 /// A MusicBrainz release document as its catalog serves it, as a result

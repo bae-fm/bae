@@ -191,47 +191,6 @@ fn a_run_whose_lookups_are_all_off_offers_manual_search() {
     );
 }
 
-/// A run that does not follow catalog links reads none, even with both
-/// catalogs' releases found.
-#[test]
-fn a_run_that_does_not_follow_catalog_links_reads_none() {
-    let state = started_without(
-        vec![MB, DG],
-        crate::config::IdentificationStep::FollowCatalogLinks,
-    );
-    let (state, _) = update(
-        state,
-        signals(
-            DiscIdSignal::Absent,
-            BarcodeSignal::Settled {
-                codes: artwork_codes(&["A"]),
-            },
-            &[],
-        ),
-    );
-    let (state, _) = step(
-        state,
-        barcode_matched(MB, "A", vec![pair("mb-1", Some("g-linked"))]),
-    );
-    let (state, effects) = step(
-        state,
-        barcode_matched(DG, "A", vec![discogs_pair("dg-1", Some("7"))]),
-    );
-    assert!(
-        effects.is_empty(),
-        "no album links read goes out: {effects:?}"
-    );
-    let IdentifyState::Found { context, .. } = &state else {
-        panic!("the barcode named a release on each catalog, got {state:?}");
-    };
-    assert_eq!(
-        context.album_links,
-        AlbumLinkReading::NotAsked {
-            reason: SWITCHED_OFF
-        }
-    );
-}
-
 /// With the cover art left unread, the barcode and catalog steps say so.
 #[test]
 fn cover_art_left_unread_says_so_in_the_barcode_and_catalog_steps() {

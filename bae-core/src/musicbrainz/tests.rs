@@ -190,8 +190,8 @@ fn test_deserialize_mb_release_response() {
 fn test_deserialize_mb_release_response_minimal() {
     // Minimal response: every field the type requires, every optional array
     // absent. The `cover-art-archive` block is required because every endpoint
-    // this type is parsed from — the release lookup, the disc-ID lookup, the
-    // release browse — returns it.
+    // this type is parsed from — the release lookup and the disc-ID lookup —
+    // returns it.
     let json = r#"{
         "id": "abc-123",
         "title": "Minimal Release",

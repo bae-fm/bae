@@ -4,20 +4,20 @@
 //! The disc-ID, barcode, catalog and ISRC lookups run in parallel, each
 //! provider answering for itself. When the first three name nothing, the run
 //! searches by the candidate's title. Once every lookup settles, the run
-//! reads its MusicBrainz albums' links to Discogs (see
-//! [`crate::import::album_links`]), then the full documents of the rows it
-//! offers — ranking again after each read, until every offered row is read —
-//! then what the list's releases print for the albums no link joins;
-//! it combines the results into a terminal state, and records the ledger it
-//! showed.
+//! reads the full documents of the rows it offers, and of the Discogs
+//! releases their MusicBrainz documents name as themselves — ranking again
+//! after each read, until every offered row is read (see
+//! [`super::documents`]). What those documents state its MusicBrainz albums
+//! are on Discogs joins the albums (see [`crate::import::album_links`]); the
+//! run combines the results into a terminal state, keeps what it read each
+//! album to be, and records the ledger it showed.
 
 use super::combine::{combine_results, Findings, LibraryStatuses};
-use super::documents::{DocumentReading, ReleaseReading};
+use super::documents::{DocumentReading, ReleaseReading, Twin, TwinToRead};
 use super::toolbar::{SignalKind, SignalOption, SignalState, ToolbarSignal};
 use super::view::{run_view, IdentifyRunView};
 use crate::config::IdentificationSteps;
 use crate::db::LibraryStatus;
-use crate::import::album_links::{self, GroupReading, ToRead};
 use crate::import::search::{MetadataResult, SourceFailure};
 use crate::import::{Catalog, LookupChoices};
 use crate::signals::{
@@ -280,14 +280,11 @@ pub enum IdentifyEvent {
         outcome: LookupOutcome,
     },
 
-    /// What reading the groups `Effect::ReadAlbumLinks` named answered.
-    AlbumLinksRead {
-        read: Vec<GroupReading>,
-    },
-
-    /// The documents `Effect::ReadReleases` asked for, record by record.
+    /// The documents `Effect::ReadReleases` asked for, record by record and
+    /// twin by twin, with each twin that could be read.
     ReleasesRead {
         read: Vec<ReleaseReading>,
+        twins: Vec<Twin>,
     },
 
     /// bae broke carrying out one of the run's effects.
@@ -320,14 +317,12 @@ pub enum Effect {
         source: Catalog,
         query: TitleSearch,
     },
-    /// Read what these MusicBrainz release groups are on the other catalog.
-    ReadAlbumLinks {
-        to_read: ToRead,
-    },
-    /// Fetch and store these records' full documents, reading each one's
-    /// tracklist against `track_lengths_ms`.
+    /// Fetch and store these records' and twins' full documents, reading
+    /// each one's tracklist against `track_lengths_ms`, and check each twin
+    /// against the library.
     ReadReleases {
         releases: Vec<crate::import::MetadataRef>,
+        twins: Vec<TwinToRead>,
         track_lengths_ms: Vec<u64>,
     },
     /// Keep what these release groups were read to be beyond the run. Nothing
@@ -554,32 +549,11 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                 search,
                 mut context,
             },
-            IdentifyEvent::AlbumLinksRead { read },
-        ) if context.album_links == AlbumLinkReading::Reading => {
-            context.album_links = AlbumLinkReading::LinksRead(read);
-            settle_if_ready(IdentifyState::Triangulating {
-                discid,
-                barcode,
-                catalog,
-                isrc,
-                search,
-                context,
-            })
-        }
-
-        (
-            IdentifyState::Triangulating {
-                discid,
-                barcode,
-                catalog,
-                isrc,
-                search,
-                mut context,
-            },
-            IdentifyEvent::ReleasesRead { read },
+            IdentifyEvent::ReleasesRead { read, twins },
         ) if matches!(context.documents, DocumentReading::Reading(_)) => {
-            let mut documents = context.documents.read().to_vec();
-            documents.extend(read);
+            let mut documents = context.documents.documents();
+            documents.releases.extend(read);
+            documents.twins.extend(twins);
             context.documents = DocumentReading::Read(documents);
             settle_if_ready(IdentifyState::Triangulating {
                 discid,
@@ -747,55 +721,12 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
     };
     context.record_search(&search);
 
-    // Every lookup is in: read the albums' links, where there are any to read.
-    match context.album_links {
-        AlbumLinkReading::Pending => {
-            let found = context.lookup_results();
-            let to_read = album_links::to_read(found.all().map(|(result, _)| result), |_| false);
-            if to_read.is_empty() {
-                context.album_links = AlbumLinkReading::Read(Vec::new());
-            } else {
-                context.album_links = AlbumLinkReading::Reading;
-                return (
-                    IdentifyState::Triangulating {
-                        discid,
-                        barcode,
-                        catalog,
-                        isrc,
-                        search,
-                        context,
-                    },
-                    vec![Effect::ReadAlbumLinks { to_read }],
-                );
-            }
-        }
-        AlbumLinkReading::Reading => {
-            return (
-                IdentifyState::Triangulating {
-                    discid,
-                    barcode,
-                    catalog,
-                    isrc,
-                    search,
-                    context,
-                },
-                vec![],
-            )
-        }
-        AlbumLinkReading::LinksRead(_)
-        | AlbumLinkReading::Read(_)
-        | AlbumLinkReading::NotAsked { .. } => {}
-    }
-
-    // The albums are read: fetch every offered record's document and rank
+    // Every lookup is in: fetch every offered record's document and rank
     // once more with what they state. A row whose tracklist holds other
     // tracks than the folder drops out, and the rows below it move up; a row
-    // the documents raise to the top is read in turn. This goes on until
-    // every offered row's records are read, or no row is left. Then read
-    // what the list's releases print for the albums no catalog's document
-    // links, once for the run, keep what each group was read to be, and read
-    // any row those joins raise.
-    let mut effects = Vec::new();
+    // the documents raise to the top is read in turn, and so is each twin an
+    // offered MusicBrainz record's document names. This goes on until every
+    // offered row's records and twins are read, or no row is left.
     if matches!(context.documents, DocumentReading::Reading(_)) {
         return (
             IdentifyState::Triangulating {
@@ -809,50 +740,46 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
             vec![],
         );
     }
-    loop {
-        let read = context.documents.read().to_vec();
-        let offered = offered_rows(&context);
-        let releases: Vec<crate::import::MetadataRef> = offered
-            .iter()
-            .flatten()
-            .filter(|release| !read.iter().any(|reading| reading.release == **release))
-            .cloned()
-            .collect();
-        if !releases.is_empty() {
-            context.documents = DocumentReading::Reading(read);
-            effects.push(Effect::ReadReleases {
-                releases,
-                track_lengths_ms: context.audio.track_lengths_ms.clone(),
-            });
-            return (
-                IdentifyState::Triangulating {
-                    discid,
-                    barcode,
-                    catalog,
-                    isrc,
-                    search,
-                    context,
-                },
-                effects,
-            );
-        }
-        context.documents = DocumentReading::Read(read);
-        let AlbumLinkReading::LinksRead(links) = &context.album_links else {
-            break;
-        };
-        let found = context.lookup_results();
-        let twins = context.twins();
-        let list: Vec<&crate::import::search::MetadataResult> = found
-            .all()
-            .map(|(result, _)| result)
-            .chain(twins.iter().map(|twin| &twin.result))
-            .collect();
-        let links = album_links::read_the_list(links.clone(), &list);
-        effects.push(Effect::KeepAlbumLinks {
-            kept: album_links::to_keep(&links),
-        });
-        context.album_links = AlbumLinkReading::Read(links);
+    let documents = context.documents.documents();
+    let offered: Vec<crate::import::MetadataRef> =
+        offered_rows(&context).into_iter().flatten().collect();
+    let releases: Vec<crate::import::MetadataRef> = offered
+        .iter()
+        .filter(|release| {
+            !documents
+                .releases
+                .iter()
+                .any(|reading| reading.release == **release)
+        })
+        .cloned()
+        .collect();
+    let twins = context.twins_to_read(&offered);
+    if !releases.is_empty() || !twins.is_empty() {
+        context.documents = DocumentReading::Reading(documents);
+        let effects = vec![Effect::ReadReleases {
+            releases,
+            twins,
+            track_lengths_ms: context.audio.track_lengths_ms.clone(),
+        }];
+        return (
+            IdentifyState::Triangulating {
+                discid,
+                barcode,
+                catalog,
+                isrc,
+                search,
+                context,
+            },
+            effects,
+        );
     }
+    context.documents = DocumentReading::Read(documents);
+    let kept = context.album_links_to_keep();
+    let effects = if kept.is_empty() {
+        Vec::new()
+    } else {
+        vec![Effect::KeepAlbumLinks { kept }]
+    };
 
     // The only place a ledger is recorded; later readers show this one.
     let ledger = context
@@ -942,8 +869,8 @@ mod context;
 mod progress;
 
 pub use context::{
-    AlbumLinkReading, BarcodeEvidence, CatalogEvidence, ChosenCatalog, DiscIdEvidence,
-    IsrcEvidence, SearchEvidence, SignalsContext, TitleSearch,
+    BarcodeEvidence, CatalogEvidence, ChosenCatalog, DiscIdEvidence, IsrcEvidence, SearchEvidence,
+    SignalsContext, TitleSearch,
 };
 use progress::{
     barcode_progress_state, barcode_settled_state, catalog_progress_state, catalog_settled_state,

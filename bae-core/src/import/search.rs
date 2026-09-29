@@ -53,8 +53,7 @@ pub struct MetadataResult {
     /// Releases on other catalogs this record's own document names as the
     /// same release. Only a MusicBrainz release document states any. A
     /// search result's response carries no relations, so it states none until
-    /// reading its album's links browses its group's releases, which carry
-    /// each release's own.
+    /// its document is read (see [`crate::identify::documents`]).
     pub links: Vec<MetadataRef>,
     /// What the record says about its cover: a stated cover, an unstated
     /// address when it said nothing (a MusicBrainz search result), or `None`
@@ -137,6 +136,38 @@ impl MetadataResult {
             album_first_year: None,
             track_titles: Vec::new(),
             notes: Vec::new(),
+        }
+    }
+}
+
+impl MetadataResult {
+    /// A stored release, as a result: what its documents state, with no
+    /// lookup behind it. Its tracklist is read against the folder's audio
+    /// where its document is applied (see [`crate::identify::documents`]).
+    pub(crate) fn of_release(release: &crate::import::source_release::SourceRelease) -> Self {
+        let pressing = release.pressing();
+        Self {
+            source: release.release().catalog,
+            release_id: release.release().key.clone(),
+            title: release.metadata.album.title.clone(),
+            artist: release.artist_line(),
+            year: pressing.year,
+            labels: pressing.labels.clone(),
+            area: pressing.facts.area,
+            status: pressing.facts.status,
+            packaging: pressing.facts.packaging,
+            discogs_details: pressing.facts.discogs_details.clone(),
+            barcodes: pressing.barcode.iter().cloned().collect(),
+            media: release.stated_media(),
+            links: release.links(),
+            cover_art: release.covers().first().cloned(),
+            source_group_id: release.source_group_id.clone(),
+            album_links: release.album_links(),
+            source_tracks: None,
+            document_failure: None,
+            album_first_year: release.metadata.album.first_year,
+            track_titles: Vec::new(),
+            notes: release.notes.clone(),
         }
     }
 }
@@ -311,41 +342,6 @@ pub fn discogs_search_result_to_metadata(
         album_first_year: None,
         track_titles: Vec::new(),
         notes,
-    }
-}
-
-/// A Discogs release's own document as a result: what a list holds of a
-/// release it read because a MusicBrainz release on it names this one as
-/// itself. No lookup returned it, and nothing about it was judged or stored,
-/// so its tracklist is not asked for here.
-pub(crate) fn discogs_release_to_metadata(release: &crate::discogs::DiscogsRelease) -> MetadataResult {
-    let metadata = crate::import::discogs_mapper::metadata(release);
-    let (pressing, media) = crate::import::discogs_mapper::pressing(release);
-    MetadataResult {
-        source: Catalog::Discogs,
-        release_id: release.id.clone(),
-        title: metadata.album.title,
-        artist: metadata.album.artists.first().map(|artist| artist.name.clone()),
-        year: pressing.year,
-        labels: pressing.labels,
-        area: pressing.facts.area,
-        status: pressing.facts.status,
-        packaging: pressing.facts.packaging,
-        discogs_details: pressing.facts.discogs_details,
-        barcodes: pressing.barcode.into_iter().collect(),
-        media,
-        // A Discogs document names no counterpart on another catalog.
-        links: Vec::new(),
-        cover_art: release.covers.first().cloned(),
-        source_group_id: release.master_id.clone(),
-        // A Discogs document names no counterpart on another catalog.
-        album_links: AlbumLinks::NotAsked,
-        // Its documents are not stored, and a `Some` here says they are.
-        source_tracks: None,
-        document_failure: None,
-        album_first_year: None,
-        track_titles: Vec::new(),
-        notes: discogs_release_notes(release),
     }
 }
 

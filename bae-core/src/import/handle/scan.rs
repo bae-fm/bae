@@ -451,6 +451,10 @@ impl ImportServiceHandle {
         let release = self
             .release_for_pick(&candidate_key, &link.record)
             .await?;
+        // Picking a result of a typed search opens it: what its documents
+        // state its album is joins the search's cards.
+        self.land_opened(&candidate_key, release.release(), release.album_links())
+            .await;
         let audio_durations =
             crate::import::audio_layout::audio_durations(&candidate.files, &durations)?;
         let folder_tracks = u32::try_from(audio_durations.len()).expect("a folder's tracks fit u32");
@@ -478,6 +482,10 @@ impl ImportServiceHandle {
             CallPriority::Interactive,
         )
         .await?;
+        for partner in &prepared_partners {
+            self.land_opened(&candidate_key, partner.release(), partner.album_links())
+                .await;
+        }
         // The choice is stored as the candidate's result unless a run's result
         // already stands.
         let detail = release.detail_for_audio(&audio_durations, &prepared_partners)?;

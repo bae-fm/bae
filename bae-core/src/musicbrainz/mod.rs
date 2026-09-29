@@ -59,22 +59,9 @@ fn release_group_url(release_group_id: &str) -> String {
     ))
 }
 
-/// How many of a release group's releases one browse page answers — the
-/// most MusicBrainz serves a page.
-pub const GROUP_RELEASES_PAGE: usize = 100;
-
 /// How many recordings one search page answers — the most MusicBrainz serves
 /// a page.
 const RECORDING_SEARCH_PAGE: usize = 100;
-
-/// One page of a release group's releases, from `offset`, each with its own
-/// links and the group's — one request that states both what the group's
-/// page links and what each of those releases links.
-fn group_releases_url(release_group_id: &str, offset: usize) -> String {
-    ws2(&format!(
-        "release?release-group={release_group_id}&inc=url-rels+release-groups+release-group-level-rels&limit={GROUP_RELEASES_PAGE}&offset={offset}&fmt=json"
-    ))
-}
 
 fn discid_url(discid: &str) -> String {
     ws2(&format!(
@@ -494,33 +481,6 @@ impl MusicBrainz {
         .await
     }
 
-    /// The page of a release group's releases starting at `offset`, each with
-    /// its own links and the group's.
-    pub async fn browse_group_releases(
-        &self,
-        release_group_id: &str,
-        offset: usize,
-        priority: CallPriority,
-    ) -> Result<GroupReleases, MusicBrainzError> {
-        let url = group_releases_url(release_group_id, offset);
-        debug!("Browsing release-group releases: {}", url);
-        mb_retry("MusicBrainz release-group browse", || async {
-            let json = match self.get(&url, priority).await {
-                Ok(json) => json,
-                Err(MusicBrainzError::Provider {
-                    status: Some(404), ..
-                }) => {
-                    return Err(MusicBrainzError::NotFound(release_group_id.to_string()));
-                }
-                Err(error) => return Err(error),
-            };
-            serde_json::from_str(&json).map_err(|error| {
-                MusicBrainzError::Other(format!("Failed to parse release browse JSON: {error}"))
-            })
-        })
-        .await
-    }
-
     /// Every MusicBrainz release explicitly related to this Discogs release URL.
     /// A missing URL resource is `None`; a found document retains its raw answer,
     /// including an empty or ambiguous set of matching targets.
@@ -746,13 +706,6 @@ impl MusicBrainz {
     #[cfg(any(test, feature = "test-utils"))]
     pub fn seed_release_cache(&self, release_id: &str, raw_json: String) {
         self.seed_response(&release_url(release_id), 200, raw_json);
-    }
-
-    /// Pre-populate the page of a release group's browsed releases starting
-    /// at `offset`, as [`Self::browse_group_releases`] asks for it.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub fn seed_group_releases(&self, release_group_id: &str, offset: usize, raw_json: String) {
-        self.seed_response(&group_releases_url(release_group_id, offset), 200, raw_json);
     }
 
     /// Pre-populate a release-group document. Pairs with `seed_release_cache`.

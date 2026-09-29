@@ -496,51 +496,88 @@ fn dispatch_effect(
         }
 
         // Each record is fetched through the one place a pick reads it from,
-        // so picking an offered row later asks for nothing again.
+        // so picking an offered row later asks for nothing again. A twin is
+        // fetched the same way: the MusicBrainz document that names it was
+        // fetched with the twin's own documents, so the providers' response
+        // caches answer it. It is checked against the library the way a
+        // lookup's answers are.
         Effect::ReadReleases {
             releases,
+            twins,
             track_lengths_ms,
         } => {
             let library_manager = inner.library_manager.clone();
             spawn_until_cancelled(&runtime, &token, async move {
-                let mut read = Vec::with_capacity(releases.len());
+                let mut read = Vec::with_capacity(releases.len() + twins.len());
                 for release in releases {
-                    let document = match crate::import::service::prepare_release(
-                        &library_manager,
-                        &release,
-                        priority,
-                    )
-                    .await
-                    {
-                        Ok(stored) => Ok(crate::identify::documents::ReleaseDocument::of(
-                            &stored,
-                            &track_lengths_ms,
-                        )),
-                        Err(error) => match crate::import::search::failure_of(
-                            &error,
-                            &format!(
-                                "reading {} release {}",
-                                release.catalog.as_str(),
-                                release.key
-                            ),
-                        ) {
-                            Failure::Lookup(failure) => {
-                                debug!(
-                                    "{} release {} could not be read in full: {error}",
-                                    release.catalog.as_str(),
-                                    release.key
-                                );
-                                Err(failure)
-                            }
-                            Failure::Internal(failure) => {
-                                emit_step(&event_tx, IdentifyEvent::Broke { failure });
-                                return;
-                            }
-                        },
+                    let Some(stored) =
+                        read_release(&library_manager, &release, priority, &event_tx).await
+                    else {
+                        return;
                     };
+                    let document = stored.map(|stored| {
+                        crate::identify::documents::ReleaseDocument::of(&stored, &track_lengths_ms)
+                    });
                     read.push(crate::identify::documents::ReleaseReading { release, document });
                 }
-                emit_step(&event_tx, IdentifyEvent::ReleasesRead { read });
+                let mut stored_twins = Vec::with_capacity(twins.len());
+                for twin in twins {
+                    let Some(stored) =
+                        read_release(&library_manager, &twin.release, priority, &event_tx).await
+                    else {
+                        return;
+                    };
+                    let document = match stored {
+                        Ok(stored) => {
+                            let document = crate::identify::documents::ReleaseDocument::of(
+                                &stored,
+                                &track_lengths_ms,
+                            );
+                            stored_twins.push((stored, twin.named_by));
+                            Ok(document)
+                        }
+                        Err(failure) => Err(failure),
+                    };
+                    read.push(crate::identify::documents::ReleaseReading {
+                        release: twin.release,
+                        document,
+                    });
+                }
+                let checks: Vec<crate::db::LibraryCheck> = stored_twins
+                    .iter()
+                    .map(|(stored, _)| stored.library_check())
+                    .collect();
+                let statuses = if checks.is_empty() {
+                    Vec::new()
+                } else {
+                    match library_manager.check_releases_in_library(&checks).await {
+                        Ok(statuses) => statuses,
+                        Err(error) => {
+                            emit_step(
+                                &event_tx,
+                                IdentifyEvent::Broke {
+                                    failure: crate::signals::InternalFailure::logged(
+                                        "checking the library for the twins a run read",
+                                        error.to_string(),
+                                    ),
+                                },
+                            );
+                            return;
+                        }
+                    }
+                };
+                let twins = stored_twins
+                    .into_iter()
+                    .zip(statuses)
+                    .map(
+                        |((stored, named_by), status)| crate::identify::documents::Twin {
+                            result: crate::import::search::MetadataResult::of_release(&stored),
+                            named_by,
+                            status,
+                        },
+                    )
+                    .collect();
+                emit_step(&event_tx, IdentifyEvent::ReleasesRead { read, twins });
             });
         }
 
@@ -554,14 +591,6 @@ fn dispatch_effect(
             #[cfg(test)]
             let keep = inner.driver_tasks.track_future(keep);
             runtime.spawn(keep);
-        }
-
-        Effect::ReadAlbumLinks { to_read } => {
-            let library_manager = inner.library_manager.clone();
-            spawn_until_cancelled(&runtime, &token, async move {
-                let read = library_manager.read_album_links(&to_read, priority).await;
-                emit_step(&event_tx, IdentifyEvent::AlbumLinksRead { read });
-            });
         }
 
         Effect::LookupCatalog { source, catalog } => {
@@ -586,6 +615,43 @@ fn dispatch_effect(
                     }
                 });
             });
+        }
+    }
+}
+
+/// `release` from storage or fetched and stored now, or why its catalog could
+/// not give it. `None` when bae broke reading it: the run has then been told,
+/// and ends.
+async fn read_release(
+    library_manager: &LibraryManager,
+    release: &crate::import::MetadataRef,
+    priority: CallPriority,
+    event_tx: &mpsc::UnboundedSender<IdentifyEvent>,
+) -> Option<Result<crate::import::source_release::SourceRelease, crate::signals::LookupFailure>> {
+    let error =
+        match crate::import::service::prepare_release(library_manager, release, priority).await {
+            Ok(stored) => return Some(Ok(stored)),
+            Err(error) => error,
+        };
+    match crate::import::search::failure_of(
+        &error,
+        &format!(
+            "reading {} release {}",
+            release.catalog.as_str(),
+            release.key
+        ),
+    ) {
+        Failure::Lookup(failure) => {
+            debug!(
+                "{} release {} could not be read in full: {error}",
+                release.catalog.as_str(),
+                release.key
+            );
+            Some(Err(failure))
+        }
+        Failure::Internal(failure) => {
+            emit_step(event_tx, IdentifyEvent::Broke { failure });
+            None
         }
     }
 }

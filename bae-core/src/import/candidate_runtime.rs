@@ -533,30 +533,28 @@ impl CandidateRuntime {
         })
     }
 
-    /// Mark the MusicBrainz groups `key`'s search needs album links for as being
-    /// read, and return what to read — nothing when `run` is not its run.
-    pub(super) fn start_reading_album_links(
-        &self,
-        key: &str,
-        run: u64,
-    ) -> crate::import::album_links::ToRead {
+    /// Open `release` on `key`'s search: whether its documents are to be read
+    /// now (see [`CandidateSearch::open`]); `false` when the key has no search.
+    pub(super) fn open_search_result(&self, key: &str, release: &crate::import::MetadataRef) -> bool {
         self.set(key, |_, runtime| match runtime.search.as_mut() {
-            Some(running) if running.run == run => running.search.start_reading_album_links(),
-            Some(_) | None => crate::import::album_links::ToRead::default(),
+            Some(running) => running.search.open(release),
+            None => false,
         })
     }
 
-    /// Land the album links read for `key`'s search if `run` is still its run,
-    /// returning the links to keep; `None` when the run moved on.
-    pub(super) fn land_album_links(
+    /// Land what `release`'s documents state its album is on whatever search
+    /// `key` is on now — a statement about the release stays true whichever
+    /// search holds it — returning what to keep; nothing when the key has no
+    /// search, or its search does not hold the release.
+    pub(super) fn land_opened(
         &self,
         key: &str,
-        run: u64,
-        read: Vec<crate::import::album_links::GroupReading>,
-    ) -> Option<Vec<(String, Vec<crate::import::album_links::AlbumLink>)>> {
+        release: &crate::import::MetadataRef,
+        links: crate::import::album_links::AlbumLinks,
+    ) -> Vec<(String, Vec<crate::import::album_links::AlbumLink>)> {
         self.set(key, |_, runtime| match runtime.search.as_mut() {
-            Some(running) if running.run == run => Some(running.search.record_album_links(read)),
-            Some(_) | None => None,
+            Some(running) => running.search.record_opened(release, links),
+            None => Vec::new(),
         })
     }
 

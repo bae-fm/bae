@@ -480,14 +480,14 @@ async fn an_import_commits_what_its_picked_releases_store_now() {
     );
 }
 
-/// The case a pick has to carry a join its own documents never reach: a list
+/// The case a pick has to carry a join its own documents never reach: a run
 /// read that a MusicBrainz release group's album is a Discogs master only
 /// through one of its pressings — its release links a Discogs release filed
-/// under the master. A pick of another release of that master names the
-/// release group among its records, from what the reading kept.
+/// under the master — and kept it. A pick of another release of that master
+/// names the release group among its records, from what the run kept.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_pick_carries_the_album_a_reading_found_through_another_pressing() {
-    use crate::import::album_links::{GroupToRead, Listed, ToRead};
+    use crate::import::album_links::{AlbumLink, AlbumStatement};
     // The pick offers the joined group's album address, which the archive
     // holds no image at.
     let archive = crate::util::http::serve_not_found().await;
@@ -504,52 +504,22 @@ async fn a_pick_carries_the_album_a_reading_found_through_another_pressing() {
         .unwrap();
     let providers = handle.library_manager.providers();
     let group = "chain-mb-group";
-    providers.musicbrainz().seed_group_releases(
-        group,
-        0,
-        serde_json::json!({"release-count": 1, "releases": [{
-            "id": "chain-mb-release",
-            "relations": [{"url": {"resource": "https://www.discogs.com/release/70000011"}}],
-            "release-group": {"id": group, "relations": []},
-        }]})
-        .to_string(),
-    );
-    seed_discogs_release_in(providers, "70000011", Some("909"));
     seed_discogs_release_in(providers, "70000012", Some("909"));
-    let read = handle
-        .library_manager
-        .read_album_links(
-            &ToRead {
-                groups: vec![GroupToRead {
-                    group: group.to_string(),
-                    releases: vec![Listed {
-                        release: crate::import::MetadataRef::new(
-                            crate::import::Catalog::MusicBrainz,
-                            "chain-mb-release",
-                        ),
-                        album: Some(group.to_string()),
-                        links: Vec::new(),
-                    }],
-                }],
-                on_list: vec![Listed {
-                    release: crate::import::MetadataRef::new(
-                        crate::import::Catalog::Discogs,
-                        "70000012",
-                    ),
-                    album: Some("909".to_string()),
-                    links: Vec::new(),
-                }],
-            },
-            crate::util::rate_limiter::CallPriority::Interactive,
-        )
-        .await;
-    assert!(read[0].links.names(&crate::import::MetadataRef::new(
-        crate::import::Catalog::Discogs,
-        "909"
-    )));
     handle
         .library_manager
-        .keep_album_links(crate::import::album_links::to_keep(&read))
+        .keep_album_links(vec![(
+            group.to_string(),
+            vec![AlbumLink {
+                album: crate::import::MetadataRef::new(crate::import::Catalog::Discogs, "909"),
+                stated: AlbumStatement::Release {
+                    musicbrainz_release: "chain-mb-release".to_string(),
+                    twin: crate::import::MetadataRef::new(
+                        crate::import::Catalog::Discogs,
+                        "70000011",
+                    ),
+                },
+            }],
+        )])
         .await;
 
     let picked = crate::import::MetadataRef::new(crate::import::Catalog::Discogs, "70000012");

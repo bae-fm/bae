@@ -200,6 +200,14 @@ forward! {
         fn clear_candidate_search(candidate_key: String) {
             this.services.import_clear_candidate_search(candidate_key);
         }
+
+        /// The person opened a result of a candidate's typed search: core reads
+        /// the release's documents, and what they state its album is joins the
+        /// search's cards when it lands.
+        fn open_search_result(candidate_key: String, link: crate::types::BridgePressingLink) {
+            this.services
+                .import_open_search_result(candidate_key, link.into_core());
+        }
     }
 }
 

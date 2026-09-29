@@ -430,8 +430,17 @@ impl SourceRelease {
         }
     }
 
+    /// What its documents state its album is on the other lookup catalog:
+    /// `NotAsked` for a Discogs release, whose documents state none.
+    pub(crate) fn album_links(&self) -> crate::import::album_links::AlbumLinks {
+        match &self.catalog {
+            CatalogFacts::MusicBrainz { album_links, .. } => album_links.clone(),
+            CatalogFacts::Discogs { .. } => crate::import::album_links::AlbumLinks::NotAsked,
+        }
+    }
+
     /// The album artists, joined the way a picker's row prints them.
-    fn artist_line(&self) -> Option<String> {
+    pub(crate) fn artist_line(&self) -> Option<String> {
         let artists = &self.metadata.album.artists;
         (!artists.is_empty()).then(|| {
             artists

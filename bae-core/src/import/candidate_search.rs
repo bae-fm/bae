@@ -8,14 +8,20 @@
 //! provider that fails is named beside what the other found rather than
 //! blanking the pane.
 //!
+//! Nothing more is read about a result until the person opens it: the cards
+//! show at once, each catalog's albums apart. Opening a MusicBrainz result
+//! reads its release's documents, and what they state its album is on Discogs
+//! joins the cards by the one rule set an identify run's rows are joined by
+//! (see [`crate::import::album_links`]).
+//!
 //! Pure. The driver that runs the lookups and publishes each landing is
 //! [`crate::import::ImportServiceHandle::start_candidate_search`].
 
 use crate::db::LibraryStatus;
-use crate::import::album_links::{self, AlbumLink, GroupReading, ToRead};
+use crate::import::album_links::{self, AlbumLink, AlbumLinks, GroupLinks};
 use crate::import::release_group::{group_results, ReleaseGroup};
 use crate::import::search::{MetadataResult, SearchQuery};
-use crate::import::types::{Catalog, CatalogAvailability, SourceAvailability};
+use crate::import::types::{Catalog, CatalogAvailability, MetadataRef, SourceAvailability};
 use crate::signals::Failure;
 use tracing::debug;
 
@@ -101,11 +107,27 @@ pub struct CandidateSearch {
     /// One status per result across every settled source, each carrying its own
     /// release id.
     pub library_statuses: Vec<LibraryStatus>,
-    /// The MusicBrainz groups whose album links are being read.
-    pub album_links_reading: Vec<String>,
-    /// What reading each MusicBrainz group's album links answered, with the
-    /// twins it read — already folded into `groups`.
-    pub album_links_read: Vec<GroupReading>,
+    /// The MusicBrainz results the person opened, in the order they did —
+    /// what their documents state is already folded into `groups`.
+    pub opened: Vec<OpenedResult>,
+}
+
+/// A MusicBrainz result the person opened, by release id.
+#[derive(Debug, Clone, PartialEq)]
+pub enum OpenedResult {
+    /// Its documents are being read.
+    Reading { release_id: String },
+    /// What its documents state its album is on the other lookup catalog;
+    /// `Unread` where they could not be had.
+    Read { release_id: String, links: AlbumLinks },
+}
+
+impl OpenedResult {
+    fn release_id(&self) -> &str {
+        match self {
+            OpenedResult::Reading { release_id } | OpenedResult::Read { release_id, .. } => release_id,
+        }
+    }
 }
 
 impl CandidateSearch {
@@ -121,8 +143,7 @@ impl CandidateSearch {
                 .collect(),
             groups: Vec::new(),
             library_statuses: Vec::new(),
-            album_links_reading: Vec::new(),
-            album_links_read: Vec::new(),
+            opened: Vec::new(),
         }
     }
 
@@ -204,57 +225,88 @@ impl CandidateSearch {
                 *state = SourceSearch::Searching;
             }
         }
-        // A read still out belongs to the run this replaces, which nothing
-        // lands on; the next landing asks for those groups again.
-        self.album_links_reading.clear();
     }
 
-    /// What reading the MusicBrainz groups whose album links are to be read
-    /// now takes, those groups marked as being read: every group on the list
-    /// not yet asked about, once the list holds both catalogs' releases.
-    pub fn start_reading_album_links(&mut self) -> ToRead {
-        let to_read = album_links::to_read(
-            self.sources
-                .iter()
-                .flat_map(|(_, state)| state.results())
-                .map(|(result, _)| result),
-            |group| {
-                self.album_links_reading.iter().any(|reading| reading == group)
-                    || self.album_links_read.iter().any(|read| read.group == group)
-            },
-        );
-        self.album_links_reading
-            .extend(to_read.group_ids().map(str::to_string));
-        to_read
+    /// Open `release`: whether its documents are to be read now — a
+    /// MusicBrainz result on the list that was not opened before, marked as
+    /// being read. Only a MusicBrainz release's documents state its album on
+    /// another catalog.
+    pub fn open(&mut self, release: &MetadataRef) -> bool {
+        let listed = self.landed().any(|(result, _)| {
+            result.source == release.catalog && result.release_id == release.key
+        });
+        let opened = self
+            .opened
+            .iter()
+            .any(|opened| opened.release_id() == release.key);
+        if release.catalog != Catalog::MusicBrainz || !listed || opened {
+            return false;
+        }
+        self.opened.push(OpenedResult::Reading {
+            release_id: release.key.clone(),
+        });
+        true
     }
 
-    /// Land what reading some groups' album links answered, the list read
-    /// for the groups no document links, and re-derive the result area with
-    /// them. Answers what those groups were read to be, to keep.
-    ///
-    /// Nothing more is read about a typed search's rows, so the list is read
-    /// as it landed, with the twins these readings put beside it.
-    pub fn record_album_links(&mut self, read: Vec<GroupReading>) -> Vec<(String, Vec<AlbumLink>)> {
-        self.album_links_reading
-            .retain(|group| !read.iter().any(|read| read.group == *group));
-        let read = {
-            let landed: Vec<&MetadataResult> = self
-                .sources
-                .iter()
-                .flat_map(|(_, state)| state.results())
-                .map(|(result, _)| result)
-                .collect();
-            let twins: Vec<MetadataResult> = album_links::twins(&read, &landed)
-                .into_iter()
-                .map(|twin| twin.result.clone())
-                .collect();
-            let list: Vec<&MetadataResult> = landed.into_iter().chain(&twins).collect();
-            album_links::read_the_list(read, &list)
+    /// Land what an opened MusicBrainz release's documents state its album
+    /// is, and re-derive the result area with it. Answers what its album on
+    /// the list was then read to be, to keep; nothing where the release is not
+    /// a MusicBrainz result on the list.
+    pub fn record_opened(
+        &mut self,
+        release: &MetadataRef,
+        links: AlbumLinks,
+    ) -> Vec<(String, Vec<AlbumLink>)> {
+        if release.catalog != Catalog::MusicBrainz {
+            return Vec::new();
+        }
+        let Some(group) = self
+            .landed()
+            .find(|(result, _)| {
+                result.source == release.catalog && result.release_id == release.key
+            })
+            .map(|(result, _)| result.source_group_id.clone())
+        else {
+            return Vec::new();
         };
-        let kept = album_links::to_keep(&read);
-        self.album_links_read.extend(read);
+        let read = OpenedResult::Read {
+            release_id: release.key.clone(),
+            links,
+        };
+        match self
+            .opened
+            .iter_mut()
+            .find(|opened| opened.release_id() == release.key)
+        {
+            Some(opened) => *opened = read,
+            None => self.opened.push(read),
+        }
         self.regroup();
-        kept
+        let landed: Vec<&MetadataResult> = self.landed().map(|(result, _)| result).collect();
+        let groups: Vec<GroupLinks> = self
+            .read_groups(&landed)
+            .into_iter()
+            .filter(|read| Some(&read.group) == group.as_ref())
+            .collect();
+        album_links::to_keep(&groups, &landed)
+    }
+
+    /// Every settled source's results, in source order.
+    fn landed(&self) -> impl Iterator<Item = &(MetadataResult, LibraryStatus)> {
+        self.sources.iter().flat_map(|(_, state)| state.results())
+    }
+
+    /// What each MusicBrainz album on `list` was read to be, from the opened
+    /// results' documents.
+    fn read_groups(&self, list: &[&MetadataResult]) -> Vec<GroupLinks> {
+        album_links::read_groups(list, |release| {
+            self.opened.iter().find_map(|opened| match opened {
+                OpenedResult::Read { release_id, links } if release_id == release => {
+                    Some(links.clone())
+                }
+                OpenedResult::Read { .. } | OpenedResult::Reading { .. } => None,
+            })
+        })
     }
 
     /// The sources with a lookup to run — every asked source of a just-started
@@ -310,32 +362,14 @@ impl CandidateSearch {
 
     /// Re-fold every settled source's results, in source order — so a card two
     /// sources describe reads as the earlier source's with the later one's rows
-    /// merged in — and each twin the album links read beside the release that
-    /// names it, while that release is on the list and the twin's own
-    /// catalog is still asked.
+    /// merged in — each MusicBrainz record carrying what its album was read to
+    /// be from the results opened so far.
     fn regroup(&mut self) {
-        let landed: Vec<(MetadataResult, LibraryStatus)> = self
-            .sources
-            .iter()
-            .flat_map(|(_, state)| state.results())
-            .cloned()
-            .collect();
-        let (mut results, mut statuses): (Vec<MetadataResult>, Vec<LibraryStatus>) =
-            landed.into_iter().unzip();
+        let (mut results, statuses): (Vec<MetadataResult>, Vec<LibraryStatus>) =
+            self.landed().cloned().unzip();
+        let groups = self.read_groups(&results.iter().collect::<Vec<_>>());
         for result in &mut results {
-            album_links::apply(result, &self.album_links_read);
-        }
-        let twins: Vec<(MetadataResult, LibraryStatus)> =
-            album_links::twins(&self.album_links_read, &results.iter().collect::<Vec<_>>())
-                .into_iter()
-                .filter(|twin| {
-                    matches!(self.source(twin.result.source), Some(SourceSearch::Done { .. }))
-                })
-                .map(|twin| (twin.result.clone(), twin.status.clone()))
-                .collect();
-        for (twin, status) in twins {
-            results.push(twin);
-            statuses.push(status);
+            album_links::apply(result, &groups);
         }
         // Typed search: nothing was judged against the candidate's own text,
         // so the rows keep the pressing-year order alone.
@@ -453,10 +487,15 @@ mod tests {
         assert_eq!(search.status(), SearchStatus::Found);
     }
 
-    /// Album links are read once the list holds both catalogs' releases,
-    /// each group once, and what was read joins the two albums on one card.
+    fn musicbrainz(release_id: &str) -> crate::import::MetadataRef {
+        crate::import::MetadataRef::new(Catalog::MusicBrainz, release_id)
+    }
+
+    /// A typed search reads nothing up front: its cards show each catalog's
+    /// album apart until the person opens a result, and then what that
+    /// release's documents state joins them.
     #[test]
-    fn album_links_are_read_once_both_catalogs_land_and_join_the_albums() {
+    fn a_typed_search_s_cards_join_after_a_result_is_opened_and_not_before() {
         let unpaired = |source: Catalog, release_id: &str, group_id: &str| {
             let mut found = result(source, release_id, group_id);
             found.barcodes = Vec::new();
@@ -467,43 +506,42 @@ mod tests {
             Catalog::MusicBrainz,
             unpaired(Catalog::MusicBrainz, "mb-1", "group-x"),
         );
-        assert!(search.start_reading_album_links().is_empty());
-
         search.record(
             Catalog::Discogs,
             unpaired(Catalog::Discogs, "dg-1", "master-7"),
         );
-        assert_eq!(search.groups.len(), 2);
-        assert_eq!(
-            search
-                .start_reading_album_links()
-                .group_ids()
-                .collect::<Vec<_>>(),
-            vec!["group-x"]
-        );
-        assert!(
-            search.start_reading_album_links().is_empty(),
-            "a group being read is not asked for again"
-        );
+        assert_eq!(search.groups.len(), 2, "nothing joins before an open");
 
-        search.record_album_links(vec![GroupReading::of_links(
-            "group-x",
-            crate::import::album_links::AlbumLinks::Read(vec![
-                crate::import::album_links::AlbumLink {
-                    album: crate::import::MetadataRef::new(Catalog::Discogs, "master-7"),
-                    stated: crate::import::album_links::AlbumStatement::Page,
-                },
-            ]),
-        )]);
-        assert_eq!(search.groups.len(), 1);
-        assert!(search.start_reading_album_links().is_empty());
+        assert!(
+            !search.open(&crate::import::MetadataRef::new(Catalog::Discogs, "dg-1")),
+            "a Discogs release's documents state no other catalog's album"
+        );
+        assert!(search.open(&musicbrainz("mb-1")));
+        assert!(
+            !search.open(&musicbrainz("mb-1")),
+            "a result being read is not read again"
+        );
+        assert!(!search.open(&musicbrainz("mb-9")), "nor one off the list");
+        assert_eq!(search.groups.len(), 2, "nor while its documents are read");
+
+        let link = AlbumLink {
+            album: crate::import::MetadataRef::new(Catalog::Discogs, "master-7"),
+            stated: crate::import::album_links::AlbumStatement::Page,
+        };
+        let kept = search.record_opened(
+            &musicbrainz("mb-1"),
+            AlbumLinks::Read(vec![link.clone()]),
+        );
+        assert_eq!(search.groups.len(), 1, "the opened result joins the cards");
+        assert_eq!(kept, vec![("group-x".to_string(), vec![link])]);
     }
 
-    /// A group whose documents link nothing is read against what the landed
-    /// list prints: one catalog number under one label joins the albums, and
-    /// that is what the group is kept as.
+    /// An opened result whose documents link nothing is read against what the
+    /// landed list prints: one catalog number under one label joins the
+    /// albums, and that is what the group is kept as. Before it is opened the
+    /// same numbers join nothing.
     #[test]
-    fn a_group_no_document_links_is_joined_by_what_the_list_prints() {
+    fn an_opened_result_no_document_links_is_joined_by_what_the_list_prints() {
         let numbered = |source: Catalog, release_id: &str, group_id: &str| {
             let mut found = result(source, release_id, group_id);
             found.barcodes = Vec::new();
@@ -517,13 +555,10 @@ mod tests {
         );
         search.record(Catalog::Discogs, numbered(Catalog::Discogs, "dg-1", "master-7"));
         assert_eq!(search.groups.len(), 2);
-        assert!(!search.start_reading_album_links().is_empty());
 
-        let kept = search.record_album_links(vec![GroupReading::of_links(
-            "group-x",
-            crate::import::album_links::AlbumLinks::Read(Vec::new()),
-        )]);
-        let joined = crate::import::album_links::AlbumLink {
+        assert!(search.open(&musicbrainz("mb-1")));
+        let kept = search.record_opened(&musicbrainz("mb-1"), AlbumLinks::Read(Vec::new()));
+        let joined = AlbumLink {
             album: crate::import::MetadataRef::new(Catalog::Discogs, "master-7"),
             stated: crate::import::album_links::AlbumStatement::CatalogNumber {
                 musicbrainz_release: "mb-1".to_string(),

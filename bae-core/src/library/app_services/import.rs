@@ -27,6 +27,7 @@ impl AppServices {
     delegate_async!(import, import_search_with_status => search_with_status(query: crate::import::SearchQuery, source: crate::import::Catalog) -> Result<crate::import::GroupedSearchResults, crate::import::ImportError>);
     delegate_sync!(import, import_retry_candidate_search => retry_candidate_search(candidate_key: String) -> ());
     delegate_sync!(import, import_clear_candidate_search => clear_candidate_search(candidate_key: String) -> ());
+    delegate_sync!(import, import_open_search_result => open_search_result(candidate_key: String, link: crate::import::PressingLink) -> ());
     delegate_async!(import, import_start_import => start_import(candidate_key: &str) -> Result<String, crate::import::ImportError>);
     delegate_async!(import, import_selected => import_selected(candidate_key: &str) -> Result<String, crate::import::ImportError>);
     delegate_async!(import, import_save_discogs_token => save_discogs_token(token: &str) -> Result<crate::import::DiscogsSaveOutcome, crate::import::ImportError>);

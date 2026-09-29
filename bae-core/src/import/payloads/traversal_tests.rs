@@ -131,8 +131,10 @@ async fn failed_canonical_group_is_not_requested_again_through_another_alias() {
     );
 }
 
-#[tokio::test]
-async fn cyclic_release_and_album_links_fetch_each_document_once() {
+/// A MusicBrainz release linking a Discogs release as itself, its group
+/// linking that release's master, and each Discogs page's MusicBrainz URL
+/// lookup leading back — every answer by the path it is asked on.
+fn linked_pair_answers() -> HashMap<String, (u16, String)> {
     let release = release_json(
         "cycle-release",
         Some("cycle-group"),
@@ -146,7 +148,7 @@ async fn cyclic_release_and_album_links_fetch_each_document_once() {
         {"url":{"resource":"https://www.discogs.com/master/920002"}}
     ]})
     .to_string();
-    let answers = HashMap::from([
+    HashMap::from([
         ("/ws/2/release/cycle-release".into(), (200, release)),
         ("/ws/2/release-group/cycle-group".into(), (200, group)),
         ("/releases/920001".into(), (200, serde_json::json!({"id":920001,"title":"Album Title","master_id":920002}).to_string())),
@@ -157,7 +159,12 @@ async fn cyclic_release_and_album_links_fetch_each_document_once() {
         ("url:https://www.discogs.com/master/920002".into(), (200, serde_json::json!({"relations":[
             {"type":"discogs","target-type":"release_group","release_group":{"id":"cycle-group"}}
         ]}).to_string())),
-    ]);
+    ])
+}
+
+#[tokio::test]
+async fn cyclic_release_and_album_links_fetch_each_document_once() {
+    let answers = linked_pair_answers();
     let expected: HashMap<_, _> = answers.keys().cloned().map(|key| (key, 1)).collect();
     let server = ProviderServer::start(answers).await;
     let discogs = DiscogsClient::new(server.providers.discogs().clone(), "fixture-token".into());
@@ -187,6 +194,32 @@ async fn cyclic_release_and_album_links_fetch_each_document_once() {
         );
     }
     assert_eq!(fetched.len(), 6);
+}
+
+/// Fetching a MusicBrainz release fetches the documents of the Discogs
+/// release it names as itself, so reading that release afterwards — as an
+/// identify run reads a twin — is answered by the providers' response caches:
+/// no request goes out.
+#[tokio::test]
+async fn a_linked_release_is_read_from_what_fetching_its_namer_fetched() {
+    let server = ProviderServer::start(linked_pair_answers()).await;
+    let discogs = DiscogsClient::new(server.providers.discogs().clone(), "fixture-token".into());
+    let namer = MetadataRef::new(Catalog::MusicBrainz, "cycle-release");
+    server
+        .providers
+        .fetch_payloads(Some(&discogs), &namer, CallPriority::Interactive)
+        .await
+        .unwrap();
+    let asked = server.requests();
+
+    let named = MetadataRef::new(Catalog::Discogs, "920001");
+    let twin = server
+        .providers
+        .fetch_payloads(Some(&discogs), &named, CallPriority::Interactive)
+        .await
+        .unwrap();
+    assert_eq!(server.requests(), asked, "reading the twin asks nothing");
+    assert!(twin.unfetched.is_empty(), "and it reads every document it names");
 }
 
 #[tokio::test]

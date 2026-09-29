@@ -464,6 +464,7 @@ fn a_settled_state_carries_the_ledger_its_last_frame_showed() {
                 release: crate::import::MetadataRef::new(MB, "mb-1"),
                 document: Err(crate::signals::LookupFailure::Network),
             }],
+            twins: Vec::new(),
         },
     );
     assert!(matches!(settled, IdentifyState::Failed { .. }));

@@ -181,8 +181,11 @@ struct ReIdentifySheet: View {
                 // The sheet's header closes it.
                 onBack: nil,
                 // No confirm page: the footer commits the picked pressing.
+                // Opening a row asks core to read its release, as a pick
+                // does on the import surface.
                 onSelect: { pressing in
                     selectedPressing = pressing
+                    importer.openSearchResult(key, pressing.link)
                 }
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)

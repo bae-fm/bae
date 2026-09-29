@@ -108,25 +108,58 @@ impl ImportServiceHandle {
                     candidate_key,
                     source.as_str()
                 );
-                return;
-            }
-            // What landed may put the other catalog's releases beside
-            // MusicBrainz's, whose album links then join the two.
-            let to_read = runtime.start_reading_album_links(&candidate_key, run);
-            if to_read.is_empty() {
-                return;
-            }
-            let read = library_manager
-                .read_album_links(&to_read, CallPriority::Interactive)
-                .await;
-            match runtime.land_album_links(&candidate_key, run, read) {
-                Some(kept) => library_manager.keep_album_links(kept).await,
-                None => debug!(
-                    "{}'s album links landed on no run; it was cleared or superseded",
-                    candidate_key
-                ),
             }
         });
+    }
+
+    /// The person opened a result of `candidate_key`'s typed search: read the
+    /// documents of its MusicBrainz records not opened before, and land what
+    /// they state each album is on the search, so the cards join by it. The
+    /// read is the one a pick reads from, so picking the result afterwards
+    /// asks for nothing again. Fire-and-forget: each landing reaches a surface
+    /// as a `CandidateRuntimeChange`.
+    pub fn open_search_result(&self, candidate_key: String, link: crate::import::PressingLink) {
+        for release in std::iter::once(link.record).chain(link.partners) {
+            if !self.runtime.open_search_result(&candidate_key, &release) {
+                continue;
+            }
+            let this = self.clone();
+            let candidate_key = candidate_key.clone();
+            self.runtime_handle.spawn(async move {
+                let links = match crate::import::service::prepare_release(
+                    &this.library_manager,
+                    &release,
+                    CallPriority::Interactive,
+                )
+                .await
+                {
+                    Ok(stored) => stored.album_links(),
+                    Err(error) => {
+                        warn!(
+                            "{} release {} opened in a search could not be read; its album is not known: {error}",
+                            release.catalog.as_str(),
+                            release.key
+                        );
+                        crate::import::album_links::AlbumLinks::Unread
+                    }
+                };
+                this.land_opened(&candidate_key, &release, links).await;
+            });
+        }
+    }
+
+    /// Land what `release`'s documents state its album is on
+    /// `candidate_key`'s search, and keep what its album was then read to be.
+    pub(super) async fn land_opened(
+        &self,
+        candidate_key: &str,
+        release: &crate::import::MetadataRef,
+        links: crate::import::album_links::AlbumLinks,
+    ) {
+        let kept = self.runtime.land_opened(candidate_key, release, links);
+        if !kept.is_empty() {
+            self.library_manager.keep_album_links(kept).await;
+        }
     }
 
     /// Ask one source a typed query, check library status, and bundle the

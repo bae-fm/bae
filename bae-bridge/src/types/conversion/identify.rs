@@ -647,7 +647,6 @@ mod tests {
                 },
                 isrc: Default::default(),
                 track_titles: Vec::new(),
-                album_links: bae_core::identify::state::AlbumLinkReading::Pending,
                 documents: bae_core::identify::documents::DocumentReading::Pending,
             },
         }

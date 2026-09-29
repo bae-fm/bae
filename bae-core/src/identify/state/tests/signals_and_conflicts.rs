@@ -1,6 +1,6 @@
 use super::*;
 use crate::identify::{IdentifyFailure, LookupProvenance};
-use crate::import::album_links::{AlbumLinks, GroupReading};
+use crate::import::album_links::AlbumLinks;
 use crate::import::{Catalog, LookupChoices};
 use crate::signals::{BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSignal};
 
@@ -619,16 +619,10 @@ fn every_code_is_asked_of_every_provider() {
     assert!(matches!(state, IdentifyState::Triangulating { .. }));
     let (state, _) = step(state, barcode_missed(MB, "A"));
     let (state, _) = step(state, barcode_missed(DG, "B"));
-    // The last answer settles the lookups, and the run reads the albums' links.
+    // The last answer settles the lookups.
     let (state, _) = step(
         state,
         barcode_matched(MB, "B", vec![pair("mb-b", Some("g-y"))]),
-    );
-    let (state, _) = step(
-        state,
-        IdentifyEvent::AlbumLinksRead {
-            read: vec![GroupReading::of_links("g-y", AlbumLinks::Read(Vec::new()))],
-        },
     );
     let IdentifyState::Found {
         context,
@@ -723,12 +717,6 @@ fn a_failed_provider_does_not_hide_the_other_s_answer() {
     let (state, _) = step(
         state,
         barcode_matched(MB, "B", vec![pair("mb-b", Some("g-y"))]),
-    );
-    let (state, _) = step(
-        state,
-        IdentifyEvent::AlbumLinksRead {
-            read: vec![GroupReading::of_links("g-y", AlbumLinks::Read(Vec::new()))],
-        },
     );
     match state {
         IdentifyState::Failed {

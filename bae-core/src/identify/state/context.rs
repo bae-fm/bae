@@ -10,9 +10,10 @@ use super::{
 use crate::config::IdentificationSteps;
 use crate::identify::agreements::CandidateText;
 use crate::identify::combine::LookupAnswers;
-use crate::identify::documents::DocumentReading;
+use crate::identify::documents::{DocumentReading, Twin, TwinToRead};
 use crate::identify::{IdentifyFailure, NotAskedReason};
-use crate::import::album_links::{self, GroupReading, Twin};
+use crate::import::album_links::{self, AlbumLink, GroupLinks};
+use crate::import::MetadataRef;
 use crate::import::{Catalog, LookupChoices};
 use crate::signals::{
     ArtworkScan, AudioFacts, AudioOrigin, BarcodeSignal, DiscIdSignal, LookupFailure, Signals,
@@ -359,29 +360,9 @@ pub struct SignalsContext {
     pub text: CandidateText,
     /// Whether `text` is final; a run does not settle before it is.
     pub text_settled: bool,
-    /// What the run's MusicBrainz albums are on Discogs, read once every
-    /// lookup has settled.
-    pub album_links: AlbumLinkReading,
-    /// The full documents of the rows the run offers, read once the album
-    /// links are.
+    /// The full documents of the rows the run offers, and of their twins,
+    /// read once every lookup has settled.
     pub documents: DocumentReading,
-}
-
-/// Where a run is with the album links of what its lookups returned.
-#[derive(Clone, Debug, PartialEq)]
-pub enum AlbumLinkReading {
-    /// Waiting for every lookup to settle.
-    Pending,
-    /// The links of these groups are being read.
-    Reading,
-    /// The catalogs' documents are read, group by group; what the list's
-    /// releases print is read once the offered rows' own documents are in.
-    LinksRead(Vec<GroupReading>),
-    /// Read, the list too, group by group; empty when there was nothing to
-    /// join.
-    Read(Vec<GroupReading>),
-    /// Not read, for `reason`.
-    NotAsked { reason: NotAskedReason },
 }
 
 impl Default for SignalsContext {
@@ -401,7 +382,6 @@ impl Default for SignalsContext {
             search: SearchEvidence::default(),
             text: CandidateText::default(),
             text_settled: false,
-            album_links: AlbumLinkReading::Pending,
             documents: DocumentReading::Pending,
         }
     }
@@ -429,13 +409,6 @@ impl SignalsContext {
         Self {
             providers,
             steps,
-            album_links: if steps.follow_catalog_links {
-                AlbumLinkReading::Pending
-            } else {
-                AlbumLinkReading::NotAsked {
-                    reason: NotAskedReason::SwitchedOff,
-                }
-            },
             search: SearchEvidence {
                 query: title_search,
                 ..Default::default()
@@ -502,50 +475,141 @@ impl SignalsContext {
         self.search.record(search);
     }
 
-    /// What reading the run's albums answered, once it has.
-    fn album_readings(&self) -> &[GroupReading] {
-        match &self.album_links {
-            AlbumLinkReading::LinksRead(read) | AlbumLinkReading::Read(read) => read,
-            AlbumLinkReading::Pending
-            | AlbumLinkReading::Reading
-            | AlbumLinkReading::NotAsked { .. } => &[],
-        }
-    }
-
-    /// Every lookup's results with their album links and documents applied,
-    /// in the order combine takes them.
+    /// Every lookup's results with their documents applied, and what each
+    /// MusicBrainz album on the list was read to be, in the order combine
+    /// takes them.
     pub(super) fn lookup_results(&self) -> LookupAnswers {
-        let read = self.album_readings();
-        let applied = |results: Vec<(MetadataResult, LibraryStatus)>| {
+        let read = |results: Vec<(MetadataResult, LibraryStatus)>| -> Vec<_> {
             results
                 .into_iter()
                 .map(|(mut result, status)| {
-                    album_links::apply(&mut result, read);
                     self.documents.apply(&mut result);
                     (result, status)
                 })
                 .collect()
         };
-        LookupAnswers {
-            disc_id: applied(self.disc.results.clone()),
-            barcode: applied(self.barcode.results.clone()),
-            catalog: applied(self.catalog.active_results()),
-            isrc: applied(self.isrc.results.clone()),
-            search: applied(self.search.results.clone()),
+        let mut answers = LookupAnswers {
+            disc_id: read(self.disc.results.clone()),
+            barcode: read(self.barcode.results.clone()),
+            catalog: read(self.catalog.active_results()),
+            isrc: read(self.isrc.results.clone()),
+            search: read(self.search.results.clone()),
+        };
+        let groups = self.album_groups(&answers);
+        for (result, _) in [
+            &mut answers.disc_id,
+            &mut answers.barcode,
+            &mut answers.catalog,
+            &mut answers.isrc,
+            &mut answers.search,
+        ]
+        .into_iter()
+        .flatten()
+        {
+            album_links::apply(result, &groups);
         }
+        answers
     }
 
-    /// The releases reading the albums found that no lookup returned, with
-    /// their documents applied.
+    /// The twins read, with their documents applied.
     pub(super) fn twins(&self) -> Vec<Twin> {
-        self.album_readings()
+        self.documents
+            .twins()
             .iter()
-            .filter_map(|reading| reading.twin.clone())
+            .cloned()
             .map(|mut twin| {
                 self.documents.apply(&mut twin.result);
                 twin
             })
             .collect()
+    }
+
+    /// What each MusicBrainz album on the list — `answers` and the twins —
+    /// was read to be, from the documents read so far. Nothing, for a run
+    /// that does not join records across catalogs.
+    fn album_groups(&self, answers: &LookupAnswers) -> Vec<GroupLinks> {
+        if !self.steps.follow_catalog_links {
+            return Vec::new();
+        }
+        let twins = self.twins();
+        let list: Vec<&MetadataResult> = answers
+            .all()
+            .map(|(result, _)| result)
+            .chain(twins.iter().map(|twin| &twin.result))
+            .collect();
+        album_links::read_groups(&list, |release| {
+            self.documents
+                .album_statements(&MetadataRef::new(Catalog::MusicBrainz, release))
+        })
+    }
+
+    /// What the run's MusicBrainz albums were read to be, to keep beyond it
+    /// (see [`album_links::to_keep`]).
+    pub(super) fn album_links_to_keep(&self) -> Vec<(String, Vec<AlbumLink>)> {
+        let answers = self.lookup_results();
+        let twins = self.twins();
+        let list: Vec<&MetadataResult> = answers
+            .all()
+            .map(|(result, _)| result)
+            .chain(twins.iter().map(|twin| &twin.result))
+            .collect();
+        album_links::to_keep(&self.album_groups(&answers), &list)
+    }
+
+    /// The Discogs releases the documents of `offered` MusicBrainz records
+    /// name as themselves that are still to be read as twins: none the list
+    /// holds, and none read already. None where the run does not join records
+    /// across catalogs or does not ask Discogs.
+    pub(super) fn twins_to_read(&self, offered: &[MetadataRef]) -> Vec<TwinToRead> {
+        if !self.steps.follow_catalog_links || !self.providers.contains(&Catalog::Discogs) {
+            return Vec::new();
+        }
+        let answers = self.lookup_results();
+        let listed = |release: &MetadataRef| {
+            answers.all().any(|(result, _)| {
+                result.source == release.catalog && result.release_id == release.key
+            }) || self.documents.twins().iter().any(|twin| {
+                twin.result.source == release.catalog && twin.result.release_id == release.key
+            })
+        };
+        let read = |release: &MetadataRef| {
+            self.documents
+                .read()
+                .iter()
+                .any(|reading| reading.release == *release)
+        };
+        let mut twins: Vec<TwinToRead> = Vec::new();
+        for named_by in offered
+            .iter()
+            .filter(|record| record.catalog == Catalog::MusicBrainz)
+        {
+            let Some(Ok(document)) = self
+                .documents
+                .read()
+                .iter()
+                .find(|reading| reading.release == *named_by)
+                .map(|reading| &reading.document)
+            else {
+                continue;
+            };
+            for release in document
+                .links
+                .iter()
+                .filter(|link| link.catalog == Catalog::Discogs)
+            {
+                if listed(release)
+                    || read(release)
+                    || twins.iter().any(|twin| twin.release == *release)
+                {
+                    continue;
+                }
+                twins.push(TwinToRead {
+                    release: release.clone(),
+                    named_by: named_by.clone(),
+                });
+            }
+        }
+        twins
     }
 
     pub(super) fn active_failures(&self) -> Vec<IdentifyFailure> {

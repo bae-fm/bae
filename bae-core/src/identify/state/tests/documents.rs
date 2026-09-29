@@ -50,6 +50,8 @@ fn document(labels: &[(&str, &str)], tracks: u32) -> crate::identify::documents:
         album_first_year: None,
         track_titles: Vec::new(),
         notes: Vec::new(),
+        links: Vec::new(),
+        album_links: crate::import::album_links::AlbumLinks::NotAsked,
     }
 }
 
@@ -82,6 +84,7 @@ fn every_offered_row_is_read_in_full_before_the_run_settles() {
                 .iter()
                 .map(|release| read(release, Ok(full.clone())))
                 .collect(),
+            twins: Vec::new(),
         },
     );
     let IdentifyState::Found { findings, .. } = state else {
@@ -114,6 +117,7 @@ fn the_row_whose_tracklist_fits_the_folder_ranks_first() {
                     read(release, Ok(document(&[("Label One", "AB-100")], tracks)))
                 })
                 .collect(),
+            twins: Vec::new(),
         },
     );
     let IdentifyState::Found { findings, .. } = state else {
@@ -154,6 +158,7 @@ fn a_row_whose_document_cannot_be_read_keeps_its_search_facts() {
                     read(release, document)
                 })
                 .collect(),
+            twins: Vec::new(),
         },
     );
     let IdentifyState::Found { findings, .. } = state else {
@@ -210,6 +215,7 @@ fn read_with_tracks(
             .iter()
             .map(|release| read(release, Ok(document(&[], tracks(&release.key)))))
             .collect(),
+        twins: Vec::new(),
     }
 }
 
@@ -337,10 +343,10 @@ fn a_document_s_barcode_joins_its_result_s() {
         ("5051961234567", vec!["0 12345 67890 5", "5051961234567"]),
     ] {
         let mut read_back = result.clone();
-        crate::identify::documents::DocumentReading::Read(vec![read(
-            &release,
-            Ok(with_barcode(barcode)),
-        )])
+        crate::identify::documents::DocumentReading::Read(crate::identify::documents::Documents {
+            releases: vec![read(&release, Ok(with_barcode(barcode)))],
+            twins: Vec::new(),
+        })
         .apply(&mut read_back);
         assert_eq!(read_back.barcodes, expected, "{barcode}");
     }

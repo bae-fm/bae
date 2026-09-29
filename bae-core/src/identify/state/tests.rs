@@ -8,17 +8,27 @@ fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<Effec
         .iter()
         .position(|effect| matches!(effect, Effect::ReadReleases { .. }))
     {
-        let Effect::ReadReleases { releases, .. } = effects.remove(at) else {
+        let Effect::ReadReleases {
+            releases, twins, ..
+        } = effects.remove(at)
+        else {
             unreachable!("the position is of a read");
         };
         let read = releases
             .into_iter()
+            .chain(twins.into_iter().map(|twin| twin.release))
             .map(|release| crate::identify::documents::ReleaseReading {
                 release,
                 document: Err(LookupFailure::Network),
             })
             .collect();
-        let (next, more) = super::step(state, IdentifyEvent::ReleasesRead { read });
+        let (next, more) = super::step(
+            state,
+            IdentifyEvent::ReleasesRead {
+                read,
+                twins: Vec::new(),
+            },
+        );
         state = next;
         effects.extend(more);
     }

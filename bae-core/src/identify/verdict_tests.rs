@@ -33,7 +33,6 @@ fn mk_context(track_count: u32) -> SignalsContext {
             track_count,
             ..Default::default()
         },
-        album_links: crate::identify::state::AlbumLinkReading::Pending,
         documents: crate::identify::documents::DocumentReading::Pending,
         isrc: Default::default(),
         track_titles: Vec::new(),
@@ -133,6 +132,7 @@ fn a_terminal_verdict_carries_the_ledger_its_run_recorded() {
                 release: crate::import::MetadataRef::new(Catalog::MusicBrainz, "rel-1"),
                 document: Err(crate::signals::LookupFailure::Network),
             }],
+            twins: Vec::new(),
         },
     );
     let IdentifyStateView::Found {
