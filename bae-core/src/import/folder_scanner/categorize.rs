@@ -296,7 +296,7 @@ pub(super) fn settle_sheet_bindings(
                 "sheet {sheet_id} has boundaries outside {file_ids}; it stays unbound and \
                  the physical audio files import independently"
             );
-            SheetBinding::Unresolved {
+            SheetBinding::RefusedTiming {
                 files: named_files(),
             }
         } else {

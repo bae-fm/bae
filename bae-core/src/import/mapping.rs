@@ -5,12 +5,12 @@
 //! pairs unit `i` with draft track `i`. Surfaces render this projection without
 //! joining separate lists.
 
+use crate::import::audio_layout::{audio_layout, UnitContribution};
 use crate::import::folder_scanner::{
-    BoundTrackSheet, CandidateFile, CategorizedFiles, FileRole, ScannedFile,
-    SheetBinding, SheetDisc, SheetReferenceOptions, TrackSheetFile,
+    BoundTrackSheet, CandidateFile, CategorizedFiles, FileRole, ScannedFile, SheetBinding,
+    SheetDisc, SheetReferenceOptions, TrackSheetFile,
 };
 use crate::import::probe::SourceDurations;
-use crate::import::audio_layout::{audio_layout, UnitContribution};
 use crate::import::types::{AudioFile, CandidateDraft, CandidateTrack, RawTrackEdit};
 use crate::import::ImportError;
 use std::collections::{BTreeSet, HashMap};
@@ -518,7 +518,11 @@ fn push_sheet_entry(
 ) {
     if let Some(MappingTrackSection {
         side: existing,
-        content: MappingTrackSectionContent::Sheet { sheet: group, entries },
+        content:
+            MappingTrackSectionContent::Sheet {
+                sheet: group,
+                entries,
+            },
     }) = sections.last_mut()
     {
         if group.sheet_id == sheet.sheet_id && *existing == side {
@@ -580,23 +584,20 @@ fn bound_of(files: &CategorizedFiles, sheet: TrackSheetFile<'_>) -> SheetBound {
                 .bound_sheet(sheet)
                 .expect("a resolved binding names audio"),
         ),
-        SheetBinding::Unresolved { files: associated } => {
-            let references = sheet.sheet.audio_file_references();
-            let requested = references
-                .iter()
+        SheetBinding::Unresolved { files: associated } => SheetBound::Unresolved {
+            requested: sheet
+                .sheet
+                .audio_file_references()
+                .into_iter()
                 .filter(|reference| {
                     !associated
                         .iter()
-                        .any(|file| file.file_reference == **reference)
+                        .any(|file| file.file_reference == *reference)
                 })
-                .map(|reference| reference.to_string())
-                .collect::<Vec<_>>();
-            if !references.is_empty() && requested.is_empty() {
-                SheetBound::RefusedTiming
-            } else {
-                SheetBound::Unresolved { requested }
-            }
-        }
+                .map(str::to_string)
+                .collect(),
+        },
+        SheetBinding::RefusedTiming { .. } => SheetBound::RefusedTiming,
         SheetBinding::RefusedCodec { codec } => SheetBound::RefusedCodec {
             codec: codec.clone(),
         },

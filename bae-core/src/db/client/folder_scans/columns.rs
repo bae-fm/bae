@@ -4,8 +4,7 @@
 
 use super::*;
 use crate::import::folder_scanner::{
-    FileRole, InvalidReason, ReleaseFileScope, SheetAudioFile, SheetBinding,
-    SheetDisc,
+    FileRole, InvalidReason, ReleaseFileScope, SheetAudioFile, SheetBinding, SheetDisc,
 };
 
 /// A column holding a value no writer here produces.
@@ -97,6 +96,7 @@ pub(super) fn role_columns(role: &FileRole) -> RoleColumns<'_> {
             let (sheet_binding, sheet_binding_codec) = match binding {
                 SheetBinding::Resolved { .. } => ("resolved", None),
                 SheetBinding::Unresolved { .. } => ("unresolved", None),
+                SheetBinding::RefusedTiming { .. } => ("refused_timing", None),
                 SheetBinding::RefusedCodec { codec } => ("refused_codec", Some(codec.as_str())),
             };
             let (sheet_disc, sheet_disc_number) = match disc {
@@ -114,9 +114,9 @@ pub(super) fn role_columns(role: &FileRole) -> RoleColumns<'_> {
     }
 }
 
-/// A sheet's binding from its column and its stored audio pairing. A bound
-/// spelling with no pairing rows, or an override with more than one, is a
-/// store nothing here wrote.
+/// A sheet's binding from its column and its stored audio pairing. A bound or
+/// timing-refused spelling with no pairing rows is a store nothing here
+/// wrote.
 pub(super) fn sheet_binding_of(
     stored: &str,
     audio_files: Vec<SheetAudioFile>,
@@ -132,6 +132,12 @@ pub(super) fn sheet_binding_of(
             Ok(SheetBinding::Resolved { files: audio_files })
         }
         "unresolved" => Ok(SheetBinding::Unresolved { files: audio_files }),
+        "refused_timing" => {
+            if audio_files.is_empty() {
+                return Err(malformed("names no audio"));
+            }
+            Ok(SheetBinding::RefusedTiming { files: audio_files })
+        }
         "refused_codec" => Ok(SheetBinding::RefusedCodec {
             codec: codec.ok_or_else(|| malformed("has no codec"))?,
         }),

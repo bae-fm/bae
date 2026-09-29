@@ -433,7 +433,7 @@ fn a_sheet_whose_timing_exceeds_its_audio_leaves_the_container_standalone() {
     );
     assert!(matches!(
         files.track_sheets().next().map(|sheet| sheet.binding),
-        Some(crate::import::folder_scanner::SheetBinding::Unresolved { .. })
+        Some(crate::import::folder_scanner::SheetBinding::RefusedTiming { .. })
     ));
     assert!(matches!(
         files.sheet_binding_options("CDImage.cue")[0].options.as_slice(),

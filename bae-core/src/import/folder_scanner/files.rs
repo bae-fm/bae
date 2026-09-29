@@ -123,6 +123,11 @@ pub enum SheetBinding {
     /// The directive named audio that is not in this folder, named several and
     /// only some resolved, or the sheet names none at all.
     Unresolved { files: Vec<SheetAudioFile> },
+    /// Every `FILE` reference found its audio, but the sheet's boundaries do
+    /// not fit inside it: a track starts or ends past the audio's end, or
+    /// before the track ahead of it. The physical audio files import
+    /// independently.
+    RefusedTiming { files: Vec<SheetAudioFile> },
     /// The directive resolved, but bae can't carve tracks out of that
     /// audio: the codec doesn't back CUE playback. The physical audio files
     /// still import independently.
@@ -134,7 +139,9 @@ impl SheetBinding {
     /// sheet's order, or `None` when it describes nothing.
     pub fn audio_files(&self) -> Option<&[SheetAudioFile]> {
         match self {
-            Self::Resolved { files } | Self::Unresolved { files } => Some(files),
+            Self::Resolved { files }
+            | Self::Unresolved { files }
+            | Self::RefusedTiming { files } => Some(files),
             Self::RefusedCodec { .. } => None,
         }
     }

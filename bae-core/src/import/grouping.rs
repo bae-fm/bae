@@ -116,11 +116,12 @@ pub fn compose(
     let mut seen_files = HashSet::new();
     let mut files = Vec::new();
     if !parent_files.is_empty() {
-        let parent = shared_parent(
-            members
-                .iter()
-                .map(|member| (member.watched_folder_path.as_str(), member.file_root.as_path())),
-        )
+        let parent = shared_parent(members.iter().map(|member| {
+            (
+                member.watched_folder_path.as_str(),
+                member.file_root.as_path(),
+            )
+        }))
         .filter(|parent| shared.as_ref() == Some(parent))
         .ok_or_else(|| ImportError::Internal {
             detail: format!("{key} does not sit in one folder, so no folder's files are its own"),
@@ -292,7 +293,9 @@ fn prefixed(entry: &CandidateFile, prefix: &str) -> CandidateFile {
     };
     if let FileRole::TrackSheet { binding, .. } = &mut entry.role {
         match binding {
-            SheetBinding::Resolved { files } | SheetBinding::Unresolved { files } => {
+            SheetBinding::Resolved { files }
+            | SheetBinding::Unresolved { files }
+            | SheetBinding::RefusedTiming { files } => {
                 for audio in files {
                     audio.file_id = format!("{prefix}{}", audio.file_id);
                 }

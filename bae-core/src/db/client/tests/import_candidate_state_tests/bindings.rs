@@ -27,7 +27,10 @@ async fn a_cleared_binding_survives_a_relaunch() {
     );
     let root = folder.path().to_string_lossy().into_owned();
     db.add_watched_import_folder(&root).await.unwrap();
-    let generation = db.begin_folder_scan(&root, crate::import::VolumeKind::Local).await.unwrap();
+    let generation = db
+        .begin_folder_scan(&root, crate::import::VolumeKind::Local)
+        .await
+        .unwrap();
     let candidate = crate::import::folder_scanner::FolderCandidate {
         path: folder.path().to_path_buf(),
         file_root: folder.path().to_path_buf(),
@@ -257,22 +260,14 @@ async fn folder_release_decision_is_idempotent_and_root_scoped() {
         .unwrap();
     db.add_watched_import_folder(&other).await.unwrap();
 
+    store_user_folder_decision(&db, &key, FolderReleaseDecision::CombineAsOneRelease)
+        .await
+        .unwrap();
+    store_user_folder_decision(&db, &key, FolderReleaseDecision::CombineAsOneRelease)
+        .await
+        .unwrap();
     store_user_folder_decision(
-    &db,
-        &key,
-        FolderReleaseDecision::CombineAsOneRelease,
-    )
-    .await
-    .unwrap();
-    store_user_folder_decision(
-    &db,
-        &key,
-        FolderReleaseDecision::CombineAsOneRelease,
-    )
-    .await
-    .unwrap();
-    store_user_folder_decision(
-    &db,
+        &db,
         &FolderReleaseDecisionKey {
             watched_folder_path: other,
             relative_folder_path: key.relative_folder_path.clone(),
@@ -287,9 +282,13 @@ async fn folder_release_decision_is_idempotent_and_root_scoped() {
         .await
         .unwrap();
     assert_eq!(
-        decisions.get(&key.relative_folder_path)
+        decisions
+            .get(&key.relative_folder_path)
             .map(|reading| (reading.decision, reading.author)),
-        Some((FolderReleaseDecision::CombineAsOneRelease, crate::import::folder_scanner::FolderReleaseDecisionAuthor::User))
+        Some((
+            FolderReleaseDecision::CombineAsOneRelease,
+            crate::import::folder_scanner::FolderReleaseDecisionAuthor::User
+        ))
     );
 }
 
@@ -298,8 +297,7 @@ async fn folder_release_decision_is_idempotent_and_root_scoped() {
 #[tokio::test]
 async fn a_sheet_s_ripper_survives_a_relaunch() {
     use crate::import::folder_scanner::{
-        collect_release_candidate_files_with_scope, FolderCandidate, ScanItem,
-        StoredCandidateEdits,
+        collect_release_candidate_files_with_scope, FolderCandidate, ScanItem, StoredCandidateEdits,
     };
 
     let (db, _tmp) = empty_db().await;
@@ -345,7 +343,9 @@ async fn a_sheet_s_ripper_survives_a_relaunch() {
     )
     .await
     .unwrap();
-    db.finish_folder_scan(&root, generation, None).await.unwrap();
+    db.finish_folder_scan(&root, generation, None)
+        .await
+        .unwrap();
 
     let restored = db.load_folder_scan_snapshots().await.unwrap();
     let ScanItem::Valid(restored) = &restored[0].items[0] else {
@@ -359,5 +359,78 @@ async fn a_sheet_s_ripper_survives_a_relaunch() {
     assert_eq!(
         sheets,
         vec![Some(crate::cue_flac::CdRipper::ExactAudioCopy)]
+    );
+}
+
+/// A sheet whose boundaries run past its audio reads back refused for its
+/// timing, with the audio it named, from a cold database — the pane says why
+/// the sheet carves nothing without working it out again.
+#[tokio::test]
+async fn a_timing_refusal_survives_a_relaunch() {
+    use crate::import::folder_scanner::{
+        collect_release_candidate_files_with_scope, FolderCandidate, ScanItem, SheetAudioFile,
+        SheetBinding, StoredCandidateEdits,
+    };
+
+    let (db, _tmp) = empty_db().await;
+    let folder = tempfile::TempDir::new().unwrap();
+    std::fs::copy(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/fixtures/cue_flac/Test Album.flac"),
+        folder.path().join("cd.flac"),
+    )
+    .unwrap();
+    std::fs::write(
+        folder.path().join("cd.cue"),
+        "FILE \"cd.flac\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 99:00:00\n",
+    )
+    .unwrap();
+    let scanned = collect_release_candidate_files_with_scope(
+        folder.path(),
+        crate::import::ReleaseFileScope::Recursive,
+        &StoredCandidateEdits::none(),
+    )
+    .unwrap();
+    let refused = SheetBinding::RefusedTiming {
+        files: vec![SheetAudioFile {
+            file_reference: "cd.flac".to_string(),
+            file_id: "cd.flac".to_string(),
+        }],
+    };
+    assert_eq!(scanned.track_sheets().next().unwrap().binding, &refused);
+    let root = folder.path().to_string_lossy().into_owned();
+    db.add_watched_import_folder(&root).await.unwrap();
+    let generation = db
+        .begin_folder_scan(&root, crate::import::VolumeKind::Local)
+        .await
+        .unwrap();
+    db.save_folder_scan_item(
+        &root,
+        generation,
+        &ScanItem::Valid(FolderCandidate {
+            path: folder.path().to_path_buf(),
+            file_root: folder.path().to_path_buf(),
+            name: "Release".to_string(),
+            files: scanned,
+            watched_folder_path: root.clone(),
+            scope: crate::import::ReleaseFileScope::Recursive,
+            file_edit_revision: 0,
+            display_path: String::new(),
+            grouping: None,
+        }),
+    )
+    .await
+    .unwrap();
+    db.finish_folder_scan(&root, generation, None)
+        .await
+        .unwrap();
+
+    let restored = db.load_folder_scan_snapshots().await.unwrap();
+    let ScanItem::Valid(restored) = &restored[0].items[0] else {
+        panic!("the persisted candidate keeps its valid variant");
+    };
+    assert_eq!(
+        restored.files.track_sheets().next().unwrap().binding,
+        &refused
     );
 }
