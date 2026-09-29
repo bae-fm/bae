@@ -230,9 +230,11 @@ async fn a_transport_failure_is_stored() {
 /// limiter, a search the user typed is admitted next rather than after all of
 /// them. Each of eight candidates has its own barcode, so each queues a lookup.
 ///
-/// Wall time, because the fake provider is a real socket and a paused clock
-/// would time every lookup out; assertions around the measurement check that
-/// background work really was in flight.
+/// Order is read off the limiter's own admission record, not a clock: the
+/// typed search must go ahead of background tickets that were already waiting
+/// when it arrived. A single first-come queue admits every one of them first.
+/// Two tickets are awaited rather than one, because the oldest may be admitted
+/// the moment it is seen.
 #[tokio::test(flavor = "multi_thread")]
 async fn the_interactive_path_is_not_delayed_by_automatic_identification() {
     let fixture = Fixture::new("interactive-not-delayed").await;
@@ -269,16 +271,19 @@ async fn the_interactive_path_is_not_delayed_by_automatic_identification() {
 
     let sweep = fixture.drain_automatic_task();
 
-    // Let the first lookup go out and the rest queue behind it.
-    tokio::time::sleep(Duration::from_millis(1_200)).await;
-    let background_before = fixture.provider.count_containing("query=barcode");
-    assert!(
-        (1..8).contains(&background_before),
-        "background lookups must be queued when the search is timed: \
-         {background_before} of 8 done"
-    );
+    let musicbrainz = fixture.manager.providers().musicbrainz();
+    let waiting = tokio::time::timeout(Duration::from_secs(20), async {
+        loop {
+            let queued = musicbrainz.queued_requests(CallPriority::Background);
+            if queued.len() >= 2 {
+                return queued;
+            }
+            tokio::task::yield_now().await;
+        }
+    })
+    .await
+    .expect("automatic identification queues background lookups on the limiter");
 
-    let started = std::time::Instant::now();
     let typed = fixture
         .manager
         .search_musicbrainz(
@@ -291,20 +296,25 @@ async fn the_interactive_path_is_not_delayed_by_automatic_identification() {
         )
         .await
         .expect("the typed search succeeds");
-    let waited = started.elapsed();
+    let admitted = musicbrainz.admitted_requests();
 
-    assert!(
-        !sweep.is_finished(),
-        "background work must still be going across the measurement"
-    );
     fixture.identification().shut_down();
     let _ = tokio::time::timeout(Duration::from_secs(20), sweep).await;
 
     assert_eq!(typed.len(), 1);
+    let typed_at = admitted
+        .iter()
+        .position(|(priority, _)| *priority == CallPriority::Interactive)
+        .expect("the typed search queued behind background lookups");
+    let ahead_of_typed = &admitted[..typed_at];
+    let overtaken = waiting
+        .iter()
+        .filter(|ticket| !ahead_of_typed.contains(&(CallPriority::Background, **ticket)))
+        .count();
     assert!(
-        waited < Duration::from_millis(2_000),
-        "an interactive search waited {waited:?} behind background lookups; \
-         with priority it is admitted within about one interval"
+        overtaken >= 1,
+        "every background lookup waiting when the search was typed ({waiting:?}) \
+         was admitted before it: {admitted:?}"
     );
 }
 

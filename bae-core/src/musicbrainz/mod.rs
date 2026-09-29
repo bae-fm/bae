@@ -330,6 +330,18 @@ impl MusicBrainz {
         Self::with_interval(http, Duration::ZERO)
     }
 
+    /// The requests waiting in `priority`'s queue for a slot, oldest first.
+    #[cfg(test)]
+    pub(crate) fn queued_requests(&self, priority: CallPriority) -> Vec<u64> {
+        self.limiter.queued_tickets(priority)
+    }
+
+    /// Every request that waited for its slot, in the order admitted.
+    #[cfg(test)]
+    pub(crate) fn admitted_requests(&self) -> Vec<(CallPriority, u64)> {
+        self.limiter.admitted_tickets()
+    }
+
     fn with_interval(http: Http, interval: Duration) -> Self {
         Self {
             http,
