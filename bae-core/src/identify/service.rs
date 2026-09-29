@@ -89,7 +89,8 @@ struct IdentifyServiceInner {
     /// Source of [`IdentifyRunId`]s: every run this service starts is told
     /// apart from every other, including earlier runs of the same candidate.
     next_run: std::sync::atomic::AtomicU64,
-    /// Every driver task, for a test to wait until they have all returned.
+    /// Every driver task, and every write of what a run keeps, for a test to
+    /// wait until they have all returned.
     #[cfg(test)]
     driver_tasks: tokio_util::task::TaskTracker,
 }
@@ -274,13 +275,21 @@ async fn run_driver(
     mut snapshots: ExtractionWatch,
 ) {
     let (event_tx, mut event_rx) = mpsc::unbounded_channel::<IdentifyEvent>();
+    let driver = Driver {
+        inner,
+        run,
+        key,
+        priority,
+        event_tx,
+        token,
+    };
 
     let mut state = IdentifyState::Idle;
     // The run's first step is its start, ahead of anything the extraction has
     // already said: a snapshot taken in `Idle` leaves the run there, which is
     // what a cancelled run looks like.
     let mut start = Some(IdentifyEvent::Started {
-        providers: run_providers(&inner.library_manager),
+        providers: run_providers(&driver.inner.library_manager),
         steps,
         choices,
         title_search,
@@ -295,7 +304,7 @@ async fn run_driver(
             Some(start) => start,
             None => tokio::select! {
                 biased;
-                _ = token.cancelled() => IdentifyEvent::Cancelled,
+                _ = driver.token.cancelled() => IdentifyEvent::Cancelled,
                 changed = snapshots.changed(), if extracting => match changed {
                     Ok(()) => match snapshots.borrow_and_update().clone() {
                         Some(SignalsSnapshot {
@@ -321,19 +330,7 @@ async fn run_driver(
             },
         };
 
-        let (next_state, effects) = step(state.clone(), event);
-        state = next_state;
-
-        // Every state `step` returns is sent, including one identical to the
-        // last (a stale response the reducer's `for_barcode` guard dropped). The
-        // signals toolbar is a projection of the state, so a consumer that draws
-        // the badge row derives it from this same value.
-        inner.event_tx.send(ImportEvent::IdentifyStateChanged {
-            candidate_key: key.clone(),
-            run,
-            state: state.clone(),
-            priority,
-        });
+        state = driver.advance(state, event);
 
         // The run is over the moment the reducer stops moving: a terminal state
         // is its answer, `Idle` is its cancellation. The driver deregisters and
@@ -341,21 +338,54 @@ async fn run_driver(
         // anything a person asks for afterwards is a new run with inputs of its
         // own rather than a message to this one.
         if state.is_terminal() || matches!(state, IdentifyState::Idle) {
-            inner
+            driver
+                .inner
                 .candidates
-                .release_work(CandidateWork::Identify, &key, generation);
+                .release_work(CandidateWork::Identify, &driver.key, generation);
             return;
         }
+    }
+}
+
+/// What one driver holds for its whole run.
+struct Driver {
+    inner: Arc<IdentifyServiceInner>,
+    run: IdentifyRunId,
+    key: String,
+    priority: CallPriority,
+    /// Where the effects' answers come back to the driver loop.
+    event_tx: mpsc::UnboundedSender<IdentifyEvent>,
+    token: CancellationToken,
+}
+
+impl Driver {
+    /// Feed `event` to the reducer, send the state it lands on, and dispatch
+    /// the effects it asked for. A terminal state's effects go out as well:
+    /// what a run keeps beyond itself is asked for in the step that ends it.
+    fn advance(&self, state: IdentifyState, event: IdentifyEvent) -> IdentifyState {
+        let (state, effects) = step(state, event);
+
+        // Every state `step` returns is sent, including one identical to the
+        // last (a stale response the reducer's `for_barcode` guard dropped).
+        // The signals toolbar is a projection of the state, so a consumer
+        // that draws the badge row derives it from this same value.
+        self.inner.event_tx.send(ImportEvent::IdentifyStateChanged {
+            candidate_key: self.key.clone(),
+            run: self.run,
+            state: state.clone(),
+            priority: self.priority,
+        });
 
         for effect in effects {
             dispatch_effect(
-                inner.clone(),
+                self.inner.clone(),
                 effect,
-                priority,
-                event_tx.clone(),
-                token.clone(),
+                self.priority,
+                self.event_tx.clone(),
+                self.token.clone(),
             );
         }
+        state
     }
 }
 
@@ -518,9 +548,12 @@ fn dispatch_effect(
         // cancelling the run does not stop it being kept.
         Effect::KeepAlbumLinks { kept } => {
             let library_manager = inner.library_manager.clone();
-            runtime.spawn(async move {
+            let keep = async move {
                 library_manager.keep_album_links(kept).await;
-            });
+            };
+            #[cfg(test)]
+            let keep = inner.driver_tasks.track_future(keep);
+            runtime.spawn(keep);
         }
 
         Effect::ReadAlbumLinks { to_read } => {
@@ -558,360 +591,5 @@ fn dispatch_effect(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::config::{Config, ConfigHandle};
-    use crate::db::Database;
-    use crate::identify::IdentifyState;
-    use crate::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
-    use std::time::Duration;
-    use tokio::sync::mpsc::UnboundedReceiver;
-
-    async fn setup_inner() -> (Arc<IdentifyServiceInner>, tempfile::TempDir) {
-        let temp_dir = tempfile::TempDir::new().unwrap();
-        let db_path = temp_dir.path().join("test.db");
-        let database = Database::new_test(db_path.to_str().unwrap(), Arc::new(coven::SystemClock))
-            .await
-            .unwrap();
-        let library_dir = coven::StoreDir::new(temp_dir.path());
-        let library_id = format!("test-{}", temp_dir.path().display());
-        let config = Config::with_defaults(
-            library_id.clone(),
-            "test-device".to_string(),
-            library_dir,
-            "Test Library".to_string(),
-        );
-        crate::config::install_test_keyring();
-        let manager = LibraryManager::new(
-            database,
-            crate::config::AppDir::under_home(temp_dir.path()),
-            Arc::new(ConfigHandle::new(config)),
-            Arc::new(coven::SystemClock),
-            Arc::new(coven::UuidProvider),
-            crate::diagnostics::Diagnostics::noop(),
-            tokio::runtime::Handle::current(),
-            crate::import::cover_art::RemoteImageCache::for_test(
-                crate::util::http::Http::for_test(),
-            ),
-            crate::providers::Providers::offline(),
-        );
-        let candidates = CandidateRuntime::default();
-        let event_tx = ImportEventBus::new(candidates.clone());
-        let handle = IdentifyServiceHandle::new(
-            manager,
-            tokio::runtime::Handle::current(),
-            event_tx,
-            candidates,
-        );
-        (handle.inner, temp_dir)
-    }
-
-    /// A removal sent while a run is in flight ends it by the time the send
-    /// returns.
-    #[tokio::test]
-    async fn a_removed_candidates_run_ends_in_the_send_that_removes_it() {
-        let (inner, _tmp) = setup_inner().await;
-        let token =
-            inner
-                .candidates
-                .start_work(CandidateWork::Identify, "k".to_string(), |token, _| token);
-
-        inner.event_tx.send(ImportEvent::Scan(
-            crate::import::ScanEvent::CandidateRemoved {
-                candidate_key: "k".to_string(),
-            },
-        ));
-
-        assert!(
-            token.is_cancelled(),
-            "the removed candidate's run is cancelled"
-        );
-        assert!(
-            !inner.candidates.is_working(CandidateWork::Identify, "k"),
-            "and no longer registered"
-        );
-    }
-
-    /// Neither a disc-ID artifact nor a barcode source, so the reducer settles on
-    /// `ManualOnly` with no network effect — the driver loop runs end to end
-    /// without touching MB or Discogs.
-    fn absent_signals() -> Signals {
-        Signals {
-            origin: crate::signals::AudioOrigin::default(),
-            disc_id: DiscIdSignal::Absent,
-            barcode: BarcodeSignal::Absent,
-            text: TextSignal::Settled {
-                catalogs: vec![],
-                free_text: vec![],
-            },
-            text_pool: Vec::new(),
-            isrcs: Vec::new(),
-            track_titles: Vec::new(),
-        }
-    }
-
-    /// Wait until every driver task has returned, so everything they report
-    /// is already on the bus.
-    async fn drivers_ended(inner: &Arc<IdentifyServiceInner>) {
-        inner.driver_tasks.close();
-        tokio::time::timeout(Duration::from_secs(30), inner.driver_tasks.wait())
-            .await
-            .expect("every driver returns");
-    }
-
-    /// Read `k`'s states until `wanted` answers one, or the wait runs out.
-    async fn await_state<T>(
-        events: &mut UnboundedReceiver<ImportEvent>,
-        wanted: impl Fn(&IdentifyState) -> Option<T>,
-    ) -> Option<T> {
-        tokio::time::timeout(Duration::from_secs(5), async {
-            while let Some(event) = events.recv().await {
-                if let ImportEvent::IdentifyStateChanged {
-                    candidate_key,
-                    state,
-                    ..
-                } = event
-                {
-                    if candidate_key == "k" {
-                        if let Some(found) = wanted(&state) {
-                            return Some(found);
-                        }
-                    }
-                }
-            }
-            None
-        })
-        .await
-        .ok()
-        .flatten()
-    }
-
-    /// `k`'s states already reported.
-    fn reported_states(events: &mut UnboundedReceiver<ImportEvent>) -> Vec<IdentifyState> {
-        std::iter::from_fn(|| events.try_recv().ok())
-            .filter_map(|event| match event {
-                ImportEvent::IdentifyStateChanged {
-                    candidate_key,
-                    state,
-                    ..
-                } if candidate_key == "k" => Some(state),
-                _ => None,
-            })
-            .collect()
-    }
-
-    fn settled_snapshot() -> SignalsSnapshot {
-        SignalsSnapshot {
-            signals: absent_signals(),
-            audio: crate::signals::AudioFacts::default(),
-            artwork: crate::signals::ArtworkScan::Absent,
-        }
-    }
-
-    /// What extraction says while its artwork pass is still going: nothing a
-    /// run can settle on.
-    fn scanning_snapshot() -> SignalsSnapshot {
-        SignalsSnapshot {
-            signals: Signals {
-                barcode: BarcodeSignal::Scanning { codes: vec![] },
-                text: TextSignal::Scanning {
-                    catalogs: vec![],
-                    free_text: vec![],
-                },
-                ..absent_signals()
-            },
-            audio: crate::signals::AudioFacts::default(),
-            artwork: crate::signals::ArtworkScan::Reading {
-                current: None,
-                position: 1,
-                total: 1,
-            },
-        }
-    }
-
-    /// The run's verdict is where the run ends. Nobody cancels it and no
-    /// `Idle` follows: the driver deregisters itself on the terminal state,
-    /// so "a driver is registered" means "work is in flight" and nothing else.
-    #[tokio::test(flavor = "multi_thread")]
-    async fn a_driver_that_reaches_its_verdict_is_gone_without_a_cancel() {
-        let (inner, _tmp) = setup_inner().await;
-        let handle = IdentifyServiceHandle {
-            inner: inner.clone(),
-        };
-        let mut bus_rx = inner.event_tx.every_event();
-
-        let (snapshots, watch) = tokio::sync::watch::channel(None);
-        assert!(handle.start(
-            handle.new_run(),
-            "k".to_string(),
-            CallPriority::Interactive,
-            IdentificationSteps::default(),
-            LookupChoices::default(),
-            None,
-            watch,
-        ));
-        // Feed the signals over the watch, as the extraction service would.
-        snapshots.send_replace(Some(settled_snapshot()));
-
-        assert!(
-            await_state(&mut bus_rx, |state| {
-                matches!(state, IdentifyState::ManualOnly { .. }).then_some(())
-            })
-            .await
-            .is_some(),
-            "the run reports its terminal ManualOnly state"
-        );
-        drivers_ended(&inner).await;
-        assert!(
-            !handle.is_running("k"),
-            "the run that answered is not still in flight"
-        );
-
-        // And nothing follows it: a terminal state is not chased by the `Idle`
-        // a teardown would report.
-        let after = reported_states(&mut bus_rx);
-        assert!(
-            after.is_empty(),
-            "the settled run reported nothing after its verdict: {after:?}"
-        );
-    }
-
-    /// The watch holds the latest snapshot rather than queueing them. Two
-    /// land before the driver is even up — as they do when extraction is
-    /// quick, or the runtime is busy — and the driver reads the settled one,
-    /// which is the whole of what was read and the only one it needs.
-    #[tokio::test(flavor = "multi_thread")]
-    async fn a_run_reads_the_latest_snapshot_however_many_landed_before_it_looked() {
-        let (inner, _tmp) = setup_inner().await;
-        let handle = IdentifyServiceHandle {
-            inner: inner.clone(),
-        };
-        let mut bus_rx = inner.event_tx.every_event();
-
-        let (snapshots, watch) = tokio::sync::watch::channel(None);
-        snapshots.send_replace(Some(scanning_snapshot()));
-        snapshots.send_replace(Some(settled_snapshot()));
-        assert!(handle.start(
-            handle.new_run(),
-            "k".to_string(),
-            CallPriority::Interactive,
-            IdentificationSteps::default(),
-            LookupChoices::default(),
-            None,
-            watch,
-        ));
-
-        assert!(
-            await_state(&mut bus_rx, |state| {
-                matches!(state, IdentifyState::ManualOnly { .. }).then_some(())
-            })
-            .await
-            .is_some(),
-            "the run settled on the snapshot that was current when it looked"
-        );
-    }
-
-    /// The extraction's watch closing is the extraction ending, not the run:
-    /// the lookups it started still answer, and the run waits on them — or
-    /// on its cancel.
-    #[tokio::test(flavor = "multi_thread")]
-    async fn an_extraction_ending_does_not_end_the_run() {
-        let (inner, _tmp) = setup_inner().await;
-        let handle = IdentifyServiceHandle {
-            inner: inner.clone(),
-        };
-        let mut bus_rx = inner.event_tx.every_event();
-
-        let (snapshots, watch) = tokio::sync::watch::channel(None);
-        assert!(handle.start(
-            handle.new_run(),
-            "k".to_string(),
-            CallPriority::Interactive,
-            IdentificationSteps::default(),
-            LookupChoices::default(),
-            None,
-            watch,
-        ));
-        snapshots.send_replace(Some(scanning_snapshot()));
-        drop(snapshots);
-
-        assert!(
-            await_state(&mut bus_rx, |state| state.is_terminal().then_some(()))
-                .await
-                .is_none(),
-            "no verdict comes of an extraction that said nothing settled"
-        );
-        assert!(handle.is_running("k"), "the run is still in flight");
-
-        handle.cancel("k");
-        drivers_ended(&inner).await;
-        assert!(
-            reported_states(&mut bus_rx)
-                .iter()
-                .any(|state| matches!(state, IdentifyState::Idle)),
-            "and its cancel still lands"
-        );
-    }
-
-    /// A cancel mid-run is the other way out: `Idle` says the run wrote
-    /// nothing, and the driver is gone behind it.
-    #[tokio::test(flavor = "multi_thread")]
-    async fn a_cancel_mid_run_reports_idle_and_deregisters() {
-        let (inner, _tmp) = setup_inner().await;
-        let handle = IdentifyServiceHandle {
-            inner: inner.clone(),
-        };
-        let mut bus_rx = inner.event_tx.every_event();
-
-        let (_snapshots, watch) = tokio::sync::watch::channel(None);
-        assert!(handle.start(
-            handle.new_run(),
-            "k".to_string(),
-            CallPriority::Interactive,
-            IdentificationSteps::default(),
-            LookupChoices::default(),
-            None,
-            watch,
-        ));
-        assert!(handle.is_running("k"), "the run is in flight");
-        assert_eq!(handle.running_keys(), vec!["k".to_string()]);
-
-        // No signals: the run sits in `Triangulating` until the cancel lands.
-        handle.cancel("k");
-
-        drivers_ended(&inner).await;
-        assert!(
-            reported_states(&mut bus_rx)
-                .iter()
-                .any(|state| matches!(state, IdentifyState::Idle)),
-            "the cancelled run reports Idle"
-        );
-        assert!(handle.running_keys().is_empty());
-    }
-
-    /// A cancelled run's lookup ends where it stands — here, waiting between
-    /// retries on a provider that never answers — rather than running on.
-    #[tokio::test]
-    async fn a_cancelled_run_drops_the_lookup_it_was_waiting_on() {
-        struct Dropped(Option<tokio::sync::oneshot::Sender<()>>);
-        impl Drop for Dropped {
-            fn drop(&mut self) {
-                let _ = self.0.take().map(|tx| tx.send(()));
-            }
-        }
-        let (dropped_tx, dropped_rx) = tokio::sync::oneshot::channel();
-        let (started_tx, started_rx) = tokio::sync::oneshot::channel();
-        let token = CancellationToken::new();
-        spawn_until_cancelled(&tokio::runtime::Handle::current(), &token, async move {
-            let _guard = Dropped(Some(dropped_tx));
-            let _ = started_tx.send(());
-            std::future::pending::<()>().await;
-        });
-        started_rx.await.expect("the lookup starts");
-        token.cancel();
-        tokio::time::timeout(Duration::from_secs(2), dropped_rx)
-            .await
-            .expect("the lookup is dropped once its run is cancelled")
-            .expect("the guard reports its drop");
-    }
-}
+#[path = "service_tests.rs"]
+mod tests;
