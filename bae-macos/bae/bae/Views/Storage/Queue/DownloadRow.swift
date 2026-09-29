@@ -15,13 +15,15 @@ struct DownloadRow: View {
         ) {
             VStack(alignment: .leading, spacing: ThemeSpace.line) {
                 HStack(spacing: ThemeSpace.related) {
-                    Text(op.title)
+                    Text(op.titleText)
                         .lineLimit(1)
 
-                    Text(op.detailText)
-                        .themeText(.detail)
-                        .monospacedDigit()
-                        .foregroundStyle(.secondary)
+                    if let release = op.release {
+                        Text(release.detailText)
+                            .themeText(.detail)
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 progressView
             }

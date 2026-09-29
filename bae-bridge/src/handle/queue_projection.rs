@@ -217,12 +217,10 @@ mirror_enum! {
 }
 
 impl crate::types::BridgeDownloadOp {
-    pub(super) fn from_core(op: bae_core::library::DownloadOp) -> Self {
+    pub(super) fn from_core(row: bae_core::library::DownloadRow) -> Self {
+        let bae_core::library::release_queue::ReleaseQueueRow { op, release } = row;
         let bae_core::library::release_queue::ReleaseQueueOp {
             release_id,
-            title,
-            file_count,
-            total_size,
             created_at,
             // Downloads carry no operation-specific payload.
             payload: (),
@@ -230,9 +228,7 @@ impl crate::types::BridgeDownloadOp {
         } = op;
         crate::types::BridgeDownloadOp {
             release_id,
-            title,
-            file_count,
-            total_size,
+            release: release.map(crate::types::BridgeQueuedRelease::from_core),
             created_at,
             state: crate::types::BridgeDownloadState::from_core(state),
         }
@@ -241,15 +237,19 @@ impl crate::types::BridgeDownloadOp {
 
 /// Shared projection for the download and export queue snapshots, which are both
 /// aliases of the same generic `ReleaseQueueSnapshot`. Parameterized over the
-/// per-op and per-progress converters so each snapshot keeps its own named fields.
+/// per-row and per-progress converters so each snapshot keeps its own named fields.
 fn project_release_queue_snapshot<Extra, Progress, Op, Prog>(
     snapshot: bae_core::library::release_queue::ReleaseQueueSnapshot<Extra, Progress>,
-    op_from_core: impl Fn(bae_core::library::release_queue::ReleaseQueueOp<Extra, Progress>) -> Op,
+    row_from_core: impl Fn(bae_core::library::release_queue::ReleaseQueueRow<Extra, Progress>) -> Op,
     progress_from_core: impl Fn(bae_core::library::release_queue::ReleaseQueueProgress) -> Prog,
 ) -> (Vec<Op>, Prog, bool) {
-    let bae_core::library::release_queue::ReleaseQueueSnapshot { ops, total, paused } = snapshot;
+    let bae_core::library::release_queue::ReleaseQueueSnapshot {
+        rows,
+        total,
+        paused,
+    } = snapshot;
     (
-        ops.into_iter().map(op_from_core).collect(),
+        rows.into_iter().map(row_from_core).collect(),
         progress_from_core(total),
         paused,
     )
@@ -316,12 +316,10 @@ impl crate::types::BridgeOutputState {
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl crate::types::BridgeOutputOp {
-    pub(super) fn from_core(op: bae_core::library::OutputOp) -> Self {
+    pub(super) fn from_core(row: bae_core::library::OutputRow) -> Self {
+        let bae_core::library::release_queue::ReleaseQueueRow { op, release } = row;
         let bae_core::library::release_queue::ReleaseQueueOp {
             release_id,
-            title,
-            file_count,
-            total_size,
             created_at,
             payload,
             state,
@@ -330,9 +328,7 @@ impl crate::types::BridgeOutputOp {
         crate::types::BridgeOutputOp {
             release_id,
             target_dir: target_dir.to_string_lossy().to_string(),
-            title,
-            file_count,
-            total_size,
+            release: release.map(crate::types::BridgeQueuedRelease::from_core),
             created_at,
             state: crate::types::BridgeOutputState::from_core(state),
             kind: crate::types::BridgeOutputKind::from_core(&kind),

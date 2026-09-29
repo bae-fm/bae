@@ -335,7 +335,6 @@ impl AppServices {
     delegate_sync!(manager, trigger_sync => trigger_sync() -> ());
     delegate_async!(manager, reconnect_sync => reconnect_sync() -> Result<(), crate::library::LibraryError>);
     delegate_sync!(manager, is_sync_ready => is_sync_ready() -> bool);
-    delegate_sync!(manager, download_snapshot => download_snapshot() -> crate::library::DownloadSnapshot);
     delegate_sync!(manager, set_downloads_paused => set_downloads_paused(paused: bool) -> ());
     delegate_sync!(manager, cancel_download => cancel_download(release_id: &str) -> ());
     delegate_sync!(manager, cancel_all_downloads => cancel_all_downloads() -> ());
@@ -408,8 +407,6 @@ impl AppServices {
     delegate_async!(manager, resolve_release_edit_credits => resolve_release_edit_credits(edit: &crate::import::RawReleaseEdit) -> Result<Vec<crate::import::ResolvedCredit>, crate::library::LibraryError>);
     delegate_async!(manager, apply_release_metadata_user_edit => apply_release_metadata_user_edit(release_id: &str, edit: &crate::import::ReleaseUserEdit) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, search_library => search_library(query: &crate::library::LibrarySearchQuery) -> Result<crate::album_detail::SearchResults, crate::library::LibraryError>);
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    delegate_sync!(manager, output_snapshot => output_snapshot() -> crate::library::OutputSnapshot);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_sync!(manager, set_outputs_paused => set_outputs_paused(paused: bool) -> ());
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -548,25 +545,12 @@ impl AppServices {
         self.inner.manager.subscribe_outbox_values()
     }
 
-    pub fn subscribe_download_values(
-        &self,
-    ) -> tokio::sync::watch::Receiver<crate::library::DownloadSnapshot> {
-        self.inner.manager.subscribe_download_values()
-    }
-
     pub fn subscribe_transfer_values(
         &self,
     ) -> tokio::sync::watch::Receiver<
         std::collections::HashMap<String, crate::album_detail::ReleaseStorageAction>,
     > {
         self.inner.manager.subscribe_transfer_values()
-    }
-
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub fn subscribe_output_values(
-        &self,
-    ) -> tokio::sync::watch::Receiver<crate::library::OutputSnapshot> {
-        self.inner.manager.subscribe_output_values()
     }
 
     /// Set whether playback pauses between vinyl/cassette sides and CD discs. Turning it on
@@ -596,6 +580,7 @@ mod live_query_events;
 mod pane;
 mod playback_reads;
 mod queue_reads;
+mod release_queue_reads;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod selection;
 mod shown_transfers;

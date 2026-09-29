@@ -3,15 +3,22 @@ import Foundation
 
 private final class OutputValueSink: OutputCallback, @unchecked Sendable {
     private let apply: @MainActor @Sendable (BridgeOutputSnapshot) -> Void
+    private let fail: @MainActor @Sendable (any Error) -> Void
 
     init(
-        apply: @escaping @MainActor @Sendable (BridgeOutputSnapshot) -> Void
+        apply: @escaping @MainActor @Sendable (BridgeOutputSnapshot) -> Void,
+        fail: @escaping @MainActor @Sendable (any Error) -> Void
     ) {
         self.apply = apply
+        self.fail = fail
     }
 
     func onValue(value: BridgeOutputSnapshot) {
         Task { @MainActor in apply(value) }
+    }
+
+    func onError(error: BridgeError) {
+        Task { @MainActor in fail(error) }
     }
 }
 
@@ -142,6 +149,7 @@ final class DesktopSubscriptions {
     private let appHandle: AppHandle
     private let importStore: ImportStore
     private let outputStore: OutputStore
+    private let uiStore: UiStore
     /// The import list's selection, installed in the view environment.
     let importSelection: ImportSelection
     private let selectionObservation: ImportSelectionObservation
@@ -156,6 +164,7 @@ final class DesktopSubscriptions {
         self.appHandle = appHandle
         self.importStore = importStore
         self.outputStore = outputStore
+        self.uiStore = uiStore
         selectionObservation = ImportSelectionObservation(
             appHandle: appHandle,
             importStore: importStore,
@@ -218,9 +227,12 @@ final class DesktopSubscriptions {
         precondition(subscriptions.isEmpty)
         subscriptions = [
             appHandle.subscribeOutputs(
-                callback: OutputValueSink { [outputStore] value in
-                    outputStore.applySnapshot(value)
-                }
+                callback: OutputValueSink(
+                    apply: { [outputStore] value in
+                        outputStore.applySnapshot(value)
+                    },
+                    fail: { [uiStore] error in uiStore.showError(error) }
+                )
             ),
             appHandle.subscribeCandidateRuntime(
                 callback: CandidateRuntimeSink { [importStore] change in

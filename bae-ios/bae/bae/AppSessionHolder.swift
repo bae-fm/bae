@@ -93,12 +93,12 @@ final class AppSessionHolder {
                     host: host
                 )
             },
-            makeService: { [diagnostics] handle, config, initialOutbox in
+            makeService: { [diagnostics] handle, config, seed in
                 let service = AppService(
                     appHandle: handle,
                     diagnostics: diagnostics,
                     config: config,
-                    initialOutbox: initialOutbox
+                    seed: seed
                 )
                 service.wireUp()
                 return service

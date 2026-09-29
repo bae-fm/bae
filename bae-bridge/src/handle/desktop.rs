@@ -677,10 +677,13 @@ impl AppHandle {
         &self,
         callback: Box<dyn crate::types::OutputCallback>,
     ) -> std::sync::Arc<crate::LiveSubscription> {
-        self.subscribe_watch(
-            |services| services.subscribe_output_values(),
-            move |value| {
-                callback.on_value(crate::types::BridgeOutputSnapshot::from_core(value.clone()))
+        self.subscribe_channel(
+            |services, runtime| services.subscribe_output_values(runtime),
+            move |value| match value {
+                Ok(value) => {
+                    callback.on_value(crate::types::BridgeOutputSnapshot::from_core(value))
+                }
+                Err(error) => callback.on_error(BridgeError::database_query(error)),
             },
         )
     }
@@ -688,12 +691,22 @@ impl AppHandle {
 
 forward! {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    sync this => {
-        /// The current export-queue snapshot.
+    async this => {
+        /// The export queue as the Exporting pane shows it now, each entry
+        /// beside its release as the library holds it.
         fn get_output_snapshot() -> crate::types::BridgeOutputSnapshot {
-            crate::types::BridgeOutputSnapshot::from_core(this.services.output_snapshot())
+            this.services
+                .output_snapshot()
+                .await
+                .map(crate::types::BridgeOutputSnapshot::from_core)
+                .map_err(BridgeError::database_query)
         }
+    }
+}
 
+forward! {
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    sync this => {
         /// Pause or resume the export queue. The in-flight export finishes; the queue
         /// stops starting new ones until resumed.
         fn set_outputs_paused(paused: bool) {

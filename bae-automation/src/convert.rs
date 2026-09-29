@@ -60,9 +60,10 @@ pub(super) fn automation_output_snapshot(
 ) -> AutomationOutputSnapshot {
     use bae_core::library::{OutputKind, OutputState};
     let outputs = snapshot
-        .ops
+        .rows
         .into_iter()
-        .map(|op| {
+        .map(|row| {
+            let op = row.op;
             let state = match op.state {
                 OutputState::Queued => AutomationOutputState::Queued,
                 OutputState::Active { progress } => {
@@ -79,9 +80,11 @@ pub(super) fn automation_output_snapshot(
             AutomationOutputOp {
                 release_id: op.release_id,
                 target_dir: op.payload.target_dir.to_string_lossy().to_string(),
-                title: op.title,
-                file_count: op.file_count,
-                total_size: op.total_size,
+                release: row.release.map(|release| AutomationQueuedRelease {
+                    title: release.title,
+                    file_count: release.file_count,
+                    total_size: release.total_size,
+                }),
                 created_at: op.created_at,
                 state,
                 kind,

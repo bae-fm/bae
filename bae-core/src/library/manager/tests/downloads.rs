@@ -31,21 +31,19 @@ async fn download_queue_enqueue_dedups_and_cancels_while_paused() {
     manager.set_downloads_paused(true);
 
     manager.enqueue_pins(vec![release_id.clone()]).await;
-    let snap = manager.download_snapshot();
-    assert_eq!(snap.total.queued, 1);
+    let snap = manager.download_queue();
+    assert_eq!(snap.total().queued, 1);
     assert_eq!(snap.ops.len(), 1);
-    assert_eq!(snap.ops[0].title, "Test Album");
-    assert_eq!(snap.ops[0].file_count, 1);
     assert_eq!(snap.ops[0].state, crate::library::DownloadState::Queued);
     assert!(snap.paused);
 
     // Re-enqueuing the same release is a no-op: still one entry.
     manager.enqueue_pins(vec![release_id.clone()]).await;
-    assert_eq!(manager.download_snapshot().ops.len(), 1);
+    assert_eq!(manager.download_queue().ops.len(), 1);
 
     // Cancel drops the entry.
     manager.cancel_download(&release_id);
-    let snap = manager.download_snapshot();
+    let snap = manager.download_queue();
     assert!(snap.ops.is_empty());
 }
 
@@ -81,7 +79,7 @@ async fn download_queue_skips_already_pinned() {
     );
 
     manager.enqueue_pins(vec![release_id.clone()]).await;
-    assert!(manager.download_snapshot().ops.is_empty());
+    assert!(manager.download_queue().ops.is_empty());
 }
 
 /// A Local release has nothing to pin — it is already fully on disk —
@@ -112,7 +110,7 @@ async fn download_queue_skips_local_release() {
 
     manager.enqueue_pins(vec![release.id.clone()]).await;
     assert!(
-        manager.download_snapshot().ops.is_empty(),
+        manager.download_queue().ops.is_empty(),
         "a local release is not enqueued for pinning"
     );
 }
@@ -131,18 +129,18 @@ async fn download_queue_failed_pin_retries() {
     // rather than sleeping a fixed interval.
     let failed = wait_for(|| {
         matches!(
-            manager.download_snapshot().ops.first().map(|op| &op.state),
+            manager.download_queue().ops.first().map(|op| &op.state),
             Some(crate::library::DownloadState::Failed { .. })
         )
     })
     .await;
     assert!(failed, "the pin should land Failed without a cloud home");
-    assert_eq!(manager.download_snapshot().total.failed, 1);
+    assert_eq!(manager.download_queue().total().failed, 1);
 
     // Retry flips it back to Queued; with no cloud home it'll fail again,
     // but the immediate post-retry state is Queued (or already re-failed).
     manager.retry_downloads();
-    let snap = manager.download_snapshot();
+    let snap = manager.download_queue();
     assert!(
         snap.ops.first().is_some_and(|op| matches!(
             op.state,
@@ -155,7 +153,7 @@ async fn download_queue_failed_pin_retries() {
 
     // Cancelling clears it regardless of the in-flight retry.
     manager.cancel_download(&release_id);
-    let cleared = wait_for(|| manager.download_snapshot().ops.is_empty()).await;
+    let cleared = wait_for(|| manager.download_queue().ops.is_empty()).await;
     assert!(cleared, "cancel removes the entry");
 }
 
@@ -166,13 +164,10 @@ async fn download_queue_values_report_each_driven_file_progress() {
 
     let (manager, _temp_dir) = setup_test_manager().await;
     let release_id = "release-progress".to_string();
-    let mut values = manager.subscribe_download_values();
+    let mut values = manager.subscribe_download_queue();
     values.borrow_and_update();
     assert!(manager.downloads.enqueue_all([crate::library::DownloadOp {
         release_id: release_id.clone(),
-        title: "Album Title".to_string(),
-        file_count: 2,
-        total_size: 7,
         created_at: 0,
         payload: (),
         state: crate::library::DownloadState::Queued,
@@ -184,7 +179,7 @@ async fn download_queue_values_report_each_driven_file_progress() {
         crate::library::DownloadTransferProgress::new(&release_id, 0, 7).unwrap(),
     ));
 
-    let active_progress = |snapshot: &crate::library::DownloadSnapshot| {
+    let active_progress = |snapshot: &crate::library::DownloadQueueContents| {
         let op = snapshot
             .ops
             .first()

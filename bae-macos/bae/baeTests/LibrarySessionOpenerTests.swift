@@ -305,7 +305,7 @@ extension LibrarySessionOpenerTests {
     }
 }
 
-/// A hand-built `LibrarySessionHandle` for the opener tests: it answers the five
+/// A hand-built `LibrarySessionHandle` for the opener tests: it answers the
 /// reads the opener makes off a real `AppHandle` and records whether it was shut
 /// down, so a test can assert the outbox-failure teardown ran (or, on the other
 /// paths, didn't).
@@ -361,6 +361,22 @@ private final class FakeHandle: LibrarySessionHandle, @unchecked Sendable {
     }
     func getOutboxSnapshot() async throws -> BridgeOutboxSnapshot {
         try outbox.get()
+    }
+    func getDownloadSnapshot() async throws -> BridgeDownloadSnapshot {
+        BridgeDownloadSnapshot(
+            downloads: [],
+            total: BridgeDownloadProgress(queued: 0, active: 0, failed: 0),
+            summaryParts: [],
+            paused: false
+        )
+    }
+    func getOutputSnapshot() async throws -> BridgeOutputSnapshot {
+        BridgeOutputSnapshot(
+            outputs: [],
+            total: BridgeOutputProgress(queued: 0, active: 0, failed: 0),
+            summaryParts: [],
+            paused: false
+        )
     }
     func isSyncReady() -> Bool { syncReadyValue }
     func shutdown() async { shutdownFlag.set() }

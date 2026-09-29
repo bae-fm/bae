@@ -23,10 +23,12 @@
         static let downloadOps: [BridgeDownloadOp] = [
             BridgeDownloadOp(
                 releaseId: "rel-row-1",
-                title:
-                    "Album Title with an Intentionally Long Descriptive Subtitle",
-                fileCount: 12,
-                totalSize: 367_000_000,
+                release: BridgeQueuedRelease(
+                    title:
+                        "Album Title with an Intentionally Long Descriptive Subtitle",
+                    fileCount: 12,
+                    totalSize: 367_000_000
+                ),
                 createdAt: queuedAt(minutesAgo: 1),
                 state: .active(
                     progress: BridgeDownloadTransferProgress(
@@ -38,17 +40,21 @@
             ),
             BridgeDownloadOp(
                 releaseId: "rel-row-2",
-                title: "B",
-                fileCount: 9,
-                totalSize: 210_000_000,
+                release: BridgeQueuedRelease(
+                    title: "B",
+                    fileCount: 9,
+                    totalSize: 210_000_000
+                ),
                 createdAt: queuedAt(minutesAgo: 3),
                 state: .queued
             ),
             BridgeDownloadOp(
                 releaseId: "rel-row-3",
-                title: "Album Title C",
-                fileCount: 15,
-                totalSize: 512_000_000,
+                release: BridgeQueuedRelease(
+                    title: "Album Title C",
+                    fileCount: 15,
+                    totalSize: 512_000_000
+                ),
                 createdAt: queuedAt(minutesAgo: 8),
                 state: .failed(error: "The network connection was lost.")
             ),
@@ -92,9 +98,11 @@
             BridgeOutputOp(
                 releaseId: "rel-row-1",
                 targetDir: "/Music/Exports",
-                title: "Album Title A",
-                fileCount: 12,
-                totalSize: 213_000_000,
+                release: BridgeQueuedRelease(
+                    title: "Album Title A",
+                    fileCount: 12,
+                    totalSize: 213_000_000
+                ),
                 createdAt: queuedAt(minutesAgo: 1),
                 state: .active(percent: 62),
                 kind: .save(presetName: "FLAC")
@@ -102,9 +110,11 @@
             BridgeOutputOp(
                 releaseId: "rel-row-2",
                 targetDir: "/Music/Exports",
-                title: "Album Title B",
-                fileCount: 9,
-                totalSize: 340_000_000,
+                release: BridgeQueuedRelease(
+                    title: "Album Title B",
+                    fileCount: 9,
+                    totalSize: 340_000_000
+                ),
                 createdAt: queuedAt(minutesAgo: 4),
                 state: .queued,
                 kind: .export
@@ -112,9 +122,11 @@
             BridgeOutputOp(
                 releaseId: "rel-row-3",
                 targetDir: "/Music/Exports",
-                title: "Album Title C",
-                fileCount: 15,
-                totalSize: 512_000_000,
+                release: BridgeQueuedRelease(
+                    title: "Album Title C",
+                    fileCount: 15,
+                    totalSize: 512_000_000
+                ),
                 createdAt: queuedAt(minutesAgo: 9),
                 state: .failed(error: "Destination folder is not writable."),
                 kind: .export

@@ -531,8 +531,8 @@ impl LibraryManager {
     }
 
     /// The storage summary for one release, or `None` if it doesn't exist. The
-    /// download queue reads it at enqueue time for the title / file count / total
-    /// size, and to skip an already-pinned release.
+    /// download queue reads it at enqueue time to skip a local or
+    /// already-pinned release.
     pub async fn find_release_storage_summary(
         &self,
         release_id: &str,

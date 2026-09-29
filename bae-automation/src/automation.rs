@@ -409,9 +409,12 @@ impl Automation {
             .ok_or_else(|| AutomationError::not_found(format!("release '{release_id}' not found")))
     }
 
-    /// The current export-queue snapshot: per-release state and rolled-up counts.
-    pub fn output_status(&self) -> AutomationOutputSnapshot {
-        automation_output_snapshot(self.services.output_snapshot())
+    /// The current export-queue snapshot: per-release state, each release as
+    /// the library holds it now, and rolled-up counts.
+    pub async fn output_status(&self) -> Result<AutomationOutputSnapshot, AutomationError> {
+        Ok(automation_output_snapshot(
+            self.services.output_snapshot().await?,
+        ))
     }
 
     pub async fn reidentify_release(
@@ -573,7 +576,7 @@ impl Automation {
             }
             AutomationTool::OutputStatus => {
                 expect_no_args(args, tool.name())?;
-                to_value(self.output_status())
+                to_value(self.output_status().await?)
             }
             AutomationTool::ReleaseReidentify => {
                 let input: ReleaseReidentifyInput = from_value(args)?;

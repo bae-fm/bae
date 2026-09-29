@@ -112,13 +112,15 @@ private struct DownloadQueueRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.compact) {
-            Text(op.title)
+            Text(op.titleText)
                 .themeText(.rowTitle)
                 .lineLimit(1)
-            Text(op.detailText)
-                .monospacedDigit()
-                .themeText(.detail)
-                .foregroundStyle(.secondary)
+            if let release = op.release {
+                Text(release.detailText)
+                    .monospacedDigit()
+                    .themeText(.detail)
+                    .foregroundStyle(.secondary)
+            }
             stateView
         }
         .padding(.vertical, ThemeSpace.inline)

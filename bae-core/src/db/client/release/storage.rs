@@ -34,8 +34,8 @@ impl Database {
     }
 
     /// The storage summary for one release, or `None` if it doesn't exist. The
-    /// download queue reads a release's title / file count / total size from it at
-    /// enqueue time, for the Downloads-pane row.
+    /// download queue reads it at enqueue time to skip a local or pinned
+    /// release.
     pub async fn find_release_storage_summary(
         &self,
         release_id: &str,
@@ -48,6 +48,34 @@ impl Database {
                 .map_err(DbError::from)
         })
         .await
+    }
+
+    /// What the library holds now for each of `release_ids` it still has: the
+    /// title, file count, and size a transfer queue row shows.
+    pub async fn queued_releases(
+        &self,
+        release_ids: BTreeSet<String>,
+    ) -> Result<std::collections::BTreeMap<String, crate::library::QueuedRelease>, DbError> {
+        self.read(move |sql| queued_releases_on(&sql, &release_ids))
+            .await
+    }
+
+    /// Follow [`Self::queued_releases`] for the releases `initial` names. A
+    /// queue that gains or loses a release points the same query at its new
+    /// set through the request handle, not a new query.
+    pub(crate) fn subscribe_queued_releases(
+        &self,
+        initial: BTreeSet<String>,
+    ) -> coven::ReconfigurableLiveQuery<
+        BTreeSet<String>,
+        std::collections::BTreeMap<String, crate::library::QueuedRelease>,
+    > {
+        self.inner
+            .handle
+            .subscribe_reconfigurable(initial, |release_ids, sql| {
+                queued_releases_on(&sql, release_ids).map_err(CovenError::from)
+            })
+            .process(|_, releases| Ok(releases))
     }
 
     /// A representative file id for every remote release — one per release, `None`
@@ -228,4 +256,41 @@ impl Database {
                 },
             )
     }
+}
+
+/// The title, file count, and size of each of `release_ids` the library
+/// holds; a release it no longer holds is absent.
+fn queued_releases_on(
+    sql: &SqlReadContext<'_>,
+    release_ids: &BTreeSet<String>,
+) -> Result<std::collections::BTreeMap<String, crate::library::QueuedRelease>, DbError> {
+    let release_ids: Vec<&String> = release_ids.iter().collect();
+    let mut releases = std::collections::BTreeMap::new();
+    for chunk in release_ids.chunks(SQL_MAX_IN_VARS) {
+        let query = format!(
+            "SELECT r.id, a.title, \
+                COALESCE((SELECT COUNT(*) FROM release_files rf WHERE rf.release_id = r.id), 0), \
+                COALESCE((SELECT SUM(rf.file_size) FROM release_files rf WHERE rf.release_id = r.id), 0) \
+            FROM releases r \
+            JOIN albums a ON a.id = r.album_id \
+            WHERE r.id IN ({})",
+            in_clause_placeholders(chunk.len())
+        );
+        let rows = sql.query(
+            &query,
+            coven::rusqlite::params_from_iter(chunk.iter()),
+            |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    crate::library::QueuedRelease {
+                        title: row.get(1)?,
+                        file_count: row.get(2)?,
+                        total_size: row.get(3)?,
+                    },
+                ))
+            },
+        )?;
+        releases.extend(rows);
+    }
+    Ok(releases)
 }

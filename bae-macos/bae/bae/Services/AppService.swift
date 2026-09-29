@@ -69,7 +69,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         diagnostics: BridgeDiagnostics,
         uiStore: UiStore,
         config: BridgeConfig,
-        initialOutbox: BridgeOutboxSnapshot
+        seed: LibrarySessionSeed
     ) {
         let playbackStore = PlaybackStore()
         let configStore = ConfigStore(config: Config(bridge: config))
@@ -78,11 +78,9 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             appHandle.cancelEagerCacheFill()
         }
         let libraryStore = LibraryStore()
-        let downloadStore = DownloadStore(
-            snapshot: appHandle.getDownloadSnapshot()
-        )
+        let downloadStore = DownloadStore(snapshot: seed.downloads)
         let castStore = CastStore()
-        let outboxStore = OutboxStore(snapshot: initialOutbox)
+        let outboxStore = OutboxStore(snapshot: seed.outbox)
         let library = Library(handle: appHandle)
         let playback = Playback(handle: appHandle)
         let queue = Queue(handle: appHandle)
@@ -99,9 +97,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         )
         self.uiStore = uiStore
         self.importStore = importStore
-        // Seed the Exporting pane from the in-memory export queue.
-        // `getOutputSnapshot` is infallible — no fallback.
-        outputStore = OutputStore(snapshot: appHandle.getOutputSnapshot())
+        outputStore = OutputStore(snapshot: seed.outputs)
         previewAudio = PreviewAudio(handle: appHandle)
         releaseEditor = ReleaseEditor(
             handle: appHandle,

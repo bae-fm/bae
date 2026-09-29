@@ -538,7 +538,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 host: host
             )
         },
-        makeService: { [weak self] handle, config, initialOutbox in
+        makeService: { [weak self] handle, config, seed in
             guard let self else {
                 preconditionFailure("AppDelegate outlives its opener")
             }
@@ -546,7 +546,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 handle: handle,
                 uiStore: self.uiStore,
                 config: config,
-                initialOutbox: initialOutbox
+                seed: seed
             )
         }
     )
@@ -715,7 +715,7 @@ extension AppDelegate {
         handle: AppHandle,
         uiStore: UiStore,
         config: BridgeConfig,
-        initialOutbox: BridgeOutboxSnapshot
+        seed: LibrarySessionSeed
     ) -> AppService {
         let service = AppService(
             appHandle: handle,
@@ -724,7 +724,7 @@ extension AppDelegate {
             diagnostics: requiredApplicationServices.diagnostics,
             uiStore: uiStore,
             config: config,
-            initialOutbox: initialOutbox
+            seed: seed
         )
         service.wireUp()
         return service

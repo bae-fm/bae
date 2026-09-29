@@ -20,7 +20,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         appHandle: AppHandle,
         diagnostics: BridgeDiagnostics,
         config: BridgeConfig,
-        initialOutbox: BridgeOutboxSnapshot
+        seed: LibrarySessionSeed
     ) {
         let components = AppServiceComponents(
             playbackStore: PlaybackStore(),
@@ -30,11 +30,9 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
                 appHandle.cancelEagerCacheFill()
             },
             libraryStore: LibraryStore(),
-            downloadStore: DownloadStore(
-                snapshot: appHandle.getDownloadSnapshot()
-            ),
+            downloadStore: DownloadStore(snapshot: seed.downloads),
             castStore: CastStore(),
-            outboxStore: OutboxStore(snapshot: initialOutbox),
+            outboxStore: OutboxStore(snapshot: seed.outbox),
             library: Library(handle: appHandle),
             playback: Playback(handle: appHandle),
             queue: Queue(handle: appHandle),

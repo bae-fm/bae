@@ -91,18 +91,22 @@ struct StorageInspectorTests {
         let selectedReleaseId = "rel-selected"
         let download = BridgeDownloadOp(
             releaseId: selectedReleaseId,
-            title: "Album Title",
-            fileCount: 2,
-            totalSize: 2_048,
+            release: BridgeQueuedRelease(
+                title: "Album Title",
+                fileCount: 2,
+                totalSize: 2_048
+            ),
             createdAt: 1,
             state: .queued
         )
         let output = BridgeOutputOp(
             releaseId: selectedReleaseId,
             targetDir: "/Music/Exports",
-            title: "Album Title",
-            fileCount: 2,
-            totalSize: 2_048,
+            release: BridgeQueuedRelease(
+                title: "Album Title",
+                fileCount: 2,
+                totalSize: 2_048
+            ),
             createdAt: 1,
             state: .queued,
             kind: .export

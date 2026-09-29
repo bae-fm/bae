@@ -232,9 +232,11 @@ enum PreviewData {
 
     static let queuedDownloadOp = BridgeDownloadOp(
         releaseId: "rel-a-1",
-        title: "Album Title 1",
-        fileCount: 12,
-        totalSize: 480_000_000,
+        release: BridgeQueuedRelease(
+            title: "Album Title 1",
+            fileCount: 12,
+            totalSize: 480_000_000
+        ),
         createdAt: 0,
         state: .queued
     )

@@ -831,14 +831,21 @@ pub enum AutomationOutputKind {
     Save { preset_name: String },
 }
 
+/// A queued release as the library holds it now.
+#[derive(Debug, Clone, Serialize)]
+pub struct AutomationQueuedRelease {
+    pub title: String,
+    pub file_count: i64,
+    pub total_size: i64,
+}
+
 /// One queued release output in the `output_status` snapshot.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationOutputOp {
     pub release_id: String,
     pub target_dir: String,
-    pub title: String,
-    pub file_count: i64,
-    pub total_size: i64,
+    /// `None` once the library no longer has the release.
+    pub release: Option<AutomationQueuedRelease>,
     pub created_at: i64,
     pub state: AutomationOutputState,
     pub kind: AutomationOutputKind,

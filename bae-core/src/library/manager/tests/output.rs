@@ -133,11 +133,9 @@ async fn output_queue_enqueue_dedups_and_cancels_while_paused() {
         .enqueue_export(&release_id, target.clone())
         .await
         .unwrap();
-    let snap = manager.output_snapshot();
-    assert_eq!(snap.total.queued, 1);
+    let snap = manager.output_queue();
+    assert_eq!(snap.total().queued, 1);
     assert_eq!(snap.ops.len(), 1);
-    assert_eq!(snap.ops[0].title, "Test Album");
-    assert_eq!(snap.ops[0].file_count, 1);
     assert_eq!(snap.ops[0].payload.target_dir, target);
     assert_eq!(snap.ops[0].state, crate::library::OutputState::Queued);
     assert!(snap.paused);
@@ -147,11 +145,11 @@ async fn output_queue_enqueue_dedups_and_cancels_while_paused() {
         .enqueue_export(&release_id, target.clone())
         .await
         .unwrap();
-    assert_eq!(manager.output_snapshot().ops.len(), 1);
+    assert_eq!(manager.output_queue().ops.len(), 1);
 
     // Cancel drops the entry.
     manager.cancel_output(&release_id);
-    assert!(manager.output_snapshot().ops.is_empty());
+    assert!(manager.output_queue().ops.is_empty());
 }
 
 /// The verbatim copy-out: exported bytes equal the source bytes, laid out at
@@ -188,7 +186,7 @@ async fn export_writes_exact_bytes_in_source_folder_and_leaves_release_remote() 
         .unwrap();
 
     // Success removes the entry from the queue.
-    let done = wait_for(|| manager.output_snapshot().ops.is_empty()).await;
+    let done = wait_for(|| manager.output_queue().ops.is_empty()).await;
     assert!(done, "the export should complete and clear the queue");
 
     // Byte-accuracy + folder layout.
@@ -377,18 +375,18 @@ async fn export_write_error_marks_failed_and_retries() {
 
     let failed = wait_for(|| {
         matches!(
-            manager.output_snapshot().ops.first().map(|op| &op.state),
+            manager.output_queue().ops.first().map(|op| &op.state),
             Some(crate::library::OutputState::Failed { .. })
         )
     })
     .await;
     assert!(failed, "an unwritable target marks the export Failed");
-    assert_eq!(manager.output_snapshot().total.failed, 1);
+    assert_eq!(manager.output_queue().total().failed, 1);
 
     // Retry flips it back to Queued (it'll fail again, but stays tracked).
     manager.retry_outputs();
     assert!(manager
-        .output_snapshot()
+        .output_queue()
         .ops
         .first()
         .is_some_and(|op| matches!(
@@ -399,7 +397,7 @@ async fn export_write_error_marks_failed_and_retries() {
         )));
 
     manager.cancel_output(&release_id);
-    let cleared = wait_for(|| manager.output_snapshot().ops.is_empty()).await;
+    let cleared = wait_for(|| manager.output_queue().ops.is_empty()).await;
     assert!(cleared, "cancel removes the entry");
 }
 
@@ -456,7 +454,7 @@ async fn export_mid_failure_leaves_no_partial_output_at_final_path() {
 
     let failed = wait_for(|| {
         matches!(
-            manager.output_snapshot().ops.first().map(|op| &op.state),
+            manager.output_queue().ops.first().map(|op| &op.state),
             Some(crate::library::OutputState::Failed { .. })
         )
     })

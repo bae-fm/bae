@@ -8,7 +8,13 @@
 //! progress shape. [`run_serial_worker`] is the drain protocol both share — the
 //! activate/cancel race in particular is written once here rather than once per
 //! queue.
+//!
+//! An entry names its release by id only. What the pane shows of the release —
+//! its title, file count, and size — is the library's, read when the pane reads
+//! the queue ([`ReleaseQueueContents::resolve`]), so an edit to the release
+//! shows on its row while it waits.
 
+use std::collections::{BTreeMap, BTreeSet};
 use std::future::Future;
 use std::sync::Mutex;
 
@@ -27,12 +33,19 @@ pub enum ReleaseQueueState<Progress> {
 #[derive(Debug, Clone)]
 pub struct ReleaseQueueOp<Extra, Progress> {
     pub release_id: String,
-    pub title: String,
-    pub file_count: i64,
-    pub total_size: i64,
     pub created_at: i64,
     pub payload: Extra,
     pub state: ReleaseQueueState<Progress>,
+}
+
+/// What the library holds for a queued release, as the pane shows it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct QueuedRelease {
+    /// The release's album title.
+    pub title: String,
+    pub file_count: i64,
+    /// Total size in bytes across the release's files.
+    pub total_size: i64,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -73,31 +86,81 @@ impl ReleaseQueueProgress {
     }
 }
 
-#[derive(Debug, Clone, Default)]
-pub struct ReleaseQueueSnapshot<Extra, Progress> {
+/// The queue as it stands: its entries in order and whether it is paused.
+/// This is what the queue publishes; the pane reads it resolved against the
+/// library ([`Self::resolve`]).
+#[derive(Debug, Clone)]
+pub struct ReleaseQueueContents<Extra, Progress> {
     pub ops: Vec<ReleaseQueueOp<Extra, Progress>>,
-    pub total: ReleaseQueueProgress,
     pub paused: bool,
 }
 
-pub fn build_release_queue_snapshot<Extra: Clone, Progress: Clone>(
-    ops: &[ReleaseQueueOp<Extra, Progress>],
-    paused: bool,
-) -> ReleaseQueueSnapshot<Extra, Progress> {
-    let mut total = ReleaseQueueProgress::default();
-    for op in ops {
-        match &op.state {
-            ReleaseQueueState::Queued => total.queued += 1,
-            ReleaseQueueState::Active { .. } => total.active += 1,
-            ReleaseQueueState::Failed { .. } => total.failed += 1,
+impl<Extra, Progress> Default for ReleaseQueueContents<Extra, Progress> {
+    fn default() -> Self {
+        Self {
+            ops: Vec::new(),
+            paused: false,
         }
     }
+}
 
-    ReleaseQueueSnapshot {
-        ops: ops.to_vec(),
-        total,
-        paused,
+impl<Extra: Clone, Progress: Clone> ReleaseQueueContents<Extra, Progress> {
+    /// The releases the entries name: what resolving them reads.
+    pub fn release_ids(&self) -> BTreeSet<String> {
+        self.ops.iter().map(|op| op.release_id.clone()).collect()
     }
+
+    /// How many entries are in each state.
+    pub fn total(&self) -> ReleaseQueueProgress {
+        let mut total = ReleaseQueueProgress::default();
+        for op in &self.ops {
+            match &op.state {
+                ReleaseQueueState::Queued => total.queued += 1,
+                ReleaseQueueState::Active { .. } => total.active += 1,
+                ReleaseQueueState::Failed { .. } => total.failed += 1,
+            }
+        }
+        total
+    }
+
+    /// Each entry beside its release as `releases` holds it, with the
+    /// per-state counts. An entry whose release `releases` does not hold names
+    /// a release the library no longer has; it stays listed, with no release,
+    /// because it is still in the queue to cancel.
+    pub fn resolve(
+        &self,
+        releases: &BTreeMap<String, QueuedRelease>,
+    ) -> ReleaseQueueSnapshot<Extra, Progress> {
+        ReleaseQueueSnapshot {
+            rows: self
+                .ops
+                .iter()
+                .map(|op| ReleaseQueueRow {
+                    op: op.clone(),
+                    release: releases.get(&op.release_id).cloned(),
+                })
+                .collect(),
+            total: self.total(),
+            paused: self.paused,
+        }
+    }
+}
+
+/// One queue entry as the pane shows it: the entry, and its release as the
+/// library holds it now — `None` once the library no longer has it.
+#[derive(Debug, Clone)]
+pub struct ReleaseQueueRow<Extra, Progress> {
+    pub op: ReleaseQueueOp<Extra, Progress>,
+    pub release: Option<QueuedRelease>,
+}
+
+/// The queue as the pane shows it: every entry resolved against the library,
+/// the per-state counts, and whether the queue is paused.
+#[derive(Debug, Clone)]
+pub struct ReleaseQueueSnapshot<Extra, Progress> {
+    pub rows: Vec<ReleaseQueueRow<Extra, Progress>>,
+    pub total: ReleaseQueueProgress,
+    pub paused: bool,
 }
 
 pub struct ReleaseQueue<Extra, Progress> {
@@ -137,6 +200,15 @@ impl<Extra: Clone, Progress: Clone> ReleaseQueue<Extra, Progress> {
 
     pub fn is_paused(&self) -> bool {
         self.state.lock().unwrap().paused
+    }
+
+    /// The entries and the paused flag, read under one lock.
+    pub fn contents(&self) -> ReleaseQueueContents<Extra, Progress> {
+        let state = self.state.lock().unwrap();
+        ReleaseQueueContents {
+            ops: state.ops.clone(),
+            paused: state.paused,
+        }
     }
 
     pub fn enqueue(&self, op: ReleaseQueueOp<Extra, Progress>) -> bool {
@@ -421,9 +493,6 @@ mod tests {
     fn op(release_id: &str) -> ReleaseQueueOp<(), u8> {
         ReleaseQueueOp {
             release_id: release_id.to_string(),
-            title: "Album Title".to_string(),
-            file_count: 3,
-            total_size: 350_000_000,
             created_at: 0,
             payload: (),
             state: ReleaseQueueState::Queued,
@@ -590,11 +659,41 @@ mod tests {
             error: "boom".to_string(),
         };
 
-        let snap = build_release_queue_snapshot(&[active, queued, failed], false);
+        let contents = ReleaseQueueContents {
+            ops: vec![active, queued, failed],
+            paused: false,
+        };
+        let snap = contents.resolve(&BTreeMap::new());
         assert_eq!(snap.total.active, 1);
         assert_eq!(snap.total.queued, 1);
         assert_eq!(snap.total.failed, 1);
-        assert_eq!(snap.ops.len(), 3);
-        assert_eq!(snap.ops[0].release_id, "rel-a");
+        assert_eq!(snap.rows.len(), 3);
+        assert_eq!(snap.rows[0].op.release_id, "rel-a");
+    }
+
+    /// Each entry takes its release from the read it is resolved against; an
+    /// entry whose release the read lacks stays listed, with no release.
+    #[test]
+    fn resolving_joins_each_entry_to_its_release_and_keeps_a_missing_one() {
+        let contents = ReleaseQueueContents {
+            ops: vec![op("rel-a"), op("rel-gone")],
+            paused: true,
+        };
+        assert_eq!(
+            contents.release_ids(),
+            BTreeSet::from(["rel-a".to_string(), "rel-gone".to_string()])
+        );
+        let release = QueuedRelease {
+            title: "Album Title".to_string(),
+            file_count: 3,
+            total_size: 350_000_000,
+        };
+        let snap = contents.resolve(&BTreeMap::from([("rel-a".to_string(), release.clone())]));
+        assert_eq!(snap.rows.len(), 2);
+        assert_eq!(snap.rows[0].release, Some(release));
+        assert_eq!(snap.rows[1].op.release_id, "rel-gone");
+        assert_eq!(snap.rows[1].release, None);
+        assert_eq!(snap.total.queued, 2);
+        assert!(snap.paused);
     }
 }

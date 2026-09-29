@@ -35,7 +35,8 @@ pub use device_pairing::{
     PendingDevicePairingJoinInfo,
 };
 pub use download_snapshot::{
-    DownloadOp, DownloadProgress, DownloadSnapshot, DownloadState, DownloadTransferProgress,
+    DownloadOp, DownloadProgress, DownloadQueueContents, DownloadRow, DownloadSnapshot,
+    DownloadState, DownloadTransferProgress,
 };
 pub use library_status::{
     LibraryStatusSnapshot, LibraryStatusSubscription, LibraryStatusSubscriptionError,
@@ -47,10 +48,13 @@ pub use outbox_snapshot::{
     ByteProgress, OutboxPauseState, OutboxSnapshot, UploadActivity, UploadBar, UploadFileLabel,
     UploadFileOp, UploadIssue, UploadPhase, UploadProgress, UploadReleaseGroup, UploadState,
 };
-pub use output_snapshot::{OutputKind, OutputOp, OutputProgress, OutputSnapshot, OutputState};
+pub use output_snapshot::{
+    OutputKind, OutputOp, OutputProgress, OutputQueueContents, OutputRow, OutputSnapshot,
+    OutputState,
+};
 pub use queue_upcoming::{QueueUpcomingSnapshot, QueueUpcomingSubscription, QueueUpcomingWindow};
 pub use queued_releases::QueuedReleases;
-pub use release_queue::{CountLabel, ReleaseQueue};
+pub use release_queue::{CountLabel, QueuedRelease, ReleaseQueue};
 pub use search::{
     LibrarySearchQuery, LibrarySearchSnapshot, LibrarySearchSubscription,
     LibrarySearchSubscriptionError, SEARCH_RESULT_LIMIT,
@@ -74,10 +78,10 @@ use tokio::sync::watch;
 
 pub use tokio_util::sync::CancellationToken;
 
-/// The pin queue with the Downloads pane's stream.
-pub type Downloads = QueuedReleases<(), DownloadTransferProgress, DownloadSnapshot>;
-/// The export and save queue with the Exporting pane's stream.
-pub type Outputs = QueuedReleases<output_snapshot::OutputRequest, u8, OutputSnapshot>;
+/// The pin queue with the stream of its contents.
+pub type Downloads = QueuedReleases<(), DownloadTransferProgress>;
+/// The export and save queue with the stream of its contents.
+pub type Outputs = QueuedReleases<output_snapshot::OutputRequest, u8>;
 
 /// One track of a save: its tags, its stored audio, and which of its audio
 /// the saved file carries. Holds no open source; a save opens the files a

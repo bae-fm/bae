@@ -1,36 +1,34 @@
-//! A serial release queue and the snapshot stream its pane reads, as one
-//! owner. Every change to the queue republishes the snapshot, so the pane
-//! can never see a queue the stream has not followed.
+//! A serial release queue and the stream of its contents, as one owner.
+//! Every change to the queue republishes its contents, so a reader can never
+//! see a queue the stream has not followed.
 
-use crate::library::release_queue::{run_serial_worker, ReleaseQueue, ReleaseQueueOp, RunningOp};
+use crate::library::release_queue::{
+    run_serial_worker, ReleaseQueue, ReleaseQueueContents, ReleaseQueueOp, RunningOp,
+};
 use crate::library::LibraryError;
 use std::future::Future;
 use std::sync::Arc;
 
-pub struct QueuedReleases<Extra, Progress, Snapshot> {
+pub struct QueuedReleases<Extra, Progress> {
     queue: Arc<ReleaseQueue<Extra, Progress>>,
-    values: tokio::sync::watch::Sender<Snapshot>,
-    /// What the pane draws, built from the queue's rows and its paused flag.
-    build: fn(&[ReleaseQueueOp<Extra, Progress>], bool) -> Snapshot,
+    values: tokio::sync::watch::Sender<ReleaseQueueContents<Extra, Progress>>,
 }
 
-impl<Extra, Progress, Snapshot> Clone for QueuedReleases<Extra, Progress, Snapshot> {
+impl<Extra, Progress> Clone for QueuedReleases<Extra, Progress> {
     fn clone(&self) -> Self {
         Self {
             queue: self.queue.clone(),
             values: self.values.clone(),
-            build: self.build,
         }
     }
 }
 
-impl<Extra: Clone, Progress: Clone, Snapshot> QueuedReleases<Extra, Progress, Snapshot> {
-    pub fn new(build: fn(&[ReleaseQueueOp<Extra, Progress>], bool) -> Snapshot) -> Self {
-        let (values, _) = tokio::sync::watch::channel(build(&[], false));
+impl<Extra: Clone, Progress: Clone> QueuedReleases<Extra, Progress> {
+    pub fn new() -> Self {
+        let (values, _) = tokio::sync::watch::channel(ReleaseQueueContents::default());
         Self {
             queue: Arc::new(ReleaseQueue::new()),
             values,
-            build,
         }
     }
 
@@ -97,15 +95,15 @@ impl<Extra: Clone, Progress: Clone, Snapshot> QueuedReleases<Extra, Progress, Sn
         set
     }
 
-    pub fn snapshot(&self) -> Snapshot {
-        (self.build)(&self.queue.ops(), self.queue.is_paused())
+    pub fn contents(&self) -> ReleaseQueueContents<Extra, Progress> {
+        self.queue.contents()
     }
 
     pub fn republish(&self) {
-        self.values.send_replace(self.snapshot());
+        self.values.send_replace(self.contents());
     }
 
-    pub fn subscribe(&self) -> tokio::sync::watch::Receiver<Snapshot> {
+    pub fn subscribe(&self) -> tokio::sync::watch::Receiver<ReleaseQueueContents<Extra, Progress>> {
         self.values.subscribe()
     }
 
@@ -141,7 +139,7 @@ impl<Extra: Clone, Progress: Clone, Snapshot> QueuedReleases<Extra, Progress, Sn
     }
 }
 
-impl<Extra: Clone, Snapshot> QueuedReleases<Extra, u8, Snapshot> {
+impl<Extra: Clone> QueuedReleases<Extra, u8> {
     /// Record the active entry's percent, when it is still queued.
     pub fn set_active_percent(&self, release_id: &str, percent: u8) {
         if self.queue.contains(release_id) {

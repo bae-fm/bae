@@ -1,16 +1,19 @@
-//! The in-memory export queue snapshot. Single source of truth for the Storage
-//! Manager's Exporting pane while a release is being copied out to a user
-//! directory.
+//! The in-memory export queue's types. Its snapshot is the single source of
+//! truth for the Storage Manager's Exporting pane while a release is being
+//! copied out to a user directory.
 
 use super::release_queue::{
-    build_release_queue_snapshot, ReleaseQueueOp, ReleaseQueueProgress, ReleaseQueueSnapshot,
-    ReleaseQueueState,
+    ReleaseQueueContents, ReleaseQueueOp, ReleaseQueueProgress, ReleaseQueueRow,
+    ReleaseQueueSnapshot, ReleaseQueueState,
 };
 use std::path::PathBuf;
 
 pub type OutputState = ReleaseQueueState<u8>;
 pub type OutputOp = ReleaseQueueOp<OutputRequest, u8>;
 pub type OutputProgress = ReleaseQueueProgress;
+/// The export queue as it stands, before its releases are read.
+pub type OutputQueueContents = ReleaseQueueContents<OutputRequest, u8>;
+pub type OutputRow = ReleaseQueueRow<OutputRequest, u8>;
 pub type OutputSnapshot = ReleaseQueueSnapshot<OutputRequest, u8>;
 
 #[derive(Debug, Clone)]
@@ -28,8 +31,4 @@ pub struct OutputRequest {
 pub enum OutputKind {
     Export,
     Save { preset: crate::config::SavePreset },
-}
-
-pub fn build_output_snapshot(exports: &[OutputOp], paused: bool) -> OutputSnapshot {
-    build_release_queue_snapshot(exports, paused)
 }

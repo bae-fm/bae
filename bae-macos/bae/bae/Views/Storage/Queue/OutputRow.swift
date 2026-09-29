@@ -18,7 +18,7 @@ struct OutputRow: View {
             createdAt: op.createdAt,
             cancel: .init(help: "Cancel this export", action: onCancel)
         ) {
-            Text(op.title)
+            Text(op.titleText)
                 .lineLimit(1)
 
             detailLine
@@ -30,14 +30,21 @@ struct OutputRow: View {
         }
     }
 
-    /// "12 files · 213 MB", with the preset name appended for a save.
+    /// "12 files · 213 MB", with the preset name appended for a save; only
+    /// the preset name once the library no longer holds the release.
     @ViewBuilder
     private var detailLine: some View {
-        if let presetName {
-            Text("\(op.fileCount) files · \(op.totalSizeText) · \(presetName)")
-        }
-        else {
-            Text("\(op.fileCount) files · \(op.totalSizeText)")
+        switch (op.release, presetName) {
+        case (let release?, let presetName?):
+            Text(
+                "\(release.fileCount) files · \(release.totalSizeText) · \(presetName)"
+            )
+        case (let release?, nil):
+            Text("\(release.fileCount) files · \(release.totalSizeText)")
+        case (nil, let presetName?):
+            Text(presetName)
+        case (nil, nil):
+            EmptyView()
         }
     }
 

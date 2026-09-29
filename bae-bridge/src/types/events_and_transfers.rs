@@ -212,15 +212,30 @@ pub struct BridgeDownloadTransferProgress {
     pub fraction: f64,
 }
 
-/// One queued download: a whole release being pinned. Mirrors `DownloadOp`.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeDownloadOp {
-    pub release_id: String,
-    /// Album title for display.
+/// What the library holds now for a queued release: what its queue row
+/// shows. Mirrors `QueuedRelease`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeQueuedRelease {
+    /// The release's album title.
     pub title: String,
     pub file_count: i64,
     /// Total size in bytes across the release's files. The UI formats it.
     pub total_size: i64,
+}
+
+mirror_struct! {
+    BridgeQueuedRelease = bae_core::library::QueuedRelease,
+    from_core: pub(crate) fn,
+    fields: { title, file_count, total_size },
+}
+
+/// One queued download: a whole release being pinned. Mirrors `DownloadRow`.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeDownloadOp {
+    pub release_id: String,
+    /// The release as the library holds it now; `None` once the library no
+    /// longer has it.
+    pub release: Option<BridgeQueuedRelease>,
     /// Enqueue time as Unix epoch milliseconds, for the queued relative label.
     pub created_at: i64,
     pub state: BridgeDownloadState,
@@ -230,17 +245,13 @@ impl BridgeDownloadOp {
     fn into_core(self) -> bae_core::library::DownloadOp {
         let Self {
             release_id,
-            title,
-            file_count,
-            total_size,
+            // The download status reads the queue entry, not the library's release.
+            release: _,
             created_at,
             state,
         } = self;
         bae_core::library::release_queue::ReleaseQueueOp {
             release_id,
-            title,
-            file_count,
-            total_size,
             created_at,
             // Downloads carry no operation-specific payload.
             payload: (),
@@ -347,17 +358,15 @@ pub enum BridgeOutputKind {
     Save { preset_name: String },
 }
 
-/// One queued release output: an export or a preset save. Mirrors `OutputOp`.
+/// One queued release output: an export or a preset save. Mirrors `OutputRow`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeOutputOp {
     pub release_id: String,
     /// The chosen destination; the release's folder is rebuilt under it.
     pub target_dir: String,
-    /// Album title for display.
-    pub title: String,
-    pub file_count: i64,
-    /// Total size in bytes across the release's files. The UI formats it.
-    pub total_size: i64,
+    /// The release as the library holds it now; `None` once the library no
+    /// longer has it.
+    pub release: Option<BridgeQueuedRelease>,
     /// Enqueue time as Unix epoch milliseconds, for the queued relative label.
     pub created_at: i64,
     pub state: BridgeOutputState,

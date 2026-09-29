@@ -19,6 +19,8 @@ const DIRECT_KEYS: &[&str] = &[
     "core.queue.output",
     "core.queue.failed",
     "core.queue.queued",
+    // A queue row whose release the library no longer holds.
+    "core.queue.release_missing",
     "core.download.bytes_progress",
     // Status records carry these keys themselves.
     "core.artwork_cache.scanning",

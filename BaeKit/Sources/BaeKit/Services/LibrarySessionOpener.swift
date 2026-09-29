@@ -4,7 +4,7 @@ import OSLog
 private let logger = Logger.bae("LibrarySessionOpener")
 
 /// The slice of an open `AppHandle` the session opener drives: read the config
-/// and Coven-owned cloud-key state, unlock that same handle, seed the outbox,
+/// and Coven-owned cloud-key state, unlock that same handle, seed the stores,
 /// check sync readiness, and tear the core down on a failed open. `AppHandle`
 /// satisfies it directly; the narrow shape is the seam a unit test fakes.
 public protocol LibrarySessionHandle: AnyObject, Sendable {
@@ -12,8 +12,60 @@ public protocol LibrarySessionHandle: AnyObject, Sendable {
     func cloudHomeKeyState() throws -> BridgeCloudHomeKeyState
     func unlockCloudHome(serializedCloudKey: String) async throws
     func getOutboxSnapshot() async throws -> BridgeOutboxSnapshot
+    func getDownloadSnapshot() async throws -> BridgeDownloadSnapshot
+    #if os(macOS)
+        func getOutputSnapshot() async throws -> BridgeOutputSnapshot
+    #endif
     func isSyncReady() -> Bool
     func shutdown() async throws
+}
+
+/// What an opened library's transfer stores start from, read from core before
+/// the service is built so the first frame shows core's values.
+public struct LibrarySessionSeed: Sendable {
+    public let outbox: BridgeOutboxSnapshot
+    public let downloads: BridgeDownloadSnapshot
+    #if os(macOS)
+        public let outputs: BridgeOutputSnapshot
+    #endif
+
+    #if os(macOS)
+        public init(
+            outbox: BridgeOutboxSnapshot,
+            downloads: BridgeDownloadSnapshot,
+            outputs: BridgeOutputSnapshot
+        ) {
+            self.outbox = outbox
+            self.downloads = downloads
+            self.outputs = outputs
+        }
+    #else
+        public init(
+            outbox: BridgeOutboxSnapshot,
+            downloads: BridgeDownloadSnapshot
+        ) {
+            self.outbox = outbox
+            self.downloads = downloads
+        }
+    #endif
+
+    /// Read every seed from `handle`.
+    static func read(from handle: some LibrarySessionHandle) async throws
+        -> LibrarySessionSeed
+    {
+        let outbox = try await handle.getOutboxSnapshot()
+        let downloads = try await handle.getDownloadSnapshot()
+        #if os(macOS)
+            let outputs = try await handle.getOutputSnapshot()
+            return LibrarySessionSeed(
+                outbox: outbox,
+                downloads: downloads,
+                outputs: outputs
+            )
+        #else
+            return LibrarySessionSeed(outbox: outbox, downloads: downloads)
+        #endif
+    }
 }
 
 extension AppHandle: LibrarySessionHandle {
@@ -26,8 +78,8 @@ extension AppHandle: LibrarySessionHandle {
 /// in flight. This is the platform-shared half of the launch / switch / unlock
 /// flow that macOS's `AppDelegate` and iOS's `AppSessionHolder` used to keep in
 /// lockstep by hand: run the off-main `initApp`, bail if a newer open superseded
-/// this one, gate on the stored encryption key, seed the outbox mirror (tearing
-/// the core down if that read fails), build and wire the service, and store the
+/// this one, gate on the stored encryption key, seed the transfer stores (tearing
+/// the core down if a read fails), build and wire the service, and store the
 /// restore code once sync is ready.
 ///
 /// Each platform keeps its own shell (an `NSApplicationDelegate` vs an
@@ -63,9 +115,9 @@ public final class LibrarySessionOpener<
     private let makeHandle: @Sendable (String) throws -> Handle
 
     /// Builds and wires the platform `AppService` around the opened handle,
-    /// config, and seeded outbox snapshot.
+    /// config, and seeded transfer stores.
     private let makeService:
-        @MainActor (Handle, BridgeConfig, BridgeOutboxSnapshot) -> Service
+        @MainActor (Handle, BridgeConfig, LibrarySessionSeed) -> Service
 
     /// The open still in flight, cancelled by the next `open` (or an explicit
     /// `cancel`) so its now-stale result never lands on the caller's screen.
@@ -85,7 +137,7 @@ public final class LibrarySessionOpener<
         makeHandle: @escaping @Sendable (String) throws -> Handle,
         makeService:
             @escaping @MainActor (
-                Handle, BridgeConfig, BridgeOutboxSnapshot
+                Handle, BridgeConfig, LibrarySessionSeed
             ) -> Service
     ) {
         self.makeHandle = makeHandle
@@ -192,26 +244,26 @@ public final class LibrarySessionOpener<
         handle: Handle,
         config: BridgeConfig
     ) async throws -> Service {
-        let initialOutbox: BridgeOutboxSnapshot
-        logger.info("open: seeding outbox snapshot")
+        let seed: LibrarySessionSeed
+        logger.info("open: seeding transfer stores")
         do {
-            initialOutbox = try await handle.getOutboxSnapshot()
-            logger.info("open: outbox snapshot seeded")
+            seed = try await LibrarySessionSeed.read(from: handle)
+            logger.info("open: transfer stores seeded")
         }
         catch {
-            logger.error("Failed to seed outbox snapshot: \(error)")
+            logger.error("Failed to seed transfer stores: \(error)")
             do {
                 try await handle.shutdown()
             }
             catch {
                 logger.error(
-                    "Failed to shut down after outbox seeding failed: \(error)"
+                    "Failed to shut down after seeding failed: \(error)"
                 )
                 throw error
             }
             throw error
         }
-        let service = makeService(handle, config, initialOutbox)
+        let service = makeService(handle, config, seed)
         logger.info("open: service built and wired")
         if handle.isSyncReady() {
             service.storeRestoreCodeInKeychain(

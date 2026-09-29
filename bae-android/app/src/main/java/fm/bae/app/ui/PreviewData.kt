@@ -28,6 +28,7 @@ import uniffi.bae_bridge.BridgeMemberRole
 import uniffi.bae_bridge.BridgeMembership
 import uniffi.bae_bridge.BridgePauseBoundary
 import uniffi.bae_bridge.BridgePressingFacts
+import uniffi.bae_bridge.BridgeQueuedRelease
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeReleaseArea
 import uniffi.bae_bridge.BridgeReleaseName
@@ -254,9 +255,7 @@ object PreviewData {
     ): BridgeDownloadOp =
         BridgeDownloadOp(
             releaseId = releaseId,
-            title = title,
-            fileCount = 10,
-            totalSize = 300_000_000,
+            release = BridgeQueuedRelease(title = title, fileCount = 10, totalSize = 300_000_000),
             createdAt = 0,
             state = state,
         )

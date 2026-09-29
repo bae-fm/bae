@@ -44,18 +44,29 @@ impl AppHandle {
         &self,
         callback: Box<dyn crate::types::DownloadCallback>,
     ) -> std::sync::Arc<crate::LiveSubscription> {
-        self.subscribe_watch(
-            |services| services.subscribe_download_values(),
-            move |value| {
-                callback.on_value(crate::types::BridgeDownloadSnapshot::from_core(
-                    value.clone(),
-                ))
+        self.subscribe_channel(
+            |services, runtime| services.subscribe_download_values(runtime),
+            move |value| match value {
+                Ok(value) => {
+                    callback.on_value(crate::types::BridgeDownloadSnapshot::from_core(value))
+                }
+                Err(error) => callback.on_error(BridgeError::database_query(error)),
             },
         )
     }
 }
 
 forward! { async this => {
+    /// The download queue as the Downloads pane shows it now, each entry
+    /// beside its release as the library holds it.
+    fn get_download_snapshot() -> crate::types::BridgeDownloadSnapshot {
+        this.services
+            .download_snapshot()
+            .await
+            .map(crate::types::BridgeDownloadSnapshot::from_core)
+            .map_err(BridgeError::database_query)
+    }
+
     /// 0-based position of `album_id` under the given sort, or `None` if the
     /// album isn't present.
     /// Lets the grid load the page containing an album and scroll to it
@@ -355,11 +366,6 @@ forward! { sync this => {
     }
 
     // ── Download (pin) queue ─────────────────────────────────────────
-
-    /// The current download-queue snapshot.
-    fn get_download_snapshot() -> crate::types::BridgeDownloadSnapshot {
-        crate::types::BridgeDownloadSnapshot::from_core(this.services.download_snapshot())
-    }
 
     /// Pause or resume the download queue. In-flight downloads finish; the queue
     /// stops starting new ones until resumed.

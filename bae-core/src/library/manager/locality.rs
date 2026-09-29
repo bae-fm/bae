@@ -170,10 +170,10 @@ impl LibraryManager {
     // a release to pinned only once every file lands.
 
     /// Enqueue releases to pin for offline. Skips ids already in the queue (in any
-    /// state) or already pinned; for each new one, resolves its title / file_count /
-    /// total_size from its storage summary so the Downloads pane can render the row
-    /// without a re-query. Wakes the parked worker and publishes a fresh
-    /// snapshot on the downloads value stream.
+    /// state), missing from the library, local, or already pinned. The entry
+    /// names the release by id only; the Downloads pane reads its title, file
+    /// count, and size from the library as it shows the row. Wakes the parked
+    /// worker and publishes the queue's new contents.
     pub async fn enqueue_pins(&self, release_ids: Vec<String>) {
         // One timestamp for the whole batch — read the clock once, not per row.
         let enqueued_at = self.clock.now().timestamp_millis();
@@ -209,9 +209,6 @@ impl LibraryManager {
 
             ops.push(crate::library::DownloadOp {
                 release_id: release_id.clone(),
-                title: summary.album_title,
-                file_count: summary.file_count,
-                total_size: summary.total_size,
                 created_at: enqueued_at,
                 payload: (),
                 state: crate::library::DownloadState::Queued,

@@ -201,6 +201,12 @@ class OpenLibrary internal constructor(
                     override fun onValue(value: uniffi.bae_bridge.BridgeDownloadSnapshot) {
                         scope.launch(Dispatchers.Main.immediate) { stores.transfers.downloads.setSnapshot(value) }
                     }
+
+                    override fun onError(error: uniffi.bae_bridge.BridgeException) {
+                        scope.launch(Dispatchers.Main.immediate) {
+                            stores.config.showError(LocaleErrorLines(appContext).line(error))
+                        }
+                    }
                 },
             )
         valueSubscriptions +=
@@ -580,6 +586,7 @@ object AppSessionHolder {
         appContext: Context,
     ): OpenLibrary {
         val initialOutbox = handle.getOutboxSnapshot()
+        val initialDownloads = handle.getDownloadSnapshot()
         current?.dispose()
         current = null
         val session =
@@ -587,7 +594,7 @@ object AppSessionHolder {
                 libraryId,
                 handle,
                 diagnostics,
-                buildStores(config, handle, initialOutbox),
+                buildStores(config, handle, initialOutbox, initialDownloads),
                 appContext,
             )
         current = session
@@ -632,6 +639,7 @@ object AppSessionHolder {
         config: BridgeConfig,
         handle: AppHandle,
         initialOutbox: uniffi.bae_bridge.BridgeOutboxSnapshot,
+        initialDownloads: uniffi.bae_bridge.BridgeDownloadSnapshot,
     ) = OpenLibraryStores(
         library = LibraryStore(),
         config = ConfigStore(config),
@@ -639,7 +647,7 @@ object AppSessionHolder {
         transfers =
             LibraryTransferStores(
                 artworkLoading = ArtworkLoadingStore(handle::cancelEagerCacheFill),
-                downloads = DownloadStore(handle.getDownloadSnapshot()),
+                downloads = DownloadStore(initialDownloads),
                 outbox = OutboxStore(initialOutbox),
             ),
         cast = CastStore(),

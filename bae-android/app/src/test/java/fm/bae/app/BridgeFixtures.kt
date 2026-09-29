@@ -24,6 +24,7 @@ import uniffi.bae_bridge.BridgeMcpConfig
 import uniffi.bae_bridge.BridgeOutboxPauseState
 import uniffi.bae_bridge.BridgeOutboxSnapshot
 import uniffi.bae_bridge.BridgePressingFacts
+import uniffi.bae_bridge.BridgeQueuedRelease
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeReleaseName
 import uniffi.bae_bridge.BridgeReleaseStorageState
@@ -207,9 +208,7 @@ object BridgeFixtures {
     ): BridgeDownloadOp =
         BridgeDownloadOp(
             releaseId = releaseId,
-            title = title,
-            fileCount = fileCount,
-            totalSize = totalSize,
+            release = BridgeQueuedRelease(title = title, fileCount = fileCount, totalSize = totalSize),
             createdAt = 0,
             state = state,
         )

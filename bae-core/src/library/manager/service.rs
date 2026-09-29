@@ -175,13 +175,9 @@ impl LibraryManager {
             sync,
             sync_status,
             transitions: crate::library::storage_transitions::StorageTransitions::new(),
-            downloads: crate::library::Downloads::new(
-                crate::library::download_snapshot::build_download_snapshot,
-            ),
+            downloads: crate::library::Downloads::new(),
             #[cfg(not(any(target_os = "ios", target_os = "android")))]
-            outputs: crate::library::Outputs::new(
-                crate::library::output_snapshot::build_output_snapshot,
-            ),
+            outputs: crate::library::Outputs::new(),
             #[cfg(test)]
             upload_observer: uploads.observer,
         };
@@ -605,31 +601,55 @@ impl LibraryManager {
         self.sync.subscribe_outbox_values()
     }
 
-    /// The current download-queue snapshot — per-release state and a
-    /// pre-formatted summary. Seeds the Downloads pane before the first value
-    /// arrives on the stream.
-    pub fn download_snapshot(&self) -> crate::library::DownloadSnapshot {
-        self.downloads.snapshot()
+    /// The download queue as it stands: each entry's state and whether the
+    /// queue is paused. The Downloads pane reads it resolved against the
+    /// library, through `AppServices::download_snapshot`.
+    pub fn download_queue(&self) -> crate::library::DownloadQueueContents {
+        self.downloads.contents()
     }
 
-    pub fn subscribe_download_values(
+    pub fn subscribe_download_queue(
         &self,
-    ) -> tokio::sync::watch::Receiver<crate::library::DownloadSnapshot> {
+    ) -> tokio::sync::watch::Receiver<crate::library::DownloadQueueContents> {
         self.downloads.subscribe()
     }
 
-    /// The current export-queue snapshot — per-release state. Seeds the
-    /// Exporting pane before the first value arrives on the stream.
+    /// The export queue as it stands: each entry's state and whether the
+    /// queue is paused. The Exporting pane reads it resolved against the
+    /// library, through `AppServices::output_snapshot`.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub fn output_snapshot(&self) -> crate::library::OutputSnapshot {
-        self.outputs.snapshot()
+    pub fn output_queue(&self) -> crate::library::OutputQueueContents {
+        self.outputs.contents()
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub fn subscribe_output_values(
+    pub fn subscribe_output_queue(
         &self,
-    ) -> tokio::sync::watch::Receiver<crate::library::OutputSnapshot> {
+    ) -> tokio::sync::watch::Receiver<crate::library::OutputQueueContents> {
         self.outputs.subscribe()
+    }
+
+    /// What the library holds now for each of `release_ids` it still has:
+    /// the title, file count, and size a queue row shows.
+    pub(crate) async fn queued_releases(
+        &self,
+        release_ids: std::collections::BTreeSet<String>,
+    ) -> Result<std::collections::BTreeMap<String, crate::library::QueuedRelease>, LibraryError>
+    {
+        Ok(self.database.queued_releases(release_ids).await?)
+    }
+
+    /// Follow [`Self::queued_releases`] for the releases `initial` names; a
+    /// queue that gains or loses a release points the same query at its new
+    /// set.
+    pub(crate) fn subscribe_queued_releases(
+        &self,
+        initial: std::collections::BTreeSet<String>,
+    ) -> coven::ReconfigurableLiveQuery<
+        std::collections::BTreeSet<String>,
+        std::collections::BTreeMap<String, crate::library::QueuedRelease>,
+    > {
+        self.database.subscribe_queued_releases(initial)
     }
 
     /// The current outbox processing snapshot — queue depth, per-item state, and

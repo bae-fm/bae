@@ -209,13 +209,33 @@ private func makeAppService(handle: FakeAppHandle = FakeAppHandle())
             discogsUsable: false,
             sync: nil
         ),
-        initialOutbox: OutboxStore.emptySnapshot
+        seed: emptySeed
+    )
+}
+
+/// Empty transfer queues, as a freshly opened library's core reports them.
+@MainActor
+private var emptySeed: LibrarySessionSeed {
+    LibrarySessionSeed(
+        outbox: OutboxStore.emptySnapshot,
+        downloads: BridgeDownloadSnapshot(
+            downloads: [],
+            total: BridgeDownloadProgress(queued: 0, active: 0, failed: 0),
+            summaryParts: [],
+            paused: false
+        ),
+        outputs: BridgeOutputSnapshot(
+            outputs: [],
+            total: BridgeOutputProgress(queued: 0, active: 0, failed: 0),
+            summaryParts: [],
+            paused: false
+        )
     )
 }
 
 /// A handle-less `AppHandle` that answers the reads the macOS `AppService`
-/// constructor makes so a dispatcher test can build the real service without a
-/// live core.
+/// constructor and its subscriptions make so a dispatcher test can build the
+/// real service without a live core.
 private final class FakeAppHandle: AppHandle, @unchecked Sendable {
     private var queueCallback: (any QueueCallback)?
     private var playbackCallback: (any PlaybackValuesCallback)?
@@ -230,24 +250,6 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
 
     override func isSyncReady() -> Bool {
         false
-    }
-
-    override func getDownloadSnapshot() -> BridgeDownloadSnapshot {
-        BridgeDownloadSnapshot(
-            downloads: [],
-            total: BridgeDownloadProgress(queued: 0, active: 0, failed: 0),
-            summaryParts: [],
-            paused: false
-        )
-    }
-
-    override func getOutputSnapshot() -> BridgeOutputSnapshot {
-        BridgeOutputSnapshot(
-            outputs: [],
-            total: BridgeOutputProgress(queued: 0, active: 0, failed: 0),
-            summaryParts: [],
-            paused: false
-        )
     }
 
     override func subscribeConfig(

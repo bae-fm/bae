@@ -292,3 +292,95 @@ async fn a_release_session_keeps_its_choices_in_core() {
         .unwrap();
     assert!(services.release_lookup_choices().get(&key).is_none());
 }
+
+/// The next export-queue value whose only row satisfies `matches`, reading
+/// past the values before it.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+async fn output_value_until(
+    values: &mut tokio::sync::mpsc::UnboundedReceiver<
+        Result<crate::library::OutputSnapshot, crate::library::LibraryError>,
+    >,
+    matches: impl Fn(&crate::library::OutputRow) -> bool,
+) -> crate::library::OutputSnapshot {
+    loop {
+        let value = tokio::time::timeout(std::time::Duration::from_secs(5), values.recv())
+            .await
+            .expect("export queue subscription delivers")
+            .expect("export queue subscription stays open")
+            .expect("export queue resolves");
+        if let [row] = value.rows.as_slice() {
+            if matches(row) {
+                return value;
+            }
+        }
+    }
+}
+
+/// A queued export names its release by id only, so an album title edited
+/// while it waits shows on its row: the same subscription delivers the row
+/// with the new title, and a fresh read agrees.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[tokio::test(flavor = "multi_thread")]
+async fn a_queued_release_shows_its_title_as_edited_while_it_waits() {
+    let (services, _track_ids, temp_dir) = playing_app_services(1).await;
+    let release_id = "c61a9e19-f3ba-4728-842c-c59dbc82e238";
+    let manager = &services.inner.manager;
+    manager.set_outputs_paused(true);
+    manager
+        .enqueue_export(release_id, temp_dir.path().join("export-out"))
+        .await
+        .unwrap();
+
+    let mut values = services.subscribe_output_values(&tokio::runtime::Handle::current());
+    let queued = output_value_until(&mut values, |row| row.release.is_some()).await;
+    let release = queued.rows[0].release.as_ref().unwrap();
+    assert_eq!(release.title, "Album Title");
+    assert_eq!(release.file_count, 0);
+    assert_eq!(queued.rows[0].op.release_id, release_id);
+
+    manager
+        .apply_release_metadata_user_edit(
+            release_id,
+            &crate::import::ReleaseUserEdit {
+                album_title: "Renamed Album".to_string(),
+                album_artist_assignments: vec![crate::import::ArtistAssignment::Picked {
+                    artist: crate::import::ExistingArtist {
+                        artist_id: bae_test_support::test_uuid(
+                            "e36744a5-1a36-460f-891c-e7e558034edf",
+                        ),
+                        name: "Test Artist".to_string(),
+                        sort_name: None,
+                        musicbrainz_artist_id: None,
+                        discogs_artist_id: None,
+                    },
+                }],
+                album_year: None,
+                pressing: crate::pressing::Pressing::blank(),
+                tracks: vec![crate::import::TrackUserEdit {
+                    title: "Track 0".to_string(),
+                    side: None,
+                    track_number: Some(0),
+                    artist_assignments: crate::import::TrackArtistAssignments::AlbumArtists,
+                    file: None,
+                }],
+            },
+        )
+        .await
+        .unwrap();
+
+    output_value_until(&mut values, |row| {
+        row.release
+            .as_ref()
+            .is_some_and(|release| release.title == "Renamed Album")
+    })
+    .await;
+    let read = services.output_snapshot().await.unwrap();
+    assert_eq!(
+        read.rows[0]
+            .release
+            .as_ref()
+            .map(|release| release.title.as_str()),
+        Some("Renamed Album")
+    );
+    assert!(read.paused);
+}

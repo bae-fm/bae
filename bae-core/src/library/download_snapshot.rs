@@ -1,10 +1,10 @@
-//! The in-memory download (pin) queue snapshot. Single source of truth for the
-//! Storage Manager's Downloads pane and the per-release "Downloading..." badge
-//! when a pin is queued or in flight.
+//! The in-memory download (pin) queue's types. Its snapshot is the single
+//! source of truth for the Downloads pane and the per-release
+//! "Downloading..." badge when a pin is queued or in flight.
 
 use super::release_queue::{
-    build_release_queue_snapshot, ReleaseQueueOp, ReleaseQueueProgress, ReleaseQueueSnapshot,
-    ReleaseQueueState,
+    ReleaseQueueContents, ReleaseQueueOp, ReleaseQueueProgress, ReleaseQueueRow,
+    ReleaseQueueSnapshot, ReleaseQueueState,
 };
 
 use super::LibraryError;
@@ -44,8 +44,7 @@ impl DownloadTransferProgress {
 pub type DownloadState = ReleaseQueueState<DownloadTransferProgress>;
 pub type DownloadOp = ReleaseQueueOp<(), DownloadTransferProgress>;
 pub type DownloadProgress = ReleaseQueueProgress;
+/// The download queue as it stands, before its releases are read.
+pub type DownloadQueueContents = ReleaseQueueContents<(), DownloadTransferProgress>;
+pub type DownloadRow = ReleaseQueueRow<(), DownloadTransferProgress>;
 pub type DownloadSnapshot = ReleaseQueueSnapshot<(), DownloadTransferProgress>;
-
-pub fn build_download_snapshot(downloads: &[DownloadOp], paused: bool) -> DownloadSnapshot {
-    build_release_queue_snapshot(downloads, paused)
-}

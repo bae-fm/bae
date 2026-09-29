@@ -45,6 +45,7 @@ import uniffi.bae_bridge.BridgeDownloadOp
 import uniffi.bae_bridge.BridgeDownloadSnapshot
 import uniffi.bae_bridge.BridgeDownloadState
 import uniffi.bae_bridge.BridgeDownloadTransferProgress
+import uniffi.bae_bridge.BridgeQueuedRelease
 
 /** The download queue: each pin's progress, pause and retry for the queue, and cancel per item. */
 @Composable
@@ -156,17 +157,20 @@ private fun DownloadQueueRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline)) {
+            val release = op.release
             Text(
-                text = op.title,
+                text = release?.title ?: context.coreString("core.queue.release_missing"),
                 style = ThemeText.rowTitle.style,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            Text(
-                text = op.detailText(context),
-                style = ThemeText.detail.style,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            if (release != null) {
+                Text(
+                    text = release.detailText(context),
+                    style = ThemeText.detail.style,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             DownloadRowState(op.state)
         }
         IconButton(onClick = onCancel) {
@@ -219,7 +223,7 @@ internal fun DownloadProgressBytes(progress: BridgeDownloadTransferProgress) {
     }
 }
 
-private fun BridgeDownloadOp.detailText(context: Context): String {
+private fun BridgeQueuedRelease.detailText(context: Context): String {
     val files =
         context.resources.getQuantityString(
             R.plurals.download_file_count,

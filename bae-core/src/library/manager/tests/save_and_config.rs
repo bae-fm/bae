@@ -115,7 +115,7 @@ async fn enqueue_release_save_captures_the_preset() {
         .collect();
     manager.set_save_presets(edited).await.unwrap();
 
-    let snap = manager.output_snapshot();
+    let snap = manager.output_queue();
     let crate::library::OutputKind::Save { preset } = &snap.ops[0].payload.kind else {
         panic!("expected a queued save op");
     };

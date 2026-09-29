@@ -59,10 +59,10 @@ impl LibraryManager {
     }
 
     /// Shared enqueue body for both release-level outputs. Skips ids already in
-    /// the queue (any state); otherwise resolves its title / file_count /
-    /// total_size from its storage summary so the Exporting pane can render the
-    /// row without a re-query. Wakes the parked worker and publishes a fresh
-    /// snapshot on the exports value stream.
+    /// the queue (any state) and fails for a release the library does not
+    /// hold. The entry names the release by id only; the Exporting pane reads
+    /// its title, file count, and size from the library as it shows the row.
+    /// Wakes the parked worker and publishes the queue's new contents.
     async fn enqueue_output(
         &self,
         release_id: &str,
@@ -84,18 +84,12 @@ impl LibraryManager {
             debug!("enqueue_output: {release_id} already queued, skipping");
             return Ok(());
         }
-        let summary = self
-            .find_release_storage_summary(release_id)
-            .await?
-            .ok_or_else(|| {
-                LibraryError::Export(format!("cannot export release {release_id}: not found"))
-            })?;
+        self.get_release_by_id(release_id).await?.ok_or_else(|| {
+            LibraryError::Export(format!("cannot export release {release_id}: not found"))
+        })?;
 
         let op = crate::library::OutputOp {
             release_id: release_id.to_string(),
-            title: summary.album_title,
-            file_count: summary.file_count,
-            total_size: summary.total_size,
             created_at: self.clock.now().timestamp_millis(),
             payload: crate::library::output_snapshot::OutputRequest { target_dir, kind },
             state: crate::library::OutputState::Queued,

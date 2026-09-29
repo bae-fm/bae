@@ -449,9 +449,6 @@ mod tests {
     ) -> crate::library::DownloadOp {
         crate::library::DownloadOp {
             release_id: release_id.to_string(),
-            title: "Album".to_string(),
-            file_count: 1,
-            total_size: 1,
             created_at: 0,
             payload: (),
             state,
