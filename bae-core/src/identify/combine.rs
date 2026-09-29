@@ -390,7 +390,7 @@ struct Support {
     /// a recording is registered where its producer is, not where a copy was
     /// pressed, so it only tells apart rows nothing else does.
     registration: Fact,
-    /// Whether anything but a barcode and a year stands behind the row — see
+    /// Whether anything but a barcode stands behind the row — see
     /// [`super::agreements::Agreements::offered`]. One value, so a fact one
     /// pressing states does not split it from its siblings. The label and the
     /// catalog number count only here and toward `names_pressing`, as
@@ -433,10 +433,7 @@ fn support_of(
         returned.by_search |= found.by_search;
     }
     let agreements = row.agreements(judgements);
-    // With no first year to weigh it against, a year the folder states stands
-    // behind the row like any other fact of its pressing.
-    let offered = agreements.offered()
-        || (agreements.year && facts.album_first_year(&row.releases).is_none());
+    let offered = agreements.offered();
     Support {
         medium: ripped_from.admits(row.releases.iter().map(|release| &release.media)),
         lookups: [

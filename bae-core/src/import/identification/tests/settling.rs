@@ -494,9 +494,9 @@ async fn a_disc_id_lead_settles_with_the_discogs_record_of_its_pressing() {
 
 /// Which record of a pressing fills the draft is decided by what the folder
 /// says about each, not by the source's name. Both sources answer the barcode
-/// here; only the Discogs record states a year, and the folder prints it — so
-/// the Discogs record leads its row, the pick claims MusicBrainz beside it, and
-/// the draft is read from the Discogs document.
+/// here; only the Discogs record states a year, and the folder names its
+/// pressing by it — so the Discogs record leads its row, the pick claims
+/// MusicBrainz beside it, and the draft is read from the Discogs document.
 #[tokio::test(flavor = "multi_thread")]
 async fn the_record_the_folder_agrees_with_settles_as_the_lead() {
     let fixture = Fixture::new("evidence-lead").await;
@@ -506,9 +506,11 @@ async fn the_record_the_folder_agrees_with_settles_as_the_lead() {
         .register_artwork_analyzer(Arc::new(BarcodeAnalyzer {
             barcode: PAIRED_BARCODE.to_string(),
         }));
-    // The folder prints the year the Discogs record states and the MusicBrainz
-    // search hit does not.
-    let dir = fixture.barcode_candidate("From Barcode 1996");
+    // The folder writes the album's year and, later, its pressing's, which
+    // the Discogs record states and the MusicBrainz search hit does not. A
+    // lone year would name no pressing: no record states the album's first
+    // year, and a lone year is as often the album's.
+    let dir = fixture.barcode_candidate("From Barcode 1971 (1996 Reissue)");
     fixture.provider.route(
         "/release?",
         200,

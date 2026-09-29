@@ -124,57 +124,51 @@ impl FolderFacts {
         })
     }
 
-    /// The year the folder names the row's pressing by: one answer, which
-    /// the Year badge and the ranking both read.
+    /// The year the folder names the row's pressing by, or none: one answer,
+    /// which the Year badge, whether a row is offered, and the ranking all
+    /// read.
     ///
-    /// Where the folder writes two years ("1963 … 2005 remaster"), the later
-    /// names the pressing and the earlier is the album's. A year no later than
-    /// the album's first year names the album, not a pressing, and a year the
-    /// row's own title writes ("1990-2000") is the title's. Where the album's
-    /// first year is not known, the latest year the folder writes is the one
-    /// that may name the pressing.
+    /// A year the row's own title writes ("1990-2000") is the title's. Of the
+    /// rest, one no later than the album's first year names the album, and
+    /// the latest later one names the pressing. Where the album's first year
+    /// is not known, only a folder writing two years ("1963 … 2005
+    /// remaster") names a pressing, by the later: most folders are named with
+    /// the year the album first came out, so a lone year cannot be read as the
+    /// pressing's.
     pub(crate) fn pressing_year(&self, records: &[MetadataResult]) -> Option<i32> {
-        let (years, first) = self.years_against(records);
-        years
-            .into_iter()
-            .filter(|year| first.is_none_or(|first| *year > first))
-            .max()
-    }
-
-    /// Whether the row was released in the year the folder names its pressing
-    /// by — see [`Self::pressing_year`]. A row stating that year agrees, one
-    /// stating another disagrees, and an undated row states nothing. A lone
-    /// year, where the album's first year is not known, is as often the
-    /// album's as the pressing's, so it ranks nothing here: it counts toward
-    /// whether a row is offered instead.
-    pub(crate) fn edition_year(&self, records: &[MetadataResult]) -> Fact {
-        let stated: Vec<i32> = records.iter().filter_map(|record| record.year).collect();
-        let (years, first) = self.years_against(records);
-        if first.is_none() && years.len() < 2 {
-            return Fact::StatesNothing;
-        }
-        match self.pressing_year(records) {
-            None => Fact::StatesNothing,
-            Some(_) if stated.is_empty() => Fact::StatesNothing,
-            Some(year) if stated.contains(&year) => Fact::Agrees,
-            Some(_) => Fact::Disagrees,
-        }
-    }
-
-    /// The folder's years the row's title does not write, each once, and the
-    /// year the row's album first came out.
-    fn years_against(&self, records: &[MetadataResult]) -> (Vec<i32>, Option<i32>) {
         let titled: Vec<i32> = records
             .iter()
             .flat_map(|record| title_years(&record.title))
             .collect();
-        let years = self
+        let years: Vec<i32> = self
             .years
             .iter()
             .copied()
             .filter(|year| !titled.contains(year))
             .collect();
-        (years, self.album_first_year(records))
+        match self.album_first_year(records) {
+            Some(first) => years.into_iter().filter(|year| *year > first).max(),
+            None if years.len() >= 2 => years.into_iter().max(),
+            None => None,
+        }
+    }
+
+    /// Whether the row was released in the year the folder names its pressing
+    /// by — see [`Self::pressing_year`]. A row stating that year agrees, one
+    /// stating another disagrees, and an undated row, or a folder naming no
+    /// pressing year, states nothing.
+    pub(crate) fn edition_year(&self, records: &[MetadataResult]) -> Fact {
+        let Some(year) = self.pressing_year(records) else {
+            return Fact::StatesNothing;
+        };
+        let stated: Vec<i32> = records.iter().filter_map(|record| record.year).collect();
+        if stated.is_empty() {
+            Fact::StatesNothing
+        } else if stated.contains(&year) {
+            Fact::Agrees
+        } else {
+            Fact::Disagrees
+        }
     }
 
     /// Whether the folder states `number` as its catalog number.

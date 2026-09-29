@@ -78,13 +78,12 @@ impl Agreements {
         u32::from(self.title) + u32::from(self.artist)
     }
 
-    /// Whether anything but the barcode and the year agrees, which is what
-    /// shows a release on the list rather than under "N more": a barcode read
-    /// off a photo can be misread into some other release, and a folder's
-    /// year is as often the album's as its edition's, which only the album's
-    /// first year tells apart — the ranking weighs the year against that.
+    /// Whether anything but the barcode agrees, which is what shows a release
+    /// on the list rather than under "N more": a barcode read off a photo can
+    /// be misread into some other release. The year counts only as the year
+    /// the folder names the pressing by — see `FolderFacts::pressing_year`.
     pub fn offered(&self) -> bool {
-        self.disc_id || self.catalog || self.label || self.country
+        self.disc_id || self.catalog || self.label || self.year || self.country
     }
 }
 

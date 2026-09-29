@@ -61,17 +61,28 @@ fn a_year_the_title_writes_names_no_edition() {
     assert_eq!(facts.edition_year(&[titled]), Fact::StatesNothing);
 }
 
-/// With no album year known, no folder year is known to name an edition.
+/// With no album year known, a lone folder year names no edition: it is as
+/// often the album's.
 #[test]
-fn with_no_album_year_no_year_names_an_edition() {
+fn with_no_album_year_a_lone_year_names_no_edition() {
     let facts = FolderFacts::of(&text(&["1963 Album"]), []);
     for year in [Some(1963), Some(2005), None] {
-        assert_eq!(
-            facts.edition_year(&[record(year, None, None)]),
-            Fact::StatesNothing,
-            "{year:?}"
-        );
+        let rows = [record(year, None, None)];
+        assert_eq!(facts.pressing_year(&rows), None, "{year:?}");
+        assert_eq!(facts.edition_year(&rows), Fact::StatesNothing, "{year:?}");
     }
+}
+
+/// With no album year known, of two folder years the later names the
+/// edition.
+#[test]
+fn with_no_album_year_the_later_of_two_years_names_the_edition() {
+    let facts = FolderFacts::of(&text(&["1963 Album", "2005 Remaster"]), []);
+    let edition = |year| facts.edition_year(&[record(year, None, None)]);
+    assert_eq!(facts.pressing_year(&[record(None, None, None)]), Some(2005));
+    assert_eq!(edition(Some(2005)), Fact::Agrees);
+    assert_eq!(edition(Some(1963)), Fact::Disagrees);
+    assert_eq!(edition(None), Fact::StatesNothing);
 }
 
 /// A country the folder names agrees; another country disagrees; a region, or
