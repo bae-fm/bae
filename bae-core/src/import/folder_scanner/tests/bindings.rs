@@ -524,3 +524,97 @@ fn multi_file_cue_offers_bindings_for_each_reference() {
     assert!(!files.sheet_binding_options("disc.cue").is_empty());
 }
 
+/// A sheet written on a system that ignores case names its audio in another
+/// case than the file has here. The loose bonus track beside it keeps the
+/// name-order fallback from answering, so only the reference itself can.
+#[test]
+fn a_reference_in_another_case_resolves_to_its_audio() {
+    let (_tmp, album) = album_dir();
+    copy_cue_flac(&album, "CDImage.flac");
+    copy_cue_flac(&album, "bonus.flac");
+    let cue = std::fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac/Test Album.cue"),
+    )
+    .unwrap()
+    .replace("Test Album.flac", "cdimage.WAV");
+    std::fs::write(album.join("CDImage.cue"), cue).unwrap();
+
+    let files = scan_files(&album);
+
+    assert_eq!(
+        files.track_sheets().next().unwrap().binding,
+        &SheetBinding::Resolved {
+            files: vec![SheetAudioFile {
+                file_reference: "cdimage.WAV".to_string(),
+                file_id: "CDImage.flac".to_string(),
+            }],
+        },
+    );
+    assert_eq!(files.track_count(), 4, "three slices and the bonus track");
+}
+
+/// The same name in the other Unicode normalization: a sheet's text is
+/// usually composed (NFC) while a file name can be stored decomposed (NFD).
+#[test]
+fn a_reference_in_another_unicode_normalization_resolves_to_its_audio() {
+    use unicode_normalization::UnicodeNormalization;
+    let (_tmp, album) = album_dir();
+    let decomposed: String = "Café Image.flac".nfd().collect();
+    copy_cue_flac(&album, &decomposed);
+    copy_cue_flac(&album, "bonus.flac");
+    let composed: String = "Café Image.flac".nfc().collect();
+    let cue = std::fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac/Test Album.cue"),
+    )
+    .unwrap()
+    .replace("Test Album.flac", &composed);
+    std::fs::write(album.join("disc.cue"), cue).unwrap();
+
+    let files = scan_files(&album);
+
+    let binding = files.track_sheets().next().unwrap().binding;
+    let SheetBinding::Resolved { files: audio } = binding else {
+        panic!("the sheet describes its audio, got {binding:?}");
+    };
+    assert_eq!(audio.len(), 1);
+    assert_eq!(
+        audio[0].file_id.nfc().collect::<String>(),
+        composed,
+        "the reference names the image, not the bonus track"
+    );
+}
+
+/// A per-track sheet whose references differ from the files only in case
+/// resolves every reference, even with an extra file beside them.
+#[test]
+fn a_multi_file_sheet_in_another_case_resolves_every_reference() {
+    let (_tmp, album) = album_dir();
+    copy_cue_flac(&album, "01 Track.flac");
+    copy_cue_flac(&album, "02 Track.flac");
+    copy_cue_flac(&album, "03 Hidden.flac");
+    std::fs::write(
+        album.join("disc.cue"),
+        "PERFORMER \"Artist Name\"\nTITLE \"Album Title\"\n\
+         FILE \"01 TRACK.flac\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n\
+         FILE \"02 track.wav\" WAVE\n  TRACK 02 AUDIO\n    INDEX 01 00:00:00\n",
+    )
+    .unwrap();
+
+    let files = scan_files(&album);
+
+    assert_eq!(
+        files.track_sheets().next().unwrap().binding,
+        &SheetBinding::Resolved {
+            files: vec![
+                SheetAudioFile {
+                    file_reference: "01 TRACK.flac".into(),
+                    file_id: "01 Track.flac".into(),
+                },
+                SheetAudioFile {
+                    file_reference: "02 track.wav".into(),
+                    file_id: "02 Track.flac".into(),
+                },
+            ],
+        },
+    );
+}

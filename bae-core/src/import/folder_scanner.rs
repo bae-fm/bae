@@ -76,16 +76,18 @@ pub(crate) fn resolve_cue_audio_paths<'sheet, 'audio>(
 ///
 /// A sheet's reference is the path the ripper wrote, which is the path on the
 /// ripper's machine: folders that are not here, `\\` where this system reads
-/// `/`, the WAV the audio was encoded from rather than the FLAC it became, and
-/// a sheet since moved into a subfolder of the release. So the reference is
-/// read as its components and tried against the sheet's own folder first — a
-/// reference is relative to its sheet by convention, which is what tells
-/// `CD1/01.wav` from `CD2/01.wav` — then against each folder above it up to
-/// the candidate's root. In each folder it is tried from the whole path down
-/// to the bare file name, dropping one leading folder at a time; at each
-/// length the literal path wins, otherwise the unique audio beside it with the
-/// same stem, whatever its extension. The first try that names something is
-/// the answer.
+/// `/`, the WAV the audio was encoded from rather than the FLAC it became, a
+/// name in another case on a system that ignores case, or the same letters in
+/// another Unicode normalization than the file system stored. So the
+/// reference is read as its components and tried against the sheet's own
+/// folder first — a reference is relative to its sheet by convention, which is
+/// what tells `CD1/01.wav` from `CD2/01.wav` — then against each folder above
+/// it. In each folder it is tried from the whole path down to the bare file
+/// name, dropping one leading folder at a time. At each length the literal
+/// path wins; then the one audio file whose path reads the same once case and
+/// normalization are set aside; then the one audio file beside it whose stem
+/// reads the same that way, whatever its extension. The first try that names
+/// exactly one file is the answer; one that names several names none.
 fn resolve_cue_audio_path<'a>(
     cue_path: &Path,
     file_reference: &str,
@@ -97,38 +99,51 @@ fn resolve_cue_audio_path<'a>(
         .filter(|component| !component.is_empty() && *component != ".")
         .collect();
     let file_name = *components.last()?;
-    let file_stem = Path::new(file_name).file_stem()?.to_str()?;
+    let file_stem = spelled(Path::new(file_name).file_stem()?.to_str()?);
     for base in cue_dir.ancestors() {
         for start in 0..components.len() {
             let mut referenced = base.to_path_buf();
             for component in &components[start..] {
                 referenced.push(component);
             }
-            if let Some(exact) = audio_files
-                .iter()
-                .find(|path| path.as_path() == referenced && ContentTypeHint::path_is_audio(path))
-            {
+            if let Some(exact) = audio_files.iter().find(|path| **path == referenced) {
                 return Some(exact);
             }
-            let reference_dir = referenced.parent()?;
-            let mut matches = audio_files.iter().filter(|path| {
-                ContentTypeHint::path_is_audio(path)
-                    && path.parent() == Some(reference_dir)
-                    && path.file_stem().and_then(|stem| stem.to_str()) == Some(file_stem)
+            let reference_dir = spelled(&referenced.parent()?.to_string_lossy());
+            let same_path = spelled(&referenced.to_string_lossy());
+            let same_name = audio_files
+                .iter()
+                .filter(|path| spelled(&path.to_string_lossy()) == same_path);
+            let same_stem = audio_files.iter().filter(|path| {
+                path.parent()
+                    .is_some_and(|dir| spelled(&dir.to_string_lossy()) == reference_dir)
+                    && path
+                        .file_stem()
+                        .is_some_and(|stem| spelled(&stem.to_string_lossy()) == file_stem)
             });
-            if let Some(matched) = matches.next() {
-                if matches.next().is_some() {
-                    debug!(
-                        "CUE {:?} has more than one same-stem audio file beside referenced path {:?}",
-                        cue_path, referenced
-                    );
-                    return None;
+            for mut matches in [
+                Box::new(same_name) as Box<dyn Iterator<Item = &'a PathBuf>>,
+                Box::new(same_stem),
+            ] {
+                if let Some(matched) = matches.next() {
+                    if matches.next().is_some() {
+                        debug!(
+                            "CUE {cue_path:?} names {referenced:?}, which more than one audio file answers"
+                        );
+                        return None;
+                    }
+                    return Some(matched);
                 }
-                return Some(matched);
             }
         }
     }
     None
+}
+
+/// How a name reads once case and Unicode normalization are set aside.
+fn spelled(name: &str) -> String {
+    use unicode_normalization::UnicodeNormalization;
+    name.nfc().flat_map(char::to_lowercase).collect()
 }
 
 /// A single file entry in a candidate's selected file set.
