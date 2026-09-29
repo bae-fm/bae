@@ -80,14 +80,17 @@ public struct RowLoadID: Hashable {
 /// subscription delivers both content and count whenever its query changes.
 @MainActor
 @Observable
-public final class PaginatedList<Row: Identifiable & Sendable>
+public final class PaginatedList<Row: Identifiable & Sendable & Equatable>
 where Row.ID: Sendable {
     /// Total row count from the most recent subscription value.
     public private(set) var totalCount: Int = 0
 
-    /// Advances after one subscribed page value has replaced its positions.
-    /// A rendered viewport uses this boundary to restore the row it held while
-    /// rows of different heights were materialised or changed above it.
+    /// Advances when a subscribed page value changes what the list holds: the
+    /// ids at its positions, the total, or a row's value. A value that repeats
+    /// what the list already holds — a source answering every page again
+    /// because another page was asked for — leaves it alone. A rendered
+    /// viewport uses this boundary to restore the row it held while rows of
+    /// different heights were materialised or changed above it.
     public private(set) var contentRevision: UInt64 = 0
 
     /// The cold count load (`loadInitial`) failed. The consuming grid reads this
@@ -124,6 +127,10 @@ where Row.ID: Sendable {
     private var subscriptionRanges: [String: Range<Int>] = [:]
     @ObservationIgnored
     private var subscriptionIdentities: [String: UUID] = [:]
+    /// The rows each live page last delivered, so a value that repeats them
+    /// is not taken into the store again.
+    @ObservationIgnored
+    private var deliveredRows: [String: [Row]] = [:]
     private static var maximumVisiblePageSubscriptions: Int { 3 }
 
     /// How many rows one page holds. Every page starts at a multiple of this,
@@ -212,6 +219,7 @@ where Row.ID: Sendable {
         subscriptions.removeAll()
         subscriptionRanges.removeAll()
         subscriptionIdentities.removeAll()
+        deliveredRows.removeAll()
     }
 
     private func subscribeRange(offset: Int, limit: Int, initial: Bool) async {
@@ -233,6 +241,7 @@ where Row.ID: Sendable {
                     }
                     self.apply(
                         rows,
+                        page: key,
                         forOffset: offset,
                         limit: limit,
                         totalCount: totalCount
@@ -250,6 +259,7 @@ where Row.ID: Sendable {
                         self.initialLoadError = DisplayError(error)
                         self.subscriptions.removeValue(forKey: key)?.cancel()
                         self.subscriptionIdentities.removeValue(forKey: key)
+                        self.deliveredRows.removeValue(forKey: key)
                     }
                     else {
                         logger.error(
@@ -267,20 +277,25 @@ where Row.ID: Sendable {
 
     /// Take one page's delivered value: the rows go to the store, their ids
     /// take the positions the page was asked for, and the new total clips
-    /// anything now past the end.
+    /// anything now past the end. Only what differs from what the list holds
+    /// is written, so a value that repeats it notifies no observer.
     private func apply(
         _ rows: [Row],
+        page key: String,
         forOffset offset: Int,
         limit: Int,
         totalCount: Int
     ) {
-        self.totalCount = totalCount
-        segments.clip(to: totalCount)
-        initialLoadError = nil
-        ingest(rows)
+        if initialLoadError != nil {
+            initialLoadError = nil
+        }
+        let rowsChanged = deliveredRows[key] != rows
+        deliveredRows[key] = rows
+        var next = segments
+        next.clip(to: totalCount)
         let upper = min(offset + rows.count, totalCount)
         if offset < upper {
-            segments.put(
+            next.put(
                 rows.prefix(upper - offset).map(\.id),
                 at: offset,
                 totalCount: totalCount
@@ -289,12 +304,27 @@ where Row.ID: Sendable {
         else {
             // The page answered with nothing, so the positions it was asked
             // for hold nothing, and only those leave.
-            segments.remove(
+            next.remove(
                 offset..<max(offset, min(offset + limit, totalCount))
             )
         }
-        onSnapshot?(allLoadedIds, totalCount)
-        contentRevision += 1
+        let positionsChanged = next != segments
+        let totalChanged = totalCount != self.totalCount
+        // Rows whose positions moved are taken again too: the store may have
+        // let them go while their positions were gone.
+        if rowsChanged || positionsChanged {
+            ingest(rows)
+        }
+        if totalChanged {
+            self.totalCount = totalCount
+        }
+        if positionsChanged {
+            segments = next
+            onSnapshot?(allLoadedIds, totalCount)
+        }
+        if rowsChanged || positionsChanged || totalChanged {
+            contentRevision += 1
+        }
     }
 
     private func isCurrentSubscription(_ key: String, _ identity: UUID) -> Bool
@@ -324,6 +354,7 @@ where Row.ID: Sendable {
             else { return }
             subscriptions.removeValue(forKey: key)?.cancel()
             subscriptionIdentities.removeValue(forKey: key)
+            deliveredRows.removeValue(forKey: key)
             segments.remove(range)
         }
     }
@@ -350,8 +381,8 @@ where Row.ID: Sendable {
 /// one run. Nothing here knows about subscriptions — a page being dropped and
 /// its ids being forgotten are separate decisions, and the list makes the
 /// second one deliberately.
-private struct LoadedSegments<ID: Hashable> {
-    private struct Run {
+private struct LoadedSegments<ID: Hashable>: Equatable {
+    private struct Run: Equatable {
         let range: Range<Int>
         let ids: [ID]
     }

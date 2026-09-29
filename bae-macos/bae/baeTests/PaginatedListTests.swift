@@ -1,6 +1,7 @@
 import AppKit
 import BaeKit
 import Foundation
+import Observation
 import SwiftUI
 import Testing
 import XCTest
@@ -349,6 +350,60 @@ struct PaginatedListSegmentTests {
     }
 
     @MainActor
+    @Test("a page value repeating the held rows notifies no observer")
+    func repeatedPageValueIsNotAChange() async {
+        let source = MutableAlbumPageSource(count: 120)
+        let ingests = IngestCount()
+        let list = AlbumList(
+            pageSource: source,
+            ingest: { _ in ingests.value += 1 },
+            onError: { _ in },
+        )
+        await list.loadInitial()
+        await list.loadPage(containing: 60)
+        let revision = list.contentRevision
+        let ingested = ingests.value
+        let notified = ObservationFlag()
+        withObservationTracking {
+            _ = list.idAt(0)
+            _ = list.totalCount
+            _ = list.contentRevision
+        } onChange: {
+            notified.set()
+        }
+
+        // Every page answers again with what it answered before, the way the
+        // import list's source answers all of them when another is asked for.
+        await source.setCount(120)
+
+        #expect(!notified.isSet)
+        #expect(list.contentRevision == revision)
+        #expect(ingests.value == ingested)
+    }
+
+    @MainActor
+    @Test("a page value with a changed row is taken in")
+    func changedRowIsTakenIn() async {
+        let source = MutableAlbumPageSource(count: 120)
+        let store = LibraryStore()
+        let list = AlbumList(
+            pageSource: source,
+            ingest: { rows in
+                for row in rows { _ = store.internAlbumSummary(row) }
+            },
+            onError: { _ in },
+        )
+        await list.loadInitial()
+        let revision = list.contentRevision
+
+        await source.retitle("a3", "Retitled")
+
+        #expect(list.contentRevision > revision)
+        #expect(store.albumSummaries["a3"]?.title == "Retitled")
+        #expect(list.idAt(3) == "a3")
+    }
+
+    @MainActor
     @Test("visible page subscriptions stay bounded while scrolling")
     func visiblePageSubscriptionsStayBounded() async {
         let source = MutableAlbumPageSource(count: 500)
@@ -437,6 +492,22 @@ private final class Viewport {
     }
 }
 
+@MainActor
+private final class IngestCount {
+    var value = 0
+}
+
+private final class ObservationFlag: @unchecked Sendable {
+    private let lock = NSLock()
+    private var raised = false
+
+    var isSet: Bool { lock.withLock { raised } }
+
+    func set() {
+        lock.withLock { raised = true }
+    }
+}
+
 private final class MutableAlbumPageSource: PageSource, @unchecked Sendable {
     private struct Active {
         let offset: Int
@@ -451,6 +522,7 @@ private final class MutableAlbumPageSource: PageSource, @unchecked Sendable {
     private var cancelled: [Active] = []
     private var subscribed: [Int] = []
     private var beforeDelivery: @MainActor @Sendable () -> Void = {}
+    private var titles: [String: String] = [:]
 
     init(count: Int) {
         self.count = count
@@ -537,12 +609,28 @@ private final class MutableAlbumPageSource: PageSource, @unchecked Sendable {
         }
     }
 
+    /// Give the album `id` a new title and answer every page again.
+    func retitle(_ id: String, _ title: String) async {
+        let subscriptions = lock.withLock {
+            titles[id] = title
+            return Array(active.values)
+        }
+        for subscription in subscriptions {
+            await deliver(subscription)
+        }
+    }
+
     private func deliver(_ active: Active) async {
-        let count = lock.withLock { self.count }
+        let (count, titles) = lock.withLock { (self.count, self.titles) }
         let end = min(active.offset + active.limit, count)
         let rows =
             active.offset < end
-            ? (active.offset..<end).map { makeBridgeAlbum(id: "a\($0)") }
+            ? (active.offset..<end)
+                .map { index -> BridgeAlbum in
+                    let id = "a\(index)"
+                    return titles[id].map { makeBridgeAlbum(id: id, title: $0) }
+                        ?? makeBridgeAlbum(id: id)
+                }
             : []
         await active.onValue(rows, count)
     }

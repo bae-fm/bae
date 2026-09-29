@@ -12,7 +12,7 @@ import Observation
 @MainActor
 @Observable
 final class BrowseListSlot<
-    Row: Identifiable & Sendable,
+    Row: Identifiable & Sendable & Equatable,
     Criterion: SortCriterionRepresentable
 > where Row.ID: Sendable, Criterion.Field: SortCriterionFieldCodable {
     private(set) var list: PaginatedList<Row>?

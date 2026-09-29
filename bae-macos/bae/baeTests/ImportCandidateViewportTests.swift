@@ -180,7 +180,7 @@ final class ImportCandidateViewportTests: XCTestCase {
     }
 
     func testRowsBehindTheHeaderCannotBecomeTheRetainedAnchor() {
-        var state = ImportCandidateListViewport()
+        let state = ImportCandidateListViewport()
         let rows = (28...31)
             .map { index in
                 viewportRow(
@@ -212,7 +212,7 @@ final class ImportCandidateViewportTests: XCTestCase {
     /// A page landing before a restore's scroll runs puts the anchor back at
     /// the top, not the row the unscrolled list shows.
     func testALayoutBeforeTheRestoreScrollCannotReplaceTheAnchor() {
-        var state = ImportCandidateListViewport()
+        let state = ImportCandidateListViewport()
         let anchorKey = viewportCandidateKey(30)
         XCTAssertNil(
             state.update(
@@ -258,7 +258,7 @@ final class ImportCandidateViewportTests: XCTestCase {
 
     /// Once the restore's scroll has run, the row at the top is the anchor.
     func testTheAnchorFollowsTheListOnceTheRestoreScrollHasRun() {
-        var state = ImportCandidateListViewport()
+        let state = ImportCandidateListViewport()
         let anchorKey = viewportCandidateKey(30)
         let scrolledKey = viewportCandidateKey(45)
         XCTAssertNil(
@@ -307,7 +307,7 @@ final class ImportCandidateViewportTests: XCTestCase {
     func testExplicitRevealOwnsItsScrollThenEstablishesTheRetainedAnchor() {
         let targetIndex = 61
         let targetKey = viewportCandidateKey(targetIndex)
-        var viewport = ImportCandidateListViewport()
+        let viewport = ImportCandidateListViewport()
         XCTAssertNil(
             viewport.update(
                 rows: [
@@ -376,7 +376,7 @@ extension ImportCandidateViewportTests {
     /// the first rows and their group header are, not at the row it showed
     /// before.
     func testANarrowedListOpensAtItsTop() {
-        var state = ImportCandidateListViewport()
+        let state = ImportCandidateListViewport()
         let anchorKey = viewportCandidateKey(30)
         let typed = BridgeImportListNarrowing(
             tab: .pending,
@@ -411,7 +411,7 @@ extension ImportCandidateViewportTests {
     /// Narrowed anew with a selected row still in the result, the list shows
     /// that row.
     func testANarrowedListKeepsTheSelectedRowInView() {
-        var state = ImportCandidateListViewport()
+        let state = ImportCandidateListViewport()
         XCTAssertNil(
             state.update(
                 rows: [viewportRow(viewportCandidateKey(30), y: 84)],

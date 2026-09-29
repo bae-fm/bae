@@ -177,10 +177,17 @@ class ImportStore {
     // MARK: - The paged list
 
     /// Hold one page of list entries. Called by the list as each page lands.
+    /// Only the entries that differ from the ones held are written: every
+    /// row the list draws reads `items`, so an equal write would redraw them
+    /// all.
     func ingest(_ entries: [BridgeImportListItem]) {
-        for entry in entries {
-            items[entry.id] = entry
+        let changed = entries.filter { items[$0.id] != $0 }
+        guard !changed.isEmpty else { return }
+        var next = items
+        for entry in changed {
+            next[entry.id] = entry
         }
+        items = next
     }
 
     /// The keys of the loaded rows the person has selected, as core's rows
@@ -251,6 +258,9 @@ class ImportStore {
     /// list evicted stops occupying memory.
     func retainItems(_ loadedKeys: [String]) {
         let loaded = Set(loadedKeys)
+        guard items.keys.contains(where: { !loaded.contains($0) }) else {
+            return
+        }
         items = items.filter { loaded.contains($0.key) }
     }
 

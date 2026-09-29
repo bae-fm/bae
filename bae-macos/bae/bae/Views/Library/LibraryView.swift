@@ -157,7 +157,7 @@ extension LibraryView {
     }
 
     private func sortControls<
-        Row: Identifiable & Sendable,
+        Row: Identifiable & Sendable & Equatable,
         Criterion: SortCriterionRepresentable
     >(
         _ slot: BrowseListSlot<Row, Criterion>

@@ -1,5 +1,6 @@
 import BaeKit
 import Foundation
+import Observation
 import Testing
 
 @testable import bae
@@ -425,6 +426,17 @@ private final class DeliveredPages {
     var count = 0
 }
 
+private final class ObservedChange: @unchecked Sendable {
+    private let lock = NSLock()
+    private var raised = false
+
+    var isSet: Bool { lock.withLock { raised } }
+
+    func set() {
+        lock.withLock { raised = true }
+    }
+}
+
 @MainActor
 private final class ViewDeliveryOutcome {
     enum State: Equatable {
@@ -835,13 +847,14 @@ extension ImportListPageSourceTests {
         let total = 60
         let keys = (0..<total).map { String(format: "/w/%03d", $0) }
         let subscription = StubListSubscription()
+        // Each snapshot handed out, whether or not it changed anything.
+        let snapshots = DeliveredPages()
         let source = ImportListPageSource(
             subscription: subscription,
-            onSummary: { _ in },
+            onSummary: { _ in snapshots.count += 1 },
             onSelectionRevision: { _ in }
         )
         let importStore = ImportStore()
-        // A redelivered page is observable only in the count of pages taken.
         let delivered = DeliveredPages()
         let list = PaginatedList<BridgeImportListItem>(
             pageSource: source,
@@ -853,7 +866,6 @@ extension ImportListPageSourceTests {
             onSnapshot: { ids, _ in importStore.retainItems(ids) }
         )
         let firstPage = Array(keys[0..<50])
-        let secondPage = Array(keys[50..<60])
 
         async let initial: Void = list.loadInitial()
         try await Wait.until({ !subscription.requestedWindows.isEmpty })
@@ -866,15 +878,19 @@ extension ImportListPageSourceTests {
         await initial
         try await Wait.until({ delivered.count == 1 })
         #expect(loadedKeys(list, importStore, 0..<50) == firstPage)
+        let revision = list.contentRevision
 
-        // A commit that leaves this window's rows where they were.
+        // A commit that leaves this window's rows where they were: nothing is
+        // taken in again, and the list's content stays as it was.
         subscription.deliver(
             snapshot(
                 [SnapshotWindow(offset: 0, limit: 50, keys: firstPage)],
                 totalCount: UInt64(total)
             )
         )
-        try await Wait.until({ delivered.count == 2 })
+        try await Wait.until({ snapshots.count == 2 })
+        #expect(delivered.count == 1)
+        #expect(list.contentRevision == revision)
         #expect(loadedKeys(list, importStore, 0..<50) == firstPage)
 
         // Scrolling past the page boundary registers a second window; the first
@@ -883,19 +899,63 @@ extension ImportListPageSourceTests {
         try await Wait.until({ subscription.requestedWindows.last?.count == 2 })
         #expect(loadedKeys(list, importStore, 0..<50) == firstPage)
 
-        subscription.deliver(
-            snapshot(
-                [
-                    SnapshotWindow(offset: 0, limit: 50, keys: firstPage),
-                    SnapshotWindow(offset: 50, limit: 50, keys: secondPage),
-                ],
-                totalCount: UInt64(total)
-            )
-        )
+        subscription.deliver(pagedSnapshot(keys))
         await next
-        // One page taken per window, so the two-window value lands as two.
-        try await Wait.until({ delivered.count == 4 })
+        try await Wait.until({ snapshots.count == 3 })
         #expect(loadedKeys(list, importStore, 0..<60) == keys)
+
+        // A new candidate at the top moves every row down one.
+        let grown = ["/w/new"] + keys
+        subscription.deliver(pagedSnapshot(grown))
+        try await Wait.until({ snapshots.count == 4 })
+        #expect(list.totalCount == total + 1)
+        #expect(loadedKeys(list, importStore, 0..<61) == grown)
+    }
+
+    @MainActor
+    @Test("ingest writes a changed row and leaves an equal page unwritten")
+    func ingestWritesOnlyChangedRows() {
+        let store = ImportStore()
+        let rows = ["/w/a", "/w/b"].map(item)
+        store.ingest(rows)
+        let notified = ObservedChange()
+        withObservationTracking {
+            _ = store.items
+        } onChange: {
+            notified.set()
+        }
+
+        store.ingest(rows)
+        #expect(!notified.isSet)
+
+        let recovered = BridgeImportListItem.candidate(
+            stableKey: "candidate:/w/b",
+            row: identifiedRow(
+                "/w/b",
+                title: "/w/b",
+                cover: .local(path: "/w/b/cover.jpg")
+            ),
+            isGroupMember: false
+        )
+        store.ingest([rows[0], recovered])
+        #expect(notified.isSet)
+        #expect(store.items["candidate:/w/b"] == recovered)
+    }
+
+    /// Every key of `keys` as 50-row windows from the top, the way core
+    /// answers a list holding those pages.
+    private func pagedSnapshot(_ keys: [String]) -> BridgeImportListSnapshot {
+        snapshot(
+            stride(from: 0, to: keys.count, by: 50)
+                .map { offset in
+                    SnapshotWindow(
+                        offset: UInt64(offset),
+                        limit: 50,
+                        keys: Array(keys[offset..<min(offset + 50, keys.count)])
+                    )
+                },
+            totalCount: UInt64(keys.count)
+        )
     }
 
     /// The keys the list holds at `positions`, resolved as a row does.

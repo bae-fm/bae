@@ -102,7 +102,16 @@ struct ImportCandidateListContentRead: Equatable {
     let firstSelected: Int?
 }
 
-struct ImportCandidateListViewport {
+/// Which row the list keeps on top across content changes, and whether a
+/// restore's scroll is still due.
+///
+/// A reference the view holds rather than view state: it is written on every
+/// layout that moves the rows, and nothing the list draws reads it, so
+/// recording it must not ask the list for a new body. As `@State` value, each
+/// new top row re-evaluated the list and made SwiftUI reconcile every row
+/// while the person scrolled.
+@MainActor
+final class ImportCandidateListViewport {
     private var anchorKey: String?
     private var appliedContentRevision: UInt64?
     /// What the list was narrowed by when its content last changed.
@@ -112,11 +121,11 @@ struct ImportCandidateListViewport {
     private var awaitingRestoreScroll = false
 
     /// The scroll the last restore asked for has run.
-    mutating func restoreScrolled() {
+    func restoreScrolled() {
         awaitingRestoreScroll = false
     }
 
-    private mutating func accept(
+    private func accept(
         contentRevision: UInt64,
         narrowing: BridgeImportListNarrowing
     ) {
@@ -124,7 +133,7 @@ struct ImportCandidateListViewport {
         appliedNarrowing = narrowing
     }
 
-    private mutating func observe(
+    private func observe(
         _ rows: [ImportCandidateListRowBounds],
         viewport: CGRect,
         contentRevision: UInt64,
@@ -152,7 +161,7 @@ struct ImportCandidateListViewport {
     /// selected row, or its top where no selected row is in it: the row on top
     /// before may be gone, or anywhere. Otherwise it keeps the row that was
     /// on top.
-    private mutating func contentChanged(
+    private func contentChanged(
         to revision: UInt64,
         narrowing: BridgeImportListNarrowing,
         firstSelected: Int?,
@@ -168,7 +177,7 @@ struct ImportCandidateListViewport {
         return anchorKey.flatMap(positionOf)
     }
 
-    mutating func update(
+    func update(
         rows: [ImportCandidateListRowBounds],
         viewport: CGRect,
         content: ImportCandidateListContentRead,
