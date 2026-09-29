@@ -841,10 +841,19 @@ async fn one_upload_observer_callback_publishes_one_outbox_revision() {
     let after = next_outbox_value_where(&mut values, |_| true).await;
     assert_eq!(after.revision, before + 1);
     assert_eq!(after.total.preparing, 1);
-    assert!(
-        tokio::time::timeout(std::time::Duration::from_millis(200), values.changed())
-            .await
-            .is_err(),
+
+    // A second callback's value is the next revision, so the first published
+    // nothing more after its own.
+    manager
+        .observe_blob_preparation_progress_for_test(&file_id, 300, 1000)
+        .await;
+    let progressed = next_outbox_value_where(&mut values, |snapshot| {
+        snapshot.total.preparation_bytes_done == 300
+    })
+    .await;
+    assert_eq!(
+        progressed.revision,
+        before + 2,
         "one callback publishes once"
     );
 }

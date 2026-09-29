@@ -74,10 +74,17 @@ mod tests {
                 ReleaseStorageAction::MakeRemote,
             );
         });
+        // Asked once: the map's change is already there to be read, so a wait
+        // that would end on it ends on this poll.
+        let polled = {
+            let mut changed = std::pin::pin!(shown.changed());
+            tokio::task::unconstrained(std::future::poll_fn(|cx| {
+                std::task::Poll::Ready(std::future::Future::poll(changed.as_mut(), cx))
+            }))
+            .await
+        };
         assert!(
-            tokio::time::timeout(std::time::Duration::from_millis(50), shown.changed())
-                .await
-                .is_err(),
+            polled.is_pending(),
             "another release's transfer changes nothing shown"
         );
 
