@@ -136,8 +136,10 @@ async fn settle_verdict(
             link,
             release,
             partners,
-        } => match lead_metadata(context, candidate, &durations, &release, partners).await {
-            Ok(metadata) => Some(crate::db::VerdictPick { link, metadata }),
+        } => match lead_metadata(context, candidate, &mut verdict, &durations, &release, partners)
+            .await
+        {
+            Ok(metadata) => metadata.map(|metadata| crate::db::VerdictPick { link, metadata }),
             Err(settled) => return settled,
         },
     };
@@ -146,13 +148,19 @@ async fn settle_verdict(
 
 /// The draft the picked release reads into, with the artist images and cover
 /// it needs, or what becomes of the answer when there is none to write.
+///
+/// A catalog that fails to give an asset fails `verdict` as a lookup, naming
+/// the asset, and there is no draft: the verdict is stored with the failure
+/// and without the pick, so the row stands as a lookup error to retry rather
+/// than an applied release with an asset missing.
 async fn lead_metadata(
     context: &Context,
     candidate: &FolderCandidate,
+    verdict: &mut TerminalVerdict,
     durations: &crate::import::probe::SourceDurations,
     release: &crate::import::source_release::SourceRelease,
     partners: Vec<crate::import::source_release::SourceRelease>,
-) -> Result<crate::import::CandidateMetadataDraft, Settled> {
+) -> Result<Option<crate::import::CandidateMetadataDraft>, Settled> {
     let current = match context
         .library_manager
         .load_import_candidate_preparation(&candidate.files.content_hash())
@@ -187,13 +195,59 @@ async fn lead_metadata(
                 error: error.to_string(),
             }
         })?;
-    context
+    let assets = match context
         .import
-        .external_candidate_assets(source_draft, release, partners, durations, &current.draft)
+        .fetch_release_assets(&source_draft, release, &partners)
         .await
-        .map_err(|error| Settled::Unwritable {
-            error: error.to_string(),
-        })
+    {
+        Ok(assets) => assets,
+        Err(failure) => {
+            let Some(lookup) = crate::import::search::provider_failure(&failure.error) else {
+                return Err(Settled::Unwritable {
+                    error: format!(
+                        "could not fetch the {:?} of {}: {}",
+                        failure.asset,
+                        release.release().key,
+                        failure.error
+                    ),
+                });
+            };
+            debug!(
+                "identification: could not fetch the {:?} of {} ({}); storing the failure",
+                failure.asset,
+                release.release().key,
+                failure.error
+            );
+            verdict.fail(asset_failure(failure.asset, lookup));
+            return Ok(None);
+        }
+    };
+    crate::import::external_metadata_with_assets(
+        source_draft,
+        release,
+        assets,
+        durations,
+        &current.draft,
+    )
+    .map(Some)
+    .map_err(|error| Settled::Unwritable {
+        error: error.to_string(),
+    })
+}
+
+/// The lookup failure a catalog's `failure` to give `asset` is.
+fn asset_failure(
+    asset: crate::import::ReleaseAsset,
+    failure: crate::signals::LookupFailure,
+) -> crate::identify::IdentifyFailure {
+    match asset {
+        crate::import::ReleaseAsset::ArtistImages => {
+            crate::identify::IdentifyFailure::ArtistImages(failure)
+        }
+        crate::import::ReleaseAsset::Cover { source } => crate::identify::IdentifyFailure::Cover(
+            crate::import::search::SourceFailure { source, failure },
+        ),
+    }
 }
 
 /// Write one row, unless the answer was given up right before the write.

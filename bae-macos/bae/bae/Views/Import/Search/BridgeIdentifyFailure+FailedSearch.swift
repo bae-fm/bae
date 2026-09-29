@@ -18,9 +18,10 @@ struct FailedSearch: Hashable {
 
 extension BridgeIdentifyFailure {
     /// The lookup this failure names, for the line saying its results are
-    /// missing from the list. `nil` for the steps no provider owns. Only
-    /// MusicBrainz is asked about disc IDs and ISRCs, so their failures name
-    /// it.
+    /// missing from the list. `nil` for the fetches that apply the release a
+    /// run picked — its details, artist images and cover — which leave no
+    /// results missing. Only MusicBrainz is asked about disc IDs and ISRCs,
+    /// so their failures name it.
     var failedSearch: FailedSearch? {
         switch self {
         case .discId: FailedSearch(source: .musicBrainz, step: .signal(.discId))
@@ -31,7 +32,7 @@ extension BridgeIdentifyFailure {
         case .isrc: FailedSearch(source: .musicBrainz, step: .signal(.isrc))
         case .search(let source, _):
             FailedSearch(source: source, step: .titleSearch)
-        case .releaseDetails: nil
+        case .releaseDetails, .artistImages, .cover: nil
         }
     }
 }

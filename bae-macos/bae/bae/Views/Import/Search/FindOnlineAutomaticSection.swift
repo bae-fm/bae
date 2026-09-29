@@ -138,6 +138,14 @@ struct FindOnlineAutomaticSection: View {
             }
         case .groups:
             identifiedList {
+                // The run picked a release and could not apply it: why, with
+                // the retry, since the band has no failed cell to offer one.
+                if !pickFailures.isEmpty {
+                    FindOnlineFailureLines(
+                        failures: pickFailures,
+                        onRetry: onRetryFailed
+                    )
+                }
                 // A folder waiting on the person heads the page with why.
                 if state.needsYou == nil,
                     let folderCheck = state.folderCheck?.localizedText
@@ -268,6 +276,12 @@ struct FindOnlineAutomaticSection: View {
             failures: state.identifyFailures,
             onRetry: state.run == nil ? onRetryFailed : nil
         )
+    }
+
+    /// The failed fetches of the release the run picked, which leave no
+    /// results missing from the list: they are why the pick was not applied.
+    private var pickFailures: [BridgeIdentifyFailure] {
+        state.identifyFailures.filter { $0.failedSearch == nil }
     }
 
     /// One line per failed lookup whose results the list is missing, closing

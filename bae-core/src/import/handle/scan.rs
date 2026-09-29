@@ -277,7 +277,8 @@ impl ImportServiceHandle {
     }
 
     /// Build the metadata for an external release and fetch the artist images
-    /// and cover it needs, before anything is written.
+    /// and cover it needs, before anything is written. A fetch that fails
+    /// fails the whole with its error.
     pub(crate) async fn external_candidate_metadata(
         &self,
         release: &crate::import::source_release::SourceRelease,
@@ -286,69 +287,59 @@ impl ImportServiceHandle {
         current: &crate::import::CandidateDraft,
     ) -> Result<crate::import::CandidateMetadataDraft, crate::import::ImportError> {
         let source_draft = self.external_candidate_draft(release, durations, current)?;
-        self.external_candidate_assets(source_draft, release, partners, durations, current)
+        let assets = self
+            .fetch_release_assets(&source_draft, release, &partners)
             .await
+            .map_err(|failure| failure.error)?;
+        external_metadata_with_assets(source_draft, release, assets, durations, current)
     }
 
-    /// The metadata `source_draft`, read from an external release, makes,
-    /// with the artist images and cover it needs fetched.
+    /// The artist images and cover `source_draft`, read from an external
+    /// release, needs, fetched from the catalogs that offer them.
     ///
     /// The cover is the first one the release or the partners picked with it
-    /// offer; when there is none or it cannot be fetched, `cover` is `None`
-    /// and the write keeps the candidate's current cover.
-    pub(crate) async fn external_candidate_assets(
+    /// offer. A catalog with nothing at that address leaves the cover `None`,
+    /// and the write keeps the candidate's current cover; a fetch that fails
+    /// fails the whole, naming which asset it was for.
+    pub(crate) async fn fetch_release_assets(
         &self,
-        source_draft: crate::import::pane::CandidateSourceDraft,
+        source_draft: &crate::import::pane::CandidateSourceDraft,
         release: &crate::import::source_release::SourceRelease,
-        partners: Vec<crate::import::source_release::SourceRelease>,
-        durations: &crate::import::probe::SourceDurations,
-        current: &crate::import::CandidateDraft,
-    ) -> Result<crate::import::CandidateMetadataDraft, crate::import::ImportError> {
-        let draft = source_draft.draft;
-        let source_discogs_artist_ids = source_draft.source_discogs_artist_ids;
-        let required_artist_ids = source_discogs_artist_ids
+        partners: &[crate::import::source_release::SourceRelease],
+    ) -> Result<ReleaseAssets, AssetFetchFailure> {
+        let required_artist_ids = source_draft
+            .source_discogs_artist_ids
             .union(&source_draft.mapped_credit_discogs_artist_ids)
             .cloned()
             .collect();
         let artist_images = self
             .library_manager
             .prepare_discogs_artist_images(required_artist_ids)
-            .await?;
-        let default_cover = crate::import::source_release::pick_covers(release, &partners)
+            .await
+            .map_err(|error| AssetFetchFailure {
+                asset: ReleaseAsset::ArtistImages,
+                error,
+            })?;
+        let default_cover = crate::import::source_release::pick_covers(release, partners)
             .into_iter()
             .next();
-        let (cover, remote_cover) = match default_cover {
-            Some(remote) => match self
+        let cover = match default_cover {
+            Some(remote) => self
                 .library_manager
                 .fetch_remote_image(&remote.image.url)
-                .await?
-            {
-                Some(image) => (
-                    Some(crate::import::CoverSelection::Remote(
-                        remote.image,
-                        remote.source,
-                    )),
-                    Some(image),
-                ),
-                None => (None, None),
-            },
-            None => (None, None),
+                .await
+                .map_err(|error| AssetFetchFailure {
+                    asset: ReleaseAsset::Cover {
+                        source: remote.source,
+                    },
+                    error,
+                })?
+                .map(|image| (remote, image)),
+            None => None,
         };
-        Ok(crate::import::CandidateMetadataDraft {
-            draft,
-            source_discogs_artist_ids,
-            provenance: Some(crate::import::MetadataProvenance::ExternalRelease {
-                record: release.release().clone(),
-            }),
+        Ok(ReleaseAssets {
+            artist_images,
             cover,
-            assets: crate::import::CandidatePreparedAssets {
-                applied_source: Some(crate::import::source_release::AppliedSource {
-                    release: release.clone(),
-                    audio_durations_ms: current.audio_durations(durations)?,
-                }),
-                remote_cover,
-                artist_images,
-            },
         })
     }
 
@@ -897,4 +888,68 @@ impl ImportServiceHandle {
                 detail: format!("{candidate_key} is not a folder candidate"),
             })
     }
+}
+
+/// What an external release's draft fetches from the catalogs before it is
+/// written.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ReleaseAsset {
+    /// The images of the Discogs artists the draft credits.
+    ArtistImages,
+    /// The draft's cover, offered by `source`.
+    Cover { source: crate::import::Catalog },
+}
+
+/// A fetch of one of an external release's assets that failed.
+#[derive(Debug)]
+pub(crate) struct AssetFetchFailure {
+    pub(crate) asset: ReleaseAsset,
+    pub(crate) error: crate::import::ImportError,
+}
+
+/// The assets [`ImportServiceHandle::fetch_release_assets`] fetched: the
+/// artist images, and the cover with its bytes when the catalog served one.
+pub(crate) struct ReleaseAssets {
+    artist_images: Vec<crate::import::PreparedArtistImage>,
+    cover: Option<(
+        crate::import::cover_art::RemoteCover,
+        crate::import::cover_art::RemoteImage,
+    )>,
+}
+
+/// The metadata `source_draft`, read from an external release, makes with
+/// the assets fetched for it.
+pub(crate) fn external_metadata_with_assets(
+    source_draft: crate::import::pane::CandidateSourceDraft,
+    release: &crate::import::source_release::SourceRelease,
+    assets: ReleaseAssets,
+    durations: &crate::import::probe::SourceDurations,
+    current: &crate::import::CandidateDraft,
+) -> Result<crate::import::CandidateMetadataDraft, crate::import::ImportError> {
+    let (cover, remote_cover) = match assets.cover {
+        Some((remote, image)) => (
+            Some(crate::import::CoverSelection::Remote(
+                remote.image,
+                remote.source,
+            )),
+            Some(image),
+        ),
+        None => (None, None),
+    };
+    Ok(crate::import::CandidateMetadataDraft {
+        draft: source_draft.draft,
+        source_discogs_artist_ids: source_draft.source_discogs_artist_ids,
+        provenance: Some(crate::import::MetadataProvenance::ExternalRelease {
+            record: release.release().clone(),
+        }),
+        cover,
+        assets: crate::import::CandidatePreparedAssets {
+            applied_source: Some(crate::import::source_release::AppliedSource {
+                release: release.clone(),
+                audio_durations_ms: current.audio_durations(durations)?,
+            }),
+            remote_cover,
+            artist_images: assets.artist_images,
+        },
+    })
 }

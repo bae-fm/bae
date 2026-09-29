@@ -607,6 +607,15 @@ fn identify_failure(
                 failure: BridgeLookupFailure::from_core(failure),
             }
         }
+        IdentifyFailure::ArtistImages(failure) => {
+            crate::types::BridgeIdentifyFailure::ArtistImages {
+                failure: BridgeLookupFailure::from_core(failure),
+            }
+        }
+        IdentifyFailure::Cover(failure) => crate::types::BridgeIdentifyFailure::Cover {
+            source: BridgeCatalog::from_core(failure.source),
+            failure: BridgeLookupFailure::from_core(failure.failure),
+        },
     }
 }
 

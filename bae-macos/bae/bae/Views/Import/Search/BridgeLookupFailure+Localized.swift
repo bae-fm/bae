@@ -41,6 +41,17 @@ extension BridgeIdentifyFailure {
                 localized:
                     "Failed to load release details: \(failure.badgeLine)"
             )
+        case .artistImages(let failure):
+            return String(
+                localized:
+                    "Failed to load artist images: \(failure.badgeLine)"
+            )
+        case .cover(let source, let failure):
+            let catalog = bridgeCatalogName(catalog: source)
+            return String(
+                localized:
+                    "Failed to load the cover from \(catalog): \(failure.badgeLine)"
+            )
         }
     }
 }

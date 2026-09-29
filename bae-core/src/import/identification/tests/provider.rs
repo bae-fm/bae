@@ -27,7 +27,7 @@ async fn serve_one(mut stream: tokio::net::TcpStream, state: Arc<Mutex<FakeState
             .iter()
             .find(|(needle, _, _)| target.contains(needle.as_str()))
             .map(|(_, status, body)| (*status, body.clone()))
-            .unwrap_or((404, "{}".to_string()));
+            .unwrap_or((404, b"{}".to_vec()));
         let gate = state
             .gate
             .as_ref()
@@ -41,11 +41,11 @@ async fn serve_one(mut stream: tokio::net::TcpStream, state: Arc<Mutex<FakeState
         let _ = gate.acquire().await;
     }
 
-    let response = format!(
-        "HTTP/1.1 {status} X\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+    let response_head = format!(
+        "HTTP/1.1 {status} X\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
         body.len()
     );
-    let _ = stream.write_all(response.as_bytes()).await;
+    let _ = stream.write_all(&[response_head.as_bytes(), &body].concat()).await;
     let _ = stream.shutdown().await;
 }
 

@@ -71,7 +71,7 @@ struct FakeProvider {
 
 #[derive(Default)]
 struct FakeState {
-    routes: Vec<(String, u16, String)>,
+    routes: Vec<(String, u16, Vec<u8>)>,
     requests: Vec<String>,
     /// While set, a request containing the needle waits here after recording
     /// itself.
@@ -100,7 +100,7 @@ impl FakeProvider {
 
     /// Answer any request containing `needle` with `status` and `body`; an
     /// earlier route wins over a later one.
-    fn route(&self, needle: &str, status: u16, body: impl Into<String>) {
+    fn route(&self, needle: &str, status: u16, body: impl Into<Vec<u8>>) {
         self.state
             .lock()
             .unwrap()
@@ -108,12 +108,20 @@ impl FakeProvider {
             .push((needle.to_string(), status, body.into()));
     }
 
+    /// Answer requests containing `needle` with `status` and `body` from now
+    /// on, in place of what the route for it said before.
+    fn reroute(&self, needle: &str, status: u16, body: impl Into<Vec<u8>>) {
+        let mut state = self.state.lock().unwrap();
+        state.routes.retain(|(existing, _, _)| existing != needle);
+        state.routes.insert(0, (needle.to_string(), status, body.into()));
+    }
+
     /// Replace every route.
     fn set_routes(&self, routes: Vec<(&str, u16, String)>) {
         let mut state = self.state.lock().unwrap();
         state.routes = routes
             .into_iter()
-            .map(|(needle, status, body)| (needle.to_string(), status, body))
+            .map(|(needle, status, body)| (needle.to_string(), status, body.into_bytes()))
             .collect();
     }
 
@@ -874,6 +882,7 @@ impl Drop for Fixture {
 include!("tests/identification.rs");
 include!("tests/lookup_choices.rs");
 include!("tests/settling.rs");
+include!("tests/applying_the_pick.rs");
 include!("tests/fitting_the_folder.rs");
 include!("tests/metadata_modes.rs");
 include!("tests/imports_and_progress.rs");

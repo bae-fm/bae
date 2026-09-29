@@ -179,6 +179,13 @@ impl AutomationIdentifyFailure {
             IdentifyFailure::ReleaseDetails(failure) => Self::ReleaseDetails {
                 failure: AutomationLookupFailure::from_core(failure),
             },
+            IdentifyFailure::ArtistImages(failure) => Self::ArtistImages {
+                failure: AutomationLookupFailure::from_core(failure),
+            },
+            IdentifyFailure::Cover(failure) => Self::Cover {
+                source: failure.source.into(),
+                failure: AutomationLookupFailure::from_core(failure.failure),
+            },
         }
     }
 }

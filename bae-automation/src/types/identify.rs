@@ -206,6 +206,13 @@ pub enum AutomationIdentifyFailure {
     ReleaseDetails {
         failure: AutomationLookupFailure,
     },
+    ArtistImages {
+        failure: AutomationLookupFailure,
+    },
+    Cover {
+        source: AutomationCatalog,
+        failure: AutomationLookupFailure,
+    },
 }
 
 /// Mirrors bae-core's `identify::IdentifyStateView`.

@@ -191,6 +191,7 @@ desktop_only! {
         parsed_album_to_user_edit, DiscogsSaveOutcome, GroupedSearchResults, ImportEvent,
         ImportEventBus, ImportServiceHandle, ScanEvent,
     };
+    pub(crate) use handle::{external_metadata_with_assets, ReleaseAsset};
     pub use list::{
         ActiveFolderScan, CandidateImportStatus, CandidatePanePlacement,
         FolderScanActivity,

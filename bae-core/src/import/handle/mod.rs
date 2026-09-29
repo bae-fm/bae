@@ -24,6 +24,8 @@ mod session;
 mod shared_album;
 mod watch;
 
+pub(crate) use scan::{external_metadata_with_assets, ReleaseAsset};
+
 use super::candidate_runtime::CandidateRuntime;
 use super::candidates::{
     CandidateRuntimeSnapshot, ImportCandidateSnapshot, WatchedFolderScanStatus,

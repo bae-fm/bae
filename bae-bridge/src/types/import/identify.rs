@@ -403,4 +403,15 @@ pub enum BridgeIdentifyFailure {
     ReleaseDetails {
         failure: BridgeLookupFailure,
     },
+    /// Discogs could not give the images of the artists the release a run
+    /// picked credits, so the pick was not applied.
+    ArtistImages {
+        failure: BridgeLookupFailure,
+    },
+    /// The catalog offering the cover of the release a run picked could not
+    /// give it, so the pick was not applied.
+    Cover {
+        source: BridgeCatalog,
+        failure: BridgeLookupFailure,
+    },
 }
