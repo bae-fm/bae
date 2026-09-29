@@ -61,6 +61,7 @@ fn make_response(media: Vec<MbMedium>) -> MbReleaseResponse {
         id: "test-release".to_string(),
         title: "Album Title A".to_string(),
         disambiguation: None,
+        annotation: None,
         date: Some("2024".to_string()),
         country: None,
         status: None,

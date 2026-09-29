@@ -171,6 +171,15 @@ pub struct MbReleaseResponse {
         deserialize_with = "crate::serde_helpers::empty_string_as_none"
     )]
     pub disambiguation: Option<String>,
+    /// The release's annotation: the free text editors write about it — its
+    /// matrix, its SID codes, where it was made. Only a lookup that asks for
+    /// it (`inc=annotation`) states it; the disc ID lookup cannot ask.
+    /// Absent where none is written.
+    #[serde(
+        default,
+        deserialize_with = "crate::serde_helpers::empty_string_as_none"
+    )]
+    pub annotation: Option<String>,
     pub date: Option<String>,
     #[serde(
         default,

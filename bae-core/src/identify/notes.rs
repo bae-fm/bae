@@ -71,3 +71,7 @@ fn counted(note: &str) -> impl Iterator<Item = String> {
         word.chars().count() >= 3 && !word.chars().all(char::is_numeric) && !is_stop_word(word)
     })
 }
+
+#[cfg(test)]
+#[path = "notes_tests.rs"]
+mod tests;

@@ -88,9 +88,10 @@ pub struct MetadataResult {
     /// untitled. A search result states none.
     pub track_titles: Vec<String>,
     /// What the record writes about which pressing it is, in free text: a
-    /// MusicBrainz release's disambiguation; a Discogs release's format text,
-    /// and once its full document is read, its company names and matrix /
-    /// runout inscriptions too.
+    /// MusicBrainz release's disambiguation, and once its full document is
+    /// read, each line of its annotation; a Discogs release's format text,
+    /// and once its full document is read, each line of its notes, its
+    /// company names and its identifiers too (see `discogs_release_notes`).
     pub notes: Vec<String>,
 }
 
@@ -345,17 +346,50 @@ pub(crate) fn discogs_release_to_metadata(release: &crate::discogs::DiscogsRelea
         document_failure: None,
         album_first_year: None,
         track_titles: Vec::new(),
-        notes: discogs_notes(&release.formats)
-            .into_iter()
-            .chain(release.companies.iter().cloned())
-            .chain(release.matrix.iter().cloned())
-            .collect(),
+        notes: discogs_release_notes(release),
     }
+}
+
+/// What a Discogs release's own document writes about which pressing it is,
+/// in order: its format entries' text, each line of its notes, the names of
+/// the companies it credits, then what each identifier other than a barcode
+/// reads — a barcode is its own field.
+pub(crate) fn discogs_release_notes(release: &crate::discogs::DiscogsRelease) -> Vec<String> {
+    discogs_notes(&release.formats)
+        .into_iter()
+        .chain(release.notes.iter().flat_map(|notes| lines(notes)))
+        .chain(release.companies.iter().cloned())
+        .chain(release.identifiers.iter().cloned())
+        .collect()
+}
+
+/// What a MusicBrainz release's own document writes about which pressing it
+/// is: its disambiguation, then each line of its annotation. A disc ID
+/// lookup's releases state no annotation, so theirs is the disambiguation
+/// alone until their documents are read.
+pub(crate) fn musicbrainz_release_notes(release: &MbReleaseResponse) -> Vec<String> {
+    release
+        .disambiguation
+        .iter()
+        .cloned()
+        .chain(release.annotation.iter().flat_map(|annotation| lines(annotation)))
+        .collect()
+}
+
+/// A note of prose, one line at a time, each trimmed, blank lines dropped.
+/// Each line is a note of its own, so the one a row is named for is the line
+/// that says so, not the whole text around it.
+fn lines(prose: &str) -> impl Iterator<Item = String> + '_ {
+    prose
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .map(str::to_string)
 }
 
 /// What a Discogs release's format entries write beside their names, in
 /// order: the part of its notes a search result carries too.
-pub(crate) fn discogs_notes(formats: &[crate::discogs::DiscogsFormat]) -> Vec<String> {
+fn discogs_notes(formats: &[crate::discogs::DiscogsFormat]) -> Vec<String> {
     formats
         .iter()
         .filter_map(|format| format.text.clone())
@@ -396,6 +430,7 @@ fn mb_discid_release_to_metadata(discid: &str, r: MbReleaseResponse) -> Option<M
         }
     }
 
+    let notes = musicbrainz_release_notes(&r);
     let (pressing, media) = crate::import::musicbrainz_mapper::pressing(&r);
     let links = release_links_of(&r.relations);
     let cover_art = crate::import::cover_art::musicbrainz_release_cover(&r);
@@ -422,7 +457,7 @@ fn mb_discid_release_to_metadata(discid: &str, r: MbReleaseResponse) -> Option<M
         document_failure: None,
         album_first_year: None,
         track_titles: Vec::new(),
-        notes: r.disambiguation.into_iter().collect(),
+        notes,
     })
 }
 

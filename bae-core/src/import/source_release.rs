@@ -53,9 +53,9 @@ pub struct SourceRelease {
     pub(crate) mediums: Vec<SourceMedium>,
     pub(crate) catalog: CatalogFacts,
     /// What the release's own document writes about which pressing it is, in
-    /// free text and in its order: a MusicBrainz release's disambiguation; a
-    /// Discogs release's format text, company names, then its matrix / runout
-    /// inscriptions.
+    /// free text and in its order: see
+    /// [`crate::import::search::musicbrainz_release_notes`] and
+    /// [`crate::import::search::discogs_release_notes`].
     pub(crate) notes: Vec<String>,
     /// The supporting documents the fetch named and could not get, whose
     /// facts are missing from the ones above.

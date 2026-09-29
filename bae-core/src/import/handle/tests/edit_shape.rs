@@ -110,6 +110,7 @@ fn vinyl_response() -> crate::musicbrainz::MbReleaseResponse {
         id: REL_1.to_string(),
         title: "Album Title".to_string(),
         disambiguation: None,
+        annotation: None,
         date: Some("1969".to_string()),
         country: Some("US".to_string()),
         status: None,

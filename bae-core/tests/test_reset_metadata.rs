@@ -202,6 +202,7 @@ fn mb_release_json(
         id: release_id.to_string(),
         title: title.to_string(),
         disambiguation: None,
+        annotation: None,
         date: Some("1999-01-01".to_string()),
         country: Some("US".to_string()),
         status: None,

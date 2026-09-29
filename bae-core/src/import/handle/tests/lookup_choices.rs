@@ -272,6 +272,7 @@ pub(super) fn seed_mb_release_with_catalog(
         id: release_id.to_string(),
         title: "Album Title".to_string(),
         disambiguation: None,
+        annotation: None,
         date: Some("1996".to_string()),
         country: Some("US".to_string()),
         status: None,

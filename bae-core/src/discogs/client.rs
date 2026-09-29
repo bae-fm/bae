@@ -334,6 +334,11 @@ struct ReleaseResponse {
     master_id: Option<u64>,
     identifiers: Option<Vec<Identifier>>,
     companies: Option<Vec<Company>>,
+    #[serde(
+        default,
+        deserialize_with = "crate::serde_helpers::empty_string_as_none"
+    )]
+    notes: Option<String>,
 }
 
 /// A company the release credits, whatever its role.
@@ -520,17 +525,18 @@ pub fn parse_discogs_release_json(raw_json: &str) -> Result<DiscogsRelease, Disc
             .map(|label| (label.name, label.catno)),
     );
     let formats = release.formats.unwrap_or_default();
-    let identifiers: Vec<Identifier> = release.identifiers.into_iter().flatten().collect();
-    let values_of = |kind: &'static str| {
-        identifiers
-            .iter()
-            .filter(move |identifier| identifier.kind == kind)
-            .filter_map(|identifier| identifier.value.clone())
-    };
+    let (barcodes, identifiers): (Vec<Identifier>, Vec<Identifier>) = release
+        .identifiers
+        .into_iter()
+        .flatten()
+        .partition(|identifier| identifier.kind == "Barcode");
     // The draft has one barcode field. Keep the first supplied Barcode value
     // in provider order, including its printed spaces and punctuation.
-    let barcode = values_of("Barcode").next();
-    let matrix = values_of("Matrix / Runout").collect();
+    let barcode = barcodes.into_iter().find_map(|identifier| identifier.value);
+    let identifiers = identifiers
+        .into_iter()
+        .filter_map(|identifier| identifier.value)
+        .collect();
     let companies = release
         .companies
         .into_iter()
@@ -553,7 +559,8 @@ pub fn parse_discogs_release_json(raw_json: &str) -> Result<DiscogsRelease, Disc
         tracklist,
         master_id,
         companies,
-        matrix,
+        identifiers,
+        notes: release.notes,
     })
 }
 

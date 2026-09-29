@@ -225,7 +225,7 @@ impl ReleasePayloads {
                     CatalogFacts::MusicBrainz {
                         links: crate::import::search::release_links_of(&anchor.relations),
                     },
-                    anchor.disambiguation.into_iter().collect(),
+                    crate::import::search::musicbrainz_release_notes(&anchor),
                 )
             }
             Catalog::Discogs => {
@@ -237,11 +237,7 @@ impl ReleasePayloads {
                         media: crate::import::discogs_mapper::pressing(&anchor).1,
                         release_roles: crate::import::discogs_mapper::release_roles(&anchor),
                     },
-                    crate::import::search::discogs_notes(&anchor.formats)
-                        .into_iter()
-                        .chain(anchor.companies)
-                        .chain(anchor.matrix)
-                        .collect(),
+                    crate::import::search::discogs_release_notes(&anchor),
                 )
             }
             other => not_fetched(other),

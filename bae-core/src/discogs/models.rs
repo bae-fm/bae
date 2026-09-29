@@ -32,8 +32,13 @@ pub struct DiscogsRelease {
     /// The name of every company the release credits — who pressed, made or
     /// distributed it — in Discogs's order, whatever its role.
     pub companies: Vec<String>,
-    /// What each of its Matrix / Runout identifiers reads, in Discogs's order.
-    pub matrix: Vec<String>,
+    /// What each of its identifiers other than a barcode reads — matrix /
+    /// runout, rights society, label code, price code, SID codes, SPARS,
+    /// other — in Discogs's order.
+    pub identifiers: Vec<String>,
+    /// The release's notes: the prose an editor wrote about it, as Discogs
+    /// holds it. Absent where none is written.
+    pub notes: Option<String>,
 }
 
 /// One entry of a release's `formats`, as Discogs states it: a name from

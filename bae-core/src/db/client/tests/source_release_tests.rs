@@ -44,6 +44,7 @@ fn musicbrainz_documents() -> ReleasePayloads {
         "id": "mb-release",
         "title": "Album Title",
         "disambiguation": "made in Nordland",
+        "annotation": "Matrix: NORD-1\n\n  Pressed by Plant Name  ",
         "date": "1999-04-01",
         "country": "GB",
         "barcode": "0123456789012",
@@ -117,6 +118,7 @@ fn discogs_documents() -> ReleasePayloads {
         "year": 1999,
         "master_id": 909,
         "formats": [{ "name": "CD", "text": "Small label" }, { "name": "Album" }],
+        "notes": "Made in Nordland.\r\n\r\nSleeve printed by Printer Name.",
         "labels": [{ "name": "Label Name", "catno": "CAT-1" }],
         "companies": [
             { "name": "Plant Name", "entity_type_name": "Pressed By" },
@@ -124,7 +126,10 @@ fn discogs_documents() -> ReleasePayloads {
         ],
         "identifiers": [
             { "type": "Barcode", "value": "0123456789012" },
-            { "type": "Matrix / Runout", "value": "MADE IN NORDLAND BY PLANT", "description": "Variant 1" }
+            { "type": "Matrix / Runout", "value": "MADE IN NORDLAND BY PLANT", "description": "Variant 1" },
+            { "type": "Rights Society", "value": "BIEM/NORD" },
+            { "type": "Barcode", "value": "0 12345 67890 1", "description": "Text" },
+            { "type": "Label Code", "value": "LC 0000" }
         ],
         "images": [
             { "type": "primary", "uri": "https://images.example/front.jpg", "uri150": "https://images.example/front-150.jpg" }
@@ -178,17 +183,29 @@ async fn a_stored_release_reads_back_as_it_was_extracted() {
     };
     assert_eq!(parent.events.len(), 1, "the parent names its other part");
     assert_eq!(musicbrainz.mediums[0].entries[0].credits.len(), 2);
-    assert_eq!(musicbrainz.notes, vec!["made in Nordland".to_string()]);
+    assert_eq!(
+        musicbrainz.notes,
+        vec![
+            "made in Nordland".to_string(),
+            "Matrix: NORD-1".to_string(),
+            "Pressed by Plant Name".to_string(),
+        ],
+        "the disambiguation, then each line of the annotation"
+    );
     let discogs = discogs_documents().extract().unwrap();
     assert_eq!(
         discogs.notes,
         vec![
             "Small label".to_string(),
+            "Made in Nordland.".to_string(),
+            "Sleeve printed by Printer Name.".to_string(),
             "Plant Name".to_string(),
             "Maker Name".to_string(),
             "MADE IN NORDLAND BY PLANT".to_string(),
+            "BIEM/NORD".to_string(),
+            "LC 0000".to_string(),
         ],
-        "the format text, the companies, then the matrix inscriptions; not the barcode"
+        "the format text, each line of the notes, the companies, then every identifier but a barcode"
     );
     assert_eq!(discogs.mediums.len(), 2, "the positions number two discs");
     assert_eq!(discogs.mediums[1].entries[0].children.len(), 2);

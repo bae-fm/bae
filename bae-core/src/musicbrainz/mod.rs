@@ -49,7 +49,7 @@ fn ws2(path: &str) -> String {
 /// where the request will look for it have to agree on it.
 fn release_url(release_id: &str) -> String {
     ws2(&format!(
-        "release/{release_id}?inc=recordings+artist-credits+release-groups+release-group-rels+url-rels+labels+media+recording-level-rels+work-level-rels+work-rels+artist-rels"
+        "release/{release_id}?inc=recordings+artist-credits+release-groups+release-group-rels+url-rels+labels+media+recording-level-rels+work-level-rels+work-rels+artist-rels+annotation"
     ))
 }
 
