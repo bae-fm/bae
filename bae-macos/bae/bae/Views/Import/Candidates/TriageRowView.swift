@@ -108,11 +108,8 @@ struct TriageRowContent: View {
             switch row.reading {
             case .unidentified:
                 folderLine
-            case .prefilled, .identified:
+            case .prefilled, .identified, .identifiedAlbum:
                 releaseSummary
-            case .identifiedAlbum:
-                releaseSummary
-                pressingUnknownLine
             }
             stateLine
         }
@@ -126,15 +123,6 @@ struct TriageRowContent: View {
                 RecordArrow(readFromRecord: row.reading.readFromRecord)
             }
         }
-    }
-
-    /// A row linked to an album says that which pressing the folder is, is
-    /// not known.
-    private var pressingUnknownLine: some View {
-        Text("Pressing unknown")
-            .themeText(.detail)
-            .foregroundStyle(.tertiary)
-            .lineLimit(1)
     }
 
     /// An unidentified row names its folder, as the main pane's heading does.
