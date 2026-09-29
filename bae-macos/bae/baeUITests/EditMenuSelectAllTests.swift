@@ -26,8 +26,9 @@ final class EditMenuSelectAllTests: XCTestCase {
         app.typeKey("a", modifierFlags: .command)
         XCTAssertTrue(selectedAll.waitForExistence(timeout: 10))
 
+        // One row selected: the all-rows selection is gone.
         topRow.click()
-        XCTAssertFalse(selectedAll.waitForExistence(timeout: 2))
+        XCTAssertTrue(selectedAll.waitForNonExistence(timeout: 10))
         app.menuBars.menuBarItems["Edit"].click()
         app.menuBars.menuItems["Select All"].click()
         XCTAssertTrue(selectedAll.waitForExistence(timeout: 10))
