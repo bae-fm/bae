@@ -138,8 +138,9 @@ fn cue_audio_measure(value: u64, quantity: &str) -> Result<i64, ImportError> {
 }
 
 /// Resolve an audio pregap in the coordinate system of the file containing its
-/// INDEX 00. When INDEX 01 moves to another file, the pregap ends at the prior
-/// file's next boundary or EOF rather than at INDEX 01's file-local zero.
+/// INDEX 00. When INDEX 01 moves to another file, the pregap is the tail of the
+/// file before, so it runs to that file's end rather than to INDEX 01's
+/// file-local zero.
 fn cue_audio_pregap(
     cue_pair: &CueFlacAnalysis,
     cue_index: usize,
@@ -155,10 +156,6 @@ fn cue_audio_pregap(
     let start_sample = crate::cue_flac::cue_frames_to_samples(index.frames, sample_rate);
     let end_sample = if index.file_reference == cue_track.file_reference {
         crate::cue_flac::cue_frames_to_samples(cue_track.start_cue_frames, sample_rate)
-    } else if let Some(end_frames) =
-        cue_segment_end_frames(cue_pair, cue_index, &index.file_reference)
-    {
-        crate::cue_flac::cue_frames_to_samples(end_frames, sample_rate)
     } else {
         probe_duration_samples(probe)?
     };
@@ -302,20 +299,6 @@ fn cue_file_landing_bytes(
     Some(start_samples.into_iter().zip(landings).collect())
 }
 
-fn cue_segment_end_frames(
-    cue_pair: &CueFlacAnalysis,
-    cue_index: usize,
-    file_reference: &str,
-) -> Option<u64> {
-    cue_pair
-        .cue_sheet
-        .playable_tracks()
-        .skip(cue_index + 1)
-        .flat_map(|track| track.indexes.iter())
-        .find(|index| index.file_reference == file_reference && matches!(index.number, 0 | 1))
-        .map(|index| index.frames)
-}
-
 impl ImportService {
     fn audio_segment(
         audio_format_id: &str,
@@ -414,7 +397,10 @@ impl ImportService {
             })?;
         let start_sample =
             crate::cue_flac::cue_frames_to_samples(cue_track.start_cue_frames, sample_rate);
-        let end_sample = cue_segment_end_frames(cue_pair, cue_index, &cue_track.file_reference)
+        // Where the sheet's slice ends — the same boundary its length and its
+        // audition window read.
+        let end_sample = cue_track
+            .end_cue_frames
             .map(|frames| crate::cue_flac::cue_frames_to_samples(frames, sample_rate));
         let start_byte = Self::cue_segment_byte(byte_landings_by_file, main_path, start_sample);
         let end_byte = end_sample

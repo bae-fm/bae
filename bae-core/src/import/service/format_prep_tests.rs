@@ -492,3 +492,57 @@ INDEX 01 11:01:30
     assert_eq!(main_segments[1].end_sample, Some((8 * 60 + 31) * 75 + 20),);
     assert_eq!(main_segments[2].end_sample, Some((11 * 60 + 1) * 75 + 30),);
 }
+
+/// An enhanced CD ripped to one file: the audio track's slice ends where the
+/// data track after it starts, and the segment the import writes ends there
+/// too — the length the pane shows and the audio the import keeps are one
+/// window.
+#[test]
+fn a_slice_before_a_data_track_ends_where_the_data_starts() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let cue_path = temp.path().join("album.cue");
+    std::fs::write(
+        &cue_path,
+        "FILE \"image.flac\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n  \
+         TRACK 02 MODE1/2352\n    INDEX 01 00:05:00\n",
+    )
+    .expect("write cue");
+    let cue_sheet = crate::cue_flac::parse_cue_sheet(&cue_path).expect("parse cue");
+    let path = temp.path().join("image.flac");
+    let analysis = CueFlacAnalysis {
+        cue_sheet,
+        audio_files: vec![CueAnalyzedAudioFile {
+            file_reference: "image.flac".to_string(),
+            path: path.clone(),
+            probe: ProbeResult {
+                content_type: ContentType::Flac,
+                duration: std::time::Duration::from_secs(20),
+                sample_rate: 44_100,
+                bits_per_sample: Some(16),
+                bitrate_kbps: None,
+                channels: 2,
+            },
+        }],
+    };
+
+    let segments = ImportService::cue_segments(
+        "format-1",
+        &analysis,
+        0,
+        &HashMap::from([(path, "file-1".to_string())]),
+        &HashMap::new(),
+        &coven::SequentialIdProvider::new("segment"),
+        test_clock().0,
+    )
+    .expect("build segments");
+
+    let [main] = segments.as_slice() else {
+        panic!("one main segment, got {segments:?}");
+    };
+    assert_eq!(main.end_sample, Some(5 * 44_100));
+    assert_eq!(
+        crate::import::probe::sheet_track_duration_ms(&analysis, 0, "album.cue").unwrap(),
+        5_000,
+        "the slice's own length reads the same boundary"
+    );
+}
