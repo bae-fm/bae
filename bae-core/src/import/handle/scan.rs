@@ -147,22 +147,6 @@ impl ImportServiceHandle {
                         ),
                     });
                 }
-                let duplicate = files
-                    .track_sheets()
-                    .find(|sheet| sheet.file.relative_path == sheet_file_id)
-                    .and_then(|sheet| sheet.binding.audio_files())
-                    .is_some_and(|associated| {
-                        associated.iter().any(|file| {
-                            file.file_id == file_id && file.file_reference != file_reference
-                        })
-                    });
-                if duplicate {
-                    return Err(crate::import::ImportError::SheetBinding {
-                        detail: format!(
-                            "{file_id} already supplies another FILE reference in {sheet_file_id}"
-                        ),
-                    });
-                }
                 UserSheetBinding::Describes { file_id }
             }
         };
@@ -296,8 +280,15 @@ impl ImportServiceHandle {
         current: &crate::import::CandidateDraft,
     ) -> Result<crate::import::CandidateMetadataDraft, crate::import::ImportError> {
         let source_draft = self.external_candidate_draft(release, durations, current)?;
-        self.external_candidate_assets(source_draft, release, partners, durations, provenance, current)
-            .await
+        self.external_candidate_assets(
+            source_draft,
+            release,
+            partners,
+            durations,
+            provenance,
+            current,
+        )
+        .await
     }
 
     /// The metadata `source_draft`, read from an external release, makes,
@@ -329,7 +320,11 @@ impl ImportServiceHandle {
             .into_iter()
             .next();
         let (cover, remote_cover) = match default_cover {
-            Some(remote) => match self.library_manager.fetch_remote_image(&remote.image.url).await? {
+            Some(remote) => match self
+                .library_manager
+                .fetch_remote_image(&remote.image.url)
+                .await?
+            {
                 Some(image) => (
                     Some(crate::import::CoverSelection::Remote(
                         remote.image,
@@ -394,7 +389,7 @@ impl ImportServiceHandle {
                 )?;
                 let commit = self
                     .commit_lock_for_revision(
-"pick file tags",
+                        "pick file tags",
                         &candidate_key,
                         &content_hash,
                         current.file_edit_revision,
@@ -465,7 +460,7 @@ impl ImportServiceHandle {
                 );
                 let _commit = self
                     .commit_lock_for_revision(
-"pick a release",
+                        "pick a release",
                         &candidate_key,
                         &content_hash,
                         current.file_edit_revision,
@@ -528,7 +523,11 @@ impl ImportServiceHandle {
         crate::import::pane::keep_row_identities(&mut draft.tracks, &current.draft.tracks)?;
         let _commit = self
             .commit_lock_for_revision(
-"clear metadata",&candidate_key, &content_hash, current.file_edit_revision)
+                "clear metadata",
+                &candidate_key,
+                &content_hash,
+                current.file_edit_revision,
+            )
             .await?;
         Ok(self
             .preparations
@@ -749,7 +748,11 @@ impl ImportServiceHandle {
 
             let commit = self
                 .commit_lock_for_revision(
-"store a file decision",candidate_key, &content_hash, expected_revision)
+                    "store a file decision",
+                    candidate_key,
+                    &content_hash,
+                    expected_revision,
+                )
                 .await?;
             // A scan may have added or dropped a folder with these files while
             // this was prepared; if so, prepare again.
