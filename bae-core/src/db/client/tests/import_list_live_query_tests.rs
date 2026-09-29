@@ -95,7 +95,7 @@ fn imported_rows(
         .iter()
         .flat_map(|window| &window.items)
         .filter_map(|item| match item {
-            crate::import::ImportListItem::Imported { row } => Some(row.clone()),
+            crate::import::ImportListItem::Imported { row, .. } => Some(row.clone()),
             _ => None,
         })
         .collect()

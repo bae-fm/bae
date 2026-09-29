@@ -161,25 +161,6 @@ impl AppHandle {
         )
     }
 
-    /// What is running for one candidate and the commands its row offers with
-    /// it, now and on every change. `basis` is the row's own; a row delivered
-    /// again with a different one subscribes again.
-    pub fn subscribe_candidate_live_state(
-        &self,
-        candidate_key: String,
-        basis: crate::types::BridgeCandidateActionBasis,
-        callback: Box<dyn crate::types::CandidateLiveStateCallback>,
-    ) -> std::sync::Arc<crate::LiveSubscription> {
-        self.subscribe_channel(
-            move |services, _| {
-                services.subscribe_candidate_live_state(candidate_key, basis.into_core())
-            },
-            move |value| {
-                callback.on_value(crate::types::BridgeCandidateLiveState::from_core(value))
-            },
-        )
-    }
-
     /// What is in flight for one key right now — the read a view does once
     /// when it appears, after it has subscribed to the changes.
     pub fn candidate_runtime(

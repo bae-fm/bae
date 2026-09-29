@@ -67,10 +67,10 @@ class UiProjectionBoundaryTests(unittest.TestCase):
             )
             path = root / relative
             source = path.read_text()
-            insertion = "extension TriageRowContent {"
+            insertion = "extension TriageRowView {"
             source = source.replace(
                 insertion,
-                "extension\nTriageRowContent {\n"
+                "extension\nTriageRowView {\n"
                 "    private var selectedDetailStore: ImportStore { fatalError() }",
                 1,
             )
@@ -81,7 +81,7 @@ class UiProjectionBoundaryTests(unittest.TestCase):
             self.assertEqual(
                 BOUNDARY.check(root),
                 [
-                    f"{relative}:{injected_line}: TriageRowContent reaches entity-data owner "
+                    f"{relative}:{injected_line}: TriageRowView reaches entity-data owner "
                     "ImportStore"
                 ],
             )

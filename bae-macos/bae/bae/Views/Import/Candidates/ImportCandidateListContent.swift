@@ -720,10 +720,7 @@ extension ImportCandidateListContent {
 
     /// What a row's menu offers: the selection's actions when the row is
     /// one of several selected, and the row's own otherwise.
-    private func menuOffers(
-        for row: BridgeTriageRow,
-        live: BridgeCandidateLiveState?
-    ) -> CandidateActionMenu {
+    private func menuOffers(for row: BridgeTriageRow) -> CandidateActionMenu {
         if row.selected, importSelection.summary.count > 1 {
             return CandidateActionMenu(
                 offers: ImportCandidateActionOffer.selection(
@@ -735,7 +732,7 @@ extension ImportCandidateListContent {
         return CandidateActionMenu(
             offers: ImportCandidateActionOffer.row(
                 row.candidateKey,
-                actions: live?.actions ?? []
+                actions: row.live.actions
             ),
             isSelection: false
         )
@@ -754,7 +751,7 @@ extension ImportCandidateListContent {
             row: row,
             coverContent: importStore.sidebarCover(for: row),
             isGroupMember: isGroupMember,
-            menuOffers: { live in menuOffers(for: row, live: live) },
+            menuOffers: { menuOffers(for: row) },
             onPerform: onPerform
         )
         .tag(row.candidateKey)

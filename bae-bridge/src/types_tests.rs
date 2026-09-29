@@ -319,30 +319,6 @@ mod conversion_roundtrip {
         ));
     }
 
-    /// A row hands its action basis back to core when it subscribes to live
-    /// state, so it must round-trip unchanged.
-    #[cfg(feature = "desktop")]
-    #[test]
-    fn candidate_action_basis_round_trips() {
-        let core = bae_core::import::CandidateActionBasis {
-            actionable: true,
-            placement: bae_core::import::TriagePlacement::Pending,
-            draft_valid: true,
-            lookup: Some(bae_core::import::StoredLookup::Answered),
-            separable: true,
-            standing: Some(bae_core::import::PendingStanding::NeedsYou {
-                reason: bae_core::import::NeedsYouReason::MediumMismatch {
-                    folder: bae_core::identify::MediumConflict::NotCdAudio,
-                    releases: 2,
-                },
-            }),
-        };
-        assert_eq!(
-            core,
-            crate::types::BridgeCandidateActionBasis::from_core(core.clone()).into_core()
-        );
-    }
-
     #[test]
     fn image_ref_round_trips() {
         let core = bae_core::album_detail::ImageRef {

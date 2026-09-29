@@ -111,7 +111,7 @@ impl Automation {
                 for item in window.items {
                     let candidate_key = match item {
                         ImportListItem::Candidate { row, .. } => row.candidate_key,
-                        ImportListItem::Imported { row } => row.candidate_key,
+                        ImportListItem::Imported { row, .. } => row.candidate_key,
                         ImportListItem::Invalid { candidate, .. } => {
                             candidates.push(automation_candidate_from_invalid(&candidate));
                             continue;

@@ -17,9 +17,10 @@
 //!
 //! The read is of the tables and nothing else. What is running for a candidate
 //! right now — a run queued or in flight, an import that owns it — moves no row
-//! between tabs and reorders nothing, so it is not an input to the list: each
-//! row reads it from its own subscription, as a
-//! [`CandidateLiveState`].
+//! between tabs and reorders nothing, so it is not an input to the read:
+//! [`ImportListSubscription`] joins it to each row the read delivers, as a
+//! [`CandidateLiveState`], and delivers the page again when it changes for a
+//! row on it.
 
 use super::cover_art::{CoverChoice, RemoteCover};
 use super::folder_scanner::FolderCandidate;
@@ -40,7 +41,7 @@ use crate::identify::{IdentifyState, VerdictSummary};
 use crate::import::CandidateSession;
 use crate::library::{LibraryPageWindow, LibraryPageWindows};
 use crate::signals::Signals;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 mod flatten;
 mod subscription;
@@ -279,8 +280,12 @@ impl ImportListRequest {
 }
 
 /// One item in the list, at one offset.
+///
+/// `Live` is what sits beside each candidate's row: nothing, `()`, as the
+/// tables read it, and a [`CandidateLiveState`] once
+/// [`ImportListItem::with_live`] has joined what is running for it.
 #[derive(Debug, Clone, PartialEq)]
-pub enum ImportListItem {
+pub enum ImportListItem<Live = ()> {
     GroupHeader {
         group: TriageGroup,
         watched_folder_path: String,
@@ -292,22 +297,24 @@ pub enum ImportListItem {
     /// the candidate reads as.
     Candidate {
         row: TriageRow,
+        live: Live,
         is_group_member: bool,
     },
     /// A candidate the list places in Done, presented as the library release
     /// it became. Never a group member: only Pending rows join a group.
-    Imported { row: ImportedRow },
+    Imported { row: ImportedRow, live: Live },
     Invalid {
         candidate: InvalidCandidate,
         is_group_member: bool,
     },
 }
 
-impl ImportListItem {
-    fn candidate_stable_key(candidate_key: &str) -> String {
-        format!("candidate:{candidate_key}")
-    }
+/// The stable key of a candidate's item, whichever tab places it.
+pub(crate) fn candidate_stable_key(candidate_key: &str) -> String {
+    format!("candidate:{candidate_key}")
+}
 
+impl<Live> ImportListItem<Live> {
     /// Stable identity for one item. Variant prefixes keep a candidate, a
     /// boundary and a group header at the same folder from sharing view state;
     /// the length prefix makes a two-component key unambiguous.
@@ -319,11 +326,68 @@ impl ImportListItem {
                 group.key.watched_folder_path,
                 group.key.relative_folder_path
             ),
-            Self::Candidate { row, .. } => Self::candidate_stable_key(&row.candidate_key),
-            Self::Imported { row } => Self::candidate_stable_key(&row.candidate_key),
+            Self::Candidate { row, .. } => candidate_stable_key(&row.candidate_key),
+            Self::Imported { row, .. } => candidate_stable_key(&row.candidate_key),
             Self::Invalid { candidate, .. } => {
                 format!("invalid:{}", candidate.path.display())
             }
+        }
+    }
+
+    /// The candidate whose row this is; `None` for a header or a folder that
+    /// is not a candidate.
+    pub(crate) fn candidate_key(&self) -> Option<&str> {
+        match self {
+            Self::Candidate { row, .. } => Some(&row.candidate_key),
+            Self::Imported { row, .. } => Some(&row.candidate_key),
+            Self::GroupHeader { .. } | Self::Invalid { .. } => None,
+        }
+    }
+}
+
+impl ImportListItem {
+    /// The item with what is running for its candidate joined to its row:
+    /// `facts` holds every candidate something is running for, by key, and a
+    /// candidate it does not hold has nothing running.
+    pub fn with_live(
+        self,
+        facts: &HashMap<String, TriageRuntimeFacts>,
+    ) -> ImportListItem<CandidateLiveState> {
+        let live = |basis: &CandidateActionBasis, key: &str| {
+            CandidateLiveState::of(basis, facts.get(key).cloned().unwrap_or_default())
+        };
+        match self {
+            Self::GroupHeader {
+                group,
+                watched_folder_path,
+                expanded,
+                entry_count,
+            } => ImportListItem::GroupHeader {
+                group,
+                watched_folder_path,
+                expanded,
+                entry_count,
+            },
+            Self::Candidate {
+                row,
+                live: (),
+                is_group_member,
+            } => ImportListItem::Candidate {
+                live: live(&row.action_basis, &row.candidate_key),
+                row,
+                is_group_member,
+            },
+            Self::Imported { row, live: () } => ImportListItem::Imported {
+                live: live(&row.action_basis, &row.candidate_key),
+                row,
+            },
+            Self::Invalid {
+                candidate,
+                is_group_member,
+            } => ImportListItem::Invalid {
+                candidate,
+                is_group_member,
+            },
         }
     }
 }
@@ -358,10 +422,29 @@ pub(crate) struct PlacedRow {
     pub(crate) index: usize,
 }
 
+/// The items one window of the list holds, with `Live` beside each
+/// candidate's row as [`ImportListItem`] has it.
 #[derive(Debug, Clone, PartialEq)]
-pub struct ImportListWindow {
+pub struct ImportListWindow<Live = ()> {
     pub window: LibraryPageWindow,
-    pub items: Vec<ImportListItem>,
+    pub items: Vec<ImportListItem<Live>>,
+}
+
+impl ImportListWindow {
+    /// The window with what is running for each candidate joined to its row.
+    pub fn with_live(
+        self,
+        facts: &HashMap<String, TriageRuntimeFacts>,
+    ) -> ImportListWindow<CandidateLiveState> {
+        ImportListWindow {
+            window: self.window,
+            items: self
+                .items
+                .into_iter()
+                .map(|item| item.with_live(facts))
+                .collect(),
+        }
+    }
 }
 
 /// Everything the chrome around the list shows, computed in the same pass as
@@ -471,7 +554,8 @@ pub struct ActiveFolderScan {
     pub found_count: u64,
 }
 
-/// One read of the list: the requested windows, the total, and the chrome.
+/// One read of the list: the requested windows, the total, and the chrome, as
+/// the tables hold them.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImportListProjection {
     pub windows: Vec<ImportListWindow>,
@@ -481,15 +565,17 @@ pub struct ImportListProjection {
     pub selection_revision: u64,
 }
 
-/// A projection with the live query's own bookkeeping — which request it
-/// answers and what woke it — and where the folder scans stand.
+/// A projection with what is running for each row on it joined, the live
+/// query's own bookkeeping — which request it answers and what woke it — and
+/// where the folder scans stand.
 ///
-/// A change to the scans alone delivers the last projection again beside
-/// them, with its revision and a [`coven::ReconfigurableLiveQueryCause::DatabaseChanged`]
-/// cause.
+/// A change to the scans alone, or to what is running for a row on the page,
+/// delivers the last projection again beside it, with its revision and a
+/// [`coven::ReconfigurableLiveQueryCause::DatabaseChanged`] cause: the value
+/// of the same request changed.
 #[derive(Debug, Clone)]
 pub struct ImportListSnapshot {
-    pub windows: Vec<ImportListWindow>,
+    pub windows: Vec<ImportListWindow<CandidateLiveState>>,
     pub total_count: u64,
     pub summary: ImportQueueSummary,
     pub folder_scans: FolderScanProgress,

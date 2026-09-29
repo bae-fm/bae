@@ -20,20 +20,6 @@ struct LibraryStatusQuery: Sendable {
     )
 }
 
-private final class CandidateLiveStateSink: CandidateLiveStateCallback,
-    @unchecked Sendable
-{
-    private let apply: @Sendable (BridgeCandidateLiveState) -> Void
-
-    init(apply: @escaping @Sendable (BridgeCandidateLiveState) -> Void) {
-        self.apply = apply
-    }
-
-    func onValue(value: BridgeCandidateLiveState) {
-        apply(value)
-    }
-}
-
 private struct ImportOperations: Sendable {
     let candidateSourceFolders: @Sendable (String) async throws -> [String]
     let combineFolder:
@@ -92,10 +78,6 @@ private struct ImportOperations: Sendable {
     let setCandidateTrackEdit:
         @Sendable (String, BridgeRawTrackEdit) async throws -> Void
     let candidateRuntime: @Sendable (String) -> BridgeCandidateRuntimeSnapshot?
-    let subscribeCandidateLiveState:
-        @Sendable (
-            String, BridgeCandidateActionBasis, CandidateLiveStateCallback
-        ) -> any LiveSubscriptionProtocol
     let candidateSignals: @Sendable (String) -> Signals?
     let startImport: @Sendable (String) async throws -> BridgePaneOutcome
     let mergeCandidateArtistIdentityConflict:
@@ -277,13 +259,6 @@ extension ImportOperations {
             candidateRuntime: {
                 handle.candidateRuntime(candidateKey: $0)
             },
-            subscribeCandidateLiveState: {
-                handle.subscribeCandidateLiveState(
-                    candidateKey: $0,
-                    basis: $1,
-                    callback: $2
-                )
-            },
             candidateSignals: {
                 handle.candidateSignals(candidateKey: $0)
                     .map(Signals.init(bridge:))
@@ -323,16 +298,6 @@ extension ImportOperations {
             }
         )
     }
-}
-
-/// What an importer with no bridge behind it hands back when a surface asks to
-/// watch a release's library membership or a candidate's live state: a preview
-/// and a test that does not exercise either still render the pane and the
-/// rows, which watch what they draw.
-private final class InertSubscription: LiveSubscriptionProtocol,
-    @unchecked Sendable
-{
-    func cancel() {}
 }
 
 /// Import-flow operations: watched-folder management, scan, identify,
@@ -457,12 +422,6 @@ final class Importer: Sendable, Observable {
             @escaping @Sendable (String) -> BridgeCandidateRuntimeSnapshot? = {
                 _ in nil
             },
-        subscribeCandidateLiveState:
-            @escaping @Sendable (
-                String, BridgeCandidateActionBasis, CandidateLiveStateCallback
-            ) -> any LiveSubscriptionProtocol = { _, _, _ in
-                InertSubscription()
-            },
         candidateSignals: @escaping @Sendable (String) -> Signals? = { _ in nil
         },
         startImport:
@@ -530,7 +489,6 @@ final class Importer: Sendable, Observable {
             setCandidateAlbumArtists: setCandidateAlbumArtists,
             setCandidateTrackEdit: setCandidateTrackEdit,
             candidateRuntime: candidateRuntime,
-            subscribeCandidateLiveState: subscribeCandidateLiveState,
             candidateSignals: candidateSignals,
             startImport: startImport,
             mergeCandidateArtistIdentityConflict: { _, _ in
@@ -893,22 +851,5 @@ extension Importer {
     /// does once when it opens, after it has subscribed to the changes.
     func candidateSignals(_ candidateKey: String) -> Signals? {
         operations.candidateSignals(candidateKey)
-    }
-
-    /// What is running for one candidate and the commands its row offers
-    /// with it: the value as it stands, then each change. Ending the iteration
-    /// ends the subscription.
-    func candidateLiveStates(
-        _ candidateKey: String,
-        basis: BridgeCandidateActionBasis
-    ) -> AsyncStream<BridgeCandidateLiveState> {
-        AsyncStream { continuation in
-            let subscription = operations.subscribeCandidateLiveState(
-                candidateKey,
-                basis,
-                CandidateLiveStateSink { continuation.yield($0) }
-            )
-            continuation.onTermination = { _ in subscription.cancel() }
-        }
     }
 }

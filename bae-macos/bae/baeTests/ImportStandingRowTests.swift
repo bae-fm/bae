@@ -81,19 +81,18 @@ struct ImportStandingRowTests {
         triage row: BridgeTriageRow,
         standing: BridgeImportStanding?
     ) async throws -> Drawn {
-        try await drawn(
-            TriageRowContent(
+        var row = row
+        row.live = BridgeCandidateLiveState(
+            identification: nil,
+            import: standing,
+            actions: [],
+            standing: .notLookedUp
+        )
+        return try await drawn(
+            TriageRowView(
                 row: row,
-                live: BridgeCandidateLiveState(
-                    identification: nil,
-                    import: standing,
-                    actions: [],
-                    standing: .notLookedUp
-                ),
                 coverContent: nil,
-                isGroupMember: false,
-                menuOffers: { .empty },
-                onPerform: { _ in }
+                isGroupMember: false
             )
         )
     }
@@ -102,10 +101,16 @@ struct ImportStandingRowTests {
         done row: BridgeImportedRow,
         standing: BridgeImportStanding?
     ) async throws -> Drawn {
-        try await drawn(
-            ImportedRowContent(
+        var row = row
+        row.live = BridgeCandidateLiveState(
+            identification: nil,
+            import: standing,
+            actions: [],
+            standing: nil
+        )
+        return try await drawn(
+            ImportedRowView(
                 row: row,
-                importStanding: standing,
                 uploadObservation: nil,
                 onReveal: {}
             )

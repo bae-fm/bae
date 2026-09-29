@@ -163,7 +163,11 @@ impl crate::types::BridgeCandidateImportStatus {
 // ── Sidebar triage: mirrors of `bae_core::import::triage` ─────────────────
 
 impl crate::types::BridgeTriageRow {
-    pub(crate) fn from_core(row: bae_core::import::TriageRow) -> Self {
+    /// Not a copy: the row crosses with `live`, what the list joined to it.
+    pub(crate) fn from_core(
+        row: bae_core::import::TriageRow,
+        live: bae_core::import::CandidateLiveState,
+    ) -> Self {
         let bae_core::import::TriageRow {
             candidate_key,
             folder_name,
@@ -171,7 +175,9 @@ impl crate::types::BridgeTriageRow {
             display_path,
             actionable,
             placement,
-            action_basis,
+            // What the row's commands are decided from, which `live` already
+            // decided.
+            action_basis: _,
             matched,
             metadata_summary,
             cover,
@@ -189,7 +195,7 @@ impl crate::types::BridgeTriageRow {
             display_path,
             actionable,
             placement: crate::types::BridgeTriagePlacement::from_core(placement),
-            action_basis: crate::types::BridgeCandidateActionBasis::from_core(action_basis),
+            live: crate::types::BridgeCandidateLiveState::from_core(live),
             matched: matched.map(crate::types::BridgeMatchedRelease::from_core),
             metadata_summary: metadata_summary
                 .map(crate::types::BridgeTriageMetadataSummary::from_core),
@@ -217,16 +223,29 @@ mirror_struct! {
     },
 }
 
-mirror_struct! {
-    crate::types::BridgeImportedRow = bae_core::import::ImportedRow,
-    from_core: fn,
-    fields: {
-        candidate_key,
-        display_path,
-        action_basis: (crate::types::BridgeCandidateActionBasis),
-        release: (crate::types::BridgeImportedReleaseSummary),
-        selected,
-    },
+impl crate::types::BridgeImportedRow {
+    /// Not a copy: the row crosses with `live`, what the list joined to it.
+    fn from_core(
+        row: bae_core::import::ImportedRow,
+        live: bae_core::import::CandidateLiveState,
+    ) -> Self {
+        let bae_core::import::ImportedRow {
+            candidate_key,
+            display_path,
+            // What the row's commands are decided from, which `live` already
+            // decided.
+            action_basis: _,
+            release,
+            selected,
+        } = row;
+        Self {
+            candidate_key,
+            display_path,
+            live: crate::types::BridgeCandidateLiveState::from_core(live),
+            release: crate::types::BridgeImportedReleaseSummary::from_core(release),
+            selected,
+        }
+    }
 }
 
 mirror_enum! {
@@ -261,27 +280,6 @@ mirror_enum! {
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     variants: { Pending, Failed, Done, Skipped },
-}
-
-mirror_struct! {
-    crate::types::BridgeCandidateActionBasis = bae_core::import::CandidateActionBasis,
-    from_core: pub(crate) fn,
-    into_core: pub(crate) fn,
-    fields: {
-        actionable,
-        placement: (crate::types::BridgeTriagePlacement),
-        draft_valid,
-        lookup: (opt crate::types::BridgeStoredLookup),
-        separable,
-        standing: (opt crate::types::BridgePendingStanding),
-    },
-}
-
-mirror_enum! {
-    crate::types::BridgeStoredLookup = bae_core::import::StoredLookup,
-    from_core: pub(crate) fn,
-    into_core: pub(crate) fn,
-    variants: { Answered, Failed },
 }
 
 mirror_enum! {
@@ -481,7 +479,9 @@ mirror_struct! {
 }
 
 impl crate::types::BridgeImportListItem {
-    pub(super) fn from_core(item: bae_core::import::ImportListItem) -> Self {
+    pub(super) fn from_core(
+        item: bae_core::import::ImportListItem<bae_core::import::CandidateLiveState>,
+    ) -> Self {
         let stable_key = item.stable_key();
         match item {
             bae_core::import::ImportListItem::GroupHeader {
@@ -502,15 +502,16 @@ impl crate::types::BridgeImportListItem {
             },
             bae_core::import::ImportListItem::Candidate {
                 row,
+                live,
                 is_group_member,
             } => Self::Candidate {
                 stable_key,
-                row: crate::types::BridgeTriageRow::from_core(row),
+                row: crate::types::BridgeTriageRow::from_core(row, live),
                 is_group_member,
             },
-            bae_core::import::ImportListItem::Imported { row } => Self::Imported {
+            bae_core::import::ImportListItem::Imported { row, live } => Self::Imported {
                 stable_key,
-                row: crate::types::BridgeImportedRow::from_core(row),
+                row: crate::types::BridgeImportedRow::from_core(row, live),
             },
             bae_core::import::ImportListItem::Invalid {
                 candidate,
@@ -611,7 +612,8 @@ mirror_struct! {
 }
 
 mirror_struct! {
-    crate::types::BridgeImportListWindow = bae_core::import::ImportListWindow,
+    crate::types::BridgeImportListWindow
+        = bae_core::import::ImportListWindow<bae_core::import::CandidateLiveState>,
     from_core: fn,
     fields: {
         window: (crate::types::BridgeLibraryPageWindow),

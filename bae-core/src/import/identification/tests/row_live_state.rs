@@ -1,98 +1,123 @@
-// ── What is running for a row, beside the list ──────────────────────────────
+// ── What is running for a row, joined to the page ───────────────────────────
 //
 // The list reads the tables and nothing else; what is running for each
-// candidate reaches its row through that row's own live-state subscription.
+// candidate is joined to its row on the page in memory, and a change to it for
+// a row on the page delivers the page again at the same request revision.
 
-/// Every candidate row the Pending tab holds, by key.
-async fn pending_rows(
+/// A list subscription over the Pending tab, asking for `windows`.
+fn list_subscription(
     fixture: &Fixture,
-    expected: usize,
-) -> std::collections::HashMap<String, crate::import::TriageRow> {
-    fixture
-        .import
-        .wait_for_list(crate::import::ImportListView::default(), |snapshot| {
-            snapshot.summary.counts.pending as usize == expected
-        })
-        .await
-        .windows
-        .into_iter()
-        .flat_map(|window| window.items)
-        .filter_map(|item| match item {
-            crate::import::ImportListItem::Candidate { row, .. } => {
-                Some((row.candidate_key.clone(), row))
-            }
-            _ => None,
-        })
-        .collect()
-}
-
-/// The next value a row's live-state subscription delivers.
-async fn next_live_state(
-    live: &mut tokio::sync::mpsc::UnboundedReceiver<crate::import::CandidateLiveState>,
-) -> crate::import::CandidateLiveState {
-    tokio::time::timeout(Duration::from_secs(20), live.recv())
-        .await
-        .expect("the row's live state moves")
-        .expect("the row's live-state subscription stays open")
-}
-
-/// An import claiming a candidate moves no row: the list reads nothing again,
-/// and the row's own subscription is what says the import owns it — waiting
-/// for the worker, then taken up, then writing — and what it offers at each.
-#[tokio::test(flavor = "multi_thread")]
-async fn a_claimed_import_reaches_its_row_and_not_the_list() {
-    let fixture = Fixture::new("live-state-not-the-list").await;
-    let dir = fixture.disc_id_candidate("Album Title");
-    let key = dir.to_string_lossy().into_owned();
-    fixture.scan(1).await;
-
+    windows: crate::library::LibraryPageWindows,
+) -> crate::import::ImportListSubscription {
     let request = crate::import::ImportListRequest {
         view: crate::import::ImportListView::default(),
-        windows: std::iter::once(crate::library::LibraryPageWindow {
-            offset: 0,
-            limit: 50,
-        })
-        .collect(),
+        windows,
         upload_standing: Default::default(),
         live_standings: Default::default(),
     };
-    let list = crate::import::ImportListSubscription::start(
+    crate::import::ImportListSubscription::start(
         fixture.manager.subscribe_import_list(request.clone()),
         fixture.manager.subscribe_folder_scan_progress(),
         request,
         fixture.manager.subscribe_outbox_values(),
         fixture.import.watch_runtime_facts(),
         &tokio::runtime::Handle::current(),
-    );
-    let initial = list.next().await.expect("the list answers");
-    let row = initial
+    )
+}
+
+fn page_window(offset: u64, limit: u64) -> crate::library::LibraryPageWindows {
+    std::iter::once(crate::library::LibraryPageWindow { offset, limit }).collect()
+}
+
+/// The list's next snapshot.
+async fn next_page(
+    list: &crate::import::ImportListSubscription,
+) -> crate::import::ImportListSnapshot {
+    tokio::time::timeout(Duration::from_secs(20), list.next())
+        .await
+        .expect("the list delivers")
+        .expect("the list answers")
+}
+
+/// What is running for each candidate row a snapshot's page holds, by key.
+fn page_live(
+    snapshot: &crate::import::ImportListSnapshot,
+) -> BTreeMap<String, crate::import::CandidateLiveState> {
+    snapshot
         .windows
         .iter()
         .flat_map(|window| &window.items)
-        .find_map(|item| match item {
-            crate::import::ImportListItem::Candidate { row, .. } if row.candidate_key == key => {
-                Some(row.clone())
+        .filter_map(|item| match item {
+            crate::import::ImportListItem::Candidate { row, live, .. } => {
+                Some((row.candidate_key.clone(), live.clone()))
             }
             _ => None,
         })
-        .expect("the scanned candidate has a row");
+        .collect()
+}
 
-    let mut live = fixture
-        .import
-        .subscribe_candidate_live_state(key.clone(), row.action_basis.clone());
-    let idle = next_live_state(&mut live).await;
+fn preparing(import_id: &str) -> crate::import::ImportProgress {
+    crate::import::ImportProgress::Preparing {
+        import_id: import_id.to_string(),
+        step: crate::import::PrepareStep::ValidatingSourceFiles,
+        album_title: String::new(),
+        artist_name: String::new(),
+    }
+}
+
+fn running(phase: crate::import::ImportPhase, percent: Option<u8>) -> crate::import::ImportProgress {
+    crate::import::ImportProgress::Progress {
+        id: "release-1".to_string(),
+        percent,
+        phase,
+        import_id: "import-1".to_string(),
+    }
+}
+
+fn reported(key: &str, progress: crate::import::ImportProgress) -> ImportEvent {
+    ImportEvent::ImportProgress {
+        candidate_key: key.to_string(),
+        progress,
+    }
+}
+
+/// An import claiming a candidate moves no row, so the list reads nothing
+/// again: the page it already read is delivered again, at the same request
+/// revision, with the row saying the import owns it — waiting for the worker,
+/// then taken up, then writing — and what it offers at each. A progress tick
+/// within the running import changes neither and delivers nothing.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_claimed_import_reaches_its_row_on_the_page() {
+    let fixture = Fixture::new("live-state-on-the-page").await;
+    let dir = fixture.disc_id_candidate("Album Title");
+    let key = dir.to_string_lossy().into_owned();
+    fixture.scan(1).await;
+
+    let list = list_subscription(&fixture, page_window(0, 50));
+    let initial = next_page(&list).await;
+    let idle = page_live(&initial)
+        .remove(&key)
+        .expect("the scanned candidate has a row");
     assert!(!idle.facts.importing());
     assert!(!idle.actions.is_empty(), "an idle row offers its commands");
 
     fixture.import.claim_candidate_for_import(&key, "import-1").await;
-
-    let claimed = next_live_state(&mut live).await;
+    let claimed = next_page(&list).await;
     assert_eq!(
-        claimed.facts.import,
+        claimed.request_revision, initial.request_revision,
+        "a claimed import read the list again"
+    );
+    assert_eq!(
+        claimed.cause,
+        coven::ReconfigurableLiveQueryCause::DatabaseChanged
+    );
+    let queued = &page_live(&claimed)[&key];
+    assert_eq!(
+        queued.facts.import,
         Some(crate::import::ImportStanding::Queued)
     );
     assert_eq!(
-        claimed.actions,
+        queued.actions,
         vec![
             crate::import::CandidateAction::CancelImport,
             crate::import::CandidateAction::RevealFolder
@@ -102,77 +127,125 @@ async fn a_claimed_import_reaches_its_row_and_not_the_list() {
 
     fixture
         .import
-        .emit_event_for_test(ImportEvent::ImportProgress {
-            candidate_key: key.clone(),
-            progress: crate::import::ImportProgress::Preparing {
-                import_id: "import-1".to_string(),
-                step: crate::import::PrepareStep::ValidatingSourceFiles,
-                album_title: String::new(),
-                artist_name: String::new(),
-            },
-        });
-    let taken_up = next_live_state(&mut live).await;
+        .emit_event_for_test(reported(&key, preparing("import-1")));
+    let taken_up = &page_live(&next_page(&list).await)[&key];
     assert_eq!(
         taken_up.facts.import,
         Some(crate::import::ImportStanding::Running),
         "the worker's first report takes the import off the queue"
     );
-    assert_eq!(taken_up.actions, claimed.actions);
+    assert_eq!(taken_up.actions, queued.actions);
 
-    fixture
-        .import
-        .emit_event_for_test(ImportEvent::ImportProgress {
-            candidate_key: key.clone(),
-            progress: crate::import::ImportProgress::Progress {
-                id: "release-1".to_string(),
-                percent: None,
-                phase: crate::import::ImportPhase::Finalizing,
-                import_id: "import-1".to_string(),
-            },
-        });
-    let writing = next_live_state(&mut live).await;
+    fixture.import.emit_event_for_test(reported(
+        &key,
+        running(crate::import::ImportPhase::MeasuringLoudness, Some(40)),
+    ));
+    fixture.import.emit_event_for_test(reported(
+        &key,
+        running(crate::import::ImportPhase::Finalizing, None),
+    ));
+    let writing = next_page(&list).await;
+    let writing_live = &page_live(&writing)[&key];
     assert_eq!(
-        writing.facts.import,
-        Some(crate::import::ImportStanding::Writing)
+        writing_live.facts.import,
+        Some(crate::import::ImportStanding::Writing),
+        "the progress tick before it delivered a page of its own"
     );
     assert_eq!(
-        writing.actions,
+        writing_live.actions,
         vec![crate::import::CandidateAction::RevealFolder],
         "an import writing its release offers no cancel it would refuse"
     );
-    // A window move is the next thing the list reads, and whatever the claim
-    // changed that the list follows is read with it.
-    list.set_windows(
-        std::iter::once(crate::library::LibraryPageWindow {
-            offset: 0,
-            limit: 49,
-        })
-        .collect(),
-    )
-    .unwrap();
-    let moved = tokio::time::timeout(Duration::from_secs(20), list.next())
-        .await
-        .expect("a window move reads the list")
-        .expect("the list answers");
-    assert_eq!(
-        moved.request_revision,
-        initial.request_revision + 1,
-        "a claimed import moved the list's request"
-    );
+
+    // A window move is one more request to the same query, and the rows it
+    // reads are joined with what is running as it stands.
+    list.set_windows(page_window(0, 49)).unwrap();
+    let moved = next_page(&list).await;
+    assert_eq!(moved.request_revision, initial.request_revision + 1);
     assert_eq!(
         moved.cause,
-        coven::ReconfigurableLiveQueryCause::RequestChanged,
-        "a claimed import read the list again"
+        coven::ReconfigurableLiveQueryCause::RequestChanged
     );
     assert_eq!(
-        moved.windows[0].items, initial.windows[0].items,
-        "a claimed import moved its row"
+        moved.windows[0].items, writing.windows[0].items,
+        "the window move read the rows as they were delivered"
     );
 }
 
-/// "Identify selected" asks for each row in turn. Each row's own subscription
-/// shows it waiting and then running — the list, which none of it moves, has
-/// nothing to say about either.
+/// What is running for a candidate off the page delivers nothing; once a new
+/// window puts it on the page, the same subscription joins it and delivers its
+/// changes.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_row_off_the_page_delivers_nothing_until_the_window_holds_it() {
+    let fixture = Fixture::new("live-state-off-the-page").await;
+    let first = fixture.disc_id_candidate("First");
+    let second = fixture.disc_id_candidate("Second");
+    std::fs::write(second.join("notes.txt"), "distinct candidate").unwrap();
+    fixture.scan(2).await;
+
+    let list = list_subscription(&fixture, page_window(0, 1));
+    let initial = next_page(&list).await;
+    let on_page = page_live(&initial);
+    assert_eq!(on_page.len(), 1, "the window holds one row");
+    let on_key = on_page.into_keys().next().expect("one row");
+    let off_key = [first, second]
+        .into_iter()
+        .map(|dir| dir.to_string_lossy().into_owned())
+        .find(|key| *key != on_key)
+        .expect("the other candidate is off the page");
+
+    fixture
+        .import
+        .claim_candidate_for_import(&off_key, "import-off")
+        .await;
+    fixture
+        .import
+        .claim_candidate_for_import(&on_key, "import-on")
+        .await;
+    let claimed = next_page(&list).await;
+    assert_eq!(claimed.request_revision, initial.request_revision);
+    assert_eq!(
+        page_live(&claimed)[&on_key].facts.import,
+        Some(crate::import::ImportStanding::Queued),
+        "the claim off the page delivered a page of its own"
+    );
+
+    list.set_windows(page_window(0, 2)).unwrap();
+    let widened = next_page(&list).await;
+    assert_eq!(
+        widened.request_revision,
+        initial.request_revision + 1,
+        "one more request to the same query"
+    );
+    assert_eq!(
+        widened.cause,
+        coven::ReconfigurableLiveQueryCause::RequestChanged
+    );
+    assert_eq!(
+        page_live(&widened)[&off_key].facts.import,
+        Some(crate::import::ImportStanding::Queued),
+        "the row the window now holds is joined with what is running for it"
+    );
+
+    fixture
+        .import
+        .emit_event_for_test(reported(&off_key, preparing("import-off")));
+    let taken_up = next_page(&list).await;
+    assert_eq!(taken_up.request_revision, widened.request_revision);
+    let live = page_live(&taken_up);
+    assert_eq!(
+        live[&off_key].facts.import,
+        Some(crate::import::ImportStanding::Running)
+    );
+    assert_eq!(
+        live[&on_key].facts.import,
+        Some(crate::import::ImportStanding::Queued)
+    );
+}
+
+/// "Identify selected" asks for each row in turn. The page shows each row
+/// waiting and then running — the list, which none of it moves, reads nothing
+/// again for either.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_batch_identify_shows_each_row_queued_then_running() {
     let fixture = Fixture::new("batch-identify-rows").await;
@@ -197,39 +270,52 @@ async fn a_batch_identify_shows_each_row_queued_then_running() {
         .await
         .unwrap();
     fixture.scan(2).await;
-    let rows = pending_rows(&fixture, 2).await;
 
+    let list = list_subscription(&fixture, page_window(0, 50));
+    let initial = next_page(&list).await;
     let keys = [&first, &second].map(|dir| dir.to_string_lossy().into_owned());
-    let mut subscriptions = Vec::new();
     for key in &keys {
-        let mut live = fixture
-            .import
-            .subscribe_candidate_live_state(key.clone(), rows[key].action_basis.clone());
-        let idle = next_live_state(&mut live).await;
-        assert_eq!(idle.facts.identification, None);
-        subscriptions.push(live);
+        assert_eq!(page_live(&initial)[key].facts.identification, None);
     }
 
     for key in &keys {
         fixture.identification().rerun_identify(key.clone());
     }
 
-    for (key, live) in keys.iter().zip(&mut subscriptions) {
-        let mut seen = Vec::new();
-        while !seen.contains(&crate::import::IdentificationStatus::Running) {
-            if let Some(status) = next_live_state(live).await.facts.identification {
-                seen.push(status);
+    let mut seen: BTreeMap<String, Vec<crate::import::IdentificationStatus>> = BTreeMap::new();
+    let ran = |seen: &BTreeMap<String, Vec<crate::import::IdentificationStatus>>| {
+        keys.iter().all(|key| {
+            seen.get(key).is_some_and(|statuses| {
+                statuses.contains(&crate::import::IdentificationStatus::Running)
+            })
+        })
+    };
+    while !ran(&seen) {
+        let snapshot = next_page(&list).await;
+        assert_eq!(
+            snapshot.request_revision, initial.request_revision,
+            "identifying changed the list's request"
+        );
+        for (key, live) in page_live(&snapshot) {
+            let statuses = seen.entry(key).or_default();
+            if let Some(status) = live.facts.identification {
+                if statuses.last() != Some(&status) {
+                    statuses.push(status);
+                }
             }
         }
-        let queued = seen
+    }
+    for key in &keys {
+        let statuses = &seen[key];
+        let queued = statuses
             .iter()
             .position(|status| *status == crate::import::IdentificationStatus::Queued);
-        let running = seen
+        let running = statuses
             .iter()
             .position(|status| *status == crate::import::IdentificationStatus::Running);
         assert!(
             matches!((queued, running), (Some(queued), Some(running)) if queued < running),
-            "{key} showed queued, then running: {seen:?}"
+            "{key} showed queued, then running: {statuses:?}"
         );
     }
 }

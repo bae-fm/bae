@@ -59,29 +59,21 @@ struct ImportCandidateSelectionTests {
         }
     }
 
-    /// What is running for a candidate reaches its row through the row's own
-    /// subscription, asked with the row's basis: a run the subscription says
-    /// is going draws the row's spinner, and the list's row alone draws none.
+    /// What is running for a candidate reaches its row with the row: the
+    /// list delivers the row again when it changes, and the row draws what
+    /// the row says — a run going draws the spinner, and none draws none.
     @MainActor
-    @Test("a row draws the run its own subscription reports")
-    func rowDrawsItsOwnLiveState() async throws {
-        let row = PreviewData.triageRowUnidentified
-        let asked = RecordedLiveStateSubscription()
-        let running = Importer(
-            subscribeCandidateLiveState: { key, basis, callback in
-                asked.record(key: key, basis: basis)
-                callback.onValue(
-                    value: BridgeCandidateLiveState(
-                        identification: .running,
-                        import: nil,
-                        actions: [.skip],
-                        standing: .notLookedUp
-                    )
-                )
-                return asked
-            }
+    @Test("a row draws the run its own row reports")
+    func rowDrawsItsRowsLiveState() async throws {
+        let idle = PreviewData.triageRowUnidentified
+        var running = idle
+        running.live = BridgeCandidateLiveState(
+            identification: .running,
+            import: nil,
+            actions: [.cancelIdentification, .skip, .revealFolder],
+            standing: .identifying
         )
-        func spinners(_ importer: Importer) async throws -> Int {
+        func spinners(_ row: BridgeTriageRow) async throws -> Int {
             let size = NSSize(width: 400, height: 80)
             return try await SnapshotTestSupport.withHostedWindow(
                 TriageRowView(
@@ -89,7 +81,6 @@ struct ImportCandidateSelectionTests {
                     coverContent: nil,
                     isGroupMember: false
                 )
-                .environment(importer)
                 .environment(ImageStore.stub())
                 .frame(width: size.width, height: size.height),
                 size: size
@@ -101,10 +92,8 @@ struct ImportCandidateSelectionTests {
             }
         }
 
-        #expect(try await spinners(Importer()) == 0)
+        #expect(try await spinners(idle) == 0)
         #expect(try await spinners(running) == 1)
-        #expect(asked.keys == [row.candidateKey])
-        #expect(asked.bases == [row.actionBasis])
     }
 }
 
@@ -150,21 +139,4 @@ final class PopoverAnimationTests: XCTestCase {
             popover.performClose(nil)
         }
     }
-}
-
-/// Records what a row asked its live-state subscription for.
-private final class RecordedLiveStateSubscription: LiveSubscriptionProtocol,
-    @unchecked Sendable
-{
-    private let lock = NSLock()
-    private var asked: [(String, BridgeCandidateActionBasis)] = []
-
-    var keys: [String] { lock.withLock { asked.map(\.0) } }
-    var bases: [BridgeCandidateActionBasis] { lock.withLock { asked.map(\.1) } }
-
-    func record(key: String, basis: BridgeCandidateActionBasis) {
-        lock.withLock { asked.append((key, basis)) }
-    }
-
-    func cancel() {}
 }

@@ -247,13 +247,15 @@
                 displayPath: displayPath,
                 actionable: true,
                 placement: .pending,
-                actionBasis: BridgeCandidateActionBasis(
-                    actionable: true,
-                    placement: .pending,
-                    draftValid: true,
-                    lookup: nil,
-                    separable: separable,
-                    standing: nil
+                live: BridgeCandidateLiveState(
+                    identification: nil,
+                    import: nil,
+                    actions: [
+                        .import, .identify, .resetToFileMetadata,
+                        .clearMetadata, .skip,
+                        separable ? .separate : .combine, .revealFolder,
+                    ],
+                    standing: .notLookedUp
                 ),
                 matched: nil,
                 metadataSummary: nil,

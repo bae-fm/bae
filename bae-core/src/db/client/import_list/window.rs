@@ -44,6 +44,7 @@ pub(super) fn materialise(
                 if placed.row.placement == crate::import::TriagePlacement::Done {
                     return Ok(WindowItemRows::Ready(ImportListItem::Imported {
                         row: imported_row(sql, &placed.row)?,
+                        live: (),
                     }));
                 }
                 let row = placed.row.clone();
@@ -248,6 +249,7 @@ impl WindowItemRows {
                 row.cover = cover;
                 Ok(ImportListItem::Candidate {
                     row,
+                    live: (),
                     is_group_member,
                 })
             }

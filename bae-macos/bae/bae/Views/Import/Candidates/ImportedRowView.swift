@@ -2,35 +2,15 @@ import BaeKit
 import SwiftUI
 
 /// One Done row: the library release the candidate became, as the library
-/// has it now.
+/// has it now, and what is running for its candidate.
 struct ImportedRowView: View {
     let row: BridgeImportedRow
     /// The release's cloud upload state, from the list owner.
     let uploadObservation: UploadObservation?
     let onReveal: () -> Void
 
-    var body: some View {
-        CandidateLiveStateReader(
-            key: row.candidateKey,
-            basis: row.actionBasis
-        ) { live in
-            ImportedRowContent(
-                row: row,
-                importStanding: live?.import,
-                uploadObservation: uploadObservation,
-                onReveal: onReveal
-            )
-        }
-    }
-}
-
-/// A Done row drawn from its release and what is running for its candidate.
-struct ImportedRowContent: View {
-    let row: BridgeImportedRow
     /// Where an import of the candidate stands; `nil` when none owns it.
-    let importStanding: BridgeImportStanding?
-    let uploadObservation: UploadObservation?
-    let onReveal: () -> Void
+    private var importStanding: BridgeImportStanding? { row.live.import }
 
     var body: some View {
         HStack(alignment: .center, spacing: ThemeSpace.related) {

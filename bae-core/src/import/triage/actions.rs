@@ -55,10 +55,9 @@ impl CandidateAction {
 /// one offers a retry whatever the draft over it says — and where they put the
 /// row among Found's states.
 ///
-/// The row carries it so the surface drawing the row can hand it back with
-/// the row's live-state subscription: the commands a row offers and the state
-/// it is in are these facts and what is running for it right now, and only
-/// core joins the two.
+/// The commands a row offers and the state it is in are these facts and what
+/// is running for it right now: the list joins the two into the row's
+/// [`CandidateLiveState`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CandidateActionBasis {
     pub actionable: bool,
@@ -214,8 +213,8 @@ impl CandidateActionBasis {
 /// offers and the state it is in with it: the part of a row that changes
 /// without a write.
 ///
-/// Read per candidate, beside the list rather than through it — a run moving
-/// from queued to running moves no row, so it reruns no list read.
+/// Joined to a row in memory rather than read with it — a run moving from
+/// queued to running moves no row, so it reruns no list read.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct CandidateLiveState {
     pub facts: TriageRuntimeFacts,

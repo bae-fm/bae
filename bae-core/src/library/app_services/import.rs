@@ -3,9 +3,8 @@
 
 use super::*;
 use crate::import::{
-    CandidateActionBasis, CandidateLiveState, ImportCandidateDetail,
-    ImportCandidateDetailProjection, ImportListProjection, ImportListRequest,
-    ImportListSubscription, ImportListView, TriageRuntimeFacts,
+    ImportCandidateDetail, ImportCandidateDetailProjection, ImportListProjection,
+    ImportListRequest, ImportListSubscription, ImportListView, TriageRuntimeFacts,
 };
 
 impl AppServices {
@@ -229,7 +228,8 @@ impl AppServices {
     /// The list reads the tables, the upload standing the Done tab is ordered
     /// by, and what is running for the candidates a live filter keeps, which
     /// the subscription keeps current on its own. What is running for each
-    /// row is its [`Self::subscribe_candidate_live_state`].
+    /// row on the page is joined to it, and a change to it delivers the page
+    /// again.
     pub fn subscribe_import_list(
         &self,
         view: ImportListView,
@@ -343,16 +343,6 @@ impl AppServices {
             .load_import_candidate(key)
             .await?
             .map(|projection| projection.resolve(&facts)))
-    }
-
-    /// What is running for one candidate, and the commands its row offers
-    /// with it, now and on every change to either.
-    pub fn subscribe_candidate_live_state(
-        &self,
-        key: String,
-        basis: CandidateActionBasis,
-    ) -> tokio::sync::mpsc::UnboundedReceiver<CandidateLiveState> {
-        self.inner.import.subscribe_candidate_live_state(key, basis)
     }
 
     /// One candidate as the pane reads it, and every later read of it. `None`

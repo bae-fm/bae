@@ -2,8 +2,9 @@ import BaeKit
 import SwiftUI
 
 /// One triage row: cover, title, metadata, and status, with what is running
-/// for the candidate read from the row's own live-state subscription. Its
-/// height must not change on selection, which would shift every row below.
+/// for the candidate read from the row itself — the list delivers the row
+/// again when that changes. Its height must not change on selection, which
+/// would shift every row below.
 struct TriageRowView: View {
     /// The cover's edge in points; the sidebar preloads Pending's covers at
     /// this size, so it must match for the cached image to be used.
@@ -12,18 +13,19 @@ struct TriageRowView: View {
     let row: BridgeTriageRow
     let coverContent: ImageContent?
     let isGroupMember: Bool
-    /// What the row's menu offers, given what is running for it: the row's
-    /// own actions, or the selection's when the row is part of a larger one.
-    let menuOffers: (_ live: BridgeCandidateLiveState?) -> CandidateActionMenu
+    /// What the row's menu offers, in the same order as the selection's pane:
+    /// the row's own actions, or the selection's when the row is part of a
+    /// larger one. Asked when the menu opens, not when the row is drawn: the
+    /// answer reads the selection, and a list draws its rows far more often
+    /// than anyone opens a menu.
+    let menuOffers: () -> CandidateActionMenu
     let onPerform: (ImportCandidateActionOffer) -> Void
 
     init(
         row: BridgeTriageRow,
         coverContent: ImageContent?,
         isGroupMember: Bool,
-        menuOffers:
-            @escaping (_ live: BridgeCandidateLiveState?) ->
-            CandidateActionMenu = { _ in .empty },
+        menuOffers: @escaping () -> CandidateActionMenu = { .empty },
         onPerform: @escaping (ImportCandidateActionOffer) -> Void = { _ in }
     ) {
         self.row = row
@@ -33,36 +35,8 @@ struct TriageRowView: View {
         self.onPerform = onPerform
     }
 
-    var body: some View {
-        CandidateLiveStateReader(
-            key: row.candidateKey,
-            basis: row.actionBasis
-        ) { live in
-            TriageRowContent(
-                row: row,
-                live: live,
-                coverContent: coverContent,
-                isGroupMember: isGroupMember,
-                menuOffers: { menuOffers(live) },
-                onPerform: onPerform
-            )
-        }
-    }
-}
-
-/// A triage row drawn from its row and its live state.
-struct TriageRowContent: View {
-    let row: BridgeTriageRow
-    /// `nil` until the row's subscription has answered.
-    let live: BridgeCandidateLiveState?
-    let coverContent: ImageContent?
-    let isGroupMember: Bool
-    /// What the row's menu offers, in the same order as the selection's pane.
-    /// Asked when the menu opens, not when the row is drawn: the answer reads
-    /// the selection and asks core, and a list draws its rows far more often
-    /// than anyone opens a menu.
-    let menuOffers: () -> CandidateActionMenu
-    let onPerform: (ImportCandidateActionOffer) -> Void
+    /// What is running for the candidate, and the state the row is in with it.
+    private var live: BridgeCandidateLiveState { row.live }
 
     var body: some View {
         rowContent
@@ -146,7 +120,7 @@ struct TriageRowContent: View {
 
     @ViewBuilder
     private var stateLine: some View {
-        switch live?.import {
+        switch live.import {
         case .running, .writing:
             // A running import updates by the second, so only this leaf
             // observes its progress.
@@ -168,11 +142,11 @@ struct TriageRowContent: View {
 }
 
 /// The row's status line and trailing column.
-extension TriageRowContent {
+extension TriageRowView {
     /// The line under the release summary: how bae broke for a row in
     /// error, or a failed import.
     private var statusLine: String? {
-        if case .error(let failure) = live?.standing {
+        if case .error(let failure) = live.standing {
             return failure.detail
         }
         switch row.placement {
@@ -198,10 +172,10 @@ extension TriageRowContent {
     /// first.
     private var trailing: some View {
         Group {
-            if let identification = live?.identification {
+            if let identification = live.identification {
                 identificationTrailing(identification)
             }
-            else if let standing = live?.import {
+            else if let standing = live.import {
                 importStandingTrailing(standing)
             }
             else {
@@ -215,7 +189,7 @@ extension TriageRowContent {
     private var placementTrailing: some View {
         switch row.placement {
         case .pending:
-            if let badge = live?.standing?.badge {
+            if let badge = live.standing?.badge {
                 StatusChip(verbatim: badge, tone: .warning)
             }
         case .failed, .done:

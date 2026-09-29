@@ -184,7 +184,7 @@ pub enum BridgeTriageTab {
 }
 
 /// Which tab a row belongs to, and whether its last import failed, read from
-/// the tables alone; what is running for it is its `BridgeCandidateLiveState`.
+/// the tables alone; what is running for it is the row's `live`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeTriagePlacement {
     Pending,
@@ -213,31 +213,6 @@ pub enum BridgeCandidateAction {
     Restore,
     /// Show the candidate's folders in the platform's file browser.
     RevealFolder,
-}
-
-/// What the tables say a row's commands are decided from.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct BridgeCandidateActionBasis {
-    pub actionable: bool,
-    pub placement: BridgeTriagePlacement,
-    /// Whether the draft shapes into a release an import can commit.
-    pub draft_valid: bool,
-    /// What the lookup stored for the candidate's current files came to, or
-    /// none when none is stored.
-    pub lookup: Option<BridgeStoredLookup>,
-    pub separable: bool,
-    /// Where the tables put the row among Found's states; `None` off Found.
-    pub standing: Option<BridgePendingStanding>,
-}
-
-/// What a candidate's stored lookup came to.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeStoredLookup {
-    /// It found a release, found none, or left the choice to the person.
-    Answered,
-    /// A source it asked could not answer, or a release it found could not
-    /// be read in full.
-    Failed,
 }
 
 /// Where one Found row stands: its state, and why a row that needs the
@@ -658,9 +633,10 @@ pub struct BridgeTriageRow {
     pub display_path: String,
     pub actionable: bool,
     pub placement: BridgeTriagePlacement,
-    /// What the row's commands are decided from, handed back with its
-    /// live-state subscription.
-    pub action_basis: BridgeCandidateActionBasis,
+    /// What is running for the candidate right now, and the commands the row
+    /// offers and the state it is in with it. The list delivers the row again
+    /// when it changes.
+    pub live: BridgeCandidateLiveState,
     pub matched: Option<BridgeMatchedRelease>,
     pub metadata_summary: Option<BridgeTriageMetadataSummary>,
     /// The cover the row draws, even when its draft is otherwise blank.
@@ -679,9 +655,9 @@ pub struct BridgeImportedRow {
     /// The candidate's folder path — the key every other import call takes.
     pub candidate_key: String,
     pub display_path: String,
-    /// Handed back with the row's live-state subscription; an import that just
-    /// wrote the release can still own the candidate for a moment.
-    pub action_basis: BridgeCandidateActionBasis,
+    /// What is running for the candidate right now: an import that just
+    /// wrote the release can still own it for a moment.
+    pub live: BridgeCandidateLiveState,
     pub release: BridgeImportedReleaseSummary,
     /// Whether the person has selected the row.
     pub selected: bool,

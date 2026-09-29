@@ -305,7 +305,7 @@ struct Candidate: Equatable, Identifiable {
     /// session, which has no scanned folder and so no place in the queue.
     var placement: BridgeCandidatePanePlacement?
     /// What is running for this candidate right now and the commands it
-    /// offers with it, read with its row. `nil` for a re-identify session.
+    /// offers with it, read with its detail. `nil` for a re-identify session.
     var live: BridgeCandidateLiveState?
     var libraryStatuses: [String: BridgeLibraryStatus] = [:]
     var libraryStatusObservation: LibraryStatusObservation?

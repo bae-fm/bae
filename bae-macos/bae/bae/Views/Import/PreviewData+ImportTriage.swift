@@ -46,7 +46,7 @@
             importStatus: BridgeTriageImportStatus? = nil,
             metadataProvenance: BridgeMetadataProvenance? = nil,
             reading: BridgeTriageReading = .unidentified,
-            standing: BridgePendingStanding? = nil
+            live: BridgeCandidateLiveState = triageLive([])
         ) -> BridgeTriageRow {
             BridgeTriageRow(
                 candidateKey: candidate.key,
@@ -55,14 +55,7 @@
                 displayPath: candidate.displayName,
                 actionable: true,
                 placement: placement,
-                actionBasis: BridgeCandidateActionBasis(
-                    actionable: true,
-                    placement: placement,
-                    draftValid: metadataSummary != nil,
-                    lookup: nil,
-                    separable: false,
-                    standing: standing
-                ),
+                live: live,
                 matched: matched,
                 metadataSummary: metadataSummary,
                 cover: cover,
@@ -381,7 +374,8 @@
                     catalog: releaseDetailBridge.source,
                     key: releaseDetailBridge.releaseId
                 )
-            )
+            ),
+            live: triageLive([.import] + identifiedDraftCommands)
         )
 
         static let triageRowPickAPressing = triageRow(
@@ -400,7 +394,8 @@
                 )
             ),
             metadataSummary: nil,
-            importStatus: nil
+            importStatus: nil,
+            live: triageLive(identifiedDraftCommands)
         )
 
         /// Two signals that named different releases.
@@ -408,7 +403,8 @@
             for: importTabDisagreementCandidate,
             placement: .pending,
             matched: nil,
-            metadataSummary: nil
+            metadataSummary: nil,
+            live: triageLive(identifiedDraftCommands)
         )
 
         static let triageRowNoTracklist = triageRow(
@@ -420,7 +416,8 @@
                 year: 1994,
                 trackCount: nil
             ),
-            metadataSummary: nil
+            metadataSummary: nil,
+            live: triageLive(identifiedDraftCommands)
         )
 
         /// A release already in the library, importable like any other.
@@ -440,21 +437,24 @@
                     catalog: releaseDetailBridge.source,
                     key: releaseDetailBridge.releaseId
                 )
-            )
+            ),
+            live: triageLive([.import] + identifiedDraftCommands)
         )
 
         static let triageRowNoMatch = triageRow(
             for: importTabNoMatchCandidate,
             placement: .pending,
             matched: nil,
-            metadataSummary: nil
+            metadataSummary: nil,
+            live: triageLive(identifiedDraftCommands)
         )
 
         static let triageRowIdentifying = triageRow(
             for: importTabIdentifyingCandidate,
             placement: .pending,
             matched: nil,
-            metadataSummary: nil
+            metadataSummary: nil,
+            live: triageLive([.skip], identification: .running)
         )
 
         private static let importTabImportingCandidate = folderCandidates[2]
@@ -476,14 +476,16 @@
                 title: importTabImportingCandidate.displayName,
                 trackCount: 15
             ),
-            metadataSummary: nil
+            metadataSummary: nil,
+            live: triageLive([], importStanding: .running)
         )
 
         static let triageRowSkipped = triageRow(
             for: folderCandidates[1],
             placement: .skipped,
             matched: nil,
-            metadataSummary: nil
+            metadataSummary: nil,
+            live: triageLive([.restore])
         )
 
         static let triageRowDoneImported = triageRow(
@@ -527,14 +529,7 @@
             BridgeImportedRow(
                 candidateKey: candidate.key,
                 displayPath: candidate.displayName,
-                actionBasis: BridgeCandidateActionBasis(
-                    actionable: true,
-                    placement: .done,
-                    draftValid: false,
-                    lookup: nil,
-                    separable: false,
-                    standing: nil
-                ),
+                live: triageLive([.revealFolder]),
                 release: BridgeImportedReleaseSummary(
                     releaseId: "preview-release",
                     albumId: "preview-album",
@@ -564,7 +559,8 @@
                     category: .import,
                     detail: "track 7 is truncated"
                 )
-            )
+            ),
+            live: triageLive([.resetToFileMetadata, .clearMetadata])
         )
 
         @MainActor
@@ -586,13 +582,15 @@
                         catalog: releaseDetailBridge.source,
                         key: releaseDetailBridge.releaseId
                     )
-                )
+                ),
+                live: triageLive([.import] + identifiedDraftCommands)
             ),
             triageRow(
                 for: importTabGroupedCandidates[1],
                 placement: .pending,
                 matched: nil,
-                metadataSummary: nil
+                metadataSummary: nil,
+                live: triageLive(unidentifiedDraftCommands)
             ),
         ]
 
@@ -699,56 +697,6 @@
         private static let unidentifiedDraftCommands: [BridgeCandidateAction] =
             [.identify] + identifiedDraftCommands
 
-        /// Each of the tab's rows' live state, by candidate key.
-        @MainActor
-        private static func importTabLiveStates()
-            -> [String: BridgeCandidateLiveState]
-        {
-            let entries: [(BridgeTriageRow, BridgeCandidateLiveState)] = [
-                (
-                    triageRowIdentified,
-                    triageLive([.import] + identifiedDraftCommands)
-                ),
-                (triageRowPickAPressing, triageLive(identifiedDraftCommands)),
-                (
-                    triageRowSeveralMatchesFromSignals,
-                    triageLive(identifiedDraftCommands)
-                ),
-                (triageRowNoTracklist, triageLive(identifiedDraftCommands)),
-                (
-                    triageRowAlreadyInLibrary,
-                    triageLive([.import] + identifiedDraftCommands)
-                ),
-                (triageRowNoMatch, triageLive(identifiedDraftCommands)),
-                (
-                    triageRowIdentifying,
-                    triageLive([.skip], identification: .running)
-                ),
-                (
-                    triageRowImporting,
-                    triageLive([], importStanding: .running)
-                ),
-                (
-                    triageRowFailed,
-                    triageLive([.resetToFileMetadata, .clearMetadata])
-                ),
-                (
-                    triageGroupedRows[0],
-                    triageLive([.import] + identifiedDraftCommands)
-                ),
-                (
-                    triageGroupedRows[1],
-                    triageLive(unidentifiedDraftCommands)
-                ),
-                (triageRowDoneImported, triageLive([])),
-                (triageRowSkipped, triageLive([.restore])),
-            ]
-            return Dictionary(
-                entries.map { ($0.0.candidateKey, $0.1) },
-                uniquingKeysWith: { first, _ in first }
-            )
-        }
-
         /// Every row the tab holds, on any tab, by candidate key.
         @MainActor
         private static func importTabRowsByKey() -> [String: BridgeTriageRow] {
@@ -794,11 +742,10 @@
             let store = ImportStore()
             store.applySummary(importTabSummary)
             let rows = importTabRowsByKey()
-            let live = importTabLiveStates()
             for var candidate in importTabCandidates {
                 candidate.placement = rows[candidate.key]
                     .map(panePlacement(of:))
-                candidate.live = live[candidate.key]
+                candidate.live = rows[candidate.key]?.live
                 store.selectedCandidates[candidate.key] = candidate
             }
             store.identificationProgress = (identified: 112, total: 130)
@@ -816,7 +763,6 @@
         static func importTabImporter() -> Importer {
             let importingKey = importTabImportingCandidate.key
             let inFlight = importTabImportInFlight
-            let live = importTabLiveStates()
             return Importer(
                 candidateRuntime: { key in
                     guard key == importingKey else { return nil }
@@ -825,22 +771,9 @@
                         import: inFlight,
                         search: nil
                     )
-                },
-                subscribeCandidateLiveState: { key, _, callback in
-                    if let state = live[key] {
-                        callback.onValue(value: state)
-                    }
-                    return PreviewLiveStateSubscription()
                 }
             )
         }
 
-    }
-
-    /// A preview row's live state, delivered once as it opens.
-    private final class PreviewLiveStateSubscription: LiveSubscriptionProtocol,
-        @unchecked Sendable
-    {
-        func cancel() {}
     }
 #endif

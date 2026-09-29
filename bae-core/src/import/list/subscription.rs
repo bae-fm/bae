@@ -1,5 +1,6 @@
 //! The list's live query, with what the process holds in memory folded into
-//! its request, delivered beside where the folder scans stand.
+//! its request and joined to its rows, delivered beside where the folder scans
+//! stand.
 //!
 //! Upload standing orders the Done tab — what is moving now, then what is
 //! waiting, then what is settled — and the upload pipeline holds it. What is
@@ -7,6 +8,14 @@
 //! the state it puts each candidate in only while a state narrows the view,
 //! so a run starting or ending reruns the list only then. The bridge and the
 //! UIs never see either.
+//!
+//! What is running for a candidate is also joined to its row on the page, in
+//! memory, as the row's
+//! [`CandidateLiveState`](crate::import::CandidateLiveState): a change to it
+//! for a key on the page delivers the page again with no read, and one for a
+//! key off the page delivers nothing. A progress tick within a running import
+//! changes no row's facts, so it delivers nothing either. Scrolling moves the
+//! windows, which is one more request to the same query.
 //!
 //! The folder scans are a second live query the subscription reads beside the
 //! list: a scan moves its found count with every folder it walks, and that
@@ -20,7 +29,7 @@ use crate::import::candidate_runtime::RuntimeFactsWatch;
 use crate::import::triage::TriageRuntimeFacts;
 use crate::library::{LibraryPageWindows, OutboxSnapshot};
 use crate::live_query::CancellableLiveQuery;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::sync::{Arc, Mutex};
 use tokio::sync::watch;
 
@@ -36,12 +45,16 @@ pub enum ImportListSubscriptionError {
 struct StandingRequest {
     standing: Mutex<Standing>,
     query: CancellableLiveQuery<ImportListRequest, ImportListProjection>,
+    /// Told each time the runtime facts change, after they are stored.
+    facts_changed: watch::Sender<()>,
 }
 
-/// The request, and every candidate's runtime facts its live standings are
-/// read from.
+/// The request, the revision the query was last handed it at, and every
+/// candidate's runtime facts: what its live standings are read from, and what
+/// is joined to the rows it reads.
 struct Standing {
     request: ImportListRequest,
+    revision: u64,
     runtime_facts: HashMap<String, TriageRuntimeFacts>,
 }
 
@@ -63,15 +76,38 @@ impl StandingRequest {
         change(&mut standing);
         let Standing {
             request,
+            revision,
             runtime_facts,
         } = &mut *standing;
         request.live_standings = request
             .view
             .pending_filters
             .live_standings(runtime_facts.iter());
-        self.query
+        *revision = self
+            .query
             .set(request.clone())
-            .map_err(|_| ImportListSubscriptionError::Cancelled)
+            .map_err(|_| ImportListSubscriptionError::Cancelled)?;
+        Ok(*revision)
+    }
+
+    /// Store every candidate's runtime facts and read the request afresh,
+    /// then tell the delivery the facts changed.
+    fn set_runtime_facts(
+        &self,
+        facts: HashMap<String, TriageRuntimeFacts>,
+    ) -> Result<u64, ImportListSubscriptionError> {
+        let revision = self.update(|standing| standing.runtime_facts = facts)?;
+        self.facts_changed.send_replace(());
+        Ok(revision)
+    }
+
+    fn read<R>(&self, read: impl FnOnce(&Standing) -> R) -> R {
+        read(
+            &self
+                .standing
+                .lock()
+                .expect("import list request mutex poisoned"),
+        )
     }
 }
 
@@ -85,13 +121,17 @@ pub struct ImportListSubscription {
     merge: tokio::task::AbortHandle,
 }
 
-#[derive(Default)]
 struct Delivered {
     list: Option<AnsweredList>,
     folder_scans: Option<FolderScanProgress>,
     /// Whether a snapshot has gone out: until one has, the list's own cause
     /// names it, whichever query answered last.
     sent: bool,
+    /// The runtime facts of the candidates on the last snapshot's page that
+    /// have any, by key: what its rows were joined with.
+    page_facts: BTreeMap<String, TriageRuntimeFacts>,
+    /// Told when the runtime facts change.
+    facts_changed: watch::Receiver<()>,
 }
 
 /// The list's last value, the request revision it answered and why it was
@@ -102,21 +142,49 @@ struct AnsweredList {
     cause: coven::ReconfigurableLiveQueryCause,
 }
 
+impl AnsweredList {
+    /// The runtime facts of the candidates on this read's page that have any.
+    fn page_facts(
+        &self,
+        facts: &HashMap<String, TriageRuntimeFacts>,
+    ) -> BTreeMap<String, TriageRuntimeFacts> {
+        self.projection
+            .windows
+            .iter()
+            .flat_map(|window| &window.items)
+            .filter_map(|item| item.candidate_key())
+            .filter_map(|key| facts.get(key).map(|facts| (key.to_string(), facts.clone())))
+            .collect()
+    }
+}
+
 impl Delivered {
-    /// The snapshot due once both queries have answered. A change to the
-    /// scans alone, after the first, is a database change beside the list's
-    /// last read.
-    fn snapshot(&mut self, scans_only: bool) -> Option<ImportListSnapshot> {
+    /// The snapshot due once both queries have answered, its rows joined with
+    /// `facts`. A value beside the list's last read — the scans alone, or
+    /// what is running for its rows — is, after the first, the same request's
+    /// value changing.
+    fn snapshot(
+        &mut self,
+        beside_list: bool,
+        facts: &HashMap<String, TriageRuntimeFacts>,
+    ) -> Option<ImportListSnapshot> {
         let (Some(list), Some(folder_scans)) = (&self.list, &self.folder_scans) else {
             return None;
         };
-        let cause = if scans_only && self.sent {
+        let cause = if beside_list && self.sent {
             coven::ReconfigurableLiveQueryCause::DatabaseChanged
         } else {
             list.cause
         };
+        self.page_facts = list.page_facts(facts);
         let snapshot = ImportListSnapshot {
-            windows: list.projection.windows.clone(),
+            windows: list
+                .projection
+                .windows
+                .iter()
+                .cloned()
+                .map(|window| window.with_live(facts))
+                .collect(),
             total_count: list.projection.total_count,
             summary: list.projection.summary.clone(),
             folder_scans: folder_scans.clone(),
@@ -129,10 +197,12 @@ impl Delivered {
     }
 }
 
-/// What one wait produced: a list event or a folder-scan value.
+/// What one wait produced: a list event, a folder-scan value, or a change to
+/// what is running for the candidates.
 enum Arrival {
     List(coven::ReconfigurableLiveQueryEvent<ImportListRequest, ImportListProjection>),
     FolderScans(coven::CovenResult<FolderScanProgress>),
+    RuntimeFacts,
 }
 
 impl ImportListSubscription {
@@ -148,12 +218,16 @@ impl ImportListSubscription {
         runtime_facts: RuntimeFactsWatch,
         runtime_handle: &tokio::runtime::Handle,
     ) -> Self {
+        let (facts_changed, facts_changed_rx) = watch::channel(());
         let request = Arc::new(StandingRequest {
             standing: Mutex::new(Standing {
                 request: initial,
+                // A query starts at revision zero.
+                revision: 0,
                 runtime_facts: runtime_facts.facts().clone(),
             }),
             query: CancellableLiveQuery::new(query),
+            facts_changed,
         });
         let merge = runtime_handle
             .spawn(merge(request.clone(), outbox, runtime_facts))
@@ -161,7 +235,13 @@ impl ImportListSubscription {
         Self {
             request,
             folder_scans: tokio::sync::Mutex::new(Some(folder_scans)),
-            delivered: tokio::sync::Mutex::new(Delivered::default()),
+            delivered: tokio::sync::Mutex::new(Delivered {
+                list: None,
+                folder_scans: None,
+                sent: false,
+                page_facts: BTreeMap::new(),
+                facts_changed: facts_changed_rx,
+            }),
             merge,
         }
     }
@@ -182,8 +262,13 @@ impl ImportListSubscription {
     }
 
     /// The next snapshot: the list's next value beside the scans as they
-    /// stand, or the scans' next value beside the list's last one. The first
-    /// waits for both.
+    /// stand, the scans' next value beside the list's last one, or the list's
+    /// last one again once what is running for a row on its page changed. The
+    /// first waits for both queries.
+    ///
+    /// A runtime change while the query owes a read of a newer request
+    /// delivers nothing: that read is joined with the facts as they stand when
+    /// it answers.
     pub async fn next(&self) -> Result<ImportListSnapshot, ImportListSubscriptionError> {
         let mut delivered = self.delivered.lock().await;
         loop {
@@ -192,8 +277,12 @@ impl ImportListSubscription {
                     Arrival::List(event.map_err(|_| ImportListSubscriptionError::Cancelled)?)
                 }
                 value = self.next_folder_scans() => Arrival::FolderScans(value?),
+                changed = delivered.facts_changed.changed() => {
+                    changed.map_err(|_| ImportListSubscriptionError::Cancelled)?;
+                    Arrival::RuntimeFacts
+                }
             };
-            let scans_only = match arrival {
+            let beside_list = match arrival {
                 Arrival::List(event) => {
                     let request_revision = event.revision().get();
                     let cause = event.cause();
@@ -229,8 +318,24 @@ impl ImportListSubscription {
                     delivered.folder_scans = Some(folder_scans);
                     true
                 }
+                Arrival::RuntimeFacts => {
+                    let Some(list) = &delivered.list else { continue };
+                    let (owed, page_facts) = self.request.read(|standing| {
+                        (
+                            standing.revision != list.request_revision,
+                            list.page_facts(&standing.runtime_facts),
+                        )
+                    });
+                    if !delivered.sent || owed || page_facts == delivered.page_facts {
+                        continue;
+                    }
+                    true
+                }
             };
-            if let Some(snapshot) = delivered.snapshot(scans_only) {
+            let snapshot = self
+                .request
+                .read(|standing| delivered.snapshot(beside_list, &standing.runtime_facts));
+            if let Some(snapshot) = snapshot {
                 return Ok(snapshot);
             }
         }
@@ -295,8 +400,7 @@ async fn merge(
                 Some(Err(_)) | None => Ok(0),
             }
         } else {
-            let facts = runtime_facts.facts().clone();
-            request.update(|standing| standing.runtime_facts = facts)
+            request.set_runtime_facts(runtime_facts.facts().clone())
         };
         if result.is_err() {
             return;

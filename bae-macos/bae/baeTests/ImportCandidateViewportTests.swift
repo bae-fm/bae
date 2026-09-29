@@ -504,12 +504,10 @@ extension ImportCandidateViewportTests {
                 displayPath: "Release \(index)",
                 actionable: true,
                 placement: .skipped,
-                actionBasis: BridgeCandidateActionBasis(
-                    actionable: true,
-                    placement: .skipped,
-                    draftValid: false,
-                    lookup: nil,
-                    separable: false,
+                live: BridgeCandidateLiveState(
+                    identification: nil,
+                    import: nil,
+                    actions: [],
                     standing: .notLookedUp
                 ),
                 matched: nil,

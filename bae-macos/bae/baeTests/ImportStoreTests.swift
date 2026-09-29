@@ -151,12 +151,10 @@ private func identifiedRow(
         displayPath: title,
         actionable: true,
         placement: .pending,
-        actionBasis: BridgeCandidateActionBasis(
-            actionable: true,
-            placement: .pending,
-            draftValid: true,
-            lookup: nil,
-            separable: false,
+        live: BridgeCandidateLiveState(
+            identification: nil,
+            import: nil,
+            actions: [],
             standing: .notLookedUp
         ),
         matched: matchedRelease(
@@ -190,12 +188,10 @@ private func skippedRow(_ key: String, title: String) -> BridgeTriageRow {
         displayPath: title,
         actionable: true,
         placement: .skipped,
-        actionBasis: BridgeCandidateActionBasis(
-            actionable: true,
-            placement: .skipped,
-            draftValid: false,
-            lookup: nil,
-            separable: false,
+        live: BridgeCandidateLiveState(
+            identification: nil,
+            import: nil,
+            actions: [],
             standing: .notLookedUp
         ),
         matched: nil,

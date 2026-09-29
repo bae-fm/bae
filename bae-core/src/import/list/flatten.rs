@@ -391,7 +391,7 @@ pub(crate) fn locate_candidate(
         ItemRef::Header(_) | ItemRef::Invalid { .. } => false,
     });
     Ok(position.map(|position| ImportCandidateListLocation {
-        stable_key: ImportListItem::candidate_stable_key(candidate_key),
+        stable_key: super::candidate_stable_key(candidate_key),
         tab,
         group_key: group.map(|group| group.key),
         visible_position: position as u64,

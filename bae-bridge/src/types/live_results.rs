@@ -60,10 +60,6 @@ callbacks! {
     /// `Removed` once nothing is running for it.
     #[cfg(feature = "desktop")]
     CandidateRuntimeCallback: on_change(change: BridgeCandidateRuntimeChange);
-    /// What is running for one candidate and the commands its row offers with
-    /// it: the value on opening, then one call each time either changes.
-    #[cfg(feature = "desktop")]
-    CandidateLiveStateCallback: on_value(value: BridgeCandidateLiveState);
     /// What the import list's selection holds and can be told to do: the
     /// value on opening, then one call each time it changes.
     #[cfg(feature = "desktop")]

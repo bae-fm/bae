@@ -1,8 +1,8 @@
-//! One candidate's runtime facts, followed as they change — what a row's live
-//! state and a pane's detail read, each for its own key.
+//! One candidate's runtime facts, followed as they change — what the pane's
+//! detail reads for the key it shows.
 
 use super::ImportServiceHandle;
-use crate::import::triage::{CandidateActionBasis, CandidateLiveState, TriageRuntimeFacts};
+use crate::import::triage::TriageRuntimeFacts;
 use crate::import::candidate_runtime::{Revisions, RuntimeFactsWatch};
 use tokio::sync::watch;
 
@@ -78,42 +78,5 @@ impl ImportServiceHandle {
         };
         watch.set_key(key);
         watch
-    }
-
-    /// What is running for one candidate, and the commands its row offers
-    /// with it, now and on every change to either. A progress tick within a
-    /// running import changes neither and delivers nothing.
-    ///
-    /// `basis` is what the row the caller draws says about the candidate in
-    /// the tables; a row the list re-delivers with a different one subscribes
-    /// again. Ends when the receiver is dropped.
-    pub fn subscribe_candidate_live_state(
-        &self,
-        key: String,
-        basis: CandidateActionBasis,
-    ) -> tokio::sync::mpsc::UnboundedReceiver<CandidateLiveState> {
-        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-        let mut watch = self.watch_candidate_facts(key);
-        self.runtime_handle.spawn(async move {
-            if tx
-                .send(CandidateLiveState::of(&basis, watch.facts().clone()))
-                .is_err()
-            {
-                return;
-            }
-            loop {
-                let facts = tokio::select! {
-                    () = tx.closed() => return,
-                    facts = watch.changed() => match facts {
-                        Some(facts) => facts,
-                        None => return,
-                    },
-                };
-                if tx.send(CandidateLiveState::of(&basis, facts)).is_err() {
-                    return;
-                }
-            }
-        });
-        rx
     }
 }

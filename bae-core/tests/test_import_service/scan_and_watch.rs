@@ -835,7 +835,7 @@ async fn next_imported_row(
                 .iter()
                 .flat_map(|window| &window.items)
                 .find_map(|item| match item {
-                    bae_core::import::ImportListItem::Imported { row } if row.candidate_key == key => {
+                    bae_core::import::ImportListItem::Imported { row, .. } if row.candidate_key == key => {
                         Some(row.clone())
                     }
                     _ => None,
