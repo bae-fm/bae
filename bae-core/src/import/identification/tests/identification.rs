@@ -334,6 +334,7 @@ fn found_verdict(track_count: u32, source: Option<SourceTracks>) -> TerminalVerd
                 document_failure: None,
                 album_first_year: None,
                 track_titles: Vec::new(),
+                notes: Vec::new(),
             }],
             provenance: vec![crate::identify::LookupProvenance {
                 by_disc_id: true,

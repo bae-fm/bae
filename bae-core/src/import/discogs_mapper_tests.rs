@@ -23,6 +23,7 @@ fn stored(release: &DiscogsRelease) -> SourceRelease {
             media: pressing(release).1,
             release_roles: release_roles(release),
         },
+        notes: release.companies.iter().chain(&release.matrix).cloned().collect(),
         unfetched: Vec::new(),
     }
 }
@@ -122,6 +123,8 @@ fn make_release(tracklist: Vec<DiscogsTrack>) -> DiscogsRelease {
         tracklist,
         extraartists: Some(vec![]),
         master_id: None,
+        companies: vec![],
+        matrix: vec![],
     }
 }
 

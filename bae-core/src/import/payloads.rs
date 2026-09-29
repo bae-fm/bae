@@ -216,7 +216,7 @@ impl ReleasePayloads {
             group_id: release.release_group.map(|group| group.id),
             release_id: release.id,
         });
-        let (source_group_id, mediums, catalog) = match self.release.catalog {
+        let (source_group_id, mediums, catalog, notes) = match self.release.catalog {
             Catalog::MusicBrainz => {
                 let anchor = self.musicbrainz_anchor()?;
                 (
@@ -225,6 +225,7 @@ impl ReleasePayloads {
                     CatalogFacts::MusicBrainz {
                         links: crate::import::search::release_links_of(&anchor.relations),
                     },
+                    anchor.disambiguation.into_iter().collect(),
                 )
             }
             Catalog::Discogs => {
@@ -236,6 +237,7 @@ impl ReleasePayloads {
                         media: crate::import::discogs_mapper::pressing(&anchor).1,
                         release_roles: crate::import::discogs_mapper::release_roles(&anchor),
                     },
+                    anchor.companies.into_iter().chain(anchor.matrix).collect(),
                 )
             }
             other => not_fetched(other),
@@ -250,6 +252,7 @@ impl ReleasePayloads {
             archive_groups,
             mediums,
             catalog,
+            notes,
             unfetched: self.unfetched.clone(),
         })
     }

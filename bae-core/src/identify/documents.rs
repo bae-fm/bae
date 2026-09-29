@@ -60,6 +60,8 @@ pub struct ReleaseDocument {
     pub source_tracks: SourceTracks,
     /// Their titles, in order; empty where a track has none.
     pub track_titles: Vec<String>,
+    /// What it writes about which pressing it is, in free text.
+    pub notes: Vec<String>,
 }
 
 impl ReleaseDocument {
@@ -78,6 +80,7 @@ impl ReleaseDocument {
                 .into_iter()
                 .collect::<Option<_>>()
                 .unwrap_or_default(),
+            notes: release.notes.clone(),
         }
     }
 }
@@ -105,6 +108,7 @@ impl DocumentReading {
                 result.source_tracks = Some(document.source_tracks.clone());
                 result.album_first_year = document.album_first_year;
                 result.track_titles = document.track_titles.clone();
+                result.notes = document.notes.clone();
                 if let Some(barcode) = &document.barcode {
                     let key = crate::barcode::comparison_key(barcode).ok();
                     let stated = result.barcodes.iter().any(|stated| {

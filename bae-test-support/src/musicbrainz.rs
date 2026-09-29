@@ -49,6 +49,7 @@ pub fn mb_release(
     bae_core::musicbrainz::MbReleaseResponse {
         id: release_id.to_string(),
         title: title.to_string(),
+        disambiguation: None,
         date: Some("1996".to_string()),
         country: Some("US".to_string()),
         status: Some("Official".to_string()),

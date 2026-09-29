@@ -68,6 +68,7 @@ fn sample_match() -> MetadataResult {
         document_failure: None,
         album_first_year: Some(1998),
         track_titles: vec!["Track One".to_string(), "Track Two".to_string()],
+        notes: vec!["Pressed By Plant Name".to_string()],
     }
 }
 

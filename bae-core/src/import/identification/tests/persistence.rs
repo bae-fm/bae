@@ -104,6 +104,7 @@ fn multi_match_verdict(release_ids: &[&str], group_id: &str) -> TerminalVerdict 
                     document_failure: None,
                     album_first_year: None,
                     track_titles: Vec::new(),
+                    notes: Vec::new(),
                 })
                 .collect(),
             provenance: release_ids

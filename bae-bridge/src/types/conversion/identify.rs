@@ -21,6 +21,7 @@ impl BridgeMetadataResult {
             source_tracks: _,
             album_first_year: _,
             track_titles: _,
+            notes: _,
             // Read into `facts` above, or pairing evidence the row already
             // reflects.
             area: _,

@@ -333,6 +333,13 @@ struct ReleaseResponse {
     #[serde(default, deserialize_with = "optional_master_id")]
     master_id: Option<u64>,
     identifiers: Option<Vec<Identifier>>,
+    companies: Option<Vec<Company>>,
+}
+
+/// A company the release credits, whatever its role.
+#[derive(Debug, Deserialize)]
+struct Company {
+    name: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -513,14 +520,23 @@ pub fn parse_discogs_release_json(raw_json: &str) -> Result<DiscogsRelease, Disc
             .map(|label| (label.name, label.catno)),
     );
     let formats = release.formats.unwrap_or_default();
+    let identifiers: Vec<Identifier> = release.identifiers.into_iter().flatten().collect();
+    let values_of = |kind: &'static str| {
+        identifiers
+            .iter()
+            .filter(move |identifier| identifier.kind == kind)
+            .filter_map(|identifier| identifier.value.clone())
+    };
     // The draft has one barcode field. Keep the first supplied Barcode value
     // in provider order, including its printed spaces and punctuation.
-    let barcode = release
-        .identifiers
+    let barcode = values_of("Barcode").next();
+    let matrix = values_of("Matrix / Runout").collect();
+    let companies = release
+        .companies
         .into_iter()
         .flatten()
-        .filter(|identifier| identifier.kind == "Barcode")
-        .find_map(|identifier| identifier.value);
+        .map(|company| company.name)
+        .collect();
 
     Ok(DiscogsRelease {
         id: release.id.to_string(),
@@ -536,6 +552,8 @@ pub fn parse_discogs_release_json(raw_json: &str) -> Result<DiscogsRelease, Disc
         extraartists,
         tracklist,
         master_id,
+        companies,
+        matrix,
     })
 }
 

@@ -52,6 +52,10 @@ pub struct SourceRelease {
     pub(crate) archive_groups: Vec<String>,
     pub(crate) mediums: Vec<SourceMedium>,
     pub(crate) catalog: CatalogFacts,
+    /// What the release's own document writes about which pressing it is, in
+    /// free text and in its order: a MusicBrainz release's disambiguation; a
+    /// Discogs release's company names, then its matrix / runout inscriptions.
+    pub(crate) notes: Vec<String>,
     /// The supporting documents the fetch named and could not get, whose
     /// facts are missing from the ones above.
     pub(crate) unfetched: Vec<UnfetchedDocument>,

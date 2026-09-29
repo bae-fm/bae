@@ -1500,6 +1500,10 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     -- track untitled.
     track_titles            TEXT NOT NULL DEFAULT '[]'
         CHECK (json_valid(track_titles) AND json_type(track_titles) = 'array'),
+    -- What the full document writes about which pressing it is, in free text:
+    -- a JSON array of strings, empty where it was not read or writes none.
+    notes                   TEXT NOT NULL DEFAULT '[]'
+        CHECK (json_valid(notes) AND json_type(notes) = 'array'),
     PRIMARY KEY (content_hash, position),
     -- Referenced by the medium rows with the media kind, so a medium row always
     -- belongs to a match of its kind.
@@ -1641,6 +1645,12 @@ CREATE TABLE IF NOT EXISTS source_release (
     -- of `crate::pressing::DiscogsDetail` keys, each once, in its order.
     discogs_details    TEXT NOT NULL DEFAULT '[]'
         CHECK (json_valid(discogs_details) AND json_type(discogs_details) = 'array'),
+    -- What the release's own document writes about which pressing it is, in
+    -- free text: a JSON array of strings — a MusicBrainz release's
+    -- disambiguation; a Discogs release's company names, then its matrix /
+    -- runout inscriptions.
+    notes              TEXT NOT NULL DEFAULT '[]'
+        CHECK (json_valid(notes) AND json_type(notes) = 'array'),
     -- The MusicBrainz release whose Cover Art Archive gallery the picker opens
     -- (this release, or the one a Discogs release cross-references), and its
     -- release group.

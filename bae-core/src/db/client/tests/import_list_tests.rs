@@ -55,6 +55,7 @@ fn verdict(release_id: &str, ledger: Option<crate::identify::IdentifyRunView>) -
                 document_failure: None,
                 album_first_year: None,
                 track_titles: Vec::new(),
+                notes: Vec::new(),
             }],
             provenance: vec![LookupProvenance {
                 by_disc_id: true,

@@ -163,6 +163,7 @@ fn make_mb_release_for_re_identify(
     MbReleaseResponse {
         id: release_id.to_string(),
         title: "Album Title".to_string(),
+        disambiguation: None,
         date: Some("2024-01-01".to_string()),
         country: None,
         status: None,

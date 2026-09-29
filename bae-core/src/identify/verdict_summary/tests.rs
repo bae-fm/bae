@@ -28,6 +28,7 @@ fn result(release_id: &str, source_tracks: Option<SourceTracks>) -> MetadataResu
         document_failure: None,
         album_first_year: None,
         track_titles: Vec::new(),
+        notes: Vec::new(),
     }
 }
 

@@ -292,6 +292,7 @@ fn mb_release_json(release_id: &str, release_group_id: &str) -> String {
     let response = crate::musicbrainz::MbReleaseResponse {
         id: release_id.to_string(),
         title: "Album Title".to_string(),
+        disambiguation: None,
         date: Some("1996".to_string()),
         country: Some("US".to_string()),
         status: None,

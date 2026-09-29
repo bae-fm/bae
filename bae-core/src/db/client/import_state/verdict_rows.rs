@@ -236,9 +236,9 @@ fn insert_match(
               source_tracks_count, by_disc_id, by_barcode, by_catalog, by_isrc, by_search, \
               named_by_catalog, named_by_key, narrowed_out, document_failure, \
               document_failure_status, document_failure_detail, album_first_year, \
-              track_titles) \
+              track_titles, notes) \
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \
-                 ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                 ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         params![
             content_hash,
             position,
@@ -276,6 +276,7 @@ fn insert_match(
             document_failure.detail,
             result.album_first_year,
             serde_json::to_string(&result.track_titles).expect("titles serialize"),
+            serde_json::to_string(&result.notes).expect("notes serialize"),
         ],
     )?;
     if let Some(cover) = cover {
@@ -606,7 +607,8 @@ fn read_match_columns(row: &Row<'_>, pressing: i64) -> Result<MatchColumns, DbEr
                 row.get("document_failure_detail")?,
             )?,
             album_first_year: row.get("album_first_year")?,
-            track_titles: read_track_titles(row)?,
+            track_titles: read_strings(row, "track_titles")?,
+            notes: read_strings(row, "notes")?,
         },
         provenance: LookupProvenance {
             by_disc_id: row.get("by_disc_id")?,
@@ -785,9 +787,9 @@ fn unzip_stored(
     (results, provenance, pressings)
 }
 
-/// Read a match's `track_titles` column.
-fn read_track_titles(row: &Row<'_>) -> Result<Vec<String>, DbError> {
-    let titles: String = row.get("track_titles")?;
-    serde_json::from_str(&titles)
-        .map_err(|error| DbError::Message(format!("track titles {titles:?}: {error}")))
+/// Read a match's column that holds a JSON array of strings.
+fn read_strings(row: &Row<'_>, column: &str) -> Result<Vec<String>, DbError> {
+    let stored: String = row.get(column)?;
+    serde_json::from_str(&stored)
+        .map_err(|error| DbError::Message(format!("{column} {stored:?}: {error}")))
 }

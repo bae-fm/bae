@@ -240,6 +240,7 @@ fn mb_release(release_id: &str, release_group_id: Option<&str>) -> MbReleaseResp
     MbReleaseResponse {
         id: release_id.to_string(),
         title: "Album Title".to_string(),
+        disambiguation: None,
         date: Some("1999".to_string()),
         country: None,
         status: None,

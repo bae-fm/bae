@@ -29,6 +29,11 @@ pub struct DiscogsRelease {
     pub extraartists: Option<Vec<DiscogsRoleArtist>>,
     pub tracklist: Vec<DiscogsTrack>,
     pub master_id: Option<String>,
+    /// The name of every company the release credits — who pressed, made or
+    /// distributed it — in Discogs's order, whatever its role.
+    pub companies: Vec<String>,
+    /// What each of its Matrix / Runout identifiers reads, in Discogs's order.
+    pub matrix: Vec<String>,
 }
 
 /// One entry of a release's `formats`, as Discogs states it: a name from

@@ -30,6 +30,7 @@ pub(super) fn mb(release_id: &str, group_id: Option<&str>, year: Option<i32>) ->
         document_failure: None,
         album_first_year: None,
         track_titles: Vec::new(),
+        notes: Vec::new(),
     }
 }
 

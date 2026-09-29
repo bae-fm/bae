@@ -69,8 +69,9 @@ pub(super) fn replace_source_release_on(
         "INSERT INTO source_release \
              (catalog, release_id, source_group_id, album_title, album_year, \
               album_first_year, year, labels, barcode, country, region, media, status, \
-              packaging, discogs_details, archive_release_id, archive_group_id, fetched_at) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
+              packaging, discogs_details, notes, archive_release_id, archive_group_id, \
+              fetched_at) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
          ON CONFLICT (catalog, release_id) DO UPDATE SET \
              source_group_id = excluded.source_group_id, \
              album_title = excluded.album_title, album_year = excluded.album_year, \
@@ -78,7 +79,7 @@ pub(super) fn replace_source_release_on(
              year = excluded.year, labels = excluded.labels, barcode = excluded.barcode, \
              country = excluded.country, region = excluded.region, media = excluded.media, \
              status = excluded.status, packaging = excluded.packaging, \
-             discogs_details = excluded.discogs_details, \
+             discogs_details = excluded.discogs_details, notes = excluded.notes, \
              archive_release_id = excluded.archive_release_id, \
              archive_group_id = excluded.archive_group_id, fetched_at = excluded.fetched_at",
         params![
@@ -97,6 +98,7 @@ pub(super) fn replace_source_release_on(
             facts.status,
             facts.packaging,
             facts.discogs_details,
+            serde_json::to_string(&release.notes).expect("notes serialize"),
             release
                 .archive_release
                 .as_ref()
@@ -304,7 +306,7 @@ pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
         .query_row(
             "SELECT source_group_id, album_title, album_year, year, labels, barcode, \
                     archive_release_id, archive_group_id, country, region, media, \
-                    status, packaging, discogs_details, album_first_year \
+                    status, packaging, discogs_details, album_first_year, notes \
              FROM source_release WHERE catalog = ? AND release_id = ?",
             params![catalog, key],
             |row| {
@@ -321,6 +323,7 @@ pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
                     row.get::<_, Option<String>>(6)?,
                     row.get::<_, Option<String>>(7)?,
                     row.get::<_, Option<i32>>("album_first_year")?,
+                    row.get::<_, String>("notes")?,
                 ))
             },
         )
@@ -333,6 +336,7 @@ pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
         archive_release,
         archive_group,
         album_first_year,
+        notes,
     )) = head
     else {
         return Ok(None);
@@ -345,6 +349,8 @@ pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
         (None, None) => None,
         (None, Some(group)) => return Err(unreadable("archive group without a release", group)),
     };
+    let notes: Vec<String> =
+        serde_json::from_str(&notes).map_err(|error| unreadable("notes", (&notes, error)))?;
     let album_artists = sql.query(
         "SELECT name, sort_name, musicbrainz_artist_id, discogs_artist_id \
          FROM source_release_album_artist WHERE catalog = ? AND release_id = ? \
@@ -554,6 +560,7 @@ pub(super) fn load_source_release_on<S: QueryOne + QueryRows>(
         archive_groups,
         mediums,
         catalog: catalog_facts,
+        notes,
         unfetched,
     }))
 }

@@ -760,6 +760,7 @@ impl Fixture {
                     document_failure: None,
                     album_first_year: None,
                     track_titles: Vec::new(),
+                    notes: Vec::new(),
                 }],
                 provenance: vec![crate::identify::combine::LookupProvenance {
                     by_disc_id: true,

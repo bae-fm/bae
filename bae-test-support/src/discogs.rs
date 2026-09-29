@@ -81,6 +81,8 @@ pub fn discogs_test_release(
             })
             .collect(),
         master_id: None,
+        companies: vec![],
+        matrix: vec![],
     }
 }
 
@@ -182,7 +184,10 @@ pub fn seed_discogs_test_release(
         "year": release.year,
         "country": release.country,
         "master_id": master_id,
-        "identifiers": release.barcode.iter().map(|value| serde_json::json!({ "type": "Barcode", "value": value })).collect::<Vec<_>>(),
+        "identifiers": release.barcode.iter().map(|value| serde_json::json!({ "type": "Barcode", "value": value }))
+            .chain(release.matrix.iter().map(|value| serde_json::json!({ "type": "Matrix / Runout", "value": value })))
+            .collect::<Vec<_>>(),
+        "companies": release.companies.iter().map(|name| serde_json::json!({ "name": name })).collect::<Vec<_>>(),
         "formats": release.formats.iter().map(|format| serde_json::json!({
             "name": format.name,
             "qty": format.qty,

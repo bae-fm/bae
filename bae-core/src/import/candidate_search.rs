@@ -401,6 +401,7 @@ mod tests {
             document_failure: None,
             album_first_year: None,
             track_titles: Vec::new(),
+            notes: Vec::new(),
         }
     }
 

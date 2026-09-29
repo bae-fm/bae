@@ -86,6 +86,11 @@ pub struct MetadataResult {
     /// order. Empty where the document was not read, or leaves a track
     /// untitled. A search result states none.
     pub track_titles: Vec<String>,
+    /// What its full document writes about which pressing it is, in free
+    /// text: a MusicBrainz release's disambiguation, a Discogs release's
+    /// company names and matrix / runout inscriptions. Empty where the
+    /// document was not read. A search result states none.
+    pub notes: Vec<String>,
 }
 
 impl MetadataResult {
@@ -130,6 +135,7 @@ impl MetadataResult {
             document_failure: None,
             album_first_year: None,
             track_titles: Vec::new(),
+            notes: Vec::new(),
         }
     }
 }
@@ -162,6 +168,7 @@ impl MetadataResult {
             document_failure: None,
             album_first_year: None,
             track_titles: Vec::new(),
+            notes: Vec::new(),
         }
     }
 }
@@ -301,6 +308,7 @@ pub fn discogs_search_result_to_metadata(
         document_failure: None,
         album_first_year: None,
         track_titles: Vec::new(),
+        notes: Vec::new(),
     }
 }
 
@@ -335,6 +343,7 @@ pub(crate) fn discogs_release_to_metadata(release: &crate::discogs::DiscogsRelea
         document_failure: None,
         album_first_year: None,
         track_titles: Vec::new(),
+        notes: Vec::new(),
     }
 }
 
@@ -401,6 +410,7 @@ fn mb_discid_release_to_metadata(discid: &str, r: MbReleaseResponse) -> Option<M
         document_failure: None,
         album_first_year: None,
         track_titles: Vec::new(),
+        notes: Vec::new(),
     })
 }
 
@@ -463,6 +473,7 @@ fn search_release_to_metadata(r: SearchRelease, cover_art: Option<RemoteCover>) 
         document_failure: None,
         album_first_year: None,
         track_titles: Vec::new(),
+        notes: Vec::new(),
     }
 }
 

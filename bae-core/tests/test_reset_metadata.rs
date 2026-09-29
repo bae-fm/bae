@@ -201,6 +201,7 @@ fn mb_release_json(
     let response = MbReleaseResponse {
         id: release_id.to_string(),
         title: title.to_string(),
+        disambiguation: None,
         date: Some("1999-01-01".to_string()),
         country: Some("US".to_string()),
         status: None,

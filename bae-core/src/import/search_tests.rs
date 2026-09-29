@@ -66,6 +66,7 @@ fn response_with_media(media: Vec<MbMedium>) -> MbReleaseResponse {
     MbReleaseResponse {
         id: "mb-release-1".to_string(),
         title: "Album Title".to_string(),
+        disambiguation: None,
         date: None,
         country: None,
         status: None,

@@ -351,6 +351,12 @@ struct Support {
     /// its number, and a label keeps a number across reissues, so a row
     /// stating another contradicts nothing.
     offered: bool,
+    /// Whether the folder's text names a word only this row's notes write
+    /// among the rows tied with it on every field above — see
+    /// [`super::notes`] and [`weigh_notes`]. Last, so it only breaks a tie:
+    /// the catalogs often say where one of two look-alike pressings was made
+    /// only in free text, which is read here as nothing more than words.
+    names_what_sets_it_apart: bool,
 }
 
 /// What stands behind one row, over all its records.
@@ -416,6 +422,8 @@ fn support_of(
         country: facts.country(&row.releases, text),
         registration: super::row_facts::registration(&row.releases, folder.registered_in),
         offered,
+        // Weighed once every row's other fields are.
+        names_what_sets_it_apart: false,
     }
 }
 
@@ -445,6 +453,7 @@ fn split_rows(
         })
         .collect();
     weigh_title_agreement(&rows, &mut support);
+    weigh_notes(&rows, &mut support, text);
     let Some(best) = support.iter().copied().max() else {
         return (Vec::new(), Vec::new(), None);
     };
@@ -508,6 +517,26 @@ fn weigh_title_agreement(rows: &[Pressing], support: &mut [Support]) {
     }
 }
 
+/// Give each row tied at the top on every other field the point for the
+/// folder naming what sets it apart from the others tied there. The rows
+/// below are out already, and what their notes share with these says nothing
+/// about which of these is on the desk.
+fn weigh_notes(rows: &[Pressing], support: &mut [Support], text: &CandidateText) {
+    let Some(best) = support.iter().copied().max() else {
+        return;
+    };
+    let tied: Vec<usize> = (0..rows.len())
+        .filter(|row| support[*row] == best)
+        .collect();
+    let named = super::notes::names_what_sets_each_apart(
+        tied.iter().map(|row| rows[*row].releases.as_slice()),
+        text,
+    );
+    for (row, named) in tied.into_iter().zip(named) {
+        support[row].names_what_sets_it_apart = named;
+    }
+}
+
 fn release_keys(results: &Results) -> HashSet<ReleaseKey> {
     results
         .iter()
@@ -540,3 +569,7 @@ mod evidence_tests;
 #[cfg(test)]
 #[path = "combine_year_tests.rs"]
 mod year_tests;
+
+#[cfg(test)]
+#[path = "combine_notes_tests.rs"]
+mod notes_tests;

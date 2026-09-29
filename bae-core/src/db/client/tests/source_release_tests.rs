@@ -43,6 +43,7 @@ fn musicbrainz_documents() -> ReleasePayloads {
     let anchor = serde_json::json!({
         "id": "mb-release",
         "title": "Album Title",
+        "disambiguation": "made in Nordland",
         "date": "1999-04-01",
         "country": "GB",
         "barcode": "0123456789012",
@@ -117,6 +118,14 @@ fn discogs_documents() -> ReleasePayloads {
         "master_id": 909,
         "formats": [{ "name": "CD" }, { "name": "Album" }],
         "labels": [{ "name": "Label Name", "catno": "CAT-1" }],
+        "companies": [
+            { "name": "Plant Name", "entity_type_name": "Pressed By" },
+            { "name": "Maker Name", "entity_type_name": "Made By" }
+        ],
+        "identifiers": [
+            { "type": "Barcode", "value": "0123456789012" },
+            { "type": "Matrix / Runout", "value": "MADE IN NORDLAND BY PLANT", "description": "Variant 1" }
+        ],
         "images": [
             { "type": "primary", "uri": "https://images.example/front.jpg", "uri150": "https://images.example/front-150.jpg" }
         ],
@@ -169,7 +178,17 @@ async fn a_stored_release_reads_back_as_it_was_extracted() {
     };
     assert_eq!(parent.events.len(), 1, "the parent names its other part");
     assert_eq!(musicbrainz.mediums[0].entries[0].credits.len(), 2);
+    assert_eq!(musicbrainz.notes, vec!["made in Nordland".to_string()]);
     let discogs = discogs_documents().extract().unwrap();
+    assert_eq!(
+        discogs.notes,
+        vec![
+            "Plant Name".to_string(),
+            "Maker Name".to_string(),
+            "MADE IN NORDLAND BY PLANT".to_string(),
+        ],
+        "the companies, then the matrix inscriptions; not the barcode"
+    );
     assert_eq!(discogs.mediums.len(), 2, "the positions number two discs");
     assert_eq!(discogs.mediums[1].entries[0].children.len(), 2);
     for extracted in [&musicbrainz, &discogs] {

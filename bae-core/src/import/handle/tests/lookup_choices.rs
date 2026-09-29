@@ -273,6 +273,7 @@ fn seed_mb_release_with_catalog(
     let response = crate::musicbrainz::MbReleaseResponse {
         id: release_id.to_string(),
         title: "Album Title".to_string(),
+        disambiguation: None,
         date: Some("1996".to_string()),
         country: Some("US".to_string()),
         status: None,
