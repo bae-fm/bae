@@ -192,6 +192,7 @@ pub fn seed_discogs_test_release(
             "name": format.name,
             "qty": format.qty,
             "descriptions": format.descriptions,
+            "text": format.text,
         })).collect::<Vec<_>>(),
         "labels": release.labels.iter().map(|label| serde_json::json!({
             "name": label.name(),

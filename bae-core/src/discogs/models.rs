@@ -37,9 +37,9 @@ pub struct DiscogsRelease {
 }
 
 /// One entry of a release's `formats`, as Discogs states it: a name from
-/// its format list, how many of that medium the release holds, and
-/// descriptions from its description list. The search and release endpoints
-/// state the same shape.
+/// its format list, how many of that medium the release holds, descriptions
+/// from its description list, and what an editor wrote beside them. The
+/// search and release endpoints state the same shape.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
 pub struct DiscogsFormat {
     pub name: String,
@@ -48,6 +48,13 @@ pub struct DiscogsFormat {
     pub qty: String,
     #[serde(default)]
     pub descriptions: Vec<String>,
+    /// Free text beside the format ("Small label", "Club Edition"); absent
+    /// where none is written.
+    #[serde(
+        default,
+        deserialize_with = "crate::serde_helpers::empty_string_as_none"
+    )]
+    pub text: Option<String>,
 }
 
 fn one() -> String {

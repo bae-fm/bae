@@ -445,6 +445,7 @@ fn create_side_pause_test_album(format: &str, positions: [&str; 3]) -> DiscogsRe
         name: name.to_string(),
         qty: qty.to_string(),
         descriptions: Vec::new(),
+        text: None,
     }];
     for (track, position) in release.tracklist.iter_mut().zip(positions) {
         track.position = position.to_string();

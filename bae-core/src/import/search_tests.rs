@@ -270,6 +270,7 @@ fn discid_metadata_carries_every_medium_into_pairing() {
                 name: name.to_string(),
                 qty: "1".to_string(),
                 descriptions: descriptions.iter().map(|d| d.to_string()).collect(),
+                text: None,
             })
             .collect();
         discogs_search_result_to_metadata(result)
@@ -906,6 +907,7 @@ fn a_discogs_search_result_reads_its_format_entries() {
             "Promo".to_string(),
             "Stereo".to_string(),
         ],
+        text: None,
     }];
     let result = discogs_search_result_to_metadata(result);
     assert_eq!(

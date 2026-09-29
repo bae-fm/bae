@@ -86,10 +86,10 @@ pub struct MetadataResult {
     /// order. Empty where the document was not read, or leaves a track
     /// untitled. A search result states none.
     pub track_titles: Vec<String>,
-    /// What its full document writes about which pressing it is, in free
-    /// text: a MusicBrainz release's disambiguation, a Discogs release's
-    /// company names and matrix / runout inscriptions. Empty where the
-    /// document was not read. A search result states none.
+    /// What the record writes about which pressing it is, in free text: a
+    /// MusicBrainz release's disambiguation; a Discogs release's format text,
+    /// and once its full document is read, its company names and matrix /
+    /// runout inscriptions too.
     pub notes: Vec<String>,
 }
 
@@ -277,6 +277,7 @@ pub fn discogs_search_result_to_metadata(
         r.catno,
     )]);
     let release_id = r.id.to_string();
+    let notes = discogs_notes(&r.formats);
     let formats = crate::pressing::discogs_formats::read(&release_id, &r.formats);
     let area = r
         .country
@@ -308,7 +309,7 @@ pub fn discogs_search_result_to_metadata(
         document_failure: None,
         album_first_year: None,
         track_titles: Vec::new(),
-        notes: Vec::new(),
+        notes,
     }
 }
 
@@ -343,8 +344,21 @@ pub(crate) fn discogs_release_to_metadata(release: &crate::discogs::DiscogsRelea
         document_failure: None,
         album_first_year: None,
         track_titles: Vec::new(),
-        notes: Vec::new(),
+        notes: discogs_notes(&release.formats)
+            .into_iter()
+            .chain(release.companies.iter().cloned())
+            .chain(release.matrix.iter().cloned())
+            .collect(),
     }
+}
+
+/// What a Discogs release's format entries write beside their names, in
+/// order: the part of its notes a search result carries too.
+pub(crate) fn discogs_notes(formats: &[crate::discogs::DiscogsFormat]) -> Vec<String> {
+    formats
+        .iter()
+        .filter_map(|format| format.text.clone())
+        .collect()
 }
 
 fn source_tracks_from_mb_tracks<'a>(
@@ -410,7 +424,7 @@ fn mb_discid_release_to_metadata(discid: &str, r: MbReleaseResponse) -> Option<M
         document_failure: None,
         album_first_year: None,
         track_titles: Vec::new(),
-        notes: Vec::new(),
+        notes: r.disambiguation.into_iter().collect(),
     })
 }
 
@@ -473,7 +487,7 @@ fn search_release_to_metadata(r: SearchRelease, cover_art: Option<RemoteCover>) 
         document_failure: None,
         album_first_year: None,
         track_titles: Vec::new(),
-        notes: Vec::new(),
+        notes: r.disambiguation.into_iter().collect(),
     }
 }
 
@@ -778,3 +792,7 @@ fn isrc_releases_to_metadata(
 #[cfg(test)]
 #[path = "search_tests.rs"]
 mod search_tests;
+
+#[cfg(test)]
+#[path = "search_notes_tests.rs"]
+mod search_notes_tests;

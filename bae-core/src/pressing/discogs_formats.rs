@@ -141,6 +141,7 @@ mod tests {
             name: name.to_string(),
             qty: qty.to_string(),
             descriptions: descriptions.iter().map(|d| d.to_string()).collect(),
+            text: None,
         }
     }
 

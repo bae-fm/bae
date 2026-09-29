@@ -116,7 +116,7 @@ fn discogs_documents() -> ReleasePayloads {
         "title": "Album Title",
         "year": 1999,
         "master_id": 909,
-        "formats": [{ "name": "CD" }, { "name": "Album" }],
+        "formats": [{ "name": "CD", "text": "Small label" }, { "name": "Album" }],
         "labels": [{ "name": "Label Name", "catno": "CAT-1" }],
         "companies": [
             { "name": "Plant Name", "entity_type_name": "Pressed By" },
@@ -183,11 +183,12 @@ async fn a_stored_release_reads_back_as_it_was_extracted() {
     assert_eq!(
         discogs.notes,
         vec![
+            "Small label".to_string(),
             "Plant Name".to_string(),
             "Maker Name".to_string(),
             "MADE IN NORDLAND BY PLANT".to_string(),
         ],
-        "the companies, then the matrix inscriptions; not the barcode"
+        "the format text, the companies, then the matrix inscriptions; not the barcode"
     );
     assert_eq!(discogs.mediums.len(), 2, "the positions number two discs");
     assert_eq!(discogs.mediums[1].entries[0].children.len(), 2);

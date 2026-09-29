@@ -237,7 +237,11 @@ impl ReleasePayloads {
                         media: crate::import::discogs_mapper::pressing(&anchor).1,
                         release_roles: crate::import::discogs_mapper::release_roles(&anchor),
                     },
-                    anchor.companies.into_iter().chain(anchor.matrix).collect(),
+                    crate::import::search::discogs_notes(&anchor.formats)
+                        .into_iter()
+                        .chain(anchor.companies)
+                        .chain(anchor.matrix)
+                        .collect(),
                 )
             }
             other => not_fetched(other),

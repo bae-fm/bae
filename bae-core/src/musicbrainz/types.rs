@@ -260,6 +260,13 @@ pub struct SearchRecording {
 pub struct SearchRelease {
     pub id: String,
     pub title: String,
+    /// What an editor wrote to tell this release apart from its album's
+    /// others. Absent where none is set.
+    #[serde(
+        default,
+        deserialize_with = "crate::serde_helpers::empty_string_as_none"
+    )]
+    pub disambiguation: Option<String>,
     pub date: Option<String>,
     #[serde(
         default,

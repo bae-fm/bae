@@ -12,6 +12,7 @@ fn discogs_release_rich(title: &str, master_id: &str, tracks: &[&str]) -> Discog
                 "Reissue".to_string(),
                 "Promo".to_string(),
             ],
+            text: None,
         }],
         labels: vec![
             ReleaseLabel::of(Some("Label A"), Some("AB 100")),

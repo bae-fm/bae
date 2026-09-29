@@ -405,6 +405,7 @@ fn test_single_disc() {
         name: "CD".into(),
         qty: "1".into(),
         descriptions: vec!["Album".into()],
+        text: None,
     }];
     let parsed = map(&release).unwrap();
     let tracks = &parsed.tracks;

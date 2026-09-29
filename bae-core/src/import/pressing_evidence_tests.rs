@@ -126,6 +126,7 @@ fn formats(entries: &[(&str, &[&str])]) -> StatedMedia {
             name: name.to_string(),
             qty: "1".to_string(),
             descriptions: descriptions.iter().map(|d| d.to_string()).collect(),
+            text: None,
         })
         .collect();
     crate::pressing::discogs_formats::read("dg-1", &entries).media
