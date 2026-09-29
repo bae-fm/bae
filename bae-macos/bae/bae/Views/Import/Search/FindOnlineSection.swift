@@ -28,6 +28,8 @@ enum FindOnlineSectionGlyph: Equatable {
             self = .empty
         case .manualOnly:
             self = .nothing
+        case .error:
+            self = .failed
         case .failed:
             self = .failed
         }

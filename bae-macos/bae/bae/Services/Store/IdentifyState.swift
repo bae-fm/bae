@@ -60,6 +60,9 @@ enum IdentifyState: Equatable {
     /// ran and matched nothing. The run is there when extraction found catalog
     /// numbers the person can still activate.
     case manualOnly(trackCount: UInt32, run: BridgeIdentifyRun?)
+    /// bae broke on its own side and the run ended there, with why. Nothing
+    /// it found stands.
+    case error(failure: BridgeInternalFailure)
     /// A lookup failed, with whatever the surviving evidence still found: one
     /// provider failing leaves the other's matches standing, live or resumed
     /// from the stored verdict. `groups` is empty when nothing that answered
@@ -74,6 +77,8 @@ enum IdentifyState: Equatable {
         catalogAgreements: [BridgeCatalogAgreement],
     )
 
+    // One case per bridge variant, copied field for field.
+    // swiftlint:disable:next function_body_length
     init(bridge: BridgeIdentifyState) {
         switch bridge {
         case .idle: self = .idle
@@ -116,6 +121,7 @@ enum IdentifyState: Equatable {
         case .notFoundAnywhere(let run): self = .notFoundAnywhere(run: run)
         case .manualOnly(let trackCount, let run):
             self = .manualOnly(trackCount: trackCount, run: run)
+        case .error(let failure): self = .error(failure: failure)
         case .failed(
             let run,
             let failures,
@@ -144,7 +150,7 @@ enum IdentifyState: Equatable {
         case .found(_, _, let statuses, _, _, _, _, _, _): statuses
         case .failed(_, _, _, let statuses, _, _, _): statuses
         case .triangulating(_, _, let statuses, _, _): statuses
-        case .idle, .notFoundAnywhere, .manualOnly: [:]
+        case .idle, .notFoundAnywhere, .manualOnly, .error: [:]
         }
     }
 
@@ -155,7 +161,7 @@ enum IdentifyState: Equatable {
         case .found(_, _, _, _, _, let count, _, _, _): count
         case .failed(_, _, _, _, _, let count, _): count
         case .triangulating(_, _, _, _, let count): count
-        case .idle, .notFoundAnywhere, .manualOnly: 0
+        case .idle, .notFoundAnywhere, .manualOnly, .error: 0
         }
     }
 
@@ -166,7 +172,8 @@ enum IdentifyState: Equatable {
         switch self {
         case .found(_, _, _, _, _, _, let chips, _, _): chips
         case .failed(_, _, _, _, _, _, let chips): chips
-        case .idle, .triangulating, .notFoundAnywhere, .manualOnly: []
+        case .idle, .triangulating, .notFoundAnywhere, .manualOnly, .error:
+            []
         }
     }
 
@@ -175,7 +182,8 @@ enum IdentifyState: Equatable {
     var folderCheck: BridgeFolderCheck? {
         switch self {
         case .found(_, _, _, _, _, _, _, let folderCheck, _): folderCheck
-        case .idle, .triangulating, .notFoundAnywhere, .manualOnly, .failed:
+        case .idle, .triangulating, .notFoundAnywhere, .manualOnly, .failed,
+            .error:
             nil
         }
     }
@@ -184,7 +192,8 @@ enum IdentifyState: Equatable {
     var picksUnattended: Bool {
         switch self {
         case .found(_, _, _, _, _, _, _, _, let picks): picks
-        case .idle, .triangulating, .notFoundAnywhere, .manualOnly, .failed:
+        case .idle, .triangulating, .notFoundAnywhere, .manualOnly, .failed,
+            .error:
             false
         }
     }
@@ -197,7 +206,7 @@ enum IdentifyState: Equatable {
         case .notFoundAnywhere(let run): run
         case .manualOnly(_, let run): run
         case .failed(let run, _, _, _, _, _, _): run
-        case .idle: nil
+        case .idle, .error: nil
         }
     }
 }

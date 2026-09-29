@@ -35,7 +35,8 @@ extension BridgeTextSignal {
         }
     }
 
-    var failure: BridgeLookupFailure? {
+    /// How bae broke reading the text off the folder, where it did.
+    var failure: BridgeInternalFailure? {
         if case .failed(let failure, _, _) = self {
             return failure
         }

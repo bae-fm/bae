@@ -16,7 +16,7 @@ use crate::import::album_links::{self, AlbumLink, GroupReading, ToRead};
 use crate::import::release_group::{group_results, ReleaseGroup};
 use crate::import::search::{MetadataResult, SearchQuery};
 use crate::import::types::{Catalog, CatalogAvailability, SourceAvailability};
-use crate::signals::LookupFailure;
+use crate::signals::Failure;
 use tracing::debug;
 
 /// One provider's part of a candidate's manual search.
@@ -34,7 +34,8 @@ pub enum SourceSearch {
     Done {
         results: Vec<(MetadataResult, LibraryStatus)>,
     },
-    Failed(LookupFailure),
+    /// The source could not answer, or bae broke asking it.
+    Failed(Failure),
 }
 
 impl SourceSearch {
@@ -145,7 +146,7 @@ impl CandidateSearch {
     pub fn record(
         &mut self,
         source: Catalog,
-        outcome: Result<Vec<(MetadataResult, LibraryStatus)>, LookupFailure>,
+        outcome: Result<Vec<(MetadataResult, LibraryStatus)>, Failure>,
     ) {
         let settled = match outcome {
             Ok(results) => SourceSearch::Done { results },
@@ -409,7 +410,7 @@ mod tests {
         source: Catalog,
         release_id: &str,
         group_id: &str,
-    ) -> Result<Vec<(MetadataResult, LibraryStatus)>, LookupFailure> {
+    ) -> Result<Vec<(MetadataResult, LibraryStatus)>, Failure> {
         Ok(vec![(
             result(source, release_id, group_id),
             LibraryStatus::absent(release_id),
@@ -421,7 +422,7 @@ mod tests {
         let mut search = CandidateSearch::started(query(), &discogs_unconfigured());
         assert!(!search.has_no_matches());
         assert_eq!(search.status(), SearchStatus::Searching);
-        search.record(Catalog::MusicBrainz, Err(LookupFailure::Network));
+        search.record(Catalog::MusicBrainz, Err(crate::signals::LookupFailure::Network.into()));
         assert!(!search.has_no_matches());
         assert_eq!(search.status(), SearchStatus::Failed);
         search.restart_failed();
@@ -442,7 +443,7 @@ mod tests {
             answer(Catalog::MusicBrainz, "mb-1", "group-x"),
         );
         assert_eq!(search.status(), SearchStatus::Searching);
-        search.record(Catalog::Discogs, Err(LookupFailure::Timeout));
+        search.record(Catalog::Discogs, Err(crate::signals::LookupFailure::Timeout.into()));
         assert_eq!(search.status(), SearchStatus::Failed);
         search.restart_failed();
         search.record(
@@ -688,7 +689,7 @@ mod tests {
             Catalog::MusicBrainz,
             answer(Catalog::MusicBrainz, "mb-1", "group-x"),
         );
-        search.record(Catalog::Discogs, Err(LookupFailure::Network));
+        search.record(Catalog::Discogs, Err(crate::signals::LookupFailure::Network.into()));
         assert!(search.is_settled());
         assert_eq!(search.failed_sources(), vec![Catalog::Discogs]);
         assert_eq!(search.groups.len(), 1);
@@ -702,7 +703,7 @@ mod tests {
             Catalog::MusicBrainz,
             answer(Catalog::MusicBrainz, "mb-1", "group-x"),
         );
-        search.record(Catalog::Discogs, Err(LookupFailure::Timeout));
+        search.record(Catalog::Discogs, Err(crate::signals::LookupFailure::Timeout.into()));
 
         search.restart_failed();
         assert_eq!(search.searching_sources(), vec![Catalog::Discogs]);
@@ -755,7 +756,7 @@ mod tests {
     #[test]
     fn a_retried_source_lands_its_new_answer() {
         let mut search = CandidateSearch::started(query(), &all_on());
-        search.record(Catalog::Discogs, Err(LookupFailure::Timeout));
+        search.record(Catalog::Discogs, Err(crate::signals::LookupFailure::Timeout.into()));
         search.restart_failed();
         search.record(
             Catalog::Discogs,

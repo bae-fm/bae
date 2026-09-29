@@ -166,11 +166,11 @@ struct TriageRowContent: View {
 
 /// The row's status line and trailing column.
 extension TriageRowContent {
-    /// The line under the release summary: a failed import, or an
-    /// identification result that failed to save.
+    /// The line under the release summary: how bae broke for a row in
+    /// error, or a failed import.
     private var statusLine: String? {
-        if case .finalizationFailed(let error) = live?.identification {
-            return error.displayLine
+        if case .error(let failure) = live?.standing {
+            return failure.detail
         }
         switch row.placement {
         case .pending, .skipped:

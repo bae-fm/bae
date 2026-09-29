@@ -241,15 +241,22 @@ pub enum BridgeStoredLookup {
 }
 
 /// Where one Found row stands: its state, and why a row that needs the
-/// person does. Mirrors `bae_core::import::PendingStanding`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, uniffi::Enum)]
+/// person does, and how bae broke for a row in error. Mirrors
+/// `bae_core::import::PendingStanding`.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, uniffi::Enum)]
 pub enum BridgePendingStanding {
     NotLookedUp,
     Identifying,
-    NeedsYou { reason: BridgeNeedsYouReason },
+    NeedsYou {
+        reason: BridgeNeedsYouReason,
+    },
     Identified,
     Unmatched,
     LookupError,
+    /// bae broke on its own side; the row states how.
+    Error {
+        failure: BridgeInternalFailure,
+    },
     Importing,
     ImportError,
 }

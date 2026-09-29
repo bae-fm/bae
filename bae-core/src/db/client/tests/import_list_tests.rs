@@ -317,6 +317,38 @@ async fn a_sole_release_with_an_unread_document_reads_back_as_a_lookup_error() {
     );
 }
 
+/// A run that ended because bae broke reads back as an error the row states
+/// with its text.
+#[tokio::test]
+async fn an_error_verdict_reads_back_as_an_error_with_its_text() {
+    let (db, _tmp, root) = watched_root().await;
+    let candidate = scanned(&db, &root, "Album").await;
+    let failure = crate::signals::InternalFailure {
+        detail: "checking the library: the store is locked".to_string(),
+    };
+    store_verdict(
+        &db,
+        &candidate,
+        TerminalVerdict::Error {
+            failure: failure.clone(),
+        },
+    )
+    .await;
+
+    let projection = db
+        .load_import_list(request(TriageTab::Pending).await)
+        .await
+        .unwrap();
+    let standings: Vec<_> = rows(&projection)
+        .iter()
+        .map(|row| row.action_basis.standing.clone())
+        .collect();
+    assert_eq!(
+        standings,
+        vec![Some(crate::import::PendingStanding::Error { failure })]
+    );
+}
+
 /// A verdict whose releases the folder's files rule out reads back as the
 /// check the pane states beside Import, and the pane reads the rate that
 /// rules a CD out off the folder's files, where alone it is stored.

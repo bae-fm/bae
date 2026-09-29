@@ -1,7 +1,7 @@
 //! The text signal: catalog numbers and free text read off a candidate's
 //! surfaces, and the lines they were read from.
 
-use super::{LookupFailure, TextOrigin};
+use super::{InternalFailure, TextOrigin};
 
 /// The catalog numbers and artist/album free text, each once in first-seen
 /// order; final once `Settled`.
@@ -16,7 +16,7 @@ pub enum TextSignal {
         free_text: Vec<String>,
     },
     Failed {
-        failure: LookupFailure,
+        failure: InternalFailure,
         catalogs: Vec<String>,
         free_text: Vec<String>,
     },

@@ -132,8 +132,6 @@ pub enum BarcodeProgress {
         codes: Vec<String>,
         reason: NotAskedReason,
     },
-    /// Reading the candidate's barcodes failed, so no provider was asked.
-    ScanFailed { failure: LookupFailure },
     /// No barcode source at all.
     Skipped,
 }
@@ -145,7 +143,6 @@ impl BarcodeProgress {
             BarcodeProgress::Lookups { codes } => codes.iter().all(ValueLookup::is_settled),
             BarcodeProgress::NoCodes
             | BarcodeProgress::NotAsked { .. }
-            | BarcodeProgress::ScanFailed { .. }
             | BarcodeProgress::Skipped => true,
         }
     }
@@ -173,16 +170,7 @@ impl BarcodeProgress {
             BarcodeProgress::Scanning
             | BarcodeProgress::NoCodes
             | BarcodeProgress::NotAsked { .. }
-            | BarcodeProgress::ScanFailed { .. }
             | BarcodeProgress::Skipped => &[],
-        }
-    }
-
-    /// Why reading the candidate's barcodes failed, where it did.
-    pub fn scan_failure(&self) -> Option<&LookupFailure> {
-        match self {
-            BarcodeProgress::ScanFailed { failure } => Some(failure),
-            _ => None,
         }
     }
 
@@ -455,9 +443,6 @@ pub(super) fn barcode_progress_state(progress: &BarcodeProgress) -> SignalState 
             settled_lookup_state(progress.results().len(), &progress.failures())
         }
         BarcodeProgress::NoCodes => SignalState::NoMatch,
-        BarcodeProgress::ScanFailed { failure } => SignalState::Failed {
-            failure: failure.clone(),
-        },
         BarcodeProgress::NotAsked { reason, .. } => SignalState::NotAsked { reason: *reason },
         BarcodeProgress::Skipped => SignalState::Skipped,
     }
@@ -499,9 +484,9 @@ pub(super) fn settled_identity_state(context: &SignalsContext) -> SignalState {
     }
     match &context.disc.signal {
         DiscIdSignal::Absent | DiscIdSignal::NotCdAudio => SignalState::Skipped,
-        DiscIdSignal::Failed { failure, .. } => SignalState::Failed {
-            failure: failure.clone(),
-        },
+        DiscIdSignal::Failed { .. } => {
+            unreachable!("a run whose disc ID could not be derived ended as an error")
+        }
         DiscIdSignal::Computed { .. } => match context.disc.not_asked {
             Some(reason) => SignalState::NotAsked { reason },
             None => found_or_no_match(context.disc.results.len() as u32),
@@ -529,11 +514,6 @@ pub(super) fn isrc_settled_state(context: &SignalsContext) -> SignalState {
 /// The barcode badge of a settled run.
 pub(super) fn barcode_settled_state(context: &SignalsContext) -> SignalState {
     let barcode = &context.barcode;
-    if let Some(failure) = &barcode.scan_failure {
-        return SignalState::Failed {
-            failure: failure.clone(),
-        };
-    }
     if barcode.codes.is_empty() {
         return if barcode.had_source {
             SignalState::NoMatch
@@ -596,9 +576,9 @@ pub(super) fn start_discid_progress(
             DiscidProgress::LookingUp
         }
         DiscIdSignal::Absent | DiscIdSignal::NotCdAudio => DiscidProgress::Skipped,
-        DiscIdSignal::Failed { failure } => DiscidProgress::Failed {
-            failure: failure.clone(),
-        },
+        DiscIdSignal::Failed { .. } => {
+            unreachable!("a run whose disc ID could not be derived ended as an error")
+        }
     }
 }
 
@@ -626,16 +606,10 @@ pub(super) fn start_barcode_progress(
     codes: Vec<String>,
     excluded: &[String],
     had_source: bool,
-    scan_failure: Option<&LookupFailure>,
     look_up: bool,
     providers: &[Catalog],
     effects: &mut Vec<Effect>,
 ) -> BarcodeProgress {
-    if let Some(failure) = scan_failure {
-        return BarcodeProgress::ScanFailed {
-            failure: failure.clone(),
-        };
-    }
     if codes.is_empty() {
         // Whether there was a source is what tells "found none" from "never looked".
         return if had_source {

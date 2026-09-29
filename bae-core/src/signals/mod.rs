@@ -5,7 +5,7 @@
 // `failure` and `origin` are plain data used on every platform; the rest is
 // desktop-only extraction.
 pub mod failure;
-pub use failure::LookupFailure;
+pub use failure::{Failure, InternalFailure, LookupFailure};
 
 pub mod origin;
 pub use origin::{SourcedValue, TextOrigin};
@@ -61,4 +61,19 @@ pub struct Signals {
     /// every track is a file of its own, each has one, and the files' own
     /// numbers put them in that order.
     pub track_titles: Vec<String>,
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+impl Signals {
+    /// How bae broke reading the folder's files, when it did: the disc ID's
+    /// derivation first, then the artwork's reading, which fails the barcode
+    /// and text signals together.
+    pub fn failure(&self) -> Option<&InternalFailure> {
+        match (&self.disc_id, &self.barcode, &self.text) {
+            (DiscIdSignal::Failed { failure }, _, _)
+            | (_, BarcodeSignal::Failed { failure, .. }, _)
+            | (_, _, TextSignal::Failed { failure, .. }) => Some(failure),
+            _ => None,
+        }
+    }
 }

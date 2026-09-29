@@ -259,8 +259,8 @@ mod tests {
         let http = Http::new().expect("the test HTTP client builds");
         let error = fetch_gallery(&http, &url).await.unwrap_err();
         assert_eq!(
-            crate::import::search::import_error_to_lookup_failure(&error),
-            crate::signals::LookupFailure::Network
+            crate::import::search::provider_failure(&error),
+            Some(crate::signals::LookupFailure::Network)
         );
     }
 

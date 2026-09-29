@@ -49,6 +49,7 @@ fn every_kind() -> ImportQueueRows {
         candidate("Pick Set Aside"),
         candidate("Unread"),
         candidate("Nothing To Look Up"),
+        candidate("Broke"),
         candidate("Imported"),
         candidate("Set Aside"),
     ];
@@ -99,6 +100,16 @@ fn every_kind() -> ImportQueueRows {
             with_verdict(not_found_state(), |verdict| {
                 verdict.kind = VerdictKind::ManualOnly;
                 verdict.track_count = Some(11);
+            }),
+        ),
+        (
+            "Broke",
+            with_verdict(not_found_state(), |verdict| {
+                verdict.kind = VerdictKind::Error {
+                    failure: crate::signals::InternalFailure {
+                        detail: "reading the store: the disk is full".to_string(),
+                    },
+                };
             }),
         ),
     ];
@@ -170,6 +181,7 @@ fn each_state_keeps_exactly_its_own_rows() {
             PendingState::LookupError,
             vec!["candidate Lookup Failed", "candidate Unread"],
         ),
+        (PendingState::Error, vec!["candidate Broke"]),
         (PendingState::Importing, vec![]),
         (PendingState::ImportError, vec!["candidate Failed Import"]),
     ];
@@ -307,7 +319,7 @@ fn the_text_filter_composes_with_the_pending_filter() {
         "of the Needs You rows only the drafted one reads Album"
     );
     assert_eq!(
-        needs_you.summary.counts.pending, 13,
+        needs_you.summary.counts.pending, 14,
         "the tab counts are the whole queue's, whatever the list shows"
     );
     assert!(texted(&[PendingState::Identified], "nothing")
@@ -504,6 +516,7 @@ fn every_state_is_in_one_group_in_the_menu_s_order() {
                 PendingState::Identified,
                 PendingState::Unmatched,
                 PendingState::LookupError,
+                PendingState::Error,
             ][..],
             &[PendingState::Importing, PendingState::ImportError][..],
         ]
@@ -739,14 +752,14 @@ fn a_narrowed_tab_counts_what_it_shows_of_its_total() {
         ),
         Some(NarrowedCount {
             shown: 6,
-            total: 13
+            total: 14
         })
     );
     assert_eq!(
         narrowed(TriageTab::Pending, &[], "several"),
         Some(NarrowedCount {
             shown: 1,
-            total: 13
+            total: 14
         }),
         "only the row with no draft reads its folder's name"
     );

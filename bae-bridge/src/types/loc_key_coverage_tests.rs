@@ -63,9 +63,6 @@ const DIRECT_KEYS: &[&str] = &[
     // Disconnect-sync confirmation: releases that live only in the cloud (the
     // UI composes the count into its own base sentence).
     "core.sync.cloud_only_releases",
-    // Generic lookup-failure line for the keyless `Diagnostic` variant:
-    // `bridge_lookup_failure_key` returns `None`, the UI shows this line.
-    "core.lookup.failure.diagnostic",
     // The accessibility label of the arrow on a row whose facts came from a
     // catalog record.
     "core.identity.identified",
@@ -279,25 +276,15 @@ fn produced_keys() -> Vec<String> {
         keys.push(reason.loc_key().to_string());
     }
 
-    // bridge_lookup_failure_key — all keyed variants must produce catalog
-    // keys; Diagnostic carries no key.
+    // bridge_lookup_failure_key — every variant produces a catalog key.
     for f in [
         BridgeLookupFailure::Network,
         BridgeLookupFailure::Provider { status: Some(503) },
         BridgeLookupFailure::Provider { status: None },
         BridgeLookupFailure::Timeout,
-        BridgeLookupFailure::ArtworkAnalysis,
     ] {
-        keys.push(
-            bridge_lookup_failure_key(f)
-                .expect("typed lookup failure is keyed")
-                .to_string(),
-        );
+        keys.push(bridge_lookup_failure_key(f));
     }
-    assert!(bridge_lookup_failure_key(BridgeLookupFailure::Diagnostic {
-        detail: String::new(),
-    })
-    .is_none());
 
     // bridge_lookup_failure_brief_key — total over the variants, with the
     // status split walked so both sides of it produce their key.
@@ -308,10 +295,6 @@ fn produced_keys() -> Vec<String> {
         BridgeLookupFailure::Provider { status: Some(404) },
         BridgeLookupFailure::Provider { status: None },
         BridgeLookupFailure::Timeout,
-        BridgeLookupFailure::ArtworkAnalysis,
-        BridgeLookupFailure::Diagnostic {
-            detail: String::new(),
-        },
     ] {
         keys.push(bridge_lookup_failure_brief_key(f));
     }

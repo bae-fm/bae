@@ -851,7 +851,7 @@ fn a_retry_re_asks_only_the_failed_sources_on_a_new_run() {
         key,
         run,
         Catalog::Discogs,
-        Err(crate::signals::LookupFailure::Network),
+        Err(crate::signals::LookupFailure::Network.into()),
     ));
 
     let (query, sources, retried) = runtime.retry_search(key).expect("Discogs failed");

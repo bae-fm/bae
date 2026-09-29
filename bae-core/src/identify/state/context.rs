@@ -90,9 +90,6 @@ pub struct BarcodeEvidence {
     pub results: Vec<(MetadataResult, LibraryStatus)>,
     /// The providers that failed; others may still have answered.
     pub failures: Vec<SourceFailure>,
-    /// Why reading the barcodes off the artwork failed, before any provider
-    /// was asked.
-    pub scan_failure: Option<LookupFailure>,
     /// Which barcode produced `results`. `None` until matched.
     pub matched: Option<String>,
     /// Why nobody was asked about any of the codes, where nobody was.
@@ -104,19 +101,12 @@ impl BarcodeEvidence {
     fn refresh_input(&mut self, signal: &BarcodeSignal) {
         self.codes = signal.codes().to_vec();
         self.had_source = !matches!(signal, BarcodeSignal::Absent);
-        self.scan_failure = match signal {
-            BarcodeSignal::Failed { failure, .. } => Some(failure.clone()),
-            BarcodeSignal::Scanning { .. }
-            | BarcodeSignal::Settled { .. }
-            | BarcodeSignal::Absent => None,
-        };
     }
 
     /// Record what the settled pipe found.
     fn record(&mut self, progress: &BarcodeProgress) {
         self.results = progress.results();
         self.failures = progress.failures();
-        self.scan_failure = progress.scan_failure().cloned();
         self.matched = progress.matched_barcode();
         self.not_asked = match progress {
             BarcodeProgress::NotAsked { reason, .. } => Some(*reason),
@@ -142,11 +132,8 @@ impl BarcodeEvidence {
         !self.codes.is_empty() && self.asked_code_values().is_empty()
     }
 
-    /// The scan failure and every provider failure.
+    /// Every provider failure.
     fn active_failures(&self, into: &mut Vec<IdentifyFailure>) {
-        if let Some(failure) = &self.scan_failure {
-            into.push(IdentifyFailure::BarcodeScan(failure.clone()));
-        }
         into.extend(self.failures.iter().cloned().map(IdentifyFailure::Barcode));
     }
 }
@@ -573,7 +560,6 @@ impl SignalsContext {
         !matches!(self.disc.signal, DiscIdSignal::Absent)
             || self.barcode.had_source
             || !self.barcode.codes.is_empty()
-            || self.barcode.scan_failure.is_some()
             || !self.catalog.numbers.is_empty()
             || !self.isrc.tagged.is_empty()
     }

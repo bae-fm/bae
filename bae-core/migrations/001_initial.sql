@@ -1290,17 +1290,13 @@ CREATE TABLE IF NOT EXISTS import_candidate_signals (
     -- surface can mark that file's row. NULL when re-identifying a library
     -- release, whose ID comes from stored tracks.
     disc_id_source_file    TEXT,
-    disc_id_failure        TEXT CHECK (disc_id_failure IS NULL OR disc_id_failure IN ('network', 'provider', 'timeout', 'artwork_analysis', 'diagnostic')),
-    disc_id_failure_status INTEGER,
-    disc_id_failure_detail TEXT,
+    -- How bae broke reading each signal off the folder's files, as the error
+    -- chain the person is shown.
+    disc_id_failure        TEXT CHECK (disc_id_failure IS NULL OR disc_id_failure <> ''),
     barcode_state          TEXT NOT NULL CHECK (barcode_state IN ('settled', 'failed', 'absent')),
-    barcode_failure        TEXT CHECK (barcode_failure IS NULL OR barcode_failure IN ('network', 'provider', 'timeout', 'artwork_analysis', 'diagnostic')),
-    barcode_failure_status INTEGER,
-    barcode_failure_detail TEXT,
+    barcode_failure        TEXT CHECK (barcode_failure IS NULL OR barcode_failure <> ''),
     text_state             TEXT NOT NULL CHECK (text_state IN ('settled', 'failed')),
-    text_failure           TEXT CHECK (text_failure IS NULL OR text_failure IN ('network', 'provider', 'timeout', 'artwork_analysis', 'diagnostic')),
-    text_failure_status    INTEGER,
-    text_failure_detail    TEXT,
+    text_failure           TEXT CHECK (text_failure IS NULL OR text_failure <> ''),
     FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE,
     CHECK ((audio_source IS 'cd_rip') = (cd_rip_proof IS NOT NULL)),
     CHECK ((audio_source IS 'download') = (download_proof IS NOT NULL)),
@@ -1315,13 +1311,7 @@ CREATE TABLE IF NOT EXISTS import_candidate_signals (
     CHECK (disc_id_source_file IS NULL OR disc_id_state = 'computed'),
     CHECK ((disc_id_state = 'failed') = (disc_id_failure IS NOT NULL)),
     CHECK ((barcode_state = 'failed') = (barcode_failure IS NOT NULL)),
-    CHECK ((text_state = 'failed') = (text_failure IS NOT NULL)),
-    CHECK (disc_id_failure_status IS NULL OR disc_id_failure = 'provider'),
-    CHECK ((disc_id_failure = 'diagnostic') = (disc_id_failure_detail IS NOT NULL)),
-    CHECK (barcode_failure_status IS NULL OR barcode_failure = 'provider'),
-    CHECK ((barcode_failure = 'diagnostic') = (barcode_failure_detail IS NOT NULL)),
-    CHECK (text_failure_status IS NULL OR text_failure = 'provider'),
-    CHECK ((text_failure = 'diagnostic') = (text_failure_detail IS NOT NULL))
+    CHECK ((text_state = 'failed') = (text_failure IS NOT NULL))
 ) STRICT;
 
 -- The barcodes, catalog numbers and free-text candidates read off a candidate,
@@ -1392,7 +1382,7 @@ CREATE TABLE IF NOT EXISTS import_candidate_excluded_barcode (
 CREATE TABLE IF NOT EXISTS import_candidate_verdict (
     content_hash  TEXT PRIMARY KEY,
     kind          TEXT NOT NULL
-        CHECK (kind IN ('found', 'not_found', 'manual_only', 'failed')),
+        CHECK (kind IN ('found', 'not_found', 'manual_only', 'failed', 'error')),
     -- How many tracks the folder played when the verdict was reached.
     track_count   INTEGER CHECK (track_count IS NULL OR track_count >= 0),
     -- The lookup failures of a failed verdict, stored as JSON since no query
@@ -1409,14 +1399,18 @@ CREATE TABLE IF NOT EXISTS import_candidate_verdict (
         ledger_json IS NULL
         OR (json_valid(ledger_json) AND json_type(ledger_json) = 'object')
     ),
+    -- How bae broke on its own side, for an 'error' verdict: the error chain
+    -- the person is shown.
+    error_detail  TEXT CHECK (error_detail IS NULL OR error_detail <> ''),
     identified_at TEXT NOT NULL,
     -- The folder's own files rule out every row found: a CD rip where no row
     -- could be a CD, or a sample rate no CD holds where every row is a CD.
     -- Such a verdict is never Ready.
     medium_conflict TEXT CHECK (medium_conflict IS NULL OR medium_conflict IN ('cd_rip', 'not_cd_audio')),
     FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE,
-    CHECK ((kind = 'not_found') = (track_count IS NULL)),
+    CHECK ((kind IN ('not_found', 'error')) = (track_count IS NULL)),
     CHECK ((kind = 'failed') = (failures_json IS NOT NULL)),
+    CHECK ((kind = 'error') = (error_detail IS NOT NULL)),
     CHECK (medium_conflict IS NULL OR kind IN ('found', 'failed'))
 ) STRICT;
 
@@ -1489,9 +1483,8 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     -- Why the release's full document could not be read when the run offered
     -- its row, which then holds what the lookup returned. NULL when it was
     -- read or never asked for.
-    document_failure        TEXT CHECK (document_failure IS NULL OR document_failure IN ('network', 'provider', 'timeout', 'artwork_analysis', 'diagnostic')),
+    document_failure        TEXT CHECK (document_failure IS NULL OR document_failure IN ('network', 'provider', 'timeout')),
     document_failure_status INTEGER,
-    document_failure_detail TEXT,
     -- The year the release's album first came out, as its full document's
     -- release group or master states it.
     album_first_year        INTEGER,
@@ -1518,8 +1511,7 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
            OR (by_disc_id = 0 AND by_barcode = 0 AND by_catalog = 0 AND by_isrc = 0
                AND by_search = 0)),
     CHECK (country IS NULL OR region IS NULL),
-    CHECK (document_failure_status IS NULL OR document_failure = 'provider'),
-    CHECK ((document_failure = 'diagnostic') = (document_failure_detail IS NOT NULL))
+    CHECK (document_failure_status IS NULL OR document_failure = 'provider')
 ) STRICT;
 
 -- Every barcode a matched record states.

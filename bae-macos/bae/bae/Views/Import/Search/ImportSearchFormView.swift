@@ -98,7 +98,7 @@ struct ImportSearchFormView: View {
         signals?.text.isScanning ?? false
     }
 
-    private var signalFailure: BridgeLookupFailure? {
+    private var signalFailure: BridgeInternalFailure? {
         signals?.text.failure
     }
 
@@ -132,7 +132,7 @@ struct ImportSearchFormView: View {
             }
             if let signalFailure {
                 Label(
-                    signalFailure.badgeLine,
+                    signalFailure.detail,
                     systemImage: "exclamationmark.triangle.fill"
                 )
                 .themeText(.body)

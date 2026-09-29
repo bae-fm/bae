@@ -7,7 +7,7 @@
 //! image, and the barcode and text signals settle at the end.
 //!
 //! An extraction that cannot gather its inputs sends one snapshot that fails
-//! every signal, so its run settles as a failure instead of waiting. A
+//! every signal, so its run ends as bae's own error instead of waiting. A
 //! replaced extraction sends nothing more.
 
 use super::analyzer::{ArtworkAnalysis, ArtworkAnalyzer};
@@ -20,7 +20,7 @@ use crate::import::{CandidateRuntime, CandidateWork, ImportEvent, ImportEventBus
 use crate::library::LibraryManager;
 use crate::signals::{
     AudioFacts,
-    ArtworkScan, AudioOrigin, BarcodeSignal, DiscIdSignal, LookupFailure, Signals, SourcedValue,
+    ArtworkScan, AudioOrigin, BarcodeSignal, DiscIdSignal, InternalFailure, Signals, SourcedValue,
     TextSignal,
 };
 use crate::util::rate_limiter::CallPriority;
@@ -134,20 +134,17 @@ impl ExtractionServiceInner {
         self.analyzer.lock().unwrap().is_some()
     }
 
-    async fn analyze_artwork(&self, path: PathBuf) -> Result<ArtworkAnalysis, LookupFailure> {
-        let analyzer = self
-            .analyzer
-            .lock()
-            .unwrap()
-            .clone()
-            .ok_or(LookupFailure::ArtworkAnalysis)?;
+    async fn analyze_artwork(&self, path: PathBuf) -> Result<ArtworkAnalysis, InternalFailure> {
+        let analyzer = self.analyzer.lock().unwrap().clone().ok_or_else(|| {
+            InternalFailure::logged("reading the artwork", "no artwork analyzer is registered")
+        })?;
         let log_path = path.clone();
         let failure_context = format!("OCR worker failed for {log_path:?}");
         run_blocking(&self.runtime_handle, &failure_context, move || {
             analyzer.analyze(&path)
         })
         .await
-        .map_err(|_| LookupFailure::ArtworkAnalysis)
+        .map_err(|detail| InternalFailure { detail })
     }
 }
 
@@ -243,7 +240,7 @@ async fn run_extraction(
             {
                 Ok(fast) => fast,
                 Err(detail) => {
-                    let failure = LookupFailure::Diagnostic { detail };
+                    let failure = InternalFailure { detail };
                     emit_aborted_signals(
                         &inner,
                         &extraction,
@@ -299,7 +296,10 @@ async fn run_extraction(
                         AudioOrigin::default(),
                         AudioFacts::default(),
                         DiscIdSignal::Failed {
-                            failure: crate::signals::LookupFailure::Diagnostic { detail },
+                            failure: InternalFailure::logged(
+                                &format!("resolving release {release_id}"),
+                                detail,
+                            ),
                         },
                     ),
                 };
@@ -334,7 +334,7 @@ async fn run_extraction(
                                 &inner,
                                 &extraction,
                                 disc_id,
-                                LookupFailure::Diagnostic { detail: e },
+                                InternalFailure { detail: e },
                             );
                             return;
                         }
@@ -634,7 +634,7 @@ fn emit_failed_ocr_signals(
     extraction: &RunningExtraction,
     mut gathered: Gathered,
     artwork: ArtworkScan,
-    failure: LookupFailure,
+    failure: InternalFailure,
 ) {
     let classification = gathered.pool.classify();
     let barcode = BarcodeSignal::Failed {
@@ -665,13 +665,13 @@ fn emit_failed_ocr_signals(
 }
 
 /// Send one snapshot with every signal failed, for an extraction that could
-/// not gather its inputs, so its run settles as a failure. The audio could
+/// not gather its inputs, so its run ends as an error. The audio could
 /// not be read either, so it is none.
 fn emit_aborted_signals(
     inner: &ExtractionServiceInner,
     extraction: &RunningExtraction,
     disc_id: DiscIdSignal,
-    failure: LookupFailure,
+    failure: InternalFailure,
 ) {
     emit_signals(
         inner,

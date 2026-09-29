@@ -25,7 +25,7 @@ use super::search::{MetadataResult, SearchQuery};
 use super::types::{ImportProgress, ImportStep, Catalog, PrepareStep};
 use crate::db::LibraryStatus;
 use crate::identify::{IdentifyRunId, IdentifyState};
-use crate::signals::{LookupFailure, Signals};
+use crate::signals::{Failure, Signals};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -519,7 +519,7 @@ impl CandidateRuntime {
         key: &str,
         run: u64,
         source: Catalog,
-        outcome: Result<Vec<(MetadataResult, LibraryStatus)>, LookupFailure>,
+        outcome: Result<Vec<(MetadataResult, LibraryStatus)>, Failure>,
     ) -> bool {
         self.set(key, |_, runtime| {
             let Some(running) = runtime.search.as_mut() else {
@@ -623,13 +623,18 @@ impl CandidateRuntime {
         });
     }
 
-    /// `run`'s answer could not be written; the entry says why.
+    /// `run`'s answer could not be written; the entry says why. bae's own
+    /// failure, so it is logged as one.
     pub(super) fn fail_identification(
         &self,
         candidate_key: &str,
         run: IdentifyRunId,
         failure: SaveFailure,
     ) {
+        tracing::error!(
+            "identification: {candidate_key}'s answer did not land: {}",
+            failure.error()
+        );
         self.set(candidate_key, |_, runtime| {
             if answered_on(runtime, run) {
                 runtime.answered = None;

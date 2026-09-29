@@ -174,8 +174,13 @@ pub enum AutomationLookupFailure {
     Network,
     Provider { status: Option<u16> },
     Timeout,
-    ArtworkAnalysis,
-    Diagnostic { detail: String },
+}
+
+/// Mirrors bae-core's `signals::InternalFailure`: how bae broke on its own
+/// side.
+#[derive(Debug, Clone, Serialize)]
+pub struct AutomationInternalFailure {
+    pub detail: String,
 }
 
 /// Mirrors bae-core's `signals::DiscIdSignal`.
@@ -189,7 +194,7 @@ pub enum AutomationDiscIdSignal {
     /// A CUE over audio sampled at a rate no CD plays at.
     NotCdAudio,
     Failed {
-        failure: AutomationLookupFailure,
+        failure: AutomationInternalFailure,
     },
 }
 
@@ -252,7 +257,7 @@ pub enum AutomationBarcodeSignal {
         codes: Vec<String>,
     },
     Failed {
-        failure: AutomationLookupFailure,
+        failure: AutomationInternalFailure,
         codes: Vec<String>,
     },
     Absent,
@@ -271,7 +276,7 @@ pub enum AutomationTextSignal {
         free_text: Vec<String>,
     },
     Failed {
-        failure: AutomationLookupFailure,
+        failure: AutomationInternalFailure,
         catalogs: Vec<String>,
         free_text: Vec<String>,
     },

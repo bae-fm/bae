@@ -33,14 +33,17 @@ pub enum FolderCheck {
     MediumDisagrees { folder: MediumConflict },
 }
 
-/// Which shape a stored verdict has. The first three mirror the normal verdict
-/// column; `Failed` is the attached failed-verdict row.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Which shape a stored verdict has, as its `kind` column says.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VerdictKind {
     Found,
     NotFound,
     ManualOnly,
     Failed,
+    /// bae broke on its own side, and how.
+    Error {
+        failure: crate::signals::InternalFailure,
+    },
 }
 
 /// The match a verdict's findings lead with, as its own columns.
@@ -111,7 +114,7 @@ impl LeadMatch {
 pub struct VerdictSummary {
     pub kind: VerdictKind,
     /// The folder's own track count, as identification counted it. `None` for
-    /// `NotFound`, which counts nothing.
+    /// `NotFound`, which counts nothing, and for `Error`, which ended first.
     pub track_count: Option<u32>,
     /// How many physical pressings the `found` list names — the rows the run
     /// built, so two sources' records of one pressing count once. Zero for
@@ -132,12 +135,15 @@ impl VerdictSummary {
             TerminalVerdict::NotFoundAnywhere { .. } => VerdictKind::NotFound,
             TerminalVerdict::ManualOnly { .. } => VerdictKind::ManualOnly,
             TerminalVerdict::Failed { .. } => VerdictKind::Failed,
+            TerminalVerdict::Error { failure } => VerdictKind::Error {
+                failure: failure.clone(),
+            },
         };
         let track_count = match verdict {
             TerminalVerdict::Found { track_count, .. }
             | TerminalVerdict::ManualOnly { track_count, .. }
             | TerminalVerdict::Failed { track_count, .. } => Some(*track_count),
-            TerminalVerdict::NotFoundAnywhere { .. } => None,
+            TerminalVerdict::NotFoundAnywhere { .. } | TerminalVerdict::Error { .. } => None,
         };
         // A failed verdict leads with what its answering lookups found, as a
         // found one does; its kind is what keeps it from being auto-importable.

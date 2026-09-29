@@ -219,9 +219,6 @@ impl BridgeDiscIdStep {
             DiscIdStepView::NotCdAudio => Self::NotCdAudio {
                 sample_rate_hz: rate,
             },
-            DiscIdStepView::ReadFailed { failure } => Self::ReadFailed {
-                failure: BridgeLookupFailure::from_core(failure),
-            },
             DiscIdStepView::Read { disc_id, lookup } => Self::Read {
                 disc_id,
                 lookup: BridgeLookupState::from_core(lookup),
@@ -237,7 +234,6 @@ mirror_enum! {
         Absent,
         CoverArtOff,
         NoCodes,
-        ScanFailed { failure: (BridgeLookupFailure) },
         Rows { scanning, rows: (each BridgeSignalValueRow) },
     },
 }
@@ -413,7 +409,7 @@ mirror_enum! {
     variants: {
         Scanning { catalogs, free_text },
         Settled { catalogs, free_text },
-        Failed { failure: (BridgeLookupFailure), catalogs, free_text },
+        Failed { failure: (crate::types::BridgeInternalFailure), catalogs, free_text },
     },
 }
 
@@ -471,6 +467,9 @@ impl BridgeIdentifyState {
         let rate = s.audio().and_then(|audio| audio.rate_ruling_out_cd);
         match IdentifyStateView::from(s) {
             IdentifyStateView::Idle => BridgeIdentifyState::Idle,
+            IdentifyStateView::Error { failure } => BridgeIdentifyState::Error {
+                failure: crate::types::BridgeInternalFailure::from_core(failure),
+            },
             IdentifyStateView::Triangulating {
                 run,
                 groups,
@@ -564,9 +563,6 @@ fn identify_failure(
     use bae_core::identify::IdentifyFailure;
     match failure {
         IdentifyFailure::DiscId(failure) => crate::types::BridgeIdentifyFailure::DiscId {
-            failure: BridgeLookupFailure::from_core(failure),
-        },
-        IdentifyFailure::BarcodeScan(failure) => crate::types::BridgeIdentifyFailure::BarcodeScan {
             failure: BridgeLookupFailure::from_core(failure),
         },
         IdentifyFailure::Barcode(failure) => crate::types::BridgeIdentifyFailure::Barcode {
@@ -674,9 +670,7 @@ mod tests {
                     ProviderLookup {
                         source: Catalog::Discogs,
                         state: LookupState::Failed {
-                            failure: LookupFailure::Diagnostic {
-                                detail: "provider lookup failed".to_string(),
-                            },
+                            failure: LookupFailure::Provider { status: Some(500) },
                         },
                     },
                 ],
@@ -699,8 +693,8 @@ mod tests {
         assert!(matches!(
             &rows[0].cells[1].lookup,
             BridgeLookupState::Failed {
-                failure: BridgeLookupFailure::Diagnostic { detail }
-            } if detail == "provider lookup failed"
+                failure: BridgeLookupFailure::Provider { status: Some(500) }
+            }
         ));
     }
 
@@ -791,17 +785,26 @@ mod tests {
         }
     }
 
-    /// A failed barcode scan crosses as its own variant, not a provider's.
+    /// A run bae broke crosses as an error with its text.
     #[test]
-    fn a_failed_barcode_scan_crosses_as_its_own_variant() {
-        let step = barcode_step(in_flight(BarcodeProgress::ScanFailed {
-            failure: LookupFailure::ArtworkAnalysis,
-        }));
-        assert!(matches!(
-            step,
-            BridgeBarcodeStep::ScanFailed {
-                failure: BridgeLookupFailure::ArtworkAnalysis
-            }
-        ));
+    fn a_run_bae_broke_crosses_as_an_error_with_its_text() {
+        let failure = bae_core::signals::InternalFailure {
+            detail: "checking the library: the store is locked".to_string(),
+        };
+        let IdentifyState::Triangulating { context, .. } = in_flight(BarcodeProgress::Skipped)
+        else {
+            unreachable!("in_flight builds a run in flight");
+        };
+        let state = IdentifyState::Error {
+            failure: failure.clone(),
+            context,
+        };
+        assert_eq!(
+            match BridgeIdentifyState::from_core(state) {
+                BridgeIdentifyState::Error { failure } => failure.detail,
+                other => panic!("expected an error, got {other:?}"),
+            },
+            failure.detail
+        );
     }
 }

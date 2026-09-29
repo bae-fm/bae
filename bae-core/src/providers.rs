@@ -15,7 +15,7 @@ use crate::import::payloads::ReleasePayloads;
 use crate::import::search::MetadataResult;
 use crate::import::{ImportError, MetadataRef};
 use crate::musicbrainz::{MusicBrainz, ReleaseSearchParams};
-use crate::signals::failure::LookupFailure;
+use crate::signals::failure::Failure;
 use crate::util::http::Http;
 use crate::util::rate_limiter::CallPriority;
 use crate::wikidata::Wikidata;
@@ -115,7 +115,7 @@ impl Providers {
         &self,
         discid: &str,
         priority: CallPriority,
-    ) -> Result<Vec<MetadataResult>, LookupFailure> {
+    ) -> Result<Vec<MetadataResult>, Failure> {
         crate::import::search::lookup_by_discid(&self.musicbrainz, discid, priority).await
     }
 
@@ -123,7 +123,7 @@ impl Providers {
         &self,
         isrcs: &[String],
         priority: CallPriority,
-    ) -> Result<Vec<MetadataResult>, LookupFailure> {
+    ) -> Result<Vec<MetadataResult>, Failure> {
         crate::import::search::lookup_by_isrcs(&self.musicbrainz, isrcs, priority).await
     }
 

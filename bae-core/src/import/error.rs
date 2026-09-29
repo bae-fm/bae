@@ -303,7 +303,6 @@ impl ImportError {
                 LookupFailure::Network
                 | LookupFailure::Timeout
                 | LookupFailure::Provider { .. } => C::Import,
-                LookupFailure::Diagnostic { .. } | LookupFailure::ArtworkAnalysis => C::ImportData,
             },
             Self::Internal { .. } => C::Internal,
             Self::Config { .. } => C::Config,
@@ -377,12 +376,16 @@ mod tests {
             error.to_string().contains("RelativeUrlWithoutBase"),
             "{error}"
         );
-        let crate::signals::LookupFailure::Diagnostic { detail } =
-            crate::import::search::import_error_to_lookup_failure(&error)
+        let crate::signals::Failure::Internal(failure) =
+            crate::import::search::failure_of(&error, "asking Discogs")
         else {
-            panic!("invalid request should be diagnostic");
+            panic!("a request bae could not build is its own failure");
         };
-        assert!(detail.contains("RelativeUrlWithoutBase"), "{detail}");
+        assert!(
+            failure.detail.contains("RelativeUrlWithoutBase"),
+            "{}",
+            failure.detail
+        );
     }
 
     /// Only an error a provider answered with is a lookup that failed; one

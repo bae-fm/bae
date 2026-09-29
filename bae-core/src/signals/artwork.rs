@@ -2,7 +2,7 @@
 //! since a stored snapshot has no pass to report on, so it rides beside the
 //! snapshot on the `SignalsUpdated` event.
 
-use super::LookupFailure;
+use super::InternalFailure;
 
 /// The artwork pass over a candidate's images.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -24,7 +24,7 @@ pub enum ArtworkScan {
     Off,
     /// Reading stopped at a failure; `read` images had been read before it.
     Failed {
-        failure: LookupFailure,
+        failure: InternalFailure,
         read: u32,
         total: u32,
     },

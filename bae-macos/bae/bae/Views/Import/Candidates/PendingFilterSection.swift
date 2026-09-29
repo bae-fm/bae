@@ -49,6 +49,7 @@ extension BridgePendingState {
         case .identified: String(localized: "Identified")
         case .unmatched: String(localized: "Unmatched")
         case .lookupError: String(localized: "Lookup Error")
+        case .error: String(localized: "Error")
         case .importing: String(localized: "Importing")
         case .importError: String(localized: "Import Error")
         }

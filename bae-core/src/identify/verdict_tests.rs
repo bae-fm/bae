@@ -498,8 +498,11 @@ fn chosen_catalog_failure_derives_to_failed() {
 #[test]
 fn a_later_failure_keeps_the_findings_and_joins_earlier_failures() {
     let details = |detail: &str| {
-        IdentifyFailure::ReleaseDetails(crate::signals::LookupFailure::Diagnostic {
-            detail: detail.to_string(),
+        IdentifyFailure::ReleaseDetails(crate::signals::LookupFailure::Provider {
+            status: Some(match detail {
+                "first" => 500,
+                _ => 503,
+            }),
         })
     };
     let mut verdict = TerminalVerdict::try_from(found_state()).unwrap();

@@ -1,7 +1,7 @@
 //! The disc-ID signal: a MusicBrainz disc ID derived from a candidate's LOG/CUE
 //! artifacts — from a folder's own, or from a library release's, when re-identifying.
 
-use super::LookupFailure;
+use super::InternalFailure;
 
 /// Derived once during the extraction pass. Identify turns a `Computed` disc ID into
 /// a MusicBrainz lookup; `Absent`, `NotCdAudio` and `Failed` settle the signal with
@@ -24,9 +24,9 @@ pub enum DiscIdSignal {
     /// disc could have had the layout the sheet describes and none is hashed
     /// to ask about.
     NotCdAudio,
-    /// Derivation failed — a DB load, a "release not found", a compute task panic.
-    /// Always local, so always a `LookupFailure::Diagnostic` in practice.
-    Failed { failure: LookupFailure },
+    /// Derivation failed — a DB load, a "release not found", a compute task
+    /// panic: bae broke reading the artifacts.
+    Failed { failure: InternalFailure },
 }
 
 impl DiscIdSignal {

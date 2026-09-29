@@ -70,7 +70,6 @@ mirror_enum! {
         Reading,
         Absent,
         NotCdAudio,
-        ReadFailed { failure: (AutomationLookupFailure) },
         Read { disc_id, lookup: (AutomationLookupState) },
     },
 }
@@ -83,7 +82,6 @@ mirror_enum! {
         Absent,
         CoverArtOff,
         NoCodes,
-        ScanFailed { failure: (AutomationLookupFailure) },
         Rows { scanning, rows: (each AutomationSignalValueRow) },
     },
 }
@@ -162,9 +160,6 @@ impl AutomationIdentifyFailure {
         use bae_core::identify::IdentifyFailure;
         match failure {
             IdentifyFailure::DiscId(failure) => Self::DiscId {
-                failure: AutomationLookupFailure::from_core(failure),
-            },
-            IdentifyFailure::BarcodeScan(failure) => Self::BarcodeScan {
                 failure: AutomationLookupFailure::from_core(failure),
             },
             IdentifyFailure::Barcode(failure) => Self::Barcode {
@@ -287,6 +282,9 @@ pub(crate) fn automation_identify_state(
         IdentifyStateView::ManualOnly { track_count, run } => AutomationIdentifyState::ManualOnly {
             track_count,
             run: run.map(AutomationIdentifyRun::from_core),
+        },
+        IdentifyStateView::Error { failure } => AutomationIdentifyState::Error {
+            failure: AutomationInternalFailure::from_core(failure),
         },
         IdentifyStateView::Failed {
             run,

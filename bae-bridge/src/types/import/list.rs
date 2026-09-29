@@ -46,8 +46,11 @@ pub enum BridgePendingState {
     Identified,
     /// The person's own draft is the answer.
     Unmatched,
-    /// A lookup failed, or could not read a release it found.
+    /// A catalog could not answer the lookup, or hand over a release it
+    /// found.
     LookupError,
+    /// bae broke on its own side.
+    Error,
     /// An import is queued or running.
     Importing,
     /// The last import failed.

@@ -9,21 +9,25 @@
 //!
 //! 1. **Importing** — an import is queued or running.
 //! 2. **Identifying** — a run is queued, running, or writing its answer.
-//! 3. **Lookup error** — a run's answer failed to save, and another run could
-//!    save it.
+//! 3. **Error** — bae could not store a run's answer.
 //! 4. **Import error** — the last import failed, or the release cannot be
 //!    worked on as it stands.
 //! 5. **Identified** — the draft is read from a catalog.
 //! 6. **Not looked up** — no lookup is stored for the folder's files.
-//! 7. **Lookup error** — the stored lookup failed, or could not read a
-//!    release it found in full.
-//! 8. **Unmatched** — the lookup took its release for the folder and the
+//! 7. **Error** — bae broke on its own side and the stored run ended there.
+//! 8. **Lookup error** — a catalog could not answer the stored lookup, or
+//!    could not hand over a release it found in full.
+//! 9. **Unmatched** — the lookup took its release for the folder and the
 //!    draft is no longer read from it: the person set it aside.
-//! 9. **Needs You** — the lookup left the answer to the person.
+//! 10. **Needs You** — the lookup left the answer to the person.
+//!
+//! A lookup error is a catalog's; an error is bae's own, which the row states
+//! with its text.
 
 use super::{IdentificationStatus, TriagePlacement, TriageRuntimeFacts};
 use crate::identify::{Declined, FolderCheck, MediumConflict, VerdictKind, VerdictSummary};
 use crate::import::MetadataProvenance;
+use crate::signals::InternalFailure;
 
 /// One state a Found row is in. Declared in the menu's order, which is the
 /// order a set of them lists in.
@@ -35,6 +39,7 @@ pub enum PendingState {
     Identified,
     Unmatched,
     LookupError,
+    Error,
     Importing,
     ImportError,
 }
@@ -51,6 +56,7 @@ impl PendingState {
             Self::Identified,
             Self::Unmatched,
             Self::LookupError,
+            Self::Error,
         ],
         &[Self::Importing, Self::ImportError],
     ];
@@ -62,11 +68,11 @@ impl PendingState {
 
 /// The state what is running for a candidate puts it in, over whatever the
 /// tables say.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LiveStanding {
     Identifying,
-    /// A run's answer failed to save, and another run could save it.
-    LookupError,
+    /// bae could not store a run's answer.
+    Error { failure: InternalFailure },
     Importing,
 }
 
@@ -82,15 +88,21 @@ impl LiveStanding {
                 | IdentificationStatus::Running
                 | IdentificationStatus::Finalizing,
             ) => Some(Self::Identifying),
-            Some(IdentificationStatus::FinalizationFailed { failure }) => {
-                failure.retryable().then_some(Self::LookupError)
-            }
+            Some(IdentificationStatus::FinalizationFailed { failure }) => Some(Self::Error {
+                failure: InternalFailure {
+                    detail: failure.error().to_string(),
+                },
+            }),
             None => None,
         }
     }
 
-    pub fn state(self) -> PendingState {
-        PendingStanding::from(self).state()
+    pub fn state(&self) -> PendingState {
+        match self {
+            Self::Identifying => PendingState::Identifying,
+            Self::Error { .. } => PendingState::Error,
+            Self::Importing => PendingState::Importing,
+        }
     }
 }
 
@@ -98,15 +110,15 @@ impl From<LiveStanding> for PendingStanding {
     fn from(live: LiveStanding) -> Self {
         match live {
             LiveStanding::Identifying => Self::Identifying,
-            LiveStanding::LookupError => Self::LookupError,
+            LiveStanding::Error { failure } => Self::Error { failure },
             LiveStanding::Importing => Self::Importing,
         }
     }
 }
 
-/// Where one Found row stands: its [`PendingState`], and why a row that
-/// needs the person does.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Where one Found row stands: its [`PendingState`], why a row that needs
+/// the person does, and how bae broke for a row in error.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PendingStanding {
     NotLookedUp,
     Identifying,
@@ -114,6 +126,7 @@ pub enum PendingStanding {
     Identified,
     Unmatched,
     LookupError,
+    Error { failure: InternalFailure },
     Importing,
     ImportError,
 }
@@ -150,6 +163,7 @@ impl PendingStanding {
             Self::Identified => PendingState::Identified,
             Self::Unmatched => PendingState::Unmatched,
             Self::LookupError => PendingState::LookupError,
+            Self::Error { .. } => PendingState::Error,
             Self::Importing => PendingState::Importing,
             Self::ImportError => PendingState::ImportError,
         }
@@ -178,7 +192,12 @@ impl PendingStanding {
         let Some(verdict) = verdict else {
             return Some(Self::NotLookedUp);
         };
-        let reason = match verdict.kind {
+        let reason = match &verdict.kind {
+            VerdictKind::Error { failure } => {
+                return Some(Self::Error {
+                    failure: failure.clone(),
+                })
+            }
             VerdictKind::Failed => return Some(Self::LookupError),
             VerdictKind::NotFound => NeedsYouReason::NotFound,
             VerdictKind::ManualOnly => NeedsYouReason::NothingToLookUp,

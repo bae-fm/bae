@@ -76,9 +76,6 @@ pub enum AutomationDiscIdStep {
     Absent,
     /// A CUE over audio sampled at a rate no CD plays at.
     NotCdAudio,
-    ReadFailed {
-        failure: AutomationLookupFailure,
-    },
     Read {
         disc_id: String,
         lookup: AutomationLookupState,
@@ -93,9 +90,6 @@ pub enum AutomationBarcodeStep {
     /// The cover art was left unread and no CUE sheet states a code.
     CoverArtOff,
     NoCodes,
-    ScanFailed {
-        failure: AutomationLookupFailure,
-    },
     Rows {
         scanning: bool,
         rows: Vec<AutomationSignalValueRow>,
@@ -195,10 +189,6 @@ pub enum AutomationIdentifyFailure {
     DiscId {
         failure: AutomationLookupFailure,
     },
-    /// Reading the candidate's barcodes failed.
-    BarcodeScan {
-        failure: AutomationLookupFailure,
-    },
     Barcode {
         source: AutomationCatalog,
         failure: AutomationLookupFailure,
@@ -253,6 +243,10 @@ pub enum AutomationIdentifyState {
     ManualOnly {
         track_count: u32,
         run: Option<AutomationIdentifyRun>,
+    },
+    /// bae broke on its own side and the run ended there.
+    Error {
+        failure: AutomationInternalFailure,
     },
     /// A lookup failed, with whatever the lookups that answered still found.
     Failed {

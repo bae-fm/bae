@@ -611,6 +611,23 @@ struct FindOnlineResultAreaTests {
         )
     }
 
+    /// A run bae broke shows why, not an empty list, and its section reads
+    /// as failed.
+    @Test("a run bae broke shows its error")
+    func aRunBaeBrokeShowsItsError() {
+        let failure = BridgeInternalFailure(
+            detail: "checking the library: the store is locked"
+        )
+        #expect(
+            FindOnlineResultArea(identifyState: .error(failure: failure))
+                == .error(failure)
+        )
+        #expect(
+            FindOnlineSectionGlyph(identifyState: .error(failure: failure))
+                == .failed
+        )
+    }
+
     /// A folder with nothing to look up on its own but catalog numbers to
     /// offer shows the band's chips rather than the no-signals line.
     @Test("catalog numbers to activate are an area of their own")

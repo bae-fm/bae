@@ -7,6 +7,7 @@
 
 use super::*;
 use super::super::album_link_rows::{AlbumLinkRow, StatementColumns};
+use crate::signals::InternalFailure;
 use crate::identify::{MediumConflict, 
     Findings, IdentifyFailure, IdentifyRunView, LookupProvenance, NarrowedOut, TerminalVerdict,
 };
@@ -53,6 +54,7 @@ pub(super) fn insert_verdict(
         TerminalVerdict::NotFoundAnywhere { .. } => ("not_found", None),
         TerminalVerdict::ManualOnly { track_count, .. } => ("manual_only", Some(*track_count)),
         TerminalVerdict::Failed { track_count, .. } => ("failed", Some(*track_count)),
+        TerminalVerdict::Error { .. } => ("error", None),
     };
     // The ledger the run recorded, stored whole: no query reads into it, and
     // what it draws is the run laid out cell by cell.
@@ -88,18 +90,27 @@ pub(super) fn insert_verdict(
         }
         TerminalVerdict::Found { .. }
         | TerminalVerdict::NotFoundAnywhere { .. }
-        | TerminalVerdict::ManualOnly { .. } => None,
+        | TerminalVerdict::ManualOnly { .. }
+        | TerminalVerdict::Error { .. } => None,
+    };
+    let error_detail = match verdict {
+        TerminalVerdict::Error { failure } => Some(failure.detail.as_str()),
+        TerminalVerdict::Found { .. }
+        | TerminalVerdict::NotFoundAnywhere { .. }
+        | TerminalVerdict::ManualOnly { .. }
+        | TerminalVerdict::Failed { .. } => None,
     };
     sql.execute(
         "INSERT INTO import_candidate_verdict \
-             (content_hash, kind, track_count, failures_json, \
+             (content_hash, kind, track_count, failures_json, error_detail, \
               ledger_json, identified_at, medium_conflict) \
-         VALUES (?, ?, ?, ?, ?, ?, ?)",
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
         params![
             content_hash,
             kind,
             track_count,
             failures_json,
+            error_detail,
             ledger_json,
             identification.identified_at.to_rfc3339(),
             medium_conflict,
@@ -235,10 +246,9 @@ fn insert_match(
               cover_standing, source_group_id, album_links, source_tracks_kind, \
               source_tracks_count, by_disc_id, by_barcode, by_catalog, by_isrc, by_search, \
               named_by_catalog, named_by_key, narrowed_out, document_failure, \
-              document_failure_status, document_failure_detail, album_first_year, \
-              track_titles, notes) \
+              document_failure_status, album_first_year, track_titles, notes) \
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \
-                 ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                 ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         params![
             content_hash,
             position,
@@ -273,7 +283,6 @@ fn insert_match(
             narrowed_out,
             document_failure.kind,
             document_failure.status,
-            document_failure.detail,
             result.album_first_year,
             serde_json::to_string(&result.track_titles).expect("titles serialize"),
             serde_json::to_string(&result.notes).expect("notes serialize"),
@@ -604,7 +613,6 @@ fn read_match_columns(row: &Row<'_>, pressing: i64) -> Result<MatchColumns, DbEr
             document_failure: super::lookup_failure_columns::failure_of(
                 row.get("document_failure")?,
                 row.get("document_failure_status")?,
-                row.get("document_failure_detail")?,
             )?,
             album_first_year: row.get("album_first_year")?,
             track_titles: read_strings(row, "track_titles")?,
@@ -639,13 +647,14 @@ pub(super) struct VerdictRow {
     pub(super) kind: String,
     pub(super) track_count: Option<i64>,
     pub(super) failures_json: Option<String>,
+    pub(super) error_detail: Option<String>,
     pub(super) ledger_json: Option<String>,
     pub(super) identified_at: DateTime<Utc>,
     pub(super) medium_conflict: Option<MediumConflict>,
 }
 
 pub(super) const VERDICT_COLUMNS: &str = "content_hash, kind, track_count, \
-     failures_json, ledger_json, identified_at, medium_conflict";
+     failures_json, error_detail, ledger_json, identified_at, medium_conflict";
 
 
 pub(super) fn read_verdict_row(row: &Row<'_>) -> Result<VerdictRow, DbError> {
@@ -654,6 +663,7 @@ pub(super) fn read_verdict_row(row: &Row<'_>) -> Result<VerdictRow, DbError> {
         kind: row.get("kind")?,
         track_count: row.get("track_count")?,
         failures_json: row.get("failures_json")?,
+        error_detail: row.get("error_detail")?,
         ledger_json: row.get("ledger_json")?,
         identified_at: super::rfc3339_column(row, "identified_at")?,
         medium_conflict: super::medium_conflict_of(row.get("medium_conflict")?)?,
@@ -670,6 +680,7 @@ pub(super) fn identification_of(
         kind,
         track_count,
         failures_json,
+        error_detail,
         ledger_json,
         identified_at,
         medium_conflict,
@@ -762,6 +773,17 @@ pub(super) fn identification_of(
                 findings: findings_of(found),
                 track_count: count_of()?,
                 ledger,
+            }
+        }
+        "error" => {
+            no_matches(&found)?;
+            let detail = error_detail.ok_or_else(|| {
+                DbError::Message(format!(
+                    "error verdict for {content_hash} states no error"
+                ))
+            })?;
+            TerminalVerdict::Error {
+                failure: InternalFailure { detail },
             }
         }
         other => return Err(unreadable("verdict kind", other)),

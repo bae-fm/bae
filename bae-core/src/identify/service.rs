@@ -11,7 +11,7 @@ use crate::import::{
     CandidateRuntime, CandidateWork, Catalog, ImportEvent, ImportEventBus, LookupChoices,
 };
 use crate::library::LibraryManager;
-use crate::signals::{ExtractionWatch, SignalsSnapshot};
+use crate::signals::{ExtractionWatch, Failure, InternalFailure, SignalsSnapshot};
 use crate::util::rate_limiter::CallPriority;
 use std::sync::Arc;
 use tokio::sync::mpsc;
@@ -36,18 +36,41 @@ fn run_providers(library_manager: &LibraryManager) -> Vec<Catalog> {
     crate::import::asked_sources(&library_manager.metadata_sources())
 }
 
-/// Pair one provider's results with live library status. The library check
-/// is bae's own work rather than the provider's, so a check that fails names
-/// this provider's lookup as producing nothing usable and leaves every other
-/// provider's answer alone.
-async fn annotate_lookup(lookup: SourceLookup, library_manager: &LibraryManager) -> LookupOutcome {
-    let results = lookup?;
+/// Pair one provider's results with live library status: the provider's
+/// answer, or how bae broke on its way there or back — a request it could not
+/// make, an answer it could not read, the library check, which is a read of
+/// bae's own store.
+async fn annotate_lookup(
+    lookup: SourceLookup,
+    library_manager: &LibraryManager,
+) -> Result<LookupOutcome, InternalFailure> {
+    let results = match lookup {
+        Ok(results) => results,
+        Err(Failure::Lookup(failure)) => return Ok(Err(failure)),
+        Err(Failure::Internal(failure)) => return Err(failure),
+    };
     if results.is_empty() {
-        return Ok(Vec::new());
+        return Ok(Ok(Vec::new()));
     }
     annotate_with_library_status(results, library_manager)
         .await
-        .map_err(|detail| crate::signals::LookupFailure::Diagnostic { detail })
+        .map(Ok)
+        .map_err(|detail| {
+            InternalFailure::logged("checking the library for the releases found", detail)
+        })
+}
+
+/// Send what a lookup came to: `answered` with the provider's answer, or the
+/// run's end where bae broke.
+fn emit_answer(
+    tx: &mpsc::UnboundedSender<IdentifyEvent>,
+    answer: Result<LookupOutcome, InternalFailure>,
+    answered: impl FnOnce(LookupOutcome) -> IdentifyEvent,
+) {
+    match answer {
+        Ok(outcome) => emit_step(tx, answered(outcome)),
+        Err(failure) => emit_step(tx, IdentifyEvent::Broke { failure }),
+    }
 }
 
 /// Thread-safe handle to the running identify service.
@@ -365,15 +388,12 @@ fn dispatch_effect(
         Effect::LookupDiscid { disc_id } => {
             let library_manager = inner.library_manager.clone();
             spawn_until_cancelled(&runtime, &token, async move {
-                let outcome = lookup_and_resolve(&disc_id, &library_manager, priority).await;
-                match outcome {
-                    Ok(results) => {
-                        emit_step(&event_tx, IdentifyEvent::DiscidLookupCompleted { results });
-                    }
-                    Err(failure) => {
-                        emit_step(&event_tx, IdentifyEvent::DiscidLookupFailed { failure });
-                    }
-                }
+                let event = match lookup_and_resolve(&disc_id, &library_manager, priority).await {
+                    Ok(results) => IdentifyEvent::DiscidLookupCompleted { results },
+                    Err(Failure::Lookup(failure)) => IdentifyEvent::DiscidLookupFailed { failure },
+                    Err(Failure::Internal(failure)) => IdentifyEvent::Broke { failure },
+                };
+                emit_step(&event_tx, event);
             });
         }
 
@@ -383,11 +403,13 @@ fn dispatch_effect(
                 let lookup = library_manager
                     .lookup_musicbrainz_isrcs(&isrcs, priority)
                     .await;
-                let outcome = annotate_lookup(lookup, &library_manager).await;
-                if let Err(failure) = &outcome {
+                let answer = annotate_lookup(lookup, &library_manager).await;
+                if let Ok(Err(failure)) = &answer {
                     debug!("ISRC lookup failed for {isrcs:?}: {failure:?}");
                 }
-                emit_step(&event_tx, IdentifyEvent::IsrcLookupAnswered { outcome });
+                emit_answer(&event_tx, answer, |outcome| {
+                    IdentifyEvent::IsrcLookupAnswered { outcome }
+                });
             });
         }
 
@@ -400,21 +422,20 @@ fn dispatch_effect(
                     barcode: barcode.clone(),
                 };
                 let lookup = search_source(&library_manager, source, &query, priority).await;
-                let outcome = annotate_lookup(lookup, &library_manager).await;
-                if let Err(failure) = &outcome {
+                let answer = annotate_lookup(lookup, &library_manager).await;
+                if let Ok(Err(failure)) = &answer {
                     debug!(
                         "{} barcode lookup failed for {barcode}: {failure:?}",
                         source.as_str()
                     );
                 }
-                emit_step(
-                    &event_tx,
+                emit_answer(&event_tx, answer, |outcome| {
                     IdentifyEvent::BarcodeLookupAnswered {
                         source,
                         for_barcode: barcode,
                         outcome,
-                    },
-                );
+                    }
+                });
             });
         }
 
@@ -429,15 +450,18 @@ fn dispatch_effect(
                     album: query.album.clone(),
                 };
                 let lookup = search_source(&library_manager, source, &search, priority).await;
-                let outcome = annotate_lookup(lookup, &library_manager).await;
-                if let Err(failure) = &outcome {
+                let answer = annotate_lookup(lookup, &library_manager).await;
+                if let Ok(Err(failure)) = &answer {
                     debug!(
                         "{} title search failed for {}: {failure:?}",
                         source.as_str(),
                         query.album
                     );
                 }
-                emit_step(&event_tx, IdentifyEvent::SearchAnswered { source, outcome });
+                emit_answer(&event_tx, answer, |outcome| IdentifyEvent::SearchAnswered {
+                    source,
+                    outcome,
+                });
             });
         }
 
@@ -451,23 +475,39 @@ fn dispatch_effect(
             spawn_until_cancelled(&runtime, &token, async move {
                 let mut read = Vec::with_capacity(releases.len());
                 for release in releases {
-                    let document = crate::import::service::prepare_release(
+                    let document = match crate::import::service::prepare_release(
                         &library_manager,
                         &release,
                         priority,
                     )
                     .await
-                    .map(|stored| {
-                        crate::identify::documents::ReleaseDocument::of(&stored, &track_lengths_ms)
-                    })
-                    .map_err(|error| {
-                        debug!(
-                            "{} release {} could not be read in full: {error}",
-                            release.catalog.as_str(),
-                            release.key
-                        );
-                        crate::import::search::import_error_to_lookup_failure(&error)
-                    });
+                    {
+                        Ok(stored) => Ok(crate::identify::documents::ReleaseDocument::of(
+                            &stored,
+                            &track_lengths_ms,
+                        )),
+                        Err(error) => match crate::import::search::failure_of(
+                            &error,
+                            &format!(
+                                "reading {} release {}",
+                                release.catalog.as_str(),
+                                release.key
+                            ),
+                        ) {
+                            Failure::Lookup(failure) => {
+                                debug!(
+                                    "{} release {} could not be read in full: {error}",
+                                    release.catalog.as_str(),
+                                    release.key
+                                );
+                                Err(failure)
+                            }
+                            Failure::Internal(failure) => {
+                                emit_step(&event_tx, IdentifyEvent::Broke { failure });
+                                return;
+                            }
+                        },
+                    };
                     read.push(crate::identify::documents::ReleaseReading { release, document });
                 }
                 emit_step(&event_tx, IdentifyEvent::ReleasesRead { read });
@@ -498,21 +538,20 @@ fn dispatch_effect(
                     catalog_number: catalog.clone(),
                 };
                 let lookup = search_source(&library_manager, source, &query, priority).await;
-                let outcome = annotate_lookup(lookup, &library_manager).await;
-                if let Err(failure) = &outcome {
+                let answer = annotate_lookup(lookup, &library_manager).await;
+                if let Ok(Err(failure)) = &answer {
                     debug!(
                         "{} catalog lookup failed for {catalog}: {failure:?}",
                         source.as_str()
                     );
                 }
-                emit_step(
-                    &event_tx,
+                emit_answer(&event_tx, answer, |outcome| {
                     IdentifyEvent::CatalogLookupAnswered {
                         source,
                         for_catalog: catalog,
                         outcome,
-                    },
-                );
+                    }
+                });
             });
         }
     }

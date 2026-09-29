@@ -334,7 +334,7 @@ impl LibraryManager {
         &self,
         discid: &str,
         priority: crate::util::rate_limiter::CallPriority,
-    ) -> Result<Vec<crate::import::search::MetadataResult>, crate::signals::LookupFailure> {
+    ) -> Result<Vec<crate::import::search::MetadataResult>, crate::signals::Failure> {
         self.providers
             .lookup_musicbrainz_discid(discid, priority)
             .await
@@ -345,7 +345,7 @@ impl LibraryManager {
         &self,
         isrcs: &[String],
         priority: crate::util::rate_limiter::CallPriority,
-    ) -> Result<Vec<crate::import::search::MetadataResult>, crate::signals::LookupFailure> {
+    ) -> Result<Vec<crate::import::search::MetadataResult>, crate::signals::Failure> {
         self.providers
             .lookup_musicbrainz_isrcs(isrcs, priority)
             .await

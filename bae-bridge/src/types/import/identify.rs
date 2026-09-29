@@ -44,7 +44,7 @@ pub enum BridgeSignalKind {
     Isrc,
 }
 
-/// Why a metadata lookup failed; the UI resolves its line through
+/// Why a catalog did not answer a lookup; the UI resolves its line through
 /// `bridge_lookup_failure_key`. Mirrors `bae_core::signals::LookupFailure`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeLookupFailure {
@@ -55,12 +55,6 @@ pub enum BridgeLookupFailure {
         status: Option<u16>,
     },
     Timeout,
-    /// Artwork analysis failed before barcode/text extraction finished.
-    ArtworkAnalysis,
-    /// A local error; `detail` is for the log, never translated.
-    Diagnostic {
-        detail: String,
-    },
 }
 
 mirror_enum! {
@@ -71,29 +65,34 @@ mirror_enum! {
         Network,
         Provider { status },
         Timeout,
-        ArtworkAnalysis,
-        Diagnostic { detail },
     },
 }
 
-/// Localization key for a lookup failure's line, or `None` for `Diagnostic`,
-/// which has no translated copy.
+/// How bae broke on its own side. `detail` is the error chain, shown
+/// untranslated. Mirrors `bae_core::signals::InternalFailure`.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, uniffi::Record)]
+pub struct BridgeInternalFailure {
+    pub detail: String,
+}
+
+mirror_struct! {
+    #[cfg(feature = "desktop")]
+    BridgeInternalFailure = bae_core::signals::InternalFailure,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    fields: { detail },
+}
+
+/// Localization key for a lookup failure's line.
 #[uniffi::export]
-pub fn bridge_lookup_failure_key(failure: BridgeLookupFailure) -> Option<String> {
+pub fn bridge_lookup_failure_key(failure: BridgeLookupFailure) -> String {
     match failure {
-        BridgeLookupFailure::Network => Some("core.lookup.failure.network".to_string()),
-        BridgeLookupFailure::Provider { status: Some(_) } => {
-            Some("core.lookup.failure.provider".to_string())
-        }
-        BridgeLookupFailure::Provider { status: None } => {
-            Some("core.lookup.failure.provider_unknown".to_string())
-        }
-        BridgeLookupFailure::Timeout => Some("core.lookup.failure.timeout".to_string()),
-        BridgeLookupFailure::ArtworkAnalysis => {
-            Some("core.lookup.failure.artwork_analysis".to_string())
-        }
-        BridgeLookupFailure::Diagnostic { .. } => None,
+        BridgeLookupFailure::Network => "core.lookup.failure.network",
+        BridgeLookupFailure::Provider { status: Some(_) } => "core.lookup.failure.provider",
+        BridgeLookupFailure::Provider { status: None } => "core.lookup.failure.provider_unknown",
+        BridgeLookupFailure::Timeout => "core.lookup.failure.timeout",
     }
+    .to_string()
 }
 
 /// Localization key for a lookup failure's few-word reason ("timed out",
@@ -111,8 +110,6 @@ pub fn bridge_lookup_failure_brief_key(failure: BridgeLookupFailure) -> String {
             "core.lookup.failure.brief.provider_unknown"
         }
         BridgeLookupFailure::Timeout => "core.lookup.failure.brief.timeout",
-        BridgeLookupFailure::ArtworkAnalysis => "core.lookup.failure.brief.artwork_analysis",
-        BridgeLookupFailure::Diagnostic { .. } => "core.lookup.failure.brief.diagnostic",
     }
     .to_string()
 }
@@ -182,9 +179,6 @@ pub enum BridgeDiscIdStep {
     NotCdAudio {
         sample_rate_hz: Option<u32>,
     },
-    ReadFailed {
-        failure: BridgeLookupFailure,
-    },
     Read {
         disc_id: String,
         lookup: BridgeLookupState,
@@ -200,9 +194,6 @@ pub enum BridgeBarcodeStep {
     CoverArtOff,
     /// There was a source and it held no code.
     NoCodes,
-    ScanFailed {
-        failure: BridgeLookupFailure,
-    },
     /// One row per code; while `scanning`, more may come.
     Rows {
         scanning: bool,
@@ -301,7 +292,7 @@ pub enum BridgeTextSignal {
         free_text: Vec<String>,
     },
     Failed {
-        failure: BridgeLookupFailure,
+        failure: BridgeInternalFailure,
         catalogs: Vec<String>,
         free_text: Vec<String>,
     },
@@ -376,6 +367,11 @@ pub enum BridgeIdentifyState {
         track_count: u32,
         run: Option<BridgeIdentifyRun>,
     },
+    /// bae broke on its own side and the run ended there; the pane states
+    /// why and offers another run.
+    Error {
+        failure: BridgeInternalFailure,
+    },
     /// At least one automatic provider lookup failed; only an explicit re-run
     /// retries it.
     ///
@@ -399,10 +395,6 @@ pub enum BridgeIdentifyState {
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeIdentifyFailure {
     DiscId {
-        failure: BridgeLookupFailure,
-    },
-    /// Reading the candidate's barcodes failed.
-    BarcodeScan {
         failure: BridgeLookupFailure,
     },
     Barcode {

@@ -8,7 +8,7 @@
 //! state so each landing answer re-combines without re-fetching, and it has
 //! `Idle` and `Triangulating` variants that are mid-flight, not a verdict at
 //! all. None of that belongs on disk. [`TerminalVerdict`] is the shape that
-//! does: only the four states identification can actually end on, holding only
+//! does: only the states identification can actually end on, holding only
 //! what the candidate's next launch needs back.
 //!
 //! What a run showed is stored with what it concluded: the `ledger` on every
@@ -38,7 +38,7 @@ use super::state::{IdentifyState, SignalsContext};
 use super::view::IdentifyRunView;
 use crate::db::LibraryStatus;
 use crate::import::search::{MetadataResult, SourceFailure};
-use crate::signals::{AudioFacts, LookupFailure};
+use crate::signals::{AudioFacts, InternalFailure, LookupFailure};
 
 /// Which lookup failed, and — where several providers answer it — which
 /// provider. The disc-ID endpoint is MusicBrainz's alone, and release details
@@ -48,9 +48,6 @@ use crate::signals::{AudioFacts, LookupFailure};
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum IdentifyFailure {
     DiscId(LookupFailure),
-    /// Reading the candidate's barcodes failed, so no provider was asked. Not
-    /// a provider's failure, which is why it names none.
-    BarcodeScan(LookupFailure),
     Barcode(SourceFailure),
     Catalog(SourceFailure),
     /// One provider could not answer the title search the run fell back on.
@@ -61,12 +58,12 @@ pub enum IdentifyFailure {
 }
 
 /// The identify pipeline's outcome once it can no longer change without new
-/// input from the user or a re-run. Built from [`IdentifyState`]'s four
-/// terminal variants (`Found`, `NotFoundAnywhere`, `ManualOnly`, `Failed`);
+/// input from the user or a re-run. Built from [`IdentifyState`]'s terminal
+/// variants (`Found`, `NotFoundAnywhere`, `ManualOnly`, `Failed`, `Error`);
 /// `Idle` and `Triangulating` have no terminal verdict, hence the fallible
 /// conversion below.
 ///
-/// Every variant carries the `ledger` its run recorded as it ended — the last
+/// Every variant but `Error` carries the `ledger` its run recorded as it ended — the last
 /// frame the run showed, laid out signal by signal and provider by provider.
 /// It is stored with the verdict and shown as it stands: what a person saw
 /// while the run went is what they see afterwards. `None` for a run
@@ -102,6 +99,9 @@ pub enum TerminalVerdict {
         track_count: u32,
         ledger: Option<IdentifyRunView>,
     },
+    /// bae broke on its own side and the run ended there: nothing it found
+    /// stands, and no ledger was recorded.
+    Error { failure: InternalFailure },
 }
 
 impl TerminalVerdict {
@@ -127,7 +127,7 @@ impl TerminalVerdict {
     pub fn findings(&self) -> Option<&Findings> {
         match self {
             Self::Found { findings, .. } | Self::Failed { findings, .. } => Some(findings),
-            Self::NotFoundAnywhere { .. } | Self::ManualOnly { .. } => None,
+            Self::NotFoundAnywhere { .. } | Self::ManualOnly { .. } | Self::Error { .. } => None,
         }
     }
 
@@ -153,6 +153,9 @@ impl TerminalVerdict {
             } => (Findings::default(), *track_count, ledger.take()),
             // Nothing counted the folder's tracks on the way to finding nothing.
             Self::NotFoundAnywhere { ledger } => (Findings::default(), 0, ledger.take()),
+            Self::Error { .. } => {
+                unreachable!("an error settles no release to fetch the details of")
+            }
         };
         *self = Self::Failed {
             failures: vec![failure],
@@ -168,7 +171,7 @@ impl TryFrom<IdentifyState> for TerminalVerdict {
     /// `Triangulating`).
     type Error = IdentifyState;
 
-    fn try_from(state: IdentifyState) -> Result<Self, Self::Error> {
+    fn try_from(state: IdentifyState) -> Result<Self, IdentifyState> {
         match state {
             IdentifyState::Found {
                 findings,
@@ -213,6 +216,11 @@ impl TryFrom<IdentifyState> for TerminalVerdict {
                 ledger,
             }),
 
+            IdentifyState::Error {
+                failure,
+                context: _,
+            } => Ok(Self::Error { failure }),
+
             other @ (IdentifyState::Idle | IdentifyState::Triangulating { .. }) => Err(other),
         }
     }
@@ -239,6 +247,7 @@ impl TerminalVerdict {
             | Self::NotFoundAnywhere { ledger }
             | Self::ManualOnly { ledger, .. }
             | Self::Failed { ledger, .. } => ledger.as_ref(),
+            Self::Error { .. } => None,
         }
     }
 
@@ -312,6 +321,10 @@ impl TerminalVerdict {
                 findings,
                 track_count,
                 ledger,
+                context: context(),
+            },
+            Self::Error { failure } => IdentifyState::Error {
+                failure,
                 context: context(),
             },
         }

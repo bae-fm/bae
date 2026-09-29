@@ -84,14 +84,6 @@ struct IdentifierBand: View {
                         )
                     } ?? ""
                 )
-        case .readFailed(let failure):
-            IdentifierChip(label: label) { IdentifierWarning() }
-                .help(
-                    String(
-                        localized:
-                            "Couldn't read the disc layout: \(failure.briefLine)"
-                    )
-                )
         // Left out: clicking the chip asks about it again.
         case .read(let discId, .notAsked(reason: .leftOut)):
             discIdButton(label: label, discId: discId, lookup: nil)
@@ -155,14 +147,6 @@ struct IdentifierBand: View {
         case .noCodes:
             IdentifierChip(label: label) { IdentifierDash() }
                 .help("No barcode on the artwork")
-        case .scanFailed(let failure):
-            IdentifierChip(label: label) { IdentifierWarning() }
-                .help(
-                    String(
-                        localized:
-                            "Couldn't read the barcodes: \(failure.briefLine)"
-                    )
-                )
         case .rows(_, let rows):
             ForEach(rows, id: \.value) { row in
                 Button {

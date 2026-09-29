@@ -8,7 +8,7 @@ use crate::import::{
     ExistingArtist, ImportFailure, ArtistCredit, RawPressingEdit, RawReleaseEdit, RawTrackEdit,
     TrackArtistAssignments,
 };
-use crate::signals::{BarcodeSignal, DiscIdSignal, LookupFailure, Signals, SourcedValue, TextSignal};
+use crate::signals::{BarcodeSignal, DiscIdSignal, InternalFailure, Signals, SourcedValue, TextSignal};
 
 #[path = "pane_rows/artist_identity_conflicts.rs"]
 mod artist_identity_conflicts;
@@ -225,17 +225,23 @@ async fn every_settled_signal_shape_round_trips() {
             },
         ),
         (
-            "a network failure and a provider one",
+            "every signal failed to read",
             cd_rip(CdProof::AccurateRipReport, None),
             DiscIdSignal::Failed {
-                failure: LookupFailure::Network,
+                failure: InternalFailure {
+                    detail: "the rip log did not read".to_string(),
+                },
             },
             BarcodeSignal::Failed {
-                failure: LookupFailure::Provider { status: Some(503) },
+                failure: InternalFailure {
+                    detail: "the artwork did not read".to_string(),
+                },
                 codes: vec![SourcedValue::new("0123456789012".to_string())],
             },
             TextSignal::Failed {
-                failure: LookupFailure::Timeout,
+                failure: InternalFailure {
+                    detail: "the artwork did not read".to_string(),
+                },
                 catalogs: vec!["CAT-2".to_string()],
                 free_text: vec!["Some Line".to_string()],
             },
@@ -259,24 +265,6 @@ async fn every_settled_signal_shape_round_trips() {
             DiscIdSignal::NotCdAudio,
             BarcodeSignal::Absent,
             TextSignal::Settled {
-                catalogs: Vec::new(),
-                free_text: Vec::new(),
-            },
-        ),
-        (
-            "a diagnostic, an artwork failure, and a provider with no status",
-            AudioOrigin::default(),
-            DiscIdSignal::Failed {
-                failure: LookupFailure::Diagnostic {
-                    detail: "the release was not found".to_string(),
-                },
-            },
-            BarcodeSignal::Failed {
-                failure: LookupFailure::ArtworkAnalysis,
-                codes: Vec::new(),
-            },
-            TextSignal::Failed {
-                failure: LookupFailure::Provider { status: None },
                 catalogs: Vec::new(),
                 free_text: Vec::new(),
             },

@@ -2,7 +2,7 @@
 //! from the bars or read from the digits printed under them — or in a CUE
 //! `CATALOG` field. What counts as a code is [`crate::barcode`]'s to say.
 
-use super::{ArtworkAnalysis, LookupFailure, SourcedValue};
+use super::{ArtworkAnalysis, InternalFailure, SourcedValue};
 use crate::barcode::Barcode;
 
 /// The codes found in a candidate's files, in discovery order, each once per
@@ -15,7 +15,7 @@ pub enum BarcodeSignal {
     Settled { codes: Vec<SourcedValue> },
     /// Artwork OCR failed before barcode extraction finished.
     Failed {
-        failure: LookupFailure,
+        failure: InternalFailure,
         codes: Vec<SourcedValue>,
     },
     /// No barcode source was read: no CUE `CATALOG`, and no artwork read.

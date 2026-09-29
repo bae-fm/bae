@@ -77,6 +77,16 @@ struct FindOnlineAutomaticSection: View {
                     .foregroundStyle(.secondary)
                 SearchManuallyButton(action: onSearchManually)
             }
+        case .error(let failure):
+            FindOnlineEmptyZone {
+                Text(failure.detail)
+                    .foregroundStyle(Theme.warning)
+                    .multilineTextAlignment(.center)
+                    .textSelection(.enabled)
+                Button("Retry", action: onRetryFailed)
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+            }
         case .identifying, .groups, .nothingFound, .awaitingCatalog,
             .failureLines:
             ScrollView {
@@ -126,7 +136,7 @@ struct FindOnlineAutomaticSection: View {
             }
         case .failureLines:
             failureLines
-        case .awaitingCatalog, .notStarted, .noSignals:
+        case .awaitingCatalog, .notStarted, .noSignals, .error:
             EmptyView()
         }
     }

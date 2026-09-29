@@ -265,9 +265,7 @@ fn toolbar_shows_failed_disc_id_lookup() {
 #[test]
 fn toolbar_shows_failed_barcode_lookup() {
     let (state, _) = update(started(), disc_and_codes("disc-hash", &["012345678905"]));
-    let failure = LookupFailure::Diagnostic {
-        detail: "provider lookup failed".to_string(),
-    };
+    let failure = LookupFailure::Provider { status: Some(500) };
     let source_failure = SourceFailure {
         source: Catalog::MusicBrainz,
         failure: failure.clone(),
@@ -296,9 +294,7 @@ fn toolbar_keeps_failed_barcode_lookup_after_settle() {
             &[],
         ),
     );
-    let failure = LookupFailure::Diagnostic {
-        detail: "provider lookup failed".to_string(),
-    };
+    let failure = LookupFailure::Provider { status: Some(500) };
     let source_failure = SourceFailure {
         source: Catalog::MusicBrainz,
         failure: failure.clone(),

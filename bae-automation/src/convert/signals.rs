@@ -12,9 +12,14 @@ mirror_enum! {
         Network,
         Provider { status },
         Timeout,
-        ArtworkAnalysis,
-        Diagnostic { detail },
     },
+}
+
+mirror_struct! {
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    AutomationInternalFailure = bae_core::signals::InternalFailure,
+    from_core: pub(crate) fn,
+    fields: { detail },
 }
 
 impl AutomationBarcodeSignal {
@@ -31,7 +36,7 @@ impl AutomationBarcodeSignal {
                 codes: SourcedValue::values(&codes),
             },
             BarcodeSignal::Failed { failure, codes } => Self::Failed {
-                failure: AutomationLookupFailure::from_core(failure),
+                failure: AutomationInternalFailure::from_core(failure),
                 codes: SourcedValue::values(&codes),
             },
             BarcodeSignal::Absent => Self::Absent,
@@ -46,7 +51,7 @@ mirror_enum! {
     variants: {
         Scanning { catalogs, free_text },
         Settled { catalogs, free_text },
-        Failed { failure: (AutomationLookupFailure), catalogs, free_text },
+        Failed { failure: (AutomationInternalFailure), catalogs, free_text },
     },
 }
 
@@ -60,7 +65,7 @@ impl AutomationDiscIdSignal {
             DiscIdSignal::Absent => Self::Absent,
             DiscIdSignal::NotCdAudio => Self::NotCdAudio,
             DiscIdSignal::Failed { failure } => Self::Failed {
-                failure: AutomationLookupFailure::from_core(failure),
+                failure: AutomationInternalFailure::from_core(failure),
             },
         }
     }

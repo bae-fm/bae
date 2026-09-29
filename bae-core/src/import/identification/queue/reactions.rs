@@ -216,10 +216,6 @@ pub(super) async fn finish(
             );
         }
         Settled::WriteFailed { error } | Settled::Unwritable { error } => {
-            warn!(
-                "identification: could not store the answer for {} ({error})",
-                done.representative_key
-            );
             for key in &keys {
                 context.import.fail_identification(
                     key,

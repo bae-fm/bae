@@ -29,7 +29,9 @@ fn ledger_of(state: &IdentifyState) -> crate::identify::IdentifyRunView {
         | crate::identify::IdentifyStateView::Failed { run, .. } => {
             run.expect("the run recorded its ledger")
         }
-        crate::identify::IdentifyStateView::Idle => panic!("an idle state lays out no run"),
+        crate::identify::IdentifyStateView::Idle | crate::identify::IdentifyStateView::Error { .. } => {
+            panic!("an idle or broken state lays out no run")
+        }
     }
 }
 

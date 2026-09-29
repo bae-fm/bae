@@ -74,10 +74,6 @@ pub enum DiscIdStepView {
     Absent,
     /// The CUE lays out audio at a sample rate no CD has, so it was not read.
     NotCdAudio,
-    /// A LOG or CUE was there and no disc ID could be derived from it.
-    ReadFailed {
-        failure: LookupFailure,
-    },
     Read {
         disc_id: String,
         lookup: LookupView,
@@ -94,8 +90,6 @@ pub enum BarcodeStepView {
     CoverArtOff,
     /// There was a source and it held no code.
     NoCodes,
-    /// Reading the candidate's barcodes failed, so no provider was asked.
-    ScanFailed { failure: LookupFailure },
     /// One row per code, in the order first seen. While `scanning`, more rows
     /// may come and every cell is queued.
     Rows {
@@ -243,6 +237,11 @@ pub enum IdentifyStateView {
         run: Option<IdentifyRunView>,
     },
 
+    /// bae broke on its own side and the run ended there, with why.
+    Error {
+        failure: crate::signals::InternalFailure,
+    },
+
     /// A lookup failed, with whatever the lookups that answered combine to.
     Failed {
         run: Option<IdentifyRunView>,
@@ -321,6 +320,11 @@ impl From<IdentifyState> for IdentifyStateView {
                 track_count,
                 run: ledger,
             },
+
+            IdentifyState::Error {
+                failure,
+                context: _,
+            } => IdentifyStateView::Error { failure },
 
             IdentifyState::Failed {
                 failures,

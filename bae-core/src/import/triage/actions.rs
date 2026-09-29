@@ -80,15 +80,15 @@ pub struct CandidateActionBasis {
 pub enum StoredLookup {
     /// It found a release, found none, or left the choice to the person.
     Answered,
-    /// A source it asked could not answer, or a release it found could not
-    /// be read in full.
+    /// A source it asked could not answer, a release it found could not be
+    /// read in full, or bae broke on its own side: another run may answer.
     Failed,
 }
 
 impl StoredLookup {
     pub(crate) fn of(verdict: &VerdictSummary) -> Self {
         match verdict.kind {
-            VerdictKind::Failed => Self::Failed,
+            VerdictKind::Failed | VerdictKind::Error { .. } => Self::Failed,
             VerdictKind::Found if verdict.declined() == Some(Declined::UnreadDocument) => {
                 Self::Failed
             }
@@ -228,7 +228,10 @@ impl CandidateLiveState {
     pub fn of(basis: &CandidateActionBasis, facts: TriageRuntimeFacts) -> Self {
         Self {
             actions: basis.actions(&facts),
-            standing: basis.standing.map(|standing| standing.with_live(&facts)),
+            standing: basis
+                .standing
+                .clone()
+                .map(|standing| standing.with_live(&facts)),
             facts,
         }
     }

@@ -300,10 +300,11 @@ fn nothing_to_run_waits_for_the_settled_text() {
     );
 }
 
-/// An aborted extraction settles the run as failed, with nothing asked.
+/// An aborted extraction ends the run as bae's own error, with nothing asked
+/// and the abort's detail stated.
 #[test]
-fn an_aborted_extraction_settles_the_run_as_failed() {
-    let failure = LookupFailure::Diagnostic {
+fn an_aborted_extraction_ends_the_run_as_an_error() {
+    let failure = crate::signals::InternalFailure {
         detail: "fast-pass spawn_blocking failed: task panicked".to_string(),
     };
     let aborted = Signals {
@@ -326,21 +327,86 @@ fn an_aborted_extraction_settles_the_run_as_failed() {
     };
     let (state, effects) = update(started(), aborted);
     assert!(effects.is_empty(), "nothing is asked, got {effects:?}");
-    let IdentifyState::Failed { failures, .. } = &state else {
-        panic!("the run settles as failed, got {state:?}");
+    let IdentifyState::Error { failure: ended, .. } = &state else {
+        panic!("the run ends as an error, got {state:?}");
     };
-    assert!(
-        failures
-            .iter()
-            .any(|f| matches!(f, IdentifyFailure::DiscId(f) if *f == failure)),
-        "the disc ID failure carries the abort's detail, got {failures:?}"
+    assert_eq!(*ended, failure);
+}
+
+/// Reading the artwork breaking while the disc ID is being looked up ends the
+/// run there: the lookup's answer lands on a run that is over.
+#[test]
+fn an_artwork_reading_that_breaks_ends_the_run_mid_lookup() {
+    let failure = crate::signals::InternalFailure {
+        detail: "OCR worker failed".to_string(),
+    };
+    let (state, _) = update(
+        started(),
+        signals(
+            DiscIdSignal::Computed {
+                disc_id: "disc-1".to_string(),
+                source_file: None,
+            },
+            BarcodeSignal::Scanning { codes: vec![] },
+            &[],
+        ),
+    );
+    assert!(matches!(state, IdentifyState::Triangulating { .. }));
+    let (state, _) = update(
+        state,
+        signals(
+            DiscIdSignal::Computed {
+                disc_id: "disc-1".to_string(),
+                source_file: None,
+            },
+            BarcodeSignal::Failed {
+                failure: failure.clone(),
+                codes: vec![],
+            },
+            &[],
+        ),
     );
     assert!(
-        failures
-            .iter()
-            .any(|f| matches!(f, IdentifyFailure::BarcodeScan(f) if *f == failure)),
-        "the barcode scan failure carries it too, got {failures:?}"
+        matches!(&state, IdentifyState::Error { failure: ended, .. } if *ended == failure),
+        "got {state:?}"
     );
+    let (after, effects) = step(
+        state.clone(),
+        IdentifyEvent::DiscidLookupCompleted { results: vec![] },
+    );
+    assert_eq!(after, state, "a lookup landing after the error changes nothing");
+    assert!(effects.is_empty());
+}
+
+/// bae breaking while carrying out a lookup ends the run as its error.
+#[test]
+fn bae_breaking_during_a_lookup_ends_the_run_as_its_error() {
+    let (state, _) = update(
+        started(),
+        signals(
+            DiscIdSignal::Computed {
+                disc_id: "disc-1".to_string(),
+                source_file: None,
+            },
+            BarcodeSignal::Absent,
+            &[],
+        ),
+    );
+    let failure = crate::signals::InternalFailure {
+        detail: "checking the library: the store is locked".to_string(),
+    };
+    let (state, effects) = step(
+        state,
+        IdentifyEvent::Broke {
+            failure: failure.clone(),
+        },
+    );
+    assert!(effects.is_empty());
+    assert!(
+        matches!(&state, IdentifyState::Error { failure: ended, .. } if *ended == failure),
+        "got {state:?}"
+    );
+    assert!(state.is_terminal());
 }
 
 /// No barcode source offers manual search, while artwork read and holding no
@@ -599,9 +665,7 @@ fn a_repeated_barcode_answer_is_ignored() {
         barcode_failed(
             MB,
             "A",
-            LookupFailure::Diagnostic {
-                detail: "provider lookup failed".to_string(),
-            },
+            LookupFailure::Provider { status: Some(500) },
         ),
     );
     assert!(effects.is_empty());
@@ -622,9 +686,7 @@ fn barcode_lookup_failure_settles_failed() {
     assert!(effects.contains(&lookup_barcode(MB, "A")));
     assert!(effects.contains(&lookup_barcode(MB, "B")));
 
-    let failure = LookupFailure::Diagnostic {
-        detail: "provider lookup failed".to_string(),
-    };
+    let failure = LookupFailure::Provider { status: Some(500) };
     let source_failure = SourceFailure {
         source: MB,
         failure: failure.clone(),

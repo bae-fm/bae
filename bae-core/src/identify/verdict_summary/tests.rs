@@ -426,6 +426,7 @@ fn a_summary_keeps_every_fact_the_judgements_consult() {
                     findings.matches.first().map(|m| m.release_id.as_str())
                 );
             }
+            TerminalVerdict::Error { .. } => unreachable!("no error verdict is listed"),
         }
     }
 }

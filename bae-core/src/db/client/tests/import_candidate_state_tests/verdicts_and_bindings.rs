@@ -424,6 +424,34 @@ async fn a_failed_verdict_round_trips_what_its_answering_lookups_found() {
     assert_eq!(identify.verdict, verdict);
 }
 
+/// A run that ended because bae broke reads back with why.
+#[tokio::test]
+async fn an_error_verdict_round_trips_its_failure() {
+    let (db, _tmp) = empty_db().await;
+    let candidate =
+        track_files_candidate(&[("01 Track.flac", 123_456), ("02 Track.flac", 234_567)]);
+    let hash = candidate.content_hash();
+    let failure = crate::signals::InternalFailure {
+        detail: "checking the library: the store is locked".to_string(),
+    };
+    let verdict = TerminalVerdict::Error { failure };
+    let row = new_candidate_row(&hash, &host_root("/music/Some Album"), &verdict);
+    store_candidate_state(&db, &candidate, &row.folder_path).await;
+    crate::import::CandidatePreparations::new(db.clone())
+        .store_verdict(&row)
+        .await
+        .unwrap();
+
+    let loaded = db.load_import_candidate_states().await.unwrap();
+    let identify = loaded
+        .get(&hash)
+        .expect("row present under its content hash")
+        .identify
+        .as_ref()
+        .expect("a stored verdict reads back as an identify result");
+    assert_eq!(identify.verdict, verdict);
+}
+
 /// A verdict recorded with no ledger reads back with none.
 #[tokio::test]
 async fn a_verdict_with_no_ledger_reads_back_without_one() {

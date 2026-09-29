@@ -2,6 +2,7 @@ use super::*;
 use crate::identify::LeadMatch;
 use crate::import::search::SourceTracks;
 use crate::import::{Catalog, ImportStanding, MetadataRef, SaveFailure};
+use crate::signals::InternalFailure;
 
 fn lead(source_tracks: Option<SourceTracks>) -> LeadMatch {
     LeadMatch {
@@ -39,8 +40,11 @@ fn fits() -> VerdictSummary {
 
 fn of_kind(kind: VerdictKind) -> VerdictSummary {
     VerdictSummary {
+        track_count: match kind {
+            VerdictKind::NotFound | VerdictKind::Error { .. } => None,
+            VerdictKind::Found | VerdictKind::ManualOnly | VerdictKind::Failed => Some(11),
+        },
         kind,
-        track_count: (kind != VerdictKind::NotFound).then_some(11),
         pressing_count: 0,
         lead: None,
         medium_conflict: None,
@@ -172,6 +176,21 @@ fn a_release_the_person_set_aside_is_unmatched() {
     assert_eq!(pending(&fits()), Some(PendingStanding::Unmatched));
 }
 
+/// A run that ended because bae broke is an error, with its text, whatever
+/// the draft that is not read from a catalog says.
+#[test]
+fn a_run_bae_broke_is_an_error_with_its_text() {
+    let failure = InternalFailure {
+        detail: "reading the store: the disk is full".to_string(),
+    };
+    assert_eq!(
+        pending(&of_kind(VerdictKind::Error {
+            failure: failure.clone()
+        })),
+        Some(PendingStanding::Error { failure })
+    );
+}
+
 /// What is running for a candidate decides its state over the tables: an
 /// import over a run, and a run over any stored state.
 #[test]
@@ -187,30 +206,40 @@ fn running_work_decides_over_the_tables() {
     let stored = PendingStanding::NeedsYou {
         reason: NeedsYouReason::NotFound,
     };
-    assert_eq!(stored.with_live(&identifying), PendingStanding::Identifying);
-    assert_eq!(stored.with_live(&importing), PendingStanding::Importing);
-    assert_eq!(stored.with_live(&TriageRuntimeFacts::default()), stored);
+    assert_eq!(
+        stored.clone().with_live(&identifying),
+        PendingStanding::Identifying
+    );
+    assert_eq!(
+        stored.clone().with_live(&importing),
+        PendingStanding::Importing
+    );
+    assert_eq!(stored.clone().with_live(&TriageRuntimeFacts::default()), stored);
 }
 
-/// An answer that failed to save is a lookup error only while another run
-/// could save it; one no run can land leaves the row where the tables put it.
+/// An answer bae could not store is bae's own error, with why, whether or not
+/// another run could store it.
 #[test]
-fn a_failed_save_is_a_lookup_error_while_a_retry_could_land_it() {
+fn an_answer_that_did_not_save_is_an_error() {
     let failed = |failure| TriageRuntimeFacts {
         identification: Some(IdentificationStatus::FinalizationFailed { failure }),
         import: None,
     };
-    let stored = PendingStanding::NotLookedUp;
-    assert_eq!(
-        stored.with_live(&failed(SaveFailure::NotWritten {
-            error: "disk full".to_string()
-        })),
-        PendingStanding::LookupError
-    );
-    assert_eq!(
-        stored.with_live(&failed(SaveFailure::Inapplicable {
-            error: "no audio to lay the release onto".to_string()
-        })),
-        stored
-    );
+    for failure in [
+        SaveFailure::NotWritten {
+            error: "disk full".to_string(),
+        },
+        SaveFailure::Inapplicable {
+            error: "no audio to lay the release onto".to_string(),
+        },
+    ] {
+        assert_eq!(
+            PendingStanding::NotLookedUp.with_live(&failed(failure.clone())),
+            PendingStanding::Error {
+                failure: InternalFailure {
+                    detail: failure.error().to_string()
+                }
+            }
+        );
+    }
 }

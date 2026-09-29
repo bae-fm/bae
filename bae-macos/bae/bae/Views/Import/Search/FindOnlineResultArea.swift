@@ -21,6 +21,8 @@ enum FindOnlineResultArea: Equatable {
     case awaitingCatalog
     /// Every lookup that ran failed, so there is nothing but the reasons.
     case failureLines
+    /// bae broke on its own side and the run ended there, with why.
+    case error(BridgeInternalFailure)
     /// No lookup has been asked for yet.
     case notStarted
 
@@ -36,6 +38,8 @@ enum FindOnlineResultArea: Equatable {
             self = .nothingFound
         case .manualOnly(_, let run):
             self = run == nil ? .noSignals : .awaitingCatalog
+        case .error(let failure):
+            self = .error(failure)
         case .failed(_, _, let groups, _, _, _, _):
             // One source failing leaves the other's matches standing: show
             // them, with the failure named under the list.

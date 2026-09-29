@@ -4,7 +4,7 @@
 
 use crate::db::LibraryStatus;
 use crate::import::search::MetadataResult;
-use crate::signals::LookupFailure;
+use crate::signals::{Failure, InternalFailure};
 use crate::util::rate_limiter::CallPriority;
 
 /// Look up a disc ID on MusicBrainz and pair each match with its library status.
@@ -14,15 +14,15 @@ pub async fn lookup_and_resolve(
     disc_id: &str,
     library_manager: &crate::library::LibraryManager,
     priority: CallPriority,
-) -> Result<Vec<(MetadataResult, LibraryStatus)>, LookupFailure> {
-    // The MB lookup's failure is already typed — pass it through structured.
+) -> Result<Vec<(MetadataResult, LibraryStatus)>, Failure> {
     let matches: Vec<MetadataResult> = library_manager
         .lookup_musicbrainz_discid(disc_id, priority)
         .await?;
-
-    // The in-library check is a local DB read, so its failure is diagnostic
-    // detail, never a provider verdict.
+    // The in-library check is a read of bae's own store.
     super::annotate_with_library_status(matches, library_manager)
         .await
-        .map_err(|detail| LookupFailure::Diagnostic { detail })
+        .map_err(|detail| {
+            InternalFailure::logged("checking the library for the disc ID's releases", detail)
+                .into()
+        })
 }

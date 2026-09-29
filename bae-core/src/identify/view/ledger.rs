@@ -76,10 +76,8 @@ pub(super) fn disc_id_step(progress: &DiscidProgress, context: &SignalsContext) 
             }
         }
         DiscIdSignal::NotCdAudio => return DiscIdStepView::NotCdAudio,
-        DiscIdSignal::Failed { failure, .. } => {
-            return DiscIdStepView::ReadFailed {
-                failure: failure.clone(),
-            }
+        DiscIdSignal::Failed { .. } => {
+            unreachable!("a run whose disc ID could not be derived ended as an error")
         }
     };
     let lookup = match progress {
@@ -137,9 +135,6 @@ pub(super) fn barcode_step(
                 .collect(),
         },
         BarcodeProgress::NoCodes => BarcodeStepView::NoCodes,
-        BarcodeProgress::ScanFailed { failure } => BarcodeStepView::ScanFailed {
-            failure: failure.clone(),
-        },
         // Nothing was read: say so when cover art is left unread.
         BarcodeProgress::Skipped if matches!(context.artwork, ArtworkScan::Off) => {
             BarcodeStepView::CoverArtOff

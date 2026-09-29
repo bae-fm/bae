@@ -15,7 +15,7 @@ use crate::pressing::{
     DiscogsDetail, Packaging, PressingFacts, ReleaseArea, ReleaseLabel, ReleaseStatus,
     StatedMedia,
 };
-use crate::signals::LookupFailure;
+use crate::signals::{Failure, InternalFailure, LookupFailure};
 use crate::util::rate_limiter::CallPriority;
 use tracing::warn;
 
@@ -516,60 +516,64 @@ pub async fn search_discogs(
         .collect())
 }
 
-/// Map a MusicBrainz wire failure to the typed `LookupFailure` the identify
-/// pipeline carries. The wire-level variants pass through structured (the HTTP
-/// status is preserved); a local/internal MB error becomes opaque `Diagnostic`
-/// detail. `NotFound` never reaches here — callers map it to "no matches"
-/// before this is called.
-fn mb_error_to_lookup_failure(e: &musicbrainz::MusicBrainzError) -> LookupFailure {
+/// The failure MusicBrainz answered with, or `None` for one bae met reading
+/// its answer. A release it does not have is its answer, as a 404; a disc ID
+/// it does not know never reaches here — callers read that as no matches.
+fn mb_provider_failure(e: &musicbrainz::MusicBrainzError) -> Option<LookupFailure> {
     use musicbrainz::MusicBrainzError;
     match e {
-        MusicBrainzError::Network(_) => LookupFailure::Network,
-        MusicBrainzError::Timeout => LookupFailure::Timeout,
-        MusicBrainzError::Provider { status, .. } => LookupFailure::Provider { status: *status },
-        MusicBrainzError::NotFound(_) | MusicBrainzError::Other(_) => LookupFailure::Diagnostic {
-            detail: e.to_string(),
-        },
+        MusicBrainzError::Network(_) => Some(LookupFailure::Network),
+        MusicBrainzError::Timeout => Some(LookupFailure::Timeout),
+        MusicBrainzError::Provider { status, .. } => {
+            Some(LookupFailure::Provider { status: *status })
+        }
+        MusicBrainzError::NotFound(_) => Some(LookupFailure::Provider { status: Some(404) }),
+        MusicBrainzError::Other(_) => None,
     }
 }
 
-/// Preserve provider failures while lifting the import service's typed error
-/// into the identify state machine.
-pub(crate) fn import_error_to_lookup_failure(error: &ImportError) -> LookupFailure {
-    provider_failure(error).unwrap_or_else(|| LookupFailure::Diagnostic {
-        detail: error.to_string(),
-    })
+/// Why a MusicBrainz lookup did not answer: its failure, or bae's own.
+fn mb_failure(e: &musicbrainz::MusicBrainzError, what: &str) -> Failure {
+    match mb_provider_failure(e) {
+        Some(failure) => Failure::Lookup(failure),
+        None => Failure::Internal(InternalFailure::logged(what, e)),
+    }
+}
+
+/// Why a step that asked a catalog did not answer: what a provider answered
+/// with, or what bae met on its own side, logged as it is named.
+pub(crate) fn failure_of(error: &ImportError, what: &str) -> Failure {
+    match provider_failure(error) {
+        Some(failure) => Failure::Lookup(failure),
+        None => Failure::Internal(InternalFailure::logged(what, error)),
+    }
 }
 
 /// The failure a provider answered with, which is a lookup that failed, or
-/// `None` for an error bae met on its own side.
+/// `None` for an error bae met on its own side — a request it could not
+/// build, an answer it could not parse, a store read.
 pub(crate) fn provider_failure(error: &ImportError) -> Option<LookupFailure> {
-    Some(match error {
-        ImportError::MusicBrainz(error) => mb_error_to_lookup_failure(error),
-        ImportError::CoverArtRequest { failure, .. } => failure.clone(),
+    match error {
+        ImportError::MusicBrainz(error) => mb_provider_failure(error),
+        ImportError::CoverArtRequest { failure, .. } => Some(failure.clone()),
         ImportError::Discogs(error) => match error {
-            DiscogsError::Transport(error) if error.is_builder() || error.is_redirect() => {
-                LookupFailure::Diagnostic {
-                    detail: format!("{error:?}"),
-                }
-            }
-            DiscogsError::Transport(error) if error.is_timeout() => LookupFailure::Timeout,
-            DiscogsError::Transport(_) => LookupFailure::Network,
-            DiscogsError::Provider { status, .. } => LookupFailure::Provider {
+            DiscogsError::Transport(error) if error.is_builder() || error.is_redirect() => None,
+            DiscogsError::Transport(error) if error.is_timeout() => Some(LookupFailure::Timeout),
+            DiscogsError::Transport(_) => Some(LookupFailure::Network),
+            DiscogsError::Provider { status, .. } => Some(LookupFailure::Provider {
                 status: Some(status.as_u16()),
-            },
-            DiscogsError::RateLimit { .. } => LookupFailure::Provider { status: Some(429) },
-            DiscogsError::InvalidApiKey => LookupFailure::Provider { status: Some(401) },
-            DiscogsError::NotFound | DiscogsError::Serialization(_) => LookupFailure::Diagnostic {
-                detail: error.to_string(),
-            },
+            }),
+            DiscogsError::RateLimit { .. } => Some(LookupFailure::Provider { status: Some(429) }),
+            DiscogsError::InvalidApiKey => Some(LookupFailure::Provider { status: Some(401) }),
+            DiscogsError::NotFound => Some(LookupFailure::Provider { status: Some(404) }),
+            DiscogsError::Serialization(_) => None,
         },
-        _ => return None,
-    })
+        _ => None,
+    }
 }
 
 /// One provider's answer to one lookup.
-pub type SourceLookup = Result<Vec<MetadataResult>, LookupFailure>;
+pub type SourceLookup = Result<Vec<MetadataResult>, Failure>;
 
 /// A provider that failed one lookup, and how. Serialized: it rides on
 /// [`crate::identify::IdentifyFailure`], which a failed verdict persists.
@@ -706,7 +710,7 @@ pub async fn search_source(
 ) -> SourceLookup {
     search_provider(library_manager, source, query, priority)
         .await
-        .map_err(|error| import_error_to_lookup_failure(&error))
+        .map_err(|error| failure_of(&error, &format!("asking {} a search", source.as_str())))
 }
 
 /// The releases MusicBrainz has for a disc ID, each with its cover art. Empty
@@ -716,11 +720,11 @@ pub(crate) async fn lookup_by_discid(
     musicbrainz: &musicbrainz::MusicBrainz,
     discid: &str,
     priority: CallPriority,
-) -> Result<Vec<MetadataResult>, LookupFailure> {
+) -> Result<Vec<MetadataResult>, Failure> {
     let releases = match musicbrainz.lookup_by_discid(discid, priority).await {
         Ok(releases) => releases,
         Err(musicbrainz::MusicBrainzError::NotFound(_)) => return Ok(Vec::new()),
-        Err(e) => return Err(mb_error_to_lookup_failure(&e)),
+        Err(e) => return Err(mb_failure(&e, "reading MusicBrainz's disc ID answer")),
     };
 
     Ok(mb_discid_releases_to_metadata(discid, releases))
@@ -734,11 +738,11 @@ pub(crate) async fn lookup_by_isrcs(
     musicbrainz: &musicbrainz::MusicBrainz,
     isrcs: &[String],
     priority: CallPriority,
-) -> Result<Vec<MetadataResult>, LookupFailure> {
+) -> Result<Vec<MetadataResult>, Failure> {
     let recordings = musicbrainz
         .search_recordings_by_isrcs(isrcs, priority)
         .await
-        .map_err(|error| mb_error_to_lookup_failure(&error))?;
+        .map_err(|error| mb_failure(&error, "reading MusicBrainz's ISRC answer"))?;
     Ok(isrc_releases_to_metadata(isrcs, recordings))
 }
 

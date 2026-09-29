@@ -80,15 +80,9 @@ struct FindOnlineSearchResults: View {
                             .foregroundStyle(.tertiary)
                     }
                 case .failed(let failure):
-                    HStack(spacing: ThemeSpace.compact) {
-                        Image(systemName: "exclamationmark.triangle")
-                            .foregroundStyle(Theme.warning)
-                        Text(name)
-                            .foregroundStyle(.tertiary)
-                            .help(failure.badgeLine)
-                        Button("Retry", action: onRetry)
-                            .buttonStyle(.link)
-                    }
+                    failedLine(name, reason: failure.badgeLine)
+                case .error(let failure):
+                    failedLine(name, reason: failure.detail)
                 // Answered sources and sources never asked add no line.
                 case .done, .notConfigured, .off:
                     EmptyView()
@@ -98,6 +92,19 @@ struct FindOnlineSearchResults: View {
         .themeText(.detail)
         .foregroundStyle(.secondary)
         .padding(.leading, ReleaseGroupSection.rowTextInset)
+    }
+
+    /// A source that did not answer, with why on hover and its Retry.
+    private func failedLine(_ name: String, reason: String) -> some View {
+        HStack(spacing: ThemeSpace.compact) {
+            Image(systemName: "exclamationmark.triangle")
+                .foregroundStyle(Theme.warning)
+            Text(name)
+                .foregroundStyle(.tertiary)
+                .help(reason)
+            Button("Retry", action: onRetry)
+                .buttonStyle(.link)
+        }
     }
 }
 

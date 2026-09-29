@@ -1,13 +1,13 @@
 //! A candidate's settled signals, as one header row plus its list values and
-//! text lines. Each signal's [`crate::signals::LookupFailure`] is three columns (kind, status,
-//! detail). A still-scanning signal reaching here is a defect, and the write
-//! refuses it.
+//! text lines. How bae broke reading a signal is one column, its error chain.
+//! A still-scanning signal reaching here is a defect, and the write refuses
+//! it.
 
-use super::lookup_failure_columns::{failure_columns, failure_of};
 use super::verdict_rows::unreadable;
 use super::*;
 use crate::signals::{
-    AudioOrigin, AudioSource, BarcodeSignal, CdProof, DiscIdSignal, DownloadProof, Signals,
+    AudioOrigin, AudioSource, BarcodeSignal, CdProof, DiscIdSignal, DownloadProof, InternalFailure,
+    Signals,
     SourcedValue, StoreMarker,
     TextLine, TextSignal,
 };
@@ -15,9 +15,7 @@ use crate::signals::{
 const SIGNALS_COLUMNS: &str = "content_hash, audio_source, cd_rip_proof, download_proof, \
      audio_source_file, not_cd_rate, \
      disc_id_state, disc_id, disc_id_source_file, \
-     disc_id_failure, disc_id_failure_status, disc_id_failure_detail, \
-     barcode_state, barcode_failure, barcode_failure_status, barcode_failure_detail, \
-     text_state, text_failure, text_failure_status, text_failure_detail";
+     disc_id_failure, barcode_state, barcode_failure, text_state, text_failure";
 
 /// The stored `download_proof` of a label's delivery set; a store's marker is
 /// stored as its own key.
@@ -93,14 +91,12 @@ pub(super) fn insert_signals(
             ))
         }
     };
-    let disc_id_failure = failure_columns(disc_id_failure);
-    let barcode_failure = failure_columns(barcode_failure);
-    let text_failure = failure_columns(text_failure);
+    let detail = |failure: Option<&InternalFailure>| failure.map(|failure| failure.detail.clone());
 
     sql.execute(
         &format!(
             "INSERT INTO import_candidate_signals ({SIGNALS_COLUMNS}) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         ),
         params![
             content_hash,
@@ -112,17 +108,11 @@ pub(super) fn insert_signals(
             disc_id_state,
             disc_id,
             disc_id_source_file,
-            disc_id_failure.kind,
-            disc_id_failure.status,
-            disc_id_failure.detail,
+            detail(disc_id_failure),
             barcode_state,
-            barcode_failure.kind,
-            barcode_failure.status,
-            barcode_failure.detail,
+            detail(barcode_failure),
             text_state,
-            text_failure.kind,
-            text_failure.status,
-            text_failure.detail,
+            detail(text_failure),
         ],
     )?;
 
@@ -233,16 +223,10 @@ pub(super) fn load_signals_on(
                 row.get::<_, Option<String>>("disc_id")?,
                 row.get::<_, Option<String>>("disc_id_source_file")?,
                 row.get::<_, Option<String>>("disc_id_failure")?,
-                row.get::<_, Option<i64>>("disc_id_failure_status")?,
-                row.get::<_, Option<String>>("disc_id_failure_detail")?,
                 row.get::<_, String>("barcode_state")?,
                 row.get::<_, Option<String>>("barcode_failure")?,
-                row.get::<_, Option<i64>>("barcode_failure_status")?,
-                row.get::<_, Option<String>>("barcode_failure_detail")?,
                 row.get::<_, String>("text_state")?,
                 row.get::<_, Option<String>>("text_failure")?,
-                row.get::<_, Option<i64>>("text_failure_status")?,
-                row.get::<_, Option<String>>("text_failure_detail")?,
             ))
         },
     )?;
@@ -277,17 +261,16 @@ pub(super) fn load_signals_on(
                 disc_id,
                 disc_id_source_file,
                 disc_id_failure,
-                disc_id_failure_status,
-                disc_id_failure_detail,
                 barcode_state,
                 barcode_failure,
-                barcode_failure_status,
-                barcode_failure_detail,
                 text_state,
                 text_failure,
-                text_failure_status,
-                text_failure_detail,
             ) = row;
+            let failure_of = |detail: Option<String>, what: &str| {
+                detail
+                    .map(|detail| InternalFailure { detail })
+                    .ok_or_else(|| DbError::Message(format!("a failed {what} states no error")))
+            };
             let values = lists.remove(&content_hash).unwrap_or_default();
             let source = match (audio_source.as_deref(), cd_rip_proof, download_proof) {
                 (None, None, None) => None,
@@ -325,12 +308,7 @@ pub(super) fn load_signals_on(
                 "absent" => DiscIdSignal::Absent,
                 "not_cd_audio" => DiscIdSignal::NotCdAudio,
                 "failed" => DiscIdSignal::Failed {
-                    failure: failure_of(
-                        disc_id_failure,
-                        disc_id_failure_status,
-                        disc_id_failure_detail,
-                    )?
-                    .ok_or_else(|| DbError::Message("a failed disc ID states no reason".into()))?,
+                    failure: failure_of(disc_id_failure, "disc ID")?,
                 },
                 other => return Err(unreadable("disc_id_state", other)),
             };
@@ -340,12 +318,7 @@ pub(super) fn load_signals_on(
                 },
                 "absent" => BarcodeSignal::Absent,
                 "failed" => BarcodeSignal::Failed {
-                    failure: failure_of(
-                        barcode_failure,
-                        barcode_failure_status,
-                        barcode_failure_detail,
-                    )?
-                    .ok_or_else(|| DbError::Message("a failed barcode states no reason".into()))?,
+                    failure: failure_of(barcode_failure, "barcode")?,
                     codes: values.barcodes,
                 },
                 other => return Err(unreadable("barcode_state", other)),
@@ -356,8 +329,7 @@ pub(super) fn load_signals_on(
                     free_text: values.free_text,
                 },
                 "failed" => TextSignal::Failed {
-                    failure: failure_of(text_failure, text_failure_status, text_failure_detail)?
-                        .ok_or_else(|| DbError::Message("failed text states no reason".into()))?,
+                    failure: failure_of(text_failure, "text signal")?,
                     catalogs: values.catalogs,
                     free_text: values.free_text,
                 },

@@ -19,7 +19,9 @@ use crate::db::LibraryStatus;
 use crate::import::album_links::{self, GroupReading, ToRead};
 use crate::import::search::{MetadataResult, SourceFailure};
 use crate::import::{Catalog, LookupChoices};
-use crate::signals::{ArtworkScan, AudioFacts, BarcodeSignal, LookupFailure, Signals};
+use crate::signals::{
+    ArtworkScan, AudioFacts, BarcodeSignal, InternalFailure, LookupFailure, Signals,
+};
 
 /// One candidate's identify state. Every settled state carries the ledger its
 /// run recorded as it ended, `None` when there was nothing to lay out.
@@ -69,6 +71,14 @@ pub enum IdentifyState {
         ledger: Option<IdentifyRunView>,
         context: SignalsContext,
     },
+
+    /// bae broke on its own side — reading the folder's files, its store, the
+    /// library check — and the run ended there. Nothing it had found stands:
+    /// what it would have concluded is unknown.
+    Error {
+        failure: InternalFailure,
+        context: SignalsContext,
+    },
 }
 
 impl IdentifyState {
@@ -79,7 +89,8 @@ impl IdentifyState {
             | IdentifyState::Found { context, .. }
             | IdentifyState::NotFoundAnywhere { context, .. }
             | IdentifyState::ManualOnly { context, .. }
-            | IdentifyState::Failed { context, .. } => Some(context),
+            | IdentifyState::Failed { context, .. }
+            | IdentifyState::Error { context, .. } => Some(context),
             IdentifyState::Idle => None,
         }
     }
@@ -103,7 +114,8 @@ impl IdentifyState {
             IdentifyState::Found { .. }
             | IdentifyState::NotFoundAnywhere { .. }
             | IdentifyState::ManualOnly { .. }
-            | IdentifyState::Failed { .. } => true,
+            | IdentifyState::Failed { .. }
+            | IdentifyState::Error { .. } => true,
             IdentifyState::Idle | IdentifyState::Triangulating { .. } => false,
         }
     }
@@ -276,6 +288,11 @@ pub enum IdentifyEvent {
     ReleasesRead {
         read: Vec<ReleaseReading>,
     },
+
+    /// bae broke carrying out one of the run's effects.
+    Broke {
+        failure: InternalFailure,
+    },
 }
 
 /// What the service does for a run: the lookups, each answering with an
@@ -356,6 +373,10 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                 },
                 effects,
             )
+        }
+
+        (IdentifyState::Triangulating { context, .. }, IdentifyEvent::Broke { failure }) => {
+            (IdentifyState::Error { failure, context }, vec![])
         }
 
         (
@@ -589,6 +610,17 @@ fn apply_signals(
     audio: AudioFacts,
     artwork: ArtworkScan,
 ) -> (IdentifyState, Vec<Effect>) {
+    // Reading the folder's files broke: nothing it would have read can be
+    // looked up.
+    if let Some(failure) = signals.failure() {
+        return (
+            IdentifyState::Error {
+                failure: failure.clone(),
+                context,
+            },
+            vec![],
+        );
+    }
     let mut effects = Vec::new();
     context.refresh_inputs(&signals, audio, artwork);
 
@@ -608,17 +640,11 @@ fn apply_signals(
             context.barcode.code_values(),
             &context.barcode.excluded,
             true,
-            None,
             context.steps.look_up_barcodes,
             &context.providers,
             &mut effects,
         ),
         (BarcodeProgress::Scanning, BarcodeSignal::Absent) => BarcodeProgress::Skipped,
-        (BarcodeProgress::Scanning, BarcodeSignal::Failed { failure, .. }) => {
-            BarcodeProgress::ScanFailed {
-                failure: failure.clone(),
-            }
-        }
         (barcode, _) => barcode,
     };
 

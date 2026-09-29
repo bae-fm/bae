@@ -24,8 +24,8 @@ async fn fast_pass_join_error_reports_why_there_is_no_pass() {
 
 /// An extraction that cannot gather its inputs does not go silent: it says so
 /// with one snapshot that fails every signal, and nothing follows it. The run
-/// it feeds settles on that as a failure instead of waiting on a snapshot that
-/// is not coming.
+/// it feeds ends on that as an error instead of waiting on a snapshot that is
+/// not coming.
 #[tokio::test(flavor = "multi_thread")]
 async fn an_aborted_extraction_fails_every_signal_in_one_snapshot() {
     let candidates = CandidateRuntime::default();
@@ -54,7 +54,7 @@ async fn an_aborted_extraction_fails_every_signal_in_one_snapshot() {
         snapshots: watch::channel(None).0,
     };
 
-    let failure = LookupFailure::Diagnostic {
+    let failure = crate::signals::InternalFailure {
         detail: "fast-pass spawn_blocking failed: task panicked".to_string(),
     };
     emit_aborted_signals(
@@ -104,8 +104,8 @@ async fn ocr_join_error_aborts_without_settled_snapshot() {
     match &signals[1].text {
         TextSignal::Failed { failure, .. } => {
             assert!(
-                matches!(failure, LookupFailure::ArtworkAnalysis),
-                "OCR JoinError must emit an artwork-analysis text failure, got {failure:?}",
+                failure.detail.contains("OCR worker failed"),
+                "OCR JoinError must name the worker that died, got {failure:?}",
             );
         }
         other => panic!("OCR JoinError must emit a failed text signal, got {other:?}"),
@@ -113,8 +113,8 @@ async fn ocr_join_error_aborts_without_settled_snapshot() {
     match &signals[1].barcode {
         BarcodeSignal::Failed { failure, .. } => {
             assert!(
-                matches!(failure, LookupFailure::ArtworkAnalysis),
-                "OCR JoinError must emit an artwork-analysis barcode failure, got {failure:?}",
+                failure.detail.contains("OCR worker failed"),
+                "OCR JoinError must name the worker that died, got {failure:?}",
             );
         }
         other => panic!("OCR JoinError must emit a failed barcode signal, got {other:?}"),

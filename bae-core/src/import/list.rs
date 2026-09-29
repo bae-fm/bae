@@ -162,7 +162,7 @@ impl PendingFilters {
     fn keeps(
         &self,
         candidate_key: &str,
-        stored: PendingStanding,
+        stored: &PendingStanding,
         live_standings: &BTreeMap<String, LiveStanding>,
     ) -> bool {
         let state = match live_standings.get(candidate_key) {
@@ -271,6 +271,7 @@ impl ImportListRequest {
             let stored = row
                 .action_basis
                 .standing
+                .as_ref()
                 .expect("a row on Found has a standing");
             filters.keeps(&row.candidate_key, stored, &self.live_standings)
         })

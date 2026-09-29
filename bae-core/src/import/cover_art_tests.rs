@@ -393,10 +393,10 @@ async fn artwork_http_failures_keep_provider_classification_after_retries() {
             .unwrap_err();
         assert_eq!(host.hits(), attempts, "status {status}");
         assert_eq!(
-            crate::import::search::import_error_to_lookup_failure(&error),
-            crate::signals::LookupFailure::Provider {
+            crate::import::search::provider_failure(&error),
+            Some(crate::signals::LookupFailure::Provider {
                 status: Some(status)
-            },
+            }),
             "{error}"
         );
     }
@@ -410,8 +410,8 @@ async fn required_missing_artwork_keeps_not_found_classification() {
     let error = cache.fetch_required(&url).await.unwrap_err();
     assert_eq!(host.hits(), 1);
     assert_eq!(
-        crate::import::search::import_error_to_lookup_failure(&error),
-        crate::signals::LookupFailure::Provider { status: Some(404) }
+        crate::import::search::provider_failure(&error),
+        Some(crate::signals::LookupFailure::Provider { status: Some(404) })
     );
 }
 
@@ -447,8 +447,8 @@ async fn artwork_interrupted_body_is_a_network_failure() {
         .await
         .unwrap_err();
     assert_eq!(
-        crate::import::search::import_error_to_lookup_failure(&error),
-        crate::signals::LookupFailure::Network
+        crate::import::search::provider_failure(&error),
+        Some(crate::signals::LookupFailure::Network)
     );
 }
 
@@ -465,8 +465,8 @@ async fn artwork_stalled_body_keeps_timeout_classification() {
         Ok(_) => panic!("stalled body should time out"),
     };
     assert_eq!(
-        crate::import::search::import_error_to_lookup_failure(&error),
-        crate::signals::LookupFailure::Timeout
+        crate::import::search::provider_failure(&error),
+        Some(crate::signals::LookupFailure::Timeout)
     );
 }
 

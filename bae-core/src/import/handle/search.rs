@@ -91,7 +91,13 @@ impl ImportServiceHandle {
                 Ok(results) => {
                     crate::identify::annotate_with_library_status(results, &library_manager)
                         .await
-                        .map_err(|detail| crate::signals::LookupFailure::Diagnostic { detail })
+                        .map_err(|detail| {
+                            crate::signals::InternalFailure::logged(
+                                "checking the library for the releases a search found",
+                                detail,
+                            )
+                            .into()
+                        })
                 }
                 Err(failure) => Err(failure),
             };

@@ -31,7 +31,7 @@ extension BridgeIdentifyFailure {
         case .isrc: FailedSearch(source: .musicBrainz, step: .signal(.isrc))
         case .search(let source, _):
             FailedSearch(source: source, step: .titleSearch)
-        case .barcodeScan, .releaseDetails: nil
+        case .releaseDetails: nil
         }
     }
 }

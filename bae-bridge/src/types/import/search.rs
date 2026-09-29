@@ -183,8 +183,13 @@ pub enum BridgeSourceSearch {
     Done {
         count: u32,
     },
+    /// The source could not answer.
     Failed {
         failure: BridgeLookupFailure,
+    },
+    /// bae broke asking the source.
+    Error {
+        failure: BridgeInternalFailure,
     },
 }
 
@@ -199,8 +204,11 @@ impl BridgeSourceSearch {
             SourceSearch::Done { results } => Self::Done {
                 count: results.len() as u32,
             },
-            SourceSearch::Failed(failure) => Self::Failed {
+            SourceSearch::Failed(bae_core::signals::Failure::Lookup(failure)) => Self::Failed {
                 failure: BridgeLookupFailure::from_core(failure),
+            },
+            SourceSearch::Failed(bae_core::signals::Failure::Internal(failure)) => Self::Error {
+                failure: BridgeInternalFailure::from_core(failure),
             },
         }
     }

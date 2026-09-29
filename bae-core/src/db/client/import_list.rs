@@ -409,7 +409,7 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
     let mut provenances = load_provenance_on(sql, None)?;
     let mut verdicts: HashMap<String, VerdictSummary> = HashMap::new();
     for row in sql.query(
-        "SELECT content_hash, kind, track_count, medium_conflict \
+        "SELECT content_hash, kind, track_count, medium_conflict, error_detail \
          FROM import_candidate_verdict",
         [],
         |row| {
@@ -418,10 +418,11 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
                 row.get::<_, String>(1)?,
                 row.get::<_, Option<i64>>(2)?,
                 row.get::<_, Option<String>>(3)?,
+                row.get::<_, Option<String>>(4)?,
             ))
         },
     )? {
-        let (content_hash, kind, track_count, medium_conflict) = row;
+        let (content_hash, kind, track_count, medium_conflict, error_detail) = row;
         // The releases agreement narrowed out are not what the verdict settled
         // on, so the lead and the count come from `found` alone.
         let found = matches.remove(&content_hash).unwrap_or_default().found;
@@ -437,6 +438,15 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
                 "not_found" => VerdictKind::NotFound,
                 "manual_only" => VerdictKind::ManualOnly,
                 "failed" => VerdictKind::Failed,
+                "error" => VerdictKind::Error {
+                    failure: crate::signals::InternalFailure {
+                        detail: error_detail.ok_or_else(|| {
+                            DbError::Message(format!(
+                                "error verdict for {content_hash} states no error"
+                            ))
+                        })?,
+                    },
+                },
                 other => return Err(unreadable("verdict kind", other)),
             },
             track_count: track_count
