@@ -891,24 +891,31 @@ async fn an_upload_callback_does_not_wait_for_the_outbox_projection() {
     .expect("the callback returns while the projection is busy");
 }
 
-/// Source preparation progress is ordered after preparation-start, which
-/// establishes the exact plaintext denominator for that attempt.
+/// Preparation progress with no preparation start before it contradicts the
+/// callback order; the attempt is left untracked and the file renders its
+/// durable Queued row rather than crashing the app.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
-#[should_panic(expected = "preparation progress arrived without a preparation-start state")]
-async fn preparation_progress_requires_preparation_start() {
+async fn preparation_progress_without_a_start_renders_the_durable_row() {
     let (manager, _temp_dir, _release, file_id) = queued_upload_fixture("queued").await;
 
     manager
         .observe_blob_preparation_progress_for_test(&file_id, 300, 1000)
         .await;
+
+    let snapshot = manager.outbox_snapshot().await.expect("the outbox reads");
+    assert_eq!(
+        snapshot.upload_groups[0].files[0].state,
+        crate::library::UploadState::Queued
+    );
 }
 
-/// Preparation measures the exact plaintext source declared by the row.
+/// Preparation measures the exact plaintext source declared by the row; a
+/// report over another total leaves the attempt untracked and the file renders
+/// its durable Queued row.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
-#[should_panic(expected = "preparation progress changed its exact plaintext total")]
-async fn preparation_progress_must_match_source_total() {
+async fn preparation_progress_over_another_total_renders_the_durable_row() {
     let (manager, _temp_dir, _release, file_id) = queued_upload_fixture("queued").await;
 
     manager
@@ -917,6 +924,13 @@ async fn preparation_progress_must_match_source_total() {
     manager
         .observe_blob_preparation_progress_for_test(&file_id, 300, 999)
         .await;
+
+    let snapshot = manager.outbox_snapshot().await.expect("the outbox reads");
+    assert_eq!(
+        snapshot.upload_groups[0].files[0].state,
+        crate::library::UploadState::Queued
+    );
+    assert_eq!(snapshot.total.preparation_bytes_done, 0);
 }
 
 /// The concurrency settings reach the open store when they are written, not
