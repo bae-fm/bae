@@ -464,9 +464,8 @@ pub struct BridgeMappingImage {
     pub file_id: String,
     /// The file's own name, without its directory prefix.
     pub name: String,
-    pub size: u64,
-    /// Absolute path — what a thumbnail and the lightbox read.
-    pub local_path: String,
+    /// The version the scan read — what a thumbnail and the lightbox draw.
+    pub file: BridgeFileVersion,
 }
 
 /// What supplies the rows of one side or disc. Mirror of bae-core's

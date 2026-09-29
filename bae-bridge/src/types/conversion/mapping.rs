@@ -282,14 +282,12 @@ impl BridgeMappingImage {
         let bae_core::import::MappingImage {
             file_id,
             name,
-            size,
-            path,
+            file,
         } = image;
         BridgeMappingImage {
             file_id,
             name,
-            size,
-            local_path: path.to_string_lossy().to_string(),
+            file: BridgeFileVersion::from_core(file),
         }
     }
 }

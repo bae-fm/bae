@@ -28,7 +28,7 @@
                 placement: .pending,
                 matched: nil,
                 metadataSummary: glyphSummary,
-                cover: .local(path: previewArtPath("Front.png")),
+                cover: .local(file: previewArtFile("Front.png")),
                 metadataProvenance: readFromRecord
                     ? .externalRelease(
                         record: BridgeMetadataRef(

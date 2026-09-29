@@ -55,11 +55,11 @@ struct ImportMappingGalleryTile: View {
 
     var body: some View {
         Button {
-            onOpen(images, image.localPath)
+            onOpen(images, image.file.path)
         } label: {
             VStack(alignment: .leading, spacing: ThemeSpace.compact) {
                 ImageView(
-                    content: .localFile(path: image.localPath),
+                    content: .localFile(image.file),
                     pointSize: tileSize
                 )
                 .frame(width: tileSize, height: tileSize)

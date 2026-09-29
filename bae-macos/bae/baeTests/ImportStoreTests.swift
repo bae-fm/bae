@@ -933,7 +933,13 @@ extension ImportListPageSourceTests {
             row: identifiedRow(
                 "/w/b",
                 title: "/w/b",
-                cover: .local(path: "/w/b/cover.jpg")
+                cover: .local(
+                    file: BridgeFileVersion(
+                        path: "/w/b/cover.jpg",
+                        size: 4096,
+                        modifiedAtNs: 1_700_000_000_000_000_000
+                    )
+                )
             ),
             isGroupMember: false
         )

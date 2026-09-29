@@ -20,11 +20,11 @@ struct LightboxItem: LightboxImage {
     let label: String
     let image: ImageContent
 
-    init(label: String, path: String) {
+    init(label: String, file: BridgeFileVersion) {
         self.init(
-            id: path,
+            id: file.path,
             label: label,
-            image: .localFile(path: path)
+            image: .localFile(file)
         )
     }
 
@@ -465,11 +465,11 @@ private struct LiveTextOverlay: NSViewRepresentable {
         if let cursor = Cursor(items: [
             LightboxItem(
                 label: "Front.jpg",
-                path: "/tmp/fake/Front.jpg"
+                file: PreviewData.previewArtFile("Front")
             ),
             LightboxItem(
                 label: "Back.jpg",
-                path: "/tmp/fake/Back.jpg"
+                file: PreviewData.previewArtFile("Back")
             ),
         ]) {
             LightboxView(cursor: cursor, onUpdate: { _ in }, onDismiss: {})

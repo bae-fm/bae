@@ -157,10 +157,28 @@ impl BridgeCoverImageSource {
             bae_core::import::CoverImageSource::Remote { image } => Self::Remote {
                 image: BridgeRemoteImageSet::from_core(image),
             },
-            bae_core::import::CoverImageSource::Local { path } => Self::Local {
-                path: path.to_string_lossy().into_owned(),
+            bae_core::import::CoverImageSource::Local { file } => Self::Local {
+                file: BridgeFileVersion::from_core(file),
             },
-            bae_core::import::CoverImageSource::Bytes { data } => Self::Bytes { data },
+            bae_core::import::CoverImageSource::Embedded { source, data } => Self::Embedded {
+                source: BridgeFileVersion::from_core(source),
+                data,
+            },
+        }
+    }
+}
+
+impl BridgeFileVersion {
+    pub(crate) fn from_core(file: bae_core::import::folder_scanner::FileVersion) -> Self {
+        let bae_core::import::folder_scanner::FileVersion {
+            path,
+            size,
+            modified_at_ns,
+        } = file;
+        Self {
+            path: path.to_string_lossy().into_owned(),
+            size,
+            modified_at_ns,
         }
     }
 }

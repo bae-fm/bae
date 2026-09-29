@@ -6,7 +6,7 @@ use crate::identify::{LookupProvenance, TerminalVerdict};
 
 use super::{candidate, exec, fixed_now, watched_root};
 use crate::import::folder_scanner::{
-    CandidateFile, FileRole, FolderCandidate, ScanItem, ScannedFile,
+    CandidateFile, FileRole, FileVersion, FolderCandidate, ScanItem, ScannedFile,
 };
 use crate::import::list::{ImportListItem, ImportListRequest, ImportListView};
 use crate::import::search::{MetadataResult, SourceTracks};
@@ -679,7 +679,11 @@ async fn the_list_projects_the_applied_draft_and_cover() {
     assert_eq!(
         row.cover,
         Some(crate::import::CoverImageSource::Local {
-            path: PathBuf::from(format!("{root}/Album/cover.jpg")),
+            file: FileVersion {
+                path: PathBuf::from(format!("{root}/Album/cover.jpg")),
+                size: 500,
+                modified_at_ns: 1,
+            },
         })
     );
 
@@ -709,7 +713,11 @@ async fn the_list_projects_the_applied_draft_and_cover() {
     assert_eq!(
         rows(&projection).remove(0).cover,
         Some(crate::import::CoverImageSource::Local {
-            path: PathBuf::from(format!("{root}/Album/folder.jpg")),
+            file: FileVersion {
+                path: PathBuf::from(format!("{root}/Album/folder.jpg")),
+                size: 600,
+                modified_at_ns: 1,
+            },
         }),
         "a rescan must retain the explicit cover"
     );
@@ -741,7 +749,11 @@ async fn the_list_projects_the_applied_draft_and_cover() {
     assert_eq!(
         rows(&projection).remove(0).cover,
         Some(crate::import::CoverImageSource::Local {
-            path: PathBuf::from(format!("{root}/Album/folder.jpg")),
+            file: FileVersion {
+                path: PathBuf::from(format!("{root}/Album/folder.jpg")),
+                size: 600,
+                modified_at_ns: 1,
+            },
         }),
         "a draft that brings no image of its own leaves the selection standing"
     );
@@ -803,7 +815,11 @@ async fn the_scan_stores_the_folders_own_cover() {
     assert_eq!(
         row.cover,
         Some(crate::import::CoverImageSource::Local {
-            path: PathBuf::from(format!("{root}/Album/cover.jpg")),
+            file: FileVersion {
+                path: PathBuf::from(format!("{root}/Album/cover.jpg")),
+                size: 500,
+                modified_at_ns: 1,
+            },
         })
     );
 
@@ -824,7 +840,11 @@ async fn the_scan_stores_the_folders_own_cover() {
     assert_eq!(
         rows(&projection).remove(0).cover,
         Some(crate::import::CoverImageSource::Local {
-            path: PathBuf::from(format!("{root}/Album/cover.jpg")),
+            file: FileVersion {
+                path: PathBuf::from(format!("{root}/Album/cover.jpg")),
+                size: 500,
+                modified_at_ns: 1,
+            },
         }),
         "a row shows the cover the candidate would commit with, and nothing a \
          verdict merely found"
@@ -846,10 +866,11 @@ async fn the_list_projects_the_persisted_embedded_file_metadata_cover() {
         scan_generation: 1,
         file_edit_revision: 0,
         files: vec![crate::import::file_tag_snapshot::FileTagFact {
+            // Read after the scan: the file was touched, its size unchanged.
             observation: crate::import::file_tag_snapshot::FileObservation {
                 relative_path: "01.flac".to_string(),
                 size: 1_000,
-                modified_at_ns: 1,
+                modified_at_ns: 5,
             },
             title: None,
             track_artist: None,
@@ -896,7 +917,32 @@ async fn the_list_projects_the_persisted_embedded_file_metadata_cover() {
         .expect("the row carries its file-metadata draft");
     assert_eq!(
         row.cover,
-        Some(crate::import::CoverImageSource::Bytes { data: bytes })
+        Some(crate::import::CoverImageSource::Embedded {
+            source: FileVersion {
+                path: PathBuf::from(format!("{root}/Album/01.flac")),
+                size: 1_000,
+                modified_at_ns: 5,
+            },
+            data: bytes.clone(),
+        }),
+        "the bytes carry the version of the file the snapshot read them from"
+    );
+    let detail = db
+        .load_import_candidate(&candidate.path.to_string_lossy())
+        .await
+        .unwrap()
+        .expect("the candidate reads back");
+    assert_eq!(
+        detail.cover.map(|cover| cover.image),
+        Some(crate::import::CoverImageSource::Embedded {
+            source: FileVersion {
+                path: PathBuf::from(format!("{root}/Album/01.flac")),
+                size: 1_000,
+                modified_at_ns: 5,
+            },
+            data: bytes,
+        }),
+        "the pane draws the same image under the same identity"
     );
 }
 

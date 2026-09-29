@@ -296,7 +296,7 @@
             placement: .pending,
             matched: nil,
             metadataSummary: nil,
-            cover: .local(path: previewArtPath("Front.png"))
+            cover: .local(file: previewArtFile("Front.png"))
         )
 
         /// A draft read off the folder's tags.
@@ -308,7 +308,7 @@
                 albumTitle: "Album Title Twelve",
                 albumArtistAssignments: [artistCredit("Artist Name")]
             ),
-            cover: .local(path: previewArtPath("Front.png")),
+            cover: .local(file: previewArtFile("Front.png")),
             metadataProvenance: .fileMetadata,
             reading: .prefilled
         )
@@ -334,7 +334,7 @@
                 albumTitle: "Album Title Thirteen",
                 albumArtistAssignments: [artistCredit("Artist Name")]
             ),
-            cover: .local(path: previewArtPath("Front.png")),
+            cover: .local(file: previewArtFile("Front.png")),
             metadataProvenance: .externalRelease(
                 record: BridgeMetadataRef(
                     catalog: .musicBrainz,
@@ -353,7 +353,7 @@
                 albumTitle: "Album Title Fourteen",
                 albumArtistAssignments: [artistCredit("Artist Name")]
             ),
-            cover: .local(path: previewArtPath("Front.png")),
+            cover: .local(file: previewArtFile("Front.png")),
             metadataProvenance: .externalRelease(
                 record: BridgeMetadataRef(
                     catalog: .musicBrainz,

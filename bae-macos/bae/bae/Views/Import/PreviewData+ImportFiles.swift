@@ -36,17 +36,17 @@
             size: UInt64,
             dirPrefix: String? = nil
         ) -> BridgeCandidateFile {
-            let path = previewArtPath(name)
+            let file = previewArtFile(name)
             let choice = BridgeCoverChoice(
                 selection: .releaseImage(fileId: name),
-                image: .local(path: path)
+                image: .local(file: file)
             )
             return previewFile(
                 name: name,
                 size: size,
                 role: .artwork(choice: choice),
                 dirPrefix: dirPrefix,
-                localPath: path
+                localPath: file.path
             )
         }
 
@@ -192,7 +192,7 @@
                 coverArt: [],
                 defaultCover: BridgeCoverChoice(
                     selection: .releaseImage(fileId: "Front.png"),
-                    image: .local(path: previewArtPath("Front.png"))
+                    image: .local(file: previewArtFile("Front.png"))
                 )
             )
         }()

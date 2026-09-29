@@ -131,6 +131,16 @@ fn audio_rows_are_the_draft_s_tracks_and_the_rest_are_carried() {
     let mappings = mappings(&table);
 
     assert_eq!(table.images.len(), 1);
+    let cover = files
+        .files
+        .iter()
+        .find(|entry| entry.file.relative_path == "cover.jpg")
+        .expect("the scan found cover.jpg");
+    assert_eq!(
+        table.images[0].file,
+        cover.file.version(),
+        "the gallery draws the image at the version the scan read"
+    );
     assert_eq!(track_file(mappings[0]).name, "01.flac");
     assert_eq!(track_file(mappings[1]).name, "02.flac");
     assert_eq!(mapping_tracks(&table), blank_candidate_draft(&files).release_edit().tracks);
@@ -217,7 +227,7 @@ fn the_folder_s_images_are_a_gallery_beside_the_table_rows() {
     assert!(table
         .images
         .iter()
-        .any(|image| image.file_id == "scans/scan1.jpg" && image.path.exists()));
+        .any(|image| image.file_id == "scans/scan1.jpg" && image.file.path.exists()));
     assert_eq!(table.track_sections.len(), 1);
     assert_eq!(track_file(mappings(&table)[0]).name, "01.flac");
 }

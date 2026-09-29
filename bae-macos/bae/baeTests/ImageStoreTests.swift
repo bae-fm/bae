@@ -145,24 +145,6 @@ struct ImageStoreCacheTests {
         )
     }
 
-    @Test("raw bytes decode but are never cached")
-    func rawBytesAreNeverCached() async throws {
-        let bytes = try makePngBytes(width: 8, height: 8)
-        let store = ImageStore()
-        let content = ImageContent.bytes(bytes)
-
-        let loaded = try await store.image(
-            content,
-            pointSize: 56,
-            displayScale: 2
-        )
-        #expect(loaded != nil)
-        #expect(
-            store.cachedImage(content, pointSize: 56, displayScale: 2) == nil,
-            "the caller holds these bytes' only identity — nothing to cache under"
-        )
-    }
-
     @Test(
         "provider art is fetched for the slot's pixel size, and a viewer's decode for the original"
     )
@@ -364,90 +346,145 @@ struct ImageStoreContentIdentityTests {
         )
     }
 
-    @Test("an unchanged local file is served from the cache")
+    @Test(
+        "an unchanged file version is served from the cache without reading the file"
+    )
     func unchangedLocalFileHitsTheCache() async throws {
-        let directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString)
-        try FileManager.default.createDirectory(
-            at: directory,
-            withIntermediateDirectories: true
-        )
+        let directory = try temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
         let file = directory.appendingPathComponent("candidate.png")
-        try makePngBytes(width: 8, height: 8).write(to: file)
+        let bytes = try makePngBytes(width: 8, height: 8)
+        try bytes.write(to: file)
+        let version = BridgeFileVersion(
+            path: file.path,
+            size: UInt64(bytes.count),
+            modifiedAtNs: 1_000
+        )
 
         let store = ImageStore()
-        let content = ImageContent.localFile(path: file.path)
-        _ = try await store.image(content, pointSize: 56, displayScale: 2)
-
+        let content = ImageContent.localFile(version)
         #expect(
-            store.cachedImage(content, pointSize: 56, displayScale: 2) != nil
-        )
-    }
-
-    @Test("a file replaced at the same path misses the old file's decode")
-    func replacedLocalFileMissesTheCache() async throws {
-        let directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString)
-        try FileManager.default.createDirectory(
-            at: directory,
-            withIntermediateDirectories: true
-        )
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let file = directory.appendingPathComponent("candidate.png")
-        try makePngBytes(width: 8, height: 8).write(to: file)
-
-        let store = ImageStore()
-        let content = ImageContent.localFile(path: file.path)
-        let original = try #require(
-            try await store.image(content, pointSize: 56, displayScale: 2)
-        )
-
-        try makePngBytes(width: 16, height: 16).write(to: file)
-        try FileManager.default.setAttributes(
-            [.modificationDate: Date().addingTimeInterval(60)],
-            ofItemAtPath: file.path
-        )
-
-        let replaced = try #require(
-            try await store.image(content, pointSize: 56, displayScale: 2)
-        )
-        #expect(replaced !== original, "the replaced file is new content")
-        #expect(
-            store.cachedImage(content, pointSize: 56, displayScale: 2)
-                === replaced
-        )
-    }
-
-    @Test("a synchronous lookup reads nothing from the file")
-    func cachedLookupReadsNoFile() async throws {
-        let directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString)
-        try FileManager.default.createDirectory(
-            at: directory,
-            withIntermediateDirectories: true
-        )
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let file = directory.appendingPathComponent("candidate.png")
-        try makePngBytes(width: 8, height: 8).write(to: file)
-
-        let store = ImageStore()
-        let content = ImageContent.localFile(path: file.path)
-        #expect(
-            store.cachedImage(content, pointSize: 56, displayScale: 2) == nil,
-            "a file never loaded has no key to look up"
+            store.cachedImage(content, pointSize: 56, displayScale: 2) == nil
         )
         let loaded = try #require(
             try await store.image(content, pointSize: 56, displayScale: 2)
         )
+        // Anything that read the file again would find nothing there now.
         try FileManager.default.removeItem(at: file)
 
-        // A lookup that read the file's attributes would find none now.
         #expect(
             store.cachedImage(content, pointSize: 56, displayScale: 2)
                 === loaded
         )
+        #expect(
+            try await store.image(content, pointSize: 56, displayScale: 2)
+                === loaded
+        )
     }
+
+    @Test("a new modification time at the same path is a new decode")
+    func changedModificationTimeMissesTheCache() async throws {
+        let directory = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let file = directory.appendingPathComponent("candidate.png")
+        let bytes = try makePngBytes(width: 8, height: 8)
+        try bytes.write(to: file)
+        let scanned = BridgeFileVersion(
+            path: file.path,
+            size: UInt64(bytes.count),
+            modifiedAtNs: 1_000
+        )
+        let rescanned = BridgeFileVersion(
+            path: file.path,
+            size: UInt64(bytes.count),
+            modifiedAtNs: 2_000
+        )
+
+        let store = ImageStore()
+        let original = try #require(
+            try await store.image(
+                .localFile(scanned),
+                pointSize: 56,
+                displayScale: 2
+            )
+        )
+
+        #expect(
+            store.cachedImage(
+                .localFile(rescanned),
+                pointSize: 56,
+                displayScale: 2
+            ) == nil,
+            "the rescanned version names new content"
+        )
+        let replaced = try #require(
+            try await store.image(
+                .localFile(rescanned),
+                pointSize: 56,
+                displayScale: 2
+            )
+        )
+        #expect(replaced !== original)
+        #expect(
+            store.cachedImage(
+                .localFile(rescanned),
+                pointSize: 56,
+                displayScale: 2
+            ) === replaced
+        )
+    }
+
+    @Test("embedded artwork is cached under its source file's version")
+    func embeddedCoverIsCachedByItsSourceVersion() async throws {
+        let bytes = try makePngBytes(width: 8, height: 8)
+        // No file exists at this path: the store never looks at it.
+        let source = BridgeFileVersion(
+            path: "/nonexistent/candidate/01.flac",
+            size: 1_000,
+            modifiedAtNs: 1_000
+        )
+        let store = ImageStore()
+        let content = ImageContent.embeddedCover(source: source, data: bytes)
+
+        let loaded = try #require(
+            try await store.image(content, pointSize: 56, displayScale: 2)
+        )
+        #expect(
+            store.cachedImage(content, pointSize: 56, displayScale: 2)
+                === loaded
+        )
+
+        let retagged = ImageContent.embeddedCover(
+            source: BridgeFileVersion(
+                path: source.path,
+                size: source.size,
+                modifiedAtNs: 2_000
+            ),
+            data: bytes
+        )
+        #expect(
+            store.cachedImage(retagged, pointSize: 56, displayScale: 2) == nil,
+            "a new version of the source file names new artwork"
+        )
+        #expect(
+            store.cachedImage(
+                .localFile(source),
+                pointSize: 56,
+                displayScale: 2
+            ) == nil,
+            "the file's embedded artwork is not the file"
+        )
+    }
+}
+
+private func temporaryDirectory() throws -> URL {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent(UUID().uuidString)
+    try FileManager.default.createDirectory(
+        at: directory,
+        withIntermediateDirectories: true
+    )
+    return directory
 }
 
 @Suite("DecodedImageCache")

@@ -764,7 +764,17 @@ async fn metadata_source_changes_keep_each_row_on_its_audio() {
 /// image to select.
 #[tokio::test(flavor = "multi_thread")]
 async fn file_tags_uses_the_conventional_folder_cover() {
-    let (handle, _tmp, key, _hash) = pane_fixture().await;
+    let StoredCandidate {
+        handle,
+        candidate,
+        key,
+        tmp: _tmp,
+        ..
+    } = stored_candidate().await;
+    handle
+        .select_candidate_file_tags(key.clone())
+        .await
+        .unwrap();
     let cover = pane(&handle, &key)
         .await
         .cover
@@ -773,10 +783,19 @@ async fn file_tags_uses_the_conventional_folder_cover() {
         cover.selection,
         crate::import::CoverSelection::Local("cover.jpg".to_string())
     );
-    let crate::import::cover_art::CoverImageSource::Local { path } = cover.image else {
-        panic!("a folder image is drawn from disk, not fetched");
-    };
-    assert!(path.ends_with("cover.jpg"));
+    let scanned = candidate
+        .files
+        .files
+        .iter()
+        .find(|entry| entry.file.relative_path == "cover.jpg")
+        .expect("the fixture folder holds cover.jpg");
+    assert_eq!(
+        cover.image,
+        crate::import::cover_art::CoverImageSource::Local {
+            file: scanned.file.version(),
+        },
+        "a folder image is drawn from disk at the version the scan read"
+    );
 
     shut_down(handle).await;
 }

@@ -36,6 +36,29 @@
             return file.path
         }
 
+        /// `previewArtPath`'s file at the version on disk, as core's scan
+        /// reports a folder's image.
+        static func previewArtFile(_ name: String) -> BridgeFileVersion {
+            let path = previewArtPath(name)
+            // Crash with the reason rather than draw failure placeholders.
+            // swiftlint:disable:next force_try
+            let attributes = try! FileManager.default.attributesOfItem(
+                atPath: path
+            )
+            guard let size = attributes[.size] as? UInt64,
+                let modified = attributes[.modificationDate] as? Date
+            else {
+                preconditionFailure("placeholder art has a size and a date")
+            }
+            return BridgeFileVersion(
+                path: path,
+                size: size,
+                modifiedAtNs: Int64(
+                    (modified.timeIntervalSince1970 * 1_000_000_000).rounded()
+                )
+            )
+        }
+
         /// PNG bytes for one placeholder, its hue decided by the name.
         private static func previewArtData(_ name: String) -> Data {
             let side: CGFloat = 600

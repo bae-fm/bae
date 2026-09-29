@@ -48,6 +48,16 @@ impl ScannedFile {
         }
     }
 
+    /// The version of the file the scan read: where it is, with the size and
+    /// modification time it had then.
+    pub fn version(&self) -> FileVersion {
+        FileVersion {
+            path: self.path.clone(),
+            size: self.size,
+            modified_at_ns: self.modified_at_ns,
+        }
+    }
+
     #[cfg(test)]
     pub(crate) fn with_test_flac_audio(mut self) -> Self {
         self.source_audio = Some(ScannedAudio {
@@ -63,6 +73,18 @@ impl ScannedFile {
         });
         self
     }
+}
+
+/// One version of a file on disk: its absolute path, and the size and
+/// modification time (nanoseconds since the Unix epoch) that tell the bytes
+/// there from whatever is written at that path later. A reader that caches
+/// what it read from the file keys it by this, so a replaced file is new
+/// content without the reader looking at the file again.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FileVersion {
+    pub path: PathBuf,
+    pub size: u64,
+    pub modified_at_ns: i64,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
@@ -408,7 +430,7 @@ impl CandidateFile {
         .then(|| {
             crate::import::CoverChoice::local(
                 self.file.relative_path.clone(),
-                self.file.path.clone(),
+                self.file.version(),
             )
         })
     }

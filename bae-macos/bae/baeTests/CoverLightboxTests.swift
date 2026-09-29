@@ -19,7 +19,9 @@ struct CoverLightboxTests {
         let front = remote("Front")
         let booklet = remote("Booklet")
         let path = PreviewData.previewArtPath("Lightbox fixture")
-        let file = releaseFile(path)
+        let file = releaseFile(
+            PreviewData.previewArtFile("Lightbox fixture")
+        )
         let bytes = try Data(contentsOf: URL(fileURLWithPath: path))
         let images = ImageStore(fetchRemoteImage: { _, _ in bytes })
         var selected: CoverItem?
@@ -129,11 +131,11 @@ struct CoverLightboxTests {
         func read(_ read: Read) { reads.append(read) }
     }
 
-    private func releaseFile(_ path: String) -> CoverItem {
+    private func releaseFile(_ file: BridgeFileVersion) -> CoverItem {
         CoverItem(
             coverChoice: BridgeCoverChoice(
                 selection: .releaseImage(fileId: "scan-file"),
-                image: .local(path: path)
+                image: .local(file: file)
             ),
             label: "scans/booklet.png"
         )

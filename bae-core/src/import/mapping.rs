@@ -76,9 +76,8 @@ pub struct MappingImage {
     pub file_id: String,
     /// The file's own name, without its directory prefix.
     pub name: String,
-    pub size: u64,
-    /// Absolute path — what a thumbnail and the lightbox read.
-    pub path: PathBuf,
+    /// The version the scan read — what a thumbnail and the lightbox draw.
+    pub file: crate::import::folder_scanner::FileVersion,
 }
 
 /// One source-to-track mapping row: an audio unit of the folder, and the
@@ -556,8 +555,7 @@ fn mapping_image(entry: &CandidateFile) -> MappingImage {
     MappingImage {
         file_id: entry.file.relative_path.clone(),
         name: entry.file.file_name.clone(),
-        size: entry.file.size,
-        path: entry.file.path.clone(),
+        file: entry.file.version(),
     }
 }
 

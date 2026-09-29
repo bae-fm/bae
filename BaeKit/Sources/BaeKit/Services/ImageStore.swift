@@ -12,7 +12,8 @@ private let logger = Logger.bae("ImageStore")
 
 /// What an image slot shows, and therefore where its bytes come from. Every
 /// image in the app is one of these five; a view names the content and renders
-/// whatever `ImageStore` hands back.
+/// whatever `ImageStore` hands back. Each names the identity its bytes have, so
+/// its decodes are cached under it.
 public enum ImageContent: Equatable, Hashable, Sendable {
     /// A curated library image — a release cover or an artist portrait — read
     /// by its versioned reference.
@@ -28,24 +29,24 @@ public enum ImageContent: Equatable, Hashable, Sendable {
     /// draw one too small for it.
     case remote(BridgeRemoteImageSet)
     /// A file on disk the user is previewing before it enters the library — an
-    /// import candidate's cover or folder image. A path names whatever file is
-    /// there now, so its decodes are keyed by the file's modification date and
-    /// size too: a file replaced at the same path is new content.
-    case localFile(path: String)
-    /// Bytes already in hand. Decoded on demand and never cached: the caller
-    /// holds the only identity these bytes have.
-    case bytes(Data)
+    /// import candidate's cover or folder image — at the version core's scan
+    /// read. A file replaced at the same path is a new version, so it is new
+    /// content; nothing here reads the file to find that out.
+    case localFile(BridgeFileVersion)
+    /// Artwork embedded in an audio file's tags, as core stored it, with the
+    /// version of that file core read it from — the identity of these bytes.
+    case embeddedCover(source: BridgeFileVersion, data: Data)
 
     /// The render content for a cover the import flow offers: a candidate file
-    /// on disk, or provider art at a URL.
+    /// on disk, artwork its tags carry, or provider art at a URL.
     public init(bridge: BridgeCoverImageSource) {
         switch bridge {
-        case .local(let path):
-            self = .localFile(path: path)
+        case .local(let file):
+            self = .localFile(file)
         case .remote(let image):
             self = .remote(image)
-        case .bytes(let data):
-            self = .bytes(Data(data))
+        case .embedded(let source, let data):
+            self = .embeddedCover(source: source, data: data)
         }
     }
 
@@ -58,10 +59,10 @@ public enum ImageContent: Equatable, Hashable, Sendable {
             return "release image: \(releaseId)"
         case .remote(let image):
             return "remote image: \(image.url)"
-        case .localFile(let path):
-            return "image at path: \(path)"
-        case .bytes(let bytes):
-            return "in-memory image: \(bytes.count) bytes"
+        case .localFile(let file):
+            return "image at path: \(file.path)"
+        case .embeddedCover(let source, _):
+            return "image embedded in: \(source.path)"
         }
     }
 }
@@ -88,8 +89,9 @@ public struct ImageStoreBudgets: Equatable, Sendable {
 
     private static let megabyte = 1024 * 1024
 
-    // Local files are import candidates and iOS has no import flow, so that
-    // bucket takes one number on both platforms — nothing ever enters it there.
+    // Local files and the artwork embedded in them are import candidates and
+    // iOS has no import flow, so that bucket takes one number on both
+    // platforms — nothing ever enters it there.
     #if os(iOS)
         public static let `default` = ImageStoreBudgets(
             libraryImage: 48 * megabyte,
@@ -115,11 +117,10 @@ public struct ImageStoreBudgets: Equatable, Sendable {
 /// A decode is keyed by the content reference the caller supplied and its pixel
 /// size. Content at one library, release, or remote reference is stable for the
 /// lifetime of an image in bae; a workflow that replaces it supplies a new
-/// reference. A local file's key also carries its modification date and size,
-/// since whatever replaces it keeps its path. Those are read only when a load
-/// runs, off the calling thread; the synchronous lookup a view makes while it
-/// draws uses the ones its path's last load read, so drawing never touches the
-/// file.
+/// reference. A local file's reference is the version core's scan read — its
+/// path, size, and modification time — so a file replaced at the same path
+/// arrives as a new reference once core rescans it, and the store never reads
+/// a file to decide what it holds.
 public final class ImageStore: Sendable, Observable {
     /// Bytes of a curated library image, or nil when no such image exists.
     private let fetchLibraryImageBytes:
@@ -140,7 +141,6 @@ public final class ImageStore: Sendable, Observable {
 
     private let buckets: Buckets
     private let inFlightLoads = InFlightImageLoads()
-    private let localFileTokens = LocalFileTokens()
 
     public init(
         fetchLibraryImageBytes:
@@ -218,23 +218,17 @@ public final class ImageStore: Sendable, Observable {
     /// inserts the image leaf with no prior position, which snaps it to its
     /// final place while everything around it is still animating.
     ///
-    /// This is a memory-only lookup, which reads no file: a file on disk is
-    /// looked up under the attributes its last load read, and one never loaded
-    /// is not cached. `.bytes` is never cached.
+    /// A memory-only lookup: it reads no file.
     public func cachedImage(
         _ content: ImageContent,
         pointSize: CGFloat,
         displayScale: CGFloat
     ) -> PlatformImage? {
-        guard
-            let key = cacheKey(
-                rememberedToken(for: content),
-                pointSize: pointSize,
-                displayScale: displayScale
-            )
-        else {
-            return nil
-        }
+        let key = cacheKey(
+            content,
+            pointSize: pointSize,
+            displayScale: displayScale
+        )
         return buckets[content.bucket].image(for: key)
     }
 
@@ -248,20 +242,11 @@ public final class ImageStore: Sendable, Observable {
         pointSize: CGFloat,
         displayScale: CGFloat
     ) async throws -> PlatformImage? {
-        guard
-            let key = cacheKey(
-                try await currentToken(for: content),
-                pointSize: pointSize,
-                displayScale: displayScale
-            )
-        else {
-            return try await loadImage(
-                content,
-                cacheKey: nil,
-                pointSize: pointSize,
-                displayScale: displayScale
-            )
-        }
+        let key = cacheKey(
+            content,
+            pointSize: pointSize,
+            displayScale: displayScale
+        )
         if let cached = buckets[content.bucket].image(for: key) {
             return cached
         }
@@ -294,7 +279,7 @@ public final class ImageStore: Sendable, Observable {
 
     private func loadImage(
         _ content: ImageContent,
-        cacheKey: String?,
+        cacheKey: String,
         pointSize: CGFloat,
         displayScale: CGFloat
     ) async throws -> PlatformImage? {
@@ -312,9 +297,7 @@ public final class ImageStore: Sendable, Observable {
             size: .fitTo(points: pointSize),
             displayScale: displayScale
         )
-        if let cacheKey {
-            buckets[content.bucket].store(image, for: cacheKey)
-        }
+        buckets[content.bucket].store(image, for: cacheKey)
         return image
     }
 
@@ -394,10 +377,10 @@ public final class ImageStore: Sendable, Observable {
                 return nil
             }
             return .data(bytes)
-        case .localFile(let path):
-            return .local(path: path)
-        case .bytes(let bytes):
-            return .data(bytes)
+        case .localFile(let file):
+            return .local(path: file.path)
+        case .embeddedCover(_, let data):
+            return .data(data)
         }
     }
 
@@ -406,47 +389,18 @@ public final class ImageStore: Sendable, Observable {
 extension ImageStore {
     /// Cache key for a decoded image: its content identity plus the decode
     /// resolution, so the now-playing bar's 48pt decode never serves the detail
-    /// view's 400pt slot, and vice versa. Nil when the content has no cacheable
-    /// identity.
+    /// view's 400pt slot, and vice versa.
     fileprivate func cacheKey(
-        _ token: String?,
+        _ content: ImageContent,
         pointSize: CGFloat,
         displayScale: CGFloat
-    ) -> String? {
-        guard let token else {
-            return nil
-        }
+    ) -> String {
         let pixelSize = Int((pointSize * displayScale).rounded())
-        return "\(token)#\(pixelSize)"
+        return "\(referenceToken(for: content))#\(pixelSize)"
     }
 
-    /// The content's identity as a synchronous read may know it: a file on
-    /// disk by the attributes its last load read, nil when none has.
-    fileprivate func rememberedToken(for content: ImageContent) -> String? {
-        if case .localFile(let path) = content {
-            return localFileTokens.token(for: path)
-        }
-        return referenceToken(for: content)
-    }
-
-    /// The content's identity as it stands now: a file on disk by the
-    /// attributes read from it off the calling thread, remembered for the
-    /// synchronous reads that follow.
-    fileprivate func currentToken(
-        for content: ImageContent
-    ) async throws -> String? {
-        guard case .localFile(let path) = content else {
-            return referenceToken(for: content)
-        }
-        let token = try await DetachedWork.run { Self.localFileToken(path) }
-        localFileTokens.remember(token, for: path)
-        return token
-    }
-
-    /// The content reference the caller supplied. Nil for `.bytes`, whose
-    /// identity remains with its caller, and for a local file, whose identity
-    /// is read from the file.
-    fileprivate func referenceToken(for content: ImageContent) -> String? {
+    /// The content reference the caller supplied.
+    fileprivate func referenceToken(for content: ImageContent) -> String {
         switch content {
         case .libraryImage(let image):
             return Self.libraryToken(image)
@@ -466,36 +420,15 @@ extension ImageStore {
             // The original names the image; the pixel size beside it in the
             // key already separates the copies decoded for different slots.
             return "remote:\(image.url)"
-        case .localFile, .bytes:
-            return nil
+        case .localFile(let file):
+            return "local:\(Self.versionToken(file))"
+        case .embeddedCover(let source, _):
+            return "embedded:\(Self.versionToken(source))"
         }
     }
 
-    /// The path plus the file's modification date and size. Nil when the file
-    /// can't be read; the load then reports why, and nothing is cached.
-    fileprivate static func localFileToken(_ path: String) -> String? {
-        let values: URLResourceValues
-        do {
-            values = try URL(fileURLWithPath: path)
-                .resourceValues(
-                    forKeys: [.contentModificationDateKey, .fileSizeKey]
-                )
-        }
-        catch {
-            logger.debug(
-                "Not caching \(path): its attributes can't be read: \(error)"
-            )
-            return nil
-        }
-        guard let modified = values.contentModificationDate,
-            let size = values.fileSize
-        else {
-            logger.debug(
-                "Not caching \(path): it has no modification date or size"
-            )
-            return nil
-        }
-        return "path:\(path)@\(modified.timeIntervalSinceReferenceDate):\(size)"
+    fileprivate static func versionToken(_ file: BridgeFileVersion) -> String {
+        "\(file.path)@\(file.modifiedAtNs):\(file.size)"
     }
 
     fileprivate static func libraryToken(_ image: BridgeImageRef) -> String {
@@ -530,10 +463,7 @@ extension ImageContent {
         case .libraryImage: .libraryImage
         case .releaseImage: .releaseImage
         case .remote: .remote
-        // `.bytes` is never cached, but every content still names a bucket so
-        // the lookup needs no second "is this cacheable" branch — its key is
-        // nil, which is what keeps it out.
-        case .localFile, .bytes: .localFile
+        case .localFile, .embeddedCover: .localFile
         }
     }
 }
@@ -568,22 +498,6 @@ private struct Buckets: Sendable {
             preconditionFailure("every bucket is built in init")
         }
         return cache
-    }
-}
-
-/// The token each local file's last load read from its attributes, by path.
-/// A path whose attributes could not be read has none, so nothing is looked up
-/// for it until a load reads them.
-private final class LocalFileTokens: @unchecked Sendable {
-    private let lock = NSLock()
-    private var tokens: [String: String] = [:]
-
-    func token(for path: String) -> String? {
-        lock.withLock { tokens[path] }
-    }
-
-    func remember(_ token: String?, for path: String) {
-        lock.withLock { tokens[path] = token }
     }
 }
 

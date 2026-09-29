@@ -92,8 +92,7 @@
             BridgeMappingImage(
                 fileId: file.file.name,
                 name: file.file.name,
-                size: file.file.size,
-                localPath: file.file.localPath,
+                file: previewArtFile(file.file.fileName),
             )
         }
 

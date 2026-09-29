@@ -101,11 +101,10 @@
         private static func local(_ image: String, filename: String)
             -> CoverItem
         {
-            let path = PreviewData.previewArtPath(image)
-            return CoverItem(
+            CoverItem(
                 coverChoice: BridgeCoverChoice(
                     selection: .releaseImage(fileId: filename),
-                    image: .local(path: path)
+                    image: .local(file: PreviewData.previewArtFile(image))
                 ),
                 label: filename
             )

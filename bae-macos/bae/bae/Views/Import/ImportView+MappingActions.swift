@@ -66,7 +66,7 @@ extension ImportView {
         let items = images.map { image in
             LightboxItem(
                 label: image.name,
-                path: image.localPath
+                file: image.file
             )
         }
         guard !items.isEmpty else { return }

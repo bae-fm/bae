@@ -870,11 +870,35 @@ mirror_struct! {
     fields: { url, max_edge },
 }
 
+/// Where a cover's bytes are read from. Every source carries the identity its
+/// bytes have, so the app caches what it drew under it without reading the
+/// file to learn whether it changed.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeCoverImageSource {
-    Remote { image: BridgeRemoteImageSet },
-    Local { path: String },
-    Bytes { data: Vec<u8> },
+    Remote {
+        image: BridgeRemoteImageSet,
+    },
+    /// An image file of the folder, at the version the scan read.
+    Local {
+        file: BridgeFileVersion,
+    },
+    /// Artwork embedded in an audio file's tags, with the version of that
+    /// file it was read from.
+    Embedded {
+        source: BridgeFileVersion,
+        data: Vec<u8>,
+    },
+}
+
+/// One version of a file on disk: its absolute path, and the size and
+/// modification time (nanoseconds since the Unix epoch) that tell the bytes
+/// there from whatever is written at that path later. Mirror of bae-core's
+/// `FileVersion`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeFileVersion {
+    pub path: String,
+    pub size: u64,
+    pub modified_at_ns: i64,
 }
 
 #[derive(Debug, Clone, uniffi::Enum)]
