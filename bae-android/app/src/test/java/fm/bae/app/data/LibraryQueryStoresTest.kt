@@ -2,12 +2,12 @@ package fm.bae.app.data
 
 import fm.bae.app.BridgeFixtures
 import fm.bae.app.playback.FakeAppHandle
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -17,10 +17,11 @@ import org.junit.Test
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class LibraryQueryStoresTest {
     @Test
     fun switchingSearchQueryClearsPriorValueBeforeTheNewQueryErrors() =
-        runBlocking {
+        runTest(StandardTestDispatcher()) {
             val failure = queryFailure()
             val handle =
                 FakeAppHandle(
@@ -31,24 +32,28 @@ class LibraryQueryStoresTest {
                     },
                     initialSearchError = { query -> failure.takeIf { query == "query-b" } },
                 )
-            val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
-            val store = SearchQueryStore(Library(handle), scope)
+            val store = SearchQueryStore(Library(handle), backgroundScope)
             store.activate("query-a")
-            delay(350)
+            passDebounce()
             assertTrue(store.state.value.delivered)
 
             store.activate("query-b")
             assertNull(store.state.value.value)
             assertFalse(store.state.value.delivered)
             assertNull(store.state.value.error)
-            delay(350)
+            passDebounce()
 
             assertNull(store.state.value.value)
             assertFalse(store.state.value.delivered)
             assertSame(failure, store.state.value.error)
             assertEquals("typing moves one search, never opens another", 1, handle.searchSubscriptions.size)
-            scope.cancel()
         }
+
+    /** Moves the virtual clock to the end of the debounce and runs what it releases. */
+    private fun TestScope.passDebounce() {
+        advanceTimeBy(SEARCH_DEBOUNCE_MS)
+        runCurrent()
+    }
 
     private fun queryFailure(): BridgeException = BridgeException.Diagnostic(BridgeErrorCategory.Database, "query failed")
 }
