@@ -76,8 +76,15 @@ final class FindOnlinePaneTests: XCTestCase {
     /// A folder waiting on the person opens its page with one sentence
     /// saying what happened, and each row found says what picking it does.
     func testAFolderWaitingOnThePersonSaysWhatHappened() async throws {
+        // Signals that named different releases, waiting on the person to
+        // pick among them.
         let matches = try await renderedText(
-            of: PreviewData.searchStateNeedsYouMatches
+            of: PreviewData.searchState(
+                identifyState: IdentifyState(
+                    bridge: PreviewData.bridgeDisagreementState
+                ),
+                needsYou: .matches(count: 2)
+            )
         )
         XCTAssertTrue(
             matches.contains {
@@ -103,8 +110,15 @@ final class FindOnlinePaneTests: XCTestCase {
             "a page that offered releases reads: \(matches)"
         )
 
+        // Nothing matched anywhere, waiting on the person.
         let notFound = try await renderedText(
-            of: PreviewData.searchStateNeedsYouNotFound
+            of: PreviewData.searchState(
+                identifyState: .notFoundAnywhere(
+                    run: PreviewData.identifyRunNothingFound
+                ),
+                signals: PreviewData.settledSignals,
+                needsYou: .notFound
+            )
         )
         XCTAssertTrue(
             notFound.contains {

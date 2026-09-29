@@ -682,20 +682,6 @@
             signals: settledSignals
         )
 
-        /// Signals that named different releases, waiting on the person to
-        /// pick among them.
-        static let searchStateNeedsYouMatches = searchState(
-            identifyState: IdentifyState(bridge: bridgeDisagreementState),
-            needsYou: .matches(count: 2)
-        )
-
-        /// Nothing matched anywhere, waiting on the person.
-        static let searchStateNeedsYouNotFound = searchState(
-            identifyState: .notFoundAnywhere(run: identifyRunNothingFound),
-            signals: settledSignals,
-            needsYou: .notFound
-        )
-
         /// The folder carries nothing to look up and nothing to offer.
         static let searchStateNoSignals = searchState(
             identifyState: .manualOnly(trackCount: 9, run: nil),
