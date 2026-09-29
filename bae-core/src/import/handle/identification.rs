@@ -135,9 +135,9 @@ impl ImportServiceHandle {
         &self,
         candidate_key: &str,
         run: crate::identify::IdentifyRunId,
-        error: String,
+        failure: crate::import::SaveFailure,
     ) {
-        self.runtime.fail_identification(candidate_key, run, error);
+        self.runtime.fail_identification(candidate_key, run, failure);
     }
 
     /// `run`'s answer is disposed of: its row landed, was refused as stale, or

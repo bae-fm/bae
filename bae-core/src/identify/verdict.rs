@@ -131,9 +131,9 @@ impl TerminalVerdict {
         }
     }
 
-    /// The verdict this one becomes when a step after the lookups fails —
-    /// fetching the details of the release they settled on, or projecting its
-    /// metadata. The lookups ran and showed what they showed, so what they
+    /// The verdict this one becomes when a lookup after the run's fails —
+    /// fetching the details of the release it settled on. The lookups ran
+    /// and showed what they showed, so what they
     /// found and the ledger they recorded stay; the failure joins any the run
     /// already had.
     pub(crate) fn fail(&mut self, failure: IdentifyFailure) {

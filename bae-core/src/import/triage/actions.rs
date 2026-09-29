@@ -159,16 +159,25 @@ impl CandidateActionBasis {
                 if self.draft_valid {
                     actions.push(A::Import);
                 }
+                let failed_save = match &live.identification {
+                    Some(IdentificationStatus::FinalizationFailed { failure }) => Some(failure),
+                    Some(
+                        IdentificationStatus::Queued
+                        | IdentificationStatus::Running
+                        | IdentificationStatus::Finalizing,
+                    )
+                    | None => None,
+                };
+                // Identifying again reaches the same answer and fails the
+                // same way, so it is not offered.
+                let answer_fails_again = failed_save.is_some_and(|failure| !failure.retryable());
                 // A stored lookup is shown as it stood, as Automatic shows it,
                 // so only a candidate with none is offered identifying.
-                if self.lookup.is_none() {
+                if self.lookup.is_none() && !answer_fails_again {
                     actions.push(A::Identify);
                 }
                 if self.lookup == Some(StoredLookup::Failed)
-                    || matches!(
-                        live.identification,
-                        Some(IdentificationStatus::FinalizationFailed { .. })
-                    )
+                    || failed_save.is_some_and(|failure| failure.retryable())
                 {
                     actions.push(A::RetryIdentification);
                 }
@@ -399,7 +408,9 @@ mod tests {
                 .contains(&CandidateAction::RetryIdentification));
         }
         let failure = identifying(IdentificationStatus::FinalizationFailed {
-            error: "Provider unavailable".to_owned(),
+            failure: crate::import::SaveFailure::NotWritten {
+                error: "Provider unavailable".to_owned(),
+            },
         });
         assert!(basis(TriagePlacement::Pending, None)
             .actions(&failure)
@@ -415,5 +426,19 @@ mod tests {
                 "{lookup:?} is a lookup that finished"
             );
         }
+    }
+
+    /// An answer whose release cannot be read into the draft fails the same
+    /// way on every run, so neither identifying nor retrying is offered.
+    #[test]
+    fn an_answer_that_fails_again_offers_no_retry() {
+        let failure = identifying(IdentificationStatus::FinalizationFailed {
+            failure: crate::import::SaveFailure::Inapplicable {
+                error: "the release lists a track with no title".to_owned(),
+            },
+        });
+        let actions = basis(TriagePlacement::Pending, None).actions(&failure);
+        assert!(!actions.contains(&CandidateAction::RetryIdentification));
+        assert!(!actions.contains(&CandidateAction::Identify));
     }
 }

@@ -221,9 +221,24 @@ pub(super) async fn finish(
                 done.representative_key
             );
             for key in &keys {
-                context
-                    .import
-                    .fail_identification(key, done.run, error.clone());
+                context.import.fail_identification(
+                    key,
+                    done.run,
+                    crate::import::SaveFailure::NotWritten {
+                        error: error.clone(),
+                    },
+                );
+            }
+        }
+        Settled::Inapplicable { error } => {
+            for key in &keys {
+                context.import.fail_identification(
+                    key,
+                    done.run,
+                    crate::import::SaveFailure::Inapplicable {
+                        error: error.clone(),
+                    },
+                );
             }
         }
     }

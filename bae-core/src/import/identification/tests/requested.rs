@@ -236,11 +236,11 @@ async fn explicit_lookup_settles_its_lead_before_storing_the_verdict() {
 }
 
 /// A release document can carry a readable tracklist yet still be impossible
-/// to project into candidate metadata. An explicit run stores that terminal
-/// release-details failure instead of waiting for another state event that
-/// will never arrive.
+/// to read into the candidate's draft. That is no lookup that failed: an
+/// explicit run ends on it, stores nothing, and states the failure on the row
+/// with no way to ask again, since another run would reach the same answer.
 #[tokio::test(flavor = "multi_thread")]
-async fn explicit_lookup_stores_a_metadata_projection_failure() {
+async fn explicit_lookup_ends_on_a_release_its_draft_cannot_be_read_from() {
     let fixture = Fixture::new("interactive-projection-failure").await;
     let dir = fixture.disc_id_candidate("Album");
     let probed = fixture.probed_total_ms(&dir);
@@ -282,18 +282,21 @@ async fn explicit_lookup_stores_a_metadata_projection_failure() {
     )
     .await
     .expect("the explicit run ends on the projection failure");
-    let row = fixture
-        .stored_for(&dir)
-        .await
-        .expect("the candidate keeps its row");
 
-    assert!(matches!(
-        identify_result(&row).verdict,
-        TerminalVerdict::Failed {
-            ref failures,
-            ..
-        } if matches!(failures.as_slice(), [crate::identify::IdentifyFailure::ReleaseDetails(_)])
-    ));
+    assert!(
+        fixture.identified_for(&dir).await.is_none(),
+        "nothing is stored, least of all a failed lookup"
+    );
+    let key = dir.to_string_lossy().into_owned();
+    let Some(crate::import::IdentificationStatus::FinalizationFailed { failure }) =
+        fixture.identification_status(&key)
+    else {
+        panic!(
+            "the row states the failure, got {:?}",
+            fixture.identification_status(&key)
+        );
+    };
+    assert!(!failure.retryable(), "{failure:?}");
 }
 
 #[tokio::test(flavor = "multi_thread")]

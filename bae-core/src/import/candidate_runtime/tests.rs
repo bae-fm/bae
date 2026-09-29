@@ -538,6 +538,13 @@ fn a_write_ends_the_save_it_ran_for_and_no_other() {
     assert!(runtime.get(key).is_none());
 }
 
+/// A write that did not land, which another run may land.
+fn not_written(error: &str) -> crate::import::SaveFailure {
+    crate::import::SaveFailure::NotWritten {
+        error: error.to_string(),
+    }
+}
+
 /// A write that failed leaves the error where a row can say so, and nothing
 /// waiting on a commit that is not coming.
 #[test]
@@ -546,15 +553,18 @@ fn a_failed_write_replaces_the_pending_save_with_its_error() {
     let key = "/watch/a/rel1";
     runtime.record_event(&identify(key, 1, manual_only()));
 
-    runtime.fail_identification(key, run(1), "database write failed".to_string());
+    runtime.fail_identification(key, run(1), not_written("database write failed"));
 
     let failed = runtime.get(key).expect("the failure remains visible");
     assert!(failed.saving.is_none());
-    assert_eq!(failed.save_failed.as_deref(), Some("database write failed"));
+    assert_eq!(
+        failed.save_failed.as_ref().map(crate::import::SaveFailure::error),
+        Some("database write failed")
+    );
     assert_eq!(
         identification(&runtime, key),
         Some(crate::import::IdentificationStatus::FinalizationFailed {
-            error: "database write failed".to_string(),
+            failure: not_written("database write failed"),
         })
     );
 }
@@ -567,20 +577,21 @@ fn a_new_runs_first_state_clears_the_previous_runs_failure() {
     let runtime = CandidateRuntime::default();
     let key = "/watch/a/rel1";
     runtime.record_event(&identify(key, 1, manual_only()));
-    runtime.fail_identification(key, run(1), "database write failed".to_string());
+    runtime.fail_identification(key, run(1), not_written("database write failed"));
 
     runtime.record_event(&identify(key, 2, triangulating()));
     let rerun = runtime.get(key).expect("the new run is in flight");
     assert!(rerun.save_failed.is_none());
     assert!(rerun.running.is_some());
 
-    runtime.fail_identification(key, run(2), "database write failed again".to_string());
+    runtime.fail_identification(key, run(2), not_written("database write failed again"));
     runtime.record_event(&identify(key, 2, triangulating()));
     assert_eq!(
         runtime
             .get(key)
             .and_then(|runtime| runtime.save_failed)
-            .as_deref(),
+            .as_ref()
+            .map(crate::import::SaveFailure::error),
         Some("database write failed again"),
         "a state from the run that failed is not a new attempt"
     );
@@ -653,11 +664,11 @@ fn every_field_yields_its_own_status_in_one_order() {
         Some(crate::import::IdentificationStatus::Finalizing)
     );
 
-    runtime.fail_identification(key, run(1), "database write failed".to_string());
+    runtime.fail_identification(key, run(1), not_written("database write failed"));
     assert_eq!(
         identification(&runtime, key),
         Some(crate::import::IdentificationStatus::FinalizationFailed {
-            error: "database write failed".to_string(),
+            failure: not_written("database write failed"),
         })
     );
 

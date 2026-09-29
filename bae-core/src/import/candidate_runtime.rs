@@ -18,7 +18,7 @@
 //! run they belong to, and are dropped with the rest of the key's entry.
 
 use super::candidate_search::CandidateSearch;
-use super::candidates::{Admission, CandidateRuntimeSnapshot, ImportInFlight};
+use super::candidates::{Admission, CandidateRuntimeSnapshot, ImportInFlight, SaveFailure};
 use super::folder_scanner::{FolderCandidate, ReleaseFileScope};
 use super::handle::{ImportEvent, ScanEvent};
 use super::search::{MetadataResult, SearchQuery};
@@ -119,7 +119,7 @@ struct ClaimedImport {
 #[derive(Clone, PartialEq)]
 struct FailedSave {
     run: IdentifyRunId,
-    error: String,
+    failure: SaveFailure,
 }
 
 /// One key's runtime; [`CandidateRuntimeSnapshot`] is derived from it.
@@ -180,7 +180,7 @@ impl CandidateRuntimeState {
             queued: self.queued,
             running: self.running.as_ref().map(|run| run.state.clone()),
             saving: self.answered.as_ref().map(|run| run.state.clone()),
-            save_failed: self.save_failed.as_ref().map(|failed| failed.error.clone()),
+            save_failed: self.save_failed.as_ref().map(|failed| failed.failure.clone()),
             import: self.import.as_ref().map(|claimed| claimed.in_flight.clone()),
             search: self.search.as_ref().map(|running| running.search.clone()),
         }
@@ -628,13 +628,13 @@ impl CandidateRuntime {
         &self,
         candidate_key: &str,
         run: IdentifyRunId,
-        error: String,
+        failure: SaveFailure,
     ) {
         self.set(candidate_key, |_, runtime| {
             if answered_on(runtime, run) {
                 runtime.answered = None;
             }
-            runtime.save_failed = Some(FailedSave { run, error });
+            runtime.save_failed = Some(FailedSave { run, failure });
         });
     }
 

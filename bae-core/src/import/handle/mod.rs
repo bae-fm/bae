@@ -802,8 +802,13 @@ impl ImportServiceHandle {
             match &wrote {
                 Ok(_) => this.runtime.end_identification_answer(&candidate_key, run),
                 Err(error) => {
-                    this.runtime
-                        .fail_identification(&candidate_key, run, error.to_string())
+                    this.runtime.fail_identification(
+                        &candidate_key,
+                        run,
+                        crate::import::SaveFailure::NotWritten {
+                            error: error.to_string(),
+                        },
+                    )
                 }
             }
             wrote

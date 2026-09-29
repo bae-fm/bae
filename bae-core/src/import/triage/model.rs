@@ -58,8 +58,8 @@ pub enum IdentificationStatus {
     Running,
     /// The run has a result and is committing it.
     Finalizing,
-    /// The result could not be committed; `error` says why.
-    FinalizationFailed { error: String },
+    /// The result could not be committed; `failure` says why.
+    FinalizationFailed { failure: crate::import::SaveFailure },
 }
 
 /// Which lookup produced a match, strongest first: the row's evidence chip

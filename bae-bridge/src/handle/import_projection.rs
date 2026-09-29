@@ -312,8 +312,10 @@ impl crate::types::BridgeIdentificationStatus {
             S::Queued => Self::Queued,
             S::Running => Self::Running,
             S::Finalizing => Self::Finalizing,
-            S::FinalizationFailed { error } => Self::FinalizationFailed {
-                error: crate::types::BridgeError::from_core(bae_core::ui::UiError::import(error)),
+            S::FinalizationFailed { failure } => Self::FinalizationFailed {
+                error: crate::types::BridgeError::from_core(bae_core::ui::UiError::import(
+                    failure.error().to_string(),
+                )),
             },
         }
     }

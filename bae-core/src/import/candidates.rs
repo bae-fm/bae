@@ -94,6 +94,34 @@ pub enum ImportCandidateSnapshot {
     },
 }
 
+/// Why a run's answer did not land, which decides whether identifying the
+/// candidate again can land it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SaveFailure {
+    /// The answer was not written; another run may write it.
+    NotWritten { error: String },
+    /// The release the answer picks could not be read into the folder's
+    /// draft. Another run reaches the same answer and fails the same way.
+    Inapplicable { error: String },
+}
+
+impl SaveFailure {
+    pub fn error(&self) -> &str {
+        match self {
+            Self::NotWritten { error } | Self::Inapplicable { error } => error,
+        }
+    }
+
+    /// Whether identifying the candidate again can land what this run could
+    /// not.
+    pub fn retryable(&self) -> bool {
+        match self {
+            Self::NotWritten { .. } => true,
+            Self::Inapplicable { .. } => false,
+        }
+    }
+}
+
 /// What is in flight for one key, one fact per field. An entry exists only
 /// while at least one of them is `Some`; all of them `None` is the absence of
 /// an entry, not a value. No field is inferred from another or from the order
@@ -111,7 +139,7 @@ pub struct CandidateRuntimeSnapshot {
     pub saving: Option<IdentifyState>,
     /// Why the last write of a terminal state did not land. Cleared by the
     /// next run of this key.
-    pub save_failed: Option<String>,
+    pub save_failed: Option<SaveFailure>,
     /// The running import: claimed, preparing, or partway through a phase.
     pub import: Option<ImportInFlight>,
     /// The typed search a person submitted for this candidate, as its sources

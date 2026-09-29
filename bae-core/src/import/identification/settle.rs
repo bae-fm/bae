@@ -21,6 +21,10 @@ pub(super) enum Settled {
     Abandoned,
     /// No write was asked for: the answer could not be turned into a row.
     Unwritable { error: String },
+    /// No write was asked for: the release the verdict picks could not be
+    /// read into the folder's draft, which another run would fail the same
+    /// way.
+    Inapplicable { error: String },
 }
 
 /// What one settled answer reports back to the driver loop.
@@ -72,11 +76,20 @@ pub(super) async fn settle_answer(
         Settled::Abandoned => context
             .import
             .end_identification_answer(&representative_key, run),
-        Settled::Unwritable { error } => {
-            context
-                .import
-                .fail_identification(&representative_key, run, error.clone())
-        }
+        Settled::Unwritable { error } => context.import.fail_identification(
+            &representative_key,
+            run,
+            crate::import::SaveFailure::NotWritten {
+                error: error.clone(),
+            },
+        ),
+        Settled::Inapplicable { error } => context.import.fail_identification(
+            &representative_key,
+            run,
+            crate::import::SaveFailure::Inapplicable {
+                error: error.clone(),
+            },
+        ),
     }
     Finished {
         identity,
@@ -119,70 +132,80 @@ async fn settle_verdict(
         return Settled::Abandoned;
     };
 
-    let metadata = metadata_or_failed_verdict(
-        context,
-        candidate,
-        &durations,
-        settled_lead,
-        &mut verdict,
-    )
-    .await;
-    save(context, token, run, candidate, &verdict, signals, metadata).await
-}
-
-async fn metadata_for_settled_lead(
-    context: &Context,
-    candidate: &FolderCandidate,
-    durations: &crate::import::probe::SourceDurations,
-    settled_lead: SettledLead,
-) -> Result<Option<crate::import::CandidateMetadataDraft>, crate::import::ImportError> {
-    match settled_lead {
-        SettledLead::NoExternalRelease => Ok(None),
+    let metadata = match settled_lead {
+        SettledLead::NoExternalRelease => None,
         SettledLead::ExternalRelease {
             provenance,
             release,
             partners,
-        } => {
-            let current = context
-                .library_manager
-                .load_import_candidate_preparation(&candidate.files.content_hash())
-                .await?
-                .ok_or_else(|| crate::import::ImportError::Internal {
-                    detail: format!("{} has no stored draft", candidate.key()),
-                })?;
-            Ok(Some(
-                context
-                    .import
-                    .external_candidate_metadata(&release, partners, durations, provenance, &current.draft)
-                    .await?,
-            ))
-        }
-    }
+        } => match lead_metadata(context, candidate, &durations, provenance, &release, partners)
+            .await
+        {
+            Ok(metadata) => Some(metadata),
+            Err(settled) => return settled,
+        },
+    };
+    save(context, token, run, candidate, &verdict, signals, metadata).await
 }
 
-async fn metadata_or_failed_verdict(
+/// The draft the picked release reads into, with the artist images and cover
+/// it needs, or what becomes of the answer when there is none to write.
+async fn lead_metadata(
     context: &Context,
     candidate: &FolderCandidate,
     durations: &crate::import::probe::SourceDurations,
-    settled_lead: SettledLead,
-    verdict: &mut TerminalVerdict,
-) -> Option<crate::import::CandidateMetadataDraft> {
-    match metadata_for_settled_lead(context, candidate, durations, settled_lead).await {
-        Ok(metadata) => metadata,
+    provenance: crate::import::MetadataProvenance,
+    release: &crate::import::source_release::SourceRelease,
+    partners: Vec<crate::import::source_release::SourceRelease>,
+) -> Result<crate::import::CandidateMetadataDraft, Settled> {
+    let current = match context
+        .library_manager
+        .load_import_candidate_preparation(&candidate.files.content_hash())
+        .await
+    {
+        Ok(Some(current)) => current,
+        Ok(None) => {
+            return Err(Settled::Unwritable {
+                error: format!("{} has no stored draft", candidate.key()),
+            })
+        }
         Err(error) => {
-            warn!(
-                "identification: could not project metadata for {} ({error}); storing the failure",
+            return Err(Settled::Unwritable {
+                error: error.to_string(),
+            })
+        }
+    };
+    // Files decided otherwise since the run read them make this an answer
+    // for files the candidate no longer has.
+    if current.file_edit_revision != candidate.file_edit_revision {
+        return Err(Settled::Abandoned);
+    }
+    let source_draft = context
+        .import
+        .external_candidate_draft(release, durations, &current.draft)
+        .map_err(|error| {
+            tracing::error!(
+                "identification: {} matched a release its draft cannot be read from: {error}",
                 candidate.key()
             );
-            // The failure keeps what the lookups found and their ledger.
-            verdict.fail(crate::identify::IdentifyFailure::ReleaseDetails(
-                crate::signals::LookupFailure::Diagnostic {
-                    detail: error.to_string(),
-                },
-            ));
-            None
-        }
-    }
+            Settled::Inapplicable {
+                error: error.to_string(),
+            }
+        })?;
+    context
+        .import
+        .external_candidate_assets(
+            source_draft,
+            release,
+            partners,
+            durations,
+            provenance,
+            &current.draft,
+        )
+        .await
+        .map_err(|error| Settled::Unwritable {
+            error: error.to_string(),
+        })
 }
 
 /// Write one row, unless the answer was given up right before the write.

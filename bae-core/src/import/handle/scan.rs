@@ -297,10 +297,6 @@ impl ImportServiceHandle {
 
     /// Build the metadata for an external release and fetch the artist images
     /// and cover it needs, before anything is written.
-    ///
-    /// The cover is the first one the release or its partners offer; when there
-    /// is none or it cannot be fetched, `cover` is `None` and the write keeps
-    /// the candidate's current cover.
     pub(crate) async fn external_candidate_metadata(
         &self,
         release: &crate::import::source_release::SourceRelease,
@@ -310,6 +306,25 @@ impl ImportServiceHandle {
         current: &crate::import::CandidateDraft,
     ) -> Result<crate::import::CandidateMetadataDraft, crate::import::ImportError> {
         let source_draft = self.external_candidate_draft(release, durations, current)?;
+        self.external_candidate_assets(source_draft, release, partners, durations, provenance, current)
+            .await
+    }
+
+    /// The metadata `source_draft`, read from an external release, makes,
+    /// with the artist images and cover it needs fetched.
+    ///
+    /// The cover is the first one the release or its partners offer; when there
+    /// is none or it cannot be fetched, `cover` is `None` and the write keeps
+    /// the candidate's current cover.
+    pub(crate) async fn external_candidate_assets(
+        &self,
+        source_draft: crate::import::pane::CandidateSourceDraft,
+        release: &crate::import::source_release::SourceRelease,
+        partners: Vec<crate::import::source_release::SourceRelease>,
+        durations: &crate::import::probe::SourceDurations,
+        provenance: crate::import::MetadataProvenance,
+        current: &crate::import::CandidateDraft,
+    ) -> Result<crate::import::CandidateMetadataDraft, crate::import::ImportError> {
         let draft = source_draft.draft;
         let source_discogs_artist_ids = source_draft.source_discogs_artist_ids;
         let required_artist_ids = source_discogs_artist_ids

@@ -151,9 +151,9 @@ impl TriageRuntimeFacts {
     /// failed with, then the answer being written, then the run in flight,
     /// then the queue it is waiting in.
     pub fn of(runtime: &CandidateRuntimeSnapshot) -> Self {
-        let identification = if let Some(error) = &runtime.save_failed {
+        let identification = if let Some(failure) = &runtime.save_failed {
             Some(IdentificationStatus::FinalizationFailed {
-                error: error.clone(),
+                failure: failure.clone(),
             })
         } else if runtime.saving.is_some() {
             Some(IdentificationStatus::Finalizing)

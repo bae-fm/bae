@@ -148,11 +148,19 @@ fn a_failed_write_ends_the_identification() {
     runtime.record_event(&identify(key, 1, manual_only()));
     assert_eq!(counts(&mut events), vec![(0, 1)]);
 
-    runtime.fail_identification(key, run(1), "disk is full".to_string());
+    runtime.fail_identification(
+        key,
+        run(1),
+        crate::import::SaveFailure::NotWritten {
+            error: "disk is full".to_string(),
+        },
+    );
     assert_eq!(counts(&mut events), vec![(0, 0)]);
     assert_eq!(
         runtime.get(key).and_then(|state| state.save_failed),
-        Some("disk is full".to_string()),
+        Some(crate::import::SaveFailure::NotWritten {
+            error: "disk is full".to_string(),
+        }),
         "the failure stays on the row after the batch is over"
     );
 }
