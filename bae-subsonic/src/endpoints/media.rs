@@ -340,21 +340,25 @@ pub(crate) async fn get_cover_art(
 
 async fn cover_art_inner(state: &AppState, params: &Params) -> Result<Response, SubError> {
     let services = &state.services;
-    let release_id = cover_release_id(services, params.require("id")?).await?;
+    let (subject_id, image_type) = cover_subject(services, params.require("id")?).await?;
 
-    // `size` scaling isn't applied: covers are stored pre-resized, so the stored
+    // `size` scaling isn't applied: images are stored pre-resized, so the stored
     // image is served at its stored size.
     if params.get("size").is_some() {
-        debug!("getCoverArt: size scaling is not applied; serving the stored cover");
+        debug!("getCoverArt: size scaling is not applied; serving the stored image");
     }
 
     let row = services
-        .get_library_image(&release_id, &LibraryImageType::Cover)
+        .get_library_image(&subject_id, &image_type)
         .await
         .map_err(lib_err)?
         .ok_or_else(SubError::not_found)?;
     let bytes = services
-        .read_cover_image_blob(&release_id)
+        .read_image_blob(&bae_core::album_detail::ImageRef {
+            id: subject_id,
+            version: row.blob_id,
+            image_type,
+        })
         .await
         .map_err(lib_err)?
         .ok_or_else(SubError::not_found)?;
@@ -366,31 +370,22 @@ async fn cover_art_inner(state: &AppState, params: &Params) -> Result<Response, 
         .into_response())
 }
 
-/// Resolve any namespaced id to the release whose cover to serve.
-async fn cover_release_id(services: &AppServices, raw_id: &str) -> Result<String, SubError> {
-    match SubId::parse(raw_id)? {
-        SubId::Album(release_id) => Ok(release_id),
+/// The image a `getCoverArt` id names: an album's or a song's release cover,
+/// or an artist's own image.
+async fn cover_subject(
+    services: &AppServices,
+    raw_id: &str,
+) -> Result<(String, LibraryImageType), SubError> {
+    match SubId::parse_cover_art(raw_id)? {
+        SubId::Album(release_id) => Ok((release_id, LibraryImageType::Cover)),
         SubId::Track(track_id) => {
             let info = services
                 .get_playback_track_info(&track_id)
                 .await
                 .map_err(lib_err)?;
-            Ok(info.release_id)
+            Ok((info.release_id, LibraryImageType::Cover))
         }
-        SubId::Artist(artist_id) => {
-            let detail = services
-                .get_artist_detail(&artist_id)
-                .await
-                .map_err(lib_err)?
-                .ok_or_else(SubError::not_found)?;
-            // An artist has no cover of its own here; use the first release of
-            // their first album.
-            detail
-                .albums
-                .first()
-                .and_then(|album| album.release_ids.first().cloned())
-                .ok_or_else(SubError::not_found)
-        }
+        SubId::Artist(artist_id) => Ok((artist_id, LibraryImageType::Artist)),
     }
 }
 

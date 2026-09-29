@@ -53,7 +53,7 @@ async fn artist_index(
             &artist.name,
             release_count,
             artist.musicbrainz_artist_id.clone(),
-            summary.image.is_some(),
+            summary.image.as_ref(),
         );
         buckets
             .entry(index_letter(&artist.name))
@@ -110,7 +110,7 @@ pub(crate) async fn get_artist(
         &artist.name,
         release_ids.len() as i64,
         artist.musicbrainz_artist_id.clone(),
-        detail.artist.image.is_some(),
+        detail.artist.image.as_ref(),
     )
     .to_element();
 
@@ -138,7 +138,7 @@ pub(crate) async fn get_album(
 
     let album = release_album_id3_with(services, &release).await?;
     let album_title = album.name.clone();
-    let has_cover_art = album.cover_art.is_some();
+    let cover_art = album.cover_art.clone();
 
     let tracks = services
         .get_tracks_for_release(&release_id)
@@ -158,7 +158,7 @@ pub(crate) async fn get_album(
                 &release,
                 &album_title,
                 &files,
-                has_cover_art,
+                cover_art.clone(),
             )
             .await?,
         );

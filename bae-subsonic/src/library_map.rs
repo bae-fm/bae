@@ -10,6 +10,7 @@ use bae_core::import::Catalog;
 use bae_core::library::{AppServices, LibraryError};
 
 use crate::error::SubError;
+use crate::id::SubId;
 use crate::model::{album_wire_id, artist_wire_id, track_wire_id, AlbumId3, ArtistId3, Child};
 
 /// A library error is opaque to a Subsonic client — surface it as a generic
@@ -35,14 +36,18 @@ async fn release_mb_id(
         .map(|release| release.key.clone()))
 }
 
-/// Whether this release has stored cover art. Only then is a `coverArt` id
-/// advertised, so a client never fetches art that resolves to "not found".
-async fn has_cover(services: &AppServices, release_id: &str) -> Result<bool, SubError> {
+/// The release's `coverArt` id, carrying its cover's version, when it has a
+/// stored cover. Only then is a `coverArt` id advertised, so a client never
+/// fetches art that resolves to "not found".
+async fn release_cover_art(
+    services: &AppServices,
+    release_id: &str,
+) -> Result<Option<String>, SubError> {
     Ok(services
         .get_library_image(release_id, &LibraryImageType::Cover)
         .await
         .map_err(lib_err)?
-        .is_some())
+        .map(|cover| SubId::Album(release_id.to_string()).cover_art_id(&cover.blob_id)))
 }
 
 /// Sum of track durations in whole seconds.
@@ -82,9 +87,7 @@ pub(crate) async fn release_album_id3_with(
         .get_tracks_for_release(&release.id)
         .await
         .map_err(lib_err)?;
-    let cover_art = has_cover(services, &release.id)
-        .await?
-        .then(|| album_wire_id(&release.id));
+    let cover_art = release_cover_art(services, &release.id).await?;
 
     Ok(AlbumId3 {
         id: album_wire_id(&release.id),
@@ -160,15 +163,15 @@ async fn resolve_audio_fields(
 }
 
 /// The `Child` (song) for a track on `release`. `album_title`, the release's
-/// files, and the cover flag are passed in so a whole-album build resolves them
-/// once rather than per track.
+/// files, and its `coverArt` id are passed in so a whole-album build resolves
+/// them once rather than per track.
 pub(crate) async fn track_child(
     services: &AppServices,
     track: &DbTrack,
     release: &DbRelease,
     album_title: &str,
     files: &[DbFile],
-    has_cover_art: bool,
+    cover_art: Option<String>,
 ) -> Result<Child, SubError> {
     let audio = resolve_audio_fields(services, &track.id, Some(files)).await?;
 
@@ -183,8 +186,6 @@ pub(crate) async fn track_child(
         ),
         None => (None, None),
     };
-
-    let cover_art = has_cover_art.then(|| album_wire_id(&release.id));
 
     Ok(Child {
         id: track_wire_id(&track.id),
@@ -228,7 +229,7 @@ pub(crate) async fn search_track_child(
         .await
         .map_err(lib_err)?
         .ok_or_else(SubError::not_found)?;
-    let has_cover_art = has_cover(services, &audio.release_id).await?;
+    let cover_art = release_cover_art(services, &audio.release_id).await?;
 
     Ok(Child {
         id: track_wire_id(track_id),
@@ -238,7 +239,7 @@ pub(crate) async fn search_track_child(
         artist: Some(artist_name.to_string()),
         track: None,
         year: release.pressing.year,
-        cover_art: has_cover_art.then(|| album_wire_id(&audio.release_id)),
+        cover_art,
         size: audio.size,
         content_type: Some(audio.content_type),
         suffix: audio.suffix,
@@ -270,19 +271,20 @@ pub(crate) async fn artist_release_count(
         .unwrap_or(0) as i64)
 }
 
-/// The `ArtistID3` for an artist row, with a release-count album total.
+/// The `ArtistID3` for an artist row, with a release-count album total. Its
+/// `coverArt` names the artist's own image, at that image's version.
 pub(crate) fn artist_id3(
     id: &str,
     name: &str,
     album_count: i64,
     music_brainz_id: Option<String>,
-    has_image: bool,
+    image: Option<&bae_core::album_detail::ImageRef>,
 ) -> ArtistId3 {
     ArtistId3 {
         id: artist_wire_id(id),
         name: name.to_string(),
         album_count,
-        cover_art: has_image.then(|| artist_wire_id(id)),
+        cover_art: image.map(|image| SubId::Artist(id.to_string()).cover_art_id(&image.version)),
         music_brainz_id,
     }
 }

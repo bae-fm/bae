@@ -155,6 +155,7 @@ fn cue_fixture(name: &str) -> std::path::PathBuf {
 /// A seeded library plus the ids a test addresses it by.
 struct Library {
     services: AppServices,
+    manager: LibraryManager,
     per_track_release: String,
     cue_release: String,
     _temps: Vec<TempDir>,
@@ -256,9 +257,12 @@ async fn seed_library() -> Library {
     let mut cue_rx = cue_import.subscribe_import(cue_id);
     let (cue_release, _cue_album) = support::wait_for_import_complete(&mut cue_rx).await;
 
-    let services = AppServices::for_test(manager).await.expect("app services");
+    let services = AppServices::for_test(manager.clone())
+        .await
+        .expect("app services");
     Library {
         services,
+        manager,
         per_track_release,
         cue_release,
         _temps: vec![db_temp, pt_temp, cue_temp],

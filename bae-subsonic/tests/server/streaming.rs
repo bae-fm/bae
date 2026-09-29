@@ -123,7 +123,8 @@ async fn cover_art_resolves_every_id_kind() {
     assert_eq!(by_track.status, StatusCode::OK);
     assert!(by_track.content_type.starts_with("image/"));
 
-    // Artist id resolves to one of the artist's release covers.
+    // An artist's art is the artist's own image; this artist has none, so
+    // its id finds nothing rather than one of its release covers.
     let album = call(
         &router,
         "getAlbum",
@@ -135,12 +136,11 @@ async fn cover_art_resolves_every_id_kind() {
         .unwrap()
         .to_string();
     let by_artist = call(&router, "getCoverArt", &authed(&format!("id={artist_id}"))).await;
-    assert_eq!(
-        by_artist.status,
-        StatusCode::OK,
-        "artist id resolves to a release cover"
+    assert!(
+        by_artist.text().contains(r#"code="70""#),
+        "an artist with no image has no art: {}",
+        by_artist.text()
     );
-    assert!(by_artist.content_type.starts_with("image/"));
 
     // The CUE release has no cover art → error 70.
     let missing = call(
@@ -154,6 +154,102 @@ async fn cover_art_resolves_every_id_kind() {
         "missing art: {}",
         missing.text()
     );
+}
+
+/// A `coverArt` id carries the image's version, so a client that caches art
+/// by id fetches it again once the cover changes; the new id serves the art.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_changed_cover_gets_a_new_cover_art_id() {
+    let lib = seed_library().await;
+    let router = bae_subsonic::router(lib.services.clone(), credential());
+    let album_query = authed(&format!("f=json&id=al-{}", lib.per_track_release));
+    let cover_art = |album: &Resp| {
+        album.sub()["album"]["coverArt"]
+            .as_str()
+            .expect("the release has a cover")
+            .to_string()
+    };
+    let before = cover_art(&call(&router, "getAlbum", &album_query).await);
+
+    lib.manager
+        .store_library_image_blob(
+            &bae_core::db::DbLibraryImage {
+                id: lib.per_track_release.clone(),
+                blob_id: support::test_uuid("replacement-cover"),
+                image_type: bae_core::db::LibraryImageType::Cover,
+                content_type: bae_core::util::content_type::ContentType::Png,
+                file_size: support::cover_png().len() as i64,
+                width: None,
+                height: None,
+                source: "local".to_string(),
+                source_url: None,
+                cloud_path: None,
+                content_hash: bae_core::util::fs::hash_bytes(&support::cover_png()),
+                created_at: chrono::Utc::now(),
+            },
+            &support::cover_png(),
+        )
+        .await
+        .unwrap();
+
+    let after = cover_art(&call(&router, "getAlbum", &album_query).await);
+    assert_ne!(before, after, "the replaced cover has a new id");
+    let served = call(&router, "getCoverArt", &authed(&format!("id={after}"))).await;
+    assert_eq!(served.status, StatusCode::OK);
+    assert_eq!(served.body, support::cover_png());
+}
+
+/// An artist's `coverArt` names the artist's own image, and serves it.
+#[tokio::test(flavor = "multi_thread")]
+async fn an_artist_cover_art_is_the_artist_image() {
+    let lib = seed_library().await;
+    let router = bae_subsonic::router(lib.services.clone(), credential());
+    let album = call(
+        &router,
+        "getAlbum",
+        &authed(&format!("f=json&id=al-{}", lib.per_track_release)),
+    )
+    .await;
+    let artist_wire_id = album.sub()["album"]["artistId"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let artist_id = artist_wire_id.strip_prefix("ar-").unwrap().to_string();
+    let image = support::cover_png();
+    lib.manager
+        .store_library_image_blob(
+            &bae_core::db::DbLibraryImage {
+                id: artist_id,
+                blob_id: support::test_uuid("artist-image"),
+                image_type: bae_core::db::LibraryImageType::Artist,
+                content_type: bae_core::util::content_type::ContentType::Png,
+                file_size: image.len() as i64,
+                width: None,
+                height: None,
+                source: "local".to_string(),
+                source_url: None,
+                cloud_path: None,
+                content_hash: bae_core::util::fs::hash_bytes(&image),
+                created_at: chrono::Utc::now(),
+            },
+            &image,
+        )
+        .await
+        .unwrap();
+
+    let artist = call(
+        &router,
+        "getArtist",
+        &authed(&format!("f=json&id={artist_wire_id}")),
+    )
+    .await;
+    let cover_art = artist.sub()["artist"]["coverArt"]
+        .as_str()
+        .expect("the artist has an image")
+        .to_string();
+    let served = call(&router, "getCoverArt", &authed(&format!("id={cover_art}"))).await;
+    assert_eq!(served.status, StatusCode::OK);
+    assert_eq!(served.body, image, "the artist's own image, not a release cover");
 }
 
 #[tokio::test(flavor = "multi_thread")]

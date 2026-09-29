@@ -177,10 +177,7 @@ pub(crate) async fn get_song(state: AppState, params: Params) -> Result<Option<E
         .get_track_display(&track_id)
         .await
         .map_err(lib_err)?;
-    let has_cover_art = release_album_id3_with(services, &release)
-        .await?
-        .cover_art
-        .is_some();
+    let cover_art = release_album_id3_with(services, &release).await?.cover_art;
 
     let child = track_child(
         services,
@@ -188,7 +185,7 @@ pub(crate) async fn get_song(state: AppState, params: Params) -> Result<Option<E
         &release,
         &display.album_title,
         &files,
-        has_cover_art,
+        cover_art,
     )
     .await?;
     Ok(Some(child.to_element()))
@@ -286,7 +283,7 @@ async fn artist_summary_child(
         &artist.name,
         count,
         artist.musicbrainz_artist_id.clone(),
-        summary.image.is_some(),
+        summary.image.as_ref(),
     )
     .to_element())
 }
