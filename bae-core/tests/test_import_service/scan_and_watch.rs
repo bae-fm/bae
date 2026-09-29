@@ -190,22 +190,6 @@ async fn wait_for_scan_event(
     .unwrap_or_else(|| panic!("timed out after 10s waiting for {what}"));
 }
 
-/// Every scan event that arrives within `window`, for asserting that an event
-/// does not arrive.
-async fn drain_scan_events(
-    rx: &mut tokio::sync::mpsc::UnboundedReceiver<ScanEvent>,
-    window: std::time::Duration,
-) -> Vec<ScanEvent> {
-    let mut events = Vec::new();
-    // The predicate never accepts, so this runs the whole window.
-    support::next_matching(rx, window, |event| {
-        events.push(event);
-        None::<()>
-    })
-    .await;
-    events
-}
-
 /// `remove_watched_folder` drops the folder from the stored list and its
 /// candidates from the import list, broadcasts the shortened list, and stops
 /// watching it.
@@ -250,6 +234,12 @@ async fn remove_watched_folder_drops_folder_and_candidates() {
     })
     .await;
 
+    // Watched throughout: what its watch finds is the sentinel below.
+    let other = f.temp_path().join("Other");
+    fs::create_dir_all(&other).unwrap();
+    let other_key = other.to_string_lossy().into_owned();
+    f.handle.add_watched_folder(other_key.clone()).await.unwrap();
+
     f.handle
         .remove_watched_folder(collection_key.clone())
         .await
@@ -257,8 +247,15 @@ async fn remove_watched_folder_drops_folder_and_candidates() {
 
     // The watched list changes at once; the candidate list once its query
     // reads again.
-    assert!(
-        f.handle.watched_folders().await.unwrap().is_empty(),
+    assert_eq!(
+        f.handle
+            .watched_folders()
+            .await
+            .unwrap()
+            .iter()
+            .map(|w| w.path.clone())
+            .collect::<Vec<_>>(),
+        vec![other_key.clone()],
         "removed folder is gone from the persisted list"
     );
     wait_for_candidates(
@@ -268,24 +265,31 @@ async fn remove_watched_folder_drops_folder_and_candidates() {
     )
     .await;
 
-    // The empty list is broadcast.
+    // The shortened list is broadcast.
     wait_for_scan_event(
         &mut scan_rx,
         "the shortened folder-list broadcast",
-        |event| matches!(event, ScanEvent::WatchedFoldersChanged { folders } if folders.is_empty()),
+        |event| matches!(event, ScanEvent::WatchedFoldersChanged { folders } if folders.len() == 1),
     )
     .await;
 
-    // The watch stopped: a new release folder under the root is not found.
+    // The watch stopped: a new release folder under the removed root is not
+    // found ahead of one written after it under the root still watched.
     let new_album = collection.join("Artist - Second Album");
     fs::create_dir_all(&new_album).unwrap();
     generate_album_files(&new_album, &["01 Track.flac"]);
-    let after_unwatch = drain_scan_events(&mut scan_rx, std::time::Duration::from_secs(2)).await;
-    assert!(
-        !after_unwatch
-            .iter()
-            .any(|event| matches!(event, ScanEvent::FolderCandidate { candidate: _, .. })),
-        "an unwatched folder must not surface new candidates, got {after_unwatch:?}",
+    let sentinel = other.join("Artist - Third Album");
+    fs::create_dir_all(&sentinel).unwrap();
+    generate_album_files(&sentinel, &["01 Track.flac"]);
+    let sentinel_key = sentinel.to_string_lossy().into_owned();
+    let after_unwatch = scan_batch_until(&mut scan_rx, "the still-watched folder's candidate", |e| {
+        matches!(e, ScanEvent::FolderCandidate { candidate: c, .. } if c.path.to_str() == Some(sentinel_key.as_str()))
+    })
+    .await;
+    assert_eq!(
+        after_unwatch.added,
+        vec![sentinel_key],
+        "an unwatched folder must not surface new candidates"
     );
 }
 
@@ -707,24 +711,33 @@ async fn set_candidate_skipped_flips_flag_and_is_idempotent() {
     )
     .await;
 
-    // A repeated skip emits nothing.
+    // A repeated skip emits nothing, so the un-skip after it is the next skip
+    // change broadcast.
     f.handle
         .set_candidate_skipped(album_key.clone(), true)
         .await
         .unwrap();
-    wait_for_skipped(&f, &album, true).await;
-    let events = drain_scan_events(&mut scan_rx, std::time::Duration::from_millis(300)).await;
-    assert!(
-        !events
-            .iter()
-            .any(|event| matches!(event, ScanEvent::CandidateSkipChanged { .. })),
-        "a redundant skip must not re-broadcast, got {events:?}",
-    );
-
     f.handle
         .set_candidate_skipped(album_key.clone(), false)
         .await
         .unwrap();
+    let mut next_skip = None;
+    wait_for_scan_event(&mut scan_rx, "the un-skip's broadcast", |event| match event {
+        ScanEvent::CandidateSkipChanged {
+            candidate_key,
+            skipped,
+        } if candidate_key == &album_key => {
+            next_skip = Some(*skipped);
+            true
+        }
+        _ => false,
+    })
+    .await;
+    assert_eq!(
+        next_skip,
+        Some(false),
+        "a redundant skip must not re-broadcast"
+    );
     wait_for_skipped(&f, &album, false).await;
 }
 
