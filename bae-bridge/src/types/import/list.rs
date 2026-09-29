@@ -499,7 +499,7 @@ pub enum BridgeImportFailure {
         error: BridgeError,
     },
     /// Any other failure: a generic line and its diagnostic detail.
-    Error { error: BridgeError },
+    Other { error: BridgeError },
 }
 
 /// The two library rows an incoming cross-provider artist identity connected.

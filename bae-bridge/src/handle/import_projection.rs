@@ -777,7 +777,7 @@ impl crate::types::BridgeImportFailure {
                     error,
                 }
             }
-            (bae_core::import::ImportFailureReason::Error { .. }, None) => Self::Error { error },
+            (bae_core::import::ImportFailureReason::Error { .. }, None) => Self::Other { error },
         }
     }
 }

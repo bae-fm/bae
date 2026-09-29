@@ -80,7 +80,7 @@ struct ImportConfirmationBanners: View {
             if let displayed = DisplayError(error) {
                 artistIdentityConflict(conflict, error: displayed)
             }
-        case .error(let error):
+        case .other(let error):
             if let displayed = DisplayError(error) {
                 persistedFailure(displayed)
             }
@@ -210,7 +210,7 @@ struct ImportConfirmationBanners: View {
                 ),
                 importStatus: nil,
                 error: "Couldn't shape the edit: missing album title",
-                failure: .error(
+                failure: .other(
                     error: .Diagnostic(
                         category: .import,
                         detail: "The folder is no longer where it was"

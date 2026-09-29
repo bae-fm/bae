@@ -42,7 +42,7 @@ struct ImportConfirmationBannersTests {
             failure: conflictFailure()
         )
         let retryControlCount = try await focusControlCount(
-            failure: .error(
+            failure: .other(
                 error: .Diagnostic(
                     category: .import,
                     detail: "the import failed"
