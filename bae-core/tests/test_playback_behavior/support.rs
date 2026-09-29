@@ -154,6 +154,46 @@ async fn wait_for_seeked_on(
     .await
 }
 
+/// The volume `settled_events_on` sets as its sentinel: no test sets it
+/// otherwise, so its `VolumeChanged` is unmistakable.
+const SENTINEL_VOLUME: f32 = 0.4321;
+
+/// Every progress event up to a sentinel command sent now, in arrival order,
+/// sentinel excluded. The service handles commands one at a time in the order
+/// they were sent and emits on one channel that the fan-out forwards in order,
+/// so whatever the earlier commands emit while being handled arrives before the
+/// sentinel's `VolumeChanged`. Once it has arrived, `subscribe_values()` holds
+/// the state those events left. Setting the volume steers neither transport
+/// nor the queue, and leaves a side-pause countdown running.
+async fn settled_events_on(
+    handle: &bae_core::playback::PlaybackHandle,
+    progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
+) -> Vec<PlaybackProgress> {
+    handle.set_volume(SENTINEL_VOLUME);
+    let mut events = Vec::new();
+    support::next_matching(progress_rx, Duration::from_secs(10), |event| match event {
+        PlaybackProgress::VolumeChanged { volume } if volume == SENTINEL_VOLUME => Some(()),
+        other => {
+            events.push(other);
+            None
+        }
+    })
+    .await
+    .expect("the sentinel volume change arrives within 10s");
+    events
+}
+
+/// The `StateChanged` states among `events`.
+fn states_in(events: &[PlaybackProgress]) -> Vec<&PlaybackState> {
+    events
+        .iter()
+        .filter_map(|event| match event {
+            PlaybackProgress::StateChanged { state } => Some(state),
+            _ => None,
+        })
+        .collect()
+}
+
 /// Wait for `Playing` and return whether it arrived, plus the queue entries at
 /// that moment. `play` gives queue entries fresh ids, so a test that edits the
 /// queue must use these.
@@ -487,6 +527,10 @@ impl PlaybackTestFixture {
     /// Wait for a Seeked event with timeout (returns position in ms)
     async fn wait_for_seeked(&mut self, timeout_duration: Duration) -> Option<u64> {
         wait_for_seeked_on(&mut self.progress_rx, timeout_duration).await
+    }
+    /// See `settled_events_on`.
+    async fn settled_events(&mut self) -> Vec<PlaybackProgress> {
+        settled_events_on(&self.playback_handle, &mut self.progress_rx).await
     }
     /// Collect every `StateChanged` state in arrival order until one satisfies
     /// `done` (that final state is included) or the timeout elapses.

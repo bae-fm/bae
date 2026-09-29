@@ -813,6 +813,11 @@ async fn play_release_from_a_track_it_does_not_have_plays_nothing() {
         .await
         .expect("the third track plays");
     let release_id = current_release_id(&fixture.playback_handle).await;
+    let before = fixture
+        .playback_handle
+        .queue_projection()
+        .await
+        .expect("queue projection");
 
     fixture.playback_handle.play_release(
         release_id,
@@ -820,13 +825,23 @@ async fn play_release_from_a_track_it_does_not_have_plays_nothing() {
         false,
     );
 
-    let changed = fixture
-        .wait_for_state(
-            |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id != third),
-            Duration::from_millis(500),
-        )
-        .await;
-    assert!(changed.is_none(), "no other track starts: {changed:?}");
+    // Starting a track emits its Loading while the command is handled.
+    let events = fixture.settled_events().await;
+    let other_track: Vec<_> = states_in(&events)
+        .into_iter()
+        .filter(|s| s.track_id().is_some_and(|id| id != third))
+        .collect();
+    assert!(other_track.is_empty(), "no other track starts: {other_track:?}");
+    let after = fixture
+        .playback_handle
+        .queue_projection()
+        .await
+        .expect("queue projection");
+    assert_eq!(
+        (after.revision, &after.context),
+        (before.revision, &before.context),
+        "the queue is left as it was"
+    );
 }
 
 /// A deletion of tracks, both branches. Two releases share one library so
