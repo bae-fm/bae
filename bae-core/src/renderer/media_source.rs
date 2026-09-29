@@ -14,6 +14,7 @@
 use std::sync::Arc;
 
 use super::RendererStreamFormat;
+use crate::album_detail::ImageRef;
 use crate::util::content_type::ContentType;
 
 /// Mints the HTTP URL the renderer fetches a track's audio from, given the track
@@ -24,9 +25,9 @@ use crate::util::content_type::ContentType;
 pub type MediaUrlProvider =
     Arc<dyn Fn(&str, RendererStreamFormat) -> Result<String, String> + Send + Sync>;
 
-/// Mints the HTTP URL for a track's cover art, given the track id, or `None`
-/// when the track has no cover.
-pub type CoverUrlProvider = Arc<dyn Fn(&str) -> Option<String> + Send + Sync>;
+/// Mints the HTTP URL for a cover. The URL names the cover's version, so a
+/// device that cached the art a replaced cover had fetches the new art.
+pub type CoverUrlProvider = Arc<dyn Fn(&ImageRef) -> String + Send + Sync>;
 
 /// Picks the served stream format for a source codec. The flavor-specific gate
 /// ([`cast_stream_format`](super::cast_stream_format) or
@@ -56,19 +57,21 @@ impl RendererMediaSource {
         }
     }
 
-    /// Where the device fetches one track from. The format gate runs here, on the
-    /// track's now-known source codec, and the served format decides both the URL
-    /// and the MIME type declared for it, so the two can't disagree.
+    /// Where the device fetches one track and its `cover` from. The format gate
+    /// runs here, on the track's now-known source codec, and the served format
+    /// decides both the URL and the MIME type declared for it, so the two can't
+    /// disagree.
     pub fn serve_track(
         &self,
         track_id: &str,
         content_type: &ContentType,
+        cover: Option<&ImageRef>,
     ) -> Result<ServedTrack, String> {
         let format = (self.stream_format)(content_type);
         Ok(ServedTrack {
             url: (self.stream_url)(track_id, format)?,
             content_type: format.content_type_str(content_type),
-            cover_url: (self.cover_url)(track_id),
+            cover_url: cover.map(|cover| (self.cover_url)(cover)),
         })
     }
 }

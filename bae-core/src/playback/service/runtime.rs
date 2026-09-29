@@ -738,6 +738,7 @@ impl PlaybackService {
                             command_tx.clone(),
                             position_update_interval_ms,
                         );
+                        let remote_display = renderer::remote_display_follow(&library_manager);
                         let mut service = PlaybackService {
                             library_manager,
                             command_tx: command_tx.clone(),
@@ -760,6 +761,7 @@ impl PlaybackService {
                             first_audio_pending: None,
                             renderer: Renderer::Local,
                             clock,
+                            remote_display,
                         };
                         // "Restore on launch" off starts with nothing in playback; the
                         // row is kept either way — it stays the crash-safe resume point.
@@ -799,7 +801,13 @@ impl PlaybackService {
         let mut countdown = side_countdown::SideCountdownWait::new();
         loop {
             countdown.follow(self.side_pause_countdown_deadline(), self.clock.as_ref());
+            self.remote_display.follow(self.remote_display_request());
             tokio::select! {
+                (track_id, display) = self.remote_display.next() => {
+                    if let Some(track_id) = track_id {
+                        self.handle_remote_display(track_id, display).await;
+                    }
+                }
                 _ = audio_event_tick.tick(), if self.output.is_some() => {
                     self.drain_current_audio_events().await;
                 }

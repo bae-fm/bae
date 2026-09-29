@@ -87,7 +87,7 @@ fn remote_connect(channel: FakeChannel) -> RemoteConnect {
         "Living Room".to_string(),
         crate::renderer::RendererMediaSource::new(
             test_stream_provider(),
-            Arc::new(|_| None),
+            Arc::new(|cover| format!("http://renderer.local/cover?id={}&v={}", cover.id, cover.version)),
             cast_stream_format,
         ),
     )
@@ -677,4 +677,99 @@ async fn airplay_receiver_death_ends_airplay_and_returns_to_local() {
         !service.renderer.is_airplay(),
         "a dead receiver ends AirPlay and returns to the local renderer"
     );
+}
+
+/// Renaming the track playing on a device loads it onto the device again with
+/// the new title, at the device's position, since a device shows the metadata
+/// it was loaded with. The display the device already shows loads nothing.
+#[tokio::test]
+async fn a_renamed_remote_track_is_loaded_again_with_its_new_title() {
+    const RELEASE: &str = "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e";
+    let (_home, mut service, state, _rx) = playing_remote_fixture(
+        &["08c7ff07-b56a-4e16-8df6-ae2967fa0806"],
+        Some(std::time::Duration::from_secs(30)),
+    )
+    .await;
+    assert!(wait_until(|| state.lock().unwrap().loads.len() == 1));
+    service
+        .handle_remote_status(RendererSessionStatus {
+            player_state: RendererPlayerState::Playing,
+            position: Some(std::time::Duration::from_secs(42)),
+            duration: None,
+            volume: Some(1.0),
+            ended: false,
+        })
+        .await;
+
+    service
+        .remote_display
+        .follow(service.remote_display_request());
+    let (track_id, display) = next_remote_display(&mut service).await;
+    service
+        .handle_remote_display(track_id.expect("the remote track is followed"), display)
+        .await;
+    assert_eq!(
+        state.lock().unwrap().loads.len(),
+        1,
+        "the display the device shows loads nothing"
+    );
+
+    service
+        .library_manager
+        .apply_release_metadata_user_edit(
+            RELEASE,
+            &crate::import::ReleaseUserEdit {
+                album_title: "Album Title".to_string(),
+                album_artist_assignments: vec![crate::import::ArtistAssignment::Picked {
+                    artist: crate::import::ExistingArtist {
+                        artist_id: bae_test_support::test_uuid(
+                            "e36744a5-1a36-460f-891c-e7e558034edf",
+                        ),
+                        name: "Artist Name".to_string(),
+                        sort_name: None,
+                        musicbrainz_artist_id: None,
+                        discogs_artist_id: None,
+                    },
+                }],
+                album_year: None,
+                pressing: crate::pressing::Pressing::blank(),
+                tracks: vec![crate::import::TrackUserEdit {
+                    title: "Renamed Track".to_string(),
+                    side: None,
+                    track_number: Some(1),
+                    artist_assignments: crate::import::TrackArtistAssignments::AlbumArtists,
+                    file: None,
+                }],
+            },
+        )
+        .await
+        .unwrap();
+    let (track_id, display) = next_remote_display(&mut service).await;
+    service
+        .handle_remote_display(track_id.expect("the remote track is followed"), display)
+        .await;
+
+    assert!(
+        wait_until(|| {
+            let s = state.lock().unwrap();
+            s.loads.len() == 2
+                && s.loads[1].title == "Renamed Track"
+                && s.seeks.last() == Some(&std::time::Duration::from_secs(42))
+        }),
+        "the device is loaded again with the new title at its position"
+    );
+    let s = state.lock().unwrap();
+    assert_eq!(s.loads[0].url, s.loads[1].url, "the same track is loaded");
+}
+
+/// The next display the service's remote-display follow reads.
+async fn next_remote_display(
+    service: &mut PlaybackService,
+) -> (Option<String>, Option<crate::playback::TrackDisplay>) {
+    tokio::time::timeout(
+        std::time::Duration::from_secs(5),
+        service.remote_display.next(),
+    )
+    .await
+    .expect("the remote display is read")
 }

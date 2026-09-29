@@ -454,14 +454,17 @@ fn stream_url_provider(base_url: String, credential: SubsonicCredential) -> Medi
     })
 }
 
-/// Build the cover-art-URL provider. Always yields a URL; a track with no cover
-/// simply 404s on the receiver (it shows no art and plays on).
+/// Build the cover-art-URL provider. The server serves the release's current
+/// cover and ignores `cover`; it is there so a replaced cover has a new URL,
+/// which a receiver that cached the old art fetches again.
 fn cover_url_provider(base_url: String, credential: SubsonicCredential) -> CoverUrlProvider {
-    Arc::new(move |track_id: &str| {
-        Some(format!(
-            "{base_url}/rest/getCoverArt?id=tr-{track_id}&{auth}&v=1.16.1&c=bae-cast",
+    Arc::new(move |cover: &bae_core::album_detail::ImageRef| {
+        format!(
+            "{base_url}/rest/getCoverArt?id=al-{release_id}&cover={version}&{auth}&v=1.16.1&c=bae-cast",
+            release_id = cover.id,
+            version = cover.version,
             auth = auth_params(&credential),
-        ))
+        )
     })
 }
 

@@ -65,6 +65,7 @@ use tracing::{debug, error, info, trace, warn};
 mod advance;
 mod api;
 mod file_buffers;
+mod library_follow;
 mod output;
 mod pipeline;
 mod preview;
@@ -88,6 +89,7 @@ pub use api::{
 };
 use api::{SideBoundary, SidePauseDecision};
 use file_buffers::{prepare_track_for_playback, FileBuffers};
+use library_follow::LibraryFollow;
 use renderer::{RemoteConnect, Renderer};
 use slot::{LoadGeneration, PausePhase, PlayIntent, PlayTarget, PlaybackSlot, TrackPhase};
 use starvation::StarvationEpisode;
@@ -449,6 +451,9 @@ pub struct PlaybackService {
     /// The time source for the side-pause countdown's deadline and the wait for
     /// it.
     clock: crate::playback::PlaybackClockRef,
+    /// The library's display of the track playing on a remote device, which
+    /// the device is loaded with again when it changes.
+    remote_display: LibraryFollow<Option<String>, Option<crate::playback::TrackDisplay>>,
 }
 
 /// A pending first-audio timing: the load whose arrival at Playing it measures,
