@@ -192,11 +192,29 @@ fn stating_a_year_never_outranks_an_earlier_field() {
     assert_eq!(offered(&outcome), vec!["rel-undated"]);
 }
 
-/// The notes are weighed among every row tied above them, dated or not: an
-/// undated look-alike's notes cancel the word it shares with a dated row, so
-/// the folder naming that word sets neither apart.
+/// Among rows tied on everything else, a dated row is offered over an
+/// undated one whose notes the folder names: the year is weighed first.
 #[test]
-fn the_notes_are_weighed_before_the_year() {
+fn a_dated_row_outranks_an_undated_one_a_note_names() {
+    let undated = MetadataResult {
+        year: None,
+        ..pressing("rel-undated", &["Made In Nordland"]).0
+    };
+    let outcome = by_catalog(
+        vec![
+            (undated, LibraryStatus::absent("rel-undated")),
+            pressing("rel-dated", &[]),
+        ],
+        &folder("Label One L1-100 Nordland"),
+    );
+    assert_eq!(offered(&outcome), vec!["rel-dated"]);
+}
+
+/// The notes are weighed only among the rows tied on the year too: an
+/// undated row, out already, does not cancel the word its notes share with
+/// a dated row, so the folder naming that word offers the dated row.
+#[test]
+fn the_notes_are_weighed_after_the_year() {
     let undated = MetadataResult {
         year: None,
         ..pressing("rel-undated", &["Plant Beta"]).0
@@ -209,7 +227,7 @@ fn the_notes_are_weighed_before_the_year() {
         ],
         &folder("Label One L1-100 Beta"),
     );
-    assert_eq!(offered(&outcome), vec!["rel-alpha", "rel-beta"]);
+    assert_eq!(offered(&outcome), vec!["rel-beta"]);
 }
 
 /// A note writing the album's artist names the album, not the pressing: the

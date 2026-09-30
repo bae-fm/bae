@@ -386,17 +386,20 @@ struct Support {
     /// its number, and a label keeps a number across reissues, so a row
     /// stating another contradicts nothing.
     offered: bool,
+    /// Whether any of the row's records states a release year. Below every
+    /// fact the folder states: where none of those tells look-alike rows
+    /// apart, the person picks the entry that tells them the most, and an
+    /// undated duplicate of a dated entry is never that pick. Above the
+    /// notes: a year is a field the row states and shows, where the notes
+    /// point rests on one word of free text the folder may write by chance,
+    /// so the notes are weighed only among the rows the year leaves tied.
+    states_a_year: bool,
     /// Whether the folder's text names a word only this row's notes write
     /// among the rows tied with it on every field above — see
     /// [`super::notes`] and [`weigh_notes`]. Last, so it only breaks a tie:
     /// words shared by every tied row cancel out, and a word matched by chance
     /// costs only the order of rows that were equal anyway.
     names_what_sets_it_apart: bool,
-    /// Whether any of the row's records states a release year. Last: where
-    /// nothing the folder says decides between look-alike rows, the person
-    /// picks the entry that tells them the most, and an undated duplicate of
-    /// a dated entry is never that pick.
-    states_a_year: bool,
 }
 
 /// What stands behind one row, over all its records.
@@ -445,9 +448,9 @@ fn support_of(
         country: facts.country(&row.releases),
         registration: super::row_facts::registration(&row.releases, folder.registered_in),
         offered,
+        states_a_year: row.releases.iter().any(|release| release.year.is_some()),
         // Weighed once every row's other fields are.
         names_what_sets_it_apart: false,
-        states_a_year: row.releases.iter().any(|release| release.year.is_some()),
     }
 }
 
@@ -494,12 +497,11 @@ fn split_rows(
 }
 
 impl Support {
-    /// The fields declared above `names_what_sets_it_apart`, the rest as
+    /// The fields declared above `names_what_sets_it_apart`, the notes as
     /// though no row had them.
     fn above_notes(&self) -> Self {
         Self {
             names_what_sets_it_apart: false,
-            states_a_year: false,
             ..*self
         }
     }

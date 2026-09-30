@@ -898,9 +898,9 @@ fn the_notes_badge_is_on_the_row_the_folder_names_by_its_notes() {
     assert_eq!(notes("mb-alpha"), None);
 }
 
-/// The badge says what the ranking weighed: a word an undated look-alike's
-/// notes share cancels in the ranking, and the badge stays off once that row
-/// is set aside for its missing year.
+/// The badge says what the ranking weighed: a word a look-alike's notes
+/// share cancels in the ranking, and the badge stays off once that row is
+/// left out as a look-alike.
 #[test]
 fn the_notes_badge_reads_the_ranking_s_answer() {
     let mut context = context();
@@ -908,10 +908,10 @@ fn the_notes_badge_reads_the_ranking_s_answer() {
         disc_id: "d".to_string(),
         source_file: None,
     };
-    let noted = |release_id: &str, year: Option<i32>, note: &str| {
+    let noted = |release_id: &str, note: &str| {
         (
             MetadataResult {
-                year,
+                year: Some(1987),
                 notes: vec![note.to_string()],
                 ..MetadataResult::for_test(MB, release_id, Some("g"))
             },
@@ -919,9 +919,9 @@ fn the_notes_badge_reads_the_ranking_s_answer() {
         )
     };
     context.disc.results = vec![
-        noted("mb-alpha", Some(1987), "Plant Alpha"),
-        noted("mb-alpha-undated", None, "Plant Alpha"),
-        noted("mb-beta", Some(1987), "Plant Beta"),
+        noted("mb-alpha", "Plant Alpha"),
+        noted("mb-alpha-copy", "Plant Alpha"),
+        noted("mb-beta", "Plant Beta"),
     ];
     context.text = crate::identify::CandidateText::of(
         &[crate::signals::TextLine {
