@@ -43,6 +43,8 @@ enum SettledLead {
         link: crate::import::PressingLink,
         release: crate::import::source_release::SourceRelease,
         partners: Vec<crate::import::source_release::SourceRelease>,
+        /// The year the draft's pressing takes where the release states none.
+        pressing_year: Option<i32>,
     },
 }
 
@@ -110,6 +112,9 @@ async fn settle_verdict(
         .expect("a terminal state carries the audio it was identified over")
         .durations
         .clone();
+    // The text the run judged its rows against, which the verdict does not
+    // keep: what the pick's year falls back on.
+    let text = state.candidate_text();
     let mut verdict = TerminalVerdict::try_from(state)
         .expect("the queue settles only terminal identify states");
 
@@ -125,7 +130,7 @@ async fn settle_verdict(
             ),
         };
     };
-    let settled_lead = match settle_lead(context, &mut verdict, priority, token).await {
+    let settled_lead = match settle_lead(context, &mut verdict, &text, priority, token).await {
         Ok(settled_lead) => settled_lead,
         Err(settled) => return settled,
     };
@@ -136,8 +141,17 @@ async fn settle_verdict(
             link,
             release,
             partners,
-        } => match lead_metadata(context, candidate, &mut verdict, &durations, &release, partners)
-            .await
+            pressing_year,
+        } => match lead_metadata(
+            context,
+            candidate,
+            &mut verdict,
+            &durations,
+            &release,
+            partners,
+            pressing_year,
+        )
+        .await
         {
             Ok(metadata) => metadata.map(|metadata| crate::db::VerdictPick { link, metadata }),
             Err(settled) => return settled,
@@ -160,6 +174,7 @@ async fn lead_metadata(
     durations: &crate::import::probe::SourceDurations,
     release: &crate::import::source_release::SourceRelease,
     partners: Vec<crate::import::source_release::SourceRelease>,
+    pressing_year: Option<i32>,
 ) -> Result<Option<crate::import::CandidateMetadataDraft>, Settled> {
     let current = match context
         .library_manager
@@ -185,7 +200,7 @@ async fn lead_metadata(
     }
     let source_draft = context
         .import
-        .external_candidate_draft(release, durations, &current.draft)
+        .external_candidate_draft(release, durations, &current.draft, pressing_year)
         .map_err(|error| {
             tracing::error!(
                 "identification: {} matched a release its draft cannot be read from: {error}",
@@ -306,6 +321,7 @@ pub(super) async fn save(
 async fn settle_lead(
     context: &Context,
     verdict: &mut TerminalVerdict,
+    text: &crate::identify::CandidateText,
     priority: CallPriority,
     token: &CancellationToken,
 ) -> Result<SettledLead, Settled> {
@@ -327,6 +343,7 @@ async fn settle_lead(
     };
     let pressing = pick.pressing();
     let (primary, partners) = pressing.claims();
+    let pressing_year = crate::identify::row_facts::pressing_year(text, &pressing.releases);
 
     let settle = async {
         let release =
@@ -367,5 +384,6 @@ async fn settle_lead(
         link: pressing.pick(),
         release,
         partners: prepared_partners,
+        pressing_year,
     })
 }

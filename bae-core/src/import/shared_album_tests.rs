@@ -169,6 +169,7 @@ fn what_the_pressings_agree_on_is_taken_as_the_top_row_spells_it() {
             row("Album Title", "ABC-100", &["First Song", "Second Song (Remastered)"]),
             row("ALBUM TITLE", "ABC-200", &["first song", "Second Song"]),
         ],
+        None,
     );
     assert_eq!(shared.album_title, "Album Title");
     assert_eq!(
@@ -202,6 +203,7 @@ fn what_the_pressings_disagree_on_or_leave_unstated_stays_as_the_draft_has_it() 
             row("Album Title", "ABC-100", &["First Song", "Second Song"]),
             unstated,
         ],
+        None,
     );
     assert_eq!(shared.album_year, current.album_year, "never blanked");
     assert_eq!(shared.pressing.year, current.pressing.year);
@@ -218,6 +220,7 @@ fn catalog_numbers_agree_only_as_one_number() {
             row("Album Title", "ABC-100", &["First Song", "Second Song"]),
             row("Album Title", "abc 100", &["First Song", "Second Song"]),
         ],
+        None,
     );
     assert_eq!(shared.pressing.labels, vec![label("Label Name", "ABC-100")]);
 }
@@ -231,6 +234,7 @@ fn tracks_agree_only_when_every_pressing_lists_the_folders_count() {
             row("Album Title", "ABC-100", &["First Song", "Second Song"]),
             row("Album Title", "ABC-200", &["First Song", "Second Song", "Bonus"]),
         ],
+        None,
     );
     assert_eq!(shared.tracks, current.tracks);
     assert_eq!(shared.album_title, "Album Title");
@@ -250,6 +254,20 @@ fn media_every_pressing_states_alike_are_taken() {
         },
         ..first.clone()
     };
-    let shared = shared_draft(&draft(), &[first.clone(), second]);
+    let shared = shared_draft(&draft(), &[first.clone(), second], None);
     assert_eq!(shared.pressing.facts.media, first.pressing.facts.media);
+}
+
+/// Where the pressings share no year, the year is the one the folder names
+/// the pressing by; a year they share wins over it.
+#[test]
+fn a_year_the_pressings_do_not_share_is_the_folder_s() {
+    let mut first = row("Album Title", "ABC-100", &["First Song", "Second Song"]);
+    first.pressing.year = "2005".to_string();
+    let mut second = row("Album Title", "ABC-200", &["First Song", "Second Song"]);
+    second.pressing.year = "2010".to_string();
+    let shared = shared_draft(&draft(), &[first.clone(), second], Some(1986));
+    assert_eq!(shared.pressing.year, "1986");
+    let agreeing = shared_draft(&draft(), &[first.clone(), first.clone()], Some(1986));
+    assert_eq!(agreeing.pressing.year, "2005");
 }

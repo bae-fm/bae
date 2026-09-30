@@ -61,6 +61,7 @@ impl ImportServiceHandle {
         // What picking each row would read, top-ranked first. A release that
         // fails to load fails the whole, leaving the candidate as it was.
         let mut offered = Vec::with_capacity(shared.leads.len());
+        let mut records = Vec::with_capacity(shared.leads.len());
         for lead in &shared.leads {
             let release = crate::import::service::prepare_release(
                 &self.library_manager,
@@ -68,13 +69,18 @@ impl ImportServiceHandle {
                 CallPriority::Interactive,
             )
             .await?;
+            records.push(crate::import::search::MetadataResult::of_release(&release));
             let parsed = release.parsed(&audio_durations, self.clock.as_ref(), self.ids.as_ref())?;
             offered.push(crate::import::RawReleaseEdit::from_user_edit(
                 crate::import::parsed_album_to_user_edit(&parsed),
                 crate::import::pane::CANDIDATE_TRACK_ID_PREFIX,
             ));
         }
-        let draft = crate::import::shared_album::shared_draft(&current.draft, &offered);
+        let draft = crate::import::shared_album::shared_draft(
+            &current.draft,
+            &offered,
+            crate::identify::row_facts::folder_pressing_year(&text, &records),
+        );
         let (source_discogs_artist_ids, artist_images) = self
             .prepared_artist_images_for_active(
                 current.assets.applied_source.as_ref(),

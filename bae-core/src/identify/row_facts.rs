@@ -204,6 +204,27 @@ impl FolderFacts {
     }
 }
 
+/// The year the pressing `records` name came out, for a draft read from them:
+/// the first year one of them states — the records of one row are one
+/// pressing, so another catalog's record of it speaks for the one the draft
+/// is read from — or, where none states one, the year the folder names the
+/// pressing by (see [`FolderFacts::pressing_year`]).
+pub(crate) fn pressing_year(text: &CandidateText, records: &[MetadataResult]) -> Option<i32> {
+    records
+        .iter()
+        .find_map(|record| record.year)
+        .or_else(|| folder_pressing_year(text, records))
+}
+
+/// The year the folder names the pressing `records` are of by — see
+/// [`FolderFacts::pressing_year`].
+pub(crate) fn folder_pressing_year(
+    text: &CandidateText,
+    records: &[MetadataResult],
+) -> Option<i32> {
+    FolderFacts::of(text, records).pressing_year(records)
+}
+
 /// Whether the row was released where the folder's recordings were registered,
 /// as their ISRCs say: the same area agrees, another country disagrees, and a
 /// region, or no area, states nothing.

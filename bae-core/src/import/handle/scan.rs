@@ -249,12 +249,15 @@ impl ImportServiceHandle {
     /// Build a candidate draft from an external release, keeping each current
     /// track on its file. A release that lists tracks lays them over the
     /// folder's audio, and is refused when it lists another number of them;
-    /// one that lists none leaves the draft's tracks as they are.
+    /// one that lists none leaves the draft's tracks as they are. Where the
+    /// release states no year, the pressing's is `pressing_year` — see
+    /// `identify::row_facts::pressing_year`.
     pub(crate) fn external_candidate_draft(
         &self,
         release: &crate::import::source_release::SourceRelease,
         durations: &crate::import::probe::SourceDurations,
         current: &crate::import::CandidateDraft,
+        pressing_year: Option<i32>,
     ) -> Result<crate::import::pane::CandidateSourceDraft, crate::import::ImportError> {
         let audio_durations = current.audio_durations(durations)?;
         let parsed = release.parsed(&audio_durations, self.clock.as_ref(), self.ids.as_ref())?;
@@ -273,6 +276,11 @@ impl ImportServiceHandle {
             laid
         };
         source.source_discogs_artist_ids = crate::import::pane::source_discogs_artist_ids(&parsed);
+        if source.draft.pressing.year.trim().is_empty() {
+            if let Some(year) = pressing_year {
+                source.draft.pressing.year = year.to_string();
+            }
+        }
         Ok(source)
     }
 
@@ -285,8 +293,10 @@ impl ImportServiceHandle {
         partners: Vec<crate::import::source_release::SourceRelease>,
         durations: &crate::import::probe::SourceDurations,
         current: &crate::import::CandidateDraft,
+        pressing_year: Option<i32>,
     ) -> Result<crate::import::CandidateMetadataDraft, crate::import::ImportError> {
-        let source_draft = self.external_candidate_draft(release, durations, current)?;
+        let source_draft =
+            self.external_candidate_draft(release, durations, current, pressing_year)?;
         let assets = self
             .fetch_release_assets(&source_draft, release, &partners)
             .await
@@ -480,13 +490,37 @@ impl ImportServiceHandle {
         // The choice is stored as the candidate's result unless a run's result
         // already stands.
         let detail = release.detail_for_audio(&audio_durations, &prepared_partners)?;
-        let metadata = self
-            .external_candidate_metadata(&release, prepared_partners, &durations, &current.draft)
+        let picked = crate::import::search::MetadataResult::of_pick(&detail, listed);
+        // The records of the pressing picked, as the folder's text reads them
+        // now: what the year falls back on.
+        let records: Vec<crate::import::search::MetadataResult> = std::iter::once(picked.clone())
+            .chain(
+                prepared_partners
+                    .iter()
+                    .map(crate::import::search::MetadataResult::of_release),
+            )
+            .collect();
+        let state = self
+            .library_manager
+            .load_import_candidate_state(&content_hash)
             .await?;
-        let settled_by_choice = crate::identify::TerminalVerdict::of_pick(
-            crate::import::search::MetadataResult::of_pick(&detail, listed),
-            folder_tracks,
+        let text = crate::identify::CandidateText::of_stored(
+            state.as_ref().and_then(|state| state.signals.as_ref()),
+            &state
+                .as_ref()
+                .map(|state| state.lookup_choices.clone())
+                .unwrap_or_default(),
         );
+        let metadata = self
+            .external_candidate_metadata(
+                &release,
+                prepared_partners,
+                &durations,
+                &current.draft,
+                crate::identify::row_facts::pressing_year(&text, &records),
+            )
+            .await?;
+        let settled_by_choice = crate::identify::TerminalVerdict::of_pick(picked, folder_tracks);
         let _commit = self
             .commit_lock_for_revision(
                 "pick a release",

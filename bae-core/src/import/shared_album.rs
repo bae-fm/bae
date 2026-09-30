@@ -80,7 +80,13 @@ impl SharedAlbum {
 
 /// `current` with every field the rows' drafts `offered` agree on — the
 /// top-ranked row's first — taken from them, and every other field as it is.
-pub(crate) fn shared_draft(current: &CandidateDraft, offered: &[RawReleaseEdit]) -> CandidateDraft {
+/// Where they share no pressing year, the year is `folder_year`, the year the
+/// folder names the pressing by, when it names one.
+pub(crate) fn shared_draft(
+    current: &CandidateDraft,
+    offered: &[RawReleaseEdit],
+    folder_year: Option<i32>,
+) -> CandidateDraft {
     let mut draft = current.clone();
     if let Some(title) = agreed(
         offered,
@@ -99,8 +105,13 @@ pub(crate) fn shared_draft(current: &CandidateDraft, offered: &[RawReleaseEdit])
     if let Some(year) = agreed(offered, |row| stated(&row.album_year), |a, b| a == b) {
         draft.album_year = year.to_string();
     }
-    if let Some(year) = agreed(offered, |row| stated(&row.pressing.year), |a, b| a == b) {
-        draft.pressing.year = year.to_string();
+    match agreed(offered, |row| stated(&row.pressing.year), |a, b| a == b) {
+        Some(year) => draft.pressing.year = year.to_string(),
+        None => {
+            if let Some(year) = folder_year {
+                draft.pressing.year = year.to_string();
+            }
+        }
     }
     draft.pressing.labels = shared_labels(&current.pressing.labels, offered);
     if let Some(barcode) = agreed(
