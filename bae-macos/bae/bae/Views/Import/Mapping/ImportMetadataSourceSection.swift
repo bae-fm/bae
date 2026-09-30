@@ -121,6 +121,7 @@ private struct ImportOnlineMetadataBrowser: View {
                         },
                         onKeepOwnDraft: keepOwnDraft,
                         onLinkSharedAlbum: linkSharedAlbum,
+                        onCancelIdentification: cancelIdentification,
                         liveSignals: signals
                     ),
                     openSettings: {
@@ -152,6 +153,18 @@ private struct ImportOnlineMetadataBrowser: View {
         Task { @MainActor in
             await endEditing()
             do { _ = try await importer.keepCandidateDraft(candidateKey) }
+            catch is CancellationError {}
+            catch { importStore.reportFailure(error) }
+        }
+    }
+
+    /// Take the candidate off the identification queue; core puts the pane
+    /// back on the draft, as Back does.
+    private func cancelIdentification() {
+        Task { @MainActor in
+            do {
+                try await importer.cancelCandidateIdentification(candidateKey)
+            }
             catch is CancellationError {}
             catch { importStore.reportFailure(error) }
         }

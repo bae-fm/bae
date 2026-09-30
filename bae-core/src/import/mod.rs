@@ -169,8 +169,8 @@ desktop_only! {
     pub use candidate_search::{CandidateSearch, SearchStatus, SourceSearch};
     pub use candidates::{
         Admission, CandidateRuntimeSnapshot, CandidateStanding, FolderScanStatus,
-        ImportCandidateSnapshot, ImportInFlight, ImportedRelease, SaveFailure,
-        WatchedFolderScanStatus,
+        IdentificationInFlight, ImportCandidateSnapshot, ImportInFlight, ImportedRelease,
+        SaveFailure, WatchedFolderScanStatus,
     };
     pub use cover_art::{CoverChoice, CoverImageSource};
     pub use import_failure::{ImportFailure, ImportFailureReason};

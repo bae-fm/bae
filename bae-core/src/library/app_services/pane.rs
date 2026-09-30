@@ -180,6 +180,18 @@ impl AppServices {
         Ok(())
     }
 
+    /// Stop identifying the candidate — take it off the identification queue,
+    /// ending its run if one started — storing nothing, and go back to the
+    /// draft. The pane stays where it is when the cancel fails.
+    pub async fn pane_cancel_identification(&self, candidate_key: &str) -> Result<(), ImportError> {
+        self.cancel_identification(vec![candidate_key.to_string()])
+            .await?;
+        self.inner
+            .import
+            .move_candidate_pane(candidate_key, PaneMove::Back)
+            .await
+    }
+
     /// Submit the candidate's typed search. What it turns up, failures
     /// included, lands on the candidate's runtime rather than the pane's
     /// banner, so this only clears the banner for it.

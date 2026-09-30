@@ -170,6 +170,9 @@ struct ReIdentifySheet: View {
                     onKeepOwnDraft: nil,
                     // Nor a folder to link to an album.
                     onLinkSharedAlbum: nil,
+                    // Its runs start straight away, never waiting on the
+                    // identification queue.
+                    onCancelIdentification: nil,
                     liveSignals: signals
                 ),
                 openSettings: {

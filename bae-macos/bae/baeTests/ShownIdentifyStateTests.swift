@@ -9,10 +9,10 @@ import Testing
 @Suite("The identify state a candidate shows")
 struct ShownIdentifyStateTests {
     private func runtime(
-        _ state: BridgeIdentifyState
+        _ identification: BridgeIdentificationInFlight?
     ) -> BridgeCandidateRuntimeSnapshot {
         BridgeCandidateRuntimeSnapshot(
-            identifyState: state,
+            identification: identification,
             import: nil,
             search: nil
         )
@@ -23,12 +23,14 @@ struct ShownIdentifyStateTests {
         let shown = shownIdentifyState(
             resumed: .notFoundAnywhere(run: nil),
             runtime: runtime(
-                .triangulating(
-                    run: PreviewData.identifyRunStarting,
-                    groups: [],
-                    libraryStatuses: [:],
-                    agreements: [:],
-                    narrowedOutCount: 0
+                .run(
+                    state: .triangulating(
+                        run: PreviewData.identifyRunStarting,
+                        groups: [],
+                        libraryStatuses: [:],
+                        agreements: [:],
+                        narrowedOutCount: 0
+                    )
                 )
             )
         )
@@ -44,6 +46,16 @@ struct ShownIdentifyStateTests {
         )
     }
 
+    @Test("a wait on the identification queue outranks the resumed state")
+    func queuedWins() {
+        #expect(
+            shownIdentifyState(
+                resumed: .notFoundAnywhere(run: nil),
+                runtime: runtime(.queued)
+            ) == .queued
+        )
+    }
+
     @Test("nothing running leaves the resumed state")
     func nothingRunning() {
         #expect(
@@ -54,12 +66,12 @@ struct ShownIdentifyStateTests {
         )
     }
 
-    @Test("a run that is idle leaves the resumed state")
-    func idleRunDefersToTheVerdict() {
+    @Test("a runtime with no identification leaves the resumed state")
+    func noIdentificationDefersToTheVerdict() {
         #expect(
             shownIdentifyState(
                 resumed: .notFoundAnywhere(run: nil),
-                runtime: runtime(.idle)
+                runtime: runtime(nil)
             ) == .notFoundAnywhere(run: nil)
         )
     }

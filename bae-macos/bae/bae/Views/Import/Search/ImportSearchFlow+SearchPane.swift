@@ -34,6 +34,9 @@ extension ImportSearchFlow {
         /// pressing unknown; `nil` for a library release, which has no folder
         /// to link.
         let onLinkSharedAlbum: (() -> Void)?
+        /// Take the candidate off the identification queue and leave the
+        /// pane; `nil` for a library release, which is never queued.
+        let onCancelIdentification: (() -> Void)?
         /// What extraction has found for this key so far, feeding the form's
         /// suggestion pools and its scanning indicator. `nil` before
         /// extraction has reported any, and for a candidate whose run settled
@@ -63,6 +66,7 @@ extension ImportSearchFlow {
         ImportSearchPane(
             state: state,
             onBack: onBack,
+            onCancelIdentification: input.onCancelIdentification,
             form: input.candidate.search,
             onCommitForm: { form in
                 importStore.commitSearchForm(form, forKey: key)

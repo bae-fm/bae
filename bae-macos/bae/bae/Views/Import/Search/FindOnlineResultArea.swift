@@ -25,11 +25,15 @@ enum FindOnlineResultArea: Equatable {
     case error(BridgeInternalFailure)
     /// No lookup has been asked for yet.
     case notStarted
+    /// Waiting on the identification queue for its run.
+    case queued
 
     init(identifyState: IdentifyState) {
         switch identifyState {
         case .idle:
             self = .notStarted
+        case .queued:
+            self = .queued
         case .triangulating:
             self = .identifying
         case .found(_, let groups, _, _, _, _, _, _, _, _):

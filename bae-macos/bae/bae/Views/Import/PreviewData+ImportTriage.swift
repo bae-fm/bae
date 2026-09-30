@@ -767,7 +767,7 @@
                 candidateRuntime: { key in
                     guard key == importingKey else { return nil }
                     return BridgeCandidateRuntimeSnapshot(
-                        identifyState: .idle,
+                        identification: nil,
                         import: inFlight,
                         search: nil
                     )

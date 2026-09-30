@@ -9,8 +9,9 @@ use super::*;
 use std::collections::HashMap;
 
 /// A folder candidate with what is happening to it right now joined onto what
-/// the tables say: the identify state is the run in flight where there is one,
-/// else the state its stored verdict stands back up as, and the import status
+/// the tables say: the identify state is the run in flight or the answer being
+/// written where there is one, else — waiting on the queue included — the
+/// state its stored verdict stands back up as, and the import status
 /// is the detail's with the running attempt's progress filled in.
 pub(crate) fn automation_candidate_from_folder(
     folder: &ImportCandidateDetail,
@@ -18,9 +19,12 @@ pub(crate) fn automation_candidate_from_folder(
 ) -> AutomationCandidate {
     let candidate = &folder.candidate;
     let live = runtime.get(&candidate.key());
-    let identify = live
-        .and_then(|live| live.running.clone().or_else(|| live.saving.clone()))
-        .unwrap_or_else(|| folder.resumed_identify_state.clone());
+    let identify = match live.and_then(CandidateRuntimeSnapshot::identification) {
+        Some(bae_core::import::IdentificationInFlight::Run(state)) => state,
+        Some(bae_core::import::IdentificationInFlight::Queued) | None => {
+            folder.resumed_identify_state.clone()
+        }
+    };
     AutomationCandidate::Valid {
         common: automation_candidate_common(
             candidate.key(),

@@ -29,6 +29,9 @@ struct FindOnlineAutomaticSection: View {
     let onSelect: (Pressing) -> Void
     /// Hand the pane over to SEARCH with the cursor in its first field.
     let onSearchManually: () -> Void
+    /// Take the candidate off the identification queue and go back to the
+    /// draft; `nil` where the surface's candidate is never queued.
+    let onCancelIdentification: (() -> Void)?
     /// Keep the folder's own draft over what the lookup offered; `nil` where
     /// the surface has no draft of its own to keep.
     let onKeepOwnDraft: (() -> Void)?
@@ -74,6 +77,15 @@ struct FindOnlineAutomaticSection: View {
                         .foregroundStyle(.secondary)
                     Button("Open Settings", action: onOpenSettings)
                         .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                }
+            }
+        case .queued:
+            FindOnlineEmptyZone {
+                Text("Queued to be identified")
+                    .foregroundStyle(.secondary)
+                if let onCancelIdentification {
+                    Button("Cancel", action: onCancelIdentification)
                         .controlSize(.small)
                 }
             }
@@ -180,7 +192,7 @@ struct FindOnlineAutomaticSection: View {
             failureLines
         case .awaitingCatalog:
             FindOnlineEmptyZone { keepOwnDraft }
-        case .notStarted, .noSignals, .error:
+        case .notStarted, .queued, .noSignals, .error:
             EmptyView()
         }
     }
@@ -227,7 +239,7 @@ struct FindOnlineAutomaticSection: View {
         switch area {
         case .groups, .awaitingCatalog: state.needsYou?.sentence
         case .identifying, .nothingFound, .failureLines, .notStarted,
-            .noSignals, .error:
+            .queued, .noSignals, .error:
             nil
         }
     }

@@ -1,9 +1,11 @@
 import BaeKit
 import Foundation
 
-/// Mirror of `bae_core::identify::IdentifyState`. The import-candidate
-/// projection assigns one of these onto a candidate on every refresh; the UI
-/// switches on the variant to render banners and match lists.
+/// Mirror of `bae_core::identify::IdentifyState`, with the wait on the
+/// identification queue before a run starts, which core reports beside it.
+/// The import-candidate projection assigns one of these onto a candidate on
+/// every refresh; the UI switches on the variant to render banners and match
+/// lists.
 ///
 /// A settled state carries the run it settled as, so the ledger stays up
 /// beside the matches. It carries none when extraction handed the run nothing
@@ -20,6 +22,9 @@ import Foundation
 /// one pressing are one release to pick.
 enum IdentifyState: Equatable {
     case idle
+    /// On the identification queue, its run not started. Only a run in
+    /// flight says so; a stored verdict never does.
+    case queued
     /// Lookups in flight, laid out as the run's ledger — one row per value
     /// extraction found, one cell per provider — with the matches the
     /// answered lookups have combined to so far, shaped as `found`'s are.
@@ -158,7 +163,7 @@ enum IdentifyState: Equatable {
         case .found(_, _, let statuses, _, _, _, _, _, _, _): statuses
         case .failed(_, _, _, let statuses, _, _, _, _): statuses
         case .triangulating(_, _, let statuses, _, _): statuses
-        case .idle, .notFoundAnywhere, .manualOnly, .error: [:]
+        case .idle, .queued, .notFoundAnywhere, .manualOnly, .error: [:]
         }
     }
 
@@ -169,7 +174,7 @@ enum IdentifyState: Equatable {
         case .found(_, _, _, _, _, let count, _, _, _, _): count
         case .failed(_, _, _, _, _, let count, _, _): count
         case .triangulating(_, _, _, _, let count): count
-        case .idle, .notFoundAnywhere, .manualOnly, .error: 0
+        case .idle, .queued, .notFoundAnywhere, .manualOnly, .error: 0
         }
     }
 
@@ -180,7 +185,8 @@ enum IdentifyState: Equatable {
         switch self {
         case .found(_, _, _, _, _, _, let chips, _, _, _): chips
         case .failed(_, _, _, _, _, _, let chips, _): chips
-        case .idle, .triangulating, .notFoundAnywhere, .manualOnly, .error:
+        case .idle, .queued, .triangulating, .notFoundAnywhere, .manualOnly,
+            .error:
             []
         }
     }
@@ -190,8 +196,8 @@ enum IdentifyState: Equatable {
     var folderCheck: BridgeFolderCheck? {
         switch self {
         case .found(_, _, _, _, _, _, _, let folderCheck, _, _): folderCheck
-        case .idle, .triangulating, .notFoundAnywhere, .manualOnly, .failed,
-            .error:
+        case .idle, .queued, .triangulating, .notFoundAnywhere, .manualOnly,
+            .failed, .error:
             nil
         }
     }
@@ -202,7 +208,8 @@ enum IdentifyState: Equatable {
         switch self {
         case .found(_, _, _, _, _, _, _, _, _, let offers): offers
         case .failed(_, _, _, _, _, _, _, let offers): offers
-        case .idle, .triangulating, .notFoundAnywhere, .manualOnly, .error:
+        case .idle, .queued, .triangulating, .notFoundAnywhere, .manualOnly,
+            .error:
             false
         }
     }
@@ -211,8 +218,8 @@ enum IdentifyState: Equatable {
     var picksUnattended: Bool {
         switch self {
         case .found(_, _, _, _, _, _, _, _, let picks, _): picks
-        case .idle, .triangulating, .notFoundAnywhere, .manualOnly, .failed,
-            .error:
+        case .idle, .queued, .triangulating, .notFoundAnywhere, .manualOnly,
+            .failed, .error:
             false
         }
     }
@@ -225,7 +232,7 @@ enum IdentifyState: Equatable {
         case .notFoundAnywhere(let run): run
         case .manualOnly(_, let run): run
         case .failed(let run, _, _, _, _, _, _, _): run
-        case .idle, .error: nil
+        case .idle, .queued, .error: nil
         }
     }
 }

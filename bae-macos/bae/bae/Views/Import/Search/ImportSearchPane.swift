@@ -8,6 +8,9 @@ struct ImportSearchPane: View {
     let state: ImportSearchState
     /// Leave the pane. `nil` for a surface that owns its own way out.
     let onBack: (() -> Void)?
+    /// Take the candidate off the identification queue and leave the pane as
+    /// `onBack` does; `nil` for a surface whose candidate is never queued.
+    let onCancelIdentification: (() -> Void)?
     /// The typed-search form as the candidate stores it.
     let form: CandidateSearchState
     /// The form as the person left it, to store with the candidate.
@@ -49,6 +52,7 @@ struct ImportSearchPane: View {
     init(
         state: ImportSearchState,
         onBack: (() -> Void)?,
+        onCancelIdentification: (() -> Void)?,
         form: CandidateSearchState,
         onCommitForm: @escaping (CandidateSearchState) -> Void,
         onSearch: @escaping (CandidateSearchState) -> Void,
@@ -67,6 +71,7 @@ struct ImportSearchPane: View {
     ) {
         self.state = state
         self.onBack = onBack
+        self.onCancelIdentification = onCancelIdentification
         self.form = form
         self.onCommitForm = onCommitForm
         self.onSearch = onSearch
@@ -114,6 +119,7 @@ struct ImportSearchPane: View {
                     onEditTitleSearch: onEditTitleSearch,
                     onSelect: onSelect,
                     onSearchManually: searchManually,
+                    onCancelIdentification: onCancelIdentification,
                     onKeepOwnDraft: onKeepOwnDraft,
                     onLinkSharedAlbum: onLinkSharedAlbum,
                     narrowedOutExpanded: $narrowedOutExpanded,
@@ -228,6 +234,7 @@ struct ImportSearchPane: View {
             ImportSearchPane(
                 state: state,
                 onBack: {},
+                onCancelIdentification: {},
                 form: CandidateSearchState(
                     searchArtist: searchArtist,
                     searchAlbum: searchAlbum
@@ -305,6 +312,12 @@ struct ImportSearchPane: View {
 
     #Preview("Find online — a failure with no ledger") {
         ImportSearchPane.preview(state: PreviewData.searchStateFailedWithoutRun)
+            .frame(width: 900, height: 620)
+            .importPreviewEnvironment()
+    }
+
+    #Preview("Find online — queued") {
+        ImportSearchPane.preview(state: PreviewData.searchStateQueued)
             .frame(width: 900, height: 620)
             .importPreviewEnvironment()
     }

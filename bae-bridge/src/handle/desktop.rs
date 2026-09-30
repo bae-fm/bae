@@ -338,6 +338,16 @@ forward! {
                 .map_err(BridgeError::from)
         }
 
+        /// Stop identifying one candidate — take it off the identification
+        /// queue, ending its run if one started — storing nothing, and go back
+        /// to the draft.
+        fn cancel_candidate_identification(candidate_key: String) -> () {
+            Ok(this
+                .services
+                .pane_cancel_identification(&candidate_key)
+                .await?)
+        }
+
         fn remove_watched_folder(path: String) -> () {
             this.services
                 .import_remove_watched_folder(path)

@@ -6,6 +6,8 @@ enum FindOnlineSectionGlyph: Equatable {
     /// Nothing to report: nothing has run yet, or it ran and found
     /// matches, which are the section's own content.
     case none
+    /// Waiting on the identification queue for a run.
+    case queued
     /// A lookup is under way.
     case working
     /// Done, and nothing matched.
@@ -20,6 +22,8 @@ enum FindOnlineSectionGlyph: Equatable {
         switch identifyState {
         case .idle:
             self = .none
+        case .queued:
+            self = .queued
         case .triangulating:
             self = .working
         case .found(_, let groups, _, _, _, _, _, _, _, _):
@@ -54,7 +58,7 @@ enum FindOnlineSectionGlyph: Equatable {
     var isVacant: Bool {
         switch self {
         case .empty, .nothing: true
-        case .none, .working, .failed: false
+        case .none, .queued, .working, .failed: false
         }
     }
 }
@@ -115,6 +119,10 @@ struct FindOnlineSectionGlyphView: View {
             switch glyph {
             case .none:
                 EmptyView()
+            case .queued:
+                Image(systemName: "clock")
+                    .themeIcon(.small)
+                    .foregroundStyle(.secondary)
             case .working:
                 ProgressView()
                     .controlSize(.small)
@@ -152,6 +160,13 @@ struct FindOnlineSectionGlyphView: View {
                 section: .search,
                 isOpen: false,
                 glyph: .none,
+                onOpen: {}
+            )
+            Divider()
+            FindOnlineSectionHeader(
+                section: .automatic,
+                isOpen: false,
+                glyph: .queued,
                 onOpen: {}
             )
             Divider()

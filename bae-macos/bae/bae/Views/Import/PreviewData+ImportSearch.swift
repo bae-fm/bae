@@ -583,6 +583,9 @@
         /// Find online before an automatic run starts.
         static let searchStateIdle = searchState(identifyState: .idle)
 
+        /// Find online while the candidate waits on the identification queue.
+        static let searchStateQueued = searchState(identifyState: .queued)
+
         static let searchStateTriangulating = searchState(
             identifyState: .triangulating(
                 run: identifyRunInFlight,

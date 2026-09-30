@@ -102,10 +102,22 @@ pub struct BridgeKeyedCandidateRuntime {
 /// behind is on its row.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeCandidateRuntimeSnapshot {
-    pub identify_state: BridgeIdentifyState,
+    /// What identification is doing for the candidate; `None` when nothing
+    /// is, and the pane shows its stored verdict.
+    pub identification: Option<BridgeIdentificationInFlight>,
     pub import: Option<BridgeImportInFlight>,
     /// The typed search submitted for this candidate, as its sources answer.
     pub search: Option<BridgeCandidateSearch>,
+}
+
+/// What identification is doing for a candidate right now.
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeIdentificationInFlight {
+    /// On the identification queue, its run not started.
+    Queued,
+    /// The latest state a run published: in flight, or the answer being
+    /// written. Never `Idle`.
+    Run { state: BridgeIdentifyState },
 }
 
 /// How far a running import has got.

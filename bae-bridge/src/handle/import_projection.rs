@@ -72,23 +72,31 @@ impl crate::types::BridgeInvalidCandidate {
 
 impl crate::types::BridgeCandidateRuntimeSnapshot {
     pub(crate) fn from_core(runtime: bae_core::import::CandidateRuntimeSnapshot) -> Self {
-        // The queue marker and a failed write reach the UI through the row's
-        // live state; the pane shows the running run before the saving one.
+        // A failed write reaches the UI through the row's live state.
         let bae_core::import::CandidateRuntimeSnapshot {
-            queued: _,
+            queued,
             running,
             saving,
             save_failed: _,
             import,
             search,
         } = runtime;
-        let identify = running.or(saving);
         crate::types::BridgeCandidateRuntimeSnapshot {
-            identify_state: crate::types::BridgeIdentifyState::from_core(
-                identify.unwrap_or(bae_core::identify::IdentifyState::Idle),
-            ),
+            identification: bae_core::import::IdentificationInFlight::of(queued, running, saving)
+                .map(crate::types::BridgeIdentificationInFlight::from_core),
             import: import.map(crate::types::BridgeImportInFlight::from_core),
             search: search.map(crate::types::BridgeCandidateSearch::from_core),
+        }
+    }
+}
+
+impl crate::types::BridgeIdentificationInFlight {
+    fn from_core(identification: bae_core::import::IdentificationInFlight) -> Self {
+        match identification {
+            bae_core::import::IdentificationInFlight::Queued => Self::Queued,
+            bae_core::import::IdentificationInFlight::Run(state) => Self::Run {
+                state: crate::types::BridgeIdentifyState::from_core(state),
+            },
         }
     }
 }

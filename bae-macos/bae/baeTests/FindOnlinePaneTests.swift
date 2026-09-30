@@ -323,6 +323,7 @@ struct NarrowedOutDisclosureTests {
             onEditTitleSearch: { _, _ in },
             onSelect: { _ in },
             onSearchManually: {},
+            onCancelIdentification: nil,
             onKeepOwnDraft: nil,
             onLinkSharedAlbum: nil,
             narrowedOutExpanded: .constant(isExpanded)
@@ -565,6 +566,7 @@ struct FindOnlineSectionGlyphTests {
     @Test("identification's glyph follows its state")
     func identificationGlyph() {
         #expect(FindOnlineSectionGlyph(identifyState: .idle) == .none)
+        #expect(FindOnlineSectionGlyph(identifyState: .queued) == .queued)
         #expect(
             FindOnlineSectionGlyph(
                 identifyState: PreviewData.searchStateTriangulating
@@ -632,6 +634,7 @@ struct FindOnlineResultAreaTests {
     @Test("each identify state picks its own area")
     func eachStatePicksItsArea() {
         #expect(FindOnlineResultArea(identifyState: .idle) == .notStarted)
+        #expect(FindOnlineResultArea(identifyState: .queued) == .queued)
         #expect(
             FindOnlineResultArea(
                 identifyState: .triangulating(

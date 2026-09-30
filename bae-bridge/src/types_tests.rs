@@ -41,11 +41,30 @@ mod triage_tests {
                 }),
                 search: None,
             });
-        assert!(matches!(idle.identify_state, BridgeIdentifyState::Idle));
+        assert!(idle.identification.is_none());
         assert_eq!(
             idle.import.map(|import| import.progress_percent),
             Some(Some(40))
         );
+    }
+
+    /// A candidate waiting on the identification queue crosses as queued, so
+    /// its pane says so rather than offering to start.
+    #[test]
+    fn a_queued_candidate_crosses_as_queued() {
+        let queued =
+            BridgeCandidateRuntimeSnapshot::from_core(bae_core::import::CandidateRuntimeSnapshot {
+                queued: Some(bae_core::import::Admission::Automatic),
+                running: None,
+                saving: None,
+                save_failed: None,
+                import: None,
+                search: None,
+            });
+        assert!(matches!(
+            queued.identification,
+            Some(BridgeIdentificationInFlight::Queued)
+        ));
     }
 }
 

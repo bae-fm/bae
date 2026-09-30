@@ -58,6 +58,7 @@ private struct ImportOperations: Sendable {
             BridgePaneOutcome
     let rerunIdentifyForCandidate: @Sendable (String) -> Void
     let cancelAllIdentification: @Sendable () async throws -> Void
+    let cancelCandidateIdentification: @Sendable (String) async throws -> Void
     let cancelAllImports: @Sendable () -> Void
     let moveCandidatePane:
         @Sendable (String, BridgePaneMove) async throws -> Void
@@ -203,6 +204,9 @@ extension ImportOperations {
             },
             cancelAllIdentification: {
                 try await handle.cancelAllIdentification()
+            },
+            cancelCandidateIdentification: {
+                try await handle.cancelCandidateIdentification(candidateKey: $0)
             },
             cancelAllImports: {
                 handle.cancelAllImports()
@@ -385,6 +389,8 @@ final class Importer: Sendable, Observable {
             @escaping @Sendable (String) -> Void = { _ in },
         cancelAllIdentification:
             @escaping @Sendable () async throws -> Void = {},
+        cancelCandidateIdentification:
+            @escaping @Sendable (String) async throws -> Void = { _ in },
         cancelAllImports: @escaping @Sendable () -> Void = {},
         moveCandidatePane:
             @escaping @Sendable (String, BridgePaneMove) async throws -> Void =
@@ -478,6 +484,7 @@ final class Importer: Sendable, Observable {
             editCandidateLookupChoices: editCandidateLookupChoices,
             rerunIdentifyForCandidate: rerunIdentifyForCandidate,
             cancelAllIdentification: cancelAllIdentification,
+            cancelCandidateIdentification: cancelCandidateIdentification,
             cancelAllImports: cancelAllImports,
             moveCandidatePane: moveCandidatePane,
             identifyAutomatically: identifyAutomatically,
@@ -685,6 +692,13 @@ extension Importer {
     /// Take every candidate off the identification queue.
     func cancelAllIdentification() async throws {
         try await operations.cancelAllIdentification()
+    }
+
+    /// Stop identifying one candidate — take it off the identification
+    /// queue, ending its run if one started — storing nothing, and put its
+    /// pane back on the draft.
+    func cancelCandidateIdentification(_ candidateKey: String) async throws {
+        try await operations.cancelCandidateIdentification(candidateKey)
     }
 
     /// Cancel every import that has not begun writing its release.

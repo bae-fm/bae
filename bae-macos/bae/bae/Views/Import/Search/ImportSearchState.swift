@@ -42,7 +42,7 @@ struct ImportSearchState {
         case .found(_, let groups, _, _, _, _, _, _, _, _): groups
         case .failed(_, _, let groups, _, _, _, _, _): groups
         case .triangulating(_, let groups, _, _, _): groups
-        case .idle, .notFoundAnywhere, .manualOnly, .error: []
+        case .idle, .queued, .notFoundAnywhere, .manualOnly, .error: []
         }
     }
 
@@ -59,7 +59,7 @@ struct ImportSearchState {
         case .found(_, _, _, _, let agreements, _, _, _, _, _): agreements
         case .failed(_, _, _, _, let agreements, _, _, _): agreements
         case .triangulating(_, _, _, let agreements, _): agreements
-        case .idle, .notFoundAnywhere, .manualOnly, .error: [:]
+        case .idle, .queued, .notFoundAnywhere, .manualOnly, .error: [:]
         }
     }
 

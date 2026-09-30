@@ -118,18 +118,18 @@ struct CandidateSignalsReader<Content: View>: View {
 
 // MARK: - The state a surface shows
 
-/// The identify state a candidate shows: the run in flight while there is one,
-/// else the state its stored verdict stands back up as.
+/// The identify state a candidate shows: what identification is doing for it
+/// while core says it is doing something, else the state its stored verdict
+/// stands back up as.
 func shownIdentifyState(
     resumed: IdentifyState,
     runtime: BridgeCandidateRuntimeSnapshot?
 ) -> IdentifyState {
-    guard let runtime else { return resumed }
-    let live = IdentifyState(bridge: runtime.identifyState)
-    if case .idle = live {
-        return resumed
+    switch runtime?.identification {
+    case nil: resumed
+    case .queued: .queued
+    case .run(let state): IdentifyState(bridge: state)
     }
-    return live
 }
 
 #if DEBUG

@@ -154,6 +154,41 @@ pub struct CandidateRuntimeSnapshot {
     pub search: Option<super::candidate_search::CandidateSearch>,
 }
 
+impl CandidateRuntimeSnapshot {
+    /// What identification is doing for the key, as its pane shows it (see
+    /// [`IdentificationInFlight::of`]).
+    pub fn identification(&self) -> Option<IdentificationInFlight> {
+        IdentificationInFlight::of(self.queued, self.running.clone(), self.saving.clone())
+    }
+}
+
+/// What identification is doing for a key right now.
+#[derive(Debug, Clone, PartialEq)]
+pub enum IdentificationInFlight {
+    /// On the identification queue, its run not started.
+    Queued,
+    /// The latest state a run published: in flight, or the answer being
+    /// written. Never `Idle`.
+    Run(IdentifyState),
+}
+
+impl IdentificationInFlight {
+    /// A key's runtime fields read as one: the run in flight, else the answer
+    /// being written, else the wait for a run — the order a row reads them
+    /// in. `None` when nothing is identifying the key, and its pane shows the
+    /// stored verdict.
+    pub fn of(
+        queued: Option<Admission>,
+        running: Option<IdentifyState>,
+        saving: Option<IdentifyState>,
+    ) -> Option<Self> {
+        running
+            .or(saving)
+            .map(Self::Run)
+            .or_else(|| queued.map(|_| Self::Queued))
+    }
+}
+
 /// How a candidate got on the identification queue: found while
 /// identification ran on its own, or asked for by a person.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

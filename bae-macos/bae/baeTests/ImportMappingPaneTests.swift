@@ -127,7 +127,7 @@ private func runtime(
     _ identifyState: BridgeIdentifyState
 ) -> BridgeCandidateRuntimeSnapshot {
     BridgeCandidateRuntimeSnapshot(
-        identifyState: identifyState,
+        identification: .run(state: identifyState),
         import: nil,
         search: nil
     )
