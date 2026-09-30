@@ -165,19 +165,23 @@ struct UiStoreLibraryBrowserModeTests {
     }
 
     @Test(
-        "navigateToAlbum sets an independent grid-reveal and track-flash command"
+        "navigateToAlbum names the track in the reveal, and flashes nothing yet"
     )
     func navigateToAlbumSetsRevealRequest() {
         let store = UiStore()
         store.navigateToAlbum("album-1", trackId: "track-7")
         #expect(store.pendingAlbumReveal?.albumId == "album-1")
-        #expect(store.pendingTrackFlash?.trackId == "track-7")
+        #expect(store.pendingAlbumReveal?.trackId == "track-7")
+        #expect(store.pendingTrackFlash == nil)
     }
 
-    @Test("navigateToAlbum without a trackId clears any pending track flash")
-    func navigateToAlbumWithoutTrackClearsPendingFlash() {
+    @Test("navigateToAlbum drops a flash the last reveal handed over")
+    func navigateToAlbumClearsPendingFlash() throws {
         let store = UiStore()
         store.navigateToAlbum("album-1", trackId: "track-7")
+        let seq = try #require(store.pendingAlbumReveal?.seq)
+        store.consumeAlbumReveal(seq: seq)
+        store.flashTrack("track-7", seq: seq)
         store.navigateToAlbum("album-2")
         #expect(store.pendingTrackFlash == nil)
     }
@@ -227,32 +231,41 @@ struct UiStoreLibraryBrowserModeTests {
         #expect(store.pendingAlbumReveal?.albumId == "album-2")
     }
 
-    @Test(
-        "consumeTrackFlash clears only the track flash, leaving the grid reveal pending"
-    )
-    func consumeTrackFlashDoesNotStarveGridReveal() throws {
+    @Test("flashTrack hands the reveal's track to its row")
+    func flashTrackSetsFlash() throws {
         let store = UiStore()
         store.navigateToAlbum("album-1", trackId: "track-7")
-        let seq = try #require(store.pendingTrackFlash?.seq)
+        let seq = try #require(store.pendingAlbumReveal?.seq)
+        store.consumeAlbumReveal(seq: seq)
+
+        store.flashTrack("track-7", seq: seq)
+
+        #expect(store.pendingTrackFlash?.trackId == "track-7")
+        #expect(store.pendingTrackFlash?.seq == seq)
+    }
+
+    @Test("flashTrack is a no-op for a reveal a newer navigation superseded")
+    func flashTrackIgnoresStaleSeq() throws {
+        let store = UiStore()
+        store.navigateToAlbum("album-1", trackId: "track-7")
+        let staleSeq = try #require(store.pendingAlbumReveal?.seq)
+        store.navigateToAlbum("album-2", trackId: "track-8")
+
+        store.flashTrack("track-7", seq: staleSeq)
+
+        #expect(store.pendingTrackFlash == nil)
+    }
+
+    @Test("consumeTrackFlash clears the flash it names")
+    func consumeTrackFlashClearsMatchingFlash() throws {
+        let store = UiStore()
+        store.navigateToAlbum("album-1", trackId: "track-7")
+        let seq = try #require(store.pendingAlbumReveal?.seq)
+        store.flashTrack("track-7", seq: seq)
 
         store.consumeTrackFlash(seq: seq)
 
         #expect(store.pendingTrackFlash == nil)
-        #expect(store.pendingAlbumReveal?.albumId == "album-1")
-    }
-
-    @Test(
-        "consumeAlbumReveal clears only the grid reveal, leaving the track flash pending"
-    )
-    func consumeAlbumRevealDoesNotStarveTrackFlash() throws {
-        let store = UiStore()
-        store.navigateToAlbum("album-1", trackId: "track-7")
-        let seq = try #require(store.pendingAlbumReveal?.seq)
-
-        store.consumeAlbumReveal(seq: seq)
-
-        #expect(store.pendingAlbumReveal == nil)
-        #expect(store.pendingTrackFlash?.trackId == "track-7")
     }
 }
 

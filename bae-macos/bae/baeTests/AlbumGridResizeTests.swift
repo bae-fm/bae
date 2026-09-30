@@ -56,16 +56,6 @@ struct AlbumGridResizeTests {
         }
     }
 
-    private static let albums: [BridgeAlbum] = (0..<600)
-        .map { index in
-            makeBridgeAlbum(
-                id: "grid-\(index)",
-                title: "Album Title \(index)",
-                artistNames: "Artist Name",
-                primaryReleaseId: "rel-\(index)"
-            )
-        }
-
     /// The 1180-point window holds five columns; with the panel beside it,
     /// three.
     private static let wideColumns = 5.0
@@ -82,67 +72,6 @@ struct AlbumGridResizeTests {
         }
     }
 
-    private func host(
-        _ stage: Stage,
-        scene: Scene
-    ) async -> (NSWindow, NSHostingView<AnyView>) {
-        let store = LibraryStore()
-        let uiStore = UiStore()
-        let list = makeList(store: store, albums: Self.albums)
-        await list.loadInitial()
-        if scene.preloaded {
-            for album in Self.albums {
-                _ = store.internAlbumSummary(album)
-            }
-            list.preloadForPreview(ids: Self.albums.map(\.id))
-        }
-        uiStore.selectAlbum(scene.openAlbumId)
-        let albums = Self.albums
-        let library = Library(getAlbumIndex: { _, albumId in
-            albums.firstIndex { $0.id == albumId }.map(UInt64.init)
-        })
-        let view = AnyView(
-            Harness(stage: stage, list: list)
-                .environment(uiStore)
-                .environment(store)
-                .environment(library)
-                .environment(ImageStore.stub())
-        )
-        let frame = NSRect(x: 0, y: 0, width: 1180, height: 720)
-        let host = NSHostingView(rootView: view)
-        host.frame = frame
-        let window = NSWindow(
-            contentRect: frame,
-            styleMask: [.titled],
-            backing: .buffered,
-            defer: false
-        )
-        window.isReleasedWhenClosed = false
-        window.contentView = host
-        window.orderFront(nil)
-        await settle(host)
-        return (window, host)
-    }
-
-    /// Lets the spring and the page loads it sets off run to the end.
-    private func settle(_ host: NSView) async {
-        host.layoutSubtreeIfNeeded()
-        try? await Task.sleep(for: .seconds(1))
-        host.layoutSubtreeIfNeeded()
-    }
-
-    private func findScrollView(in view: NSView) -> NSScrollView? {
-        if let scrollView = view as? NSScrollView {
-            return scrollView
-        }
-        for subview in view.subviews {
-            if let found = findScrollView(in: subview) {
-                return found
-            }
-        }
-        return nil
-    }
-
     @Test(
         "a column change keeps the slot on top on top",
         arguments: [
@@ -157,9 +86,14 @@ struct AlbumGridResizeTests {
     )
     func columnChangeKeepsTopSlot(scene: Scene) async throws {
         let stage = Stage()
-        let (window, host) = await host(stage, scene: scene)
-        defer { window.close() }
-        let scrollView = try #require(findScrollView(in: host))
+        let hosted = await HostedAlbumGrid.host(
+            preloaded: scene.preloaded,
+            openAlbumId: scene.openAlbumId
+        ) { list in
+            Harness(stage: stage, list: list)
+        }
+        defer { hosted.window.close() }
+        let scrollView = try #require(hosted.scrollView)
         let offset = { scrollView.contentView.bounds.origin.y }
         // With a detail open the grid places the rows it has not drawn by
         // estimate, so the offset is no measure; where the detail sits is.
@@ -169,15 +103,16 @@ struct AlbumGridResizeTests {
 
         scrollView.contentView.scroll(to: NSPoint(x: 0, y: scene.scrolledTo))
         scrollView.reflectScrolledClipView(scrollView.contentView)
-        await settle(host)
+        await hosted.settle()
         let before = place()
         let content = try #require(scrollView.documentView).frame.height
         let rowPitch =
             content
-            / (Double(Self.albums.count) / Self.wideColumns).rounded(.up)
+            / (Double(HostedAlbumGrid.albums.count) / Self.wideColumns)
+            .rounded(.up)
 
         stage.showPanel = true
-        await settle(host)
+        await hosted.settle()
         let narrowed = place()
         if scene.openAlbumId == nil {
             // Fewer columns put the slot on top further down the content.
@@ -185,7 +120,7 @@ struct AlbumGridResizeTests {
         }
 
         stage.showPanel = false
-        await settle(host)
+        await hosted.settle()
         let back = place()
         // Back at five columns the slot on top is the one that was: the grid
         // moved by less than half a row, to line that slot up with the top.
@@ -193,10 +128,10 @@ struct AlbumGridResizeTests {
 
         // Going back and forth again returns to the same places.
         stage.showPanel = true
-        await settle(host)
+        await hosted.settle()
         #expect(abs(place() - narrowed) < 1)
         stage.showPanel = false
-        await settle(host)
+        await hosted.settle()
         #expect(abs(place() - back) < 1)
 
         if scene.scrolledTo == 6450 {

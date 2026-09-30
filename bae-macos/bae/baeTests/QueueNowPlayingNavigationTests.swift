@@ -54,7 +54,7 @@ struct QueueNowPlayingNavigationTests {
             #expect(ui.libraryBrowserMode == .albums)
             #expect(ui.selectedAlbumId == "playing-album")
             #expect(ui.pendingAlbumReveal?.albumId == "playing-album")
-            #expect(ui.pendingTrackFlash?.trackId == "playing-track")
+            #expect(ui.pendingAlbumReveal?.trackId == "playing-track")
             #expect(ui.showQueue)
         }
     }

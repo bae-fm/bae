@@ -75,10 +75,40 @@ struct AlbumGridView<ExpansionContent: View>: View {
                 }
             }
             .scrollPosition($scrollPosition, anchor: .top)
-            .onScrollGeometryChange(for: CGFloat.self) { geometry in
-                geometry.containerSize.height
-            } action: { _, height in
-                viewport.setVisibleHeight(height)
+            .onScrollGeometryChange(for: AlbumGridScroll.self) { geometry in
+                AlbumGridScroll(
+                    offset: geometry.contentOffset.y,
+                    visibleHeight: geometry.containerSize.height,
+                    contentHeight: geometry.contentSize.height
+                )
+            } action: { _, scroll in
+                viewport.setScroll(scroll)
+            }
+            // The row a reveal names reports itself from inside the open
+            // album's detail; placed here, over the scroll view, its frame is
+            // in the visible area.
+            .overlayPreferenceValue(RevealedTrackRowKey.self) { row in
+                GeometryReader { proxy in
+                    Color.clear.onChange(
+                        of: row.map {
+                            PlacedTrackRow(
+                                trackId: $0.trackId,
+                                seq: $0.seq,
+                                frame: proxy[$0.bounds]
+                            )
+                        },
+                        initial: true
+                    ) { _, placed in
+                        viewport.placeRevealedRow(placed)
+                        if let placed,
+                            viewport.revealedRow(seq: placed.seq, atAlbum: true)
+                                != nil
+                        {
+                            showRevealedRow(placed)
+                        }
+                    }
+                }
+                .allowsHitTesting(false)
             }
             // A new column count re-lays every row before the scroll view
             // knows which slot was on top, so the grid names it.
@@ -96,16 +126,28 @@ struct AlbumGridView<ExpansionContent: View>: View {
                 keepHeldSlotOnTop(columnCount: metrics.columnCount)
             }
             // Scrolling, another sort, or another open album ends the hold.
+            // The person scrolling, or opening another album, also ends a
+            // reveal still on its way: what it would scroll to is no longer
+            // what they look at.
             .onScrollPhaseChange { _, phase in
                 if phase != .idle {
                     viewport.release()
+                }
+                switch phase {
+                case .tracking, .interacting, .decelerating:
+                    endReveal()
+                default:
+                    break
                 }
             }
             .onChange(of: list.loadEpoch) {
                 viewport.release()
             }
-            .onChange(of: uiStore.selectedAlbumId) {
+            .onChange(of: uiStore.selectedAlbumId) { _, albumId in
                 viewport.release()
+                if uiStore.pendingAlbumReveal?.albumId != albumId {
+                    endReveal()
+                }
             }
             .reportsHeaderScroll(id: "albumGrid")
             .focusable()
@@ -122,8 +164,7 @@ struct AlbumGridView<ExpansionContent: View>: View {
                 guard let reveal = uiStore.pendingAlbumReveal else {
                     return
                 }
-                await revealAlbum(reveal.albumId)
-                uiStore.consumeAlbumReveal(seq: reveal.seq)
+                await show(reveal)
             }
         }
     }
@@ -279,39 +320,102 @@ extension AlbumGridView {
 }
 
 extension AlbumGridView {
-    /// Scrolls to `albumId` by asking core for its index and loading its page;
-    /// the scroll comes last, so a cancelled reveal changes nothing.
-    private func revealAlbum(_ albumId: String) async {
+    /// Shows what `reveal` names. The album: ask core for its index, load its
+    /// page, and scroll its card to the top; the scroll comes last, so a
+    /// cancelled reveal changes nothing. A track: its row, which exists only
+    /// once the album's detail is laid out — scrolling to the album is what
+    /// brings the detail into the lazy grid — so the reveal stays pending
+    /// until `showRevealedRow` scrolls to the row and flashes it.
+    private func show(_ reveal: PendingAlbumReveal) async {
+        // The album's detail may already be laid out with the row in it.
+        if let row = viewport.revealedRow(seq: reveal.seq) {
+            showRevealedRow(row)
+            return
+        }
         let getAlbumIndex = library.getAlbumIndex
         let sort = sortCriteria
+        let resolved: UInt64?
         do {
-            let resolved = try await getAlbumIndex(sort, albumId)
-            if Task.isCancelled {
-                return
-            }
-            guard let index = resolved.map(Int.init) else {
-                albumGridLogger.warning(
-                    "No index for album \(albumId) under the current sort; skipping reveal"
-                )
-                return
-            }
-
-            // Load the target's page so its card exists to scroll to.
-            await list.loadPage(containing: index)
-            if Task.isCancelled {
-                return
-            }
-
-            viewport.release()
-            withAnimation(.easeInOut(duration: 0.3)) {
-                scrollPosition.scrollTo(
-                    id: AlbumGridCell.Identity.album(albumId),
-                    anchor: .top
-                )
-            }
+            resolved = try await getAlbumIndex(sort, reveal.albumId)
         }
         catch {
+            if Task.isCancelled {
+                return
+            }
+            // A failed reveal ends here rather than replaying on every later
+            // mount of the grid.
+            uiStore.consumeAlbumReveal(seq: reveal.seq)
             uiStore.showError(error)
+            return
+        }
+        if Task.isCancelled {
+            return
+        }
+        guard let index = resolved.map(Int.init) else {
+            albumGridLogger.warning(
+                "No index for album \(reveal.albumId) under the current sort; skipping reveal"
+            )
+            uiStore.consumeAlbumReveal(seq: reveal.seq)
+            return
+        }
+
+        // Load the target's page so its card exists to scroll to.
+        await list.loadPage(containing: index)
+        // The reveal may have ended while its page loaded: its row shown, or
+        // given up.
+        if Task.isCancelled || uiStore.pendingAlbumReveal?.seq != reveal.seq {
+            return
+        }
+        if let row = viewport.revealedRow(seq: reveal.seq) {
+            showRevealedRow(row)
+            return
+        }
+
+        viewport.release()
+        let scrollToAlbum = {
+            scrollPosition.scrollTo(
+                id: AlbumGridCell.Identity.album(reveal.albumId),
+                anchor: .top
+            )
+        }
+        guard reveal.trackId != nil else {
+            withAnimation(.easeInOut(duration: 0.3), scrollToAlbum)
+            uiStore.consumeAlbumReveal(seq: reveal.seq)
+            return
+        }
+        withAnimation(.easeInOut(duration: 0.3), scrollToAlbum) {
+            // Where the scroll stops is where the row is measured from; a row
+            // laid out on the way waits for it.
+            viewport.revealReachedAlbum(seq: reveal.seq)
+            if let row = viewport.revealedRow(seq: reveal.seq) {
+                showRevealedRow(row)
+            }
+        }
+    }
+
+    /// Scrolls the row the pending reveal names into full view, if it is not
+    /// there already, then flashes it. The reveal ends when its scroll starts.
+    private func showRevealedRow(_ row: PlacedTrackRow) {
+        guard uiStore.pendingAlbumReveal?.seq == row.seq else {
+            return
+        }
+        uiStore.consumeAlbumReveal(seq: row.seq)
+        guard let offset = viewport.offsetShowing(row.frame) else {
+            uiStore.flashTrack(row.trackId, seq: row.seq)
+            return
+        }
+        viewport.release()
+        withAnimation(.easeInOut(duration: 0.3)) {
+            scrollPosition.scrollTo(y: offset)
+        } completion: {
+            uiStore.flashTrack(row.trackId, seq: row.seq)
+        }
+    }
+
+    /// Gives up the pending reveal: the person moved on before it was shown.
+    private func endReveal() {
+        if let reveal = uiStore.pendingAlbumReveal {
+            uiStore.consumeAlbumReveal(seq: reveal.seq)
         }
     }
 

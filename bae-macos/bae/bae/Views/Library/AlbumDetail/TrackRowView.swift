@@ -91,6 +91,7 @@ struct TrackRowView: View {
         // The hover fill bleeds past the text column so the text stays aligned
         // with the header above the list.
         .padding(.horizontal, -ThemeSpace.related)
+        .revealsAsTrackRow(track.id)
         // Keyed on the flash's `seq` so a remounted row still sees the flash
         // and a repeat navigation fires it again.
         .task(id: uiStore.pendingTrackFlash?.seq) {

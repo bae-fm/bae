@@ -8,8 +8,23 @@ enum AlbumGridSlot: Hashable {
     case detail(albumId: String)
 }
 
-/// Where the grid's slots sit in the visible area, and the slot a change of
-/// column count keeps on top.
+/// Where the grid's scroll view stands: its content offset, the height it
+/// shows, and the height of its content.
+struct AlbumGridScroll: Equatable {
+    var offset: CGFloat = 0
+    var visibleHeight: CGFloat = 0
+    var contentHeight: CGFloat = 0
+}
+
+/// The row of the track a pending reveal names, placed in the visible area.
+struct PlacedTrackRow: Equatable {
+    let trackId: String
+    let seq: Int
+    let frame: CGRect
+}
+
+/// Where the grid's slots sit in the visible area, the slot a change of
+/// column count keeps on top, and where the row a reveal scrolls to is.
 ///
 /// A reference the view holds rather than view state: slots report their
 /// frames on every scrolled frame, and nothing the grid draws reads them.
@@ -28,11 +43,16 @@ final class AlbumGridViewport {
     /// the one before it.
     private var frames: [Placement: (slot: AlbumGridSlot, frame: CGRect)] =
         [:]
-    private var visibleHeight: CGFloat = 0
+    private var scroll = AlbumGridScroll()
     /// The slot the last change of column count put on top, held there
     /// until the grid scrolls another way, so changes back and forth return
     /// to the same place.
     private(set) var held: AlbumGridSlot?
+    /// The row of the track the pending reveal names, while it is laid out.
+    private var revealRow: PlacedTrackRow?
+    /// The reveal whose scroll to its album has come to rest, so its row's
+    /// place is measured where the scroll stops, not on the way there.
+    private var revealAtAlbum: Int?
 
     func place(
         _ cell: AlbumGridCell.Identity,
@@ -49,8 +69,26 @@ final class AlbumGridViewport {
         )
     }
 
-    func setVisibleHeight(_ height: CGFloat) {
-        visibleHeight = height
+    func setScroll(_ scroll: AlbumGridScroll) {
+        self.scroll = scroll
+    }
+
+    func placeRevealedRow(_ row: PlacedTrackRow?) {
+        revealRow = row
+    }
+
+    /// Records that reveal `seq` has scrolled to its album.
+    func revealReachedAlbum(seq: Int) {
+        revealAtAlbum = seq
+    }
+
+    /// The row reveal `seq` names, laid out; `atAlbum` asks only once the
+    /// reveal has scrolled to its album.
+    func revealedRow(seq: Int, atAlbum: Bool = false) -> PlacedTrackRow? {
+        guard let revealRow, revealRow.seq == seq,
+            !atAlbum || revealAtAlbum == seq
+        else { return nil }
+        return revealRow
     }
 
     /// Ends the hold, for a scroll or a change in what the grid shows; the
@@ -78,11 +116,26 @@ final class AlbumGridViewport {
         }
     }
 
+    /// The content offset that brings a view at `frame` in the visible area
+    /// into full view, centred, or `nil` when it is in full view already. A
+    /// view taller than the visible area goes to the top.
+    func offsetShowing(_ frame: CGRect) -> CGFloat? {
+        let height = scroll.visibleHeight
+        if frame.minY > -0.5, frame.maxY < height + 0.5 {
+            return nil
+        }
+        let target =
+            frame.height > height
+            ? scroll.offset + frame.minY
+            : scroll.offset + frame.midY - height / 2
+        return min(max(target, 0), max(scroll.contentHeight - height, 0))
+    }
+
     private func topSlot(columnCount: Int) -> AlbumGridSlot? {
         frames
             .filter { placement, shown in
                 placement.columnCount == columnCount && shown.frame.midY > 0
-                    && shown.frame.minY < visibleHeight
+                    && shown.frame.minY < scroll.visibleHeight
             }
             .map(\.value)
             .min { lhs, rhs in

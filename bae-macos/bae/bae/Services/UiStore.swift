@@ -33,16 +33,19 @@ enum LibraryBrowserMode: CaseIterable {
 /// `.task(id:)` so SwiftUI restarts the reveal when a newer one arrives.
 struct PendingAlbumReveal {
     let albumId: String
+    /// The track whose row the reveal scrolls into view and then flashes, or
+    /// `nil` to show the album alone. The row exists only once the album's
+    /// detail has loaded and been laid out, so the reveal stays pending until
+    /// then.
+    let trackId: String?
     let seq: Int
 }
 
 /// A pending "flash this track" command, consumed exactly once by the
-/// `TrackRowView` whose `trackId` matches. Independent of `PendingAlbumReveal`
-/// even though both are produced together by `navigateToAlbum` — the grid
-/// scroll and the track flash are two different consumers with two different
-/// lifetimes (the flash's track row may mount well after the grid scroll
-/// completes), so one `take` must not starve the other. Durable and
-/// seq-versioned for the same reasons as `PendingAlbumReveal`.
+/// `TrackRowView` whose `trackId` matches. The grid hands it over through
+/// `UiStore.flashTrack(_:seq:)` once its reveal has scrolled the row into
+/// view, so the flash is seen where the row is. Durable and seq-versioned for
+/// the same reasons as `PendingAlbumReveal`.
 struct PendingTrackFlash {
     let trackId: String
     let seq: Int
@@ -105,9 +108,9 @@ class UiStore: @unchecked Sendable {
     /// The pending grid-scroll command, or `nil` before any navigation or once
     /// applied. Durable until consumed — see `PendingAlbumReveal`.
     private(set) var pendingAlbumReveal: PendingAlbumReveal?
-    /// The pending track-flash command, or `nil` before any navigation, once
-    /// applied, or when the navigation carried no track. Durable until
-    /// consumed — see `PendingTrackFlash`.
+    /// The pending track-flash command, or `nil` until a reveal has put its
+    /// track's row in view, and once applied. Durable until consumed — see
+    /// `PendingTrackFlash`.
     private(set) var pendingTrackFlash: PendingTrackFlash?
     private var revealSeq = 0
 
@@ -195,14 +198,12 @@ class UiStore: @unchecked Sendable {
         revealSeq += 1
         pendingAlbumReveal = PendingAlbumReveal(
             albumId: albumId,
+            trackId: trackId,
             seq: revealSeq
         )
-        // Always overwrite (to `nil` when there's no track) rather than leaving
-        // a prior navigation's flash around unconsumed if its track row never
-        // mounted.
-        pendingTrackFlash = trackId.map {
-            PendingTrackFlash(trackId: $0, seq: revealSeq)
-        }
+        // An earlier reveal's flash not yet taken belongs to a row this
+        // navigation moves away from.
+        pendingTrackFlash = nil
     }
 
     func navigateToImport() {
@@ -259,11 +260,20 @@ class UiStore: @unchecked Sendable {
     }
 
     /// Clear the pending grid-scroll command once `AlbumGridView` has applied
-    /// it. A no-op if a newer request already superseded it (that request owns
-    /// the clear now).
+    /// it, or has given it up. A no-op if a newer request already superseded
+    /// it (that request owns the clear now).
     func consumeAlbumReveal(seq: Int) {
         if pendingAlbumReveal?.seq == seq {
             pendingAlbumReveal = nil
+        }
+    }
+
+    /// Flash `trackId`'s row for the reveal `seq`, once the grid has scrolled
+    /// that row into view. A no-op if a newer navigation superseded the
+    /// reveal.
+    func flashTrack(_ trackId: String, seq: Int) {
+        if revealSeq == seq {
+            pendingTrackFlash = PendingTrackFlash(trackId: trackId, seq: seq)
         }
     }
 
