@@ -68,16 +68,20 @@ fn catalogs_separator_variants_are_distinct() {
     );
 }
 
-// MARK: - catalog_numbers — multi-disc suffix behavior
+// MARK: - catalog_numbers — whole numbers
 //
-// A suffix after `/` or `~` falls outside the match, so only the first disc's
-// number comes back; two internal separators (`UDCD-1-702`) match nothing.
+// A hyphen, dot or slash between letters or digits keeps a number whole, so
+// a multi-disc suffix after `/` stays on it; `~` cuts it.
 
 #[test]
-fn catalogs_multi_disc_slash_suffix() {
+fn catalogs_keep_a_joined_suffix_whole() {
     assert_eq!(
         cats(&["BVCK-15024/5".to_string()]),
-        vec!["BVCK-15024".to_string()],
+        vec!["BVCK-15024/5".to_string()],
+    );
+    assert_eq!(
+        cats(&["Label SD 19244-2".to_string()]),
+        vec!["SD 19244-2".to_string()],
     );
 }
 
@@ -102,20 +106,13 @@ fn catalogs_counted_prefix() {
     );
 }
 
-#[test]
-fn catalogs_two_internal_separators_rejected() {
-    let empty: Vec<String> = Vec::new();
-    assert_eq!(cats(&["MFSL UDCD-1-702".to_string()]), empty);
-}
-
 // MARK: - catalog_numbers dedup
 
 #[test]
-fn sourced_catalogs_reject_zip_and_dedup() {
+fn sourced_catalogs_dedup() {
     let raw = vec![
         "WPCR-80001".to_string(),
-        "Some City, NY 10001".to_string(), // ZIP tail — rejected
-        "WPCR-80001".to_string(),          // duplicate — dropped
+        "WPCR-80001".to_string(), // duplicate — dropped
         "Z1 12345".to_string(),
     ];
     assert_eq!(
@@ -302,41 +299,15 @@ fn catalogs_substring_single_letter_digit() {
     );
 }
 
-// MARK: - catalog_numbers — ZIP false positives
+// MARK: - catalog_numbers — no address rules
 
+/// A number printed in an address is offered like any other: it is in
+/// effect only once picked, or once a found release carries it.
 #[test]
-fn catalogs_zip_in_po_box_rejected() {
-    // A state and ZIP at the end of the line is dropped, PO Box or not.
-    let empty: Vec<String> = Vec::new();
-    assert_eq!(cats(&["P.O. Box 123, City, ZZ 12345.".to_string()]), empty,);
-    assert_eq!(
-        cats(&["PO Box 4567, Other City, XX 98765".to_string()]),
-        empty,
-    );
-}
-
-#[test]
-fn catalogs_zip_tail_rejected() {
-    // A state and five digits ending the line is an address.
-    let empty: Vec<String> = Vec::new();
-    assert_eq!(cats(&["Some City, NY 10001".to_string()]), empty,);
-}
-
-#[test]
-fn catalogs_midline_catalog_on_mail_line_kept() {
-    // Only a state and ZIP ending the line is dropped; one mid-line is kept.
-    assert_eq!(
-        cats(&["P.O. Box 123 — TX 45678 is the album code".to_string()]),
-        vec!["TX 45678".to_string()],
-    );
-}
-
-#[test]
-fn catalogs_real_catalog_beside_zip_kept() {
-    // A real catalog number beside a ZIP survives; only the ZIP is dropped.
+fn catalogs_offer_what_an_address_prints() {
     assert_eq!(
         cats(&["WPCR-80001 / City, NY 10001".to_string()]),
-        vec!["WPCR-80001".to_string()],
+        vec!["WPCR-80001".to_string(), "NY 10001".to_string()],
     );
 }
 

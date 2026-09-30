@@ -6,82 +6,21 @@ use regex::Regex;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
-use crate::text_match::{normalize, strip_trailing_brackets};
+use crate::text_match::{normalize, printed_catalog_numbers, strip_trailing_brackets};
 use strsim::jaro_winkler;
 
-/// Catalog-number-like substrings (`WPCR-80001`, `Z1 12345`), each once in
-/// first-seen order. Separators are kept as written, since MusicBrainz indexes
-/// `WPCR-80001` and `WPCR 80001` apart.
+/// The catalog numbers the lines print, each once in first-seen order — see
+/// `text_match::printed_catalog_numbers`, the one rule a number is read by.
 pub(crate) fn catalog_numbers(lines: &[SourcedLine]) -> Vec<String> {
     let mut out: Vec<String> = Vec::new();
-    let mut seen: HashSet<String> = HashSet::new();
     for line in lines {
-        for s in find_catalogs_in_line(&line.text) {
-            if seen.insert(s.clone()) {
-                out.push(s);
+        for number in printed_catalog_numbers(&line.text) {
+            if !out.contains(&number) {
+                out.push(number);
             }
         }
     }
     out
-}
-
-/// Catalog-number-like substrings in one line, ZIP codes rejected, not deduped.
-fn find_catalogs_in_line(line: &str) -> Vec<String> {
-    static MULTI_LETTER: OnceLock<Regex> = OnceLock::new();
-    static SINGLE_LETTER_DIGIT: OnceLock<Regex> = OnceLock::new();
-    static COUNTED_PREFIX: OnceLock<Regex> = OnceLock::new();
-    let multi = MULTI_LETTER.get_or_init(|| Regex::new(r"\b[A-Z]{2,6}[- ]?\d{3,7}\b").unwrap());
-    let single =
-        SINGLE_LETTER_DIGIT.get_or_init(|| Regex::new(r"\b[A-Z]\d[- ]?\d{4,7}\b").unwrap());
-    // A prefix that counts its discs before the separator — `MD6-233`,
-    // `CDP7-46437` — which neither shape above admits: the first wants the
-    // digits to start after the letters, the second wants four of them after
-    // the separator.
-    let counted =
-        COUNTED_PREFIX.get_or_init(|| Regex::new(r"\b[A-Z]{1,6}\d{1,2}[- ]\d{3,7}\b").unwrap());
-
-    // Order is all multi-letter matches, then all single-letter-digit ones,
-    // then the counted prefixes — the regexes run independently, not
-    // interleaved by position.
-    let mut out: Vec<String> = Vec::new();
-    for m in multi
-        .find_iter(line)
-        .chain(single.find_iter(line))
-        .chain(counted.find_iter(line))
-    {
-        let s = m.as_str().to_string();
-        if is_zip_false_positive(&s, line) {
-            continue;
-        }
-        out.push(s);
-    }
-    out
-}
-
-/// A candidate is a ZIP false positive only if it *is* the state+ZIP at the end
-/// of the line — the tail of a US mailing address. A catalog-shaped string
-/// mid-line, even next to a `P.O. Box`, stays: those are real catalogs often
-/// enough that dropping them would lose signal.
-fn is_zip_false_positive(candidate: &str, line: &str) -> bool {
-    static STATE_ZIP_TAIL: OnceLock<Regex> = OnceLock::new();
-    static STATE_ZIP_SHAPE: OnceLock<Regex> = OnceLock::new();
-
-    let tail = STATE_ZIP_TAIL
-        .get_or_init(|| Regex::new(r"\b([A-Z]{2})\s+(\d{5})(?:-\d{4})?\s*\.?\s*$").unwrap());
-    let shape = STATE_ZIP_SHAPE.get_or_init(|| Regex::new(r"^([A-Z]{2})[- ](\d{5})$").unwrap());
-
-    let Some(caps) = shape.captures(candidate) else {
-        return false;
-    };
-    let candidate_state = caps.get(1).unwrap().as_str();
-    let candidate_zip = caps.get(2).unwrap().as_str();
-
-    let Some(tail_caps) = tail.captures(line) else {
-        return false;
-    };
-    let tail_state = tail_caps.get(1).unwrap().as_str();
-    let tail_zip = tail_caps.get(2).unwrap().as_str();
-    tail_state == candidate_state && tail_zip == candidate_zip
 }
 
 /// Free-text reject predicate, applied to every line whatever its source. Each
@@ -97,15 +36,10 @@ pub(crate) fn should_reject_line(line: &str) -> bool {
         || is_universal_stop_phrase(line)
 }
 
+/// A line that is one catalog number and nothing else.
 fn is_catalog_line(line: &str) -> bool {
-    static MULTI: OnceLock<Regex> = OnceLock::new();
-    static SINGLE: OnceLock<Regex> = OnceLock::new();
-    static COUNTED: OnceLock<Regex> = OnceLock::new();
-    let multi = MULTI.get_or_init(|| Regex::new(r"^\s*[A-Z]{2,6}[- ]?\d{3,7}\s*$").unwrap());
-    let single = SINGLE.get_or_init(|| Regex::new(r"^\s*[A-Z]\d[- ]?\d{4,7}\s*$").unwrap());
-    let counted =
-        COUNTED.get_or_init(|| Regex::new(r"^\s*[A-Z]{1,6}\d{1,2}[- ]\d{3,7}\s*$").unwrap());
-    multi.is_match(line) || single.is_match(line) || counted.is_match(line)
+    let line = line.trim();
+    printed_catalog_numbers(line) == [line]
 }
 
 fn is_out_of_length_band(line: &str) -> bool {

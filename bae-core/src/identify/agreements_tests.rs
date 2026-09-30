@@ -131,6 +131,19 @@ fn the_text_prints_a_catalog_number_only_whole() {
     assert!(!folder.prints_catalog("none"));
 }
 
+/// The number a line offers to be picked is the number it confirms: one
+/// reader, so "AB 12345-2" is one number both ways, never "AB 12345".
+#[test]
+fn the_number_offered_is_the_number_confirmed() {
+    let printed = "1986 Label AB 12345-2";
+    let offered = crate::text_match::printed_catalog_numbers(printed);
+    assert_eq!(offered, vec!["AB 12345-2"]);
+    let folder = text(&[printed]);
+    assert!(folder.prints_catalog(&offered[0]));
+    assert!(folder.prints_catalog("AB12345-2"));
+    assert!(!folder.prints_catalog("AB 12345"));
+}
+
 /// A field the result does not state cannot be agreed with.
 #[test]
 fn a_field_the_result_leaves_out_is_no_agreement() {
