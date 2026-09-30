@@ -70,8 +70,12 @@ struct NowPlayingBarContainer: View {
             },
             onDropToQueue: onDropToQueue,
             onNavigateToAlbum: {
-                if let albumId = track?.albumId {
-                    uiStore.navigateToAlbum(albumId)
+                let action = NowPlayingNavigationAction(
+                    playbackStore: playbackStore,
+                    uiStore: uiStore
+                )
+                if action.isEnabled {
+                    action.perform()
                 }
             },
             queueAddPublisher: playbackStore.queueItemsAddedPublisher,

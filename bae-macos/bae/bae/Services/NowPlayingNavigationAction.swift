@@ -1,7 +1,8 @@
 import BaeKit
 
-/// The library reveal shared by Command-L and the queue's now-playing card:
-/// the playing track's row, on the release core says it is on.
+/// The library reveal shared by Command-L, the now-playing bar and the
+/// queue's now-playing card: the playing track's row, on the release core
+/// says it is on.
 @MainActor
 struct NowPlayingNavigationAction {
     let playbackStore: PlaybackStore
