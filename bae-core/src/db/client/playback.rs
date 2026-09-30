@@ -204,12 +204,12 @@ impl Database {
 
 /// Each requested track's display, and its catalog duration the queue rows
 /// show: its title, its credited artists (the album's when the track credits
-/// none), its album, and its own release's cover. The cover is the track's
-/// own release's, not the album's primary release's, so a track from a
-/// non-primary release shows that release's art. Its `covers` row joins in
-/// here rather than in a second query, giving each track the versioned
-/// reference the UI caches art under; a release with no cover row yields
-/// `None`. A requested track the library no longer holds is absent.
+/// none), its album, the release it is on, and that release's cover. The
+/// cover is the track's own release's, not the album's primary release's, so
+/// a track from a non-primary release shows that release's art. Its `covers`
+/// row joins in here rather than in a second query, giving each track the
+/// versioned reference the UI caches art under; a release with no cover row
+/// yields `None`. A requested track the library no longer holds is absent.
 fn track_displays_on(
     sql: &SqlReadContext<'_>,
     track_ids: &BTreeSet<String>,
@@ -221,7 +221,7 @@ fn track_displays_on(
         let query = format!(
             "SELECT \
                 t.id AS track_id, t.title, t.duration_ms, a.id AS album_id, \
-                a.title AS album_title, r.id AS cover_image_id, c.blob_id AS cover_version, \
+                a.title AS album_title, r.id AS release_id, c.blob_id AS cover_version, \
                 COALESCE( \
                     NULLIF(( \
                         SELECT GROUP_CONCAT(art.name, ', ' ORDER BY credit.position) \
@@ -263,8 +263,14 @@ fn track_displays_on(
             coven::rusqlite::params_from_iter(chunk.iter()),
             |row| {
                 let track_id: String = row.get("track_id")?;
-                let cover_image_id: String = row.get("cover_image_id")?;
+                let release_id: String = row.get("release_id")?;
                 let cover_version: Option<String> = row.get("cover_version")?;
+                // A release's cover image is keyed by the release's id.
+                let cover_image = cover_version.map(|version| crate::album_detail::ImageRef {
+                    id: release_id.clone(),
+                    version,
+                    image_type: LibraryImageType::Cover,
+                });
                 Ok((
                     track_id,
                     TrackQueueMeta {
@@ -272,14 +278,9 @@ fn track_displays_on(
                             title: row.get("title")?,
                             artist_names: row.get("artist_names")?,
                             album_id: row.get("album_id")?,
+                            release_id,
                             album_title: row.get("album_title")?,
-                            cover_image: cover_version.map(|version| {
-                                crate::album_detail::ImageRef {
-                                    id: cover_image_id,
-                                    version,
-                                    image_type: LibraryImageType::Cover,
-                                }
-                            }),
+                            cover_image,
                         },
                         duration_ms: row.get("duration_ms")?,
                     },

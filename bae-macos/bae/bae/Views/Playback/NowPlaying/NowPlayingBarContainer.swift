@@ -97,6 +97,7 @@ struct NowPlayingBarContainer: View {
                 trackTitle: PreviewData.nowPlayingTitle,
                 artistNames: PreviewData.nowPlayingArtist,
                 albumId: "a-01",
+                releaseId: "r-01",
                 coverImage: nil,
                 durationMs: 222_000,
             )

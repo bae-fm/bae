@@ -154,6 +154,7 @@ struct PlaybackProgressViewTests {
                 trackTitle: "Track Title",
                 artistNames: "Artist Name",
                 albumId: "album",
+                releaseId: "release",
                 coverImage: nil,
                 durationMs: 180_000
             )

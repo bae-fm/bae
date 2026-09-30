@@ -47,6 +47,7 @@ class PlaybackActivationTest {
             trackTitle = "Track Title",
             artistNames = "Artist Name",
             albumId = "alb-1",
+            releaseId = "rel-1",
             albumTitle = "Album Title",
             coverImage = null,
             durationMs = 210_000uL,

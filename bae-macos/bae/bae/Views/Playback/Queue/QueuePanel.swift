@@ -16,8 +16,6 @@ struct QueuePanel: View {
     @Environment(Queue.self)
     private var queue
 
-    @Environment(LibraryStore.self)
-    private var libraryStore
     @Environment(UiStore.self)
     private var uiStore
 
@@ -27,7 +25,6 @@ struct QueuePanel: View {
     var body: some View {
         let navigation = NowPlayingNavigationAction(
             playbackStore: playbackStore,
-            libraryStore: libraryStore,
             uiStore: uiStore
         )
         let onGoToNowPlaying: (() -> Void)? =
@@ -98,7 +95,6 @@ struct QueuePanel: View {
         .environment(store)
         .environment(queue)
         .environment(ImageStore.stub())
-        .environment(LibraryStore())
         .environment(UiStore())
         .environment(
             \.playbackPositionPublisher,
@@ -129,6 +125,7 @@ struct QueuePanel: View {
                 trackTitle: PreviewData.nowPlayingTitle,
                 artistNames: PreviewData.nowPlayingArtist,
                 albumId: "a-01",
+                releaseId: "r-01",
                 coverImage: nil,
                 durationMs: 214_000
             )

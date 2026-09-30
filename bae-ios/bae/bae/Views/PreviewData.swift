@@ -205,6 +205,7 @@ enum PreviewData {
         trackTitle: "Track Title 1",
         artistNames: "Artist Name 1",
         albumId: "a-1",
+        releaseId: "r-1",
         coverImage: nil,
         durationMs: 195_000
     )

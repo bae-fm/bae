@@ -446,6 +446,8 @@ public struct NowPlayingTrack {
     public let trackTitle: String
     public let artistNames: String
     public let albumId: String
+    /// The release the track is on, which may be any of its album's releases.
+    public let releaseId: String
     public let coverImage: BridgeImageRef?
     public let durationMs: UInt64
 
@@ -454,6 +456,7 @@ public struct NowPlayingTrack {
         trackTitle: String,
         artistNames: String,
         albumId: String,
+        releaseId: String,
         coverImage: BridgeImageRef?,
         durationMs: UInt64
     ) {
@@ -461,6 +464,7 @@ public struct NowPlayingTrack {
         self.trackTitle = trackTitle
         self.artistNames = artistNames
         self.albumId = albumId
+        self.releaseId = releaseId
         self.coverImage = coverImage
         self.durationMs = durationMs
     }

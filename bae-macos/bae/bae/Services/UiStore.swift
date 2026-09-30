@@ -121,8 +121,9 @@ class UiStore: @unchecked Sendable {
 
     // ── Shared selections ───────────────────────────────────────────────
 
-    /// Release selected within a given album. Entries exist only when the user
-    /// deviates from the default (first release). Missing key == default.
+    /// Release selected within a given album: one the user picked other than
+    /// the album's primary, or the one a navigation named. Missing key means
+    /// the primary release.
     var selectedReleaseIdByAlbum: [String: String] = [:]
 
     // ── Import candidate list ───────────────────────────────────────────

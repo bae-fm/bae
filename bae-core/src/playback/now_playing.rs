@@ -8,6 +8,8 @@ pub struct TrackDisplay {
     pub title: String,
     pub artist_names: String,
     pub album_id: String,
+    /// The release the track is on, which may be any of its album's releases.
+    pub release_id: String,
     pub album_title: String,
     /// The track's own release's cover, versioned, so new bytes replace the
     /// copy a UI decoded; `None` when that release has no cover.

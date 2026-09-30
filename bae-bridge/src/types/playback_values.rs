@@ -34,6 +34,8 @@ pub struct BridgeLoadingTrackInfo {
     pub track_title: String,
     pub artist_names: String,
     pub album_id: String,
+    /// The release the track is on, which may be any of its album's releases.
+    pub release_id: String,
     pub album_title: String,
     /// The track's release cover, versioned so the UI's art cache key changes
     /// with the cover bytes.
@@ -248,6 +250,8 @@ pub enum BridgePlaybackValueState {
         track_title: String,
         artist_names: String,
         album_id: String,
+        /// The release the track is on.
+        release_id: String,
         album_title: String,
         cover_image: Option<BridgeImageRef>,
         duration_ms: u64,
@@ -257,6 +261,8 @@ pub enum BridgePlaybackValueState {
         track_title: String,
         artist_names: String,
         album_id: String,
+        /// The release the track is on.
+        release_id: String,
         album_title: String,
         cover_image: Option<BridgeImageRef>,
         duration_ms: u64,
@@ -271,6 +277,7 @@ impl BridgeLoadingTrackInfo {
             track_title: display.title,
             artist_names: display.artist_names,
             album_id: display.album_id,
+            release_id: display.release_id,
             album_title: display.album_title,
             cover_image: display.cover_image.map(BridgeImageRef::from_core),
             duration_ms: track.duration_ms,
@@ -296,6 +303,7 @@ impl BridgePlaybackValueState {
                 track_title: display.title,
                 artist_names: display.artist_names,
                 album_id: display.album_id,
+                release_id: display.release_id,
                 album_title: display.album_title,
                 cover_image: display.cover_image.map(BridgeImageRef::from_core),
                 duration_ms: track.duration_ms,
@@ -308,6 +316,7 @@ impl BridgePlaybackValueState {
                 track_title: display.title,
                 artist_names: display.artist_names,
                 album_id: display.album_id,
+                release_id: display.release_id,
                 album_title: display.album_title,
                 cover_image: display.cover_image.map(BridgeImageRef::from_core),
                 duration_ms: track.duration_ms,

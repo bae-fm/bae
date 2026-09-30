@@ -32,13 +32,16 @@ struct PlaybackPlayPauseTests {
             trackTitle: "Track Title",
             artistNames: "Artist Name",
             albumId: "album-1",
+            releaseId: "release-1",
             coverImage: nil,
             durationMs: 180_000
         )
     }
 
     /// Returns the (pause, resume) call counts after one `playPause(for:)`.
-    private static func dispatch(_ nowPlaying: NowPlaying) -> (pause: Int, resume: Int) {
+    private static func dispatch(_ nowPlaying: NowPlaying) -> (
+        pause: Int, resume: Int
+    ) {
         let pauses = Counter()
         let resumes = Counter()
         let playback = Playback(

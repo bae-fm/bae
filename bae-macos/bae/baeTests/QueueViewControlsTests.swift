@@ -157,6 +157,7 @@ struct QueueViewControlsTests {
             trackTitle: "Track Title",
             artistNames: "Artist Name",
             albumId: "album-id",
+            releaseId: "release-id",
             coverImage: nil,
             durationMs: 180_000
         )

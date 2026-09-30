@@ -520,7 +520,6 @@ struct MainAppMenuCommands: Commands {
         let target = requireTarget()
         NowPlayingNavigationAction(
             playbackStore: target.playbackStore,
-            libraryStore: target.libraryStore,
             uiStore: target.uiStore
         )
         .perform()

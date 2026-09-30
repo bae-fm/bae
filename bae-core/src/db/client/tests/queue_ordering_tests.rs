@@ -8,6 +8,7 @@ fn meta(id: &str) -> TrackQueueMeta {
             title: format!("Title {id}"),
             artist_names: "Artist Name".to_string(),
             album_id: "album-id".to_string(),
+            release_id: format!("rel-{id}"),
             album_title: "Album Title".to_string(),
             cover_image: Some(crate::album_detail::ImageRef {
                 id: format!("rel-{id}"),

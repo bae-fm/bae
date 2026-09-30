@@ -27,6 +27,7 @@ struct QueueNowPlayingNavigationTests {
                 trackTitle: "Track Title",
                 artistNames: "Track Artist",
                 albumId: "playing-album",
+                releaseId: "playing-release",
                 coverImage: nil,
                 durationMs: 180_000
             )
@@ -37,7 +38,6 @@ struct QueueNowPlayingNavigationTests {
                 .environment(store)
                 .environment(Queue.stub())
                 .environment(ImageStore.stub())
-                .environment(LibraryStore())
                 .environment(ui),
             size: NSSize(width: 420, height: 720)
         ) { window, host in
@@ -55,6 +55,12 @@ struct QueueNowPlayingNavigationTests {
             #expect(ui.selectedAlbumId == "playing-album")
             #expect(ui.pendingAlbumReveal?.albumId == "playing-album")
             #expect(ui.pendingAlbumReveal?.trackId == "playing-track")
+            // No release details are loaded: the release comes with the
+            // playing track, not from the library's cache.
+            #expect(
+                ui.selectedReleaseIdByAlbum["playing-album"]
+                    == "playing-release"
+            )
             #expect(ui.showQueue)
         }
     }

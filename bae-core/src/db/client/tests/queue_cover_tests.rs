@@ -124,3 +124,18 @@ async fn a_cover_repointed_without_a_new_stamp_takes_a_new_version() {
         "the listed cover version moves"
     );
 }
+
+/// The album's primary release is set, but the track is on a different one —
+/// the track's display names the release it is on, so a surface that reveals
+/// the playing track opens that release rather than the album's default.
+#[tokio::test]
+async fn track_display_names_the_track_s_own_release_not_the_album_s_primary() {
+    let (db, _tmp) = cover_db().await;
+    let display = db
+        .track_display(TRACK_OTHER)
+        .await
+        .unwrap()
+        .expect("the library holds the track");
+    assert_eq!(display.album_id, "82a53f44-1b76-435b-89f0-42749371ee15");
+    assert_eq!(display.release_id, RELEASE_OTHER);
+}

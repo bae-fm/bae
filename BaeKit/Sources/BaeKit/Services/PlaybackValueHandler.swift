@@ -34,6 +34,7 @@ final class PlaybackValueHandler {
             let trackTitle,
             let artistNames,
             let albumId,
+            let releaseId,
             _,
             let coverImage,
             let durationMs
@@ -44,6 +45,7 @@ final class PlaybackValueHandler {
                     trackTitle: trackTitle,
                     artistNames: artistNames,
                     albumId: albumId,
+                    releaseId: releaseId,
                     coverImage: coverImage,
                     durationMs: durationMs
                 )
@@ -53,6 +55,7 @@ final class PlaybackValueHandler {
             let trackTitle,
             let artistNames,
             let albumId,
+            let releaseId,
             _,
             let coverImage,
             let durationMs,
@@ -63,6 +66,7 @@ final class PlaybackValueHandler {
                 trackTitle: trackTitle,
                 artistNames: artistNames,
                 albumId: albumId,
+                releaseId: releaseId,
                 coverImage: coverImage,
                 durationMs: durationMs
             )
@@ -116,6 +120,7 @@ final class PlaybackValueHandler {
                     trackTitle: track.trackTitle,
                     artistNames: track.artistNames,
                     albumId: track.albumId,
+                    releaseId: track.releaseId,
                     coverImage: track.coverImage,
                     durationMs: track.durationMs
                 )
@@ -132,6 +137,7 @@ private struct NowPlayingFields {
     let trackTitle: String
     let artistNames: String
     let albumId: String
+    let releaseId: String
     let coverImage: BridgeImageRef?
     let durationMs: UInt64
 
@@ -141,6 +147,7 @@ private struct NowPlayingFields {
             trackTitle: trackTitle,
             artistNames: artistNames,
             albumId: albumId,
+            releaseId: releaseId,
             coverImage: coverImage,
             durationMs: durationMs
         )
