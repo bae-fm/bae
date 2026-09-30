@@ -1,6 +1,7 @@
 package fm.bae.app.playback
 
 import uniffi.bae_bridge.BridgeImageRef
+import uniffi.bae_bridge.BridgeLoadingTrack
 import uniffi.bae_bridge.BridgeMediaControlPlayback
 import uniffi.bae_bridge.BridgeMediaControlValues
 import uniffi.bae_bridge.BridgeNowPlayingTrack
@@ -94,10 +95,9 @@ internal fun pausedState(
     reason,
 )
 
-internal fun loadingState(
-    trackId: String,
-    prepared: BridgeNowPlayingTrack?,
-) = BridgePlaybackValueState.Loading(trackId, prepared)
+internal fun loadingState(trackId: String) = BridgePlaybackValueState.Loading(BridgeLoadingTrack.Unprepared(trackId))
+
+internal fun loadingState(prepared: BridgeNowPlayingTrack) = BridgePlaybackValueState.Loading(BridgeLoadingTrack.Prepared(prepared))
 
 internal fun BaeCorePlayer.applyPlaybackState(state: BridgePlaybackValueState) {
     applyValues(playbackValues(state))

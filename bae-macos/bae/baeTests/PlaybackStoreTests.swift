@@ -267,7 +267,7 @@ struct PlaybackStoreBeginLoadingTests {
         store.beginLoading(trackId: "b")
         #expect(store.nowPlaying.track?.track.trackId == "a")
 
-        store.setLoadingTarget(trackId: "b", target: makeTrack("b"))
+        store.setLoadingTarget(makeTrack("b"))
         #expect(store.nowPlaying.track?.track.trackId == "b")
         #expect(store.nowPlaying.loadingTrackId == "b")
         #expect(store.nowPlaying.isActive)
@@ -280,7 +280,7 @@ struct PlaybackStoreBeginLoadingTests {
         store.play(track: makeTrack("a"))
         store.beginLoading(trackId: "b")
 
-        store.setLoadingTarget(trackId: "stale", target: makeTrack("stale"))
+        store.setLoadingTarget(makeTrack("stale"))
 
         #expect(store.nowPlaying.loadingTrackId == "b")
         #expect(store.nowPlaying.track?.track.trackId == "a")
@@ -306,7 +306,7 @@ struct PlaybackStoreBeginLoadingTests {
         let store = PlaybackStore()
         store.play(track: makeTrack("a"))
 
-        store.setLoadingTarget(trackId: "a", target: makeTrack("a"))
+        store.setLoadingTarget(makeTrack("a"))
 
         #expect(store.nowPlaying.loadingTrackId == "a")
         #expect(store.nowPlaying.track?.track.trackId == "a")
@@ -319,7 +319,7 @@ struct PlaybackStoreBeginLoadingTests {
         let store = PlaybackStore()
         store.pause(track: makeTrack("a"), reason: .manual)
 
-        store.setLoadingTarget(trackId: "a", target: makeTrack("a"))
+        store.setLoadingTarget(makeTrack("a"))
 
         #expect(store.nowPlaying.loadingTrackId == "a")
         #expect(store.nowPlaying.track?.track.trackId == "a")
@@ -332,7 +332,7 @@ struct PlaybackStoreBeginLoadingTests {
         let store = PlaybackStore()
         store.play(track: makeTrack("a"))
 
-        store.setLoadingTarget(trackId: "b", target: makeTrack("b"))
+        store.setLoadingTarget(makeTrack("b"))
 
         #expect(store.nowPlaying.loadingTrackId == nil)
         #expect(store.nowPlaying.track?.track.trackId == "a")
@@ -344,7 +344,7 @@ struct NowPlayingStateTests {
     @Test("loading counts as playing so the transport shows the pause glyph")
     func loadingIsPlaying() {
         #expect(
-            NowPlaying.loading(trackId: "x", target: nil, previous: nil)
+            NowPlaying.loading(.unprepared(trackId: "x"), previous: nil)
                 .isPlaying
         )
     }

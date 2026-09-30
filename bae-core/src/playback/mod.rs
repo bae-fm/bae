@@ -55,7 +55,7 @@ pub use queue::{
 };
 pub use repeat_mode::RepeatMode;
 pub use service::{
-    PlaybackHandle, PlaybackPauseBoundary, PlaybackPauseReason, PlaybackService,
+    LoadingTrack, PlaybackHandle, PlaybackPauseBoundary, PlaybackPauseReason, PlaybackService,
     PlaybackSideCountdown, PlaybackSidePausePrompt, PlaybackState, PlaybackTrackInfo,
     PlaybackTrackSide,
 };

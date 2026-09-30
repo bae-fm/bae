@@ -54,7 +54,7 @@ class PlaybackActivationTest {
         val context = RuntimeEnvironment.getApplication()
         val player = player(context, foreground = false)
 
-        player.applyPlaybackState(loadingState("t1", loadingTrack()))
+        player.applyPlaybackState(loadingState(loadingTrack()))
         shadowOf(Looper.getMainLooper()).idle()
 
         // Non-empty timeline + BUFFERING + play-when-ready is exactly Media3's
@@ -82,7 +82,7 @@ class PlaybackActivationTest {
                 durationMs = 200_000uL,
             ),
         )
-        player.applyPlaybackState(loadingState("t2", null))
+        player.applyPlaybackState(loadingState("t2"))
         shadowOf(Looper.getMainLooper()).idle()
 
         // The previous track stays current (with a spinner) so the timeline never
@@ -100,7 +100,7 @@ class PlaybackActivationTest {
         // The service must come up while the track is still loading — before the
         // possibly-long download finishes and the screen locks — the instant core
         // resolves the loading track's metadata, not only once it starts playing.
-        player.applyPlaybackState(loadingState("t1", loadingTrack()))
+        player.applyPlaybackState(loadingState(loadingTrack()))
         shadowOf(Looper.getMainLooper()).idle()
 
         val started = shadowOf(context).nextStartedService
@@ -115,7 +115,7 @@ class PlaybackActivationTest {
         // A bare loading event with no prior track has nothing to host yet, so it
         // must not start the service (which would otherwise be an idle service the
         // system reclaims). The resolved event that follows starts it.
-        player.applyPlaybackState(loadingState("t1", null))
+        player.applyPlaybackState(loadingState("t1"))
         shadowOf(Looper.getMainLooper()).idle()
 
         assertNull(shadowOf(context).nextStartedService)

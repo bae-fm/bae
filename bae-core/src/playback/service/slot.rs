@@ -104,13 +104,9 @@ impl TrackPhase {
 
 pub(super) enum PlaybackSlot {
     Stopped,
-    /// `play_track` has torn down the old track and is resolving the new one.
-    /// `prepared` is None before the track is prepared and Some after — the two
-    /// Loading emissions the UI contract already expects.
-    Loading {
-        track_id: String,
-        prepared: Option<PlayingTrack>,
-    },
+    /// `play_track` has torn down the old track and is resolving the new one:
+    /// unprepared, then prepared — the two Loading emissions surfaces show.
+    Loading(LoadingTrack),
     Active(CurrentTrack),
 }
 

@@ -85,10 +85,9 @@ impl PlaybackService {
         // window, and the ready-watcher confirms the target once audio flows.
         // Projecting Stopped onto the atomic silences the callback while the new
         // decoder fills, so nothing leaks from the old ring before the swap.
-        self.slot = PlaybackSlot::Loading {
-            track_id: track_id.clone(),
-            prepared: Some(PlayingTrack::from_prepared(&prepared)),
-        };
+        self.slot = PlaybackSlot::Loading(LoadingTrack::Prepared(PlayingTrack::from_prepared(
+            &prepared,
+        )));
         self.sync_audio_state();
         self.emit_state();
 

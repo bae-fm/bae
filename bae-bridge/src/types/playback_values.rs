@@ -283,9 +283,7 @@ pub struct BridgePlaybackValues {
 pub enum BridgePlaybackValueState {
     Stopped,
     Loading {
-        track_id: String,
-        /// The target track once prepared; `None` until its lookup finishes.
-        prepared: Option<BridgeNowPlayingTrack>,
+        track: BridgeLoadingTrack,
     },
     Playing {
         track: BridgeNowPlayingTrack,
@@ -301,9 +299,26 @@ mirror_enum! {
     from_core: fn,
     variants: {
         Stopped,
-        Loading { track_id, prepared: (opt BridgeNowPlayingTrack) },
+        Loading { track: (BridgeLoadingTrack) },
         Playing { track: (BridgeNowPlayingTrack) },
         Paused { track: (BridgeNowPlayingTrack), reason: (BridgePlaybackPauseReason) },
+    },
+}
+
+/// The track a load is for: its id alone until core has prepared it, then the
+/// prepared track, which carries the id.
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeLoadingTrack {
+    Unprepared { track_id: String },
+    Prepared { track: BridgeNowPlayingTrack },
+}
+
+mirror_enum! {
+    BridgeLoadingTrack = bae_core::playback::LoadingTrack<bae_core::playback::NowPlayingTrack>,
+    from_core: fn,
+    variants: {
+        Unprepared { track_id },
+        Prepared(track: (BridgeNowPlayingTrack)),
     },
 }
 

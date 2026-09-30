@@ -213,13 +213,14 @@ async fn playback_state_mapping() {
     service.slot = PlaybackSlot::Stopped;
     assert!(matches!(service.playback_state(), PlaybackState::Stopped));
 
-    service.slot = PlaybackSlot::Loading {
+    service.slot = PlaybackSlot::Loading(LoadingTrack::Unprepared {
         track_id: "t".to_string(),
-        prepared: None,
-    };
+    });
     assert!(matches!(
         service.playback_state(),
-        PlaybackState::Loading { prepared: None, .. }
+        PlaybackState::Loading {
+            track: LoadingTrack::Unprepared { .. }
+        }
     ));
 
     let generation = service.next_load_generation();
@@ -233,8 +234,7 @@ async fn playback_state_mapping() {
     assert!(matches!(
         service.playback_state(),
         PlaybackState::Loading {
-            prepared: Some(_),
-            ..
+            track: LoadingTrack::Prepared(_)
         }
     ));
 

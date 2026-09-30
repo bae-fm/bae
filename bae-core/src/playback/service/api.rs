@@ -252,10 +252,40 @@ pub enum PlaybackState<Track = PlayingTrack> {
         reason: PlaybackPauseReason,
     },
     Loading {
-        track_id: String,
-        /// The target track once prepared; `None` until its lookup finishes.
-        prepared: Option<Track>,
+        track: LoadingTrack<Track>,
     },
+}
+
+/// The track a load is for: its id alone until the service has prepared it,
+/// then the prepared track, which carries the id.
+#[derive(Debug, Clone)]
+pub enum LoadingTrack<Track = PlayingTrack> {
+    Unprepared { track_id: String },
+    Prepared(Track),
+}
+
+impl<Track> LoadingTrack<Track> {
+    /// The same load holding `f`'s result for its prepared track, or `f`'s
+    /// error.
+    pub fn try_map_track<Mapped, Error>(
+        self,
+        f: impl FnOnce(Track) -> Result<Mapped, Error>,
+    ) -> Result<LoadingTrack<Mapped>, Error> {
+        Ok(match self {
+            Self::Unprepared { track_id } => LoadingTrack::Unprepared { track_id },
+            Self::Prepared(track) => LoadingTrack::Prepared(f(track)?),
+        })
+    }
+}
+
+impl LoadingTrack {
+    /// The id of the track being loaded.
+    pub fn track_id(&self) -> &str {
+        match self {
+            Self::Unprepared { track_id } => track_id,
+            Self::Prepared(track) => &track.track_id,
+        }
+    }
 }
 
 impl<Track> PlaybackState<Track> {
@@ -271,9 +301,8 @@ impl<Track> PlaybackState<Track> {
                 track: f(track)?,
                 reason,
             },
-            Self::Loading { track_id, prepared } => PlaybackState::Loading {
-                track_id,
-                prepared: prepared.map(f).transpose()?,
+            Self::Loading { track } => PlaybackState::Loading {
+                track: track.try_map_track(f)?,
             },
         })
     }
@@ -284,7 +313,7 @@ impl PlaybackState {
     pub fn track_id(&self) -> Option<&str> {
         match self {
             Self::Stopped => None,
-            Self::Loading { track_id, .. } => Some(track_id),
+            Self::Loading { track } => Some(track.track_id()),
             Self::Playing { track } | Self::Paused { track, .. } => Some(&track.track_id),
         }
     }

@@ -66,7 +66,7 @@ struct PlaybackPlayPauseTests {
     @Test("loading pauses")
     func loadingPauses() {
         let counts = Self.dispatch(
-            .loading(trackId: "track-1", target: Self.track(), previous: nil)
+            .loading(.prepared(track: Self.track()), previous: nil)
         )
         #expect(counts == (pause: 1, resume: 0))
     }

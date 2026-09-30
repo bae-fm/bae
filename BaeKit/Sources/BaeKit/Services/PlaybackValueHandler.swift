@@ -27,16 +27,10 @@ final class PlaybackValueHandler {
         switch state {
         case .stopped:
             playbackStore.stop()
-        case .loading(let trackId, let prepared):
-            if let prepared {
-                playbackStore.setLoadingTarget(
-                    trackId: trackId,
-                    target: prepared
-                )
-            }
-            else {
-                playbackStore.beginLoading(trackId: trackId)
-            }
+        case .loading(.unprepared(let trackId)):
+            playbackStore.beginLoading(trackId: trackId)
+        case .loading(.prepared(let track)):
+            playbackStore.setLoadingTarget(track)
         case .playing(let track):
             playbackStore.play(track: track)
         case .paused(let track, let reason):

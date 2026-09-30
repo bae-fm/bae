@@ -117,7 +117,6 @@ class PlaybackSeekProjectionTest {
         shadowOf(Looper.getMainLooper()).idle()
         player.applyPlaybackState(
             loadingState(
-                trackId = "track-1",
                 prepared = nowPlayingTrack(trackId = "track-1", durationMs = 100_000uL),
             ),
         )

@@ -25,6 +25,7 @@ import kotlinx.coroutines.launch
 import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.BridgeDurationClock
 import uniffi.bae_bridge.BridgeImageRef
+import uniffi.bae_bridge.BridgeLoadingTrack
 import uniffi.bae_bridge.BridgeNowPlayingTrack
 import uniffi.bae_bridge.BridgePlaybackContext
 import uniffi.bae_bridge.BridgePlaybackPauseReason
@@ -287,7 +288,7 @@ class BaeCorePlayer(
             }
 
             is BridgePlaybackValueState.Loading -> {
-                onLoading(state.prepared)
+                onLoading(state.track)
             }
 
             is BridgePlaybackValueState.Playing -> {
@@ -318,12 +319,16 @@ class BaeCorePlayer(
         publish()
     }
 
-    /** [prepared] is null until core has read the loading track. */
-    private fun onLoading(prepared: BridgeNowPlayingTrack?) {
+    private fun onLoading(track: BridgeLoadingTrack) {
         // Showing the loading track right away lets Media3 post the notification
         // and start the service while the app is still on screen; once the screen
-        // locks, Android may refuse the start. Without metadata, the prior track
-        // stays on screen.
+        // locks, Android may refuse the start. Until core has prepared it, the
+        // prior track stays on screen.
+        val prepared =
+            when (track) {
+                is BridgeLoadingTrack.Unprepared -> null
+                is BridgeLoadingTrack.Prepared -> track.track
+            }
         activate(Transport.BUFFERING, prepared)
     }
 

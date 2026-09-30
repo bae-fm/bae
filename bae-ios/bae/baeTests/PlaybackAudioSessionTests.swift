@@ -70,7 +70,7 @@ struct PlaybackAudioSessionTests {
     func interruptionDuringTrackTransitionPausesAndResumes() {
         let (service, spy) = makeService()
         service.updateNowPlaying(
-            state: .loading(trackId: "t1", prepared: nil),
+            state: .loading(track: .unprepared(trackId: "t1")),
             appHandle: fakeAppHandle
         )
 
@@ -126,19 +126,20 @@ struct PlaybackAudioSessionTests {
 
         service.updateNowPlaying(
             state: .loading(
-                trackId: "t1",
-                prepared: BridgeNowPlayingTrack(
-                    track: BridgePlayingTrack(
-                        trackId: "t1",
-                        durationMs: 180_000
-                    ),
-                    display: BridgeTrackDisplay(
-                        title: "Target Title",
-                        artistNames: "Artist Name",
-                        albumId: "album-1",
-                        releaseId: "release-1",
-                        albumTitle: "Album Title",
-                        coverImage: nil
+                track: .prepared(
+                    track: BridgeNowPlayingTrack(
+                        track: BridgePlayingTrack(
+                            trackId: "t1",
+                            durationMs: 180_000
+                        ),
+                        display: BridgeTrackDisplay(
+                            title: "Target Title",
+                            artistNames: "Artist Name",
+                            albumId: "album-1",
+                            releaseId: "release-1",
+                            albumTitle: "Album Title",
+                            coverImage: nil
+                        )
                     )
                 )
             ),
@@ -161,7 +162,7 @@ struct PlaybackAudioSessionTests {
             infoCenter.nowPlayingInfo?[MPMediaItemPropertyTitle] as? String
 
         service.updateNowPlaying(
-            state: .loading(trackId: "t1", prepared: nil),
+            state: .loading(track: .unprepared(trackId: "t1")),
             appHandle: fakeAppHandle
         )
 

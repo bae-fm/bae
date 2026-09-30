@@ -6,7 +6,8 @@ use bae_core::import::{ImportCommand, ImportDestination};
 use bae_core::library::LibraryManager;
 use bae_core::config::SidePauseCountdown;
 use bae_core::playback::{
-    PlaybackPauseBoundary, PlaybackPauseReason, PlaybackProgress, PlaybackSideCountdown,
+    LoadingTrack, PlaybackPauseBoundary, PlaybackPauseReason, PlaybackProgress,
+    PlaybackSideCountdown,
     PlaybackState, RepeatMode,
 };
 use bae_test_support as support;
@@ -331,8 +332,8 @@ async fn observe_boundary(
                 outcome.completed_for_finishing = true;
             }
             PlaybackProgress::StateChanged {
-                state: PlaybackState::Loading { track_id, .. },
-            } if track_id == incoming => {
+                state: PlaybackState::Loading { track },
+            } if track.track_id() == incoming => {
                 outcome.loading_for_incoming = true;
             }
             PlaybackProgress::StateChanged {

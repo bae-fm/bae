@@ -74,10 +74,9 @@ impl PlaybackService {
         self.retire_preloaded_track();
 
         // First Loading emission: bare, before the metadata lookup.
-        self.slot = PlaybackSlot::Loading {
+        self.slot = PlaybackSlot::Loading(LoadingTrack::Unprepared {
             track_id: track_id.to_string(),
-            prepared: None,
-        };
+        });
         self.sync_audio_state();
         self.emit_state();
 
@@ -112,10 +111,9 @@ impl PlaybackService {
 
         // Second Loading emission: carries the target track's metadata so the bar
         // switches from the prior track to the target while audio still downloads.
-        self.slot = PlaybackSlot::Loading {
-            track_id: track_id.to_string(),
-            prepared: Some(PlayingTrack::from_prepared(&prepared)),
-        };
+        self.slot = PlaybackSlot::Loading(LoadingTrack::Prepared(PlayingTrack::from_prepared(
+            &prepared,
+        )));
         self.emit_state();
 
         let start_position = start.position(prepared.total_pregap_ms());

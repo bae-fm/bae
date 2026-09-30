@@ -38,14 +38,12 @@ impl PlaybackService {
     pub(super) fn playback_state(&self) -> PlaybackState {
         match &self.slot {
             PlaybackSlot::Stopped => PlaybackState::Stopped,
-            PlaybackSlot::Loading { track_id, prepared } => PlaybackState::Loading {
-                track_id: track_id.clone(),
-                prepared: prepared.clone(),
+            PlaybackSlot::Loading(track) => PlaybackState::Loading {
+                track: track.clone(),
             },
             PlaybackSlot::Active(cur) => match &cur.phase {
                 TrackPhase::Loading { .. } => PlaybackState::Loading {
-                    track_id: cur.prepared.track_id.clone(),
-                    prepared: Some(PlayingTrack::from_prepared(&cur.prepared)),
+                    track: LoadingTrack::Prepared(PlayingTrack::from_prepared(&cur.prepared)),
                 },
                 TrackPhase::Playing => PlaybackState::Playing {
                     track: PlayingTrack::from_prepared(&cur.prepared),
@@ -89,7 +87,7 @@ impl PlaybackService {
             // the load's track attaches and install runs this again with the
             // resolved intent. This is what keeps the old ring from leaking audio
             // during play_track's swap and seek's rebuild.
-            PlaybackSlot::Loading { .. } => AudioState::Stopped,
+            PlaybackSlot::Loading(_) => AudioState::Stopped,
             PlaybackSlot::Active(cur) => match cur.phase.intent() {
                 PlayIntent::Playing => AudioState::Playing,
                 PlayIntent::Paused => AudioState::Paused,

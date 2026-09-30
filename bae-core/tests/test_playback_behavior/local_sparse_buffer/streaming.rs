@@ -378,7 +378,7 @@ async fn manual_next_into_a_pregap_track_rebuilds_and_keeps_streaming() {
     assert!(
         states
             .iter()
-            .any(|s| matches!(s, PlaybackState::Loading { track_id, .. } if *track_id == second)),
+            .any(|s| matches!(s, PlaybackState::Loading { track } if track.track_id() == second)),
         "a pregap skip rebuilds through play_track, which surfaces a Loading arc"
     );
 
@@ -502,7 +502,7 @@ async fn seek_immediately_after_playing_lands_and_plays_over_sparse_buffer() {
 }
 
 /// A seek into an unbuffered region surfaces a buffering state before it
-/// confirms: the seek target shows as `Loading { prepared: Some(..) }` (the
+/// confirms: the seek target shows as a prepared `Loading` (the
 /// metadata is already known — this is a seek, not a fresh play), and `Seeked`
 /// follows only once the demanded window lands and the ready-watcher fires. A
 /// fully-buffered file already has the window, so this arc only appears over a
@@ -524,10 +524,9 @@ async fn seek_into_an_unbuffered_region_emits_resolved_loading_before_seeked() {
             PlaybackProgress::StateChanged {
                 state:
                     PlaybackState::Loading {
-                        track_id,
-                        prepared: Some(_),
+                        track: LoadingTrack::Prepared(track),
                     },
-            } if track_id == last_track => {
+            } if track.track_id == last_track => {
                 saw_loading = true;
                 None
             }

@@ -112,8 +112,7 @@ public class PlaybackStore {
         let previousTrackId = nowPlaying.track?.track.trackId
         setNowPlaying(
             .loading(
-                trackId: trackId,
-                target: nil,
+                .unprepared(trackId: trackId),
                 previous: nowPlaying.track
             )
         )
@@ -125,11 +124,12 @@ public class PlaybackStore {
     /// The target's metadata arrived. It applies when already loading this
     /// track, or when playing or paused on it (core re-enters loading to buffer
     /// a seek); in any other state a newer load has moved on and it is dropped.
-    public func setLoadingTarget(trackId: String, target: BridgeNowPlayingTrack)
-    {
+    public func setLoadingTarget(_ target: BridgeNowPlayingTrack) {
+        let trackId = target.track.trackId
         let previous: BridgeNowPlayingTrack?
         switch nowPlaying {
-        case .loading(trackId, _, let priorFallback):
+        case .loading(let loading, let priorFallback)
+        where loading.trackId == trackId:
             previous = priorFallback
         case .playing(let current) where current.track.trackId == trackId,
             .paused(let current, _) where current.track.trackId == trackId:
@@ -142,11 +142,7 @@ public class PlaybackStore {
             return
         }
         setNowPlaying(
-            .loading(
-                trackId: trackId,
-                target: target,
-                previous: previous
-            )
+            .loading(.prepared(track: target), previous: previous)
         )
     }
 
@@ -501,16 +497,29 @@ extension BridgeSideCountdown {
     }
 }
 
+extension BridgeLoadingTrack {
+    /// The id of the track being loaded.
+    public var trackId: String {
+        switch self {
+        case .unprepared(let trackId): trackId
+        case .prepared(let track): track.track.trackId
+        }
+    }
+
+    /// The loading track once core has prepared it.
+    public var prepared: BridgeNowPlayingTrack? {
+        switch self {
+        case .unprepared: nil
+        case .prepared(let track): track
+        }
+    }
+}
+
 public enum NowPlaying {
     case stopped
-    /// A track is being prepared. `target` is its metadata once core resolves
-    /// it; until then `track` falls back to `previous`, what was on screen, so
-    /// the now-playing UI stays up.
-    case loading(
-        trackId: String,
-        target: BridgeNowPlayingTrack?,
-        previous: BridgeNowPlayingTrack?
-    )
+    /// A track is being loaded. Until core has prepared it, `track` falls back
+    /// to `previous`, what was on screen, so the now-playing UI stays up.
+    case loading(BridgeLoadingTrack, previous: BridgeNowPlayingTrack?)
     case playing(BridgeNowPlayingTrack)
     case paused(BridgeNowPlayingTrack, reason: BridgePlaybackPauseReason)
 
@@ -524,7 +533,7 @@ public enum NowPlaying {
     public var track: BridgeNowPlayingTrack? {
         switch self {
         case .playing(let t), .paused(let t, _): t
-        case .loading(_, let target, let previous): target ?? previous
+        case .loading(let loading, let previous): loading.prepared ?? previous
         case .stopped: nil
         }
     }
@@ -538,14 +547,8 @@ public enum NowPlaying {
             return track.display.artistNames
         case .playing(let track):
             return track.display.artistNames
-        case .loading(_, let target, let previous):
-            if let target {
-                return target.display.artistNames
-            }
-            if let previous {
-                return previous.display.artistNames
-            }
-            return nil
+        case .loading:
+            return track?.display.artistNames
         case .stopped:
             return nil
         }
@@ -554,7 +557,7 @@ public enum NowPlaying {
     /// The loading track's id, which can differ from the displayed track's.
     public var loadingTrackId: String? {
         switch self {
-        case .loading(let trackId, _, _): trackId
+        case .loading(let loading, _): loading.trackId
         case .playing, .paused, .stopped: nil
         }
     }

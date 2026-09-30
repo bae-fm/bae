@@ -494,10 +494,9 @@ impl PlaybackService {
         // segments — nothing to release).
         self.discard_current_track();
 
-        self.slot = PlaybackSlot::Loading {
+        self.slot = PlaybackSlot::Loading(LoadingTrack::Unprepared {
             track_id: track_id.to_string(),
-            prepared: None,
-        };
+        });
         self.emit_state();
 
         let resolved = match self.library_manager.resolve_track_audio(track_id).await {

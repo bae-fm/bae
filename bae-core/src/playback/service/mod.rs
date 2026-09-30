@@ -84,8 +84,9 @@ use crate::playback::stream_pipeline::{
 };
 pub(crate) use api::{dispatch_command, PlaybackCommand};
 pub use api::{
-    PlaybackHandle, PlaybackPauseBoundary, PlaybackPauseReason, PlaybackSideCountdown,
-    PlaybackSidePausePrompt, PlaybackState, PlaybackTrackInfo, PlaybackTrackSide,
+    LoadingTrack, PlaybackHandle, PlaybackPauseBoundary, PlaybackPauseReason,
+    PlaybackSideCountdown, PlaybackSidePausePrompt, PlaybackState, PlaybackTrackInfo,
+    PlaybackTrackSide,
 };
 use api::{SideBoundary, SidePauseDecision};
 use file_buffers::{prepare_track_for_playback, FileBuffers};
