@@ -16,6 +16,10 @@
 //! "W. Germany" — and the second are the codes a matrix inscription carries,
 //! which one catalog entry transcribes and a look-alike's may not, where the
 //! folder writes its catalog number and year for fields ranked above this.
+//! Nor does a word of any row's own title, artist or label name: a note
+//! writing those — "© 1982 Artist Name", "Distributed by Label Name" — names
+//! the album or the label, which the folder's text writes for every row, not
+//! the pressing, and those fields are ranked above this.
 
 use super::agreements::CandidateText;
 use crate::import::search::MetadataResult;
@@ -31,7 +35,18 @@ pub(crate) fn named_notes<'a>(
     text: &CandidateText,
 ) -> Vec<Vec<Option<String>>> {
     let rows: Vec<&[MetadataResult]> = rows.into_iter().collect();
-    let words: Vec<HashSet<String>> = rows.iter().map(|records| note_words(records)).collect();
+    let names = named_words(&rows);
+    let counted = |note: &str| note_words(note).filter(|word| !names.contains(word));
+    let words: Vec<HashSet<String>> = rows
+        .iter()
+        .map(|records| {
+            records
+                .iter()
+                .flat_map(|record| &record.notes)
+                .flat_map(|note| counted(note))
+                .collect()
+        })
+        .collect();
     let sets_apart = |row: usize, word: &String| {
         !words
             .iter()
@@ -56,17 +71,22 @@ pub(crate) fn named_notes<'a>(
         .collect()
 }
 
-/// The words a row's records' notes write that count.
-fn note_words(records: &[MetadataResult]) -> HashSet<String> {
-    records
-        .iter()
-        .flat_map(|record| &record.notes)
-        .flat_map(|note| counted(note))
+/// The words of the rows' own titles, artists and label names.
+fn named_words(rows: &[&[MetadataResult]]) -> HashSet<String> {
+    rows.iter()
+        .flat_map(|records| records.iter())
+        .flat_map(|record| {
+            std::iter::once(record.title.as_str())
+                .chain(record.artist.as_deref())
+                .chain(record.labels.iter().filter_map(|label| label.name()))
+        })
+        .flat_map(words)
         .collect()
 }
 
-/// The words of one note that count.
-fn counted(note: &str) -> impl Iterator<Item = String> {
+/// The words of one note long enough and not digits alone to count, before
+/// the rows' own names are left out.
+fn note_words(note: &str) -> impl Iterator<Item = String> {
     words(note).into_iter().filter(|word| {
         word.chars().count() >= 3 && !word.chars().all(char::is_numeric) && !is_stop_word(word)
     })

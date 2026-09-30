@@ -140,3 +140,30 @@ fn an_annotation_line_names_its_pressing() {
         vec![None, Some("Mastering SID: IFPI L002".to_string())]
     );
 }
+
+/// A note writing the album's artist or its label writes a name every row
+/// carries in its own fields, not the pressing: the folder stating those
+/// words names neither row, though only the first's notes write them.
+#[test]
+fn the_rows_own_names_in_a_note_name_no_pressing() {
+    let pressing = |id: u64, notes: &str| {
+        discogs(serde_json::json!({
+            "id": id,
+            "title": "Album Title",
+            "artists": [{ "id": 1, "name": "Artist Name" }],
+            "labels": [{ "id": 2, "name": "Label Name", "catno": "LN-100" }],
+            "notes": notes,
+        }))
+    };
+
+    assert_eq!(
+        named(
+            &[
+                pressing(7001, "© 1982 Artist Name.\r\nMarketed by Label Name."),
+                pressing(7002, ""),
+            ],
+            &folder("Artist Name - Album Title [Label Name LN-100]")
+        ),
+        vec![None, None]
+    );
+}

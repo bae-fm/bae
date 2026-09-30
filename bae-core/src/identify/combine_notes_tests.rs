@@ -211,3 +211,18 @@ fn the_notes_are_weighed_before_the_year() {
     );
     assert_eq!(offered(&outcome), vec!["rel-alpha", "rel-beta"]);
 }
+
+/// A note writing the album's artist names the album, not the pressing: the
+/// folder writing the artist's name sets no row apart, though only one row's
+/// notes write it.
+#[test]
+fn the_artist_s_name_in_a_note_keeps_the_tie() {
+    let outcome = by_catalog(
+        vec![
+            pressing("rel-alpha", &["© 1987 Artist One."]),
+            pressing("rel-beta", &[]),
+        ],
+        &folder("Artist One - Album One L1-100"),
+    );
+    assert_eq!(offered(&outcome), vec!["rel-alpha", "rel-beta"]);
+}
