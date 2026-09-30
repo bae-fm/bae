@@ -25,7 +25,7 @@ import kotlinx.coroutines.launch
 import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.BridgeDurationClock
 import uniffi.bae_bridge.BridgeImageRef
-import uniffi.bae_bridge.BridgeLoadingTrackInfo
+import uniffi.bae_bridge.BridgeNowPlayingTrack
 import uniffi.bae_bridge.BridgePlaybackContext
 import uniffi.bae_bridge.BridgePlaybackPauseReason
 import uniffi.bae_bridge.BridgePlaybackSourceKind
@@ -287,23 +287,11 @@ class BaeCorePlayer(
             }
 
             is BridgePlaybackValueState.Loading -> {
-                onLoading(state.trackId, state.track)
+                onLoading(state.prepared)
             }
 
             is BridgePlaybackValueState.Playing -> {
-                activate(
-                    Transport.READY,
-                    Current(
-                        meta(
-                            state.trackId,
-                            state.trackTitle,
-                            state.artistNames,
-                            state.albumTitle,
-                            state.coverImage,
-                        ),
-                        state.durationMs.toLong(),
-                    ),
-                )
+                activate(Transport.READY, state.track)
             }
 
             is BridgePlaybackValueState.Paused -> {
@@ -330,49 +318,49 @@ class BaeCorePlayer(
         publish()
     }
 
-    private fun onLoading(
-        trackId: String,
-        track: BridgeLoadingTrackInfo?,
-    ) {
+    /** [prepared] is null until core has read the loading track. */
+    private fun onLoading(prepared: BridgeNowPlayingTrack?) {
         // Showing the loading track right away lets Media3 post the notification
         // and start the service while the app is still on screen; once the screen
         // locks, Android may refuse the start. Without metadata, the prior track
         // stays on screen.
-        val current =
-            track?.let {
-                Current(
-                    meta(trackId, it.trackTitle, it.artistNames, it.albumTitle, it.coverImage),
-                    it.durationMs.toLong(),
-                )
-            }
-        activate(Transport.BUFFERING, current)
+        activate(Transport.BUFFERING, prepared)
     }
 
-    /** The track an activation makes current. [durationMs] is 0 when unknown. */
-    private data class Current(
-        val meta: Meta,
-        val durationMs: Long,
-    )
-
-    /** Enter play-when-ready for [transport]; a null [current] keeps the prior track. */
+    /** Enter play-when-ready for [transport]; a null [track] keeps the prior track. */
     private fun activate(
         transport: Transport,
-        current: Current?,
+        track: BridgeNowPlayingTrack?,
     ) {
         this.transport = transport
         playWhenReady = true
         sidePausePrompt = null
-        if (current != null) {
-            positionModel.setActiveTrack(
-                trackChanged = current.meta.trackId != playingTrackId,
-                rawDurationMs = current.durationMs,
-            )
-            playingTrackId = current.meta.trackId
-            currentMeta = current.meta
-            refreshArtwork(current.meta.coverImage)
+        if (track != null) {
+            makeCurrent(track)
         }
         publish()
         systemHooks.onPlaybackActivated()
+    }
+
+    /** Make [track] the current track. Its duration is 0 when unknown. */
+    private fun makeCurrent(track: BridgeNowPlayingTrack) {
+        val trackId = track.track.trackId
+        positionModel.setActiveTrack(
+            trackChanged = trackId != playingTrackId,
+            rawDurationMs = track.track.durationMs.toLong(),
+        )
+        playingTrackId = trackId
+        currentMeta =
+            Meta(
+                entryId = null,
+                trackId = trackId,
+                title = track.display.title,
+                artist = track.display.artistNames,
+                albumTitle = track.display.albumTitle,
+                durationClock = null,
+                coverImage = track.display.coverImage,
+            )
+        refreshArtwork(track.display.coverImage)
     }
 
     /**
@@ -409,22 +397,9 @@ class BaeCorePlayer(
     }
 
     private fun applyPaused(state: BridgePlaybackValueState.Paused) {
-        positionModel.setActiveTrack(
-            trackChanged = state.trackId != playingTrackId,
-            rawDurationMs = state.durationMs.toLong(),
-        )
         transport = Transport.READY
         playWhenReady = false
-        playingTrackId = state.trackId
-        currentMeta =
-            meta(
-                state.trackId,
-                state.trackTitle,
-                state.artistNames,
-                state.albumTitle,
-                state.coverImage,
-            )
-        refreshArtwork(state.coverImage)
+        makeCurrent(state.track)
         sidePausePrompt =
             when (val reason = state.reason) {
                 BridgePlaybackPauseReason.Manual -> null
@@ -444,23 +419,6 @@ class BaeCorePlayer(
         systemHooks.onPlaybackStopped()
         publish()
     }
-
-    private fun meta(
-        trackId: String,
-        title: String,
-        artist: String,
-        albumTitle: String,
-        coverImage: BridgeImageRef?,
-    ): Meta =
-        Meta(
-            entryId = null,
-            trackId = trackId,
-            title = title,
-            artist = artist,
-            albumTitle = albumTitle,
-            durationClock = null,
-            coverImage = coverImage,
-        )
 
     private fun onProgress(
         trackId: String,

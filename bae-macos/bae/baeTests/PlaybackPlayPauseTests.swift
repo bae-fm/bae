@@ -26,15 +26,20 @@ struct PlaybackPlayPauseTests {
         }
     }
 
-    private static func track() -> NowPlayingTrack {
-        NowPlayingTrack(
-            trackId: "track-1",
-            trackTitle: "Track Title",
-            artistNames: "Artist Name",
-            albumId: "album-1",
-            releaseId: "release-1",
-            coverImage: nil,
-            durationMs: 180_000
+    private static func track() -> BridgeNowPlayingTrack {
+        BridgeNowPlayingTrack(
+            track: BridgePlayingTrack(
+                trackId: "track-1",
+                durationMs: 180_000
+            ),
+            display: BridgeTrackDisplay(
+                title: "Track Title",
+                artistNames: "Artist Name",
+                albumId: "album-1",
+                releaseId: "release-1",
+                albumTitle: "Album Title",
+                coverImage: nil
+            )
         )
     }
 

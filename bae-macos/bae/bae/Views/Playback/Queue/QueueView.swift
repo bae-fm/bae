@@ -281,14 +281,19 @@ struct QueueView: View {
                     shuffled: true
                 )
                 store.play(
-                    track: NowPlayingTrack(
-                        trackId: "preview-now-playing",
-                        trackTitle: PreviewData.nowPlayingTitle,
-                        artistNames: PreviewData.nowPlayingArtist,
-                        albumId: "preview-album",
-                        releaseId: "preview-release",
-                        coverImage: nil,
-                        durationMs: 214_000
+                    track: BridgeNowPlayingTrack(
+                        track: BridgePlayingTrack(
+                            trackId: "preview-now-playing",
+                            durationMs: 214_000
+                        ),
+                        display: BridgeTrackDisplay(
+                            title: PreviewData.nowPlayingTitle,
+                            artistNames: PreviewData.nowPlayingArtist,
+                            albumId: "preview-album",
+                            releaseId: "preview-release",
+                            albumTitle: "Album Title",
+                            coverImage: nil
+                        )
                     )
                 )
                 return store
@@ -303,8 +308,8 @@ struct QueueView: View {
         var body: some View {
             QueueView(
                 isActive: store.nowPlaying.isActive,
-                nowPlayingTitle: store.nowPlaying.track?.trackTitle,
-                nowPlayingArtist: store.nowPlaying.track?.artistNames,
+                nowPlayingTitle: store.nowPlaying.track?.display.title,
+                nowPlayingArtist: store.nowPlaying.track?.display.artistNames,
                 nowPlayingCover: nil,
                 isPlaying: store.nowPlaying.isPlaying,
                 isLoading: store.nowPlaying.loadingTrackId != nil,

@@ -10,18 +10,12 @@ import os.log
 
 private let logger = Logger.bae("MediaControlService")
 
-/// The Now Playing fields for a library track: what `setNowPlaying` writes into
-/// `MPNowPlayingInfoCenter`, grouped so the call takes one metadata value rather
-/// than several positional parameters. `playbackRate` (1.0 playing, 0.0 paused)
-/// is the only field that differs between the playing and paused states.
+/// What `setNowPlaying` writes into `MPNowPlayingInfoCenter` for a library
+/// track: the track, and `playbackRate`, 1.0 playing and 0.0 otherwise.
 /// Internal — construction happens only inside `updateNowPlaying(state:appHandle:)`
 /// via `libraryMetadata(for:)`, both in this module.
 struct NowPlayingMetadata {
-    let trackTitle: String
-    let artistNames: String
-    let albumTitle: String
-    let durationMs: UInt64
-    let coverImage: BridgeImageRef?
+    let track: BridgeNowPlayingTrack
     let playbackRate: Double
 }
 
@@ -153,55 +147,14 @@ public final class MediaControlService: @unchecked Sendable {
         for state: BridgePlaybackValueState
     ) -> NowPlayingMetadata? {
         switch state {
-        case .playing(
-            _,
-            let trackTitle,
-            let artistNames,
-            _,
-            _,
-            let albumTitle,
-            let coverImage,
-            let durationMs
-        ),
-            .paused(
-                _,
-                let trackTitle,
-                let artistNames,
-                _,
-                _,
-                let albumTitle,
-                let coverImage,
-                let durationMs,
-                _
-            ):
-            let playbackRate: Double =
-                if case .playing = state {
-                    1.0
-                }
-                else {
-                    0.0
-                }
-            return NowPlayingMetadata(
-                trackTitle: trackTitle,
-                artistNames: artistNames,
-                albumTitle: albumTitle,
-                durationMs: durationMs,
-                coverImage: coverImage,
-                playbackRate: playbackRate
-            )
-
-        case .loading(_, let track):
-            return track.map { track in
-                NowPlayingMetadata(
-                    trackTitle: track.trackTitle,
-                    artistNames: track.artistNames,
-                    albumTitle: track.albumTitle,
-                    durationMs: track.durationMs,
-                    coverImage: track.coverImage,
-                    playbackRate: 0.0
-                )
+        case .playing(let track):
+            return NowPlayingMetadata(track: track, playbackRate: 1.0)
+        case .paused(let track, _):
+            return NowPlayingMetadata(track: track, playbackRate: 0.0)
+        case .loading(_, let prepared):
+            return prepared.map {
+                NowPlayingMetadata(track: $0, playbackRate: 0.0)
             }
-
         case .stopped:
             return nil
         }
@@ -216,13 +169,14 @@ public final class MediaControlService: @unchecked Sendable {
         on infoCenter: MPNowPlayingInfoCenter
     ) {
         var info = infoCenter.nowPlayingInfo ?? [:]
-        info[MPMediaItemPropertyTitle] = metadata.trackTitle
-        info[MPMediaItemPropertyArtist] = metadata.artistNames
-        info[MPMediaItemPropertyAlbumTitle] = metadata.albumTitle
-        trackDuration(metadata.durationMs, into: &info)
+        let display = metadata.track.display
+        info[MPMediaItemPropertyTitle] = display.title
+        info[MPMediaItemPropertyArtist] = display.artistNames
+        info[MPMediaItemPropertyAlbumTitle] = display.albumTitle
+        trackDuration(metadata.track.track.durationMs, into: &info)
         info[MPNowPlayingInfoPropertyPlaybackRate] = metadata.playbackRate
         applyArtwork(
-            image: metadata.coverImage,
+            image: display.coverImage,
             appHandle: appHandle,
             into: &info
         )

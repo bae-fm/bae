@@ -1,16 +1,18 @@
 package fm.bae.app.playback
 
 import uniffi.bae_bridge.BridgeImageRef
-import uniffi.bae_bridge.BridgeLoadingTrackInfo
 import uniffi.bae_bridge.BridgeMediaControlPlayback
 import uniffi.bae_bridge.BridgeMediaControlValues
+import uniffi.bae_bridge.BridgeNowPlayingTrack
 import uniffi.bae_bridge.BridgePlaybackPauseReason
 import uniffi.bae_bridge.BridgePlaybackPosition
 import uniffi.bae_bridge.BridgePlaybackValueState
 import uniffi.bae_bridge.BridgePlaybackValues
+import uniffi.bae_bridge.BridgePlayingTrack
 import uniffi.bae_bridge.BridgePreviewState
 import uniffi.bae_bridge.BridgePreviewValues
 import uniffi.bae_bridge.BridgeRepeatMode
+import uniffi.bae_bridge.BridgeTrackDisplay
 
 internal fun playbackValues(
     state: BridgePlaybackValueState,
@@ -42,9 +44,31 @@ internal fun playbackValues(
             ),
     )
 
+internal fun nowPlayingTrack(
+    trackId: String = "track-1",
+    title: String = "Track Title",
+    artistNames: String = "Artist Name",
+    albumId: String = "album-1",
+    releaseId: String = "release-1",
+    albumTitle: String = "Album Title",
+    coverImage: BridgeImageRef? = null,
+    durationMs: ULong = 180_000uL,
+) = BridgeNowPlayingTrack(
+    track = BridgePlayingTrack(trackId = trackId, durationMs = durationMs),
+    display =
+        BridgeTrackDisplay(
+            title = title,
+            artistNames = artistNames,
+            albumId = albumId,
+            releaseId = releaseId,
+            albumTitle = albumTitle,
+            coverImage = coverImage,
+        ),
+)
+
 internal fun playingState(
     trackId: String = "track-1",
-    trackTitle: String = "Track Title",
+    title: String = "Track Title",
     artistNames: String = "Artist Name",
     albumId: String = "album-1",
     releaseId: String = "release-1",
@@ -52,19 +76,12 @@ internal fun playingState(
     coverImage: BridgeImageRef? = null,
     durationMs: ULong = 180_000uL,
 ) = BridgePlaybackValueState.Playing(
-    trackId = trackId,
-    trackTitle = trackTitle,
-    artistNames = artistNames,
-    albumId = albumId,
-    releaseId = releaseId,
-    albumTitle = albumTitle,
-    coverImage = coverImage,
-    durationMs = durationMs,
+    nowPlayingTrack(trackId, title, artistNames, albumId, releaseId, albumTitle, coverImage, durationMs),
 )
 
 internal fun pausedState(
     trackId: String = "track-1",
-    trackTitle: String = "Track Title",
+    title: String = "Track Title",
     artistNames: String = "Artist Name",
     albumId: String = "album-1",
     releaseId: String = "release-1",
@@ -73,21 +90,14 @@ internal fun pausedState(
     durationMs: ULong = 180_000uL,
     reason: BridgePlaybackPauseReason = BridgePlaybackPauseReason.Manual,
 ) = BridgePlaybackValueState.Paused(
-    trackId = trackId,
-    trackTitle = trackTitle,
-    artistNames = artistNames,
-    albumId = albumId,
-    releaseId = releaseId,
-    albumTitle = albumTitle,
-    coverImage = coverImage,
-    durationMs = durationMs,
-    reason = reason,
+    nowPlayingTrack(trackId, title, artistNames, albumId, releaseId, albumTitle, coverImage, durationMs),
+    reason,
 )
 
 internal fun loadingState(
     trackId: String,
-    track: BridgeLoadingTrackInfo?,
-) = BridgePlaybackValueState.Loading(trackId, track)
+    prepared: BridgeNowPlayingTrack?,
+) = BridgePlaybackValueState.Loading(trackId, prepared)
 
 internal fun BaeCorePlayer.applyPlaybackState(state: BridgePlaybackValueState) {
     applyValues(playbackValues(state))

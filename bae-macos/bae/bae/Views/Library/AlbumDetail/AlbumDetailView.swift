@@ -69,7 +69,8 @@ struct AlbumDetailView: View {
                             )
                         },
                         releaseCursor: releaseCursorBinding(summary: summary),
-                        currentTrackId: playbackStore.nowPlaying.track?.trackId,
+                        currentTrackId: playbackStore.nowPlaying.track?.track
+                            .trackId,
                         loadingTrackId: playbackStore.nowPlaying.loadingTrackId,
                         isPlaying: playbackStore.nowPlaying.isPlaying,
                         onClose: { uiStore.closeAlbumDetail() },

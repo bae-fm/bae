@@ -87,7 +87,7 @@ class PlaybackControlsTest {
     private fun playingEvent() =
         playingState(
             trackId = "cur",
-            trackTitle = "Title cur",
+            title = "Title cur",
             artistNames = "Artist Name",
             albumId = "album-1",
             albumTitle = "Album Title",
@@ -98,7 +98,7 @@ class PlaybackControlsTest {
     private fun pausedEvent() =
         pausedState(
             trackId = "cur",
-            trackTitle = "Title cur",
+            title = "Title cur",
             artistNames = "Artist Name",
             albumId = "album-1",
             albumTitle = "Album Title",

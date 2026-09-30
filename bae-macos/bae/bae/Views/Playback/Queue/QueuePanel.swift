@@ -32,14 +32,14 @@ struct QueuePanel: View {
         let np = playbackStore.nowPlaying
         let track = np.track
         let cover: ImageContent? =
-            track?.coverImage
+            track?.display.coverImage
             .map {
                 .libraryImage($0)
             }
         QueueView(
             isActive: np.isActive,
-            nowPlayingTitle: track?.trackTitle,
-            nowPlayingArtist: track?.artistNames,
+            nowPlayingTitle: track?.display.title,
+            nowPlayingArtist: track?.display.artistNames,
             nowPlayingCover: cover,
             isPlaying: np.isPlaying,
             isLoading: np.loadingTrackId != nil,
@@ -120,14 +120,19 @@ struct QueuePanel: View {
             shuffled: true
         )
         store.play(
-            track: NowPlayingTrack(
-                trackId: "t-np",
-                trackTitle: PreviewData.nowPlayingTitle,
-                artistNames: PreviewData.nowPlayingArtist,
-                albumId: "a-01",
-                releaseId: "r-01",
-                coverImage: nil,
-                durationMs: 214_000
+            track: BridgeNowPlayingTrack(
+                track: BridgePlayingTrack(
+                    trackId: "t-np",
+                    durationMs: 214_000
+                ),
+                display: BridgeTrackDisplay(
+                    title: PreviewData.nowPlayingTitle,
+                    artistNames: PreviewData.nowPlayingArtist,
+                    albumId: "a-01",
+                    releaseId: "r-01",
+                    albumTitle: "Album Title",
+                    coverImage: nil
+                )
             )
         )
         return queuePanelPreview(store: store, queue: queue)

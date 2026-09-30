@@ -15,7 +15,6 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
-import uniffi.bae_bridge.BridgeLoadingTrackInfo
 
 /**
  * When playback activates, the player must project a non-empty timeline in
@@ -43,13 +42,10 @@ class PlaybackActivationTest {
     }
 
     private fun loadingTrack() =
-        BridgeLoadingTrackInfo(
-            trackTitle = "Track Title",
-            artistNames = "Artist Name",
+        nowPlayingTrack(
+            trackId = "t1",
             albumId = "alb-1",
             releaseId = "rel-1",
-            albumTitle = "Album Title",
-            coverImage = null,
             durationMs = 210_000uL,
         )
 
@@ -82,7 +78,7 @@ class PlaybackActivationTest {
         player.applyPlaybackState(
             playingState(
                 trackId = "t1",
-                trackTitle = "First Title",
+                title = "First Title",
                 durationMs = 200_000uL,
             ),
         )

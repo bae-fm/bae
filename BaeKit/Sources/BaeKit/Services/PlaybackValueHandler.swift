@@ -27,50 +27,20 @@ final class PlaybackValueHandler {
         switch state {
         case .stopped:
             playbackStore.stop()
-        case .loading(let trackId, let track):
-            applyLoading(trackId: trackId, track: track)
-        case .playing(
-            let trackId,
-            let trackTitle,
-            let artistNames,
-            let albumId,
-            let releaseId,
-            _,
-            let coverImage,
-            let durationMs
-        ):
-            applyPlaying(
-                NowPlayingFields(
+        case .loading(let trackId, let prepared):
+            if let prepared {
+                playbackStore.setLoadingTarget(
                     trackId: trackId,
-                    trackTitle: trackTitle,
-                    artistNames: artistNames,
-                    albumId: albumId,
-                    releaseId: releaseId,
-                    coverImage: coverImage,
-                    durationMs: durationMs
+                    target: prepared
                 )
-            )
-        case .paused(
-            let trackId,
-            let trackTitle,
-            let artistNames,
-            let albumId,
-            let releaseId,
-            _,
-            let coverImage,
-            let durationMs,
-            let reason
-        ):
-            let fields = NowPlayingFields(
-                trackId: trackId,
-                trackTitle: trackTitle,
-                artistNames: artistNames,
-                albumId: albumId,
-                releaseId: releaseId,
-                coverImage: coverImage,
-                durationMs: durationMs
-            )
-            playbackStore.pause(track: fields.nowPlayingTrack(), reason: reason)
+            }
+            else {
+                playbackStore.beginLoading(trackId: trackId)
+            }
+        case .playing(let track):
+            playbackStore.play(track: track)
+        case .paused(let track, let reason):
+            playbackStore.pause(track: track, reason: reason)
         }
     }
 
@@ -102,54 +72,5 @@ final class PlaybackValueHandler {
 
     func applyQueueSnapshot(_ snapshot: BridgeQueueSnapshot) {
         playbackStore.applyQueueSnapshot(snapshot)
-    }
-
-    private func applyPlaying(_ fields: NowPlayingFields) {
-        playbackStore.play(track: fields.nowPlayingTrack())
-    }
-
-    private func applyLoading(
-        trackId: String,
-        track: BridgeLoadingTrackInfo?
-    ) {
-        if let track {
-            playbackStore.setLoadingTarget(
-                trackId: trackId,
-                target: NowPlayingTrack(
-                    trackId: trackId,
-                    trackTitle: track.trackTitle,
-                    artistNames: track.artistNames,
-                    albumId: track.albumId,
-                    releaseId: track.releaseId,
-                    coverImage: track.coverImage,
-                    durationMs: track.durationMs
-                )
-            )
-        }
-        else {
-            playbackStore.beginLoading(trackId: trackId)
-        }
-    }
-}
-
-private struct NowPlayingFields {
-    let trackId: String
-    let trackTitle: String
-    let artistNames: String
-    let albumId: String
-    let releaseId: String
-    let coverImage: BridgeImageRef?
-    let durationMs: UInt64
-
-    func nowPlayingTrack() -> NowPlayingTrack {
-        NowPlayingTrack(
-            trackId: trackId,
-            trackTitle: trackTitle,
-            artistNames: artistNames,
-            albumId: albumId,
-            releaseId: releaseId,
-            coverImage: coverImage,
-            durationMs: durationMs
-        )
     }
 }

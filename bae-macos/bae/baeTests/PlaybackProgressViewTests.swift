@@ -149,14 +149,19 @@ struct PlaybackProgressViewTests {
     func seekUpdatesTimeline() async throws {
         let store = PlaybackStore()
         store.play(
-            track: NowPlayingTrack(
-                trackId: "track",
-                trackTitle: "Track Title",
-                artistNames: "Artist Name",
-                albumId: "album",
-                releaseId: "release",
-                coverImage: nil,
-                durationMs: 180_000
+            track: BridgeNowPlayingTrack(
+                track: BridgePlayingTrack(
+                    trackId: "track",
+                    durationMs: 180_000
+                ),
+                display: BridgeTrackDisplay(
+                    title: "Track Title",
+                    artistNames: "Artist Name",
+                    albumId: "album",
+                    releaseId: "release",
+                    albumTitle: "Album Title",
+                    coverImage: nil
+                )
             )
         )
         _ = store.updatePlaybackProgress(

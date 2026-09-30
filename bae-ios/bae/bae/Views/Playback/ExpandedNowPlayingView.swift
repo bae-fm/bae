@@ -40,7 +40,7 @@ struct ExpandedNowPlayingView: View {
         }
     }
 
-    private func player(track: NowPlayingTrack) -> some View {
+    private func player(track: BridgeNowPlayingTrack) -> some View {
         VStack(spacing: ThemeSpace.section) {
             HStack {
                 Button {
@@ -53,16 +53,16 @@ struct ExpandedNowPlayingView: View {
                 Spacer(minLength: 0)
             }
 
-            ImageView(imageRef: track.coverImage, pointSize: 320)
+            ImageView(imageRef: track.display.coverImage, pointSize: 320)
                 .aspectRatio(1, contentMode: .fit)
                 .frame(maxWidth: .infinity)
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.cover))
 
             VStack(alignment: .leading, spacing: ThemeSpace.inline) {
-                Text(track.trackTitle)
+                Text(track.display.title)
                     .themeText(.hero)
                     .lineLimit(1)
-                Text(track.artistNames)
+                Text(track.display.artistNames)
                     .themeText(.heading)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)

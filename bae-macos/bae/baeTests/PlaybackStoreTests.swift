@@ -4,15 +4,20 @@ import Testing
 
 @testable import bae
 
-private func makeTrack(_ id: String) -> NowPlayingTrack {
-    NowPlayingTrack(
-        trackId: id,
-        trackTitle: "Title \(id)",
-        artistNames: "Artist Name",
-        albumId: "album-1",
-        releaseId: "release-1",
-        coverImage: nil,
-        durationMs: 0
+private func makeTrack(_ id: String) -> BridgeNowPlayingTrack {
+    BridgeNowPlayingTrack(
+        track: BridgePlayingTrack(
+            trackId: id,
+            durationMs: 0
+        ),
+        display: BridgeTrackDisplay(
+            title: "Title \(id)",
+            artistNames: "Artist Name",
+            albumId: "album-1",
+            releaseId: "release-1",
+            albumTitle: "Album Title",
+            coverImage: nil
+        )
     )
 }
 
@@ -236,7 +241,7 @@ struct PlaybackStoreBeginLoadingTests {
 
         store.beginLoading(trackId: "b")
 
-        #expect(store.nowPlaying.track?.trackId == "a")
+        #expect(store.nowPlaying.track?.track.trackId == "a")
         #expect(store.nowPlaying.isActive)
         #expect(store.nowPlaying.loadingTrackId == "b")
     }
@@ -249,7 +254,7 @@ struct PlaybackStoreBeginLoadingTests {
 
         store.beginLoading(trackId: "b")
 
-        #expect(store.nowPlaying.track?.trackId == "a")
+        #expect(store.nowPlaying.track?.track.trackId == "a")
         #expect(store.nowPlaying.loadingTrackId == "b")
     }
 
@@ -260,10 +265,10 @@ struct PlaybackStoreBeginLoadingTests {
         store.play(track: makeTrack("a"))
 
         store.beginLoading(trackId: "b")
-        #expect(store.nowPlaying.track?.trackId == "a")
+        #expect(store.nowPlaying.track?.track.trackId == "a")
 
         store.setLoadingTarget(trackId: "b", target: makeTrack("b"))
-        #expect(store.nowPlaying.track?.trackId == "b")
+        #expect(store.nowPlaying.track?.track.trackId == "b")
         #expect(store.nowPlaying.loadingTrackId == "b")
         #expect(store.nowPlaying.isActive)
     }
@@ -278,7 +283,7 @@ struct PlaybackStoreBeginLoadingTests {
         store.setLoadingTarget(trackId: "stale", target: makeTrack("stale"))
 
         #expect(store.nowPlaying.loadingTrackId == "b")
-        #expect(store.nowPlaying.track?.trackId == "a")
+        #expect(store.nowPlaying.track?.track.trackId == "a")
     }
 
     @MainActor
@@ -304,7 +309,7 @@ struct PlaybackStoreBeginLoadingTests {
         store.setLoadingTarget(trackId: "a", target: makeTrack("a"))
 
         #expect(store.nowPlaying.loadingTrackId == "a")
-        #expect(store.nowPlaying.track?.trackId == "a")
+        #expect(store.nowPlaying.track?.track.trackId == "a")
         #expect(store.nowPlaying.isActive)
     }
 
@@ -317,7 +322,7 @@ struct PlaybackStoreBeginLoadingTests {
         store.setLoadingTarget(trackId: "a", target: makeTrack("a"))
 
         #expect(store.nowPlaying.loadingTrackId == "a")
-        #expect(store.nowPlaying.track?.trackId == "a")
+        #expect(store.nowPlaying.track?.track.trackId == "a")
     }
 
     /// Without a bare loading state first, a target for another track is stale.
@@ -330,7 +335,7 @@ struct PlaybackStoreBeginLoadingTests {
         store.setLoadingTarget(trackId: "b", target: makeTrack("b"))
 
         #expect(store.nowPlaying.loadingTrackId == nil)
-        #expect(store.nowPlaying.track?.trackId == "a")
+        #expect(store.nowPlaying.track?.track.trackId == "a")
     }
 }
 

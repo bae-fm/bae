@@ -65,7 +65,7 @@ class GetStateCurrentIndexTest {
         player.applyPlaybackState(
             playingState(
                 trackId = "cur",
-                trackTitle = "Title cur",
+                title = "Title cur",
                 artistNames = "Artist Name",
                 albumId = "album-1",
                 albumTitle = "Album Title",

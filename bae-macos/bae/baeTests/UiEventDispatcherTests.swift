@@ -49,6 +49,20 @@ struct UiEventDispatcherControlTests {
     }
 }
 
+private let playingState = BridgePlaybackValueState.playing(
+    track: BridgeNowPlayingTrack(
+        track: BridgePlayingTrack(trackId: "track-1", durationMs: 120_000),
+        display: BridgeTrackDisplay(
+            title: "Track Title",
+            artistNames: "Artist Name",
+            albumId: "album-1",
+            releaseId: "release-1",
+            albumTitle: "Album Title",
+            coverImage: nil
+        )
+    )
+)
+
 @MainActor
 @Suite("AppService media control", .serialized)
 struct AppServiceMediaControlTests {
@@ -61,16 +75,7 @@ struct AppServiceMediaControlTests {
         let appService = makeAppService(handle: handle)
         appService.startCommonSubscriptions()
 
-        let state = BridgePlaybackValueState.playing(
-            trackId: "track-1",
-            trackTitle: "Track Title",
-            artistNames: "Artist Name",
-            albumId: "album-1",
-            releaseId: "release-1",
-            albumTitle: "Album Title",
-            coverImage: nil,
-            durationMs: 120_000
-        )
+        let state = playingState
         let position = BridgePlaybackPosition(
             trackId: "track-1",
             positionMs: 30_000,

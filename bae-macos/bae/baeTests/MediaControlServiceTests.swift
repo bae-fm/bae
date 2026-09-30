@@ -110,14 +110,20 @@ private let previewTarget = BridgePreviewTarget(
 
 private let libraryPlayback = BridgeMediaControlPlayback.library(
     state: .playing(
-        trackId: "track-1",
-        trackTitle: "Track Title",
-        artistNames: "Artist Name",
-        albumId: "album-1",
-        releaseId: "release-1",
-        albumTitle: "Album Title",
-        coverImage: nil,
-        durationMs: 200_000
+        track: BridgeNowPlayingTrack(
+            track: BridgePlayingTrack(
+                trackId: "track-1",
+                durationMs: 200_000
+            ),
+            display: BridgeTrackDisplay(
+                title: "Track Title",
+                artistNames: "Artist Name",
+                albumId: "album-1",
+                releaseId: "release-1",
+                albumTitle: "Album Title",
+                coverImage: nil
+            )
+        )
     ),
     position: BridgeMediaControlPosition(
         trackId: "track-1",

@@ -399,7 +399,9 @@ struct MainAppMenuCommands: Commands {
                 goToNowPlaying()
             }
             .keyboardShortcut("l", modifiers: .command)
-            .disabled(target?.playbackStore.nowPlaying.track?.albumId == nil)
+            .disabled(
+                target?.playbackStore.nowPlaying.track?.display.albumId == nil
+            )
 
             Button("Toggle Queue") {
                 let target = requireTarget()

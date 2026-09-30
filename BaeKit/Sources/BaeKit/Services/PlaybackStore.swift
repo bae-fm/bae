@@ -109,7 +109,7 @@ public class PlaybackStore {
     /// now-playing bar, and on iOS the full-screen player, would close on every
     /// track change.
     public func beginLoading(trackId: String) {
-        let previousTrackId = nowPlaying.track?.trackId
+        let previousTrackId = nowPlaying.track?.track.trackId
         setNowPlaying(
             .loading(
                 trackId: trackId,
@@ -125,13 +125,14 @@ public class PlaybackStore {
     /// The target's metadata arrived. It applies when already loading this
     /// track, or when playing or paused on it (core re-enters loading to buffer
     /// a seek); in any other state a newer load has moved on and it is dropped.
-    public func setLoadingTarget(trackId: String, target: NowPlayingTrack) {
-        let previous: NowPlayingTrack?
+    public func setLoadingTarget(trackId: String, target: BridgeNowPlayingTrack)
+    {
+        let previous: BridgeNowPlayingTrack?
         switch nowPlaying {
         case .loading(trackId, _, let priorFallback):
             previous = priorFallback
-        case .playing(let current) where current.trackId == trackId,
-            .paused(let current, _) where current.trackId == trackId:
+        case .playing(let current) where current.track.trackId == trackId,
+            .paused(let current, _) where current.track.trackId == trackId:
             previous = current
         default:
             // Logged so a stuck now-playing bar can be traced.
@@ -149,13 +150,15 @@ public class PlaybackStore {
         )
     }
 
-    public func pause(track: NowPlayingTrack, reason: BridgePlaybackPauseReason)
-    {
+    public func pause(
+        track: BridgeNowPlayingTrack,
+        reason: BridgePlaybackPauseReason
+    ) {
         preparePlaybackPosition(for: track)
         setNowPlaying(.paused(track, reason: reason))
     }
 
-    public func play(track: NowPlayingTrack) {
+    public func play(track: BridgeNowPlayingTrack) {
         preparePlaybackPosition(for: track)
         setNowPlaying(.playing(track))
     }
@@ -211,7 +214,7 @@ public class PlaybackStore {
     }
 
     private func acceptsPlaybackPosition(trackId: String) -> Bool {
-        guard let currentTrackId = nowPlaying.track?.trackId,
+        guard let currentTrackId = nowPlaying.track?.track.trackId,
             currentTrackId != trackId
         else {
             return true
@@ -242,7 +245,7 @@ public class PlaybackStore {
             progress: clampedRatio
         )
         let pendingSeek = PendingSeek(
-            trackId: nowPlaying.track?.trackId
+            trackId: nowPlaying.track?.track.trackId
         )
         return publish(snapshot, state: .projected(snapshot, pendingSeek))
     }
@@ -256,8 +259,8 @@ public class PlaybackStore {
         queueItemsAddedSubject.send(count)
     }
 
-    private func preparePlaybackPosition(for track: NowPlayingTrack) {
-        if track.trackId != nowPlaying.track?.trackId {
+    private func preparePlaybackPosition(for track: BridgeNowPlayingTrack) {
+        if track.track.trackId != nowPlaying.track?.track.trackId {
             playbackPosition = playbackPosition?.withoutProjection
         }
     }
@@ -441,35 +444,6 @@ private struct PendingSeek {
 
 // ── NowPlaying ─────────────────────────────────────────────────────────
 
-public struct NowPlayingTrack {
-    public let trackId: String
-    public let trackTitle: String
-    public let artistNames: String
-    public let albumId: String
-    /// The release the track is on, which may be any of its album's releases.
-    public let releaseId: String
-    public let coverImage: BridgeImageRef?
-    public let durationMs: UInt64
-
-    public init(
-        trackId: String,
-        trackTitle: String,
-        artistNames: String,
-        albumId: String,
-        releaseId: String,
-        coverImage: BridgeImageRef?,
-        durationMs: UInt64
-    ) {
-        self.trackId = trackId
-        self.trackTitle = trackTitle
-        self.artistNames = artistNames
-        self.albumId = albumId
-        self.releaseId = releaseId
-        self.coverImage = coverImage
-        self.durationMs = durationMs
-    }
-}
-
 extension BridgePlaybackPauseReason {
     public var sidePausePrompt: BridgeSidePausePrompt? {
         guard case .sideEnded(prompt: let prompt) = self else {
@@ -534,11 +508,11 @@ public enum NowPlaying {
     /// the now-playing UI stays up.
     case loading(
         trackId: String,
-        target: NowPlayingTrack?,
-        previous: NowPlayingTrack?
+        target: BridgeNowPlayingTrack?,
+        previous: BridgeNowPlayingTrack?
     )
-    case playing(NowPlayingTrack)
-    case paused(NowPlayingTrack, reason: BridgePlaybackPauseReason)
+    case playing(BridgeNowPlayingTrack)
+    case paused(BridgeNowPlayingTrack, reason: BridgePlaybackPauseReason)
 
     public var isActive: Bool {
         if case .stopped = self {
@@ -547,7 +521,7 @@ public enum NowPlaying {
         return true
     }
 
-    public var track: NowPlayingTrack? {
+    public var track: BridgeNowPlayingTrack? {
         switch self {
         case .playing(let t), .paused(let t, _): t
         case .loading(_, let target, let previous): target ?? previous
@@ -561,15 +535,15 @@ public enum NowPlaying {
             if let prompt = reason.sidePausePrompt {
                 return prompt.title()
             }
-            return track.artistNames
+            return track.display.artistNames
         case .playing(let track):
-            return track.artistNames
+            return track.display.artistNames
         case .loading(_, let target, let previous):
             if let target {
-                return target.artistNames
+                return target.display.artistNames
             }
             if let previous {
-                return previous.artistNames
+                return previous.display.artistNames
             }
             return nil
         case .stopped:

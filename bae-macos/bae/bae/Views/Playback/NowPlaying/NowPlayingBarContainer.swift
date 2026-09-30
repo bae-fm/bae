@@ -22,12 +22,12 @@ struct NowPlayingBarContainer: View {
         let np = playbackStore.nowPlaying
         let track = np.track
         let cover: ImageContent? =
-            track?.coverImage
+            track?.display.coverImage
             .map {
                 .libraryImage($0)
             }
         NowPlayingBar(
-            trackTitle: track?.trackTitle,
+            trackTitle: track?.display.title,
             secondaryLine: np.secondaryLine,
             cover: cover,
             isPlaying: np.isPlaying,
@@ -96,14 +96,19 @@ struct NowPlayingBarContainer: View {
     #Preview("Playing") {
         let store = PreviewData.queueStore(manualCount: 2)
         store.play(
-            track: NowPlayingTrack(
-                trackId: "t-np",
-                trackTitle: PreviewData.nowPlayingTitle,
-                artistNames: PreviewData.nowPlayingArtist,
-                albumId: "a-01",
-                releaseId: "r-01",
-                coverImage: nil,
-                durationMs: 222_000,
+            track: BridgeNowPlayingTrack(
+                track: BridgePlayingTrack(
+                    trackId: "t-np",
+                    durationMs: 222_000
+                ),
+                display: BridgeTrackDisplay(
+                    title: PreviewData.nowPlayingTitle,
+                    artistNames: PreviewData.nowPlayingArtist,
+                    albumId: "a-01",
+                    releaseId: "r-01",
+                    albumTitle: "Album Title",
+                    coverImage: nil
+                )
             )
         )
         return NowPlayingBarContainer(onDropToQueue: { _ in })

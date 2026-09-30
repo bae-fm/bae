@@ -22,14 +22,19 @@ struct QueueNowPlayingNavigationTests {
         ui.setQueuePresented(true)
         let store = PlaybackStore()
         store.play(
-            track: NowPlayingTrack(
-                trackId: "playing-track",
-                trackTitle: "Track Title",
-                artistNames: "Track Artist",
-                albumId: "playing-album",
-                releaseId: "playing-release",
-                coverImage: nil,
-                durationMs: 180_000
+            track: BridgeNowPlayingTrack(
+                track: BridgePlayingTrack(
+                    trackId: "playing-track",
+                    durationMs: 180_000
+                ),
+                display: BridgeTrackDisplay(
+                    title: "Track Title",
+                    artistNames: "Track Artist",
+                    albumId: "playing-album",
+                    releaseId: "playing-release",
+                    albumTitle: "Album Title",
+                    coverImage: nil
+                )
             )
         )
         try await SnapshotTestSupport.withHostedWindow(

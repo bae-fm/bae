@@ -65,7 +65,7 @@ class WidgetSnapshotTest {
         player.applyPlaybackState(
             playingState(
                 trackId = "t1",
-                trackTitle = "Track Title",
+                title = "Track Title",
                 artistNames = "Artist Name",
                 albumId = "album-1",
                 albumTitle = "Album Title",

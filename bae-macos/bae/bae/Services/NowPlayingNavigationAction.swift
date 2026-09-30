@@ -17,9 +17,9 @@ struct NowPlayingNavigationAction {
             )
         }
         uiStore.navigateToAlbum(
-            track.albumId,
-            trackId: track.trackId,
-            releaseId: track.releaseId
+            track.display.albumId,
+            trackId: track.track.trackId,
+            releaseId: track.display.releaseId
         )
     }
 }

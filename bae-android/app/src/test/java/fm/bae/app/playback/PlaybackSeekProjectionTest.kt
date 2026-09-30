@@ -12,7 +12,6 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.AppHandle
-import uniffi.bae_bridge.BridgeLoadingTrackInfo
 import uniffi.bae_bridge.BridgePlaybackPosition
 import uniffi.bae_bridge.BridgePlaybackValueState
 import uniffi.bae_bridge.NoHandle
@@ -119,16 +118,7 @@ class PlaybackSeekProjectionTest {
         player.applyPlaybackState(
             loadingState(
                 trackId = "track-1",
-                track =
-                    BridgeLoadingTrackInfo(
-                        trackTitle = "Track Title",
-                        artistNames = "Artist Name",
-                        albumId = "album-1",
-                        releaseId = "release-1",
-                        albumTitle = "Album Title",
-                        coverImage = null,
-                        durationMs = 100_000uL,
-                    ),
+                prepared = nowPlayingTrack(trackId = "track-1", durationMs = 100_000uL),
             ),
         )
 
@@ -288,7 +278,7 @@ class PlaybackSeekProjectionTest {
         applyPlaybackState(
             playingState(
                 trackId = "track-1",
-                trackTitle = "Track Title",
+                title = "Track Title",
                 artistNames = "Artist Name",
                 albumId = "album-1",
                 releaseId = "release-1",

@@ -168,19 +168,19 @@ func contextSectionTitle(_ kind: BridgePlaybackSourceKind) -> LocalizedStringKey
 }
 
 private struct NowPlayingRow: View {
-    let track: NowPlayingTrack
+    let track: BridgeNowPlayingTrack
 
     var body: some View {
         HStack(spacing: ThemeSpace.group) {
-            ImageView(imageRef: track.coverImage, pointSize: ThemeSize.rowArtwork)
+            ImageView(imageRef: track.display.coverImage, pointSize: ThemeSize.rowArtwork)
                 .frame(width: ThemeSize.rowArtwork, height: ThemeSize.rowArtwork)
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
             VStack(alignment: .leading, spacing: ThemeSpace.line) {
-                Text(track.trackTitle)
+                Text(track.display.title)
                     .themeText(.rowTitle)
                     .foregroundStyle(Theme.accent)
                     .lineLimit(1)
-                Text(track.artistNames)
+                Text(track.display.artistNames)
                     .themeText(.detail)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)

@@ -78,8 +78,8 @@ struct QueueViewControlsTests {
         try await SnapshotTestSupport.withHostedWindow(
             QueueView(
                 isActive: store.nowPlaying.isActive,
-                nowPlayingTitle: store.nowPlaying.track?.trackTitle,
-                nowPlayingArtist: store.nowPlaying.track?.artistNames,
+                nowPlayingTitle: store.nowPlaying.track?.display.title,
+                nowPlayingArtist: store.nowPlaying.track?.display.artistNames,
                 nowPlayingCover: nil,
                 isPlaying: store.nowPlaying.isPlaying,
                 isLoading: store.nowPlaying.loadingTrackId != nil,
@@ -151,15 +151,20 @@ struct QueueViewControlsTests {
         NSPoint(x: 379, y: 87)
     }
 
-    private var track: NowPlayingTrack {
-        NowPlayingTrack(
-            trackId: "track-id",
-            trackTitle: "Track Title",
-            artistNames: "Artist Name",
-            albumId: "album-id",
-            releaseId: "release-id",
-            coverImage: nil,
-            durationMs: 180_000
+    private var track: BridgeNowPlayingTrack {
+        BridgeNowPlayingTrack(
+            track: BridgePlayingTrack(
+                trackId: "track-id",
+                durationMs: 180_000
+            ),
+            display: BridgeTrackDisplay(
+                title: "Track Title",
+                artistNames: "Artist Name",
+                albumId: "album-id",
+                releaseId: "release-id",
+                albumTitle: "Album Title",
+                coverImage: nil
+            )
         )
     }
 

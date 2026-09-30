@@ -28,19 +28,60 @@ impl BridgePreviewTarget {
     }
 }
 
-/// The target track's display metadata, once core has resolved it.
+/// The playing track as surfaces show it: the playback service's track joined
+/// with the library's current display for it.
 #[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeLoadingTrackInfo {
-    pub track_title: String,
+pub struct BridgeNowPlayingTrack {
+    pub track: BridgePlayingTrack,
+    pub display: BridgeTrackDisplay,
+}
+
+/// The playing track as the playback service knows it: which track, and the
+/// duration its prepared audio plays for.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgePlayingTrack {
+    pub track_id: String,
+    pub duration_ms: u64,
+}
+
+/// The playing track as the now-playing bar and the system media controls show
+/// it, read from the library's current state.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeTrackDisplay {
+    pub title: String,
     pub artist_names: String,
     pub album_id: String,
     /// The release the track is on, which may be any of its album's releases.
     pub release_id: String,
     pub album_title: String,
-    /// The track's release cover, versioned so the UI's art cache key changes
-    /// with the cover bytes.
+    /// The track's own release's cover, versioned so the UI's art cache key
+    /// changes with the cover bytes; `None` when that release has no cover.
     pub cover_image: Option<BridgeImageRef>,
-    pub duration_ms: u64,
+}
+
+mirror_struct! {
+    BridgeNowPlayingTrack = bae_core::playback::NowPlayingTrack,
+    from_core: fn,
+    fields: { track: (BridgePlayingTrack), display: (BridgeTrackDisplay) },
+}
+
+mirror_struct! {
+    BridgePlayingTrack = bae_core::playback::PlayingTrack,
+    from_core: fn,
+    fields: { track_id, duration_ms },
+}
+
+mirror_struct! {
+    BridgeTrackDisplay = bae_core::playback::TrackDisplay,
+    from_core: fn,
+    fields: {
+        title,
+        artist_names,
+        album_id,
+        release_id,
+        album_title,
+        cover_image: (opt BridgeImageRef),
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
@@ -243,87 +284,27 @@ pub enum BridgePlaybackValueState {
     Stopped,
     Loading {
         track_id: String,
-        track: Option<BridgeLoadingTrackInfo>,
+        /// The target track once prepared; `None` until its lookup finishes.
+        prepared: Option<BridgeNowPlayingTrack>,
     },
     Playing {
-        track_id: String,
-        track_title: String,
-        artist_names: String,
-        album_id: String,
-        /// The release the track is on.
-        release_id: String,
-        album_title: String,
-        cover_image: Option<BridgeImageRef>,
-        duration_ms: u64,
+        track: BridgeNowPlayingTrack,
     },
     Paused {
-        track_id: String,
-        track_title: String,
-        artist_names: String,
-        album_id: String,
-        /// The release the track is on.
-        release_id: String,
-        album_title: String,
-        cover_image: Option<BridgeImageRef>,
-        duration_ms: u64,
+        track: BridgeNowPlayingTrack,
         reason: BridgePlaybackPauseReason,
     },
 }
 
-impl BridgeLoadingTrackInfo {
-    pub(crate) fn from_core(value: bae_core::playback::NowPlayingTrack) -> Self {
-        let bae_core::playback::NowPlayingTrack { track, display } = value;
-        Self {
-            track_title: display.title,
-            artist_names: display.artist_names,
-            album_id: display.album_id,
-            release_id: display.release_id,
-            album_title: display.album_title,
-            cover_image: display.cover_image.map(BridgeImageRef::from_core),
-            duration_ms: track.duration_ms,
-        }
-    }
-}
-
-impl BridgePlaybackValueState {
-    fn from_core(
-        value: bae_core::playback::PlaybackState<bae_core::playback::NowPlayingTrack>,
-    ) -> Self {
-        use bae_core::playback::{NowPlayingTrack, PlaybackState};
-        match value {
-            PlaybackState::Stopped => Self::Stopped,
-            PlaybackState::Loading { track_id, prepared } => Self::Loading {
-                track_id,
-                track: prepared.map(BridgeLoadingTrackInfo::from_core),
-            },
-            PlaybackState::Playing {
-                track: NowPlayingTrack { track, display },
-            } => Self::Playing {
-                track_id: track.track_id,
-                track_title: display.title,
-                artist_names: display.artist_names,
-                album_id: display.album_id,
-                release_id: display.release_id,
-                album_title: display.album_title,
-                cover_image: display.cover_image.map(BridgeImageRef::from_core),
-                duration_ms: track.duration_ms,
-            },
-            PlaybackState::Paused {
-                track: NowPlayingTrack { track, display },
-                reason,
-            } => Self::Paused {
-                track_id: track.track_id,
-                track_title: display.title,
-                artist_names: display.artist_names,
-                album_id: display.album_id,
-                release_id: display.release_id,
-                album_title: display.album_title,
-                cover_image: display.cover_image.map(BridgeImageRef::from_core),
-                duration_ms: track.duration_ms,
-                reason: BridgePlaybackPauseReason::from_core(reason),
-            },
-        }
-    }
+mirror_enum! {
+    BridgePlaybackValueState = bae_core::playback::PlaybackState<bae_core::playback::NowPlayingTrack>,
+    from_core: fn,
+    variants: {
+        Stopped,
+        Loading { track_id, prepared: (opt BridgeNowPlayingTrack) },
+        Playing { track: (BridgeNowPlayingTrack) },
+        Paused { track: (BridgeNowPlayingTrack), reason: (BridgePlaybackPauseReason) },
+    },
 }
 
 mirror_struct! {

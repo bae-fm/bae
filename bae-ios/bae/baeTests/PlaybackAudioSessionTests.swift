@@ -70,7 +70,7 @@ struct PlaybackAudioSessionTests {
     func interruptionDuringTrackTransitionPausesAndResumes() {
         let (service, spy) = makeService()
         service.updateNowPlaying(
-            state: .loading(trackId: "t1", track: nil),
+            state: .loading(trackId: "t1", prepared: nil),
             appHandle: fakeAppHandle
         )
 
@@ -127,14 +127,19 @@ struct PlaybackAudioSessionTests {
         service.updateNowPlaying(
             state: .loading(
                 trackId: "t1",
-                track: BridgeLoadingTrackInfo(
-                    trackTitle: "Target Title",
-                    artistNames: "Artist Name",
-                    albumId: "album-1",
-                    releaseId: "release-1",
-                    albumTitle: "Album Title",
-                    coverImage: nil,
-                    durationMs: 180_000
+                prepared: BridgeNowPlayingTrack(
+                    track: BridgePlayingTrack(
+                        trackId: "t1",
+                        durationMs: 180_000
+                    ),
+                    display: BridgeTrackDisplay(
+                        title: "Target Title",
+                        artistNames: "Artist Name",
+                        albumId: "album-1",
+                        releaseId: "release-1",
+                        albumTitle: "Album Title",
+                        coverImage: nil
+                    )
                 )
             ),
             appHandle: fakeAppHandle
@@ -156,7 +161,7 @@ struct PlaybackAudioSessionTests {
             infoCenter.nowPlayingInfo?[MPMediaItemPropertyTitle] as? String
 
         service.updateNowPlaying(
-            state: .loading(trackId: "t1", track: nil),
+            state: .loading(trackId: "t1", prepared: nil),
             appHandle: fakeAppHandle
         )
 
@@ -194,27 +199,39 @@ private let fakeAppHandle = AppHandle(noHandle: AppHandle.NoHandle())
 
 private func playingState(trackId: String = "t1") -> BridgePlaybackValueState {
     .playing(
-        trackId: trackId,
-        trackTitle: "Track Title",
-        artistNames: "Artist Name",
-        albumId: "album-1",
-        releaseId: "release-1",
-        albumTitle: "Album Title",
-        coverImage: nil,
-        durationMs: 200_000
+        track: BridgeNowPlayingTrack(
+            track: BridgePlayingTrack(
+                trackId: trackId,
+                durationMs: 200_000
+            ),
+            display: BridgeTrackDisplay(
+                title: "Track Title",
+                artistNames: "Artist Name",
+                albumId: "album-1",
+                releaseId: "release-1",
+                albumTitle: "Album Title",
+                coverImage: nil
+            )
+        )
     )
 }
 
 private func pausedState(trackId: String = "t1") -> BridgePlaybackValueState {
     .paused(
-        trackId: trackId,
-        trackTitle: "Track Title",
-        artistNames: "Artist Name",
-        albumId: "album-1",
-        releaseId: "release-1",
-        albumTitle: "Album Title",
-        coverImage: nil,
-        durationMs: 200_000,
+        track: BridgeNowPlayingTrack(
+            track: BridgePlayingTrack(
+                trackId: trackId,
+                durationMs: 200_000
+            ),
+            display: BridgeTrackDisplay(
+                title: "Track Title",
+                artistNames: "Artist Name",
+                albumId: "album-1",
+                releaseId: "release-1",
+                albumTitle: "Album Title",
+                coverImage: nil
+            )
+        ),
         reason: .manual
     )
 }

@@ -200,14 +200,19 @@ enum PreviewData {
     }
 
     @MainActor
-    static let nowPlayingTrack = NowPlayingTrack(
-        trackId: "t-1",
-        trackTitle: "Track Title 1",
-        artistNames: "Artist Name 1",
-        albumId: "a-1",
-        releaseId: "r-1",
-        coverImage: nil,
-        durationMs: 195_000
+    static let nowPlayingTrack = BridgeNowPlayingTrack(
+        track: BridgePlayingTrack(
+            trackId: "t-1",
+            durationMs: 195_000
+        ),
+        display: BridgeTrackDisplay(
+            title: "Track Title 1",
+            artistNames: "Artist Name 1",
+            albumId: "a-1",
+            releaseId: "r-1",
+            albumTitle: "Album Title",
+            coverImage: nil
+        )
     )
 
     // MARK: - Downloads

@@ -57,7 +57,7 @@ private struct TrackRow: View {
     private var playback
 
     private var isCurrent: Bool {
-        track.id == playbackStore.nowPlaying.track?.trackId
+        track.id == playbackStore.nowPlaying.track?.track.trackId
     }
 
     var body: some View {

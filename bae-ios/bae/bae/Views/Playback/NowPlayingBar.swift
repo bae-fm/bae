@@ -59,7 +59,7 @@ struct NowPlayingBar: View {
         }
     }
 
-    private func transport(track: NowPlayingTrack) -> some View {
+    private func transport(track: BridgeNowPlayingTrack) -> some View {
         HStack(spacing: ThemeSpace.group) {
             trackInfoButton(
                 track: track,
@@ -74,21 +74,21 @@ struct NowPlayingBar: View {
     // Cover + title/artist expand into the full-screen player; the transport
     // buttons stay outside this tap target.
     private func trackInfoButton(
-        track: NowPlayingTrack,
+        track: BridgeNowPlayingTrack,
         secondaryLine: String?
     ) -> some View {
         Button {
             showExpanded = true
         } label: {
             HStack(spacing: ThemeSpace.group) {
-                ImageView(imageRef: track.coverImage, pointSize: ThemeSize.barArtwork)
+                ImageView(imageRef: track.display.coverImage, pointSize: ThemeSize.barArtwork)
                     .frame(
                         width: ThemeSize.barArtwork,
                         height: ThemeSize.barArtwork
                     )
                     .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
                 VStack(alignment: .leading, spacing: ThemeSpace.line) {
-                    Text(track.trackTitle)
+                    Text(track.display.title)
                         .themeText(.rowTitle)
                         .lineLimit(1)
                     if let secondaryLine {

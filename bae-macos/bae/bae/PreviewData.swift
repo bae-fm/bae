@@ -128,16 +128,21 @@
                 return
             }
             store.play(
-                track: NowPlayingTrack(
-                    trackId: entry.trackId,
-                    trackTitle: entry.title,
-                    artistNames: entry.artistNames,
-                    albumId: "a-01",
-                    releaseId: "r-01",
-                    coverImage: entry.coverImage,
-                    // The queue entry carries only a clock label, not raw ms;
-                    // the preview now-playing bar just needs a plausible total.
-                    durationMs: 200_000
+                track: BridgeNowPlayingTrack(
+                    track: BridgePlayingTrack(
+                        trackId: entry.trackId,
+                        // The queue entry carries only a clock label, not raw ms;
+                        // the preview now-playing bar just needs a plausible total.
+                        durationMs: 200_000
+                    ),
+                    display: BridgeTrackDisplay(
+                        title: entry.title,
+                        artistNames: entry.artistNames,
+                        albumId: "a-01",
+                        releaseId: "r-01",
+                        albumTitle: entry.albumTitle,
+                        coverImage: entry.coverImage
+                    )
                 )
             )
             apply()
