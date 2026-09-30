@@ -32,11 +32,13 @@ struct AlbumGridView<ExpansionContent: View>: View {
     @FocusState
     private var gridFocused: Bool
     /// Where the grid is scrolled, held as the slot on top rather than an
-    /// offset.
+    /// offset, so a change of width keeps that slot in view.
     @State
     private var scrollPosition = ScrollPosition(
         idType: AlbumGridCell.Identity.self
     )
+    @State
+    private var viewport = AlbumGridViewport()
 
     var body: some View {
         GeometryReader { geometry in
@@ -73,6 +75,38 @@ struct AlbumGridView<ExpansionContent: View>: View {
                 }
             }
             .scrollPosition($scrollPosition, anchor: .top)
+            .onScrollGeometryChange(for: CGFloat.self) { geometry in
+                geometry.containerSize.height
+            } action: { _, height in
+                viewport.setVisibleHeight(height)
+            }
+            // A new column count re-lays every row before the scroll view
+            // knows which slot was on top, so the grid names it.
+            .onChange(of: metrics.columnCount) { old, new in
+                if let slot = viewport.anchor(from: old, to: new) {
+                    scrollToTop(slot, columnCount: new)
+                }
+            }
+            // The grid places rows it has not drawn by the heights of the
+            // ones it has, and moves them as it draws more, so the held slot
+            // goes back on top whenever the content's height changes.
+            .onScrollGeometryChange(for: CGFloat.self) { geometry in
+                geometry.contentSize.height
+            } action: { _, _ in
+                keepHeldSlotOnTop(columnCount: metrics.columnCount)
+            }
+            // Scrolling, another sort, or another open album ends the hold.
+            .onScrollPhaseChange { _, phase in
+                if phase != .idle {
+                    viewport.release()
+                }
+            }
+            .onChange(of: list.loadEpoch) {
+                viewport.release()
+            }
+            .onChange(of: uiStore.selectedAlbumId) {
+                viewport.release()
+            }
             .reportsHeaderScroll(id: "albumGrid")
             .focusable()
             .focusEffectDisabled()
@@ -148,27 +182,73 @@ extension AlbumGridView {
     ) -> some View {
         switch cell {
         case .album(let position, let albumId):
-            albumCard(albumId, width: metrics.cardWidth)
-                .task(id: RowLoadID(epoch: list.loadEpoch, index: position)) {
-                    await list.loadPage(containing: position)
-                }
+            placed(
+                albumCard(albumId, width: metrics.cardWidth)
+                    .task(
+                        id: RowLoadID(epoch: list.loadEpoch, index: position)
+                    ) {
+                        await list.loadPage(containing: position)
+                    },
+                cell.id,
+                as: .position(position),
+                columnCount: metrics.columnCount
+            )
         case .placeholder(let position):
-            AlbumCardPlaceholder(size: metrics.cardWidth)
-                .frame(width: metrics.cardWidth)
-                .task(id: RowLoadID(epoch: list.loadEpoch, index: position)) {
-                    await list.loadPage(containing: position)
-                }
+            placed(
+                AlbumCardPlaceholder(size: metrics.cardWidth)
+                    .frame(width: metrics.cardWidth)
+                    .task(
+                        id: RowLoadID(epoch: list.loadEpoch, index: position)
+                    ) {
+                        await list.loadPage(containing: position)
+                    },
+                cell.id,
+                as: .position(position),
+                columnCount: metrics.columnCount
+            )
         case .detail(let albumId):
-            AlbumExpansionSlot(
-                albumId: albumId,
-                slotWidth: metrics.cardWidth,
-                rowWidth: metrics.rowWidth,
-                expansionContent: expansionContent
+            placed(
+                AlbumExpansionSlot(
+                    albumId: albumId,
+                    slotWidth: metrics.cardWidth,
+                    rowWidth: metrics.rowWidth,
+                    expansionContent: expansionContent
+                ),
+                cell.id,
+                as: .detail(albumId: albumId),
+                columnCount: metrics.columnCount
             )
             .transition(.opacity)
         case .filler:
             Color.clear.frame(width: metrics.cardWidth, height: 0)
         }
+    }
+
+    /// Reports where this cell sits in the visible area, and puts the held
+    /// slot back on top when the grid moves it.
+    private func placed(
+        _ view: some View,
+        _ cell: AlbumGridCell.Identity,
+        as slot: AlbumGridSlot,
+        columnCount: Int
+    ) -> some View {
+        view
+            .onGeometryChange(for: CGRect.self) { geometry in
+                geometry.frame(in: .scrollView)
+            } action: { frame in
+                viewport.place(
+                    cell,
+                    as: slot,
+                    columnCount: columnCount,
+                    frame: frame
+                )
+                if viewport.held == slot {
+                    keepHeldSlotOnTop(columnCount: columnCount)
+                }
+            }
+            .onDisappear {
+                viewport.remove(cell, columnCount: columnCount)
+            }
     }
 
     /// The album's card, or its placeholder until its summary is interned.
@@ -222,6 +302,7 @@ extension AlbumGridView {
                 return
             }
 
+            viewport.release()
             withAnimation(.easeInOut(duration: 0.3)) {
                 scrollPosition.scrollTo(
                     id: AlbumGridCell.Identity.album(albumId),
@@ -232,6 +313,31 @@ extension AlbumGridView {
         catch {
             uiStore.showError(error)
         }
+    }
+
+    /// Scrolls the held slot back to the top when the grid moved it.
+    private func keepHeldSlotOnTop(columnCount: Int) {
+        guard let slot = viewport.held,
+            !viewport.isOnTop(slot, columnCount: columnCount)
+        else { return }
+        scrollToTop(slot, columnCount: columnCount)
+    }
+
+    /// Scrolls `slot` to the top, at its place under `columnCount` columns.
+    private func scrollToTop(_ slot: AlbumGridSlot, columnCount: Int) {
+        let id: AlbumGridCell.Identity
+        switch slot {
+        case .position(let position) where position < list.totalCount:
+            id = cells(columnCount: columnCount).cell(forPosition: position).id
+        case .detail(let albumId) where uiStore.selectedAlbumId == albumId:
+            id = .detail(albumId)
+        case .position, .detail:
+            // The slot left the grid; the next change keeps what is on top
+            // then.
+            viewport.release()
+            return
+        }
+        scrollPosition.scrollTo(id: id, anchor: .top)
     }
 
     /// Cmd toggles the album in the selection, shift extends the range, and a
