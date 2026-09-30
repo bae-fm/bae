@@ -96,12 +96,10 @@ struct AlbumGridView<ExpansionContent: View>: View {
                                             }
                                         }
                                         else {
-                                            Color.clear
-                                                .aspectRatio(
-                                                    1,
-                                                    contentMode: .fit
-                                                )
-                                                .frame(width: cardWidth)
+                                            AlbumCardPlaceholder(
+                                                size: cardWidth
+                                            )
+                                            .frame(width: cardWidth)
                                         }
                                     }
                                 }

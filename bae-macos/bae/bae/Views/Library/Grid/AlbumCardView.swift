@@ -24,7 +24,11 @@ struct AlbumCardView: View {
     private static let ringOutset: CGFloat = 4.5
 
     var body: some View {
-        VStack(alignment: .leading, spacing: ThemeSpace.line) {
+        AlbumCardStack(
+            title: title,
+            artistNames: artistNames,
+            year: year
+        ) {
             albumArt
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.cover))
                 .shadow(color: Theme.shadow, radius: 14, y: 9)
@@ -45,6 +49,47 @@ struct AlbumCardView: View {
                         .allowsHitTesting(isHovered || showMenu)
                 }
                 .onHover { isHovered = $0 }
+        }
+        .background(
+            RoundedRectangle(cornerRadius: ThemeRadius.card)
+                .fill(Theme.accentSoft)
+                .opacity(isSelected ? 1 : 0)
+        )
+        .contextMenu {
+            AlbumCardMenuItems(menu: menu)
+        }
+    }
+
+    private var albumArt: some View {
+        ImageView(imageRef: cover, pointSize: size)
+            .frame(width: size, height: size)
+    }
+}
+
+/// A grid slot whose album has not loaded: a card's footprint with nothing
+/// drawn, laid out as a card so its row keeps its height when the album lands.
+struct AlbumCardPlaceholder: View {
+    let size: CGFloat
+
+    var body: some View {
+        AlbumCardStack(title: " ", artistNames: " ", year: nil) {
+            Color.clear.frame(width: size, height: size)
+        }
+        .hidden()
+    }
+}
+
+/// A card's layout: the art over the title, the artists and the year.
+private struct AlbumCardStack<Art: View>: View {
+    let title: String
+    let artistNames: String
+    let year: Int32?
+    @ViewBuilder
+    let art: () -> Art
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: ThemeSpace.line) {
+            art()
                 .padding(.bottom, ThemeSpace.related)
             Text(title)
                 .themeText(.rowTitle)
@@ -61,19 +106,6 @@ struct AlbumCardView: View {
             )
         }
         .padding(ThemeSpace.compact)
-        .background(
-            RoundedRectangle(cornerRadius: ThemeRadius.card)
-                .fill(Theme.accentSoft)
-                .opacity(isSelected ? 1 : 0)
-        )
-        .contextMenu {
-            AlbumCardMenuItems(menu: menu)
-        }
-    }
-
-    private var albumArt: some View {
-        ImageView(imageRef: cover, pointSize: size)
-            .frame(width: size, height: size)
     }
 }
 
