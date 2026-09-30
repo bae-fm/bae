@@ -31,146 +31,169 @@ struct AlbumGridView<ExpansionContent: View>: View {
     /// Focused on a selection click, so Esc works right after it.
     @FocusState
     private var gridFocused: Bool
+    /// Where the grid is scrolled, held as the slot on top rather than an
+    /// offset.
+    @State
+    private var scrollPosition = ScrollPosition(
+        idType: AlbumGridCell.Identity.self
+    )
 
     var body: some View {
         GeometryReader { geometry in
-            let effectiveWidth =
-                (fullWidth
-                    ? geometry.size.width
-                    : min(geometry.size.width, LibraryContentContainer.maxWidth))
-                - LibraryContentContainer.horizontalPadding * 2
-            let columnCount = max(
-                1,
-                Int(
-                    floor(
-                        (effectiveWidth + gridSpacing)
-                            / (albumCardSize + gridSpacing)
-                    )
-                )
+            let metrics = AlbumGridMetrics(
+                width: geometry.size.width,
+                fullWidth: fullWidth
             )
-            let cardWidth =
-                (effectiveWidth - CGFloat(columnCount - 1) * gridSpacing)
-                / CGFloat(columnCount)
-            let rowCount = list.rowCount(columnCount: columnCount)
-
-            ScrollViewReader { scrollProxy in
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: ThemeSpace.page) {
-                        ForEach(0..<rowCount, id: \.self) { rowIndex in
-                            HStack(spacing: gridSpacing) {
-                                ForEach(0..<columnCount, id: \.self) {
-                                    col in
-                                    let albumIndex =
-                                        rowIndex * columnCount + col
-                                    if albumIndex < list.totalCount {
-                                        if let id = list.idAt(albumIndex),
-                                            let summary =
-                                                libraryStore.albumSummaries[
-                                                    id
-                                                ]
-                                        {
-                                            AlbumCardView(
-                                                title: summary.title,
-                                                artistNames: summary
-                                                    .artistNames,
-                                                year: summary.year,
-                                                cover: summary.cover,
-                                                isExpanded: uiStore
-                                                    .selectedAlbumId
-                                                    == summary.id,
-                                                isSelected:
-                                                    selection
-                                                    .contains(summary.id),
-                                                size: cardWidth,
-                                                menu: cardMenu(
-                                                    for: summary.id
-                                                ),
-                                            )
-                                            .id(summary.id)
-                                            .frame(width: cardWidth)
-                                            .draggable(
-                                                dragPayload(for: summary.id)
-                                            )
-                                            .onTapGesture {
-                                                handleTap(on: summary.id)
-                                            }
-                                        }
-                                        else {
-                                            AlbumCardPlaceholder(
-                                                size: cardWidth
-                                            )
-                                            .frame(width: cardWidth)
-                                        }
-                                    }
-                                }
-                                if list.totalCount > 0 {
-                                    let albumsInRow = min(
-                                        columnCount,
-                                        list.totalCount - rowIndex
-                                            * columnCount
-                                    )
-                                    if albumsInRow < columnCount {
-                                        Spacer()
-                                    }
-                                }
-                            }
-                            .id(rowIndex)
-                            .task(
-                                id: RowLoadID(
-                                    epoch: list.loadEpoch,
-                                    index: rowIndex
-                                )
-                            ) {
-                                await list.loadPage(
-                                    containing: rowIndex * columnCount
-                                )
-                            }
-                            AlbumExpansionSlot(
-                                selectedId: selectedAlbumId(
-                                    rowIndex: rowIndex,
-                                    columnCount: columnCount
-                                ),
-                                expansionContent: expansionContent
-                            )
-                        }
-                    }
-                    .padding(
-                        .horizontal,
-                        LibraryContentContainer.horizontalPadding
-                    )
-                    .padding(.bottom)
-                    .libraryContentContainer(fullWidth: fullWidth)
-                    // A click on the empty background clears the selection.
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        if !selection.isEmpty {
-                            selection.clear()
-                        }
+            ScrollView {
+                // One lazy grid over every slot, keyed by album: a new column
+                // count moves each card to its new place instead of making
+                // new cards in other rows.
+                LazyVGrid(
+                    columns: metrics.columns,
+                    alignment: .leading,
+                    spacing: ThemeSpace.page
+                ) {
+                    ForEach(cells(columnCount: metrics.columnCount)) { cell in
+                        slot(cell, metrics: metrics)
                     }
                 }
-                .reportsHeaderScroll(id: "albumGrid")
-                .focusable()
-                .focusEffectDisabled()
-                .focused($gridFocused)
-                .onKeyPress(.escape) {
-                    guard !selection.isEmpty else {
-                        return .ignored
+                .scrollTargetLayout()
+                .padding(
+                    .horizontal,
+                    LibraryContentContainer.horizontalPadding
+                )
+                .padding(.bottom)
+                .libraryContentContainer(fullWidth: fullWidth)
+                // A click on the empty background clears the selection.
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    if !selection.isEmpty {
+                        selection.clear()
                     }
-                    selection.clear()
-                    return .handled
-                }
-                .task(id: uiStore.pendingAlbumReveal?.seq) {
-                    guard let reveal = uiStore.pendingAlbumReveal else {
-                        return
-                    }
-                    await revealAlbum(
-                        reveal.albumId,
-                        columnCount: columnCount,
-                        scrollProxy: scrollProxy
-                    )
-                    uiStore.consumeAlbumReveal(seq: reveal.seq)
                 }
             }
+            .scrollPosition($scrollPosition, anchor: .top)
+            .reportsHeaderScroll(id: "albumGrid")
+            .focusable()
+            .focusEffectDisabled()
+            .focused($gridFocused)
+            .onKeyPress(.escape) {
+                guard !selection.isEmpty else {
+                    return .ignored
+                }
+                selection.clear()
+                return .handled
+            }
+            .task(id: uiStore.pendingAlbumReveal?.seq) {
+                guard let reveal = uiStore.pendingAlbumReveal else {
+                    return
+                }
+                await revealAlbum(reveal.albumId)
+                uiStore.consumeAlbumReveal(seq: reveal.seq)
+            }
+        }
+    }
+}
+
+/// The grid's columns at one available width.
+private struct AlbumGridMetrics {
+    /// The width a row spans: every column and the gaps between them.
+    let rowWidth: CGFloat
+    let columnCount: Int
+    let cardWidth: CGFloat
+
+    init(width: CGFloat, fullWidth: Bool) {
+        rowWidth = max(
+            0,
+            (fullWidth ? width : min(width, LibraryContentContainer.maxWidth))
+                - LibraryContentContainer.horizontalPadding * 2
+        )
+        columnCount = max(
+            1,
+            Int(floor((rowWidth + gridSpacing) / (albumCardSize + gridSpacing)))
+        )
+        cardWidth = max(
+            0,
+            (rowWidth - CGFloat(columnCount - 1) * gridSpacing)
+                / CGFloat(columnCount)
+        )
+    }
+
+    var columns: [GridItem] {
+        Array(
+            repeating: GridItem(
+                .fixed(cardWidth),
+                spacing: gridSpacing,
+                alignment: .topLeading
+            ),
+            count: columnCount
+        )
+    }
+}
+
+extension AlbumGridView {
+    private func cells(columnCount: Int) -> AlbumGridCells {
+        AlbumGridCells(
+            totalCount: list.totalCount,
+            columnCount: columnCount,
+            loaded: list.loadedEntries,
+            openAlbumId: uiStore.selectedAlbumId
+        )
+    }
+
+    @ViewBuilder
+    private func slot(
+        _ cell: AlbumGridCell,
+        metrics: AlbumGridMetrics
+    ) -> some View {
+        switch cell {
+        case .album(let position, let albumId):
+            albumCard(albumId, width: metrics.cardWidth)
+                .task(id: RowLoadID(epoch: list.loadEpoch, index: position)) {
+                    await list.loadPage(containing: position)
+                }
+        case .placeholder(let position):
+            AlbumCardPlaceholder(size: metrics.cardWidth)
+                .frame(width: metrics.cardWidth)
+                .task(id: RowLoadID(epoch: list.loadEpoch, index: position)) {
+                    await list.loadPage(containing: position)
+                }
+        case .detail(let albumId):
+            AlbumExpansionSlot(
+                albumId: albumId,
+                slotWidth: metrics.cardWidth,
+                rowWidth: metrics.rowWidth,
+                expansionContent: expansionContent
+            )
+            .transition(.opacity)
+        case .filler:
+            Color.clear.frame(width: metrics.cardWidth, height: 0)
+        }
+    }
+
+    /// The album's card, or its placeholder until its summary is interned.
+    @ViewBuilder
+    private func albumCard(_ albumId: String, width: CGFloat) -> some View {
+        if let summary = libraryStore.albumSummaries[albumId] {
+            AlbumCardView(
+                title: summary.title,
+                artistNames: summary.artistNames,
+                year: summary.year,
+                cover: summary.cover,
+                isExpanded: uiStore.selectedAlbumId == albumId,
+                isSelected: selection.contains(albumId),
+                size: width,
+                menu: cardMenu(for: albumId),
+            )
+            .frame(width: width)
+            .draggable(dragPayload(for: albumId))
+            .onTapGesture {
+                handleTap(on: albumId)
+            }
+        }
+        else {
+            AlbumCardPlaceholder(size: width)
+                .frame(width: width)
         }
     }
 }
@@ -178,11 +201,7 @@ struct AlbumGridView<ExpansionContent: View>: View {
 extension AlbumGridView {
     /// Scrolls to `albumId` by asking core for its index and loading its page;
     /// the scroll comes last, so a cancelled reveal changes nothing.
-    private func revealAlbum(
-        _ albumId: String,
-        columnCount: Int,
-        scrollProxy: ScrollViewProxy
-    ) async {
+    private func revealAlbum(_ albumId: String) async {
         let getAlbumIndex = library.getAlbumIndex
         let sort = sortCriteria
         do {
@@ -197,15 +216,17 @@ extension AlbumGridView {
                 return
             }
 
-            // Load the target's page so its row exists to scroll to.
+            // Load the target's page so its card exists to scroll to.
             await list.loadPage(containing: index)
             if Task.isCancelled {
                 return
             }
 
-            let rowIndex = index / columnCount
             withAnimation(.easeInOut(duration: 0.3)) {
-                scrollProxy.scrollTo(rowIndex, anchor: .top)
+                scrollPosition.scrollTo(
+                    id: AlbumGridCell.Identity.album(albumId),
+                    anchor: .top
+                )
             }
         }
         catch {
@@ -261,18 +282,6 @@ extension AlbumGridView {
                 position: { list.position(of: $0) }
             )
         )
-    }
-
-    private func selectedAlbumId(rowIndex: Int, columnCount: Int) -> String? {
-        guard let selectedId = uiStore.selectedAlbumId else {
-            return nil
-        }
-        let rowContainsSelection = (0..<columnCount)
-            .contains { col in
-                let index = rowIndex * columnCount + col
-                return index < list.totalCount && list.idAt(index) == selectedId
-            }
-        return rowContainsSelection ? selectedId : nil
     }
 }
 

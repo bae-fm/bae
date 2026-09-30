@@ -166,6 +166,11 @@ where Row.ID: Sendable {
         segments.allIds
     }
 
+    /// Every loaded position with the id held there, in position order.
+    public var loadedEntries: [(position: Int, id: Row.ID)] {
+        segments.entries
+    }
+
     // MARK: - Load API (called from `.task`)
 
     /// Fetch the total count. Called once when the list is first mounted.
@@ -332,16 +337,6 @@ where Row.ID: Sendable {
         subscriptionIdentities[key] == identity
     }
 
-    // MARK: - Layout helpers
-
-    /// Row count for a grid layout with the given column count.
-    public func rowCount(columnCount: Int) -> Int {
-        guard columnCount > 0 else {
-            return 0
-        }
-        return (totalCount + columnCount - 1) / columnCount
-    }
-
     private func evictPages(outsideWindowAround visible: Range<Int>) {
         while subscriptionRanges.count > Self.maximumVisiblePageSubscriptions {
             let center = visible.lowerBound + visible.count / 2
@@ -400,6 +395,13 @@ private struct LoadedSegments<ID: Hashable>: Equatable {
 
     /// Every id held, in position order.
     var allIds: [ID] { runs.flatMap(\.ids) }
+
+    /// Every held position with its id, in position order.
+    var entries: [(position: Int, id: ID)] {
+        runs.flatMap { run in
+            zip(run.range, run.ids).map { (position: $0, id: $1) }
+        }
+    }
 
     func id(at position: Int) -> ID? {
         for run in runs where run.range.contains(position) {

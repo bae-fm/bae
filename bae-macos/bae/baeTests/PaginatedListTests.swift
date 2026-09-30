@@ -82,23 +82,6 @@ struct PaginatedListTests {
     }
 
     @MainActor
-    @Test("rowCount computes correctly")
-    func rowCountComputation() async {
-        let store = LibraryStore()
-        let albums = (0..<7)
-            .map {
-                makeBridgeAlbum(id: "a\($0)", title: "Album \($0)")
-            }
-        let list = makeList(store: store, albums: albums)
-        await list.loadInitial()
-
-        #expect(list.rowCount(columnCount: 4) == 2)
-        #expect(list.rowCount(columnCount: 3) == 3)
-        #expect(list.rowCount(columnCount: 1) == 7)
-        #expect(list.rowCount(columnCount: 0) == 0)
-    }
-
-    @MainActor
     @Test("empty page source yields totalCount == 0 and empty ids")
     func emptyList() async {
         let store = LibraryStore()
@@ -286,6 +269,10 @@ struct PaginatedListSegmentTests {
                 == (0..<52).map { "a\($0)" } + ["a53", "a54"]
         )
         #expect(list.idAt(52) == nil)  // the gap stays unloaded
+        // Each loaded id at its own position, skipping the gap.
+        let entries = list.loadedEntries
+        #expect(entries.map(\.position) == Array(0..<52) + [53, 54])
+        #expect(entries.map(\.id) == list.allLoadedIds)
     }
 
     @MainActor
