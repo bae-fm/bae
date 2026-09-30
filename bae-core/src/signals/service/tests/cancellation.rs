@@ -11,7 +11,6 @@ fn start(handle: &ExtractionServiceHandle, folder: PathBuf) -> crate::signals::E
         "cand-1".to_string(),
         folder_source(folder),
         CallPriority::Interactive,
-        crate::config::IdentificationSteps::default(),
     )
 }
 

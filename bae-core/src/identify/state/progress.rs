@@ -191,8 +191,6 @@ pub enum SearchProgress {
     Pending,
     /// The identifiers answered, or there was nothing to search by.
     Skipped,
-    /// Nobody is asked the title, for `reason`.
-    NotAsked { reason: NotAskedReason },
     /// One lookup per provider in the run.
     Lookups { providers: Vec<ProviderLookup> },
 }
@@ -201,7 +199,7 @@ impl SearchProgress {
     pub fn is_settled(&self) -> bool {
         match self {
             SearchProgress::Pending => false,
-            SearchProgress::Skipped | SearchProgress::NotAsked { .. } => true,
+            SearchProgress::Skipped => true,
             SearchProgress::Lookups { providers } => providers.iter().all(|l| l.state.is_settled()),
         }
     }
@@ -217,9 +215,7 @@ impl SearchProgress {
                 })
                 .flatten()
                 .collect(),
-            SearchProgress::Pending | SearchProgress::Skipped | SearchProgress::NotAsked { .. } => {
-                Vec::new()
-            }
+            SearchProgress::Pending | SearchProgress::Skipped => Vec::new(),
         }
     }
 
@@ -236,9 +232,7 @@ impl SearchProgress {
                     _ => None,
                 })
                 .collect(),
-            SearchProgress::Pending | SearchProgress::Skipped | SearchProgress::NotAsked { .. } => {
-                Vec::new()
-            }
+            SearchProgress::Pending | SearchProgress::Skipped => Vec::new(),
         }
     }
 
@@ -246,9 +240,7 @@ impl SearchProgress {
     pub fn lookups(&self) -> &[ProviderLookup] {
         match self {
             SearchProgress::Lookups { providers } => providers,
-            SearchProgress::Pending | SearchProgress::Skipped | SearchProgress::NotAsked { .. } => {
-                &[]
-            }
+            SearchProgress::Pending | SearchProgress::Skipped => &[],
         }
     }
 }
@@ -564,7 +556,6 @@ pub(super) fn found_or_no_match(count: u32) -> SignalState {
 pub(super) fn start_discid_progress(
     signal: &DiscIdSignal,
     excluded: bool,
-    look_up: bool,
     providers: &[Catalog],
     effects: &mut Vec<Effect>,
 ) -> DiscidProgress {
@@ -573,8 +564,6 @@ pub(super) fn start_discid_progress(
             // The reason nearest the value wins: see `NotAskedReason`.
             let reason = if excluded {
                 Some(NotAskedReason::LeftOut)
-            } else if !look_up {
-                Some(NotAskedReason::SwitchedOff)
             } else if !providers.contains(&Catalog::DISC_ID_CATALOG) {
                 Some(NotAskedReason::NoCatalog)
             } else {
@@ -614,12 +603,10 @@ pub(super) fn start_isrc_progress(
 }
 
 /// Ask every provider about every code in `codes` the person did not leave out.
-#[allow(clippy::too_many_arguments)]
 pub(super) fn start_barcode_progress(
     codes: Vec<String>,
     excluded: &[String],
     had_source: bool,
-    look_up: bool,
     providers: &[Catalog],
     effects: &mut Vec<Effect>,
 ) -> BarcodeProgress {
@@ -636,16 +623,11 @@ pub(super) fn start_barcode_progress(
         .filter(|code| !excluded.contains(code))
         .cloned()
         .collect();
-    // The reason nearest the value wins: see `NotAskedReason`.
-    let reason = if asked.is_empty() {
-        Some(NotAskedReason::LeftOut)
-    } else if !look_up {
-        Some(NotAskedReason::SwitchedOff)
-    } else {
-        None
-    };
-    if let Some(reason) = reason {
-        return BarcodeProgress::NotAsked { codes, reason };
+    if asked.is_empty() {
+        return BarcodeProgress::NotAsked {
+            codes,
+            reason: NotAskedReason::LeftOut,
+        };
     }
     BarcodeProgress::Lookups {
         codes: asked
@@ -690,17 +672,6 @@ pub(super) fn start_catalog_progress(
             .iter()
             .map(|value| start_catalog_lookup(value, providers, effects))
             .collect(),
-    }
-}
-
-/// Where a run's title search starts.
-pub(super) fn search_progress_at_start(search_by_title: bool) -> SearchProgress {
-    if search_by_title {
-        SearchProgress::Pending
-    } else {
-        SearchProgress::NotAsked {
-            reason: NotAskedReason::SwitchedOff,
-        }
     }
 }
 

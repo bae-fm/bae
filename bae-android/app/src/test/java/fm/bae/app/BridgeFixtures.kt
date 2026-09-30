@@ -15,8 +15,6 @@ import uniffi.bae_bridge.BridgeDownloadSnapshot
 import uniffi.bae_bridge.BridgeDownloadState
 import uniffi.bae_bridge.BridgeFile
 import uniffi.bae_bridge.BridgeGalleryItem
-import uniffi.bae_bridge.BridgeIdentificationStep
-import uniffi.bae_bridge.BridgeIdentificationStepSetting
 import uniffi.bae_bridge.BridgeImportStorage
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeLookupCatalogSetting
@@ -288,31 +286,7 @@ object BridgeFixtures {
             maxConcurrentDownloads = 3u,
             identifyAutomatically = true,
             importWhenIdentified = false,
-            identificationSteps =
-                listOf(
-                    BridgeIdentificationStepSetting(
-                        step = BridgeIdentificationStep.READ_COVER_ART,
-                        enabled = true,
-                    ),
-                    BridgeIdentificationStepSetting(
-                        step = BridgeIdentificationStep.LOOK_UP_DISC_IDS,
-                        enabled = true,
-                    ),
-                    BridgeIdentificationStepSetting(
-                        step = BridgeIdentificationStep.LOOK_UP_BARCODES,
-                        enabled = true,
-                    ),
-                    BridgeIdentificationStepSetting(
-                        step = BridgeIdentificationStep.SEARCH_BY_TITLE,
-                        enabled = true,
-                    ),
-                    BridgeIdentificationStepSetting(
-                        step = BridgeIdentificationStep.FOLLOW_CATALOG_LINKS,
-                        enabled = true,
-                    ),
-                ),
             importStorage = BridgeImportStorage(cloud = true, pinned = true),
-            prefillWithFileMetadata = true,
             // Every source in core's order, matching this fixture's Discogs
             // state below: MusicBrainz is asked and, as the only source still
             // being asked, cannot be switched off; Discogs holds no key, so its

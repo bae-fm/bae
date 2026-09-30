@@ -387,26 +387,13 @@ impl LibraryManager {
             .await?)
     }
 
-    /// The draft a candidate about to be stored starts from: its own file tags
-    /// when the pre-fill is on, nothing otherwise. Reads audio files, which can
-    /// be slow on a network share, so it runs on a blocking thread and outside
-    /// the folder-state commit lock every pane control waits on.
+    /// The draft a candidate about to be stored starts from: the folder as its
+    /// own file tags describe it. A folder whose tags cannot be read starts on
+    /// a blank draft and is logged, rather than kept out of the queue. Reads
+    /// audio files, which can be slow on a network share, so it runs on a
+    /// blocking thread and outside the folder-state commit lock every pane
+    /// control waits on.
     pub(crate) async fn scan_item_seed(
-        &self,
-        item: &crate::import::folder_scanner::ScanItem,
-        generation: u64,
-        reader: std::sync::Arc<dyn crate::import::file_tag_snapshot::FileTagReader>,
-    ) -> Result<Option<crate::import::file_metadata_seed::FileMetadataSeed>, LibraryError> {
-        if !self.config_handle.config().prefs.prefill_with_file_metadata {
-            return Ok(None);
-        }
-        self.file_metadata_seed(item, generation, reader).await
-    }
-
-    /// The folder as its own file tags describe it. A folder whose tags cannot
-    /// be read starts on a blank draft and is logged, rather than kept out of
-    /// the queue.
-    async fn file_metadata_seed(
         &self,
         item: &crate::import::folder_scanner::ScanItem,
         generation: u64,

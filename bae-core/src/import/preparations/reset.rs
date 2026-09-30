@@ -14,7 +14,7 @@ impl CandidatePreparations {
         scan_generation: u64,
         lookup_choices: crate::import::LookupChoices,
         metadata: CandidateMetadataDraft,
-        snapshot: Option<FileTagSnapshot>,
+        snapshot: FileTagSnapshot,
         settled_folders: Vec<(String, CategorizedFiles)>,
     ) -> Result<Vec<FolderCandidate>, LibraryError> {
         let mut prep = self.loaded_at(read).await?;
@@ -39,15 +39,15 @@ impl CandidatePreparations {
         prep.metadata_revision = read.metadata_revision.checked_add(1).ok_or_else(|| {
             LibraryError::Import("candidate metadata revision exhausted the u64 range".into())
         })?;
-        // The person asked for the setup back: what it starts from now is
-        // theirs, whether the folder's tags or a blank draft.
+        // The person asked for the setup back: what it starts from now, the
+        // folder's tags, is theirs.
         prep.author = MetadataAuthor::Person;
         prep.metadata = metadata;
         prep.assets_prepared = true;
         prep.identification = None;
         prep.signals = None;
         let extras = CandidateSaveExtras {
-            file_tag_snapshot: snapshot,
+            file_tag_snapshot: Some(snapshot),
             reshaped_files: Some(settled_folders),
             reset_lookup_choices_from: Some(lookup_choices),
             pane: CandidatePaneWrite::Keep,

@@ -39,28 +39,6 @@
             search: .notNeeded
         )
 
-        /// Every step that can be switched off, switched off.
-        static let identifyRunStepsOff = BridgeIdentifyRun(
-            providers: [.musicBrainz, .discogs],
-            discId: .read(
-                discId: "Xx0Yy1Zz2Aa3Bb4Cc5Dd6Ee7-",
-                lookup: switchedOff
-            ),
-            barcode: .rows(
-                scanning: false,
-                rows: [
-                    BridgeSignalValueRow(
-                        value: "0123456789012",
-                        excluded: false,
-                        cells: cells(switchedOff, switchedOff)
-                    )
-                ]
-            ),
-            catalog: .coverArtOff,
-            isrc: .absent,
-            search: .notAsked(reason: .switchedOff)
-        )
-
         /// Just started, with the artwork still being read.
         static let identifyRunStarting = BridgeIdentifyRun(
             providers: [.musicBrainz, .discogs],
@@ -285,10 +263,5 @@
 
         /// A cell nobody was asked because the person left its value out.
         static let leftOut = BridgeLookupState.notAsked(reason: .leftOut)
-
-        /// A cell nobody was asked because its step is switched off.
-        static let switchedOff = BridgeLookupState.notAsked(
-            reason: .switchedOff
-        )
     }
 #endif

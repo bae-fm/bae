@@ -13,7 +13,6 @@ use tokio::sync::mpsc::UnboundedReceiver;
 
 mod aborts;
 mod cancellation;
-mod cover_art_off;
 mod tags;
 
 /// Canned text lines keyed by file name; the optional gate holds each image
@@ -209,7 +208,6 @@ async fn start_signals(
         "cand-1".to_string(),
         folder_source(folder),
         CallPriority::Interactive,
-        crate::config::IdentificationSteps::default(),
     );
     (handle, rx, run, lib_tmp)
 }
@@ -666,7 +664,6 @@ async fn no_analyzer_leaves_artwork_absent_rather_than_scanned() {
         "cand-1".to_string(),
         folder_source(folder),
         CallPriority::Interactive,
-        crate::config::IdentificationSteps::default(),
     );
 
     // One settled snapshot: nothing to decode with, so nothing is read.
@@ -702,7 +699,6 @@ FILE \"audio.flac\" WAVE\n  \
         "cand-1".to_string(),
         folder_source(folder),
         CallPriority::Interactive,
-        crate::config::IdentificationSteps::default(),
     );
 
     let signals = collect_signals(&mut rx, 1).await;
@@ -807,7 +803,7 @@ async fn a_settled_reading_is_kept_before_it_is_announced() {
     let ExtractionSource::Candidate { candidate } = &source else {
         unreachable!("a folder source is a candidate");
     };
-    let key = settled_reading_key(&candidate.files.content_hash(), true);
+    let key = candidate.files.content_hash();
     tx.hold_send_where(|event| {
         matches!(
             event,
@@ -820,7 +816,6 @@ async fn a_settled_reading_is_kept_before_it_is_announced() {
         "cand-1".to_string(),
         source,
         CallPriority::Interactive,
-        crate::config::IdentificationSteps::default(),
     );
 
     tokio::time::timeout(Duration::from_secs(30), tx.send_held())
@@ -849,7 +844,6 @@ async fn an_unchanged_folder_is_not_read_again() {
         "cand-1".to_string(),
         folder_source(folder),
         CallPriority::Interactive,
-        crate::config::IdentificationSteps::default(),
     );
     let second = collect_snapshots(&mut rx, 1).await;
     assert_eq!(second[0].0, first[1].0);

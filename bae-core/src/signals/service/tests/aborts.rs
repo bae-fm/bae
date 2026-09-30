@@ -50,7 +50,6 @@ async fn an_aborted_extraction_fails_every_signal_in_one_snapshot() {
         key: "cand-1".to_string(),
         generation,
         priority: CallPriority::Interactive,
-        read_cover_art: true,
         snapshots: watch::channel(None).0,
     };
 

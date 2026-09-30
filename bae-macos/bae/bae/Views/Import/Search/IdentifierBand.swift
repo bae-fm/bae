@@ -131,12 +131,6 @@ struct IdentifierBand: View {
         case .absent:
             IdentifierChip(label: label) { IdentifierDash() }
                 .help("No barcode source")
-        // The art may carry a code, but reading it is switched off.
-        case .coverArtOff:
-            IdentifierChip(label: label) { IdentifierOff() }
-                .help(
-                    "Cover art isn't read: switched off in Import settings"
-                )
         case .noCodes:
             IdentifierChip(label: label) { IdentifierDash() }
                 .help("No barcode on the artwork")
@@ -179,11 +173,6 @@ struct IdentifierBand: View {
         case .noneFound:
             IdentifierChip(label: label) { IdentifierDash() }
                 .help("None found")
-        case .coverArtOff:
-            IdentifierChip(label: label) { IdentifierOff() }
-                .help(
-                    "Cover art isn't read: switched off in Import settings"
-                )
         case .numbers(_, let rows, _):
             ForEach(rows, id: \.value) { row in
                 Button {
@@ -282,14 +271,6 @@ extension IdentifierBand {
     private var titleChip: some View {
         switch run.search {
         case .notNeeded:
-            EmptyView()
-        case .notAsked(reason: .switchedOff):
-            IdentifierChip(label: String(localized: "Title")) {
-                IdentifierOff()
-            }
-            .help("Searching by title is switched off in Import settings")
-        // Never reached: a title is never left out, and every catalog searches.
-        case .notAsked(reason: .leftOut), .notAsked(reason: .noCatalog):
             EmptyView()
         case .noTitle:
             TitleSearchChip(album: "", artist: "", onCommit: onEditTitleSearch)
@@ -521,19 +502,6 @@ private struct TitleSearchChip<Trailing: View>: View {
                 onEditTitleSearch: { _, _ in },
             )
         }
-        .frame(width: 660)
-        .environment(PreviewData.artImageStore())
-        .windowBackground()
-    }
-
-    #Preview("Steps switched off") {
-        IdentifierBand(
-            run: PreviewData.identifyRunStepsOff,
-            onToggleLookup: { _ in },
-            onToggleCatalogAgreement: { _ in },
-            onRetryFailed: {},
-            onEditTitleSearch: { _, _ in },
-        )
         .frame(width: 660)
         .environment(PreviewData.artImageStore())
         .windowBackground()

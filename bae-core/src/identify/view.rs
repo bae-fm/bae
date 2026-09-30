@@ -84,8 +84,6 @@ pub enum DiscIdStepView {
 pub enum BarcodeStepView {
     /// No barcode source at all.
     Absent,
-    /// The run does not read cover art, and no CUE sheet states a code.
-    CoverArtOff,
     /// There was a source and it held no code.
     NoCodes,
     /// One row per code, in the order first seen. While `scanning`, more rows
@@ -111,8 +109,6 @@ pub enum CatalogStepView {
     /// Extraction found no catalog number to offer, none is in effect, and
     /// extraction is not still looking.
     NoneFound,
-    /// No catalog number found, and the run does not read cover art.
-    CoverArtOff,
     Numbers {
         /// Whether the artwork is still being read, so more numbers may come.
         scanning: bool,
@@ -145,18 +141,12 @@ pub enum IsrcStepView {
 /// nothing.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum SearchStepView {
-    NotAsked {
-        reason: NotAskedReason,
-    },
     /// The identifiers answered; no search was needed.
     NotNeeded,
     /// Nothing to search by: the draft has no title.
     NoTitle,
     /// The identifiers are still being looked up.
-    Waiting {
-        album: String,
-        artist: String,
-    },
+    Waiting { album: String, artist: String },
     Searched {
         album: String,
         /// Blank where the draft names no album artist.

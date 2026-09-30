@@ -108,9 +108,9 @@ impl CandidatePreparations {
     /// to a question that changed.
     ///
     /// Applied metadata, its provenance, its author and the release link
-    /// remain. The caller replaces only tracks whose audio changed, using the
-    /// current prefill preference: which tracks exist is the decision, not
-    /// what the release is called. A draft identification wrote stays identification's, so with
+    /// remain. The caller replaces only tracks whose audio changed, from the
+    /// folder's file tags: which tracks exist is the decision, not what the
+    /// release is called. A draft identification wrote stays identification's, so with
     /// its verdict cleared it waits for the next run's checks rather than
     /// passing as the person's answer.
     ///

@@ -114,16 +114,6 @@ struct IdentifierDash: View {
     }
 }
 
-/// The mark a step carries when it is switched off in Settings.
-struct IdentifierOff: View {
-    var body: some View {
-        Text("Off")
-            .themeText(.chip)
-            .foregroundStyle(.tertiary)
-            .fixedSize()
-    }
-}
-
 /// The mark a signal carries when reading its input failed.
 struct IdentifierWarning: View {
     var body: some View {
@@ -167,10 +157,7 @@ struct LookupCellView: View {
             Circle()
                 .fill(Theme.hairlineStrong)
                 .frame(width: 5, height: 5)
-        case .notAsked(reason: .switchedOff):
-            IdentifierOff()
-                .help("Switched off in Import settings")
-        case .notAsked(reason: .leftOut), .notAsked(reason: .noCatalog):
+        case .notAsked:
             IdentifierDash()
         case .lookingUp:
             ProgressView()

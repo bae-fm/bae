@@ -319,50 +319,6 @@ fn a_linked_release_s_note_word_breaks_the_tie() {
     );
 }
 
-/// A run that does not join records across catalogs looks no row up on the
-/// other catalog and joins no album, whatever its documents state.
-#[test]
-fn a_run_that_does_not_follow_catalog_links_looks_up_no_pressing() {
-    let state = started_without(
-        vec![MB, DG],
-        crate::config::IdentificationStep::FollowCatalogLinks,
-    );
-    let (state, _) = update(
-        state,
-        signals(
-            DiscIdSignal::Absent,
-            BarcodeSignal::Settled {
-                codes: artwork_codes(&["A"]),
-            },
-            &[],
-        ),
-    );
-    let (state, _) = super::step(
-        state,
-        barcode_matched(MB, "A", vec![pair("mb-1", Some("g-linked"))]),
-    );
-    let reading = super::step(
-        state,
-        barcode_matched(DG, "A", vec![discogs_pair("dg-1", Some("7"))]),
-    );
-    let (state, effects, asked) = answer_rounds(
-        reading,
-        |release| match release.key.as_str() {
-            "mb-1" => linking_document("mb-1", "dg-linked", "7"),
-            _ => plain_document(&[]),
-        },
-        |_, _| panic!("no pressing is looked up"),
-    );
-    assert!(asked.pressings.is_empty());
-    assert!(effects.is_empty(), "nothing is kept: {effects:?}");
-    let mb = rows_of(&state)
-        .into_iter()
-        .find(|(result, _, _)| result.release_id == "mb-1")
-        .expect("mb-1 is on the list")
-        .0;
-    assert_eq!(mb.album_links, AlbumLinks::NotAsked);
-}
-
 /// A catalog number only the fetched documents state joins the albums no
 /// document links, and what the group was then read to be is kept.
 #[test]

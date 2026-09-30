@@ -235,7 +235,6 @@ async fn drive_fixture(
             },
         },
         bae_core::util::rate_limiter::CallPriority::Interactive,
-        bae_core::config::IdentificationSteps::default(),
     );
 
     // The run's watch holds its latest snapshot until the text settles.

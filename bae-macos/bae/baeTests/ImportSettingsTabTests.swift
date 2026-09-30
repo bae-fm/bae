@@ -6,12 +6,10 @@ import Testing
 
 @testable import bae
 
-/// The two import settings, the sources, and the Discogs key that one of those
+/// The import settings, the sources, and the Discogs key that one of those
 /// sources needs.
 ///
-/// The settings are independent: the draft a candidate starts from and whether
-/// identification runs on its own are separate answers, so the tab draws one
-/// switch each and neither write carries the other's value.
+/// Each switch writes only its own setting and carries no other's value.
 @MainActor
 @Suite("The import settings")
 struct ImportSettingsTabTests {
@@ -26,16 +24,12 @@ struct ImportSettingsTabTests {
         ) { _, host in
             try await SnapshotTestSupport.settle(host)
 
-            // The three settings, plus the identification steps and the
-            // sources core reports — which are core's lists, not constants
-            // this tab repeats.
+            // The two settings, plus the sources core reports — which are
+            // core's list, not constants this tab repeats.
             let config = PreviewData.configStore().config
-            #expect(config.identificationSteps.count == 5)
             #expect(config.lookupCatalogs.count == 2)
             #expect(
-                switches(in: host).count
-                    == 3 + config.identificationSteps.count
-                    + config.lookupCatalogs.count
+                switches(in: host).count == 2 + config.lookupCatalogs.count
             )
         }
     }
@@ -57,16 +51,8 @@ struct ImportSettingsTabTests {
                 try await SnapshotTestSupport.settle(host)
             }
 
-            #expect(recorder.prefillWrites == [false])
             #expect(recorder.identifyWrites == [false])
             #expect(recorder.importWhenIdentifiedWrites == [true])
-            #expect(
-                recorder.stepWrites.map(\.step)
-                    == PreviewData.configStore().config.identificationSteps
-                    .map(\.step),
-                "each step switch wrote its own step, in core's order"
-            )
-            #expect(recorder.stepWrites.allSatisfy { !$0.enabled })
             #expect(
                 recorder.sourceWrites.map(\.enabled) == [false, false],
                 "each source switch wrote the value it was set to"
@@ -81,9 +67,8 @@ struct ImportSettingsTabTests {
         }
     }
 
-    /// Both sentences under the switches say what happens when a candidate is
-    /// added — the moment either setting acts.
-    @Test("the tab names both settings")
+    /// The tab names each setting.
+    @Test("the tab names its settings")
     func theTabNamesBothSettings() async throws {
         let lines = try await FindOnlineRendering.text(
             tab(recorder: ImportSettingRecorder()),
@@ -91,11 +76,8 @@ struct ImportSettingsTabTests {
         )
 
         for label in [
-            String(localized: "Pre-fill from file metadata"),
             String(localized: "Identify automatically"),
             String(localized: "Import automatically when identified"),
-            String(localized: "Read cover art"),
-            String(localized: "Search by title"),
         ] {
             #expect(
                 lines.contains { $0.localizedCaseInsensitiveContains(label) },
@@ -214,24 +196,18 @@ struct ImportSettingsTabTests {
 
 @MainActor
 private final class ImportSettingRecorder {
-    var prefillWrites: [Bool] = []
     var identifyWrites: [Bool] = []
     var sourceWrites: [(source: BridgeCatalog, enabled: Bool)] = []
     var importWhenIdentifiedWrites: [Bool] = []
-    var stepWrites: [(step: BridgeIdentificationStep, enabled: Bool)] = []
 
     var importer: Importer {
         Importer(
             setIdentifyAutomatically: { [self] in identifyWrites.append($0) },
-            setPrefillWithFileMetadata: { [self] in prefillWrites.append($0) },
             setMetadataSourceEnabled: { [self] source, enabled in
                 sourceWrites.append((source: source, enabled: enabled))
             },
             setImportWhenIdentified: { [self] in
                 importWhenIdentifiedWrites.append($0)
-            },
-            setIdentificationStep: { [self] step, enabled in
-                stepWrites.append((step: step, enabled: enabled))
             }
         )
     }

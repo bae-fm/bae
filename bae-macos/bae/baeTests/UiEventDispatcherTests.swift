@@ -180,12 +180,10 @@ private func makeAppService(handle: FakeAppHandle = FakeAppHandle())
             maxConcurrentDownloads: 3,
             identifyAutomatically: true,
             importWhenIdentified: false,
-            identificationSteps: PreviewData.everyIdentificationStep,
             importStorage: BridgeImportStorage(
                 cloud: true,
                 pinned: true
             ),
-            prefillWithFileMetadata: true,
             lookupCatalogs: [
                 BridgeLookupCatalogSetting(
                     catalog: .musicBrainz,

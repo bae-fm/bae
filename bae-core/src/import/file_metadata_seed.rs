@@ -1,7 +1,7 @@
 //! What a folder's own file tags make of it.
 //!
-//! Discovery and Reset initialize a candidate from this projection when tag
-//! prefill is enabled, and applying file metadata uses it to replace metadata
+//! Discovery and Reset initialize a candidate from this projection, and
+//! applying file metadata uses it to replace metadata
 //! while retaining the current rows' identities. The projected draft, its
 //! source reading, and embedded cover are produced together.
 

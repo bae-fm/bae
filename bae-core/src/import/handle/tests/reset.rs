@@ -23,9 +23,18 @@ async fn reset_setup_restores_initial_metadata() {
     handle.reset_candidate_setup(&key).await.unwrap();
     let restored = pane(&handle, &key).await;
     assert_eq!(restored.metadata_draft.tracks.len(), 2);
-    assert_eq!(restored.metadata_draft.tracks[0].title, "");
-    assert_eq!(restored.metadata_draft.album_title, "");
-    assert_eq!(restored.metadata_provenance, None);
+    assert_eq!(
+        restored.metadata_draft.tracks[0].title,
+        initial.metadata_draft.tracks[0].title
+    );
+    assert_eq!(
+        restored.metadata_draft.album_title,
+        initial.metadata_draft.album_title
+    );
+    assert_eq!(
+        restored.metadata_provenance,
+        Some(MetadataProvenance::FileMetadata)
+    );
     shut_down(handle).await;
 }
 
@@ -36,196 +45,168 @@ use crate::import::{
 
 #[tokio::test(flavor = "multi_thread")]
 async fn reset_setup_restores_cue_choices_and_saves_complete_tags() {
-    for prefill in [false, true] {
-        for choice in ["retitled", "ignored", "binding", "disc"] {
-            let StoredCandidate {
-                mut handle,
-                manager,
-                candidate,
-                key,
-                tmp: _tmp,
-            } = cue_candidate().await;
-            let original_files = candidate.files.clone();
-            match choice {
-                "retitled" => {
-                    for row in pane(&handle, &key).await.metadata_draft.tracks {
-                        retitle(&handle, &key, row).await;
-                    }
+    for choice in ["retitled", "ignored", "binding", "disc"] {
+        let StoredCandidate {
+            mut handle,
+            manager,
+            candidate,
+            key,
+            tmp: _tmp,
+        } = cue_candidate().await;
+        let original_files = candidate.files.clone();
+        match choice {
+            "retitled" => {
+                for row in pane(&handle, &key).await.metadata_draft.tracks {
+                    retitle(&handle, &key, row).await;
                 }
-                "ignored" => handle
-                    .set_sheet_disc(key.clone(), "Disc.cue".into(), SheetDisc::Ignored)
-                    .await
-                    .unwrap(),
-                "binding" => handle
-                    .set_sheet_binding(key.clone(), "Disc.cue".into(), "01 Track.flac".into(), None)
-                    .await
-                    .unwrap(),
-                "disc" => handle
-                    .set_sheet_disc(
-                        key.clone(),
-                        "Disc.cue".into(),
-                        SheetDisc::Disc { number: 4 },
-                    )
-                    .await
-                    .unwrap(),
-                _ => unreachable!(),
             }
-            manager.set_prefill_with_file_metadata(prefill).await.unwrap();
-            handle.file_tags = Arc::new(CountingFileTagReader::with_embedded_cover(cover_jpeg()));
-            handle
-                .set_candidate_cover(
-                    &key,
-                    crate::import::CoverSelection::Local("cover.jpg".into()),
+            "ignored" => handle
+                .set_sheet_disc(key.clone(), "Disc.cue".into(), SheetDisc::Ignored)
+                .await
+                .unwrap(),
+            "binding" => handle
+                .set_sheet_binding(key.clone(), "Disc.cue".into(), "01 Track.flac".into(), None)
+                .await
+                .unwrap(),
+            "disc" => handle
+                .set_sheet_disc(
+                    key.clone(),
+                    "Disc.cue".into(),
+                    SheetDisc::Disc { number: 4 },
                 )
                 .await
-                .unwrap();
-            let before = preparation(&handle, &candidate.files.content_hash()).await;
-            handle.reset_candidate_setup(&key).await.unwrap();
-            let after = preparation(&handle, &candidate.files.content_hash()).await;
-            let reset = handle.get_release_candidate(&key).await.unwrap().unwrap();
-            assert_eq!(
-                reset.files,
-                original_files,
-                "{choice}, prefill={prefill}"
-            );
-            assert_eq!(after.file_edit_revision, before.file_edit_revision + 1);
-            assert_eq!(after.metadata_revision, before.metadata_revision + 1);
-            assert_eq!(after.draft.tracks.len(), 3);
-            assert!(manager
-                .load_candidate_file_edits(&candidate.files.content_hash())
-                .await
-                .unwrap()
-                .is_empty());
-            assert!(after
-                .draft
-                .tracks
-                .iter()
-                .all(|row| matches!(row.edit.file, AudioFile::SheetSlice { .. })));
-            if prefill {
-                assert_eq!(after.draft.album_title, "Cue Album");
-                assert_eq!(after.draft.tracks[0].edit.title, "Cue First");
-                assert_eq!(
-                    after.metadata_provenance,
-                    Some(MetadataProvenance::FileMetadata)
-                );
-                // The folder's cover.jpg is named as the front cover, so it
-                // ranks ahead of the tags' embedded artwork.
-                assert_eq!(
-                    after.cover,
-                    Some(crate::import::CoverSelection::Local("cover.jpg".into()))
-                );
-                let stored = manager
-                    .load_candidate_file_tag_snapshot(&candidate.watched_folder_path, &key)
-                    .await
-                    .unwrap()
-                    .unwrap();
-                let snapshot = stored.snapshot.unwrap();
-                assert_eq!(snapshot.files.len(), 2);
-                assert_eq!(snapshot.file_edit_revision, reset.file_edit_revision);
-                assert_eq!(snapshot.scan_generation, stored.scan_generation);
-                handle.file_tags = Arc::new(CountingFileTagReader::failing(0));
-                handle
-                    .select_candidate_file_tags(key.clone())
-                    .await
-                    .unwrap();
-                assert_eq!(
-                    preparation(&handle, &candidate.files.content_hash())
-                        .await
-                        .draft,
-                    after.draft
-                );
-            } else {
-                assert!(after.draft.album_title.is_empty());
-                assert!(after
-                    .draft
-                    .tracks
-                    .iter()
-                    .all(|row| row.edit.title.is_empty()));
-                assert_eq!(
-                    after.cover,
-                    Some(crate::import::CoverSelection::Local("cover.jpg".into())),
-                    "a reset leaves the candidate the cover its folder gives it"
-                );
-                assert_eq!(after.metadata_provenance, None);
-            }
-            shut_down(handle).await;
+                .unwrap(),
+            _ => unreachable!(),
         }
+        handle.file_tags = Arc::new(CountingFileTagReader::with_embedded_cover(cover_jpeg()));
+        handle
+            .set_candidate_cover(
+                &key,
+                crate::import::CoverSelection::Local("cover.jpg".into()),
+            )
+            .await
+            .unwrap();
+        let before = preparation(&handle, &candidate.files.content_hash()).await;
+        handle.reset_candidate_setup(&key).await.unwrap();
+        let after = preparation(&handle, &candidate.files.content_hash()).await;
+        let reset = handle.get_release_candidate(&key).await.unwrap().unwrap();
+        assert_eq!(reset.files, original_files, "{choice}");
+        assert_eq!(after.file_edit_revision, before.file_edit_revision + 1);
+        assert_eq!(after.metadata_revision, before.metadata_revision + 1);
+        assert_eq!(after.draft.tracks.len(), 3);
+        assert!(manager
+            .load_candidate_file_edits(&candidate.files.content_hash())
+            .await
+            .unwrap()
+            .is_empty());
+        assert!(after
+            .draft
+            .tracks
+            .iter()
+            .all(|row| matches!(row.edit.file, AudioFile::SheetSlice { .. })));
+        assert_eq!(after.draft.album_title, "Cue Album");
+        assert_eq!(after.draft.tracks[0].edit.title, "Cue First");
+        assert_eq!(
+            after.metadata_provenance,
+            Some(MetadataProvenance::FileMetadata)
+        );
+        // The folder's cover.jpg is named as the front cover, so it
+        // ranks ahead of the tags' embedded artwork.
+        assert_eq!(
+            after.cover,
+            Some(crate::import::CoverSelection::Local("cover.jpg".into()))
+        );
+        let stored = manager
+            .load_candidate_file_tag_snapshot(&candidate.watched_folder_path, &key)
+            .await
+            .unwrap()
+            .unwrap();
+        let snapshot = stored.snapshot.unwrap();
+        assert_eq!(snapshot.files.len(), 2);
+        assert_eq!(snapshot.file_edit_revision, reset.file_edit_revision);
+        assert_eq!(snapshot.scan_generation, stored.scan_generation);
+        handle.file_tags = Arc::new(CountingFileTagReader::failing(0));
+        handle
+            .select_candidate_file_tags(key.clone())
+            .await
+            .unwrap();
+        assert_eq!(
+            preparation(&handle, &candidate.files.content_hash())
+                .await
+                .draft,
+            after.draft
+        );
+        shut_down(handle).await;
     }
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn reset_setup_preserves_combination_members_and_disc_layout() {
-    for prefill in [false, true] {
-        let (manager, _library) = setup_test_manager().await;
-        let first_root = TempDir::new().unwrap();
-        let second_root = TempDir::new().unwrap();
-        let (first, first_key, _) = picked_candidate(&manager, &first_root, "Volume A").await;
-        let (second, second_key, _) = picked_candidate(&manager, &second_root, "Volume B").await;
-        let handle = manager
-            .start_import_service(tokio::runtime::Handle::current())
-            .await
-            .unwrap();
-        let member_before = [
-            preparation(&handle, &first.files.content_hash()).await,
-            preparation(&handle, &second.files.content_hash()).await,
-        ];
-        let key = handle
-            .combine_candidates(vec![first_key, second_key])
-            .await
-            .unwrap();
-        let source = handle.get_release_candidate(&key).await.unwrap().unwrap();
-        let initial = pane(&handle, &key).await;
-        let rows = initial.metadata_draft.tracks;
-        retitle(&handle, &key, rows[2].clone()).await;
-        handle
-            .set_candidate_edit_field(
-            &key,
-            crate::import::DraftFieldEdit::Text {
-                field: crate::import::CandidateEditField::AlbumTitle,
-                value: "Edited collection".into(),
-            },
-        )
-            .await
-            .unwrap();
-        manager.set_prefill_with_file_metadata(prefill).await.unwrap();
-        handle.reset_candidate_setup(&key).await.unwrap();
-        let reset = pane(&handle, &key).await;
-        assert_eq!(reset.candidate.files, source.files);
-        assert!(source.grouping.is_some());
-        assert_eq!(reset.candidate.files.parts, source.files.parts);
-        assert_eq!(
-            reset
-                .metadata_draft
-                .tracks
-                .iter()
-                .map(|row| (row.side, row.track_number))
-                .collect::<Vec<_>>(),
-            [
-                (Some(1), Some(1)),
-                (Some(1), Some(2)),
-                (Some(2), Some(1)),
-                (Some(2), Some(2))
-            ]
-        );
-        if !prefill {
-            assert_eq!(reset.metadata_draft.album_title, source.name);
-        }
-        assert_eq!(
-            preparation(&handle, &first.files.content_hash()).await,
-            member_before[0]
-        );
-        assert_eq!(
-            preparation(&handle, &second.files.content_hash()).await,
-            member_before[1]
-        );
-        let once = preparation(&handle, &source.files.content_hash()).await;
-        handle.reset_candidate_setup(&key).await.unwrap();
-        let twice = preparation(&handle, &source.files.content_hash()).await;
-        assert_eq!(once.draft, twice.draft);
-        assert_eq!(once.cover, twice.cover);
-        assert_eq!(once.metadata_provenance, twice.metadata_provenance);
-        shut_down(handle).await;
-    }
+    let (manager, _library) = setup_test_manager().await;
+    let first_root = TempDir::new().unwrap();
+    let second_root = TempDir::new().unwrap();
+    let (first, first_key, _) = picked_candidate(&manager, &first_root, "Volume A").await;
+    let (second, second_key, _) = picked_candidate(&manager, &second_root, "Volume B").await;
+    let handle = manager
+        .start_import_service(tokio::runtime::Handle::current())
+        .await
+        .unwrap();
+    let member_before = [
+        preparation(&handle, &first.files.content_hash()).await,
+        preparation(&handle, &second.files.content_hash()).await,
+    ];
+    let key = handle
+        .combine_candidates(vec![first_key, second_key])
+        .await
+        .unwrap();
+    let source = handle.get_release_candidate(&key).await.unwrap().unwrap();
+    let initial = pane(&handle, &key).await;
+    let rows = initial.metadata_draft.tracks;
+    retitle(&handle, &key, rows[2].clone()).await;
+    handle
+        .set_candidate_edit_field(
+        &key,
+        crate::import::DraftFieldEdit::Text {
+            field: crate::import::CandidateEditField::AlbumTitle,
+            value: "Edited collection".into(),
+        },
+    )
+        .await
+        .unwrap();
+    handle.reset_candidate_setup(&key).await.unwrap();
+    let reset = pane(&handle, &key).await;
+    assert_eq!(reset.candidate.files, source.files);
+    assert!(source.grouping.is_some());
+    assert_eq!(reset.candidate.files.parts, source.files.parts);
+    assert_eq!(
+        reset
+            .metadata_draft
+            .tracks
+            .iter()
+            .map(|row| (row.side, row.track_number))
+            .collect::<Vec<_>>(),
+        [
+            (Some(1), Some(1)),
+            (Some(1), Some(2)),
+            (Some(2), Some(1)),
+            (Some(2), Some(2))
+        ]
+    );
+    assert_eq!(
+        preparation(&handle, &first.files.content_hash()).await,
+        member_before[0]
+    );
+    assert_eq!(
+        preparation(&handle, &second.files.content_hash()).await,
+        member_before[1]
+    );
+    let once = preparation(&handle, &source.files.content_hash()).await;
+    handle.reset_candidate_setup(&key).await.unwrap();
+    let twice = preparation(&handle, &source.files.content_hash()).await;
+    assert_eq!(once.draft, twice.draft);
+    assert_eq!(once.cover, twice.cover);
+    assert_eq!(once.metadata_provenance, twice.metadata_provenance);
+    shut_down(handle).await;
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -249,7 +230,6 @@ async fn reset_setup_tag_failure_keeps_source_preparation_and_snapshot() {
         .await
         .unwrap()
         .unwrap();
-    manager.set_prefill_with_file_metadata(true).await.unwrap();
     handle.file_tags = Arc::new(CountingFileTagReader::failing(1));
     assert!(handle
         .reset_candidate_setup(&key)
@@ -272,7 +252,7 @@ async fn reset_setup_tag_failure_keeps_source_preparation_and_snapshot() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn reset_setup_refuses_missing_or_changed_sources_without_prefill() {
+async fn reset_setup_refuses_missing_or_changed_sources() {
     for missing in [false, true] {
         let StoredCandidate {
             handle,
@@ -310,7 +290,13 @@ async fn reset_setup_prepared_before_an_edit_cannot_replace_it_or_its_snapshot()
         key,
         tmp: _tmp,
     } = stored_candidate().await;
-    manager.set_prefill_with_file_metadata(true).await.unwrap();
+    let scanned = manager
+        .load_candidate_file_tag_snapshot(&candidate.watched_folder_path, &key)
+        .await
+        .unwrap()
+        .unwrap()
+        .snapshot;
+    assert!(scanned.is_some(), "the scan read the folder's tags");
     let (reader, reached, gate) = CountingFileTagReader::held();
     handle.file_tags = Arc::new(reader);
     let resetting = tokio::spawn({
@@ -354,7 +340,7 @@ async fn reset_setup_prepared_before_an_edit_cannot_replace_it_or_its_snapshot()
             .unwrap()
             .unwrap()
             .snapshot,
-        None
+        scanned
     );
     shut_down(handle).await;
 }
@@ -496,7 +482,10 @@ async fn reset_setup_discards_selected_release_assets_and_identification() {
         "a reset unmakes the setup, so the candidate starts again with the \
          cover its folder gives it"
     );
-    assert_eq!(reset.metadata_provenance, None);
+    assert_eq!(
+        reset.metadata_provenance,
+        Some(MetadataProvenance::FileMetadata)
+    );
     assert!(reset
         .draft
         .tracks
@@ -513,7 +502,7 @@ async fn reset_setup_discards_selected_release_assets_and_identification() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn reset_setup_without_tags_rejects_an_unchanged_source_rescanned_after_preparation() {
+async fn reset_setup_rejects_an_unchanged_source_rescanned_after_preparation() {
     let StoredCandidate {
         handle,
         manager,
@@ -534,8 +523,8 @@ async fn reset_setup_without_tags_rejects_an_unchanged_source_rescanned_after_pr
         metadata_revision: before.metadata_revision,
     };
     let metadata = CandidateMetadataDraft {
-        draft: old.candidate.blank_source().draft,
-        provenance: None,
+        draft: before.draft.clone(),
+        provenance: Some(MetadataProvenance::FileMetadata),
         cover: None,
         source_discogs_artist_ids: Default::default(),
         assets: CandidatePreparedAssets::default(),
@@ -557,7 +546,7 @@ async fn reset_setup_without_tags_rejects_an_unchanged_source_rescanned_after_pr
             old.scan_generation,
             crate::import::LookupChoices::default(),
             metadata,
-            None,
+            old.snapshot.clone().expect("the scan read the folder's tags"),
             vec![(key.clone(), candidate.files.clone())]
         )
         .await
@@ -651,7 +640,8 @@ async fn reset_setup_updates_compatible_folder_and_combination_identities_togeth
         handle.reset_candidate_setup(key).await.unwrap();
         let after = preparation(&handle, &folder.files.content_hash()).await;
         assert_eq!(after.draft.tracks.len(), 4);
-        assert_eq!(after.draft.tracks[1].edit.title, "");
+        // The reset reads the title the file gives the track again.
+        assert_eq!(after.draft.tracks[1].edit.title, "02 Track");
         for key in [&folder_key, &combined_key] {
             let candidate = handle.get_release_candidate(key).await.unwrap().unwrap();
             assert_eq!(candidate.file_edit_revision, after.file_edit_revision);
@@ -801,7 +791,13 @@ async fn reset_setup_prepared_before_a_lookup_choice_cannot_erase_it() {
         key,
         tmp: _tmp,
     } = stored_candidate().await;
-    manager.set_prefill_with_file_metadata(true).await.unwrap();
+    let scanned = manager
+        .load_candidate_file_tag_snapshot(&candidate.watched_folder_path, &key)
+        .await
+        .unwrap()
+        .unwrap()
+        .snapshot;
+    assert!(scanned.is_some(), "the scan read the folder's tags");
     let (reader, reached, gate) = CountingFileTagReader::held();
     handle.file_tags = Arc::new(reader);
     let resetting = tokio::spawn({
@@ -842,94 +838,7 @@ async fn reset_setup_prepared_before_a_lookup_choice_cannot_erase_it() {
             .unwrap()
             .unwrap()
             .snapshot,
-        None
-    );
-    shut_down(handle).await;
-}
-
-#[tokio::test(flavor = "multi_thread")]
-async fn reset_setup_without_tags_keeps_a_combination_snapshot_ineligible_until_reread() {
-    let (manager, _library) = setup_test_manager().await;
-    let first_root = TempDir::new().unwrap();
-    let second_root = TempDir::new().unwrap();
-    let (_, first_key, _) = picked_candidate(&manager, &first_root, "Volume A").await;
-    let (_, second_key, _) = picked_candidate(&manager, &second_root, "Volume B").await;
-    let mut handle = manager
-        .start_import_service(tokio::runtime::Handle::current())
-        .await
-        .unwrap();
-    let key = handle
-        .combine_candidates(vec![first_key, second_key])
-        .await
-        .unwrap();
-    manager.set_prefill_with_file_metadata(true).await.unwrap();
-    handle.file_tags = Arc::new(CountingFileTagReader::with_embedded_cover(cover_jpeg()));
-    handle.reset_candidate_setup(&key).await.unwrap();
-    let source = handle.get_release_candidate(&key).await.unwrap().unwrap();
-    let with_tags = manager
-        .load_candidate_file_tag_snapshot(&source.watched_folder_path, &key)
-        .await
-        .unwrap()
-        .unwrap();
-    assert!(with_tags
-        .snapshot
-        .as_ref()
-        .unwrap()
-        .embedded_cover
-        .is_some());
-    // Each combined folder's cover.jpg is named as the front cover, so one
-    // ranks ahead of the tags' embedded artwork.
-    assert!(matches!(
-        preparation(&handle, &source.files.content_hash())
-            .await
-            .cover,
-        Some(crate::import::CoverSelection::Local(file_id)) if file_id.ends_with("/cover.jpg")
-    ));
-    manager.set_prefill_with_file_metadata(false).await.unwrap();
-    handle.reset_candidate_setup(&key).await.unwrap();
-    let reset = pane(&handle, &key).await;
-    assert_eq!(reset.candidate.files, source.files);
-    assert_eq!(reset.metadata_provenance, None);
-    let saved = preparation(&handle, &source.files.content_hash()).await;
-    // Which of the combined folders leads the file list is the combination's
-    // own order, so the image is named by whichever it is.
-    let Some(crate::import::CoverSelection::Local(file_id)) = saved.cover.clone() else {
-        panic!(
-            "a reset with no tags to read leaves the folder's own image, got {:?}",
-            saved.cover
-        );
-    };
-    assert!(file_id.ends_with("/cover.jpg"), "{file_id}");
-    assert_eq!(
-        reset.cover.map(|cover| cover.selection),
-        saved.cover,
-        "the pane shows the stored selection"
-    );
-    let stale = manager
-        .load_candidate_file_tag_snapshot(&source.watched_folder_path, &key)
-        .await
-        .unwrap()
-        .unwrap();
-    assert_eq!(stale.snapshot, with_tags.snapshot);
-    assert_ne!(
-        stale.snapshot.as_ref().unwrap().file_edit_revision,
-        stale.candidate.file_edit_revision
-    );
-    let reader = Arc::new(CountingFileTagReader::immediate());
-    let reread = handle
-        .read_file_tag_snapshot(&key, reader.clone())
-        .await
-        .unwrap()
-        .snapshot;
-    assert_eq!(reader.read_count(), 4);
-    assert_eq!(
-        reread.file_edit_revision,
-        reset.candidate.file_edit_revision
-    );
-    assert_eq!(reread.embedded_cover, None);
-    assert_eq!(
-        preparation(&handle, &source.files.content_hash()).await,
-        saved
+        scanned
     );
     shut_down(handle).await;
 }

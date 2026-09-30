@@ -95,14 +95,12 @@ pub fn bridge_lookup_failure_key(failure: BridgeLookupFailure) -> String {
     .to_string()
 }
 
-/// Why a run did not ask about a value, or took a step without asking
-/// anyone. Mirrors `bae_core::identify::NotAskedReason`.
+/// Why a run did not ask about a value. Mirrors
+/// `bae_core::identify::NotAskedReason`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeNotAskedReason {
     /// The person left the value out of the run.
     LeftOut,
-    /// The step is switched off in the identification settings.
-    SwitchedOff,
     /// No catalog the run asks answers this lookup.
     NoCatalog,
 }
@@ -171,8 +169,6 @@ pub enum BridgeDiscIdStep {
 pub enum BridgeBarcodeStep {
     /// No barcode source at all.
     Absent,
-    /// Cover art is not read and no CUE sheet states a code.
-    CoverArtOff,
     /// There was a source and it held no code.
     NoCodes,
     /// One row per code; while `scanning`, more may come.
@@ -193,8 +189,6 @@ pub struct BridgeCatalogCandidate {
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeCatalogStep {
     NoneFound,
-    /// No catalog number in the folder's own text, and cover art is not read.
-    CoverArtOff,
     Numbers {
         /// Whether the artwork is still being read, so more may come.
         scanning: bool,
@@ -224,8 +218,6 @@ pub enum BridgeIsrcStep {
 /// Mirrors `bae_core::identify::SearchStepView`.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeSearchStep {
-    /// Nobody is asked the title, for `reason`, whatever the identifiers find.
-    NotAsked { reason: BridgeNotAskedReason },
     /// The identifiers answered; no search was needed.
     NotNeeded,
     /// Nothing to search by: the draft has no title.

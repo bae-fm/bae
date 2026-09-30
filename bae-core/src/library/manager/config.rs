@@ -80,19 +80,6 @@ impl LibraryManager {
             .await
     }
 
-    /// Take, or stop taking, one step of every identification run. A run
-    /// reads its steps as it starts, so the change applies from the next run
-    /// on and a run in flight finishes the way it began.
-    pub async fn set_identification_step(
-        &self,
-        step: crate::config::IdentificationStep,
-        enabled: bool,
-    ) -> Result<(), crate::config::ConfigError> {
-        self.config_handle
-            .update_preferences(move |prefs| prefs.identification.steps.set(step, enabled))
-            .await
-    }
-
     /// Whether imports go to the cloud home, when the library has one.
     pub async fn set_import_to_cloud(
         &self,
@@ -114,12 +101,6 @@ impl LibraryManager {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) fn identifies_automatically(&self) -> bool {
         self.config_handle.config().prefs.identification.automatic
-    }
-
-    /// The steps an identification run takes, as a run starting now reads
-    /// them.
-    pub fn identification_steps(&self) -> crate::config::IdentificationSteps {
-        self.config_handle.config().prefs.identification.steps
     }
 
     /// Which metadata sources this library asks, one entry per
@@ -158,12 +139,6 @@ impl LibraryManager {
             .update_preferences(move |prefs| prefs.identification.catalogs.set(source, enabled))
             .await
     }
-
-    pref_setter!(
-        /// Whether a candidate's draft is created from the folder's own metadata.
-        set_prefill_with_file_metadata,
-        prefill_with_file_metadata: bool
-    );
 
     pref_setter!(
         /// Whether casting to a network receiver is available. Turning it off

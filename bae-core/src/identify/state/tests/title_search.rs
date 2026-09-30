@@ -7,7 +7,6 @@ fn started_searching(providers: Vec<Catalog>, album: &str, artist: &str) -> Iden
         IdentifyState::Idle,
         IdentifyEvent::Started {
             providers,
-            steps: crate::config::IdentificationSteps::default(),
             choices: LookupChoices::default(),
             title_search: TitleSearch::of(album, artist),
         },

@@ -100,7 +100,6 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
         key.clone(),
         ExtractionSource::Candidate { candidate },
         crate::util::rate_limiter::CallPriority::Interactive,
-        crate::config::IdentificationSteps::default(),
     );
     reached
         .recv_timeout(Duration::from_secs(10))

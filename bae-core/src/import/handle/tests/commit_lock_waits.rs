@@ -129,9 +129,6 @@ async fn retitle(handle: &ImportServiceHandle, key: &str) {
 async fn a_pane_edit_lands_while_a_scan_reads_another_folders_tags() {
     let (manager, tmp) = setup_test_manager().await;
     let (_candidate, key, _hash) = picked_candidate(&manager, &tmp, "Album").await;
-    // The scan below seeds a new folder's draft from its tags, which is the
-    // read under test.
-    manager.set_prefill_with_file_metadata(true).await.unwrap();
     let slow_root = tmp.path().join("slow share");
     audio_folder(&slow_root, "Other Album");
     let (reader, mut entered) = HeldTagReader::new();
@@ -161,7 +158,8 @@ async fn a_pane_edit_lands_while_a_scan_reads_another_folders_tags() {
 /// Two candidates, each under a watched root of its own, served by a handle
 /// whose tag reads the returned reader can hold — and the keys of both, with
 /// the folder of the first. The second is read as its own tags already; the
-/// first has had its tags read by nobody.
+/// first is stored as a scan that could not read its tags, so nothing has
+/// read them.
 async fn two_candidates() -> (
     ImportServiceHandle,
     Arc<HeldTagReader>,
@@ -172,8 +170,17 @@ async fn two_candidates() -> (
 ) {
     let (manager, tmp) = setup_test_manager().await;
     let other = TempDir::new().unwrap();
-    let (mut held_candidate, held_key, _) = picked_candidate(&manager, &tmp, "Held Album").await;
-    add_sheet(&manager, &mut held_candidate, SECOND_FILE_IN_TWO).await;
+    let (mut held_candidate, held_key, _) =
+        unscanned_candidate(&manager, &tmp, "Held Album").await;
+    std::fs::write(held_candidate.path.join("Disc.cue"), SECOND_FILE_IN_TWO).unwrap();
+    held_candidate.files =
+        crate::import::folder_scanner::collect_release_candidate_files_with_scope(
+            &held_candidate.path,
+            held_candidate.scope,
+            &crate::import::folder_scanner::StoredCandidateEdits::none(),
+        )
+        .unwrap();
+    rescan_unread_into(&manager, held_candidate.clone()).await;
     let (_, edited_key, _) = picked_candidate(&manager, &other, "Edited Album").await;
     let (reader, entered) = HeldTagReader::new();
     let handle = manager
@@ -233,10 +240,6 @@ async fn a_pane_edit_lands_while_a_file_decision_reads_another_folders_tags() {
     handle
         .select_candidate_file_tags(held_key.clone())
         .await
-        .unwrap();
-    handle
-        .library_manager
-        .set_prefill_with_file_metadata(true).await
         .unwrap();
     reader.hold(&held_folder);
     let decision = tokio::spawn({

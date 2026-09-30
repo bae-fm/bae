@@ -14,8 +14,8 @@ async fn a_pick_the_person_made_names_them_as_the_author() {
     } = stored_candidate().await;
     assert_eq!(
         pane(&handle, &key).await.metadata_author,
-        MetadataAuthor::Nobody,
-        "a candidate nobody has picked for carries no author"
+        MetadataAuthor::Prefill,
+        "a candidate nobody has picked for carries the scan's draft"
     );
 
     handle

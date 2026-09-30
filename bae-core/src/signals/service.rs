@@ -86,7 +86,6 @@ struct RunningExtraction {
     /// Whether this is still the key's current extraction.
     generation: u64,
     priority: CallPriority,
-    read_cover_art: bool,
     snapshots: watch::Sender<Option<SignalsSnapshot>>,
 }
 
@@ -164,7 +163,6 @@ impl ExtractionServiceHandle {
         key: String,
         source: ExtractionSource,
         priority: CallPriority,
-        steps: crate::config::IdentificationSteps,
     ) -> ExtractionWatch {
         let inner = self.inner.clone();
         let runtime_handle = self.inner.runtime_handle.clone();
@@ -177,7 +175,6 @@ impl ExtractionServiceHandle {
                     key,
                     generation,
                     priority,
-                    read_cover_art: steps.read_cover_art,
                     snapshots,
                 };
                 runtime_handle.spawn(async move {
@@ -223,8 +220,7 @@ async fn run_extraction(
 
     match source {
         ExtractionSource::Candidate { candidate } => {
-            let settled_key =
-                settled_reading_key(&candidate.files.content_hash(), extraction.read_cover_art);
+            let settled_key = candidate.files.content_hash();
             if let Some(settled) = inner.settled.get_cloned(&settled_key) {
                 debug!(
                     "signals: {} was read before with these files; reusing that reading",
@@ -259,8 +255,11 @@ async fn run_extraction(
             for catalog in fast.bracket_catalogs {
                 pool.push_bracket(catalog);
             }
-            let artwork = Artwork::unread(extraction.read_cover_art, inner.has_artwork_analyzer())
-                .unwrap_or_else(|| Artwork::read(fast.artwork));
+            let artwork = if inner.has_artwork_analyzer() {
+                Artwork::read(fast.artwork)
+            } else {
+                Artwork::Absent
+            };
             stream_extraction(
                 inner.clone(),
                 extraction,
@@ -306,38 +305,36 @@ async fn run_extraction(
             if token.is_cancelled() {
                 return;
             }
-            // The artwork is resolved only when it will be read.
-            // `_cover_staging` holds the staged cover's temp dir until
+            // The artwork is resolved only when there is an analyzer to read
+            // it. `_cover_staging` holds the staged cover's temp dir until
             // `stream_extraction` returns; a resolve error means the release's
             // files cannot be read at all, so the extraction aborts.
-            let unread = Artwork::unread(extraction.read_cover_art, inner.has_artwork_analyzer());
-            let (artwork, _cover_staging) = match unread {
-                Some(unread) => (unread, None),
-                None => {
-                    match resolve_release_artwork_paths(&inner.library_manager, &release_id).await {
-                        // A library release's images have no file id.
-                        Ok((paths, staging)) => (
-                            Artwork::read(
-                                paths
-                                    .into_iter()
-                                    .map(|path| ArtworkImage {
-                                        path,
-                                        file_id: None,
-                                    })
-                                    .collect(),
-                            ),
-                            staging,
+            let (artwork, _cover_staging) = if !inner.has_artwork_analyzer() {
+                (Artwork::Absent, None)
+            } else {
+                match resolve_release_artwork_paths(&inner.library_manager, &release_id).await {
+                    // A library release's images have no file id.
+                    Ok((paths, staging)) => (
+                        Artwork::read(
+                            paths
+                                .into_iter()
+                                .map(|path| ArtworkImage {
+                                    path,
+                                    file_id: None,
+                                })
+                                .collect(),
                         ),
-                        Err(e) => {
-                            error!("signals: cannot read release {release_id} for artwork: {e}; aborting extraction");
-                            emit_aborted_signals(
-                                &inner,
-                                &extraction,
-                                disc_id,
-                                InternalFailure { detail: e },
-                            );
-                            return;
-                        }
+                        staging,
+                    ),
+                    Err(e) => {
+                        error!("signals: cannot read release {release_id} for artwork: {e}; aborting extraction");
+                        emit_aborted_signals(
+                            &inner,
+                            &extraction,
+                            disc_id,
+                            InternalFailure { detail: e },
+                        );
+                        return;
                     }
                 }
             };
@@ -420,25 +417,11 @@ struct ExtractionInputs {
 enum Artwork {
     /// No images, or no analyzer to read them with.
     Absent,
-    /// The run does not read cover art.
-    Off,
     Read(ArtworkPass),
 }
 
 impl Artwork {
-    /// What the pass does when it will read no image, decided before the
-    /// images are looked for; `None` when they are to be read.
-    fn unread(read_cover_art: bool, analyzer_available: bool) -> Option<Self> {
-        if !analyzer_available {
-            return Some(Artwork::Absent);
-        }
-        if !read_cover_art {
-            return Some(Artwork::Off);
-        }
-        None
-    }
-
-    /// The pass over `images`, once [`Self::unread`] says they are to be read.
+    /// The pass over `images`, once there is an analyzer to read them with.
     fn read(images: Vec<ArtworkImage>) -> Self {
         if images.is_empty() {
             return Artwork::Absent;
@@ -451,16 +434,6 @@ impl Artwork {
 struct ArtworkPass {
     /// Never empty.
     images: Vec<ArtworkImage>,
-}
-
-/// The session cache's key for a folder's settled reading: its files, and
-/// whether the cover art was read.
-fn settled_reading_key(content_hash: &str, read_cover_art: bool) -> String {
-    if read_cover_art {
-        content_hash.to_string()
-    } else {
-        format!("{content_hash} without cover art")
-    }
 }
 
 /// Stream snapshots over the artwork pass — one before the first image and
@@ -479,14 +452,13 @@ async fn stream_extraction(
     } = inputs;
     let finished = match &artwork {
         Artwork::Absent => ArtworkScan::Absent,
-        Artwork::Off => ArtworkScan::Off,
         Artwork::Read(pass) => ArtworkScan::Done {
             total: pass.images.len() as u32,
         },
     };
     let artwork = match artwork {
         Artwork::Read(pass) => Some(pass),
-        Artwork::Absent | Artwork::Off => None,
+        Artwork::Absent => None,
     };
     let total = artwork.as_ref().map_or(0, |pass| pass.images.len() as u32);
     let has_artwork = artwork.is_some();

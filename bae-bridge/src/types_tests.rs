@@ -113,34 +113,26 @@ mod conversion_roundtrip {
     }
 
     #[test]
-    fn config_exposes_prefill_with_file_metadata_and_identify_automatically_independently() {
+    fn config_exposes_identify_automatically() {
         use bae_core::config::Config;
 
         for identify_automatically in [true, false] {
-            for prefill_with_file_metadata in [true, false] {
-                let mut config = Config::with_defaults(
-                    "library".to_string(),
-                    "device".to_string(),
-                    std::path::PathBuf::from("/library"),
-                    "Library".to_string(),
-                );
-                config.prefs.identification.automatic = identify_automatically;
-                config.prefs.prefill_with_file_metadata = prefill_with_file_metadata;
+            let mut config = Config::with_defaults(
+                "library".to_string(),
+                "device".to_string(),
+                std::path::PathBuf::from("/library"),
+                "Library".to_string(),
+            );
+            config.prefs.identification.automatic = identify_automatically;
 
-                let bridge = BridgeConfig::from_core(&config);
-                assert_eq!(bridge.identify_automatically, identify_automatically);
-                assert_eq!(
-                    bridge.prefill_with_file_metadata,
-                    prefill_with_file_metadata
-                );
-            }
+            let bridge = BridgeConfig::from_core(&config);
+            assert_eq!(bridge.identify_automatically, identify_automatically);
         }
     }
 
-    /// Steps cross in the order a run takes them.
     #[test]
-    fn config_exposes_every_identification_step_and_the_import_settings() {
-        use bae_core::config::{Config, IdentificationStep};
+    fn config_exposes_the_import_settings() {
+        use bae_core::config::Config;
 
         let mut config = Config::with_defaults(
             "library".to_string(),
@@ -148,29 +140,10 @@ mod conversion_roundtrip {
             std::path::PathBuf::from("/library"),
             "Library".to_string(),
         );
-        config
-            .prefs
-            .identification
-            .steps
-            .set(IdentificationStep::SearchByTitle, false);
         config.prefs.identification.import_when_identified = true;
         config.prefs.import_storage.pinned = false;
 
         let bridge = BridgeConfig::from_core(&config);
-        assert_eq!(
-            bridge
-                .identification_steps
-                .iter()
-                .map(|setting| (setting.step, setting.enabled))
-                .collect::<Vec<_>>(),
-            vec![
-                (BridgeIdentificationStep::ReadCoverArt, true),
-                (BridgeIdentificationStep::LookUpDiscIds, true),
-                (BridgeIdentificationStep::LookUpBarcodes, true),
-                (BridgeIdentificationStep::SearchByTitle, false),
-                (BridgeIdentificationStep::FollowCatalogLinks, true),
-            ]
-        );
         assert!(bridge.import_when_identified);
         assert_eq!(
             bridge.import_storage,

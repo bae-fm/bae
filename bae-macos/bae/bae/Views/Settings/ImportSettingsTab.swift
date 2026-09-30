@@ -1,8 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// Import metadata defaults, identification steps, and the sources Find online
-/// asks; every control writes through core and redraws from config.
+/// Import metadata defaults and the sources Find online asks; every control
+/// writes through core and redraws from config.
 struct ImportSettingsTab: View {
     @Environment(ConfigStore.self)
     private var configStore
@@ -14,10 +14,6 @@ struct ImportSettingsTab: View {
     var body: some View {
         Form {
             Section {
-                Toggle(
-                    "Pre-fill from file metadata",
-                    isOn: prefillWithFileMetadata
-                )
                 Toggle("Identify automatically", isOn: identifyAutomatically)
                 // Only an automatic run imports on its own.
                 Toggle(
@@ -29,32 +25,11 @@ struct ImportSettingsTab: View {
                 Text("Metadata")
             } footer: {
                 VStack(alignment: .leading, spacing: ThemeSpace.compact) {
-                    Text(
-                        "New candidates start from a draft read from their files, sheets and folder name."
-                    )
                     Text("New candidates are identified as they are added.")
                     Text(
                         "A candidate identified from then on that needs nothing from you is imported right away, where your last import went."
                     )
                 }
-                .themeText(.detail)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
-            Section {
-                ForEach(
-                    configStore.config.identificationSteps,
-                    id: \.step
-                ) { setting in
-                    stepToggle(setting)
-                }
-            } header: {
-                Text("Identification")
-            } footer: {
-                Text(
-                    "A step that is off is skipped by every identification from then on, and says so where the run is shown."
-                )
                 .themeText(.detail)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -133,26 +108,6 @@ struct ImportSettingsTab: View {
         .disabled(!setting.canChange)
     }
 
-    /// One identification step's switch.
-    private func stepToggle(
-        _ setting: BridgeIdentificationStepSetting
-    ) -> some View {
-        Toggle(
-            setting.step.settingLabel,
-            isOn: Binding(
-                get: { setting.enabled },
-                set: { enabled in
-                    write {
-                        try await importer.setIdentificationStep(
-                            setting.step,
-                            enabled
-                        )
-                    }
-                }
-            )
-        )
-    }
-
     private var importWhenIdentified: Binding<Bool> {
         Binding(
             get: { configStore.config.importWhenIdentified },
@@ -176,22 +131,6 @@ struct ImportSettingsTab: View {
                 Task {
                     do {
                         try await importer.setIdentifyAutomatically(enabled)
-                    }
-                    catch {
-                        uiStore.showError(error)
-                    }
-                }
-            }
-        )
-    }
-
-    private var prefillWithFileMetadata: Binding<Bool> {
-        Binding(
-            get: { configStore.config.prefillWithFileMetadata },
-            set: { enabled in
-                Task {
-                    do {
-                        try await importer.setPrefillWithFileMetadata(enabled)
                     }
                     catch {
                         uiStore.showError(error)
@@ -232,17 +171,3 @@ struct ImportSettingsTab: View {
             .frame(width: PreviewWindow.width, height: PreviewWindow.height)
     }
 #endif
-
-extension BridgeIdentificationStep {
-    /// The step as its switch in Settings names it.
-    var settingLabel: String {
-        switch self {
-        case .readCoverArt: String(localized: "Read cover art")
-        case .lookUpDiscIds: String(localized: "Look up disc IDs")
-        case .lookUpBarcodes: String(localized: "Look up barcodes")
-        case .searchByTitle: String(localized: "Search by title")
-        case .followCatalogLinks:
-            String(localized: "Join records across catalogs")
-        }
-    }
-}

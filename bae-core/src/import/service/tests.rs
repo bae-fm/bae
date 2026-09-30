@@ -108,13 +108,13 @@ async fn prepare_named_candidate(
 }
 
 /// Store `folder` as a scanned candidate of its own watched root with a named
-/// draft, returning its candidate key and the revision an import is queued
-/// against.
+/// draft, returning its candidate key and what an import of it is queued
+/// against: its revisions and the tag reading the scan stored.
 async fn store_scanned_candidate(
     test: &TestService,
     folder: &Path,
     name: &str,
-) -> (String, crate::import::CandidateAsRead) {
+) -> (String, super::ImportExpectation) {
     let service = &test.service;
     let files = crate::import::folder_scanner::collect_release_candidate_files_with_scope(
         folder,
@@ -168,12 +168,22 @@ async fn store_scanned_candidate(
         name,
     )
     .await;
+    let file_tag_snapshot = service
+        .library_manager
+        .load_candidate_file_tag_snapshot(&candidate_key, &candidate_key)
+        .await
+        .unwrap()
+        .expect("the candidate is stored")
+        .snapshot;
     (
         candidate_key,
-        crate::import::CandidateAsRead {
-            content_hash,
-            file_edit_revision: 0,
-            metadata_revision,
+        super::ImportExpectation {
+            candidate: crate::import::CandidateAsRead {
+                content_hash,
+                file_edit_revision: 0,
+                metadata_revision,
+            },
+            file_tag_snapshot,
         },
     )
 }

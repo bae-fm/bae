@@ -245,13 +245,6 @@ async fn selected_local_cover_path_must_match_discovered_file() {
         preparations,
         temp: tmp,
     } = setup_import_service().await;
-    // The import under test commits a draft it was handed, not one the folder's
-    // tags wrote: the pre-fill would give the candidate a file-metadata draft whose
-    // stored reading this import is not carrying.
-    service
-        .library_manager
-        .set_prefill_with_file_metadata(false).await
-        .unwrap();
     let folder = tmp.path().join("release");
     std::fs::create_dir(&folder).unwrap();
     write_test_jpeg(&folder.join("front.jpg"));
@@ -326,6 +319,13 @@ async fn selected_local_cover_path_must_match_discovered_file() {
         )
         .await
         .unwrap();
+    let file_tag_snapshot = service
+        .library_manager
+        .load_candidate_file_tag_snapshot(&watched_folder_path, &folder.to_string_lossy())
+        .await
+        .unwrap()
+        .expect("the candidate is stored")
+        .snapshot;
     let audio_path = folder.join("01.flac");
     let opens_before = crate::audio_codec::probe_opens_for(&audio_path);
 
@@ -346,7 +346,7 @@ async fn selected_local_cover_path_must_match_discovered_file() {
                     file_edit_revision: 0,
                     metadata_revision: metadata_revision + 1,
                 },
-                file_tag_snapshot: None,
+                file_tag_snapshot,
             },
             ImportDestination::Local,
         )
@@ -725,68 +725,6 @@ async fn pre_fill_seeds_the_discovered_candidate_from_its_file_tags() {
         }
     }
     panic!("the seeded candidate was not announced");
-}
-
-/// With the pre-fill off, discovery reads no tags: the draft is blank, no
-/// reading is stored, and the folder's own artwork is still found.
-#[tokio::test]
-async fn without_pre_fill_the_discovered_candidate_starts_blank() {
-    let test = setup_import_service().await;
-    test.service
-        .library_manager
-        .set_prefill_with_file_metadata(false).await
-        .unwrap();
-    let root = test.temp.path().join("watched");
-    let album = root.join("Candidate");
-    std::fs::create_dir_all(&album).unwrap();
-    for name in TAGGED_FLAC_FIXTURES {
-        std::fs::copy(
-            Path::new(env!("CARGO_MANIFEST_DIR"))
-                .join("tests/fixtures/cue_flac")
-                .join(name),
-            album.join(name),
-        )
-        .unwrap();
-    }
-    write_test_jpeg(&album.join("folder.jpg"));
-    write_test_jpeg(&album.join("cover.jpg"));
-    let root_text = root.to_string_lossy().into_owned();
-    test.service
-        .library_manager
-        .add_watched_import_folder(&root_text)
-        .await
-        .unwrap();
-
-    let (scan, _events) = test.scan();
-    scan.rescan(&root)
-        .await
-        .expect("the candidate is read and stored");
-
-    let key = album.to_string_lossy().into_owned();
-    let detail = test
-        .service
-        .library_manager
-        .load_import_candidate(&key)
-        .await
-        .unwrap()
-        .expect("the candidate is stored");
-    assert_eq!(detail.metadata_provenance, None);
-    assert!(detail.metadata_draft.is_blank());
-    assert_eq!(
-        detail.cover.map(|cover| cover.selection),
-        Some(CoverSelection::Local("cover.jpg".to_string()))
-    );
-    assert!(
-        test.service
-            .library_manager
-            .load_candidate_file_tag_snapshot(&root_text, &key)
-            .await
-            .unwrap()
-            .expect("the candidate stamp is stored")
-            .snapshot
-            .is_none(),
-        "no tags were read, so none are stored"
-    );
 }
 
 /// A completed pass records every directory it read and when it was last

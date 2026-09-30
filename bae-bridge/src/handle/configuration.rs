@@ -48,15 +48,6 @@ forward! { async this => {
         Ok(this.services.set_import_when_identified(enabled).await?)
     }
 
-    /// Take, or stop taking, one step of every identification run. Runs
-    /// already going finish the way they started.
-    fn set_identification_step(step: crate::types::BridgeIdentificationStep, enabled: bool) -> () {
-        Ok(this
-            .services
-            .set_identification_step(step.into_core(), enabled)
-            .await?)
-    }
-
     /// Whether an import goes to the cloud home, when the library has one.
     fn set_import_to_cloud(enabled: bool) -> () {
         Ok(this.services.set_import_to_cloud(enabled).await?)
@@ -74,10 +65,6 @@ forward! { async this => {
             .services
             .set_metadata_source_enabled(source.into_core(), enabled)
             .await?)
-    }
-
-    fn set_prefill_with_file_metadata(enabled: bool) -> () {
-        Ok(this.services.set_prefill_with_file_metadata(enabled).await?)
     }
 
     fn set_show_remaining_time(enabled: bool) -> () {

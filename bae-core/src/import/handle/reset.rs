@@ -8,8 +8,8 @@ use crate::import::{
 };
 
 impl ImportServiceHandle {
-    /// Restore the candidate's source tracks and initial metadata using the
-    /// current tag-prefill preference. Source files and combination membership
+    /// Restore the candidate's source tracks and initial metadata, read again
+    /// from the folder's file tags. Source files and combination membership
     /// remain unchanged.
     pub async fn reset_candidate_setup(&self, candidate_key: &str) -> Result<(), ImportError> {
         let this = self.clone();
@@ -19,7 +19,7 @@ impl ImportServiceHandle {
     }
 
     async fn reset_candidate_setup_write(&self, candidate_key: &str) -> Result<(), ImportError> {
-        let (candidate, read, generation, lookup_choices, matching_folders, prefill) = {
+        let (candidate, read, generation, lookup_choices, matching_folders) = {
             let _commit = self.folder_state_commit.lock("read a candidate to reset").await;
             let candidate = self.editable_candidate_for_commit(candidate_key).await?;
             let content_hash = candidate.files.content_hash();
@@ -58,10 +58,6 @@ impl ImportServiceHandle {
                 stored.scan_generation,
                 state.lookup_choices,
                 matching_folders,
-                self.library_manager
-                    .get_config()
-                    .prefs
-                    .prefill_with_file_metadata,
             )
         };
         let next_revision =
@@ -94,35 +90,25 @@ impl ImportServiceHandle {
                 .cloned()
                 .collect::<Vec<_>>();
             crate::import::file_identity::validate_scanned_file_identities(&identity_files)?;
-            let (draft, provenance, cover, snapshot) = if prefill {
-                let audio = initialized_candidate
-                    .files
-                    .audio()
-                    .cloned()
-                    .collect::<Vec<_>>();
-                let snapshot =
-                    extract_file_tag_snapshot(&audio, generation, next_revision, reader.as_ref())?;
-                let seed = FileMetadataSeed::project(
-                    &initialized_candidate,
-                    snapshot,
-                    None,
-                    clock.as_ref(),
-                    ids.as_ref(),
-                )?;
-                (
-                    seed.draft,
-                    Some(crate::import::MetadataProvenance::FileMetadata),
-                    seed.cover,
-                    Some(seed.snapshot),
-                )
-            } else {
-                (initialized_candidate.blank_source().draft, None, None, None)
-            };
+            let audio = initialized_candidate
+                .files
+                .audio()
+                .cloned()
+                .collect::<Vec<_>>();
+            let snapshot =
+                extract_file_tag_snapshot(&audio, generation, next_revision, reader.as_ref())?;
+            let seed = FileMetadataSeed::project(
+                &initialized_candidate,
+                snapshot,
+                None,
+                clock.as_ref(),
+                ids.as_ref(),
+            )?;
             // A reset unmakes the whole setup, so the candidate starts again
             // with the cover its folder gives it — the same one a scan of a
             // new candidate stores.
             let cover = crate::import::local_artwork::folder_cover(
-                cover,
+                seed.cover,
                 initialized_candidate.files.artwork(),
             );
             // A CUE or artwork file can change while its audio's tags are read.
@@ -130,13 +116,13 @@ impl ImportServiceHandle {
             crate::import::file_identity::validate_scanned_file_identities(&identity_files)?;
             Ok::<_, ImportError>((
                 CandidateMetadataDraft {
-                    draft,
-                    provenance,
+                    draft: seed.draft,
+                    provenance: Some(crate::import::MetadataProvenance::FileMetadata),
                     cover,
                     source_discogs_artist_ids: Default::default(),
                     assets: CandidatePreparedAssets::default(),
                 },
-                snapshot,
+                seed.snapshot,
                 settled_folders,
             ))
         })

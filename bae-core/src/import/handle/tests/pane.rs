@@ -30,11 +30,54 @@ fn cover_jpeg() -> Vec<u8> {
 }
 
 /// A watched root holding one folder named `folder_name`, of real audio and one
-/// image, scanned into the tables and picked as its own tags.
+/// image, scanned into the tables with its draft read from its own tags.
 ///
 /// The folder is stored rather than scanned for: the pane's writes are what is
 /// under test, and a real scan would only make when they run less certain.
 async fn picked_candidate(
+    manager: &LibraryManager,
+    tmp: &TempDir,
+    folder_name: &str,
+) -> (FolderCandidate, String, String) {
+    let (candidate, key, hash) = unscanned_candidate(manager, tmp, folder_name).await;
+    rescan_into(manager, candidate.clone()).await;
+    (candidate, key, hash)
+}
+
+/// [`picked_candidate`] as a scan stores a folder whose tags it could not
+/// read: a blank draft and no reading, so the first pick is what reads them.
+async fn unread_candidate(
+    manager: &LibraryManager,
+    tmp: &TempDir,
+    folder_name: &str,
+) -> (FolderCandidate, String, String) {
+    let (candidate, key, hash) = unscanned_candidate(manager, tmp, folder_name).await;
+    rescan_unread_into(manager, candidate.clone()).await;
+    (candidate, key, hash)
+}
+
+/// [`rescan_into`] as a scan that could not read the folder's tags.
+async fn rescan_unread_into(manager: &LibraryManager, candidate: FolderCandidate) {
+    let root = candidate.watched_folder_path.clone();
+    let generation = manager.begin_folder_scan(&root).await.unwrap();
+    manager
+        .save_folder_scan_item_with_seed(
+            &root,
+            generation,
+            &crate::import::folder_scanner::ScanItem::Valid(candidate),
+            None,
+            None,
+        )
+        .await
+        .unwrap();
+    manager
+        .finish_folder_scan(&root, generation, None)
+        .await
+        .unwrap();
+}
+
+/// The folder [`picked_candidate`] stores, under a watched root, not stored yet.
+async fn unscanned_candidate(
     manager: &LibraryManager,
     tmp: &TempDir,
     folder_name: &str,
@@ -99,12 +142,6 @@ async fn picked_candidate(
         .add_watched_import_folder(&root.to_string_lossy())
         .await
         .unwrap();
-    // These controls are about reading the folder's tags on demand — the
-    // preview, the stored snapshot, and what a person's pick does to the
-    // draft. A draft the pre-fill already wrote would answer those questions
-    // before the test asked them.
-    manager.set_prefill_with_file_metadata(false).await.unwrap();
-    rescan_into(manager, candidate.clone()).await;
 
     let key = folder.to_string_lossy().into_owned();
     let hash = candidate.files.content_hash();
@@ -180,6 +217,23 @@ async fn stored_candidate_with_sheet(cue: &str) -> StoredCandidate {
 async fn stored_candidate_with(http: crate::util::http::Http) -> StoredCandidate {
     let (manager, tmp) = setup_test_manager_with(http).await;
     let (candidate, key, _hash) = picked_candidate(&manager, &tmp, "Album").await;
+    started(manager, candidate, key, tmp).await
+}
+
+/// [`stored_candidate`] whose tags the scan could not read.
+async fn unread_stored_candidate() -> StoredCandidate {
+    let (manager, tmp) = setup_test_manager_with(crate::util::http::Http::for_test()).await;
+    let (candidate, key, _hash) = unread_candidate(&manager, &tmp, "Album").await;
+    started(manager, candidate, key, tmp).await
+}
+
+/// The import service over `manager`, addressed at the stored `candidate`.
+async fn started(
+    manager: LibraryManager,
+    candidate: FolderCandidate,
+    key: String,
+    tmp: TempDir,
+) -> StoredCandidate {
     let handle = manager
         .start_import_service(tokio::runtime::Handle::current())
         .await
@@ -447,7 +501,7 @@ async fn one_unreadable_file_stores_no_partial_tag_snapshot() {
         key,
         tmp: _tmp,
         ..
-    } = stored_candidate().await;
+    } = unread_stored_candidate().await;
     let reader = std::sync::Arc::new(CountingFileTagReader::failing(1));
 
     let error = pick_file_tags(&mut handle, &key, reader.clone())
@@ -472,7 +526,7 @@ async fn matching_file_observations_reuse_the_stored_tag_snapshot() {
         key,
         tmp: _tmp,
         ..
-    } = stored_candidate().await;
+    } = unread_stored_candidate().await;
     let reader = std::sync::Arc::new(CountingFileTagReader::immediate());
 
     pick_file_tags(&mut handle, &key, reader.clone()).await.unwrap();
@@ -499,7 +553,7 @@ async fn changed_file_observations_read_the_tags_again() {
         mut candidate,
         key,
         tmp,
-    } = stored_candidate().await;
+    } = unread_stored_candidate().await;
     let reader = std::sync::Arc::new(CountingFileTagReader::immediate());
 
     pick_file_tags(&mut handle, &key, reader.clone()).await.unwrap();
@@ -541,7 +595,7 @@ async fn changed_file_observations_read_the_tags_again() {
         .unwrap()
         .file
         .size = std::fs::metadata(&second_audio).unwrap().len();
-    rescan_into(&manager, candidate).await;
+    rescan_unread_into(&manager, candidate).await;
 
     let after_size = handle
         .read_file_tag_snapshot(&key, reader.clone())
@@ -567,7 +621,7 @@ async fn a_file_decision_makes_the_tags_read_again() {
         candidate,
         key,
         tmp: _tmp,
-    } = stored_candidate().await;
+    } = unread_stored_candidate().await;
     let reader = std::sync::Arc::new(CountingFileTagReader::immediate());
     pick_file_tags(&mut handle, &key, reader.clone()).await.unwrap();
 
@@ -779,7 +833,7 @@ async fn a_scan_that_moves_during_tag_reading_makes_the_pick_read_again() {
         candidate,
         key,
         tmp: _tmp,
-    } = stored_candidate().await;
+    } = unread_stored_candidate().await;
     let (reader, reached, gate) = CountingFileTagReader::held();
     let reader = std::sync::Arc::new(reader);
     handle.file_tags = reader.clone();

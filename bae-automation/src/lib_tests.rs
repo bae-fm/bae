@@ -294,7 +294,6 @@ mod identify_mirrors {
     fn empty_context() -> SignalsContext {
         SignalsContext {
             providers: Vec::new(),
-            steps: bae_core::config::IdentificationSteps::default(),
             artwork: bae_core::signals::ArtworkScan::Absent,
             origin: bae_core::signals::AudioOrigin::default(),
             disc: Default::default(),

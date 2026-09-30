@@ -25,9 +25,6 @@ pub(super) fn search_step(
     context: &SignalsContext,
 ) -> SearchStepView {
     let providers = match (progress, &context.search.query) {
-        (SearchProgress::NotAsked { reason }, _) => {
-            return SearchStepView::NotAsked { reason: *reason }
-        }
         (_, None) => return SearchStepView::NoTitle,
         (SearchProgress::Pending, Some(_)) if identifiers_found_something => {
             return SearchStepView::NotNeeded
@@ -135,10 +132,6 @@ pub(super) fn barcode_step(
                 .collect(),
         },
         BarcodeProgress::NoCodes => BarcodeStepView::NoCodes,
-        // Nothing was read: say so when cover art is left unread.
-        BarcodeProgress::Skipped if matches!(context.artwork, ArtworkScan::Off) => {
-            BarcodeStepView::CoverArtOff
-        }
         BarcodeProgress::Skipped => BarcodeStepView::Absent,
         BarcodeProgress::NotAsked { codes, reason } => BarcodeStepView::Rows {
             scanning: false,
@@ -233,11 +226,7 @@ pub(super) fn catalog_step(
         })
         .collect();
     if rows.is_empty() && candidates.is_empty() && !scanning {
-        return if matches!(context.artwork, ArtworkScan::Off) {
-            CatalogStepView::CoverArtOff
-        } else {
-            CatalogStepView::NoneFound
-        };
+        return CatalogStepView::NoneFound;
     }
     CatalogStepView::Numbers {
         scanning,

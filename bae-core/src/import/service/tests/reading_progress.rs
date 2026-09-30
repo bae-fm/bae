@@ -1,13 +1,6 @@
 #[tokio::test]
 async fn reading_progress_advances_while_coven_prepares_a_dominant_file() {
     let test = setup_import_service().await;
-    // The import under test commits a draft it was handed, not one the folder's
-    // tags wrote: the pre-fill would give the candidate a file-metadata draft whose
-    // stored reading this import is not carrying.
-    test.service
-        .library_manager
-        .set_prefill_with_file_metadata(false).await
-        .unwrap();
     let folder = test.temp.path().join("reading-progress-candidate");
     std::fs::create_dir(&folder).unwrap();
     std::fs::write(folder.join("01-payload.bin"), vec![0x5a; 1024 * 1024]).unwrap();
@@ -16,7 +9,7 @@ async fn reading_progress_advances_while_coven_prepares_a_dominant_file() {
         folder.join("00-track.flac"),
     )
     .unwrap();
-    let (candidate_key, candidate) =
+    let (candidate_key, expectation) =
         store_scanned_candidate(&test, &folder, "Reading Progress Candidate").await;
     let service = &test.service;
 
@@ -32,10 +25,7 @@ async fn reading_progress_advances_while_coven_prepares_a_dominant_file() {
                 path: folder,
                 scope: crate::import::ReleaseFileScope::Recursive, parts: Vec::new(), 
             },
-            super::ImportExpectation {
-                candidate,
-                file_tag_snapshot: None,
-            },
+            expectation,
             ImportDestination::Local,
         )
         .await

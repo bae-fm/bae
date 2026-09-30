@@ -198,7 +198,7 @@ mirror_struct! {
 mirror_enum! {
     BridgeNotAskedReason = bae_core::identify::NotAskedReason,
     from_core: fn,
-    variants: { LeftOut, SwitchedOff, NoCatalog },
+    variants: { LeftOut, NoCatalog },
 }
 
 mirror_enum! {
@@ -250,7 +250,6 @@ mirror_enum! {
     from_core: fn,
     variants: {
         Absent,
-        CoverArtOff,
         NoCodes,
         Rows { scanning, rows: (each BridgeSignalValueRow) },
     },
@@ -267,7 +266,6 @@ mirror_enum! {
     from_core: fn,
     variants: {
         NoneFound,
-        CoverArtOff,
         Numbers {
             scanning,
             rows: (each BridgeSignalValueRow),
@@ -280,7 +278,6 @@ mirror_enum! {
     BridgeSearchStep = bae_core::identify::SearchStepView,
     from_core: fn,
     variants: {
-        NotAsked { reason: (BridgeNotAskedReason) },
         NotNeeded,
         NoTitle,
         Waiting { album, artist },
@@ -637,7 +634,6 @@ mod tests {
             search: bae_core::identify::SearchProgress::Skipped,
             context: SignalsContext {
                 providers: vec![Catalog::MusicBrainz, Catalog::Discogs],
-                steps: bae_core::config::IdentificationSteps::default(),
                 artwork: bae_core::signals::ArtworkScan::Absent,
                 origin: bae_core::signals::AudioOrigin::default(),
                 disc: DiscIdEvidence {
@@ -766,10 +762,6 @@ mod tests {
         };
         for (reason, crossed) in [
             (NotAskedReason::LeftOut, BridgeNotAskedReason::LeftOut),
-            (
-                NotAskedReason::SwitchedOff,
-                BridgeNotAskedReason::SwitchedOff,
-            ),
             (NotAskedReason::NoCatalog, BridgeNotAskedReason::NoCatalog),
         ] {
             assert!(matches!(

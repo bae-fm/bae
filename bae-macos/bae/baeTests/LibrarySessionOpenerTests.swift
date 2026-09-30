@@ -237,16 +237,10 @@ extension LibrarySessionOpenerTests {
             maxConcurrentDownloads: 3,
             identifyAutomatically: true,
             importWhenIdentified: false,
-            identificationSteps: [
-                .readCoverArt, .lookUpDiscIds, .lookUpBarcodes, .searchByTitle,
-                .followCatalogLinks,
-            ]
-            .map { BridgeIdentificationStepSetting(step: $0, enabled: true) },
             importStorage: BridgeImportStorage(
                 cloud: true,
                 pinned: true
             ),
-            prefillWithFileMetadata: true,
             lookupCatalogs: [
                 BridgeLookupCatalogSetting(
                     catalog: .musicBrainz,

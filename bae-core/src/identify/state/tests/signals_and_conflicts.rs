@@ -45,6 +45,22 @@ fn started_with(providers: Vec<Catalog>) -> IdentifyState {
     state
 }
 
+/// The run's ledger as its view lays it out.
+fn ledger_of(state: &IdentifyState) -> crate::identify::IdentifyRunView {
+    match crate::identify::IdentifyStateView::from(state.clone()) {
+        crate::identify::IdentifyStateView::Triangulating { run, .. } => run,
+        crate::identify::IdentifyStateView::Found { run, .. }
+        | crate::identify::IdentifyStateView::NotFoundAnywhere { run }
+        | crate::identify::IdentifyStateView::ManualOnly { run, .. }
+        | crate::identify::IdentifyStateView::Failed { run, .. } => {
+            run.expect("the run recorded its ledger")
+        }
+        crate::identify::IdentifyStateView::Idle | crate::identify::IdentifyStateView::Error { .. } => {
+            panic!("an idle or broken state lays out no run")
+        }
+    }
+}
+
 /// A run started with `choices`, with the chosen numbers' lookups as effects.
 fn started_with_choices(
     providers: Vec<Catalog>,
@@ -54,7 +70,6 @@ fn started_with_choices(
         IdentifyState::Idle,
         IdentifyEvent::Started {
             providers,
-            steps: crate::config::IdentificationSteps::default(),
             choices,
             title_search: None,
         },

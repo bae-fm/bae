@@ -57,7 +57,6 @@ pub(crate) fn signals_context(track_count: u32) -> crate::identify::state::Signa
     crate::identify::state::SignalsContext {
         origin: crate::signals::AudioOrigin::default(),
         providers: Vec::new(),
-        steps: crate::config::IdentificationSteps::default(),
         artwork: crate::signals::ArtworkScan::Absent,
         disc: crate::identify::state::DiscIdEvidence {
             signal: crate::signals::DiscIdSignal::Absent,

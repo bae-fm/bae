@@ -7,7 +7,6 @@ use super::discid::lookup_and_resolve;
 use super::state::{
     step, Effect, IdentifyEvent, IdentifyState, LookupOutcome, PressingKey, TitleSearch,
 };
-use crate::config::IdentificationSteps;
 use crate::import::search::{search_source, SearchQuery, SourceLookup};
 use crate::import::{
     CandidateRuntime, CandidateWork, Catalog, ImportEvent, ImportEventBus, LookupChoices,
@@ -153,9 +152,6 @@ impl IdentifyServiceHandle {
     /// dispatches is admitted under it, so a candidate a person opened outranks
     /// one the automatic admission picked up.
     ///
-    /// `steps` is which of its steps the run takes, read by the caller once
-    /// for this run and the extraction feeding it alike.
-    ///
     /// `title_search` is what the candidate's draft says about the release,
     /// which the run asks every provider once its identifiers have named
     /// nothing. `None` where the draft states no title.
@@ -179,7 +175,6 @@ impl IdentifyServiceHandle {
         run: IdentifyRunId,
         key: String,
         priority: CallPriority,
-        steps: IdentificationSteps,
         choices: LookupChoices,
         title_search: Option<TitleSearch>,
         snapshots: ExtractionWatch,
@@ -206,7 +201,6 @@ impl IdentifyServiceHandle {
                         key,
                         generation,
                         priority,
-                        steps,
                         choices,
                         title_search,
                         token,
@@ -270,7 +264,6 @@ async fn run_driver(
     // superseded cannot deregister its successor.
     generation: u64,
     priority: CallPriority,
-    steps: IdentificationSteps,
     choices: LookupChoices,
     title_search: Option<TitleSearch>,
     token: CancellationToken,
@@ -292,7 +285,6 @@ async fn run_driver(
     // what a cancelled run looks like.
     let mut start = Some(IdentifyEvent::Started {
         providers: run_providers(&driver.inner.library_manager),
-        steps,
         choices,
         title_search,
     });

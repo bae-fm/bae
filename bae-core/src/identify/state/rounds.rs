@@ -52,38 +52,34 @@ pub(super) fn next_round(
         .collect();
 
     let mut pressings: Vec<PressingLookup> = Vec::new();
-    if context.steps.follow_catalog_links {
-        let pool = context.lookup_results();
-        for row in rows.iter().filter(|row| row.iter().all(read)) {
-            for (source, key) in keys_of(row, &context.providers) {
-                let asked = context
-                    .pressings
-                    .iter()
-                    .chain(&pressings)
-                    .any(|lookup| lookup.source == source && lookup.key == key);
-                let answered = match &key {
-                    PressingKey::Link { release } => pool.all().any(|(result, _)| {
-                        result.source == release.catalog && result.release_id == release.key
-                    }),
-                    PressingKey::Barcode { barcode: code } => {
-                        barcode.lookups().iter().any(|lookup| {
-                            same_barcode(&lookup.value, code) && asked_of(&lookup.providers, source)
-                        })
-                    }
-                    PressingKey::CatalogNumber { number, .. } => {
-                        catalog.lookups().iter().any(|lookup| {
-                            super::number_key(&lookup.value) == super::number_key(number)
-                                && asked_of(&lookup.providers, source)
-                        })
-                    }
-                };
-                if !asked && !answered {
-                    pressings.push(PressingLookup {
-                        source,
-                        key,
-                        state: LookupState::LookingUp,
-                    });
+    let pool = context.lookup_results();
+    for row in rows.iter().filter(|row| row.iter().all(read)) {
+        for (source, key) in keys_of(row, &context.providers) {
+            let asked = context
+                .pressings
+                .iter()
+                .chain(&pressings)
+                .any(|lookup| lookup.source == source && lookup.key == key);
+            let answered = match &key {
+                PressingKey::Link { release } => pool.all().any(|(result, _)| {
+                    result.source == release.catalog && result.release_id == release.key
+                }),
+                PressingKey::Barcode { barcode: code } => barcode.lookups().iter().any(|lookup| {
+                    same_barcode(&lookup.value, code) && asked_of(&lookup.providers, source)
+                }),
+                PressingKey::CatalogNumber { number, .. } => {
+                    catalog.lookups().iter().any(|lookup| {
+                        super::number_key(&lookup.value) == super::number_key(number)
+                            && asked_of(&lookup.providers, source)
+                    })
                 }
+            };
+            if !asked && !answered {
+                pressings.push(PressingLookup {
+                    source,
+                    key,
+                    state: LookupState::LookingUp,
+                });
             }
         }
     }

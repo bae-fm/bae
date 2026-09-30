@@ -34,15 +34,9 @@ public struct Config: Equatable {
     /// straight away. Read only while `identifyAutomatically` is on; Settings
     /// disables its switch then rather than clearing it.
     public let importWhenIdentified: Bool
-    /// Every step of an identification run, in the order a run takes them,
-    /// each with whether runs take it.
-    public let identificationSteps: [BridgeIdentificationStepSetting]
     /// The import storage choice, shown and changed in the import pane and
     /// Settings; core reads it as each import starts.
     public let importStorage: BridgeImportStorage
-    /// Whether a newly added candidate's draft is created from the folder's
-    /// file tags, or starts blank.
-    public let prefillWithFileMetadata: Bool
     /// Which catalogs Find online asks, one entry per catalog in core's order.
     /// Core folds the person's choice and the catalog's credentials into one
     /// availability, so the switches on the Find online header and in Settings
@@ -85,9 +79,7 @@ public struct Config: Equatable {
         maxConcurrentDownloads = bridge.maxConcurrentDownloads
         identifyAutomatically = bridge.identifyAutomatically
         importWhenIdentified = bridge.importWhenIdentified
-        identificationSteps = bridge.identificationSteps
         importStorage = bridge.importStorage
-        prefillWithFileMetadata = bridge.prefillWithFileMetadata
         lookupCatalogs = bridge.lookupCatalogs
         showRemainingTime = bridge.showRemainingTime
         libraryFullWidth = bridge.libraryFullWidth

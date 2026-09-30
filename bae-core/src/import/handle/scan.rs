@@ -789,44 +789,35 @@ impl ImportServiceHandle {
                         "file decision produced no settled candidate for {candidate_key}"
                     ),
                 })?;
-            let initialized = if self
+            let stored = self
                 .library_manager
-                .get_config()
-                .prefs
-                .prefill_with_file_metadata
-            {
-                let stored = self
-                    .library_manager
-                    .load_candidate_file_tag_snapshot(
-                        &current_candidate.watched_folder_path,
-                        candidate_key,
-                    )
-                    .await?
-                    .ok_or_else(|| crate::import::ImportError::Internal {
-                        detail: format!("{candidate_key} has no scanned tag snapshot identity"),
-                    })?;
-                let mut replacement = current_candidate.clone();
-                replacement.files = settled_files.clone();
-                let reader = self.file_tags.clone();
-                let clock = self.clock.clone();
-                let ids = self.ids.clone();
-                tokio::task::spawn_blocking(move || {
-                    crate::import::file_metadata_seed::FileMetadataSeed::read(
-                        &replacement,
-                        stored.scan_generation,
-                        reader.as_ref(),
-                        clock.as_ref(),
-                        ids.as_ref(),
-                    )
-                    .map(|seed| seed.draft)
-                })
-                .await
-                .map_err(|error| crate::import::ImportError::Internal {
-                    detail: format!("replacement track metadata task failed: {error}"),
-                })??
-            } else {
-                crate::import::pane::blank_candidate_source(settled_files).draft
-            };
+                .load_candidate_file_tag_snapshot(
+                    &current_candidate.watched_folder_path,
+                    candidate_key,
+                )
+                .await?
+                .ok_or_else(|| crate::import::ImportError::Internal {
+                    detail: format!("{candidate_key} has no scanned tag snapshot identity"),
+                })?;
+            let mut replacement = current_candidate.clone();
+            replacement.files = settled_files.clone();
+            let reader = self.file_tags.clone();
+            let clock = self.clock.clone();
+            let ids = self.ids.clone();
+            let initialized = tokio::task::spawn_blocking(move || {
+                crate::import::file_metadata_seed::FileMetadataSeed::read(
+                    &replacement,
+                    stored.scan_generation,
+                    reader.as_ref(),
+                    clock.as_ref(),
+                    ids.as_ref(),
+                )
+                .map(|seed| seed.draft)
+            })
+            .await
+            .map_err(|error| crate::import::ImportError::Internal {
+                detail: format!("replacement track metadata task failed: {error}"),
+            })??;
             let draft = crate::import::pane::redraw_draft_for_files(
                 current_files,
                 initialized,

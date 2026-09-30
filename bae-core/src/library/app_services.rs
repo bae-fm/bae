@@ -271,10 +271,8 @@ impl AppServices {
     delegate_async!(manager, set_library_full_width => set_library_full_width(enabled: bool) -> Result<(), crate::config::ConfigError>);
     delegate_async!(manager, set_identify_automatically => set_identify_automatically(enabled: bool) -> Result<(), crate::config::ConfigError>);
     delegate_async!(manager, set_import_when_identified => set_import_when_identified(enabled: bool) -> Result<(), crate::config::ConfigError>);
-    delegate_async!(manager, set_identification_step => set_identification_step(step: crate::config::IdentificationStep, enabled: bool) -> Result<(), crate::config::ConfigError>);
     delegate_async!(manager, set_import_to_cloud => set_import_to_cloud(enabled: bool) -> Result<(), crate::config::ConfigError>);
     delegate_async!(manager, set_import_pinned => set_import_pinned(enabled: bool) -> Result<(), crate::config::ConfigError>);
-    delegate_async!(manager, set_prefill_with_file_metadata => set_prefill_with_file_metadata(enabled: bool) -> Result<(), crate::config::ConfigError>);
 
     /// Ask, or stop asking, one metadata source — the switch on the Find online
     /// header and in Settings, which are two views of this one preference.

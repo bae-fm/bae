@@ -1,100 +1,91 @@
 #[tokio::test(flavor = "multi_thread")]
 async fn ignoring_a_cue_replaces_its_song_rows_with_whole_audio() {
-    for prefill in [false, true] {
-        let fixture = Fixture::new("cue-audio-replacement").await;
-        fixture
-            .manager
-            .set_prefill_with_file_metadata(prefill).await
-            .unwrap();
-        let dir = fixture.seed_cue_album("Album");
-        fixture.scan(1).await;
-        let hash = fixture.content_hash(&dir);
-        let before = fixture
-            .manager
-            .load_import_candidate_preparation(&hash)
-            .await
-            .unwrap()
-            .unwrap()
-            .draft;
-        assert_eq!(before.tracks.len(), 5);
-        let unchanged = before
-            .tracks
-            .iter()
-            .filter(|track| matches!(track.edit.file, crate::import::AudioFile::Standalone { .. }))
-            .cloned()
-            .collect::<Vec<_>>();
+    let fixture = Fixture::new("cue-audio-replacement").await;
+    let dir = fixture.seed_cue_album("Album");
+    fixture.scan(1).await;
+    let hash = fixture.content_hash(&dir);
+    let before = fixture
+        .manager
+        .load_import_candidate_preparation(&hash)
+        .await
+        .unwrap()
+        .unwrap()
+        .draft;
+    assert_eq!(before.tracks.len(), 5);
+    let unchanged = before
+        .tracks
+        .iter()
+        .filter(|track| matches!(track.edit.file, crate::import::AudioFile::Standalone { .. }))
+        .cloned()
+        .collect::<Vec<_>>();
 
-        fixture
-            .import
-            .set_sheet_disc(
-                dir.to_string_lossy().into_owned(),
-                "Test Album.cue".to_string(),
-                crate::import::folder_scanner::SheetDisc::Ignored,
-            )
-            .await
-            .unwrap();
+    fixture
+        .import
+        .set_sheet_disc(
+            dir.to_string_lossy().into_owned(),
+            "Test Album.cue".to_string(),
+            crate::import::folder_scanner::SheetDisc::Ignored,
+        )
+        .await
+        .unwrap();
 
-        let after = fixture
-            .manager
-            .load_import_candidate_preparation(&hash)
-            .await
-            .unwrap()
-            .unwrap()
-            .draft;
-        assert_eq!(after.tracks.len(), 3, "one image plus two loose tracks");
-        assert!(after
-            .tracks
-            .iter()
-            .all(|track| matches!(track.edit.file, crate::import::AudioFile::Standalone { .. })));
-        for track in unchanged {
-            assert!(
-                after.tracks.contains(&track),
-                "unaffected tracks retain identity and metadata"
-            );
-        }
-        assert_eq!(after.album_title, before.album_title);
-        let image = after
-            .tracks
-            .iter()
-            .find(|track| {
-                matches!(&track.edit.file,
-                    crate::import::AudioFile::Standalone { file_id } if file_id == "Test Album.flac"
-                )
-            })
-            .unwrap();
-        assert_eq!(image.edit.title.is_empty(), !prefill);
-        fixture
-            .import
-            .set_sheet_disc(
-                dir.to_string_lossy().into_owned(),
-                "Test Album.cue".into(),
-                crate::import::folder_scanner::SheetDisc::Disc { number: 1 },
-            )
-            .await
-            .unwrap();
-        let restored = fixture
-            .manager
-            .load_import_candidate_preparation(&hash)
-            .await
-            .unwrap()
-            .unwrap()
-            .draft;
-        assert_eq!(restored.tracks.len(), 5);
-        let slices = restored
-            .tracks
-            .iter()
-            .filter(|track| matches!(track.edit.file, crate::import::AudioFile::SheetSlice { .. }))
-            .collect::<Vec<_>>();
-        assert_eq!(slices.len(), 3);
-        assert_eq!(
-            slices[0].edit.title,
-            if prefill { "Track One (Silence)" } else { "" }
+    let after = fixture
+        .manager
+        .load_import_candidate_preparation(&hash)
+        .await
+        .unwrap()
+        .unwrap()
+        .draft;
+    assert_eq!(after.tracks.len(), 3, "one image plus two loose tracks");
+    assert!(after
+        .tracks
+        .iter()
+        .all(|track| matches!(track.edit.file, crate::import::AudioFile::Standalone { .. })));
+    for track in unchanged {
+        assert!(
+            after.tracks.contains(&track),
+            "unaffected tracks retain identity and metadata"
         );
-        assert!(restored
-            .tracks
-            .iter()
-            .all(|track| track.edit.id != image.edit.id));
     }
+    assert_eq!(after.album_title, before.album_title);
+    let image = after
+        .tracks
+        .iter()
+        .find(|track| {
+            matches!(&track.edit.file,
+                crate::import::AudioFile::Standalone { file_id } if file_id == "Test Album.flac"
+            )
+        })
+        .unwrap();
+    assert!(!image.edit.title.is_empty());
+    fixture
+        .import
+        .set_sheet_disc(
+            dir.to_string_lossy().into_owned(),
+            "Test Album.cue".into(),
+            crate::import::folder_scanner::SheetDisc::Disc { number: 1 },
+        )
+        .await
+        .unwrap();
+    let restored = fixture
+        .manager
+        .load_import_candidate_preparation(&hash)
+        .await
+        .unwrap()
+        .unwrap()
+        .draft;
+    assert_eq!(restored.tracks.len(), 5);
+    let slices = restored
+        .tracks
+        .iter()
+        .filter(|track| matches!(track.edit.file, crate::import::AudioFile::SheetSlice { .. }))
+        .collect::<Vec<_>>();
+    assert_eq!(slices.len(), 3);
+    assert_eq!(slices[0].edit.title, "Track One (Silence)");
+    assert!(restored
+        .tracks
+        .iter()
+        .all(|track| track.edit.id != image.edit.id));
 }
 
 #[tokio::test(flavor = "multi_thread")]

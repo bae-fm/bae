@@ -22,15 +22,8 @@ pub struct BridgeConfig {
     /// while `identify_automatically` is on, and kept while it is off: a
     /// surface disables the switch then rather than clearing it.
     pub import_when_identified: bool,
-    /// Every step of an identification run, in the order a run takes them,
-    /// each with whether runs take it — one switch per entry.
-    pub identification_steps: Vec<BridgeIdentificationStepSetting>,
     /// The import storage choice, which core reads as each import starts.
     pub import_storage: BridgeImportStorage,
-    /// Whether a newly discovered candidate's draft is created from the
-    /// folder's own metadata — its files' tags, its sheets and its name — or
-    /// starts blank.
-    pub prefill_with_file_metadata: bool,
     /// Which catalogs Find online asks, one entry per catalog in core's
     /// order — what the switches on the Find online header and in Settings
     /// render, those being two views of one setting. Core folds the person's
@@ -89,33 +82,6 @@ mirror_enum! {
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     variants: { Off, Seconds5, Seconds15, Seconds30, Seconds45, Seconds60 },
-}
-
-/// One step of an identification run a person can switch off. Mirrors
-/// `bae_core::config::IdentificationStep`, which says what each one is and
-/// what switching it off leaves a run with.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeIdentificationStep {
-    ReadCoverArt,
-    LookUpDiscIds,
-    LookUpBarcodes,
-    SearchByTitle,
-    FollowCatalogLinks,
-}
-
-mirror_enum! {
-    BridgeIdentificationStep = bae_core::config::IdentificationStep,
-    from_core: pub(crate) fn,
-    into_core: pub(crate) fn,
-    variants: { ReadCoverArt, LookUpDiscIds, LookUpBarcodes, SearchByTitle, FollowCatalogLinks },
-}
-
-/// One identification step and whether runs take it — one switch, as a
-/// surface draws it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
-pub struct BridgeIdentificationStepSetting {
-    pub step: BridgeIdentificationStep,
-    pub enabled: bool,
 }
 
 /// The import storage choice. Mirrors `bae_core::config::ImportStoragePreferences`.

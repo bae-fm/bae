@@ -13,9 +13,7 @@ mod server;
 
 pub use app_dir::AppDir;
 pub use handle::ConfigHandle;
-pub use identification::{
-    IdentificationPreferences, IdentificationStep, IdentificationSteps, LookupCatalogPreferences,
-};
+pub use identification::{IdentificationPreferences, LookupCatalogPreferences};
 pub use import_storage::ImportStoragePreferences;
 pub use keyring::init_keyring;
 #[cfg(any(test, feature = "test-utils", debug_assertions))]
@@ -355,11 +353,8 @@ pub struct Preferences {
     /// a cloud release stays downloaded here.
     pub import_storage: ImportStoragePreferences,
     /// How identification runs: on its own or not, what an automatic run goes
-    /// on to do, the steps every run takes, and the catalogs it asks.
+    /// on to do, and the catalogs it asks.
     pub identification: IdentificationPreferences,
-    /// Whether a candidate's draft is created from the folder's own metadata.
-    /// Defaults to `true`; off means the draft starts blank.
-    pub prefill_with_file_metadata: bool,
     /// Whether casting to a network receiver (Cast, UPnP, AirPlay) is available.
     /// Defaults to `false`: casting browses the local network and serves audio
     /// off this machine, so it stays off until the user asks for it. While off,
@@ -390,7 +385,6 @@ impl Default for Preferences {
             verify_decode_on_import: true,
             import_storage: ImportStoragePreferences::default(),
             identification: IdentificationPreferences::default(),
-            prefill_with_file_metadata: true,
             cast_enabled: false,
             mcp: McpConfig::disabled_default(),
             subsonic: SubsonicConfig::disabled_default(),

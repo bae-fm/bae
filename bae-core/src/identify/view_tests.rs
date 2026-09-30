@@ -208,11 +208,7 @@ fn every_code_left_out_lists_them_all_unasked() {
 /// A disc ID nobody looked up still reads as read, with its lookup saying why.
 #[test]
 fn a_disc_id_nobody_looked_up_says_why() {
-    for reason in [
-        NotAskedReason::LeftOut,
-        NotAskedReason::SwitchedOff,
-        NotAskedReason::NoCatalog,
-    ] {
+    for reason in [NotAskedReason::LeftOut, NotAskedReason::NoCatalog] {
         let mut context = context();
         context.disc.signal = DiscIdSignal::Computed {
             disc_id: "d".to_string(),

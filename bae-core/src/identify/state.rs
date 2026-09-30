@@ -20,7 +20,6 @@ use super::combine::{combine_results, Findings, LibraryStatuses};
 use super::documents::{DocumentReading, ReleaseReading};
 use super::toolbar::{SignalKind, SignalOption, SignalState, ToolbarSignal};
 use super::view::{run_view, IdentifyRunView};
-use crate::config::IdentificationSteps;
 use crate::db::LibraryStatus;
 use crate::import::search::{MetadataResult, SourceFailure};
 use crate::import::{Catalog, LookupChoices};
@@ -229,11 +228,10 @@ pub type LookupOutcome = Result<LookupResults, LookupFailure>;
 /// What feeds the reducer: triggers, and the answers to its effects.
 #[derive(Debug, Clone)]
 pub enum IdentifyEvent {
-    /// Begin a run. Its catalogs, steps, choices and title are fixed here; a
+    /// Begin a run. Its catalogs, choices and title are fixed here; a
     /// different one is a different run.
     Started {
         providers: Vec<Catalog>,
-        steps: IdentificationSteps,
         choices: LookupChoices,
         title_search: Option<TitleSearch>,
     },
@@ -354,12 +352,11 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
             IdentifyState::Idle,
             IdentifyEvent::Started {
                 providers,
-                steps,
                 choices,
                 title_search,
             },
         ) => {
-            let context = SignalsContext::started(providers, steps, choices, title_search);
+            let context = SignalsContext::started(providers, choices, title_search);
             // Picked numbers are looked up at once, without waiting for a
             // snapshot to offer them again.
             let mut effects = Vec::new();
@@ -368,14 +365,13 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                 &context.providers,
                 &mut effects,
             );
-            let search = search_progress_at_start(context.steps.search_by_title);
             (
                 IdentifyState::Triangulating {
                     discid: DiscidProgress::Computing,
                     barcode: BarcodeProgress::Scanning,
                     catalog,
                     isrc: IsrcProgress::Reading,
-                    search,
+                    search: SearchProgress::Pending,
                     context,
                 },
                 effects,
@@ -645,7 +641,6 @@ fn apply_signals(
         (DiscidProgress::Computing, signal) => start_discid_progress(
             signal,
             context.disc.excluded,
-            context.steps.look_up_disc_ids,
             &context.providers,
             &mut effects,
         ),
@@ -657,7 +652,6 @@ fn apply_signals(
             context.barcode.code_values(),
             &context.barcode.excluded,
             true,
-            context.steps.look_up_barcodes,
             &context.providers,
             &mut effects,
         ),
@@ -814,10 +808,7 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
         BarcodeProgress::Skipped | BarcodeProgress::NotAsked { .. }
     ) && matches!(catalog, CatalogProgress::Skipped)
         && matches!(isrc, IsrcProgress::Skipped | IsrcProgress::NotAsked { .. })
-        && matches!(
-            search,
-            SearchProgress::Skipped | SearchProgress::NotAsked { .. }
-        )
+        && matches!(search, SearchProgress::Skipped)
     {
         return (
             IdentifyState::ManualOnly {
@@ -882,9 +873,9 @@ pub use context::{
 pub use pressings::{PressingKey, PressingLookup};
 use progress::{
     barcode_progress_state, barcode_settled_state, catalog_progress_state, catalog_settled_state,
-    discid_progress_state, isrc_progress_state, isrc_settled_state, search_progress_at_start,
-    settled_identity_state, start_barcode_progress, start_catalog_progress, start_discid_progress,
-    start_isrc_progress, start_search_progress,
+    discid_progress_state, isrc_progress_state, isrc_settled_state, settled_identity_state,
+    start_barcode_progress, start_catalog_progress, start_discid_progress, start_isrc_progress,
+    start_search_progress,
 };
 pub use progress::{
     BarcodeProgress, CatalogProgress, DiscidProgress, IsrcProgress, LookupResults, LookupState,

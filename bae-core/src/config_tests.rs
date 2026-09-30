@@ -122,23 +122,17 @@ fn transfer_concurrency_survives_yaml_roundtrip() {
 }
 
 #[test]
-fn a_new_library_pre_fills_with_tags_and_identifies_automatically() {
+fn a_new_library_identifies_automatically() {
     let tmp = TempDir::new().unwrap();
     let config = make_test_config("lib", tmp.path().to_path_buf());
 
     assert!(config.prefs.identification.automatic);
-    assert!(config.prefs.prefill_with_file_metadata);
 }
 
-/// Every identification step is taken and nothing is imported on its own
-/// until the person says so: the defaults are what identification did before
-/// any of it was a setting.
+/// Nothing is imported on its own until the person says so.
 #[test]
-fn a_new_library_takes_every_identification_step_and_imports_nothing_on_its_own() {
+fn a_new_library_imports_nothing_on_its_own() {
     let prefs = IdentificationPreferences::default();
-    for step in IdentificationStep::ALL {
-        assert!(prefs.steps.takes(step), "{step:?} starts on");
-    }
     assert!(!prefs.import_when_identified);
     assert!(!prefs.imports_when_identified());
 }
@@ -155,18 +149,6 @@ fn importing_when_identified_needs_automatic_identification() {
     prefs.automatic = false;
     assert!(!prefs.imports_when_identified());
     assert!(prefs.import_when_identified, "the choice is kept");
-}
-
-/// The step accessors are total over the steps, and each flag is its own.
-#[test]
-fn identification_steps_are_total_and_independent() {
-    for off in IdentificationStep::ALL {
-        let mut steps = IdentificationSteps::default();
-        steps.set(off, false);
-        for step in IdentificationStep::ALL {
-            assert_eq!(steps.takes(step), step != off, "{off:?} off, {step:?}");
-        }
-    }
 }
 
 /// An import goes where the stored choice says, pinned as it says, and to the
@@ -196,18 +178,16 @@ fn an_import_s_destination_is_the_stored_choice() {
 }
 
 #[test]
-fn prefill_with_file_metadata_and_identify_automatically_roundtrip_independently() {
-    for (prefill, identify) in [(false, true), (true, false), (false, false)] {
+fn identify_automatically_roundtrips() {
+    for identify in [true, false] {
         let tmp = TempDir::new().unwrap();
         let mut config = make_test_config("lib", tmp.path().to_path_buf());
         config.prefs.identification.automatic = identify;
-        config.prefs.prefill_with_file_metadata = prefill;
         config.save_preferences().unwrap();
 
         let prefs = read_preferences(tmp.path()).unwrap();
 
         assert_eq!(prefs.identification.automatic, identify);
-        assert_eq!(prefs.prefill_with_file_metadata, prefill);
     }
 }
 
@@ -224,7 +204,6 @@ fn preferences_carrying_an_unrecognized_key_load() {
 
     let loaded = read_preferences_value(&value).expect("an unknown key is ignored");
 
-    assert!(loaded.prefill_with_file_metadata);
     assert!(loaded.identification.automatic);
 }
 
@@ -326,7 +305,6 @@ fn preferences_require_every_field() {
         "verify_decode_on_import",
         "import_storage",
         "identification",
-        "prefill_with_file_metadata",
         "cast_enabled",
         "mcp",
         "subsonic",
@@ -391,16 +369,9 @@ import_storage:
 identification:
   automatic: true
   import_when_identified: false
-  steps:
-    read_cover_art: true
-    look_up_disc_ids: true
-    look_up_barcodes: true
-    search_by_title: true
-    follow_catalog_links: true
   catalogs:
     musicbrainz: true
     discogs: true
-prefill_with_file_metadata: true
 cast_enabled: false
 mcp:
   enabled: false

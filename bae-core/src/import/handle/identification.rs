@@ -37,17 +37,11 @@ impl ImportServiceHandle {
         choices: crate::import::LookupChoices,
         title_search: Option<crate::identify::TitleSearch>,
     ) -> bool {
-        // The steps are read once, here, for both halves: the extraction reads
-        // the cover art or not by the same value the run asks by.
-        let steps = self.library_manager.identification_steps();
-        let snapshots = self
-            .extraction
-            .start(run, key.clone(), source, priority, steps);
+        let snapshots = self.extraction.start(run, key.clone(), source, priority);
         if self.identify.start(
             run,
             key.clone(),
             priority,
-            steps,
             choices,
             title_search,
             snapshots,

@@ -1,10 +1,9 @@
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use crate::types::BridgeOutputKind;
 use crate::types::{
-    BridgeCatalog, BridgeConfig, BridgeDiscogsTokenStatus, BridgeIdentificationStep,
-    BridgeIdentificationStepSetting, BridgeImportStorage, BridgeLookupCatalogSetting,
-    BridgeMcpConfig, BridgeSaveBitDepth, BridgeSaveCodec, BridgeSaveFilenameToken,
-    BridgeSavePregapPlacement, BridgeSavePreset, BridgeSidePauseCountdown,
+    BridgeCatalog, BridgeConfig, BridgeDiscogsTokenStatus, BridgeImportStorage,
+    BridgeLookupCatalogSetting, BridgeMcpConfig, BridgeSaveBitDepth, BridgeSaveCodec,
+    BridgeSaveFilenameToken, BridgeSavePregapPlacement, BridgeSavePreset, BridgeSidePauseCountdown,
     BridgeSourceAvailability, BridgeSubsonicConfig, BridgeSyncConfig, BridgeSyncProvider,
 };
 
@@ -215,7 +214,6 @@ impl BridgeConfig {
             max_concurrent_downloads,
             import_storage,
             identification,
-            prefill_with_file_metadata,
             show_remaining_time,
             library_full_width,
             // Import-time decode verification; not surfaced on the config screen.
@@ -228,7 +226,6 @@ impl BridgeConfig {
         let bae_core::config::IdentificationPreferences {
             automatic,
             import_when_identified,
-            steps,
             // Read through `Config::metadata_sources()` above, which folds this
             // raw preference together with each catalog's credentials into the
             // one answer a surface renders.
@@ -253,18 +250,10 @@ impl BridgeConfig {
             max_concurrent_downloads: max_concurrent_downloads.get(),
             identify_automatically: *automatic,
             import_when_identified: *import_when_identified,
-            identification_steps: bae_core::config::IdentificationStep::ALL
-                .into_iter()
-                .map(|step| BridgeIdentificationStepSetting {
-                    step: BridgeIdentificationStep::from_core(step),
-                    enabled: steps.takes(step),
-                })
-                .collect(),
             import_storage: BridgeImportStorage {
                 cloud: *cloud,
                 pinned: *pinned,
             },
-            prefill_with_file_metadata: *prefill_with_file_metadata,
             lookup_catalogs,
             show_remaining_time: *show_remaining_time,
             library_full_width: *library_full_width,

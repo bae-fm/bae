@@ -8,7 +8,6 @@ use super::{
     BarcodeProgress, CatalogProgress, DiscidProgress, IsrcProgress, LibraryStatus, MetadataResult,
     SearchProgress, SourceFailure,
 };
-use crate::config::IdentificationSteps;
 use crate::identify::agreements::CandidateText;
 use crate::identify::combine::LookupAnswers;
 use crate::identify::documents::DocumentReading;
@@ -370,8 +369,6 @@ impl SearchEvidence {
 pub struct SignalsContext {
     /// The catalogs this run asks, fixed when it starts.
     pub providers: Vec<Catalog>,
-    /// The steps this run takes, fixed when it starts.
-    pub steps: IdentificationSteps,
     /// Where the artwork pass has got to, from the latest snapshot.
     pub artwork: ArtworkScan,
     /// What the candidate's files say about where its audio came from.
@@ -402,7 +399,6 @@ impl Default for SignalsContext {
     fn default() -> Self {
         Self {
             providers: Vec::new(),
-            steps: IdentificationSteps::default(),
             artwork: ArtworkScan::Absent,
             origin: AudioOrigin::default(),
             audio: AudioFacts::default(),
@@ -435,13 +431,11 @@ impl SignalsContext {
     /// The context a run starts with, before its first snapshot.
     pub(super) fn started(
         providers: Vec<Catalog>,
-        steps: IdentificationSteps,
         choices: LookupChoices,
         title_search: Option<TitleSearch>,
     ) -> Self {
         Self {
             providers,
-            steps,
             search: SearchEvidence {
                 query: title_search,
                 ..Default::default()
@@ -548,12 +542,8 @@ impl SignalsContext {
     }
 
     /// What each MusicBrainz album on the list was read to be, from the
-    /// documents read so far. Nothing, for a run that does not join records
-    /// across catalogs.
+    /// documents read so far.
     fn album_groups(&self, answers: &LookupAnswers) -> Vec<GroupLinks> {
-        if !self.steps.follow_catalog_links {
-            return Vec::new();
-        }
         let list: Vec<&MetadataResult> = answers.all().map(|(result, _)| result).collect();
         album_links::read_groups(&list, |release| {
             self.documents

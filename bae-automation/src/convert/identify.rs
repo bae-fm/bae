@@ -9,7 +9,7 @@ mirror_enum! {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     AutomationNotAskedReason = bae_core::identify::NotAskedReason,
     from_core: pub(crate) fn,
-    variants: { LeftOut, SwitchedOff, NoCatalog },
+    variants: { LeftOut, NoCatalog },
 }
 
 mirror_enum! {
@@ -79,7 +79,6 @@ mirror_enum! {
     from_core: pub(crate) fn,
     variants: {
         Absent,
-        CoverArtOff,
         NoCodes,
         Rows { scanning, rows: (each AutomationSignalValueRow) },
     },
@@ -109,7 +108,6 @@ mirror_enum! {
     from_core: pub(crate) fn,
     variants: {
         NoneFound,
-        CoverArtOff,
         Numbers {
             scanning,
             rows: (each AutomationSignalValueRow),
@@ -123,7 +121,6 @@ mirror_enum! {
     AutomationSearchStep = bae_core::identify::SearchStepView,
     from_core: pub(crate) fn,
     variants: {
-        NotAsked { reason: (AutomationNotAskedReason) },
         NotNeeded,
         NoTitle,
         Waiting { album, artist },

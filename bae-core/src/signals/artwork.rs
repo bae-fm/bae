@@ -19,9 +19,6 @@ pub enum ArtworkScan {
     Done {
         total: u32,
     },
-    /// The run does not read cover art, so what the images say is unknown
-    /// rather than empty.
-    Off,
     /// Reading stopped at a failure; `read` images had been read before it.
     Failed {
         failure: InternalFailure,

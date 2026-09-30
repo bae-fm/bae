@@ -85,15 +85,10 @@ private struct ImportOperations: Sendable {
         @Sendable (String, String) async throws -> BridgePaneOutcome
     let setIdentifyAutomatically:
         @MainActor @Sendable (Bool) async throws -> Void
-    let setPrefillWithFileMetadata:
-        @MainActor @Sendable (Bool) async throws -> Void
     let setMetadataSourceEnabled:
         @MainActor @Sendable (BridgeCatalog, Bool) async throws -> Void
     let setImportWhenIdentified:
         @MainActor @Sendable (Bool) async throws -> Void
-    let setIdentificationStep:
-        @MainActor @Sendable (BridgeIdentificationStep, Bool) async throws ->
-            Void
     let setImportToCloud: @MainActor @Sendable (Bool) async throws -> Void
     let setImportPinned: @MainActor @Sendable (Bool) async throws -> Void
 }
@@ -279,9 +274,6 @@ extension ImportOperations {
             setIdentifyAutomatically: {
                 try await handle.setIdentifyAutomatically(enabled: $0)
             },
-            setPrefillWithFileMetadata: {
-                try await handle.setPrefillWithFileMetadata(enabled: $0)
-            },
             setMetadataSourceEnabled: {
                 try await handle.setMetadataSourceEnabled(
                     source: $0,
@@ -290,9 +282,6 @@ extension ImportOperations {
             },
             setImportWhenIdentified: {
                 try await handle.setImportWhenIdentified(enabled: $0)
-            },
-            setIdentificationStep: {
-                try await handle.setIdentificationStep(step: $0, enabled: $1)
             },
             setImportToCloud: {
                 try await handle.setImportToCloud(enabled: $0)
@@ -437,9 +426,6 @@ final class Importer: Sendable, Observable {
         setIdentifyAutomatically:
             @escaping @MainActor @Sendable (Bool) async throws -> Void = { _ in
             },
-        setPrefillWithFileMetadata:
-            @escaping @MainActor @Sendable (Bool) async throws -> Void = { _ in
-            },
         setMetadataSourceEnabled:
             @escaping @MainActor @Sendable (
                 BridgeCatalog, Bool
@@ -447,10 +433,6 @@ final class Importer: Sendable, Observable {
         setImportWhenIdentified:
             @escaping @MainActor @Sendable (Bool) async throws -> Void = { _ in
             },
-        setIdentificationStep:
-            @escaping @MainActor @Sendable (
-                BridgeIdentificationStep, Bool
-            ) async throws -> Void = { _, _ in },
         setImportToCloud:
             @escaping @MainActor @Sendable (Bool) async throws -> Void = { _ in
             },
@@ -502,10 +484,8 @@ final class Importer: Sendable, Observable {
                 throw StubError.notImplemented
             },
             setIdentifyAutomatically: setIdentifyAutomatically,
-            setPrefillWithFileMetadata: setPrefillWithFileMetadata,
             setMetadataSourceEnabled: setMetadataSourceEnabled,
             setImportWhenIdentified: setImportWhenIdentified,
-            setIdentificationStep: setIdentificationStep,
             setImportToCloud: setImportToCloud,
             setImportPinned: setImportPinned
         )
@@ -800,11 +780,6 @@ extension Importer {
         try await operations.setIdentifyAutomatically(enabled)
     }
 
-    @MainActor
-    func setPrefillWithFileMetadata(_ enabled: Bool) async throws {
-        try await operations.setPrefillWithFileMetadata(enabled)
-    }
-
     /// Ask, or stop asking, one metadata source — the same write behind the
     /// Find online header's checkboxes and the Settings ones. Throws when core
     /// refuses, which is when it would leave nothing to ask.
@@ -820,15 +795,6 @@ extension Importer {
     @MainActor
     func setImportWhenIdentified(_ enabled: Bool) async throws {
         try await operations.setImportWhenIdentified(enabled)
-    }
-
-    /// Take, or stop taking, one step of every identification run.
-    @MainActor
-    func setIdentificationStep(
-        _ step: BridgeIdentificationStep,
-        _ enabled: Bool
-    ) async throws {
-        try await operations.setIdentificationStep(step, enabled)
     }
 
     /// Whether an import goes to the cloud home, when there is one.

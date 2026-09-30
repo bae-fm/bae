@@ -9,8 +9,6 @@ use super::*;
 pub enum AutomationNotAskedReason {
     /// The person left the value out of the run.
     LeftOut,
-    /// The step is switched off in the identification settings.
-    SwitchedOff,
     /// No catalog the run asks answers this lookup.
     NoCatalog,
 }
@@ -86,8 +84,6 @@ pub enum AutomationDiscIdStep {
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationBarcodeStep {
     Absent,
-    /// The cover art was left unread and no CUE sheet states a code.
-    CoverArtOff,
     NoCodes,
     Rows {
         scanning: bool,
@@ -118,9 +114,6 @@ pub struct AutomationCatalogCandidate {
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationCatalogStep {
     NoneFound,
-    /// No catalog number in the folder's own text, and the cover art was left
-    /// unread.
-    CoverArtOff,
     Numbers {
         scanning: bool,
         rows: Vec<AutomationSignalValueRow>,
@@ -132,9 +125,6 @@ pub enum AutomationCatalogStep {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationSearchStep {
-    NotAsked {
-        reason: AutomationNotAskedReason,
-    },
     NotNeeded,
     NoTitle,
     Waiting {

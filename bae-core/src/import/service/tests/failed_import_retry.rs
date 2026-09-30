@@ -22,10 +22,6 @@ fn local_import_command(import_id: &str, candidate_key: &str, folder: &Path) -> 
 #[tokio::test]
 async fn an_import_that_cannot_open_a_source_writes_nothing_and_a_retry_lands_it() {
     let test = setup_import_service().await;
-    test.service
-        .library_manager
-        .set_prefill_with_file_metadata(false).await
-        .unwrap();
     let folder = test.temp.path().join("box-set");
     let fixture =
         Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/flac/01 Test Track 1.flac");
@@ -37,12 +33,10 @@ async fn an_import_that_cannot_open_a_source_writes_nothing_and_a_retry_lands_it
                 .unwrap();
         }
     }
-    let (candidate_key, candidate) =
+    let (candidate_key, stored) =
         store_scanned_candidate(&test, &folder, "Box Set").await;
-    let expectation = || super::ImportExpectation {
-        candidate: candidate.clone(),
-        file_tag_snapshot: None,
-    };
+    let candidate = stored.candidate.clone();
+    let expectation = || stored.clone();
 
     // The scan read every file; now one stops opening. Its size and
     // modification time are unchanged, so the import's identity check passes

@@ -3,14 +3,6 @@
     import Foundation
 
     extension PreviewData {
-        /// Every identification step, each taken — a library's defaults.
-        static let everyIdentificationStep: [BridgeIdentificationStepSetting] =
-            [
-                .readCoverArt, .lookUpDiscIds, .lookUpBarcodes, .searchByTitle,
-                .followCatalogLinks,
-            ]
-            .map { BridgeIdentificationStepSetting(step: $0, enabled: true) }
-
         // MARK: - Config and edit-metadata fixtures
 
         /// A new preview ConfigStore for each preview scene.
@@ -93,13 +85,10 @@
                         maxConcurrentDownloads: 3,
                         identifyAutomatically: true,
                         importWhenIdentified: false,
-                        identificationSteps: PreviewData
-                            .everyIdentificationStep,
                         importStorage: BridgeImportStorage(
                             cloud: true,
                             pinned: true
                         ),
-                        prefillWithFileMetadata: true,
                         lookupCatalogs: lookupCatalogs(
                             musicBrainz: musicBrainz,
                             discogs: discogs

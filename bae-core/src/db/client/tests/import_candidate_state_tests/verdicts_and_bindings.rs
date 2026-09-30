@@ -943,7 +943,6 @@ async fn a_transport_failure_round_trips_as_a_failed_verdict() {
         IdentifyState::Idle,
         IdentifyEvent::Started {
             providers: vec![crate::import::Catalog::MusicBrainz],
-            steps: crate::config::IdentificationSteps::default(),
             choices: crate::import::LookupChoices::default(),
             title_search: None,
         },

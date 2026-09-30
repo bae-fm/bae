@@ -665,12 +665,13 @@ async fn an_imported_candidate_refuses_metadata_edits() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn import_worker_refuses_a_prepared_but_invalid_metadata_draft() {
+    // The scan could not read the folder's tags, so its draft is blank.
     let StoredCandidate {
         handle,
         key,
         tmp: _tmp,
         ..
-    } = stored_candidate().await;
+    } = unread_stored_candidate().await;
 
     let mut events = handle.every_event();
     let import_id = handle
