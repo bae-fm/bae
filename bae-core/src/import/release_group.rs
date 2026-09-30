@@ -55,11 +55,13 @@ pub struct ReleaseGroup {
     /// Representative cover for the card — the first pressing that surfaced
     /// one, MusicBrainz first.
     pub cover_art: Option<RemoteCover>,
-    /// Every source carrying this group, in the one order surfaces list
-    /// sources in, each with its editorial page when the source named a
-    /// group. The chips under an album's title and the names on the rows
-    /// beneath it read the same way round, whichever record a row was read
-    /// from.
+    /// Every catalog the album is known on, in the one order surfaces list
+    /// sources in, each with its editorial page when it names a group: the
+    /// catalogs of the card's records, and each catalog a statement its
+    /// records carry names the album on (see `album_links`) where the card
+    /// holds no record of it. The chips under an album's title and the names
+    /// on the rows beneath it read the same way round, whichever record a
+    /// row was read from.
     pub sources: Vec<ReleaseGroupSource>,
     /// Earliest and latest pressing year, for the UI's "1992 – 2012" span.
     /// Both `None` when no pressing carries a year.
@@ -758,10 +760,26 @@ fn build_group(
     // Whether a release's album links were read, or never needed asking.
     let links_known =
         |at: usize| !matches!(read(at).album_links, crate::import::album_links::AlbumLinks::Unread);
-    let sources: Vec<ReleaseGroupSource> = card
+    let mut sources: Vec<ReleaseGroupSource> = card
         .iter()
         .map(|bucket| bucket.as_source(links_known))
         .collect();
+    // An album a record's statements name on a catalog the card holds no
+    // record of is still the album's: the card names it with its page.
+    for link in members
+        .iter()
+        .flat_map(|&at| read(at).album_links.read())
+    {
+        let catalog = link.album.catalog;
+        if !sources.iter().any(|source| source.source == catalog) {
+            sources.push(ReleaseGroupSource {
+                source: catalog,
+                group_url: catalog.group_url(&link.album.key),
+                album_links_unread: false,
+            });
+        }
+    }
+    sources.sort_by_key(|source| source_rank(source.source));
     let lead = read(
         *members
             .first()

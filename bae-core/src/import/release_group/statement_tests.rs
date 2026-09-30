@@ -1,7 +1,8 @@
 //! How the statements that say what a MusicBrainz album is on Discogs put
 //! the two catalogs' albums on one card — whichever statement it is, through
-//! the same album link — and how a twin read through a release's link sits on
-//! the row of the release that names it.
+//! the same album link — how the release a release links sits on the row of
+//! the release that names it, and how a card names the album on a catalog it
+//! holds no record of.
 
 use super::tests::*;
 use super::*;
@@ -78,4 +79,34 @@ fn a_wikidata_statement_joins_the_albums_as_a_page_does() {
     let groups = grouped(vec![stated, discogs("dg-1", Some("master-7"), Some(2007))]);
     assert_eq!(groups.len(), 1);
     assert_eq!(rows(&groups), vec![vec!["mb-1"], vec!["dg-1"]]);
+}
+
+/// The album a record's page names on Discogs is on the card's header, with
+/// its page, though no Discogs release is on the list.
+#[test]
+fn a_card_names_the_album_its_links_state_on_a_catalog_it_has_no_row_of() {
+    let mut stated = mb("mb-1", Some("group-a"), Some(1986));
+    stated.album_links = AlbumLinks::Read(vec![AlbumLink {
+        album: MetadataRef::new(Catalog::Discogs, "8522"),
+        stated: AlbumStatement::Page,
+    }]);
+    let groups = grouped(vec![stated, mb("mb-2", Some("group-a"), None)]);
+    assert_eq!(groups.len(), 1);
+    assert_eq!(
+        groups[0]
+            .sources
+            .iter()
+            .map(|source| (source.source, source.group_url.clone()))
+            .collect::<Vec<_>>(),
+        vec![
+            (
+                Catalog::MusicBrainz,
+                Some("https://musicbrainz.org/release-group/group-a".to_string())
+            ),
+            (
+                Catalog::Discogs,
+                Some("https://www.discogs.com/master/8522".to_string())
+            ),
+        ]
+    );
 }
