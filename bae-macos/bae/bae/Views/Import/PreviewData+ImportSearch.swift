@@ -465,12 +465,6 @@
             )
         )
 
-        /// Catalog-number chips that rank the list, one of them struck out.
-        static let catalogAgreements: [BridgeCatalogAgreement] = [
-            BridgeCatalogAgreement(value: "BST 84055", discounted: false),
-            BridgeCatalogAgreement(value: "7243 8 21152 2 3", discounted: true),
-        ]
-
         /// Catalog numbers extraction found and nobody has activated.
         static let catalogCandidates: [BridgeCatalogCandidate] = [
             BridgeCatalogCandidate(value: "LC 6006"),
@@ -606,7 +600,6 @@
                 trackCount: 11,
                 agreements: searchAgreementsExact,
                 narrowedOutCount: 0,
-                catalogAgreements: catalogAgreements,
                 folderCheck: nil,
                 picksUnattended: false,
                 offersSharedAlbum: false
@@ -655,7 +648,6 @@
                     disagreementAgreements
                 ) { offered, _ in offered },
                 narrowedOutCount: 3,
-                catalogAgreements: catalogAgreements,
                 folderCheck: nil,
                 picksUnattended: false,
                 offersSharedAlbum: false
@@ -676,7 +668,6 @@
             trackCount: 11,
             agreements: disagreementAgreements,
             narrowedOutCount: 0,
-            catalogAgreements: catalogAgreements,
             folderCheck: nil,
             picksUnattended: false,
             offersSharedAlbum: false
@@ -714,7 +705,6 @@
                 libraryStatuses: [:],
                 agreements: searchAgreementsExact,
                 narrowedOutCount: 0,
-                catalogAgreements: catalogAgreements,
                 offersSharedAlbum: false
             )
         )
@@ -753,7 +743,6 @@
                 libraryStatuses: [:],
                 agreements: [:],
                 narrowedOutCount: 0,
-                catalogAgreements: [],
                 offersSharedAlbum: false
             )
         )
@@ -770,7 +759,6 @@
                 libraryStatuses: [:],
                 agreements: [:],
                 narrowedOutCount: 0,
-                catalogAgreements: [],
                 offersSharedAlbum: false
             )
         )
@@ -804,7 +792,6 @@
                 trackCount: 11,
                 agreements: searchAgreementsExact,
                 narrowedOutCount: 0,
-                catalogAgreements: catalogAgreements,
                 folderCheck: nil,
                 picksUnattended: true,
                 offersSharedAlbum: false
@@ -843,7 +830,6 @@
                 trackCount: 13,
                 agreements: searchAgreementsExact,
                 narrowedOutCount: 0,
-                catalogAgreements: catalogAgreements,
                 folderCheck: .sourceTracksUnknown,
                 picksUnattended: false,
                 offersSharedAlbum: false
@@ -861,7 +847,6 @@
                 trackCount: 11,
                 agreements: searchAgreementsExact,
                 narrowedOutCount: 0,
-                catalogAgreements: catalogAgreements,
                 folderCheck: nil,
                 picksUnattended: false,
                 offersSharedAlbum: false
@@ -879,7 +864,6 @@
                 trackCount: 11,
                 agreements: searchAgreementsExact,
                 narrowedOutCount: 0,
-                catalogAgreements: catalogAgreements,
                 folderCheck: nil,
                 picksUnattended: false,
                 offersSharedAlbum: false
@@ -897,7 +881,6 @@
                 trackCount: 11,
                 agreements: searchAgreementsExact,
                 narrowedOutCount: 0,
-                catalogAgreements: catalogAgreements,
                 folderCheck: nil,
                 picksUnattended: false,
                 offersSharedAlbum: false
@@ -915,7 +898,6 @@
                 trackCount: 11,
                 agreements: searchAgreementsExact,
                 narrowedOutCount: 0,
-                catalogAgreements: catalogAgreements,
                 folderCheck: nil,
                 picksUnattended: false,
                 offersSharedAlbum: false

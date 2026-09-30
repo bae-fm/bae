@@ -196,22 +196,49 @@ pub(super) fn catalog_step(
     context: &SignalsContext,
     scanning: bool,
 ) -> CatalogStepView {
-    let numbers = &context.catalog.numbers;
-    if numbers.is_empty() && !scanning {
+    let catalog = &context.catalog;
+    let mut rows: Vec<SignalValueRow> = progress.lookups().iter().map(catalog_row).collect();
+    // A number in effect not asked yet — confirmed by the answers in hand,
+    // its search still to go out.
+    for value in catalog.in_effect() {
+        if !rows.iter().any(|row| row.value == value) {
+            rows.push(SignalValueRow {
+                value,
+                excluded: false,
+                cells: uniform_cells(context, LookupView::Queued),
+            });
+        }
+    }
+    // A struck-out number stays in the row, left out, so it can be put back.
+    for value in &catalog.struck_out {
+        if catalog.is_chosen(value) || context.text.prints_catalog(value) {
+            rows.push(SignalValueRow {
+                value: value.clone(),
+                excluded: true,
+                cells: uniform_cells(
+                    context,
+                    LookupView::NotAsked {
+                        reason: NotAskedReason::LeftOut,
+                    },
+                ),
+            });
+        }
+    }
+    let candidates: Vec<CatalogCandidateView> = catalog
+        .numbers
+        .iter()
+        .filter(|value| !catalog.holds(value) && !catalog.is_struck_out(value))
+        .map(|value| CatalogCandidateView {
+            value: value.clone(),
+        })
+        .collect();
+    if rows.is_empty() && candidates.is_empty() && !scanning {
         return if matches!(context.artwork, ArtworkScan::Off) {
             CatalogStepView::CoverArtOff
         } else {
             CatalogStepView::NoneFound
         };
     }
-    let rows = progress.lookups().iter().map(catalog_row).collect();
-    let candidates = numbers
-        .iter()
-        .filter(|value| !context.catalog.holds(value))
-        .map(|value| CatalogCandidateView {
-            value: value.clone(),
-        })
-        .collect();
     CatalogStepView::Numbers {
         scanning,
         rows,
@@ -240,7 +267,7 @@ fn lookup_cells(lookup: &ValueLookup) -> Vec<ProviderCell> {
 fn catalog_row(lookup: &ValueLookup) -> SignalValueRow {
     SignalValueRow {
         value: lookup.value.clone(),
-        // A catalog row exists only while its number is looked up.
+        // A number in effect is searched; a struck-out one is not.
         excluded: false,
         cells: lookup_cells(lookup),
     }

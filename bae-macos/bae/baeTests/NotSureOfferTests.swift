@@ -20,7 +20,6 @@ struct NotSureOfferTests {
             trackCount: 11,
             agreements: PreviewData.searchAgreementsExact,
             narrowedOutCount: 0,
-            catalogAgreements: PreviewData.catalogAgreements,
             folderCheck: nil,
             picksUnattended: false,
             offersSharedAlbum: true

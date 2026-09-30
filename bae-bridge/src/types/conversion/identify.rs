@@ -276,12 +276,6 @@ mirror_enum! {
     },
 }
 
-mirror_struct! {
-    BridgeCatalogAgreement = bae_core::identify::CatalogAgreementView,
-    from_core: fn,
-    fields: { value, discounted },
-}
-
 mirror_enum! {
     BridgeSearchStep = bae_core::identify::SearchStepView,
     from_core: fn,
@@ -514,7 +508,6 @@ impl BridgeIdentifyState {
                 track_count,
                 agreements,
                 narrowed_out_count,
-                catalog_agreements,
                 folder_check,
                 picks_unattended,
                 offers_shared_album,
@@ -531,10 +524,6 @@ impl BridgeIdentifyState {
                     .map(|(release_id, a)| (release_id, BridgeAgreements::from_core(a)))
                     .collect(),
                 narrowed_out_count,
-                catalog_agreements: catalog_agreements
-                    .into_iter()
-                    .map(BridgeCatalogAgreement::from_core)
-                    .collect(),
                 folder_check: folder_check
                     .map(|check| crate::types::BridgeFolderCheck::with_rate(check, rate)),
                 picks_unattended,
@@ -554,7 +543,6 @@ impl BridgeIdentifyState {
                 library_statuses,
                 agreements,
                 narrowed_out_count,
-                catalog_agreements,
                 offers_shared_album,
             } => BridgeIdentifyState::Failed {
                 run: run.map(|run| BridgeIdentifyRun::from_core(run, rate)),
@@ -569,10 +557,6 @@ impl BridgeIdentifyState {
                     .map(|(release_id, a)| (release_id, BridgeAgreements::from_core(a)))
                     .collect(),
                 narrowed_out_count,
-                catalog_agreements: catalog_agreements
-                    .into_iter()
-                    .map(BridgeCatalogAgreement::from_core)
-                    .collect(),
                 offers_shared_album,
             },
         }

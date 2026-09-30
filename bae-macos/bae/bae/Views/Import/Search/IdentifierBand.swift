@@ -2,15 +2,14 @@ import BaeKit
 import SwiftUI
 
 /// The run as one wrapping band of chips — Disc ID, Barcode, Catalog #, ISRC,
-/// Title, then the catalog numbers that rank the answers, then the unused
-/// numbers folded behind their count — each with every provider's answer.
+/// Title, then the catalog numbers not in effect folded behind their count —
+/// each with every provider's answer.
 struct IdentifierBand: View {
     let run: BridgeIdentifyRun
-    /// The numbers an offered release carries; empty while the run is going.
-    let catalogAgreements: [BridgeCatalogAgreement]
     /// Leave an identifier out of the run, or ask about it again.
     let onToggleLookup: (LookupToggle) -> Void
-    /// Count a catalog number the folder states, or stop counting it.
+    /// Strike a catalog number in effect out of the run, or put a struck one
+    /// back.
     let onToggleCatalogAgreement: (String) -> Void
     /// Re-ask only the lookups that failed.
     let onRetryFailed: () -> Void
@@ -29,12 +28,6 @@ struct IdentifierBand: View {
             catalogChips
             isrcChip
             titleChip
-            ForEach(catalogAgreements, id: \.value) { agreement in
-                CatalogAgreementChip(
-                    agreement: agreement,
-                    onToggle: { onToggleCatalogAgreement(agreement.value) }
-                )
-            }
             if showsCatalogCandidates {
                 ForEach(catalogCandidates, id: \.value) { candidate in
                     CatalogCandidateChip(
@@ -175,7 +168,10 @@ struct IdentifierBand: View {
 
     // MARK: - Catalog #
 
-    /// A chip per number the run looks up; clicking it takes the number out.
+    /// A chip per number in effect — picked, or printed by the folder and
+    /// carried by a release found — with each provider's answer, then each
+    /// struck-out number, struck through. Clicking one strikes it out or puts
+    /// it back.
     @ViewBuilder
     private var catalogChips: some View {
         let label = String(localized: "Catalog #")
@@ -191,17 +187,25 @@ struct IdentifierBand: View {
         case .numbers(_, let rows, _):
             ForEach(rows, id: \.value) { row in
                 Button {
-                    onToggleLookup(.catalog(row.value))
+                    onToggleCatalogAgreement(row.value)
                 } label: {
                     IdentifierChip(
                         label: label,
-                        value: row.value
+                        value: row.value,
+                        style: row.excluded ? .struck : .filled
                     ) {
-                        capsules(row.cells)
+                        // A struck-out number is asked of nobody.
+                        if !row.excluded {
+                            capsules(row.cells)
+                        }
                     }
                 }
                 .buttonStyle(.plain)
-                .help("Take this catalog number out of the run")
+                .help(
+                    row.excluded
+                        ? "Put this catalog number back in the run"
+                        : "Take this catalog number out of the run"
+                )
             }
         }
     }
@@ -251,7 +255,7 @@ struct IdentifierBand: View {
         }
     }
 
-    /// The numbers found that the run doesn't look up and no release carries.
+    /// The numbers the folder offers that are not in effect.
     private var catalogCandidates: [BridgeCatalogCandidate] {
         guard case .numbers(_, _, let candidates) = run.catalog else {
             return []
@@ -427,7 +431,6 @@ private struct TitleSearchChip<Trailing: View>: View {
     #Preview("Run in flight") {
         IdentifierBand(
             run: PreviewData.identifyRunInFlight,
-            catalogAgreements: [],
             onToggleLookup: { _ in },
             onToggleCatalogAgreement: { _ in },
             onRetryFailed: {},
@@ -442,7 +445,6 @@ private struct TitleSearchChip<Trailing: View>: View {
     #Preview("Run on one source") {
         IdentifierBand(
             run: PreviewData.identifyRunOneSource,
-            catalogAgreements: [],
             onToggleLookup: { _ in },
             onToggleCatalogAgreement: { _ in },
             onRetryFailed: {},
@@ -456,7 +458,6 @@ private struct TitleSearchChip<Trailing: View>: View {
     #Preview("Run starting") {
         IdentifierBand(
             run: PreviewData.identifyRunStarting,
-            catalogAgreements: [],
             onToggleLookup: { _ in },
             onToggleCatalogAgreement: { _ in },
             onRetryFailed: {},
@@ -470,7 +471,6 @@ private struct TitleSearchChip<Trailing: View>: View {
     #Preview("A provider failed") {
         IdentifierBand(
             run: PreviewData.identifyRunProviderFailed,
-            catalogAgreements: [],
             onToggleLookup: { _ in },
             onToggleCatalogAgreement: { _ in },
             onRetryFailed: {},
@@ -485,7 +485,6 @@ private struct TitleSearchChip<Trailing: View>: View {
     #Preview("A catalog number waiting to be used") {
         IdentifierBand(
             run: PreviewData.identifyRunCatalogWaiting,
-            catalogAgreements: PreviewData.catalogAgreements,
             onToggleLookup: { _ in },
             onToggleCatalogAgreement: { _ in },
             onRetryFailed: {},
@@ -502,7 +501,6 @@ private struct TitleSearchChip<Trailing: View>: View {
         VStack(alignment: .leading, spacing: 0) {
             IdentifierBand(
                 run: PreviewData.identifyRunDiscIdLeftOut,
-                catalogAgreements: [],
                 onToggleLookup: { _ in },
                 onToggleCatalogAgreement: { _ in },
                 onRetryFailed: {},
@@ -510,7 +508,6 @@ private struct TitleSearchChip<Trailing: View>: View {
             )
             IdentifierBand(
                 run: PreviewData.identifyRunBothBarcodesAsked,
-                catalogAgreements: [],
                 onToggleLookup: { _ in },
                 onToggleCatalogAgreement: { _ in },
                 onRetryFailed: {},
@@ -518,7 +515,6 @@ private struct TitleSearchChip<Trailing: View>: View {
             )
             IdentifierBand(
                 run: PreviewData.identifyRunBarcodeLeftOut,
-                catalogAgreements: [],
                 onToggleLookup: { _ in },
                 onToggleCatalogAgreement: { _ in },
                 onRetryFailed: {},
@@ -533,7 +529,6 @@ private struct TitleSearchChip<Trailing: View>: View {
     #Preview("Steps switched off") {
         IdentifierBand(
             run: PreviewData.identifyRunStepsOff,
-            catalogAgreements: [],
             onToggleLookup: { _ in },
             onToggleCatalogAgreement: { _ in },
             onRetryFailed: {},
@@ -547,7 +542,6 @@ private struct TitleSearchChip<Trailing: View>: View {
     #Preview("Nothing found") {
         IdentifierBand(
             run: PreviewData.identifyRunNothingFound,
-            catalogAgreements: [],
             onToggleLookup: { _ in },
             onToggleCatalogAgreement: { _ in },
             onRetryFailed: {},

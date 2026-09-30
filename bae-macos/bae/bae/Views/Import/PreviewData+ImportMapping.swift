@@ -583,7 +583,6 @@
                 trackCount: 12,
                 agreements: searchAgreementsExact,
                 narrowedOutCount: 0,
-                catalogAgreements: catalogAgreements,
                 folderCheck: nil,
                 picksUnattended: false,
                 offersSharedAlbum: false

@@ -17,9 +17,9 @@ struct FindOnlineAutomaticSection: View {
     /// catalog number. Core re-derives the state the import projection
     /// delivers from what the candidate's choices then say.
     let onToggleLookup: (LookupToggle) -> Void
-    /// Count a catalog number the folder states, or stop counting it. Nothing
-    /// is looked up: the answers in hand are ranked by the new value the next
-    /// time the candidate is read.
+    /// Strike a catalog number in the Catalog # row out of the run, or put it
+    /// back: a struck number is neither searched nor agreed with, so either
+    /// starts another run.
     let onToggleCatalogAgreement: (String) -> Void
     /// Re-ask only the lookups that failed, keeping what the others found.
     let onRetryFailed: () -> Void
@@ -124,7 +124,6 @@ struct FindOnlineAutomaticSection: View {
                     if let run = state.run {
                         IdentifierBand(
                             run: run,
-                            catalogAgreements: state.catalogAgreements,
                             onToggleLookup: onToggleLookup,
                             onToggleCatalogAgreement:
                                 onToggleCatalogAgreement,

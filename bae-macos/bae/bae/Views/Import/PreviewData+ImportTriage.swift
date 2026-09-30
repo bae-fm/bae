@@ -100,7 +100,6 @@
                 trackCount: 12,
                 agreements: searchAgreementsExact,
                 narrowedOutCount: 0,
-                catalogAgreements: catalogAgreements,
                 folderCheck: nil,
                 picksUnattended: false,
                 offersSharedAlbum: false
@@ -152,7 +151,6 @@
                 trackCount: 10,
                 agreements: [:],
                 narrowedOutCount: 0,
-                catalogAgreements: [],
                 folderCheck: .sourceTracksUnknown,
                 picksUnattended: false,
                 offersSharedAlbum: false
@@ -182,7 +180,6 @@
                 trackCount: 14,
                 agreements: searchAgreementsExact,
                 narrowedOutCount: 0,
-                catalogAgreements: catalogAgreements,
                 folderCheck: nil,
                 picksUnattended: false,
                 offersSharedAlbum: false
@@ -258,7 +255,6 @@
                 trackCount: 9,
                 agreements: searchAgreementsExact,
                 narrowedOutCount: 0,
-                catalogAgreements: catalogAgreements,
                 folderCheck: nil,
                 picksUnattended: false,
                 offersSharedAlbum: false
@@ -276,7 +272,6 @@
                     trackCount: 9,
                     agreements: searchAgreementsExact,
                     narrowedOutCount: 0,
-                    catalogAgreements: catalogAgreements,
                     folderCheck: nil,
                     picksUnattended: false,
                     offersSharedAlbum: false

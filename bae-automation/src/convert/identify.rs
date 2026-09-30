@@ -118,13 +118,6 @@ mirror_enum! {
     },
 }
 
-mirror_struct! {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    AutomationCatalogAgreement = bae_core::identify::CatalogAgreementView,
-    from_core: pub(crate) fn,
-    fields: { value, discounted },
-}
-
 mirror_enum! {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     AutomationSearchStep = bae_core::identify::SearchStepView,
@@ -263,7 +256,6 @@ pub(crate) fn automation_identify_state(
             track_count,
             agreements,
             narrowed_out_count,
-            catalog_agreements,
             folder_check,
             picks_unattended,
             offers_shared_album,
@@ -280,10 +272,6 @@ pub(crate) fn automation_identify_state(
             track_count,
             agreements: automation_agreements(agreements),
             narrowed_out_count,
-            catalog_agreements: catalog_agreements
-                .into_iter()
-                .map(AutomationCatalogAgreement::from_core)
-                .collect(),
             folder_check: folder_check.map(AutomationFolderCheck::from_core),
             picks_unattended,
             offers_shared_album,
@@ -305,7 +293,6 @@ pub(crate) fn automation_identify_state(
             library_statuses,
             agreements,
             narrowed_out_count,
-            catalog_agreements,
             offers_shared_album,
         } => AutomationIdentifyState::Failed {
             run: run.map(AutomationIdentifyRun::from_core),
@@ -323,10 +310,6 @@ pub(crate) fn automation_identify_state(
                 .collect(),
             agreements: automation_agreements(agreements),
             narrowed_out_count,
-            catalog_agreements: catalog_agreements
-                .into_iter()
-                .map(AutomationCatalogAgreement::from_core)
-                .collect(),
             offers_shared_album,
         },
     }

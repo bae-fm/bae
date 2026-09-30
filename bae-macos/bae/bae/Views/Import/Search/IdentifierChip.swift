@@ -3,10 +3,12 @@ import SwiftUI
 
 // The pieces the identifier band is built from.
 
-/// Filled for a value the run asks about, outlined for one it does not.
+/// Filled for a value the run asks about, outlined for one it does not, and
+/// outlined and struck through for one the person struck out.
 enum IdentifierChipStyle {
     case filled
     case outlined
+    case struck
 }
 
 /// The widest a chip's value is drawn before it truncates in the middle.
@@ -29,6 +31,7 @@ struct IdentifierChip<Trailing: View>: View {
             if let value {
                 Text(value)
                     .themeText(.mono)
+                    .strikethrough(style == .struck)
                     .foregroundStyle(valueStyle)
                     .lineLimit(1)
                     .truncationMode(.middle)
@@ -40,7 +43,7 @@ struct IdentifierChip<Trailing: View>: View {
         .padding(.vertical, ThemeSpace.line)
         .background(fill, in: RoundedRectangle(cornerRadius: ThemeRadius.chip))
         .overlay {
-            if style == .outlined {
+            if style != .filled {
                 RoundedRectangle(cornerRadius: ThemeRadius.chip)
                     .strokeBorder(border, lineWidth: 1)
             }
@@ -50,14 +53,14 @@ struct IdentifierChip<Trailing: View>: View {
     }
 
     private var valueStyle: AnyShapeStyle {
-        style == .outlined
-            ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.secondary)
+        style == .filled
+            ? AnyShapeStyle(.secondary) : AnyShapeStyle(.tertiary)
     }
 
     private var fill: Color {
         switch style {
         case .filled: isHovered ? Theme.pressed : Theme.hover
-        case .outlined: isHovered ? Theme.hover : Color.clear
+        case .outlined, .struck: isHovered ? Theme.hover : Color.clear
         }
     }
 

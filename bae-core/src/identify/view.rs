@@ -21,10 +21,7 @@ use crate::import::release_group::{
 };
 use crate::import::shared_album::SharedAlbum;
 use crate::import::Catalog;
-use crate::pressing::ReleaseLabel;
 use crate::signals::{ArtworkScan, DiscIdSignal, LookupFailure};
-use crate::text_match::squash;
-use std::collections::HashSet;
 
 /// One provider's lookup of one value: a cell of the ledger. The ledger's
 /// types are serializable because [`super::TerminalVerdict`] stores it.
@@ -58,8 +55,8 @@ pub struct ProviderCell {
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct SignalValueRow {
     pub value: String,
-    /// Whether the person left the value out; always false for a catalog
-    /// number, which has a row only while looked up.
+    /// Whether the person left the value out: a barcode they unchecked, a
+    /// catalog number they struck out.
     pub excluded: bool,
     /// One per provider in the run, in the run's provider order.
     pub cells: Vec<ProviderCell>,
@@ -99,38 +96,32 @@ pub enum BarcodeStepView {
     },
 }
 
-/// A catalog number extraction found that the run is not looking up, offered
-/// for the person to choose.
+/// A catalog number the folder's text offers that is not in effect: neither
+/// picked, nor carried by a release the run found, nor struck out. A surface
+/// folds these behind their count, for the person to pick.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct CatalogCandidateView {
     pub value: String,
 }
 
-/// A catalog number the candidate's text states about an offered release: a
-/// chip in the Catalog # row. Derived on every read, not recorded in the
-/// ledger.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct CatalogAgreementView {
-    pub value: String,
-    /// Whether the person struck it out, so the releases carrying it earn no
-    /// catalog agreement.
-    pub discounted: bool,
-}
-
-/// The catalog numbers: the run looks up only the ones the person picks.
+/// The catalog numbers: the ones in effect, each searched on every catalog,
+/// and the rest offered.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum CatalogStepView {
-    /// Extraction found no catalog number to offer, and is not still looking.
+    /// Extraction found no catalog number to offer, none is in effect, and
+    /// extraction is not still looking.
     NoneFound,
     /// No catalog number found, and the run does not read cover art.
     CoverArtOff,
     Numbers {
         /// Whether the artwork is still being read, so more numbers may come.
         scanning: bool,
-        /// The chosen numbers, in the order chosen.
+        /// The numbers in effect — the picked ones in the order picked, then
+        /// the ones the text prints that a found release carries, in the
+        /// order found — each with its search; then the numbers the person
+        /// struck out, left out and asked of nobody.
         rows: Vec<SignalValueRow>,
-        /// The numbers not chosen; once settled, only those no offered
-        /// release carries.
+        /// The numbers the text offers that are none of those.
         candidates: Vec<CatalogCandidateView>,
     },
 }
@@ -219,8 +210,6 @@ pub enum IdentifyStateView {
         /// Each row's badges, keyed by release id.
         agreements: Vec<(String, RowAgreements)>,
         narrowed_out_count: u32,
-        /// The Catalog # row's chips.
-        catalog_agreements: Vec<CatalogAgreementView>,
         /// The check against the folder the found release failed: why the
         /// verdict picks none of its releases.
         folder_check: Option<super::FolderCheck>,
@@ -254,8 +243,6 @@ pub enum IdentifyStateView {
         library_statuses: Vec<LibraryStatus>,
         agreements: Vec<(String, RowAgreements)>,
         narrowed_out_count: u32,
-        /// The Catalog # row's chips.
-        catalog_agreements: Vec<CatalogAgreementView>,
         /// Whether the offered rows are several pressings of one album, as
         /// for `Found`.
         offers_shared_album: bool,
@@ -300,16 +287,14 @@ impl From<IdentifyState> for IdentifyStateView {
                 context,
             } => {
                 let summary = super::VerdictSummary::of_found(&findings, track_count);
-                let catalog_agreements = catalog_agreements(&findings, &context.text);
                 let folded = fold(findings, library_statuses, &context.text, track_count);
                 IdentifyStateView::Found {
-                    run: ledger.map(|run| without_chip_tiles(run, &catalog_agreements)),
+                    run: ledger,
                     groups: folded.groups,
                     library_statuses: folded.library_statuses,
                     track_count,
                     agreements: folded.agreements,
                     narrowed_out_count: folded.narrowed_out_count,
-                    catalog_agreements,
                     folder_check: summary.folder_check(),
                     picks_unattended: summary.picks_unattended(),
                     offers_shared_album: folded.offers_shared_album,
@@ -342,16 +327,14 @@ impl From<IdentifyState> for IdentifyStateView {
                 ledger,
                 context,
             } => {
-                let catalog_agreements = catalog_agreements(&findings, &context.text);
                 let folded = fold(findings, library_statuses, &context.text, track_count);
                 IdentifyStateView::Failed {
-                    run: ledger.map(|run| without_chip_tiles(run, &catalog_agreements)),
+                    run: ledger,
                     failures,
                     groups: folded.groups,
                     library_statuses: folded.library_statuses,
                     agreements: folded.agreements,
                     narrowed_out_count: folded.narrowed_out_count,
-                    catalog_agreements,
                     offers_shared_album: folded.offers_shared_album,
                 }
             }
@@ -533,35 +516,6 @@ fn fold(
     }
 }
 
-/// The Catalog # row's chips: numbers an offered release carries and the
-/// text prints, struck out or not. Releases the catalog lookup itself
-/// returned are left out, since striking their number would change nothing.
-fn catalog_agreements(findings: &Findings, text: &CandidateText) -> Vec<CatalogAgreementView> {
-    let mut seen: HashSet<String> = HashSet::new();
-    findings
-        .matches
-        .iter()
-        .zip(&findings.provenance)
-        .filter(|(_, lookup)| !lookup.by_catalog)
-        .flat_map(|(result, _)| &result.labels)
-        .filter_map(ReleaseLabel::catalog_number)
-        .filter(|value| text.prints_catalog(value) && seen.insert(squash(value)))
-        .map(|value| CatalogAgreementView {
-            discounted: text.is_struck_out(value),
-            value: value.to_string(),
-        })
-        .collect()
-}
-
-/// The recorded ledger without the catalog tiles that are already chips.
-fn without_chip_tiles(mut run: IdentifyRunView, chips: &[CatalogAgreementView]) -> IdentifyRunView {
-    if let CatalogStepView::Numbers { candidates, .. } = &mut run.catalog {
-        let chipped: HashSet<String> = chips.iter().map(|chip| squash(&chip.value)).collect();
-        candidates.retain(|tile| !chipped.contains(&squash(&tile.value)));
-    }
-    run
-}
-
 mod ledger;
 use ledger::{
     barcode_step, catalog_step, disc_id_step, identifiers_found_something, isrc_step, search_step,
@@ -596,5 +550,5 @@ pub(super) fn run_view(
 mod tests;
 
 #[cfg(test)]
-#[path = "view/catalog_chip_tests.rs"]
-mod catalog_chip_tests;
+#[path = "view/catalog_row_tests.rs"]
+mod catalog_row_tests;

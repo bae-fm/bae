@@ -182,7 +182,7 @@ pub enum BridgeBarcodeStep {
     },
 }
 
-/// A catalog number the run is not looking up. Mirrors
+/// A catalog number the text offers that is not in effect. Mirrors
 /// `bae_core::identify::CatalogCandidateView`.
 #[derive(Debug, Clone, PartialEq, uniffi::Record)]
 pub struct BridgeCatalogCandidate {
@@ -198,21 +198,13 @@ pub enum BridgeCatalogStep {
     Numbers {
         /// Whether the artwork is still being read, so more may come.
         scanning: bool,
-        /// The chosen numbers, in the order they were chosen.
+        /// The numbers in effect — picked, then confirmed by a found
+        /// release — each with its search, then the struck-out ones,
+        /// `excluded`.
         rows: Vec<BridgeSignalValueRow>,
-        /// The numbers not chosen; once the run settles, the ones no offered
-        /// release carries.
+        /// The numbers the text offers that are none of those.
         candidates: Vec<BridgeCatalogCandidate>,
     },
-}
-
-/// A catalog number the candidate's text states about an offered release.
-/// Mirrors `bae_core::identify::CatalogAgreementView`.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct BridgeCatalogAgreement {
-    pub value: String,
-    /// Whether the person struck it out, so it earns no catalog agreement.
-    pub discounted: bool,
 }
 
 /// The ISRCs the audio's tags carry: one lookup, since only MusicBrainz is
@@ -331,8 +323,6 @@ pub enum BridgeIdentifyState {
         /// Agreements per release, offered or set aside, by release id.
         agreements: std::collections::HashMap<String, BridgeAgreements>,
         narrowed_out_count: u32,
-        /// The Catalog # row's chips.
-        catalog_agreements: Vec<BridgeCatalogAgreement>,
         /// The check against the folder the found release failed: why the
         /// verdict picks none of its releases.
         folder_check: Option<crate::types::BridgeFolderCheck>,
@@ -371,7 +361,6 @@ pub enum BridgeIdentifyState {
         library_statuses: std::collections::HashMap<String, BridgeLibraryStatus>,
         agreements: std::collections::HashMap<String, BridgeAgreements>,
         narrowed_out_count: u32,
-        catalog_agreements: Vec<BridgeCatalogAgreement>,
         /// Whether the offered rows are several pressings of one album, as
         /// for `Found`.
         offers_shared_album: bool,

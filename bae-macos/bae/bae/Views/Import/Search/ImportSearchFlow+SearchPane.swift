@@ -159,8 +159,8 @@ extension ImportSearchFlow {
         )
     }
 
-    /// Count or stop counting a catalog number the folder states as an
-    /// agreement.
+    /// Strike a catalog number out of the run — neither searched nor agreed
+    /// with — or put it back.
     @MainActor
     private static func toggleCatalogAgreement(
         _ value: String,

@@ -210,12 +210,9 @@ impl AppServices {
     /// Make one change to what a candidate's identification asks about, and
     /// run it again when what it looks up has changed: a run takes its choices
     /// at its start, so a person changing one is asking for a run that reads
-    /// it. Any run already going for this candidate is superseded.
-    ///
-    /// Striking a number out of the candidate's text asks nothing of the
-    /// providers — the answers in hand are the same answers, ranked by what
-    /// the folder is now taken to state about them — so it starts no run, and
-    /// the next read of the candidate ranks them afresh.
+    /// it. Any run already going for this candidate is superseded. Striking
+    /// a catalog number out is such a change: a struck number is searched by
+    /// nobody.
     async fn edit_candidate_lookup_choices(
         &self,
         candidate_key: String,

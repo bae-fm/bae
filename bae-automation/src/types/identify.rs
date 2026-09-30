@@ -128,13 +128,6 @@ pub enum AutomationCatalogStep {
     },
 }
 
-/// Mirrors bae-core's `identify::CatalogAgreementView`.
-#[derive(Debug, Clone, Serialize)]
-pub struct AutomationCatalogAgreement {
-    pub value: String,
-    pub discounted: bool,
-}
-
 /// Mirrors bae-core's `identify::SearchStepView`.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
@@ -241,7 +234,6 @@ pub enum AutomationIdentifyState {
         track_count: u32,
         agreements: Vec<AutomationAgreements>,
         narrowed_out_count: u32,
-        catalog_agreements: Vec<AutomationCatalogAgreement>,
         /// Why the verdict picks none of its releases, when a check against
         /// the folder failed.
         folder_check: Option<AutomationFolderCheck>,
@@ -269,7 +261,6 @@ pub enum AutomationIdentifyState {
         library_statuses: Vec<AutomationLibraryStatus>,
         agreements: Vec<AutomationAgreements>,
         narrowed_out_count: u32,
-        catalog_agreements: Vec<AutomationCatalogAgreement>,
         /// Whether the offered rows are several pressings of one album, as for
         /// `Found`.
         offers_shared_album: bool,

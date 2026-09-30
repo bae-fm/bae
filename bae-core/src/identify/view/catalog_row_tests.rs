@@ -1,5 +1,5 @@
-//! The Catalog # row's chips: which numbers they are, and what striking one
-//! out does to the ranking.
+//! The Catalog # row: which numbers are in effect, which are struck out and
+//! which are only offered, and what striking one out does to the ranking.
 
 use super::tests::*;
 use super::*;
@@ -86,19 +86,6 @@ fn resumed(
     IdentifyStateView::from(verdict.resume_state(&not_in_library, text, Default::default()))
 }
 
-fn chips(view: &IdentifyStateView) -> Vec<(&str, bool)> {
-    let IdentifyStateView::Found {
-        catalog_agreements, ..
-    } = view
-    else {
-        panic!("a settled verdict, got {view:?}");
-    };
-    catalog_agreements
-        .iter()
-        .map(|chip| (chip.value.as_str(), chip.discounted))
-        .collect()
-}
-
 fn card_ids(view: &IdentifyStateView) -> Vec<&str> {
     let IdentifyStateView::Found { groups, .. } = view else {
         panic!("a settled verdict, got {view:?}");
@@ -113,54 +100,7 @@ fn card_ids(view: &IdentifyStateView) -> Vec<&str> {
         .collect()
 }
 
-/// The chips are the numbers the folder states about offered releases, not
-/// set-aside ones.
-#[test]
-fn the_chips_are_the_numbers_the_offered_releases_carry() {
-    let view = resumed(
-        vec![pressing("rel-a", "rg-a", Some("16033-2"), None, None, None)],
-        vec![pressing("rel-b", "rg-b", Some("SD-19"), None, None, None)],
-        None,
-        folder(&["Dirty Deeds [16033-2]", "Atlantic SD-19"], &[]),
-    );
-    assert_eq!(chips(&view), vec![("16033-2", false)]);
-}
-
-/// A release on two labels carries both numbers, so the folder printing the
-/// second label's number is a chip for it.
-#[test]
-fn a_second_labels_number_is_a_chip() {
-    let release = MetadataResult {
-        labels: vec![
-            crate::pressing::ReleaseLabel::of(Some("Label A"), Some("AB 100")),
-            crate::pressing::ReleaseLabel::of(Some("Label B"), Some("CL 719")),
-        ],
-        ..pressing("rel-a", "rg-a", None, None, None, None)
-    };
-    let view = resumed(
-        vec![release],
-        Vec::new(),
-        None,
-        folder(&["Artist - Album [CL 719]"], &[]),
-    );
-    assert_eq!(chips(&view), vec![("CL 719", false)]);
-}
-
-/// A number the folder never states is no chip, however many releases carry
-/// it: the chip is what the folder says, not what a provider does.
-#[test]
-fn a_number_the_folder_never_states_is_no_chip() {
-    let view = resumed(
-        vec![pressing("rel-a", "rg-a", Some("16033-2"), None, None, None)],
-        Vec::new(),
-        None,
-        folder(&["Dirty Deeds"], &[]),
-    );
-    assert!(chips(&view).is_empty());
-}
-
-/// Striking a number out drops its agreement and re-ranks the list, and the
-/// chip stays, struck out.
+/// Striking a number out drops its agreement and re-ranks the list.
 #[test]
 fn striking_a_number_out_drops_its_agreement_and_re_ranks() {
     let lines = &["Dirty Deeds [16033-2]", "Atlantic 1976 US"];
@@ -201,49 +141,65 @@ fn striking_a_number_out_drops_its_agreement_and_re_ranks() {
         .iter()
         .any(|(id, a)| id == "rel-a" && !a.fields.catalog));
     assert_eq!(card_ids(&struck), vec!["rel-b", "rel-a"]);
-    assert_eq!(chips(&struck), vec![("16033-2", true)]);
 }
 
-/// A number an offered release carries is a chip, not also a tile.
+/// The row lists the picked numbers and the confirmed ones with their
+/// searches, then the struck-out ones, left out; every other number the text
+/// offers is a candidate, once however it is spelled.
 #[test]
-fn a_number_an_offered_release_carries_is_a_chip_rather_than_a_tile() {
-    let ledger = IdentifyRunView {
+fn the_row_lists_the_numbers_in_effect_then_the_struck_ones() {
+    use crate::identify::state::{CatalogProgress, LookupState, ProviderLookup, ValueLookup};
+    let mut context = crate::identify::state::SignalsContext {
         providers: vec![MB],
-        disc_id: DiscIdStepView::Absent,
-        barcode: BarcodeStepView::Absent,
-        catalog: CatalogStepView::Numbers {
-            scanning: false,
-            rows: Vec::new(),
-            candidates: vec![
-                CatalogCandidateView {
-                    value: "16033 2".to_string(),
-                },
-                CatalogCandidateView {
-                    value: "SD-19".to_string(),
-                },
-            ],
+        text: folder(&["Album LBL-1 AB 12345-2 ZZ-9 QQ-5"], &["ZZ-9"]),
+        ..Default::default()
+    };
+    context.catalog.numbers = ["LBL-1", "AB12345-2", "ZZ-9", "QQ-5"]
+        .map(String::from)
+        .to_vec();
+    context.catalog.chosen = vec!["LBL-1".to_string(), "ZZ-9".to_string()];
+    context.catalog.confirmed = vec!["AB 12345-2".to_string()];
+    context.catalog.struck_out = vec!["ZZ-9".to_string()];
+    let searched = |value: &str| ValueLookup {
+        value: value.to_string(),
+        providers: vec![ProviderLookup {
+            source: MB,
+            state: LookupState::Done {
+                results: Vec::new(),
+            },
+        }],
+    };
+    let step = catalog_step(
+        &CatalogProgress::Lookups {
+            values: vec![searched("LBL-1"), searched("AB 12345-2")],
         },
-        isrc: crate::identify::IsrcStepView::Absent,
-        search: SearchStepView::NotNeeded,
-    };
-    let view = resumed(
-        vec![pressing("rel-a", "rg-a", Some("16033-2"), None, None, None)],
-        Vec::new(),
-        Some(ledger),
-        folder(&["Dirty Deeds [16033-2]", "SD-19"], &[]),
+        &context,
+        false,
     );
-    assert_eq!(chips(&view), vec![("16033-2", false)]);
-    let IdentifyStateView::Found { run: Some(run), .. } = &view else {
-        panic!("a resumed ledger");
+    let CatalogStepView::Numbers {
+        rows, candidates, ..
+    } = step
+    else {
+        panic!("numbers, got {step:?}");
     };
-    let CatalogStepView::Numbers { candidates, .. } = &run.catalog else {
-        panic!("numbers, got {:?}", run.catalog);
-    };
+    assert_eq!(
+        rows.iter()
+            .map(|row| (row.value.as_str(), row.excluded))
+            .collect::<Vec<_>>(),
+        vec![("LBL-1", false), ("AB 12345-2", false), ("ZZ-9", true)]
+    );
+    assert_eq!(rows[0].cells[0].lookup, LookupView::NoMatch);
+    assert_eq!(
+        rows[2].cells[0].lookup,
+        LookupView::NotAsked {
+            reason: NotAskedReason::LeftOut
+        }
+    );
     assert_eq!(
         candidates
             .iter()
             .map(|tile| tile.value.as_str())
             .collect::<Vec<_>>(),
-        vec!["SD-19"]
+        vec!["QQ-5"]
     );
 }

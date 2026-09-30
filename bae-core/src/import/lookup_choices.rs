@@ -52,16 +52,13 @@ pub struct LookupChoices {
     /// searches by what the draft calls the release.
     pub search_words: Option<SearchWords>,
     /// The catalog numbers the folder's own text carries that the person
-    /// struck out: a result whose catalog number is one of them agrees with
-    /// the text about nothing, however plainly the text prints it.
+    /// struck out: such a number is not in effect — no provider is asked
+    /// about it, picked or not, and a result carrying it agrees with the text
+    /// about nothing, however plainly the text prints it.
     ///
     /// A set, each value once: nothing dispatches on their order, and a value
-    /// is struck out or it is not. Nothing here reaches a provider — striking
-    /// a number out changes how the answers in hand are ranked, not what was
-    /// asked for them. So it is a choice apart from `chosen_catalogs`: a
-    /// number can be looked up and struck out at once, striking one out
-    /// leaves the lookups as they were, and counting it again chooses
-    /// nothing.
+    /// is struck out or it is not. A number can be picked and struck out at
+    /// once; counting it again puts the pick back in effect.
     pub discounted_catalogs: Vec<String>,
 }
 
@@ -152,15 +149,15 @@ impl LookupChoices {
         self
     }
 
-    /// Whether these two ask the providers the same thing: the same signals
-    /// and the same numbers. What the folder's text is taken to state about
-    /// the answers is not part of it — that is read afresh every time the
-    /// answers are, which is why changing it needs no run.
+    /// Whether these two ask the providers the same thing: the same signals,
+    /// the same numbers picked and struck out, and the same words. A struck
+    /// number is searched by nobody, so striking one changes what is asked.
     pub fn asks_the_same_as(&self, other: &Self) -> bool {
         self.disc_id_excluded == other.disc_id_excluded
             && self.excluded_barcodes == other.excluded_barcodes
             && self.chosen_catalogs == other.chosen_catalogs
             && self.search_words == other.search_words
+            && self.discounted_catalogs == other.discounted_catalogs
     }
 }
 
@@ -172,9 +169,8 @@ pub enum ChoiceChange {
     /// question nobody is asking any more: the caller starts a run that reads
     /// the new value.
     Lookups,
-    /// The same lookups, and only what the folder's text is taken to state
-    /// about their answers is different. Nothing is asked again; the next
-    /// read of the candidate ranks the stored answers by the new value.
+    /// Nothing the run asks changed — words that come to the draft's own
+    /// title again. Nothing is asked again.
     Ranking,
 }
 
@@ -240,9 +236,9 @@ mod tests {
         );
     }
 
-    /// Striking a number out ranks the answers in hand and chooses nothing:
-    /// a chosen number stays chosen, and counting a number again chooses
-    /// nothing either.
+    /// Striking a number out chooses nothing and unchooses nothing: a chosen
+    /// number stays chosen, and counting a number again chooses nothing
+    /// either.
     #[test]
     fn striking_a_number_out_or_back_chooses_nothing() {
         let discounted = |number: &str| LookupChoiceEdit::ToggleDiscounted {

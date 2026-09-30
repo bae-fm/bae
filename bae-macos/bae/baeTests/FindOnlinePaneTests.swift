@@ -824,7 +824,6 @@ struct IdentifierBandTests {
         try await FindOnlineRendering.pixels(
             IdentifierBand(
                 run: run,
-                catalogAgreements: [],
                 onToggleLookup: { _ in },
                 onToggleCatalogAgreement: { _ in },
                 onRetryFailed: {},

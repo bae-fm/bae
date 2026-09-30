@@ -97,8 +97,9 @@ async fn lookup_choices_for_an_unknown_key_are_refused() {
     shut_down(handle).await;
 }
 
-/// Changing what the run looks up asks for another run; striking a number out
-/// of the candidate's text only changes the ranking.
+/// Changing what the run looks up asks for another run, and striking a number
+/// out is such a change; words that come to the draft's own title again are
+/// not.
 #[tokio::test(flavor = "multi_thread")]
 async fn only_a_change_to_what_a_run_looks_up_asks_for_another_run() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
@@ -108,7 +109,7 @@ async fn only_a_change_to_what_a_run_looks_up_asks_for_another_run() {
     );
     assert_eq!(
         edit(&handle, &key, [discounted("LBL-9"), discounted("LBL-9")]).await,
-        vec![ChoiceChange::Ranking, ChoiceChange::Ranking]
+        vec![ChoiceChange::Lookups, ChoiceChange::Lookups]
     );
     assert_eq!(
         edit(
@@ -146,15 +147,16 @@ async fn a_struck_out_number_is_written_as_still_chosen() {
     assert_eq!(stored.discounted_catalogs, vec!["NJ-8255".to_string()]);
 }
 
-/// Striking a chosen number out and back changes only the ranking.
+/// Striking a chosen number out and back asks for a run each way: a struck
+/// number is searched by nobody.
 #[tokio::test(flavor = "multi_thread")]
-async fn striking_a_chosen_number_out_and_back_asks_for_no_run() {
+async fn striking_a_chosen_number_out_and_back_asks_for_a_run_each_way() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
     edit(&handle, &key, [catalog("NJ-8255")]).await;
     let chosen = pane(&handle, &key).await.lookup_choices;
     assert_eq!(
         edit(&handle, &key, [discounted("NJ-8255")]).await,
-        vec![ChoiceChange::Ranking]
+        vec![ChoiceChange::Lookups]
     );
     assert_eq!(
         pane(&handle, &key).await.lookup_choices,
@@ -165,7 +167,7 @@ async fn striking_a_chosen_number_out_and_back_asks_for_no_run() {
     );
     assert_eq!(
         edit(&handle, &key, [discounted("NJ-8255")]).await,
-        vec![ChoiceChange::Ranking]
+        vec![ChoiceChange::Lookups]
     );
     let stored = pane(&handle, &key).await.lookup_choices;
     shut_down(handle).await;
