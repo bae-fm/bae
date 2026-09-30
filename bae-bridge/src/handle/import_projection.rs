@@ -448,19 +448,19 @@ mirror_enum! {
 }
 
 mirror_enum! {
-    crate::types::BridgePendingState = bae_core::import::PendingState,
-    from_core: pub(crate) fn,
-    into_core: pub(crate) fn,
-    variants: {
-        NotLookedUp,
-        Identifying,
-        NeedsYou,
-        Identified,
-        Unmatched,
-        LookupError,
-        Error,
-        Importing,
-        ImportError,
+    crate::types::BridgePendingFilter = bae_core::import::PendingFilter,
+    from_core: fn,
+    into_core: fn,
+    variants: { All, NeedsYou, InProgress, Identified, Unmatched, NotLookedUp },
+}
+
+mirror_struct! {
+    crate::types::BridgePendingFilterEntry = bae_core::import::PendingFilterEntry,
+    from_core: pub(super) fn,
+    fields: {
+        filter: (crate::types::BridgePendingFilter),
+        count,
+        selectable,
     },
 }
 
@@ -470,7 +470,7 @@ mirror_struct! {
     fields: {
         tab: (crate::types::BridgeTriageTab),
         filter_text,
-        pending_filters: (each crate::types::BridgePendingState),
+        pending_filter: (crate::types::BridgePendingFilter),
     },
 }
 
@@ -480,7 +480,7 @@ mirror_struct! {
     fields: {
         tab: (crate::types::BridgeTriageTab),
         filter_text,
-        pending_filters: (each crate::types::BridgePendingState),
+        pending_filter: (crate::types::BridgePendingFilter),
         collapsed_groups: (each crate::types::BridgeFolderReleaseDecisionKey),
         order: (crate::types::BridgeImportListOrder),
     },
@@ -571,7 +571,6 @@ impl crate::types::BridgeImportQueueSummary {
             watched_folders,
             group_keys,
             pending_covers,
-            pending_filters,
             narrowed,
             narrowing,
             first_selected_position,
@@ -595,10 +594,6 @@ impl crate::types::BridgeImportQueueSummary {
             pending_covers: pending_covers
                 .into_iter()
                 .map(crate::types::BridgeRemoteImageSet::from_core)
-                .collect(),
-            pending_filters: pending_filters
-                .into_iter()
-                .map(crate::types::BridgePendingState::from_core)
                 .collect(),
             narrowed: narrowed.map(crate::types::BridgeNarrowedCount::from_core),
             narrowing: crate::types::BridgeImportListNarrowing::from_core(narrowing),

@@ -18,12 +18,11 @@ struct ImportStoreScanFailureTests {
             folderScanActivity: nil,
             groupKeys: [],
             pendingCovers: [],
-            pendingFilters: [],
             narrowed: nil,
             narrowing: BridgeImportListNarrowing(
                 tab: .pending,
                 filterText: "",
-                pendingFilters: []
+                pendingFilter: .all
             ),
             firstSelectedPosition: nil
         )
@@ -137,6 +136,7 @@ struct ImportListPageSourceFailureTests {
         func setWindows(windows _: [BridgeLibraryPageWindow]) throws {}
         func setView(view _: BridgeImportListView) throws -> UInt64 { 0 }
         func cancel() async throws {}
+        func pendingFilterEntries() -> [BridgePendingFilterEntry] { [] }
 
         func next() async throws -> BridgeImportListSnapshot {
             attempted.signal()

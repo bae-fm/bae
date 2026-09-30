@@ -560,6 +560,7 @@ fn load_import_list_on(
             windows,
             summary: flat.summary,
             selection_revision: rows.selection_revision,
+            found_states: flat.found_states,
         })
     })
 }

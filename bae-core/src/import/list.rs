@@ -15,12 +15,13 @@
 //! in that same pass, so none of it can disagree with
 //! the rows.
 //!
-//! The read is of the tables and nothing else. What is running for a candidate
-//! right now — a run queued or in flight, an import that owns it — moves no row
-//! between tabs and reorders nothing, so it is not an input to the read:
+//! What is running for a candidate right now — a run queued or in flight, an
+//! import that owns it — moves no row between tabs and reorders nothing, so
+//! under Found's All it is not an input to the read:
 //! [`ImportListSubscription`] joins it to each row the read delivers, as a
 //! [`CandidateLiveState`], and delivers the page again when it changes for a
-//! row on it.
+//! row on it. Only a filter entry past All reads it, since the state it puts
+//! a candidate in decides which entry holds the row.
 
 use super::cover_art::{CoverChoice, RemoteCover};
 use super::folder_scanner::FolderCandidate;
@@ -44,6 +45,7 @@ use crate::signals::Signals;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 mod flatten;
+mod pending_filter;
 mod subscription;
 
 #[cfg(test)]
@@ -53,6 +55,7 @@ pub(crate) use flatten::{
     first_candidate_among, flatten, locate_candidate, selected_candidates,
     selected_candidates_in_view_order, shown_candidate_keys, Flattened, ItemRef,
 };
+pub use pending_filter::{FoundStates, PendingFilter, PendingFilterEntry};
 pub use subscription::{ImportListSubscription, ImportListSubscriptionError};
 
 pub use super::triage::TriageTab;
@@ -67,9 +70,9 @@ pub use super::triage::TriageTab;
 pub struct ImportListView {
     pub tab: TriageTab,
     pub filter_text: String,
-    /// Which of Pending's rows the list shows. Done and Skipped rows are past
+    /// Which of Found's rows the list shows. Done and Skipped rows are past
     /// identification, so it leaves them alone.
-    pub pending_filters: PendingFilters,
+    pub pending_filter: PendingFilter,
     pub collapsed_groups: BTreeSet<FolderReleaseDecisionKey>,
     pub order: ImportListOrder,
 }
@@ -81,20 +84,17 @@ impl ImportListView {
         !self.filter_text.is_empty()
     }
 
-    /// Whether the text filter or a state narrows the tab on show.
+    /// Whether the text filter or the filter entry narrows the tab on show.
     pub(crate) fn narrows(&self) -> bool {
-        self.filters()
-            || self
-                .pending_filters_on(self.tab)
-                .is_some_and(PendingFilters::narrows)
+        self.filters() || self.pending_filter_on(self.tab) != PendingFilter::All
     }
 
-    /// The states narrowing `tab`'s rows: the view's on Pending, none on Done
-    /// and Skipped, whose rows are past identification.
-    pub(crate) fn pending_filters_on(&self, tab: TriageTab) -> Option<&PendingFilters> {
+    /// The entry narrowing `tab`'s rows: the view's on Found, All on Done and
+    /// Skipped, whose rows are past identification.
+    pub(crate) fn pending_filter_on(&self, tab: TriageTab) -> PendingFilter {
         match tab {
-            TriageTab::Pending => Some(&self.pending_filters),
-            TriageTab::Done | TriageTab::Skipped => None,
+            TriageTab::Pending => self.pending_filter,
+            TriageTab::Done | TriageTab::Skipped => PendingFilter::All,
         }
     }
 }
@@ -104,88 +104,10 @@ impl Default for ImportListView {
         Self {
             tab: TriageTab::Pending,
             filter_text: String::new(),
-            pending_filters: PendingFilters::default(),
+            pending_filter: PendingFilter::All,
             collapsed_groups: BTreeSet::new(),
             order: ImportListOrder::NewestFirst,
         }
-    }
-}
-
-/// The states Found's rows are narrowed to: the list shows the rows in any of
-/// them, and every row when the set is empty. Every row is in exactly one
-/// state, so every state checked is the same as none, and the set never holds
-/// them all.
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct PendingFilters(BTreeSet<PendingState>);
-
-impl PendingFilters {
-    fn of(states: BTreeSet<PendingState>) -> Self {
-        if PendingState::every().all(|state| states.contains(&state)) {
-            Self::default()
-        } else {
-            Self(states)
-        }
-    }
-
-    /// The filters after the person checks (`true`) or clears `state`.
-    pub fn with_checked(mut self, state: PendingState, checked: bool) -> Self {
-        if checked {
-            self.0.insert(state);
-        } else {
-            self.0.remove(&state);
-        }
-        Self::of(self.0)
-    }
-
-    /// Whether any state narrows the rows.
-    pub fn narrows(&self) -> bool {
-        !self.0.is_empty()
-    }
-
-    /// What is running for each candidate puts it in, from every candidate's
-    /// runtime facts, while a state narrows the rows; empty while none does,
-    /// since every row is shown whatever it is in.
-    pub(crate) fn live_standings<'a>(
-        &self,
-        facts: impl IntoIterator<Item = (&'a String, &'a TriageRuntimeFacts)>,
-    ) -> BTreeMap<String, LiveStanding> {
-        if !self.narrows() {
-            return BTreeMap::new();
-        }
-        facts
-            .into_iter()
-            .filter_map(|(key, facts)| LiveStanding::of(facts).map(|live| (key.clone(), live)))
-            .collect()
-    }
-
-    /// Whether the filters keep the row of `candidate_key`, which the tables
-    /// put at `stored`.
-    fn keeps(
-        &self,
-        candidate_key: &str,
-        stored: &PendingStanding,
-        live_standings: &BTreeMap<String, LiveStanding>,
-    ) -> bool {
-        let state = match live_standings.get(candidate_key) {
-            Some(live) => live.state(),
-            None => stored.state(),
-        };
-        !self.narrows() || self.0.contains(&state)
-    }
-}
-
-impl FromIterator<PendingState> for PendingFilters {
-    fn from_iter<I: IntoIterator<Item = PendingState>>(states: I) -> Self {
-        Self::of(states.into_iter().collect())
-    }
-}
-
-impl IntoIterator for PendingFilters {
-    type Item = PendingState;
-    type IntoIter = std::collections::btree_set::IntoIter<PendingState>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.0.into_iter()
     }
 }
 
@@ -260,22 +182,24 @@ pub struct ImportListRequest {
     pub windows: LibraryPageWindows,
     /// Only the releases the cloud outbox still holds work for, by release id.
     pub upload_standing: BTreeMap<String, UploadStanding>,
-    /// The state what is running for each candidate puts it in, while the
-    /// view's states narrow the rows; empty while none does.
+    /// The state what is running puts each candidate in, while the view's
+    /// filter entry narrows Found's rows; empty under All.
     pub live_standings: BTreeMap<String, LiveStanding>,
 }
 
 impl ImportListRequest {
-    /// Whether the pending filters keep `row`, placed in `tab`.
-    pub(crate) fn keeps_pending(&self, tab: TriageTab, row: &TriageRow) -> bool {
-        self.view.pending_filters_on(tab).is_none_or(|filters| {
-            let stored = row
+    /// The state `row`, placed on Found, is in: the one what is running for
+    /// its candidate puts it in, or else the one the tables put it in.
+    pub(crate) fn pending_state(&self, row: &TriageRow) -> PendingState {
+        match self.live_standings.get(&row.candidate_key) {
+            Some(live) => live.state(),
+            None => row
                 .action_basis
                 .standing
                 .as_ref()
-                .expect("a row on Found has a standing");
-            filters.keeps(&row.candidate_key, stored, &self.live_standings)
-        })
+                .expect("a row on Found has a standing")
+                .state(),
+        }
     }
 }
 
@@ -459,11 +383,9 @@ pub struct ImportQueueSummary {
     /// The lead-match covers of the Pending rows the view's filters keep, in
     /// queue order, to decode before Pending opens.
     pub pending_covers: Vec<crate::import::cover_art::RemoteImageSet>,
-    /// The states narrowing the tab on show, in the menu's order.
-    pub pending_filters: PendingFilters,
     /// How many of the tab's entries the list shows, of how many it has,
-    /// while the text filter or a state narrows it; `None` while nothing
-    /// does.
+    /// while the text filter or the filter entry narrows it; `None` while
+    /// nothing does.
     pub narrowed: Option<NarrowedCount>,
     /// What the view asked the rows to be narrowed by when this read was
     /// made: what `narrowed` counts under, so a surface shows the count only
@@ -475,13 +397,13 @@ pub struct ImportQueueSummary {
     pub first_selected_position: Option<u64>,
 }
 
-/// What a view narrows its rows by: the tab, the text filter and the checked
-/// states, as the view states them.
+/// What a view narrows its rows by: the tab, the text filter and the filter
+/// entry, as the view states them.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ImportListNarrowing {
     pub tab: TriageTab,
     pub filter_text: String,
-    pub pending_filters: PendingFilters,
+    pub pending_filter: PendingFilter,
 }
 
 impl ImportListNarrowing {
@@ -489,7 +411,7 @@ impl ImportListNarrowing {
         Self {
             tab: view.tab,
             filter_text: view.filter_text.clone(),
-            pending_filters: view.pending_filters.clone(),
+            pending_filter: view.pending_filter,
         }
     }
 }
@@ -563,6 +485,9 @@ pub struct ImportListProjection {
     pub summary: ImportQueueSummary,
     /// The person's changes to the selection the rows' `selected` reflects.
     pub selection_revision: u64,
+    /// The state the tables put each of Found's rows in, whatever the view
+    /// shows: what the filter menu counts from when it opens.
+    pub found_states: FoundStates,
 }
 
 /// A projection with what is running for each row on it joined, the live

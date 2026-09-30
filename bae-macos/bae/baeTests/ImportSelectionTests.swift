@@ -60,7 +60,7 @@ extension BridgeImportListView {
     static let sortedByPath = BridgeImportListView(
         tab: .pending,
         filterText: "",
-        pendingFilters: [],
+        pendingFilter: .all,
         collapsedGroups: [],
         order: .pathAscending
     )

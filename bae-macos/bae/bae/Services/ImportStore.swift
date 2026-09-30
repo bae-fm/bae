@@ -51,12 +51,11 @@ class ImportStore {
         folderScanActivity: nil,
         groupKeys: [],
         pendingCovers: [],
-        pendingFilters: [],
         narrowed: nil,
         narrowing: BridgeImportListNarrowing(
             tab: .pending,
             filterText: "",
-            pendingFilters: []
+            pendingFilter: .all
         ),
         firstSelectedPosition: nil
     )

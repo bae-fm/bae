@@ -315,16 +315,19 @@ async fn a_sole_release_with_an_unread_document_reads_back_as_a_lookup_error() {
     findings.matches[0].document_failure = Some(crate::signals::LookupFailure::Network);
     store_verdict(&db, &candidate, unread).await;
 
-    let mut lookup_error = request(TriageTab::Pending).await;
-    lookup_error.view.pending_filters = crate::import::PendingFilters::default()
-        .with_checked(crate::import::PendingState::LookupError, true);
-    let projection = db.load_import_list(lookup_error).await.unwrap();
+    let projection = db
+        .load_import_list(request(TriageTab::Pending).await)
+        .await
+        .unwrap();
     assert_eq!(
         rows(&projection)
             .iter()
-            .map(|row| row.candidate_key.clone())
+            .map(|row| (row.candidate_key.clone(), row.action_basis.standing.clone()))
             .collect::<Vec<_>>(),
-        vec![candidate.path.to_string_lossy().into_owned()]
+        vec![(
+            candidate.path.to_string_lossy().into_owned(),
+            Some(crate::import::PendingStanding::LookupError)
+        )]
     );
 }
 

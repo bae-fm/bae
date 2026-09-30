@@ -5,9 +5,9 @@
 //! Upload standing orders the Done tab — what is moving now, then what is
 //! waiting, then what is settled — and the upload pipeline holds it. What is
 //! running for each candidate is the candidate runtime's; the request carries
-//! the state it puts each candidate in only while a state narrows the view,
-//! so a run starting or ending reruns the list only then. The bridge and the
-//! UIs never see either.
+//! the state it puts each candidate in only while a filter entry past All
+//! narrows the view, so a run starting or ending reruns the list only then.
+//! The bridge and the UIs never see either.
 //!
 //! What is running for a candidate is also joined to its row on the page, in
 //! memory, as the row's
@@ -20,13 +20,17 @@
 //! The folder scans are a second live query the subscription reads beside the
 //! list: a scan moves its found count with every folder it walks, and that
 //! count moves no row, so it never reruns the list.
+//!
+//! Found's filter menu counts its entries when it opens, from the states the
+//! list's last read placed Found's rows in and what is running as the
+//! subscription holds it then: nothing the list reads is kept current for it.
 
 use super::{
-    FolderScanProgress, ImportListProjection, ImportListRequest, ImportListSnapshot,
-    ImportListView, UploadStanding,
+    FolderScanProgress, FoundStates, ImportListProjection, ImportListRequest, ImportListSnapshot,
+    ImportListView, PendingFilterEntry, UploadStanding,
 };
 use crate::import::candidate_runtime::RuntimeFactsWatch;
-use crate::import::triage::TriageRuntimeFacts;
+use crate::import::triage::{LiveStanding, TriageRuntimeFacts};
 use crate::library::{LibraryPageWindows, OutboxSnapshot};
 use crate::live_query::CancellableLiveQuery;
 use std::collections::{BTreeMap, HashMap};
@@ -49,13 +53,15 @@ struct StandingRequest {
     facts_changed: watch::Sender<()>,
 }
 
-/// The request, the revision the query was last handed it at, and every
-/// candidate's runtime facts: what its live standings are read from, and what
-/// is joined to the rows it reads.
+/// The request, the revision the query was last handed it at, every
+/// candidate's runtime facts — what its live standings are read from, and what
+/// is joined to the rows it reads — and the states the list's last read placed
+/// Found's rows in.
 struct Standing {
     request: ImportListRequest,
     revision: u64,
     runtime_facts: HashMap<String, TriageRuntimeFacts>,
+    found_states: FoundStates,
 }
 
 impl StandingRequest {
@@ -78,10 +84,11 @@ impl StandingRequest {
             request,
             revision,
             runtime_facts,
+            found_states: _,
         } = &mut *standing;
         request.live_standings = request
             .view
-            .pending_filters
+            .pending_filter
             .live_standings(runtime_facts.iter());
         *revision = self
             .query
@@ -99,6 +106,15 @@ impl StandingRequest {
         let revision = self.update(|standing| standing.runtime_facts = facts)?;
         self.facts_changed.send_replace(());
         Ok(revision)
+    }
+
+    /// Keep the states a list read placed Found's rows in, for the filter
+    /// menu's counts.
+    fn set_found_states(&self, found_states: FoundStates) {
+        self.standing
+            .lock()
+            .expect("import list request mutex poisoned")
+            .found_states = found_states;
     }
 
     fn read<R>(&self, read: impl FnOnce(&Standing) -> R) -> R {
@@ -225,6 +241,7 @@ impl ImportListSubscription {
                 // A query starts at revision zero.
                 revision: 0,
                 runtime_facts: runtime_facts.facts().clone(),
+                found_states: FoundStates::default(),
             }),
             query: CancellableLiveQuery::new(query),
             facts_changed,
@@ -261,6 +278,19 @@ impl ImportListSubscription {
             .map(|_| ())
     }
 
+    /// Every entry of Found's filter, in the menu's order, with how many of
+    /// Found's rows it holds now: each row in the state what is running for
+    /// its candidate puts it in as this subscription holds it, or else in the
+    /// one the tables put it in when the list was last read. Asked when the
+    /// menu opens; before the list's first read every entry holds none.
+    pub fn pending_filter_entries(&self) -> Vec<PendingFilterEntry> {
+        self.request.read(|standing| {
+            standing
+                .found_states
+                .entries(&LiveStanding::of_each(standing.runtime_facts.iter()))
+        })
+    }
+
     /// The next snapshot: the list's next value beside the scans as they
     /// stand, the scans' next value beside the list's last one, or the list's
     /// last one again once what is running for a row on its page changed. The
@@ -290,7 +320,7 @@ impl ImportListSubscription {
                     // it — no rows, no watched folders — so the reason is
                     // worth a line whether or not anyone is on screen to be
                     // shown it.
-                    let projection = match event.into_result() {
+                    let mut projection = match event.into_result() {
                         Ok(projection) => projection,
                         Err(error) => {
                             tracing::error!(
@@ -300,6 +330,8 @@ impl ImportListSubscription {
                             return Err(error.into());
                         }
                     };
+                    self.request
+                        .set_found_states(std::mem::take(&mut projection.found_states));
                     delivered.list = Some(AnsweredList {
                         projection,
                         request_revision,
@@ -380,7 +412,7 @@ impl Drop for ImportListSubscription {
 /// Byte progress republishes the whole outbox snapshot several times a second;
 /// one that moves no release between working, queued and settled hands the
 /// query the request it already has, which reruns nothing — as does a run
-/// starting or ending while no state narrows the view.
+/// starting or ending while Found's filter is on All.
 ///
 /// A failed outbox read says nothing about where an upload stands, so the order
 /// keeps what it had rather than reporting everything settled.

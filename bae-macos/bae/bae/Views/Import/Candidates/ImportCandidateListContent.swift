@@ -157,7 +157,7 @@ final class ImportCandidateListViewport {
     }
 
     /// Where the list scrolls once its content changes. Narrowed anew — a
-    /// different tab, filter text or checked states — it shows its first
+    /// different tab, filter text or filter entry — it shows its first
     /// selected row, or its top where no selected row is in it: the row on top
     /// before may be gone, or anywhere. Otherwise it keeps the row that was
     /// on top.
@@ -314,12 +314,12 @@ struct ImportCandidateListContent: View {
     }
 
     /// What the list is narrowed by as the person has it now: the tab, the
-    /// typed text and the checked states.
+    /// typed text and the filter entry.
     private var shownNarrowing: BridgeImportListNarrowing {
         BridgeImportListNarrowing(
             tab: uiStore.importCandidateTab,
             filterText: uiStore.importCandidateFilterText,
-            pendingFilters: uiStore.importCandidatePendingFilters
+            pendingFilter: uiStore.importCandidatePendingFilter
         )
     }
 
@@ -368,14 +368,10 @@ struct ImportCandidateListContent: View {
                         ImportListFilterField(
                             text: filterTextBinding,
                             focused: $filterFocused,
-                            pendingFilters: summary.pendingFilters,
                             narrowed: summary.narrowedCount(
                                 under: shownNarrowing
                             )
-                        ) { filter in
-                            cancelReveal()
-                            listSlot.setPendingFilter(filter, checked: false)
-                        }
+                        )
                         if let progress = importStore.identificationProgress,
                             progress.total > 0
                         {
@@ -408,20 +404,16 @@ struct ImportCandidateListContent: View {
                                 cancelReveal()
                                 listSlot.setSortOrder(order)
                             },
-                            pendingFilters: uiStore
-                                .importCandidatePendingFilters,
+                            pendingFilter: uiStore
+                                .importCandidatePendingFilter,
+                            pendingFilterEntries: {
+                                listSlot.pendingFilterEntries()
+                            },
                             pendingFilterApplies: uiStore
                                 .importCandidateTab == .pending,
-                            onSetPendingFilter: { filter, checked in
+                            onSetPendingFilter: { filter in
                                 cancelReveal()
-                                listSlot.setPendingFilter(
-                                    filter,
-                                    checked: checked
-                                )
-                            },
-                            onShowAllPending: {
-                                cancelReveal()
-                                listSlot.showAllPending()
+                                listSlot.setPendingFilter(filter)
                             },
                             onAddFolder: onAddFolder,
                             onSetAllGroupsExpanded: { expanded in

@@ -70,35 +70,20 @@ extension View {
     }
 }
 
-/// A short label on a tinted fill: a status, a count, a tag or a role. A chip
-/// that can be taken away ends with an ✕ that does it.
+/// A short label on a tinted fill: a status, a count, a tag or a role.
 public struct StatusChip: View {
-    /// The ✕ at the chip's end: what pressing it says it does, and doing it.
-    public struct Removal {
-        let label: Text
-        let action: () -> Void
-
-        public init(_ label: Text, action: @escaping () -> Void) {
-            self.label = label
-            self.action = action
-        }
-    }
-
     private let label: Text
     private let tone: StatusTone
     private let symbol: String?
-    private let removal: Removal?
 
     public init(
         _ label: Text,
         tone: StatusTone = .neutral,
-        symbol: String? = nil,
-        removal: Removal? = nil
+        symbol: String? = nil
     ) {
         self.label = label
         self.tone = tone
         self.symbol = symbol
-        self.removal = removal
     }
 
     public init(
@@ -112,15 +97,9 @@ public struct StatusChip: View {
     public init(
         verbatim string: String,
         tone: StatusTone = .neutral,
-        symbol: String? = nil,
-        removal: Removal? = nil
+        symbol: String? = nil
     ) {
-        self.init(
-            Text(verbatim: string),
-            tone: tone,
-            symbol: symbol,
-            removal: removal
-        )
+        self.init(Text(verbatim: string), tone: tone, symbol: symbol)
     }
 
     public var body: some View {
@@ -130,16 +109,6 @@ public struct StatusChip: View {
                     .themeIcon(.badge)
             }
             label
-            if let removal {
-                Button(action: removal.action) {
-                    Image(systemName: "xmark")
-                        .themeIcon(.badge)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(removal.label)
-                .help(removal.label)
-            }
         }
         .themeText(.chip)
         .lineLimit(1)

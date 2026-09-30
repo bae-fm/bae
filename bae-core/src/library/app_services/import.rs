@@ -226,10 +226,10 @@ impl AppServices {
     /// The import list, reconfigurable by view and by window.
     ///
     /// The list reads the tables, the upload standing the Done tab is ordered
-    /// by, and what is running for the candidates a live filter keeps, which
-    /// the subscription keeps current on its own. What is running for each
-    /// row on the page is joined to it, and a change to it delivers the page
-    /// again.
+    /// by, and, while a filter entry past All narrows Found, the state what is
+    /// running puts each candidate in, which the subscription keeps current on
+    /// its own. What is running for each row on the page is joined to it, and
+    /// a change to it delivers the page again.
     pub fn subscribe_import_list(
         &self,
         view: ImportListView,
@@ -238,7 +238,7 @@ impl AppServices {
         let outbox = self.subscribe_outbox_values();
         let runtime_facts = self.inner.import.watch_runtime_facts();
         let request = ImportListRequest {
-            live_standings: view.pending_filters.live_standings(runtime_facts.facts()),
+            live_standings: view.pending_filter.live_standings(runtime_facts.facts()),
             view,
             windows: crate::library::LibraryPageWindows::new(),
             upload_standing: upload_standing_of(&outbox),
@@ -262,7 +262,7 @@ impl AppServices {
         windows: crate::library::LibraryPageWindows,
     ) -> ImportListRequest {
         ImportListRequest {
-            live_standings: view.pending_filters.live_standings(&self.runtime_facts()),
+            live_standings: view.pending_filter.live_standings(&self.runtime_facts()),
             view,
             windows,
             upload_standing: upload_standing_of(&self.subscribe_outbox_values()),

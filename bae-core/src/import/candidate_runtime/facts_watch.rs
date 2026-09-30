@@ -1,5 +1,6 @@
 //! Every candidate's runtime facts, read again as the runtime changes — what
-//! the import list's live filters read.
+//! the import list joins to its rows, and what its filter entries narrow by
+//! and count.
 
 use super::{CandidateRuntime, CandidateRuntimeSnapshot, Revisions};
 use crate::import::triage::TriageRuntimeFacts;

@@ -1,57 +1,56 @@
 import BaeKit
 import SwiftUI
 
-/// The states Found's rows can be narrowed to, each checked or not, under
-/// All, which is checked while none narrows them. Every row is in exactly one
-/// state. The states, their order and what checking one does to the rest are
-/// core's.
+/// Found's filter: one entry chosen at a time, each with how many of Found's
+/// rows it holds. The entries, their order, their counts and which can be
+/// chosen are core's.
+///
+/// `entries` is asked for in this view's body, which a menu evaluates when it
+/// opens rather than when the list around it is drawn, so the counts are the
+/// ones standing as the person looks.
 struct PendingFilterSection: View {
-    let filters: [BridgePendingState]
-    let onSetFilter: (_ filter: BridgePendingState, _ checked: Bool) -> Void
-    let onShowAll: () -> Void
+    /// Every entry, in core's order.
+    let entries: () -> [BridgePendingFilterEntry]
+    let selected: BridgePendingFilter
+    let onSelect: (BridgePendingFilter) -> Void
 
-    /// Core's groups, each set apart from the one before it.
-    static let groups = bridgePendingStateGroups()
-
+    /// One checkmark item per entry rather than an inline `Picker`: a
+    /// picker's options stay enabled in the menu whatever `.disabled` says,
+    /// and an entry holding no row cannot be chosen. Choosing the chosen
+    /// entry again changes nothing.
     var body: some View {
         Section("Filter") {
-            Toggle(
-                "All",
-                isOn: Binding(
-                    get: { filters.isEmpty },
-                    set: { checked in
-                        if checked { onShowAll() }
-                    }
-                )
-            )
-            ForEach(Self.groups, id: \.self) { group in
-                Divider()
-                ForEach(group, id: \.self) { filter in
-                    Toggle(
-                        filter.label,
-                        isOn: Binding(
-                            get: { filters.contains(filter) },
-                            set: { onSetFilter(filter, $0) }
-                        )
+            ForEach(entries(), id: \.filter) { entry in
+                Toggle(
+                    entry.filter.label(count: entry.count),
+                    isOn: Binding(
+                        get: { entry.filter == selected },
+                        set: { chosen in
+                            if chosen { onSelect(entry.filter) }
+                        }
                     )
-                }
+                )
+                .disabled(!entry.selectable)
             }
         }
     }
 }
 
-extension BridgePendingState {
+extension BridgePendingFilter {
     var label: String {
         switch self {
-        case .notLookedUp: String(localized: "Not Looked Up")
-        case .identifying: String(localized: "Identifying")
+        case .all: String(localized: "All")
         case .needsYou: String(localized: "Needs You")
+        case .inProgress: String(localized: "In Progress")
         case .identified: String(localized: "Identified")
         case .unmatched: String(localized: "Unmatched")
-        case .lookupError: String(localized: "Lookup Error")
-        case .error: String(localized: "Error")
-        case .importing: String(localized: "Importing")
-        case .importError: String(localized: "Import Error")
+        case .notLookedUp: String(localized: "Not Looked Up")
         }
+    }
+
+    /// The name with how many rows the entry holds, for the menu item, where
+    /// the number has no place of its own.
+    func label(count: UInt32) -> String {
+        String(localized: "\(label) (\(Int(count)))")
     }
 }

@@ -26,16 +26,27 @@ import Foundation
         private let applyView: @Sendable (BridgeImportListView) -> Void
         private let awaitAppliedView:
             @Sendable (BridgeImportListView) async throws -> Void
+        private let countPendingFilterEntries:
+            @Sendable () -> [BridgePendingFilterEntry]
 
         public init(
             source: any PageSource<BridgeImportListItem>,
             setView: @escaping @Sendable (BridgeImportListView) -> Void,
             waitForView:
-                @escaping @Sendable (BridgeImportListView) async throws -> Void
+                @escaping @Sendable (BridgeImportListView) async throws -> Void,
+            pendingFilterEntries:
+                @escaping @Sendable () -> [BridgePendingFilterEntry]
         ) {
             self.source = source
             applyView = setView
             awaitAppliedView = waitForView
+            countPendingFilterEntries = pendingFilterEntries
+        }
+
+        /// Every entry of Found's filter, with how many of Found's rows it
+        /// holds now, as core counts them when asked.
+        public func pendingFilterEntries() -> [BridgePendingFilterEntry] {
+            countPendingFilterEntries()
         }
 
         public func setView(_ view: BridgeImportListView) {
@@ -147,6 +158,9 @@ import Foundation
                 },
                 waitForView: { [self] view in
                     _ = try await deliveredSummary(afterApplying: view)
+                },
+                pendingFilterEntries: { [subscription] in
+                    subscription.pendingFilterEntries()
                 }
             )
         }
@@ -465,18 +479,26 @@ import Foundation
     /// of a fixed item list and reports one fixed summary.
     public struct ImportListPreviewPageSource: PageSource {
         public let items: [BridgeImportListItem]
+        /// What Found's filter counts, fixed like the items.
+        public let pendingFilterEntries: [BridgePendingFilterEntry]
 
-        public init(items: [BridgeImportListItem]) {
+        public init(
+            items: [BridgeImportListItem],
+            pendingFilterEntries: [BridgePendingFilterEntry] = []
+        ) {
             self.items = items
+            self.pendingFilterEntries = pendingFilterEntries
         }
 
         /// This source's pages. A fixed list shows one view, so changing the view
         /// changes nothing.
         public var pages: ImportListPages {
-            ImportListPages(
+            let entries = pendingFilterEntries
+            return ImportListPages(
                 source: self,
                 setView: { _ in },
-                waitForView: { _ in }
+                waitForView: { _ in },
+                pendingFilterEntries: { entries }
             )
         }
 

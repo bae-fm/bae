@@ -22,76 +22,38 @@ pub enum BridgeImportListOrder {
 pub struct BridgeImportListView {
     pub tab: BridgeTriageTab,
     pub filter_text: String,
-    /// The states Found's rows are narrowed to, in the menu's order: the
-    /// list shows the rows in any of them, and every row when empty. Changed
-    /// through `bridge_pending_filters_with`.
-    pub pending_filters: Vec<BridgePendingState>,
+    /// Which of Found's rows the list shows.
+    pub pending_filter: BridgePendingFilter,
     /// The groups folded shut. Their entries are not in the list at all, which
     /// is why this is part of the request rather than a rendering decision.
     pub collapsed_groups: Vec<BridgeFolderReleaseDecisionKey>,
     pub order: BridgeImportListOrder,
 }
 
-/// One state a Found row is in; every row is in exactly one. Mirrors
-/// `bae_core::import::PendingState`.
+/// One entry of Found's filter menu: which of Found's rows the list shows.
+/// Mirrors `bae_core::import::PendingFilter`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, uniffi::Enum)]
-pub enum BridgePendingState {
-    /// No lookup has run for the folder's files.
-    NotLookedUp,
-    /// An identification is queued, running, or writing its answer.
-    Identifying,
-    /// The lookup left the answer to the person.
+pub enum BridgePendingFilter {
+    /// Every row.
+    All,
+    /// Every row waiting on the person: the lookup left the answer to them,
+    /// or a catalog, bae itself or the import failed.
     NeedsYou,
-    /// The draft is read from a catalog.
+    /// A run or an import is queued or going.
+    InProgress,
     Identified,
-    /// The person's own draft is the answer.
     Unmatched,
-    /// A catalog could not answer the lookup, or hand over a release it
-    /// found.
-    LookupError,
-    /// bae broke on its own side.
-    Error,
-    /// An import is queued or running.
-    Importing,
-    /// The last import failed.
-    ImportError,
+    NotLookedUp,
 }
 
-/// Every state, in the groups the menu sets apart, each group in the order
-/// the menu lists it.
-#[cfg(feature = "desktop")]
-#[uniffi::export]
-pub fn bridge_pending_state_groups() -> Vec<Vec<BridgePendingState>> {
-    bae_core::import::PendingState::GROUPS
-        .iter()
-        .map(|group| {
-            group
-                .iter()
-                .copied()
-                .map(BridgePendingState::from_core)
-                .collect()
-        })
-        .collect()
-}
-
-/// `filters` after the person checks (`true`) or clears `state`. Checking
-/// the last unchecked state and clearing the last checked one both come to
-/// every row: an empty list.
-#[cfg(feature = "desktop")]
-#[uniffi::export]
-pub fn bridge_pending_filters_with(
-    filters: Vec<BridgePendingState>,
-    state: BridgePendingState,
-    checked: bool,
-) -> Vec<BridgePendingState> {
-    filters
-        .into_iter()
-        .map(BridgePendingState::into_core)
-        .collect::<bae_core::import::PendingFilters>()
-        .with_checked(state.into_core(), checked)
-        .into_iter()
-        .map(BridgePendingState::from_core)
-        .collect()
+/// One entry of Found's filter menu and how many of Found's rows it holds,
+/// counted when the menu opens. An entry holding none cannot be chosen; one
+/// already chosen stays chosen. Mirrors `bae_core::import::PendingFilterEntry`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+pub struct BridgePendingFilterEntry {
+    pub filter: BridgePendingFilter,
+    pub count: u32,
+    pub selectable: bool,
 }
 
 /// One item at one offset. `stable_key` identifies it across reruns — the id a
@@ -157,12 +119,9 @@ pub struct BridgeImportQueueSummary {
     /// The lead-match covers of the Pending rows the view's filters keep, in
     /// queue order, to decode before Pending opens.
     pub pending_covers: Vec<BridgeRemoteImageSet>,
-    /// The states narrowing the tab on show, in the menu's order: the view's
-    /// own on Pending, none on Done and Skipped.
-    pub pending_filters: Vec<BridgePendingState>,
     /// How many of the tab's entries the list shows, of how many it has,
-    /// while the text filter or a state narrows it; absent while nothing
-    /// does.
+    /// while the text filter or the filter entry narrows it; absent while
+    /// nothing does.
     pub narrowed: Option<BridgeNarrowedCount>,
     /// What the view asked the rows to be narrowed by when this read was
     /// made: the filter `narrowed` counts under.
@@ -178,7 +137,7 @@ pub struct BridgeImportQueueSummary {
 pub struct BridgeImportListNarrowing {
     pub tab: BridgeTriageTab,
     pub filter_text: String,
-    pub pending_filters: Vec<BridgePendingState>,
+    pub pending_filter: BridgePendingFilter,
 }
 
 /// How many of a tab's entries a narrowed list shows, of how many it has.

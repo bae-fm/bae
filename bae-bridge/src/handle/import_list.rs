@@ -207,6 +207,18 @@ impl ImportListSubscription {
         self.inner.set_view(view.into_core()).map_err(list_error)
     }
 
+    /// Every entry of Found's filter menu, in the menu's order, with how many
+    /// of Found's rows it holds now and whether it can be chosen. Asked when
+    /// the menu opens: what is running for a candidate decides the entry that
+    /// holds its row, and the list is not read again as runs start and end.
+    pub fn pending_filter_entries(&self) -> Vec<crate::types::BridgePendingFilterEntry> {
+        self.inner
+            .pending_filter_entries()
+            .into_iter()
+            .map(crate::types::BridgePendingFilterEntry::from_core)
+            .collect()
+    }
+
     pub fn set_windows(
         &self,
         windows: Vec<crate::types::BridgeLibraryPageWindow>,

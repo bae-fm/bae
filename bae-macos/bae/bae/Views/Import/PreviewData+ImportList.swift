@@ -87,6 +87,26 @@
                 .compactMap { $0.matched?.cover }
         }
 
+        /// Found's filter entries as core lists them, with made-up counts;
+        /// In Progress holds nothing, so it cannot be chosen.
+        static func pendingFilterEntries() -> [BridgePendingFilterEntry] {
+            [
+                (BridgePendingFilter.all, 42),
+                (.needsYou, 12),
+                (.inProgress, 0),
+                (.identified, 21),
+                (.unmatched, 2),
+                (.notLookedUp, 7),
+            ]
+            .map { filter, count in
+                BridgePendingFilterEntry(
+                    filter: filter,
+                    count: UInt32(count),
+                    selectable: count > 0
+                )
+            }
+        }
+
         static func importQueueSummary(
             pending: UInt32,
             done: UInt32,
@@ -96,7 +116,6 @@
             folderScanActivity: BridgeFolderScanActivity? = nil,
             groupKeys: [BridgeFolderReleaseDecisionKey] = [],
             pendingCovers: [BridgeRemoteImageSet] = [],
-            pendingFilters: [BridgePendingState] = [],
             narrowed: BridgeNarrowedCount? = nil,
             filterText: String = ""
         ) -> BridgeImportQueueSummary {
@@ -111,12 +130,11 @@
                 folderScanActivity: folderScanActivity,
                 groupKeys: groupKeys,
                 pendingCovers: pendingCovers,
-                pendingFilters: pendingFilters,
                 narrowed: narrowed,
                 narrowing: BridgeImportListNarrowing(
                     tab: .pending,
                     filterText: filterText,
-                    pendingFilters: pendingFilters
+                    pendingFilter: .all
                 ),
                 firstSelectedPosition: nil
             )

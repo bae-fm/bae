@@ -44,7 +44,8 @@ private final class MutableImportListPageSource: PageSource,
         ImportListPages(
             source: self,
             setView: { _ in },
-            waitForView: { _ in }
+            waitForView: { _ in },
+            pendingFilterEntries: { [] }
         )
     }
 
@@ -381,7 +382,7 @@ extension ImportCandidateViewportTests {
         let typed = BridgeImportListNarrowing(
             tab: .pending,
             filterText: "melv",
-            pendingFilters: []
+            pendingFilter: .all
         )
         XCTAssertNil(
             state.update(
@@ -434,7 +435,7 @@ extension ImportCandidateViewportTests {
                     narrowing: BridgeImportListNarrowing(
                         tab: .pending,
                         filterText: "",
-                        pendingFilters: [.needsYou]
+                        pendingFilter: .needsYou
                     ),
                     firstSelected: 4
                 ),
@@ -551,7 +552,7 @@ extension ImportCandidateViewportTests {
         BridgeImportListNarrowing(
             tab: .pending,
             filterText: "",
-            pendingFilters: []
+            pendingFilter: .all
         )
     }
 

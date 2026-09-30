@@ -1,7 +1,7 @@
 import BaeKit
 import SwiftUI
 
-/// The candidate list's menu: sort order, Pending filter, watched folders,
+/// The candidate list's menu: sort order, Found's filter, watched folders,
 /// and expanding or collapsing every folder group.
 ///
 /// `Equatable` over what the menu draws, and rendered through `.equatable()`,
@@ -20,13 +20,16 @@ struct CandidateListMenu: View, Equatable {
     let hasGroups: Bool
     let sortOrder: BridgeImportListOrder
     let onSetSortOrder: (BridgeImportListOrder) -> Void
-    /// The states Pending's rows are narrowed to; empty shows them all.
-    let pendingFilters: [BridgePendingState]
-    /// Whether the tab on show is Pending, the one tab the filter applies to.
+    /// The entry Found's rows are narrowed to.
+    let pendingFilter: BridgePendingFilter
+    /// Every entry of Found's filter, with how many rows each holds, asked
+    /// of core when the menu opens rather than when it is drawn: what is
+    /// running decides a row's entry, and counts carried on every delivery
+    /// would rebuild the menu under the pointer.
+    let pendingFilterEntries: () -> [BridgePendingFilterEntry]
+    /// Whether the tab on show is Found, the one tab the filter applies to.
     let pendingFilterApplies: Bool
-    let onSetPendingFilter:
-        (_ filter: BridgePendingState, _ checked: Bool) -> Void
-    let onShowAllPending: () -> Void
+    let onSetPendingFilter: (BridgePendingFilter) -> Void
     let onAddFolder: () -> Void
     /// Fold every folder group in the queue open (`true`) or shut (`false`).
     let onSetAllGroupsExpanded: (_ expanded: Bool) -> Void
@@ -44,7 +47,7 @@ struct CandidateListMenu: View, Equatable {
             && lhs.networkFolders == rhs.networkFolders
             && lhs.hasGroups == rhs.hasGroups
             && lhs.sortOrder == rhs.sortOrder
-            && lhs.pendingFilters == rhs.pendingFilters
+            && lhs.pendingFilter == rhs.pendingFilter
             && lhs.pendingFilterApplies == rhs.pendingFilterApplies
             && hasFailedScan(in: lhs.scanStatuses)
                 == hasFailedScan(in: rhs.scanStatuses)
@@ -103,9 +106,9 @@ struct CandidateListMenu: View, Equatable {
             }
             .pickerStyle(.inline)
             PendingFilterSection(
-                filters: pendingFilters,
-                onSetFilter: onSetPendingFilter,
-                onShowAll: onShowAllPending
+                entries: pendingFilterEntries,
+                selected: pendingFilter,
+                onSelect: onSetPendingFilter
             )
             .disabled(!pendingFilterApplies)
             Section("Folders") {
@@ -136,9 +139,9 @@ struct CandidateListMenu: View, Equatable {
             Image(systemName: "ellipsis.circle")
                 .themeIcon(ImportFilterBarLayout.glyph)
                 .overlay(alignment: .topTrailing) {
-                    // A filter hiding Pending rows marks the trigger, so a
+                    // A filter hiding Found's rows marks the trigger, so a
                     // short list never reads as a short queue.
-                    if !pendingFilters.isEmpty && !hasFailedScan {
+                    if pendingFilter != .all && !hasFailedScan {
                         Circle()
                             .fill(Color.accentColor)
                             .frame(width: 6, height: 6)
@@ -254,10 +257,10 @@ struct CandidateListMenu: View, Equatable {
             hasGroups: true,
             sortOrder: .newestFirst,
             onSetSortOrder: { _ in },
-            pendingFilters: [.needsYou, .identified],
+            pendingFilter: .needsYou,
+            pendingFilterEntries: { PreviewData.pendingFilterEntries() },
             pendingFilterApplies: true,
-            onSetPendingFilter: { _, _ in },
-            onShowAllPending: {},
+            onSetPendingFilter: { _ in },
             onAddFolder: {},
             onSetAllGroupsExpanded: { _ in },
             onRefreshFolder: { _ in },

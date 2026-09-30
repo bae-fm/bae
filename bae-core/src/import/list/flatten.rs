@@ -4,10 +4,9 @@
 //! The filter matches only the text each row shows.
 
 use super::{
-    GroupHeaderRow, ImportCandidateListLocation, ImportListItem, ImportListOrder,
-    ImportListNarrowing, ImportListRequest, ImportListView, ImportQueueSummary, NarrowedCount,
-    PendingFilters, PlacedRow,
-    UploadStanding,
+    FoundStates, GroupHeaderRow, ImportCandidateListLocation, ImportListItem,
+    ImportListNarrowing, ImportListOrder, ImportListRequest, ImportListView, ImportQueueSummary,
+    NarrowedCount, PendingFilter, PlacedRow, UploadStanding,
 };
 use crate::db::{ImportQueueRows, ScanCandidateKind, ScanCandidateListRow};
 use crate::import::triage::{
@@ -41,6 +40,9 @@ pub(crate) struct Flattened {
     pub(crate) headers: Vec<GroupHeaderRow>,
     pub(crate) rows: Vec<PlacedRow>,
     pub(crate) summary: ImportQueueSummary,
+    /// The state the tables put each of Found's rows in, whatever the view
+    /// shows.
+    pub(crate) found_states: FoundStates,
 }
 
 /// One entry of the queue before the tab filter and the grouping runs.
@@ -99,6 +101,7 @@ pub(crate) fn flatten(
     Ok(Flattened {
         items,
         headers,
+        found_states: FoundStates::of(placed.iter().map(|placed| &placed.row)),
         rows: placed,
         summary,
     })
@@ -218,8 +221,13 @@ fn order(rows: &ImportQueueRows, request: &ImportListRequest) -> Result<Ordered,
                 let triage_row = place_row(rows, row)?;
                 let tab = triage_row.placement.tab();
                 counts.bump(tab);
-                let matches_filter = request.keeps_pending(tab, &triage_row)
-                    && filter.keeps(|| shown_text(rows, &triage_row))?;
+                let kept = match tab {
+                    TriageTab::Pending => view
+                        .pending_filter
+                        .holds(request.pending_state(&triage_row)),
+                    TriageTab::Done | TriageTab::Skipped => true,
+                };
+                let matches_filter = kept && filter.keeps(|| shown_text(rows, &triage_row))?;
                 ordered.push(OrderedEntry {
                     watched_folder_path: row.watched_folder_path.clone(),
                     display_path: row.display_path.clone(),
@@ -402,7 +410,7 @@ pub(crate) fn locate_candidate(
 fn unfiltered(request: &ImportListRequest) -> ImportListRequest {
     let mut request = request.clone();
     request.view.filter_text.clear();
-    request.view.pending_filters = PendingFilters::default();
+    request.view.pending_filter = PendingFilter::All;
     request.live_standings.clear();
     request
 }
@@ -701,10 +709,6 @@ fn summarise(
         watched_folders: rows.watched_folders.clone(),
         group_keys,
         pending_covers,
-        pending_filters: view
-            .pending_filters_on(view.tab)
-            .cloned()
-            .unwrap_or_default(),
         narrowing: ImportListNarrowing::of(view),
         first_selected_position,
     }

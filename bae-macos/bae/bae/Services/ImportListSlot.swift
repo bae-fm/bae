@@ -107,7 +107,7 @@ final class ImportListSlot {
         view = BridgeImportListView(
             tab: uiStore.importCandidateTab,
             filterText: uiStore.importCandidateFilterText,
-            pendingFilters: uiStore.importCandidatePendingFilters,
+            pendingFilter: uiStore.importCandidatePendingFilter,
             collapsedGroups: uiStore.collapsedReleaseGroupKeys,
             order: initialOrder
         )
@@ -133,26 +133,17 @@ final class ImportListSlot {
         updateView { $0.filterText = text }
     }
 
-    /// Check or clear one state Found's rows are narrowed to; core says
-    /// what that leaves narrowing them.
-    func setPendingFilter(_ state: BridgePendingState, checked: Bool) {
-        setPendingFilters(
-            bridgePendingFiltersWith(
-                filters: view.pendingFilters,
-                state: state,
-                checked: checked
-            )
-        )
+    /// Every entry of Found's filter, with how many of Found's rows it holds
+    /// now, as core counts them when asked: what the filter menu shows as it
+    /// opens. None before the list is read.
+    func pendingFilterEntries() -> [BridgePendingFilterEntry] {
+        pages?.pendingFilterEntries() ?? []
     }
 
-    /// Show every Pending row.
-    func showAllPending() {
-        setPendingFilters([])
-    }
-
-    private func setPendingFilters(_ filters: [BridgePendingState]) {
-        uiStore.setImportCandidatePendingFilters(filters)
-        updateView { $0.pendingFilters = filters }
+    /// Narrow Found's rows to one filter entry.
+    func setPendingFilter(_ filter: BridgePendingFilter) {
+        uiStore.setImportCandidatePendingFilter(filter)
+        updateView { $0.pendingFilter = filter }
     }
 
     func setSortOrder(_ order: BridgeImportListOrder) {
@@ -182,7 +173,7 @@ final class ImportListSlot {
         }
         uiStore.setImportCandidateTab(location.tab)
         uiStore.setImportCandidateFilterText("")
-        uiStore.setImportCandidatePendingFilters([])
+        uiStore.setImportCandidatePendingFilter(.all)
         if let groupKey = location.groupKey {
             uiStore.setReleaseGroupExpanded(
                 releaseGroupDisclosureID(groupKey),
@@ -192,7 +183,7 @@ final class ImportListSlot {
         var next = view
         next.tab = location.tab
         next.filterText = ""
-        next.pendingFilters = []
+        next.pendingFilter = .all
         next.collapsedGroups = uiStore.collapsedReleaseGroupKeys
         view = next
         try await selectOnly(candidateKey)
@@ -306,7 +297,13 @@ final class ImportListSlot {
                 uiStore: uiStore,
                 selection: selection,
                 makeSource: { _ in
-                    ImportListPreviewPageSource(items: items).pages
+                    ImportListPreviewPageSource(
+                        items: items,
+                        pendingFilterEntries:
+                            PreviewData
+                            .pendingFilterEntries()
+                    )
+                    .pages
                 },
                 locateCandidate: { _, key in
                     items.firstIndex { $0.id == "candidate:\(key)" }

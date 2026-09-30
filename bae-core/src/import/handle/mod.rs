@@ -599,7 +599,7 @@ impl ImportServiceHandle {
     ) -> crate::import::ImportListSubscription {
         let runtime_facts = self.watch_runtime_facts();
         let request = crate::import::ImportListRequest {
-            live_standings: view.pending_filters.live_standings(runtime_facts.facts()),
+            live_standings: view.pending_filter.live_standings(runtime_facts.facts()),
             view,
             windows: std::iter::once(crate::library::LibraryPageWindow {
                 offset: 0,

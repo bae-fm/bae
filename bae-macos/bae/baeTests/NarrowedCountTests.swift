@@ -4,7 +4,7 @@ import Testing
 @testable import bae
 
 /// The filter field shows core's count only beside the filter core counted
-/// under, so a count never outlives the text or states it was for.
+/// under, so a count never outlives the text or entry it was for.
 @Suite("The filter field's count")
 struct NarrowedCountTests {
     private func summary(text: String) -> BridgeImportQueueSummary {
@@ -20,12 +20,12 @@ struct NarrowedCountTests {
 
     private func narrowing(
         text: String,
-        states: [BridgePendingState] = []
+        filter: BridgePendingFilter = .all
     ) -> BridgeImportListNarrowing {
         BridgeImportListNarrowing(
             tab: .pending,
             filterText: text,
-            pendingFilters: states
+            pendingFilter: filter
         )
     }
 
@@ -49,12 +49,12 @@ struct NarrowedCountTests {
         )
     }
 
-    @Test("a count for other states is not shown")
-    func aCountForOtherStatesIsNot() {
+    @Test("a count for another filter entry is not shown")
+    func aCountForAnotherEntryIsNot() {
         #expect(
             summary(text: "melv")
                 .narrowedCount(
-                    under: narrowing(text: "melv", states: [.needsYou])
+                    under: narrowing(text: "melv", filter: .needsYou)
                 ) == nil
         )
     }

@@ -13,30 +13,21 @@ extension BridgeImportQueueSummary {
     }
 }
 
-/// The list's filter field: a chip per checked state and the typed text,
-/// and while either narrows the list, how many of the tab's rows it shows.
+/// The list's filter field: the typed text, and while the text or the filter
+/// entry narrows the list, how many of the tab's rows it shows.
 struct ImportListFilterField: View {
     @Binding
     var text: String
     var focused: FocusState<Bool>.Binding
-    /// The states narrowing the tab on show, in the menu's order.
-    let pendingFilters: [BridgePendingState]
     /// The count for the filter the field holds now; `nil` while nothing
     /// narrows the list, and while core has not counted under this filter.
     let narrowed: BridgeNarrowedCount?
-    let onClearPendingFilter: (BridgePendingState) -> Void
 
     var body: some View {
         HStack(spacing: ThemeSpace.related) {
             Image(systemName: "magnifyingglass")
                 .themeIcon(ImportFilterBarLayout.glyph)
                 .foregroundStyle(.tertiary)
-            if !pendingFilters.isEmpty {
-                PendingFilterChips(
-                    filters: pendingFilters,
-                    onClear: onClearPendingFilter
-                )
-            }
             TextField("Filter...", text: $text)
                 .textFieldStyle(.plain)
                 .themeText(.body)
@@ -76,9 +67,7 @@ struct ImportListFilterField: View {
         ImportListFilterField(
             text: $text,
             focused: $focused,
-            pendingFilters: [.needsYou, .lookupError],
-            narrowed: BridgeNarrowedCount(shown: 12, total: 105),
-            onClearPendingFilter: { _ in }
+            narrowed: BridgeNarrowedCount(shown: 12, total: 105)
         )
         .padding()
         .frame(width: 420)

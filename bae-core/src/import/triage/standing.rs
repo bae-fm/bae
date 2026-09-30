@@ -1,8 +1,10 @@
 //! Where each of Found's rows stands: exactly one state per row.
 //!
-//! Found is the Pending tab. The filter menu lists its [`PendingState`]s and
-//! every row carries its own as a [`PendingStanding`], which also says why a
-//! row waiting on the person is waiting.
+//! Found is the Pending tab. Every row carries its [`PendingState`] as a
+//! [`PendingStanding`], which also says why a row waiting on the person is
+//! waiting, and each entry of the filter menu
+//! ([`PendingFilter`](crate::import::PendingFilter)) holds the rows in the
+//! states it covers.
 //!
 //! The tables decide most of it and what is running for the candidate the
 //! rest. Where more than one could apply, the first of these wins:
@@ -31,10 +33,10 @@ use super::{IdentificationStatus, TriagePlacement, TriageRuntimeFacts};
 use crate::identify::{Declined, FolderCheck, MediumConflict, VerdictKind, VerdictSummary};
 use crate::import::ReleaseLink;
 use crate::signals::InternalFailure;
+use std::collections::BTreeMap;
 
-/// One state a Found row is in. Declared in the menu's order, which is the
-/// order a set of them lists in.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+/// One state a Found row is in.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PendingState {
     NotLookedUp,
     Identifying,
@@ -45,28 +47,6 @@ pub enum PendingState {
     Error,
     Importing,
     ImportError,
-}
-
-impl PendingState {
-    /// Every state, in the groups the menu sets apart and each group in the
-    /// order it lists them: where identification stands, then where the
-    /// import does. Each group ends with its failure.
-    pub const GROUPS: [&'static [Self]; 2] = [
-        &[
-            Self::NotLookedUp,
-            Self::Identifying,
-            Self::NeedsYou,
-            Self::Identified,
-            Self::Unmatched,
-            Self::LookupError,
-            Self::Error,
-        ],
-        &[Self::Importing, Self::ImportError],
-    ];
-
-    pub(crate) fn every() -> impl Iterator<Item = Self> {
-        Self::GROUPS.into_iter().flatten().copied()
-    }
 }
 
 /// The state what is running for a candidate puts it in, over whatever the
@@ -98,6 +78,17 @@ impl LiveStanding {
             }),
             None => None,
         }
+    }
+
+    /// The state what is running puts each candidate in, by key, for every
+    /// candidate whose state something running decides.
+    pub(crate) fn of_each<'a>(
+        facts: impl IntoIterator<Item = (&'a String, &'a TriageRuntimeFacts)>,
+    ) -> BTreeMap<String, Self> {
+        facts
+            .into_iter()
+            .filter_map(|(key, facts)| Self::of(facts).map(|live| (key.clone(), live)))
+            .collect()
     }
 
     pub fn state(&self) -> PendingState {

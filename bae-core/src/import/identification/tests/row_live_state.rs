@@ -1,8 +1,10 @@
 // ── What is running for a row, joined to the page ───────────────────────────
 //
-// The list reads the tables and nothing else; what is running for each
-// candidate is joined to its row on the page in memory, and a change to it for
-// a row on the page delivers the page again at the same request revision.
+// Under Found's All the list reads the tables and nothing else; what is
+// running for each candidate is joined to its row on the page in memory, and a
+// change to it for a row on the page delivers the page again at the same
+// request revision. The filter menu counts what is running when it opens, so
+// a run or an import starting or ending reads nothing again for it either.
 
 /// A list subscription over the Pending tab, asking for `windows`.
 fn list_subscription(
@@ -37,6 +39,19 @@ async fn next_page(
         .await
         .expect("the list delivers")
         .expect("the list answers")
+}
+
+/// How many of Found's rows the filter menu, opened now, counts under
+/// `filter`.
+fn counted(
+    list: &crate::import::ImportListSubscription,
+    filter: crate::import::PendingFilter,
+) -> u32 {
+    list.pending_filter_entries()
+        .into_iter()
+        .find(|entry| entry.filter == filter)
+        .expect("every entry is counted")
+        .count
 }
 
 /// What is running for each candidate row a snapshot's page holds, by key.
@@ -85,7 +100,8 @@ fn reported(key: &str, progress: crate::import::ImportProgress) -> ImportEvent {
 /// again: the page it already read is delivered again, at the same request
 /// revision, with the row saying the import owns it — waiting for the worker,
 /// then taken up, then writing — and what it offers at each. A progress tick
-/// within the running import changes neither and delivers nothing.
+/// within the running import changes neither and delivers nothing. The filter
+/// menu, opened while the import goes, counts the row In Progress.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_claimed_import_reaches_its_row_on_the_page() {
     let fixture = Fixture::new("live-state-on-the-page").await;
@@ -100,6 +116,8 @@ async fn a_claimed_import_reaches_its_row_on_the_page() {
         .expect("the scanned candidate has a row");
     assert!(!idle.facts.importing());
     assert!(!idle.actions.is_empty(), "an idle row offers its commands");
+    assert_eq!(counted(&list, crate::import::PendingFilter::All), 1);
+    assert_eq!(counted(&list, crate::import::PendingFilter::InProgress), 0);
 
     fixture.import.claim_candidate_for_import(&key, "import-1").await;
     let claimed = next_page(&list).await;
@@ -123,6 +141,12 @@ async fn a_claimed_import_reaches_its_row_on_the_page() {
             crate::import::CandidateAction::RevealFolder
         ],
         "a claimed import offers only its cancel, beside showing its folder"
+    );
+    assert_eq!(counted(&list, crate::import::PendingFilter::All), 1);
+    assert_eq!(
+        counted(&list, crate::import::PendingFilter::InProgress),
+        1,
+        "the menu counts the claimed import with no read of the list"
     );
 
     fixture

@@ -1,4 +1,5 @@
-//! Filtering Found's rows by state, and importing a selection of them.
+//! Filtering Found's rows by one filter entry, what each entry counts, and
+//! importing a selection of them.
 
 use super::*;
 use crate::import::triage::{
@@ -129,21 +130,53 @@ fn every_kind() -> ImportQueueRows {
     rows
 }
 
-/// The filters with each of `checked` checked, as the person checks them.
-fn checked(checked: &[PendingState]) -> PendingFilters {
-    checked
-        .iter()
-        .fold(PendingFilters::default(), |filters, &filter| {
-            filters.with_checked(filter, true)
-        })
+/// What is running for three of `every_kind`'s candidates, as the request
+/// carries it: a run for Several, an import of Identified, and a run whose
+/// answer bae could not store for Tagged.
+fn running() -> std::collections::BTreeMap<String, crate::import::LiveStanding> {
+    [
+        (key("Several"), crate::import::LiveStanding::Identifying),
+        (key("Identified"), crate::import::LiveStanding::Importing),
+        (
+            key("Tagged"),
+            crate::import::LiveStanding::Error {
+                failure: crate::signals::InternalFailure {
+                    detail: "writing the answer: the disk is full".to_string(),
+                },
+            },
+        ),
+    ]
+    .into_iter()
+    .collect()
 }
 
-fn shown(rows: &ImportQueueRows, tab: TriageTab, filters: PendingFilters) -> Vec<String> {
+/// `view` flattened with `every_kind`'s candidates running as `running` has
+/// them.
+fn flattened_running(rows: &ImportQueueRows, view: ImportListView) -> Flattened {
+    flatten(
+        rows,
+        &ImportListRequest {
+            view,
+            live_standings: running(),
+            ..ImportListRequest::default()
+        },
+    )
+    .expect("the queue flattens")
+}
+
+fn under(filter: PendingFilter) -> ImportListView {
+    ImportListView {
+        pending_filter: filter,
+        ..ImportListView::default()
+    }
+}
+
+fn shown(rows: &ImportQueueRows, tab: TriageTab, filter: PendingFilter) -> Vec<String> {
     let flat = flattened(
         rows,
         &ImportListView {
             tab,
-            pending_filters: filters,
+            pending_filter: filter,
             ..ImportListView::default()
         },
     );
@@ -152,112 +185,235 @@ fn shown(rows: &ImportQueueRows, tab: TriageTab, filters: PendingFilters) -> Vec
     shown
 }
 
-/// Each state keeps exactly its own rows, one state per row, whatever
-/// automatic import would or would not take them.
+fn sorted(flat: &Flattened, rows: &ImportQueueRows) -> Vec<String> {
+    let mut shown = sequence(rows, flat);
+    shown.sort();
+    shown
+}
+
+/// Each state is under the one entry past All the menu puts it under, and
+/// All holds every state.
 #[test]
-fn each_state_keeps_exactly_its_own_rows() {
+fn each_state_is_under_one_entry_past_all() {
+    let cases = [
+        (PendingState::NeedsYou, PendingFilter::NeedsYou),
+        (PendingState::LookupError, PendingFilter::NeedsYou),
+        (PendingState::Error, PendingFilter::NeedsYou),
+        (PendingState::ImportError, PendingFilter::NeedsYou),
+        (PendingState::Identifying, PendingFilter::InProgress),
+        (PendingState::Importing, PendingFilter::InProgress),
+        (PendingState::Identified, PendingFilter::Identified),
+        (PendingState::Unmatched, PendingFilter::Unmatched),
+        (PendingState::NotLookedUp, PendingFilter::NotLookedUp),
+    ];
+    for (state, entry) in cases {
+        let holding: Vec<PendingFilter> = PendingFilter::ENTRIES
+            .into_iter()
+            .filter(|filter| filter.holds(state))
+            .collect();
+        assert_eq!(holding, vec![PendingFilter::All, entry], "{state:?}");
+    }
+}
+
+/// The entries a list read counts, with nothing running.
+fn entries_at_rest(flat: &Flattened) -> Vec<PendingFilterEntry> {
+    flat.found_states
+        .entries(&std::collections::BTreeMap::new())
+}
+
+/// The entries list in the menu's order, the counted ones as much as the
+/// menu's own.
+#[test]
+fn the_entries_list_in_the_menu_s_order() {
+    let order = [
+        PendingFilter::All,
+        PendingFilter::NeedsYou,
+        PendingFilter::InProgress,
+        PendingFilter::Identified,
+        PendingFilter::Unmatched,
+        PendingFilter::NotLookedUp,
+    ];
+    assert_eq!(PendingFilter::ENTRIES, order);
+    assert_eq!(
+        entries_at_rest(&flattened(&every_kind(), &view(TriageTab::Pending)))
+            .iter()
+            .map(|entry| entry.filter)
+            .collect::<Vec<_>>(),
+        order
+    );
+}
+
+/// Each entry shows exactly the rows in the states it covers, with what is
+/// running for a candidate deciding its state over the tables.
+#[test]
+fn each_entry_shows_exactly_the_rows_of_its_states() {
     let rows = every_kind();
     let cases = [
         (
-            PendingState::NotLookedUp,
-            vec!["candidate Tagged", "candidate Unidentified"],
-        ),
-        (PendingState::Identifying, vec![]),
-        (
-            PendingState::NeedsYou,
+            PendingFilter::NeedsYou,
             vec![
+                "candidate Broke",
+                "candidate Failed Import",
+                "candidate Lookup Failed",
                 "candidate Nothing Found",
                 "candidate Nothing To Look Up",
-                "candidate Several",
                 "candidate Several Tagged",
+                "candidate Tagged",
+                "candidate Unread",
             ],
         ),
         (
-            PendingState::Identified,
+            PendingFilter::InProgress,
+            vec!["candidate Identified", "candidate Several"],
+        ),
+        (
+            PendingFilter::Identified,
             vec![
-                "candidate Identified",
                 "candidate Picked Among Several",
                 "candidate Track Count Differs",
             ],
         ),
-        (PendingState::Unmatched, vec!["candidate Pick Set Aside"]),
-        (
-            PendingState::LookupError,
-            vec!["candidate Lookup Failed", "candidate Unread"],
-        ),
-        (PendingState::Error, vec!["candidate Broke"]),
-        (PendingState::Importing, vec![]),
-        (PendingState::ImportError, vec!["candidate Failed Import"]),
+        (PendingFilter::Unmatched, vec!["candidate Pick Set Aside"]),
+        (PendingFilter::NotLookedUp, vec!["candidate Unidentified"]),
     ];
-    for (state, expected) in cases {
+    for (filter, expected) in cases {
         assert_eq!(
-            shown(&rows, TriageTab::Pending, checked(&[state])),
+            sorted(&flattened_running(&rows, under(filter)), &rows),
             expected,
-            "{state:?}"
+            "{filter:?}"
         );
     }
     assert_eq!(
-        shown(
-            &rows,
-            TriageTab::Pending,
-            checked(&[PendingState::NeedsYou, PendingState::LookupError])
-        ),
-        vec![
-            "candidate Lookup Failed",
-            "candidate Nothing Found",
-            "candidate Nothing To Look Up",
-            "candidate Several",
-            "candidate Several Tagged",
-            "candidate Unread",
-        ]
+        sorted(&flattened_running(&rows, under(PendingFilter::All)), &rows),
+        shown(&rows, TriageTab::Pending, PendingFilter::All),
+        "All shows every row, whatever is running"
     );
 }
 
-/// Every row on Found is in exactly one state, with what is running for some
-/// of them joined: each shows under exactly one filter.
+/// The entries past All split Found's rows between them: each row shows
+/// under exactly one, and together they show what All does.
 #[test]
-fn every_row_is_in_exactly_one_state() {
+fn every_row_shows_under_exactly_one_entry_past_all() {
     let rows = every_kind();
-    let identifying = TriageRuntimeFacts {
-        identification: Some(crate::import::IdentificationStatus::Running),
-        import: None,
-    };
-    let importing = TriageRuntimeFacts {
-        identification: Some(crate::import::IdentificationStatus::Queued),
-        import: Some(crate::import::ImportStanding::Running),
-    };
-    let facts: std::collections::HashMap<String, TriageRuntimeFacts> = [
-        (key("Several"), identifying),
-        (key("Failed Import"), importing),
-    ]
-    .into_iter()
-    .collect();
-    let every = shown(&rows, TriageTab::Pending, PendingFilters::default());
-    let mut seen: Vec<String> = Vec::new();
-    for &state in PendingState::GROUPS.iter().copied().flatten() {
-        let filters = checked(&[state]);
-        let flat = flatten(
-            &rows,
-            &ImportListRequest {
-                live_standings: filters.live_standings(&facts),
-                view: ImportListView {
-                    pending_filters: filters,
-                    ..ImportListView::default()
-                },
-                ..ImportListRequest::default()
-            },
-        )
-        .expect("the queue flattens");
-        let shown = sequence(&rows, &flat);
-        match state {
-            PendingState::Identifying => assert_eq!(shown, vec!["candidate Several"]),
-            PendingState::Importing => assert_eq!(shown, vec!["candidate Failed Import"]),
-            _ => {}
-        }
-        seen.extend(shown);
-    }
+    let mut seen: Vec<String> = PendingFilter::ENTRIES
+        .into_iter()
+        .filter(|&filter| filter != PendingFilter::All)
+        .flat_map(|filter| sequence(&rows, &flattened_running(&rows, under(filter))))
+        .collect();
     seen.sort();
-    assert_eq!(seen, every, "each row shows under exactly one state");
+    assert_eq!(
+        seen,
+        sorted(&flattened_running(&rows, under(PendingFilter::All)), &rows)
+    );
+}
+
+/// Each entry counts the rows it holds, from a read of the list under All —
+/// which reads nothing of what is running — with what is running when the
+/// menu opens deciding a row's state over the tables: the count is the rows
+/// the list shows under that entry, All's is Found's total, and an entry
+/// holding a row can be chosen.
+#[test]
+fn each_entry_counts_the_rows_it_holds() {
+    let rows = every_kind();
+    let read = flattened(&rows, &view(TriageTab::Pending));
+    let entries = read.found_states.entries(&running());
+    let counts: Vec<(PendingFilter, u32)> = entries
+        .iter()
+        .map(|entry| (entry.filter, entry.count))
+        .collect();
+    assert_eq!(
+        counts,
+        vec![
+            (PendingFilter::All, 14),
+            (PendingFilter::NeedsYou, 8),
+            (PendingFilter::InProgress, 2),
+            (PendingFilter::Identified, 2),
+            (PendingFilter::Unmatched, 1),
+            (PendingFilter::NotLookedUp, 1),
+        ]
+    );
+    assert_eq!(read.summary.counts.pending, 14);
+    assert!(entries.iter().all(|entry| entry.selectable));
+    for entry in &entries {
+        let flat = flattened_running(&rows, under(entry.filter));
+        assert_eq!(flat.items.len() as u32, entry.count, "{:?}", entry.filter);
+        if entry.filter != PendingFilter::All {
+            assert_eq!(
+                flat.summary.narrowed,
+                Some(NarrowedCount {
+                    shown: entry.count,
+                    total: 14
+                }),
+                "the list's count under {:?} is the entry's",
+                entry.filter
+            );
+        }
+    }
+}
+
+/// A read places Found's rows in the states the tables put them in whatever
+/// the list shows: the tab on show, the text typed, the entry chosen and what
+/// is running leave them alone.
+#[test]
+fn a_read_places_found_s_rows_whatever_the_list_shows() {
+    let mut rows = every_kind();
+    // The text filter reads a Done row's library text, which these rows
+    // leave out.
+    rows.candidates.retain(|row| row.display_path != "Imported");
+    rows.imported.clear();
+    let at_rest = flattened(&rows, &view(TriageTab::Pending)).found_states;
+    let placed = |view: ImportListView| flattened_running(&rows, view).found_states;
+    assert_eq!(placed(under(PendingFilter::All)), at_rest);
+    assert_eq!(placed(under(PendingFilter::Unmatched)), at_rest);
+    assert_eq!(placed(view(TriageTab::Done)), at_rest);
+    assert_eq!(placed(view(TriageTab::Skipped)), at_rest);
+    assert_eq!(
+        placed(ImportListView {
+            filter_text: "several".to_string(),
+            ..under(PendingFilter::NeedsYou)
+        }),
+        at_rest
+    );
+}
+
+/// An entry holding no row cannot be chosen; the others can.
+#[test]
+fn an_entry_holding_no_row_cannot_be_chosen() {
+    let entries = entries_at_rest(&flattened(&every_kind(), &view(TriageTab::Pending)));
+    let in_progress = entries
+        .iter()
+        .find(|entry| entry.filter == PendingFilter::InProgress)
+        .expect("In Progress is an entry");
+    assert_eq!(in_progress.count, 0, "nothing is running");
+    assert!(!in_progress.selectable);
+    assert!(entries
+        .iter()
+        .filter(|entry| entry.filter != PendingFilter::InProgress)
+        .all(|entry| entry.selectable));
+
+    assert!(entries_at_rest(&flattened(&queue(), &view(TriageTab::Pending)))
+        .iter()
+        .all(|entry| entry.count == 0 && !entry.selectable));
+}
+
+/// An entry chosen while it held rows stays chosen once it holds none: the
+/// list shows nothing under it, and says so against Found's total.
+#[test]
+fn a_chosen_entry_holding_no_row_stays_chosen() {
+    let rows = every_kind();
+    let in_progress = flattened_running(&rows, under(PendingFilter::InProgress));
+    assert_eq!(in_progress.items.len(), 2);
+
+    let ended = flattened(&rows, &under(PendingFilter::InProgress));
+    assert!(ended.items.is_empty());
+    assert_eq!(ended.summary.narrowing.pending_filter, PendingFilter::InProgress);
+    assert_eq!(
+        ended.summary.narrowed,
+        Some(NarrowedCount {
+            shown: 0,
+            total: 14
+        })
+    );
 }
 
 /// A sole release that lists no tracks is not picked for the folder, so the
@@ -278,74 +434,65 @@ fn a_sole_release_that_lists_no_tracks_needs_you() {
         }),
     );
     assert_eq!(
-        shown(
-            &rows,
-            TriageTab::Pending,
-            checked(&[PendingState::NeedsYou])
-        ),
+        shown(&rows, TriageTab::Pending, PendingFilter::NeedsYou),
         vec!["candidate Unchecked"]
     );
 }
 
-/// Done and Skipped rows are past identification, so a filter chosen on
-/// Pending leaves them alone.
+/// Done and Skipped rows are past identification, so an entry chosen on
+/// Found leaves them alone.
 #[test]
 fn the_pending_filter_leaves_done_and_skipped_alone() {
     let rows = every_kind();
-    for &filter in PendingState::GROUPS.iter().copied().flatten() {
+    for filter in PendingFilter::ENTRIES {
         assert_eq!(
-            shown(&rows, TriageTab::Done, checked(&[filter])),
+            shown(&rows, TriageTab::Done, filter),
             vec!["candidate Imported"]
         );
         assert_eq!(
-            shown(&rows, TriageTab::Skipped, checked(&[filter])),
+            shown(&rows, TriageTab::Skipped, filter),
             vec!["candidate Set Aside"]
         );
     }
 }
 
-/// The filter composes with the text filter: both have to keep a row.
+/// The entry composes with the text filter: both have to keep a row.
 #[test]
 fn the_text_filter_composes_with_the_pending_filter() {
     let mut rows = every_kind();
     rows.candidates.retain(|row| row.display_path != "Imported");
     rows.imported.clear();
-    let texted = |filters: &[PendingState], text: &str| {
+    let texted = |filter: PendingFilter, text: &str| {
         flattened(
             &rows,
             &ImportListView {
-                pending_filters: checked(filters),
+                pending_filter: filter,
                 filter_text: text.to_string(),
                 ..ImportListView::default()
             },
         )
     };
-    let needs_you = texted(&[PendingState::NeedsYou], "album");
+    let needs_you = texted(PendingFilter::NeedsYou, "album");
     assert_eq!(
-        sequence(&rows, &needs_you),
-        vec!["candidate Several Tagged"],
-        "of the Needs You rows only the drafted one reads Album"
+        sorted(&needs_you, &rows),
+        vec!["candidate Failed Import", "candidate Several Tagged"],
+        "of the Needs You rows only the drafted ones read Album"
     );
     assert_eq!(
         needs_you.summary.counts.pending, 14,
         "the tab counts are the whole queue's, whatever the list shows"
     );
-    assert!(texted(&[PendingState::Identified], "nothing")
-        .items
-        .is_empty());
+    assert!(texted(PendingFilter::Identified, "nothing").items.is_empty());
 }
 
-/// Locating a candidate clears the filters, so a row the filter hides is still
-/// found where it sits.
+/// Locating a candidate clears the filters, so a row the entry hides is
+/// still found where it sits.
 #[test]
 fn locating_a_candidate_ignores_the_pending_filter() {
     let rows = every_kind();
     let location = locate_candidate(
         &rows,
-        &request(ImportListView {
-            pending_filters: checked(&[PendingState::Identified]),
-            ..ImportListView::default()
-        }),
+        &request(under(PendingFilter::Identified)),
         &key("Unidentified"),
     )
     .expect("the queue flattens")
@@ -359,13 +506,7 @@ fn locating_a_candidate_ignores_the_pending_filter() {
 #[test]
 fn importing_a_selection_takes_every_row_with_a_draft_to_import() {
     let rows = every_kind();
-    let identified = flattened(
-        &rows,
-        &ImportListView {
-            pending_filters: checked(&[PendingState::Identified]),
-            ..ImportListView::default()
-        },
-    );
+    let identified = flattened(&rows, &under(PendingFilter::Identified));
     let mut members = select_all(&identified, &TriageRuntimeFacts::default());
     let everything = flattened(&rows, &view(TriageTab::Pending));
     members.extend(
@@ -412,31 +553,22 @@ fn select_all(flat: &Flattened, facts: &TriageRuntimeFacts) -> Vec<SelectionMemb
 #[test]
 fn importing_all_identified_rows_takes_exactly_the_shown_ones() {
     let rows = every_kind();
-    let identified = flattened(
-        &rows,
-        &ImportListView {
-            pending_filters: checked(&[PendingState::Identified]),
-            ..ImportListView::default()
-        },
-    );
+    let identified = flattened(&rows, &under(PendingFilter::Identified));
     let members = select_all(&identified, &TriageRuntimeFacts::default());
     let shown: Vec<String> = members.iter().map(|m| m.candidate_key.clone()).collect();
 
     assert_eq!(keys_for(&members, CandidateAction::Import), shown);
 }
 
-/// Rows being identified offer no import: selecting everything Identifying
-/// shows offers to cancel the identification instead.
+/// Rows being identified offer no import: selecting everything In Progress
+/// shows while runs go offers to cancel them instead.
 #[test]
-fn selecting_all_identifying_rows_offers_their_cancel_and_no_import() {
+fn selecting_all_rows_in_progress_offers_their_cancel_and_no_import() {
     let rows = every_kind();
     let flat = flatten(
         &rows,
         &ImportListRequest {
-            view: ImportListView {
-                pending_filters: checked(&[PendingState::Identifying]),
-                ..ImportListView::default()
-            },
+            view: under(PendingFilter::InProgress),
             live_standings: [key("Identified"), key("Tagged")]
                 .into_iter()
                 .map(|key| (key, crate::import::LiveStanding::Identifying))
@@ -450,11 +582,7 @@ fn selecting_all_identifying_rows_offers_their_cancel_and_no_import() {
         import: None,
     };
     let members = select_all(&flat, &identifying);
-    assert_eq!(
-        members.len(),
-        2,
-        "the filter shows the rows being identified"
-    );
+    assert_eq!(members.len(), 2, "the entry shows the rows being identified");
 
     let offers = selection_offers(&members);
     assert!(!offers
@@ -467,203 +595,38 @@ fn selecting_all_identifying_rows_offers_their_cancel_and_no_import() {
     assert_eq!(cancel.count, 2);
 }
 
-/// What each state's rows offer at rest is their own: Needs You imports
-/// whatever draft it has, a failed lookup imports a valid draft and offers
-/// the retry, and a failed import imports again.
+/// What Needs You's rows offer at rest is each row's own: a draft imports,
+/// a failed import imports again, and a lookup that failed or that bae broke
+/// on is retried.
 #[test]
-fn each_filter_s_rows_offer_what_their_drafts_and_lookups_allow() {
+fn needs_you_rows_offer_what_their_drafts_and_lookups_allow() {
     let rows = every_kind();
-    let offers_of = |filter| {
-        let flat = flattened(
-            &rows,
-            &ImportListView {
-                pending_filters: checked(&[filter]),
-                ..ImportListView::default()
-            },
-        );
-        select_all(&flat, &TriageRuntimeFacts::default())
-    };
-    let keys = |members: &[SelectionMember], action| keys_for(members, action);
-
-    let needs_you = offers_of(PendingState::NeedsYou);
-    assert_eq!(
-        keys(&needs_you, CandidateAction::Import),
-        vec![key("Several Tagged")],
-        "the tags' draft imports; no draft, no import"
+    let needs_you = select_all(
+        &flattened(&rows, &under(PendingFilter::NeedsYou)),
+        &TriageRuntimeFacts::default(),
     );
-
-    let lookup_error = offers_of(PendingState::LookupError);
-    assert!(keys(&lookup_error, CandidateAction::Import).is_empty());
-    let mut retried = keys(&lookup_error, CandidateAction::RetryIdentification);
-    retried.sort();
+    let keys = |action| {
+        let mut keys = keys_for(&needs_you, action);
+        keys.sort();
+        keys
+    };
     assert_eq!(
-        retried,
-        vec![key("Lookup Failed"), key("Unread")],
+        keys(CandidateAction::Import),
+        vec![key("Failed Import"), key("Several Tagged")],
+        "a draft imports and a failed import imports again; no draft, no import"
+    );
+    assert_eq!(
+        keys(CandidateAction::RetryIdentification),
+        vec![key("Broke"), key("Lookup Failed"), key("Unread")],
         "a release the lookup could not read is retried as a failed lookup is"
     );
-
-    let import_error = offers_of(PendingState::ImportError);
-    assert_eq!(
-        keys(&import_error, CandidateAction::Import),
-        vec![key("Failed Import")]
-    );
 }
 
-/// Every state is in exactly one group, and the groups keep the order the
-/// menu lists them in: identification's, then the import's, each ending with
-/// its failure.
+/// While an entry past All narrows the rows, every candidate something is
+/// running for is in the state it puts it in; under All, nothing running is
+/// read.
 #[test]
-fn every_state_is_in_one_group_in_the_menu_s_order() {
-    assert_eq!(
-        PendingState::GROUPS,
-        [
-            &[
-                PendingState::NotLookedUp,
-                PendingState::Identifying,
-                PendingState::NeedsYou,
-                PendingState::Identified,
-                PendingState::Unmatched,
-                PendingState::LookupError,
-                PendingState::Error,
-            ][..],
-            &[PendingState::Importing, PendingState::ImportError][..],
-        ]
-    );
-}
-
-/// Checking every state is the same as checking none: the list shows every
-/// row, with no state left narrowing it, in whichever order they were checked.
-#[test]
-fn checking_every_state_is_all() {
-    let every: Vec<PendingState> = PendingState::GROUPS
-        .iter()
-        .copied()
-        .flatten()
-        .copied()
-        .collect();
-    assert_eq!(checked(&every), PendingFilters::default());
-    let mut reversed = every.clone();
-    reversed.reverse();
-    assert_eq!(checked(&reversed), PendingFilters::default());
-    assert_eq!(
-        every.iter().copied().collect::<PendingFilters>(),
-        PendingFilters::default()
-    );
-    let rows = every_kind();
-    assert_eq!(
-        shown(&rows, TriageTab::Pending, checked(&every)),
-        shown(&rows, TriageTab::Pending, PendingFilters::default())
-    );
-}
-
-/// Clearing a state leaves the others; clearing the last one shows every row.
-#[test]
-fn clearing_the_last_state_returns_to_all() {
-    let two = checked(&[PendingState::NeedsYou, PendingState::LookupError]);
-    let one = two.with_checked(PendingState::NeedsYou, false);
-    assert_eq!(one, checked(&[PendingState::LookupError]));
-    assert_eq!(
-        one.with_checked(PendingState::LookupError, false),
-        PendingFilters::default()
-    );
-    assert_eq!(
-        PendingFilters::default().with_checked(PendingState::Identified, false),
-        PendingFilters::default()
-    );
-}
-
-/// Checking a state already checked changes nothing.
-#[test]
-fn checking_a_checked_state_again_changes_nothing() {
-    let once = checked(&[PendingState::Importing]);
-    assert_eq!(
-        once.clone().with_checked(PendingState::Importing, true),
-        once
-    );
-}
-
-/// The checked states list in the menu's order, whatever order they were
-/// checked in.
-#[test]
-fn the_checked_states_list_in_the_menu_s_order() {
-    let filters = checked(&[
-        PendingState::ImportError,
-        PendingState::Identified,
-        PendingState::Identifying,
-    ]);
-    assert_eq!(
-        filters.into_iter().collect::<Vec<_>>(),
-        vec![
-            PendingState::Identifying,
-            PendingState::Identified,
-            PendingState::ImportError,
-        ]
-    );
-}
-
-/// Select All under several states selects exactly the rows in any of them —
-/// the keys a view change keeps selected.
-#[test]
-fn select_all_under_several_states_takes_the_rows_any_of_them_keeps() {
-    let rows = every_kind();
-    let mut keys = shown_candidate_keys(
-        &rows,
-        &request(ImportListView {
-            pending_filters: checked(&[PendingState::NeedsYou, PendingState::ImportError]),
-            ..ImportListView::default()
-        }),
-    )
-    .expect("the queue flattens");
-    keys.sort();
-    let mut expected: Vec<String> = [
-        "Failed Import",
-        "Nothing Found",
-        "Nothing To Look Up",
-        "Several",
-        "Several Tagged",
-    ]
-    .into_iter()
-    .map(key)
-    .collect();
-    expected.sort();
-    assert_eq!(keys, expected);
-}
-
-/// A state what is running decides and one the tables decide each keep their
-/// own rows.
-#[test]
-fn a_live_state_and_a_stored_state_keep_the_rows_of_either() {
-    let rows = every_kind();
-    let flat = flatten(
-        &rows,
-        &ImportListRequest {
-            view: ImportListView {
-                pending_filters: checked(&[PendingState::Identifying, PendingState::LookupError]),
-                ..ImportListView::default()
-            },
-            live_standings: [(key("Tagged"), crate::import::LiveStanding::Identifying)]
-                .into_iter()
-                .collect(),
-            ..ImportListRequest::default()
-        },
-    )
-    .expect("the queue flattens");
-    let mut shown = sequence(&rows, &flat);
-    shown.sort();
-    assert_eq!(
-        shown,
-        vec![
-            "candidate Lookup Failed",
-            "candidate Tagged",
-            "candidate Unread"
-        ]
-    );
-}
-
-/// While a state narrows the rows, every candidate something is running for
-/// is in the state it puts it in; while none does, nothing running is read.
-#[test]
-fn live_standings_are_read_only_while_a_state_narrows() {
+fn live_standings_are_read_only_while_an_entry_narrows() {
     let identifying = TriageRuntimeFacts {
         identification: Some(crate::import::IdentificationStatus::Running),
         import: None,
@@ -679,12 +642,6 @@ fn live_standings_are_read_only_while_a_state_narrows() {
     ]
     .into_iter()
     .collect();
-    let standings = |states: &[PendingState]| {
-        checked(states)
-            .live_standings(&facts)
-            .into_iter()
-            .collect::<Vec<_>>()
-    };
     let running = vec![
         (
             "identifying".to_string(),
@@ -695,43 +652,17 @@ fn live_standings_are_read_only_while_a_state_narrows() {
             crate::import::LiveStanding::Importing,
         ),
     ];
-    assert_eq!(standings(&[PendingState::Identifying]), running);
-    assert_eq!(standings(&[PendingState::Identified]), running);
-    assert!(standings(&[]).is_empty());
+    for filter in PendingFilter::ENTRIES {
+        let standings: Vec<_> = filter.live_standings(&facts).into_iter().collect();
+        if filter == PendingFilter::All {
+            assert!(standings.is_empty(), "All read what is running");
+        } else {
+            assert_eq!(standings, running, "{filter:?}");
+        }
+    }
 }
 
-/// The summary names the states narrowing the tab on show, in the menu's
-/// order: the view's own on Pending, and none on the tabs they leave alone.
-#[test]
-fn the_summary_names_the_states_narrowing_the_tab_on_show() {
-    let rows = every_kind();
-    let narrowing = |tab, filters: &[PendingState]| {
-        flattened(
-            &rows,
-            &ImportListView {
-                tab,
-                pending_filters: checked(filters),
-                ..ImportListView::default()
-            },
-        )
-        .summary
-        .pending_filters
-        .into_iter()
-        .collect::<Vec<_>>()
-    };
-    assert_eq!(
-        narrowing(
-            TriageTab::Pending,
-            &[PendingState::ImportError, PendingState::NeedsYou]
-        ),
-        vec![PendingState::NeedsYou, PendingState::ImportError]
-    );
-    assert!(narrowing(TriageTab::Pending, &[]).is_empty());
-    assert!(narrowing(TriageTab::Done, &[PendingState::NeedsYou]).is_empty());
-    assert!(narrowing(TriageTab::Skipped, &[PendingState::NeedsYou]).is_empty());
-}
-
-/// While the text filter or a state narrows the tab on show, the summary
+/// While the text filter or an entry narrows the tab on show, the summary
 /// counts the tab's entries the list shows beside the tab's total; while
 /// nothing narrows it, there is no count.
 #[test]
@@ -739,12 +670,12 @@ fn a_narrowed_tab_counts_what_it_shows_of_its_total() {
     let mut rows = every_kind();
     rows.candidates.retain(|row| row.display_path != "Imported");
     rows.imported.clear();
-    let narrowed = |tab, filters: &[PendingState], text: &str| {
+    let narrowed = |tab, filter: PendingFilter, text: &str| {
         flattened(
             &rows,
             &ImportListView {
                 tab,
-                pending_filters: checked(filters),
+                pending_filter: filter,
                 filter_text: text.to_string(),
                 ..ImportListView::default()
             },
@@ -753,18 +684,14 @@ fn a_narrowed_tab_counts_what_it_shows_of_its_total() {
         .narrowed
     };
     assert_eq!(
-        narrowed(
-            TriageTab::Pending,
-            &[PendingState::NeedsYou, PendingState::LookupError],
-            ""
-        ),
+        narrowed(TriageTab::Pending, PendingFilter::NeedsYou, ""),
         Some(NarrowedCount {
-            shown: 6,
+            shown: 8,
             total: 14
         })
     );
     assert_eq!(
-        narrowed(TriageTab::Pending, &[], "several"),
+        narrowed(TriageTab::Pending, PendingFilter::All, "several"),
         Some(NarrowedCount {
             shown: 1,
             total: 14
@@ -772,14 +699,14 @@ fn a_narrowed_tab_counts_what_it_shows_of_its_total() {
         "only the row with no draft reads its folder's name"
     );
     assert_eq!(
-        narrowed(TriageTab::Skipped, &[], "set aside"),
+        narrowed(TriageTab::Skipped, PendingFilter::All, "set aside"),
         Some(NarrowedCount { shown: 1, total: 1 })
     );
-    assert_eq!(narrowed(TriageTab::Pending, &[], ""), None);
+    assert_eq!(narrowed(TriageTab::Pending, PendingFilter::All, ""), None);
     assert_eq!(
-        narrowed(TriageTab::Done, &[PendingState::NeedsYou], ""),
+        narrowed(TriageTab::Done, PendingFilter::NeedsYou, ""),
         None,
-        "the states leave Done alone"
+        "the entry leaves Done alone"
     );
 }
 
@@ -792,8 +719,7 @@ fn the_summary_names_the_filter_its_count_is_for() {
     rows.imported.clear();
     let view = ImportListView {
         filter_text: "album".to_string(),
-        pending_filters: checked(&[PendingState::NeedsYou]),
-        ..ImportListView::default()
+        ..under(PendingFilter::NeedsYou)
     };
     let summary = flattened(&rows, &view).summary;
     assert_eq!(
@@ -801,7 +727,7 @@ fn the_summary_names_the_filter_its_count_is_for() {
         crate::import::ImportListNarrowing {
             tab: TriageTab::Pending,
             filter_text: "album".to_string(),
-            pending_filters: checked(&[PendingState::NeedsYou]),
+            pending_filter: PendingFilter::NeedsYou,
         }
     );
     assert!(summary.narrowed.is_some());
@@ -814,13 +740,7 @@ fn the_summary_names_the_filter_its_count_is_for() {
 fn the_summary_places_the_first_selected_row_in_the_list_it_shows() {
     let mut rows = every_kind();
     rows.selected.insert(key("Unidentified"));
-    let not_looked_up = flattened(
-        &rows,
-        &ImportListView {
-            pending_filters: checked(&[PendingState::NotLookedUp]),
-            ..ImportListView::default()
-        },
-    );
+    let not_looked_up = flattened(&rows, &under(PendingFilter::NotLookedUp));
     let position = not_looked_up
         .summary
         .first_selected_position
@@ -831,12 +751,6 @@ fn the_summary_places_the_first_selected_row_in_the_list_it_shows() {
         }
         other => panic!("the position names a header or invalid row: {other:?}"),
     }
-    let needs_you = flattened(
-        &rows,
-        &ImportListView {
-            pending_filters: checked(&[PendingState::NeedsYou]),
-            ..ImportListView::default()
-        },
-    );
+    let needs_you = flattened(&rows, &under(PendingFilter::NeedsYou));
     assert_eq!(needs_you.summary.first_selected_position, None);
 }

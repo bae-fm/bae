@@ -38,7 +38,8 @@ private struct FailingPageSource: PageSource {
         ImportListPages(
             source: self,
             setView: { _ in },
-            waitForView: { _ in }
+            waitForView: { _ in },
+            pendingFilterEntries: { [] }
         )
     }
 }
@@ -137,7 +138,8 @@ struct ImportListSlotTests {
                     return ImportListPages(
                         source: source,
                         setView: { requests.set($0) },
-                        waitForView: { _ in }
+                        waitForView: { _ in },
+                        pendingFilterEntries: { [] }
                     )
                 },
                 locateCandidate: { _, _ in nil },
@@ -205,7 +207,8 @@ struct ImportListSlotTests {
                 ImportListPages(
                     source: pageSource,
                     setView: { _ in },
-                    waitForView: { _ in }
+                    waitForView: { _ in },
+                    pendingFilterEntries: { [] }
                 )
             },
             locateCandidate: { _, key in
@@ -302,11 +305,10 @@ struct ImportListSlotTests {
         #expect(writes.all == ["toggle", "select all", "keep shown in done"])
     }
 
-    /// The slot sends which state the person checked or cleared, and the
-    /// view it asks for is what core makes of that: states in the menu's
-    /// order, and every state checked the same as none.
-    @Test("checked states narrow the view as core decides")
-    func checkedStatesNarrowTheViewAsCoreDecides() async throws {
+    /// The slot asks core for the list under the entry the person chose, and
+    /// keeps it as the sidebar's own.
+    @Test("a chosen entry narrows the view")
+    func aChosenEntryNarrowsTheView() async throws {
         let requests = RecordedImportView()
         let uiStore = UiStore()
         let source = ImportListPreviewPageSource(items: [])
@@ -319,7 +321,8 @@ struct ImportListSlotTests {
                 return ImportListPages(
                     source: source,
                     setView: { requests.set($0) },
-                    waitForView: { _ in }
+                    waitForView: { _ in },
+                    pendingFilterEntries: { [] }
                 )
             },
             locateCandidate: { _, _ in nil },
@@ -327,28 +330,76 @@ struct ImportListSlotTests {
         )
         slot.startLoad()
         try await Wait.until { slot.list != nil }
+        #expect(requests.last?.pendingFilter == .all)
 
-        slot.setPendingFilter(.importError, checked: true)
-        slot.setPendingFilter(.needsYou, checked: true)
-        #expect(requests.last?.pendingFilters == [.needsYou, .importError])
-        #expect(
-            uiStore.importCandidatePendingFilters == [.needsYou, .importError]
-        )
+        slot.setPendingFilter(.needsYou)
+        #expect(requests.last?.pendingFilter == .needsYou)
+        #expect(uiStore.importCandidatePendingFilter == .needsYou)
 
-        slot.setPendingFilter(.importError, checked: false)
-        #expect(requests.last?.pendingFilters == [.needsYou])
-
-        for filter in PendingFilterSection.groups.joined() {
-            slot.setPendingFilter(filter, checked: true)
-        }
-        #expect(requests.last?.pendingFilters == [])
-        #expect(uiStore.importCandidatePendingFilters.isEmpty)
-
-        slot.setPendingFilter(.identified, checked: true)
-        slot.showAllPending()
-        #expect(requests.last?.pendingFilters == [])
+        slot.setPendingFilter(.all)
+        #expect(requests.last?.pendingFilter == .all)
+        #expect(uiStore.importCandidatePendingFilter == .all)
     }
 
+    /// The filter menu's entries are core's count each time the slot is
+    /// asked — as the menu opens — never one kept from an earlier ask.
+    @Test("the filter entries are counted when asked")
+    func theFilterEntriesAreCountedWhenAsked() async throws {
+        let counted = CountedEntries()
+        let slot = ImportListSlot(
+            importStore: ImportStore(),
+            uiStore: UiStore(),
+            selection: ImportSelection(),
+            makeSource: { _ in
+                ImportListPages(
+                    source: ImportListPreviewPageSource(items: []),
+                    setView: { _ in },
+                    waitForView: { _ in },
+                    pendingFilterEntries: { counted.entries }
+                )
+            },
+            locateCandidate: { _, _ in nil },
+            firstIdentifyingCandidate: { _ in nil }
+        )
+        #expect(slot.pendingFilterEntries().isEmpty, "no list, no count")
+        slot.startLoad()
+        try await Wait.until { slot.list != nil }
+
+        counted.set(inProgress: 0)
+        #expect(slot.pendingFilterEntries() == counted.entries)
+        counted.set(inProgress: 3)
+        #expect(
+            slot.pendingFilterEntries().first { $0.filter == .inProgress }
+                == BridgePendingFilterEntry(
+                    filter: .inProgress,
+                    count: 3,
+                    selectable: true
+                )
+        )
+    }
+
+}
+
+/// What core counts under In Progress, changed as a test says.
+private final class CountedEntries: @unchecked Sendable {
+    private let lock = NSLock()
+    private var inProgress: UInt32 = 0
+
+    func set(inProgress: UInt32) {
+        lock.withLock { self.inProgress = inProgress }
+    }
+
+    var entries: [BridgePendingFilterEntry] {
+        let count = lock.withLock { inProgress }
+        return [
+            BridgePendingFilterEntry(filter: .all, count: 5, selectable: true),
+            BridgePendingFilterEntry(
+                filter: .inProgress,
+                count: count,
+                selectable: count > 0
+            ),
+        ]
+    }
 }
 
 final class CandidatePlacementNavigationTests: XCTestCase {
@@ -371,7 +422,8 @@ final class CandidatePlacementNavigationTests: XCTestCase {
                     setView: { _ in },
                     waitForView: { view in
                         await delivery.wait(for: view)
-                    }
+                    },
+                    pendingFilterEntries: { [] }
                 )
             },
             locateCandidate: { _, key in

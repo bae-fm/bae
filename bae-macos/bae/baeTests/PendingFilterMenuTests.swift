@@ -5,109 +5,129 @@ import Testing
 
 @testable import bae
 
-/// The filter list in the candidate menu, as AppKit builds it from the
-/// SwiftUI menu content: All, then core's groups, each set apart by a
-/// separator, every entry checked or not.
+/// Found's filter in the candidate menu, as AppKit builds it from the SwiftUI
+/// menu content: core's entries in core's order, each with its count, the
+/// chosen one checked.
 @MainActor
-@Suite("The Pending filter menu")
+@Suite("Found's filter menu")
 struct PendingFilterMenuTests {
-    /// What one entry of the menu was told to do.
-    enum Sent: Equatable {
-        case set(BridgePendingState, Bool)
-        case showAll
+    final class Recorder {
+        var chosen: [BridgePendingFilter] = []
     }
 
-    final class Recorder {
-        var sent: [Sent] = []
+    private func entry(
+        _ filter: BridgePendingFilter,
+        _ count: UInt32
+    ) -> BridgePendingFilterEntry {
+        BridgePendingFilterEntry(
+            filter: filter,
+            count: count,
+            selectable: count > 0
+        )
+    }
+
+    /// Every entry, In Progress holding nothing.
+    private var entries: [BridgePendingFilterEntry] {
+        [
+            entry(.all, 30),
+            entry(.needsYou, 9),
+            entry(.inProgress, 0),
+            entry(.identified, 14),
+            entry(.unmatched, 3),
+            entry(.notLookedUp, 4),
+        ]
     }
 
     private func menu(
-        _ filters: [BridgePendingState],
+        _ selected: BridgePendingFilter,
         recorder: Recorder = Recorder()
     ) -> NSMenu {
         let menu = NSHostingMenu(
             rootView: PendingFilterSection(
-                filters: filters,
-                onSetFilter: { recorder.sent.append(.set($0, $1)) },
-                onShowAll: { recorder.sent.append(.showAll) }
+                entries: { entries },
+                selected: selected,
+                onSelect: { recorder.chosen.append($0) }
             )
         )
         menu.update()
         return menu
     }
 
-    private func index(of title: String, in menu: NSMenu) -> Int {
-        menu.items.firstIndex { $0.title == title } ?? -1
+    private func title(_ entry: BridgePendingFilterEntry) -> String {
+        entry.filter.label(count: entry.count)
     }
 
-    @Test("core's groups are set apart by separators, in core's order")
-    func groupsAreSeparated() {
-        let items = menu([]).items
-            .map { item in
-                item.isSeparatorItem ? "—" : item.title
-            }
-        let expected =
-            [String(localized: "All")]
-            + PendingFilterSection.groups.flatMap { group in
-                ["—"] + group.map(\.label)
-            }
-        // The section sits under its title.
-        let section = Array(
-            items.drop { $0 != String(localized: "All") }.prefix(expected.count)
-        )
-        #expect(section == expected)
+    private func position(
+        of entry: BridgePendingFilterEntry,
+        in menu: NSMenu
+    ) -> Int? {
+        menu.items.firstIndex { $0.title == title(entry) }
     }
 
-    @Test("All is checked while no state narrows the rows")
-    func allIsCheckedWhenNothingNarrows() {
-        let menu = menu([])
+    /// Where `filter`'s entry sits in the menu.
+    private func position(
+        of filter: BridgePendingFilter,
+        in menu: NSMenu
+    ) -> Int? {
+        entries.first { $0.filter == filter }
+            .flatMap { position(of: $0, in: menu) }
+    }
+
+    @Test("core's entries list in core's order, each with its count")
+    func entriesListInCoreOrderWithCounts() {
+        let expected = entries.map(title)
         #expect(
-            menu.items[index(of: String(localized: "All"), in: menu)].state
-                == .on
+            menu(.all).items.map(\.title).filter(expected.contains) == expected
         )
-        for filter in PendingFilterSection.groups.joined() {
-            #expect(menu.items[index(of: filter.label, in: menu)].state == .off)
-        }
     }
 
-    @Test("every checked state is checked, and All is not")
-    func checkedStatesAreChecked() {
-        let checked: [BridgePendingState] = [.needsYou, .importError]
-        let menu = menu(checked)
-        #expect(
-            menu.items[index(of: String(localized: "All"), in: menu)].state
-                == .off
-        )
-        for filter in PendingFilterSection.groups.joined() {
+    @Test("the chosen entry is checked, and no other")
+    func theChosenEntryIsChecked() throws {
+        let menu = menu(.identified)
+        for entry in entries {
+            let index = try #require(position(of: entry, in: menu))
             #expect(
-                menu.items[index(of: filter.label, in: menu)].state
-                    == (checked.contains(filter) ? .on : .off)
+                menu.items[index].state
+                    == (entry.filter == .identified ? .on : .off)
             )
         }
     }
 
-    @Test("choosing a state says which it is and whether it is now checked")
-    func choosingAStateSendsWhatThePersonDid() {
-        let recorder = Recorder()
-        let menu = menu([.needsYou], recorder: recorder)
-        menu.performActionForItem(
-            at: index(of: BridgePendingState.identified.label, in: menu)
-        )
-        menu.performActionForItem(
-            at: index(of: BridgePendingState.needsYou.label, in: menu)
-        )
-        #expect(
-            recorder.sent == [.set(.identified, true), .set(.needsYou, false)]
-        )
+    @Test("an entry holding no row cannot be chosen")
+    func anEmptyEntryIsDisabled() throws {
+        let menu = menu(.all)
+        for entry in entries {
+            let index = try #require(position(of: entry, in: menu))
+            #expect(menu.items[index].isEnabled == entry.selectable)
+        }
     }
 
-    @Test("choosing All while narrowed shows every row")
-    func choosingAllShowsEveryRow() {
-        let recorder = Recorder()
-        let menu = menu([.lookupError], recorder: recorder)
-        menu.performActionForItem(
-            at: index(of: String(localized: "All"), in: menu)
+    @Test("a chosen entry holding no row stays chosen")
+    func aChosenEmptyEntryStaysChecked() throws {
+        let menu = menu(.inProgress)
+        let index = try #require(
+            position(of: .inProgress, in: menu)
         )
-        #expect(recorder.sent == [.showAll])
+        #expect(menu.items[index].state == .on)
+    }
+
+    @Test("choosing an entry says which it is")
+    func choosingAnEntrySendsIt() throws {
+        let recorder = Recorder()
+        let menu = menu(.all, recorder: recorder)
+        let index = try #require(position(of: .needsYou, in: menu))
+        menu.performActionForItem(at: index)
+        #expect(recorder.chosen == [.needsYou])
+    }
+
+    @Test("choosing the chosen entry again changes nothing")
+    func choosingTheChosenEntryAgainSendsNothing() throws {
+        let recorder = Recorder()
+        let menu = menu(.identified, recorder: recorder)
+        let index = try #require(
+            position(of: .identified, in: menu)
+        )
+        menu.performActionForItem(at: index)
+        #expect(recorder.chosen.isEmpty)
     }
 }
