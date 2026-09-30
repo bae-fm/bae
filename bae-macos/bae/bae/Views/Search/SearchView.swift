@@ -7,6 +7,7 @@ struct SearchView: View {
 
     let results: SearchResults?
     let onSelectAlbum: (String) -> Void
+    let onSelectTrack: (TrackSearchResult) -> Void
     let onSelectArtist: (String) -> Void
     let onSelectComposer: (String) -> Void
     let onSelectWork: (String) -> Void
@@ -80,7 +81,7 @@ struct SearchView: View {
                     subtitle: trackSubtitle(track),
                     trailing: track.durationLabel.isEmpty
                         ? nil : track.durationLabel,
-                    action: { onSelectAlbum(track.albumId) }
+                    action: { onSelectTrack(track) }
                 )
             }
             resultsSection("Composers", results.composers, id: \.id) {
@@ -226,6 +227,7 @@ private struct SearchResultRow: View {
         SearchView(
             results: PreviewData.searchResults,
             onSelectAlbum: { _ in },
+            onSelectTrack: { _ in },
             onSelectArtist: { _ in },
             onSelectComposer: { _ in },
             onSelectWork: { _ in },
@@ -247,6 +249,7 @@ private struct SearchResultRow: View {
                 query: "placeholder"
             ),
             onSelectAlbum: { _ in },
+            onSelectTrack: { _ in },
             onSelectArtist: { _ in },
             onSelectComposer: { _ in },
             onSelectWork: { _ in },
