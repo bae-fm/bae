@@ -523,8 +523,9 @@ fn equivalent_representations_pair_and_distinct_identifiers_do_not() {
 }
 
 /// A different country or a different year is a contradiction that an
-/// inferred pair does not survive; a medium is compared through what the
-/// records are known to contain.
+/// inferred pair does not survive — the country only while the label and the
+/// year do not both agree; a medium is compared through what the records are
+/// known to contain.
 #[test]
 fn meaningful_conflicts_prevent_inferred_pairs() {
     let mut one = mb("mb-1", Some("group-x"), Some(1992));
@@ -549,6 +550,23 @@ fn meaningful_conflicts_prevent_inferred_pairs() {
     }]);
     let groups = grouped(vec![one, other]);
     assert_eq!(rows(&groups), vec![vec!["mb-1"], vec!["dg-1"]]);
+}
+
+/// One pressing whose label is Italian and whose discs were made in
+/// Germany: one catalog records Italy, the other Germany. The same barcode,
+/// label and year make it one row.
+#[test]
+fn a_pressing_recorded_under_two_countries_is_one_row() {
+    let mut one = mb("mb-1", Some("group-x"), Some(1992));
+    one.barcodes = vec!["4012345678901".to_string()];
+    one.labels = vec![crate::pressing::ReleaseLabel::of(Some("Door Records"), Some("DR 100"))];
+    one.area = Some(crate::pressing::area("IT"));
+    let mut other = discogs("dg-1", Some("master-7"), Some(1992));
+    other.barcodes = vec!["4012345678901".to_string()];
+    other.labels = vec![crate::pressing::ReleaseLabel::of(Some("Door"), Some("DR-100"))];
+    other.area = crate::pressing::ReleaseArea::discogs("Germany");
+    let groups = grouped(vec![one, other]);
+    assert_eq!(lead_ids(&groups[0]), vec![vec!["mb-1", "dg-1"]]);
 }
 
 /// A release issued as files is not the CD it was cut from, however much

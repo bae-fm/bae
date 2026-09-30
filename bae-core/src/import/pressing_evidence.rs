@@ -245,11 +245,17 @@ impl PressingEvidence {
     /// Only records from two different catalogs are candidates, and only on
     /// a link or a shared barcode. A catalog number is never enough: a label
     /// can keep one number on every reissue for decades, so a shared number
-    /// with an unstated year joins an original to its represses. A different
-    /// barcode, year, country or medium is a contradiction that removes an
-    /// inferred candidate; a linked pair is stated rather than inferred, and
-    /// stands. A shared catalog number still ranks candidates found another
-    /// way.
+    /// with an unstated year joins an original to its represses.
+    ///
+    /// A different barcode, year or medium is a contradiction that removes
+    /// an inferred candidate. So is a different country, except when the
+    /// barcode, the label and the year all agree: catalogs record either the
+    /// label's country or the country the discs were made in, so one pressing
+    /// of an Italian label made in Germany is "Italy" in one catalog and
+    /// "Germany" in the other. Such a pair still ranks below one whose
+    /// countries agree. A linked pair is stated rather than inferred, and
+    /// stands whatever differs. A shared catalog number still ranks
+    /// candidates found another way.
     pub(crate) fn support(&self) -> Option<Support> {
         if self.same_catalog {
             return None;
@@ -263,8 +269,12 @@ impl PressingEvidence {
         if !(self.link || barcode) {
             return None;
         }
-        let contradicted =
-            [self.barcode, self.year, self.country, self.medium].contains(&Comparison::Different);
+        let country_outweighed = barcode
+            && self.label == Comparison::Same
+            && self.year == Comparison::Same;
+        let country_contradicts = self.country == Comparison::Different && !country_outweighed;
+        let contradicted = country_contradicts
+            || [self.barcode, self.year, self.medium].contains(&Comparison::Different);
         if contradicted && !self.link {
             return None;
         }

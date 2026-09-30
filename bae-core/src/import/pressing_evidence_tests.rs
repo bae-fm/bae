@@ -304,3 +304,66 @@ fn two_records_of_one_catalog_are_never_one_pressing() {
     b.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("CAT-7"))];
     assert_eq!(evidence(&a, &b).support(), None);
 }
+
+/// Catalogs record either the label's country or the country the disc was
+/// made in, so one pressing can be "Italy" on one and "Germany" on the
+/// other. When the barcode, the label and the year all agree, the country
+/// does not keep the pair apart; with any of those missing, it still does.
+#[test]
+fn barcode_label_and_year_outweigh_a_different_country() {
+    use crate::pressing::{area, ReleaseLabel};
+    let mut a = release(Catalog::MusicBrainz, "mb-1");
+    let mut b = release(Catalog::Discogs, "dg-1");
+    a.barcodes = vec!["4012345678901".to_string()];
+    b.barcodes = vec!["4012345678901".to_string()];
+    a.labels = vec![ReleaseLabel::of(Some("Door Records"), None)];
+    b.labels = vec![ReleaseLabel::of(Some("Door"), None)];
+    a.year = Some(1992);
+    b.year = Some(1992);
+    a.area = Some(area("IT"));
+    b.area = ReleaseArea::discogs("Germany");
+    let across = evidence(&a, &b)
+        .support()
+        .expect("barcode, label and year agree");
+
+    b.area = ReleaseArea::discogs("Italy");
+    let within = evidence(&a, &b).support().expect("everything agrees");
+    assert!(
+        within > across,
+        "an agreeing country still ranks a pair above one that differs"
+    );
+    b.area = ReleaseArea::discogs("Germany");
+
+    b.year = None;
+    assert_eq!(
+        evidence(&a, &b).support(),
+        None,
+        "no year to agree on, so the country still contradicts"
+    );
+    b.year = Some(1992);
+
+    b.labels = vec![ReleaseLabel::of(Some("Another Label"), None)];
+    assert_eq!(
+        evidence(&a, &b).support(),
+        None,
+        "no label agreement, so the country still contradicts"
+    );
+    b.labels = vec![ReleaseLabel::of(Some("Door"), None)];
+
+    b.media = StatedMedia::PerMedium(vec![Some(crate::pressing::Medium::Vinyl)]);
+    a.media = StatedMedia::PerMedium(vec![Some(crate::pressing::Medium::Cd)]);
+    assert_eq!(
+        evidence(&a, &b).support(),
+        None,
+        "a different medium is still a contradiction"
+    );
+    a.media = StatedMedia::Undescribed;
+    b.media = StatedMedia::Undescribed;
+
+    b.year = Some(1993);
+    assert_eq!(
+        evidence(&a, &b).support(),
+        None,
+        "a different year is still a contradiction"
+    );
+}
