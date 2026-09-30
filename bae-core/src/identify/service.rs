@@ -4,7 +4,9 @@
 
 use super::annotate_with_library_status;
 use super::discid::lookup_and_resolve;
-use super::state::{step, Effect, IdentifyEvent, IdentifyState, LookupOutcome, TitleSearch};
+use super::state::{
+    step, Effect, IdentifyEvent, IdentifyState, LookupOutcome, PressingKey, TitleSearch,
+};
 use crate::config::IdentificationSteps;
 use crate::import::search::{search_source, SearchQuery, SourceLookup};
 use crate::import::{
@@ -496,19 +498,14 @@ fn dispatch_effect(
         }
 
         // Each record is fetched through the one place a pick reads it from,
-        // so picking an offered row later asks for nothing again. A twin is
-        // fetched the same way: the MusicBrainz document that names it was
-        // fetched with the twin's own documents, so the providers' response
-        // caches answer it. It is checked against the library the way a
-        // lookup's answers are.
+        // so picking an offered row later asks for nothing again.
         Effect::ReadReleases {
             releases,
-            twins,
             track_lengths_ms,
         } => {
             let library_manager = inner.library_manager.clone();
             spawn_until_cancelled(&runtime, &token, async move {
-                let mut read = Vec::with_capacity(releases.len() + twins.len());
+                let mut read = Vec::with_capacity(releases.len());
                 for release in releases {
                     let Some(stored) =
                         read_release(&library_manager, &release, priority, &event_tx).await
@@ -520,64 +517,56 @@ fn dispatch_effect(
                     });
                     read.push(crate::identify::documents::ReleaseReading { release, document });
                 }
-                let mut stored_twins = Vec::with_capacity(twins.len());
-                for twin in twins {
-                    let Some(stored) =
-                        read_release(&library_manager, &twin.release, priority, &event_tx).await
-                    else {
-                        return;
-                    };
-                    let document = match stored {
-                        Ok(stored) => {
-                            let document = crate::identify::documents::ReleaseDocument::of(
-                                &stored,
-                                &track_lengths_ms,
-                            );
-                            stored_twins.push((stored, twin.named_by));
-                            Ok(document)
-                        }
-                        Err(failure) => Err(failure),
-                    };
-                    read.push(crate::identify::documents::ReleaseReading {
-                        release: twin.release,
-                        document,
-                    });
-                }
-                let checks: Vec<crate::db::LibraryCheck> = stored_twins
-                    .iter()
-                    .map(|(stored, _)| stored.library_check())
-                    .collect();
-                let statuses = if checks.is_empty() {
-                    Vec::new()
-                } else {
-                    match library_manager.check_releases_in_library(&checks).await {
-                        Ok(statuses) => statuses,
-                        Err(error) => {
-                            emit_step(
-                                &event_tx,
-                                IdentifyEvent::Broke {
-                                    failure: crate::signals::InternalFailure::logged(
-                                        "checking the library for the twins a run read",
-                                        error.to_string(),
-                                    ),
-                                },
-                            );
+                emit_step(&event_tx, IdentifyEvent::ReleasesRead { read });
+            });
+        }
+
+        // A link is read the way an offered record is, and what it reads is
+        // checked against the library as a search's answer is; a barcode or a
+        // catalog number is searched on the one catalog.
+        Effect::LookupPressing { source, key } => {
+            let library_manager = inner.library_manager.clone();
+            spawn_until_cancelled(&runtime, &token, async move {
+                let lookup = match &key {
+                    PressingKey::Link { release } => {
+                        let Some(stored) =
+                            read_release(&library_manager, release, priority, &event_tx).await
+                        else {
                             return;
-                        }
+                        };
+                        stored
+                            .map(|stored| {
+                                vec![crate::import::search::MetadataResult::of_release(&stored)]
+                            })
+                            .map_err(Failure::Lookup)
+                    }
+                    PressingKey::Barcode { barcode } => {
+                        let query = SearchQuery::Barcode {
+                            barcode: barcode.clone(),
+                        };
+                        search_source(&library_manager, source, &query, priority).await
+                    }
+                    PressingKey::CatalogNumber { number, .. } => {
+                        let query = SearchQuery::CatalogNumber {
+                            catalog_number: number.clone(),
+                        };
+                        search_source(&library_manager, source, &query, priority).await
                     }
                 };
-                let twins = stored_twins
-                    .into_iter()
-                    .zip(statuses)
-                    .map(
-                        |((stored, named_by), status)| crate::identify::documents::Twin {
-                            result: crate::import::search::MetadataResult::of_release(&stored),
-                            named_by,
-                            status,
-                        },
-                    )
-                    .collect();
-                emit_step(&event_tx, IdentifyEvent::ReleasesRead { read, twins });
+                let answer = annotate_lookup(lookup, &library_manager).await;
+                if let Ok(Err(failure)) = &answer {
+                    debug!(
+                        "{} pressing lookup failed for {key:?}: {failure:?}",
+                        source.as_str()
+                    );
+                }
+                emit_answer(&event_tx, answer, |outcome| {
+                    IdentifyEvent::PressingLookupAnswered {
+                        source,
+                        key,
+                        outcome,
+                    }
+                });
             });
         }
 

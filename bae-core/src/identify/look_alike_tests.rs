@@ -26,7 +26,6 @@ fn offered(results: Vec<(MetadataResult, LibraryStatus)>) -> Vec<String> {
             catalog: results,
             ..LookupAnswers::default()
         },
-        Vec::new(),
         &CandidateText::default(),
         FolderAudio::UNPROVEN,
     )

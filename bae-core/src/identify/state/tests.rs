@@ -1,34 +1,35 @@
 /// [`super::step`], answering each read of the offered records' documents at
-/// once with none to be had: these tests are about the lookups, and a run
-/// whose documents add nothing settles on what the lookups found. The
-/// documents' own tests drive `ReleasesRead` themselves.
+/// once with none to be had, and each lookup of an offered row's pressing on
+/// another catalog with nothing found: these tests are about the folder's
+/// own keys, and a run whose documents and pressings add nothing settles on
+/// what those found. The documents' and the pressings' own tests drive
+/// `ReleasesRead` and `PressingLookupAnswered` themselves.
 fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<Effect>) {
     let (mut state, mut effects) = super::step(state, event);
-    while let Some(at) = effects
-        .iter()
-        .position(|effect| matches!(effect, Effect::ReadReleases { .. }))
-    {
-        let Effect::ReadReleases {
-            releases, twins, ..
-        } = effects.remove(at)
-        else {
-            unreachable!("the position is of a read");
-        };
-        let read = releases
-            .into_iter()
-            .chain(twins.into_iter().map(|twin| twin.release))
-            .map(|release| crate::identify::documents::ReleaseReading {
-                release,
-                document: Err(LookupFailure::Network),
-            })
-            .collect();
-        let (next, more) = super::step(
-            state,
-            IdentifyEvent::ReleasesRead {
-                read,
-                twins: Vec::new(),
+    while let Some(at) = effects.iter().position(|effect| {
+        matches!(
+            effect,
+            Effect::ReadReleases { .. } | Effect::LookupPressing { .. }
+        )
+    }) {
+        let answer = match effects.remove(at) {
+            Effect::ReadReleases { releases, .. } => IdentifyEvent::ReleasesRead {
+                read: releases
+                    .into_iter()
+                    .map(|release| crate::identify::documents::ReleaseReading {
+                        release,
+                        document: Err(LookupFailure::Network),
+                    })
+                    .collect(),
             },
-        );
+            Effect::LookupPressing { source, key } => IdentifyEvent::PressingLookupAnswered {
+                source,
+                key,
+                outcome: Ok(Vec::new()),
+            },
+            _ => unreachable!("the position is of a read or a pressing lookup"),
+        };
+        let (next, more) = super::step(state, answer);
         state = next;
         effects.extend(more);
     }
@@ -44,3 +45,4 @@ include!("tests/switched_off_steps.rs");
 include!("tests/documents.rs");
 include!("tests/isrcs.rs");
 include!("tests/track_titles.rs");
+include!("tests/rounds.rs");

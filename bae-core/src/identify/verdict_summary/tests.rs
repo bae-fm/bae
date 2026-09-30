@@ -41,7 +41,7 @@ fn found(matches: Vec<MetadataResult>, track_count: u32) -> TerminalVerdict {
             by_catalog: false,
             by_isrc: false,
             by_search: false,
-            named_by: None,
+            by_pressing: false,
         })
         .collect();
     let pressings = crate::import::release_group::form_rows(&matches);
@@ -141,7 +141,7 @@ fn a_lone_match_found_by_title_is_auto_importable() {
         by_catalog: false,
         by_isrc: false,
         by_search: true,
-        named_by: None,
+        by_pressing: false,
     };
     assert_eq!(
         VerdictSummary::of(&verdict, false).judgement(),
@@ -181,7 +181,7 @@ fn what_agreement_narrowed_out_is_not_a_match() {
                     by_catalog: false,
                     by_isrc: false,
                     by_search: false,
-                    named_by: None,
+                    by_pressing: false,
                 }],
                 pressings: vec![0],
             },

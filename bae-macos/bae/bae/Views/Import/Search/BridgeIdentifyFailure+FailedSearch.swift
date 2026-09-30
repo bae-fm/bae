@@ -8,11 +8,13 @@ struct FailedSearch: Hashable {
     let step: Step
 
     /// The steps a provider answers. Most are the identifiers the badge row
-    /// names; the title search is the run's own last step, which has no badge
-    /// because it is not a value the folder carries.
+    /// names; the title search and the lookup of an offered row's pressing on
+    /// the catalog it has no record of are the run's own, which have no badge
+    /// because they are not values the folder carries.
     enum Step: Hashable {
         case signal(BridgeSignalKind)
         case titleSearch
+        case pressing
     }
 }
 
@@ -32,6 +34,8 @@ extension BridgeIdentifyFailure {
         case .isrc: FailedSearch(source: .musicBrainz, step: .signal(.isrc))
         case .search(let source, _):
             FailedSearch(source: source, step: .titleSearch)
+        case .pressing(let source, _):
+            FailedSearch(source: source, step: .pressing)
         case .releaseDetails, .artistImages, .cover: nil
         }
     }

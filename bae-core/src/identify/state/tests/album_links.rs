@@ -1,6 +1,7 @@
 // Included by `tests.rs`; shares the helpers of `signals_and_conflicts.rs`.
 
-use crate::identify::documents::{ReleaseDocument, ReleaseReading, Twin, TwinToRead};
+use crate::identify::documents::{ReleaseDocument, ReleaseReading};
+use crate::identify::state::PressingKey;
 use crate::import::album_links::{AlbumLink, AlbumStatement};
 use crate::import::MetadataRef;
 
@@ -19,23 +20,23 @@ fn plain_document(notes: &[&str]) -> ReleaseDocument {
 }
 
 /// The Discogs master `master` a MusicBrainz release's documents state
-/// through its link to the Discogs release `twin`.
-fn through(release: &str, twin: &str, master: &str) -> AlbumLink {
+/// through its link to the Discogs release `linked`.
+fn through(release: &str, linked: &str, master: &str) -> AlbumLink {
     AlbumLink {
         album: MetadataRef::new(DG, master),
         stated: AlbumStatement::Release {
             musicbrainz_release: release.to_string(),
-            twin: MetadataRef::new(DG, twin),
+            twin: MetadataRef::new(DG, linked),
         },
     }
 }
 
-/// A MusicBrainz release's document naming the Discogs release `twin` as
+/// A MusicBrainz release's document naming the Discogs release `linked` as
 /// itself, filed under `master`.
-fn linking_document(release: &str, twin: &str, master: &str) -> ReleaseDocument {
+fn linking_document(release: &str, linked: &str, master: &str) -> ReleaseDocument {
     ReleaseDocument {
-        links: vec![MetadataRef::new(DG, twin)],
-        album_links: AlbumLinks::Read(vec![through(release, twin, master)]),
+        links: vec![MetadataRef::new(DG, linked)],
+        album_links: AlbumLinks::Read(vec![through(release, linked, master)]),
         ..plain_document(&[])
     }
 }
@@ -53,49 +54,61 @@ fn packed_in(
     }
 }
 
-/// Answer every read of documents `step` asks for: each record with what
-/// `document` says of it, each twin with what `twin` makes of it. Returns
-/// where the run lands, the effects it asks for past the reads, and each
-/// read's records and twins in turn.
-#[allow(clippy::type_complexity)]
-fn answer_reads(
+/// What a run asked in its rounds past the folder's own keys: each read's
+/// records, and each lookup of an offered row's pressing.
+#[derive(Debug, Default)]
+struct Asked {
+    reads: Vec<Vec<MetadataRef>>,
+    pressings: Vec<(Catalog, PressingKey)>,
+}
+
+/// Answer every read of documents and every pressing lookup `step` asks for:
+/// each record with what `document` says of it, each pressing lookup with
+/// what `pressing` finds. Returns where the run lands, the effects it asks
+/// for past these, and what it asked.
+fn answer_rounds(
     (mut state, mut effects): (IdentifyState, Vec<Effect>),
     document: impl Fn(&MetadataRef) -> ReleaseDocument,
-    twin: impl Fn(&TwinToRead) -> MetadataResult,
-) -> (
-    IdentifyState,
-    Vec<Effect>,
-    Vec<(Vec<MetadataRef>, Vec<TwinToRead>)>,
-) {
-    let mut asked = Vec::new();
-    while let Some(at) = effects
-        .iter()
-        .position(|effect| matches!(effect, Effect::ReadReleases { .. }))
-    {
-        let Effect::ReadReleases {
-            releases, twins, ..
-        } = effects.remove(at)
-        else {
-            unreachable!("the position is of a read");
+    pressing: impl Fn(Catalog, &PressingKey) -> Vec<MetadataResult>,
+) -> (IdentifyState, Vec<Effect>, Asked) {
+    let mut asked = Asked::default();
+    while let Some(at) = effects.iter().position(|effect| {
+        matches!(
+            effect,
+            Effect::ReadReleases { .. } | Effect::LookupPressing { .. }
+        )
+    }) {
+        let answer = match effects.remove(at) {
+            Effect::ReadReleases { releases, .. } => {
+                asked.reads.push(releases.clone());
+                IdentifyEvent::ReleasesRead {
+                    read: releases
+                        .iter()
+                        .map(|release| ReleaseReading {
+                            release: release.clone(),
+                            document: Ok(document(release)),
+                        })
+                        .collect(),
+                }
+            }
+            Effect::LookupPressing { source, key } => {
+                asked.pressings.push((source, key.clone()));
+                let outcome = Ok(pressing(source, &key)
+                    .into_iter()
+                    .map(|result| {
+                        let status = LibraryStatus::absent(&result.release_id);
+                        (result, status)
+                    })
+                    .collect());
+                IdentifyEvent::PressingLookupAnswered {
+                    source,
+                    key,
+                    outcome,
+                }
+            }
+            _ => unreachable!("the position is of a read or a pressing lookup"),
         };
-        asked.push((releases.clone(), twins.clone()));
-        let read = releases
-            .iter()
-            .chain(twins.iter().map(|to_read| &to_read.release))
-            .map(|release| ReleaseReading {
-                release: release.clone(),
-                document: Ok(document(release)),
-            })
-            .collect();
-        let twins = twins
-            .iter()
-            .map(|to_read| Twin {
-                result: twin(to_read),
-                named_by: to_read.named_by.clone(),
-                status: LibraryStatus::absent(&to_read.release.key),
-            })
-            .collect();
-        let (next, more) = super::step(state, IdentifyEvent::ReleasesRead { read, twins });
+        let (next, more) = super::step(state, answer);
         state = next;
         effects.extend(more);
     }
@@ -149,12 +162,13 @@ fn disc_run_reading(
     super::step(state, IdentifyEvent::DiscidLookupCompleted { results })
 }
 
-/// Each MusicBrainz release a disc ID names links its own Discogs release, no
-/// lookup returned either, and each goes on the list as its namer's twin: two
-/// rows, each carrying both catalogs' records. The twins are read once the
-/// releases that name them are, and the album their documents state is kept.
+/// Each MusicBrainz release a disc ID names links its own Discogs release,
+/// which no lookup returned. Once the releases are read, each row is looked
+/// up on Discogs by the release its page names, and each goes on the list
+/// beside its row: two rows, each carrying both catalogs' records, whose
+/// Discogs records are read in turn. The album their documents state is kept.
 #[test]
-fn a_disc_id_s_releases_each_carry_the_twin_they_link() {
+fn a_disc_id_s_releases_are_looked_up_on_discogs_by_their_links() {
     use crate::pressing::Packaging::{Digipak, JewelCase};
     let reading = disc_run_reading(
         vec![
@@ -169,44 +183,50 @@ fn a_disc_id_s_releases_each_carry_the_twin_they_link() {
         ],
         Vec::new(),
     );
-    let (state, effects, asked) = answer_reads(
+    let (state, effects, asked) = answer_rounds(
         reading,
         |release| match release.key.as_str() {
             "mb-1" => linking_document("mb-1", "dg-1", "7"),
             "mb-2" => linking_document("mb-2", "dg-2", "7"),
             _ => plain_document(&[]),
         },
-        |to_read| match to_read.release.key.as_str() {
-            "dg-1" => packed_in(DG, "dg-1", "7", JewelCase),
-            _ => packed_in(DG, "dg-2", "7", Digipak),
+        |_, key| match key {
+            PressingKey::Link { release } if release.key == "dg-1" => {
+                vec![packed_in(DG, "dg-1", "7", JewelCase)]
+            }
+            PressingKey::Link { .. } => vec![packed_in(DG, "dg-2", "7", Digipak)],
+            other => panic!("a row whose page names a link is asked by it: {other:?}"),
         },
     );
 
-    let (first, first_twins) = &asked[0];
     assert_eq!(
-        first,
-        &vec![MetadataRef::new(MB, "mb-1"), MetadataRef::new(MB, "mb-2")],
+        asked.reads[0],
+        vec![MetadataRef::new(MB, "mb-1"), MetadataRef::new(MB, "mb-2")],
         "the offered records are read first"
     );
-    assert!(first_twins.is_empty(), "nothing names a twin before it is read");
     assert_eq!(
-        asked[1],
-        (
-            Vec::new(),
-            vec![
-                TwinToRead {
-                    release: MetadataRef::new(DG, "dg-1"),
-                    named_by: MetadataRef::new(MB, "mb-1"),
-                },
-                TwinToRead {
-                    release: MetadataRef::new(DG, "dg-2"),
-                    named_by: MetadataRef::new(MB, "mb-2"),
-                },
-            ]
-        ),
-        "then the twins their documents name"
+        asked.pressings,
+        vec![
+            (
+                DG,
+                PressingKey::Link {
+                    release: MetadataRef::new(DG, "dg-1")
+                }
+            ),
+            (
+                DG,
+                PressingKey::Link {
+                    release: MetadataRef::new(DG, "dg-2")
+                }
+            ),
+        ],
+        "then each row by the release its page names"
     );
-    assert_eq!(asked.len(), 2, "and nothing more");
+    assert_eq!(
+        asked.reads[1..],
+        [vec![MetadataRef::new(DG, "dg-1"), MetadataRef::new(DG, "dg-2")]],
+        "then the releases found, now on the offered rows"
+    );
 
     let rows = rows_of(&state);
     let of = |release_id: &str| {
@@ -215,14 +235,13 @@ fn a_disc_id_s_releases_each_carry_the_twin_they_link() {
             .cloned()
             .unwrap_or_else(|| panic!("{release_id} is on the list: {rows:?}"))
     };
-    for (release, twin) in [("mb-1", "dg-1"), ("mb-2", "dg-2")] {
+    for (release, linked) in [("mb-1", "dg-1"), ("mb-2", "dg-2")] {
         let (named, named_lookup, named_row) = of(release);
-        let (_, twin_lookup, twin_row) = of(twin);
-        assert_eq!(twin_row, named_row, "{twin} shares {release}'s row");
+        let (_, linked_lookup, linked_row) = of(linked);
+        assert_eq!(linked_row, named_row, "{linked} shares {release}'s row");
         assert!(named_row < 100, "{release}'s row is offered");
-        assert_eq!(twin_lookup.named_by, Some(MetadataRef::new(MB, release)));
-        assert!(!twin_lookup.by_disc_id, "no lookup returned {twin}");
-        assert!(named_lookup.by_disc_id && named_lookup.named_by.is_none());
+        assert!(linked_lookup.by_pressing && !linked_lookup.by_disc_id);
+        assert!(named_lookup.by_disc_id && !named_lookup.by_pressing);
         assert_eq!(
             named.album_links,
             AlbumLinks::Read(vec![through("mb-1", "dg-1", "7")]),
@@ -239,11 +258,11 @@ fn a_disc_id_s_releases_each_carry_the_twin_they_link() {
     );
 }
 
-/// Two rows tied on everything the folder states, but for what a twin's own
-/// document writes: the folder naming the plant only that twin's notes name
-/// puts its row first.
+/// Two rows tied on everything the folder states, but for what one linked
+/// Discogs release's own document writes: the folder naming the plant only
+/// that release's notes name puts its row first.
 #[test]
-fn a_twin_s_note_word_breaks_the_tie() {
+fn a_linked_release_s_note_word_breaks_the_tie() {
     use crate::pressing::Packaging::{Digipak, JewelCase};
     let reading = disc_run_reading(
         vec![
@@ -261,7 +280,7 @@ fn a_twin_s_note_word_breaks_the_tie() {
             origin: crate::signals::TextOrigin::FolderName,
         }],
     );
-    let (state, _, _) = answer_reads(
+    let (state, _, _) = answer_rounds(
         reading,
         |release| match release.key.as_str() {
             "mb-1" => linking_document("mb-1", "dg-1", "7"),
@@ -269,9 +288,11 @@ fn a_twin_s_note_word_breaks_the_tie() {
             "dg-2" => plain_document(&["Pressed by Plantname"]),
             _ => plain_document(&["Pressed elsewhere"]),
         },
-        |to_read| match to_read.release.key.as_str() {
-            "dg-1" => packed_in(DG, "dg-1", "7", JewelCase),
-            _ => packed_in(DG, "dg-2", "7", Digipak),
+        |_, key| match key {
+            PressingKey::Link { release } if release.key == "dg-1" => {
+                vec![packed_in(DG, "dg-1", "7", JewelCase)]
+            }
+            _ => vec![packed_in(DG, "dg-2", "7", Digipak)],
         },
     );
     let IdentifyState::Found { findings, .. } = &state else {
@@ -294,14 +315,14 @@ fn a_twin_s_note_word_breaks_the_tie() {
         .collect();
     assert!(
         lead.contains(&"mb-2") && lead.contains(&"dg-2"),
-        "the named twin's row leads: {lead:?}"
+        "the named release's row leads: {lead:?}"
     );
 }
 
-/// A run that does not join records across catalogs reads no twin and joins
-/// no album, whatever its documents state.
+/// A run that does not join records across catalogs looks no row up on the
+/// other catalog and joins no album, whatever its documents state.
 #[test]
-fn a_run_that_does_not_follow_catalog_links_reads_no_twin() {
+fn a_run_that_does_not_follow_catalog_links_looks_up_no_pressing() {
     let state = started_without(
         vec![MB, DG],
         crate::config::IdentificationStep::FollowCatalogLinks,
@@ -324,15 +345,15 @@ fn a_run_that_does_not_follow_catalog_links_reads_no_twin() {
         state,
         barcode_matched(DG, "A", vec![discogs_pair("dg-1", Some("7"))]),
     );
-    let (state, effects, asked) = answer_reads(
+    let (state, effects, asked) = answer_rounds(
         reading,
         |release| match release.key.as_str() {
-            "mb-1" => linking_document("mb-1", "dg-twin", "7"),
+            "mb-1" => linking_document("mb-1", "dg-linked", "7"),
             _ => plain_document(&[]),
         },
-        |_| panic!("no twin is read"),
+        |_, _| panic!("no pressing is looked up"),
     );
-    assert!(asked.iter().all(|(_, twins)| twins.is_empty()));
+    assert!(asked.pressings.is_empty());
     assert!(effects.is_empty(), "nothing is kept: {effects:?}");
     let mb = rows_of(&state)
         .into_iter()
@@ -361,7 +382,7 @@ fn a_catalog_number_only_a_document_states_joins_the_albums() {
         state,
         barcode_matched(DG, "A", vec![discogs_pair("dg-1", Some("7"))]),
     );
-    let (state, effects, _) = answer_reads(
+    let (state, effects, _) = answer_rounds(
         reading,
         |release| ReleaseDocument {
             labels: vec![crate::pressing::ReleaseLabel::of(Some("Imprint"), Some("LB-100"))],
@@ -371,7 +392,7 @@ fn a_catalog_number_only_a_document_states_joins_the_albums() {
             },
             ..plain_document(&[])
         },
-        |_| panic!("no document names a twin"),
+        |_, _| Vec::new(),
     );
     let joined = AlbumLink {
         album: MetadataRef::new(DG, "7"),
@@ -400,13 +421,13 @@ fn a_catalog_number_only_a_document_states_joins_the_albums() {
 #[test]
 fn a_disc_id_alone_whose_documents_name_nothing_keeps_nothing() {
     let reading = disc_run_reading(vec![pair("mb-1", Some("g-1"))], Vec::new());
-    let (state, effects, _) = answer_reads(
+    let (state, effects, _) = answer_rounds(
         reading,
         |_| ReleaseDocument {
             album_links: AlbumLinks::Read(Vec::new()),
             ..plain_document(&[])
         },
-        |_| panic!("no document names a twin"),
+        |_, _| Vec::new(),
     );
     assert!(effects.is_empty(), "nothing is kept: {effects:?}");
     assert!(matches!(state, IdentifyState::Found { .. }));

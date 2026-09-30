@@ -73,6 +73,7 @@ pub(crate) fn signals_context(track_count: u32) -> crate::identify::state::Signa
             ..Default::default()
         },
         documents: crate::identify::documents::DocumentReading::Pending,
+        pressings: Vec::new(),
         isrc: Default::default(),
         track_titles: Vec::new(),
     }

@@ -14,7 +14,6 @@ fn combine(discid: Results, barcode: Results, catalog: Results) -> Outcome {
             catalog,
             ..LookupAnswers::default()
         },
-        Vec::new(),
         &CandidateText::default(),
         FolderAudio::UNPROVEN,
     )
@@ -119,7 +118,6 @@ fn the_record_printing_the_folder_s_barcode_leads_the_disc_id_s_others() {
             barcode: vec![(printed, status)],
             ..LookupAnswers::default()
         },
-        Vec::new(),
         &folder_carrying(&[], FOLDER_BARCODE),
         FolderAudio::UNPROVEN,
     ));
@@ -152,7 +150,6 @@ fn a_discogs_row_stating_the_pressing_beats_one_backed_only_by_the_disc_id() {
             catalog: vec![(discogs, status)],
             ..LookupAnswers::default()
         },
-        Vec::new(),
         &folder_carrying(&["Album AB 12345-2"], FOLDER_BARCODE),
         FolderAudio::UNPROVEN,
     ));
@@ -194,7 +191,6 @@ fn lookups_that_named_different_releases_each_keep_their_answer() {
             catalog,
             ..LookupAnswers::default()
         },
-        Vec::new(),
         &folder(&["Album [L3-100]"]),
         FolderAudio::UNPROVEN,
     );
@@ -261,7 +257,6 @@ fn the_ranking_hands_back_what_it_set_aside() {
             barcode,
             ..LookupAnswers::default()
         },
-        Vec::new(),
         &folder_carrying(&[], FOLDER_BARCODE),
         FolderAudio::UNPROVEN,
     );
@@ -289,7 +284,6 @@ fn a_set_aside_release_two_searches_returned_is_named_once() {
             barcode,
             ..LookupAnswers::default()
         },
-        Vec::new(),
         &folder(&["Album [L3-100]"]),
         FolderAudio::UNPROVEN,
     );
@@ -389,7 +383,6 @@ fn the_pressing_the_folder_describes_leads_the_disc_id_s_others() {
             disc_id: discid,
             ..LookupAnswers::default()
         },
-        Vec::new(),
         &text,
         FolderAudio::UNPROVEN,
     );
@@ -408,7 +401,6 @@ fn a_barcode_naming_a_record_the_folder_never_mentions_folds() {
             barcode: vec![unrelated_record()],
             ..LookupAnswers::default()
         },
-        Vec::new(),
         &text,
         FolderAudio::UNPROVEN,
     );
@@ -432,7 +424,6 @@ fn the_pressing_whose_catalog_number_the_folder_states_folds_the_other() {
             barcode: vec![stated, other],
             ..LookupAnswers::default()
         },
-        Vec::new(),
         &text,
         FolderAudio::UNPROVEN,
     );
@@ -454,7 +445,6 @@ fn two_pressings_the_folder_names_no_number_of_both_stay() {
             barcode: vec![first, second],
             ..LookupAnswers::default()
         },
-        Vec::new(),
         &text,
         FolderAudio::UNPROVEN,
     );
@@ -478,7 +468,6 @@ fn pressings_that_differ_only_by_year_all_stay_on_the_list() {
             disc_id: discid,
             ..LookupAnswers::default()
         },
-        Vec::new(),
         &text,
         FolderAudio::UNPROVEN,
     );
@@ -500,7 +489,6 @@ fn a_disc_id_s_pressing_stays_however_the_folder_spells_its_label() {
             disc_id: vec![matched, reissue],
             ..LookupAnswers::default()
         },
-        Vec::new(),
         &text,
         FolderAudio::UNPROVEN,
     );
@@ -518,7 +506,6 @@ fn a_barcode_answering_alone_is_offered_however_little_the_folder_says() {
             barcode: vec![unrelated_record()],
             ..LookupAnswers::default()
         },
-        Vec::new(),
         &text,
         FolderAudio::UNPROVEN,
     ));
@@ -533,7 +520,6 @@ fn a_candidate_with_no_text_narrows_nothing_on_it() {
             barcode: vec![pressing_of_album_one("rel-1976", 1976), unrelated_record()],
             ..LookupAnswers::default()
         },
-        Vec::new(),
         &CandidateText::default(),
         FolderAudio::UNPROVEN,
     );
@@ -557,7 +543,6 @@ fn the_ranking_s_leftovers_and_the_folder_s_are_one_list() {
             barcode,
             ..LookupAnswers::default()
         },
-        Vec::new(),
         &text,
         FolderAudio::UNPROVEN,
     );
@@ -685,7 +670,6 @@ fn the_discogs_record_of_the_pressing_the_disc_id_named_is_offered_with_it() {
             ],
             ..LookupAnswers::default()
         },
-        Vec::new(),
         &text,
         FolderAudio::UNPROVEN,
     );
@@ -768,7 +752,6 @@ fn the_record_whose_tracklist_fits_the_folder_leads_its_pressing() {
             ],
             ..LookupAnswers::default()
         },
-        Vec::new(),
         &text,
         FolderAudio {
             track_count: 10,
@@ -802,7 +785,6 @@ fn a_pressing_never_splits_across_the_two_lists() {
             ],
             ..LookupAnswers::default()
         },
-        Vec::new(),
         &text,
         FolderAudio::UNPROVEN,
     );
@@ -825,7 +807,6 @@ fn a_lone_pressing_the_folder_describes_is_the_sole_match() {
             barcode: vec![unrelated_record()],
             ..LookupAnswers::default()
         },
-        Vec::new(),
         &text,
         FolderAudio::UNPROVEN,
     );
@@ -842,7 +823,6 @@ fn a_search_that_answered_alone_is_offered_whole() {
             search: vec![pair("rel-a", Some("g-x")), pair("rel-b", Some("g-y"))],
             ..LookupAnswers::default()
         },
-        Vec::new(),
         &CandidateText::default(),
         FolderAudio::UNPROVEN,
     );
@@ -858,41 +838,35 @@ fn a_search_that_answered_alone_is_offered_whole() {
     );
 }
 
-/// A twin sits on the row of the answer that named it and counts for no
-/// lookup; one whose namer is not among the answers is left out.
+/// A release an offered row's pressing lookup returned sits on that row when
+/// its page names it, and counts for that lookup alone.
 #[test]
-fn a_twin_counts_for_no_lookup_and_sits_on_its_namer_s_row() {
+fn a_pressing_lookup_s_release_sits_on_the_row_it_was_asked_for() {
     let mut named = pair("mb-1", Some("group-1"));
-    named.0.links = vec![crate::import::MetadataRef::new(Catalog::Discogs, "dg-twin")];
-    let twin = |id: &str, named_by: &str| Twin {
-        result: pair_src(Catalog::Discogs, id, Some("master-1")).0,
-        named_by: crate::import::MetadataRef::new(Catalog::MusicBrainz, named_by),
-        status: LibraryStatus::absent(id),
-    };
+    named.0.links = vec![crate::import::MetadataRef::new(
+        Catalog::Discogs,
+        "dg-linked",
+    )];
     let outcome = combine_results(
         LookupAnswers {
             disc_id: vec![named],
             barcode: vec![pair_src(Catalog::Discogs, "dg-barcode", Some("master-1"))],
+            pressing: vec![pair_src(Catalog::Discogs, "dg-linked", Some("master-1"))],
             ..LookupAnswers::default()
         },
-        vec![twin("dg-twin", "mb-1"), twin("dg-orphan", "mb-gone")],
         &CandidateText::default(),
         FolderAudio::UNPROVEN,
     );
     let (matches, provenance, pressings) = found(outcome.clone());
-    assert_eq!(ids(&matches), vec!["mb-1", "dg-twin"]);
-    assert_eq!(pressings, vec![0, 0], "the twin shares its namer's row");
-    assert!(provenance[0].by_disc_id && provenance[0].named_by.is_none());
+    assert_eq!(ids(&matches), vec!["mb-1", "dg-linked"]);
+    assert_eq!(pressings, vec![0, 0], "the linked release shares the row");
+    assert!(provenance[0].by_disc_id && !provenance[0].by_pressing);
     assert_eq!(
         provenance[1],
         LookupProvenance {
-            named_by: Some(crate::import::MetadataRef::new(
-                Catalog::MusicBrainz,
-                "mb-1"
-            )),
+            by_pressing: true,
             ..LookupProvenance::CHOSEN
         }
     );
-    // The disc ID's row outranks the barcode's as it would with no twin.
     assert_eq!(ids(&narrowed(outcome).matches), vec!["dg-barcode"]);
 }

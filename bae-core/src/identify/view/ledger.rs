@@ -207,7 +207,7 @@ pub(super) fn catalog_step(
     let rows = progress.lookups().iter().map(catalog_row).collect();
     let candidates = numbers
         .iter()
-        .filter(|value| !context.catalog.is_chosen(value))
+        .filter(|value| !context.catalog.holds(value))
         .map(|value| CatalogCandidateView {
             value: value.clone(),
         })

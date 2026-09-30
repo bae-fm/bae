@@ -602,6 +602,10 @@ fn identify_failure(
         IdentifyFailure::Isrc(failure) => crate::types::BridgeIdentifyFailure::Isrc {
             failure: BridgeLookupFailure::from_core(failure),
         },
+        IdentifyFailure::Pressing(failure) => crate::types::BridgeIdentifyFailure::Pressing {
+            source: BridgeCatalog::from_core(failure.source),
+            failure: BridgeLookupFailure::from_core(failure.failure),
+        },
         IdentifyFailure::ReleaseDetails(failure) => {
             crate::types::BridgeIdentifyFailure::ReleaseDetails {
                 failure: BridgeLookupFailure::from_core(failure),

@@ -1,8 +1,8 @@
 use super::*;
 use crate::db::LibraryStatus;
 use crate::identify::state::{
-    step, BarcodeEvidence, ChosenCatalog, DiscIdEvidence, IdentifyEvent, LookupState,
-    ProviderLookup, SearchProgress, ValueLookup,
+    step, BarcodeEvidence, DiscIdEvidence, IdentifyEvent, LookupState, ProviderLookup,
+    SearchProgress, ValueLookup,
 };
 use crate::identify::{Findings, IdentifyFailure, LookupProvenance, NarrowedOut, TerminalVerdict};
 use crate::import::release_group::unranked;
@@ -371,11 +371,7 @@ fn chosen_catalog_numbers_are_rows_and_the_rest_are_tiles() {
         "LBL-2".to_string(),
         "LBL-3".to_string(),
     ];
-    context.catalog.chosen = vec![ChosenCatalog {
-        value: "LBL-2".to_string(),
-        results: Vec::new(),
-        failures: Vec::new(),
-    }];
+    context.catalog.chosen = vec!["LBL-2".to_string()];
     let state = IdentifyState::Triangulating {
         discid: DiscidProgress::Skipped,
         barcode: BarcodeProgress::NoCodes,
@@ -479,7 +475,6 @@ fn a_settled_state_carries_the_ledger_its_last_frame_showed() {
                 release: crate::import::MetadataRef::new(MB, "mb-1"),
                 document: Err(crate::signals::LookupFailure::Network),
             }],
-            twins: Vec::new(),
         },
     );
     assert!(matches!(settled, IdentifyState::Failed { .. }));
@@ -653,7 +648,7 @@ fn a_resumed_verdict_shows_the_ledger_its_run_recorded() {
                 by_catalog: false,
                 by_isrc: false,
                 by_search: false,
-                named_by: None,
+                by_pressing: false,
             }],
             pressings: vec![0],
             narrowed_out: NarrowedOut {
@@ -664,7 +659,7 @@ fn a_resumed_verdict_shows_the_ledger_its_run_recorded() {
                     by_catalog: false,
                     by_isrc: false,
                     by_search: false,
-                    named_by: None,
+                    by_pressing: false,
                 }],
                 pressings: vec![0],
             },
@@ -813,7 +808,7 @@ fn a_found_release_states_the_check_against_the_folder_it_failed() {
                 by_catalog: false,
                 by_isrc: false,
                 by_search: false,
-                named_by: None,
+                by_pressing: false,
             }],
             pressings: vec![0],
             narrowed_out: NarrowedOut::default(),

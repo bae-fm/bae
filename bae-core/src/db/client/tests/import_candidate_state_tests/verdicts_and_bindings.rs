@@ -88,7 +88,7 @@ fn sample_findings() -> Findings {
             by_catalog: true,
             by_isrc: false,
             by_search: false,
-            named_by: None,
+            by_pressing: false,
         }],
         pressings: vec![0],
         narrowed_out: NarrowedOut::default(),
@@ -282,11 +282,11 @@ async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
     unread.release_id = "rel-3".to_string();
     unread.source_group_id = Some("group-2".to_string());
     unread.album_links = AlbumLinks::Unread;
-    let mut twin = sample_match();
-    twin.source = Catalog::Discogs;
-    twin.release_id = "44".to_string();
-    twin.source_group_id = Some("7".to_string());
-    let matches = vec![musicbrainz, discogs, undescribed, unread, twin];
+    let mut linked = sample_match();
+    linked.source = Catalog::Discogs;
+    linked.release_id = "44".to_string();
+    linked.source_group_id = Some("7".to_string());
+    let matches = vec![musicbrainz, discogs, undescribed, unread, linked];
     let returned = LookupProvenance {
         by_disc_id: true,
         ..LookupProvenance::CHOSEN
@@ -299,7 +299,7 @@ async fn round_trip_preserves_the_evidence_the_rows_are_paired_by() {
                 returned.clone(),
                 returned,
                 LookupProvenance {
-                    named_by: Some(MetadataRef::new(Catalog::MusicBrainz, "rel-1")),
+                    by_pressing: true,
                     ..LookupProvenance::CHOSEN
                 },
             ],
@@ -508,7 +508,7 @@ async fn a_verdict_round_trips_its_narrowed_out_releases_apart_from_its_matches(
                     by_catalog: false,
                     by_isrc: false,
                     by_search: false,
-                    named_by: None,
+                    by_pressing: false,
                 }],
                 pressings: vec![0],
             },

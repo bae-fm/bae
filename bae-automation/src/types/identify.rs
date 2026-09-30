@@ -203,6 +203,10 @@ pub enum AutomationIdentifyFailure {
     Isrc {
         failure: AutomationLookupFailure,
     },
+    Pressing {
+        source: AutomationCatalog,
+        failure: AutomationLookupFailure,
+    },
     ReleaseDetails {
         failure: AutomationLookupFailure,
     },

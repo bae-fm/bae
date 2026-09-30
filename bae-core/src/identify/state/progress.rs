@@ -326,12 +326,12 @@ impl ValueLookup {
     }
 }
 
-/// The chosen catalog numbers' lookups, each number on its own.
+/// The searches of the catalog numbers in effect, each number on its own.
 #[derive(Clone, Debug, PartialEq)]
 pub enum CatalogProgress {
-    /// No catalog number chosen, so nothing to look up.
+    /// No catalog number in effect, so nothing to search.
     Skipped,
-    /// One lookup per chosen number, in the order they were chosen.
+    /// One lookup per number in effect, in the order each came into effect.
     Lookups { values: Vec<ValueLookup> },
 }
 
@@ -389,6 +389,19 @@ impl CatalogProgress {
         match self {
             CatalogProgress::Lookups { values } => values,
             CatalogProgress::Skipped => &[],
+        }
+    }
+
+    /// This progress with `lookup` searched as well.
+    pub(super) fn with(self, lookup: ValueLookup) -> Self {
+        match self {
+            CatalogProgress::Lookups { mut values } => {
+                values.push(lookup);
+                CatalogProgress::Lookups { values }
+            }
+            CatalogProgress::Skipped => CatalogProgress::Lookups {
+                values: vec![lookup],
+            },
         }
     }
 
@@ -527,9 +540,9 @@ pub(super) fn barcode_settled_state(context: &SignalsContext) -> SignalState {
     settled_lookup_state(barcode.results.len(), &barcode.failures)
 }
 
-/// The catalog badge of a settled run, over every chosen number.
+/// The catalog badge of a settled run, over every number searched.
 pub(super) fn catalog_settled_state(context: &SignalsContext) -> SignalState {
-    if context.catalog.chosen.is_empty() {
+    if context.catalog.searched.is_empty() {
         return SignalState::Skipped;
     }
     settled_lookup_state(
@@ -649,7 +662,7 @@ pub(super) fn start_barcode_progress(
     }
 }
 
-/// Ask every provider about one chosen catalog number.
+/// Ask every provider about one catalog number in effect.
 pub(super) fn start_catalog_lookup(
     catalog: &str,
     providers: &[Catalog],
@@ -663,7 +676,7 @@ pub(super) fn start_catalog_lookup(
     )
 }
 
-/// Ask every provider about every chosen catalog number.
+/// Ask every provider about every catalog number in effect.
 pub(super) fn start_catalog_progress(
     chosen: &[String],
     providers: &[Catalog],
@@ -691,8 +704,8 @@ pub(super) fn search_progress_at_start(search_by_title: bool) -> SearchProgress 
     }
 }
 
-/// Ask every provider the candidate's title, unless the identifiers already
-/// answered or there is no title. The ISRCs are no identifier here: a
+/// Ask every provider the candidate's title, unless the identifiers and the
+/// picked numbers already answered or there is no title. The ISRCs are no identifier here: a
 /// recording is on every compilation that reissued it, and MusicBrainz lists
 /// few of an album's codes, so what they return does not stand for the album
 /// the way a disc ID, a barcode or a catalog number does — and Discogs, which

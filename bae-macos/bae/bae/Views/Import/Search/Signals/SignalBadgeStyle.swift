@@ -69,6 +69,7 @@ enum SignalBadgeStyle {
         switch step {
         case .signal(let kind): sentenceLabel(for: kind)
         case .titleSearch: String(localized: "title search")
+        case .pressing: String(localized: "pressing lookup")
         }
     }
 }

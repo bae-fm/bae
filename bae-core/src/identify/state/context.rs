@@ -3,6 +3,7 @@
 //! without re-fetching. A state stood back up from a stored verdict carries an
 //! empty one.
 
+use super::pressings::PressingLookup;
 use super::{
     BarcodeProgress, CatalogProgress, DiscidProgress, IsrcProgress, LibraryStatus, MetadataResult,
     SearchProgress, SourceFailure,
@@ -10,7 +11,7 @@ use super::{
 use crate::config::IdentificationSteps;
 use crate::identify::agreements::CandidateText;
 use crate::identify::combine::LookupAnswers;
-use crate::identify::documents::{DocumentReading, Twin, TwinToRead};
+use crate::identify::documents::DocumentReading;
 use crate::identify::{IdentifyFailure, NotAskedReason};
 use crate::import::album_links::{self, AlbumLink, GroupLinks};
 use crate::import::MetadataRef;
@@ -193,99 +194,127 @@ impl IsrcEvidence {
     }
 }
 
-/// One catalog number the run looks up, and what asking every provider about
-/// it produced.
+/// One catalog number in effect, and what asking every provider about it
+/// produced.
 #[derive(Clone, Debug, PartialEq)]
-pub struct ChosenCatalog {
+pub struct SearchedCatalog {
     pub value: String,
     pub results: Vec<(MetadataResult, LibraryStatus)>,
     pub failures: Vec<SourceFailure>,
 }
 
-impl ChosenCatalog {
-    pub(crate) fn new(value: String) -> Self {
-        Self {
-            value,
-            results: Vec::new(),
-            failures: Vec::new(),
-        }
-    }
-}
-
-/// The catalog numbers extracted from the candidate and what asking about the
-/// chosen ones produced; a number is looked up only once the person chooses it.
+/// The catalog numbers the candidate's text offers, which of them are in
+/// effect, and what searching those produced. A number is in effect when the
+/// person picked it, or when the text prints it and a release the run found
+/// carries it; a number the person struck out is not, however it came.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct CatalogEvidence {
-    /// The numbers extracted, each once, in first-seen order.
+    /// The numbers the text offers, each once, in first-seen order.
     pub numbers: Vec<String>,
-    /// The numbers the run looks up, in the order they were chosen.
-    pub chosen: Vec<ChosenCatalog>,
-    /// The numbers the person struck out of the candidate's text, so a result
-    /// carrying one earns no catalog agreement from it.
+    /// The numbers the person picked, in the order picked.
+    pub chosen: Vec<String>,
+    /// The numbers the text prints that a found release carries, as the
+    /// release writes them, none picked, in the order found.
+    pub confirmed: Vec<String>,
+    /// The numbers the person struck out: neither searched nor agreed with.
     pub struck_out: Vec<String>,
+    /// What searching each number in effect produced, in the order asked.
+    pub searched: Vec<SearchedCatalog>,
 }
 
 impl CatalogEvidence {
-    /// Take the extracted numbers from a new snapshot, dropping a chosen
-    /// number the list no longer offers — but only once the list is final.
+    /// Take the offered numbers from a new snapshot, dropping a picked number
+    /// the list no longer offers — but only once the list is final.
     fn refresh_input(&mut self, text: &TextSignal) {
         self.numbers = text.catalogs().to_vec();
         if matches!(text, TextSignal::Scanning { .. }) {
             return;
         }
-        self.chosen
-            .retain(|chosen| self.numbers.contains(&chosen.value));
+        let numbers = &self.numbers;
+        self.chosen.retain(|chosen| numbers.contains(chosen));
     }
 
-    /// Record what the settled pipe found, number by number.
+    /// Record what the settled searches found, number by number.
     fn record(&mut self, progress: &CatalogProgress) {
-        for chosen in &mut self.chosen {
-            chosen.results = progress.results_for(&chosen.value);
-            chosen.failures = progress.failures_for(&chosen.value);
-        }
+        self.searched = progress
+            .lookups()
+            .iter()
+            .map(|lookup| SearchedCatalog {
+                value: lookup.value.clone(),
+                results: progress.results_for(&lookup.value),
+                failures: progress.failures_for(&lookup.value),
+            })
+            .collect();
     }
 
-    /// Whether the run looks `value` up.
+    /// Whether the person picked `value`.
     pub fn is_chosen(&self, value: &str) -> bool {
-        self.chosen.iter().any(|chosen| chosen.value == value)
+        self.chosen.iter().any(|chosen| chosen == value)
     }
 
-    /// The values the run looks up, in the order they were chosen.
-    pub fn chosen_values(&self) -> Vec<String> {
+    /// Whether the person struck `value` out, however either is spelled.
+    pub fn is_struck_out(&self, value: &str) -> bool {
+        let key = number_key(value);
+        self.struck_out
+            .iter()
+            .any(|struck| number_key(struck) == key)
+    }
+
+    /// The numbers in effect: the picked ones not struck out, in the order
+    /// picked, then the confirmed ones, in the order found.
+    pub fn in_effect(&self) -> Vec<String> {
         self.chosen
             .iter()
-            .map(|chosen| chosen.value.clone())
+            .filter(|value| !self.is_struck_out(value))
+            .chain(&self.confirmed)
+            .cloned()
             .collect()
     }
 
-    /// Every chosen number's results, in chosen order.
+    /// Whether `value` is in effect.
+    pub fn is_in_effect(&self, value: &str) -> bool {
+        self.in_effect().iter().any(|held| held == value)
+    }
+
+    /// Whether `value` is one of the numbers picked or confirmed, however
+    /// either is spelled.
+    pub(crate) fn holds(&self, value: &str) -> bool {
+        let key = number_key(value);
+        self.chosen
+            .iter()
+            .chain(&self.confirmed)
+            .any(|held| number_key(held) == key)
+    }
+
+    /// Every searched number's results, in the order asked.
     pub(super) fn active_results(&self) -> Vec<(MetadataResult, LibraryStatus)> {
-        self.chosen
+        self.searched
             .iter()
-            .flat_map(|chosen| chosen.results.iter().cloned())
+            .flat_map(|searched| searched.results.iter().cloned())
             .collect()
     }
 
-    /// Every chosen number's provider failures, in chosen order.
+    /// Every searched number's provider failures, in the order asked.
     pub(super) fn recorded_failures(&self) -> Vec<SourceFailure> {
-        self.chosen
+        self.searched
             .iter()
-            .flat_map(|chosen| chosen.failures.iter().cloned())
+            .flat_map(|searched| searched.failures.iter().cloned())
             .collect()
     }
 
-    /// Every chosen number's failures.
     fn active_failures(&self, into: &mut Vec<IdentifyFailure>) {
-        for chosen in &self.chosen {
-            into.extend(
-                chosen
-                    .failures
-                    .iter()
-                    .cloned()
-                    .map(IdentifyFailure::Catalog),
-            );
-        }
+        into.extend(
+            self.recorded_failures()
+                .into_iter()
+                .map(IdentifyFailure::Catalog),
+        );
     }
+}
+
+/// Two spellings of one catalog number compare alike: `SD 19244-2` and
+/// `sd19244-2`.
+pub(crate) fn number_key(value: &str) -> String {
+    crate::text_match::catalog_key(value).unwrap_or_else(|| crate::text_match::squash(value))
 }
 
 /// The album title and artist a run searches by.
@@ -360,9 +389,12 @@ pub struct SignalsContext {
     pub text: CandidateText,
     /// Whether `text` is final; a run does not settle before it is.
     pub text_settled: bool,
-    /// The full documents of the rows the run offers, and of their twins,
-    /// read once every lookup has settled.
+    /// The full documents of the rows the run offers, read once every
+    /// lookup has settled.
     pub documents: DocumentReading,
+    /// The offered rows' pressings, each looked up on a catalog its row had
+    /// no record of.
+    pub pressings: Vec<PressingLookup>,
 }
 
 impl Default for SignalsContext {
@@ -383,6 +415,7 @@ impl Default for SignalsContext {
             text: CandidateText::default(),
             text_settled: false,
             documents: DocumentReading::Pending,
+            pressings: Vec::new(),
         }
     }
 }
@@ -422,13 +455,9 @@ impl SignalsContext {
                 ..Default::default()
             },
             catalog: CatalogEvidence {
-                numbers: Vec::new(),
-                chosen: choices
-                    .chosen_catalogs
-                    .into_iter()
-                    .map(ChosenCatalog::new)
-                    .collect(),
+                chosen: choices.chosen_catalogs,
                 struck_out: choices.discounted_catalogs,
+                ..Default::default()
             },
             ..Default::default()
         }
@@ -475,7 +504,7 @@ impl SignalsContext {
         self.search.record(search);
     }
 
-    /// Every lookup's results with their documents applied, and what each
+    /// Every key's results with their documents applied, and what each
     /// MusicBrainz album on the list was read to be, in the order combine
     /// takes them.
     pub(super) fn lookup_results(&self) -> LookupAnswers {
@@ -494,6 +523,12 @@ impl SignalsContext {
             catalog: read(self.catalog.active_results()),
             isrc: read(self.isrc.results.clone()),
             search: read(self.search.results.clone()),
+            pressing: read(
+                self.pressings
+                    .iter()
+                    .flat_map(PressingLookup::results)
+                    .collect(),
+            ),
         };
         let groups = self.album_groups(&answers);
         for (result, _) in [
@@ -502,6 +537,7 @@ impl SignalsContext {
             &mut answers.catalog,
             &mut answers.isrc,
             &mut answers.search,
+            &mut answers.pressing,
         ]
         .into_iter()
         .flatten()
@@ -511,32 +547,14 @@ impl SignalsContext {
         answers
     }
 
-    /// The twins read, with their documents applied.
-    pub(super) fn twins(&self) -> Vec<Twin> {
-        self.documents
-            .twins()
-            .iter()
-            .cloned()
-            .map(|mut twin| {
-                self.documents.apply(&mut twin.result);
-                twin
-            })
-            .collect()
-    }
-
-    /// What each MusicBrainz album on the list — `answers` and the twins —
-    /// was read to be, from the documents read so far. Nothing, for a run
-    /// that does not join records across catalogs.
+    /// What each MusicBrainz album on the list was read to be, from the
+    /// documents read so far. Nothing, for a run that does not join records
+    /// across catalogs.
     fn album_groups(&self, answers: &LookupAnswers) -> Vec<GroupLinks> {
         if !self.steps.follow_catalog_links {
             return Vec::new();
         }
-        let twins = self.twins();
-        let list: Vec<&MetadataResult> = answers
-            .all()
-            .map(|(result, _)| result)
-            .chain(twins.iter().map(|twin| &twin.result))
-            .collect();
+        let list: Vec<&MetadataResult> = answers.all().map(|(result, _)| result).collect();
         album_links::read_groups(&list, |release| {
             self.documents
                 .album_statements(&MetadataRef::new(Catalog::MusicBrainz, release))
@@ -547,69 +565,13 @@ impl SignalsContext {
     /// (see [`album_links::to_keep`]).
     pub(super) fn album_links_to_keep(&self) -> Vec<(String, Vec<AlbumLink>)> {
         let answers = self.lookup_results();
-        let twins = self.twins();
-        let list: Vec<&MetadataResult> = answers
-            .all()
-            .map(|(result, _)| result)
-            .chain(twins.iter().map(|twin| &twin.result))
-            .collect();
+        let list: Vec<&MetadataResult> = answers.all().map(|(result, _)| result).collect();
         album_links::to_keep(&self.album_groups(&answers), &list)
     }
 
-    /// The Discogs releases the documents of `offered` MusicBrainz records
-    /// name as themselves that are still to be read as twins: none the list
-    /// holds, and none read already. None where the run does not join records
-    /// across catalogs or does not ask Discogs.
-    pub(super) fn twins_to_read(&self, offered: &[MetadataRef]) -> Vec<TwinToRead> {
-        if !self.steps.follow_catalog_links || !self.providers.contains(&Catalog::Discogs) {
-            return Vec::new();
-        }
-        let answers = self.lookup_results();
-        let listed = |release: &MetadataRef| {
-            answers.all().any(|(result, _)| {
-                result.source == release.catalog && result.release_id == release.key
-            }) || self.documents.twins().iter().any(|twin| {
-                twin.result.source == release.catalog && twin.result.release_id == release.key
-            })
-        };
-        let read = |release: &MetadataRef| {
-            self.documents
-                .read()
-                .iter()
-                .any(|reading| reading.release == *release)
-        };
-        let mut twins: Vec<TwinToRead> = Vec::new();
-        for named_by in offered
-            .iter()
-            .filter(|record| record.catalog == Catalog::MusicBrainz)
-        {
-            let Some(Ok(document)) = self
-                .documents
-                .read()
-                .iter()
-                .find(|reading| reading.release == *named_by)
-                .map(|reading| &reading.document)
-            else {
-                continue;
-            };
-            for release in document
-                .links
-                .iter()
-                .filter(|link| link.catalog == Catalog::Discogs)
-            {
-                if listed(release)
-                    || read(release)
-                    || twins.iter().any(|twin| twin.release == *release)
-                {
-                    continue;
-                }
-                twins.push(TwinToRead {
-                    release: release.clone(),
-                    named_by: named_by.clone(),
-                });
-            }
-        }
-        twins
+    /// Whether every offered row's pressing lookup has answered.
+    pub(super) fn pressings_settled(&self) -> bool {
+        self.pressings.iter().all(PressingLookup::is_settled)
     }
 
     pub(super) fn active_failures(&self) -> Vec<IdentifyFailure> {
@@ -619,6 +581,12 @@ impl SignalsContext {
         self.catalog.active_failures(&mut failures);
         self.isrc.active_failures(&mut failures);
         self.search.active_failures(&mut failures);
+        failures.extend(
+            self.pressings
+                .iter()
+                .filter_map(PressingLookup::failure)
+                .map(IdentifyFailure::Pressing),
+        );
         failures
     }
 

@@ -1,19 +1,23 @@
 //! The identify pipeline's pure state machine: `step` takes a state and an
 //! event and returns the next state and the lookups for the service to run.
 //!
-//! The disc-ID, barcode, catalog and ISRC lookups run in parallel, each
-//! provider answering for itself. When the first three name nothing, the run
-//! searches by the candidate's title. Once every lookup settles, the run
-//! reads the full documents of the rows it offers, and of the Discogs
-//! releases their MusicBrainz documents name as themselves — ranking again
-//! after each read, until every offered row is read (see
-//! [`super::documents`]). What those documents state its MusicBrainz albums
-//! are on Discogs joins the albums (see [`crate::import::album_links`]); the
-//! run combines the results into a terminal state, keeps what it read each
-//! album to be, and records the ledger it showed.
+//! The run asks each key in effect once of every catalog that answers its
+//! kind: the disc ID and the ISRCs of MusicBrainz, the barcodes and the
+//! catalog numbers in effect of every catalog, each provider answering for
+//! itself. When the folder's own keys and the picked numbers name nothing,
+//! the run searches by the candidate's title. Then it goes round (see
+//! `rounds`): every answer is pooled and ranked, the offered rows' full
+//! documents are read (see [`super::documents`]), and the keys that came into
+//! effect — a number the text prints that a found release carries, an
+//! offered row's pressing on the catalog it has no record of — are asked,
+//! until a round brings no new key and every offered row is read. What the
+//! documents state its MusicBrainz albums are on Discogs joins the albums
+//! (see [`crate::import::album_links`]); the run combines the results into a
+//! terminal state, keeps what it read each album to be, and records the
+//! ledger it showed.
 
 use super::combine::{combine_results, Findings, LibraryStatuses};
-use super::documents::{DocumentReading, ReleaseReading, Twin, TwinToRead};
+use super::documents::{DocumentReading, ReleaseReading};
 use super::toolbar::{SignalKind, SignalOption, SignalState, ToolbarSignal};
 use super::view::{run_view, IdentifyRunView};
 use crate::config::IdentificationSteps;
@@ -188,14 +192,10 @@ impl IdentifyState {
         }
     }
 
-    /// Shows the first chosen number, with every extracted number as an option.
+    /// Shows the first number in effect, with every offered number as an
+    /// option.
     fn catalog_badge(&self, context: &SignalsContext) -> ToolbarSignal {
-        let first_chosen = context
-            .catalog
-            .chosen
-            .first()
-            .map(|chosen| chosen.value.clone())
-            .filter(|value| context.catalog.numbers.contains(value));
+        let first_chosen = context.catalog.in_effect().first().cloned();
         let state = match self {
             IdentifyState::Triangulating { catalog, .. } => catalog_progress_state(catalog),
             _ => catalog_settled_state(context),
@@ -206,7 +206,7 @@ impl IdentifyState {
             state,
             excluded: false,
             options: signal_options(&context.catalog.numbers, |value| {
-                context.catalog.is_chosen(value)
+                context.catalog.is_in_effect(value)
             }),
         }
     }
@@ -262,7 +262,7 @@ pub enum IdentifyEvent {
         outcome: LookupOutcome,
     },
 
-    /// One provider answered about one chosen catalog number.
+    /// One provider answered about one catalog number in effect.
     CatalogLookupAnswered {
         source: Catalog,
         for_catalog: String,
@@ -280,11 +280,16 @@ pub enum IdentifyEvent {
         outcome: LookupOutcome,
     },
 
-    /// The documents `Effect::ReadReleases` asked for, record by record and
-    /// twin by twin, with each twin that could be read.
+    /// One catalog answered the lookup of an offered row's pressing.
+    PressingLookupAnswered {
+        source: Catalog,
+        key: PressingKey,
+        outcome: LookupOutcome,
+    },
+
+    /// The documents `Effect::ReadReleases` asked for, record by record.
     ReleasesRead {
         read: Vec<ReleaseReading>,
-        twins: Vec<Twin>,
     },
 
     /// bae broke carrying out one of the run's effects.
@@ -317,12 +322,18 @@ pub enum Effect {
         source: Catalog,
         query: TitleSearch,
     },
-    /// Fetch and store these records' and twins' full documents, reading
-    /// each one's tracklist against `track_lengths_ms`, and check each twin
-    /// against the library.
+    /// Ask `source` for an offered row's pressing by `key`: read the
+    /// release a link names, or search by the row's barcode or catalog
+    /// number. What it returns is checked against the library as every
+    /// lookup's answer is.
+    LookupPressing {
+        source: Catalog,
+        key: PressingKey,
+    },
+    /// Fetch and store these records' full documents, reading each one's
+    /// tracklist against `track_lengths_ms`.
     ReadReleases {
         releases: Vec<crate::import::MetadataRef>,
-        twins: Vec<TwinToRead>,
         track_lengths_ms: Vec<u64>,
     },
     /// Keep what these release groups were read to be beyond the run. Nothing
@@ -349,11 +360,11 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
             },
         ) => {
             let context = SignalsContext::started(providers, steps, choices, title_search);
-            // Chosen numbers are looked up at once, without waiting for a
+            // Picked numbers are looked up at once, without waiting for a
             // snapshot to offer them again.
             let mut effects = Vec::new();
             let catalog = start_catalog_progress(
-                &context.catalog.chosen_values(),
+                &context.catalog.in_effect(),
                 &context.providers,
                 &mut effects,
             );
@@ -549,12 +560,43 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                 search,
                 mut context,
             },
-            IdentifyEvent::ReleasesRead { read, twins },
+            IdentifyEvent::ReleasesRead { read },
         ) if matches!(context.documents, DocumentReading::Reading(_)) => {
-            let mut documents = context.documents.documents();
-            documents.releases.extend(read);
-            documents.twins.extend(twins);
+            let mut documents = context.documents.read().to_vec();
+            documents.extend(read);
             context.documents = DocumentReading::Read(documents);
+            settle_if_ready(IdentifyState::Triangulating {
+                discid,
+                barcode,
+                catalog,
+                isrc,
+                search,
+                context,
+            })
+        }
+
+        (
+            IdentifyState::Triangulating {
+                discid,
+                barcode,
+                catalog,
+                isrc,
+                search,
+                mut context,
+            },
+            IdentifyEvent::PressingLookupAnswered {
+                source,
+                key,
+                outcome,
+            },
+        ) => {
+            if let Some(lookup) = context
+                .pressings
+                .iter_mut()
+                .find(|lookup| lookup.source == source && lookup.key == key)
+            {
+                lookup.answer(outcome);
+            }
             settle_if_ready(IdentifyState::Triangulating {
                 discid,
                 barcode,
@@ -623,8 +665,8 @@ fn apply_signals(
         (barcode, _) => barcode,
     };
 
-    // A chosen number the snapshot no longer offers loses its lookup.
-    let catalog = catalog.keeping(|lookup| context.catalog.is_chosen(&lookup.value));
+    // A picked number the snapshot no longer offers loses its lookup.
+    let catalog = catalog.keeping(|lookup| context.catalog.is_in_effect(&lookup.value));
 
     let isrc = match isrc {
         IsrcProgress::Reading => {
@@ -721,13 +763,9 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
     };
     context.record_search(&search);
 
-    // Every lookup is in: fetch every offered record's document and rank
-    // once more with what they state. A row whose tracklist holds other
-    // tracks than the folder drops out, and the rows below it move up; a row
-    // the documents raise to the top is read in turn, and so is each twin an
-    // offered MusicBrainz record's document names. This goes on until every
-    // offered row's records and twins are read, or no row is left.
-    if matches!(context.documents, DocumentReading::Reading(_)) {
+    // Every lookup is in: go round again while a round brings a new key or
+    // an offered row not read yet.
+    if matches!(context.documents, DocumentReading::Reading(_)) || !context.pressings_settled() {
         return (
             IdentifyState::Triangulating {
                 discid,
@@ -740,27 +778,8 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
             vec![],
         );
     }
-    let documents = context.documents.documents();
-    let offered: Vec<crate::import::MetadataRef> =
-        offered_rows(&context).into_iter().flatten().collect();
-    let releases: Vec<crate::import::MetadataRef> = offered
-        .iter()
-        .filter(|release| {
-            !documents
-                .releases
-                .iter()
-                .any(|reading| reading.release == **release)
-        })
-        .cloned()
-        .collect();
-    let twins = context.twins_to_read(&offered);
-    if !releases.is_empty() || !twins.is_empty() {
-        context.documents = DocumentReading::Reading(documents);
-        let effects = vec![Effect::ReadReleases {
-            releases,
-            twins,
-            track_lengths_ms: context.audio.track_lengths_ms.clone(),
-        }];
+    let (catalog, effects) = rounds::next_round(&mut context, catalog, &barcode);
+    if !effects.is_empty() {
         return (
             IdentifyState::Triangulating {
                 discid,
@@ -773,7 +792,7 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
             effects,
         );
     }
-    context.documents = DocumentReading::Read(documents);
+    context.documents = DocumentReading::Read(context.documents.read().to_vec());
     let kept = context.album_links_to_keep();
     let effects = if kept.is_empty() {
         Vec::new()
@@ -817,24 +836,9 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
 fn combined(context: &SignalsContext) -> (Findings, LibraryStatuses) {
     combine_results(
         context.lookup_results(),
-        context.twins(),
         &context.text,
         context.folder_audio(),
     )
-}
-
-/// The rows the run offers as its results stand, each as its records.
-fn offered_rows(context: &SignalsContext) -> Vec<Vec<crate::import::MetadataRef>> {
-    let findings = combined(context).0;
-    let mut rows: Vec<(u32, Vec<crate::import::MetadataRef>)> = Vec::new();
-    for (result, row) in findings.matches.iter().zip(&findings.pressings) {
-        let record = crate::import::MetadataRef::new(result.source, result.release_id.clone());
-        match rows.iter_mut().find(|(numbered, _)| numbered == row) {
-            Some((_, records)) => records.push(record),
-            None => rows.push((*row, vec![record])),
-        }
-    }
-    rows.into_iter().map(|(_, records)| records).collect()
 }
 
 /// Combine the recorded results into `Failed`, `NotFoundAnywhere` or `Found`.
@@ -866,12 +870,16 @@ fn re_derive(context: SignalsContext, ledger: Option<IdentifyRunView>) -> Identi
 }
 
 mod context;
+mod pressings;
 mod progress;
+mod rounds;
 
+pub(crate) use context::number_key;
 pub use context::{
-    BarcodeEvidence, CatalogEvidence, ChosenCatalog, DiscIdEvidence, IsrcEvidence, SearchEvidence,
-    SignalsContext, TitleSearch,
+    BarcodeEvidence, CatalogEvidence, DiscIdEvidence, IsrcEvidence, SearchEvidence,
+    SearchedCatalog, SignalsContext, TitleSearch,
 };
+pub use pressings::{PressingKey, PressingLookup};
 use progress::{
     barcode_progress_state, barcode_settled_state, catalog_progress_state, catalog_settled_state,
     discid_progress_state, isrc_progress_state, isrc_settled_state, search_progress_at_start,

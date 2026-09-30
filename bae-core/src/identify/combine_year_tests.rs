@@ -40,7 +40,6 @@ fn search(results: Vec<(MetadataResult, LibraryStatus)>, text: &CandidateText) -
             search: results,
             ..LookupAnswers::default()
         },
-        Vec::new(),
         text,
         FolderAudio {
             track_count: 10,

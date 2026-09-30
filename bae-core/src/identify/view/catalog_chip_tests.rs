@@ -61,7 +61,7 @@ fn resumed(
                 by_catalog: false,
                 by_isrc: false,
                 by_search: false,
-                named_by: None,
+                by_pressing: false,
             };
             count
         ]

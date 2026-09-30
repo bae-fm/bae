@@ -34,6 +34,7 @@ fn mk_context(track_count: u32) -> SignalsContext {
             ..Default::default()
         },
         documents: crate::identify::documents::DocumentReading::Pending,
+        pressings: Vec::new(),
         isrc: Default::default(),
         track_titles: Vec::new(),
     }
@@ -132,7 +133,6 @@ fn a_terminal_verdict_carries_the_ledger_its_run_recorded() {
                 release: crate::import::MetadataRef::new(Catalog::MusicBrainz, "rel-1"),
                 document: Err(crate::signals::LookupFailure::Network),
             }],
-            twins: Vec::new(),
         },
     );
     let IdentifyStateView::Found {
@@ -162,7 +162,7 @@ fn disc_id_only() -> LookupProvenance {
         by_catalog: false,
         by_isrc: false,
         by_search: false,
-        named_by: None,
+        by_pressing: false,
     }
 }
 
@@ -298,7 +298,7 @@ fn signals_that_share_no_result_store_as_one_match_list() {
                         by_catalog: false,
                         by_isrc: false,
                         by_search: false,
-                        named_by: None,
+                        by_pressing: false,
                     }],
                     pressings: vec![0],
                 },
@@ -471,7 +471,8 @@ fn a_barcode_failure_with_no_results_carries_no_matches() {
 #[test]
 fn chosen_catalog_failure_derives_to_failed() {
     let mut context = mk_context(7);
-    context.catalog.chosen = vec![crate::identify::state::ChosenCatalog {
+    context.catalog.chosen = vec!["CAT-7".to_string()];
+    context.catalog.searched = vec![crate::identify::state::SearchedCatalog {
         value: "CAT-7".to_string(),
         results: Vec::new(),
         failures: vec![SourceFailure {

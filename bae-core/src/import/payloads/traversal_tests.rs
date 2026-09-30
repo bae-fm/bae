@@ -198,8 +198,8 @@ async fn cyclic_release_and_album_links_fetch_each_document_once() {
 
 /// Fetching a MusicBrainz release fetches the documents of the Discogs
 /// release it names as itself, so reading that release afterwards — as an
-/// identify run reads a twin — is answered by the providers' response caches:
-/// no request goes out.
+/// identify run reads the release an offered row's page links — is answered
+/// by the providers' response caches: no request goes out.
 #[tokio::test]
 async fn a_linked_release_is_read_from_what_fetching_its_namer_fetched() {
     let server = ProviderServer::start(linked_pair_answers()).await;

@@ -67,7 +67,6 @@ fn by_catalog(rows: Vec<Found>, origin: &AudioOrigin) -> Outcome {
             catalog: rows,
             ..LookupAnswers::default()
         },
-        Vec::new(),
         &folder(),
         FolderAudio {
             origin,
@@ -221,7 +220,6 @@ fn a_matched_disc_id_proves_a_cd() {
             catalog: vec![vinyl],
             ..LookupAnswers::default()
         },
-        Vec::new(),
         &folder(),
         FolderAudio::UNPROVEN,
     );
@@ -257,7 +255,6 @@ fn the_pressing_the_barcode_and_catalog_number_name_outranks_the_disc_id_s() {
             barcode: vec![named],
             ..LookupAnswers::default()
         },
-        Vec::new(),
         &folder(),
         FolderAudio {
             origin: &CD_RIP,
@@ -311,7 +308,6 @@ fn a_sleeve_saying_where_it_was_made_offers_that_pressing() {
             barcode: vec![released_in("rel-us", "US"), released_in("rel-europe", "XE")],
             ..LookupAnswers::default()
         },
-        Vec::new(),
         &text,
         FolderAudio::UNPROVEN,
     );
@@ -350,7 +346,6 @@ fn stating_no_country_or_both_leaves_the_pressings_tied() {
                 barcode: vec![released_in("rel-us", "US"), released_in("rel-europe", "XE")],
                 ..LookupAnswers::default()
             },
-            Vec::new(),
             &CandidateText::of(&sleeve, &[], &[]),
             FolderAudio::UNPROVEN,
         );
@@ -417,7 +412,6 @@ fn mono_audio_offers_the_pressing_stated_mono() {
             ],
             ..LookupAnswers::default()
         },
-        Vec::new(),
         &folder(),
         MONO_FILES,
     );
@@ -468,7 +462,6 @@ fn mono_audio_does_not_outrank_what_the_lookups_agree_on() {
             search: vec![by_title],
             ..LookupAnswers::default()
         },
-        Vec::new(),
         &folder(),
         MONO_FILES,
     );
@@ -494,7 +487,6 @@ fn mono_audio_against_stereo_listings_can_still_be_ready() {
             barcode: vec![listed],
             ..LookupAnswers::default()
         },
-        Vec::new(),
         &folder(),
         FolderAudio {
             track_count: 11,
@@ -546,7 +538,6 @@ fn the_album_the_folder_names_outranks_another_on_the_same_label() {
             ],
             ..LookupAnswers::default()
         },
-        Vec::new(),
         &text,
         FolderAudio::UNPROVEN,
     );
@@ -588,7 +579,6 @@ fn the_country_the_recordings_were_registered_in_breaks_a_tie() {
             barcode: released_in(&[("rel-de", "DE"), ("rel-it", "IT"), ("rel-fr", "FR")]),
             ..LookupAnswers::default()
         },
-        Vec::new(),
         &folder(),
         registered_in(Some("IT")),
     );
@@ -604,7 +594,6 @@ fn recordings_registered_nowhere_in_particular_break_no_tie() {
             barcode: released_in(&[("rel-de", "DE"), ("rel-it", "IT"), ("rel-fr", "FR")]),
             ..LookupAnswers::default()
         },
-        Vec::new(),
         &folder(),
         registered_in(None),
     );
@@ -627,7 +616,6 @@ fn the_folder_naming_a_country_outranks_where_the_recordings_were_registered() {
             barcode: released_in(&[("rel-de", "DE"), ("rel-it", "IT")]),
             ..LookupAnswers::default()
         },
-        Vec::new(),
         &text,
         registered_in(Some("IT")),
     );
@@ -647,7 +635,6 @@ fn the_isrcs_lend_a_row_their_lookup() {
             ],
             ..LookupAnswers::default()
         },
-        Vec::new(),
         &folder(),
         FolderAudio::UNPROVEN,
     );

@@ -13,37 +13,40 @@ use super::agreements::{agreements_of, CandidateText};
 use super::medium::{agrees_with_mono, FolderAudio, RippedFrom};
 use super::row_facts::{Fact, FolderFacts};
 use crate::db::LibraryStatus;
-use crate::identify::documents::Twin;
 use crate::import::release_group::{group_results, Judged, Judgements, Pressing, ReleaseGroup};
 use crate::import::search::MetadataResult;
 use crate::import::Catalog;
 use std::collections::{HashMap, HashSet};
 
-/// Which lookups returned one result. Stored with the [`Findings`].
+/// Which of a run's keys returned one result. Stored with the [`Findings`].
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct LookupProvenance {
     pub by_disc_id: bool,
+    /// A barcode the folder's files carry.
     pub by_barcode: bool,
+    /// A catalog number in effect: one the person picked, or one the text
+    /// prints that a found release carries.
     pub by_catalog: bool,
     /// The search for the recordings the audio's ISRCs are registered to.
     pub by_isrc: bool,
-    /// Never true beside the disc ID, the barcode or the catalog number: the
-    /// title search runs only when those named nothing.
+    /// The title search, asked only when the folder's own keys and the
+    /// picked numbers named nothing.
     pub by_search: bool,
-    /// The MusicBrainz release that names this one as itself, when no lookup
-    /// returned it.
-    pub named_by: Option<crate::import::MetadataRef>,
+    /// An offered row's pressing, looked up on a catalog the row had no
+    /// record of: by the release its page names there, its barcode, or its
+    /// catalog number under its label.
+    pub by_pressing: bool,
 }
 
 impl LookupProvenance {
-    /// Returned by no lookup and named by nothing: a release a person chose.
+    /// Returned by no key: a release a person chose.
     pub const CHOSEN: Self = Self {
         by_disc_id: false,
         by_barcode: false,
         by_catalog: false,
         by_isrc: false,
         by_search: false,
-        named_by: None,
+        by_pressing: false,
     };
 }
 
@@ -137,7 +140,7 @@ impl LibraryStatuses {
 type Results = Vec<(MetadataResult, LibraryStatus)>;
 type ReleaseKey = (Catalog, String);
 
-/// What each of a run's lookups returned, each release with its library
+/// What each kind of a run's keys returned, each release with its library
 /// status.
 #[derive(Debug, Clone, Default)]
 pub struct LookupAnswers {
@@ -146,10 +149,13 @@ pub struct LookupAnswers {
     pub catalog: Results,
     pub isrc: Results,
     pub search: Results,
+    /// The offered rows' pressings, looked up on the catalogs they had no
+    /// record of.
+    pub pressing: Results,
 }
 
 impl LookupAnswers {
-    /// Every lookup's results, in the order above.
+    /// Every key's results, in the order above.
     pub(crate) fn all(&self) -> impl Iterator<Item = &(MetadataResult, LibraryStatus)> {
         self.disc_id
             .iter()
@@ -157,15 +163,14 @@ impl LookupAnswers {
             .chain(&self.catalog)
             .chain(&self.isrc)
             .chain(&self.search)
+            .chain(&self.pressing)
     }
 }
 
-/// Combine each lookup's results into what the run found. An empty set takes
-/// no part. `twins` are releases no lookup returned, each placed beside the
-/// release that names it.
+/// Pool every key's results into what the run found: each release once, with
+/// the keys that returned it. An empty set takes no part.
 pub fn combine_results(
     answers: LookupAnswers,
-    twins: Vec<Twin>,
     text: &CandidateText,
     folder: FolderAudio<'_>,
 ) -> (Findings, LibraryStatuses) {
@@ -176,6 +181,7 @@ pub fn combine_results(
         &answers.catalog,
         &answers.isrc,
         &answers.search,
+        &answers.pressing,
     ];
     let keys: Vec<HashSet<ReleaseKey>> = by_signal.iter().map(|set| release_keys(set)).collect();
 
@@ -187,29 +193,8 @@ pub fn combine_results(
         return (Findings::default(), LibraryStatuses::default());
     }
 
-    // Every release once, in signal order, then the twins.
-    let mut all = union_all(&present);
-    let answered: Vec<&MetadataResult> = all.iter().map(|(result, _)| result).collect();
-    let twins: Vec<(MetadataResult, LibraryStatus, crate::import::MetadataRef)> =
-        crate::identify::documents::beside(&twins, &answered)
-            .into_iter()
-            .map(|twin| {
-                (
-                    twin.result.clone(),
-                    twin.status.clone(),
-                    twin.named_by.clone(),
-                )
-            })
-            .collect();
-    let named_by: HashMap<ReleaseKey, crate::import::MetadataRef> = twins
-        .iter()
-        .map(|(result, _, by)| ((result.source, result.release_id.clone()), by.clone()))
-        .collect();
-    all.extend(
-        twins
-            .into_iter()
-            .map(|(result, status, _)| (result, status)),
-    );
+    // Every release once, in key order.
+    let all = union_all(&present);
 
     let lookup_of = |result: &MetadataResult| {
         let key = (result.source, result.release_id.clone());
@@ -219,7 +204,7 @@ pub fn combine_results(
             by_catalog: keys[2].contains(&key),
             by_isrc: keys[3].contains(&key),
             by_search: keys[4].contains(&key),
-            named_by: named_by.get(&key).cloned(),
+            by_pressing: keys[5].contains(&key),
         }
     };
     let facts = FolderFacts::of(text, all.iter().map(|(result, _)| result));
@@ -424,7 +409,6 @@ fn support_of(
     facts: &FolderFacts,
 ) -> Support {
     let mut returned = LookupProvenance::CHOSEN;
-    // A twin on the row states no lookup of its own: every field is false.
     for release in &row.releases {
         let found = provenance
             .get(&(release.source, release.release_id.clone()))

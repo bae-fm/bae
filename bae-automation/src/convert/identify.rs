@@ -176,6 +176,10 @@ impl AutomationIdentifyFailure {
             IdentifyFailure::Isrc(failure) => Self::Isrc {
                 failure: AutomationLookupFailure::from_core(failure),
             },
+            IdentifyFailure::Pressing(failure) => Self::Pressing {
+                source: failure.source.into(),
+                failure: AutomationLookupFailure::from_core(failure.failure),
+            },
             IdentifyFailure::ReleaseDetails(failure) => Self::ReleaseDetails {
                 failure: AutomationLookupFailure::from_core(failure),
             },

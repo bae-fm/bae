@@ -776,7 +776,7 @@ impl Fixture {
                     by_catalog: false,
                     by_isrc: false,
                     by_search: false,
-                    named_by: None,
+                    by_pressing: false,
                 }],
                 pressings: vec![0],
                 narrowed_out: crate::identify::NarrowedOut::default(),

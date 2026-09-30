@@ -52,7 +52,7 @@ async fn store_two_pressings(handle: &ImportServiceHandle, hash: &str) {
         by_catalog: false,
         by_isrc: false,
         by_search: true,
-        named_by: None,
+        by_pressing: false,
     };
     let stored = handle
         .preparations

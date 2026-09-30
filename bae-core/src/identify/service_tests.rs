@@ -331,7 +331,7 @@ async fn a_cancel_mid_run_reports_idle_and_deregisters() {
 /// all the same: a stored release of the album then names the other.
 #[tokio::test(flavor = "multi_thread")]
 async fn what_a_run_keeps_is_kept_by_the_step_that_ends_it() {
-    use crate::identify::documents::{DocumentReading, Documents, ReleaseDocument, ReleaseReading};
+    use crate::identify::documents::{DocumentReading, ReleaseDocument, ReleaseReading};
     use crate::identify::state::{
         BarcodeProgress, CatalogProgress, DiscidProgress, IsrcProgress, SearchProgress,
         SignalsContext,
@@ -375,7 +375,7 @@ async fn what_a_run_keeps_is_kept_by_the_step_that_ends_it() {
         search: SearchProgress::Skipped,
         context: SignalsContext {
             text_settled: true,
-            documents: DocumentReading::Reading(Documents::default()),
+            documents: DocumentReading::Reading(Vec::new()),
             ..SignalsContext::default()
         },
     };
@@ -408,7 +408,6 @@ async fn what_a_run_keeps_is_kept_by_the_step_that_ends_it() {
                 release: MetadataRef::new(Catalog::MusicBrainz, "mb-release"),
                 document: Ok(document),
             }],
-            twins: Vec::new(),
         },
     );
     assert!(settled.is_terminal(), "the step ends the run: {settled:?}");

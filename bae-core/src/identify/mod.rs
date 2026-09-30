@@ -1,7 +1,10 @@
 //! The identify pipeline: matches a candidate's [`crate::signals::Signals`]
-//! against external metadata. A pure reducer (`state::step`) runs the lookups
-//! — disc ID, barcode, chosen catalog numbers, then the album title when those
-//! name nothing — and `combine` ranks what they return. The service feeds it
+//! against external metadata. A pure reducer (`state::step`) asks every key
+//! in effect — disc ID, ISRCs, barcodes, the catalog numbers picked or
+//! confirmed, the album title when the folder's own keys name nothing, and
+//! each offered row's pressing on the catalog it has no record of — round
+//! after round until nothing new comes into effect, and `combine` ranks what
+//! they return. The service feeds it
 //! extraction snapshots and lookup results and publishes each state as an
 //! `ImportEvent::IdentifyStateChanged`. [`view`] shapes a state for surfaces,
 //! [`verdict::TerminalVerdict`] is what a terminal state stores, and

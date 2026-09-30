@@ -82,7 +82,6 @@ fn the_row_listing_the_folder_s_titles_in_order_ranks_first() {
                     read(release, Ok(document))
                 })
                 .collect(),
-            twins: Vec::new(),
         },
     );
     let IdentifyState::Found { findings, .. } = state else {
@@ -149,7 +148,6 @@ fn agreeing_lifts_no_row_above_one_left_unread() {
                     _ => read(release, Err(LookupFailure::Timeout)),
                 })
                 .collect(),
-            twins: Vec::new(),
         },
     );
     let IdentifyState::Found { findings, .. } = state else {

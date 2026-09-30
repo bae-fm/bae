@@ -36,6 +36,10 @@ extension BridgeIdentifyFailure {
                 + failure.badgeLine
         case .isrc(let failure):
             return String(localized: "ISRC") + ": " + failure.badgeLine
+        case .pressing(let source, let failure):
+            return String(localized: "Same pressing") + " \u{00b7} "
+                + bridgeCatalogName(catalog: source) + ": "
+                + failure.badgeLine
         case .releaseDetails(let failure):
             return String(
                 localized:

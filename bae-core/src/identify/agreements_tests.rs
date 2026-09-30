@@ -37,7 +37,7 @@ const NO_LOOKUP: LookupProvenance = LookupProvenance {
     by_catalog: false,
     by_isrc: false,
     by_search: false,
-    named_by: None,
+    by_pressing: false,
 };
 
 /// The separators a catalog number is printed with vary between the sleeve,
@@ -224,7 +224,7 @@ fn a_catalog_lookup_agrees_only_through_the_number() {
         by_catalog: true,
         by_isrc: false,
         by_search: false,
-        named_by: None,
+        by_pressing: false,
     };
     let folder = text(&["Artist One - Album One [LBL-719]"]);
     let numbered = |number: &str| MetadataResult {
@@ -347,7 +347,7 @@ fn striking_out_a_number_takes_its_agreement_away() {
             by_catalog: true,
             by_isrc: false,
             by_search: false,
-            named_by: None,
+            by_pressing: false,
         },
     );
     assert!(!judged.catalog);

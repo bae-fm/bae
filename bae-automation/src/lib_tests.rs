@@ -306,6 +306,7 @@ mod identify_mirrors {
             audio: Default::default(),
             isrc: Default::default(),
             documents: bae_core::identify::documents::DocumentReading::Pending,
+            pressings: Vec::new(),
             track_titles: Vec::new(),
         }
     }
@@ -334,7 +335,7 @@ mod identify_mirrors {
                         by_catalog: false,
                         by_isrc: false,
                         by_search: false,
-                        named_by: None,
+                        by_pressing: false,
                     },
                     LookupProvenance {
                         by_disc_id: true,
@@ -342,7 +343,7 @@ mod identify_mirrors {
                         by_catalog: false,
                         by_isrc: false,
                         by_search: false,
-                        named_by: None,
+                        by_pressing: false,
                     },
                 ],
                 // Two pressings of one album: each release is its own row.
@@ -408,7 +409,7 @@ mod identify_mirrors {
                         by_catalog: false,
                         by_isrc: false,
                         by_search: false,
-                        named_by: None,
+                        by_pressing: false,
                     },
                     LookupProvenance {
                         by_disc_id: false,
@@ -416,7 +417,7 @@ mod identify_mirrors {
                         by_catalog: false,
                         by_isrc: false,
                         by_search: false,
-                        named_by: None,
+                        by_pressing: false,
                     },
                 ],
                 // One release each, so each is its own row.

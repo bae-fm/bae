@@ -16,85 +16,28 @@
 //!
 //! A MusicBrainz document also names the other catalogs' releases that are
 //! the same release, and states what its album is on Discogs (see
-//! [`crate::import::album_links`]). A run that follows catalog links reads
-//! each Discogs release an offered MusicBrainz record names, where the run
-//! asks Discogs and no lookup returned it, and puts it on the list beside that
-//! record as its [`Twin`]. Fetching the MusicBrainz document fetched the
-//! twin's documents too, so reading the twin is answered by the providers'
-//! response caches.
+//! [`crate::import::album_links`]). The release a document names is how the
+//! run looks an offered row up on the catalog it has no record of — see
+//! `state::pressings`.
 
-use crate::db::LibraryStatus;
 use crate::import::album_links::AlbumLinks;
 use crate::import::search::{MetadataResult, SourceTracks};
-use crate::import::{Catalog, MetadataRef};
+use crate::import::MetadataRef;
 use crate::pressing::ReleaseLabel;
 use crate::signals::LookupFailure;
 
-/// Where a run is with its offered rows' documents.
+/// Where a run is with its offered rows' documents: each record's document,
+/// or why it could not be fetched, in the order they were read.
 #[derive(Clone, Debug, PartialEq)]
 pub enum DocumentReading {
     /// Waiting for the lookups to settle.
     Pending,
-    /// Offered records and twins not read yet are being fetched; these were
-    /// read before.
-    Reading(Documents),
-    /// Fetched: every record of every row offered as they rank with them,
-    /// and every twin their documents name. Empty when nothing was offered.
-    Read(Documents),
-}
-
-/// What a run has read of its rows' documents.
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct Documents {
-    /// Each record's document, or why it could not be fetched: the offered
-    /// records', and the twins'.
-    pub releases: Vec<ReleaseReading>,
-    /// The releases read as twins that could be, each with the record that
-    /// names it.
-    pub twins: Vec<Twin>,
-}
-
-/// A Discogs release no lookup returned, on the list because an offered
-/// MusicBrainz record's document names it as the same release.
-#[derive(Clone, Debug, PartialEq)]
-pub struct Twin {
-    /// What its own document states.
-    pub result: MetadataResult,
-    /// The MusicBrainz record whose document names it.
-    pub named_by: MetadataRef,
-    pub status: LibraryStatus,
-}
-
-/// A twin to read: `release`, which `named_by`'s document names as itself.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct TwinToRead {
-    pub release: MetadataRef,
-    pub named_by: MetadataRef,
-}
-
-/// The twins that go on a list of `results`: each one beside the release that
-/// names it, and none the list already holds.
-pub(crate) fn beside<'a>(
-    candidates: impl IntoIterator<Item = &'a Twin>,
-    results: &[&MetadataResult],
-) -> Vec<&'a Twin> {
-    let holds = |catalog: Catalog, key: &str| {
-        results
-            .iter()
-            .any(|result| result.source == catalog && result.release_id == key)
-    };
-    let mut twins: Vec<&Twin> = Vec::new();
-    for twin in candidates {
-        let listed = holds(twin.result.source, &twin.result.release_id)
-            || twins.iter().any(|other| {
-                other.result.source == twin.result.source
-                    && other.result.release_id == twin.result.release_id
-            });
-        if holds(twin.named_by.catalog, &twin.named_by.key) && !listed {
-            twins.push(twin);
-        }
-    }
-    twins
+    /// Offered records not read yet are being fetched; these were read
+    /// before.
+    Reading(Vec<ReleaseReading>),
+    /// Fetched: every record of every row offered as they rank with them.
+    /// Empty when nothing was offered.
+    Read(Vec<ReleaseReading>),
 }
 
 /// One record's document, or why it could not be fetched.
@@ -151,26 +94,10 @@ impl ReleaseDocument {
 }
 
 impl DocumentReading {
-    /// What was read so far, nothing until it is.
-    pub(crate) fn documents(&self) -> Documents {
-        match self {
-            Self::Reading(read) | Self::Read(read) => read.clone(),
-            Self::Pending => Documents::default(),
-        }
-    }
-
     /// The documents read so far, empty until they are.
     pub(crate) fn read(&self) -> &[ReleaseReading] {
         match self {
-            Self::Reading(read) | Self::Read(read) => &read.releases,
-            Self::Pending => &[],
-        }
-    }
-
-    /// The twins read so far, none until they are.
-    pub(crate) fn twins(&self) -> &[Twin] {
-        match self {
-            Self::Reading(read) | Self::Read(read) => &read.twins,
+            Self::Reading(read) | Self::Read(read) => read,
             Self::Pending => &[],
         }
     }

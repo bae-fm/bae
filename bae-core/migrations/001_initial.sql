@@ -1508,21 +1508,24 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     -- NULL until the source is asked for its tracklist.
     source_tracks_kind  TEXT CHECK (source_tracks_kind IS NULL OR source_tracks_kind IN ('listed', 'nothing')),
     source_tracks_count INTEGER CHECK (source_tracks_count IS NULL OR source_tracks_count >= 0),
-    -- Which lookup returned this release. Matches against the folder's text
-    -- are not stored; they are read from the text lines each time, so
-    -- re-ranking needs no new run.
+    -- Which of the run's keys returned this release. Matches against the
+    -- folder's text are not stored; they are read from the text lines each
+    -- time.
     by_disc_id          INTEGER NOT NULL CHECK (by_disc_id IN (0, 1)),
+    -- A barcode the folder's files carry.
     by_barcode          INTEGER NOT NULL CHECK (by_barcode IN (0, 1)),
+    -- A catalog number in effect: picked, or printed by the folder's text
+    -- and carried by a release the run found.
     by_catalog          INTEGER NOT NULL CHECK (by_catalog IN (0, 1)),
     -- The search by the ISRCs the audio's tags carry.
     by_isrc             INTEGER NOT NULL CHECK (by_isrc IN (0, 1)),
-    -- The title search, asked only when the disc ID, the barcodes and the
+    -- The title search, asked only when the folder's own keys and the picked
     -- catalog numbers all came back empty.
     by_search           INTEGER NOT NULL CHECK (by_search IN (0, 1)),
-    -- For a release no lookup returned: the release whose own document names
-    -- this one as the same release, read through to learn its album.
-    named_by_catalog    TEXT CHECK (named_by_catalog IS NULL OR named_by_catalog <> ''),
-    named_by_key        TEXT CHECK (named_by_key IS NULL OR named_by_key <> ''),
+    -- An offered row's pressing, looked up on a catalog the row had no record
+    -- of: by the release its page names there, its barcode, or its catalog
+    -- number under its label.
+    by_pressing         INTEGER NOT NULL CHECK (by_pressing IN (0, 1)),
     narrowed_out        INTEGER NOT NULL DEFAULT 0 CHECK (narrowed_out IN (0, 1)),
     -- Why the release's full document could not be read when the run offered
     -- its row, which then holds what the lookup returned. NULL when it was
@@ -1554,11 +1557,7 @@ CREATE TABLE IF NOT EXISTS import_candidate_match (
     FOREIGN KEY (content_hash) REFERENCES import_candidate_verdict (content_hash) ON DELETE CASCADE,
     CHECK ((cover_url IS NULL) = (cover_label IS NULL) AND (cover_url IS NULL) = (cover_source IS NULL) AND (cover_url IS NULL) = (cover_standing IS NULL)),
     CHECK ((source_tracks_kind = 'listed') = (source_tracks_count IS NOT NULL)),
-    CHECK ((named_by_catalog IS NULL) = (named_by_key IS NULL)),
     CHECK (narrowed_out = 0 OR named_note IS NULL),
-    CHECK (named_by_catalog IS NULL
-           OR (by_disc_id = 0 AND by_barcode = 0 AND by_catalog = 0 AND by_isrc = 0
-               AND by_search = 0)),
     CHECK (country IS NULL OR region IS NULL),
     CHECK (document_failure_status IS NULL OR document_failure = 'provider')
 ) STRICT;

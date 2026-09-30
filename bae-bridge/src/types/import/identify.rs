@@ -400,6 +400,12 @@ pub enum BridgeIdentifyFailure {
     Isrc {
         failure: BridgeLookupFailure,
     },
+    /// One catalog could not answer the lookup of an offered row's pressing
+    /// on it, so that row may be missing its record there.
+    Pressing {
+        source: BridgeCatalog,
+        failure: BridgeLookupFailure,
+    },
     ReleaseDetails {
         failure: BridgeLookupFailure,
     },

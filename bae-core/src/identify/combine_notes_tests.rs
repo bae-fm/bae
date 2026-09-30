@@ -48,7 +48,6 @@ fn by_catalog(results: Vec<(MetadataResult, LibraryStatus)>, text: &CandidateTex
             catalog: results,
             ..LookupAnswers::default()
         },
-        Vec::new(),
         text,
         FolderAudio::UNPROVEN,
     )

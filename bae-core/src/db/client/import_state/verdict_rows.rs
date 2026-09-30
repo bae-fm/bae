@@ -268,10 +268,10 @@ fn insert_match(
               media_kind, cover_url, cover_label, cover_source, \
               cover_standing, source_group_id, album_links, source_tracks_kind, \
               source_tracks_count, by_disc_id, by_barcode, by_catalog, by_isrc, by_search, \
-              named_by_catalog, named_by_key, narrowed_out, document_failure, \
+              by_pressing, narrowed_out, document_failure, \
               document_failure_status, album_first_year, track_titles, notes, named_note) \
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \
-                 ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                 ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         params![
             content_hash,
             position,
@@ -301,8 +301,7 @@ fn insert_match(
             provenance.by_catalog,
             provenance.by_isrc,
             provenance.by_search,
-            provenance.named_by.as_ref().map(|by| by.catalog.as_str()),
-            provenance.named_by.as_ref().map(|by| by.key.as_str()),
+            provenance.by_pressing,
             narrowed_out,
             document_failure.kind,
             document_failure.status,
@@ -654,18 +653,7 @@ fn read_match_columns(row: &Row<'_>, pressing: i64) -> Result<MatchColumns, DbEr
             by_catalog: row.get("by_catalog")?,
             by_isrc: row.get("by_isrc")?,
             by_search: row.get("by_search")?,
-            named_by: match (
-                row.get::<_, Option<String>>("named_by_catalog")?,
-                row.get::<_, Option<String>>("named_by_key")?,
-            ) {
-                (Some(catalog), Some(key)) => Some(MetadataRef::new(source_of(&catalog)?, key)),
-                (None, None) => None,
-                _ => {
-                    return Err(DbError::Message(
-                        "a match names half of the release that named it".to_string(),
-                    ))
-                }
-            },
+            by_pressing: row.get("by_pressing")?,
         },
         narrowed_out: row.get("narrowed_out")?,
         named_note: row.get("named_note")?,

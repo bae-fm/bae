@@ -376,9 +376,12 @@ fn live_findings(
             catalog: catalog.results(),
             isrc: isrc.results(),
             search: search.results(),
+            pressing: context
+                .pressings
+                .iter()
+                .flat_map(super::state::PressingLookup::results)
+                .collect(),
         },
-        // Album links are read only once every lookup has settled.
-        Vec::new(),
         &context.text,
         context.folder_audio(),
     )

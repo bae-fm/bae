@@ -60,6 +60,9 @@ pub enum IdentifyFailure {
     Search(SourceFailure),
     /// MusicBrainz could not answer the search by the audio's ISRCs.
     Isrc(LookupFailure),
+    /// One catalog could not answer the lookup of an offered row's pressing
+    /// on it, so that row may be missing its record there.
+    Pressing(SourceFailure),
     ReleaseDetails(LookupFailure),
     /// Discogs could not give the images of the artists the picked release
     /// credits.

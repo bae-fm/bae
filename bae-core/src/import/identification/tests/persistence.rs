@@ -114,7 +114,7 @@ fn multi_match_verdict(release_ids: &[&str], group_id: &str) -> TerminalVerdict 
                     by_catalog: false,
                     by_isrc: false,
                     by_search: false,
-                    named_by: None,
+                    by_pressing: false,
                 })
                 .collect(),
             // Each release is a pressing of its own: the group lists several, and
@@ -262,6 +262,7 @@ async fn an_ending_ends_the_run_it_names_and_not_the_answer_being_saved() {
                 ..Default::default()
             },
             documents: crate::identify::documents::DocumentReading::Pending,
+            pressings: Vec::new(),
             isrc: Default::default(),
             track_titles: Vec::new(),
         },

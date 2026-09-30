@@ -1,6 +1,352 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Same pressing" : {
+      "comment" : "Find online failure lines: the lookup of an offered row's pressing on a catalog the row has no record of, before the catalog's name and the reason it failed",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "نفس الطبعة"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Същото издание"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stejný lis"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Samme presning"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gleiche Pressung"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ίδια έκδοση"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Same pressing"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mismo prensaje"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sama painos"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Même pressage"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אותה מהדורה"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Isto izdanje"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Azonos préselés"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stessa stampa"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "同じプレス"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "같은 프레싱"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Samme pressing"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zelfde persing"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To samo tłoczenie"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mesma prensagem"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mesma prensagem"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aceeași presare"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rovnaké lisovanie"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Samma pressning"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aynı baskı"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Те саме видання"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "同一压制版"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "同一版本"
+          }
+        }
+      }
+    },
+    "pressing lookup" : {
+      "comment" : "Find online: names the step a provider failed, inside the sentence saying a source's results are missing from the list — looking an offered row's pressing up on a catalog the row has no record of",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "البحث عن الطبعة"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "търсене на изданието"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "vyhledávání lisu"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "opslag af presning"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pressungssuche"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "αναζήτηση έκδοσης"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "pressing lookup"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "búsqueda del prensaje"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "painoshaku"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "recherche du pressage"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חיפוש המהדורה"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "traženje izdanja"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "préselés keresése"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ricerca della stampa"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "プレス検索"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "프레싱 조회"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "pressingoppslag"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "persingzoekopdracht"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "wyszukiwanie tłoczenia"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "busca da prensagem"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "pesquisa da prensagem"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "căutarea presării"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "vyhľadávanie lisovania"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "pressningsuppslag"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "baskı araması"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "пошук видання"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "压制版查询"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "版本查詢"
+          }
+        }
+      }
+    },
     "Queued to be identified" : {
       "comment" : "Find online pane, the candidate waits on the identification queue for its run; beside it a Cancel button takes it off the queue",
       "extractionState" : "manual",
@@ -11763,521 +12109,521 @@
         }
       }
     },
-    "Reset": {
-      "comment": "Import menu: restore the complete initial import setup",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Reset"
+    "Reset" : {
+      "comment" : "Import menu: restore the complete initial import setup",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reset"
           }
         },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "إعادة التعيين"
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "إعادة التعيين"
           }
         },
-        "bg": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Нулиране"
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нулиране"
           }
         },
-        "cs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Obnovit"
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Obnovit"
           }
         },
-        "da": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nulstil"
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nulstil"
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zurücksetzen"
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zurücksetzen"
           }
         },
-        "el": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Επαναφορά"
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Επαναφορά"
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Restablecer"
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restablecer"
           }
         },
-        "fi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Palauta"
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Palauta"
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Réinitialiser"
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réinitialiser"
           }
         },
-        "he": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "איפוס"
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "איפוס"
           }
         },
-        "hr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Vrati"
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vrati"
           }
         },
-        "hu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Visszaállítás"
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Visszaállítás"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ripristina"
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ripristina"
           }
         },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "リセット"
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "リセット"
           }
         },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "재설정"
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "재설정"
           }
         },
-        "nb": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tilbakestill"
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tilbakestill"
           }
         },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Terugzetten"
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terugzetten"
           }
         },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Przywróć"
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Przywróć"
           }
         },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Redefinir"
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Redefinir"
           }
         },
-        "pt-PT": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Repor"
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Repor"
           }
         },
-        "ro": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Resetează"
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resetează"
           }
         },
-        "sk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Obnoviť"
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Obnoviť"
           }
         },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Återställ"
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Återställ"
           }
         },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sıfırla"
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sıfırla"
           }
         },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Скинути"
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скинути"
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "重置"
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重置"
           }
         },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "重設"
-          }
-        }
-      }
-    },
-    "Reset?": {
-      "comment": "Import setup: reset confirmation title",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Reset?"
-          }
-        },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "إعادة التعيين؟"
-          }
-        },
-        "bg": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Нулиране?"
-          }
-        },
-        "cs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Obnovit?"
-          }
-        },
-        "da": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nulstil?"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zurücksetzen?"
-          }
-        },
-        "el": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Επαναφορά;"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "¿Restablecer?"
-          }
-        },
-        "fi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Palautetaanko?"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Réinitialiser ?"
-          }
-        },
-        "he": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "לאפס?"
-          }
-        },
-        "hr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Vratiti?"
-          }
-        },
-        "hu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Visszaállítod?"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ripristinare?"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "リセットしますか？"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "재설정할까요?"
-          }
-        },
-        "nb": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tilbakestille?"
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Terugzetten?"
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Przywrócić?"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Redefinir?"
-          }
-        },
-        "pt-PT": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Repor?"
-          }
-        },
-        "ro": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Resetezi?"
-          }
-        },
-        "sk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Obnoviť?"
-          }
-        },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Återställa?"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sıfırlansın mı?"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Скинути?"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "重置？"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "重設？"
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重設"
           }
         }
       }
     },
-    "Restore all tracks, automatic audio assignments, artwork, and initial metadata. Your files will not be changed.": {
-      "comment": "Import setup: reset confirmation message",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Restore all tracks, automatic audio assignments, artwork, and initial metadata. Your files will not be changed."
+    "Reset?" : {
+      "comment" : "Import setup: reset confirmation title",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reset?"
           }
         },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "استعادة جميع المقاطع وتعيينات الصوت التلقائية والصور والبيانات الوصفية الأولية. لن تتغير ملفاتك."
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "إعادة التعيين؟"
           }
         },
-        "bg": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Възстановяване на всички песни, автоматичните аудио съпоставяния, изображенията и първоначалните метаданни. Файловете ви няма да бъдат променени."
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нулиране?"
           }
         },
-        "cs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Obnovit všechny skladby, automatická přiřazení zvuku, obrázky a počáteční metadata. Vaše soubory se nezmění."
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Obnovit?"
           }
         },
-        "da": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Gendan alle numre, automatiske lydtilknytninger, billeder og oprindelige metadata. Dine filer ændres ikke."
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nulstil?"
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Alle Titel, automatischen Audiozuordnungen, Bilder und ursprünglichen Metadaten wiederherstellen. Deine Dateien werden nicht verändert."
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zurücksetzen?"
           }
         },
-        "el": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Επαναφορά όλων των κομματιών, των αυτόματων αντιστοιχίσεων ήχου, των εικόνων και των αρχικών μεταδεδομένων. Τα αρχεία σας δεν θα αλλάξουν."
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Επαναφορά;"
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Restaurar todas las pistas, las asignaciones automáticas de audio, las imágenes y los metadatos iniciales. Tus archivos no se modificarán."
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Restablecer?"
           }
         },
-        "fi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Palauta kaikki kappaleet, automaattiset äänikytkennät, kuvat ja alkuperäiset metatiedot. Tiedostojasi ei muuteta."
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Palautetaanko?"
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Restaurer toutes les pistes, les associations audio automatiques, les images et les métadonnées initiales. Vos fichiers ne seront pas modifiés."
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réinitialiser ?"
           }
         },
-        "he": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "שחזור כל הרצועות, שיוכי השמע האוטומטיים, התמונות והמטא־נתונים הראשוניים. הקבצים שלך לא ישתנו."
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לאפס?"
           }
         },
-        "hr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Vrati sve pjesme, automatske dodjele zvuka, slike i početne metapodatke. Vaše datoteke neće biti promijenjene."
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vratiti?"
           }
         },
-        "hu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Az összes szám, az automatikus hanghozzárendelések, a képek és a kezdeti metaadatok visszaállítása. A fájljaid nem módosulnak."
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Visszaállítod?"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ripristina tutte le tracce, le associazioni audio automatiche, le immagini e i metadati iniziali. I tuoi file non verranno modificati."
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ripristinare?"
           }
         },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "すべてのトラック、自動的な音声の割り当て、画像、初期メタデータを復元します。ファイルは変更されません。"
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "リセットしますか？"
           }
         },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "모든 트랙, 자동 오디오 할당, 이미지 및 초기 메타데이터를 복원합니다. 파일은 변경되지 않습니다."
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "재설정할까요?"
           }
         },
-        "nb": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Gjenopprett alle spor, automatiske lydkoblinger, bilder og opprinnelige metadata. Filene dine blir ikke endret."
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tilbakestille?"
           }
         },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Herstel alle nummers, automatische audiotoewijzingen, afbeeldingen en oorspronkelijke metadata. Je bestanden worden niet gewijzigd."
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terugzetten?"
           }
         },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Przywróć wszystkie utwory, automatyczne przypisania dźwięku, obrazy i początkowe metadane. Twoje pliki nie zostaną zmienione."
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Przywrócić?"
           }
         },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Restaure todas as faixas, as associações automáticas de áudio, as imagens e os metadados iniciais. Seus arquivos não serão alterados."
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Redefinir?"
           }
         },
-        "pt-PT": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Repor todas as faixas, as associações automáticas de áudio, as imagens e os metadados iniciais. Os seus ficheiros não serão alterados."
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Repor?"
           }
         },
-        "ro": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Restabilește toate piesele, asocierile audio automate, imaginile și metadatele inițiale. Fișierele tale nu vor fi modificate."
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resetezi?"
           }
         },
-        "sk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Obnoviť všetky skladby, automatické priradenia zvuku, obrázky a počiatočné metadáta. Vaše súbory sa nezmenia."
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Obnoviť?"
           }
         },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Återställ alla spår, automatiska ljudkopplingar, bilder och ursprungliga metadata. Dina filer ändras inte."
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Återställa?"
           }
         },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tüm parçaları, otomatik ses atamalarını, görselleri ve ilk meta verileri geri yükle. Dosyalarınız değiştirilmeyecek."
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sıfırlansın mı?"
           }
         },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Відновити всі композиції, автоматичні зіставлення аудіо, зображення та початкові метадані. Ваші файли не буде змінено."
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скинути?"
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "恢复所有曲目、自动音频分配、图片和初始元数据。你的文件不会被更改。"
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重置？"
           }
         },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "還原所有曲目、自動音訊指派、圖片和初始中繼資料。你的檔案不會被更改。"
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重設？"
+          }
+        }
+      }
+    },
+    "Restore all tracks, automatic audio assignments, artwork, and initial metadata. Your files will not be changed." : {
+      "comment" : "Import setup: reset confirmation message",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restore all tracks, automatic audio assignments, artwork, and initial metadata. Your files will not be changed."
+          }
+        },
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "استعادة جميع المقاطع وتعيينات الصوت التلقائية والصور والبيانات الوصفية الأولية. لن تتغير ملفاتك."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Възстановяване на всички песни, автоматичните аудио съпоставяния, изображенията и първоначалните метаданни. Файловете ви няма да бъдат променени."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Obnovit všechny skladby, automatická přiřazení zvuku, obrázky a počáteční metadata. Vaše soubory se nezmění."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gendan alle numre, automatiske lydtilknytninger, billeder og oprindelige metadata. Dine filer ændres ikke."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle Titel, automatischen Audiozuordnungen, Bilder und ursprünglichen Metadaten wiederherstellen. Deine Dateien werden nicht verändert."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Επαναφορά όλων των κομματιών, των αυτόματων αντιστοιχίσεων ήχου, των εικόνων και των αρχικών μεταδεδομένων. Τα αρχεία σας δεν θα αλλάξουν."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restaurar todas las pistas, las asignaciones automáticas de audio, las imágenes y los metadatos iniciales. Tus archivos no se modificarán."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Palauta kaikki kappaleet, automaattiset äänikytkennät, kuvat ja alkuperäiset metatiedot. Tiedostojasi ei muuteta."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restaurer toutes les pistes, les associations audio automatiques, les images et les métadonnées initiales. Vos fichiers ne seront pas modifiés."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שחזור כל הרצועות, שיוכי השמע האוטומטיים, התמונות והמטא־נתונים הראשוניים. הקבצים שלך לא ישתנו."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vrati sve pjesme, automatske dodjele zvuka, slike i početne metapodatke. Vaše datoteke neće biti promijenjene."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Az összes szám, az automatikus hanghozzárendelések, a képek és a kezdeti metaadatok visszaállítása. A fájljaid nem módosulnak."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ripristina tutte le tracce, le associazioni audio automatiche, le immagini e i metadati iniziali. I tuoi file non verranno modificati."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "すべてのトラック、自動的な音声の割り当て、画像、初期メタデータを復元します。ファイルは変更されません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "모든 트랙, 자동 오디오 할당, 이미지 및 초기 메타데이터를 복원합니다. 파일은 변경되지 않습니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gjenopprett alle spor, automatiske lydkoblinger, bilder og opprinnelige metadata. Filene dine blir ikke endret."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Herstel alle nummers, automatische audiotoewijzingen, afbeeldingen en oorspronkelijke metadata. Je bestanden worden niet gewijzigd."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Przywróć wszystkie utwory, automatyczne przypisania dźwięku, obrazy i początkowe metadane. Twoje pliki nie zostaną zmienione."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restaure todas as faixas, as associações automáticas de áudio, as imagens e os metadados iniciais. Seus arquivos não serão alterados."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Repor todas as faixas, as associações automáticas de áudio, as imagens e os metadados iniciais. Os seus ficheiros não serão alterados."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restabilește toate piesele, asocierile audio automate, imaginile și metadatele inițiale. Fișierele tale nu vor fi modificate."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Obnoviť všetky skladby, automatické priradenia zvuku, obrázky a počiatočné metadáta. Vaše súbory sa nezmenia."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Återställ alla spår, automatiska ljudkopplingar, bilder och ursprungliga metadata. Dina filer ändras inte."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tüm parçaları, otomatik ses atamalarını, görselleri ve ilk meta verileri geri yükle. Dosyalarınız değiştirilmeyecek."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Відновити всі композиції, автоматичні зіставлення аудіо, зображення та початкові метадані. Ваші файли не буде змінено."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "恢复所有曲目、自动音频分配、图片和初始元数据。你的文件不会被更改。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "還原所有曲目、自動音訊指派、圖片和初始中繼資料。你的檔案不會被更改。"
           }
         }
       }
