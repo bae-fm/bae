@@ -311,11 +311,25 @@ mod identify_mirrors {
         }
     }
 
+    /// The folder's text, carrying the barcode `code` and nothing else.
+    fn text_carrying(code: &str) -> bae_core::identify::CandidateText {
+        bae_core::identify::CandidateText::of(&[], &[], &[SourcedValue::new(code.to_string())])
+    }
+
+    /// `result`, printing the barcode `code`.
+    fn printing(
+        mut result: bae_core::import::search::MetadataResult,
+        code: &str,
+    ) -> bae_core::import::search::MetadataResult {
+        result.barcodes = vec![code.to_string()];
+        result
+    }
+
     #[test]
     fn found_state_aligns_agreements_and_pressings_by_release_id() {
         let matches = vec![
             metadata_result("rel-1", "group-1"),
-            metadata_result("rel-2", "group-1"),
+            printing(metadata_result("rel-2", "group-1"), "0123456789012"),
         ];
         let state = IdentifyState::Found {
             library_statuses: bae_core::identify::LibraryStatuses {
@@ -353,15 +367,18 @@ mod identify_mirrors {
                 named_notes: Vec::new(),
             },
             ledger: None,
-            context: empty_context(),
+            context: SignalsContext {
+                text: text_carrying("0123456789012"),
+                ..empty_context()
+            },
         };
 
         let json = serde_json::to_value(automation_identify_state(state)).unwrap();
         assert_eq!(json["kind"], "found");
         let groups = json["groups"].as_array().unwrap();
         assert_eq!(groups.len(), 1, "both matches share one release group");
-        // Two lookups stand behind `rel-2` and one behind `rel-1`, so the
-        // rows come back with `rel-2` on top.
+        // `rel-2` prints the folder's barcode as well, so the rows come back
+        // with `rel-2` on top.
         let pressings = groups[0]["sections"][0]["pressings"].as_array().unwrap();
         assert_eq!(pressings[0]["releases"][0]["release_id"], "rel-2");
         assert_eq!(pressings[1]["releases"][0]["release_id"], "rel-1");
@@ -400,7 +417,7 @@ mod identify_mirrors {
             findings: bae_core::identify::Findings {
                 matches: vec![
                     metadata_result("rel-disc", "g-d"),
-                    metadata_result("rel-bar", "g-b"),
+                    printing(metadata_result("rel-bar", "g-b"), "0123456789012"),
                 ],
                 provenance: vec![
                     LookupProvenance {
@@ -427,7 +444,10 @@ mod identify_mirrors {
                 named_notes: Vec::new(),
             },
             ledger: None,
-            context: empty_context(),
+            context: SignalsContext {
+                text: text_carrying("0123456789012"),
+                ..empty_context()
+            },
         };
 
         let json = serde_json::to_value(automation_identify_state(state)).unwrap();
@@ -469,7 +489,10 @@ mod identify_mirrors {
                                 source: Catalog::Discogs,
                                 state: LookupState::Done {
                                     results: vec![(
-                                        metadata_result("rel-dg", "group-1"),
+                                        printing(
+                                            metadata_result("rel-dg", "group-1"),
+                                            "0123456789012",
+                                        ),
                                         LibraryStatus::absent("rel-dg"),
                                     )],
                                 },
@@ -513,6 +536,7 @@ mod identify_mirrors {
                     had_source: true,
                     ..Default::default()
                 },
+                text: text_carrying("0123456789012"),
                 ..empty_context()
             },
         };
