@@ -189,24 +189,29 @@ fn a_country_code_inside_a_word_states_nothing() {
     assert!(!judged.country);
 }
 
-/// The lookups state the disc ID and the barcode; the text is never asked
-/// about them.
+/// The disc ID comes from the lookup that returned the record, since no
+/// record states its disc IDs; the barcode is the folder's own code printed
+/// on the record, whichever search returned it.
 #[test]
-fn the_disc_id_and_the_barcode_come_from_the_lookups_alone() {
-    let judged = judge(
-        &result(),
-        &CandidateText::default(),
-        &LookupProvenance {
-            by_disc_id: true,
-            by_barcode: true,
-            by_catalog: false,
-            by_isrc: false,
-            by_search: false,
-            named_by: None,
-        },
+fn the_disc_id_comes_from_the_lookup_and_the_barcode_from_the_record() {
+    let returned_by_both = LookupProvenance {
+        by_disc_id: true,
+        by_barcode: true,
+        ..NO_LOOKUP
+    };
+    let judged = judge(&result(), &CandidateText::default(), &returned_by_both);
+    assert!(judged.disc_id && !judged.barcode);
+
+    let folder = CandidateText::of(
+        &[],
+        &[],
+        &[SourcedValue::new("0 12345 67890 5".to_string())],
     );
-    assert!(judged.disc_id && judged.barcode);
-    assert_eq!(judged.count(), 2);
+    let mut printed = result();
+    printed.barcodes = vec!["012345678905".to_string()];
+    let judged = judge(&printed, &folder, &NO_LOOKUP);
+    assert!(judged.barcode && !judged.disc_id);
+    assert_eq!(judged.count(), 1);
 }
 
 /// A catalog lookup agrees only through the number itself, not because it

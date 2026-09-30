@@ -1,13 +1,13 @@
-//! Ranks what a run's lookups returned and offers the best-supported rows.
-//! Pure: no I/O, no state.
+//! Ranks what a run's lookups returned by what each row states against the
+//! folder, and offers the rows that state the most. Which searches returned
+//! a row only brought it in and adds no weight. Pure: no I/O, no state.
 //!
 //! Every record is first paired into pressing rows — two sources' records of
 //! one object are one row, picked whole. A row whose read tracklist holds
 //! other tracks than the folder is not a match and is left out (see
 //! `fit::rules_out`); each row left is scored by `Support`. The rows
 //! tied at the top are offered; the rest are set aside under "N more
-//! releases". A record read through another release's link rather than
-//! returned by a lookup counts for no lookup.
+//! releases".
 
 use super::agreements::{agreements_of, CandidateText};
 use super::medium::{agrees_with_mono, FolderAudio, RippedFrom};
@@ -323,29 +323,32 @@ pub fn combine_results(
     )
 }
 
-/// What stands behind one row, compared field by field in declaration order.
-/// The rows tied at the highest value are offered.
+/// What one row states against the folder, compared field by field in
+/// declaration order. The rows tied at the highest value are offered.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 struct Support {
     /// Whether the row's carrier could have given the folder its audio — see
     /// [`RippedFrom::admits`]. First: a vinyl pressing every lookup returned
     /// is still not the CD the rip log was read off.
     medium: bool,
-    /// How many of the run's lookups returned this row.
-    lookups: u32,
-    /// How many facts that name one pressing hold: the folder states its
-    /// catalog number, and a barcode lookup returned it — the barcode only
-    /// for a row the text also describes, since misread bars name some other
-    /// record.
+    /// How many facts that name one pressing hold: the folder's text prints
+    /// its catalog number, and it prints a barcode the folder's files carry —
+    /// the barcode only for a row the text also describes, since misread bars
+    /// name some other record. Which searches returned the row adds nothing:
+    /// a search only brings releases in.
     names_pressing: u32,
-    /// Whether the disc ID returned this row. Below what names one pressing,
+    /// Whether the row carries the folder's disc ID: the disc ID lookup
+    /// returned it. No record states the disc IDs it carries, so a row the
+    /// lookup did not return — a Discogs one, which holds none — states
+    /// nothing about it rather than another. Below what names one pressing,
     /// since every pressing cut from one master shares a table of contents.
     shares_toc: bool,
     /// How many of the album's title, artist and first year the folder's text
-    /// states. They name the album, not the pressing, so they only tell apart
-    /// a row returned for some other album. Agreements only: the text does not
-    /// say which of its lines is the title or the artist, so a row's title it
-    /// does not write contradicts nothing.
+    /// states, and whether its recordings are the folder's, as the search by
+    /// the audio's ISRCs says. They name the album, not the pressing, so they
+    /// only tell apart a row returned for some other album. Agreements only:
+    /// the text does not say which of its lines is the title or the artist,
+    /// so a row's title it does not write contradicts nothing.
     names_album: u32,
     /// Whether the row states tracks the folder could be, by
     /// [`super::fit::TracklistFit::admits`] of the row's lead — the record
@@ -427,29 +430,17 @@ fn support_of(
             .get(&(release.source, release.release_id.clone()))
             .expect("a pressing is built from the run's own records");
         returned.by_disc_id |= found.by_disc_id;
-        returned.by_barcode |= found.by_barcode;
-        returned.by_catalog |= found.by_catalog;
         returned.by_isrc |= found.by_isrc;
-        returned.by_search |= found.by_search;
     }
     let agreements = row.agreements(judgements);
     let offered = agreements.offered();
     Support {
         medium: ripped_from.admits(row.releases.iter().map(|release| &release.media)),
-        lookups: [
-            returned.by_disc_id,
-            returned.by_barcode,
-            returned.by_catalog,
-            returned.by_isrc,
-            returned.by_search,
-        ]
-        .into_iter()
-        .filter(|returned| *returned)
-        .count() as u32,
-        names_pressing: u32::from(agreements.catalog) + u32::from(returned.by_barcode && offered),
+        names_pressing: u32::from(agreements.catalog) + u32::from(agreements.barcode && offered),
         shares_toc: returned.by_disc_id,
         names_album: agreements.names_album()
-            + u32::from(facts.names_the_album_year(&row.releases)),
+            + u32::from(facts.names_the_album_year(&row.releases))
+            + u32::from(returned.by_isrc),
         fits_the_tracks: super::fit::TracklistFit::of(
             row.lead().source_tracks.as_ref(),
             folder.track_count,
@@ -531,10 +522,9 @@ impl Support {
 
     /// The fields declared above `track_titles`: what a row ties with the
     /// others on before its titles are weighed.
-    fn above_track_titles(&self) -> (bool, u32, u32, bool, u32, bool) {
+    fn above_track_titles(&self) -> (bool, u32, bool, u32, bool) {
         (
             self.medium,
-            self.lookups,
             self.names_pressing,
             self.shares_toc,
             self.names_album,

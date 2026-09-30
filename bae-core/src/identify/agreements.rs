@@ -1,5 +1,7 @@
-//! Which of a result's fields the candidate's own text states. The disc ID and
-//! the barcode come from the lookups that returned the result, not the text.
+//! Which of a result's fields the candidate's own folder states. The disc ID
+//! comes from the lookup that returned the result, since no record states the
+//! disc IDs it carries; the barcode is the folder's own code printed on the
+//! record.
 
 use super::combine::LookupProvenance;
 use super::row_facts::FolderFacts;
@@ -97,7 +99,10 @@ pub(crate) fn agreements_of(
 ) -> Agreements {
     Agreements {
         disc_id: lookup.by_disc_id,
-        barcode: lookup.by_barcode,
+        barcode: result
+            .barcodes
+            .iter()
+            .any(|barcode| text.carries_barcode(barcode)),
         catalog: result
             .labels
             .iter()
@@ -152,6 +157,9 @@ pub struct CandidateText {
     struck_out: HashSet<String>,
     /// The digits of each barcode read off the folder's files.
     barcodes: Vec<String>,
+    /// Each of those barcodes as two codes compare — see
+    /// `barcode::comparison_key`.
+    barcode_keys: Vec<String>,
 }
 
 impl CandidateText {
@@ -193,7 +201,17 @@ impl CandidateText {
                 })
                 .filter(|digits| !digits.is_empty())
                 .collect(),
+            barcode_keys: barcodes
+                .iter()
+                .filter_map(|code| crate::barcode::comparison_key(&code.value).ok())
+                .collect(),
         }
+    }
+
+    /// Whether `barcode`, as a record prints it, is one of the codes the
+    /// folder's files carry.
+    pub fn carries_barcode(&self, barcode: &str) -> bool {
+        crate::barcode::comparison_key(barcode).is_ok_and(|key| self.barcode_keys.contains(&key))
     }
 
     /// Whether the text states `value` — whole words of one of its lines.
@@ -295,6 +313,7 @@ impl CandidateText {
                         .collect(),
                     struck_out: self.struck_out.clone(),
                     barcodes: self.barcodes.clone(),
+                    barcode_keys: self.barcode_keys.clone(),
                 })
             })
             .find(|found| !found.is_empty())

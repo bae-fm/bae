@@ -20,14 +20,19 @@ fn state_with_catalog_offered(providers: Vec<Catalog>) -> IdentifyState {
 /// The same run started with "LBL 001" chosen, with the effects it dispatched.
 fn run_with_catalog_chosen(providers: Vec<Catalog>) -> (IdentifyState, Vec<Effect>) {
     let (state, chosen_effects) = started_with_choices(providers, choosing(&["LBL 001"]));
-    let (state, _) = update(
-        state,
-        signals(disc("disc-hash"), BarcodeSignal::Absent, &["LBL 001"]),
-    );
+    let mut folder = signals(disc("disc-hash"), BarcodeSignal::Absent, &["LBL 001"]);
+    folder.text_pool = vec![crate::signals::TextLine {
+        text: "Album [LBL 001]".to_string(),
+        origin: crate::signals::TextOrigin::FolderName,
+    }];
+    let (state, _) = update(state, folder);
+    // rel-b carries the chosen number, which the folder's text prints.
+    let (mut numbered, status) = pair("rel-b", Some("g-x"));
+    numbered.labels = vec![crate::pressing::ReleaseLabel::of(None, Some("LBL 001"))];
     let (state, _) = step(
         state,
         IdentifyEvent::DiscidLookupCompleted {
-            results: vec![pair("rel-a", Some("g-x")), pair("rel-b", Some("g-x"))],
+            results: vec![pair("rel-a", Some("g-x")), (numbered, status)],
         },
     );
     (state, chosen_effects)
@@ -113,7 +118,8 @@ fn every_extracted_catalog_number_is_an_option_on_the_one_badge() {
     );
 }
 
-/// A chosen number is looked up from the start and joins the intersection.
+/// A chosen number is looked up from the start, and the release carrying
+/// it, which the text prints, leads.
 #[test]
 fn a_chosen_catalog_number_is_looked_up_from_the_start() {
     let (state, effects) = run_with_catalog_chosen(vec![MB]);

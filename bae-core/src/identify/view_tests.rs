@@ -20,6 +20,17 @@ fn result(source: Catalog, release_id: &str) -> (MetadataResult, LibraryStatus) 
     )
 }
 
+/// The barcode the folder's files carry in [`context`].
+const FOLDER_BARCODE: &str = "012345678905";
+
+/// `result`, printing the folder's barcode.
+fn printing_the_folder_s_code(
+    (mut result, status): (MetadataResult, LibraryStatus),
+) -> (MetadataResult, LibraryStatus) {
+    result.barcodes = vec![FOLDER_BARCODE.to_string()];
+    (result, status)
+}
+
 fn context() -> SignalsContext {
     SignalsContext {
         providers: vec![MB, DG],
@@ -33,6 +44,7 @@ fn context() -> SignalsContext {
             had_source: true,
             ..Default::default()
         },
+        text: CandidateText::of(&[], &[], &[SourcedValue::new(FOLDER_BARCODE.to_string())]),
         text_settled: true,
         audio: crate::signals::AudioFacts {
             track_count: 9,
@@ -65,7 +77,10 @@ fn in_flight(context: SignalsContext) -> IdentifyState {
                 "A",
                 vec![
                     (MB, LookupState::LookingUp),
-                    (DG, found(vec![result(DG, "dg-1")])),
+                    (
+                        DG,
+                        found(vec![printing_the_folder_s_code(result(DG, "dg-1"))]),
+                    ),
                 ],
             )],
         },
@@ -703,12 +718,9 @@ fn what_agreement_narrowed_out_stays_on_its_album_s_card() {
         MetadataResult::for_test(MB, "mb-other", Some("g-other")),
         LibraryStatus::absent("mb-other"),
     );
-    context.disc.results = vec![
-        result(MB, "mb-shared"),
-        result(MB, "mb-only"),
-        other_album.clone(),
-    ];
-    context.barcode.results = vec![result(MB, "mb-shared")];
+    let shared = printing_the_folder_s_code(result(MB, "mb-shared"));
+    context.disc.results = vec![shared.clone(), result(MB, "mb-only"), other_album.clone()];
+    context.barcode.results = vec![shared];
     context.barcode.matched = Some("A".to_string());
 
     let IdentifyStateView::Found {
