@@ -663,6 +663,7 @@ mod tests {
                 isrc: Default::default(),
                 track_titles: Vec::new(),
                 documents: bae_core::identify::documents::DocumentReading::Pending,
+                pressings: Vec::new(),
             },
         }
     }
