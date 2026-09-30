@@ -343,3 +343,62 @@ async fn a_batch_identify_shows_each_row_queued_then_running() {
         );
     }
 }
+
+/// A verdict stored for a row off the page moves the filter menu's counts and
+/// delivers nothing: the next page the list delivers is the one a change on
+/// the page brings.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_verdict_off_the_page_moves_the_counts_and_delivers_nothing() {
+    let fixture = Fixture::new("verdict-off-the-page").await;
+    let first = fixture.disc_id_candidate("First");
+    let second = fixture.disc_id_candidate("Second");
+    std::fs::write(second.join("notes.txt"), "distinct candidate").unwrap();
+    fixture
+        .manager
+        .set_identify_automatically(false)
+        .await
+        .unwrap();
+    fixture.scan(2).await;
+
+    let list = list_subscription(&fixture, page_window(0, 1));
+    let initial = next_page(&list).await;
+    let on_key = page_live(&initial)
+        .into_keys()
+        .next()
+        .expect("the window holds one row");
+    let off_dir = [&first, &second]
+        .into_iter()
+        .find(|dir| dir.to_string_lossy() != on_key)
+        .expect("the other candidate is off the page")
+        .clone();
+    let before = list.pending_filter_entries();
+
+    let probed = fixture.probed_total_ms(&off_dir);
+    fixture
+        .archive("mb-off-page", "rg-off-page", &[probed, 0])
+        .await;
+    // The list reads while a caller waits on its next page, as the app always
+    // does; the verdict and the claim land while this one waits.
+    let (next, ()) = tokio::join!(next_page(&list), async {
+        fixture
+            .store_settled_verdict(&off_dir, "mb-off-page", "rg-off-page")
+            .await;
+        let deadline = tokio::time::Instant::now() + Duration::from_secs(20);
+        while list.pending_filter_entries() == before {
+            assert!(
+                tokio::time::Instant::now() < deadline,
+                "the verdict never reached the menu's counts"
+            );
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+        fixture
+            .import
+            .claim_candidate_for_import(&on_key, "import-on")
+            .await;
+    });
+    assert_eq!(
+        page_live(&next)[&on_key].facts.import,
+        Some(crate::import::ImportStanding::Queued),
+        "the verdict off the page delivered a page of its own"
+    );
+}

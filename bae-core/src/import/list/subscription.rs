@@ -332,6 +332,13 @@ impl ImportListSubscription {
                     };
                     self.request
                         .set_found_states(std::mem::take(&mut projection.found_states));
+                    // A read that changed only the states of rows off the page
+                    // moves the menu's counts and nothing on screen.
+                    if delivered.list.as_ref().is_some_and(|list| {
+                        list.request_revision == request_revision && list.projection == projection
+                    }) {
+                        continue;
+                    }
                     delivered.list = Some(AnsweredList {
                         projection,
                         request_revision,
