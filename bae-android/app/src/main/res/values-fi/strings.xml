@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="back">Takaisin</string>
-    <string name="cancel">Kumoa</string>
+    <string name="cancel">Peruuta</string>
     <string name="retry">Yritä uudelleen</string>
     <string name="close">Sulje</string>
     <string name="play">Toista</string>
