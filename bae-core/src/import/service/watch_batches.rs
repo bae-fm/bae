@@ -386,12 +386,18 @@ mod tests {
         batches.add(&root, created("/private/var/music/One/02.flac"), start);
         batches.add(&root, lost_track(Some("/private/var")), start + QUIET);
 
+        // Rebuilt from the root's own spelling, so the separator is the
+        // platform's.
+        let spelled = |file: &str| {
+            root.path
+                .join("One")
+                .join(file)
+                .to_string_lossy()
+                .into_owned()
+        };
         assert_eq!(
             paths(&batches.take_quiet(start + QUIET)),
-            vec![vec![
-                "/var/music/One/01.flac".to_string(),
-                "/var/music/One/02.flac".to_string()
-            ]]
+            vec![vec![spelled("01.flac"), spelled("02.flac")]]
         );
         let whole = batches.take_quiet(start + QUIET + QUIET);
         assert_eq!(paths(&whole), vec![vec!["/var/music".to_string()]]);
