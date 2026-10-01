@@ -60,6 +60,14 @@ impl TelemetryValue for Duration {
     }
 }
 
+impl TelemetryValue for crate::playback::TrackTime {
+    fn record(&self) -> serde_json::Value {
+        // Milliseconds from the track's start, as a JSON number; negative in
+        // the pregap.
+        serde_json::Value::from(self.as_millis())
+    }
+}
+
 /// Declare a closed, field-less enum and implement [`TelemetryValue`] for it,
 /// recording each variant as an explicit snake_case string. The impl-only arm
 /// wires a foreign type (e.g. coven's `CloudProvider`) whose definition lives
@@ -406,10 +414,11 @@ telemetry_events! {
         wait: Duration,
     },
 
-    /// Playback starvation onset: the decoder couldn't keep the ring fed.
+    /// Playback starvation onset: the decoder couldn't keep the ring fed, at
+    /// `track_time` into the track, as the player shows it.
     PlaybackStarved, "playback_starved", Warn {
         track_id: LocalId,
-        position_ms: u64,
+        track_time: crate::playback::TrackTime,
     },
 
     /// A track drained to natural completion. `decode_errors` is the quality
@@ -669,16 +678,16 @@ mod tests {
     }
 
     #[test]
-    fn playback_starved_is_warn_with_position_as_number() {
+    fn playback_starved_is_warn_with_track_time_as_number() {
         let event = TelemetryEvent::PlaybackStarved {
             track_id: LocalId("track-5".to_string()),
-            position_ms: 12_000,
+            track_time: crate::playback::TrackTime::from_millis(-1_500),
         };
         assert_eq!(event.name(), "playback_starved");
         assert_eq!(event.level(), DiagnosticLevel::Warn);
         let fields = event.fields();
         assert_eq!(fields["track_id"], serde_json::json!("track-5"));
-        assert_eq!(fields["position_ms"], serde_json::json!(12_000));
-        assert!(fields["position_ms"].is_number());
+        assert_eq!(fields["track_time"], serde_json::json!(-1_500));
+        assert!(fields["track_time"].is_number());
     }
 }

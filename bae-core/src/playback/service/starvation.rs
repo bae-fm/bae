@@ -48,7 +48,7 @@ impl PlaybackService {
         if is_onset {
             self.record_telemetry(TelemetryEvent::PlaybackStarved {
                 track_id: LocalId(track_id.to_string()),
-                position_ms: position.as_millis(),
+                track_time: fmt.timeline.track_time(position),
             });
         }
 
