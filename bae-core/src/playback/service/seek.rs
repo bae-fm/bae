@@ -1,6 +1,14 @@
 use super::*;
 
 impl PlaybackService {
+    /// Seek the current track to `time` from its start.
+    pub(super) async fn seek_to_track_time(&mut self, time: TrackTime) {
+        if let PlaybackSlot::Active(cur) = &self.slot {
+            let position = cur.prepared.timeline.stream_position(time);
+            self.seek(position).await;
+        }
+    }
+
     /// Seek the current track to where a seek bar filled to `ratio` points,
     /// drawn as `TrackTimeline::progress` draws it.
     pub(super) async fn seek_by_ratio(&mut self, ratio: f64) {

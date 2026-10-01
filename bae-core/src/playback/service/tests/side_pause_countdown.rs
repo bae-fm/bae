@@ -153,7 +153,7 @@ fn commands_that_steer_playback_stop_the_countdown_and_the_rest_leave_it() {
         PlaybackCommand::Stop,
         PlaybackCommand::Next,
         PlaybackCommand::Previous,
-        PlaybackCommand::Seek(StreamPosition::START),
+        PlaybackCommand::Seek(TrackTime::START),
         PlaybackCommand::SeekByRatio(0.5),
         PlaybackCommand::Play("track".to_string()),
         PlaybackCommand::PlayLibraryShuffled,

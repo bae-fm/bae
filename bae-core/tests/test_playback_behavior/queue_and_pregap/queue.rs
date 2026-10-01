@@ -31,7 +31,7 @@ async fn test_previous_track_navigation() {
         second_track_state.is_some(),
         "Should be playing second track after Next command",
     );
-    fixture.playback_handle.seek(Duration::from_secs(1));
+    fixture.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(1)));
     let _position = fixture
         .wait_for_position_update(Duration::from_secs(2))
         .await;
@@ -52,7 +52,7 @@ async fn test_previous_track_navigation() {
         previous_track_state.is_some(),
         "Should go to previous track when Previous is called early in track",
     );
-    fixture.playback_handle.seek(Duration::from_secs(4));
+    fixture.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(4)));
     let _position = fixture
         .wait_for_position_update(Duration::from_secs(2))
         .await;
@@ -98,7 +98,7 @@ async fn test_same_position_seek_keeps_position_updates_flowing() {
         "Should be playing after play command"
     );
     let seek_position = Duration::from_secs(2);
-    fixture.playback_handle.seek(seek_position);
+    fixture.playback_handle.seek(TrackTime::from_duration(seek_position));
     let _position = fixture
         .wait_for_position_update(Duration::from_secs(2))
         .await;
@@ -107,7 +107,7 @@ async fn test_same_position_seek_keeps_position_updates_flowing() {
         .await
         .expect("a position update should arrive while playing");
     let same_position = Duration::from_millis(current_pos_ms + 50);
-    fixture.playback_handle.seek(same_position);
+    fixture.playback_handle.seek(TrackTime::from_duration(same_position));
     let seeked_position = fixture.wait_for_seeked(Duration::from_secs(2)).await;
     assert!(
         seeked_position.is_some(),
@@ -164,7 +164,7 @@ async fn test_queue_maintained_after_previous_navigation() {
         second_track_state.is_some(),
         "Should be playing second track after Next command",
     );
-    fixture.playback_handle.seek(Duration::from_secs(1));
+    fixture.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(1)));
     let _position = fixture
         .wait_for_position_update(Duration::from_secs(2))
         .await;
@@ -185,7 +185,7 @@ async fn test_queue_maintained_after_previous_navigation() {
         back_to_first_state.is_some(),
         "Should go back to first track when Previous is called from second track",
     );
-    fixture.playback_handle.seek(Duration::from_secs(1));
+    fixture.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(1)));
     let _position = fixture
         .wait_for_position_update(Duration::from_secs(2))
         .await;

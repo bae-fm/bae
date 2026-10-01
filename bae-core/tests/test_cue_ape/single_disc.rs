@@ -1,7 +1,7 @@
 use bae_core::discogs::models::DiscogsRelease;
 use bae_core::import::{ImportCommand, ImportDestination};
 use bae_core::library::LibraryManager;
-use bae_core::playback::{PlaybackProgress, PlaybackState};
+use bae_core::playback::{PlaybackProgress, PlaybackState, TrackTime};
 use bae_core::sync::CloudCipher;
 use bae_core::util::content_type::ContentType;
 use bae_test_support as support;
@@ -426,7 +426,7 @@ async fn test_cue_ape_seek() {
     assert!(started.is_some(), "Playback should start");
 
     // Seek to 27s — capture the new stream and wait for new audio post-seek
-    fixture.playback_handle.seek(Duration::from_secs(27));
+    fixture.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(27)));
     let captured = fixture.next_capture_stream().await;
 
     support::wait_for_seek(&mut fixture.progress_rx, &track_id).await;
@@ -566,7 +566,7 @@ async fn test_cue_ape_auto_advance_no_replay() {
     // Seek to 28s into the 30s track so it completes quickly, then gaplessly
     // auto-advances into track 2 within this same stream. This buffer therefore
     // holds track 1's 28s→30s tail followed by track 2.
-    fixture.playback_handle.seek(Duration::from_secs(28));
+    fixture.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(28)));
     let captured = fixture.next_capture_stream().await;
 
     // Wait for track 2 to start via auto-advance, then capture samples.

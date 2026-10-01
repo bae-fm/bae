@@ -246,7 +246,7 @@ async fn auto_advance_crosses_gaplessly_over_remote_cloud() {
     let second = playback.track_ids[1].clone();
     playback.play_and_wait(&first).await;
 
-    playback.playback_handle.seek(Duration::from_secs(54));
+    playback.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(54)));
     let outcome = observe_boundary(
         &mut playback.progress_rx,
         &first,
@@ -329,7 +329,7 @@ async fn seek_within_the_last_track_over_remote_cloud() {
     playback.play_and_wait(&last_track).await;
 
     let target = Duration::from_secs(20);
-    playback.playback_handle.seek(target);
+    playback.playback_handle.seek(TrackTime::from_duration(target));
     let landed = wait_for_seeked_on(&mut playback.progress_rx, Duration::from_secs(30))
         .await
         .expect("a seek within the last track emits Seeked over a real ranged cloud read");
@@ -403,7 +403,7 @@ async fn seek_over_remote_cloud_costs_chunks_not_the_whole_blob() {
     // window.
     let target = Duration::from_secs(50);
     let started = Instant::now();
-    playback.playback_handle.seek(target);
+    playback.playback_handle.seek(TrackTime::from_duration(target));
     let landed = wait_for_seeked_on(&mut playback.progress_rx, SEEK_COST_BACKSTOP)
         .await
         .expect("the seek must land within the backstop over a chunked ranged read");

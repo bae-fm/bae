@@ -162,7 +162,7 @@ async fn test_seek_lands_near_target_position() {
 
     // Seek to 2.5 seconds
     let seek_position = Duration::from_millis(2500);
-    fixture.playback_handle.seek(seek_position);
+    fixture.playback_handle.seek(TrackTime::from_duration(seek_position));
 
     // Wait for seek to complete
     let seeked = fixture.wait_for_seeked(Duration::from_secs(3)).await;
@@ -245,7 +245,7 @@ async fn test_cue_flac_seek_respects_track_end_boundary() {
     let seek_position_ms: u64 = 5000;
     fixture
         .playback_handle
-        .seek(Duration::from_millis(seek_position_ms));
+        .seek(TrackTime::from_duration(Duration::from_millis(seek_position_ms)));
     let captured = fixture.next_capture_stream().await;
 
     support::wait_for_seek(&mut fixture.progress_rx, &track_id).await;
@@ -280,16 +280,16 @@ async fn test_cue_flac_seek_respects_track_end_boundary() {
     let sample_rate = reference.sample_rate;
     let reference_f32 = samples_as_f32(&reference);
 
-    // Track 2 is ~12s total (INDEX 00 at 8s to 20s in file). After seeking to 5s,
-    // ~7s remain. The decoder must stop at track 2's end boundary (stop_at),
-    // decoding ~7s — not bleeding into track 3. We assert on the decoder's own
+    // Track 2 runs 10s from INDEX 01 (10s to 20s in the file). After seeking to
+    // 5s into it, 5s remain. The decoder must stop at track 2's end boundary
+    // (stop_at), decoding ~5s — not bleeding into track 3. We assert on the decoder's own
     // sample count rather than the captured buffer length, since under gapless
     // playback the buffer continues into track 3 via a separate decoder.
-    let track_remaining_ms: u64 = 12000 - seek_position_ms; // ~7s
-    let max_allowed_ms = track_remaining_ms + 2000; // 7s + 2s tolerance for frame alignment
+    let track_remaining_ms: u64 = 10_000 - seek_position_ms; // 5s
+    let max_allowed_ms = track_remaining_ms + 2000; // 5s + 2s tolerance for frame alignment
     let max_allowed_samples = max_allowed_ms * sample_rate as u64 / 1000 * channels as u64;
 
-    // If bleeding into track 3, we'd see ~17s of decoded audio. Our limit is ~9s.
+    // If bleeding into track 3, we'd see ~15s of decoded audio. Our limit is ~7s.
     assert!(
         decoded_samples <= max_allowed_samples,
         "Track 2's decoder ran past its end boundary: decoded {} samples ({:.1}s), \
