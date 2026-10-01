@@ -167,7 +167,8 @@ pub(crate) enum PlaybackCommand {
     #[cfg(target_os = "macos")]
     OutputDeviceChanged,
     Previous,
-    Seek(StreamPosition),
+    /// Seek to this time in the current track, as the player shows it.
+    Seek(TrackTime),
     /// Seek by slider ratio (0.0–1.0) of the current track's duration and pregap.
     SeekByRatio(f64),
     SetVolume(f32),
@@ -403,10 +404,10 @@ impl PlaybackHandle {
     pub fn previous(&self) {
         self.dispatch(PlaybackCommand::Previous);
     }
-    pub fn seek(&self, position: std::time::Duration) {
-        self.dispatch(PlaybackCommand::Seek(StreamPosition::from_duration(
-            position,
-        )));
+    /// Seek the current track to `time`, from its start (INDEX 01) as the
+    /// player shows it; a negative time lands in its pregap.
+    pub fn seek(&self, time: TrackTime) {
+        self.dispatch(PlaybackCommand::Seek(time));
     }
     pub fn seek_by_ratio(&self, ratio: f64) {
         self.dispatch(PlaybackCommand::SeekByRatio(ratio));

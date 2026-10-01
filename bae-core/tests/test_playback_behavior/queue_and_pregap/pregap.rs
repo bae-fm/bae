@@ -96,7 +96,7 @@ async fn test_auto_advance_plays_pregap() {
     .expect("the first track should start playing");
 
     // Track 1 runs 0–8s; seek near its end so it crosses into track 2's pregap.
-    fixture.playback_handle.seek(Duration::from_secs(7));
+    fixture.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(7)));
     wait_for_state_on(
         &mut fixture.progress_rx,
         |s| {
@@ -121,8 +121,9 @@ async fn test_auto_advance_plays_pregap() {
         .expect("once the pregap passes, position should climb into the track");
 }
 
-/// Seeking within CUE/FLAC track 2, which starts mid-album, plays audio from the
-/// matching place in the XLD reference.
+/// Seeking 3 s into CUE/FLAC track 2, which starts mid-album after a 2 s
+/// pregap, plays audio from 3 s into the XLD reference, which starts at INDEX
+/// 01: a seek counts from the track's start, as the player shows it.
 #[tokio::test]
 async fn test_cue_flac_seek() {
     use bae_core::audio_codec::decode_audio;
@@ -152,7 +153,7 @@ async fn test_cue_flac_seek() {
         .await;
     assert!(started.is_some(), "Playback should start");
 
-    fixture.playback_handle.seek(Duration::from_secs(5));
+    fixture.playback_handle.seek(TrackTime::from_millis(3_000));
     let captured = fixture.next_capture_stream().await;
 
     support::wait_for_seek(&mut fixture.progress_rx, &track_id).await;
@@ -178,8 +179,7 @@ async fn test_cue_flac_seek() {
         "No samples captured after seek",
     );
 
-    // Seek positions count from INDEX 00, so 5s lands 3s into the reference,
-    // which starts at INDEX 01. Search the whole reference for the match.
+    // Search the whole reference for the match.
     let snippet_len = 200 * channels;
     let step = 100 * channels;
 
@@ -205,8 +205,8 @@ async fn test_cue_flac_seek() {
     let avg_diff = best_sad / snippet_len as f64;
 
     assert!(
-        ref_time_ms > 0.0,
-        "Seek appears to have gone to the beginning of the track instead of 5s in",
+        (ref_time_ms - 3_000.0).abs() < 20.0,
+        "the seek to 3 s into the track played audio from {ref_time_ms:.1}ms into it",
     );
 
     // This only checks where the audio came from; test_cue_flac.rs checks exact samples.
@@ -222,6 +222,39 @@ async fn test_cue_flac_seek() {
         "Post-seek CUE/FLAC audio aligned at {:.1}ms in reference (avg_diff {:.4}).",
         ref_time_ms, avg_diff,
     );
+}
+
+/// A seek counts from the track's start (INDEX 01), as the player shows it: on
+/// CUE/FLAC track 2, after its 2 s pregap, a seek to 4 s shows 4 s and plays on
+/// from there.
+#[tokio::test]
+async fn seek_lands_at_the_track_time_it_names() {
+    let mut fixture = CueFlacTestFixture::new(support::TestAudioDevice::RealtimeCapture)
+        .await
+        .expect("set up CUE/FLAC realtime capture fixture");
+    let track_id = fixture.track_ids[1].clone();
+    play_and_wait_on(&fixture.playback_handle, &mut fixture.progress_rx, &track_id).await;
+
+    fixture.playback_handle.seek(TrackTime::from_millis(4_000));
+    let seeked =
+        support::next_matching(&mut fixture.progress_rx, PLAY_START_BACKSTOP, |event| {
+            match event {
+                PlaybackProgress::Seeked {
+                    position_ms,
+                    track_id: tid,
+                    ..
+                } if tid == track_id => Some(position_ms),
+                _ => None,
+            }
+        })
+        .await
+        .expect("the seek reports where it landed");
+    assert_eq!(seeked, 4_000, "the seek shows the track time it named");
+    wait_for_track_position_where(&mut fixture.progress_rx, &track_id, |ms| {
+        (4_000..5_000).contains(&ms)
+    })
+    .await
+    .expect("playback goes on from 4 s into the track");
 }
 
 /// Direct play of CUE/FLAC track 2 skips its 2s pregap: the captured audio

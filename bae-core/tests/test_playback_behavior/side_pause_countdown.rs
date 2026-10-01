@@ -152,7 +152,7 @@ async fn seeking_during_the_countdown_stops_it() {
         .expect("side-pause fixture");
     fixture.pause_after_side_a().await;
 
-    fixture.playback_handle.seek(Duration::from_secs(1));
+    fixture.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(1)));
     fixture.wait_for_countdown_cancelled().await;
 
     fixture

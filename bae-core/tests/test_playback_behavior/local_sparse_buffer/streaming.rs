@@ -302,7 +302,7 @@ async fn auto_advance_crosses_gaplessly_within_a_multi_window_file() {
 
     // Track 1's raw timeline is 58 s (it ends at track 2's INDEX 00); seek near
     // the end so the boundary arrives in a few real-time seconds.
-    playback.playback_handle.seek(Duration::from_secs(54));
+    playback.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(54)));
     let outcome = observe_boundary(
         &mut playback.progress_rx,
         &first,
@@ -330,7 +330,7 @@ async fn auto_advance_crosses_gaplessly_within_a_multi_window_file() {
         );
 
     // Track 2's raw timeline is 62 s (2 s pregap + 60 s).
-    playback.playback_handle.seek(Duration::from_secs(58));
+    playback.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(58)));
     let outcome = observe_boundary(
         &mut playback.progress_rx,
         &second,
@@ -440,7 +440,7 @@ async fn seek_within_the_last_track_lands_and_keeps_streaming_over_sparse_buffer
     // region the initial fetch (which lands at the track's start byte) may
     // already partly cover, but well behind wherever playback has since moved.
     let backward_target = Duration::from_secs(5);
-    playback.playback_handle.seek(backward_target);
+    playback.playback_handle.seek(TrackTime::from_duration(backward_target));
     let landed = wait_for_seeked_on(&mut playback.progress_rx, Duration::from_secs(20))
         .await
         .expect("a backward seek within the last track emits Seeked");
@@ -455,7 +455,7 @@ async fn seek_within_the_last_track_lands_and_keeps_streaming_over_sparse_buffer
     // Seek forward, well past the backward target and into territory the fill
     // has not fetched — the fill's demand-driven window fetch must catch up.
     let forward_target = Duration::from_secs(40);
-    playback.playback_handle.seek(forward_target);
+    playback.playback_handle.seek(TrackTime::from_duration(forward_target));
     let landed = wait_for_seeked_on(&mut playback.progress_rx, Duration::from_secs(20))
         .await
         .expect("a forward seek within the last track emits Seeked");
@@ -488,7 +488,7 @@ async fn seek_immediately_after_playing_lands_and_plays_over_sparse_buffer() {
 
     // Seek immediately — no settle time for the fill to get ahead.
     let target = Duration::from_secs(20);
-    playback.playback_handle.seek(target);
+    playback.playback_handle.seek(TrackTime::from_duration(target));
     let landed = wait_for_seeked_on(&mut playback.progress_rx, Duration::from_secs(20))
         .await
         .expect("a seek issued right after Playing still emits Seeked");
@@ -514,7 +514,7 @@ async fn seek_into_an_unbuffered_region_emits_resolved_loading_before_seeked() {
     playback.play_and_wait(&last_track).await;
 
     // Seek forward into territory the demand-driven fill has not fetched yet.
-    playback.playback_handle.seek(Duration::from_secs(40));
+    playback.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(40)));
 
     let mut saw_loading = false;
     let saw_seeked = support::next_matching(
@@ -569,7 +569,7 @@ async fn seek_past_end_of_track_signals_rather_than_hanging_over_sparse_buffer()
     playback.play_and_wait(&last_track).await;
 
     // Track 3's raw timeline is 60s; 600s is far past the end.
-    playback.playback_handle.seek(Duration::from_secs(600));
+    playback.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(600)));
 
     let signaled = support::next_matching(
         &mut playback.progress_rx,
@@ -640,7 +640,7 @@ async fn pause_seek_resume_advances_position_over_sparse_buffer() {
     .expect("playback should pause");
 
     let seek_target = Duration::from_secs(20);
-    playback.playback_handle.seek(seek_target);
+    playback.playback_handle.seek(TrackTime::from_duration(seek_target));
     let landed = wait_for_seeked_on(&mut playback.progress_rx, Duration::from_secs(20))
         .await
         .expect("Seeked after seeking while paused");
@@ -712,7 +712,7 @@ async fn auto_advance_plays_pregap_over_sparse_buffer() {
     playback.play_and_wait(&first).await;
 
     // Track 1 runs 0–58s; seek near the end so the crossing arrives soon.
-    playback.playback_handle.seek(Duration::from_secs(56));
+    playback.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(56)));
     wait_for_state_on(
         &mut playback.progress_rx,
         |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == second),

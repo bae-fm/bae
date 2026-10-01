@@ -98,7 +98,7 @@ async fn previous_navigation_over_sparse_buffer() {
 
     // Pressed as soon as the seek lands (well inside the 3s window): Previous
     // steps back.
-    playback.playback_handle.seek(Duration::from_secs(1));
+    playback.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(1)));
     support::wait_for_seek(&mut playback.progress_rx, &second).await;
     playback.playback_handle.previous();
     wait_for_state_on(
@@ -112,7 +112,7 @@ async fn previous_navigation_over_sparse_buffer() {
     // Pressed late in the track: Previous restarts the current one. A position
     // past the seek target is reported after every update the stream before
     // the seek queued, so none of those can be read as the restart's.
-    playback.playback_handle.seek(Duration::from_secs(10));
+    playback.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(10)));
     wait_for_track_position_where(&mut playback.progress_rx, &first, |ms| ms >= 10_000)
         .await
         .expect("the seek to 10s lands and plays on");
@@ -142,11 +142,11 @@ async fn seek_preserves_staged_next_over_sparse_buffer() {
 
     // Seek twice to stress the take-out/re-stage across an already-re-staged
     // source, then let the boundary arrive.
-    playback.playback_handle.seek(Duration::from_secs(30));
+    playback.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(30)));
     wait_for_seeked_on(&mut playback.progress_rx, Duration::from_secs(20))
         .await
         .expect("first seek lands");
-    playback.playback_handle.seek(Duration::from_secs(56));
+    playback.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(56)));
     wait_for_seeked_on(&mut playback.progress_rx, Duration::from_secs(20))
         .await
         .expect("second seek lands");
@@ -179,7 +179,7 @@ async fn restore_at_position_over_sparse_buffer_resumes_and_advances() {
     playback.play_and_wait(&last_track).await;
 
     let target = Duration::from_secs(20);
-    playback.playback_handle.seek(target);
+    playback.playback_handle.seek(TrackTime::from_duration(target));
     wait_for_seeked_on(&mut playback.progress_rx, Duration::from_secs(20))
         .await
         .expect("the seek before shutdown lands");

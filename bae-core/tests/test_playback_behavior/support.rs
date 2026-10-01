@@ -8,7 +8,7 @@ use bae_core::config::SidePauseCountdown;
 use bae_core::playback::{
     LoadingTrack, PlaybackPauseBoundary, PlaybackPauseReason, PlaybackProgress,
     PlaybackSideCountdown,
-    PlaybackState, RepeatMode,
+    PlaybackState, RepeatMode, TrackTime,
 };
 use bae_test_support as support;
 use coven::{IdProvider, SequentialIdProvider};

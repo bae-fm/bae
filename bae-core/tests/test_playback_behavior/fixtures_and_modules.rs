@@ -68,7 +68,7 @@ async fn seek_past_end_of_track_signals_rather_than_hanging() {
         .expect("track should start playing");
 
     // Fixture tracks are 5 s long.
-    fixture.playback_handle.seek(Duration::from_secs(600));
+    fixture.playback_handle.seek(TrackTime::from_duration(Duration::from_secs(600)));
 
     let signaled =
         support::next_matching(&mut fixture.progress_rx, Duration::from_secs(8), |event| {
@@ -371,7 +371,7 @@ impl SidePauseTestFixture {
     /// anything that must apply at the boundary goes before this.
     fn seek_to_auto_advance(&self) {
         self.playback_handle
-            .seek(Duration::from_secs(4) + Duration::from_millis(800));
+            .seek(TrackTime::from_duration(Duration::from_secs(4) + Duration::from_millis(800)));
     }
 
     async fn wait_for_playing_track(

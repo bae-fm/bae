@@ -77,6 +77,11 @@ impl TrackTime {
         Self(ms)
     }
 
+    /// The time `since_start` after INDEX 01.
+    pub fn from_duration(since_start: std::time::Duration) -> Self {
+        Self(i64::try_from(since_start.as_millis()).expect("track time exceeds i64 milliseconds"))
+    }
+
     pub const fn as_millis(self) -> i64 {
         self.0
     }

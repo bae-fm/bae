@@ -981,7 +981,7 @@ impl PlaybackService {
                 PlaybackCommand::Previous => {
                     self.handle_previous().await;
                 }
-                PlaybackCommand::Seek(position) => self.seek(position).await,
+                PlaybackCommand::Seek(time) => self.seek_to_track_time(time).await,
                 PlaybackCommand::SeekByRatio(ratio) => self.seek_by_ratio(ratio).await,
                 PlaybackCommand::SetVolume(volume) => {
                     self.set_volume(volume);
