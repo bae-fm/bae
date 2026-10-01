@@ -175,4 +175,27 @@ struct AlbumGridCellsTests {
             }
         }
     }
+
+    @Test(
+        "opening another album of the same row keeps the detail's slot where it is"
+    )
+    func sameRowSwapKeepsTheDetailSlot() {
+        let first = AlbumGridCells(
+            totalCount: 9,
+            columnCount: 3,
+            loaded: loaded(0..<9),
+            openAlbumId: "a3"
+        )
+        let second = AlbumGridCells(
+            totalCount: 9,
+            columnCount: 3,
+            loaded: loaded(0..<9),
+            openAlbumId: "a5"
+        )
+        #expect(ids(first) == ids(second))
+        #expect(
+            first.firstIndex(of: .detail(albumId: "a3"))
+                == second.firstIndex(of: .detail(albumId: "a5"))
+        )
+    }
 }

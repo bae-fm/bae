@@ -434,7 +434,7 @@ extension AlbumGridView {
         case .position(let position) where position < list.totalCount:
             id = cells(columnCount: columnCount).cell(forPosition: position).id
         case .detail(let albumId) where uiStore.selectedAlbumId == albumId:
-            id = .detail(albumId)
+            id = .detail
         case .position, .detail:
             // The slot left the grid; the next change keeps what is on top
             // then.

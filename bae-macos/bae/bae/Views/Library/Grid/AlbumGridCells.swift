@@ -16,20 +16,24 @@ enum AlbumGridCell: Identifiable, Equatable {
     case filler(albumId: String, index: Int)
 
     /// A slot's identity. An album is itself wherever it sits, so a column
-    /// count that moves it to another row moves the same view there.
+    /// count that moves it to another row moves the same view there. The grid
+    /// opens one detail at a time, so the detail is one slot whichever album
+    /// it shows: opening another album of the same row changes what it shows
+    /// in place, and one of another row moves it there.
     enum Identity: Hashable {
         case album(String)
         case placeholder(Int)
-        case detail(String)
-        case filler(String, Int)
+        case detail
+        /// The filler at this place among the detail's slots.
+        case filler(Int)
     }
 
     var id: Identity {
         switch self {
         case .album(_, let albumId): .album(albumId)
         case .placeholder(let position): .placeholder(position)
-        case .detail(let albumId): .detail(albumId)
-        case .filler(let albumId, let index): .filler(albumId, index)
+        case .detail: .detail
+        case .filler(_, let index): .filler(index)
         }
     }
 }

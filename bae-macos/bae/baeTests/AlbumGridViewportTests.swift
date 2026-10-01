@@ -105,7 +105,7 @@ struct AlbumGridViewportTests {
         let viewport = AlbumGridViewport()
         viewport.setScroll(AlbumGridScroll(visibleHeight: 700))
         viewport.place(
-            .detail("a1"),
+            .detail,
             as: .detail(albumId: "a1"),
             columnCount: 2,
             frame: CGRect(x: 0, y: -100, width: 200, height: 500)
