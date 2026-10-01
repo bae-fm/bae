@@ -113,7 +113,7 @@ pub enum CatalogStepView {
         /// Whether the artwork is still being read, so more numbers may come.
         scanning: bool,
         /// The numbers in effect — the picked ones in the order picked, then
-        /// the ones the text prints that a found release carries, in the
+        /// the ones a found release carries that the folder states, in the
         /// order found — each with its search; then the numbers the person
         /// struck out, left out and asked of nobody.
         rows: Vec<SignalValueRow>,

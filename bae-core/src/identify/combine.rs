@@ -24,8 +24,8 @@ pub struct LookupProvenance {
     pub by_disc_id: bool,
     /// A barcode the folder's files carry.
     pub by_barcode: bool,
-    /// A catalog number in effect: one the person picked, or one the text
-    /// prints that a found release carries.
+    /// A catalog number in effect: one the person picked, or one a found
+    /// release carries that the folder states.
     pub by_catalog: bool,
     /// The search for the recordings the audio's ISRCs are registered to.
     pub by_isrc: bool,

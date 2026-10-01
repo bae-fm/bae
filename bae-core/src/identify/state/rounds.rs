@@ -1,8 +1,8 @@
 //! One round of a run, taken each time everything it asked has answered.
 //!
 //! Every answer so far is pooled and ranked (see `combine`), and the round
-//! asks what came of it: each catalog number the text prints that a found
-//! release carries — on any row, offered or not — is searched on every
+//! asks what came of it: each catalog number a found release carries — on
+//! any row, offered or not — that the folder states is searched on every
 //! catalog; each offered record not read yet has its full document read; and
 //! each offered row whose records are read is looked up on the lookup
 //! catalogs it has no record of (see [`super::pressings`]). A round asks
@@ -15,6 +15,7 @@ use super::{
     combined, BarcodeProgress, CatalogProgress, DocumentReading, Effect, LookupState,
     SignalsContext,
 };
+use crate::identify::row_facts::FolderFacts;
 use crate::import::search::MetadataResult;
 use crate::import::{Catalog, MetadataRef};
 use crate::pressing::ReleaseLabel;
@@ -116,10 +117,15 @@ pub(super) fn offered_rows(context: &SignalsContext) -> Vec<Vec<MetadataResult>>
 }
 
 /// The catalog numbers not yet in effect that a release the run found
-/// carries and the text states, each once, as the first release carrying it
-/// writes it.
+/// carries and the folder states, each once, as the first release carrying
+/// it writes it. The folder states the numbers its highest-standing text
+/// stating any of the found releases' numbers states — the rule the rows'
+/// catalog agreement reads (see [`FolderFacts`]): a booklet prints page
+/// numbers and other records' numbers as readily as its own, and a found
+/// release carrying one of those is no reason to search it.
 fn newly_confirmed(context: &SignalsContext) -> Vec<String> {
     let answers = context.lookup_results();
+    let facts = FolderFacts::of(&context.text, answers.all().map(|(result, _)| result));
     let mut numbers: Vec<String> = Vec::new();
     for number in answers
         .all()
@@ -127,7 +133,7 @@ fn newly_confirmed(context: &SignalsContext) -> Vec<String> {
         .filter_map(ReleaseLabel::catalog_number)
     {
         let key = super::number_key(number);
-        if context.text.states_catalog(number)
+        if facts.states_catalog(number)
             && !context.catalog.holds(number)
             && !numbers.iter().any(|held| super::number_key(held) == key)
         {

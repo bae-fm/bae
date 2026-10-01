@@ -8,7 +8,7 @@
 //! the run searches by the candidate's title. Then it goes round (see
 //! `rounds`): every answer is pooled and ranked, the offered rows' full
 //! documents are read (see [`super::documents`]), and the keys that came into
-//! effect — a number the text prints that a found release carries, an
+//! effect — a number a found release carries that the folder states, an
 //! offered row's pressing on the catalog it has no record of — are asked,
 //! until a round brings no new key and every offered row is read. What the
 //! documents state its MusicBrainz albums are on Discogs joins the albums

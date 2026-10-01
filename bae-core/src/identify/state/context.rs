@@ -204,15 +204,16 @@ pub struct SearchedCatalog {
 
 /// The catalog numbers the candidate's text offers, which of them are in
 /// effect, and what searching those produced. A number is in effect when the
-/// person picked it, or when the text prints it and a release the run found
-/// carries it; a number the person struck out is not, however it came.
+/// person picked it, or when a release the run found carries it and the
+/// folder states it (see `rounds::newly_confirmed`); a number the person
+/// struck out is not, however it came.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct CatalogEvidence {
     /// The numbers the text offers, each once, in first-seen order.
     pub numbers: Vec<String>,
     /// The numbers the person picked, in the order picked.
     pub chosen: Vec<String>,
-    /// The numbers the text prints that a found release carries, as the
+    /// The numbers a found release carries that the folder states, as the
     /// release writes them, none picked, in the order found.
     pub confirmed: Vec<String>,
     /// The numbers the person struck out: neither searched nor agreed with.

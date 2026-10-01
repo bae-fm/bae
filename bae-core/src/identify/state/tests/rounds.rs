@@ -11,11 +11,25 @@ fn labelled(source: Catalog, release_id: &str, label: &str, number: &str) -> Met
 
 /// A run on both catalogs given a disc ID alone, its folder named `folder`.
 fn disc_run_of_folder(folder: &str, catalogs: &[&str]) -> IdentifyState {
+    disc_run_of_text(
+        &[(folder, crate::signals::TextOrigin::FolderName)],
+        catalogs,
+    )
+}
+
+/// A run on both catalogs given a disc ID alone, its text the given lines.
+fn disc_run_of_text(
+    lines: &[(&str, crate::signals::TextOrigin)],
+    catalogs: &[&str],
+) -> IdentifyState {
     let mut disc_signals = disc_only(catalogs);
-    disc_signals.text_pool = vec![crate::signals::TextLine {
-        text: folder.to_string(),
-        origin: crate::signals::TextOrigin::FolderName,
-    }];
+    disc_signals.text_pool = lines
+        .iter()
+        .map(|(text, origin)| crate::signals::TextLine {
+            text: text.to_string(),
+            origin: *origin,
+        })
+        .collect();
     let (state, effects) = super::step(
         started_with(vec![MB, DG]),
         IdentifyEvent::SignalsUpdated {
@@ -116,6 +130,53 @@ fn a_number_the_text_prints_that_a_found_release_carries_is_searched_on_both_cat
         rows.iter().map(|row| row.value.as_str()).collect::<Vec<_>>(),
         vec!["AB 12345-2"],
         "the number in effect is a row with its search"
+    );
+}
+
+/// The folder's name states one number a found release carries, and only
+/// the artwork prints another — a booklet's page or another record's number
+/// that some found release happens to carry. A number comes into effect as
+/// the folder states it, by its highest-standing text stating any listed
+/// number: the name's number is searched, the artwork's is not.
+#[test]
+fn a_number_only_the_artwork_prints_is_not_confirmed_over_the_folder_names() {
+    let state = disc_run_of_text(
+        &[
+            ("Label AB-100", crate::signals::TextOrigin::FolderName),
+            ("XY-250", crate::signals::TextOrigin::Artwork),
+        ],
+        &["AB-100", "XY-250"],
+    );
+    let (state, effects) = super::step(
+        state,
+        IdentifyEvent::DiscidLookupCompleted {
+            results: vec![
+                (
+                    labelled(MB, "mb-1", "Label", "AB-100"),
+                    LibraryStatus::absent("mb-1"),
+                ),
+                (
+                    labelled(MB, "mb-2", "Other", "XY-250"),
+                    LibraryStatus::absent("mb-2"),
+                ),
+            ],
+        },
+    );
+    let IdentifyState::Triangulating { context, .. } = &state else {
+        panic!("the run goes round: {state:?}");
+    };
+    assert_eq!(context.catalog.confirmed, vec!["AB-100".to_string()]);
+    assert!(
+        effects.contains(&catalog_lookup(MB, "AB-100"))
+            && effects.contains(&catalog_lookup(DG, "AB-100")),
+        "the folder name's number is searched: {effects:?}"
+    );
+    assert!(
+        !effects.iter().any(|effect| matches!(
+            effect,
+            Effect::LookupCatalog { catalog, .. } if catalog == "XY-250"
+        )),
+        "the artwork's number is not searched: {effects:?}"
     );
 }
 
