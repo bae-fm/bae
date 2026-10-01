@@ -1,8 +1,9 @@
 //! Which stream format a remote renderer is served for a given source codec.
 //!
-//! A renderer decodes a limited set of codecs natively; a source in one of them
-//! is served as its original bytes, anything else is transcoded to MP3 on the way
-//! out. The safe set differs by renderer flavor — Cast decodes Opus, most UPnP
+//! A renderer decodes a limited set of codecs natively; a track stored as one
+//! whole file in one of them is served as its original bytes, anything else is
+//! transcoded to MP3 on the way out (see `RendererMediaSource::serve_track` for
+//! the whole-file rule). The safe set differs by renderer flavor — Cast decodes Opus, most UPnP
 //! renderers don't — so each flavor has its own gate ([`cast_stream_format`],
 //! [`dlna_stream_format`]) over the shared [`RendererStreamFormat`] decision. The
 //! gate is the single source both the URL provider (which picks `format=raw` vs

@@ -331,7 +331,7 @@ fn prepared_track_with_pregap_segments(
     let pregap_buffer = create_sparse_buffer(1_024);
     let main_buffer = create_sparse_buffer(2_048);
     let mut prepared = test_prepared_track("track", main_buffer.clone());
-    prepared.generated_pregap_samples = Some(441);
+    prepared.generated_pregap_frames = 441;
     prepared.generated_pregap_ms = Some(10);
     prepared.pregap_ms = Some(1010);
     prepared.segments = vec![
@@ -389,11 +389,10 @@ fn natural_start_includes_audio_and_generated_pregap_segments() {
 
 
 #[test]
-fn generated_pregap_samples_clamps_negative_millisecond_value() {
-    let buffer = create_sparse_buffer(1_024);
-    let mut prepared = test_prepared_track("track", buffer);
-    prepared.generated_pregap_samples = None;
-    prepared.generated_pregap_ms = Some(-10);
+fn generated_pregap_frames_clamps_negative_millisecond_value() {
+    let mut resolved = test_resolved_track_audio("track", 44_100, 2);
+    resolved.generated_pregap_samples = None;
+    resolved.generated_pregap_ms = Some(-10);
 
-    assert_eq!(prepared.generated_pregap_samples(), 0);
+    assert_eq!(resolved.generated_pregap_frames(), 0);
 }

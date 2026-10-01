@@ -15,6 +15,7 @@ use std::sync::Arc;
 
 use super::RendererStreamFormat;
 use crate::album_detail::ImageRef;
+use crate::library::ResolvedTrackAudio;
 use crate::util::content_type::ContentType;
 
 /// Mints the HTTP URL the renderer fetches a track's audio from, given the track
@@ -57,20 +58,27 @@ impl RendererMediaSource {
         }
     }
 
-    /// Where the device fetches one track and its `cover` from. The format gate
-    /// runs here, on the track's now-known source codec, and the served format
-    /// decides both the URL and the MIME type declared for it, so the two can't
-    /// disagree.
+    /// Where the device fetches one track's stream and its `cover` from. The
+    /// served bytes hold the track's stream from its first sample, so the
+    /// device's position is a position in that stream: a track that is one
+    /// stored file, whole, is served as that file when the flavor's gate takes
+    /// its codec; any other — a window of a CUE image, a pregap read from
+    /// another file or generated as silence — is transcoded from its own
+    /// segments. The served format decides both the URL and the MIME type
+    /// declared for it, so the two can't disagree.
     pub fn serve_track(
         &self,
-        track_id: &str,
-        content_type: &ContentType,
+        audio: &ResolvedTrackAudio,
         cover: Option<&ImageRef>,
     ) -> Result<ServedTrack, String> {
-        let format = (self.stream_format)(content_type);
+        let format = if audio.is_whole_file() {
+            (self.stream_format)(&audio.content_type)
+        } else {
+            RendererStreamFormat::TranscodeMp3
+        };
         Ok(ServedTrack {
-            url: (self.stream_url)(track_id, format)?,
-            content_type: format.content_type_str(content_type),
+            url: (self.stream_url)(&audio.track_id, format)?,
+            content_type: format.content_type_str(&audio.content_type),
             cover_url: cover.map(|cover| (self.cover_url)(cover)),
         })
     }

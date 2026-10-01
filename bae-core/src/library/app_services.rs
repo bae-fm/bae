@@ -476,10 +476,13 @@ impl AppServices {
         );
         buffer
     }
-    /// Open `audio`'s stored audio for one decode start to finish (a
-    /// transcode): a stream per file its segments read, each segment seeked
-    /// the way playback seeks it. The streams close when the returned decode
-    /// is dropped.
+    /// Open `audio`'s stream for one decode start to finish (a transcode): the
+    /// track from its first sample, as playback decodes it from its start — the
+    /// silence a CUE `PREGAP` generates, then each segment, pregap included,
+    /// seeked the way playback seeks it. Positions in the served stream are
+    /// then positions in the track's stream, which a remote renderer reports
+    /// and seeks by. One stream per file the segments read; they close when
+    /// the returned decode is dropped.
     pub fn open_track_decode(&self, audio: &crate::library::ResolvedTrackAudio) -> TrackDecode {
         use crate::playback::stream_pipeline::{SegmentDecodeParams, StreamDecodeParams};
 
@@ -502,7 +505,7 @@ impl AppServices {
             decode: StreamDecodeParams::new(
                 segments,
                 audio.content_type != crate::util::content_type::ContentType::Ape,
-                0,
+                audio.generated_pregap_frames(),
                 0,
             ),
             sample_rate: audio.sample_rate,

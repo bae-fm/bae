@@ -540,3 +540,128 @@ fn buffer_from(bytes: &[u8]) -> bae_core::playback::SharedSparseBuffer {
     buffer.append_at(0, bytes);
     buffer
 }
+
+/// A two-track CUE album over one 10 s FLAC tone written here. Track 2's
+/// `PREGAP 00:02:00` is 2 s of silence bae generates before its INDEX 01 at
+/// 0:05; it is not in the file.
+fn generate_generated_pregap_album(dir: &Path) {
+    const SAMPLE_RATE: u32 = 44_100;
+    let samples: Vec<i32> = (0..10 * SAMPLE_RATE)
+        .flat_map(|frame| {
+            let t = frame as f64 / SAMPLE_RATE as f64;
+            let level = 0.25 * (2.0 * std::f64::consts::PI * 440.0 * t).sin();
+            let sample = ((level * i16::MAX as f64) as i32) << 16;
+            [sample, sample]
+        })
+        .collect();
+    bae_core::audio_codec::init();
+    let flac = bae_core::audio_codec::encode_i32(
+        bae_core::audio_codec::EncodeFormat::Flac {
+            bits_per_sample: 16,
+        },
+        &samples,
+        SAMPLE_RATE,
+        2,
+    )
+    .expect("encode the PREGAP album FLAC");
+    std::fs::write(dir.join("Pregap Album.flac"), flac).expect("write the PREGAP album FLAC");
+    let cue = "\
+PERFORMER \"Test Artist\"
+TITLE \"Pregap Album\"
+FILE \"Pregap Album.flac\" WAVE
+  TRACK 01 AUDIO
+    TITLE \"Pregap One\"
+    PERFORMER \"Test Artist\"
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE \"Pregap Two\"
+    PERFORMER \"Test Artist\"
+    PREGAP 00:02:00
+    INDEX 01 00:05:00
+";
+    std::fs::write(dir.join("Pregap Album.cue"), cue).expect("write the PREGAP album CUE");
+}
+
+/// Collects a decode's interleaved samples.
+#[derive(Default)]
+struct CollectedDecode {
+    channels: usize,
+    samples: Vec<i32>,
+}
+
+impl bae_core::audio_codec::DecodedSink for CollectedDecode {
+    fn on_format(&mut self, _sample_rate: u32, channels: u32) {
+        self.channels = channels as usize;
+    }
+
+    fn on_samples(&mut self, samples: &[i32]) {
+        self.samples.extend_from_slice(samples);
+    }
+}
+
+/// The decode a remote renderer is served holds the track's stream from its
+/// first sample, as playback plays it from there: the silence a CUE `PREGAP`
+/// generates, then the track's audio. A position the device reports or seeks
+/// to is then a position in the track's stream.
+#[tokio::test]
+async fn test_served_decode_starts_with_the_generated_pregap() {
+    const SAMPLE_RATE: usize = 44_100;
+    let (library_manager, imported) = support::imported_release_setup(
+        DiscogsRelease {
+            master_id: Some("pregap-album-master".to_string()),
+            ..support::discogs_test_release(
+                "pregap-album-release",
+                "Pregap Album",
+                &[("Pregap One", "0:05"), ("Pregap Two", "0:05")],
+            )
+        },
+        "test",
+        uuid::Uuid::new_v4().to_string(),
+        generate_generated_pregap_album,
+    )
+    .await
+    .expect("import the PREGAP album");
+    let services = bae_core::library::AppServices::for_test(library_manager)
+        .await
+        .expect("start the app services");
+    let audio = services
+        .resolve_track_audio(&imported.track_ids[1])
+        .await
+        .expect("resolve track 2");
+    let decode = services.open_track_decode(&audio);
+
+    let decoded = tokio::task::spawn_blocking(move || {
+        let mut sink = CollectedDecode::default();
+        decode
+            .run_to_sink(
+                &mut sink,
+                std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+            )
+            .map(|()| sink)
+    })
+    .await
+    .expect("the decode task runs")
+    .expect("track 2 decodes");
+
+    let frames: Vec<&[i32]> = decoded.samples.chunks(decoded.channels).collect();
+    let pregap_frames = 2 * SAMPLE_RATE;
+    assert_eq!(
+        frames.len(),
+        pregap_frames + 5 * SAMPLE_RATE,
+        "2 s of generated pregap, then the track's 5 s"
+    );
+    assert!(
+        frames[..pregap_frames]
+            .iter()
+            .flat_map(|f| f.iter())
+            .all(|&s| s == 0),
+        "the stream starts with the generated pregap's silence"
+    );
+    assert!(
+        frames[pregap_frames..pregap_frames + SAMPLE_RATE / 100]
+            .iter()
+            .flat_map(|f| f.iter())
+            .any(|&s| s != 0),
+        "the track's tone follows the pregap"
+    );
+}

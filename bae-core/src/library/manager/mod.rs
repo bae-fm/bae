@@ -696,6 +696,43 @@ impl ResolvedTrackAudio {
         }
     }
 
+    /// Whether the track's audio is one stored file, whole: a single main
+    /// segment from the file's first sample to its end, with no generated
+    /// pregap. Only then do the file's bytes, served as they are, hold the
+    /// track's stream; a CUE track's file holds the whole image, or its pregap
+    /// lives in another file, or its pregap is silence bae generates.
+    pub fn is_whole_file(&self) -> bool {
+        let [segment] = self.segments.as_slice() else {
+            return false;
+        };
+        segment.role == DbAudioSegmentRole::Main
+            && segment.span.start_sample == 0
+            && segment.span.end_sample.is_none()
+            && self.generated_pregap_frames() == 0
+    }
+
+    /// The silent frames bae generates before the track's first stored sample,
+    /// from a CUE `PREGAP` directive; zero without one. The track's stream
+    /// starts with them wherever it is decoded from its start — playback, and
+    /// the stream served to a remote renderer.
+    pub fn generated_pregap_frames(&self) -> u64 {
+        if let Some(samples) = self.generated_pregap_samples {
+            return samples;
+        }
+        let Some(ms) = self.generated_pregap_ms else {
+            return 0;
+        };
+        if ms < 0 {
+            warn!(
+                track_id = %self.track_id,
+                generated_pregap_ms = ms,
+                "Ignoring negative generated pregap duration"
+            );
+            return 0;
+        }
+        ((ms as f64 / 1000.0) * self.sample_rate as f64) as u64
+    }
+
     /// Linear playback gain for this track under `mode`. `1.0` = no change.
     ///
     /// The gain is a view of (stored measurements, mode, target) — never stored.

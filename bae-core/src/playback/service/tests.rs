@@ -314,7 +314,7 @@ fn test_prepared_track_with_file(
         channels: 2,
         pregap_ms: None,
         generated_pregap_ms: None,
-        generated_pregap_samples: None,
+        generated_pregap_frames: 0,
         duration: std::time::Duration::from_secs(1),
         content_type: crate::util::content_type::ContentType::Flac,
         replay_gain_linear: 1.0,
