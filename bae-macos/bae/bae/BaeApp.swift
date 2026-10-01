@@ -310,29 +310,8 @@ struct BaeApp: App {
 extension BaeApp {
     @CommandsBuilder
     private var applicationCommands: some Commands {
-        if let applicationServices = appDelegate.applicationServices {
-            CommandGroup(after: .appInfo) {
-                CheckForUpdatesView(
-                    viewModel: applicationServices.checkForUpdatesViewModel
-                )
-            }
-            LibraryFileMenuCommands(
-                libraries: appDelegate.libraries,
-                onNewLibrary: { appDelegate.presentWelcome(mode: $0) },
-                onOpenLibrary: { appDelegate.openLibrary($0) },
-                onSwitchOffset: { appDelegate.switchLibrary(byOffset: $0) },
-                onRenameLibrary: { appDelegate.presentRenameLibrary() },
-                onLockLibrary: {
-                    appDelegate.presentLockLibraryConfirmation()
-                },
-                onSyncNow: { appDelegate.syncNow() },
-                onRevealLibrary: { appDelegate.revealLibraryInFinder() },
-                onCopyLibraryId: { appDelegate.copyLibraryId() },
-                onCloseLibrary: { appDelegate.closeLibrary() }
-            )
-            MainAppMenuCommands(
-                responderActions: applicationServices.firstResponderActions
-            )
+        if let menuBar = appDelegate.menuBar {
+            MainAppMenuCommands(menuBar: menuBar, app: appDelegate)
         }
     }
 
@@ -495,6 +474,10 @@ private enum NoLibraryPlaceholder {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let runtime: AppRuntime
     private(set) var applicationServices: ApplicationServices?
+    /// What the main menu shows, read from this delegate and its services;
+    /// present whenever the services are.
+    @ObservationIgnored
+    private(set) var menuBar: MenuBar?
     var appService: AppService?
     var requiredApplicationServices: ApplicationServices {
         guard let applicationServices else {
@@ -578,6 +561,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             ? makeApplicationServices()
             : nil
         super.init()
+        if let applicationServices {
+            menuBar = MenuBar { [unowned self] in
+                self.readMenuBar(applicationServices)
+            }
+        }
     }
 }
 

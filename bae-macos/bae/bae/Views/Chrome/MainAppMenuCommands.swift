@@ -1,9 +1,13 @@
 import AppKit
 import BaeKit
 import SwiftUI
+import os.log
 
-/// The existing library services a focused window exposes to app commands.
-/// Commands receive live stores instead of copying their current values.
+private let menuCommandsLogger = Logger.bae("MainAppMenuCommands")
+
+/// The existing library services a focused window exposes to app commands,
+/// which act through them. What the menus show of them is read through
+/// `MenuBar`, never from here.
 @MainActor
 final class MainAppMenuTarget {
     let playbackStore: PlaybackStore
@@ -71,67 +75,12 @@ struct CloseLibraryButton: View {
     }
 }
 
-/// File commands use native placements and disable when no library is open.
-/// Close Library precedes `.saveItem`, which retains the native Close item.
-struct LibraryFileMenuCommands: Commands {
-    @FocusedValue(\.mainAppMenuTarget)
-    private var target
-    let libraries: [BridgeLibrary]
-    let onNewLibrary: (WelcomeView.Mode?) -> Void
-    let onOpenLibrary: (BridgeLibrary) -> Void
-    let onSwitchOffset: (Int) -> Void
-    let onRenameLibrary: () -> Void
-    let onLockLibrary: () -> Void
-    let onSyncNow: () -> Void
-    let onRevealLibrary: () -> Void
-    let onCopyLibraryId: () -> Void
-    let onCloseLibrary: () -> Void
-
-    var body: some Commands {
-        CommandGroup(after: .newItem) {
-            Button("New Library...") { onNewLibrary(nil) }
-                .keyboardShortcut("n", modifiers: [.command, .option])
-            Button("Join a Library...") { onNewLibrary(.join(nil)) }
-            Button("Restore from Code...") { onNewLibrary(.restore) }
-            Menu("Open Library") {
-                OpenLibrarySubmenu(libraries: libraries, onOpen: onOpenLibrary)
-                Divider()
-                Button("Previous Library") { onSwitchOffset(-1) }
-                    .keyboardShortcut("[", modifiers: [.command, .shift])
-                    .disabled(target == nil)
-                Button("Next Library") { onSwitchOffset(1) }
-                    .keyboardShortcut("]", modifiers: [.command, .shift])
-                    .disabled(target == nil)
-            }
-        }
-        CommandGroup(after: .importExport) {
-            ImportFolderButton(uiStore: target?.uiStore)
-        }
-        CommandGroup(before: .saveItem) {
-            Button("Rename Library...") { onRenameLibrary() }
-                .disabled(target == nil)
-            Button("Lock Library...") { onLockLibrary() }
-                .disabled(target == nil)
-            Button("Sync Now") { onSyncNow() }
-                .disabled(target == nil)
-            Button("Reveal Library in Finder") { onRevealLibrary() }
-                .disabled(target == nil)
-            Button("Copy Library ID") { onCopyLibraryId() }
-                .disabled(target == nil)
-            CloseLibraryButton(
-                onClose: onCloseLibrary,
-                isEnabled: target != nil
-            )
-        }
-    }
-}
-
 /// The body of the File → Open Library submenu: one item per library, the
 /// active one marked with a leading checkmark. The first nine carry ⌘⇧1…⌘⇧9
 /// so libraries can be switched without opening the menu.
 struct OpenLibrarySubmenu: View {
-    let libraries: [BridgeLibrary]
-    let onOpen: (BridgeLibrary) -> Void
+    let libraries: [LibraryMenuEntry]
+    let onOpen: (_ libraryId: String) -> Void
 
     private static let shortcutKeys: [KeyEquivalent] = [
         "1", "2", "3", "4", "5", "6", "7", "8", "9",
@@ -147,9 +96,9 @@ struct OpenLibrarySubmenu: View {
                 idx,
                 lib in
                 let button = Button {
-                    onOpen(lib)
+                    onOpen(lib.id)
                 } label: {
-                    if lib.error != nil {
+                    if !lib.canOpen {
                         // Listed, so it isn't lost — but it cannot be opened.
                         Label(lib.name, systemImage: "exclamationmark.triangle")
                     }
@@ -160,7 +109,7 @@ struct OpenLibrarySubmenu: View {
                         Text(lib.name)
                     }
                 }
-                .disabled(lib.error != nil)
+                .disabled(!lib.canOpen)
                 if idx < Self.shortcutKeys.count {
                     button.keyboardShortcut(
                         Self.shortcutKeys[idx],
@@ -225,9 +174,10 @@ struct OpenStorageManagerButton: View {
 /// identifies the main window whose library section and mode should change.
 struct LibraryModeCommandButtons: View {
     let target: MainAppMenuTarget
+    let selected: LibraryBrowserMode
 
     var body: some View {
-        LibraryModeButtons(uiStore: target.uiStore) { mode in
+        LibraryModeButtons(selected: selected) { mode in
             target.uiStore.navigateToLibraryRoot()
             target.uiStore.setLibraryBrowserMode(mode)
         }
@@ -302,38 +252,101 @@ extension FocusedValues {
     var selectAllShownRows: FocusedCommand?
 }
 
+/// Every command bae adds to the main menu.
+///
+/// What the items show comes from `menuBar.state`, which holds still while a
+/// menu is open; nothing here reads a store or a user default for display.
+/// The focused values say which window's library and views the commands act
+/// on, and are objects that live as long as the view publishing them. The
+/// actions act on the live services when chosen, which may be after what the
+/// open menu showed has moved on.
 struct MainAppMenuCommands: Commands {
-    /// What the first responder can do with the clipboard items.
-    let responderActions: FirstResponderActions
+    let menuBar: MenuBar
+    /// The library lifecycle the File menu drives, and the updater.
+    let app: AppDelegate
     @FocusedValue(\.mainAppMenuTarget)
     private var target
     @FocusedValue(\.focusSearch)
-    var focusSearch
+    private var focusSearch
     @FocusedValue(\.selectAllShownRows)
     private var selectAllShownRows
-    /// The "Restore on launch" preference, read from the same device-local
-    /// default the Playback settings pane writes.
-    @AppStorage("persistPlayback")
-    private var persistPlayback = false
 
     var body: some Commands {
+        let state = menuBar.state
+        // The open library's state, where the key window is one of its.
+        let library = target == nil ? nil : state.library
+
+        CommandGroup(after: .appInfo) {
+            Button("Check for Updates...") {
+                app.requiredApplicationServices.checkForUpdatesViewModel
+                    .checkForUpdates()
+            }
+            .disabled(!state.canCheckForUpdates)
+        }
+
+        // File commands use native placements and disable when no library
+        // is open. Close Library precedes `.saveItem`, which retains the
+        // native Close item.
+        CommandGroup(after: .newItem) {
+            Button("New Library...") { app.presentWelcome(mode: nil) }
+                .keyboardShortcut("n", modifiers: [.command, .option])
+            Button("Join a Library...") { app.presentWelcome(mode: .join(nil)) }
+            Button("Restore from Code...") {
+                app.presentWelcome(mode: .restore)
+            }
+            Menu("Open Library") {
+                OpenLibrarySubmenu(libraries: state.libraries) {
+                    app.openLocalLibrary(id: $0)
+                }
+                Divider()
+                Button("Previous Library") { app.switchLibrary(byOffset: -1) }
+                    .keyboardShortcut("[", modifiers: [.command, .shift])
+                    .disabled(target == nil)
+                Button("Next Library") { app.switchLibrary(byOffset: 1) }
+                    .keyboardShortcut("]", modifiers: [.command, .shift])
+                    .disabled(target == nil)
+            }
+        }
+        CommandGroup(after: .importExport) {
+            ImportFolderButton(uiStore: target?.uiStore)
+        }
+        CommandGroup(before: .saveItem) {
+            Button("Rename Library...") { app.presentRenameLibrary() }
+                .disabled(target == nil)
+            Button("Lock Library...") {
+                app.presentLockLibraryConfirmation()
+            }
+            .disabled(target == nil)
+            Button("Sync Now") { app.syncNow() }
+                .disabled(target == nil)
+            Button("Reveal Library in Finder") { app.revealLibraryInFinder() }
+                .disabled(target == nil)
+            Button("Copy Library ID") { app.copyLibraryId() }
+                .disabled(target == nil)
+            CloseLibraryButton(
+                onClose: { app.closeLibrary() },
+                isEnabled: target != nil
+            )
+        }
+
         // The Edit menu's clipboard items, owned so Select All reaches a list
         // whose table holds only its loaded rows. Each other item sends its
         // standard action to the first responder and is enabled while that
         // responder can take it, as AppKit's own are.
         CommandGroup(replacing: .pasteboard) {
-            responderButton("Cut", #selector(NSText.cut(_:)))
+            responderButton("Cut", #selector(NSText.cut(_:)), state)
                 .keyboardShortcut("x")
-            responderButton("Copy", #selector(NSText.copy(_:)))
+            responderButton("Copy", #selector(NSText.copy(_:)), state)
                 .keyboardShortcut("c")
-            responderButton("Paste", #selector(NSText.paste(_:)))
+            responderButton("Paste", #selector(NSText.paste(_:)), state)
                 .keyboardShortcut("v")
             responderButton(
                 "Paste and Match Style",
-                #selector(NSTextView.pasteAsPlainText(_:))
+                #selector(NSTextView.pasteAsPlainText(_:)),
+                state
             )
             .keyboardShortcut("v", modifiers: [.command, .option, .shift])
-            responderButton("Delete", #selector(NSText.delete(_:)))
+            responderButton("Delete", #selector(NSText.delete(_:)), state)
             Button("Select All") {
                 if let selectAllShownRows {
                     selectAllShownRows.send()
@@ -345,7 +358,7 @@ struct MainAppMenuCommands: Commands {
             .keyboardShortcut("a")
             .disabled(
                 selectAllShownRows == nil
-                    && !responderActions.canPerform(
+                    && !state.clipboard.contains(
                         #selector(NSText.selectAll(_:))
                     )
             )
@@ -356,16 +369,19 @@ struct MainAppMenuCommands: Commands {
             ImportNavigationButton(target: target)
             OpenStorageManagerButton()
 
-            if let target {
+            if let target, let library {
                 Divider()
-                LibraryModeCommandButtons(target: target)
+                LibraryModeCommandButtons(
+                    target: target,
+                    selected: library.browserMode
+                )
                 Divider()
-                // Reads the live config and writes through the same library
-                // services installed in the focused window.
+                // Writes through the library services installed in the
+                // focused window.
                 Toggle(
                     "Full-Width Library",
                     isOn: Binding(
-                        get: { target.configStore.config.libraryFullWidth },
+                        get: { library.fullWidth },
                         set: { enabled in
                             Task {
                                 do {
@@ -399,9 +415,7 @@ struct MainAppMenuCommands: Commands {
                 goToNowPlaying()
             }
             .keyboardShortcut("l", modifiers: .command)
-            .disabled(
-                target?.playbackStore.nowPlaying.track?.display.albumId == nil
-            )
+            .disabled(library?.hasNowPlayingTrack != true)
 
             Button("Toggle Queue") {
                 let target = requireTarget()
@@ -452,9 +466,7 @@ struct MainAppMenuCommands: Commands {
             .disabled(target == nil)
 
             Menu("Repeat") {
-                RepeatModeMenuItems(
-                    current: target?.playbackStore.repeatMode
-                ) { mode in
+                RepeatModeMenuItems(current: library?.repeatMode) { mode in
                     requireTarget().playback.setRepeatMode(mode)
                 }
             }
@@ -466,7 +478,7 @@ struct MainAppMenuCommands: Commands {
             // opening settings. Both write the same places the pane does.
             PlaybackPreferenceMenuItem(
                 title: "Pause between sides and discs",
-                isOn: target?.configStore.config.pauseBetweenSides == true
+                isOn: library?.pausesBetweenSides == true
             ) { enabled in
                 let target = requireTarget()
                 Task {
@@ -482,15 +494,17 @@ struct MainAppMenuCommands: Commands {
 
             PlaybackPreferenceMenuItem(
                 title: "Restore on launch",
-                isOn: persistPlayback
-            ) { persistPlayback = $0 }
+                isOn: state.restoresPlaybackOnLaunch
+            ) { enabled in
+                UserDefaults.standard.set(enabled, forKey: "persistPlayback")
+            }
 
             Divider()
 
             Button("Shuffle Library") {
                 requireTarget().playback.playLibraryShuffled()
             }
-            .disabled(!canShuffleLibrary)
+            .disabled(library?.canShuffle != true)
         }
     }
 
@@ -498,10 +512,11 @@ struct MainAppMenuCommands: Commands {
     /// responder can take it.
     private func responderButton(
         _ title: LocalizedStringKey,
-        _ action: Selector
+        _ action: Selector,
+        _ state: MenuBarState
     ) -> some View {
         Button(title) { sendToFirstResponder(action) }
-            .disabled(!responderActions.canPerform(action))
+            .disabled(!state.clipboard.contains(action))
     }
 
     private func requireTarget() -> MainAppMenuTarget {
@@ -511,19 +526,20 @@ struct MainAppMenuCommands: Commands {
         return target
     }
 
-    private var canShuffleLibrary: Bool {
-        guard let albumTotal = target?.libraryStore.albumTotal else {
-            return false
-        }
-        return albumTotal > 0
-    }
-
+    /// The item shows whether a track was playing when its menu opened;
+    /// playback may have stopped by the time it is chosen.
     private func goToNowPlaying() {
         let target = requireTarget()
-        NowPlayingNavigationAction(
+        let navigation = NowPlayingNavigationAction(
             playbackStore: target.playbackStore,
             uiStore: target.uiStore
         )
-        .perform()
+        guard navigation.isEnabled else {
+            menuCommandsLogger.info(
+                "Go to Now Playing chosen after playback stopped; nothing to go to"
+            )
+            return
+        }
+        navigation.perform()
     }
 }

@@ -18,7 +18,7 @@ struct LibraryModeHeading: View {
 
     var body: some View {
         Menu {
-            LibraryModeButtons(uiStore: uiStore) { mode in
+            LibraryModeButtons(selected: uiStore.libraryBrowserMode) { mode in
                 uiStore.setLibraryBrowserMode(mode)
             }
         } label: {

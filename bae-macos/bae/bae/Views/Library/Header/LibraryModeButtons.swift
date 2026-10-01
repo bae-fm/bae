@@ -1,11 +1,11 @@
 import SwiftUI
 
-/// One menu button per browser mode, each checkmarked when it is the active
-/// mode. The header heading dropdown and the View-menu commands share this
-/// list; they differ only in what selecting a mode does, so the action is
-/// injected.
+/// One menu button per browser mode, the selected one checkmarked. The header
+/// heading dropdown and the View-menu commands share this list; they differ
+/// in where the selected mode is read from (the View menu reads it through
+/// `MenuBar`) and in what selecting a mode does, so both are passed in.
 struct LibraryModeButtons: View {
-    let uiStore: UiStore
+    let selected: LibraryBrowserMode
     let select: (LibraryBrowserMode) -> Void
 
     var body: some View {
@@ -13,7 +13,7 @@ struct LibraryModeButtons: View {
             Button {
                 select(mode)
             } label: {
-                if uiStore.libraryBrowserMode == mode {
+                if selected == mode {
                     Label(mode.displayName, systemImage: "checkmark")
                 }
                 else {
@@ -26,10 +26,8 @@ struct LibraryModeButtons: View {
 
 #if DEBUG
     #Preview("Library Mode Buttons") {
-        let uiStore = UiStore()
-        uiStore.setLibraryBrowserMode(.composers)
-        return Menu {
-            LibraryModeButtons(uiStore: uiStore, select: { _ in })
+        Menu {
+            LibraryModeButtons(selected: .composers, select: { _ in })
         } label: {
             Text(verbatim: "Browse Mode")
         }
