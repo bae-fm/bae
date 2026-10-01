@@ -140,7 +140,7 @@ impl PlaybackService {
             gapless
                 .lock()
                 .unwrap()
-                .stage_next(track_stream, prepared.track_fmt(std::time::Duration::ZERO));
+                .stage_next(track_stream, prepared.track_fmt(StreamPosition::START));
             self.preloaded_next = Some(PreloadedNext {
                 prepared,
                 decoder_handle,
@@ -580,15 +580,14 @@ impl PlaybackService {
             handle: decoder_handle,
             cancel_token,
         };
+        // A natural transition starts at the stream's start (pregap included).
+        cur.position = StreamPosition::START;
 
         // The crossed-into track is playing: hand its reader fetch priority over
         // the track preloaded below.
         self.mark_current_foreground();
 
         self.advance_to_preloaded();
-
-        // A natural transition starts at position 0 (pregap included).
-        *self.current_position_shared.lock().unwrap() = Some(std::time::Duration::ZERO);
 
         self.sync_audio_state();
         self.emit_state();
@@ -682,13 +681,12 @@ impl PlaybackService {
             source: preloaded_source,
         } = preloaded;
 
-        let pregap_ms = next_prepared.total_pregap_ms();
         let track_id = next_prepared.track_id.clone();
 
         // The preload decoded from the track's first sample (pregap included), so
         // a direct selection that skips the pregap can't use it: discard its
         // decoder and re-decode through play_track, which seeks past the pregap.
-        if !is_natural_transition && pregap_ms.is_some_and(|p| p > 0) {
+        if !is_natural_transition && next_prepared.timeline.track_start() > StreamPosition::START {
             info!("Pregap skip needed for preloaded track - falling back to play_track");
             self.discard_preloaded_source(preloaded_source);
             discard_preloaded_decoder(&next_prepared, &cancel_token);
@@ -720,7 +718,7 @@ impl PlaybackService {
             PreloadedNextSource::Held(track_stream) => self
                 .attach_track(
                     track_stream,
-                    next_prepared.track_fmt(std::time::Duration::ZERO),
+                    next_prepared.track_fmt(StreamPosition::START),
                     sample_rate,
                     channels,
                     StagedNextOnReplace::Discard,
@@ -753,8 +751,6 @@ impl PlaybackService {
         self.retire_current_track();
         self.file_buffers.release_retired(&next_prepared.file_ids());
 
-        *self.current_position_shared.lock().unwrap() = Some(std::time::Duration::ZERO);
-
         self.install_active_track(
             next_prepared,
             TrackDecoder {
@@ -762,6 +758,7 @@ impl PlaybackService {
                 cancel_token,
             },
             target.into_track_phase(),
+            StreamPosition::START,
         );
         self.emit_state();
 

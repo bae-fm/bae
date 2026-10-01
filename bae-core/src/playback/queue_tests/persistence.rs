@@ -151,11 +151,11 @@ fn test_previous_steps_cursor_back_multiple() {
     q.play_release(rel_src("r1"), rel(&["t1", "t2", "t3"]), ContextStart::Index(0));
     q.next_entry(); // t2
     q.next_entry(); // t3
-    assert!(matches!(q.previous_action(1000), PreviousAction::PlayPrevious(t) if t == "t2"));
-    assert!(matches!(q.previous_action(1000), PreviousAction::PlayPrevious(t) if t == "t1"));
+    assert!(matches!(q.previous_action(TrackTime::from_millis(1000)), PreviousAction::PlayPrevious(t) if t == "t2"));
+    assert!(matches!(q.previous_action(TrackTime::from_millis(1000)), PreviousAction::PlayPrevious(t) if t == "t1"));
     // At the context start, Previous restarts.
     assert!(matches!(
-        q.previous_action(1000),
+        q.previous_action(TrackTime::from_millis(1000)),
         PreviousAction::RestartCurrent
     ));
 }
@@ -165,7 +165,7 @@ fn test_previous_past_3s_restarts() {
     let mut q = queue();
     q.play_release(rel_src("r1"), rel(&["t1", "t2"]), ContextStart::Index(1));
     assert!(matches!(
-        q.previous_action(5000),
+        q.previous_action(TrackTime::from_millis(5000)),
         PreviousAction::RestartCurrent
     ));
 }
@@ -178,14 +178,14 @@ fn test_previous_threshold_counts_from_track_start() {
         let mut q = queue();
         q.play_release(rel_src("r1"), rel(&["t1", "t2"]), ContextStart::Index(1));
         assert!(
-            matches!(q.previous_action(elapsed_ms), PreviousAction::PlayPrevious(t) if t == "t1"),
+            matches!(q.previous_action(TrackTime::from_millis(elapsed_ms)), PreviousAction::PlayPrevious(t) if t == "t1"),
             "Back at {elapsed_ms}ms should step back"
         );
     }
     let mut q = queue();
     q.play_release(rel_src("r1"), rel(&["t1", "t2"]), ContextStart::Index(1));
     assert!(matches!(
-        q.previous_action(3_000),
+        q.previous_action(TrackTime::from_millis(3_000)),
         PreviousAction::RestartCurrent
     ));
 }
@@ -309,5 +309,5 @@ fn test_remove_by_ids_deleting_current_last_entry_keeps_cursor_valid() {
         "the deleted playing track clears current"
     );
     // The cursor must not be stranded at == len: Previous must not panic.
-    assert!(matches!(q.previous_action(1000), PreviousAction::PlayPrevious(t) if t == "t1"));
+    assert!(matches!(q.previous_action(TrackTime::from_millis(1000)), PreviousAction::PlayPrevious(t) if t == "t1"));
 }

@@ -114,12 +114,12 @@ fn remote_connect(channel: FakeChannel) -> RemoteConnect {
 
 /// The arrange every remote test shares: a service over one release of `tracks`,
 /// that release playing from its first track, and the session handed to a fake
-/// device by `handle_play_on`. `position` seeds the live shared position when
-/// given; `None` leaves whatever the seeded service had. Returns the service,
-/// the fake channel's shared state and the progress receiver.
+/// device by `handle_play_on`, from `position` in the first track's stream.
+/// Returns the service, the fake channel's shared state and the progress
+/// receiver.
 async fn playing_remote_fixture(
     tracks: &[&str],
-    position: Option<std::time::Duration>,
+    position: StreamPosition,
 ) -> (
     TempDir,
     PlaybackService,
@@ -139,8 +139,8 @@ async fn playing_remote_fixture(
         test_prepared_track(tracks[0], create_sparse_buffer(1_024)),
         TrackPhase::Playing,
     );
-    if let Some(position) = position {
-        *service.current_position_shared.lock().unwrap() = Some(position);
+    if let PlaybackSlot::Active(cur) = &mut service.slot {
+        cur.position = position;
     }
 
     let channel = FakeChannel::new();
@@ -159,7 +159,7 @@ async fn play_on_reissues_current_track_at_position() {
             "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
             "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
         ],
-        Some(std::time::Duration::from_secs(30)),
+        StreamPosition::from_millis(30_000),
     )
     .await;
 
@@ -194,7 +194,7 @@ async fn remote_finished_advances_queue_and_loads_next() {
             "08c7ff07-b56a-4e16-8df6-ae2967fa0806",
             "08c7fe07-b56a-4c63-8df6-ad2967fa0653",
         ],
-        Some(std::time::Duration::ZERO),
+        StreamPosition::START,
     )
     .await;
     assert!(wait_until(|| !state.lock().unwrap().loads.is_empty()));
@@ -227,7 +227,7 @@ async fn remote_finished_advances_queue_and_loads_next() {
 #[tokio::test]
 async fn remote_status_feeds_progress() {
     let (_home, mut service, _state, mut rx) =
-        playing_remote_fixture(&["08c7ff07-b56a-4e16-8df6-ae2967fa0806"], None).await;
+        playing_remote_fixture(&["08c7ff07-b56a-4e16-8df6-ae2967fa0806"], StreamPosition::START).await;
     // Drain the setup events.
     while rx.try_recv().is_ok() {}
 
@@ -266,7 +266,7 @@ async fn remote_status_feeds_progress() {
 #[tokio::test]
 async fn handing_over_announces_the_device_by_id() {
     let (_home, _service, _state, mut rx) =
-        playing_remote_fixture(&["08c7ff07-b56a-4e16-8df6-ae2967fa0806"], None).await;
+        playing_remote_fixture(&["08c7ff07-b56a-4e16-8df6-ae2967fa0806"], StreamPosition::START).await;
 
     let mut announced = None;
     while let Ok(progress) = rx.try_recv() {
@@ -282,7 +282,7 @@ async fn handing_over_announces_the_device_by_id() {
 #[tokio::test]
 async fn stop_remote_stops_device_and_returns_to_local() {
     let (_home, mut service, state, mut rx) =
-        playing_remote_fixture(&["08c7ff07-b56a-4e16-8df6-ae2967fa0806"], None).await;
+        playing_remote_fixture(&["08c7ff07-b56a-4e16-8df6-ae2967fa0806"], StreamPosition::START).await;
     assert!(wait_until(|| !state.lock().unwrap().loads.is_empty()));
     while rx.try_recv().is_ok() {}
 
@@ -316,7 +316,7 @@ async fn stop_remote_stops_device_and_returns_to_local() {
 #[tokio::test]
 async fn stop_while_remote_stops_device_and_returns_to_local() {
     let (_home, mut service, state, mut rx) =
-        playing_remote_fixture(&["08c7ff07-b56a-4e16-8df6-ae2967fa0806"], None).await;
+        playing_remote_fixture(&["08c7ff07-b56a-4e16-8df6-ae2967fa0806"], StreamPosition::START).await;
     assert!(wait_until(|| !state.lock().unwrap().loads.is_empty()));
     while rx.try_recv().is_ok() {}
 
@@ -356,7 +356,7 @@ async fn remote_over_fake() -> (
 ) {
     let (home, service, state, rx) = playing_remote_fixture(
         &["08c7ff07-b56a-4e16-8df6-ae2967fa0806"],
-        Some(std::time::Duration::ZERO),
+        StreamPosition::START,
     )
     .await;
     assert!(wait_until(|| !state.lock().unwrap().loads.is_empty()));
@@ -472,7 +472,7 @@ async fn resume_while_remote_plays_the_device() {
 #[tokio::test]
 async fn seek_while_remote_seeks_the_device() {
     let (_home, mut service, state, _rx) = remote_over_fake().await;
-    service.seek(std::time::Duration::from_secs(45)).await;
+    service.seek(StreamPosition::from_duration(std::time::Duration::from_secs(45))).await;
     assert!(
         wait_until(|| state
             .lock()
@@ -585,9 +585,9 @@ async fn airplay_position_is_offset_by_receiver_latency() {
 
     // A tick at 5 s of decoded position: the audible position is 5 − 2 = 3 s.
     let mut fmt = test_track_fmt("t");
-    fmt.duration_ms = 60_000;
+    fmt.timeline = TrackTimeline::new(std::time::Duration::from_secs(60), None);
     service
-        .handle_position_event(Arc::new(fmt), std::time::Duration::from_secs(5))
+        .handle_position_event(Arc::new(fmt), StreamPosition::from_millis(5_000))
         .await;
 
     let position = loop {
@@ -639,9 +639,11 @@ async fn airplay_stop_reads_the_live_position_and_returns_to_local() {
     let saved_tag = 0.5;
     install_airplay(&mut service, 88_200, saved_tag);
 
-    // Playback progressed on AirPlay: decode is local, so the shared position is
+    // Playback progressed on AirPlay: decode is local, so the slot's position is
     // the live one the resume reads.
-    *service.current_position_shared.lock().unwrap() = Some(std::time::Duration::from_secs(30));
+    if let PlaybackSlot::Active(cur) = &mut service.slot {
+        cur.position = StreamPosition::from_millis(30_000);
+    }
 
     service.handle_stop_remote().await;
 
@@ -676,11 +678,9 @@ async fn airplay_seek_flushes_and_reanchors() {
         ))),
         audio_rx,
     ));
-    service.current_position_shared =
-        Arc::new(std::sync::Mutex::new(Some(std::time::Duration::ZERO)));
     let state = install_airplay(&mut service, 88_200, 0.5);
 
-    service.seek(std::time::Duration::from_secs(20)).await;
+    service.seek(StreamPosition::from_duration(std::time::Duration::from_secs(20))).await;
 
     assert!(
         state.flushed.load(std::sync::atomic::Ordering::Acquire) >= 1,
@@ -786,7 +786,7 @@ async fn airplay_receiver_death_ends_airplay_and_returns_to_local() {
     service
         .handle_position_event(
             Arc::new(test_track_fmt(TRACK_T)),
-            std::time::Duration::from_secs(1),
+            StreamPosition::from_millis(1_000),
         )
         .await;
 
@@ -806,7 +806,7 @@ async fn a_queued_track_renamed_while_another_plays_remotely_loads_with_its_new_
     const FIRST: &str = "08c7ff07-b56a-4e16-8df6-ae2967fa0806";
     const SECOND: &str = "08c7fe07-b56a-4c63-8df6-ad2967fa0653";
     let (_home, mut service, state, _rx) =
-        playing_remote_fixture(&[FIRST, SECOND], Some(std::time::Duration::ZERO)).await;
+        playing_remote_fixture(&[FIRST, SECOND], StreamPosition::START).await;
     let (load_tx, mut loads) = tokio_mpsc::unbounded_channel();
     state.lock().unwrap().load_events = Some(load_tx);
     let first_url = format!("http://renderer.local/stream?id={FIRST}");

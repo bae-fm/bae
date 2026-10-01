@@ -1,14 +1,25 @@
 use super::*;
 
 impl PlaybackService {
-    pub(super) async fn seek(&mut self, position: std::time::Duration) {
+    /// Seek the current track to where a seek bar filled to `ratio` points,
+    /// drawn as `TrackTimeline::progress` draws it.
+    pub(super) async fn seek_by_ratio(&mut self, ratio: f64) {
+        if let PlaybackSlot::Active(cur) = &self.slot {
+            let position = cur.prepared.timeline.position_at_progress(ratio);
+            self.seek(position).await;
+        }
+    }
+
+    /// Seek the current track to `position` in its stream.
+    pub(super) async fn seek(&mut self, position: StreamPosition) {
         // While playing remotely, the device owns the timeline: seek it, refresh
         // the position display, and skip the whole local decoder-rebuild path.
         if self.renderer.is_remote() {
             self.renderer.seek_remote(position);
-            *self.current_position_shared.lock().unwrap() = Some(position);
-            if let Some(track_id) = self.current_track_id().map(str::to_string) {
-                self.emit_position_display(position.as_millis() as u64, track_id);
+            if let PlaybackSlot::Active(cur) = &mut self.slot {
+                cur.position = position;
+                let track_id = cur.prepared.track_id.clone();
+                self.emit_position_display(position, track_id);
             }
             return;
         }
@@ -35,19 +46,14 @@ impl PlaybackService {
 
         // Same-position seek (difference < 100ms): put the track back, refresh the
         // display, no rebuild.
-        let current_position = self
-            .current_position_shared
-            .lock()
-            .unwrap()
-            .unwrap_or(std::time::Duration::ZERO);
-        let position_diff = position.abs_diff(current_position);
+        let position_diff = position.abs_diff(cur.position);
         if position_diff < std::time::Duration::from_millis(100) {
             trace!(
                 "Seek: Skipping seek to same position (difference: {:?} < 100ms)",
                 position_diff
             );
             self.slot = PlaybackSlot::Active(cur);
-            self.emit_position_display(position.as_millis() as u64, track_id);
+            self.emit_position_display(position, track_id);
             return;
         }
 
@@ -63,6 +69,7 @@ impl PlaybackService {
             prepared,
             decoder: old_decoder,
             phase,
+            position: _,
         } = cur;
 
         // Where the rebuilt load should land: seek preserves the current
@@ -91,8 +98,7 @@ impl PlaybackService {
         self.sync_audio_state();
         self.emit_state();
 
-        let position_samples = (position.as_secs_f64() * prepared.sample_rate as f64) as u64;
-        let decode = prepared.decode_params(position_samples, true);
+        let decode = prepared.decode_params(position.frames(prepared.sample_rate), true);
         let fmt = prepared.track_fmt(position);
         info!("Seek: position {:?}", position);
 
@@ -133,8 +139,7 @@ impl PlaybackService {
             wait: seek_started_at.elapsed(),
         });
 
-        let raw_pos_ms = position.as_millis() as u64;
-        self.emit_position_display(raw_pos_ms, track_id);
+        self.emit_position_display(position, track_id);
 
         self.renderer.reanchor_airplay();
     }

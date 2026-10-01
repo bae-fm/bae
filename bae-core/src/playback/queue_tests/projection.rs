@@ -167,7 +167,7 @@ fn test_previous_action_from_manual_current_lands_on_cursor() {
     assert_eq!(q.current_track_id(), Some("m1"));
 
     // Current is a manual item, so Previous lands on the cursor entry t1.
-    assert!(matches!(q.previous_action(1000), PreviousAction::PlayPrevious(t) if t == "t1"));
+    assert!(matches!(q.previous_action(TrackTime::from_millis(1000)), PreviousAction::PlayPrevious(t) if t == "t1"));
 }
 
 // -- remove of the currently-playing context entry -------------------------
@@ -225,7 +225,7 @@ fn test_revision_bumps_on_mutations_not_reads() {
     q.next_entry();
     assert_eq!(q.revision(), 5, "advancing to the next track bumps");
 
-    q.previous_action(1000);
+    q.previous_action(TrackTime::from_millis(1000));
     assert_eq!(q.revision(), 6, "stepping back bumps");
 
     let ctx_id = q.upcoming()[0].id.clone();

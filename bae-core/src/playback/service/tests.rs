@@ -212,7 +212,6 @@ fn playback_service_over(
         command_rx,
         progress_tx,
         playback_queue,
-        current_position_shared: Arc::new(std::sync::Mutex::new(None)),
         // These tests drive the handlers directly and never start a preview, so
         // no output is ever opened from this device.
         audio_device: Box::new(crate::playback::audio_output::FailingAudioDevice),
@@ -245,7 +244,7 @@ fn test_clock_start() -> chrono::DateTime<chrono::Utc> {
 /// token come from `new_for_test`.
 fn test_pipeline(prepared: &PlaybackPreparedTrack) -> StreamPipeline {
     let (_sink, source, _ready) = create_track_stream_pair(prepared.sample_rate, prepared.channels);
-    let track_fmt = prepared.track_fmt(std::time::Duration::ZERO);
+    let track_fmt = prepared.track_fmt(StreamPosition::START);
     StreamPipeline::new_for_test(Arc::new(Mutex::new(source::PlaybackSource::new(
         source, track_fmt,
     ))))
@@ -282,6 +281,7 @@ fn active_slot(prepared: PlaybackPreparedTrack, phase: TrackPhase) -> PlaybackSl
         prepared,
         decoder: test_decoder(),
         phase,
+        position: StreamPosition::START,
     })
 }
 
@@ -312,10 +312,8 @@ fn test_prepared_track_with_file(
         }],
         sample_rate: 44_100,
         channels: 2,
-        pregap_ms: None,
-        generated_pregap_ms: None,
         generated_pregap_frames: 0,
-        duration: std::time::Duration::from_secs(1),
+        timeline: TrackTimeline::new(std::time::Duration::from_secs(1), None),
         content_type: crate::util::content_type::ContentType::Flac,
         replay_gain_linear: 1.0,
     }
@@ -368,9 +366,8 @@ fn test_preloaded_next(
 fn test_track_fmt(track_id: &str) -> TrackFmt {
     TrackFmt {
         track_id: track_id.to_string(),
-        duration_ms: 1_000,
-        pregap_ms: None,
-        position_offset: std::time::Duration::ZERO,
+        timeline: crate::playback::TrackTimeline::new(std::time::Duration::from_secs(1), None),
+        starts_at: crate::playback::StreamPosition::START,
         replay_gain_linear: 1.0,
     }
 }

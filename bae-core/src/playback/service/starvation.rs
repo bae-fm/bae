@@ -35,24 +35,20 @@ impl PlaybackService {
     /// threshold escalates.
     pub(super) async fn handle_starvation(
         &mut self,
-        track_id: &str,
+        fmt: &TrackFmt,
+        position: StreamPosition,
         samples_decoded: u64,
         starved_ms: u64,
     ) {
+        let track_id = fmt.track_id.as_str();
         // Onset: the first starvation observation for this track (no episode yet,
         // or the prior one was for a different track). A re-baseline of the same
         // track's ongoing stall is not a fresh onset and ships nothing.
         let is_onset = !matches!(&self.starvation_episode, Some(e) if e.track_id == track_id);
         if is_onset {
-            let position_ms = self
-                .current_position_shared
-                .lock()
-                .unwrap()
-                .map(|d| d.as_millis() as u64)
-                .unwrap_or(0);
             self.record_telemetry(TelemetryEvent::PlaybackStarved {
                 track_id: LocalId(track_id.to_string()),
-                position_ms,
+                position_ms: position.as_millis(),
             });
         }
 

@@ -8,7 +8,7 @@
 
 use tracing::warn;
 
-use super::{ContextSnapshot, ContextSource, QueueSnapshot, RepeatMode};
+use super::{ContextSnapshot, ContextSource, QueueSnapshot, RepeatMode, StreamPosition};
 use crate::db::DbPlaybackState;
 
 /// The validated device-local resume cache: a queue snapshot plus the live
@@ -16,7 +16,8 @@ use crate::db::DbPlaybackState;
 /// [`PersistedPlayback::from_row`], so holding one means the row parsed cleanly.
 pub struct PersistedPlayback {
     pub queue: QueueSnapshot,
-    pub position_ms: Option<u64>,
+    /// Where the current track's stream had played to.
+    pub position: Option<StreamPosition>,
     pub volume: f32,
     pub is_muted: bool,
 }
@@ -63,9 +64,9 @@ impl PersistedPlayback {
             None => None,
         };
 
-        let position_ms = match row.position_ms {
+        let position = match row.position_ms {
             Some(position) => match u64::try_from(position) {
-                Ok(position) => Some(position),
+                Ok(position) => Some(StreamPosition::from_millis(position)),
                 Err(_) => {
                     warn!(
                         "discarding the playback resume cache: negative position {}",
@@ -84,7 +85,7 @@ impl PersistedPlayback {
                 current_track_id: row.current_track_id,
                 repeat,
             },
-            position_ms,
+            position,
             volume: row.volume,
             is_muted: row.is_muted,
         })
@@ -185,7 +186,7 @@ mod tests {
         assert_eq!(parsed.queue.manual, vec!["m1", "m2"]);
         assert_eq!(parsed.queue.current_track_id.as_deref(), Some("t3"));
         assert_eq!(parsed.queue.repeat, RepeatMode::Context);
-        assert_eq!(parsed.position_ms, Some(42_000));
+        assert_eq!(parsed.position, Some(StreamPosition::from_millis(42_000)));
         assert!((parsed.volume - 0.5).abs() < f32::EPSILON);
         assert!(parsed.is_muted);
     }
@@ -338,6 +339,6 @@ mod tests {
         };
         let parsed = PersistedPlayback::from_row(row).expect("a valid row parses");
         assert!(parsed.queue.context.is_none());
-        assert!(parsed.position_ms.is_none());
+        assert!(parsed.position.is_none());
     }
 }

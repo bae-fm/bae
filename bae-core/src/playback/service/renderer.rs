@@ -44,9 +44,9 @@ impl Renderer {
         matches!(self, Renderer::AirPlay(_))
     }
 
-    pub(super) fn seek_remote(&self, position: Duration) {
+    pub(super) fn seek_remote(&self, position: StreamPosition) {
         if let Self::Remote(remote) = self {
-            remote.session.seek(position);
+            remote.session.seek(position.as_duration());
         }
     }
 
@@ -182,7 +182,7 @@ pub(super) struct RemoteRenderer {
     media_source: RendererMediaSource,
     /// The device's most recent playback position, updated from each status.
     /// Local playback resumes here when remote playback ends.
-    last_position: Duration,
+    last_position: StreamPosition,
 }
 
 impl RemoteRenderer {
@@ -194,7 +194,7 @@ impl RemoteRenderer {
         audio: &ResolvedTrackAudio,
         prepared: &PlaybackPreparedTrack,
         display: crate::playback::TrackDisplay,
-        position: Duration,
+        position: StreamPosition,
         paused: bool,
     ) -> Result<(), String> {
         // Serving is resolved here, where the track's stored audio is known, so
@@ -209,10 +209,10 @@ impl RemoteRenderer {
             artist: display.artist_names,
             album: display.album_title,
             cover_url: served.cover_url,
-            duration: Some(prepared.duration),
+            duration: Some(prepared.timeline.duration()),
         });
-        if position > Duration::ZERO {
-            self.session.seek(position);
+        if position > StreamPosition::START {
+            self.session.seek(position.as_duration());
         }
         if paused {
             self.session.pause();
@@ -285,12 +285,7 @@ impl PlaybackService {
             media_source,
         } = connect;
 
-        let current = self.current_track_id().map(str::to_string);
-        let position = self
-            .current_position_shared
-            .lock()
-            .unwrap()
-            .unwrap_or(Duration::ZERO);
+        let current = self.current_track_position();
         // Carry the current play/pause intent to the device.
         let target = self.current_play_target();
         // Seed the device with what the user hears, so it matches (0 while muted).
@@ -305,20 +300,18 @@ impl PlaybackService {
         self.renderer = Renderer::Remote(RemoteRenderer {
             session,
             media_source,
-            last_position: position,
+            last_position: current.as_ref().map_or(StreamPosition::START, |(_, p)| *p),
         });
-        self.hand_over_to_device(device, current, position, target)
-            .await;
+        self.hand_over_to_device(device, current, target).await;
     }
 
     /// The tail both device handoffs share: announce which device is playing,
-    /// then reissue what the local pipeline was playing at the position it had
-    /// reached. Nothing playing leaves the device armed but idle.
+    /// then reissue what the local pipeline was playing at the position its
+    /// stream had reached. Nothing playing leaves the device armed but idle.
     async fn hand_over_to_device(
         &mut self,
         device: RemoteDevice,
-        current: Option<String>,
-        position: Duration,
+        current: Option<(String, StreamPosition)>,
         target: PlayTarget,
     ) {
         emit_progress(
@@ -329,7 +322,7 @@ impl PlaybackService {
         );
 
         match current {
-            Some(track_id) => {
+            Some((track_id, position)) => {
                 self.play_track(
                     &track_id,
                     TrackStart::Position(position),
@@ -370,7 +363,7 @@ impl PlaybackService {
             return;
         }
         if let (Renderer::Remote(remote), Some(position)) = (&mut self.renderer, status.position) {
-            remote.last_position = position;
+            remote.last_position = StreamPosition::from_duration(position);
         }
         self.apply_remote_status(status).await;
     }
@@ -408,7 +401,7 @@ impl PlaybackService {
                     TrackTransition::Manual,
                 )
                 .await;
-                self.emit_position_display(last_position.as_millis() as u64, track_id);
+                self.emit_position_display(last_position, track_id);
             }
             None => self.stop().await,
         }
@@ -418,29 +411,25 @@ impl PlaybackService {
     /// emit a position update, and drive queue-advance / phase changes off the
     /// device's player state.
     async fn apply_remote_status(&mut self, status: RendererSessionStatus) {
-        let PlaybackSlot::Active(cur) = &self.slot else {
+        let PlaybackSlot::Active(cur) = &mut self.slot else {
             return;
         };
         let track_id = cur.prepared.track_id.clone();
-        let raw_dur_ms = cur.prepared.duration.as_millis() as u64;
-        let pregap_ms = cur.prepared.total_pregap_ms();
 
         // Feed the shared progress channel so every UI and the position store
-        // update exactly as they do for local playback.
-        if let Some(position) = status.position {
-            let raw_pos_ms = position.as_millis() as u64;
-            *self.current_position_shared.lock().unwrap() = Some(position);
-            let progress =
-                crate::playback::format::compute_progress(raw_pos_ms, raw_dur_ms, pregap_ms);
-            let (track_position_ms, duration_ms) =
-                crate::playback::format::adjust_for_pregap(raw_pos_ms, raw_dur_ms, pregap_ms);
+        // update exactly as they do for local playback. The device plays the
+        // track's stream from its first sample (`RendererMediaSource::
+        // serve_track`), so its position is a stream position.
+        if let Some(position) = status.position.map(StreamPosition::from_duration) {
+            cur.position = position;
+            let timeline = cur.prepared.timeline;
             emit_progress(
                 &self.progress_tx,
                 PlaybackProgress::PositionUpdate {
-                    position_ms: track_position_ms,
-                    duration_ms,
+                    position_ms: timeline.track_time(position).as_millis(),
+                    duration_ms: timeline.duration_ms(),
                     track_id: track_id.clone(),
-                    progress,
+                    progress: timeline.progress(position),
                 },
             );
         }
@@ -529,7 +518,7 @@ impl PlaybackService {
             // Raced out of remote playback before the resolve returned.
             return;
         };
-        let start_position = start.position(prepared.total_pregap_ms());
+        let start_position = start.position(prepared.timeline);
         let paused = matches!(target, PlayTarget::Paused(_));
         if let Err(reason) = remote.load(&resolved, &prepared, display, start_position, paused) {
             error!("remote: failed to mint media URL for {track_id}: {reason}");
@@ -540,8 +529,12 @@ impl PlaybackService {
             return;
         }
 
-        *self.current_position_shared.lock().unwrap() = Some(start_position);
-        self.install_active_track(prepared, stub_decoder(), target.into_track_phase());
+        self.install_active_track(
+            prepared,
+            stub_decoder(),
+            target.into_track_phase(),
+            start_position,
+        );
         self.emit_state();
         self.persist_playback_state().await;
     }
@@ -572,12 +565,7 @@ impl PlaybackService {
             latency_frames,
         } = connect;
 
-        let current = self.current_track_id().map(str::to_string);
-        let position = self
-            .current_position_shared
-            .lock()
-            .unwrap()
-            .unwrap_or(Duration::ZERO);
+        let current = self.current_track_position();
         let target = self.current_play_target();
         // Seed the device with what the user hears, so it matches (0 while muted).
         let volume = self.volume.audible_level(self.audio_output.as_ref());
@@ -592,8 +580,7 @@ impl PlaybackService {
         let saved_output = std::mem::replace(&mut self.audio_output, Box::new(airplay_output));
         self.renderer =
             Renderer::AirPlay(AirPlayRenderer::new(control, saved_output, latency_frames));
-        self.hand_over_to_device(device, current, position, target)
-            .await;
+        self.hand_over_to_device(device, current, target).await;
     }
 
     /// End AirPlay playback: drop the AirPlay output (which tears the receiver
@@ -607,15 +594,11 @@ impl PlaybackService {
                 return;
             }
         };
-        // Decode is local, so the live position is the shared one the drain's ticks
-        // keep current (latency-adjusted) — read it now, before teardown clears it,
-        // so local resumes where playback actually is, not the switch-time point.
-        let last_position = self
-            .current_position_shared
-            .lock()
-            .unwrap()
-            .unwrap_or(Duration::ZERO);
-        let current = self.current_track_id().map(str::to_string);
+        // Decode is local, so the live position is the one the drain's ticks keep
+        // current in the slot (latency-adjusted) — read it now, before teardown
+        // drops the slot, so local resumes where playback actually is, not the
+        // switch-time point.
+        let current = self.current_track_position();
 
         // Dropping the current output (the AirPlay stream) tears the receiver
         // session down; then restore the local sink.
@@ -627,7 +610,7 @@ impl PlaybackService {
         );
 
         match current {
-            Some(track_id) => {
+            Some((track_id, last_position)) => {
                 self.play_track(
                     &track_id,
                     TrackStart::Position(last_position),
@@ -635,7 +618,7 @@ impl PlaybackService {
                     TrackTransition::Manual,
                 )
                 .await;
-                self.emit_position_display(last_position.as_millis() as u64, track_id);
+                self.emit_position_display(last_position, track_id);
             }
             None => self.stop().await,
         }
@@ -653,7 +636,6 @@ impl PlaybackService {
             out.source.lock().unwrap().cancel();
         }
         self.file_buffers.cancel_all();
-        *self.current_position_shared.lock().unwrap() = None;
         self.reset_starvation_episode();
     }
 }

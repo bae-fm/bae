@@ -40,7 +40,7 @@ impl PlayingTrack {
     pub(super) fn from_prepared(prepared: &PlaybackPreparedTrack) -> Self {
         Self {
             track_id: prepared.track_id.clone(),
-            duration_ms: track_duration_ms(prepared),
+            duration_ms: prepared.timeline.duration_ms(),
         }
     }
 }
@@ -167,7 +167,7 @@ pub(crate) enum PlaybackCommand {
     #[cfg(target_os = "macos")]
     OutputDeviceChanged,
     Previous,
-    Seek(std::time::Duration),
+    Seek(StreamPosition),
     /// Seek by slider ratio (0.0–1.0) of the current track's duration and pregap.
     SeekByRatio(f64),
     SetVolume(f32),
@@ -404,7 +404,9 @@ impl PlaybackHandle {
         self.dispatch(PlaybackCommand::Previous);
     }
     pub fn seek(&self, position: std::time::Duration) {
-        self.dispatch(PlaybackCommand::Seek(position));
+        self.dispatch(PlaybackCommand::Seek(StreamPosition::from_duration(
+            position,
+        )));
     }
     pub fn seek_by_ratio(&self, ratio: f64) {
         self.dispatch(PlaybackCommand::SeekByRatio(ratio));

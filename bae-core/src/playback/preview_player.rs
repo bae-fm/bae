@@ -27,6 +27,7 @@ use crate::playback::stream_pipeline::{
     log_stream_diagnostic, report_dropped_audio_events, start_stream_pipeline, DecodeFailureReport,
     DecoderSetup, SegmentDecodeParams, StreamDecodeParams, StreamPipeline,
 };
+use crate::playback::timeline::{StreamPosition, TrackTimeline};
 use std::time::Duration;
 use tokio::sync::mpsc as tokio_mpsc;
 use tokio::task::JoinHandle;
@@ -161,6 +162,14 @@ struct PreviewSource {
     buffer: SharedSparseBuffer,
 }
 
+impl PreviewSource {
+    /// The window's timeline: a preview has no pregap, so its stream and its
+    /// track start together.
+    fn timeline(&self) -> TrackTimeline {
+        TrackTimeline::new(self.duration, None)
+    }
+}
+
 /// One loaded preview: what it plays, the event-listener task, and the live
 /// streaming pipeline.
 struct ActivePreview {
@@ -273,18 +282,17 @@ impl PreviewPlayer {
         let Some(active) = self.active.as_ref() else {
             return;
         };
-        let position_ms = crate::playback::format::position_for_progress(
-            ratio,
-            active.source.duration.as_millis() as u64,
-            None,
-        );
-        self.seek(Duration::from_millis(position_ms), audio_device)
-            .await;
+        let position = active.source.timeline().position_at_progress(ratio);
+        self.seek(position, audio_device).await;
     }
 
     /// Seek within the active preview. Tears down the current pipeline (retaining
     /// the buffer) and rebuilds a fresh one seeked to `position`.
-    pub(crate) async fn seek(&mut self, position: Duration, audio_device: &dyn AudioOutputDevice) {
+    pub(crate) async fn seek(
+        &mut self,
+        position: StreamPosition,
+        audio_device: &dyn AudioOutputDevice,
+    ) {
         let Some(active) = self.active.as_ref() else {
             return;
         };
@@ -294,7 +302,7 @@ impl PreviewPlayer {
 
         let source = active.source.clone();
         let buffer = source.buffer.clone();
-        let duration = source.duration;
+        let timeline = source.timeline();
 
         let was_paused = self
             .audio_output
@@ -334,13 +342,11 @@ impl PreviewPlayer {
         // emit explicitly so the NSView updates. When seeking while playing, the
         // event listener picks up from the new offset on its next tick.
         if was_paused {
-            let pos_ms = position.as_millis() as u64;
-            let dur_ms = duration.as_millis() as u64;
             emit_progress(
                 &self.progress_tx,
                 PlaybackProgress::PreviewPositionUpdate {
-                    position_ms: pos_ms,
-                    progress: crate::playback::format::compute_progress(pos_ms, dur_ms, None),
+                    position_ms: position.as_millis(),
+                    progress: timeline.progress(position),
                 },
             );
         }
@@ -427,7 +433,7 @@ impl PreviewPlayer {
     async fn start_streaming(
         &mut self,
         source: PreviewSource,
-        seek_to: Option<Duration>,
+        seek_to: Option<StreamPosition>,
         paused: bool,
         audio_device: &dyn AudioOutputDevice,
     ) -> bool {
@@ -444,9 +450,7 @@ impl PreviewPlayer {
 
         // The offset is relative to the selected source window. No recorded
         // landing byte exists for an unimported file, so the decoder sample-seeks.
-        let start_offset = seek_to
-            .map(|d| (d.as_secs_f64() * source.sample_rate as f64) as u64)
-            .unwrap_or(0);
+        let start_offset = seek_to.map_or(0, |position| position.frames(source.sample_rate));
         let decode = StreamDecodeParams::new(
             vec![SegmentDecodeParams::new(
                 source.buffer.clone(),
@@ -463,9 +467,8 @@ impl PreviewPlayer {
         // carried on the event stream.
         let fmt = TrackFmt {
             track_id: source.target.path.clone(),
-            duration_ms: source.duration.as_millis() as u64,
-            pregap_ms: None,
-            position_offset: seek_to.unwrap_or(Duration::ZERO),
+            timeline: source.timeline(),
+            starts_at: seek_to.unwrap_or(StreamPosition::START),
             replay_gain_linear: 1.0,
         };
 
@@ -551,17 +554,12 @@ fn spawn_preview_listener(
                     // Preview is single-track: every tick carries the same fmt
                     // built above, so read its fields rather than keeping a
                     // parallel copy here.
-                    AudioEvent::Position((fmt, pos)) => {
-                        let actual_pos_ms = (fmt.position_offset + pos).as_millis() as u64;
+                    AudioEvent::Position((fmt, position)) => {
                         emit_progress(
                             &progress_tx,
                             PlaybackProgress::PreviewPositionUpdate {
-                                position_ms: actual_pos_ms,
-                                progress: crate::playback::format::compute_progress(
-                                    actual_pos_ms,
-                                    fmt.duration_ms,
-                                    fmt.pregap_ms,
-                                ),
+                                position_ms: position.as_millis(),
+                                progress: fmt.timeline.progress(position),
                             },
                         );
                     }

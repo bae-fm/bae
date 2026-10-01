@@ -13,6 +13,7 @@
 //! for one sample rate / channel count).
 
 use crate::playback::audio_output::{duration_millis, AudioEvent, AudioEventSender};
+use crate::playback::timeline::{StreamPosition, TrackTimeline};
 use crate::playback::track_stream::TrackStream;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -26,15 +27,15 @@ const STARVATION_LOG_EVERY: Duration = Duration::from_secs(1);
 /// track's fmt with the new track's first tick and the service consults no
 /// shared cell.
 ///
-/// `track_id`/`duration_ms`/`pregap_ms` are intrinsic to the track;
-/// `position_offset` is the in-track time this stream began at (non-zero only
-/// after a seek — the next track in a chain always starts at zero).
+/// `track_id`/`timeline` are intrinsic to the track; `starts_at` is where in
+/// the track's stream this decode began (a direct start's INDEX 01, a seek's
+/// target, or the stream's start — where the next track in a chain always
+/// begins).
 #[derive(Debug, Clone)]
 pub struct TrackFmt {
     pub track_id: String,
-    pub duration_ms: u64,
-    pub pregap_ms: Option<i64>,
-    pub position_offset: Duration,
+    pub timeline: TrackTimeline,
+    pub starts_at: StreamPosition,
     /// Linear replay gain for this track, folded into the audio callback's
     /// volume multiply. `1.0` = no change. Per-track and swapped at the gapless
     /// boundary, so the loudness shifts discontinuously there — which is
@@ -158,7 +159,7 @@ impl PlaybackSource {
     /// A position-tick event tagged with the current track's fmt. Built here
     /// so each audio-output implementation calls one method instead of
     /// re-assembling the tuple from the same accessors.
-    pub fn position_event(&self) -> (Arc<TrackFmt>, Duration) {
+    pub fn position_event(&self) -> (Arc<TrackFmt>, StreamPosition) {
         (self.current_fmt.clone(), self.position())
     }
 
@@ -245,7 +246,7 @@ impl PlaybackSource {
                     audio_events.push(AudioEvent::StarvationEnded {
                         fmt: self.current_fmt.clone(),
                         starved_ms: duration_millis(starved),
-                        position_ms: duration_millis(self.position()),
+                        position: self.position(),
                         samples_decoded: self.current.samples_decoded(),
                         decode_errors: self.current.decode_error_count(),
                     });
@@ -278,7 +279,7 @@ impl PlaybackSource {
             audio_events.push(AudioEvent::Starved {
                 fmt: self.current_fmt.clone(),
                 starved_ms: duration_millis(starved),
-                position_ms: duration_millis(self.position()),
+                position: self.position(),
                 producer_finished: self.current.producer_finished(),
                 samples_decoded: self.current.samples_decoded(),
                 decode_errors: self.current.decode_error_count(),
@@ -293,8 +294,10 @@ impl PlaybackSource {
         self.current.is_finished() && self.next.is_none()
     }
 
-    pub fn position(&self) -> Duration {
-        self.current.position()
+    /// Where the current track's stream has played to: where its decode began,
+    /// plus what has played since.
+    pub fn position(&self) -> StreamPosition {
+        self.current_fmt.starts_at + self.current.position()
     }
 
     pub fn sample_rate(&self) -> u32 {
@@ -323,9 +326,8 @@ mod tests {
     fn fmt(track_id: &str) -> TrackFmt {
         TrackFmt {
             track_id: track_id.to_string(),
-            duration_ms: 1000,
-            pregap_ms: None,
-            position_offset: Duration::ZERO,
+            timeline: TrackTimeline::new(Duration::from_secs(1), None),
+            starts_at: StreamPosition::START,
             replay_gain_linear: 1.0,
         }
     }

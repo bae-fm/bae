@@ -261,9 +261,8 @@ async fn preview_listener_maps_completion_to_preview_completed() {
     audio_tx.push_required(AudioEvent::Completion((
         Arc::new(TrackFmt {
             track_id: "preview.wav".to_string(),
-            duration_ms: 1_000,
-            pregap_ms: None,
-            position_offset: Duration::ZERO,
+            timeline: crate::playback::TrackTimeline::new(std::time::Duration::from_secs(1), None),
+            starts_at: crate::playback::StreamPosition::START,
             replay_gain_linear: 1.0,
         }),
         0,
@@ -301,7 +300,9 @@ async fn failed_preview_seek_surfaces_idle() {
     // rather than leaving a torn-down zombie. (The seek reuses the retained
     // output, so the device passed here is never opened from.)
     player.audio_output = Some(Box::new(FailingAudioOutput::new()));
-    player.seek(Duration::from_millis(500), &device).await;
+    player
+        .seek(crate::playback::StreamPosition::from_millis(500), &device)
+        .await;
 
     assert!(
         !player.is_active(),

@@ -7,7 +7,7 @@ fn starved_event(
     AudioEvent::Starved {
         fmt: Arc::new(test_track_fmt(track_id)),
         starved_ms,
-        position_ms: 0,
+        position: StreamPosition::START,
         producer_finished,
         samples_decoded,
         decode_errors: 0,
@@ -19,7 +19,7 @@ fn starvation_ended_event(track_id: &str) -> AudioEvent {
     AudioEvent::StarvationEnded {
         fmt: Arc::new(test_track_fmt(track_id)),
         starved_ms: 0,
-        position_ms: 0,
+        position: StreamPosition::START,
         samples_decoded: 0,
         decode_errors: 0,
     }
@@ -281,21 +281,46 @@ async fn playback_state_mapping() {
     // `playback_state` treats Completed as unreachable, so it has no case here.
 }
 
-/// The two `Direct` cases also cover `pregap_seek_position`: a start seeks past
-/// a positive pregap, and starts at zero without one.
+/// A direct start lands past a positive pregap, and at the stream's start
+/// without one; a natural start always at the stream's start.
 #[test]
 fn track_start_position_cases() {
     use std::time::Duration;
+    let pregapped = TrackTimeline::new(Duration::from_secs(60), Some(3000));
+    let no_pregap = TrackTimeline::new(Duration::from_secs(60), None);
 
     assert_eq!(
-        TrackStart::Direct.position(Some(3000)),
-        Duration::from_millis(3000)
+        TrackStart::Direct.position(pregapped),
+        StreamPosition::from_millis(3000)
     );
-    assert_eq!(TrackStart::Direct.position(None), Duration::ZERO);
-    assert_eq!(TrackStart::Natural.position(Some(3000)), Duration::ZERO);
+    assert_eq!(TrackStart::Direct.position(no_pregap), StreamPosition::START);
+    assert_eq!(TrackStart::Natural.position(pregapped), StreamPosition::START);
     assert_eq!(
-        TrackStart::Position(Duration::from_millis(42_000)).position(Some(3000)),
-        Duration::from_millis(42_000)
+        TrackStart::Position(StreamPosition::from_millis(42_000)).position(pregapped),
+        StreamPosition::from_millis(42_000)
+    );
+}
+
+/// A CUE `PREGAP` directive's silence has no stored pregap behind it; the
+/// track's timeline still starts past it, so the seek bar, a direct start and
+/// a seek all agree on where INDEX 01 is.
+#[test]
+fn a_generated_pregap_starts_the_track_past_it() {
+    let mut resolved = test_resolved_track_audio("track", 44_100, 2);
+    resolved.generated_pregap_ms = Some(2000);
+    resolved.generated_pregap_samples = Some(88_200);
+
+    let prepared = finalize_playback_track(
+        "track".to_string(),
+        &resolved,
+        Vec::new(),
+        crate::config::ReplayGainMode::Off,
+    );
+
+    assert_eq!(prepared.generated_pregap_frames, 88_200);
+    assert_eq!(
+        prepared.timeline.track_start(),
+        StreamPosition::from_millis(2000)
     );
 }
 
@@ -332,8 +357,7 @@ fn prepared_track_with_pregap_segments(
     let main_buffer = create_sparse_buffer(2_048);
     let mut prepared = test_prepared_track("track", main_buffer.clone());
     prepared.generated_pregap_frames = 441;
-    prepared.generated_pregap_ms = Some(10);
-    prepared.pregap_ms = Some(1010);
+    prepared.timeline = TrackTimeline::new(std::time::Duration::from_secs(1), Some(1010));
     prepared.segments = vec![
         PreparedAudioSegment {
             role: DbAudioSegmentRole::AudioPregap,

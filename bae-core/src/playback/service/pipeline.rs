@@ -1,8 +1,9 @@
 use super::*;
 
 impl PlaybackService {
-    /// Install the incoming track as current, in `phase`, and project its intent
-    /// onto the audio-state atomic. Also hands this track's reader fetch priority.
+    /// Install the incoming track as current, in `phase`, at `position` in its
+    /// stream, and project its intent onto the audio-state atomic. Also hands
+    /// this track's reader fetch priority.
     /// Does not emit a `StateChanged` — the caller decides whether the transition
     /// surfaces one now (skip, gapless advance) or waits for the ready-watcher's
     /// `TrackReady` (fresh play, seek). The stream/source/audio-events receiver
@@ -12,11 +13,13 @@ impl PlaybackService {
         prepared: PlaybackPreparedTrack,
         decoder: TrackDecoder,
         phase: TrackPhase,
+        position: StreamPosition,
     ) {
         self.slot = PlaybackSlot::Active(CurrentTrack {
             prepared,
             decoder,
             phase,
+            position,
         });
         self.mark_current_foreground();
         self.sync_audio_state();
@@ -28,7 +31,7 @@ impl PlaybackService {
     /// Play `track_id` from scratch: tear down whatever was playing, resolve and
     /// prepare it, spawn its decoder, and install it as current.
     /// - `start`: a direct start (pregap skipped), a natural transition (pregap
-    ///   played), or a restored raw position.
+    ///   played), or a position in the track's stream.
     /// - `target`: where the load lands once audio is ready (Playing, or Paused
     ///   with a reason). Computed absolutely by the caller.
     /// - `transition`: how this start came about, for the `TrackStarted` event.
@@ -116,10 +119,10 @@ impl PlaybackService {
         )));
         self.emit_state();
 
-        let start_position = start.position(prepared.total_pregap_ms());
+        let start_position = start.position(prepared.timeline);
         let include_pregap = start.includes_pregap();
         let start_sample_offset = if include_pregap {
-            (start_position.as_secs_f64() * prepared.sample_rate as f64) as u64
+            start_position.frames(prepared.sample_rate)
         } else {
             0
         };

@@ -260,7 +260,7 @@ pub trait AudioStream: 'static {
 /// position belongs to. The audio callback supplies the fmt by cloning the
 /// source's `current_fmt` at emit time — across a track boundary the next
 /// tick automatically carries the new track's fmt.
-pub type PositionEvent = (Arc<TrackFmt>, std::time::Duration);
+pub type PositionEvent = (Arc<TrackFmt>, crate::playback::StreamPosition);
 
 /// A completion signal, tagged with the finishing track's identity + decode
 /// stats. Fires once when the source's last track drains; gaplessly-advanced
@@ -281,7 +281,7 @@ pub(crate) enum AudioEvent {
     Starved {
         fmt: Arc<TrackFmt>,
         starved_ms: u64,
-        position_ms: u64,
+        position: crate::playback::StreamPosition,
         producer_finished: bool,
         samples_decoded: u64,
         decode_errors: u32,
@@ -290,7 +290,7 @@ pub(crate) enum AudioEvent {
     StarvationEnded {
         fmt: Arc<TrackFmt>,
         starved_ms: u64,
-        position_ms: u64,
+        position: crate::playback::StreamPosition,
         samples_decoded: u64,
         decode_errors: u32,
     },
