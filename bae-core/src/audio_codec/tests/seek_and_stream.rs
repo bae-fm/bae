@@ -571,3 +571,78 @@ fn encoder_rejects_a_pcm_shape_change_mid_stream() {
         .expect_err("finish must surface the shape change");
     assert!(err.contains("PCM shape changed"), "unexpected error: {err}");
 }
+
+/// A streaming (non-seekable) WAV encode is a valid WAV of unknown length: the
+/// RIFF and `data` sizes say "unknown" (`0xFFFFFFFF`) rather than a count the
+/// muxer would have patched in, the `fmt ` chunk describes the PCM, and the
+/// `data` payload is exactly the input at the requested depth — at 16 bits the
+/// top half of each sample, at 24 bits its top three bytes, little-endian. No
+/// chunk sits between `fmt ` and `data`, so at 16 bits the header is the
+/// canonical 44 bytes a renderer's simplest WAV reader expects.
+#[test]
+fn streaming_wav_encode_into_a_plain_write_sink_is_unsized_pcm() {
+    use std::sync::Mutex;
+
+    init();
+
+    /// A Write-only sink (no Seek): bytes land in a shared Vec.
+    #[derive(Clone)]
+    struct SharedVec(Arc<Mutex<Vec<u8>>>);
+    impl std::io::Write for SharedVec {
+        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+            self.0.lock().unwrap().extend_from_slice(buf);
+            Ok(buf.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    let sample_rate = 44_100u32;
+    let samples: Vec<i32> = (0..sample_rate as usize * 2)
+        .map(|i| {
+            let t = (i / 2) as f64 / sample_rate as f64;
+            (0.5 * i32::MAX as f64 * (2.0 * std::f64::consts::PI * 440.0 * t).sin()) as i32
+        })
+        .collect();
+
+    for bits in [16u32, 24] {
+        let out = SharedVec(Arc::new(Mutex::new(Vec::new())));
+        let mut encoder = StreamingEncoder::streaming(
+            StreamEncodeFormat::PcmWav {
+                bits_per_sample: bits,
+            },
+            Box::new(out.clone()),
+            Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        );
+        encoder.on_format(sample_rate, 2);
+        encoder.on_samples(&samples);
+        encoder.finish().expect("streaming WAV encode");
+        let bytes = out.0.lock().unwrap().clone();
+
+        let wav = crate::audio_codec::parse_streamed_wav(&bytes).expect("a WAV stream");
+        if bits == 16 {
+            assert_eq!(&bytes[36..40], b"data", "data follows fmt directly");
+            assert_eq!(bytes.len() - wav.data.len(), 44, "a canonical header");
+        }
+        assert_eq!(wav.riff_size, u32::MAX, "{bits}-bit RIFF size is unknown");
+        assert_eq!(wav.data_size, u32::MAX, "{bits}-bit data size is unknown");
+        assert_eq!(wav.channels, 2);
+        assert_eq!(wav.sample_rate, sample_rate);
+        assert_eq!(wav.bits_per_sample, bits);
+        let bytes_per_sample = bits as usize / 8;
+        assert_eq!(
+            wav.data.len(),
+            samples.len() * bytes_per_sample,
+            "{bits}-bit data holds every input frame"
+        );
+        let expected: Vec<u8> = samples
+            .iter()
+            .flat_map(|&s| s.to_le_bytes()[4 - bytes_per_sample..].to_vec())
+            .collect();
+        assert!(
+            wav.data == expected,
+            "{bits}-bit data is the input's top {bits} bits"
+        );
+    }
+}

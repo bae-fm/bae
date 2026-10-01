@@ -105,7 +105,8 @@ pub(crate) async fn release_album_id3_with(
 
 /// The audio-derived `Child` fields, shared by the album-song and search-song
 /// builders so the two can't disagree on how a track's format maps to
-/// `bitDepth`/`samplingRate`/`channelCount`, its original type/suffix, or size.
+/// `bitDepth`/`samplingRate`/`channelCount`, or the type/suffix/size of what
+/// `stream` serves it as unconverted.
 struct AudioFields {
     release_id: String,
     bit_depth: i64,
@@ -141,12 +142,27 @@ async fn resolve_audio_fields(
             &owned_files
         }
     };
-    // Every track resolves at least one segment, so its first segment's file is
-    // the one a raw stream would serve — the source of the original type/suffix.
-    let backing = audio
-        .segments
-        .first()
-        .and_then(|segment| files.iter().find(|f| f.id == segment.file_id));
+    // What `stream` serves unconverted: a whole-file track's file, as stored;
+    // any other track's stream as WAV, whose length is not known until it
+    // ends.
+    let (content_type, suffix, size) = match audio.whole_file() {
+        Some(segment) => {
+            let file = files.iter().find(|f| f.id == segment.file_id);
+            (
+                audio.content_type.as_str().to_string(),
+                file.map(|f| file_suffix(&f.original_filename)),
+                file.map(|f| f.file_size),
+            )
+        }
+        None => {
+            let format = audio.wav_stream_format();
+            (
+                format.content_type().to_string(),
+                Some(format.extension().to_string()),
+                None,
+            )
+        }
+    };
 
     Ok(AudioFields {
         release_id: audio.release_id.clone(),
@@ -155,9 +171,9 @@ async fn resolve_audio_fields(
         bit_depth: audio.bits_per_sample.map(i64::from).unwrap_or(0),
         sampling_rate: i64::from(audio.sample_rate),
         channel_count: i64::from(audio.channels),
-        content_type: audio.content_type.as_str().to_string(),
-        suffix: backing.map(|f| file_suffix(&f.original_filename)),
-        size: backing.map(|f| f.file_size),
+        content_type,
+        suffix,
+        size,
         duration_secs: audio.duration_ms.map(|ms| ms / 1000),
     })
 }

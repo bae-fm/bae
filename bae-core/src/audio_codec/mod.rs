@@ -9,6 +9,8 @@ mod decode;
 mod encode;
 mod probe;
 mod resample;
+#[cfg(any(test, feature = "test-utils"))]
+mod wav_read;
 
 #[cfg(test)]
 mod tests;
@@ -33,6 +35,8 @@ pub(crate) use probe::probe_opens_for;
 pub use probe::seek_landing_bytes;
 pub use probe::{probe_audio_from_path, ProbeResult};
 pub use resample::Resampler;
+#[cfg(any(test, feature = "test-utils"))]
+pub use wav_read::{parse_streamed_wav, StreamedWav};
 
 /// Why a decode stopped short of its window.
 #[derive(Debug, Clone, thiserror::Error)]

@@ -37,6 +37,66 @@ async fn stream_raw_serves_original_bytes_and_ranges() {
     assert_eq!(&ranged.body, &full.body[0..10], "range slice matches");
 }
 
+/// A CUE image's track asked for unconverted is served as its own stream, not
+/// the image: its samples from the first one the track holds (track 2's
+/// INDEX 00 at 0:08) to its last (track 3's INDEX 01 at 0:20), as uncompressed
+/// PCM at the image's depth, since no stored file holds exactly those samples.
+/// The song describes that stream rather than the image.
+#[tokio::test(flavor = "multi_thread")]
+async fn stream_raw_serves_a_cue_track_as_its_own_pcm() {
+    let lib = seed_library().await;
+    let router = bae_subsonic::router(lib.services.clone(), credential());
+    let album = call(
+        &router,
+        "getAlbum",
+        &authed(&format!("f=json&id=al-{}", lib.cue_release)),
+    )
+    .await;
+    let song = album.sub()["album"]["song"][1].clone();
+    assert_eq!(song["title"], "Track Two (White Noise)");
+    let song_id = song["id"].as_str().unwrap();
+    assert_eq!(song["contentType"], "audio/wav", "{song}");
+    assert_eq!(song["suffix"], "wav", "{song}");
+    assert!(
+        song.get("size").is_none(),
+        "the stream's size is not known: {song}"
+    );
+
+    let served = call(
+        &router,
+        "stream",
+        &authed(&format!("id={song_id}&format=raw")),
+    )
+    .await;
+    assert_eq!(served.status, StatusCode::OK);
+    assert_eq!(served.content_type, "audio/wav");
+    assert!(
+        served.content_length.is_none(),
+        "the stream's length is not known before it ends"
+    );
+    let wav = bae_core::audio_codec::parse_streamed_wav(&served.body).expect("a WAV stream");
+    let image = decode_bytes(&std::fs::read(cue_fixture("Test Album.flac")).unwrap());
+    assert_eq!(wav.sample_rate, image.sample_rate);
+    assert_eq!(wav.channels, image.channels);
+    assert_eq!(wav.bits_per_sample, 16, "the image's depth");
+
+    let rate = image.sample_rate as usize;
+    let channels = image.channels as usize;
+    let expected: Vec<u8> = image.samples[8 * rate * channels..20 * rate * channels]
+        .iter()
+        .flat_map(|&sample| ((sample >> 16) as i16).to_le_bytes())
+        .collect();
+    assert_eq!(
+        wav.data.len(),
+        expected.len(),
+        "12 s: the track's INDEX 00 pregap, then its 10 s"
+    );
+    assert!(
+        wav.data == expected,
+        "the served PCM is the image's samples from 0:08 to 0:20"
+    );
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn stream_transcode_mp3_is_chunked_and_decodes() {
     let lib = seed_library().await;
@@ -249,7 +309,10 @@ async fn an_artist_cover_art_is_the_artist_image() {
         .to_string();
     let served = call(&router, "getCoverArt", &authed(&format!("id={cover_art}"))).await;
     assert_eq!(served.status, StatusCode::OK);
-    assert_eq!(served.body, image, "the artist's own image, not a release cover");
+    assert_eq!(
+        served.body, image,
+        "the artist's own image, not a release cover"
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -417,15 +480,18 @@ async fn seed_lossy_release() -> (AppServices, String, Vec<TempDir>) {
         .join("bae-core/test-fixtures/audio-format/placeholder-opus.opus");
     std::fs::copy(&fixture, dir.join("track.opus")).unwrap();
 
-    let discogs_key = support::seed_discogs_test_release(manager.providers(), DiscogsRelease {
-        country: None,
-        labels: vec![],
-        artists: vec![support::discogs_artist(
-            "discogs-lossy-artist",
-            "Lossy Artist",
-        )],
-        ..support::discogs_test_release("test-lossy", "Lossy Album", &[("Only Track", "0:10")])
-    });
+    let discogs_key = support::seed_discogs_test_release(
+        manager.providers(),
+        DiscogsRelease {
+            country: None,
+            labels: vec![],
+            artists: vec![support::discogs_artist(
+                "discogs-lossy-artist",
+                "Lossy Artist",
+            )],
+            ..support::discogs_test_release("test-lossy", "Lossy Album", &[("Only Track", "0:10")])
+        },
+    );
     let import =
         support::start_test_import(tokio::runtime::Handle::current(), manager.clone()).await;
     let import_id = "lossy".to_string();

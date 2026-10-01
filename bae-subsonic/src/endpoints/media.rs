@@ -11,9 +11,8 @@ use axum::http::header::{ACCEPT_RANGES, CONTENT_LENGTH, CONTENT_RANGE, CONTENT_T
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
 use bae_core::audio_codec::{StreamEncodeFormat, StreamingEncoder};
-use bae_core::config::SaveCodec;
 use bae_core::db::LibraryImageType;
-use bae_core::library::AppServices;
+use bae_core::library::{AppServices, ResolvedTrackAudio, ResolvedTrackAudioSegment};
 use bae_core::playback::sparse_buffer::BufferStop;
 use bae_core::playback::SharedSparseBuffer;
 use bytes::Bytes;
@@ -31,9 +30,13 @@ use crate::AppState;
 /// How many bytes each read/encode step hands to the response body at a time.
 const STREAM_CHUNK: usize = 64 * 1024;
 
-/// `stream` — serve a track's audio. With `format=raw` (or no transcode
-/// parameters) the backing file's original bytes are served with HTTP range
-/// support; otherwise the track is transcoded and streamed chunked.
+/// `stream` — serve a track's stream. With `format=raw` (or no transcode
+/// parameters) a track stored as one whole file is served as that file's
+/// original bytes with HTTP range support; any other track's stream — a window
+/// of a CUE image, a pregap read from another file or generated as silence —
+/// is decoded from its own segments and served as uncompressed WAV, since no
+/// stored file holds exactly its samples. A transcode request encodes the
+/// track's stream and streams it chunked.
 pub(crate) async fn stream(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -64,6 +67,10 @@ async fn stream_inner(
     if existing.is_empty() {
         return Err(SubError::not_found());
     }
+    let audio = services
+        .resolve_track_audio(&track_id)
+        .await
+        .map_err(lib_err)?;
 
     let requested_format = params.get("format");
     let max_bitrate = params.int("maxBitRate")?.filter(|&b| b > 0);
@@ -71,27 +78,32 @@ async fn stream_inner(
         requested_format == Some("raw") || (requested_format.is_none() && max_bitrate.is_none());
 
     if wants_original {
-        stream_raw(services, &track_id, headers).await
+        match audio.whole_file() {
+            Some(file) => stream_file(services, file, headers).await,
+            None => Ok(stream_encoded(
+                services,
+                &audio,
+                audio.wav_stream_format(),
+                None,
+            )),
+        }
     } else {
-        let estimate = params.bool_or("estimateContentLength", false);
-        stream_transcode(services, &track_id, requested_format, max_bitrate, estimate).await
+        let format = transcode_format(requested_format, max_bitrate);
+        let estimated_length = params
+            .bool_or("estimateContentLength", false)
+            .then(|| estimated_length(&audio, format))
+            .flatten();
+        Ok(stream_encoded(services, &audio, format, estimated_length))
     }
 }
 
-/// Serve the track's backing file bytes, honoring an HTTP `Range` request.
-async fn stream_raw(
+/// Serve the stored file that is the track's stream, honoring an HTTP `Range`
+/// request.
+async fn stream_file(
     services: &AppServices,
-    track_id: &str,
+    segment: &ResolvedTrackAudioSegment,
     headers: &HeaderMap,
 ) -> Result<Response, SubError> {
-    let audio = services
-        .resolve_track_audio(track_id)
-        .await
-        .map_err(lib_err)?;
-    // A raw serve streams the whole backing file — for a CUE-image track that
-    // is the image itself, an accepted edge (raw is normally used with a
-    // per-track file; clients wanting exact track bounds request a transcode).
-    let segment = audio.segments.first().ok_or_else(SubError::not_found)?;
     let file = services
         .get_file_by_id(&segment.file_id)
         .await
@@ -175,111 +187,76 @@ fn reader_body(buffer: SharedSparseBuffer, start: u64, len: u64) -> Body {
     Body::from_stream(ReceiverStream::new(rx))
 }
 
-/// Transcode the track and stream the encoded bytes chunked. The encode runs on
-/// the blocking pool, writing frame by frame into a non-seekable sink (the
-/// response channel) — a socket can't patch a header, which is why the encoder's
-/// streaming constructor is required.
-async fn stream_transcode(
+/// Encode the track's stream as `format` and stream the bytes chunked, with
+/// `content_length` declared when the client asked for an estimate. The
+/// encode runs on the blocking pool, writing frame by frame into a
+/// non-seekable sink (the response channel) — a socket can't patch a header,
+/// which is why the encoder's streaming constructor is required.
+fn stream_encoded(
     services: &AppServices,
-    track_id: &str,
-    requested_format: Option<&str>,
-    max_bitrate: Option<i64>,
-    estimate_length: bool,
-) -> Result<Response, SubError> {
-    let audio = services
-        .resolve_track_audio(track_id)
-        .await
-        .map_err(lib_err)?;
-    // A single-track stream never uses preset-level splitting/filename/pregap
-    // policy, so it takes a plain SaveCodec, not a SavePreset.
-    let codec = transcode_codec(requested_format, max_bitrate);
-    let (encode_format, content_type) = stream_encode_format(&codec)?;
-
-    let decode = services.open_track_decode(&audio);
+    audio: &ResolvedTrackAudio,
+    format: StreamEncodeFormat,
+    content_length: Option<u64>,
+) -> Response {
+    let decode = services.open_track_decode(audio);
 
     let (tx, rx) = mpsc::channel::<Result<Bytes, std::io::Error>>(4);
     let cancel = Arc::new(AtomicBool::new(false));
-    let track_id_owned = track_id.to_string();
+    let track_id = audio.track_id.clone();
     tokio::task::spawn_blocking(move || {
         let sink = ChannelSink { tx: tx.clone() };
-        let mut encoder =
-            StreamingEncoder::streaming(encode_format, Box::new(sink), cancel.clone());
+        let mut encoder = StreamingEncoder::streaming(format, Box::new(sink), cancel.clone());
         if let Err(error) = decode.run_to_sink(&mut encoder, cancel.clone()) {
-            warn!("subsonic transcode of {track_id_owned} failed to decode: {error}");
+            warn!("subsonic transcode of {track_id} failed to decode: {error}");
             return; // dropping tx ends the body
         }
         if let Err(error) = encoder.finish() {
-            warn!("subsonic transcode of {track_id_owned} failed to finish: {error}");
+            warn!("subsonic transcode of {track_id} failed to finish: {error}");
         }
     });
 
     let mut builder = Response::builder()
         .status(StatusCode::OK)
-        .header(CONTENT_TYPE, content_type);
-    if estimate_length {
-        if let Some(duration_ms) = audio.duration_ms {
-            // Estimate ≈ duration × bitrate. Bytes = seconds × kbps × 1000 / 8.
-            let bytes = (duration_ms.max(0) as u64)
-                .saturating_mul(u64::from(codec_bitrate_kbps(&codec)))
-                * 1000
-                / 8
-                / 1000;
-            builder = builder.header(CONTENT_LENGTH, bytes);
-        }
+        .header(CONTENT_TYPE, format.content_type());
+    if let Some(bytes) = content_length {
+        builder = builder.header(CONTENT_LENGTH, bytes);
     }
-    Ok(builder
+    builder
         .body(Body::from_stream(ReceiverStream::new(rx)))
-        .expect("transcode response builds"))
+        .expect("transcode response builds")
 }
 
-/// The transcode codec for the requested format and bitrate. An unknown or
-/// absent format defaults to MP3 at 128 kbps — the Subsonic default transcode.
-fn transcode_codec(requested_format: Option<&str>, max_bitrate: Option<i64>) -> SaveCodec {
+/// The transcode for the requested format and bitrate. An unknown or absent
+/// format defaults to MP3 at 128 kbps — the Subsonic default transcode.
+fn transcode_format(
+    requested_format: Option<&str>,
+    max_bitrate: Option<i64>,
+) -> StreamEncodeFormat {
     let bitrate = max_bitrate.filter(|&b| b > 0).unwrap_or(128) as u32;
     match requested_format {
-        Some("opus") | Some("ogg") => SaveCodec::OpusOgg {
+        Some("opus") | Some("ogg") => StreamEncodeFormat::OpusOgg {
             bitrate_kbps: bitrate.clamp(32, 512),
         },
-        _ => SaveCodec::Mp3 {
+        _ => StreamEncodeFormat::Mp3 {
             bitrate_kbps: bitrate.clamp(32, 320),
         },
     }
 }
 
-/// Map a save codec to the streaming encoder format and the response MIME type.
-/// Only the two streaming-safe codecs a transcode builds are accepted.
-fn stream_encode_format(codec: &SaveCodec) -> Result<(StreamEncodeFormat, &'static str), SubError> {
-    match codec {
-        SaveCodec::Mp3 { bitrate_kbps } => Ok((
-            StreamEncodeFormat::Mp3 {
-                bitrate_kbps: *bitrate_kbps,
-            },
-            "audio/mpeg",
-        )),
-        SaveCodec::OpusOgg { bitrate_kbps } => Ok((
-            StreamEncodeFormat::OpusOgg {
-                bitrate_kbps: *bitrate_kbps,
-            },
-            "audio/ogg",
-        )),
-        // AAC saves mux into M4A (`ipod`), whose moov atom is patched by seeking
-        // — not streaming-safe, so it is rejected here like the lossless codecs.
-        SaveCodec::Flac { .. }
-        | SaveCodec::Wav { .. }
-        | SaveCodec::Aiff { .. }
-        | SaveCodec::Aac { .. } => Err(SubError::generic(
-            "stream transcode supports only mp3 and opus",
-        )),
-    }
-}
-
-fn codec_bitrate_kbps(codec: &SaveCodec) -> u32 {
-    match codec {
-        SaveCodec::Mp3 { bitrate_kbps }
-        | SaveCodec::OpusOgg { bitrate_kbps }
-        | SaveCodec::Aac { bitrate_kbps } => *bitrate_kbps,
-        SaveCodec::Flac { .. } | SaveCodec::Wav { .. } | SaveCodec::Aiff { .. } => 128,
-    }
+/// The estimated length of the track encoded as `format`, ≈ duration ×
+/// bitrate (bytes = seconds × kbps × 1000 / 8); `None` without a duration.
+fn estimated_length(audio: &ResolvedTrackAudio, format: StreamEncodeFormat) -> Option<u64> {
+    let duration_ms = audio.duration_ms?.max(0) as u64;
+    let bitrate_kbps = match format {
+        StreamEncodeFormat::Mp3 { bitrate_kbps } | StreamEncodeFormat::OpusOgg { bitrate_kbps } => {
+            u64::from(bitrate_kbps)
+        }
+        StreamEncodeFormat::PcmWav { bits_per_sample } => {
+            u64::from(audio.sample_rate) * u64::from(audio.channels) * u64::from(bits_per_sample)
+                / 1000
+        }
+    };
+    Some(duration_ms.saturating_mul(bitrate_kbps) / 8)
 }
 
 /// A non-seekable `Write` sink that hands each encoded chunk to the response

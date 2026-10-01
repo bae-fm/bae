@@ -318,16 +318,40 @@ impl<T: std::io::Write + std::io::Seek + Send> WriteSeek for T {}
 /// - **MP3** streams once its Xing/LAME VBR header is disabled (`write_xing=0`,
 ///   set in `StreamingEncoder::open_encoder` for the non-seekable sink),
 ///   leaving a plain CBR frame stream with nothing to seek back and patch.
+/// - **WAV** writes its RIFF and `data` sizes as `0xFFFFFFFF`, the value that
+///   says "unknown, read to the end", and its trailer leaves them alone when it
+///   cannot seek: the header is true of a stream whose length is not known
+///   until it ends.
 ///
-/// FLAC's STREAMINFO (total samples, md5), the RIFF/FORM sizes of WAV/AIFF,
-/// and the AAC/.m4a sample-table `moov` (written whole on finalize) have no
-/// such streaming mode — they are always patched by seeking back over the
-/// header — so they stay out of this enum: pairing a header-patching muxer
-/// with a sink it cannot patch is unrepresentable.
+/// FLAC's STREAMINFO (total samples, md5), the FORM size of AIFF, and the
+/// AAC/.m4a sample-table `moov` (written whole on finalize) are patched by
+/// seeking back over the header, so they stay out of this enum: pairing a
+/// header-patching muxer with a sink it cannot patch is unrepresentable.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StreamEncodeFormat {
     Mp3 { bitrate_kbps: u32 },
     OpusOgg { bitrate_kbps: u32 },
+    PcmWav { bits_per_sample: u32 },
+}
+
+impl StreamEncodeFormat {
+    /// The MIME type of the encoded stream.
+    pub fn content_type(self) -> &'static str {
+        match self {
+            Self::Mp3 { .. } => "audio/mpeg",
+            Self::OpusOgg { .. } => "audio/ogg",
+            Self::PcmWav { .. } => "audio/wav",
+        }
+    }
+
+    /// The file extension of the encoded stream, with no leading dot.
+    pub fn extension(self) -> &'static str {
+        match self {
+            Self::Mp3 { .. } => "mp3",
+            Self::OpusOgg { .. } => "ogg",
+            Self::PcmWav { .. } => "wav",
+        }
+    }
 }
 
 impl From<StreamEncodeFormat> for EncodeFormat {
@@ -335,6 +359,9 @@ impl From<StreamEncodeFormat> for EncodeFormat {
         match format {
             StreamEncodeFormat::Mp3 { bitrate_kbps } => EncodeFormat::Mp3 { bitrate_kbps },
             StreamEncodeFormat::OpusOgg { bitrate_kbps } => EncodeFormat::OpusOgg { bitrate_kbps },
+            StreamEncodeFormat::PcmWav { bits_per_sample } => {
+                EncodeFormat::PcmWav { bits_per_sample }
+            }
         }
     }
 }
@@ -685,6 +712,12 @@ impl StreamingEncoder {
         let mut muxer_options: *mut AVDictionary = ptr::null_mut();
         if !self.seekable_sink && matches!(format, EncodeFormat::Mp3 { .. }) {
             av_dict_set(&mut muxer_options, c"write_xing".as_ptr(), c"0".as_ptr(), 0);
+        }
+        // A WAV streamed to a device carries only `fmt ` and `data`: without
+        // bitexact the muxer adds a LIST/INFO chunk naming itself between them,
+        // which the simplest renderer WAV readers don't skip.
+        if !self.seekable_sink && matches!(format, EncodeFormat::PcmWav { .. }) {
+            (*muxer.fmt_ctx).flags |= AVFMT_FLAG_BITEXACT as c_int;
         }
         let ret = avformat_write_header(muxer.fmt_ctx, &mut muxer_options);
         av_dict_free(&mut muxer_options);

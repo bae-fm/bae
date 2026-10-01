@@ -696,19 +696,33 @@ impl ResolvedTrackAudio {
         }
     }
 
-    /// Whether the track's audio is one stored file, whole: a single main
+    /// The stored file that is the track's stream, when one is: a single main
     /// segment from the file's first sample to its end, with no generated
     /// pregap. Only then do the file's bytes, served as they are, hold the
     /// track's stream; a CUE track's file holds the whole image, or its pregap
-    /// lives in another file, or its pregap is silence bae generates.
-    pub fn is_whole_file(&self) -> bool {
+    /// lives in another file, or its pregap is silence bae generates. Every
+    /// other track is served decoded from its own segments.
+    pub fn whole_file(&self) -> Option<&ResolvedTrackAudioSegment> {
         let [segment] = self.segments.as_slice() else {
-            return false;
+            return None;
         };
-        segment.role == DbAudioSegmentRole::Main
+        (segment.role == DbAudioSegmentRole::Main
             && segment.span.start_sample == 0
             && segment.span.end_sample.is_none()
-            && self.generated_pregap_frames() == 0
+            && self.generated_pregap_frames() == 0)
+            .then_some(segment)
+    }
+
+    /// The WAV the track's stream is served as uncompressed: PCM at the depth
+    /// it was stored at (16, 24 or 32 bits), or 16 for a lossy codec, which
+    /// has no stored depth and decodes to nothing finer.
+    pub fn wav_stream_format(&self) -> crate::audio_codec::StreamEncodeFormat {
+        let bits_per_sample = match self.bits_per_sample {
+            Some(17..=24) => 24,
+            Some(25..) => 32,
+            Some(_) | None => 16,
+        };
+        crate::audio_codec::StreamEncodeFormat::PcmWav { bits_per_sample }
     }
 
     /// The silent frames bae generates before the track's first stored sample,

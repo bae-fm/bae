@@ -71,7 +71,7 @@ impl RendererMediaSource {
         audio: &ResolvedTrackAudio,
         cover: Option<&ImageRef>,
     ) -> Result<ServedTrack, String> {
-        let format = if audio.is_whole_file() {
+        let format = if audio.whole_file().is_some() {
             (self.stream_format)(&audio.content_type)
         } else {
             RendererStreamFormat::TranscodeMp3
