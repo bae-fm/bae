@@ -509,7 +509,8 @@ extension ImportCandidateViewportTests {
                     identification: nil,
                     import: nil,
                     actions: [],
-                    standing: .notLookedUp
+                    standing: .notLookedUp,
+                    badge: nil
                 ),
                 matched: nil,
                 metadataSummary: nil,

@@ -169,34 +169,21 @@ extension TriageRowView {
     // MARK: - Trailing
 
     /// The trailing column, kept at its ideal width so the title truncates
-    /// first.
+    /// first: the badge of a row waiting on the person, or what is running
+    /// for the candidate.
     private var trailing: some View {
         Group {
-            if let identification = live.identification {
+            if let badge = live.badge {
+                RowBadgeChip(badge: badge)
+            }
+            else if let identification = live.identification {
                 identificationTrailing(identification)
             }
             else if let standing = live.import {
                 importStandingTrailing(standing)
             }
-            else {
-                placementTrailing
-            }
         }
         .fixedSize()
-    }
-
-    @ViewBuilder
-    private var placementTrailing: some View {
-        switch row.placement {
-        case .pending:
-            if let badge = live.standing?.badge {
-                StatusChip(verbatim: badge, tone: .warning)
-            }
-        case .failed, .done:
-            importTrailing
-        case .skipped:
-            EmptyView()
-        }
     }
 
     @ViewBuilder
@@ -237,17 +224,6 @@ extension TriageRowView {
         case .queued:
             QueuedImportIcon()
         case .running, .writing:
-            EmptyView()
-        }
-    }
-
-    /// A failed import's tag; a completed import's row is `ImportedRowView`.
-    @ViewBuilder
-    private var importTrailing: some View {
-        switch row.importStatus {
-        case .error:
-            StatusChip("Failed", tone: .danger)
-        case .complete, nil:
             EmptyView()
         }
     }

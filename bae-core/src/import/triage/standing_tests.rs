@@ -1,8 +1,11 @@
 use super::*;
 use crate::identify::LeadMatch;
 use crate::import::search::SourceTracks;
-use crate::import::{Catalog, ImportStanding, MetadataRef, PressingLink, SaveFailure};
+use crate::import::{
+    Catalog, ImportStanding, MetadataRef, PendingFilter, PressingLink, SaveFailure,
+};
 use crate::signals::InternalFailure;
+use std::collections::HashSet;
 
 fn lead(source_tracks: Option<SourceTracks>) -> LeadMatch {
     LeadMatch {
@@ -253,4 +256,103 @@ fn a_kept_draft_is_unmatched_until_a_catalog_is_read() {
             Some(PendingStanding::Identified)
         );
     }
+}
+
+/// One standing of every state, a row waiting on the person for each reason
+/// the lookup can leave it to them.
+fn every_standing() -> Vec<PendingStanding> {
+    vec![
+        PendingStanding::NotLookedUp,
+        PendingStanding::Identifying,
+        PendingStanding::NeedsYou {
+            reason: NeedsYouReason::Matches { count: 3 },
+        },
+        PendingStanding::NeedsYou {
+            reason: NeedsYouReason::NoTracklist,
+        },
+        PendingStanding::NeedsYou {
+            reason: NeedsYouReason::MediumMismatch {
+                folder: MediumConflict::NotCdAudio,
+                releases: 2,
+            },
+        },
+        PendingStanding::NeedsYou {
+            reason: NeedsYouReason::NotFound,
+        },
+        PendingStanding::NeedsYou {
+            reason: NeedsYouReason::NothingToLookUp,
+        },
+        PendingStanding::Identified,
+        PendingStanding::Unmatched,
+        PendingStanding::LookupError,
+        PendingStanding::Error {
+            failure: InternalFailure {
+                detail: "the disk is full".to_string(),
+            },
+        },
+        PendingStanding::Importing,
+        PendingStanding::ImportError,
+    ]
+}
+
+/// Every row the Needs You filter holds wears exactly one badge, saying why
+/// it waits on the person, and every other row wears none: a failure in the
+/// error tone, an answer left to the person in the tone that asks for one.
+#[test]
+fn every_row_waiting_on_the_person_wears_one_badge() {
+    let standings = every_standing();
+    let states: HashSet<PendingState> = standings.iter().map(PendingStanding::state).collect();
+    // Each of `PendingState`'s nine.
+    assert_eq!(states.len(), 9, "{states:?}");
+    let mut badges = Vec::new();
+    for standing in &standings {
+        let state = standing.state();
+        let waits = PendingFilter::NeedsYou.holds(state);
+        match standing.badge() {
+            Some(badge) => {
+                assert!(waits, "{standing:?}");
+                let tone = match state {
+                    PendingState::NeedsYou => BadgeTone::Attention,
+                    _ => BadgeTone::Failure,
+                };
+                assert_eq!(badge.tone(), tone, "{standing:?}");
+                assert!(!badges.contains(&badge), "{badge:?} twice");
+                badges.push(badge);
+            }
+            None => assert!(!waits, "{standing:?}"),
+        }
+    }
+}
+
+/// A run one of whose lookups failed is a lookup error even where the others
+/// found releases it offers, and wears its badge.
+#[test]
+fn a_run_with_one_failed_lookup_and_offered_releases_wears_a_lookup_error() {
+    let verdict = VerdictSummary {
+        kind: VerdictKind::Failed,
+        ..found(2, Some(SourceTracks::Listed { count: 11 }))
+    };
+    let standing = pending(&verdict).expect("a Found row");
+    assert_eq!(standing, PendingStanding::LookupError);
+    assert_eq!(standing.badge(), Some(PendingBadge::LookupError));
+    assert_eq!(PendingBadge::LookupError.tone(), BadgeTone::Failure);
+}
+
+/// An answer bae could not store puts the row in error over what the tables
+/// say, and the row wears the error's badge.
+#[test]
+fn an_answer_that_did_not_save_wears_the_error_badge() {
+    let facts = TriageRuntimeFacts {
+        identification: Some(IdentificationStatus::FinalizationFailed {
+            failure: SaveFailure::NotWritten {
+                error: "disk full".to_string(),
+            },
+        }),
+        import: None,
+    };
+    let standing = PendingStanding::NeedsYou {
+        reason: NeedsYouReason::NotFound,
+    }
+    .with_live(&facts);
+    assert_eq!(standing.badge(), Some(PendingBadge::Error));
 }

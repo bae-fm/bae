@@ -97,7 +97,8 @@ private func candidateItem(_ index: Int) -> BridgeImportListItem {
                 identification: nil,
                 import: nil,
                 actions: [],
-                standing: .notLookedUp
+                standing: .notLookedUp,
+                badge: nil
             ),
             matched: nil,
             metadataSummary: nil,

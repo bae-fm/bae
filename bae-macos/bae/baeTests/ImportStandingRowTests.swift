@@ -86,7 +86,8 @@ struct ImportStandingRowTests {
             identification: nil,
             import: standing,
             actions: [],
-            standing: .notLookedUp
+            standing: .notLookedUp,
+            badge: nil
         )
         return try await drawn(
             TriageRowView(
@@ -106,7 +107,8 @@ struct ImportStandingRowTests {
             identification: nil,
             import: standing,
             actions: [],
-            standing: nil
+            standing: nil,
+            badge: nil
         )
         return try await drawn(
             ImportedRowView(

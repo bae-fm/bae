@@ -79,15 +79,10 @@ extension BridgeNeedsYouReason {
 }
 
 extension BridgePendingStanding {
-    /// Why the folder waits on the person, for a row that does.
+    /// Why the lookup left the folder's answer to the person, for a row it
+    /// did.
     var needsYou: BridgeNeedsYouReason? {
         guard case .needsYou(let reason) = self else { return nil }
         return reason
-    }
-
-    /// The badge a row in this state wears: only a row waiting on the person
-    /// has one, saying why.
-    var badge: String? {
-        needsYou?.badgeLabel
     }
 }

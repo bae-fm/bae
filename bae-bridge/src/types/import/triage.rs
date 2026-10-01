@@ -279,6 +279,39 @@ pub enum BridgeMediumMismatch {
     NotCdAudio,
 }
 
+/// The one badge a Found row waiting on the person wears: what it says, and
+/// how it reads. Mirrors `bae_core::import::PendingBadge` and its tone.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, uniffi::Record)]
+pub struct BridgeRowBadge {
+    pub says: BridgePendingBadge,
+    pub tone: BridgeBadgeTone,
+}
+
+/// What the badge of a Found row waiting on the person says. Mirrors
+/// `bae_core::import::PendingBadge`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, uniffi::Enum)]
+pub enum BridgePendingBadge {
+    /// The lookup left the answer to the person, for this reason.
+    NeedsYou { reason: BridgeNeedsYouReason },
+    /// A catalog could not answer the lookup, or hand over a release it found
+    /// in full.
+    LookupError,
+    /// bae broke on its own side.
+    Error,
+    /// The last import failed, or the release cannot be worked on as it
+    /// stands.
+    ImportError,
+}
+
+/// How a badge reads at a glance. Mirrors `bae_core::import::BadgeTone`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, uniffi::Enum)]
+pub enum BridgeBadgeTone {
+    /// An answer is the person's to give.
+    Attention,
+    /// Something failed.
+    Failure,
+}
+
 /// One selected candidate and the actions its live state offers.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeSelectionMember {
@@ -377,6 +410,9 @@ pub struct BridgeCandidateLiveState {
     pub actions: Vec<BridgeCandidateAction>,
     /// Where the row stands among Found's states; `None` off Found.
     pub standing: Option<BridgePendingStanding>,
+    /// The one badge the row wears in that state; `None` unless it waits on
+    /// the person.
+    pub badge: Option<BridgeRowBadge>,
 }
 
 /// Where the import that owns a candidate stands.

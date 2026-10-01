@@ -441,7 +441,14 @@
             placement: .pending,
             matched: nil,
             metadataSummary: nil,
-            live: triageLive(identifiedDraftCommands)
+            live: triageLive(
+                identifiedDraftCommands,
+                standing: .needsYou(reason: .notFound),
+                badge: BridgeRowBadge(
+                    says: .needsYou(reason: .notFound),
+                    tone: .attention
+                )
+            )
         )
 
         static let triageRowIdentifying = triageRow(
@@ -555,7 +562,11 @@
                     detail: "track 7 is truncated"
                 )
             ),
-            live: triageLive([.resetToFileMetadata, .clearMetadata])
+            live: triageLive(
+                [.resetToFileMetadata, .clearMetadata],
+                standing: .importError,
+                badge: BridgeRowBadge(says: .importError, tone: .failure)
+            )
         )
 
         @MainActor
@@ -671,13 +682,15 @@
             _ actions: [BridgeCandidateAction],
             identification: BridgeIdentificationStatus? = nil,
             importStanding: BridgeImportStanding? = nil,
-            standing: BridgePendingStanding? = nil
+            standing: BridgePendingStanding? = nil,
+            badge: BridgeRowBadge? = nil
         ) -> BridgeCandidateLiveState {
             BridgeCandidateLiveState(
                 identification: identification,
                 import: importStanding,
                 actions: actions,
-                standing: standing
+                standing: standing,
+                badge: badge
             )
         }
 

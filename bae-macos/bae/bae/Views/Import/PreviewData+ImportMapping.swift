@@ -422,7 +422,8 @@
                                 .identify, .resetToFileMetadata,
                                 .clearMetadata, .combine, .skip, .revealFolder,
                             ],
-                        standing: .notLookedUp
+                        standing: .notLookedUp,
+                        badge: nil
                     ),
                     importStatus: nil,
                     release: release,

@@ -7,18 +7,25 @@ import Testing
 /// is, and its numbers, are core's.
 @Suite("Why a folder waits on the person")
 struct NeedsYouReasonTests {
-    @Test("only a row waiting on the person wears a badge")
-    func onlyNeedsYouWearsABadge() {
-        let waiting = BridgePendingStanding.needsYou(reason: .notFound)
-        #expect(waiting.badge == String(localized: "Not found"))
-        let others: [BridgePendingStanding] = [
-            .notLookedUp, .identifying, .identified, .unmatched,
-            .lookupError, .error(failure: BridgeInternalFailure(detail: "x")),
-            .importing, .importError,
+    /// Which rows wear a badge, and its tone, are core's; each badge says
+    /// its own words in the tone core gave it.
+    @Test("each badge core gives says its own words")
+    func eachBadgeSaysItsOwnWords() {
+        let badges: [BridgePendingBadge] = [
+            .needsYou(reason: .notFound), .lookupError, .error, .importError,
         ]
-        for standing in others {
-            #expect(standing.badge == nil, "\(standing)")
-        }
+        let labels = badges.map(\.label)
+        #expect(Set(labels).count == badges.count, "\(labels)")
+        #expect(
+            BridgePendingBadge.needsYou(reason: .notFound).label
+                == String(localized: "Not found")
+        )
+        #expect(
+            BridgePendingBadge.lookupError.label
+                == String(localized: "Lookup error")
+        )
+        #expect(BridgeBadgeTone.attention.statusTone == .warning)
+        #expect(BridgeBadgeTone.failure.statusTone == .danger)
     }
 
     @Test("each reason has its own badge")

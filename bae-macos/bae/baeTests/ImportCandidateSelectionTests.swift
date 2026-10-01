@@ -71,7 +71,8 @@ struct ImportCandidateSelectionTests {
             identification: .running,
             import: nil,
             actions: [.cancelIdentification, .skip, .revealFolder],
-            standing: .identifying
+            standing: .identifying,
+            badge: nil
         )
         func spinners(_ row: BridgeTriageRow) async throws -> Int {
             let size = NSSize(width: 400, height: 80)

@@ -224,7 +224,8 @@ desktop_only! {
         ImportedReleaseSummary, ImportedReleaseText, ImportedRow, MatchEvidence, MatchedPressing, MatchedRelease,
         MatchedSignal, TriageGroup, TriageImportStatus, TriageMetadataSummary, TriagePlacement,
         TriageRow, TriageRuntimeFacts, TriageSkipAction, TriageTab, TriageTabCounts,
-        ImportStanding, LiveStanding, NeedsYouReason, PendingStanding, PendingState, StoredLookup,
+        BadgeTone, ImportStanding, LiveStanding, NeedsYouReason, PendingBadge, PendingStanding,
+        PendingState, StoredLookup,
     };
     pub(crate) use types::CandidateMappingPreparation;
     pub use types::ImportCommand;

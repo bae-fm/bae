@@ -255,7 +255,8 @@
                         .clearMetadata, .skip,
                         separable ? .separate : .combine, .revealFolder,
                     ],
-                    standing: .notLookedUp
+                    standing: .notLookedUp,
+                    badge: nil
                 ),
                 matched: nil,
                 metadataSummary: nil,

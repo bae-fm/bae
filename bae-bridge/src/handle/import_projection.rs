@@ -345,9 +345,39 @@ impl crate::types::BridgeCandidateLiveState {
                 .into_iter()
                 .map(crate::types::BridgeCandidateAction::from_core)
                 .collect(),
+            badge: standing
+                .as_ref()
+                .and_then(bae_core::import::PendingStanding::badge)
+                .map(crate::types::BridgeRowBadge::from_core),
             standing: standing.map(crate::types::BridgePendingStanding::from_core),
         }
     }
+}
+
+impl crate::types::BridgeRowBadge {
+    fn from_core(badge: bae_core::import::PendingBadge) -> Self {
+        Self {
+            says: crate::types::BridgePendingBadge::from_core(badge),
+            tone: crate::types::BridgeBadgeTone::from_core(badge.tone()),
+        }
+    }
+}
+
+mirror_enum! {
+    crate::types::BridgePendingBadge = bae_core::import::PendingBadge,
+    from_core: fn,
+    variants: {
+        NeedsYou { reason: (crate::types::BridgeNeedsYouReason) },
+        LookupError,
+        Error,
+        ImportError,
+    },
+}
+
+mirror_enum! {
+    crate::types::BridgeBadgeTone = bae_core::import::BadgeTone,
+    from_core: fn,
+    variants: { Attention, Failure },
 }
 
 mirror_enum! {

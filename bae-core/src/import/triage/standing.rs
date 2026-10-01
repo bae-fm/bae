@@ -4,7 +4,8 @@
 //! [`PendingStanding`], which also says why a row waiting on the person is
 //! waiting, and each entry of the filter menu
 //! ([`PendingFilter`](crate::import::PendingFilter)) holds the rows in the
-//! states it covers.
+//! states it covers. Every row its Needs You entry holds wears one badge
+//! saying why ([`PendingStanding::badge`]), and no other row wears any.
 //!
 //! The tables decide most of it and what is running for the candidate the
 //! rest. Where more than one could apply, the first of these wins:
@@ -214,6 +215,55 @@ impl PendingStanding {
         match LiveStanding::of(facts) {
             Some(live) => live.into(),
             None => self,
+        }
+    }
+
+    /// The one badge the row wears: a row waiting on the person has one,
+    /// saying why, and no other row has any.
+    pub fn badge(&self) -> Option<PendingBadge> {
+        match self {
+            Self::NeedsYou { reason } => Some(PendingBadge::NeedsYou { reason: *reason }),
+            Self::LookupError => Some(PendingBadge::LookupError),
+            Self::Error { .. } => Some(PendingBadge::Error),
+            Self::ImportError => Some(PendingBadge::ImportError),
+            Self::NotLookedUp
+            | Self::Identifying
+            | Self::Identified
+            | Self::Unmatched
+            | Self::Importing => None,
+        }
+    }
+}
+
+/// What the badge of a Found row waiting on the person says.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PendingBadge {
+    /// The lookup left the answer to the person, for this reason.
+    NeedsYou { reason: NeedsYouReason },
+    /// A catalog could not answer the lookup, or hand over a release it found
+    /// in full.
+    LookupError,
+    /// bae broke on its own side.
+    Error,
+    /// The last import failed, or the release cannot be worked on as it
+    /// stands.
+    ImportError,
+}
+
+/// How a badge reads at a glance.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BadgeTone {
+    /// An answer is the person's to give.
+    Attention,
+    /// Something failed.
+    Failure,
+}
+
+impl PendingBadge {
+    pub fn tone(self) -> BadgeTone {
+        match self {
+            Self::NeedsYou { .. } => BadgeTone::Attention,
+            Self::LookupError | Self::Error | Self::ImportError => BadgeTone::Failure,
         }
     }
 }
