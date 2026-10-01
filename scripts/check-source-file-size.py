@@ -16,7 +16,7 @@ INLINE_RUST_TEST_LIMIT = 1_000
 # frozen: growth must first extract a real responsibility.
 SOURCE_LINE_LIMIT_EXCEPTIONS = {
     "BaeKit/Sources/AppleHost/CloudKitService.swift": 1_209,
-    "bae-core/src/playback/service/runtime.rs": 1_206,
+    "bae-core/src/playback/service/runtime.rs": 1_188,
 }
 SOURCE_SUFFIXES = {
     ".astro",
