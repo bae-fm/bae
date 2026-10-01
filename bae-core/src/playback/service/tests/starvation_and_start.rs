@@ -25,6 +25,45 @@ fn starvation_ended_event(track_id: &str) -> AudioEvent {
     }
 }
 
+/// The starvation telemetry says where in the track playback starved, as the
+/// player shows it: in a 2 s pregap, 1.5 s into the stream is 0.5 s before the
+/// track's start.
+#[tokio::test]
+async fn starvation_onset_reports_the_track_time_it_starved_at() {
+    let (diagnostics, transport) = recording_diagnostics();
+    let (_home, manager) = seeded_library_manager_with_diagnostics(&[], diagnostics.clone()).await;
+    let (mut service, _progress_rx) = playback_service_over(manager);
+    let mut prepared = test_prepared_track("t", create_sparse_buffer(1_024));
+    prepared.timeline = TrackTimeline::new(std::time::Duration::from_secs(10), Some(2_000));
+    let fmt = prepared.track_fmt(StreamPosition::START);
+    service.slot = active_slot(prepared, TrackPhase::Playing);
+
+    service
+        .handle_audio_event(AudioEvent::Starved {
+            fmt: Arc::new(fmt),
+            starved_ms: 500,
+            position: StreamPosition::from_millis(1_500),
+            producer_finished: false,
+            samples_decoded: 1_000,
+            decode_errors: 0,
+            has_next: false,
+        })
+        .await;
+
+    diagnostics.flush().await.expect("flush succeeds");
+    let starved: Vec<serde_json::Value> = transport
+        .requests()
+        .iter()
+        .flat_map(|request| {
+            serde_json::from_slice::<Vec<crate::diagnostics::DiagnosticEvent>>(&request.body)
+                .expect("recorded request body is a diagnostic-event array")
+        })
+        .filter(|event| event.name == "playback_starved")
+        .map(|event| event.fields["track_time"].clone())
+        .collect();
+    assert_eq!(starved, [serde_json::json!(-500)]);
+}
+
 /// Starvation with no decode progress past the fail threshold is a real stall,
 /// so it surfaces a `PlaybackError` and stops playback instead of freezing.
 #[tokio::test]
