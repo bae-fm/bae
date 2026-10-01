@@ -78,4 +78,41 @@ struct FirstResponderActionsTests {
             #expect(!actions.canPerform(action))
         }
     }
+
+    @Test(
+        "an open menu keeps what it was opened with; closing it asks again"
+    )
+    func holdsStillWhileAMenuIsOpen() {
+        let text = NSTextView()
+        text.string = "Album Title"
+        text.setSelectedRange(NSRange(location: text.string.count, length: 0))
+        let notifications = NotificationCenter()
+        let actions = FirstResponderActions(
+            target: { text.responds(to: $0) ? text : nil },
+            notifications: notifications
+        )
+        notifications.post(
+            name: NSApplication.didUpdateNotification,
+            object: nil
+        )
+        #expect(!actions.canPerform(copy))
+
+        let menu = NSMenu()
+        notifications.post(
+            name: NSMenu.didBeginTrackingNotification,
+            object: menu
+        )
+        text.selectAll(nil)
+        notifications.post(
+            name: NSApplication.didUpdateNotification,
+            object: nil
+        )
+        #expect(!actions.canPerform(copy), "the open menu is not rebuilt")
+
+        notifications.post(
+            name: NSMenu.didEndTrackingNotification,
+            object: menu
+        )
+        #expect(actions.canPerform(copy))
+    }
 }
