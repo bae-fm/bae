@@ -12,9 +12,10 @@ private let logger = Logger.bae("StorageTable")
 /// shift/cmd selection) with SwiftUI-hosted cell content so covers and the
 /// storage badge reuse `ImageView` / `Theme`.
 ///
-/// Releases are lazy-loaded in batches by position. Their files belong to the
-/// selected-release inspector, not to child rows in this table. Selection binds
-/// to release ids; column sorting maps to `BridgeStorageSort`.
+/// Releases load a page at a time, each page held while a row of it is in
+/// view. Their files belong to the selected-release inspector, not to child
+/// rows in this table. Selection binds to release ids; column sorting maps to
+/// `BridgeStorageSort`.
 struct StorageTableView: NSViewRepresentable {
     let list: StorageList
     @Binding
@@ -84,6 +85,7 @@ struct StorageTableView: NSViewRepresentable {
         scrollView.autohidesScrollers = true
         scrollView.drawsBackground = false
         coordinator.tableView = tableView
+        coordinator.observeScrolling(of: scrollView)
         return scrollView
     }
 
@@ -100,6 +102,10 @@ struct StorageTableView: NSViewRepresentable {
         // for a fresh instance on a sort/filter change.
         let totalCount = list.totalCount
         let epoch = list.loadEpoch
+        // The rows held the swapped-out list's pages.
+        if coordinator.list !== list {
+            coordinator.releasePages()
+        }
 
         coordinator.update(
             list: list,
@@ -113,9 +119,17 @@ struct StorageTableView: NSViewRepresentable {
         if coordinator.syncRows(totalCount: totalCount, epoch: epoch) {
             tableView.reloadData()
         }
+        coordinator.holdRowsInView()
 
         coordinator.configureSorting(on: tableView, sort: sort)
         coordinator.applySelection(selection, to: tableView)
+    }
+
+    static func dismantleNSView(
+        _ scrollView: NSScrollView,
+        coordinator: Coordinator
+    ) {
+        coordinator.releasePages()
     }
 }
 
@@ -139,6 +153,8 @@ extension StorageTableView {
 
         private var rootEpoch: LoadEpoch?
         private var rootCount = 0
+        /// Each row in view's hold on its page, by row.
+        private var rowHolds: [Int: Task<Void, Never>] = [:]
 
         /// True while we push selection into the table view, so the
         /// resulting `selectionDidChange` delegate callback doesn't write the
@@ -194,29 +210,84 @@ extension StorageTableView {
             rootCount
         }
 
-        // MARK: Lazy loading
+        // MARK: Page holds
 
-        /// Kick off the page holding `position` if its id isn't loaded yet.
-        /// `loadPage` coalesces concurrent asks for the same page, so calling
-        /// this from every visible row issues at most one fetch per page.
-        private func ensureLoaded(positionOf position: Int) {
-            guard list.idAt(position) == nil else {
-                return
-            }
-            let currentList = list
-            Task { @MainActor in
-                await currentList.loadPage(containing: position)
-                // Only the still-mounted list should drive a reload; a tab
-                // switch swaps the list before this resolves.
-                guard currentList === self.list else {
-                    return
-                }
-                self.tableView?.reloadData()
-                self.applySelection(
-                    self.selection.wrappedValue,
-                    to: self.tableView
+        /// Hold the pages of the rows in view as the table scrolls or is
+        /// resized.
+        func observeScrolling(of scrollView: NSScrollView) {
+            let clipView = scrollView.contentView
+            clipView.postsBoundsChangedNotifications = true
+            clipView.postsFrameChangedNotifications = true
+            for name in [
+                NSView.boundsDidChangeNotification,
+                NSView.frameDidChangeNotification,
+            ] {
+                NotificationCenter.default.addObserver(
+                    self,
+                    selector: #selector(clipViewMoved),
+                    name: name,
+                    object: clipView
                 )
             }
+        }
+
+        @objc
+        private func clipViewMoved() {
+            holdRowsInView()
+        }
+
+        /// Each row in view holds its page; a row leaving the view lets its
+        /// hold go.
+        func holdRowsInView() {
+            guard let tableView else { return }
+            let range = tableView.rows(in: tableView.visibleRect)
+            let inView = Set(range.location..<(range.location + range.length))
+            for (row, hold) in rowHolds where !inView.contains(row) {
+                hold.cancel()
+                rowHolds.removeValue(forKey: row)
+            }
+            for row in inView where rowHolds[row] == nil {
+                rowHolds[row] = holdPage(of: row)
+            }
+        }
+
+        /// Hold `row`'s page until the task is cancelled. A row whose page had
+        /// not landed is drawn as a placeholder, so it is redrawn once the
+        /// page answers.
+        private func holdPage(of row: Int) -> Task<Void, Never> {
+            let list = list
+            let landed = list.idAt(row) != nil
+            return Task { @MainActor [weak self] in
+                await list.withPage(containing: row) {
+                    // Only the still-mounted list redraws; a tab switch swaps
+                    // the list before this resolves.
+                    if !landed, let self, list === self.list,
+                        let tableView = self.tableView,
+                        row < tableView.numberOfRows
+                    {
+                        tableView.reloadData(
+                            forRowIndexes: [row],
+                            columnIndexes: IndexSet(
+                                0..<tableView.numberOfColumns
+                            )
+                        )
+                        self.applySelection(
+                            self.selection.wrappedValue,
+                            to: tableView
+                        )
+                    }
+                    await Task.untilCancelled()
+                }
+            }
+        }
+
+        /// Let go of every page the table holds: its list was swapped, or it
+        /// is going away.
+        func releasePages() {
+            for hold in rowHolds.values {
+                hold.cancel()
+            }
+            rowHolds.removeAll()
         }
     }
 }
@@ -382,7 +453,6 @@ extension StorageTableView.Coordinator {
             )
             return nil
         }
-        ensureLoaded(positionOf: row)
         let cell = dequeueCell(tableView, column: column)
         cell.host(content(forRow: row, column: column))
         return cell
@@ -422,9 +492,9 @@ extension StorageTableView.Coordinator {
         column: StorageTableColumn
     ) -> AnyView {
         guard let id = list.idAt(row) else {
-            // The page covering this row hasn't loaded yet; the load is
-            // already in flight from `ensureLoaded`. A standing bar shows
-            // until the id arrives and the row reloads.
+            // The page covering this row hasn't landed yet; the row's hold
+            // on it is loading it. A standing bar shows until the id arrives
+            // and the row reloads.
             return AnyView(StorageRowPlaceholderCell(column: column))
         }
         guard let summary = libraryStore.releaseSummaries[id],

@@ -45,23 +45,6 @@ public protocol PageSubscription: AnyObject, Sendable {
 
 extension LiveSubscription: PageSubscription {}
 
-private final class InitialDeliveryWaiter: @unchecked Sendable {
-    private let lock = NSLock()
-    private var continuation: CheckedContinuation<Void, Never>?
-
-    init(_ continuation: CheckedContinuation<Void, Never>) {
-        self.continuation = continuation
-    }
-
-    func resume() {
-        lock.lock()
-        let continuation = continuation
-        self.continuation = nil
-        lock.unlock()
-        continuation?.resume()
-    }
-}
-
 // MARK: - Row load identity
 
 // periphery:ignore
@@ -89,8 +72,17 @@ public struct RowLoadID: Hashable {
 
 /// A paginated, ordered view over one or more store slices.
 ///
-/// Tracks loaded data as a sorted list of non-overlapping segments. Each page
-/// subscription delivers both content and count whenever its query changes.
+/// Rows load a page at a time: the aligned run of `pageSize` positions that
+/// holds them, each a live subscription delivering both content and count
+/// whenever its query changes. The ids the pages delivered sit in a sorted list
+/// of non-overlapping segments.
+///
+/// A page stays live for as long as anyone holds it — a row on screen, a reveal
+/// on its way to a row — and a hold lasts as long as the task that took it.
+/// Pages nobody holds stay live too, up to `maximumUnheldPages`, so scrolling
+/// back finds them; past that the one farthest from the last page asked for is
+/// dropped, and its ids with it. A held page is never dropped, so a page in use
+/// never empties under the rows showing it.
 @MainActor
 @Observable
 public final class PaginatedList<Row: Identifiable & Sendable & Equatable>
@@ -138,17 +130,19 @@ where Row.ID: Sendable {
     /// whether a failure is worth showing at all is core's answer (a cancellation
     /// is not), and `showError` is the one place that drops it.
     private let onError: (any Error) -> Void
+    /// The live pages, by the positions each covers.
     @ObservationIgnored
-    private var subscriptions: [String: any PageSubscription] = [:]
+    private var pages: [Range<Int>: LivePage<Row>] = [:]
+    /// How many holds each page has, by the positions it covers. A hold
+    /// counts from before its page is asked for until its holder lets it go,
+    /// whether or not the page is live in between.
     @ObservationIgnored
-    private var subscriptionRanges: [String: Range<Int>] = [:]
+    private var holds: [Range<Int>: Int] = [:]
+    /// The page asked for last, which unheld pages are dropped farthest from.
     @ObservationIgnored
-    private var subscriptionIdentities: [String: UUID] = [:]
-    /// The rows each live page last delivered, so a value that repeats them
-    /// is not taken into the store again.
-    @ObservationIgnored
-    private var deliveredRows: [String: [Row]] = [:]
-    private static var maximumVisiblePageSubscriptions: Int { 3 }
+    private var lastAsked: Range<Int>?
+
+    private static var maximumUnheldPages: Int { 3 }
 
     /// How many rows one page holds. Every page starts at a multiple of this,
     /// so the same page answers a whole screenful of consecutive rows.
@@ -203,131 +197,132 @@ where Row.ID: Sendable {
         segments.entries
     }
 
-    // MARK: - Load API (called from `.task`)
+    // MARK: - Loading
 
-    /// Fetch the total count. Called once when the list is first mounted.
+    /// Read the first page, and with it the total count. Called when the list
+    /// is first mounted, and again to retry a failed first read.
     public func loadInitial() async {
         initialLoadError = nil
-        await subscribeRange(offset: 0, limit: Self.pageSize, initial: true)
+        await load(Self.page(containing: 0), initial: true)
     }
 
-    /// Load the page holding `position`, so the row there resolves to an id.
-    ///
-    /// The page is the aligned one, never a window centred on the row that
-    /// asked. A centred window is a different `(offset, limit)` for every row
-    /// index, so scrolling by a single row misses `loadRange`'s fast path,
-    /// opens another page subscription, and pushes an older one past
-    /// `maximumVisiblePageSubscriptions` — and the page that gets evicted is
-    /// the one a row away, whose ids the viewport is drawing from. Every row on
-    /// screen then resolves to nothing until the replacement value arrives.
-    /// Aligned pages make consecutive rows ask for the same page, so the set
-    /// changes only when the viewport crosses a boundary, and the page evicted
-    /// then is two pages from anything visible.
-    public func loadPage(containing position: Int) async {
-        guard position >= 0 else { return }
-        let start = (position / Self.pageSize) * Self.pageSize
-        await loadRange(offset: start, limit: Self.pageSize)
+    /// Hold the page holding `position` for as long as the calling task runs:
+    /// the page loads, stays live through every page asked for after it, and
+    /// is let go when the task is cancelled. A row on screen holds its page
+    /// from a `.task`, which SwiftUI cancels when the row leaves.
+    public func holdPage(containing position: Int) async {
+        await withPage(containing: position) {
+            await Task.untilCancelled()
+        }
     }
 
-    /// Load a contiguous range of rows and intern them into the store.
+    /// Hold the page holding `position` while `body` runs. `body` starts once
+    /// the page has answered, so the ids it holds are there to read, and they
+    /// stay there until `body` returns.
     ///
-    /// Fast-path: skips if a subscribed segment already covers the range.
-    /// Concurrent callers asking for the same range (e.g. a grid
-    /// whose visible cells all compute the same page offset on first paint)
-    /// coalesce onto one in-flight fetch rather than each issuing a duplicate
-    /// query — the segment fast-path can't dedupe a burst that starts before any
-    /// fetch returns.
-    public func loadRange(offset: Int, limit: Int) async {
-        let end = min(offset + limit, totalCount)
-        guard offset < end else {
-            return
-        }
-        // Fast-path: an active subscription already covers this range.
-        if segments.cover(offset..<end) {
-            return
-        }
-        await subscribeRange(offset: offset, limit: limit, initial: false)
+    /// The page is the aligned one, never a window centred on `position`: a
+    /// centred window is a different page for every row, so rows a row apart
+    /// would each open a page of their own, where aligned pages let a
+    /// screenful of rows share one.
+    public func withPage<T>(
+        containing position: Int,
+        _ body: @MainActor () async throws -> T
+    ) async rethrows -> T {
+        precondition(position >= 0, "a list position is never negative")
+        let page = Self.page(containing: position)
+        holds[page, default: 0] += 1
+        defer { release(page) }
+        await load(page, initial: false)
+        return try await body()
     }
 
     public func cancel() {
-        for subscription in subscriptions.values {
-            subscription.cancel()
+        for page in pages.values {
+            page.subscription?.cancel()
+            page.abandon()
         }
-        subscriptions.removeAll()
-        subscriptionRanges.removeAll()
-        subscriptionIdentities.removeAll()
-        deliveredRows.removeAll()
+        pages.removeAll()
     }
 
-    private func subscribeRange(offset: Int, limit: Int, initial: Bool) async {
-        let key = "\(offset):\(limit)"
-        guard subscriptions[key] == nil else { return }
-        await withCheckedContinuation { continuation in
-            let waiter = InitialDeliveryWaiter(continuation)
-            let identity = UUID()
-            subscriptionIdentities[key] = identity
-            subscriptions[key] = pageSource.subscribe(
-                offset: offset,
-                limit: limit,
-                onValue: { [weak self] rows, totalCount in
-                    guard let self,
-                        self.isCurrentSubscription(key, identity)
-                    else {
-                        waiter.resume()
-                        return
-                    }
-                    self.apply(
-                        rows,
-                        page: key,
-                        forOffset: offset,
-                        limit: limit,
-                        totalCount: totalCount
-                    )
-                    waiter.resume()
-                },
-                onError: { [weak self] error in
-                    guard let self,
-                        self.isCurrentSubscription(key, identity)
-                    else {
-                        waiter.resume()
-                        return
-                    }
-                    if initial, self.segments.isEmpty {
-                        self.initialLoadError = DisplayError(error)
-                        self.subscriptions.removeValue(forKey: key)?.cancel()
-                        self.subscriptionIdentities.removeValue(forKey: key)
-                        self.deliveredRows.removeValue(forKey: key)
-                    }
-                    else {
-                        logger.error(
-                            "Live page failed: \(error.localizedDescription)"
-                        )
-                        self.onError(error)
-                    }
-                    waiter.resume()
-                }
-            )
-            subscriptionRanges[key] = offset..<(offset + limit)
-            evictPages(outsideWindowAround: offset..<(offset + limit))
+    private static func page(containing position: Int) -> Range<Int> {
+        let start = (position / pageSize) * pageSize
+        return start..<(start + pageSize)
+    }
+
+    /// Make `page` live, unless it is already, and wait for its first answer.
+    /// A page past the end has nothing to load; neither does one a preview
+    /// seeded. Every caller asking for a page already on its way waits on that
+    /// one subscription rather than opening its own.
+    private func load(_ page: Range<Int>, initial: Bool) async {
+        lastAsked = page
+        if let live = pages[page] {
+            guard !live.answered else { return }
+            await withCheckedContinuation { continuation in
+                pages[page]?.waiters?.append(continuation)
+            }
+            return
         }
+        if !initial {
+            let end = min(page.upperBound, totalCount)
+            guard page.lowerBound < end, !segments.cover(page.lowerBound..<end)
+            else { return }
+        }
+        await withCheckedContinuation { continuation in
+            subscribe(page, initial: initial, waiter: continuation)
+        }
+    }
+
+    private func subscribe(
+        _ page: Range<Int>,
+        initial: Bool,
+        waiter: CheckedContinuation<Void, Never>
+    ) {
+        let identity = UUID()
+        pages[page] = LivePage(identity: identity, waiters: [waiter])
+        let subscription = pageSource.subscribe(
+            offset: page.lowerBound,
+            limit: page.count,
+            onValue: { [weak self] rows, totalCount in
+                guard let self, self.isCurrent(page, identity) else { return }
+                self.apply(rows, page: page, totalCount: totalCount)
+                self.pages[page]?.answer()
+            },
+            onError: { [weak self] error in
+                guard let self, self.isCurrent(page, identity) else { return }
+                if initial, self.segments.isEmpty {
+                    self.initialLoadError = DisplayError(error)
+                    self.drop(page)
+                }
+                else {
+                    logger.error(
+                        "Live page failed: \(error.localizedDescription)"
+                    )
+                    self.onError(error)
+                    self.pages[page]?.answer()
+                }
+            }
+        )
+        // A source may answer, and fail the first page, before handing back
+        // its subscription; one the list no longer keeps is ended here.
+        guard isCurrent(page, identity) else {
+            subscription.cancel()
+            return
+        }
+        pages[page]?.subscription = subscription
+        dropUnheldPages()
     }
 
     /// Take one page's delivered value: the rows go to the store, their ids
     /// take the positions the page was asked for, and the new total clips
     /// anything now past the end. Only what differs from what the list holds
     /// is written, so a value that repeats it notifies no observer.
-    private func apply(
-        _ rows: [Row],
-        page key: String,
-        forOffset offset: Int,
-        limit: Int,
-        totalCount: Int
-    ) {
+    private func apply(_ rows: [Row], page: Range<Int>, totalCount: Int) {
         if initialLoadError != nil {
             initialLoadError = nil
         }
-        let rowsChanged = deliveredRows[key] != rows
-        deliveredRows[key] = rows
+        let rowsChanged = pages[page]?.rows != rows
+        pages[page]?.rows = rows
+        let offset = page.lowerBound
         var next = segments
         next.clip(to: totalCount)
         let upper = min(offset + rows.count, totalCount)
@@ -341,9 +336,7 @@ where Row.ID: Sendable {
         else {
             // The page answered with nothing, so the positions it was asked
             // for hold nothing, and only those leave.
-            next.remove(
-                offset..<max(offset, min(offset + limit, totalCount))
-            )
+            next.remove(offset..<max(offset, min(page.upperBound, totalCount)))
         }
         let positionsChanged = next != segments
         let totalChanged = totalCount != self.totalCount
@@ -368,26 +361,51 @@ where Row.ID: Sendable {
         }
     }
 
-    private func isCurrentSubscription(_ key: String, _ identity: UUID) -> Bool
-    {
-        subscriptionIdentities[key] == identity
+    private func isCurrent(_ page: Range<Int>, _ identity: UUID) -> Bool {
+        pages[page]?.identity == identity
     }
 
-    private func evictPages(outsideWindowAround visible: Range<Int>) {
-        while subscriptionRanges.count > Self.maximumVisiblePageSubscriptions {
-            let center = visible.lowerBound + visible.count / 2
-            guard
-                let key = subscriptionRanges.max(by: { lhs, rhs in
-                    distance(lhs.value, from: center)
-                        < distance(rhs.value, from: center)
-                })?
-                .key, let range = subscriptionRanges.removeValue(forKey: key)
-            else { return }
-            subscriptions.removeValue(forKey: key)?.cancel()
-            subscriptionIdentities.removeValue(forKey: key)
-            deliveredRows.removeValue(forKey: key)
-            segments.remove(range)
+    /// Let go of one hold on `page`; a page nobody holds any more may then be
+    /// dropped.
+    private func release(_ page: Range<Int>) {
+        guard let count = holds[page] else {
+            preconditionFailure("released a page hold never taken")
         }
+        if count > 1 {
+            holds[page] = count - 1
+        }
+        else {
+            holds.removeValue(forKey: page)
+            dropUnheldPages()
+        }
+    }
+
+    /// Drop the unheld pages past `maximumUnheldPages`, farthest from the
+    /// page asked for last first. Held pages are never dropped and never
+    /// counted.
+    private func dropUnheldPages() {
+        let unheld = pages.keys.filter { holds[$0] == nil }
+        guard unheld.count > Self.maximumUnheldPages, let lastAsked else {
+            return
+        }
+        let center = lastAsked.lowerBound + lastAsked.count / 2
+        let farthestFirst = unheld.sorted {
+            distance($0, from: center) > distance($1, from: center)
+        }
+        for page in farthestFirst.prefix(
+            unheld.count - Self.maximumUnheldPages
+        ) {
+            drop(page)
+            segments.remove(page)
+        }
+    }
+
+    /// End `page`'s subscription, letting anyone waiting on its first answer
+    /// go on without it.
+    private func drop(_ page: Range<Int>) {
+        guard let live = pages.removeValue(forKey: page) else { return }
+        live.subscription?.cancel()
+        live.abandon()
     }
 
     private func distance(_ range: Range<Int>, from position: Int) -> Int {
@@ -403,7 +421,46 @@ where Row.ID: Sendable {
     }
 }
 
-// MARK: - LoadedSegments
+// MARK: - LivePage
+
+/// One page's subscription, what it last delivered, and who is waiting for its
+/// first answer.
+private struct LivePage<Row: Equatable> {
+    /// Tells the subscription's callbacks apart from those of an earlier one
+    /// over the same positions, which the list ended.
+    let identity: UUID
+    /// Nil only while the source has not handed it back yet.
+    var subscription: (any PageSubscription)?
+    /// The loads waiting for the page's first value or failure; nil once it
+    /// has answered.
+    var waiters: [CheckedContinuation<Void, Never>]?
+    /// The rows its last value delivered, so a value that repeats them is not
+    /// taken into the store again.
+    var rows: [Row]?
+
+    init(identity: UUID, waiters: [CheckedContinuation<Void, Never>]) {
+        self.identity = identity
+        self.waiters = waiters
+    }
+
+    var answered: Bool { waiters == nil }
+
+    /// The page answered: everyone waiting goes on.
+    mutating func answer() {
+        let waiting = waiters ?? []
+        waiters = nil
+        for waiter in waiting {
+            waiter.resume()
+        }
+    }
+
+    /// Let everyone waiting go on, for a page the list no longer keeps.
+    func abandon() {
+        for waiter in waiters ?? [] {
+            waiter.resume()
+        }
+    }
+}
 
 /// Which id sits at which position, for the positions a list has loaded.
 ///

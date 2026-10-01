@@ -189,12 +189,11 @@ final class ImportListSlot {
         try await selectOnly(candidateKey)
         guard let pages, let list else { return nil }
         try await pages.waitForView(next)
-        await list.loadPage(containing: Int(location.visiblePosition))
         let position = Int(location.visiblePosition)
-        guard
-            !Task.isCancelled,
+        let placed = await list.withPage(containing: position) {
             list.idAt(position) == location.stableKey
-        else { return nil }
+        }
+        guard !Task.isCancelled, placed else { return nil }
         return position
     }
 

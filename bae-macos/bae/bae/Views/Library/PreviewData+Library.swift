@@ -232,8 +232,8 @@
         }
 
         /// The composer-list slot backing for `BrowseList`, seeded so its rows
-        /// render without an async page fetch (the seeded segment fast-paths
-        /// `loadRange`).
+        /// render without an async page fetch (a page whose positions are
+        /// seeded is never asked for).
         @MainActor
         static func composerList() -> ComposerList {
             let list = ComposerList(

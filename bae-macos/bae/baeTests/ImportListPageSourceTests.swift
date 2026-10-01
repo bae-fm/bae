@@ -526,7 +526,7 @@ extension ImportListPageSourceTests {
 
         // Scrolling past the page boundary registers a second window; the first
         // window's rows stay resolvable meanwhile.
-        async let next: Void = list.loadPage(containing: 55)
+        async let next: Void = list.withPage(containing: 55) {}
         try await Wait.until({ subscription.requestedWindows.last?.count == 2 })
         #expect(loadedKeys(list, importStore, 0..<50) == firstPage)
 

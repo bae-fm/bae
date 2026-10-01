@@ -515,7 +515,7 @@ struct ImportCandidateListContent: View {
 
 /// The list itself.
 extension ImportCandidateListContent {
-    /// Rows over the paged list; each visible position loads its page.
+    /// Rows over the paged list; each visible position holds its page.
     private func entryList(
         _ list: PaginatedList<BridgeImportListItem>,
         proxy: ScrollViewProxy
@@ -542,7 +542,7 @@ extension ImportCandidateListContent {
                     .task(
                         id: RowLoadID(epoch: list.loadEpoch, index: index)
                     ) {
-                        await list.loadPage(containing: index)
+                        await list.holdPage(containing: index)
                     }
             }
         }

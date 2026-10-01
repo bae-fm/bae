@@ -103,7 +103,7 @@ struct LibraryBrowsePageSourceTests {
         await list.loadInitial()
         #expect(list.sections == sections)
         #expect(list.idAt(90) == nil)
-        await list.loadPage(containing: 90)
+        await list.withPage(containing: 90) {}
         #expect(list.idAt(90) == "album-90")
         #expect(list.sections == sections)
         list.cancel()
@@ -124,7 +124,7 @@ struct LibraryBrowsePageSourceTests {
         )
 
         await list.loadInitial()
-        await list.loadPage(containing: 60)
+        await list.withPage(containing: 60) {}
 
         #expect(list.totalCount == 120)
         #expect(list.idAt(0) == "album-0")

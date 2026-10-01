@@ -5,9 +5,6 @@ import os.log
 
 private let logger = Logger.bae("LibraryView")
 
-/// Page size for the library's paged album, composer and artist lists.
-let libraryPageSize = 60
-
 enum LibraryBrowserMode {
     case albums
     case composers

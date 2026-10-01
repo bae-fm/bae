@@ -34,32 +34,30 @@ struct PaginatedListTests {
     }
 
     @MainActor
-    @Test("loadRange populates ids at correct positions and interns via ingest")
-    func loadRangePopulatesPositions() async {
+    @Test("a page's ids land at their positions, and its rows in the store")
+    func pagePopulatesPositions() async {
         let store = LibraryStore()
         let list = makeList(
             store: store,
-            albums: [
-                makeBridgeAlbum(id: "a1", title: "Alpha"),
-                makeBridgeAlbum(id: "a2", title: "Beta"),
-                makeBridgeAlbum(id: "a3", title: "Gamma"),
-            ]
+            albums: (0..<60)
+                .map {
+                    makeBridgeAlbum(id: "a\($0)", title: "Title \($0)")
+                }
         )
         await list.loadInitial()
+        #expect(list.idAt(55) == nil)
 
-        await list.loadRange(offset: 0, limit: 3)
+        let held = await list.withPage(containing: 55) {
+            (list.idAt(50), list.idAt(59))
+        }
 
-        #expect(list.idAt(0) == "a1")
-        #expect(list.idAt(1) == "a2")
-        #expect(list.idAt(2) == "a3")
-        #expect(store.albumSummaries["a1"]?.title == "Alpha")
-        #expect(store.albumSummaries["a2"]?.title == "Beta")
-        #expect(store.albumSummaries["a3"]?.title == "Gamma")
+        #expect(held == ("a50", "a59"))
+        #expect(store.albumSummaries["a55"]?.title == "Title 55")
     }
 
     @MainActor
-    @Test("loadRange is idempotent — skips fully-loaded ranges")
-    func loadRangeIdempotent() async {
+    @Test("a page already live is not asked for again")
+    func livePageNotAskedAgain() async {
         let store = LibraryStore()
         let source = CountingAlbumPageSource(albums: [
             makeBridgeAlbum(id: "a1", title: "Alpha"),
@@ -73,10 +71,9 @@ struct PaginatedListTests {
             onError: { _ in },
         )
         await list.loadInitial()
-        await list.loadRange(offset: 0, limit: 2)
         #expect(source.pageCallCount == 1)
 
-        await list.loadRange(offset: 0, limit: 2)
+        await list.withPage(containing: 1) {}
 
         #expect(source.pageCallCount == 1)
     }
@@ -141,8 +138,8 @@ struct PaginatedListTests {
     }
 
     @MainActor
-    @Test("loadRange reports page errors")
-    func loadRangeReportsPageErrors() async {
+    @Test("a page's failure is reported")
+    func pageReportsErrors() async {
         let albums = (0..<51).map { makeBridgeAlbum(id: "a\($0)") }
         let source = ThrowingAlbumPageSource(
             albums: albums,
@@ -156,7 +153,7 @@ struct PaginatedListTests {
         )
 
         await list.loadInitial()
-        await list.loadRange(offset: 50, limit: 1)
+        await list.withPage(containing: 50) {}
 
         #expect(errors == [DisplayError(line: "page failed")])
     }
@@ -196,7 +193,7 @@ struct PaginatedListRowLoadIDTests {
         await list.loadInitial()
         let before = RowLoadID(epoch: list.loadEpoch, index: 0)
 
-        await list.loadRange(offset: 0, limit: 1)
+        await list.withPage(containing: 0) {}
 
         #expect(RowLoadID(epoch: list.loadEpoch, index: 0) == before)
     }
@@ -204,83 +201,58 @@ struct PaginatedListRowLoadIDTests {
 
 // MARK: - Segment coalescing
 
-/// `insertSegment` is private, so these drive it through the real `loadRange`
-/// path — the only way segments enter the list — and observe the merged result
-/// through `allLoadedIds` / `idAt`. Without coalescing the loaded ids would
-/// carry duplicates, gaps, or stale positions.
+/// Segments are private, so these drive them through the pages that fill
+/// them and observe the merged result through `allLoadedIds` / `idAt`.
+/// Without coalescing the loaded ids would carry duplicates, gaps, or stale
+/// positions.
 @Suite("PaginatedList segment management")
 struct PaginatedListSegmentTests {
     @MainActor
     private func albumList(_ store: LibraryStore) -> AlbumList {
         makeList(
             store: store,
-            albums: (0..<55).map { makeBridgeAlbum(id: "a\($0)") }
+            albums: (0..<200).map { makeBridgeAlbum(id: "a\($0)") }
         )
     }
 
     @MainActor
-    @Test("overlapping ranges merge without duplicates")
-    func overlappingMerge() async {
-        let list = albumList(LibraryStore())
-        await list.loadInitial()
-
-        await list.loadRange(offset: 50, limit: 3)  // [50, 53)
-        await list.loadRange(offset: 51, limit: 3)  // [51, 54) overlaps
-
-        #expect(list.allLoadedIds == (0..<54).map { "a\($0)" })
-    }
-
-    @MainActor
-    @Test("adjacent ranges coalesce into one contiguous run")
+    @Test("adjacent pages coalesce into one contiguous run")
     func adjacentCoalesce() async {
         let list = albumList(LibraryStore())
         await list.loadInitial()
 
-        await list.loadRange(offset: 50, limit: 2)  // [50, 52)
-        await list.loadRange(offset: 52, limit: 2)  // [52, 54)
+        await list.withPage(containing: 50) {}
 
-        #expect(list.allLoadedIds == (0..<54).map { "a\($0)" })
-        #expect(list.idAt(53) == "a53")
+        #expect(list.allLoadedIds == (0..<100).map { "a\($0)" })
+        #expect(list.idAt(99) == "a99")
     }
 
     @MainActor
-    @Test("a new range absorbs a segment it fully contains")
-    func absorbsContainedSegment() async {
-        let list = albumList(LibraryStore())
-        await list.loadInitial()
-
-        await list.loadRange(offset: 51, limit: 2)  // [51, 53)
-        await list.loadRange(offset: 50, limit: 4)  // [50, 54) contains it
-
-        #expect(list.allLoadedIds == (0..<54).map { "a\($0)" })
-    }
-
-    @MainActor
-    @Test("disjoint ranges stay separate and sort by position")
+    @Test("disjoint pages stay separate and sort by position")
     func disjointSortsByPosition() async {
         let list = albumList(LibraryStore())
         await list.loadInitial()
 
-        await list.loadRange(offset: 53, limit: 2)  // [53, 55) loaded first
-        await list.loadRange(offset: 50, limit: 2)  // [50, 52)
+        await list.withPage(containing: 150) {}
+        await list.withPage(containing: 100) {}
 
         #expect(
             list.allLoadedIds
-                == (0..<52).map { "a\($0)" } + ["a53", "a54"]
+                == (0..<50).map { "a\($0)" } + (100..<200).map { "a\($0)" }
         )
-        #expect(list.idAt(52) == nil)  // the gap stays unloaded
+        #expect(list.idAt(50) == nil)  // the gap stays unloaded
         // Each loaded id at its own position, skipping the gap.
         let entries = list.loadedEntries
-        #expect(entries.map(\.position) == Array(0..<52) + [53, 54])
+        #expect(entries.map(\.position) == Array(0..<50) + Array(100..<200))
         #expect(entries.map(\.id) == list.allLoadedIds)
     }
 
     @MainActor
-    @Test("concurrent loadRange for the same range issues a single fetch")
-    func concurrentLoadRangeCoalesces() async throws {
+    @Test("callers asking for a page on its way wait on its one fetch")
+    func concurrentPageAsksCoalesce() async throws {
         let store = LibraryStore()
         let source = GatedAlbumPageSource(
-            albums: (0..<52).map { makeBridgeAlbum(id: "a\($0)") }
+            albums: (0..<100).map { makeBridgeAlbum(id: "a\($0)") }
         )
         let list = AlbumList(
             pageSource: source,
@@ -291,28 +263,27 @@ struct PaginatedListSegmentTests {
         )
         await list.loadInitial()
 
-        async let first: Void = list.loadRange(offset: 50, limit: 2)
-        // The first subscription is now blocked on the gate, so
-        // loadRange has already registered its in-flight task. The second caller
-        // dedupes onto it instead of issuing its own query.
+        let first = Task {
+            await list.withPage(containing: 50) { list.idAt(50) }
+        }
+        // The first subscription is now held at the gate.
         await source.waitForPageEntry()
 
-        // The second caller returns while the first is still held at the
-        // gate. One that fetched on its own instead would be held there too,
-        // so the wait also ends on a third page call, and the count below
-        // says what went wrong.
-        var secondReturned = false
+        var secondStarted = false
         let second = Task {
-            await list.loadRange(offset: 50, limit: 2)
-            secondReturned = true
+            secondStarted = true
+            return await list.withPage(containing: 51) { list.idAt(51) }
         }
-        try await Wait.until { secondReturned || source.pageCallCount > 2 }
+        // Started on the main actor, the second caller has run up to where
+        // it waits: on the first's fetch, or on one of its own.
+        try await Wait.until { secondStarted }
+        #expect(source.pageCallCount == 2)
         await source.openGate()
 
-        _ = await (first, second.value)
-
+        // Each body ran once the page had answered.
+        #expect(await first.value == "a50")
+        #expect(await second.value == "a51")
         #expect(source.pageCallCount == 2)
-        #expect(list.idAt(50) == "a50")
     }
 
     @MainActor
@@ -325,7 +296,7 @@ struct PaginatedListSegmentTests {
             onError: { _ in },
         )
         await list.loadInitial()
-        await list.loadRange(offset: 50, limit: 5)
+        await list.withPage(containing: 50) {}
 
         await source.setCount(52)
 
@@ -347,7 +318,7 @@ struct PaginatedListSegmentTests {
             onError: { _ in },
         )
         await list.loadInitial()
-        await list.loadPage(containing: 60)
+        await list.withPage(containing: 60) {}
         let revision = list.contentRevision
         let ingested = ingests.value
         let notified = ObservationFlag()
@@ -391,8 +362,8 @@ struct PaginatedListSegmentTests {
     }
 
     @MainActor
-    @Test("visible page subscriptions stay bounded while scrolling")
-    func visiblePageSubscriptionsStayBounded() async {
+    @Test("pages nobody holds stay bounded while scrolling")
+    func unheldPagesStayBounded() async {
         let source = MutableAlbumPageSource(count: 500)
         var errors: [String] = []
         let list = AlbumList(
@@ -403,7 +374,7 @@ struct PaginatedListSegmentTests {
         await list.loadInitial()
 
         for offset in stride(from: 50, through: 250, by: 50) {
-            await list.loadRange(offset: offset, limit: 50)
+            await list.withPage(containing: offset) {}
         }
 
         #expect(source.activeCount <= 3)
@@ -437,28 +408,134 @@ struct PaginatedListSegmentTests {
 
         let viewport = Viewport(list: list)
         // Sampled on the main actor after the list has registered the page it
-        // was just asked for — and evicted for it — but before that page's
+        // was just asked for — and dropped any for it — but before that page's
         // first value lands. That gap is a frame the list renders, so a row on
         // screen has to resolve there too.
         source.onBeforeDelivery { viewport.sample() }
 
         // A screenful walking down the list one row at a time, the way a
-        // `List` mounts rows: each row that appears asks for the page holding
-        // it. The row that just appeared may be a placeholder until its page
-        // answers; the rows already above it may not.
+        // `List` mounts rows: each row that appears holds the page holding
+        // it, and each row that leaves lets its hold go. The row that just
+        // appeared may be a placeholder until its page answers; the rows
+        // already above it may not.
+        var rows: [Int: Task<Void, Never>] = [:]
         for index in 0..<total {
             viewport.positions = max(0, index - 18)..<index
-            await list.loadPage(containing: index)
+            for (row, hold) in rows where !viewport.positions.contains(row) {
+                await release(hold)
+                rows.removeValue(forKey: row)
+            }
+            rows[index] = await hold(index, of: list)
             viewport.sample()
         }
 
         #expect(viewport.blanked.isEmpty)
         // Four aligned pages answer all 180 rows. A window centred on the row
-        // that asked would be a fresh page per row instead, and evicting those
-        // is what empties the screen.
+        // that asked would be a fresh page per row instead.
         #expect(source.subscribedOffsets == [0, 50, 100, 150])
     }
 
+}
+
+// MARK: - Page holds
+
+/// Who holds a page decides whether it stays live: rows on screen and a
+/// reveal on its way each hold theirs, and only pages nobody holds are
+/// dropped.
+@Suite("PaginatedList page holds")
+struct PaginatedListHoldTests {
+    @MainActor
+    private func scrolledList() async -> (AlbumList, MutableAlbumPageSource) {
+        let source = MutableAlbumPageSource(count: 500)
+        let list = AlbumList(
+            pageSource: source,
+            ingest: { _ in },
+            onError: { _ in }
+        )
+        await list.loadInitial()
+        return (list, source)
+    }
+
+    @MainActor
+    @Test("a held page stays live however many pages are asked for after it")
+    func heldPageNeverDropped() async {
+        let (list, source) = await scrolledList()
+        let held = await hold(0, of: list)
+
+        for offset in stride(from: 50, through: 300, by: 50) {
+            await list.withPage(containing: offset) {}
+        }
+
+        #expect(source.activeOffsets.contains(0))
+        #expect(list.idAt(0) == "a0")
+        // The held page and the three unheld pages nearest the last asked.
+        #expect(source.activeOffsets == [0, 200, 250, 300])
+        await release(held)
+    }
+
+    @MainActor
+    @Test("a page let go of is dropped like any other unheld page")
+    func releasedPageDropped() async {
+        let (list, source) = await scrolledList()
+        let held = await hold(0, of: list)
+        for offset in stride(from: 50, through: 300, by: 50) {
+            await list.withPage(containing: offset) {}
+        }
+
+        await release(held)
+
+        #expect(source.activeOffsets == [200, 250, 300])
+        #expect(list.idAt(0) == nil)
+    }
+
+    @MainActor
+    @Test("the cap on live pages counts only pages nobody holds")
+    func capCountsUnheldPages() async {
+        let (list, source) = await scrolledList()
+        var held: [Task<Void, Never>] = []
+        for offset in stride(from: 0, through: 150, by: 50) {
+            held.append(await hold(offset, of: list))
+        }
+        for offset in stride(from: 200, through: 300, by: 50) {
+            await list.withPage(containing: offset) {}
+        }
+        #expect(source.activeCount == 7)
+
+        await list.withPage(containing: 350) {}
+
+        #expect(
+            source.activeOffsets == [0, 50, 100, 150, 250, 300, 350]
+        )
+        for hold in held {
+            await release(hold)
+        }
+    }
+}
+
+/// Hold `position`'s page from a task of its own, the way a row on screen
+/// does, returning once the page has answered.
+@MainActor
+private func hold(_ position: Int, of list: AlbumList) async -> Task<
+    Void, Never
+> {
+    let (answered, signal) = AsyncStream.makeStream(of: Void.self)
+    let task = Task {
+        await list.withPage(containing: position) {
+            signal.yield()
+            await Task.untilCancelled()
+        }
+    }
+    for await _ in answered {
+        break
+    }
+    return task
+}
+
+/// Let a hold go and wait until the list has taken it back.
+@MainActor
+private func release(_ hold: Task<Void, Never>) async {
+    hold.cancel()
+    await hold.value
 }
 
 /// The rows on screen, and every position that resolved to no id while it was

@@ -139,8 +139,8 @@ final class TestPageSubscription: PageSubscription, @unchecked Sendable {
     }
 }
 
-/// Test-only page source that counts subscriptions. Used to pin
-/// the `loadRange` fast-path guard — interning alone is identity-stable,
+/// Test-only page source that counts subscriptions. Used to pin that a live
+/// page is not asked for again — interning alone is identity-stable,
 /// so a naive idempotency assertion passes whether or not another page query
 /// was actually subscribed.
 final class CountingAlbumPageSource: PageSource, @unchecked Sendable {

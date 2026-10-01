@@ -272,7 +272,7 @@ extension AlbumGridView {
                 .task(
                     id: RowLoadID(epoch: list.loadEpoch, index: position)
                 ) {
-                    await list.loadPage(containing: position)
+                    await list.holdPage(containing: position)
                 },
                 cell.id,
                 as: .position(position),
@@ -285,7 +285,7 @@ extension AlbumGridView {
                     .task(
                         id: RowLoadID(epoch: list.loadEpoch, index: position)
                     ) {
-                        await list.loadPage(containing: position)
+                        await list.holdPage(containing: position)
                     },
                 cell.id,
                 as: .position(position),
@@ -370,12 +370,16 @@ extension AlbumGridView {
 }
 
 extension AlbumGridView {
-    /// Shows what `reveal` names. The album: ask core for its index, load its
+    /// Shows what `reveal` names. The album: ask core for its index, hold its
     /// page, and scroll its card to the top; the scroll comes last, so a
     /// cancelled reveal changes nothing. A track: its row, which exists only
     /// once the album's detail is laid out — scrolling to the album is what
     /// brings the detail into the lazy grid — so the reveal stays pending
     /// until `showRevealedRow` scrolls to the row and flashes it.
+    ///
+    /// The album's page stays held until the reveal ends, which cancels this
+    /// task: the rows on screen hold their own pages, and without the hold
+    /// the far page the scroll goes to could be dropped before it gets there.
     private func show(_ reveal: PendingAlbumReveal) async {
         // The album's detail may already be laid out with the row in it.
         if let row = viewport.revealedRow(seq: reveal.seq) {
@@ -413,25 +417,35 @@ extension AlbumGridView {
             return
         }
 
-        // Load the target's page so its card exists to scroll to.
-        await list.loadPage(containing: index)
-        // The reveal may have ended while its page loaded: its row shown, or
-        // given up.
-        if Task.isCancelled || uiStore.pendingAlbumReveal?.seq != reveal.seq {
-            return
+        await list.withPage(containing: index) {
+            // The reveal may have ended while its page loaded: its row shown,
+            // or given up.
+            if Task.isCancelled
+                || uiStore.pendingAlbumReveal?.seq != reveal.seq
+            {
+                return
+            }
+            if let row = viewport.revealedRow(seq: reveal.seq) {
+                showRevealedRow(row)
+                return
+            }
+            scrollToAlbum(of: reveal, at: index)
+            await Task.untilCancelled()
         }
-        if let row = viewport.revealedRow(seq: reveal.seq) {
-            showRevealedRow(row)
-            return
-        }
-
-        scrollToRevealedAlbum(reveal, at: index)
     }
 
-    private func scrollToRevealedAlbum(
-        _ reveal: PendingAlbumReveal,
-        at index: Int
-    ) {
+    /// Scrolls the card of the album `reveal` names, at list position
+    /// `index`, to the top.
+    private func scrollToAlbum(of reveal: PendingAlbumReveal, at index: Int) {
+        // The list moved under the reveal between core placing the album and
+        // its page answering: there is no card to scroll to.
+        guard list.idAt(index) == reveal.albumId else {
+            albumGridLogger.warning(
+                "Album \(reveal.albumId) is no longer at \(index); skipping reveal"
+            )
+            uiStore.consumeAlbumReveal(seq: reveal.seq)
+            return
+        }
         viewport.release()
         let sectionId = groupByArtist ? list.section(at: index)?.id : nil
         expandedOccurrence = .album(reveal.albumId, sectionId: sectionId)

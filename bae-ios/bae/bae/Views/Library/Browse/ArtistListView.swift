@@ -63,8 +63,7 @@ private struct ArtistRowSlot: View {
             }
         }
         .task(id: list.loadEpoch) {
-            let offset = (position / libraryPageSize) * libraryPageSize
-            await list.loadRange(offset: offset, limit: libraryPageSize)
+            await list.holdPage(containing: position)
         }
     }
 }

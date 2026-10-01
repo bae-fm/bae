@@ -4,7 +4,7 @@ import SwiftUI
 /// The narrowest a grid cell gets, and the size its cover is decoded at.
 private let cellWidth: CGFloat = 150
 
-/// The paged album grid: one cell per slot, each loading its own page.
+/// The paged album grid: one cell per slot, each holding its own page.
 struct AlbumGrid: View {
     let list: AlbumList
     var groupByArtist = false
@@ -67,8 +67,8 @@ struct AlbumGrid: View {
     }
 }
 
-/// One grid slot: loads its page again whenever `loadEpoch` changes, and shows
-/// the album once it resolves.
+/// One grid slot: holds its page while it is shown, again whenever `loadEpoch`
+/// changes, and shows the album once it resolves.
 private struct AlbumCell: View {
     let list: AlbumList
     let position: Int
@@ -94,8 +94,7 @@ private struct AlbumCell: View {
             }
         }
         .task(id: RowLoadID(epoch: list.loadEpoch, index: position)) {
-            let offset = (position / libraryPageSize) * libraryPageSize
-            await list.loadRange(offset: offset, limit: libraryPageSize)
+            await list.holdPage(containing: position)
         }
     }
 }
