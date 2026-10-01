@@ -159,14 +159,13 @@ impl PlaybackPreparedTrack {
     fn decode_params(&self, offset: u64, include_pregap: bool) -> StreamDecodeParams {
         use crate::util::content_type::ContentType;
         let mut remaining_offset = offset;
-        let generated_pregap_samples = self.generated_pregap_samples();
         let leading_silence_frames = if include_pregap {
-            generated_pregap_samples.saturating_sub(offset)
+            self.generated_pregap_frames.saturating_sub(offset)
         } else {
             0
         };
         if include_pregap {
-            remaining_offset = remaining_offset.saturating_sub(generated_pregap_samples);
+            remaining_offset = remaining_offset.saturating_sub(self.generated_pregap_frames);
         }
 
         let mut segments = Vec::new();
@@ -202,26 +201,6 @@ impl PlaybackPreparedTrack {
 
     fn total_pregap_ms(&self) -> Option<i64> {
         self.pregap_ms.or(self.generated_pregap_ms)
-    }
-
-    fn generated_pregap_samples(&self) -> u64 {
-        if let Some(samples) = self.generated_pregap_samples {
-            return samples;
-        }
-
-        let Some(ms) = self.generated_pregap_ms else {
-            return 0;
-        };
-        if ms < 0 {
-            warn!(
-                track_id = %self.track_id,
-                generated_pregap_ms = ms,
-                "Ignoring negative generated pregap duration"
-            );
-            return 0;
-        }
-
-        ((ms as f64 / 1000.0) * self.sample_rate as f64) as u64
     }
 
     /// Whether this track reads its bytes from the buffer with this id.
@@ -260,8 +239,9 @@ struct PlaybackPreparedTrack {
     pregap_ms: Option<i64>,
     /// Silent pregap to generate, from a CUE `PREGAP` directive.
     generated_pregap_ms: Option<i64>,
-    /// The same generated pregap in exact samples.
-    generated_pregap_samples: Option<u64>,
+    /// The same generated pregap in frames, which a natural start decodes as
+    /// silence before the first stored sample.
+    generated_pregap_frames: u64,
     duration: std::time::Duration,
     /// Picks how a track start seeks: by byte to `start_byte`, except APE, which
     /// seeks by sample.
@@ -338,7 +318,7 @@ fn discard_preloaded_decoder(
 /// segments' buffers.
 fn finalize_playback_track(
     track_id: String,
-    resolved: ResolvedTrackAudio,
+    resolved: &ResolvedTrackAudio,
     segments: Vec<PreparedAudioSegment>,
     replay_gain_mode: crate::config::ReplayGainMode,
 ) -> PlaybackPreparedTrack {
@@ -362,9 +342,9 @@ fn finalize_playback_track(
         channels: resolved.channels,
         pregap_ms: resolved.pregap_ms,
         generated_pregap_ms: resolved.generated_pregap_ms,
-        generated_pregap_samples: resolved.generated_pregap_samples,
+        generated_pregap_frames: resolved.generated_pregap_frames(),
         duration,
-        content_type: resolved.content_type,
+        content_type: resolved.content_type.clone(),
         replay_gain_linear,
     }
 }

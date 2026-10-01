@@ -176,7 +176,7 @@ pub(super) async fn prepare_track_for_playback(
 
     Ok(finalize_playback_track(
         track_id.to_string(),
-        resolved,
+        &resolved,
         prepared_segments,
         replay_gain_mode,
     ))

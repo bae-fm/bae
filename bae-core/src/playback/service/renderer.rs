@@ -186,25 +186,22 @@ pub(super) struct RemoteRenderer {
 }
 
 impl RemoteRenderer {
-    /// Load `prepared` onto the device showing `display`, from `position`, and
+    /// Load `audio` onto the device showing `display`, from `position`, and
     /// paused when `paused`. The device shows `display` until the next load.
     /// The error is why its media URL could not be built.
     fn load(
         &self,
+        audio: &ResolvedTrackAudio,
         prepared: &PlaybackPreparedTrack,
         display: crate::playback::TrackDisplay,
         position: Duration,
         paused: bool,
     ) -> Result<(), String> {
-        let track_id = &prepared.track_id;
-        // Serving is resolved here, where the track's source codec is known, so
-        // the flavor's format gate picks the URL and the MIME declared below from
-        // the same decision.
-        let served = self.media_source.serve_track(
-            track_id,
-            &prepared.content_type,
-            display.cover_image.as_ref(),
-        )?;
+        // Serving is resolved here, where the track's stored audio is known, so
+        // the URL and the MIME declared below come from the same decision.
+        let served = self
+            .media_source
+            .serve_track(audio, display.cover_image.as_ref())?;
         self.session.load(RendererMedia {
             url: served.url,
             content_type: served.content_type,
@@ -521,8 +518,12 @@ impl PlaybackService {
             }
         };
         let replay_gain_mode = self.library_manager.get_config().prefs.replay_gain_mode;
-        let prepared =
-            finalize_playback_track(track_id.to_string(), resolved, Vec::new(), replay_gain_mode);
+        let prepared = finalize_playback_track(
+            track_id.to_string(),
+            &resolved,
+            Vec::new(),
+            replay_gain_mode,
+        );
 
         let Renderer::Remote(remote) = &self.renderer else {
             // Raced out of remote playback before the resolve returned.
@@ -530,7 +531,7 @@ impl PlaybackService {
         };
         let start_position = start.position(prepared.total_pregap_ms());
         let paused = matches!(target, PlayTarget::Paused(_));
-        if let Err(reason) = remote.load(&prepared, display, start_position, paused) {
+        if let Err(reason) = remote.load(&resolved, &prepared, display, start_position, paused) {
             error!("remote: failed to mint media URL for {track_id}: {reason}");
             self.fail_remote(crate::ui::PlaybackErrorReason::internal(
                 "Couldn't build the audio URL for the renderer.",
