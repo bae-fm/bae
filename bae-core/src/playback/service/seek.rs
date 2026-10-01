@@ -26,9 +26,8 @@ impl PlaybackService {
             self.renderer.seek_remote(position);
             if let PlaybackSlot::Active(cur) = &mut self.slot {
                 cur.position = position;
-                let track_id = cur.prepared.track_id.clone();
-                self.emit_position_display(position, track_id);
             }
+            self.emit_position_display();
             return;
         }
 
@@ -61,7 +60,7 @@ impl PlaybackService {
                 position_diff
             );
             self.slot = PlaybackSlot::Active(cur);
-            self.emit_position_display(position, track_id);
+            self.emit_position_display();
             return;
         }
 
@@ -147,7 +146,7 @@ impl PlaybackService {
             wait: seek_started_at.elapsed(),
         });
 
-        self.emit_position_display(position, track_id);
+        self.emit_position_display();
 
         self.renderer.reanchor_airplay();
     }

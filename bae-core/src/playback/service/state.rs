@@ -26,10 +26,10 @@ impl PlaybackService {
         }
     }
 
-    /// Compute the display values for `position` on the current track and
-    /// emit a `Seeked` progress event. The single emitter for non-tick position
-    /// updates (seek, restore, pause/resume refresh).
-    pub(super) fn emit_position_display(&self, position: StreamPosition, track_id: String) {
+    /// Emit the current track's position as a `Seeked` progress event: the
+    /// single emitter for non-tick position updates (seek, restore, handback
+    /// from a device). Nothing without a current track.
+    pub(super) fn emit_position_display(&self) {
         let PlaybackSlot::Active(cur) = &self.slot else {
             return;
         };
@@ -37,10 +37,10 @@ impl PlaybackService {
         emit_progress(
             &self.progress_tx,
             PlaybackProgress::Seeked {
-                position_ms: timeline.track_time(position).as_millis(),
+                position_ms: timeline.track_time(cur.position).as_millis(),
                 duration_ms: timeline.duration_ms(),
-                track_id,
-                progress: timeline.progress(position),
+                track_id: cur.prepared.track_id.clone(),
+                progress: timeline.progress(cur.position),
             },
         );
     }
@@ -316,9 +316,8 @@ impl PlaybackService {
             .await;
 
             // Emit the restored position as a `Seeked` so subscribers position their
-            // display. No saved position means the track's start.
-            let restored_pos = parsed.position.unwrap_or(StreamPosition::START);
-            self.emit_position_display(restored_pos, track_id);
+            // display: the saved one, or without one the track's start.
+            self.emit_position_display();
         }
 
         // Dropping a dead context or library-deleted tracks corrected the in-memory
