@@ -31,7 +31,8 @@ pub struct RendererMedia {
     /// An HTTP URL to cover art, shown on renderers with a screen. `None` when
     /// the track has no cover.
     pub cover_url: Option<String>,
-    /// The track's total duration, when known.
+    /// How long the served stream runs, when known: the track's pregap, then
+    /// the track. Device positions count in the same stream.
     pub duration: Option<Duration>,
 }
 

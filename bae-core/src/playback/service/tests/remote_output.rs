@@ -18,17 +18,19 @@ async fn seed_playable_track(
     release_id: &str,
     track_id: &str,
 ) {
-    seed_track_window(library_manager, release_id, track_id, 0, None).await;
+    seed_track_window(library_manager, release_id, track_id, 0, None, None).await;
 }
 
 /// [`seed_playable_track`] with its one main segment spanning
-/// `start_sample..end_sample` of its file, as a CUE image's track does.
+/// `start_sample..end_sample` of its file, as a CUE image's track does, after
+/// `generated_pregap_ms` of silence a CUE `PREGAP` generates.
 async fn seed_track_window(
     library_manager: &crate::library::LibraryManager,
     release_id: &str,
     track_id: &str,
     start_sample: u64,
     end_sample: Option<u64>,
+    generated_pregap_ms: Option<i64>,
 ) {
     use crate::db::{DbAudioFormat, DbAudioSegment, DbAudioSegmentRole, DbFile};
     use crate::util::content_type::ContentType;
@@ -52,6 +54,12 @@ async fn seed_track_window(
         2,
         audio_format_id.clone(),
         now,
+    )
+    .with_pregaps(
+        None,
+        generated_pregap_ms,
+        None,
+        generated_pregap_ms.map(|ms| ms as u64 * 44_100 / 1_000),
     );
     let segment = DbAudioSegment {
         id: bae_test_support::test_uuid(&format!("{track_id}-seg")),
@@ -381,6 +389,7 @@ async fn a_cue_image_track_is_served_as_its_own_window() {
         IMAGE_WINDOW,
         441_000,
         Some(882_000),
+        None,
     )
     .await;
     service.playback_queue.apply(|queue| {
@@ -441,6 +450,51 @@ async fn a_cue_image_track_is_served_as_its_own_window() {
                 "audio/mpeg"
             ),
         ]
+    );
+}
+
+/// A device is told the length of the stream it is served, which runs through
+/// the track's pregap before the track: the device's position counts in that
+/// stream, so a length without the pregap would end the track early.
+#[tokio::test]
+async fn a_device_is_told_the_served_stream_length_pregap_included() {
+    const RELEASE: &str = "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e";
+    const TRACK: &str = "08c7ff07-b56a-4e16-8df6-ae2967fa0806";
+    let (_home, mut service, _rx) = seeded_playback_service(&[(RELEASE, &[TRACK])]).await;
+    seed_track_window(&service.library_manager, RELEASE, TRACK, 0, None, Some(2_000)).await;
+    service.playback_queue.apply(|queue| {
+        queue.play_release(
+            ContextSource::Release(RELEASE.to_string()),
+            vec![TRACK.to_string()],
+            ContextStart::Index(0),
+        )
+    });
+    service.slot = active_slot(
+        test_prepared_track(TRACK, create_sparse_buffer(1_024)),
+        TrackPhase::Playing,
+    );
+    let channel = FakeChannel::new();
+    let state = channel.state.clone();
+
+    service.handle_play_on(remote_connect(channel)).await;
+
+    assert!(wait_until(|| !state.lock().unwrap().loads.is_empty()));
+    let resolved = service
+        .library_manager
+        .resolve_track_audio(TRACK)
+        .await
+        .unwrap();
+    let track_duration = finalize_playback_track(
+        TRACK.to_string(),
+        &resolved,
+        Vec::new(),
+        crate::config::ReplayGainMode::Off,
+    )
+    .timeline
+    .duration();
+    assert_eq!(
+        state.lock().unwrap().loads[0].duration,
+        Some(std::time::Duration::from_secs(2) + track_duration)
     );
 }
 
