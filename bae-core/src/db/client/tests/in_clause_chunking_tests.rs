@@ -121,5 +121,7 @@ async fn track_id_queries_merge_chunks() {
     assert_eq!(resolved_track_ids, expected_track_ids);
     // Every chunk's rows carry what the track → release → album join resolved,
     // so a dropped chunk shows up as a missing album, not just a missing id.
-    assert!(items.iter().all(|item| item.album_title == "Album Title A"));
+    assert!(items
+        .iter()
+        .all(|item| item.display.album_title == "Album Title A"));
 }

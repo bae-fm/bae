@@ -13,16 +13,18 @@ struct QueueItemRowTests {
         "a compilation track renders its title, artist, and album on separate lines"
     )
     func rendersTrackCredits() async throws {
-        let item = QueueItem(
-            bridge: BridgeQueueEntry(
-                entryId: "entry",
-                trackId: "track",
+        let item = BridgeQueueEntry(
+            entryId: "entry",
+            trackId: "track",
+            display: BridgeTrackDisplay(
                 title: "Track Title",
                 artistNames: "Track Artist",
-                durationClock: nil,
+                albumId: "album-1",
+                releaseId: "release-1",
                 albumTitle: "Compilation Album",
                 coverImage: nil
-            )
+            ),
+            durationClock: nil
         )
         let size = NSSize(width: 420, height: 90)
         try await SnapshotTestSupport.withHostedWindow(

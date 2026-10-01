@@ -34,7 +34,7 @@ struct QueueView: View {
     private var dragCoordinator = QueueDragCoordinator()
 
     /// The manual "Up Next" lane, played first and always loaded in full.
-    private var manual: [QueueItem] { playbackStore.manualQueue }
+    private var manual: [BridgeQueueEntry] { playbackStore.manualQueue }
     /// What's playing from, or `nil`; `upcomingTotal` may exceed what's loaded.
     private var context: QueuePlaybackContext? { playbackStore.queueContext }
 

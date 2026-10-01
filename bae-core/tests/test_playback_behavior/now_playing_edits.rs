@@ -113,7 +113,7 @@ async fn a_changed_cover_reaches_the_paused_track_and_the_queue() {
     let before = now_playing_until(&mut values, &track_id, "the paused track", |_| true)
         .await
         .cover_image;
-    first_upcoming_until(&mut queue, |item| item.cover_image == before).await;
+    first_upcoming_until(&mut queue, |item| item.display.cover_image == before).await;
 
     let image_dir = TempDir::new().unwrap();
     let image_path = image_dir.path().join("front.gif");
@@ -155,8 +155,8 @@ async fn a_changed_cover_reaches_the_paused_track_and_the_queue() {
     let after = now_playing_until(&mut values, &track_id, "the new cover", |display| changed(&display.cover_image))
         .await
         .cover_image;
-    let upcoming = first_upcoming_until(&mut queue, |item| changed(&item.cover_image)).await;
-    assert_eq!(upcoming.cover_image, after, "the queue shows the same cover");
+    let upcoming = first_upcoming_until(&mut queue, |item| changed(&item.display.cover_image)).await;
+    assert_eq!(upcoming.display.cover_image, after, "the queue shows the same cover");
 }
 
 /// Renaming the paused track and its album shows the new names in the
@@ -189,7 +189,7 @@ async fn renamed_titles_reach_the_paused_track_and_the_queue() {
     })
     .await;
     first_upcoming_until(&mut queue, |item| {
-        item.title == "Renamed Second Track" && item.album_title == "Renamed Album"
+        item.display.title == "Renamed Second Track" && item.display.album_title == "Renamed Album"
     })
     .await;
 }

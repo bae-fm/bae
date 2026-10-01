@@ -15,13 +15,8 @@ pub const QUEUE_UPCOMING_WINDOW: usize = 100;
 pub struct QueueItem {
     pub entry_id: String,
     pub track_id: String,
-    pub title: String,
-    pub artist_names: String,
+    pub display: crate::playback::TrackDisplay,
     pub duration_ms: Option<i64>,
-    pub album_title: String,
-    /// The track's own release's cover, versioned — `None` when that release has
-    /// no cover row.
-    pub cover_image: Option<crate::album_detail::ImageRef>,
 }
 
 /// The context lane resolved for display: what it plays from (so the UI labels

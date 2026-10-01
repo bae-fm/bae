@@ -112,11 +112,15 @@ fn queue_item(duration_ms: Option<i64>) -> bae_core::queue::QueueItem {
     bae_core::queue::QueueItem {
         entry_id: "entry-1".to_string(),
         track_id: "track-1".to_string(),
-        title: "Track".to_string(),
-        artist_names: "Artist".to_string(),
+        display: bae_core::playback::TrackDisplay {
+            title: "Track".to_string(),
+            artist_names: "Artist".to_string(),
+            album_id: "album-1".to_string(),
+            release_id: "release-1".to_string(),
+            album_title: "Album".to_string(),
+            cover_image: None,
+        },
         duration_ms,
-        album_title: "Album".to_string(),
-        cover_image: None,
     }
 }
 

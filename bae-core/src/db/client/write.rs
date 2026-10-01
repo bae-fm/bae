@@ -931,11 +931,8 @@ pub(super) fn resolve_queue_entries(
             Some(QueueItem {
                 entry_id: entry.id.0.clone(),
                 track_id: entry.track_id.clone(),
-                title: meta.display.title.clone(),
-                artist_names: meta.display.artist_names.clone(),
+                display: meta.display.clone(),
                 duration_ms: meta.duration_ms,
-                album_title: meta.display.album_title.clone(),
-                cover_image: meta.display.cover_image.clone(),
             })
         })
         .collect()

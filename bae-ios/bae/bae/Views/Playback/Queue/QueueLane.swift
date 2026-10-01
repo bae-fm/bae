@@ -26,7 +26,7 @@ private struct QueueRowLoadID: Hashable {
 /// these from its windowed store; the manual lane from its in-memory array.
 struct QueueLane {
     let count: Int
-    let itemAt: (Int) -> QueueItem?
+    let itemAt: (Int) -> BridgeQueueEntry?
     let loadEpoch: UInt64
     let loadRange: ((_ offset: Int, _ limit: Int) async -> Void)?
 }

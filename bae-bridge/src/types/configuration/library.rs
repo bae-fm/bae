@@ -239,16 +239,11 @@ pub struct BridgeQueueEntry {
     /// remove/reorder/skip at one instance.
     pub entry_id: String,
     pub track_id: String,
-    pub title: String,
-    pub artist_names: String,
+    pub display: BridgeTrackDisplay,
     /// The track length as a clock label's fields ("3:07"), or `None` when there
     /// is nothing to label. The raw milliseconds do not cross — a queue row only
     /// ever shows the clock, never the number.
     pub duration_clock: Option<BridgeDurationClock>,
-    pub album_title: String,
-    /// The track's own release's cover, or `None` when it has none. Versioned,
-    /// so the UI's art cache key moves when the cover bytes change.
-    pub cover_image: Option<BridgeImageRef>,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]

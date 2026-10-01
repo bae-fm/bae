@@ -17,12 +17,13 @@ import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgePlaybackContext
 import uniffi.bae_bridge.BridgePlaybackSourceKind
 import uniffi.bae_bridge.BridgeQueueEntry
+import uniffi.bae_bridge.BridgeTrackDisplay
 
 /**
  * The two-lane queue projection ([BaeCorePlayer.onQueueValue] → [BaeCorePlayer.queue]).
  * A queue value carries a manual lane ("Up Next") and an optional
  * context lane (what the queue plays from). The projection keeps the two apart,
- * mapping each [BridgeQueueEntry] to a [QueueItem], and carries the context's
+ * passing each lane's [BridgeQueueEntry]s through, and carries the context's
  * source kind and shuffle flag so the UI can label and mark the section.
  */
 @RunWith(RobolectricTestRunner::class)
@@ -41,25 +42,16 @@ class QueueProjectionTest {
     ) = BridgeQueueEntry(
         entryId = "entry-$id",
         trackId = "track-$id",
-        title = "Title $id",
-        artistNames = "Artist Name",
+        display =
+            BridgeTrackDisplay(
+                title = "Title $id",
+                artistNames = "Artist Name",
+                albumId = "album-1",
+                releaseId = "release-1",
+                albumTitle = "Album Title",
+                coverImage = coverImage,
+            ),
         durationClock = durationClock,
-        albumTitle = "Album Title",
-        coverImage = coverImage,
-    )
-
-    private fun item(
-        id: String,
-        durationClock: BridgeDurationClock? = sampleClock,
-        coverImage: BridgeImageRef? = testCoverRef("cover-$id"),
-    ) = QueueItem(
-        entryId = "entry-$id",
-        trackId = "track-$id",
-        title = "Title $id",
-        artist = "Artist Name",
-        albumTitle = "Album Title",
-        durationClock = durationClock,
-        coverImage = coverImage,
     )
 
     @Test
@@ -74,7 +66,7 @@ class QueueProjectionTest {
             revision = 1uL,
         )
 
-        assertEquals(listOf(item("a"), item("b")), player.queue.value.manual)
+        assertEquals(listOf(entry("a"), entry("b")), player.queue.value.manual)
         assertNull(player.queue.value.context)
     }
 
@@ -98,8 +90,8 @@ class QueueProjectionTest {
         )
 
         val projection = player.queue.value
-        assertEquals(listOf(item("m")), projection.manual)
-        assertEquals(listOf(item("c1"), item("c2")), projection.context?.upcoming)
+        assertEquals(listOf(entry("m")), projection.manual)
+        assertEquals(listOf(entry("c1"), entry("c2")), projection.context?.upcoming)
         assertEquals(BridgePlaybackSourceKind.RELEASE, projection.context?.kind)
         assertEquals(false, projection.context?.shuffled)
     }
@@ -165,7 +157,7 @@ class QueueProjectionTest {
         val manual = player.queue.value.manual
         val projected = manual.single()
         assertNull(projected.durationClock)
-        assertNull(projected.coverImage)
+        assertNull(projected.display.coverImage)
     }
 
     @Test
@@ -194,7 +186,7 @@ class QueueProjectionTest {
             revision = 2uL,
         )
 
-        assertEquals(emptyList<QueueItem>(), player.queue.value.manual)
+        assertEquals(emptyList<BridgeQueueEntry>(), player.queue.value.manual)
         assertNull(player.queue.value.context)
         assertEquals(2uL, player.queue.value.revision)
     }

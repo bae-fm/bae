@@ -1,6 +1,5 @@
 package fm.bae.app.playback
 
-import uniffi.bae_bridge.BridgeDurationClock
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgePlaybackContext
 import uniffi.bae_bridge.BridgePlaybackSourceKind
@@ -52,19 +51,6 @@ data class PlaybackPosition(
     val durationMs: Long?,
 )
 
-/** One row of the [fm.bae.app.ui.playback.QueueScreen]. [entryId] identifies this
- *  queue entry, so it differs when the same track is queued twice; [durationClock]
- *  is null when core reports no length. */
-data class QueueItem(
-    val entryId: String,
-    val trackId: String,
-    val title: String,
-    val artist: String,
-    val albumTitle: String,
-    val durationClock: BridgeDurationClock?,
-    val coverImage: BridgeImageRef?,
-)
-
 /** The release or library the queue plays from, and the not-yet-played tracks
  *  after the current one. [upcoming] is only the first page of [upcomingTotal];
  *  [pagedUpcoming] holds later tracks read through
@@ -72,18 +58,18 @@ data class QueueItem(
 data class QueueContext(
     val kind: BridgePlaybackSourceKind,
     val shuffled: Boolean,
-    val upcoming: List<QueueItem>,
+    val upcoming: List<BridgeQueueEntry>,
     val upcomingTotal: Int,
-    val pagedUpcoming: Map<Int, QueueItem> = emptyMap(),
+    val pagedUpcoming: Map<Int, BridgeQueueEntry> = emptyMap(),
 ) {
-    fun itemAt(index: Int): QueueItem? = upcoming.getOrNull(index) ?: pagedUpcoming[index]
+    fun itemAt(index: Int): BridgeQueueEntry? = upcoming.getOrNull(index) ?: pagedUpcoming[index]
 }
 
 /** The queue as two sections: tracks added by hand ([manual]) and the
  *  [context] played from, or null when there is none. [revision] is the queue
  *  revision it was built from. */
 data class QueueProjection(
-    val manual: List<QueueItem>,
+    val manual: List<BridgeQueueEntry>,
     val context: QueueContext?,
     val revision: ULong = 0u,
 ) {

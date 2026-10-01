@@ -135,14 +135,7 @@
                         // the preview now-playing bar just needs a plausible total.
                         durationMs: 200_000
                     ),
-                    display: BridgeTrackDisplay(
-                        title: entry.title,
-                        artistNames: entry.artistNames,
-                        albumId: "a-01",
-                        releaseId: "r-01",
-                        albumTitle: entry.albumTitle,
-                        coverImage: entry.coverImage
-                    )
+                    display: entry.display
                 )
             )
             apply()
@@ -175,12 +168,17 @@
                 return BridgeQueueEntry(
                     entryId: "preview-minted-\(mintedEntryCount)",
                     trackId: trackId,
-                    title: source?.title ?? "Track \(trackId)",
-                    artistNames: source?.artistNames ?? "Artist Name",
+                    display: source?.display
+                        ?? BridgeTrackDisplay(
+                            title: "Track \(trackId)",
+                            artistNames: "Artist Name",
+                            albumId: "a-01",
+                            releaseId: "r-01",
+                            albumTitle: "Album Title",
+                            coverImage: nil
+                        ),
                     durationClock: source?.durationClock
-                        ?? bridgeClock(ms: 200_000),
-                    albumTitle: source?.albumTitle ?? "Album Title",
-                    coverImage: source?.coverImage
+                        ?? bridgeClock(ms: 200_000)
                 )
             }
             let at = min(max(index, 0), manual.count)
@@ -205,47 +203,67 @@
             BridgeQueueEntry(
                 entryId: "e-01",
                 trackId: "t-01",
-                title: "Track Title 1",
-                artistNames: "Artist Name A",
-                durationClock: bridgeClock(ms: 210_000),
-                albumTitle: "Album Title A",
-                coverImage: nil
+                display: BridgeTrackDisplay(
+                    title: "Track Title 1",
+                    artistNames: "Artist Name A",
+                    albumId: "a-01",
+                    releaseId: "r-01",
+                    albumTitle: "Album Title A",
+                    coverImage: nil
+                ),
+                durationClock: bridgeClock(ms: 210_000)
             ),
             BridgeQueueEntry(
                 entryId: "e-02",
                 trackId: "t-02",
-                title: "Track Title 2",
-                artistNames: "Artist Name A",
-                durationClock: bridgeClock(ms: 240_000),
-                albumTitle: "Album Title A",
-                coverImage: nil
+                display: BridgeTrackDisplay(
+                    title: "Track Title 2",
+                    artistNames: "Artist Name A",
+                    albumId: "a-01",
+                    releaseId: "r-01",
+                    albumTitle: "Album Title A",
+                    coverImage: nil
+                ),
+                durationClock: bridgeClock(ms: 240_000)
             ),
             BridgeQueueEntry(
                 entryId: "e-03",
                 trackId: "t-03",
-                title: "Track Title 3",
-                artistNames: "Artist Name B",
-                durationClock: bridgeClock(ms: 198_000),
-                albumTitle: "Album Title B",
-                coverImage: nil
+                display: BridgeTrackDisplay(
+                    title: "Track Title 3",
+                    artistNames: "Artist Name B",
+                    albumId: "a-02",
+                    releaseId: "r-02",
+                    albumTitle: "Album Title B",
+                    coverImage: nil
+                ),
+                durationClock: bridgeClock(ms: 198_000)
             ),
             BridgeQueueEntry(
                 entryId: "e-04",
                 trackId: "t-04",
-                title: "Track Title 4",
-                artistNames: "Artist Name B",
-                durationClock: bridgeClock(ms: 225_000),
-                albumTitle: "Album Title B",
-                coverImage: nil
+                display: BridgeTrackDisplay(
+                    title: "Track Title 4",
+                    artistNames: "Artist Name B",
+                    albumId: "a-02",
+                    releaseId: "r-02",
+                    albumTitle: "Album Title B",
+                    coverImage: nil
+                ),
+                durationClock: bridgeClock(ms: 225_000)
             ),
             BridgeQueueEntry(
                 entryId: "e-05",
                 trackId: "t-05",
-                title: "Track Title 5",
-                artistNames: "Artist Name C",
-                durationClock: bridgeClock(ms: 187_000),
-                albumTitle: "Album Title C",
-                coverImage: nil
+                display: BridgeTrackDisplay(
+                    title: "Track Title 5",
+                    artistNames: "Artist Name C",
+                    albumId: "a-03",
+                    releaseId: "r-03",
+                    albumTitle: "Album Title C",
+                    coverImage: nil
+                ),
+                durationClock: bridgeClock(ms: 187_000)
             ),
         ]
 

@@ -44,8 +44,8 @@ pub struct BridgePlayingTrack {
     pub duration_ms: u64,
 }
 
-/// The playing track as the now-playing bar and the system media controls show
-/// it, read from the library's current state.
+/// A track as the now-playing bar, the queue, and the system media controls
+/// show it, read from the library's current state.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeTrackDisplay {
     pub title: String,
@@ -73,7 +73,7 @@ mirror_struct! {
 
 mirror_struct! {
     BridgeTrackDisplay = bae_core::playback::TrackDisplay,
-    from_core: fn,
+    from_core: pub(crate) fn,
     fields: {
         title,
         artist_names,

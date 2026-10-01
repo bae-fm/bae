@@ -17,6 +17,7 @@ import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgePlaybackContext
 import uniffi.bae_bridge.BridgePlaybackSourceKind
 import uniffi.bae_bridge.BridgeQueueEntry
+import uniffi.bae_bridge.BridgeTrackDisplay
 import uniffi.bae_bridge.NoHandle
 import uniffi.bae_bridge.UiEventCallback
 
@@ -34,11 +35,16 @@ class SeekToMediaItemTest {
         BridgeQueueEntry(
             entryId = "entry-$id",
             trackId = "track-$id",
-            title = "Title $id",
-            artistNames = "Artist Name",
+            display =
+                BridgeTrackDisplay(
+                    title = "Title $id",
+                    artistNames = "Artist Name",
+                    albumId = "album-1",
+                    releaseId = "release-1",
+                    albumTitle = "Album Title",
+                    coverImage = null,
+                ),
             durationClock = null,
-            albumTitle = "Album Title",
-            coverImage = null,
         )
 
     @Test

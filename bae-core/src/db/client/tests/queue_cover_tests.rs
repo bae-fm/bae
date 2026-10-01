@@ -58,7 +58,7 @@ async fn cover_of(db: &Database, track_id: &str) -> Option<crate::album_detail::
     )
     .await;
     assert_eq!(items.len(), 1);
-    items[0].cover_image.clone()
+    items[0].display.cover_image.clone()
 }
 
 fn cover_ref(release_id: &str, version: &str) -> Option<crate::album_detail::ImageRef> {

@@ -38,7 +38,7 @@ struct QueueSection: View {
     let title: String?
     let shuffled: Bool
     let count: Int
-    let itemAt: (Int) -> QueueItem?
+    let itemAt: (Int) -> BridgeQueueEntry?
     /// Restarts in-flight row loads when it changes; fixed at 0 for the manual
     /// lane, which is always loaded.
     let loadEpoch: UInt64
@@ -397,7 +397,7 @@ extension QueueSection {
     }
 
     /// A row at `index`: the resolved item, or a placeholder while it loads.
-    private func queueRow(_ item: QueueItem?, index: Int) -> some View {
+    private func queueRow(_ item: BridgeQueueEntry?, index: Int) -> some View {
         Group {
             if let item {
                 QueueItemRow(
@@ -487,7 +487,7 @@ extension QueueSection {
         laneId: QueueLaneID,
         onSetShuffle: ((Bool) -> Void)? = nil
     ) -> some View {
-        let items = Array(PreviewData.queueItems.prefix(count))
+        let items = Array(PreviewData.queueEntries.prefix(count))
         return QueueSection(
             title: title,
             shuffled: shuffled,

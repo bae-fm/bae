@@ -23,7 +23,6 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.AppHandle
-import uniffi.bae_bridge.BridgeDurationClock
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeLoadingTrack
 import uniffi.bae_bridge.BridgeNowPlayingTrack
@@ -34,6 +33,7 @@ import uniffi.bae_bridge.BridgePlaybackValueState
 import uniffi.bae_bridge.BridgePlaybackValues
 import uniffi.bae_bridge.BridgeQueueEntry
 import uniffi.bae_bridge.BridgeRepeatMode
+import uniffi.bae_bridge.BridgeTrackDisplay
 
 private const val TAG = "bae.BaeCorePlayer"
 private val logger = BaeLogger(TAG)
@@ -65,18 +65,13 @@ class BaeCorePlayer(
             hasCurrentTrack = { currentMeta != null },
         )
 
-    /** Display metadata for one track, from a queue entry or, for the current
+    /** One track of the Media3 playlist, from a queue entry or, for the current
      *  track, from the playback value. */
     internal data class Meta(
         /** Null for the current track's metadata, which is not a queue entry. */
         val entryId: String?,
         val trackId: String,
-        val title: String,
-        val artist: String,
-        val albumTitle: String,
-        /** Null when core reports no length, and for the current track's metadata. */
-        val durationClock: BridgeDurationClock?,
-        val coverImage: BridgeImageRef?,
+        val display: BridgeTrackDisplay,
     )
 
     /** The release or library the queue plays from, and its not-yet-played tracks. */
@@ -84,7 +79,7 @@ class BaeCorePlayer(
         val kind: BridgePlaybackSourceKind,
         val shuffled: Boolean,
         /** Only the first page of the [upcomingTotal] tracks. */
-        val entries: List<Meta>,
+        val entries: List<BridgeQueueEntry>,
         val upcomingTotal: Int,
     )
 
@@ -172,9 +167,9 @@ class BaeCorePlayer(
             val metadataBuilder =
                 MediaMetadata
                     .Builder()
-                    .setTitle(meta.title)
-                    .setArtist(meta.artist)
-                    .setAlbumTitle(meta.albumTitle)
+                    .setTitle(meta.display.title)
+                    .setArtist(meta.display.artistNames)
+                    .setAlbumTitle(meta.display.albumTitle)
                     .setDurationMs(durationMs)
                     .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
                     .setIsPlayable(true)
@@ -197,12 +192,12 @@ class BaeCorePlayer(
     private var entries: List<Meta> = emptyList()
 
     /** The queue's two sections, kept apart for the in-app queue. */
-    private var manualEntries: List<Meta> = emptyList()
+    private var manualEntries: List<BridgeQueueEntry> = emptyList()
     private var contextLane: ContextLane? = null
 
     /** Context tracks read past [ContextLane.entries], keyed by index in the whole tail; empty
      *  until a read for [queueRevision] arrives. */
-    private var pagedUpcoming: Map<Int, QueueItem> = emptyMap()
+    private var pagedUpcoming: Map<Int, BridgeQueueEntry> = emptyMap()
 
     /** The revision [manualEntries] and [contextLane] came from. */
     private var queueRevision: ULong = 0u
@@ -210,7 +205,7 @@ class BaeCorePlayer(
     private val upcoming =
         QueueUpcomingWindows(queueUpcomingSource, scope) { revision ->
             if (revision == queueRevision) {
-                pagedUpcoming = upcomingItems()
+                pagedUpcoming = upcomingEntries()
                 publish()
             }
         }
@@ -359,11 +354,7 @@ class BaeCorePlayer(
             Meta(
                 entryId = null,
                 trackId = trackId,
-                title = track.display.title,
-                artist = track.display.artistNames,
-                albumTitle = track.display.albumTitle,
-                durationClock = null,
-                coverImage = track.display.coverImage,
+                display = track.display,
             )
         refreshArtwork(track.display.coverImage)
     }
@@ -475,13 +466,12 @@ class BaeCorePlayer(
         hasPrevious: Boolean,
         revision: ULong,
     ) {
-        val manualMetas = manual.map { it.toEntry() }
         val lane =
             context?.let {
                 ContextLane(
                     kind = it.kind,
                     shuffled = it.shuffled,
-                    entries = it.upcoming.map { entry -> entry.toEntry() },
+                    entries = it.upcoming,
                     upcomingTotal = it.upcomingTotal.toInt(),
                 )
             }
@@ -489,13 +479,13 @@ class BaeCorePlayer(
             logger.warning("dropping queue value at revision $revision; revision $queueRevision is already applied")
             return
         }
-        manualEntries = manualMetas
+        manualEntries = manual
         contextLane = lane
         if (revision > queueRevision) {
             queueRevision = revision
-            pagedUpcoming = upcomingItems()
+            pagedUpcoming = upcomingEntries()
         }
-        entries = manualMetas + (lane?.entries ?: emptyList())
+        entries = (manual + (lane?.entries ?: emptyList())).map { it.toMeta() }
         this.hasNext = hasNext
         this.hasPrevious = hasPrevious
         publish()
@@ -511,11 +501,7 @@ class BaeCorePlayer(
     }
 
     /** The context tracks read for [queueRevision], by index in the whole tail. */
-    private fun upcomingItems(): Map<Int, QueueItem> =
-        upcoming
-            .entriesAt(queueRevision)
-            .mapNotNull { (index, entry) -> entry.toEntry().toQueueItem()?.let { index to it } }
-            .toMap()
+    private fun upcomingEntries(): Map<Int, BridgeQueueEntry> = upcoming.entriesAt(queueRevision).toMap()
 
     /** Refresh the Media3 [State] and the in-app flows from the same fields. */
     private fun publish() {
@@ -523,20 +509,26 @@ class BaeCorePlayer(
         val meta = currentMeta
         _nowPlaying.value =
             meta?.let {
-                NowPlaying(it.trackId, it.title, it.artist, it.coverImage, sidePausePrompt)
+                NowPlaying(
+                    it.trackId,
+                    it.display.title,
+                    it.display.artistNames,
+                    it.display.coverImage,
+                    sidePausePrompt,
+                )
             }
         _isPlaying.value = transport == Transport.READY && playWhenReady
         _isLoading.value = transport == Transport.BUFFERING
         _position.value = positionModel.position(hasCurrentTrack = currentMeta != null)
         _queue.value =
             QueueProjection(
-                manual = manualEntries.mapNotNull { it.toQueueItem() },
+                manual = manualEntries,
                 context =
                     contextLane?.let { lane ->
                         QueueContext(
                             kind = lane.kind,
                             shuffled = lane.shuffled,
-                            upcoming = lane.entries.mapNotNull { it.toQueueItem() },
+                            upcoming = lane.entries,
                             upcomingTotal = lane.upcomingTotal,
                             pagedUpcoming = pagedUpcoming,
                         )
@@ -545,34 +537,7 @@ class BaeCorePlayer(
             )
     }
 
-    private fun Meta.toQueueItem(): QueueItem? {
-        // Only the current track's metadata lacks an entryId, and it is never here.
-        val entryId = entryId
-        if (entryId == null) {
-            logger.warning("queue entry $trackId has no entryId; dropping from projection")
-            return null
-        }
-        return QueueItem(
-            entryId = entryId,
-            trackId = trackId,
-            title = title,
-            artist = artist,
-            albumTitle = albumTitle,
-            durationClock = durationClock,
-            coverImage = coverImage,
-        )
-    }
-
-    private fun BridgeQueueEntry.toEntry(): Meta =
-        Meta(
-            entryId = entryId,
-            trackId = trackId,
-            title = title,
-            artist = artistNames,
-            albumTitle = albumTitle,
-            durationClock = durationClock,
-            coverImage = coverImage,
-        )
+    private fun BridgeQueueEntry.toMeta(): Meta = Meta(entryId = entryId, trackId = trackId, display = display)
 
     // ── Media3 state ─────────────────────────────────────────────────────
 

@@ -5,7 +5,7 @@ import SwiftUI
 /// album, and a duration that swaps for a remove button on hover. The section
 /// owns the row hover and passes it through `isHovered`/`onHoverChanged`.
 struct QueueItemRow: View {
-    let item: QueueItem
+    let item: BridgeQueueEntry
     let isHovered: Bool
     let onHoverChanged: (Bool) -> Void
     let onSkipTo: (String) -> Void
@@ -26,14 +26,14 @@ struct QueueItemRow: View {
             artWithHoverOverlay
 
             VStack(alignment: .leading, spacing: ThemeSpace.line) {
-                Text(item.title)
+                Text(item.display.title)
                     .themeText(.rowTitle)
                     .lineLimit(1)
-                Text(item.artistNames)
+                Text(item.display.artistNames)
                     .themeText(.detail)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
-                Text(item.albumTitle)
+                Text(item.display.albumTitle)
                     .themeText(.detail)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -100,9 +100,12 @@ struct QueueItemRow: View {
     // The play overlay toggles by opacity so showing it doesn't resize the row.
     private var artWithHoverOverlay: some View {
         ZStack {
-            ImageView(imageRef: item.coverImage, pointSize: Self.artworkSize)
-                .frame(width: Self.artworkSize, height: Self.artworkSize)
-                .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
+            ImageView(
+                imageRef: item.display.coverImage,
+                pointSize: Self.artworkSize
+            )
+            .frame(width: Self.artworkSize, height: Self.artworkSize)
+            .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
 
             RoundedRectangle(cornerRadius: ThemeRadius.artwork)
                 .fill(Theme.scrim)
@@ -128,7 +131,7 @@ struct QueueItemRow: View {
 
     /// Holds the hover the section normally owns.
     private struct QueueItemRowPreview: View {
-        let item: QueueItem
+        let item: BridgeQueueEntry
         @State
         var isHovered: Bool
 
@@ -149,12 +152,12 @@ struct QueueItemRow: View {
     // The environment sits on the #Preview root because the missing-environment
     // audit reads only the preview closure.
     #Preview("Resting") {
-        QueueItemRowPreview(item: PreviewData.queueItems[0], isHovered: false)
+        QueueItemRowPreview(item: PreviewData.queueEntries[0], isHovered: false)
             .environment(ImageStore.stub())
     }
 
     #Preview("Hovered") {
-        QueueItemRowPreview(item: PreviewData.queueItems[1], isHovered: true)
+        QueueItemRowPreview(item: PreviewData.queueEntries[1], isHovered: true)
             .environment(ImageStore.stub())
     }
 #endif

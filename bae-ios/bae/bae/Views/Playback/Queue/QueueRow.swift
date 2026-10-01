@@ -3,22 +3,22 @@ import SwiftUI
 
 /// One "Up Next" row in the queue sheet and the expanded now-playing view.
 struct QueueRow: View {
-    let item: QueueItem
+    let item: BridgeQueueEntry
 
     var body: some View {
         HStack(spacing: ThemeSpace.group) {
-            ImageView(imageRef: item.coverImage, pointSize: ThemeSize.rowArtwork)
+            ImageView(imageRef: item.display.coverImage, pointSize: ThemeSize.rowArtwork)
                 .frame(width: ThemeSize.rowArtwork, height: ThemeSize.rowArtwork)
                 .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.artwork))
             VStack(alignment: .leading, spacing: ThemeSpace.line) {
-                Text(item.title)
+                Text(item.display.title)
                     .themeText(.rowTitle)
                     .lineLimit(1)
-                Text(item.artistNames)
+                Text(item.display.artistNames)
                     .themeText(.detail)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
-                Text(item.albumTitle)
+                Text(item.display.albumTitle)
                     .themeText(.detail)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -65,7 +65,7 @@ struct QueueRowPlaceholder: View {
 #if DEBUG
 #Preview {
     List {
-        QueueRow(item: PreviewData.queueItem)
+        QueueRow(item: PreviewData.queueEntries[0])
         QueueRowPlaceholder()
     }
     .previewStores()

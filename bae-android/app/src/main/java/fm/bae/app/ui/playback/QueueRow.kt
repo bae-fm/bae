@@ -34,7 +34,6 @@ import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LocalImageStore
 import fm.bae.app.durationClockLabel
 import fm.bae.app.playback.NowPlaying
-import fm.bae.app.playback.QueueItem
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.appearance.ThemeIcon
@@ -44,6 +43,8 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CoverImage
 import uniffi.bae_bridge.BridgeDurationClock
+import uniffi.bae_bridge.BridgeQueueEntry
+import uniffi.bae_bridge.BridgeTrackDisplay
 
 // The queue's row renderers; QueueScreen.kt lays them out.
 
@@ -82,7 +83,7 @@ internal fun NowPlayingRow(np: NowPlaying) {
 
 @Composable
 internal fun QueueRow(
-    item: QueueItem,
+    item: BridgeQueueEntry,
     dragHandleModifier: Modifier,
     onClick: () -> Unit,
     onRemove: () -> Unit,
@@ -96,7 +97,7 @@ internal fun QueueRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         CoverImage(
-            cover = item.coverImage,
+            cover = item.display.coverImage,
             cornerRadius = ThemeRadius.artwork,
             iconPadding = ThemeSpace.group,
             modifier = Modifier.size(ThemeSize.rowArtwork),
@@ -176,23 +177,23 @@ internal fun QueueRowPlaceholder() {
 
 @Composable
 private fun QueueItemText(
-    item: QueueItem,
+    item: BridgeQueueEntry,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier) {
         Text(
-            text = item.title,
+            text = item.display.title,
             style = ThemeText.rowTitle.style,
             maxLines = 1,
         )
         Text(
-            text = item.artist,
+            text = item.display.artistNames,
             style = ThemeText.detail.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
         )
         Text(
-            text = item.albumTitle,
+            text = item.display.albumTitle,
             style = ThemeText.detail.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
@@ -209,16 +210,21 @@ private val previewNowPlaying =
         sidePausePrompt = null,
     )
 
-private val previewQueueItem =
-    QueueItem(
+private val previewQueueEntry =
+    BridgeQueueEntry(
         entryId = "entry-1",
         trackId = "trk-1",
-        title = "Track Title",
-        artist = "Artist Name",
-        albumTitle = "Album Title",
+        display =
+            BridgeTrackDisplay(
+                title = "Track Title",
+                artistNames = "Artist Name",
+                albumId = "alb-1",
+                releaseId = "rel-1",
+                albumTitle = "Album Title",
+                coverImage = PreviewData.imageRef("rel-1"),
+            ),
         // Built directly because previews can't call the native bridge.
         durationClock = BridgeDurationClock(negative = false, hours = null, minutes = 3u, seconds = 34u),
-        coverImage = PreviewData.imageRef("rel-1"),
     )
 
 @Preview(showBackground = true)
@@ -237,7 +243,7 @@ private fun QueueRowPreview() {
     BaeTheme {
         CompositionLocalProvider(LocalImageStore provides ImageStore.unresolved()) {
             QueueRow(
-                item = previewQueueItem,
+                item = previewQueueEntry,
                 dragHandleModifier = Modifier,
                 onClick = {},
                 onRemove = {},

@@ -22,14 +22,14 @@ public class PlaybackStore {
     public var isMuted: Bool = false
     public var repeatMode: BridgeRepeatMode = .off
     /// The manual lane ("Up Next") — explicitly enqueued tracks, drained first.
-    public var manualQueue: [QueueItem] = []
+    public var manualQueue: [BridgeQueueEntry] = []
     /// The release being played from, or `nil`. `context.upcoming` holds only
     /// the first window; read any index through `upcomingItem(at:)`.
     public var queueContext: QueuePlaybackContext?
     /// Context-tail entries read past the initial window, keyed by their
     /// absolute index in the tail: the latest upcoming value whose revision
     /// matches `revision`, and empty while none does.
-    public var pagedUpcoming: [Int: QueueItem] = [:]
+    public var pagedUpcoming: [Int: BridgeQueueEntry] = [:]
     /// The queue revision the current `manualQueue`/`queueContext` were resolved
     /// from. Upcoming values sliced from any other revision are not shown.
     @ObservationIgnored
@@ -286,7 +286,7 @@ extension PlaybackStore {
             )
             return
         }
-        manualQueue = snapshot.manual.map(QueueItem.init(bridge:))
+        manualQueue = snapshot.manual
         queueContext = snapshot.context.map(QueuePlaybackContext.init(bridge:))
         if snapshot.revision > revision {
             revision = snapshot.revision
@@ -296,7 +296,7 @@ extension PlaybackStore {
 
     /// The upcoming item at `index`, or `nil` when it is not loaded or past
     /// the end.
-    public func upcomingItem(at index: Int) -> QueueItem? {
+    public func upcomingItem(at index: Int) -> BridgeQueueEntry? {
         guard let context = queueContext else {
             return nil
         }
@@ -398,10 +398,10 @@ extension PlaybackStore {
             pagedUpcoming = [:]
             return
         }
-        var items: [Int: QueueItem] = [:]
+        var items: [Int: BridgeQueueEntry] = [:]
         for window in latestUpcoming.windows {
             for (i, entry) in window.entries.enumerated() {
-                items[Int(window.window.offset) + i] = QueueItem(bridge: entry)
+                items[Int(window.window.offset) + i] = entry
             }
         }
         pagedUpcoming = items

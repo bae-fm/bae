@@ -217,7 +217,7 @@ async fn queue_items_order_track_artist_names_inside_the_aggregate() {
 
     assert_eq!(items.len(), 1);
     assert_eq!(
-        items[0].artist_names,
+        items[0].display.artist_names,
         "Track Artist Name First, Track Artist Name Second"
     );
 }

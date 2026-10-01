@@ -26,7 +26,7 @@ private struct ActiveQueueDrag {
     /// The row that was grabbed. The floating copy draws this value, never a
     /// lookup by index: the canonical index the row started at belongs to
     /// whichever row moves into it the moment core echoes a reorder.
-    let item: QueueItem
+    let item: BridgeQueueEntry
     /// The dragged row's canonical index in its lane at drag start (display
     /// order equals canonical order at that moment — no permutation is live).
     let startSlot: Int
@@ -44,7 +44,7 @@ private struct ActiveQueueDrag {
 private struct SettlingQueueRow {
     let lane: QueueLaneID
     /// The released row, as grabbed — see `ActiveQueueDrag.item`.
-    let item: QueueItem
+    let item: BridgeQueueEntry
     /// The row's canonical index at grab time: what a held reorder's order
     /// names it by.
     let startSlot: Int
@@ -56,7 +56,7 @@ private struct SettlingQueueRow {
 /// What the source lane draws as the floating copy: the grabbed row itself
 /// and the top of the copy relative to the lane's rows region.
 struct QueueFloatingRow: Equatable {
-    let item: QueueItem
+    let item: BridgeQueueEntry
     let top: CGFloat
 }
 
@@ -134,7 +134,7 @@ final class QueueDragCoordinator {
 
     func begin(
         lane: QueueLaneID,
-        item: QueueItem,
+        item: BridgeQueueEntry,
         startSlot: Int,
         location: CGPoint
     ) {

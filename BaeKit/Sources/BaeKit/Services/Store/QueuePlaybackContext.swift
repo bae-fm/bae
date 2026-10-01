@@ -1,34 +1,16 @@
 import Foundation
 
-public struct QueueItem: Identifiable, Equatable, Sendable {
-    /// Per-instance id: the same track queued twice yields two items with two
-    /// ids, so the row identity is stable and unique even for duplicates.
-    public let entryId: String
-    /// The underlying track — what a cross-lane drag enqueues (a context row
-    /// dropped into "Up Next" inserts the track; entry ids only ever address
-    /// their own lane's instance).
-    public let trackId: String
-    public let title: String
-    public let artistNames: String
-    public let durationClock: BridgeDurationClock?
-    public let albumTitle: String
-    public let coverImage: BridgeImageRef?
-
+/// A queue row. `entryId` is per-instance: the same track queued twice yields
+/// two entries with two ids, so the row identity is stable and unique even for
+/// duplicates. `trackId` is what a cross-lane drag enqueues (a context row
+/// dropped into "Up Next" inserts the track; entry ids only ever address their
+/// own lane's instance).
+extension BridgeQueueEntry: Identifiable {
     public var id: String {
         entryId
     }
 
     public var durationLabel: String { DurationClock.label(durationClock) }
-
-    public init(bridge: BridgeQueueEntry) {
-        entryId = bridge.entryId
-        trackId = bridge.trackId
-        title = bridge.title
-        artistNames = bridge.artistNames
-        durationClock = bridge.durationClock
-        albumTitle = bridge.albumTitle
-        coverImage = bridge.coverImage
-    }
 }
 
 /// The context lane (what the queue is playing from): its kind (a release vs the
@@ -49,14 +31,14 @@ public struct QueuePlaybackContext: Equatable, Sendable {
     /// whole library. The UI appends it to the localized section label.
     public let sourceTitle: String?
     public let shuffled: Bool
-    public let upcoming: [QueueItem]
+    public let upcoming: [BridgeQueueEntry]
     public let upcomingTotal: Int
 
     public init(bridge: BridgePlaybackContext) {
         kind = bridge.kind
         sourceTitle = bridge.sourceTitle
         shuffled = bridge.shuffled
-        upcoming = bridge.upcoming.map(QueueItem.init(bridge:))
+        upcoming = bridge.upcoming
         upcomingTotal = Int(bridge.upcomingTotal)
     }
 
@@ -64,7 +46,7 @@ public struct QueuePlaybackContext: Equatable, Sendable {
         kind: BridgePlaybackSourceKind,
         sourceTitle: String?,
         shuffled: Bool,
-        upcoming: [QueueItem],
+        upcoming: [BridgeQueueEntry],
         upcomingTotal: Int
     ) {
         self.kind = kind

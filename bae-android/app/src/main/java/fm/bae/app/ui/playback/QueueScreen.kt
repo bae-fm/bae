@@ -37,7 +37,6 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
-import fm.bae.app.playback.QueueItem
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
@@ -47,6 +46,7 @@ import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.ReorderableLazyListState
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import uniffi.bae_bridge.BridgePlaybackSourceKind
+import uniffi.bae_bridge.BridgeQueueEntry
 
 private const val TAG = "bae.QueueScreen"
 private val logger = BaeLogger(TAG)
@@ -98,8 +98,8 @@ fun QueueScreen(
 
 /** The optimistic order of the two lanes, each reordered on its own; a null is a context row not yet loaded. */
 internal class QueueOrder {
-    val manual = mutableStateListOf<QueueItem?>()
-    val context = mutableStateListOf<QueueItem?>()
+    val manual = mutableStateListOf<BridgeQueueEntry?>()
+    val context = mutableStateListOf<BridgeQueueEntry?>()
     var contextShuffled by mutableStateOf(false)
 
     /** What the context plays from, which labels its section; null when nothing plays from a context. */
@@ -112,7 +112,7 @@ internal class QueueOrder {
         get() = manual.isEmpty() && context.isEmpty()
 
     /** The lane (manual or context) holding the entry id, or null if neither. */
-    fun laneOf(entryId: String): SnapshotStateList<QueueItem?>? =
+    fun laneOf(entryId: String): SnapshotStateList<BridgeQueueEntry?>? =
         when {
             manual.any { it?.entryId == entryId } -> manual
             context.any { it?.entryId == entryId } -> context
@@ -245,7 +245,7 @@ internal fun LazyListScope.queueContent(
 
 /** One lane's rows for [queueRows]; [loadRange] fetches unloaded rows and is null for the manual lane. */
 private data class QueueLane(
-    val items: List<QueueItem?>,
+    val items: List<BridgeQueueEntry?>,
     val revision: ULong,
     val loadRange: (suspend (offset: Int, limit: Int) -> Unit)?,
 )

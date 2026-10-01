@@ -10,7 +10,7 @@ import Testing
 @Suite("Queue drag coordinator")
 struct QueueDragCoordinatorTests {
     private static let pitch = QueueSection.rowHeight
-    private static let items = PreviewData.queueItems
+    private static let items = PreviewData.queueEntries
 
     /// Five manual-lane rows starting at y = 100 in pane space, and five
     /// context-lane rows below them.

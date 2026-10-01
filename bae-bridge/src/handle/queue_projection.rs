@@ -376,20 +376,14 @@ impl crate::types::BridgeQueueEntry {
         let bae_core::queue::QueueItem {
             entry_id,
             track_id,
-            title,
-            artist_names,
+            display,
             duration_ms,
-            album_title,
-            cover_image,
         } = i;
         crate::types::BridgeQueueEntry {
             entry_id,
             track_id,
-            title,
-            artist_names,
+            display: crate::types::BridgeTrackDisplay::from_core(display),
             duration_clock: crate::types::BridgeDurationClock::from_millis(duration_ms),
-            album_title,
-            cover_image: cover_image.map(crate::types::BridgeImageRef::from_core),
         }
     }
 }

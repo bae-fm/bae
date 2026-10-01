@@ -179,17 +179,17 @@ enum PreviewData {
             BridgeQueueEntry(
                 entryId: "e-\(index)",
                 trackId: "t-\(index)",
-                title: "Track Title \(index)",
-                artistNames: "Artist Name 1",
-                durationClock: bridgeClock(ms: Int64(180_000 + index * 15_000)),
-                albumTitle: "Album Title 1",
-                coverImage: nil
+                display: BridgeTrackDisplay(
+                    title: "Track Title \(index)",
+                    artistNames: "Artist Name 1",
+                    albumId: "a-1",
+                    releaseId: "r-1",
+                    albumTitle: "Album Title 1",
+                    coverImage: nil
+                ),
+                durationClock: bridgeClock(ms: Int64(180_000 + index * 15_000))
             )
         }
-
-    static var queueItem: QueueItem {
-        QueueItem(bridge: queueEntries[0])
-    }
 
     @MainActor
     static let nowPlayingTrack = BridgeNowPlayingTrack(
