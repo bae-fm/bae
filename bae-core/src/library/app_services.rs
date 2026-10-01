@@ -348,6 +348,8 @@ impl AppServices {
     delegate_async!(manager, get_artist_detail => get_artist_detail(artist_id: &str) -> Result<Option<crate::album_detail::ArtistDetail>, crate::library::LibraryError>);
     delegate_async!(manager, search_artists => search_artists(query: &crate::library::LibrarySearchQuery) -> Result<Vec<crate::album_detail::ArtistSearchResult>, crate::library::LibraryError>);
     delegate_async!(manager, get_album_index => get_album_index(sort: &[crate::db::AlbumSortCriterion], album_id: &str, group_by_artist: bool) -> Result<Option<u64>, crate::library::LibraryError>);
+    #[cfg(any(test, feature = "test-utils", debug_assertions))]
+    delegate_async!(manager, write_fixture => write_fixture(fixture: &crate::library::LibraryFixture) -> Result<(), crate::library::LibraryFixtureError>);
     delegate_async!(manager, find_album_detail => find_album_detail(album_id: &str) -> Result<Option<crate::album_detail::AlbumDetail>, crate::library::LibraryError>);
     delegate_async!(manager, find_release_detail => find_release_detail(release_id: &str) -> Result<Option<crate::album_detail::ReleaseDetail>, crate::library::LibraryError>);
     delegate_async!(manager, get_albums => get_albums(sort: &[crate::db::AlbumSortCriterion]) -> Result<Vec<crate::db::DbAlbum>, crate::library::LibraryError>);

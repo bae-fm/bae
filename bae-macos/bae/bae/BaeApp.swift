@@ -58,6 +58,14 @@ enum AppRuntime: Equatable {
             environment["BAE_UI_TESTING_CREATE_LIBRARY"] == "1"
         }
 
+        /// The JSON file naming the albums a UI test has the opened library
+        /// hold, which bae-core's `LibraryFixture` reads.
+        static func libraryFixtureForUITesting(
+            environment: [String: String]
+        ) -> String? {
+            environment["BAE_UI_TESTING_LIBRARY_FIXTURE"]
+        }
+
         /// The folder a UI test has the opened library watch.
         static func watchedFolderForUITesting(
             environment: [String: String]
@@ -686,6 +694,11 @@ extension AppDelegate {
     private func landOpenedService(_ service: AppService) {
         appService = service
         #if DEBUG
+            if let fixture = AppRuntime.libraryFixtureForUITesting(
+                environment: baeAppProcessEnvironment
+            ) {
+                service.writeLibraryFixtureForUITesting(fixture)
+            }
             if let folder = AppRuntime.watchedFolderForUITesting(
                 environment: baeAppProcessEnvironment
             ) {

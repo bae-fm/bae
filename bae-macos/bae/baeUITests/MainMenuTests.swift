@@ -21,23 +21,7 @@ final class MainMenuTests: XCTestCase {
 
     @MainActor
     func testCloseLibraryCommandReturnsToTheWelcomeChooser() throws {
-        let testHome = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString, isDirectory: true)
-        try FileManager.default.createDirectory(
-            at: testHome,
-            withIntermediateDirectories: true
-        )
-        addTeardownBlock {
-            try FileManager.default.removeItem(at: testHome)
-        }
-
-        let app = XCUIApplication()
-        app.launchEnvironment["HOME"] = testHome.path
-        app.launchEnvironment["BAE_UI_TESTING"] = "1"
-        app.launchEnvironment["BAE_UI_TESTING_CREATE_LIBRARY"] = "1"
-        app.launch()
-        app.activate()
-        addTeardownBlock { app.terminate() }
+        let app = try launchApp()
 
         // Launch presents the primary window.
         let primaryWindow = app.windows.firstMatch
@@ -88,23 +72,7 @@ final class MainMenuTests: XCTestCase {
         file: StaticString = #filePath,
         line: UInt = #line
     ) throws {
-        let testHome = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString, isDirectory: true)
-        try FileManager.default.createDirectory(
-            at: testHome,
-            withIntermediateDirectories: true
-        )
-        addTeardownBlock {
-            try FileManager.default.removeItem(at: testHome)
-        }
-
-        let app = XCUIApplication()
-        app.launchEnvironment["HOME"] = testHome.path
-        app.launchEnvironment["BAE_UI_TESTING"] = "1"
-        app.launchEnvironment["BAE_UI_TESTING_CREATE_LIBRARY"] = "1"
-        app.launch()
-        app.activate()
-        addTeardownBlock { app.terminate() }
+        let app = try launchApp()
 
         // Launch presents the primary window.
         let primaryWindow = app.windows.firstMatch

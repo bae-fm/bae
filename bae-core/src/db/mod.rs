@@ -2,6 +2,8 @@ mod client;
 pub mod identity;
 mod models;
 pub(crate) use client::ArtistCredits;
+#[cfg(any(test, feature = "test-utils", debug_assertions))]
+pub(crate) use client::SeededAlbum;
 pub use client::{
     AlbumBrowseProjection, AlbumDetailProjection, AlbumSelectionProjection, ArtistBrowseProjection,
     ArtistDetailProjection, ComposerBrowseProjection, ComposerDetailProjection,

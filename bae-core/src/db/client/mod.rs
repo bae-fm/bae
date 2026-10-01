@@ -89,6 +89,10 @@ pub(crate) use release::{ImportRows, NewArtistImages};
 mod release_deletion;
 pub use release_deletion::ReleaseDeletion;
 mod release_projection;
+#[cfg(any(test, feature = "test-utils", debug_assertions))]
+mod seeded_albums;
+#[cfg(any(test, feature = "test-utils", debug_assertions))]
+pub(crate) use seeded_albums::SeededAlbum;
 #[cfg(any(test, feature = "test-utils"))]
 mod test_capabilities;
 mod track;

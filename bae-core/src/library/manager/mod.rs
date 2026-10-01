@@ -63,6 +63,10 @@ mod coven_blobs;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod discogs;
 mod error_category;
+#[cfg(any(test, feature = "test-utils", debug_assertions))]
+mod fixture;
+#[cfg(any(test, feature = "test-utils", debug_assertions))]
+pub use fixture::{FixtureAlbum, LibraryFixture, LibraryFixtureError};
 /// Desktop-only, under the same predicate as the rest of the export surface (the
 /// queue field below, and `library::export`). Exporting writes a directory tree
 /// next to the user's chosen folder — a hidden staging sibling, a marker file, a

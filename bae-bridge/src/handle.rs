@@ -134,6 +134,8 @@ mod service_status;
 mod storage_browse;
 mod sync_status;
 mod ui_events;
+#[cfg(debug_assertions)]
+mod ui_testing;
 
 /// Owns the runtime every task of an open library runs on.
 /// [`AppHandle::close_library`] runs its last work on it and then drops it,

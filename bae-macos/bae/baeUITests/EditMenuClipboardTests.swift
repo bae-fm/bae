@@ -6,7 +6,9 @@ import XCTest
 final class EditMenuClipboardTests: XCTestCase {
     @MainActor
     func testClipboardItemsFollowWhatTheFocusedTextCanDo() throws {
-        let app = try launch()
+        let app = try launchApp()
+        // Launch presents the primary window.
+        XCTAssertTrue(app.windows.firstMatch.waitForExistence(timeout: 20))
         let edit = app.menuBars.menuBarItems["Edit"]
         XCTAssertTrue(edit.waitForExistence(timeout: 20))
         // Nothing on the clipboard, so nothing can be pasted.
@@ -58,29 +60,5 @@ final class EditMenuClipboardTests: XCTestCase {
         }
         app.typeKey(.escape, modifierFlags: [])
         return states
-    }
-
-    /// Launch the app on a library of its own.
-    @MainActor
-    private func launch() throws -> XCUIApplication {
-        let home = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString, isDirectory: true)
-        try FileManager.default.createDirectory(
-            at: home,
-            withIntermediateDirectories: true
-        )
-        addTeardownBlock {
-            try FileManager.default.removeItem(at: home)
-        }
-        let app = XCUIApplication()
-        app.launchEnvironment["HOME"] = home.path
-        app.launchEnvironment["BAE_UI_TESTING"] = "1"
-        app.launchEnvironment["BAE_UI_TESTING_CREATE_LIBRARY"] = "1"
-        app.launch()
-        app.activate()
-        addTeardownBlock { app.terminate() }
-        // Launch presents the primary window.
-        XCTAssertTrue(app.windows.firstMatch.waitForExistence(timeout: 20))
-        return app
     }
 }
