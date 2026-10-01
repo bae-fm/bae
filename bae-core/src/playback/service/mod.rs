@@ -54,6 +54,7 @@ use crate::playback::progress::{
 use crate::playback::source;
 use crate::playback::source::{TrackCrossing, TrackFmt};
 use crate::playback::sparse_buffer::{create_sparse_buffer, SharedSparseBuffer};
+use crate::playback::timeline::{StreamPosition, TrackTime, TrackTimeline};
 use crate::playback::{PlayingTrack, TrackStream};
 use crate::pressing::PhysicalMedium;
 use std::collections::{HashMap, HashSet};
@@ -110,6 +111,10 @@ struct CurrentTrack {
     prepared: PlaybackPreparedTrack,
     decoder: TrackDecoder,
     phase: TrackPhase,
+    /// Where the track's stream has played to: where its load started, then
+    /// each position tick (a remote device's reported position, when playing
+    /// on one).
+    position: StreamPosition,
 }
 
 #[derive(Clone, Copy)]
@@ -137,20 +142,14 @@ pub(crate) fn log_streaming_decode_failure(context: &str, error: DecodeError) ->
     }
 }
 
-/// The INDEX 01-to-end duration stored for the track and reported to the UI.
-fn track_duration_ms(prepared: &PlaybackPreparedTrack) -> u64 {
-    prepared.duration.as_millis() as u64
-}
-
 impl PlaybackPreparedTrack {
-    /// The audio callback's formatting for this track, with `position_offset`
-    /// the in-track time the stream starts at.
-    fn track_fmt(&self, position_offset: std::time::Duration) -> TrackFmt {
+    /// The audio callback's formatting for this track, decoded from
+    /// `starts_at` in its stream.
+    fn track_fmt(&self, starts_at: StreamPosition) -> TrackFmt {
         TrackFmt {
             track_id: self.track_id.clone(),
-            duration_ms: self.duration.as_millis() as u64,
-            pregap_ms: self.total_pregap_ms(),
-            position_offset,
+            timeline: self.timeline,
+            starts_at,
             replay_gain_linear: self.replay_gain_linear,
         }
     }
@@ -199,10 +198,6 @@ impl PlaybackPreparedTrack {
         )
     }
 
-    fn total_pregap_ms(&self) -> Option<i64> {
-        self.pregap_ms.or(self.generated_pregap_ms)
-    }
-
     /// Whether this track reads its bytes from the buffer with this id.
     fn reads_buffer(&self, buffer_id: u64) -> bool {
         self.segments
@@ -235,14 +230,12 @@ struct PlaybackPreparedTrack {
     /// In Hz.
     sample_rate: u32,
     channels: u32,
-    /// Pregap the source audio already contains (a CUE/FLAC track).
-    pregap_ms: Option<i64>,
-    /// Silent pregap to generate, from a CUE `PREGAP` directive.
-    generated_pregap_ms: Option<i64>,
-    /// The same generated pregap in frames, which a natural start decodes as
-    /// silence before the first stored sample.
+    /// The silent pregap a CUE `PREGAP` directive generates, in frames, which
+    /// a natural start decodes before the first stored sample.
     generated_pregap_frames: u64,
-    duration: std::time::Duration,
+    /// Where the track starts in its stream, past its pregap (stored audio or
+    /// generated silence), and how long it runs from there.
+    timeline: TrackTimeline,
     /// Picks how a track start seeks: by byte to `start_byte`, except APE, which
     /// seeks by sample.
     content_type: crate::util::content_type::ContentType,
@@ -265,11 +258,14 @@ enum PreloadedNextSource {
     Staged,
 }
 
+/// Where a load starts in the track's stream.
 #[derive(Debug, Clone, Copy)]
 pub(super) enum TrackStart {
+    /// A direct selection: at the track's start, INDEX 01, past the pregap.
     Direct,
+    /// A natural transition: at the stream's start, pregap included.
     Natural,
-    Position(std::time::Duration),
+    Position(StreamPosition),
 }
 
 impl TrackStart {
@@ -281,10 +277,10 @@ impl TrackStart {
         }
     }
 
-    fn position(self, pregap_ms: Option<i64>) -> std::time::Duration {
+    fn position(self, timeline: TrackTimeline) -> StreamPosition {
         match self {
-            Self::Natural => std::time::Duration::ZERO,
-            Self::Direct => pregap_seek_position(pregap_ms).unwrap_or(std::time::Duration::ZERO),
+            Self::Natural => StreamPosition::START,
+            Self::Direct => timeline.track_start(),
             Self::Position(position) => position,
         }
     }
@@ -340,10 +336,12 @@ fn finalize_playback_track(
         segments,
         sample_rate: resolved.sample_rate,
         channels: resolved.channels,
-        pregap_ms: resolved.pregap_ms,
-        generated_pregap_ms: resolved.generated_pregap_ms,
         generated_pregap_frames: resolved.generated_pregap_frames(),
-        duration,
+        // A track has a stored pregap or a generated one, never both.
+        timeline: TrackTimeline::new(
+            duration,
+            resolved.pregap_ms.or(resolved.generated_pregap_ms),
+        ),
         content_type: resolved.content_type.clone(),
         replay_gain_linear,
     }
@@ -378,7 +376,6 @@ pub struct PlaybackService {
     /// The queue and the projection stream the UIs read, as one owner: every
     /// mutation goes through `apply`, which republishes.
     playback_queue: PublishedQueue,
-    current_position_shared: Arc<std::sync::Mutex<Option<std::time::Duration>>>,
     /// The device both players open their outputs from: `audio_output` at
     /// startup, the preview's on its first play. Held so a preview uses the
     /// device the service started with (in tests, one with no hardware).
@@ -654,10 +651,4 @@ fn cancels_side_pause_countdown(command: &PlaybackCommand) -> bool {
         #[cfg(any(test, feature = "test-utils"))]
         PlaybackCommand::GetQueueProjection(_) => false,
     }
-}
-
-fn pregap_seek_position(pregap_ms: Option<i64>) -> Option<std::time::Duration> {
-    pregap_ms
-        .filter(|&p| p > 0)
-        .map(|p| std::time::Duration::from_millis(p as u64))
 }

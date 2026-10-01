@@ -6,6 +6,7 @@ use super::RepeatMode;
 use crate::playback::context::{
     permute, ContextSource, ContextStart, PlaybackContext, ShuffleState,
 };
+use crate::playback::timeline::TrackTime;
 use coven::IdRef;
 
 /// Per-instance identity for an enqueued track. Distinct from `track_id`: the
@@ -46,7 +47,7 @@ pub enum NextEntry {
 
 /// How far into the current track, from its start (INDEX 01), Back restarts it
 /// instead of going to the previous track.
-const RESTART_THRESHOLD_MS: i64 = 3_000;
+const RESTART_THRESHOLD: TrackTime = TrackTime::from_millis(3_000);
 
 /// What to do when going to the previous track.
 pub enum PreviousAction {
@@ -699,15 +700,15 @@ impl PlaybackQueue {
         Some(self.play_context_at(next))
     }
 
-    /// Decide the previous action from `track_elapsed_ms`, how far the current
-    /// track has played from its start (INDEX 01), as the player shows it —
-    /// negative while its pregap plays. Under the 3 s threshold, step the
+    /// Decide the previous action from `track_time`, how far the current track
+    /// has played from its start (INDEX 01), as the player shows it — negative
+    /// while its pregap plays. Under the 3 s threshold, step the
     /// context cursor back (multi-step over the traversed order); otherwise
     /// restart the current track. When the current track is a manual item, the
     /// cursor entry is the context track that preceded it, so stepping back
     /// lands there.
-    pub fn previous_action(&mut self, track_elapsed_ms: i64) -> PreviousAction {
-        if track_elapsed_ms >= RESTART_THRESHOLD_MS {
+    pub fn previous_action(&mut self, track_time: TrackTime) -> PreviousAction {
+        if track_time >= RESTART_THRESHOLD {
             return PreviousAction::RestartCurrent;
         }
         let target = {

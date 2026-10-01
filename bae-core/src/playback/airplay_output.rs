@@ -435,14 +435,12 @@ mod tests {
     use crate::playback::create_track_stream_pair;
     use crate::playback::source::{PlaybackSource, TrackFmt};
     use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-    use std::time::Duration;
 
     fn track_fmt() -> TrackFmt {
         TrackFmt {
             track_id: "t".to_string(),
-            duration_ms: 1_000,
-            pregap_ms: None,
-            position_offset: Duration::ZERO,
+            timeline: crate::playback::TrackTimeline::new(std::time::Duration::from_secs(1), None),
+            starts_at: crate::playback::StreamPosition::START,
             replay_gain_linear: 1.0,
         }
     }

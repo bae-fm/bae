@@ -596,7 +596,7 @@ pub(crate) fn log_stream_diagnostic(context: &'static str, event: &AudioEvent) {
         AudioEvent::Starved {
             fmt,
             starved_ms,
-            position_ms,
+            position,
             producer_finished,
             samples_decoded,
             decode_errors,
@@ -606,7 +606,7 @@ pub(crate) fn log_stream_diagnostic(context: &'static str, event: &AudioEvent) {
                 context,
                 track_id = %fmt.track_id,
                 starved_ms,
-                position_ms,
+                stream_position_ms = position.as_millis(),
                 producer_finished,
                 samples_decoded,
                 decode_errors,
@@ -617,7 +617,7 @@ pub(crate) fn log_stream_diagnostic(context: &'static str, event: &AudioEvent) {
         AudioEvent::StarvationEnded {
             fmt,
             starved_ms,
-            position_ms,
+            position,
             samples_decoded,
             decode_errors,
         } => {
@@ -625,7 +625,7 @@ pub(crate) fn log_stream_diagnostic(context: &'static str, event: &AudioEvent) {
                 context,
                 track_id = %fmt.track_id,
                 starved_ms,
-                position_ms,
+                stream_position_ms = position.as_millis(),
                 samples_decoded,
                 decode_errors,
                 "playback source resumed after decoded sample starvation"
@@ -757,9 +757,8 @@ mod tests {
     fn test_fmt() -> TrackFmt {
         TrackFmt {
             track_id: "unit".to_string(),
-            duration_ms: 1_000,
-            pregap_ms: None,
-            position_offset: std::time::Duration::ZERO,
+            timeline: crate::playback::TrackTimeline::new(std::time::Duration::from_secs(1), None),
+            starts_at: crate::playback::StreamPosition::START,
             replay_gain_linear: 1.0,
         }
     }

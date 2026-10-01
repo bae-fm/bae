@@ -7,45 +7,40 @@ impl PlaybackService {
         self.slot.current_track_id()
     }
 
-    /// How far the current track has played from its start (INDEX 01): the
-    /// shared position, which counts from the start of the pregap, less the
-    /// pregap — the time the player shows, negative while the pregap plays.
-    /// `None` without a current track.
-    pub(super) fn current_track_elapsed_ms(&self) -> Option<i64> {
-        let PlaybackSlot::Active(cur) = &self.slot else {
-            return None;
-        };
-        let raw_position = self.current_position_shared.lock().unwrap();
-        let (elapsed_ms, _) = crate::playback::format::adjust_for_pregap(
-            raw_position.unwrap_or_default().as_millis() as u64,
-            track_duration_ms(&cur.prepared),
-            cur.prepared.total_pregap_ms(),
-        );
-        Some(elapsed_ms)
+    /// The current track and where its stream has played to; `None` without
+    /// a current track.
+    pub(super) fn current_track_position(&self) -> Option<(String, StreamPosition)> {
+        match &self.slot {
+            PlaybackSlot::Active(cur) => Some((cur.prepared.track_id.clone(), cur.position)),
+            _ => None,
+        }
     }
 
-    /// Compute the display values for `position_ms` on the current track and
+    /// How far the current track has played from its start (INDEX 01): the
+    /// time the player shows, negative while the pregap plays. `None` without a
+    /// current track.
+    pub(super) fn current_track_time(&self) -> Option<TrackTime> {
+        match &self.slot {
+            PlaybackSlot::Active(cur) => Some(cur.prepared.timeline.track_time(cur.position)),
+            _ => None,
+        }
+    }
+
+    /// Compute the display values for `position` on the current track and
     /// emit a `Seeked` progress event. The single emitter for non-tick position
     /// updates (seek, restore, pause/resume refresh).
-    pub(super) fn emit_position_display(&self, position_ms: u64, track_id: String) {
+    pub(super) fn emit_position_display(&self, position: StreamPosition, track_id: String) {
         let PlaybackSlot::Active(cur) = &self.slot else {
             return;
         };
-        let prepared = &cur.prepared;
-        let duration_ms = track_duration_ms(prepared);
-        let pregap_ms = prepared.total_pregap_ms();
-        let (track_position_ms, duration_ms) =
-            crate::playback::format::adjust_for_pregap(position_ms, duration_ms, pregap_ms);
-        let progress =
-            crate::playback::format::compute_progress(position_ms, duration_ms, pregap_ms);
-
+        let timeline = cur.prepared.timeline;
         emit_progress(
             &self.progress_tx,
             PlaybackProgress::Seeked {
-                position_ms: track_position_ms,
-                duration_ms,
+                position_ms: timeline.track_time(position).as_millis(),
+                duration_ms: timeline.duration_ms(),
                 track_id,
-                progress,
+                progress: timeline.progress(position),
             },
         );
     }
@@ -307,8 +302,8 @@ impl PlaybackService {
             .map(|s| s.to_string())
         {
             let start = parsed
-                .position_ms
-                .map(|pos| TrackStart::Position(std::time::Duration::from_millis(pos)))
+                .position
+                .map(TrackStart::Position)
                 .unwrap_or(TrackStart::Direct);
             // Paused target: `play_track` ships no `TrackStarted`, so the
             // transition here is unused — a manual restore into pause.
@@ -322,7 +317,7 @@ impl PlaybackService {
 
             // Emit the restored position as a `Seeked` so subscribers position their
             // display. No saved position means the track's start.
-            let restored_pos = parsed.position_ms.unwrap_or(0);
+            let restored_pos = parsed.position.unwrap_or(StreamPosition::START);
             self.emit_position_display(restored_pos, track_id);
         }
 
@@ -425,8 +420,10 @@ impl PlaybackService {
             source: source_to_str(&ctx.source),
             shuffled: ctx.shuffled,
         });
-        let position_ms =
-            (*self.current_position_shared.lock().unwrap()).map(|d| d.as_millis() as i64);
+        let position_ms = match &self.slot {
+            PlaybackSlot::Active(cur) => Some(cur.position.as_millis() as i64),
+            _ => None,
+        };
         let row = DbPlaybackState {
             context,
             manual: serde_json::to_string(&snap.manual)

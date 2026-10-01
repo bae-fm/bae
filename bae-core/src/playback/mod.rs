@@ -8,7 +8,6 @@ mod context;
 pub mod cpal_output;
 pub mod data_source;
 mod error;
-pub mod format;
 mod now_playing;
 mod persisted;
 mod preview_player;
@@ -20,6 +19,7 @@ pub mod service;
 pub mod source;
 pub mod sparse_buffer;
 pub mod stream_pipeline;
+pub mod timeline;
 pub mod track_stream;
 // Whole-release passes (import loudness, release saves) are desktop-only.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -61,6 +61,7 @@ pub use service::{
 };
 pub use source::{TrackCrossing, TrackFmt};
 pub use sparse_buffer::SharedSparseBuffer;
+pub use timeline::{StreamPosition, TrackTime, TrackTimeline};
 pub use track_stream::{create_track_stream_pair, TrackSink, TrackStream};
 
 #[cfg(test)]

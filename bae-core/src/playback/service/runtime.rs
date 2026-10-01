@@ -76,7 +76,7 @@ impl PlaybackService {
         phase: TrackPhase,
         outgoing_decoder: Option<(TrackDecoder, Vec<SharedSparseBuffer>)>,
     ) -> Result<(), PlaybackError> {
-        let position_offset = fmt.position_offset;
+        let starts_at = fmt.starts_at;
         let track_id = prepared.track_id.clone();
         let sample_rate = prepared.sample_rate;
         let channels = prepared.channels;
@@ -109,8 +109,6 @@ impl PlaybackService {
             return Err(error);
         }
 
-        *self.current_position_shared.lock().unwrap() = Some(position_offset);
-
         let command_tx = self.command_tx.clone();
         tokio::spawn(async move {
             match ready.await {
@@ -138,6 +136,7 @@ impl PlaybackService {
                 cancel_token,
             },
             phase,
+            starts_at,
         );
         Ok(())
     }
@@ -356,9 +355,9 @@ impl PlaybackService {
     /// intent to the track we land on (a side-pause collapses to a plain manual
     /// pause across the track change).
     pub(super) async fn handle_previous(&mut self) {
-        let (Some(current_track_id), Some(track_elapsed_ms)) = (
+        let (Some(current_track_id), Some(track_time)) = (
             self.current_track_id().map(str::to_string),
-            self.current_track_elapsed_ms(),
+            self.current_track_time(),
         ) else {
             debug!("Previous command received with no current track; ignoring");
             return;
@@ -367,7 +366,7 @@ impl PlaybackService {
 
         match self
             .playback_queue
-            .apply(|queue| queue.previous_action(track_elapsed_ms))
+            .apply(|queue| queue.previous_action(track_time))
         {
             PreviousAction::PlayPrevious(previous_track_id) => {
                 info!("Going to previous track: {}", previous_track_id);
@@ -470,7 +469,7 @@ impl PlaybackService {
     pub(super) async fn handle_position_event(
         &mut self,
         fmt: Arc<TrackFmt>,
-        pos: std::time::Duration,
+        mut position: StreamPosition,
     ) {
         // A dead AirPlay receiver surfaces here — the audio thread keeps ticking
         // while its sends fail, so this regular path catches the failure and ends
@@ -483,27 +482,25 @@ impl PlaybackService {
 
         // Samples are flowing, so any starvation episode is over.
         self.reset_starvation_episode();
-        let mut actual_pos = fmt.position_offset + pos;
         // On AirPlay the drain has pulled (and the stream sent) audio the receiver
         // has not yet played — the ~2 s buffer ahead. Offset the position back by
         // the receiver latency so the bar matches what is audible, not what has
         // been transmitted.
         if let Some(latency) = self.renderer.airplay_latency() {
-            actual_pos = actual_pos.saturating_sub(latency);
+            position = position.saturating_sub(latency);
         }
-        *self.current_position_shared.lock().unwrap() = Some(actual_pos);
-        let raw_pos_ms = actual_pos.as_millis() as u64;
-        let progress =
-            crate::playback::format::compute_progress(raw_pos_ms, fmt.duration_ms, fmt.pregap_ms);
-        let (track_position_ms, duration_ms) =
-            crate::playback::format::adjust_for_pregap(raw_pos_ms, fmt.duration_ms, fmt.pregap_ms);
+        if let PlaybackSlot::Active(cur) = &mut self.slot {
+            if cur.prepared.track_id == fmt.track_id {
+                cur.position = position;
+            }
+        }
         emit_progress(
             &self.progress_tx,
             PlaybackProgress::PositionUpdate {
-                position_ms: track_position_ms,
-                duration_ms,
+                position_ms: fmt.timeline.track_time(position).as_millis(),
+                duration_ms: fmt.timeline.duration_ms(),
                 track_id: fmt.track_id.clone(),
-                progress,
+                progress: fmt.timeline.progress(position),
             },
         );
 
@@ -576,7 +573,9 @@ impl PlaybackService {
             log_stream_diagnostic("playback", &event);
         }
         match event {
-            AudioEvent::Position((fmt, pos)) => self.handle_position_event(fmt, pos).await,
+            AudioEvent::Position((fmt, position)) => {
+                self.handle_position_event(fmt, position).await
+            }
             AudioEvent::Completion((fmt, error_count, samples_decoded)) => {
                 self.handle_completion_event(fmt, error_count, samples_decoded);
             }
@@ -584,6 +583,7 @@ impl PlaybackService {
             AudioEvent::Starved {
                 fmt,
                 starved_ms,
+                position,
                 producer_finished,
                 samples_decoded,
                 ..
@@ -591,7 +591,7 @@ impl PlaybackService {
                 // `producer_finished` means a drained track awaiting AutoAdvance,
                 // not the stall this watchdog targets.
                 if !producer_finished {
-                    self.handle_starvation(&fmt.track_id, samples_decoded, starved_ms)
+                    self.handle_starvation(&fmt, position, samples_decoded, starved_ms)
                         .await;
                 }
             }
@@ -742,7 +742,6 @@ impl PlaybackService {
                             command_rx,
                             progress_tx,
                             playback_queue,
-                            current_position_shared: Arc::new(std::sync::Mutex::new(None)),
                             audio_device,
                             audio_output,
                             output: None,
@@ -982,25 +981,8 @@ impl PlaybackService {
                 PlaybackCommand::Previous => {
                     self.handle_previous().await;
                 }
-                PlaybackCommand::Seek(position) => {
-                    self.seek(position).await;
-                }
-                PlaybackCommand::SeekByRatio(ratio) => {
-                    let position_ms = if let PlaybackSlot::Active(cur) = &self.slot {
-                        let prepared = &cur.prepared;
-                        Some(crate::playback::format::position_for_progress(
-                            ratio,
-                            prepared.duration.as_millis() as u64,
-                            prepared.total_pregap_ms(),
-                        ))
-                    } else {
-                        None
-                    };
-                    if let Some(position_ms) = position_ms {
-                        self.seek(std::time::Duration::from_millis(position_ms))
-                            .await;
-                    }
-                }
+                PlaybackCommand::Seek(position) => self.seek(position).await,
+                PlaybackCommand::SeekByRatio(ratio) => self.seek_by_ratio(ratio).await,
                 PlaybackCommand::SetVolume(volume) => {
                     self.set_volume(volume);
                 }

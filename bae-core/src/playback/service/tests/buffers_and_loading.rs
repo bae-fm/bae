@@ -213,15 +213,14 @@ async fn seek_drains_pending_gapless_crossing_before_reading_current_track() {
         prepared: test_prepared_track("finished-track", finished_buffer.clone()),
         decoder: test_decoder(),
         phase: TrackPhase::Playing,
+        position: StreamPosition::START,
     });
-    service.current_position_shared =
-        Arc::new(std::sync::Mutex::new(Some(std::time::Duration::ZERO)));
     service.preloaded_next = Some(test_preloaded_next(
         test_prepared_track("incoming-track", incoming_buffer),
         PreloadedNextSource::Staged,
     ));
 
-    service.seek(std::time::Duration::ZERO).await;
+    service.seek(StreamPosition::from_duration(std::time::Duration::ZERO)).await;
 
     assert_eq!(service.slot.current_track_id().unwrap(), "incoming-track");
     let mut saw_incoming_seek = false;
@@ -260,13 +259,11 @@ async fn seek_after_natural_completion_resumes_audibly() {
         test_prepared_track("finished-track", buffer.clone()),
         TrackPhase::Completed,
     );
-    service.current_position_shared =
-        Arc::new(std::sync::Mutex::new(Some(std::time::Duration::ZERO)));
     service
         .audio_output
         .set_state(crate::playback::audio_output::AudioState::Stopped);
 
-    service.seek(std::time::Duration::from_millis(500)).await;
+    service.seek(StreamPosition::from_duration(std::time::Duration::from_millis(500))).await;
 
     assert_eq!(
         service.audio_output.get_state(),
@@ -300,8 +297,6 @@ async fn next_after_natural_completion_resumes_audibly() {
         test_prepared_track("finished-track", finished_buffer),
         TrackPhase::Completed,
     );
-    service.current_position_shared =
-        Arc::new(std::sync::Mutex::new(Some(std::time::Duration::ZERO)));
     service
         .audio_output
         .set_state(crate::playback::audio_output::AudioState::Stopped);
