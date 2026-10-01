@@ -5,9 +5,8 @@ import AppKit
 /// item it built: the responder the action reaches, and whether that
 /// responder says the item is valid.
 ///
-/// Asked, not observed: `MenuBar` asks again each time AppKit updates its
-/// windows, which it does after every event it handles, so a command reads
-/// what the event before it left.
+/// Asked, not observed: `MenuBar` asks again at the end of every pass of
+/// the main run loop, so a command reads what the work before it left.
 struct FirstResponderActions {
     /// The actions this answers for.
     static let clipboard: [Selector] = [

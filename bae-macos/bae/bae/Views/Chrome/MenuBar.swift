@@ -78,10 +78,6 @@ struct LibraryMenuState: Equatable {
     }
 }
 
-/// Runs work on the main actor once the change that asked for it has landed.
-typealias MenuBarScheduler =
-    @Sendable (@escaping @MainActor @Sendable () -> Void) -> Void
-
 /// The one place the menu bar's commands read anything that changes, held
 /// still while a menu is open.
 ///
@@ -95,7 +91,7 @@ typealias MenuBarScheduler =
 ///
 /// So the commands read `state` and nothing else that changes: it follows
 /// its inputs while no menu is open, holds what the open menu was built from
-/// while one is, and catches up when the last one closes — as AppKit
+/// while one is, and catches up once the last one closes — as AppKit
 /// validates its own items when their menu opens and holds them while it is
 /// open. A command that read a store, a user default or anything else that
 /// moves directly would bring the crash back; its value belongs in
@@ -108,10 +104,18 @@ typealias MenuBarScheduler =
 /// (`MainAppMenuTarget`, `FocusedCommand`), never one rebuilt on each
 /// render.
 ///
-/// `read` gathers the state. It runs again when anything it read under
-/// observation changes, when AppKit updates its windows (after every event
-/// it handles — what the first responder can do is asked, not observed), and
-/// when a user default changes.
+/// `read` gathers the state at the end of every pass of the main run loop,
+/// just before SwiftUI renders what changed in it (SwiftUI's own run loop
+/// observer, order 0, before waiting and on exit). Whatever moved the
+/// inputs — an event to a window, a menu command sent by its key
+/// equivalent, a task landing, a user default — it ran in that pass, so
+/// nothing has to say that it happened: AppKit posts no window update after
+/// a key equivalent, and what the first responder can do is asked, never
+/// observed. Writing ahead of SwiftUI's render means the commands are
+/// rebuilt in the same pass, never left pending for a later pass in which a
+/// menu may have opened. A change made during that render, such as focus
+/// moving to a field a command asked for, is read again after it and wakes
+/// the run loop for one more pass, so it is shown before the loop sleeps.
 @MainActor
 @Observable
 final class MenuBar {
@@ -120,97 +124,155 @@ final class MenuBar {
 
     @ObservationIgnored
     private let read: @MainActor () -> MenuBarState
-    @ObservationIgnored
-    private let schedule: MenuBarScheduler
     /// How many menus are being tracked now; `state` holds while any is.
     @ObservationIgnored
     private var openMenus = 0
-    /// Whether the observable values the last read went through are still
-    /// watched. Observation reports one change and stops, so the next read
-    /// after a change watches them again, and reads before one — on AppKit's
-    /// updates — need not.
     @ObservationIgnored
-    private var watching = false
+    private let subscriptions: Subscriptions
 
+    /// Reads on the passes of `runLoop` in `mode`: the main run loop in
+    /// every common mode — menus are tracked, and modal panels run, in
+    /// their own — unless a test runs one of its own. `wakeUp` asks
+    /// `runLoop` for another pass.
     init(
         notifications: NotificationCenter = .default,
-        schedule: @escaping MenuBarScheduler = { work in
-            Task { @MainActor in work() }
+        runLoop: CFRunLoop = CFRunLoopGetMain(),
+        mode: CFRunLoopMode = .commonModes,
+        wakeUp: @escaping @MainActor (CFRunLoop) -> Void = {
+            CFRunLoopWakeUp($0)
         },
         read: @escaping @MainActor () -> MenuBarState
     ) {
         self.read = read
-        self.schedule = schedule
         state = read()
-        // Never removed: the app holds one of these for its whole life.
-        _ = notifications.addObserver(
-            forName: NSMenu.didBeginTrackingNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.openMenus += 1 }
+        subscriptions = Subscriptions(notifications: notifications)
+        subscriptions.observe(NSMenu.didBeginTrackingNotification) {
+            [weak self] in
+            self?.openMenus += 1
         }
-        _ = notifications.addObserver(
-            forName: NSMenu.didEndTrackingNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.menuClosed() }
+        subscriptions.observe(NSMenu.didEndTrackingNotification) {
+            [weak self] in
+            self?.menuClosed()
         }
-        _ = notifications.addObserver(
-            forName: NSApplication.didUpdateNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.refresh() }
+        let passEnds: CFRunLoopActivity = [.beforeWaiting, .exit]
+        subscriptions.observe(
+            runLoop,
+            mode,
+            passEnds,
+            order: Self.beforeSwiftUIRenders
+        ) { [weak self] in
+            self?.refresh()
         }
-        _ = notifications.addObserver(
-            forName: UserDefaults.didChangeNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.refresh() }
+        subscriptions.observe(
+            runLoop,
+            mode,
+            passEnds,
+            order: Self.afterEverything
+        ) { [weak self] in
+            guard let self, self.isStale else { return }
+            wakeUp(runLoop)
         }
-        refresh()
     }
+
+    /// SwiftUI renders on its run loop observer of order 0.
+    private static let beforeSwiftUIRenders: CFIndex = -1
+    private static let afterEverything: CFIndex = .max
 
     private func menuClosed() {
         if openMenus == 0 {
-            menuBarLogger.warning(
-                "A menu ended tracking that never began; reading the menu bar again"
-            )
+            menuBarLogger.warning("A menu ended tracking that never began")
         }
         else {
             openMenus -= 1
         }
-        refresh()
-    }
-
-    /// Observation reports a change as it is about to be made, so the read
-    /// that shows it waits until it has landed.
-    private func inputChanged() {
-        watching = false
-        refresh()
     }
 
     private func refresh() {
         guard openMenus == 0 else { return }
-        let now: MenuBarState
-        if watching {
-            now = read()
-        }
-        else {
-            watching = true
-            now = withObservationTracking {
-                read()
-            } onChange: { [weak self, schedule] in
-                schedule { self?.inputChanged() }
-            }
-        }
+        let now = read()
         // Only a different value is written, so the commands are asked
         // again only when what they show has changed.
         if now != state {
             state = now
+        }
+    }
+
+    /// Whether the next pass would show something new.
+    private var isStale: Bool {
+        openMenus == 0 && read() != state
+    }
+}
+
+/// The notification and run loop observers a `MenuBar` installed, removed
+/// with it.
+private final class Subscriptions: @unchecked Sendable {
+    private let notifications: NotificationCenter
+    private var tokens: [NSObjectProtocol] = []
+    private var observers: [RunLoopObserver] = []
+
+    private struct RunLoopObserver {
+        let observer: CFRunLoopObserver
+        let runLoop: CFRunLoop
+        let mode: CFRunLoopMode
+    }
+
+    init(notifications: NotificationCenter) {
+        self.notifications = notifications
+    }
+
+    /// Calls `handle` for each `name` posted on the main thread.
+    func observe(
+        _ name: Notification.Name,
+        _ handle: @escaping @MainActor () -> Void
+    ) {
+        tokens.append(
+            notifications.addObserver(
+                forName: name,
+                object: nil,
+                queue: .main
+            ) { _ in
+                MainActor.assumeIsolated(handle)
+            }
+        )
+    }
+
+    /// Calls `handle` at each of `activities` of `runLoop`, a run loop of the
+    /// main thread, in `mode`, among that activity's observers by `order`.
+    func observe(
+        _ runLoop: CFRunLoop,
+        _ mode: CFRunLoopMode,
+        _ activities: CFRunLoopActivity,
+        order: CFIndex,
+        _ handle: @escaping @MainActor () -> Void
+    ) {
+        let observer = CFRunLoopObserverCreateWithHandler(
+            nil,
+            activities.rawValue,
+            true,
+            order
+        ) { _, _ in
+            MainActor.assumeIsolated(handle)
+        }
+        guard let observer else {
+            preconditionFailure("CFRunLoopObserverCreateWithHandler failed")
+        }
+        CFRunLoopAddObserver(runLoop, observer, mode)
+        observers.append(
+            RunLoopObserver(observer: observer, runLoop: runLoop, mode: mode)
+        )
+    }
+
+    deinit {
+        for token in tokens {
+            notifications.removeObserver(token)
+        }
+        for installed in observers {
+            CFRunLoopRemoveObserver(
+                installed.runLoop,
+                installed.observer,
+                installed.mode
+            )
+            CFRunLoopObserverInvalidate(installed.observer)
         }
     }
 }
