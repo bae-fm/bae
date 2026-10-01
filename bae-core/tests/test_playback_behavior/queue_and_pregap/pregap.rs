@@ -257,6 +257,44 @@ async fn seek_lands_at_the_track_time_it_names() {
     .expect("playback goes on from 4 s into the track");
 }
 
+/// A restore with no saved position starts CUE/FLAC track 2 at its start, past
+/// its 2 s pregap, and shows it there: at 0, not 2 s before it.
+#[tokio::test]
+async fn restore_without_a_saved_position_shows_the_track_start() {
+    let (library_manager, imported) = imported_release_setup(
+        create_cue_flac_test_album(),
+        "test",
+        uuid::Uuid::new_v4().to_string(),
+        generate_cue_flac_files,
+    )
+    .await
+    .expect("import the CUE/FLAC album");
+    let state = bae_core::db::DbPlaybackState {
+        context: None,
+        manual: "[]".to_string(),
+        repeat: "off".to_string(),
+        current_track_id: Some(imported.track_ids[1].clone()),
+        position_ms: None,
+        volume: 0.8,
+        is_muted: false,
+    };
+    library_manager.save_playback_state(&state).await.unwrap();
+
+    let (handle, _capture_rx) =
+        start_capture_service(library_manager, tokio::runtime::Handle::current());
+    let mut progress_rx = handle.subscribe_progress();
+    let shown = support::next_matching(&mut progress_rx, PLAY_START_BACKSTOP, |event| {
+        match event {
+            PlaybackProgress::Seeked { position_ms, .. } => Some(position_ms),
+            _ => None,
+        }
+    })
+    .await;
+    assert_eq!(shown, Some(0), "the restored track shows its start");
+
+    handle.stop();
+}
+
 /// Direct play of CUE/FLAC track 2 skips its 2s pregap: the captured audio
 /// matches the XLD reference from INDEX 01.
 #[tokio::test]

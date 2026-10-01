@@ -394,7 +394,7 @@ impl PlaybackService {
                     TrackTransition::Manual,
                 )
                 .await;
-                self.emit_position_display(last_position, track_id);
+                self.emit_position_display();
             }
             None => self.stop().await,
         }
@@ -611,7 +611,7 @@ impl PlaybackService {
                     TrackTransition::Manual,
                 )
                 .await;
-                self.emit_position_display(last_position, track_id);
+                self.emit_position_display();
             }
             None => self.stop().await,
         }
