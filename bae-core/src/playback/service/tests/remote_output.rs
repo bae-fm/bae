@@ -444,6 +444,57 @@ async fn a_cue_image_track_is_served_as_its_own_window() {
     );
 }
 
+/// Ending remote playback resumes locally where the current track is on the
+/// device: after the device finished a track and was loaded with the next, at
+/// the next track's start — not where the finished track last was.
+#[tokio::test]
+async fn ending_remote_playback_after_an_advance_resumes_the_next_track_at_its_start() {
+    const FIRST: &str = "08c7ff07-b56a-4e16-8df6-ae2967fa0806";
+    const SECOND: &str = "08c7fe07-b56a-4c63-8df6-ad2967fa0653";
+    let (_home, mut service, state, _rx) =
+        playing_remote_fixture(&[FIRST, SECOND], StreamPosition::START).await;
+    assert!(wait_until(|| !state.lock().unwrap().loads.is_empty()));
+    for (player_state, position) in [
+        (RendererPlayerState::Playing, Some(std::time::Duration::from_secs(30))),
+        (RendererPlayerState::Finished, None),
+    ] {
+        service
+            .handle_remote_status(RendererSessionStatus {
+                player_state,
+                position,
+                duration: None,
+                volume: Some(1.0),
+                ended: false,
+            })
+            .await;
+    }
+
+    service.handle_stop_remote().await;
+
+    assert_eq!(
+        service.current_track_position(),
+        Some((SECOND.to_string(), StreamPosition::START))
+    );
+}
+
+/// Ending remote playback right after a seek on the device resumes locally at
+/// the seek target, before the device has reported a position from there.
+#[tokio::test]
+async fn ending_remote_playback_after_a_seek_resumes_at_the_seek_target() {
+    const TRACK: &str = "08c7ff07-b56a-4e16-8df6-ae2967fa0806";
+    let (_home, mut service, state, _rx) =
+        playing_remote_fixture(&[TRACK], StreamPosition::from_millis(30_000)).await;
+    assert!(wait_until(|| !state.lock().unwrap().loads.is_empty()));
+    service.seek(StreamPosition::from_millis(45_000)).await;
+
+    service.handle_stop_remote().await;
+
+    assert_eq!(
+        service.current_track_position(),
+        Some((TRACK.to_string(), StreamPosition::from_millis(45_000)))
+    );
+}
+
 /// Pause while remote routes to the device.
 #[tokio::test]
 async fn pause_while_remote_pauses_the_device() {
