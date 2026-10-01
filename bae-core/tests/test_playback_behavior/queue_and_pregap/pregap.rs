@@ -316,3 +316,163 @@ async fn test_direct_play_skips_pregap_cue_flac() {
         compare_count, offset_ms,
     );
 }
+
+/// A three-track CUE album over one FLAC of tones written here. Track 2 has a
+/// 2.5 s pregap of silence (INDEX 00 at 0:05, INDEX 01 188 CD frames later),
+/// track 3 has none. In the file: track 1 spans 0:00–0:05, track 2 0:05–0:17.5
+/// (10 s after its pregap), track 3 0:17.5–0:28. Times past 0:07 are ~7 ms
+/// later than written, since 2.5 s is 187.5 CD frames.
+fn generate_back_album_files(dir: &std::path::Path) {
+    const SAMPLE_RATE: u32 = 44_100;
+    const FILE_SECONDS: f64 = 28.0;
+    // INDEX 00 at 00:05:00 to INDEX 01 at 00:07:38, in 1/75 s CD frames.
+    let cd_frame = |frames: u32| (frames as u64 * SAMPLE_RATE as u64 / 75) as usize;
+    let pregap = cd_frame(5 * 75)..cd_frame(7 * 75 + 38);
+    let frames = (FILE_SECONDS * SAMPLE_RATE as f64) as usize;
+    let samples: Vec<i32> = (0..frames)
+        .flat_map(|frame| {
+            let level = if pregap.contains(&frame) {
+                0.0
+            } else {
+                let t = frame as f64 / SAMPLE_RATE as f64;
+                0.25 * (2.0 * std::f64::consts::PI * 440.0 * t).sin()
+            };
+            let sample = ((level * i16::MAX as f64) as i32) << 16;
+            [sample, sample]
+        })
+        .collect();
+    bae_core::audio_codec::init();
+    let flac = bae_core::audio_codec::encode_i32(
+        bae_core::audio_codec::EncodeFormat::Flac {
+            bits_per_sample: 16,
+        },
+        &samples,
+        SAMPLE_RATE,
+        2,
+    )
+    .expect("encode the Back album FLAC");
+    std::fs::write(dir.join("Back Album.flac"), flac).expect("write the Back album FLAC");
+
+    let cue = "\
+PERFORMER \"Test Artist\"
+TITLE \"Back Album\"
+FILE \"Back Album.flac\" WAVE
+  TRACK 01 AUDIO
+    TITLE \"Back One\"
+    PERFORMER \"Test Artist\"
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE \"Back Two\"
+    PERFORMER \"Test Artist\"
+    INDEX 00 00:05:00
+    INDEX 01 00:07:38
+  TRACK 03 AUDIO
+    TITLE \"Back Three\"
+    PERFORMER \"Test Artist\"
+    INDEX 01 00:17:38
+";
+    std::fs::write(dir.join("Back Album.cue"), cue).expect("write the Back album CUE");
+}
+
+fn create_back_album() -> DiscogsRelease {
+    DiscogsRelease {
+        artists: vec![support::discogs_artist("test-artist-1", "Test Artist")],
+        master_id: Some("back-album-master".to_string()),
+        ..support::discogs_test_release(
+            "back-album-release",
+            "Back Album",
+            &[
+                ("Back One", "0:05"),
+                ("Back Two", "0:10"),
+                ("Back Three", "0:10"),
+            ],
+        )
+    }
+}
+
+/// Back on track 2, whose 2.5 s pregap a restart skips: the restarted track
+/// starts 2.5 s into its audio, but Back 1 s later still counts 1 s and goes
+/// to track 1.
+#[tokio::test]
+async fn back_twice_on_a_pregapped_track_reaches_the_previous_track() {
+    let mut fixture = CueFlacTestFixture::import(
+        support::TestAudioDevice::RealtimeCapture,
+        create_back_album(),
+        generate_back_album_files,
+    )
+    .await
+    .expect("set up the Back album fixture");
+    let first_track_id = fixture.track_ids[0].clone();
+    let pregapped_track_id = fixture.track_ids[1].clone();
+    assert_back_twice_reaches_previous(&mut fixture, &pregapped_track_id, &first_track_id).await;
+}
+
+/// Back on track 3, which has no pregap, works the same way.
+#[tokio::test]
+async fn back_twice_on_a_track_without_pregap_reaches_the_previous_track() {
+    let mut fixture = CueFlacTestFixture::import(
+        support::TestAudioDevice::RealtimeCapture,
+        create_back_album(),
+        generate_back_album_files,
+    )
+    .await
+    .expect("set up the Back album fixture");
+    let pregapped_track_id = fixture.track_ids[1].clone();
+    let plain_track_id = fixture.track_ids[2].clone();
+    assert_back_twice_reaches_previous(&mut fixture, &plain_track_id, &pregapped_track_id).await;
+}
+
+/// Play the 10 s `track_id`, press Back 5 s in (it restarts), then press Back
+/// again 1 s into the restarted track (it plays `previous_track_id`).
+async fn assert_back_twice_reaches_previous(
+    fixture: &mut CueFlacTestFixture,
+    track_id: &str,
+    previous_track_id: &str,
+) {
+    play_and_wait_on(&fixture.playback_handle, &mut fixture.progress_rx, track_id).await;
+    fixture.playback_handle.seek_by_ratio(0.5);
+    wait_for_track_position_where(&mut fixture.progress_rx, track_id, |ms| ms >= 5_000)
+        .await
+        .expect("the seek lands halfway into the track and plays on");
+
+    fixture.playback_handle.previous();
+    wait_for_state_on(
+        &mut fixture.progress_rx,
+        |s| matches!(s, PlaybackState::Playing { track, .. } if track.track_id == track_id),
+        PLAY_START_BACKSTOP,
+    )
+    .await
+    .expect("Back 5 s into the track restarts it");
+    // Updates the stream queued before the restart report 5 s or more, so one
+    // under 3 s is the restarted track's.
+    let restarted_at =
+        wait_for_track_position_where(&mut fixture.progress_rx, track_id, |ms| ms < 3_000)
+            .await
+            .expect("the restarted track reports a position near its start");
+    assert!(
+        restarted_at >= 0,
+        "a restart skips the pregap and starts the track at 0; got {restarted_at}ms",
+    );
+    wait_for_track_position_where(&mut fixture.progress_rx, track_id, |ms| {
+        (1_000..3_000).contains(&ms)
+    })
+    .await
+    .expect("the restarted track plays on to 1 s");
+
+    fixture.playback_handle.previous();
+    let landed = wait_for_state_on(
+        &mut fixture.progress_rx,
+        |s| matches!(s, PlaybackState::Playing { .. }),
+        PLAY_START_BACKSTOP,
+    )
+    .await
+    .expect("Back plays a track");
+    let PlaybackState::Playing { track: landed, .. } = landed else {
+        unreachable!("the wait matched only Playing");
+    };
+    assert_eq!(
+        landed.track_id, previous_track_id,
+        "Back 1 s into the restarted track should play the previous track, not restart \
+         {track_id} again",
+    );
+}

@@ -7,6 +7,23 @@ impl PlaybackService {
         self.slot.current_track_id()
     }
 
+    /// How far the current track has played from its start (INDEX 01): the
+    /// shared position, which counts from the start of the pregap, less the
+    /// pregap — the time the player shows, negative while the pregap plays.
+    /// `None` without a current track.
+    pub(super) fn current_track_elapsed_ms(&self) -> Option<i64> {
+        let PlaybackSlot::Active(cur) = &self.slot else {
+            return None;
+        };
+        let raw_position = self.current_position_shared.lock().unwrap();
+        let (elapsed_ms, _) = crate::playback::format::adjust_for_pregap(
+            raw_position.unwrap_or_default().as_millis() as u64,
+            track_duration_ms(&cur.prepared),
+            cur.prepared.total_pregap_ms(),
+        );
+        Some(elapsed_ms)
+    }
+
     /// Compute the display values for `position_ms` on the current track and
     /// emit a `Seeked` progress event. The single emitter for non-tick position
     /// updates (seek, restore, pause/resume refresh).

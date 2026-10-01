@@ -189,7 +189,8 @@ fn create_cue_flac_test_album() -> DiscogsRelease {
     }
 }
 
-/// Playback of the single-file CUE/FLAC album. Tests that seek or pause need
+/// Playback of a single-file CUE/FLAC album: the `cue_flac` fixture, or one a
+/// test writes through `import`. Tests that seek or pause need
 /// `TestAudioDevice::RealtimeCapture`.
 struct CueFlacTestFixture {
     playback_handle: bae_core::playback::PlaybackHandle,
@@ -201,11 +202,21 @@ struct CueFlacTestFixture {
 
 impl CueFlacTestFixture {
     async fn new(device: support::TestAudioDevice) -> Result<Self, Box<dyn std::error::Error>> {
+        Self::import(device, create_cue_flac_test_album(), generate_cue_flac_files).await
+    }
+
+    /// Import a three-track CUE/FLAC album that `generate_files` writes, and
+    /// play it through `device`.
+    async fn import(
+        device: support::TestAudioDevice,
+        album: DiscogsRelease,
+        generate_files: impl FnOnce(&std::path::Path),
+    ) -> Result<Self, Box<dyn std::error::Error>> {
         let (library_manager, imported) = imported_release_setup(
-            create_cue_flac_test_album(),
+            album,
             "test",
             uuid::Uuid::new_v4().to_string(),
-            generate_cue_flac_files,
+            generate_files,
         )
         .await?;
         assert_eq!(

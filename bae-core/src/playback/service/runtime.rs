@@ -356,21 +356,18 @@ impl PlaybackService {
     /// intent to the track we land on (a side-pause collapses to a plain manual
     /// pause across the track change).
     pub(super) async fn handle_previous(&mut self) {
-        let Some(current_track_id) = self.current_track_id().map(|s| s.to_string()) else {
+        let (Some(current_track_id), Some(track_elapsed_ms)) = (
+            self.current_track_id().map(str::to_string),
+            self.current_track_elapsed_ms(),
+        ) else {
             debug!("Previous command received with no current track; ignoring");
             return;
         };
         let target = self.current_play_target();
-        let current_position = self
-            .current_position_shared
-            .lock()
-            .unwrap()
-            .unwrap_or(std::time::Duration::ZERO);
-        let position_ms = current_position.as_millis() as u64;
 
         match self
             .playback_queue
-            .apply(|queue| queue.previous_action(position_ms))
+            .apply(|queue| queue.previous_action(track_elapsed_ms))
         {
             PreviousAction::PlayPrevious(previous_track_id) => {
                 info!("Going to previous track: {}", previous_track_id);

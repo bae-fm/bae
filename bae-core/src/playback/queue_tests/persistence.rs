@@ -170,6 +170,26 @@ fn test_previous_past_3s_restarts() {
     ));
 }
 
+/// The threshold counts from the track's start (INDEX 01): Back steps back
+/// while the pregap's countdown plays and up to just under 3 s into the track.
+#[test]
+fn test_previous_threshold_counts_from_track_start() {
+    for elapsed_ms in [-2_500, 0, 2_999] {
+        let mut q = queue();
+        q.play_release(rel_src("r1"), rel(&["t1", "t2"]), ContextStart::Index(1));
+        assert!(
+            matches!(q.previous_action(elapsed_ms), PreviousAction::PlayPrevious(t) if t == "t1"),
+            "Back at {elapsed_ms}ms should step back"
+        );
+    }
+    let mut q = queue();
+    q.play_release(rel_src("r1"), rel(&["t1", "t2"]), ContextStart::Index(1));
+    assert!(matches!(
+        q.previous_action(3_000),
+        PreviousAction::RestartCurrent
+    ));
+}
+
 #[test]
 fn test_skip_to_context_tail_moves_cursor() {
     let mut q = queue();

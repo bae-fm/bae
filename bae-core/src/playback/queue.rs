@@ -44,11 +44,15 @@ pub enum NextEntry {
     Stop,
 }
 
+/// How far into the current track, from its start (INDEX 01), Back restarts it
+/// instead of going to the previous track.
+const RESTART_THRESHOLD_MS: i64 = 3_000;
+
 /// What to do when going to the previous track.
 pub enum PreviousAction {
     /// Go back to this track.
     PlayPrevious(String),
-    /// Restart the current track (past the 3s threshold, or nothing before it).
+    /// Restart the current track (past the 3 s threshold, or nothing before it).
     RestartCurrent,
 }
 
@@ -695,12 +699,15 @@ impl PlaybackQueue {
         Some(self.play_context_at(next))
     }
 
-    /// Decide the previous action. Within 3s of the start, step the context cursor
-    /// back (multi-step over the traversed order); otherwise restart the current
-    /// track. When the current track is a manual item, the cursor entry is the
-    /// context track that preceded it, so stepping back lands there.
-    pub fn previous_action(&mut self, position_ms: u64) -> PreviousAction {
-        if position_ms >= 3000 {
+    /// Decide the previous action from `track_elapsed_ms`, how far the current
+    /// track has played from its start (INDEX 01), as the player shows it —
+    /// negative while its pregap plays. Under the 3 s threshold, step the
+    /// context cursor back (multi-step over the traversed order); otherwise
+    /// restart the current track. When the current track is a manual item, the
+    /// cursor entry is the context track that preceded it, so stepping back
+    /// lands there.
+    pub fn previous_action(&mut self, track_elapsed_ms: i64) -> PreviousAction {
+        if track_elapsed_ms >= RESTART_THRESHOLD_MS {
             return PreviousAction::RestartCurrent;
         }
         let target = {
