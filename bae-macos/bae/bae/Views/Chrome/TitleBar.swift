@@ -2,8 +2,9 @@ import BaeKit
 import SwiftUI
 
 extension FocusedValues {
+    /// Focus the key window's search field.
     @Entry
-    var focusSearch: (() -> Void)?
+    var focusSearch: FocusedCommand?
 }
 
 private let titleBarLeadingPadding: CGFloat = 80
@@ -23,6 +24,9 @@ struct TitleBar: View {
     let onSearchFieldFrame: (CGRect) -> Void
     @FocusState
     private var searchFocused: Bool
+    /// View ▸ Search, offered to the menu bar.
+    @State
+    private var focusSearch = FocusedCommand()
     var body: some View {
         ZStack {
             SectionSegmentedControl(
@@ -99,7 +103,10 @@ struct TitleBar: View {
         .onDisappear {
             libraryProjections.deactivateSearch()
         }
-        .focusedSceneValue(\.focusSearch) { searchFocused = true }
+        .focusedSceneValue(\.focusSearch, focusSearch)
+        .onChange(of: focusSearch.sends) {
+            searchFocused = true
+        }
         .onChange(of: uiStore.searchResults != nil) { _, hasResults in
             if hasResults, !searchText.isEmpty {
                 uiStore.showSearchPopover = true

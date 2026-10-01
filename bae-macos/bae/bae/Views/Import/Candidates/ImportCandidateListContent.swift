@@ -276,6 +276,9 @@ struct ImportCandidateListContent: View {
     private var viewport = ImportCandidateListViewport()
     @State
     private var revealOperation: ImportCandidateRevealOperation?
+    /// Edit ▸ Select All while the list has focus, offered to the menu bar.
+    @State
+    private var selectAllShownRows = FocusedCommand()
     @FocusState
     private var filterFocused: Bool
 
@@ -501,7 +504,8 @@ struct ImportCandidateListContent: View {
         if let list = listSlot.list {
             entryList(list, proxy: proxy)
                 // Select All covers every row the list shows, loaded or not.
-                .focusedValue(\.selectAllShownRows) {
+                .focusedValue(\.selectAllShownRows, selectAllShownRows)
+                .onChange(of: selectAllShownRows.sends) {
                     cancelReveal()
                     listSlot.selectAllShown()
                 }

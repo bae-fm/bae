@@ -299,7 +299,7 @@ extension FocusedValues {
     /// Select All for a focused list that holds only some of its rows: it
     /// selects every row the list shows, loaded or not.
     @Entry
-    var selectAllShownRows: (() -> Void)?
+    var selectAllShownRows: FocusedCommand?
 }
 
 struct MainAppMenuCommands: Commands {
@@ -336,7 +336,7 @@ struct MainAppMenuCommands: Commands {
             responderButton("Delete", #selector(NSText.delete(_:)))
             Button("Select All") {
                 if let selectAllShownRows {
-                    selectAllShownRows()
+                    selectAllShownRows.send()
                 }
                 else {
                     sendToFirstResponder(#selector(NSText.selectAll(_:)))
@@ -388,7 +388,7 @@ struct MainAppMenuCommands: Commands {
                         "Search is disabled without a focused search field"
                     )
                 }
-                focusSearch()
+                focusSearch.send()
             }
             .keyboardShortcut("/", modifiers: [])
             .disabled(focusSearch == nil)

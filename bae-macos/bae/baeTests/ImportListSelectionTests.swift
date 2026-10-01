@@ -245,7 +245,7 @@ struct ImportListSelectionTests {
             try await Wait.until { focused.selectAll != nil }
 
             let selectAll = try #require(focused.selectAll)
-            selectAll()
+            selectAll.send()
 
             try await Wait.until { !selectAlls.all.isEmpty }
             #expect(selectAlls.all.count == 1)
@@ -257,7 +257,7 @@ struct ImportListSelectionTests {
 /// The Select All the focused view publishes, as the menu command reads it.
 @MainActor
 private final class FocusedSelectAll {
-    var selectAll: (() -> Void)?
+    var selectAll: FocusedCommand?
 }
 
 private struct FocusedSelectAllReader: View {
