@@ -168,6 +168,54 @@ pub struct IdentifyRunView {
     pub search: SearchStepView,
 }
 
+impl IdentifyRunView {
+    /// Whether one of the ledger's cells shows `failure`: a lookup's cell
+    /// that failed as it did. The lookup of an offered row's pressing and the
+    /// fetches applying the release a run picked have no cell.
+    fn shows(&self, failure: &super::IdentifyFailure) -> bool {
+        use super::IdentifyFailure;
+        let failed_as = |lookup: &LookupView, failed: &LookupFailure| {
+            let LookupView::Failed { failure } = lookup else {
+                return false;
+            };
+            failure == failed
+        };
+        let in_cells = |cells: &[ProviderCell], failed: &crate::import::search::SourceFailure| {
+            cells.iter().any(|cell| {
+                cell.source == failed.source && failed_as(&cell.lookup, &failed.failure)
+            })
+        };
+        let in_rows =
+            |rows: &[SignalValueRow], failed| rows.iter().any(|row| in_cells(&row.cells, failed));
+        match failure {
+            IdentifyFailure::DiscId(failed) => matches!(
+                &self.disc_id,
+                DiscIdStepView::Read { lookup, .. } if failed_as(lookup, failed)
+            ),
+            IdentifyFailure::Isrc(failed) => matches!(
+                &self.isrc,
+                IsrcStepView::Read { lookup, .. } if failed_as(lookup, failed)
+            ),
+            IdentifyFailure::Barcode(failed) => matches!(
+                &self.barcode,
+                BarcodeStepView::Rows { rows, .. } if in_rows(rows, failed)
+            ),
+            IdentifyFailure::Catalog(failed) => matches!(
+                &self.catalog,
+                CatalogStepView::Numbers { rows, .. } if in_rows(rows, failed)
+            ),
+            IdentifyFailure::Search(failed) => matches!(
+                &self.search,
+                SearchStepView::Searched { cells, .. } if in_cells(cells, failed)
+            ),
+            IdentifyFailure::Pressing(_)
+            | IdentifyFailure::ReleaseDetails(_)
+            | IdentifyFailure::ArtistImages(_)
+            | IdentifyFailure::Cover(_) => false,
+        }
+    }
+}
+
 /// One candidate's identify state as a surface renders it. A settled state
 /// carries the ledger its run recorded, or none when there was nothing to lay
 /// out.
@@ -228,7 +276,12 @@ pub enum IdentifyStateView {
     /// A lookup failed, with whatever the lookups that answered combine to.
     Failed {
         run: Option<IdentifyRunView>,
-        failures: Vec<super::IdentifyFailure>,
+        /// The failures no cell of `run` shows, for a surface to say in lines
+        /// of their own: those of the lookups the ledger has no cell for — an
+        /// offered row's pressing, the fetches applying the release the run
+        /// picked — and, with no ledger, every one. A failure a cell shows is
+        /// said there, beside its retry — see `IdentifyRunView::shows`.
+        failure_lines: Vec<super::IdentifyFailure>,
         groups: Vec<ReleaseGroup>,
         library_statuses: Vec<LibraryStatus>,
         agreements: Vec<(String, RowAgreements)>,
@@ -318,9 +371,13 @@ impl From<IdentifyState> for IdentifyStateView {
                 context,
             } => {
                 let folded = fold(findings, library_statuses, &context.text, track_count);
+                let failure_lines = failures
+                    .into_iter()
+                    .filter(|failure| !ledger.as_ref().is_some_and(|run| run.shows(failure)))
+                    .collect();
                 IdentifyStateView::Failed {
                     run: ledger,
-                    failures,
+                    failure_lines,
                     groups: folded.groups,
                     library_statuses: folded.library_statuses,
                     agreements: folded.agreements,
@@ -542,3 +599,7 @@ mod tests;
 #[cfg(test)]
 #[path = "view/catalog_row_tests.rs"]
 mod catalog_row_tests;
+
+#[cfg(test)]
+#[path = "view/failure_lines_tests.rs"]
+mod failure_lines_tests;

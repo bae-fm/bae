@@ -75,14 +75,15 @@ struct ImportSearchState {
         identifyState.folderCheck
     }
 
-    /// The automatic lookups that failed, each naming what it was and why.
-    var identifyFailures: [BridgeIdentifyFailure] {
+    /// The automatic lookups that failed where no cell of the band shows
+    /// them, each said in a line of its own — which ones is core's answer.
+    var failureLines: [BridgeIdentifyFailure] {
         guard
-            case .failed(_, let failures, _, _, _, _, _) = identifyState
+            case .failed(_, let failureLines, _, _, _, _, _) = identifyState
         else {
             return []
         }
-        return failures
+        return failureLines
     }
 
     /// The pressing core is picking on its own, whose row holds the spinner

@@ -698,9 +698,8 @@
         static let searchStateSourceFailure = searchState(
             identifyState: .failed(
                 run: identifyRunProviderFailed,
-                failures: [
-                    .barcode(source: .discogs, failure: .timeout)
-                ],
+                // The band's cell shows the failure.
+                failureLines: [],
                 groups: [searchGroupExact],
                 libraryStatuses: [:],
                 agreements: searchAgreementsExact,
@@ -709,7 +708,7 @@
             )
         )
 
-        /// Nothing answered, so the reasons take the result area.
+        /// Nothing answered, and the band's failed cells say why.
         static let searchStateAllSourcesFailed = searchState(
             identifyState: .failed(
                 run: BridgeIdentifyRun(
@@ -735,10 +734,8 @@
                     isrc: .absent,
                     search: .notNeeded
                 ),
-                failures: [
-                    .discId(failure: .network),
-                    .barcode(source: .discogs, failure: .provider(status: 503)),
-                ],
+                // The band's cells show both failures.
+                failureLines: [],
                 groups: [],
                 libraryStatuses: [:],
                 agreements: [:],
@@ -751,7 +748,7 @@
         static let searchStateFailedWithoutRun = searchState(
             identifyState: .failed(
                 run: nil,
-                failures: [
+                failureLines: [
                     .discId(failure: .network),
                     .barcode(source: .discogs, failure: .provider(status: 503)),
                 ],

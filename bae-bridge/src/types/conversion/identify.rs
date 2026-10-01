@@ -535,7 +535,7 @@ impl BridgeIdentifyState {
             },
             IdentifyStateView::Failed {
                 run,
-                failures,
+                failure_lines,
                 groups,
                 library_statuses,
                 agreements,
@@ -543,7 +543,7 @@ impl BridgeIdentifyState {
                 offers_shared_album,
             } => BridgeIdentifyState::Failed {
                 run: run.map(|run| BridgeIdentifyRun::from_core(run, rate)),
-                failures: failures.into_iter().map(identify_failure).collect(),
+                failure_lines: failure_lines.into_iter().map(identify_failure).collect(),
                 groups: groups
                     .into_iter()
                     .map(BridgeReleaseGroup::from_core)

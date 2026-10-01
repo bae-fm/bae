@@ -348,7 +348,9 @@ pub enum BridgeIdentifyState {
     /// anything.
     Failed {
         run: Option<BridgeIdentifyRun>,
-        failures: Vec<BridgeIdentifyFailure>,
+        /// The failures no cell of `run` shows, each said in a line of its
+        /// own: a failure a cell shows is said there, beside its retry.
+        failure_lines: Vec<BridgeIdentifyFailure>,
         groups: Vec<BridgeReleaseGroup>,
         library_statuses: std::collections::HashMap<String, BridgeLibraryStatus>,
         agreements: std::collections::HashMap<String, BridgeAgreements>,

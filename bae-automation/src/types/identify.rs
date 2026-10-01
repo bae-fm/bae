@@ -246,7 +246,9 @@ pub enum AutomationIdentifyState {
     /// A lookup failed, with whatever the lookups that answered still found.
     Failed {
         run: Option<AutomationIdentifyRun>,
-        failures: Vec<AutomationIdentifyFailure>,
+        /// The failures no cell of `run` shows; a failure a cell shows is
+        /// in that cell.
+        failure_lines: Vec<AutomationIdentifyFailure>,
         groups: Vec<AutomationReleaseGroup>,
         library_statuses: Vec<AutomationLibraryStatus>,
         agreements: Vec<AutomationAgreements>,

@@ -19,7 +19,8 @@ enum FindOnlineResultArea: Equatable {
     /// a person can activate: the band's waiting chips, and nothing beneath
     /// them.
     case awaitingCatalog
-    /// Every lookup that ran failed, so there is nothing but the reasons.
+    /// A lookup failed and the ones that answered found nothing: the band's
+    /// failed cells, and a line beneath for each failure no cell shows.
     case failureLines
     /// bae broke on its own side and the run ended there, with why.
     case error(BridgeInternalFailure)

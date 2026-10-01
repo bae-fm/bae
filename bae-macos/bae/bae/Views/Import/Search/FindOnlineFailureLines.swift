@@ -1,12 +1,11 @@
 import BaeKit
 import SwiftUI
 
-/// Every automatic lookup failed, so the reasons take the place of the results.
-/// `onRetry` is `nil` when a ledger above already offers Retry in the failed
-/// cell.
+/// The failures no cell of the band shows, each with its reason, and the
+/// retry no cell offers for them.
 struct FindOnlineFailureLines: View {
     let failures: [BridgeIdentifyFailure]
-    let onRetry: (() -> Void)?
+    let onRetry: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.compact) {
@@ -18,10 +17,8 @@ struct FindOnlineFailureLines: View {
                     Spacer(minLength: 0)
                 }
             }
-            if let onRetry {
-                Button("Retry", action: onRetry)
-                    .buttonStyle(.link)
-            }
+            Button("Retry", action: onRetry)
+                .buttonStyle(.link)
         }
         .themeText(.body)
         .padding(.horizontal, ThemeSpace.edge)

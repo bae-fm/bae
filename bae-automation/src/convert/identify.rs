@@ -285,7 +285,7 @@ pub(crate) fn automation_identify_state(
         },
         IdentifyStateView::Failed {
             run,
-            failures,
+            failure_lines,
             groups,
             library_statuses,
             agreements,
@@ -293,7 +293,7 @@ pub(crate) fn automation_identify_state(
             offers_shared_album,
         } => AutomationIdentifyState::Failed {
             run: run.map(AutomationIdentifyRun::from_core),
-            failures: failures
+            failure_lines: failure_lines
                 .into_iter()
                 .map(AutomationIdentifyFailure::from_core)
                 .collect(),

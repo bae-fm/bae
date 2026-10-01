@@ -188,7 +188,14 @@ struct FindOnlineAutomaticSection: View {
                 keepOwnDraft
             }
         case .failureLines:
-            failureLines
+            if !state.failureLines.isEmpty {
+                // No cell shows these, so none offers their retry: the lines
+                // do.
+                FindOnlineFailureLines(
+                    failures: state.failureLines,
+                    onRetry: onRetryFailed
+                )
+            }
         case .awaitingCatalog:
             FindOnlineEmptyZone { keepOwnDraft }
         case .notStarted, .queued, .noSignals, .error:
@@ -276,26 +283,19 @@ struct FindOnlineAutomaticSection: View {
         )
     }
 
-    /// The reasons, with the retry they carry when no band does.
-    private var failureLines: some View {
-        FindOnlineFailureLines(
-            failures: state.identifyFailures,
-            onRetry: state.run == nil ? onRetryFailed : nil
-        )
-    }
-
     /// The failed fetches of the release the run picked, which leave no
     /// results missing from the list: they are why the pick was not applied.
     private var pickFailures: [BridgeIdentifyFailure] {
-        state.identifyFailures.filter { $0.failedSearch == nil }
+        state.failureLines.filter { $0.failedSearch == nil }
     }
 
-    /// One line per failed lookup whose results the list is missing, closing
-    /// it. Named by step as well as source: the source's other steps may have
-    /// answered, and those results are on the list.
+    /// One line per failed lookup whose results the list is missing and no
+    /// cell of the band shows, closing it. Named by step as well as source:
+    /// the source's other steps may have answered, and those results are on
+    /// the list.
     private var missingSourceNotes: [(search: FailedSearch, text: String)] {
         var seen: Set<FailedSearch> = []
-        return state.identifyFailures.compactMap { failure in
+        return state.failureLines.compactMap { failure in
             guard let search = failure.failedSearch,
                 seen.insert(search).inserted
             else { return nil }

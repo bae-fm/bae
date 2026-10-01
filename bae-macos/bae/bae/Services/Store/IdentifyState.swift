@@ -70,10 +70,12 @@ enum IdentifyState: Equatable {
     /// A lookup failed, with whatever the surviving evidence still found: one
     /// provider failing leaves the other's matches standing, live or resumed
     /// from the stored verdict. `groups` is empty when nothing that answered
-    /// returned anything.
+    /// returned anything. `failureLines` are the failures no cell of `run`
+    /// shows, each said in a line of its own — core's answer; a failure a
+    /// cell shows is said there, beside its retry.
     case failed(
         run: BridgeIdentifyRun?,
-        failures: [BridgeIdentifyFailure],
+        failureLines: [BridgeIdentifyFailure],
         groups: [ReleaseGroup],
         libraryStatuses: [String: BridgeLibraryStatus],
         agreements: [String: BridgeAgreements],
@@ -128,7 +130,7 @@ enum IdentifyState: Equatable {
         case .error(let failure): self = .error(failure: failure)
         case .failed(
             let run,
-            let failures,
+            let failureLines,
             let groups,
             let libraryStatuses,
             let agreements,
@@ -137,7 +139,7 @@ enum IdentifyState: Equatable {
         ):
             self = .failed(
                 run: run,
-                failures: failures,
+                failureLines: failureLines,
                 groups: groups.map(ReleaseGroup.init(bridge:)),
                 libraryStatuses: libraryStatuses,
                 agreements: agreements,
