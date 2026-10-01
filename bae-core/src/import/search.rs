@@ -605,7 +605,6 @@ pub(crate) fn provider_failure(error: &ImportError) -> Option<LookupFailure> {
             DiscogsError::Provider { status, .. } => Some(LookupFailure::Provider {
                 status: Some(status.as_u16()),
             }),
-            DiscogsError::RateLimit { .. } => Some(LookupFailure::Provider { status: Some(429) }),
             DiscogsError::InvalidApiKey => Some(LookupFailure::Provider { status: Some(401) }),
             DiscogsError::NotFound => Some(LookupFailure::Provider { status: Some(404) }),
             DiscogsError::Serialization(_) => None,

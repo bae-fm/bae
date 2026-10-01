@@ -42,6 +42,42 @@ pub(crate) fn told_wait(headers: &reqwest::header::HeaderMap) -> Option<Duration
     told_wait_at(retry_after, date, chrono::Utc::now())
 }
 
+/// How long until the instant a response names in `header`, as whole seconds
+/// since the Unix epoch. Measured from the response's own `Date`, as
+/// [`told_wait`] measures a date — from this machine's clock only when the
+/// response states no date. `Date` is whole seconds too, so the wait can run
+/// up to a second past the instant, never short of it. `None` when the
+/// response has no such header or one that says nothing readable; an instant
+/// already past asks for no wait.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub(crate) fn wait_until_epoch(
+    headers: &reqwest::header::HeaderMap,
+    header: &str,
+) -> Option<Duration> {
+    let epoch = headers
+        .get(header)?
+        .to_str()
+        .ok()?
+        .trim()
+        .parse::<i64>()
+        .ok()?;
+    let date = headers
+        .get(reqwest::header::DATE)
+        .and_then(|value| value.to_str().ok());
+    wait_until_epoch_at(epoch, date, chrono::Utc::now())
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn wait_until_epoch_at(
+    epoch: i64,
+    date: Option<&str>,
+    now: chrono::DateTime<chrono::Utc>,
+) -> Option<Duration> {
+    let until = chrono::DateTime::from_timestamp(epoch, 0)?;
+    let from = date.and_then(http_date).unwrap_or(now);
+    Some((until - from).to_std().unwrap_or(Duration::ZERO))
+}
+
 fn told_wait_at(
     retry_after: &str,
     date: Option<&str>,
@@ -437,6 +473,44 @@ mod tests {
         );
         assert_eq!(told_wait_at("soon", None, now), None);
         assert_eq!(told_wait_at("-5", None, now), None);
+    }
+
+    #[test]
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    fn a_wait_until_an_epoch_instant_is_measured_from_the_responses_clock() {
+        let now = chrono::DateTime::parse_from_rfc2822("Sat, 26 Sep 2026 06:51:45 GMT")
+            .unwrap()
+            .with_timezone(&chrono::Utc);
+        let epoch = |date: &str| {
+            chrono::DateTime::parse_from_rfc2822(date)
+                .unwrap()
+                .timestamp()
+        };
+        assert_eq!(
+            wait_until_epoch_at(
+                epoch("Sat, 26 Sep 2026 07:00:10 GMT"),
+                Some("Sat, 26 Sep 2026 07:00:00 GMT"),
+                now,
+            ),
+            Some(Duration::from_secs(10))
+        );
+        assert_eq!(
+            wait_until_epoch_at(epoch("Sat, 26 Sep 2026 06:51:47 GMT"), None, now),
+            Some(Duration::from_secs(2))
+        );
+        assert_eq!(
+            wait_until_epoch_at(epoch("Sat, 26 Sep 2026 06:00:00 GMT"), None, now),
+            Some(Duration::ZERO),
+            "an instant already past asks for no wait"
+        );
+
+        let mut headers = reqwest::header::HeaderMap::new();
+        assert_eq!(wait_until_epoch(&headers, "x-ratelimit-reset"), None);
+        headers.insert(
+            "x-ratelimit-reset",
+            reqwest::header::HeaderValue::from_static("soon"),
+        );
+        assert_eq!(wait_until_epoch(&headers, "x-ratelimit-reset"), None);
     }
 
     #[test]

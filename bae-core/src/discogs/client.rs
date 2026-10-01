@@ -5,8 +5,9 @@ use crate::discogs::remote_cover_from_urls;
 use crate::import::cover_art::RemoteCover;
 use crate::retry::{retry_with_backoff_if, Repeat, RetryPolicy};
 use crate::util::http::{is_cacheable, CachedResponse, Http};
-use crate::util::rate_limiter::{CallPriority, RateLimiter};
+use crate::util::rate_limiter::{CallPriority, RateAnswer, RateLimiter, WindowCount};
 use crate::util::session_cache::{SessionCache, PROVIDER_RESPONSE_CAPACITY};
+use reqwest::header::HeaderMap;
 use reqwest::{Error as ReqwestError, StatusCode};
 use serde::Deserialize;
 use std::sync::Arc;
@@ -14,16 +15,27 @@ use std::time::Duration;
 use thiserror::Error;
 use tracing::{debug, warn};
 
-const DISCOGS_REQUEST_INTERVAL: Duration = Duration::from_secs(1);
+/// The span Discogs counts requests over. It throttles by source address to
+/// 60 authenticated requests in any sixty seconds, counted as they arrive, and
+/// turns away one over that with a 429 (<https://www.discogs.com/developers>).
+const DISCOGS_WINDOW: Duration = Duration::from_secs(60);
 
-/// How Discogs is asked again. Discogs throttles by source address to 60
-/// authenticated requests a minute (25 unauthenticated), counted as a moving
-/// average over a sixty-second window, and answers a request over it with a
-/// 429; every response states the window in `X-Discogs-Ratelimit`,
-/// `-Used` and `-Remaining`. A full window empties only as its requests age
-/// out of it, so the first repeat waits two seconds — two slots of the one a
-/// second this client keeps to — and each after it doubles, jittered, up to
-/// twenty: about fourteen seconds in all before the lookup is given up.
+/// Fifty requests a minute: a sixth under the sixty Discogs takes. Requests
+/// are spaced as they leave but counted as they arrive, and the network does
+/// not take each the same time, so two can arrive closer than they left. At
+/// the full rate any such pair puts a sixty-first request in some minute; at
+/// this one, that takes one request's trip running twelve seconds longer than
+/// another's. The headroom left is also what another client on the same
+/// address can use before the window's count slows this one (see
+/// [`RateLimiter`]).
+const DISCOGS_REQUEST_INTERVAL: Duration = Duration::from_millis(1200);
+
+/// How Discogs is asked again after a server error or a lost connection: the
+/// first repeat waits two seconds and each after it doubles, jittered, up to
+/// twenty — about fourteen seconds in all before the lookup is given up. A
+/// 429 is not repeated here: the limiter holds every request until Discogs's
+/// window has room again, and then the request is sent again (see
+/// [`DiscogsClient::send`]).
 const RETRY: RetryPolicy =
     RetryPolicy::exponential(4, Duration::from_secs(2), Duration::from_secs(20));
 
@@ -57,20 +69,23 @@ pub struct Discogs {
 
 impl Discogs {
     pub fn new(http: Http) -> Self {
-        Self::with_interval(http, DISCOGS_REQUEST_INTERVAL)
+        Self::with_limiter(
+            http,
+            RateLimiter::counted(DISCOGS_REQUEST_INTERVAL, DISCOGS_WINDOW),
+        )
     }
 
-    /// One whose requests are not spaced: a test's fake service has no rate
-    /// to keep to.
+    /// One whose requests are not spaced and whose window holds nothing: a
+    /// test's fake service has no rate to keep to.
     #[cfg(any(test, feature = "test-utils"))]
     pub fn for_test(http: Http) -> Self {
-        Self::with_interval(http, Duration::ZERO)
+        Self::with_limiter(http, RateLimiter::counted(Duration::ZERO, Duration::ZERO))
     }
 
-    fn with_interval(http: Http, interval: Duration) -> Self {
+    fn with_limiter(http: Http, limiter: RateLimiter) -> Self {
         Self {
             http,
-            limiter: RateLimiter::new(interval),
+            limiter,
             responses: SessionCache::new("Discogs response cache", PROVIDER_RESPONSE_CAPACITY),
         }
     }
@@ -138,18 +153,18 @@ pub enum DiscogsError {
     #[error("Discogs transport error: {0:?}")]
     Transport(#[from] ReqwestError),
     /// Discogs returned an HTTP error status not otherwise carved out below (not
-    /// 404 / 401 / 429). Distinct from `Transport` so the retry policy can repeat a
+    /// 404 / 401). Distinct from `Transport` so the retry policy can repeat a
     /// 5xx but not a 4xx, which is the server's permanent answer to this request.
+    /// A 429 never ends here: the request waits for Discogs's window and is
+    /// sent again.
     ///
-    /// `told_wait` here and on `RateLimit` is how long the response's
-    /// `Retry-After` asked bae to wait before asking again, when it stated one.
+    /// `told_wait` is how long the response's `Retry-After` asked bae to wait
+    /// before asking again, when it stated one.
     #[error("Discogs returned an error response (status {status})")]
     Provider {
         status: StatusCode,
         told_wait: Option<Duration>,
     },
-    #[error("API rate limit exceeded")]
-    RateLimit { told_wait: Option<Duration> },
     #[error("Invalid API key")]
     InvalidApiKey,
     #[error("Release not found")]
@@ -181,14 +196,13 @@ fn classify_discogs_response(
     // holds.
     match StatusCode::from_u16(response.status).expect("a response status is in range") {
         StatusCode::NOT_FOUND => Err(DiscogsError::NotFound),
-        StatusCode::TOO_MANY_REQUESTS => Err(DiscogsError::RateLimit { told_wait }),
         StatusCode::UNAUTHORIZED => Err(DiscogsError::InvalidApiKey),
         status => Err(DiscogsError::Provider { status, told_wait }),
     }
 }
 
-/// Retry only what a retry can fix: transport failures, an explicit rate-limit,
-/// and Discogs server errors. A 4xx `Provider` status is the server's permanent
+/// Retry only what a retry can fix: transport failures and Discogs server
+/// errors. A 4xx `Provider` status is the server's permanent
 /// answer to this exact request — retrying it burns a round trip and a
 /// rate-limit wait per try to hear the same 4xx again.
 ///
@@ -196,7 +210,6 @@ fn classify_discogs_response(
 fn repeat_discogs(error: &DiscogsError) -> Repeat {
     match error {
         DiscogsError::Transport(_) => Repeat::AfterBackoff,
-        DiscogsError::RateLimit { told_wait } => Repeat::transient(*told_wait),
         DiscogsError::Provider { status, told_wait } => {
             if crate::retry::is_transient_status(*status) {
                 Repeat::transient(*told_wait)
@@ -208,6 +221,24 @@ fn repeat_discogs(error: &DiscogsError) -> Repeat {
             Repeat::Never
         }
     }
+}
+
+/// What a Discogs response says of its rate: a 429 turns the request away,
+/// for as long as its `Retry-After` says when it says; any other response
+/// counts the window in `X-Discogs-Ratelimit-Remaining`.
+fn discogs_rate_answer(status: StatusCode, headers: &HeaderMap) -> RateAnswer {
+    if status == StatusCode::TOO_MANY_REQUESTS {
+        return RateAnswer::Refused {
+            wait: crate::util::http::told_wait(headers),
+        };
+    }
+    headers
+        .get("x-discogs-ratelimit-remaining")
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.trim().parse().ok())
+        .map_or(RateAnswer::Silent, |remaining| {
+            RateAnswer::Counted(WindowCount::Rolling { remaining })
+        })
 }
 
 #[derive(Debug, Deserialize)]
@@ -632,7 +663,7 @@ impl DiscogsClient {
     }
 
     /// A 401 is the only error that proves the key is bad, and a success confirms it.
-    /// A network or rate-limit error must NOT reject a good key.
+    /// A network or server error must NOT reject a good key.
     fn observe<T>(&self, result: &Result<T, DiscogsError>) {
         let Some(observer) = &self.observer else {
             return;
@@ -664,21 +695,42 @@ impl DiscogsClient {
     }
 
     /// One request, straight to the wire: wait for the rate-limit slot, send,
-    /// read the whole body, and read how long the response asked bae to wait
-    /// before asking again. Only the token check sends this way unkept — its
-    /// answer is about the key in the `Authorization` header, which no URL
-    /// names, so a kept answer would be an answer to a different question.
+    /// hand the limiter what the response says of Discogs's window, read the
+    /// whole body, and read how long the response asked bae to wait before
+    /// asking again. A 429 is Discogs's rate, not its answer: the limiter holds
+    /// every request until the window has room, and this one is sent again
+    /// then, however often that takes — so a rate limit never reaches a
+    /// caller as a failed lookup.
+    ///
+    /// Only the token check sends this way unkept — its answer is about the
+    /// key in the `Authorization` header, which no URL names, so a kept answer
+    /// would be an answer to a different question.
     async fn send(
         &self,
         request: reqwest::Request,
         priority: CallPriority,
     ) -> Result<(CachedResponse, Option<Duration>), DiscogsError> {
-        self.discogs.limiter.wait(priority).await;
-        let response = self.discogs.http.execute(request).await?;
-        let status = response.status().as_u16();
-        let told_wait = crate::util::http::told_wait(response.headers());
-        let body = response.text().await?;
-        Ok((CachedResponse { status, body }, told_wait))
+        loop {
+            let attempt = request
+                .try_clone()
+                .expect("a Discogs request has no streamed body");
+            let admitted = self.discogs.limiter.wait(priority).await;
+            let response = self.discogs.http.execute(attempt).await?;
+            let rate = discogs_rate_answer(response.status(), response.headers());
+            admitted.answered(rate);
+            if let RateAnswer::Refused { wait } = rate {
+                warn!(
+                    "Discogs turned a request away for its rate; holding every Discogs request \
+                     {} before sending it again",
+                    wait.map_or_else(|| format!("{DISCOGS_WINDOW:?}"), |wait| format!("{wait:?}"))
+                );
+                continue;
+            }
+            let status = response.status().as_u16();
+            let told_wait = crate::util::http::told_wait(response.headers());
+            let body = response.text().await?;
+            return Ok((CachedResponse { status, body }, told_wait));
+        }
     }
 
     /// Every content request's send point: a URL that already has an answer is
@@ -776,9 +828,6 @@ impl DiscogsClient {
                         .get_cached(self.get(url).query(&query), priority)
                         .await
                         .inspect_err(|error| match error {
-                            DiscogsError::RateLimit { .. } => {
-                                warn!("Discogs rate limit exceeded")
-                            }
                             DiscogsError::InvalidApiKey => warn!("Discogs invalid API key"),
                             DiscogsError::NotFound => warn!("Discogs API returned not found"),
                             DiscogsError::Transport(_) => warn!("Discogs API request failed"),

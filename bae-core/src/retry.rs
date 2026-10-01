@@ -134,11 +134,12 @@ impl Repeat {
     }
 }
 
-/// The longest a provider may ask bae to wait before a repeat. Discogs counts
-/// its limit over a sixty-second window, so no rate limit bae keeps to needs
-/// longer to clear. A provider asking for more is saying it is down for now,
-/// not busy, and the lookup ends at once rather than asking early only to be
-/// turned away again.
+/// The longest a provider may ask bae to wait before a repeat. A failing
+/// server asking for more than a minute is saying it is down for now, not
+/// busy, and the lookup ends at once rather than asking early only to be
+/// turned away again. (Discogs's and MusicBrainz's rate refusals never come
+/// through here: their clients hold every request for whatever wait a refusal
+/// names, and send the refused one again.)
 const LONGEST_TOLD_WAIT: Duration = Duration::from_secs(60);
 
 /// One attempt's outcome for [`retry_classified`], for callers whose retry

@@ -15,8 +15,10 @@ use std::time::Duration;
 use crate::import::CatalogPage;
 use crate::retry::{Repeat, RetryPolicy};
 use crate::util::http::{is_cacheable, CachedResponse, Http};
-use crate::util::rate_limiter::{CallPriority, RateLimiter};
+use crate::util::rate_limiter::{CallPriority, RateAnswer, RateLimiter, WindowCount};
 use crate::util::session_cache::{SessionCache, PROVIDER_RESPONSE_CAPACITY};
+use reqwest::header::HeaderMap;
+use reqwest::StatusCode;
 use thiserror::Error;
 use tracing::{debug, warn};
 
@@ -26,8 +28,19 @@ pub use types::*;
 /// Where every MusicBrainz web-service request goes.
 const BASE_URL: &str = "https://musicbrainz.org/ws/2";
 
-/// MusicBrainz's published rate: one request a second.
-const REQUEST_INTERVAL: Duration = Duration::from_secs(1);
+/// A request every 1.2 seconds: a sixth under the one a second MusicBrainz
+/// allows an address (<https://musicbrainz.org/doc/MusicBrainz_API/Rate_Limiting>).
+/// Requests are spaced as they leave but counted as they arrive, and two can
+/// arrive closer than they left when the network takes one longer than the
+/// other; at this pace they still arrive a second apart unless one trip runs
+/// 200 ms longer than the next.
+const REQUEST_INTERVAL: Duration = Duration::from_millis(1200);
+
+/// The span MusicBrainz's rate headers count over: two seconds, after which
+/// the count starts over (MetaBrainz's answer on what the headers mean,
+/// <https://community.metabrainz.org/t/what-do-the-x-ratelimit-headers-mean-and-how-should-they-be-used/259737>).
+/// A refusal that names no reset is held this long.
+const RATE_WINDOW: Duration = Duration::from_secs(2);
 
 /// The MusicBrainz web service, as bae asks it: the transport requests go out
 /// on, the rate limit they wait for, and the answers already had.
@@ -121,18 +134,15 @@ fn repeat_mb(error: &MusicBrainzError) -> Repeat {
     }
 }
 
-/// How MusicBrainz is asked again. Its rate-limiting page
-/// (<https://musicbrainz.org/doc/MusicBrainz_API/Rate_Limiting>) says every
-/// request it turns away — this address over one request a second, or the
-/// servers as a whole over their 300 a second — is declined with a 503, and
-/// that an address over its rate is declined outright "until the rate drops".
-/// The page names no wait. So a 503 says to ask less, not to ask again at
-/// once: the waits double from one second, which lets the address's own rate
-/// fall back under one a second at the first repeat and gives a busy server
-/// some fifteen seconds in all to recover, and each is jittered, since a
-/// server shedding everyone's load at once hears every client's repeats
-/// together otherwise. A response that does state a wait in `Retry-After` is
-/// waited out as it asks instead (see [`Repeat`]).
+/// How MusicBrainz is asked again after a server error or a lost connection.
+/// A 503 its rate limiter sends is not repeated here — the limiter holds every
+/// request until the refusing window starts over (see [`MusicBrainz::send`]);
+/// a 503 without a rate-limit zone is the servers failing. The waits double
+/// from one second, giving a failing server some fifteen seconds in all to
+/// recover, and each is jittered, since a server failing everyone at once
+/// hears every client's repeats together otherwise. A response that does
+/// state a wait in `Retry-After` is waited out as it asks instead (see
+/// [`Repeat`]).
 const RETRY: RetryPolicy =
     RetryPolicy::exponential(5, Duration::from_secs(1), Duration::from_secs(10));
 
@@ -144,6 +154,49 @@ where
     Fut: std::future::Future<Output = Result<T, MusicBrainzError>>,
 {
     crate::retry::retry_with_backoff_if(RETRY, label, repeat_mb, f).await
+}
+
+/// The header MusicBrainz's rate limiter names the refusing zone in: `per-ip`
+/// for this address over its rate, `global` for the servers over theirs. Only
+/// a refusal carries it.
+const RATE_ZONE: &str = "x-ratelimit-zone";
+
+/// What a MusicBrainz response says of its rate.
+///
+/// Its rate limiter turns a request away with a 503 naming the zone that
+/// refused it in `X-RateLimit-Zone`, when that zone's window starts over in
+/// `X-RateLimit-Reset` (whole seconds since the epoch), and a `Retry-After`;
+/// the request is held until the later of the two. A 503 without a zone is
+/// the servers failing, an error like any other.
+///
+/// Every other response counts the servers' shared window:
+/// `X-RateLimit-Remaining` of the `X-RateLimit-Limit` requests (some
+/// thousands) every client together may make in a two-second window that
+/// starts over at `X-RateLimit-Reset`. It is everyone's count, not this
+/// address's — answers a moment apart report it hundreds apart — so it says
+/// when the servers are about to turn every client away, and this address's
+/// own rate is the interval's to keep.
+fn mb_rate_answer(status: StatusCode, headers: &HeaderMap) -> RateAnswer {
+    let resets_in = crate::util::http::wait_until_epoch(headers, "x-ratelimit-reset");
+    if status == StatusCode::SERVICE_UNAVAILABLE && headers.contains_key(RATE_ZONE) {
+        return RateAnswer::Refused {
+            wait: [crate::util::http::told_wait(headers), resets_in]
+                .into_iter()
+                .flatten()
+                .max(),
+        };
+    }
+    let remaining = headers
+        .get("x-ratelimit-remaining")
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.trim().parse().ok());
+    match (remaining, resets_in) {
+        (Some(remaining), Some(resets_in)) => RateAnswer::Counted(WindowCount::Fixed {
+            remaining,
+            resets_in,
+        }),
+        _ => RateAnswer::Silent,
+    }
 }
 
 /// The body on a success, and the error the status names otherwise, carrying
@@ -306,15 +359,15 @@ fn quoted(value: &str) -> String {
 
 impl MusicBrainz {
     pub fn new(http: Http) -> Self {
-        Self::with_interval(http, REQUEST_INTERVAL)
+        Self::with_limiter(http, RateLimiter::counted(REQUEST_INTERVAL, RATE_WINDOW))
     }
 
-    /// One whose requests are not spaced: a test's fake service has no rate
-    /// to keep to, and waiting a second between its answers only slows the
-    /// test.
+    /// One whose requests are not spaced and whose window holds nothing: a
+    /// test's fake service has no rate to keep to, and waiting between its
+    /// answers only slows the test.
     #[cfg(any(test, feature = "test-utils"))]
     pub fn for_test(http: Http) -> Self {
-        Self::with_interval(http, Duration::ZERO)
+        Self::with_limiter(http, RateLimiter::counted(Duration::ZERO, Duration::ZERO))
     }
 
     /// The requests waiting in `priority`'s queue for a slot, oldest first.
@@ -329,10 +382,10 @@ impl MusicBrainz {
         self.limiter.admitted_tickets()
     }
 
-    fn with_interval(http: Http, interval: Duration) -> Self {
+    fn with_limiter(http: Http, limiter: RateLimiter) -> Self {
         Self {
             http,
-            limiter: RateLimiter::new(interval),
+            limiter,
             responses: SessionCache::new("MusicBrainz response cache", PROVIDER_RESPONSE_CAPACITY),
         }
     }
@@ -362,12 +415,7 @@ impl MusicBrainz {
             return mb_body(cached, None);
         }
 
-        self.limiter.wait(priority).await;
-        let response = self
-            .http
-            .execute(request)
-            .await
-            .map_err(MusicBrainzError::from_reqwest)?;
+        let response = self.send(request, priority).await?;
         let status = response.status().as_u16();
         let told_wait = crate::util::http::told_wait(response.headers());
         let body = response
@@ -386,6 +434,45 @@ impl MusicBrainz {
             self.responses.put(key, response.clone());
         }
         mb_body(response, told_wait)
+    }
+
+    /// Send `request` once the limiter admits it, handing the limiter what the
+    /// response says of MusicBrainz's rate. A 503 from MusicBrainz's rate
+    /// limiter is its rate, not its answer: the limiter holds every request
+    /// until the refusing window starts over, and this one is sent again then,
+    /// however often that takes — so a rate limit never reaches a caller as a
+    /// failed lookup.
+    async fn send(
+        &self,
+        request: reqwest::Request,
+        priority: CallPriority,
+    ) -> Result<reqwest::Response, MusicBrainzError> {
+        loop {
+            let attempt = request
+                .try_clone()
+                .expect("a MusicBrainz request has no streamed body");
+            let admitted = self.limiter.wait(priority).await;
+            let response = self
+                .http
+                .execute(attempt)
+                .await
+                .map_err(MusicBrainzError::from_reqwest)?;
+            let rate = mb_rate_answer(response.status(), response.headers());
+            admitted.answered(rate);
+            let RateAnswer::Refused { wait } = rate else {
+                return Ok(response);
+            };
+            warn!(
+                "MusicBrainz turned a request away for its rate ({}); holding every MusicBrainz \
+                 request {} before sending it again",
+                response
+                    .headers()
+                    .get(RATE_ZONE)
+                    .and_then(|zone| zone.to_str().ok())
+                    .unwrap_or_default(),
+                wait.map_or_else(|| format!("{RATE_WINDOW:?}"), |wait| format!("{wait:?}"))
+            );
+        }
     }
 
     /// Lookup releases by MusicBrainz DiscID.
@@ -715,5 +802,7 @@ impl MusicBrainz {
     }
 }
 
+#[cfg(test)]
+mod rate_tests;
 #[cfg(test)]
 mod tests;

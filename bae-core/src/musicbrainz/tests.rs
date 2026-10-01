@@ -383,13 +383,34 @@ fn release_labels_leaves_out_empty_and_repeated_entries() {
 /// One connection per response: the stream is dropped once the body is written,
 /// so the client opens a fresh connection for its next request and the accept
 /// count is the request count.
-async fn mb_response_server(responses: Vec<(u16, String)>) -> (String, Arc<AtomicUsize>) {
+pub(super) async fn mb_response_server(
+    responses: Vec<(u16, String)>,
+) -> (String, Arc<AtomicUsize>) {
     let (url, count, _) = mb_recording_server(responses).await;
     (url, count)
 }
 
 async fn mb_recording_server(
     responses: Vec<(u16, String)>,
+) -> (String, Arc<AtomicUsize>, Arc<Mutex<Vec<String>>>) {
+    mb_raw_server(
+        responses
+            .into_iter()
+            .map(|(status, body)| {
+                format!(
+                    "HTTP/1.1 {status} Response\r\nContent-Type: application/json\r\n\
+                     Content-Length: {}\r\n\r\n{body}",
+                    body.len()
+                )
+            })
+            .collect(),
+    )
+    .await
+}
+
+/// [`mb_recording_server`] answering whole raw responses, headers and all.
+pub(super) async fn mb_raw_server(
+    responses: Vec<String>,
 ) -> (String, Arc<AtomicUsize>, Arc<Mutex<Vec<String>>>) {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
         .await
@@ -421,14 +442,9 @@ async fn mb_recording_server(
                     .expect("request line exists")
                     .to_string(),
             );
-            let (status, body) = remaining
-                .next()
-                .unwrap_or_else(|| (599, "unscripted request".to_string()));
-            let raw = format!(
-                "HTTP/1.1 {status} Response\r\nContent-Type: application/json\r\n\
-                 Content-Length: {}\r\n\r\n{body}",
-                body.len()
-            );
+            let raw = remaining.next().unwrap_or_else(|| {
+                "HTTP/1.1 599 Response\r\nContent-Length: 18\r\n\r\nunscripted request".to_string()
+            });
             let _ = stream.write_all(raw.as_bytes()).await;
         }
     });
@@ -436,7 +452,7 @@ async fn mb_recording_server(
 }
 
 /// A client whose MusicBrainz requests go to the local server at `origin`.
-fn served_by(origin: &str) -> MusicBrainz {
+pub(super) fn served_by(origin: &str) -> MusicBrainz {
     MusicBrainz::for_test(Http::for_test().serve("musicbrainz.org", origin))
 }
 

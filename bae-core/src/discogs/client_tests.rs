@@ -440,9 +440,12 @@ fn observe_signals_only_on_rejection_or_success() {
 
     client.observe::<()>(&Ok(()));
     client.observe::<()>(&Err(DiscogsError::InvalidApiKey));
-    // A rate limit says nothing about the key, so it must not signal — a
+    // A server error says nothing about the key, so it must not signal — a
     // transient blip cannot be allowed to reject a good key.
-    client.observe::<()>(&Err(DiscogsError::RateLimit { told_wait: None }));
+    client.observe::<()>(&Err(DiscogsError::Provider {
+        status: StatusCode::SERVICE_UNAVAILABLE,
+        told_wait: None,
+    }));
 
     assert_eq!(*signals.lock().unwrap(), vec!["accepted", "rejected"]);
 }
@@ -498,72 +501,56 @@ async fn validate_token_sends_token_in_authorization_header() {
     assert!(!request_line.contains("token=secret-discogs-token"));
 }
 
+/// A 429 is Discogs's rate, not its answer: the request is sent again once
+/// the window has room, however many times that takes — more than the retry
+/// policy would ever repeat a failure — and the lookup answers rather than
+/// failing.
 #[tokio::test]
-async fn search_retries_rate_limit_then_returns_success() {
-    let (url, request_count) = discogs_response_server(vec![RATE_LIMITED, SEARCH_OK_EMPTY]).await;
+async fn a_rate_limit_is_sent_again_until_it_answers_never_failed() {
+    let refusals = RETRY.attempts() as usize + 2;
+    let mut script = vec![RATE_LIMITED; refusals];
+    script.push(SEARCH_OK_EMPTY);
+    let (url, request_count) = discogs_response_server(script).await;
     let client = DiscogsClient::new(served_by(&url), "token".to_string());
 
     let releases = client
         .search_with_params(&DiscogsSearchParams::default(), CallPriority::Interactive)
         .await
-        .expect("retry should return the successful search response");
+        .expect("a rate limit is waited out, not failed");
 
     assert!(releases.is_empty());
-    assert_eq!(request_count.load(Ordering::SeqCst), 2);
+    assert_eq!(request_count.load(Ordering::SeqCst), refusals + 1);
 }
 
-/// A rate limit that says when to come back is asked again then: the wait it
-/// states replaces the backoff.
+/// A 429 holds the whole limiter for the wait it states, so every other
+/// Discogs request waits with the refused one.
 #[tokio::test]
-async fn a_rate_limit_with_a_stated_wait_is_asked_again() {
-    const RATE_LIMITED_BRIEFLY: &str =
-        "HTTP/1.1 429 Too Many Requests\r\nRetry-After: 1\r\nContent-Length: 0\r\n\r\n";
-    let (url, request_count) =
-        discogs_response_server(vec![RATE_LIMITED_BRIEFLY, SEARCH_OK_EMPTY]).await;
-    let client = DiscogsClient::new(served_by(&url), "token".to_string());
+async fn a_rate_limit_holds_every_discogs_request_for_its_stated_wait() {
+    const RATE_LIMITED_HALF_A_MINUTE: &str =
+        "HTTP/1.1 429 Too Many Requests\r\nRetry-After: 30\r\nContent-Length: 0\r\n\r\n";
+    let (url, request_count) = discogs_response_server(vec![RATE_LIMITED_HALF_A_MINUTE]).await;
+    let discogs = served_by(&url);
+    let client = DiscogsClient::new(discogs.clone(), "token".to_string());
+    let asked = tokio::spawn(async move {
+        client
+            .search_with_params(&DiscogsSearchParams::default(), CallPriority::Interactive)
+            .await
+    });
 
-    client
-        .search_with_params(&DiscogsSearchParams::default(), CallPriority::Interactive)
-        .await
-        .expect("the repeat after the stated wait answers");
-    assert_eq!(request_count.load(Ordering::SeqCst), 2);
-}
+    let opens_at = tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            if let Some(at) = discogs.limiter.opens_at() {
+                return at;
+            }
+            tokio::time::sleep(Duration::from_millis(5)).await;
+        }
+    })
+    .await
+    .expect("the refusal reaches the limiter");
+    asked.abort();
 
-/// A provider asking for longer than a lookup waits is down for now: the
-/// lookup ends at once instead of asking early to be turned away again.
-#[tokio::test]
-async fn a_rate_limit_asking_for_too_long_ends_the_lookup() {
-    const RATE_LIMITED_LONG: &str =
-        "HTTP/1.1 429 Too Many Requests\r\nRetry-After: 3600\r\nContent-Length: 0\r\n\r\n";
-    let (url, request_count) = discogs_response_server(vec![RATE_LIMITED_LONG]).await;
-    let client = DiscogsClient::new(served_by(&url), "token".to_string());
-
-    let error = client
-        .search_with_params(&DiscogsSearchParams::default(), CallPriority::Interactive)
-        .await
-        .expect_err("an hour is longer than a lookup waits");
-    assert!(matches!(
-        error,
-        DiscogsError::RateLimit {
-            told_wait: Some(wait)
-        } if wait == Duration::from_secs(3600)
-    ));
+    assert!(opens_at >= tokio::time::Instant::now() + Duration::from_secs(25));
     assert_eq!(request_count.load(Ordering::SeqCst), 1);
-}
-
-#[tokio::test]
-async fn search_returns_persistent_rate_limit_after_retry_attempts() {
-    let attempts = RETRY.attempts() as usize;
-    let (url, request_count) = discogs_response_server(vec![RATE_LIMITED; attempts]).await;
-    let client = DiscogsClient::new(served_by(&url), "token".to_string());
-
-    let error = client
-        .search_with_params(&DiscogsSearchParams::default(), CallPriority::Interactive)
-        .await
-        .expect_err("persistent rate limit should fail after retry attempts");
-
-    assert!(matches!(error, DiscogsError::RateLimit { .. }));
-    assert_eq!(request_count.load(Ordering::SeqCst), attempts);
 }
 
 #[tokio::test]
@@ -615,11 +602,8 @@ fn retry_policy_repeats_only_transient_failures() {
         })
     };
     assert_eq!(
-        repeat_discogs(&DiscogsError::RateLimit { told_wait: None }),
-        Repeat::AfterBackoff
-    );
-    assert_eq!(
-        repeat_discogs(&DiscogsError::RateLimit {
+        repeat_discogs(&DiscogsError::Provider {
+            status: StatusCode::SERVICE_UNAVAILABLE,
             told_wait: Some(Duration::from_secs(9))
         }),
         Repeat::AfterToldWait(Duration::from_secs(9)),
@@ -763,14 +747,12 @@ async fn a_not_found_answer_is_kept() {
     assert_eq!(requests.load(Ordering::SeqCst), 1);
 }
 
-/// A rate limit and a server error are the provider's momentary state, not its
-/// answer: every retry goes to the wire, and so does the next call.
+/// A server error is the provider's momentary state, not its answer: every
+/// retry goes to the wire, and so does the next call.
 #[tokio::test]
 async fn transient_failures_are_not_kept() {
     let attempts = RETRY.attempts() as usize;
-    // Every try but the last is a server error; the last is a rate limit.
-    let mut script: Vec<(u16, String)> = (1..attempts).map(|_| (503, String::new())).collect();
-    script.push((429, String::new()));
+    let mut script: Vec<(u16, String)> = (0..attempts).map(|_| (503, String::new())).collect();
     script.push((200, release_body(510003)));
     let (url, requests) = scripted_server(script).await;
     let client = client_at(url);
@@ -779,7 +761,13 @@ async fn transient_failures_are_not_kept() {
         .get_release("510003", CallPriority::Interactive)
         .await
         .expect_err("transient answers on every try exhaust the retries");
-    assert!(matches!(error, DiscogsError::RateLimit { .. }));
+    assert!(matches!(
+        error,
+        DiscogsError::Provider {
+            status: StatusCode::SERVICE_UNAVAILABLE,
+            ..
+        }
+    ));
     assert_eq!(
         requests.load(Ordering::SeqCst),
         attempts,
@@ -881,4 +869,106 @@ async fn a_catalog_number_search_reads_every_page() {
         vec![1, 2, 3]
     );
     assert_eq!(request_count.load(Ordering::SeqCst), 2);
+}
+
+// ── Discogs's window under sustained load ───────────────────────────────────
+
+/// Discogs's count of one address as it describes it: every request that
+/// arrived in the last sixty seconds, sixty at most, one over that turned
+/// away with a 429. Its headers count the window as the request found it —
+/// a fresh window answers sixty remaining.
+#[derive(Default)]
+struct DiscogsMinute {
+    arrivals: std::collections::VecDeque<tokio::time::Instant>,
+}
+
+impl crate::util::rate_limiter::load_model::Window for DiscogsMinute {
+    fn arrive(&mut self, at: tokio::time::Instant) -> (StatusCode, reqwest::header::HeaderMap) {
+        while self
+            .arrivals
+            .front()
+            .is_some_and(|arrived| *arrived + DISCOGS_WINDOW <= at)
+        {
+            self.arrivals.pop_front();
+        }
+        let used = self.arrivals.len();
+        let status = if used < 60 {
+            self.arrivals.push_back(at);
+            StatusCode::OK
+        } else {
+            StatusCode::TOO_MANY_REQUESTS
+        };
+        let mut headers = reqwest::header::HeaderMap::new();
+        headers.insert("x-discogs-ratelimit", 60.into());
+        headers.insert("x-discogs-ratelimit-used", used.into());
+        headers.insert("x-discogs-ratelimit-remaining", (60 - used).into());
+        (status, headers)
+    }
+}
+
+fn discogs_load(others: Vec<Duration>) -> crate::util::rate_limiter::load_model::Load {
+    crate::util::rate_limiter::load_model::Load {
+        requests: 300,
+        latency: Duration::from_millis(50)..Duration::from_secs(1),
+        others,
+        seed: 27,
+    }
+}
+
+/// Requests spaced as Discogs's limiter spaces them, reaching Discogs after
+/// trips of different lengths, never put a sixty-first in any minute — and the
+/// window's own count does not slow a client that has it to itself.
+#[tokio::test(start_paused = true)]
+async fn sustained_load_stays_inside_discogs_minute() {
+    let discogs = Discogs::new(Http::for_test());
+    let limiter = Arc::new(discogs.limiter);
+    let load = discogs_load(Vec::new());
+    let requests = load.requests as u32;
+
+    let outcome = crate::util::rate_limiter::load_model::sustain(
+        limiter,
+        DiscogsMinute::default(),
+        discogs_rate_answer,
+        load,
+    )
+    .await;
+
+    assert_eq!(outcome.refused, 0, "Discogs turned requests away");
+    assert!(
+        outcome.elapsed <= DISCOGS_REQUEST_INTERVAL * requests + Duration::from_secs(2),
+        "took {:?}: the count slowed a client alone on its address",
+        outcome.elapsed
+    );
+}
+
+/// Another client on the same address spending thirty requests a minute
+/// leaves less of the window; the count each response carries slows this
+/// client before the window is spent, rather than after a 429 — and only that
+/// far: as its own requests leave the window it takes their places again, so
+/// it keeps at least the thirty a minute left over, less the reserve.
+#[tokio::test(start_paused = true)]
+async fn sustained_load_yields_discogs_minute_to_another_client() {
+    let discogs = Discogs::new(Http::for_test());
+    let limiter = Arc::new(discogs.limiter);
+    let others = (0..300)
+        .map(|second| Duration::from_secs(second * 2))
+        .collect();
+    let load = discogs_load(others);
+    let requests = load.requests as u32;
+
+    let outcome = crate::util::rate_limiter::load_model::sustain(
+        limiter,
+        DiscogsMinute::default(),
+        discogs_rate_answer,
+        load,
+    )
+    .await;
+
+    assert_eq!(outcome.refused, 0, "Discogs turned requests away");
+    let left_over_per_minute = 60 - 30 - 3;
+    assert!(
+        outcome.elapsed <= DISCOGS_WINDOW * requests / left_over_per_minute,
+        "took {:?}: slowed past the share another client leaves",
+        outcome.elapsed
+    );
 }

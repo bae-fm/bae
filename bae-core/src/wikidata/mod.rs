@@ -26,7 +26,7 @@ use crate::util::session_cache::{SessionCache, PROVIDER_RESPONSE_CAPACITY};
 /// Where every Wikidata request goes.
 const BASE_URL: &str = "https://www.wikidata.org";
 
-/// One request a second, the pace the MusicBrainz and Discogs clients keep.
+/// One request a second.
 const REQUEST_INTERVAL: Duration = Duration::from_secs(1);
 
 /// Where one item's entity document is fetched from. Named once, because the
@@ -192,7 +192,7 @@ impl Wikidata {
             return wikidata_body(cached, None);
         }
 
-        self.limiter.wait(priority).await;
+        let _admitted = self.limiter.wait(priority).await;
         let response = self
             .http
             .execute(request)

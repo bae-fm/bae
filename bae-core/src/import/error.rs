@@ -62,7 +62,7 @@ pub enum ImportError {
     #[error("MusicBrainz request failed: {0}")]
     MusicBrainz(#[from] crate::musicbrainz::MusicBrainzError),
 
-    /// A Discogs request failed. RateLimit/InvalidApiKey/NotFound preserved.
+    /// A Discogs request failed. InvalidApiKey/NotFound preserved.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     #[error("Discogs request failed: {0}")]
     Discogs(#[from] crate::discogs::client::DiscogsError),
@@ -298,7 +298,6 @@ impl ImportError {
                 }
                 DiscogsError::Transport(_)
                 | DiscogsError::Provider { .. }
-                | DiscogsError::RateLimit { .. }
                 | DiscogsError::InvalidApiKey
                 | DiscogsError::NotFound => C::Import,
             },
@@ -356,15 +355,21 @@ mod tests {
         ));
     }
 
-    /// A Discogs rate-limit likewise survives the conversion so a retry policy
-    /// can distinguish it from a hard failure.
+    /// A Discogs server error likewise survives the conversion so a retry
+    /// policy can distinguish it from a hard failure.
     #[test]
     fn discogs_error_is_preserved_unflattened() {
-        let err: ImportError =
-            crate::discogs::client::DiscogsError::RateLimit { told_wait: None }.into();
+        let err: ImportError = crate::discogs::client::DiscogsError::Provider {
+            status: reqwest::StatusCode::SERVICE_UNAVAILABLE,
+            told_wait: None,
+        }
+        .into();
         assert!(matches!(
             err,
-            ImportError::Discogs(crate::discogs::client::DiscogsError::RateLimit { .. })
+            ImportError::Discogs(crate::discogs::client::DiscogsError::Provider {
+                status: reqwest::StatusCode::SERVICE_UNAVAILABLE,
+                ..
+            })
         ));
     }
     #[test]

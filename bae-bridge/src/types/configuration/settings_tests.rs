@@ -76,7 +76,6 @@ fn expected_provider_errors_remain_domain_failures() {
             status: 500u16.try_into().unwrap(),
             told_wait: None,
         }),
-        ImportError::Discogs(DiscogsError::RateLimit { told_wait: None }),
         ImportError::Discogs(DiscogsError::InvalidApiKey),
     ] {
         assert!(matches!(

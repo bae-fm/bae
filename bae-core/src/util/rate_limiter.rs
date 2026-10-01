@@ -1,4 +1,7 @@
-//! Minimum-interval rate limiter for provider API clients.
+//! Admission control for provider API clients: requests spaced under the
+//! provider's published rate, held while the provider's own count of its
+//! window says it is nearly spent, and held all together when the provider
+//! turns one away for its rate.
 
 use std::collections::VecDeque;
 use std::sync::Mutex;
@@ -6,6 +9,9 @@ use std::time::Duration;
 
 use tokio::sync::Notify;
 use tokio::time::Instant;
+
+mod ledger;
+use ledger::Ledger;
 
 /// Which stream a piece of import work belongs to — at bottom, whether a person
 /// is waiting on it.
@@ -24,7 +30,30 @@ pub enum CallPriority {
     Background,
 }
 
-/// Enforces a minimum interval between calls. Each provider object owns one,
+/// What a provider's response said about its rate, read off by the client
+/// that knows the provider's headers.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RateAnswer {
+    /// The provider turned the request away for its rate. `wait` is how long
+    /// it asked to be left alone, when it said.
+    Refused { wait: Option<Duration> },
+    /// The provider's count of its window as the request found it.
+    Counted(WindowCount),
+    /// Nothing about the rate.
+    Silent,
+}
+
+/// How many more requests the provider's window takes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WindowCount {
+    /// A window that moves with time: each request leaves the count one window
+    /// length after it arrived.
+    Rolling { remaining: u32 },
+    /// A window that starts over whole, `resets_in` from now.
+    Fixed { remaining: u32, resets_in: Duration },
+}
+
+/// Admits each call a provider object makes. Each provider object owns one,
 /// shared by every call it makes.
 ///
 /// Admission order is the limiter's decision, not the caller's: an
@@ -34,8 +63,10 @@ pub enum CallPriority {
 /// interactive stream starves the background one — that is the intent, since
 /// the background stream is a resumable sweep nobody is watching.
 ///
-/// One slot per interval covers both classes, so the two streams together stay
-/// inside the provider's published rate.
+/// A slot opens once three things allow it, for both classes together:
+/// the interval since the last admission has passed; no refusal's hold is in
+/// force; and the provider's last count of its window, less what was admitted
+/// since, has more than a reserve left.
 ///
 /// Nobody drives admission but the waiters themselves: each holds a ticket in
 /// its class's queue and wakes to check whether the slot is its own. That is
@@ -48,8 +79,9 @@ pub struct RateLimiter {
     interval: Duration,
     inner: Mutex<Inner>,
     /// Woken whenever a ticket leaves a queue — admitted, or given up by a
-    /// dropped `wait` future — so the next candidate re-checks its turn instead
-    /// of waiting out a timer it can no longer see.
+    /// dropped `wait` future — or an answer changes when the next slot opens,
+    /// so the next candidate re-checks its turn instead of waiting out a timer
+    /// it can no longer see.
     advanced: Notify,
 }
 
@@ -58,6 +90,12 @@ pub struct RateLimiter {
 struct Inner {
     /// When the last admitted call was stamped; `None` until the first one.
     last_call: Option<Instant>,
+    /// No call is admitted before this: the provider refused one for its rate.
+    held_until: Option<Instant>,
+    /// The provider's count of its window, for a provider that reports one.
+    ledger: Option<Ledger>,
+    /// Admissions so far; each admitted call is known by its number.
+    admissions: u64,
     /// Queued ticket ids, oldest first.
     interactive: VecDeque<u64>,
     background: VecDeque<u64>,
@@ -69,9 +107,12 @@ struct Inner {
 }
 
 impl Inner {
-    fn new() -> Self {
+    fn new(ledger: Option<Ledger>) -> Self {
         Self {
             last_call: None,
+            held_until: None,
+            ledger,
+            admissions: 0,
             interactive: VecDeque::new(),
             background: VecDeque::new(),
             next_ticket: 0,
@@ -115,11 +156,36 @@ impl Inner {
             }
         }
     }
+
+    /// When the next slot opens, or `None` when it is open now.
+    fn opens_at(&mut self, interval: Duration, now: Instant) -> Option<Instant> {
+        let spaced = self.last_call.map(|last| last + interval);
+        let counted = self
+            .ledger
+            .as_mut()
+            .and_then(|ledger| ledger.spent_until(now));
+        [spaced, self.held_until, counted]
+            .into_iter()
+            .flatten()
+            .filter(|at| *at > now)
+            .max()
+    }
+
+    /// Stamp an admission and return its number.
+    fn admit(&mut self, now: Instant) -> u64 {
+        let admission = self.admissions;
+        self.admissions += 1;
+        self.last_call = Some(now);
+        if let Some(ledger) = &mut self.ledger {
+            ledger.admit(admission, now);
+        }
+        admission
+    }
 }
 
 /// What a queued waiter found when it last looked.
 enum Turn {
-    Admitted,
+    Admitted(u64),
     /// The next slot is this waiter's, and opens at this instant.
     NotBefore(Instant),
     /// Someone is ahead of it; there is nothing to time, only the queue moving.
@@ -127,12 +193,30 @@ enum Turn {
 }
 
 impl RateLimiter {
+    /// Calls spaced `interval` apart, for a provider that reports nothing
+    /// about its rate.
     pub fn new(interval: Duration) -> Self {
+        Self::build(interval, None)
+    }
+
+    /// Calls spaced `interval` apart, for a provider whose responses report its
+    /// count of a `window` — the span it counts requests over.
+    pub fn counted(interval: Duration, window: Duration) -> Self {
+        Self::build(interval, Some(Ledger::new(window)))
+    }
+
+    fn build(interval: Duration, ledger: Option<Ledger>) -> Self {
         Self {
             interval,
-            inner: Mutex::new(Inner::new()),
+            inner: Mutex::new(Inner::new(ledger)),
             advanced: Notify::new(),
         }
+    }
+
+    fn lock(&self) -> std::sync::MutexGuard<'_, Inner> {
+        self.inner
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
     }
 
     /// Wait for this call's admission slot, then stamp it. The first call, and
@@ -140,10 +224,11 @@ impl RateLimiter {
     ///
     /// Dropping the returned future before it completes gives up the waiter's
     /// place and costs no slot — the interval budget is spent on calls that are
-    /// actually made.
-    pub async fn wait(&self, priority: CallPriority) {
-        if self.admit_when_idle() {
-            return;
+    /// actually made. The call is in flight until the returned [`Admitted`] is
+    /// answered or dropped.
+    pub async fn wait(&self, priority: CallPriority) -> Admitted<'_> {
+        if let Some(admission) = self.admit_when_idle() {
+            return Admitted::new(self, admission);
         }
 
         let mut ticket = Ticket::take(self, priority);
@@ -155,10 +240,10 @@ impl RateLimiter {
             advanced.as_mut().enable();
 
             match self.ticket_turn(priority, ticket.id) {
-                Turn::Admitted => {
+                Turn::Admitted(admission) => {
                     ticket.queued = false;
                     self.advanced.notify_waiters();
-                    return;
+                    return Admitted::new(self, admission);
                 }
                 Turn::NotBefore(deadline) => {
                     tokio::select! {
@@ -171,53 +256,68 @@ impl RateLimiter {
         }
     }
 
-    fn hold_until(&self, last_call: Option<Instant>) -> Option<Instant> {
-        let ready = last_call? + self.interval;
-        (ready > Instant::now()).then_some(ready)
-    }
-
-    fn admit_when_idle(&self) -> bool {
-        let mut inner = self
-            .inner
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        if inner.has_waiters() || self.hold_until(inner.last_call).is_some() {
-            return false;
+    fn admit_when_idle(&self) -> Option<u64> {
+        let mut inner = self.lock();
+        let now = Instant::now();
+        if inner.has_waiters() || inner.opens_at(self.interval, now).is_some() {
+            return None;
         }
-        inner.last_call = Some(Instant::now());
-        true
+        Some(inner.admit(now))
     }
 
     fn enqueue_ticket(&self, priority: CallPriority) -> u64 {
-        self.inner
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .push(priority)
+        self.lock().push(priority)
     }
 
     fn ticket_turn(&self, priority: CallPriority, id: u64) -> Turn {
-        let mut inner = self
-            .inner
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let mut inner = self.lock();
         if !inner.is_next(priority, id) {
             return Turn::Behind;
         }
-        if let Some(deadline) = self.hold_until(inner.last_call) {
+        let now = Instant::now();
+        if let Some(deadline) = inner.opens_at(self.interval, now) {
             return Turn::NotBefore(deadline);
         }
-        inner.last_call = Some(Instant::now());
+        let admission = inner.admit(now);
         inner.remove(priority, id);
         #[cfg(test)]
         inner.admitted.push((priority, id));
-        Turn::Admitted
+        Turn::Admitted(admission)
     }
 
     fn remove_ticket(&self, priority: CallPriority, id: u64) {
-        self.inner
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .remove(priority, id);
+        self.lock().remove(priority, id);
+    }
+
+    /// Admission `admission` came back, carrying `answer` when it reached the
+    /// provider and the provider answered.
+    fn settle(&self, admission: u64, answer: RateAnswer) {
+        let now = Instant::now();
+        {
+            let mut inner = self.lock();
+            if let Some(ledger) = &mut inner.ledger {
+                ledger.answer(admission, now);
+            }
+            match answer {
+                RateAnswer::Refused { wait } => {
+                    let wait = wait.unwrap_or_else(|| {
+                        inner.ledger.as_ref().map_or(self.interval, Ledger::window)
+                    });
+                    let until = now + wait;
+                    inner.held_until = Some(inner.held_until.map_or(until, |held| held.max(until)));
+                    if let Some(ledger) = &mut inner.ledger {
+                        ledger.forget_count();
+                    }
+                }
+                RateAnswer::Counted(count) => inner
+                    .ledger
+                    .as_mut()
+                    .expect("only a limiter counted over a window reads a provider's count")
+                    .counted(admission, now, count),
+                RateAnswer::Silent => {}
+            }
+        }
+        self.advanced.notify_waiters();
     }
 
     #[cfg(test)]
@@ -228,32 +328,65 @@ impl RateLimiter {
     /// The tickets waiting in `priority`'s queue, oldest first.
     #[cfg(test)]
     pub(crate) fn queued_tickets(&self, priority: CallPriority) -> Vec<u64> {
-        self.inner
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .queue(priority)
-            .iter()
-            .copied()
-            .collect()
+        self.lock().queue(priority).iter().copied().collect()
     }
 
     /// Every queued ticket admitted so far, in admission order. A call admitted
     /// without queueing — the limiter was idle — took no ticket and is absent.
     #[cfg(test)]
     pub(crate) fn admitted_tickets(&self) -> Vec<(CallPriority, u64)> {
-        self.inner
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .admitted
-            .clone()
+        self.lock().admitted.clone()
     }
 
     #[cfg(test)]
     fn has_waiters_for_test(&self) -> bool {
-        self.inner
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .has_waiters()
+        self.lock().has_waiters()
+    }
+
+    /// When the next slot opens, `None` when it is open now.
+    #[cfg(test)]
+    pub(crate) fn opens_at(&self) -> Option<Instant> {
+        self.lock().opens_at(self.interval, Instant::now())
+    }
+
+    #[cfg(test)]
+    fn sent_in_ledger(&self) -> usize {
+        self.lock().ledger.as_ref().map_or(0, Ledger::sent_len)
+    }
+}
+
+/// An admitted call, in flight until it is answered or dropped. Dropping it
+/// unanswered — the request failed before the provider answered, or its future
+/// was cancelled — tells the limiter only that it is no longer in flight.
+#[must_use = "an admitted call is in flight until its answer is read or it is dropped"]
+pub struct Admitted<'a> {
+    limiter: &'a RateLimiter,
+    admission: u64,
+    settled: bool,
+}
+
+impl<'a> Admitted<'a> {
+    fn new(limiter: &'a RateLimiter, admission: u64) -> Self {
+        Self {
+            limiter,
+            admission,
+            settled: false,
+        }
+    }
+
+    /// What the provider's response said about its rate. A refusal holds every
+    /// waiter, not only the caller's next try.
+    pub fn answered(mut self, answer: RateAnswer) {
+        self.settled = true;
+        self.limiter.settle(self.admission, answer);
+    }
+}
+
+impl Drop for Admitted<'_> {
+    fn drop(&mut self) {
+        if !self.settled {
+            self.limiter.settle(self.admission, RateAnswer::Silent);
+        }
     }
 }
 
@@ -291,219 +424,8 @@ impl Drop for Ticket<'_> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use std::sync::Arc;
-    use tokio::task::yield_now;
+pub(crate) mod load_model;
 
-    const INTERVAL: Duration = Duration::from_secs(1);
-
-    fn queued(limiter: &RateLimiter, priority: CallPriority) -> usize {
-        limiter.queued_count(priority)
-    }
-
-    /// Spawned waiters reach the queue only when they run, so a test that cares
-    /// about arrival order has to let them get there first. Yielding keeps a
-    /// task runnable, so the paused clock does not advance while we wait.
-    async fn queued_reaches(limiter: &RateLimiter, priority: CallPriority, count: usize) {
-        while queued(limiter, priority) < count {
-            yield_now().await;
-        }
-    }
-
-    fn spawn_wait(
-        limiter: &Arc<RateLimiter>,
-        priority: CallPriority,
-    ) -> tokio::task::JoinHandle<()> {
-        let limiter = Arc::clone(limiter);
-        tokio::spawn(async move { limiter.wait(priority).await })
-    }
-
-    #[tokio::test(start_paused = true)]
-    async fn wait_spaces_calls_by_the_interval() {
-        let limiter = RateLimiter::new(INTERVAL);
-
-        // First call returns immediately — no previous stamp.
-        let start = Instant::now();
-        limiter.wait(CallPriority::Interactive).await;
-        assert!(start.elapsed() < Duration::from_millis(100));
-
-        // Second call waits out the interval since the first.
-        let start = Instant::now();
-        limiter.wait(CallPriority::Interactive).await;
-        assert!(start.elapsed() >= Duration::from_millis(900));
-    }
-
-    /// The one that fails if the priority is removed: with a single FIFO the
-    /// interactive call is admitted 21 intervals in.
-    #[tokio::test(start_paused = true)]
-    async fn interactive_overtakes_a_queued_background_flood() {
-        let limiter = Arc::new(RateLimiter::new(INTERVAL));
-        // Spend the free first slot, so everything below has to queue.
-        limiter.wait(CallPriority::Background).await;
-
-        for _ in 0..20 {
-            spawn_wait(&limiter, CallPriority::Background);
-        }
-        queued_reaches(&limiter, CallPriority::Background, 20).await;
-
-        let start = Instant::now();
-        limiter.wait(CallPriority::Interactive).await;
-        assert!(
-            start.elapsed() <= INTERVAL,
-            "interactive call waited {:?}, behind the background queue",
-            start.elapsed()
-        );
-    }
-
-    /// The guarantee that forbids giving background work its own limiter.
-    #[tokio::test(start_paused = true)]
-    async fn the_interval_bounds_both_classes_together() {
-        let limiter = Arc::new(RateLimiter::new(INTERVAL));
-        let admissions: Arc<Mutex<Vec<Instant>>> = Arc::default();
-
-        let mut handles = Vec::new();
-        for i in 0..10 {
-            let priority = if i % 2 == 0 {
-                CallPriority::Interactive
-            } else {
-                CallPriority::Background
-            };
-            let limiter = Arc::clone(&limiter);
-            let admissions = Arc::clone(&admissions);
-            handles.push(tokio::spawn(async move {
-                limiter.wait(priority).await;
-                admissions.lock().unwrap().push(Instant::now());
-            }));
-        }
-        for handle in handles {
-            handle.await.unwrap();
-        }
-
-        let mut times = admissions.lock().unwrap().clone();
-        times.sort();
-        assert_eq!(times.len(), 10);
-        for pair in times.windows(2) {
-            assert!(
-                pair[1] - pair[0] >= INTERVAL,
-                "admissions {:?} apart, closer than the interval",
-                pair[1] - pair[0]
-            );
-        }
-    }
-
-    #[tokio::test(start_paused = true)]
-    async fn background_drains_in_arrival_order_once_interactive_is_idle() {
-        let limiter = Arc::new(RateLimiter::new(INTERVAL));
-        // Spend the free first slot, so every waiter below is queued.
-        limiter.wait(CallPriority::Interactive).await;
-
-        let order: Arc<Mutex<Vec<usize>>> = Arc::default();
-        let mut handles = Vec::new();
-        for i in 0..5 {
-            let limiter_task = Arc::clone(&limiter);
-            let order = Arc::clone(&order);
-            handles.push(tokio::spawn(async move {
-                limiter_task.wait(CallPriority::Background).await;
-                order.lock().unwrap().push(i);
-            }));
-            queued_reaches(&limiter, CallPriority::Background, i + 1).await;
-        }
-        for handle in handles {
-            handle.await.unwrap();
-        }
-
-        assert_eq!(*order.lock().unwrap(), vec![0, 1, 2, 3, 4]);
-    }
-
-    /// The waiter behind a cancelled one keeps the schedule it would have had if
-    /// the cancelled call had never been made: it is admitted one interval after
-    /// the last *real* call, not one interval after the cancellation, and it is
-    /// admitted at all rather than stuck behind an abandoned ticket.
-    #[tokio::test(start_paused = true)]
-    async fn a_cancelled_waiter_costs_no_slot() {
-        let limiter = Arc::new(RateLimiter::new(INTERVAL));
-        // Spend the free first slot, so every waiter below is queued.
-        limiter.wait(CallPriority::Interactive).await;
-
-        let cancelled = spawn_wait(&limiter, CallPriority::Interactive);
-        queued_reaches(&limiter, CallPriority::Interactive, 1).await;
-        // Cancel partway into the interval, so a slot wrongly spent here would
-        // push the next admission out by the part already served.
-        tokio::time::sleep(INTERVAL / 2).await;
-        cancelled.abort();
-        // Joining an aborted task means its future — and the ticket it holds —
-        // is really dropped.
-        assert!(cancelled.await.unwrap_err().is_cancelled());
-
-        let start = Instant::now();
-        tokio::time::timeout(INTERVAL * 5, limiter.wait(CallPriority::Background))
-            .await
-            .expect("the cancelled waiter left its ticket in the queue");
-        assert!(
-            start.elapsed() <= INTERVAL / 2,
-            "waited {:?}: the cancelled waiter ate a slot",
-            start.elapsed()
-        );
-    }
-
-    #[tokio::test(start_paused = true)]
-    async fn an_uncontended_wait_neither_sleeps_nor_spawns_a_task() {
-        let limiter = RateLimiter::new(INTERVAL);
-        let alive_before = tokio::runtime::Handle::current()
-            .metrics()
-            .num_alive_tasks();
-
-        let start = Instant::now();
-        limiter.wait(CallPriority::Interactive).await;
-
-        assert_eq!(start.elapsed(), Duration::ZERO);
-        assert_eq!(
-            tokio::runtime::Handle::current()
-                .metrics()
-                .num_alive_tasks(),
-            alive_before
-        );
-        assert!(!limiter.has_waiters_for_test());
-    }
-
-    /// A provider's limiter outlives any one runtime that asks through it —
-    /// the import worker builds and drops its own while the app's keeps going.
-    /// A waiter dying with its runtime must leave nothing behind that a later
-    /// runtime waits on, which is why admission cannot belong to a spawned
-    /// task.
-    #[test]
-    fn a_dropped_runtime_leaves_the_limiter_usable() {
-        let limiter = Arc::new(RateLimiter::new(INTERVAL));
-
-        fn runtime() -> tokio::runtime::Runtime {
-            tokio::runtime::Builder::new_current_thread()
-                .enable_time()
-                .start_paused(true)
-                .build()
-                .unwrap()
-        }
-
-        let first = runtime();
-        first.block_on(async {
-            // Spend the free slot, then leave a waiter queued behind it.
-            limiter.wait(CallPriority::Interactive).await;
-            spawn_wait(&limiter, CallPriority::Background);
-            queued_reaches(&limiter, CallPriority::Background, 1).await;
-        });
-        drop(first);
-
-        let second = runtime();
-        second.block_on(async {
-            let start = Instant::now();
-            tokio::time::timeout(INTERVAL * 5, limiter.wait(CallPriority::Interactive))
-                .await
-                .expect("the dropped runtime wedged the limiter");
-            assert!(
-                start.elapsed() <= INTERVAL,
-                "waited {:?} behind a waiter that no longer exists",
-                start.elapsed()
-            );
-        });
-    }
-}
+#[cfg(test)]
+#[path = "rate_limiter_tests.rs"]
+mod tests;
