@@ -11,10 +11,14 @@
 //! of changes (FSEvents dropping events, inotify's queue overflowing). Such an
 //! event names where to start reading again, and a gatherer that kept only the
 //! latest of them would lose the others' folders.
+//!
+//! Each event comes from one root's own watch, and goes out naming its paths
+//! as that root is spelled — the spelling everything downstream matches on.
 
 use notify::Event;
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 /// How long a folder has to go without a change before what changed in it is
@@ -25,6 +29,70 @@ pub(super) const QUIET: Duration = Duration::from_secs(1);
 /// errors the watch backend raised, which go out the moment they arrive.
 pub(crate) type WatchReport = Result<Vec<Event>, Vec<notify::Error>>;
 
+/// What one root's watch reported, and the root it watches.
+pub(super) type RootEvent = (Arc<WatchedRoot>, notify::Result<Event>);
+
+/// A watched root as it is stored, and as its watch reports it.
+///
+/// FSEvents names a path by where it really is, every symlink on the way
+/// resolved: a root stored as `/var/music` is reported as
+/// `/private/var/music/...` on macOS, where `/var` is a symlink. inotify and
+/// Windows report the spelling they were given, which is the stored one.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct WatchedRoot {
+    path: PathBuf,
+    reported: PathBuf,
+}
+
+impl WatchedRoot {
+    /// `path`, and the spelling its watch will report it under: where it
+    /// resolves to on disk now, on macOS; `path` itself elsewhere.
+    pub(super) fn resolve(path: &Path) -> std::io::Result<Self> {
+        Ok(Self {
+            path: path.to_path_buf(),
+            reported: if cfg!(target_os = "macos") {
+                std::fs::canonicalize(path)?
+            } else {
+                path.to_path_buf()
+            },
+        })
+    }
+
+    /// `path` spelled as the root is, when it is the root or under it in
+    /// either spelling.
+    fn spelled(&self, path: &Path) -> Option<PathBuf> {
+        if path.starts_with(&self.path) {
+            return Some(path.to_path_buf());
+        }
+        let relative = path.strip_prefix(&self.reported).ok()?;
+        Some(if relative.as_os_str().is_empty() {
+            self.path.clone()
+        } else {
+            self.path.join(relative)
+        })
+    }
+
+    /// `error` naming its paths as the root is spelled, or naming the root
+    /// when it names nothing: it came from this root's watch.
+    fn error_spelled(&self, mut error: notify::Error) -> notify::Error {
+        error.paths = if error.paths.is_empty() {
+            vec![self.path.clone()]
+        } else {
+            error
+                .paths
+                .iter()
+                .map(|path| self.spelled(path).unwrap_or_else(|| path.clone()))
+                .collect()
+        };
+        error
+    }
+
+    /// Whether `path` holds the root, in either spelling.
+    fn is_held_by(&self, path: &Path) -> bool {
+        self.path.starts_with(path) || self.reported.starts_with(path)
+    }
+}
+
 /// Where one event's path is read again from.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 enum Gathering {
@@ -33,8 +101,8 @@ enum Gathering {
     /// A whole watched root: the root itself changed, or the watch lost track
     /// of changes somewhere that takes in all of it.
     Root(PathBuf),
-    /// A path under no watched root — a watch left behind by a folder that is
-    /// no longer watched. Passed on, and matched against nothing.
+    /// A path outside the root whose watch reported it. Passed on, and
+    /// matched against nothing.
     Unrouted,
 }
 
@@ -56,14 +124,14 @@ impl WatchBatches {
         }
     }
 
-    /// Take in one event reported at `now` under `roots`. An event naming
-    /// several paths — a rename's two ends — is filed once under each, as an
-    /// event naming that path alone.
+    /// Take in one event that `root`'s watch reported at `now`. An event
+    /// naming several paths — a rename's two ends — is filed once under each,
+    /// as an event naming that path, spelled as the root is, alone.
     ///
     /// An event that says the watch lost track, and names no path or a path
-    /// that holds a root, is filed as a change to each root it takes in,
-    /// naming that root: whatever reads it reads the root whole.
-    pub(super) fn add(&mut self, event: Event, roots: &BTreeSet<PathBuf>, now: Instant) {
+    /// that holds the root, is filed as a change to the root, naming it:
+    /// whatever reads it reads the root whole.
+    pub(super) fn add(&mut self, root: &WatchedRoot, event: Event, now: Instant) {
         let rescan = event.need_rescan();
         let single = |path: &Path| {
             let mut single = Event::new(event.kind).add_path(path.to_path_buf());
@@ -73,39 +141,31 @@ impl WatchBatches {
             single
         };
         if event.paths.is_empty() {
-            if !rescan {
-                return;
-            }
-            for root in roots {
-                self.file(Gathering::Root(root.clone()), single(root), now);
+            if rescan {
+                self.file(Gathering::Root(root.path.clone()), single(&root.path), now);
             }
             return;
         }
         for path in &event.paths {
-            if let Some(root) = roots.iter().find(|root| path.starts_with(root)) {
-                let gathering = match path.strip_prefix(root).ok().and_then(|relative| {
+            if let Some(spelled) = root.spelled(path) {
+                let gathering = match spelled.strip_prefix(&root.path).ok().and_then(|relative| {
                     relative
                         .components()
                         .next()
                         .map(|first| first.as_os_str().to_string_lossy().into_owned())
                 }) {
                     Some(folder) => Gathering::Folder {
-                        root: root.clone(),
+                        root: root.path.clone(),
                         folder,
                     },
-                    None => Gathering::Root(root.clone()),
+                    None => Gathering::Root(root.path.clone()),
                 };
-                self.file(gathering, single(path), now);
-                continue;
+                self.file(gathering, single(&spelled), now);
+            } else if rescan && root.is_held_by(path) {
+                self.file(Gathering::Root(root.path.clone()), single(&root.path), now);
+            } else {
+                self.file(Gathering::Unrouted, single(path), now);
             }
-            let held: Vec<&PathBuf> = roots.iter().filter(|root| root.starts_with(path)).collect();
-            if rescan && !held.is_empty() {
-                for root in held {
-                    self.file(Gathering::Root(root.clone()), single(root), now);
-                }
-                continue;
-            }
-            self.file(Gathering::Unrouted, single(path), now);
         }
     }
 
@@ -171,11 +231,11 @@ impl WatchBatches {
     }
 }
 
-/// Gather what the watch reports on `raw` and send each quiet folder's batch
-/// on `reports`, for as long as the watch sends. Runs on a thread of its own.
+/// Gather what the roots' watches report on `raw` and send each quiet
+/// folder's batch on `reports`, for as long as any watch can send. Runs on a
+/// thread of its own.
 pub(super) fn run(
-    raw: std::sync::mpsc::Receiver<notify::Result<Event>>,
-    roots: std::sync::Arc<std::sync::Mutex<BTreeSet<PathBuf>>>,
+    raw: std::sync::mpsc::Receiver<RootEvent>,
     reports: tokio::sync::mpsc::UnboundedSender<WatchReport>,
 ) {
     let mut batches = WatchBatches::new();
@@ -192,11 +252,8 @@ pub(super) fn run(
                 .map_err(|_| std::sync::mpsc::RecvTimeoutError::Disconnected),
         };
         match received {
-            Ok(Ok(event)) => {
-                let roots = roots.lock().unwrap().clone();
-                batches.add(event, &roots, Instant::now());
-            }
-            Ok(Err(error)) => send(Err(vec![error])),
+            Ok((root, Ok(event))) => batches.add(&root, event, Instant::now()),
+            Ok((root, Err(error))) => send(Err(vec![root.error_spelled(error)])),
             Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {}
             Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
                 for batch in batches.take_all() {
@@ -246,8 +303,11 @@ mod tests {
         paths
     }
 
-    fn roots() -> BTreeSet<PathBuf> {
-        [PathBuf::from("/music")].into_iter().collect()
+    fn root() -> WatchedRoot {
+        WatchedRoot {
+            path: PathBuf::from("/music"),
+            reported: PathBuf::from("/music"),
+        }
     }
 
     /// A folder still being written to is held back; one that went quiet
@@ -256,9 +316,9 @@ mod tests {
     fn each_folder_goes_out_once_it_is_quiet_and_not_before() {
         let mut batches = WatchBatches::new();
         let start = Instant::now();
-        batches.add(created("/music/One/01.flac"), &roots(), start);
-        batches.add(created("/music/Two/01.flac"), &roots(), start);
-        batches.add(created("/music/Two/02.flac"), &roots(), start + QUIET / 2);
+        batches.add(&root(), created("/music/One/01.flac"), start);
+        batches.add(&root(), created("/music/Two/01.flac"), start);
+        batches.add(&root(), created("/music/Two/02.flac"), start + QUIET / 2);
 
         assert!(batches.take_quiet(start + QUIET / 2).is_empty());
         assert_eq!(
@@ -280,8 +340,8 @@ mod tests {
     fn every_lost_track_event_is_kept() {
         let mut batches = WatchBatches::new();
         let start = Instant::now();
-        batches.add(lost_track(Some("/music/One")), &roots(), start);
-        batches.add(lost_track(Some("/music/Two/Disc 1")), &roots(), start);
+        batches.add(&root(), lost_track(Some("/music/One")), start);
+        batches.add(&root(), lost_track(Some("/music/Two/Disc 1")), start);
 
         assert_eq!(
             paths(&batches.take_quiet(start + QUIET)),
@@ -299,8 +359,8 @@ mod tests {
         for event in [lost_track(None), lost_track(Some("/"))] {
             let mut batches = WatchBatches::new();
             let start = Instant::now();
-            batches.add(created("/music/One/01.flac"), &roots(), start);
-            batches.add(event, &roots(), start);
+            batches.add(&root(), created("/music/One/01.flac"), start);
+            batches.add(&root(), event, start);
 
             let taken = batches.take_quiet(start + QUIET);
             assert_eq!(taken.len(), 1);
@@ -310,5 +370,31 @@ mod tests {
             );
             assert!(taken[0].iter().any(|event| event.need_rescan()));
         }
+    }
+
+    /// A root reached through a symlink is reported where it resolves to; its
+    /// events go out spelled as the root is, gathered under its folders.
+    #[test]
+    fn a_resolved_spelling_goes_out_as_the_roots_own() {
+        let root = WatchedRoot {
+            path: PathBuf::from("/var/music"),
+            reported: PathBuf::from("/private/var/music"),
+        };
+        let mut batches = WatchBatches::new();
+        let start = Instant::now();
+        batches.add(&root, created("/private/var/music/One/01.flac"), start);
+        batches.add(&root, created("/private/var/music/One/02.flac"), start);
+        batches.add(&root, lost_track(Some("/private/var")), start + QUIET);
+
+        assert_eq!(
+            paths(&batches.take_quiet(start + QUIET)),
+            vec![vec![
+                "/var/music/One/01.flac".to_string(),
+                "/var/music/One/02.flac".to_string()
+            ]]
+        );
+        let whole = batches.take_quiet(start + QUIET + QUIET);
+        assert_eq!(paths(&whole), vec![vec!["/var/music".to_string()]]);
+        assert!(whole[0][0].need_rescan());
     }
 }

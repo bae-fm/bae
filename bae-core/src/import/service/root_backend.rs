@@ -36,8 +36,7 @@ impl RootRemovalBackend for ServiceRootRemovalBackend {
         let path = path.to_path_buf();
         tokio::task::spawn_blocking(move || watcher.uninstall(&path))
             .await
-            .map_err(|error| format!("folder watch removal task panicked: {error}"))?
-            .map_err(|error| error.to_string())
+            .map_err(|error| format!("folder watch removal task panicked: {error}"))
     }
 
     async fn reinstall(&self, path: &Path, snapshot: &FolderWatchSnapshot) -> Result<(), String> {

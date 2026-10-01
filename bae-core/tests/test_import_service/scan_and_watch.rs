@@ -234,11 +234,22 @@ async fn remove_watched_folder_drops_folder_and_candidates() {
     })
     .await;
 
-    // Watched throughout: what its watch finds is the sentinel below.
+    // Watched throughout: what its watch finds is the sentinel below. Its
+    // first read is over before the sentinel is written, so only the watch
+    // can find it.
     let other = f.temp_path().join("Other");
     fs::create_dir_all(&other).unwrap();
     let other_key = other.to_string_lossy().into_owned();
     f.handle.add_watched_folder(other_key.clone()).await.unwrap();
+    wait_for_scan_event(&mut scan_rx, "the still-watched folder's first read", |event| {
+        matches!(
+            event,
+            ScanEvent::FolderScanStatusChanged { status }
+                if status.watched_folder_path == other_key
+                    && matches!(status.status, bae_core::import::FolderScanStatus::Complete)
+        )
+    })
+    .await;
 
     f.handle
         .remove_watched_folder(collection_key.clone())
