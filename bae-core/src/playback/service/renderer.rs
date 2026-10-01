@@ -171,18 +171,15 @@ impl std::fmt::Debug for AirPlayConnect {
     }
 }
 
-/// A live remote-renderer session and the state the service needs to keep serving
-/// it: where the device reaches this library's media (to mint each track's media
-/// as the queue advances) and the device's last reported position (for the
-/// handoff back to local playback when remote playback stops). The device
-/// isn't held here — it rides the `RemoteStatusChanged` event out to the UI,
-/// which caches it.
+/// A live remote-renderer session and where the device reaches this library's
+/// media (to mint each track's media as the queue advances). The device's
+/// position lives with the current track in the slot, which every status, seek
+/// and load updates; local playback resumes there when remote playback ends.
+/// The device isn't held here — it rides the `RemoteStatusChanged` event out to
+/// the UI, which caches it.
 pub(super) struct RemoteRenderer {
     session: RendererSession,
     media_source: RendererMediaSource,
-    /// The device's most recent playback position, updated from each status.
-    /// Local playback resumes here when remote playback ends.
-    last_position: StreamPosition,
 }
 
 impl RemoteRenderer {
@@ -300,7 +297,6 @@ impl PlaybackService {
         self.renderer = Renderer::Remote(RemoteRenderer {
             session,
             media_source,
-            last_position: current.as_ref().map_or(StreamPosition::START, |(_, p)| *p),
         });
         self.hand_over_to_device(device, current, target).await;
     }
@@ -362,27 +358,24 @@ impl PlaybackService {
             self.end_remote_and_resume_local(false).await;
             return;
         }
-        if let (Renderer::Remote(remote), Some(position)) = (&mut self.renderer, status.position) {
-            remote.last_position = StreamPosition::from_duration(position);
-        }
         self.apply_remote_status(status).await;
     }
 
     /// End the remote session and resume the local renderer, paused at the
-    /// device's last position. `stop_device` stops device playback first (a
-    /// user-initiated stop); a device-side end has already stopped it.
+    /// current track's position on the device. `stop_device` stops device
+    /// playback first (a user-initiated stop); a device-side end has already
+    /// stopped it.
     async fn end_remote_and_resume_local(&mut self, stop_device: bool) {
-        let last_position = match &self.renderer {
+        match &self.renderer {
             Renderer::Remote(remote) => {
                 if stop_device {
                     remote.session.stop();
                 }
-                remote.last_position
             }
             // AirPlay ends through `end_airplay_and_resume_local`, not here.
             Renderer::Local | Renderer::AirPlay(_) => return,
-        };
-        let current = self.current_track_id().map(str::to_string);
+        }
+        let current = self.current_track_position();
 
         // Dropping the session ends its poll thread; back to local.
         self.renderer = Renderer::Local;
@@ -393,7 +386,7 @@ impl PlaybackService {
         self.teardown_local_playback();
 
         match current {
-            Some(track_id) => {
+            Some((track_id, last_position)) => {
                 self.play_track(
                     &track_id,
                     TrackStart::Position(last_position),
