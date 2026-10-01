@@ -20,9 +20,6 @@ struct ImportSearchResultRow: View {
     /// Identify the candidate again, reading once more the documents a run
     /// could not; `nil` where no run read any, as for a typed search.
     var onRetryUnread: (() -> Void)?
-    /// What picking the row does, said beside its chevron; `nil` where the
-    /// row says nothing of it.
-    var pickSubtitle: String?
     let onSelect: (Pressing) -> Void
 
     private var isInLibrary: Bool {
@@ -65,14 +62,6 @@ struct ImportSearchResultRow: View {
                     .allowsHitTesting(false)
                 sourceTags
                     .allowsHitTesting(false)
-                if let pickSubtitle {
-                    Text(verbatim: pickSubtitle)
-                        .themeText(.detail)
-                        .foregroundStyle(.tertiary)
-                        .lineLimit(1)
-                        .fixedSize()
-                        .allowsHitTesting(false)
-                }
                 chevron
                     .allowsHitTesting(false)
             }

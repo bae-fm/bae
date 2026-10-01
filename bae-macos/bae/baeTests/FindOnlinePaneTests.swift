@@ -73,7 +73,7 @@ final class FindOnlinePaneTests: XCTestCase {
     }
 
     /// A folder waiting on the person opens its page with one sentence
-    /// saying what happened, and each row found says what picking it does.
+    /// saying what happened.
     func testAFolderWaitingOnThePersonSaysWhatHappened() async throws {
         // Signals that named different releases, waiting on the person to
         // pick among them.
@@ -91,15 +91,6 @@ final class FindOnlinePaneTests: XCTestCase {
             },
             "the pane reads: \(matches)"
         )
-        XCTAssertTrue(
-            matches.contains {
-                $0.localizedCaseInsensitiveContains(
-                    String(localized: "Use this release")
-                )
-            },
-            "the pane reads: \(matches)"
-        )
-
         XCTAssertTrue(
             matches.contains {
                 $0.localizedCaseInsensitiveContains(

@@ -271,11 +271,6 @@ struct FindOnlineAutomaticSection: View {
                 ?? state.finalizingPressing?.lead.releaseId,
             releaseSelectionFailure: state.releaseSelectionFailure,
             onRetryUnread: onRetryFailed,
-            // Picking a row is the first thing a folder waiting on the person
-            // can do, so each row says what picking it does.
-            pickSubtitle: state.needsYou.map { _ in
-                String(localized: "Use this release")
-            },
             onSelect: onSelect,
             trailing: trailing,
         )
