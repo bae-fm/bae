@@ -206,7 +206,7 @@ impl RemoteRenderer {
             artist: display.artist_names,
             album: display.album_title,
             cover_url: served.cover_url,
-            duration: Some(prepared.timeline.duration()),
+            duration: Some(prepared.timeline.stream_duration()),
         });
         if position > StreamPosition::START {
             self.session.seek(position.as_duration());

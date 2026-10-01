@@ -115,6 +115,11 @@ impl TrackTimeline {
         self.duration.as_millis() as u64
     }
 
+    /// How long the track's stream runs: its pregap, then the track.
+    pub fn stream_duration(self) -> Duration {
+        self.pregap + self.duration
+    }
+
     /// Where the track starts in its stream: INDEX 01, past the pregap.
     pub fn track_start(self) -> StreamPosition {
         StreamPosition(self.pregap)
