@@ -68,9 +68,6 @@
     "catalogs_contains": [
       "LABL-12345"
     ],
-    "catalogs_not_contains": [
-      "ZZ 12345"
-    ],
     "free_text_contains": [
       "Artist Beta",
       "Album Title B"

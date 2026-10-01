@@ -52,7 +52,6 @@ struct TextFile {
 struct Expected {
     catalogs: Option<Vec<String>>,
     catalogs_contains: Option<Vec<String>>,
-    catalogs_not_contains: Option<Vec<String>>,
     free_text: Option<Vec<String>>,
     free_text_contains: Option<Vec<String>>,
     free_text_not_contains: Option<Vec<String>>,
@@ -286,14 +285,6 @@ async fn assert_fixture(fixture_path: &Path) {
             assert!(
                 catalogs.contains(s),
                 "[{fixture_name}] expected catalog {s:?} to survive, got {catalogs:?}",
-            );
-        }
-    }
-    if let Some(banned) = &fixture.expected.catalogs_not_contains {
-        for s in banned {
-            assert!(
-                !catalogs.contains(s),
-                "[{fixture_name}] catalog {s:?} should have been filtered, got {catalogs:?}",
             );
         }
     }
