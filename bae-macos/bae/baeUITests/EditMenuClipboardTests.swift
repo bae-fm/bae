@@ -43,6 +43,51 @@ final class EditMenuClipboardTests: XCTestCase {
         )
     }
 
+    /// The Edit menu opened between keystrokes in the search field, while
+    /// each keystroke's results arrive, offers Select All for the field's
+    /// text and Copy once some is selected; chosen, they select and copy all
+    /// of it.
+    @MainActor
+    func testSearchFieldsTextCopiesWhileResultsArrive() throws {
+        let albums = LibraryFixture.Album.numbered(300)
+        let app = try launchApp(library: LibraryFixture(albums: albums))
+        let grid = AlbumGrid(app: app)
+        let newest = albums[albums.count - 1].title
+        XCTAssertTrue(waitUntil(timeout: 30) { grid.shows(newest) })
+        let edit = app.menuBars.menuBarItems["Edit"]
+        XCTAssertTrue(edit.waitForExistence(timeout: 20))
+        NSPasteboard.general.clearContents()
+
+        let query = "Album 1"
+        app.typeKey("/", modifierFlags: [])
+        for letter in query {
+            app.typeText(String(letter))
+            XCTAssertEqual(
+                enabled(["Copy", "Select All"], under: edit, in: app),
+                ["Copy": false, "Select All": true],
+                "after \(letter)"
+            )
+        }
+
+        edit.click()
+        edit.menuItems["Select All"].click()
+        edit.click()
+        edit.menuItems["Copy"].click()
+        let copied = XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in
+                NSPasteboard.general.string(forType: .string) == query
+            },
+            object: nil
+        )
+        wait(for: [copied], timeout: 5)
+        // The results for the whole query are listed.
+        let result = app.buttons
+            .matching(NSPredicate(format: "label BEGINSWITH %@", query))
+            .firstMatch
+        XCTAssertTrue(result.waitForExistence(timeout: 10))
+        XCTAssertEqual(app.state, .runningForeground)
+    }
+
     /// Whether each of `titles` is enabled in the Edit menu, read with the
     /// menu open and closed again after.
     @MainActor
