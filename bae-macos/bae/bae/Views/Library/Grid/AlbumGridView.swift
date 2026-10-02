@@ -129,7 +129,7 @@ struct AlbumGridView<ExpansionContent: View>: View {
             // knows which slot was on top, so the grid names it.
             .onChange(of: metrics.columnCount) { old, new in
                 if let slot = viewport.anchor(from: old, to: new) {
-                    scrollToTop(slot, columnCount: new)
+                    scrollToTop(slot)
                 }
             }
             // The grid places rows it has not drawn by the heights of the
@@ -531,11 +531,11 @@ extension AlbumGridView {
         guard let slot = viewport.held,
             !viewport.isOnTop(slot, columnCount: columnCount)
         else { return }
-        scrollToTop(slot, columnCount: columnCount)
+        scrollToTop(slot)
     }
 
-    /// Scrolls `slot` to the top, at its place under `columnCount` columns.
-    private func scrollToTop(_ slot: AlbumGridSlot, columnCount: Int) {
+    /// Scrolls `slot` to the top.
+    private func scrollToTop(_ slot: AlbumGridSlot) {
         let id: AlbumGridCell.Identity
         switch slot {
         case .position(let position) where position < list.totalCount:
