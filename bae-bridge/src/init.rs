@@ -88,7 +88,7 @@ impl BridgeDiagnostics {
         cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
         oauth_clients: coven::OAuthClients,
     ) -> Result<Arc<AppHandle>, BridgeError> {
-        bootstrap(
+        self.opened(bootstrap(
             app_dir,
             library_id,
             position_update_interval_ms,
@@ -97,9 +97,42 @@ impl BridgeDiagnostics {
             cloudkit_ops,
             oauth_clients,
             AppHandle::start,
-        )
-        .map(Arc::new)
-        .map_err(|error| {
+        ))
+    }
+
+    /// [`Self::open_app`] with the fixture a debug UI test left at `fixture`
+    /// written into the library before its services start.
+    #[cfg(debug_assertions)]
+    pub(crate) fn open_app_on_fixture(
+        &self,
+        fixture: std::path::PathBuf,
+        app_dir: bae_core::config::AppDir,
+        library_id: String,
+        position_update_interval_ms: u32,
+        restore_playback: bool,
+        cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
+        oauth_clients: coven::OAuthClients,
+    ) -> Result<Arc<AppHandle>, BridgeError> {
+        self.opened(bae_core::app::bootstrap_on_fixture(
+            fixture,
+            app_dir,
+            library_id,
+            position_update_interval_ms,
+            restore_playback,
+            self.inner.clone(),
+            cloudkit_ops,
+            oauth_clients,
+            AppHandle::start,
+        ))
+    }
+
+    /// The handle a bootstrap built, or its failure shipped as
+    /// `app_start_failed` and returned.
+    fn opened(
+        &self,
+        bootstrapped: Result<AppHandle, BootstrapError>,
+    ) -> Result<Arc<AppHandle>, BridgeError> {
+        bootstrapped.map(Arc::new).map_err(|error| {
             self.emit_app_start_failed(&error);
             bootstrap_error_to_bridge(error)
         })

@@ -201,6 +201,11 @@ path = "tests/test_bootstrap_pointer.rs"
 required-features = ["test-utils"]
 
 [[test]]
+name = "test_bootstrap_fixture"
+path = "tests/test_bootstrap_fixture.rs"
+required-features = ["test-utils"]
+
+[[test]]
 name = "test_cue_ape"
 path = "tests/test_cue_ape.rs"
 required-features = ["test-utils"]

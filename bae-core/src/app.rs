@@ -115,6 +115,75 @@ where
     T: Send + 'static,
     F: FnOnce(AppServices, tokio::runtime::Runtime) -> Result<T, BootstrapError> + Send + 'static,
 {
+    bootstrap_opening(
+        Opening::Stored,
+        app_dir,
+        library_id,
+        position_update_interval_ms,
+        restore_playback,
+        diagnostics,
+        cloudkit_ops,
+        oauth_clients,
+        compose,
+    )
+}
+
+/// [`bootstrap`] with the [`crate::library::LibraryFixture`] at `fixture`
+/// written into the library before any of its services starts, so each starts
+/// on the state the fixture names: what a debug UI test opens the app on.
+#[cfg(any(test, feature = "test-utils", debug_assertions))]
+pub fn bootstrap_on_fixture<T, F>(
+    fixture: std::path::PathBuf,
+    app_dir: crate::config::AppDir,
+    library_id: String,
+    position_update_interval_ms: u32,
+    restore_playback: bool,
+    diagnostics: Diagnostics,
+    cloudkit_ops: Option<crate::CloudKitOpsRef>,
+    oauth_clients: coven::OAuthClients,
+    compose: F,
+) -> Result<T, BootstrapError>
+where
+    T: Send + 'static,
+    F: FnOnce(AppServices, tokio::runtime::Runtime) -> Result<T, BootstrapError> + Send + 'static,
+{
+    bootstrap_opening(
+        Opening::Fixture(fixture),
+        app_dir,
+        library_id,
+        position_update_interval_ms,
+        restore_playback,
+        diagnostics,
+        cloudkit_ops,
+        oauth_clients,
+        compose,
+    )
+}
+
+/// What the library holds as it is brought up.
+enum Opening {
+    /// What it stored.
+    Stored,
+    /// What it stored with the fixture at this path written over it first.
+    #[cfg(any(test, feature = "test-utils", debug_assertions))]
+    Fixture(std::path::PathBuf),
+}
+
+fn bootstrap_opening<T, F>(
+    opening: Opening,
+    app_dir: crate::config::AppDir,
+    library_id: String,
+    position_update_interval_ms: u32,
+    restore_playback: bool,
+    diagnostics: Diagnostics,
+    cloudkit_ops: Option<crate::CloudKitOpsRef>,
+    oauth_clients: coven::OAuthClients,
+    compose: F,
+) -> Result<T, BootstrapError>
+where
+    T: Send + 'static,
+    F: FnOnce(AppServices, tokio::runtime::Runtime) -> Result<T, BootstrapError> + Send + 'static,
+{
     // Building the sync manager and `block_on`-ing the async setup uses a deep
     // stack, especially in debug builds. Callers may invoke us from small-stack
     // threads (Swift cooperative Tasks, Android coroutine workers; ~0.5 MB), which
@@ -124,6 +193,7 @@ where
         .stack_size(32 * 1024 * 1024)
         .spawn(move || {
             bootstrap_inner(
+                opening,
                 app_dir,
                 library_id,
                 position_update_interval_ms,
@@ -151,6 +221,7 @@ where
 }
 
 fn bootstrap_inner<T, F>(
+    opening: Opening,
     app_dir: crate::config::AppDir,
     library_id: String,
     position_update_interval_ms: u32,
@@ -284,6 +355,17 @@ where
     } else {
         None
     };
+
+    match opening {
+        Opening::Stored => {}
+        #[cfg(any(test, feature = "test-utils", debug_assertions))]
+        Opening::Fixture(path) => timing
+            .stage(&library_id, "write the fixture", || {
+                let fixture = crate::library::LibraryFixture::read(&path)?;
+                runtime.block_on(library_manager.write_fixture(&fixture))
+            })
+            .map_err(|error| BootstrapError::Internal(error.to_string()))?,
+    }
 
     // The in-core cpal/ffmpeg audio engine. cpal drives the sink on desktop and
     // iOS, AAudio on Android.

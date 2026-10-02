@@ -1,6 +1,7 @@
 import BaeKit
 import Sparkle
 import SwiftUI
+import Synchronization
 import os.log
 
 let baeAppLogger = Logger.bae("BaeApp")
@@ -58,8 +59,8 @@ enum AppRuntime: Equatable {
             environment["BAE_UI_TESTING_CREATE_LIBRARY"] == "1"
         }
 
-        /// The JSON file naming the albums a UI test has the opened library
-        /// hold, which bae-core's `LibraryFixture` reads.
+        /// The JSON file naming the state a UI test opens the app on, which
+        /// bae-core's `LibraryFixture` reads.
         static func libraryFixtureForUITesting(
             environment: [String: String]
         ) -> String? {
@@ -76,6 +77,26 @@ enum AppRuntime: Equatable {
 }
 
 private let appRuntime = AppRuntime(environment: baeAppProcessEnvironment)
+
+#if DEBUG
+    /// The fixture a UI test names, which the first library this process opens
+    /// is written from: a later open finds the library already holding it.
+    final class UITestFixture: Sendable {
+        private let path: Mutex<String?>
+
+        init(path: String?) {
+            self.path = Mutex(path)
+        }
+
+        /// The fixture's path the first time it is asked for, then `nil`.
+        func take() -> String? {
+            path.withLock { path in
+                defer { path = nil }
+                return path
+            }
+        }
+    }
+#endif
 
 private func discoverInitialLibraries(
     host: BridgeHost,
@@ -514,33 +535,54 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// The shared open sequence; each open ends in an `Outcome` this delegate
     /// applies.
     @ObservationIgnored
-    private lazy var opener = LibrarySessionOpener<AppHandle, AppService>(
+    private lazy var opener: LibrarySessionOpener<AppHandle, AppService> = {
         // Captured so the `@Sendable` closure reads no main-actor state.
-        makeHandle: {
-            [host = requiredApplicationServices.host] libraryId in
-            try initApp(
-                libraryId: libraryId,
-                positionUpdateIntervalMs: 200,
+        let host = requiredApplicationServices.host
+        #if DEBUG
+            let fixture = UITestFixture(
+                path: AppRuntime.libraryFixtureForUITesting(
+                    environment: baeAppProcessEnvironment
+                )
+            )
+        #endif
+        return LibrarySessionOpener<AppHandle, AppService>(
+            makeHandle: { libraryId in
                 // The "Restore on launch" preference.
-                restorePlayback: UserDefaults.standard.bool(
+                let restorePlayback = UserDefaults.standard.bool(
                     forKey: "persistPlayback"
-                ),
-                // Telemetry is up before the library opens.
-                host: host
-            )
-        },
-        makeService: { [weak self] handle, config, seed in
-            guard let self else {
-                preconditionFailure("AppDelegate outlives its opener")
+                )
+                #if DEBUG
+                    if let fixturePath = fixture.take() {
+                        return try initAppOnFixture(
+                            libraryId: libraryId,
+                            positionUpdateIntervalMs: 200,
+                            restorePlayback: restorePlayback,
+                            fixturePath: fixturePath,
+                            host: host
+                        )
+                    }
+                #endif
+                return try initApp(
+                    libraryId: libraryId,
+                    positionUpdateIntervalMs: 200,
+                    restorePlayback: restorePlayback,
+                    // Telemetry is up before the library opens.
+                    host: host
+                )
+            },
+            makeService: { [weak self] handle, config, seed in
+                guard let self else {
+                    preconditionFailure("AppDelegate outlives its opener")
+                }
+                return self.makeService(
+                    handle: handle,
+                    uiStore: self.uiStore,
+                    config: config,
+                    seed: seed
+                )
             }
-            return self.makeService(
-                handle: handle,
-                uiStore: self.uiStore,
-                config: config,
-                seed: seed
-            )
-        }
-    )
+        )
+    }()
     /// In-flight library-list reload, cancelled when a newer one supersedes it.
     private let reloadSlot = CancellableTaskSlot()
     /// In-flight rename / lock, cancelled on library close.
@@ -694,11 +736,6 @@ extension AppDelegate {
     private func landOpenedService(_ service: AppService) {
         appService = service
         #if DEBUG
-            if let fixture = AppRuntime.libraryFixtureForUITesting(
-                environment: baeAppProcessEnvironment
-            ) {
-                service.writeLibraryFixtureForUITesting(fixture)
-            }
             if let folder = AppRuntime.watchedFolderForUITesting(
                 environment: baeAppProcessEnvironment
             ) {

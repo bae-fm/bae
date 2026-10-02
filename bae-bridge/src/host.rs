@@ -480,6 +480,30 @@ pub fn init_app(
     )
 }
 
+/// [`init_app`] with the library fixture a debug UI test left at
+/// `fixture_path` written into the library before its services start, so the
+/// app opens on the state the test names.
+#[cfg(debug_assertions)]
+#[uniffi::export]
+pub fn init_app_on_fixture(
+    library_id: String,
+    position_update_interval_ms: u32,
+    restore_playback: bool,
+    fixture_path: String,
+    host: Arc<BridgeHost>,
+) -> Result<Arc<crate::handle::AppHandle>, BridgeError> {
+    let oauth_clients = host.oauth_clients.lock().expect(HOST_LOCK).clone();
+    host.diagnostics.open_app_on_fixture(
+        std::path::PathBuf::from(fixture_path),
+        host.app_dir.clone(),
+        library_id,
+        position_update_interval_ms,
+        restore_playback,
+        host.cloudkit_ops(),
+        oauth_clients,
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

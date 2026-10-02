@@ -59,10 +59,6 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
     #if BAE_OAUTH_PROVIDERS
         private let cloudSyncSetup: CloudSyncSetup
     #endif
-    #if DEBUG
-        /// Writes the library fixture a UI test names into the open library.
-        private let writeLibraryFixture: @Sendable (String) async throws -> Void
-    #endif
 
     // This is the composition root: every retained capability is constructed
     // here and assigned directly to its owner before the superclass starts.
@@ -115,11 +111,6 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         export = TrackSave(handle: appHandle)
         #if BAE_OAUTH_PROVIDERS
             cloudSyncSetup = CloudSyncSetup(handle: appHandle)
-        #endif
-        #if DEBUG
-            writeLibraryFixture = {
-                try await appHandle.writeLibraryFixture(fixturePath: $0)
-            }
         #endif
         libraryBrowseSession = LibraryBrowseSession(
             library: library,
@@ -267,19 +258,6 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         // periphery:ignore
         var hasDisplayedErrorForTesting: Bool {
             uiStore.lastError != nil
-        }
-
-        /// Write the library fixture a UI test left at `path` into the open
-        /// library, so the test starts on the albums it asks for.
-        func writeLibraryFixtureForUITesting(_ path: String) {
-            Task {
-                do {
-                    try await writeLibraryFixture(path)
-                }
-                catch {
-                    uiStore.showError(error)
-                }
-            }
         }
 
         /// Watch `path` with automatic identification off, so a UI test has
