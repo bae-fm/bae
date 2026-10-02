@@ -2,23 +2,26 @@ import XCTest
 
 /// The import list in the running app opens on the candidates its fixture
 /// names, each in the state the fixture gives it, and Found's filter counts
-/// them by those states.
+/// them by those states and narrows the list to each entry's.
 final class ImportListFixtureTests: XCTestCase {
+    /// One candidate folder in each stored state, named for it.
+    private static let states: [(String, LibraryFixture.CandidateState)] = [
+        ("Not Looked Up Folder", .notLookedUp),
+        ("Needs You Folder", .needsYou),
+        ("Identified Folder", .identified),
+        ("Unmatched Folder", .unmatched),
+        ("Lookup Error Folder", .lookupError),
+        ("Error Folder", .error),
+        ("Import Error Folder", .importError),
+    ]
+
     override func setUp() {
         continueAfterFailure = false
     }
 
     @MainActor
-    func testFoundsFilterCountsEachStoredState() throws {
-        let states: [(String, LibraryFixture.CandidateState)] = [
-            ("Not Looked Up Folder", .notLookedUp),
-            ("Needs You Folder", .needsYou),
-            ("Identified Folder", .identified),
-            ("Unmatched Folder", .unmatched),
-            ("Lookup Error Folder", .lookupError),
-            ("Error Folder", .error),
-            ("Import Error Folder", .importError),
-        ]
+    func testFoundsFilterCountsAndNarrowsToEachStoredState() throws {
+        let states = Self.states
         let app = try launchApp(
             library: LibraryFixture(
                 watchedFolders: [
@@ -62,6 +65,49 @@ final class ImportListFixtureTests: XCTestCase {
                 entry
             )
         }
+        // An entry holding no row cannot be chosen.
+        XCTAssertFalse(app.menuItems["In Progress (0)"].isEnabled)
         app.typeKey(.escape, modifierFlags: [])
+
+        // Each entry chosen narrows the list to exactly its candidates.
+        let entries: [(String, Set<LibraryFixture.CandidateState>)] = [
+            (
+                "Needs You (4)",
+                [.needsYou, .lookupError, .error, .importError]
+            ),
+            ("Identified (1)", [.identified]),
+            ("Unmatched (1)", [.unmatched]),
+            ("Not Looked Up (1)", [.notLookedUp]),
+            ("All (7)", Set(states.map(\.1))),
+        ]
+        for (entry, shown) in entries {
+            menu.click()
+            app.menuItems[entry].click()
+            assertListsExactly(shown, in: list, after: entry)
+        }
+    }
+
+    /// The list shows the folder of each state in `shown`, and of no other.
+    @MainActor
+    private func assertListsExactly(
+        _ shown: Set<LibraryFixture.CandidateState>,
+        in list: XCUIElement,
+        after entry: String
+    ) {
+        for (folder, state) in Self.states {
+            let row = list.staticTexts[folder]
+            if shown.contains(state) {
+                XCTAssertTrue(
+                    row.waitForExistence(timeout: 10),
+                    "\(entry) lists \(folder)"
+                )
+            }
+            else {
+                XCTAssertTrue(
+                    row.waitForNonExistence(timeout: 10),
+                    "\(entry) leaves out \(folder)"
+                )
+            }
+        }
     }
 }
