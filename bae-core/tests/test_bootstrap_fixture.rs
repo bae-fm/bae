@@ -60,7 +60,7 @@ fn open(app_dir: &AppDir, library_id: &str, fixture: std::path::PathBuf) -> Test
 fn a_library_opens_holding_its_fixtures_albums() {
     let (_dir, app_dir, library_id, fixture) = library_with_fixture(serde_json::json!({
         "albums": [
-            { "title": "Album Title", "artist": "Artist Name", "tracks": ["Track Title"] },
+            { "title": "Album Title", "artists": ["Artist Name"], "tracks": ["Track Title"] },
         ],
     }));
 

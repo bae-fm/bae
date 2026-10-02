@@ -23,7 +23,7 @@ final class SearchRevealTests: XCTestCase {
             .map { index in
                 LibraryFixture.Album(
                     title: String(format: "Album %03d", index),
-                    artist: "Artist",
+                    artists: ["Artist"],
                     tracks: [String(format: "Track %03d", index)]
                 )
             }
@@ -32,7 +32,7 @@ final class SearchRevealTests: XCTestCase {
                 albums: [
                     LibraryFixture.Album(
                         title: Self.farAlbum,
-                        artist: "Artist",
+                        artists: ["Artist"],
                         tracks: Self.farTracks
                     )
                 ] + near

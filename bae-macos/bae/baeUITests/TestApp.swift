@@ -7,7 +7,8 @@ import XCTest
 struct LibraryFixture: Encodable {
     struct Album: Encodable {
         let title: String
-        let artist: String
+        /// Who the album is credited to, in credit order.
+        let artists: [String]
         let tracks: [String]
     }
 
