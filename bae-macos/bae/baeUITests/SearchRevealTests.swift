@@ -56,6 +56,14 @@ final class SearchRevealTests: XCTestCase {
             },
             "the picked album is scrolled into view"
         )
+        // It is the grid's last: its card goes on top, its detail under it,
+        // with no other album's card above it in view.
+        XCTAssertTrue(
+            waitUntil(timeout: 10) {
+                AlbumGrid(app: app).visibleRows(titledFrom: "Album ").isEmpty
+            },
+            "the picked album's card is on top"
+        )
 
         // Back to the top, with the album's detail left open down there.
         scrollToTop(grid, in: app)

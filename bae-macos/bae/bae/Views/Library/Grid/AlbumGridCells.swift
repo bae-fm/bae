@@ -111,6 +111,18 @@ struct AlbumGridLayout: RandomAccessCollection {
     var startIndex: Int { 0 }
     var endIndex: Int { groups.last?.slots.upperBound ?? 0 }
 
+    /// The slot showing list position `position`, or nil if no section
+    /// holds it.
+    func slot(ofPosition position: Int) -> Int? {
+        for group in groups {
+            if let local = group.cells.slot(ofPosition: position) {
+                let heading = group.heading == nil ? 0 : columnCount
+                return group.slots.lowerBound + heading + local
+            }
+        }
+        return nil
+    }
+
     subscript(index: Int) -> AlbumGridCell {
         precondition(index >= startIndex && index < endIndex)
         var lower = 0
@@ -230,6 +242,15 @@ struct AlbumGridCells: RandomAccessCollection {
         return slot == expansion.leadingFillers
             ? .detail(albumId: expansion.albumId)
             : .filler(albumId: expansion.albumId, index: slot)
+    }
+
+    /// The slot showing list position `position`, or nil if it is not one
+    /// of these positions.
+    func slot(ofPosition position: Int) -> Int? {
+        let local = position - startPosition
+        guard local >= 0, local < totalCount else { return nil }
+        guard let expansion, local >= expansion.insertAt else { return local }
+        return local + expansion.count
     }
 
     /// The slot showing list position `position`.

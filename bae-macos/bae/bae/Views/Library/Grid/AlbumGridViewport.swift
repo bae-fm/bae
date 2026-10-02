@@ -11,36 +11,69 @@ enum AlbumGridSlot: Hashable {
 /// Where the grid's scroll view stands: its content offset, the height it
 /// shows, and the offsets its content scrolls between.
 struct AlbumGridScroll: Equatable {
-    var offset: CGFloat = 0
-    var visibleHeight: CGFloat = 0
+    let offset: CGFloat
+    let visibleHeight: CGFloat
     /// The offsets the scroll moves between: from the content's top at the
     /// top of the visible area to its bottom at the bottom.
-    var offsets: ClosedRange<CGFloat> = 0...0
+    let offsets: ClosedRange<CGFloat>
 }
 
-/// The track row and scroll bounds measured in one content layout.
-struct PlacedTrackRow: Equatable {
-    let trackId: String
+/// The parts of the album a pending reveal shows, laid out in one content
+/// layout, with that layout's scroll bounds. Everything is in the content's
+/// coordinates, so where a part sits does not depend on where the scroll
+/// stood when it was measured.
+struct RevealLayout: Equatable {
     let seq: Int
-    let frame: CGRect
+    /// The album's card, once the grid knows which position it is at.
+    var card: CGRect?
+    /// The album's detail, once it shows what it loaded.
+    var detail: CGRect?
+    /// The row of the track the reveal names.
+    var row: CGRect?
     let scroll: AlbumGridScroll
 
-    /// The offset showing the whole row, or nil if it is already visible.
-    var scrollOffset: CGFloat? {
-        let height = scroll.visibleHeight
-        if frame.minY > scroll.offset - 0.5,
-            frame.maxY < scroll.offset + height + 0.5
-        {
-            return nil
+    /// The reveal's next step from this layout; nil while there is nothing
+    /// to do but wait for a later layout. `findsCard` once the grid knows
+    /// which position the album's card is at.
+    ///
+    /// A track's row goes in full view: its middle to the middle, or its top
+    /// to the top when it is taller than the view. Until the row is laid
+    /// out, the album's card goes to the top, which brings its detail in.
+    /// An album shows its card on top with its detail under it, as near the
+    /// top as the content scrolls; where that is, is known only once the
+    /// detail is laid out at its own height. The reveal is shown once a
+    /// layout has what it names where it goes, not when a scroll is sent:
+    /// the lazy grid can lay out what is above it anew on the way.
+    func step(showingTrack: Bool, findsCard: Bool) -> RevealStep? {
+        if showingTrack, let row {
+            let height = scroll.visibleHeight
+            if row.minY > scroll.offset - 0.5,
+                row.maxY < scroll.offset + height + 0.5
+            {
+                return .shown
+            }
+            let top = row.height > height ? row.minY : row.midY - height / 2
+            return .scroll(to: top.clamped(to: scroll.offsets))
         }
-        let target =
-            frame.height > height ? frame.minY : frame.midY - height / 2
-        return target.clamped(to: scroll.offsets)
+        guard let card else { return findsCard ? .findCard : nil }
+        let top = card.minY.clamped(to: scroll.offsets)
+        guard abs(top - scroll.offset) < 0.5 else { return .scroll(to: top) }
+        return !showingTrack && detail != nil ? .shown : nil
     }
 }
 
+/// What a reveal does next.
+enum RevealStep: Equatable {
+    /// What the reveal names is in view where it goes.
+    case shown
+    /// Scroll to `offset`; the reveal goes on from the layouts that follow.
+    case scroll(to: CGFloat)
+    /// The album's card is not laid out: scroll to where the grid places it.
+    case findCard
+}
+
 /// Where the grid's slots sit in the visible area, the slot a change of
-/// column count keeps on top, and where the row a reveal scrolls to is.
+/// column count keeps on top, and how far the pending reveal has come.
 ///
 /// A reference the view holds rather than view state: slots report their
 /// frames on every scrolled frame, and nothing the grid draws reads them.
@@ -58,26 +91,16 @@ final class AlbumGridViewport {
     /// the one before it.
     private var frames: [Placement: (slot: AlbumGridSlot, frame: CGRect)] =
         [:]
-    private var scroll = AlbumGridScroll()
+    /// Where the scroll view stands, as it last reported.
+    private var scroll: AlbumGridScroll?
+    /// The column count the grid last laid a slot out at.
+    private(set) var columnCount = 1
     /// The slot the last change of column count put on top, held there
     /// until the grid scrolls another way, so changes back and forth return
     /// to the same place.
     private(set) var held: AlbumGridSlot?
-    /// The row of the track the pending reveal names, while it is laid out.
-    private var revealRow: PlacedTrackRow?
-    /// How far the pending reveal's scroll to its album has come, so its
-    /// row's place is measured where that scroll stops, not on the way there.
-    private var revealScroll: RevealScroll?
-    /// What the scroll view is doing: an animated scroll is on its way until
-    /// this is idle again.
-    private var phase: ScrollPhase = .idle
-
-    private enum RevealScroll {
-        /// Scrolling the album's card to the top.
-        case toAlbum(seq: Int, card: AlbumGridCell.Identity)
-        /// The scroll has come to rest at the album.
-        case atAlbum(seq: Int)
-    }
+    /// The pending reveal's parts, as the last layout placed them.
+    private var revealLayout: RevealLayout?
 
     func place(
         _ cell: AlbumGridCell.Identity,
@@ -86,6 +109,7 @@ final class AlbumGridViewport {
         frame: CGRect
     ) {
         frames[Placement(cell: cell, columnCount: columnCount)] = (slot, frame)
+        self.columnCount = columnCount
     }
 
     func remove(_ cell: AlbumGridCell.Identity, columnCount: Int) {
@@ -98,53 +122,58 @@ final class AlbumGridViewport {
         self.scroll = scroll
     }
 
-    func placeRevealedRow(_ row: PlacedTrackRow?) {
-        revealRow = row
+    func placeReveal(_ layout: RevealLayout?) {
+        revealLayout = layout
     }
 
-    /// Reveal `seq` scrolls its album's `card` to the top. Returns `seq`
-    /// when the card sits there already, where the scroll moves nothing: the
-    /// reveal is at its album.
-    func revealScrolls(seq: Int, to card: AlbumGridCell.Identity) -> Int? {
-        revealScroll = .toAlbum(seq: seq, card: card)
-        return revealArrivedInPlace()
-    }
-
-    /// Takes the scroll view's new phase. Returns the reveal whose scroll to
-    /// its album this brings to rest: its animated scroll ended, or it came
-    /// to rest with the album's card on top.
-    func setPhase(from old: ScrollPhase, to new: ScrollPhase) -> Int? {
-        phase = new
-        guard new == .idle, case .toAlbum(let seq, _) = revealScroll else {
+    /// The next step of `reveal` from the last layout that placed it,
+    /// `findsCard` once the grid knows which position its card is at.
+    func step(of reveal: PendingAlbumReveal, findsCard: Bool) -> RevealStep? {
+        guard let layout = revealLayout, layout.seq == reveal.seq else {
             return nil
         }
-        if old == .animating {
-            revealScroll = .atAlbum(seq: seq)
-            return seq
-        }
-        return revealArrivedInPlace()
+        return layout.step(
+            showingTrack: reveal.trackId != nil,
+            findsCard: findsCard
+        )
     }
 
-    /// Returns the reveal a scroll that moved without animating, or did not
-    /// need to move, has brought to its album: the album's card sits on top
-    /// while the scroll view is idle.
-    func revealArrivedInPlace() -> Int? {
-        guard phase == .idle,
-            case .toAlbum(let seq, let card) = revealScroll,
-            sitsOnTop(card)
-        else { return nil }
-        revealScroll = .atAlbum(seq: seq)
-        return seq
+    /// The offset that puts the top of row `row`, of `rows` at the current
+    /// column count, on top, as the lazy grid places a row it has not laid
+    /// out: by the average height of its rows, counted from the top-most
+    /// slot laid out in view whose row `rowOf` knows. Nil before the scroll
+    /// view has reported where it stands.
+    func offset(
+        toRow row: Int,
+        of rows: Int,
+        rowOf: (AlbumGridSlot) -> Int?
+    ) -> CGFloat? {
+        guard let scroll, rows > 0 else { return nil }
+        let content = scroll.offsets.upperBound + scroll.visibleHeight
+        let pitch = content / CGFloat(rows)
+        let reference =
+            frames
+            .compactMap { placement, shown -> (row: Int, top: CGFloat)? in
+                guard placement.columnCount == columnCount,
+                    shown.frame.maxY > 0,
+                    shown.frame.minY < scroll.visibleHeight,
+                    let row = rowOf(shown.slot)
+                else { return nil }
+                return (row, scroll.offset + shown.frame.minY)
+            }
+            .min { $0.top < $1.top }
+        let top =
+            reference.map { $0.top + CGFloat(row - $0.row) * pitch }
+            ?? CGFloat(row) * pitch
+        return top.clamped(to: scroll.offsets)
     }
 
-    /// The row reveal `seq` names, laid out; `atAlbum` asks only once the
-    /// reveal has scrolled to its album.
-    func revealedRow(seq: Int, atAlbum: Bool = false) -> PlacedTrackRow? {
-        guard let revealRow, revealRow.seq == seq else { return nil }
-        if atAlbum {
-            guard case .atAlbum(seq) = revealScroll else { return nil }
+    /// Whether `slot` is laid out in the visible area.
+    func shows(_ slot: AlbumGridSlot) -> Bool {
+        frames.values.contains { shown in
+            shown.slot == slot && shown.frame.maxY > 0
+                && shown.frame.minY < (scroll?.visibleHeight ?? 0)
         }
-        return revealRow
     }
 
     /// Ends the hold, for a scroll or a change in what the grid shows; the
@@ -172,22 +201,11 @@ final class AlbumGridViewport {
         }
     }
 
-    /// Whether `cell` sits where scrolling it to the top puts it: on top, or
-    /// as near the top as the content scrolls.
-    private func sitsOnTop(_ cell: AlbumGridCell.Identity) -> Bool {
-        guard
-            let frame = frames.first(where: { $0.key.cell == cell })?.value
-                .frame
-        else { return false }
-        let target = (scroll.offset + frame.minY).clamped(to: scroll.offsets)
-        return abs(target - scroll.offset) < 0.5
-    }
-
     private func topSlot(columnCount: Int) -> AlbumGridSlot? {
         frames
             .filter { placement, shown in
                 placement.columnCount == columnCount && shown.frame.midY > 0
-                    && shown.frame.minY < scroll.visibleHeight
+                    && shown.frame.minY < (scroll?.visibleHeight ?? 0)
             }
             .map(\.value)
             .min { lhs, rhs in

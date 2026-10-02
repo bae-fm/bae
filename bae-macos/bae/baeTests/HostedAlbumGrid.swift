@@ -1,6 +1,7 @@
 import AppKit
 import BaeKit
 import SwiftUI
+import Testing
 
 @testable import bae
 
@@ -80,7 +81,10 @@ struct HostedAlbumGrid {
             host: host,
             uiStore: uiStore
         )
-        await hosted.settle()
+        await hosted.waitUntil("the grid lays out its first rows") {
+            list.idAt(0) != nil
+                && (hosted.scrollView?.documentView?.frame.height ?? 0) > 0
+        }
         return hosted
     }
 
@@ -108,6 +112,31 @@ struct HostedAlbumGrid {
         host.layoutSubtreeIfNeeded()
         try? await Task.sleep(for: .seconds(1))
         host.layoutSubtreeIfNeeded()
+    }
+
+    /// Lets the window run, laying it out, until `condition` holds: the
+    /// scrolls, page loads and layouts a change sets off. Records an issue
+    /// and returns false if it does not hold within ten seconds.
+    @discardableResult
+    func waitUntil(
+        _ comment: Comment,
+        sourceLocation: SourceLocation = #_sourceLocation,
+        _ condition: () -> Bool
+    ) async -> Bool {
+        let deadline = ContinuousClock.now + .seconds(10)
+        while true {
+            host.layoutSubtreeIfNeeded()
+            if condition() {
+                return true
+            }
+            if ContinuousClock.now >= deadline {
+                Issue.record(comment, sourceLocation: sourceLocation)
+                return false
+            }
+            // A turn of the run loop, for SwiftUI's updates and the pages'
+            // deliveries.
+            try? await Task.sleep(for: .milliseconds(10))
+        }
     }
 
     var scrollView: NSScrollView? {

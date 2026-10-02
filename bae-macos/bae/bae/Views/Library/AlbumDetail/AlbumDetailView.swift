@@ -134,6 +134,7 @@ struct AlbumDetailView: View {
                             exportTrack(trackId: trackId)
                         },
                     )
+                    .revealsAsAlbumDetail(albumId)
                 }
                 else {
                     detailPlaceholder(releaseId: selectedReleaseId)
@@ -197,6 +198,7 @@ struct AlbumDetailView: View {
             LoadFailureView(error: error) {
                 detailReader?.retry()
             }
+            .revealsAsAlbumDetail(albumId)
         }
         else {
             ProgressView()
