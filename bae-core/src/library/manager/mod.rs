@@ -73,8 +73,8 @@ mod fixture;
     not(any(target_os = "ios", target_os = "android"))
 ))]
 pub use fixture::{
-    FixtureAlbum, FixtureCandidate, FixtureCandidateState, FixtureWatchedFolder, LibraryFixture,
-    LibraryFixtureError, FIXTURE_IMPORT_FAILURE, FIXTURE_LOOKUP_FAILURE,
+    FixtureAlbum, FixtureCandidate, FixtureCandidateState, FixturePlaying, FixtureWatchedFolder,
+    LibraryFixture, LibraryFixtureError, FIXTURE_IMPORT_FAILURE, FIXTURE_LOOKUP_FAILURE,
 };
 /// Desktop-only, under the same predicate as the rest of the export surface (the
 /// queue field below, and `library::export`). Exporting writes a directory tree

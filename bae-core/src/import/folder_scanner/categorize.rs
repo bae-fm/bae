@@ -777,12 +777,13 @@ fn probe_source_audio(file: &ScannedFile) -> Result<Option<ScannedAudio>, Folder
     let Some(probe) = crate::audio_codec::probe_audio_from_path(path) else {
         return Ok(None);
     };
-    if probe.sample_rate == 0 || probe.channels == 0 {
+    let Some(audio) = scanned_audio(&probe) else {
+        info!(
+            "Invalid candidate: {} is no audio stream bae plays",
+            file.relative_path
+        );
         return Ok(None);
-    }
-    if !probe.content_type.is_supported_audio() {
-        return Ok(None);
-    }
+    };
     let metadata =
         std::fs::metadata(&file.path).map_err(|source| FolderScanError::io(&file.path, source))?;
     let modified_at_ns = super::scan::file_modified_at_ns(&file.path, &metadata)?;
@@ -792,23 +793,27 @@ fn probe_source_audio(file: &ScannedFile) -> Result<Option<ScannedAudio>, Folder
             file.path.display()
         )));
     }
-    let duration_ms = probe.duration.as_millis() as u64;
+    Ok(Some(audio))
+}
+
+/// What a file's audio is, as `probe` read it: `None` for audio bae does
+/// not play — no sample rate or channels, a codec bae does not decode, or a
+/// lossy stream whose bitrate could not be read.
+pub(crate) fn scanned_audio(probe: &crate::audio_codec::ProbeResult) -> Option<ScannedAudio> {
+    if probe.sample_rate == 0 || probe.channels == 0 {
+        return None;
+    }
+    if !probe.content_type.is_supported_audio() {
+        return None;
+    }
     let bits_per_sample = probe.bits_per_sample.map(i64::from);
-    let bitrate_kbps = if bits_per_sample.is_none() {
-        let Some(bitrate_kbps) = probe.bitrate_kbps else {
-            info!(
-                "Invalid candidate: audio stream bitrate could not be read from {}",
-                file.relative_path
-            );
-            return Ok(None);
-        };
-        Some(bitrate_kbps)
-    } else {
-        None
+    let bitrate_kbps = match bits_per_sample {
+        Some(_) => None,
+        None => Some(probe.bitrate_kbps?),
     };
-    Ok(Some(ScannedAudio {
+    Some(ScannedAudio {
         content_type: probe.content_type.clone(),
-        duration_ms,
+        duration_ms: probe.duration.as_millis() as u64,
         format: crate::album_detail::AudioFormat {
             codec: probe.content_type.display_name().to_string(),
             sample_rate_hz: i64::from(probe.sample_rate),
@@ -816,5 +821,5 @@ fn probe_source_audio(file: &ScannedFile) -> Result<Option<ScannedAudio>, Folder
             bitrate_kbps,
             channels: i64::from(probe.channels),
         },
-    }))
+    })
 }

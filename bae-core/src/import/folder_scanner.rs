@@ -26,7 +26,7 @@ mod folder_date;
 mod scan;
 pub use candidates::*;
 pub use categorize::is_audio_file;
-pub(crate) use categorize::DiscLayout;
+pub(crate) use categorize::{scanned_audio, DiscLayout};
 use categorize::*;
 pub use files::*;
 pub use folder_date::FolderDate;

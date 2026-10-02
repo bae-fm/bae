@@ -243,7 +243,8 @@ desktop_only! {
     pub use types::{
         CandidateMetadataDraft, CandidatePreparedAssets, CoverSelection, ImportPhase,
         ImportDestination, ImportProgress, ImportStep, PayloadSource, PrepareStep, PreparedArtistImage,
-        ReleaseReseed, SourcePayload, TrackAudio, TrackFile,
+        CueAnalyzedAudioFile, CueFlacAnalysis, ReleaseReseed, SourcePayload, TrackAudio,
+        TrackFile,
     };
     pub use watched_folder::WatchedFolder;
 }

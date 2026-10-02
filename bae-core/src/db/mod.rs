@@ -2,11 +2,6 @@ mod client;
 pub mod identity;
 mod models;
 pub(crate) use client::ArtistCredits;
-#[cfg(all(
-    any(test, feature = "test-utils", debug_assertions),
-    not(any(target_os = "ios", target_os = "android"))
-))]
-pub(crate) use client::SeededAlbum;
 pub use client::{
     AlbumBrowseProjection, AlbumDetailProjection, AlbumSelectionProjection, ArtistBrowseProjection,
     ArtistDetailProjection, ComposerBrowseProjection, ComposerDetailProjection,
@@ -28,4 +23,9 @@ pub(crate) use client::{
 pub(crate) use client::{
     OutboxDisplayContext, OutboxDisplayRequest, QueueCatalogProjection, QueueCatalogRequest,
 };
+#[cfg(all(
+    any(test, feature = "test-utils", debug_assertions),
+    not(any(target_os = "ios", target_os = "android"))
+))]
+pub(crate) use client::{SeededAlbum, SeededAudio};
 pub use models::*;

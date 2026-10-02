@@ -4,14 +4,25 @@
 use super::*;
 
 /// One album as a fixture writes it: the album, the artists it credits after
-/// its own, its one release with that release's tracks, and the cover the
-/// release shows with the bytes it stores.
+/// its own, its one release with that release's tracks, the cover the
+/// release shows with the bytes it stores, and the audio its tracks play.
 pub(crate) struct SeededAlbum {
     pub(crate) album: DbAlbum,
     pub(crate) credits: Vec<DbAlbumArtist>,
     pub(crate) release: DbRelease,
     pub(crate) tracks: Vec<DbTrack>,
     pub(crate) cover: Option<(DbLibraryImage, Vec<u8>)>,
+    /// `None` for an album whose tracks play nothing.
+    pub(crate) audio: Option<SeededAudio>,
+}
+
+/// The audio of a [`SeededAlbum`]'s tracks: the release's files, each the
+/// user's own file prepared as an import registers it, and how each track's
+/// audio is laid out in them.
+pub(crate) struct SeededAudio {
+    pub(crate) files: Vec<(DbFile, coven::PreparedExternalBlob)>,
+    pub(crate) audio_formats: Vec<DbAudioFormat>,
+    pub(crate) audio_segments: Vec<DbAudioSegment>,
 }
 
 impl Database {
@@ -60,6 +71,20 @@ impl Database {
                         }
                         if let Some((image, _)) = &seeded.cover {
                             upsert_library_image_row(tx, image, &reg)?;
+                        }
+                    }
+                    // The files go in after every release, each registered as
+                    // the user's own file as an import registers it, then the
+                    // layouts reading them.
+                    for audio in albums.into_iter().filter_map(|seeded| seeded.audio) {
+                        for (file, blob) in audio.files {
+                            insert_external_file_row(tx, &file, &reg, blob)?;
+                        }
+                        for format in &audio.audio_formats {
+                            insert_audio_format_row(tx, format, &reg)?;
+                        }
+                        for segment in &audio.audio_segments {
+                            insert_audio_segment_row(tx, segment, &reg)?;
                         }
                     }
                     Ok(())

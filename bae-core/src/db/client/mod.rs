@@ -98,7 +98,7 @@ mod seeded_albums;
     any(test, feature = "test-utils", debug_assertions),
     not(any(target_os = "ios", target_os = "android"))
 ))]
-pub(crate) use seeded_albums::SeededAlbum;
+pub(crate) use seeded_albums::{SeededAlbum, SeededAudio};
 #[cfg(any(test, feature = "test-utils"))]
 mod test_capabilities;
 mod track;

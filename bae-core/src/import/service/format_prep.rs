@@ -416,7 +416,7 @@ impl ImportService {
     }
 
     /// Build audio format records for all tracks from the scan's stored facts.
-    pub(super) fn build_audio_formats(
+    pub(crate) fn build_audio_formats(
         tracks_to_files: &[TrackFile],
         file_ids: &HashMap<PathBuf, String>,
         clock: &dyn coven::Clock,
@@ -499,7 +499,7 @@ impl ImportService {
     }
 }
 
-pub(super) struct BuiltAudioFormats {
+pub(crate) struct BuiltAudioFormats {
     pub audio_formats: Vec<DbAudioFormat>,
     pub audio_segments: Vec<DbAudioSegment>,
 }

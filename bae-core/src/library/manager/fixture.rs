@@ -6,10 +6,12 @@ use super::*;
 use crate::db::{DbAlbumArtist, DbArtist, DbLibraryImage, DbRelease, DbTrack, SeededAlbum};
 
 mod import_list;
+mod playing;
 pub use import_list::{
     FixtureCandidate, FixtureCandidateState, FixtureWatchedFolder, FIXTURE_IMPORT_FAILURE,
     FIXTURE_LOOKUP_FAILURE,
 };
+pub use playing::FixturePlaying;
 
 /// What a UI test asks its library to hold, read from the JSON file it names.
 #[derive(Debug, Clone, serde::Deserialize)]
@@ -21,6 +23,8 @@ pub struct LibraryFixture {
     /// The folders the library watches, in order, and what the import list
     /// lists under each.
     pub watched_folders: Vec<FixtureWatchedFolder>,
+    /// The album playback is on as the library opens, if any.
+    pub playing: Option<FixturePlaying>,
 }
 
 /// One album of a [`LibraryFixture`]: one release of `tracks`, titled in
@@ -73,19 +77,31 @@ impl LibraryFixture {
 }
 
 impl LibraryManager {
-    /// Write `fixture` into the library: its albums in one transaction, the
-    /// last one added now and each before it a second earlier, one artist row
-    /// per distinct name; then its watched folders, each write the one the
-    /// scan or identification makes.
+    /// Write `fixture` into the library: its albums and the album playing in
+    /// one transaction, the playing album added now, the last album a second
+    /// before it and each before that a second earlier, one artist row per
+    /// distinct name; then its watched folders, each write the one the scan or
+    /// identification makes; then where playback resumes.
     pub async fn write_fixture(&self, fixture: &LibraryFixture) -> Result<(), LibraryFixtureError> {
         let now = self.clock.now();
-        let count = fixture.albums.len() as i64;
+        let count = (fixture.albums.len() + usize::from(fixture.playing.is_some())) as i64;
+        let added = |index: usize| now - chrono::Duration::seconds(count - 1 - index as i64);
         let mut artists: Vec<DbArtist> = Vec::new();
-        let mut albums = Vec::with_capacity(fixture.albums.len());
+        let mut albums = Vec::with_capacity(count as usize);
         for (index, album) in fixture.albums.iter().enumerate() {
-            let added = now - chrono::Duration::seconds(count - 1 - index as i64);
-            albums.push(self.seeded_album(album, added, &mut artists).await?);
+            albums.push(self.seeded_album(album, added(index), &mut artists).await?);
         }
+        let resume = match &fixture.playing {
+            Some(playing) => {
+                let (album, track_id) = self
+                    .seeded_playing_album(playing, added(fixture.albums.len()), &mut artists)
+                    .await?;
+                let release_id = album.release.id.clone();
+                albums.push(album);
+                Some((release_id, track_id, playing.position_ms))
+            }
+            None => None,
+        };
         // A write that changes nothing is refused, so a fixture of no albums
         // writes none.
         if !albums.is_empty() {
@@ -95,7 +111,12 @@ impl LibraryManager {
                 .map_err(LibraryError::from)?;
         }
         self.write_fixture_watched_folders(&fixture.watched_folders)
-            .await
+            .await?;
+        if let Some((release_id, track_id, position_ms)) = resume {
+            self.write_fixture_resume_row(&release_id, track_id, position_ms)
+                .await?;
+        }
+        Ok(())
     }
 
     /// `album` as the rows its write inserts, added at `added`, with each
@@ -173,6 +194,7 @@ impl LibraryManager {
             album: db_album,
             tracks,
             cover,
+            audio: None,
         })
     }
 

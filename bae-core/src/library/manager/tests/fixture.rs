@@ -13,6 +13,7 @@ fn fixture_of_albums(albums: Vec<crate::library::FixtureAlbum>) -> crate::librar
     crate::library::LibraryFixture {
         albums,
         watched_folders: Vec::new(),
+        playing: None,
     }
 }
 
@@ -218,6 +219,7 @@ async fn fixture_candidates_land_on_found_in_their_states() {
                 .map(|(folder, state)| fixture_candidate(folder, *state))
                 .collect(),
         }],
+        playing: None,
     };
 
     manager.write_fixture(&fixture).await.unwrap();
@@ -295,6 +297,7 @@ async fn fixture_candidates_carry_what_their_states_name() {
                 fixture_candidate("Failed Folder", State::ImportError),
             ],
         }],
+        playing: None,
     };
 
     manager.write_fixture(&fixture).await.unwrap();
@@ -337,4 +340,160 @@ async fn fixture_candidates_carry_what_their_states_name() {
             }
         })
     );
+}
+
+/// A disc image in `folder`: ten seconds of silent CD audio as a WAV file, and
+/// a sheet carving it into two tracks, the second after an INDEX 00 two
+/// seconds before its INDEX 01. Returns the sheet's path.
+fn fixture_disc_image(folder: &std::path::Path) -> std::path::PathBuf {
+    let samples: u32 = 44_100 * 10;
+    let data_size = samples * 4;
+    let mut wav = Vec::with_capacity(44 + data_size as usize);
+    wav.extend_from_slice(b"RIFF");
+    wav.extend_from_slice(&(36 + data_size).to_le_bytes());
+    wav.extend_from_slice(b"WAVEfmt ");
+    wav.extend_from_slice(&16u32.to_le_bytes());
+    wav.extend_from_slice(&1u16.to_le_bytes());
+    wav.extend_from_slice(&2u16.to_le_bytes());
+    wav.extend_from_slice(&44_100u32.to_le_bytes());
+    wav.extend_from_slice(&(44_100u32 * 4).to_le_bytes());
+    wav.extend_from_slice(&4u16.to_le_bytes());
+    wav.extend_from_slice(&16u16.to_le_bytes());
+    wav.extend_from_slice(b"data");
+    wav.extend_from_slice(&data_size.to_le_bytes());
+    wav.resize(44 + data_size as usize, 0);
+    std::fs::write(folder.join("disc.wav"), wav).unwrap();
+    let sheet = folder.join("disc.cue");
+    std::fs::write(
+        &sheet,
+        "PERFORMER \"Artist Name\"\n\
+         TITLE \"Album Title\"\n\
+         FILE \"disc.wav\" WAVE\n\
+         \x20 TRACK 01 AUDIO\n\
+         \x20   TITLE \"Opening Track\"\n\
+         \x20   INDEX 01 00:00:00\n\
+         \x20 TRACK 02 AUDIO\n\
+         \x20   TITLE \"Pregap Track\"\n\
+         \x20   INDEX 00 00:03:00\n\
+         \x20   INDEX 01 00:05:00\n",
+    )
+    .unwrap();
+    sheet
+}
+
+/// The fixture of nothing but `playing`.
+fn fixture_playing(playing: crate::library::FixturePlaying) -> crate::library::LibraryFixture {
+    crate::library::LibraryFixture {
+        albums: Vec::new(),
+        watched_folders: Vec::new(),
+        playing: Some(playing),
+    }
+}
+
+/// The playing album is laid out over its disc image as an import lays out a
+/// CUE image's tracks: each track a window of the image, the second starting
+/// with its pregap, which the library reads from the user's own file.
+#[tokio::test]
+async fn a_fixtures_playing_album_lays_its_tracks_over_the_disc_image() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    let sheet = fixture_disc_image(temp_dir.path());
+
+    manager
+        .write_fixture(&fixture_playing(crate::library::FixturePlaying {
+            title: "Album Title".to_string(),
+            artists: vec!["Artist Name".to_string()],
+            cue_sheet: sheet,
+            track: 2,
+            position_ms: 0,
+        }))
+        .await
+        .unwrap();
+
+    let albums = manager.get_albums(&[]).await.unwrap();
+    assert_eq!(
+        albums.iter().map(|album| album.title.as_str()).collect::<Vec<_>>(),
+        ["Album Title"]
+    );
+    let release_id = albums[0].primary_release_id.clone().unwrap();
+    let tracks = manager.get_tracks_for_release(&release_id).await.unwrap();
+    assert_eq!(
+        tracks
+            .iter()
+            .map(|track| (track.title.as_str(), track.duration_ms))
+            .collect::<Vec<_>>(),
+        [("Opening Track", Some(3_000)), ("Pregap Track", Some(5_000))]
+    );
+    let pregap = manager.resolve_track_audio(&tracks[1].id).await.unwrap();
+    assert_eq!(pregap.pregap_ms, Some(2_000));
+    assert_eq!(
+        pregap
+            .segments
+            .iter()
+            .map(|segment| (segment.role.clone(), segment.span.start_sample, segment.span.end_sample))
+            .collect::<Vec<_>>(),
+        [
+            (crate::db::DbAudioSegmentRole::AudioPregap, 132_300, Some(220_500)),
+            (crate::db::DbAudioSegmentRole::Main, 220_500, None),
+        ]
+    );
+    let files = manager.get_files_for_release(&release_id).await.unwrap();
+    let image = manager
+        .file_local_path(&files[0].id)
+        .await
+        .unwrap()
+        .expect("the image is the user's own file");
+    assert_eq!(image, temp_dir.path().join("disc.wav"));
+}
+
+/// Playback starts on the fixture's resume row: paused on the track it
+/// names, at the start of that track's pregap.
+#[cfg(feature = "test-utils")]
+#[tokio::test(flavor = "multi_thread")]
+async fn playback_resumes_the_fixtures_playing_album_in_the_pregap() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    let sheet = fixture_disc_image(temp_dir.path());
+    manager
+        .write_fixture(&fixture_playing(crate::library::FixturePlaying {
+            title: "Album Title".to_string(),
+            artists: vec!["Artist Name".to_string()],
+            cue_sheet: sheet,
+            track: 2,
+            position_ms: 0,
+        }))
+        .await
+        .unwrap();
+    let release_id = manager.get_albums(&[]).await.unwrap()[0]
+        .primary_release_id
+        .clone()
+        .unwrap();
+    let pregap_track = manager.get_tracks_for_release(&release_id).await.unwrap()[1]
+        .id
+        .clone();
+
+    let (device, _capture) = crate::playback::RealtimeCaptureAudioDevice::new();
+    let playback = manager.start_playback_service_with_audio_device(
+        tokio::runtime::Handle::current(),
+        100,
+        true,
+        Box::new(device),
+    );
+    let mut values = playback.subscribe_values();
+    let restored = tokio::time::timeout(
+        std::time::Duration::from_secs(30),
+        values.wait_for(|values| {
+            matches!(values.state, crate::playback::PlaybackState::Paused { .. })
+                && values.position.as_ref().is_some_and(|position| {
+                    position.track_id == pregap_track && position.position_ms == -2_000
+                })
+        }),
+    )
+    .await
+    .expect("playback resumes the fixture's track")
+    .unwrap()
+    .clone();
+    let crate::playback::PlaybackState::Paused { track, .. } = restored.state else {
+        unreachable!("waited for a paused state");
+    };
+    assert_eq!(track.track_id, pregap_track);
+    playback.shutdown().await;
 }
