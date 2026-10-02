@@ -8,8 +8,7 @@ enum AlbumGridCell: Identifiable, Equatable {
     case sectionFiller(sectionId: String, index: Int)
     /// The album at `position` in the list.
     case album(position: Int, albumId: String, sectionId: String? = nil)
-    /// A position with no album to show: its page has not landed, or it
-    /// holds an album an earlier position in the same section already shows.
+    /// A position whose page has not landed.
     case placeholder(position: Int)
     /// The open album's detail, first in the row under that album's row and
     /// drawn across the whole row.
@@ -18,16 +17,17 @@ enum AlbumGridCell: Identifiable, Equatable {
     /// album's row when it is the grid's short last row, and the detail's own.
     case filler(albumId: String, index: Int)
 
-    /// A slot's identity includes its artist section. Within that section, a
-    /// column count that moves an album to another row moves the same view. The grid
-    /// opens one detail at a time, so the detail is one slot whichever album
-    /// it shows: opening another album of the same row changes what it shows
-    /// in place, and one of another row moves it there.
+    /// A list position is one slot whether its page has landed or not: a
+    /// page landing or being let go changes what the slot shows, never which
+    /// slot it is, so the lazy grid lays out the same slots either way. A
+    /// column count that moves a position to another row moves the same
+    /// view. The grid opens one detail at a time, so the detail is one slot
+    /// whichever album it shows: opening another album of the same row
+    /// changes what it shows in place, and one of another row moves it there.
     enum Identity: Hashable {
         case heading(String)
         case sectionFiller(String, Int)
-        case album(String, sectionId: String? = nil)
-        case placeholder(Int)
+        case position(Int)
         case detail
         /// The filler at this place among the detail's slots.
         case filler(Int)
@@ -38,9 +38,8 @@ enum AlbumGridCell: Identifiable, Equatable {
         case .heading(let sectionId, _): .heading(sectionId)
         case .sectionFiller(let sectionId, let index):
             .sectionFiller(sectionId, index)
-        case .album(_, let albumId, let sectionId):
-            .album(albumId, sectionId: sectionId)
-        case .placeholder(let position): .placeholder(position)
+        case .album(let position, _, _), .placeholder(let position):
+            .position(position)
         case .detail: .detail
         case .filler(_, let index): .filler(index)
         }
@@ -163,8 +162,7 @@ struct AlbumGridCells: RandomAccessCollection {
 
     /// `loaded` is every loaded position with its album, in position order.
     /// An album loaded at two positions — a page delivered before the page it
-    /// left — shows at the first; the other position waits as a placeholder,
-    /// since one album is one slot within a section.
+    /// left — opens its detail under the first.
     init(
         totalCount: Int,
         columnCount: Int,
@@ -191,12 +189,10 @@ struct AlbumGridCells: RandomAccessCollection {
         self.startPosition = positions.lowerBound
         self.sectionId = sectionId
         var albumIds: [Int: String] = [:]
-        var shown: Set<String> = []
         var openPosition: Int?
-        for (position, albumId) in loaded
-        where positions.contains(position) && shown.insert(albumId).inserted {
+        for (position, albumId) in loaded where positions.contains(position) {
             albumIds[position] = albumId
-            if albumId == openAlbumId {
+            if albumId == openAlbumId, openPosition == nil {
                 openPosition = position - positions.lowerBound
             }
         }

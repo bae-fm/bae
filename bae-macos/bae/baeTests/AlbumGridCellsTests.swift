@@ -78,8 +78,8 @@ struct AlbumGridCellsTests {
             openAlbumId: "shared",
             sectionId: "artist-b"
         )
-        #expect(first[0].id == .album("shared", sectionId: "artist-a"))
-        #expect(second[0].id == .album("shared", sectionId: "artist-b"))
+        #expect(first[0].id == .position(0))
+        #expect(second[0].id == .position(1))
         #expect(first[0].id != second[0].id)
         #expect(!first.contains(.detail(albumId: "shared")))
         #expect(second.contains(.detail(albumId: "shared")))
@@ -208,7 +208,7 @@ extension AlbumGridCellsTests {
         let albums: (AlbumGridCells) -> [AlbumGridCell.Identity] = { cells in
             cells.map(\.id)
                 .filter {
-                    if case .album = $0 { return true }
+                    if case .position = $0 { return true }
                     return false
                 }
         }
@@ -220,8 +220,8 @@ extension AlbumGridCellsTests {
         #expect(three.firstIndex(of: .detail(albumId: "a5")) == 6)
     }
 
-    @Test("an album loaded at two positions shows once, at the first")
-    func duplicateAlbumShowsOnce() {
+    @Test("an album loaded at two positions opens its detail under the first")
+    func duplicateAlbumOpensUnderTheFirst() {
         let cells = AlbumGridCells(
             totalCount: 4,
             columnCount: 2,
@@ -229,17 +229,38 @@ extension AlbumGridCellsTests {
                 (position: 0, id: "x"), (position: 1, id: "y"),
                 (position: 2, id: "x"), (position: 3, id: "z"),
             ],
-            openAlbumId: nil
+            openAlbumId: "x"
         )
         #expect(
             Array(cells) == [
                 .album(position: 0, albumId: "x"),
                 .album(position: 1, albumId: "y"),
-                .placeholder(position: 2),
+                .detail(albumId: "x"),
+                .filler(albumId: "x", index: 1),
+                .album(position: 2, albumId: "x"),
                 .album(position: 3, albumId: "z"),
             ]
         )
         #expect(Set(ids(cells)).count == cells.count)
+    }
+
+    @Test("a position is the same slot whether its page has landed or not")
+    func positionIdentityIgnoresLoading() {
+        let unloaded = AlbumGridCells(
+            totalCount: 6,
+            columnCount: 3,
+            loaded: [],
+            openAlbumId: nil
+        )
+        let loaded = AlbumGridCells(
+            totalCount: 6,
+            columnCount: 3,
+            loaded: loaded(0..<6),
+            openAlbumId: nil
+        )
+        #expect(unloaded[2] == .placeholder(position: 2))
+        #expect(loaded[2] == .album(position: 2, albumId: "a2"))
+        #expect(ids(unloaded) == ids(loaded))
     }
 
     @Test("an open album that is not loaded opens no detail")

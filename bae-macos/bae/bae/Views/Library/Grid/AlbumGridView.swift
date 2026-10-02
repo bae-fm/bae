@@ -42,14 +42,12 @@ struct AlbumGridView<ExpansionContent: View>: View {
     private var viewport = AlbumGridViewport()
     /// Which appearance was opened; the album itself is shared by its groups.
     @State
-    private var expandedOccurrence: AlbumGridCell.Identity?
+    private var expandedOccurrence: AlbumOccurrence?
 
     private var expandedSectionId: String? {
         guard let albumId = uiStore.selectedAlbumId else { return nil }
-        if case .album(let openedId, let sectionId) = expandedOccurrence,
-            openedId == albumId
-        {
-            return sectionId
+        if let expandedOccurrence, expandedOccurrence.albumId == albumId {
+            return expandedOccurrence.sectionId
         }
         return list.position(of: albumId).flatMap { list.section(at: $0)?.id }
     }
@@ -61,9 +59,9 @@ struct AlbumGridView<ExpansionContent: View>: View {
                 fullWidth: fullWidth
             )
             ScrollView {
-                // One lazy grid over every slot, keyed by album: a new column
-                // count moves each card to its new place instead of making
-                // new cards in other rows.
+                // One lazy grid over every slot, keyed by list position: a
+                // new column count moves each card to its new place instead
+                // of making new cards in other rows.
                 LazyVGrid(
                     columns: metrics.columns,
                     alignment: .leading,
@@ -189,6 +187,13 @@ struct AlbumGridView<ExpansionContent: View>: View {
     }
 }
 
+/// One appearance of an album in the grid: in the artist section it was
+/// opened under, when the grid groups albums by artist.
+private struct AlbumOccurrence: Equatable {
+    let albumId: String
+    let sectionId: String?
+}
+
 /// The grid's columns at one available width.
 private struct AlbumGridMetrics {
     /// The width a row spans: every column and the gaps between them.
@@ -280,27 +285,12 @@ extension AlbumGridView {
                 .frame(width: metrics.rowWidth, alignment: .leading)
                 .frame(width: metrics.cardWidth, alignment: .leading)
                 .accessibilityAddTraits(.isHeader)
-        case .album(let position, let albumId, let sectionId):
+        case .album(let position, _, _), .placeholder(let position):
+            // One view whether the position's page has landed or not: its
+            // page hold and its place in the grid go on as the page lands
+            // and leaves.
             placed(
-                albumCard(
-                    albumId,
-                    position: position,
-                    sectionId: sectionId,
-                    width: metrics.cardWidth
-                )
-                .task(
-                    id: RowLoadID(epoch: list.loadEpoch, index: position)
-                ) {
-                    await list.holdPage(containing: position)
-                },
-                cell.id,
-                as: .position(position),
-                columnCount: metrics.columnCount
-            )
-        case .placeholder(let position):
-            placed(
-                AlbumCardPlaceholder(size: metrics.cardWidth)
-                    .frame(width: metrics.cardWidth)
+                positionContent(cell, width: metrics.cardWidth)
                     .task(
                         id: RowLoadID(epoch: list.loadEpoch, index: position)
                     ) {
@@ -356,6 +346,27 @@ extension AlbumGridView {
             .onDisappear {
                 viewport.remove(cell, columnCount: columnCount)
             }
+    }
+
+    /// What a position's slot shows: its album's card once its page has
+    /// landed, an empty card until then.
+    @ViewBuilder
+    private func positionContent(
+        _ cell: AlbumGridCell,
+        width: CGFloat
+    ) -> some View {
+        if case .album(let position, let albumId, let sectionId) = cell {
+            albumCard(
+                albumId,
+                position: position,
+                sectionId: sectionId,
+                width: width
+            )
+        }
+        else {
+            AlbumCardPlaceholder(size: width)
+                .frame(width: width)
+        }
     }
 
     /// The album's card, or its placeholder until its summary is interned.
@@ -471,11 +482,11 @@ extension AlbumGridView {
         }
         viewport.release()
         let sectionId = groupByArtist ? list.section(at: index)?.id : nil
-        expandedOccurrence = .album(reveal.albumId, sectionId: sectionId)
-        let card = AlbumGridCell.Identity.album(
-            reveal.albumId,
+        expandedOccurrence = AlbumOccurrence(
+            albumId: reveal.albumId,
             sectionId: sectionId
         )
+        let card = AlbumGridCell.Identity.position(index)
         if let seq = viewport.revealScrolls(seq: reveal.seq, to: card) {
             revealArrived(seq: seq)
             return
@@ -540,16 +551,7 @@ extension AlbumGridView {
         let id: AlbumGridCell.Identity
         switch slot {
         case .position(let position) where position < list.totalCount:
-            if let albumId = list.idAt(position) {
-                id = .album(
-                    albumId,
-                    sectionId: groupByArtist
-                        ? list.section(at: position)?.id : nil
-                )
-            }
-            else {
-                id = .placeholder(position)
-            }
+            id = .position(position)
         case .detail(let albumId) where uiStore.selectedAlbumId == albumId:
             id = .detail
         case .position, .detail:
@@ -595,7 +597,10 @@ extension AlbumGridView {
                 let isOpen =
                     uiStore.selectedAlbumId == albumId
                     && (!groupByArtist || expandedSectionId == sectionId)
-                expandedOccurrence = .album(albumId, sectionId: sectionId)
+                expandedOccurrence = AlbumOccurrence(
+                    albumId: albumId,
+                    sectionId: sectionId
+                )
                 uiStore.selectAlbum(
                     isOpen ? nil : albumId
                 )

@@ -19,7 +19,7 @@ struct AlbumGridViewportTests {
             for column in 0..<columnCount {
                 let position = row * columnCount + column
                 viewport.place(
-                    .album("a\(position)"),
+                    .position(position),
                     as: .position(position),
                     columnCount: columnCount,
                     frame: CGRect(
@@ -51,7 +51,7 @@ struct AlbumGridViewportTests {
         let viewport = viewport(rows: 3, columnCount: 4, top: 0)
         // The first layout at three columns reports before the change is seen.
         viewport.place(
-            .album("a9"),
+            .position(9),
             as: .position(9),
             columnCount: 3,
             frame: CGRect(x: 0, y: -100, width: 200, height: 400)
@@ -66,7 +66,7 @@ struct AlbumGridViewportTests {
         // At three columns another slot is on top, but going back keeps the
         // same one.
         viewport.place(
-            .album("a3"),
+            .position(3),
             as: .position(3),
             columnCount: 3,
             frame: CGRect(x: 0, y: 0, width: 260, height: 260)
@@ -80,24 +80,8 @@ struct AlbumGridViewportTests {
     @Test("a slot that left the grid is not on top")
     func removedSlotIgnored() {
         let viewport = viewport(rows: 2, columnCount: 2, top: 0)
-        viewport.remove(.album("a0"), columnCount: 2)
+        viewport.remove(.position(0), columnCount: 2)
         #expect(viewport.anchor(from: 2, to: 1) == .position(1))
-    }
-
-    @Test("a position's album and its placeholder are separate cells")
-    func placeholderLeavingKeepsAlbum() {
-        let viewport = AlbumGridViewport()
-        viewport.setScroll(AlbumGridScroll(visibleHeight: 700))
-        let frame = CGRect(x: 0, y: 0, width: 200, height: 200)
-        viewport.place(
-            .album("a0"),
-            as: .position(0),
-            columnCount: 2,
-            frame: frame
-        )
-        // The placeholder the album replaced leaves after the album arrived.
-        viewport.remove(.placeholder(0), columnCount: 2)
-        #expect(viewport.anchor(from: 2, to: 1) == .position(0))
     }
 
     @Test("the open album's detail can be the slot on top")
@@ -111,7 +95,7 @@ struct AlbumGridViewportTests {
             frame: CGRect(x: 0, y: -100, width: 200, height: 500)
         )
         viewport.place(
-            .album("a2"),
+            .position(2),
             as: .position(2),
             columnCount: 2,
             frame: CGRect(x: 0, y: 432, width: 200, height: 200)
@@ -124,7 +108,7 @@ struct AlbumGridViewportTests {
         let viewport = AlbumGridViewport()
         viewport.setScroll(AlbumGridScroll(visibleHeight: 700))
         viewport.place(
-            .album("a0"),
+            .position(0),
             as: .position(0),
             columnCount: 2,
             frame: CGRect(x: 0, y: 800, width: 200, height: 200)
@@ -252,7 +236,7 @@ struct AlbumGridViewportRevealTests {
         #expect(viewport.revealedRow(seq: 2) == row)
         #expect(viewport.revealedRow(seq: 1) == nil)
         // Laid out on the way to the album, it waits for the scroll to stop.
-        #expect(viewport.revealScrolls(seq: 2, to: .album("a9")) == nil)
+        #expect(viewport.revealScrolls(seq: 2, to: .position(9)) == nil)
         #expect(viewport.revealedRow(seq: 2, atAlbum: true) == nil)
         #expect(viewport.setPhase(from: .idle, to: .animating) == nil)
         #expect(viewport.setPhase(from: .animating, to: .idle) == 2)
@@ -265,14 +249,14 @@ struct AlbumGridViewportRevealTests {
     @Test("a reveal arrives when its animated scroll comes to rest")
     func revealArrivesWhenScrollEnds() {
         let viewport = scrolled()
-        #expect(viewport.revealScrolls(seq: 3, to: .album("a9")) == nil)
+        #expect(viewport.revealScrolls(seq: 3, to: .position(9)) == nil)
         #expect(viewport.setPhase(from: .idle, to: .animating) == nil)
         // Its card passes the top on the way: still on its way.
-        place(.album("a9"), at: 0, in: viewport)
+        place(.position(9), at: 0, in: viewport)
         #expect(viewport.revealArrivedInPlace() == nil)
 
         // Wherever the lazy grid settled the card, the scroll has stopped.
-        place(.album("a9"), at: 12, in: viewport)
+        place(.position(9), at: 12, in: viewport)
         #expect(viewport.setPhase(from: .animating, to: .idle) == 3)
         // Once.
         #expect(viewport.revealArrivedInPlace() == nil)
@@ -281,9 +265,9 @@ struct AlbumGridViewportRevealTests {
     @Test("a reveal whose album is on top already arrives at once")
     func revealOfAlbumOnTopArrivesAtOnce() {
         let viewport = scrolled()
-        place(.album("a9"), at: 0, in: viewport)
+        place(.position(9), at: 0, in: viewport)
 
-        #expect(viewport.revealScrolls(seq: 4, to: .album("a9")) == 4)
+        #expect(viewport.revealScrolls(seq: 4, to: .position(9)) == 4)
     }
 
     @Test(
@@ -291,11 +275,11 @@ struct AlbumGridViewportRevealTests {
     )
     func revealArrivesAfterUnanimatedScroll() {
         let viewport = scrolled()
-        place(.album("a9"), at: 900, in: viewport)
-        #expect(viewport.revealScrolls(seq: 5, to: .album("a9")) == nil)
+        place(.position(9), at: 900, in: viewport)
+        #expect(viewport.revealScrolls(seq: 5, to: .position(9)) == nil)
         #expect(viewport.revealArrivedInPlace() == nil)
 
-        place(.album("a9"), at: 0, in: viewport)
+        place(.position(9), at: 0, in: viewport)
 
         #expect(viewport.revealArrivedInPlace() == 5)
     }
@@ -309,9 +293,9 @@ struct AlbumGridViewportRevealTests {
         viewport.setScroll(
             AlbumGridScroll(offset: 4300, visibleHeight: 700, offsets: 0...4300)
         )
-        place(.album("a9"), at: 300, in: viewport)
+        place(.position(9), at: 300, in: viewport)
 
-        #expect(viewport.revealScrolls(seq: 6, to: .album("a9")) == 6)
+        #expect(viewport.revealScrolls(seq: 6, to: .position(9)) == 6)
     }
 
     /// Lays out `cell`'s 200-point card `y` points below the top.

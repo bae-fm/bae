@@ -47,9 +47,7 @@ struct PlacedTrackRow: Equatable {
 @MainActor
 final class AlbumGridViewport {
     // periphery:ignore - a dictionary key: hashed and compared, never read.
-    /// One shown cell at one column count. A position's placeholder and its
-    /// album are different cells, so the one leaving never takes the other's
-    /// frame with it.
+    /// One shown cell at one column count.
     private struct Placement: Hashable {
         let cell: AlbumGridCell.Identity
         let columnCount: Int

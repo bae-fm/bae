@@ -123,8 +123,11 @@ struct AlbumGridResizeTests {
         await hosted.settle()
         let back = place()
         // Back at five columns the slot on top is the one that was: the grid
-        // moved by less than half a row, to line that slot up with the top.
-        #expect(abs(back - before) <= rowPitch / 2)
+        // moved to line that slot up with the top. It is the first slot with
+        // at least half of it in view, so the row above it may be all but
+        // half a card scrolled past, and the grid moves by at most half a
+        // card and the gap under it.
+        #expect(abs(back - before) <= rowPitch / 2 + ThemeSpace.page / 2)
 
         // Going back and forth again returns to the same places.
         stage.showPanel = true
