@@ -66,6 +66,14 @@ enum AppRuntime: Equatable {
         ) -> String? {
             environment["BAE_UI_TESTING_LIBRARY_FIXTURE"]
         }
+
+        /// The property list a UI test names as the app's defaults, which the
+        /// app reads and writes in place of the person's own.
+        static func defaultsForUITesting(
+            environment: [String: String]
+        ) -> String? {
+            environment["BAE_UI_TESTING_DEFAULTS"]
+        }
     #endif
 }
 
@@ -165,7 +173,6 @@ final class ApplicationServices {
     }
 }
 
-@main
 struct BaeApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self)
     var appDelegate

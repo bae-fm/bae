@@ -15,12 +15,10 @@ final class GoToNowPlayingTests: XCTestCase {
         }
     private static let playingNumber = 38
     /// The grid's sort, oldest added first, which puts the playing album,
-    /// the newest, last: the JSON the app stores, as property list data.
-    private static let oldestFirst: String = {
-        let json = #"[{"field":"dateAdded","direction":"ascending"}]"#
-        let hex = json.utf8.map { String(format: "%02x", $0) }.joined()
-        return "<\(hex)>"
-    }()
+    /// the newest, last: the JSON the app stores.
+    private static let oldestFirst = Data(
+        #"[{"field":"dateAdded","direction":"ascending"}]"#.utf8
+    )
 
     override func setUp() {
         continueAfterFailure = false

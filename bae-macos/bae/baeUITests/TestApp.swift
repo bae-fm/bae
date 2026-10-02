@@ -178,14 +178,14 @@ private func silentCDAudio(seconds: Int) -> Data {
 
 extension XCTestCase {
     /// Launch the app on a library of its own, under a fresh `HOME`, holding
-    /// the state `library` names, with `defaults` read in place of the app's
-    /// user defaults of those names. The app's user defaults are those of the
-    /// person running the test, which `HOME` does not move, so a test states
-    /// a default here rather than changing it in the app.
+    /// the state `library` names, on defaults of its own that start as
+    /// `defaults`. The app reads and writes those in place of its user
+    /// defaults, which are the person's running the test and which `HOME`
+    /// does not move.
     @MainActor
     func launchApp(
         library: LibraryFixture = LibraryFixture(),
-        defaults: [String: String] = [:]
+        defaults: [String: Any] = [:]
     ) throws -> XCUIApplication {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
@@ -211,17 +211,35 @@ extension XCTestCase {
             app.launchEnvironment["BAE_UI_TESTING_LIBRARY_FIXTURE"] =
                 fixture.path
         }
+        var startingDefaults = defaults
         if library.playing != nil {
             // "Restore on launch", without which the app opens on nothing
             // playing whatever the library last played.
-            app.launchArguments += ["-persistPlayback", "YES"]
+            startingDefaults["persistPlayback"] = true
         }
-        for (name, value) in defaults.sorted(by: { $0.key < $1.key }) {
-            app.launchArguments += ["-\(name)", value]
-        }
+        let defaultsFile = root.appendingPathComponent("defaults.plist")
+        try PropertyListSerialization.data(
+            fromPropertyList: startingDefaults,
+            format: .xml,
+            options: 0
+        )
+        .write(to: defaultsFile)
+        app.launchEnvironment["BAE_UI_TESTING_DEFAULTS"] = defaultsFile.path
         app.launch()
         app.activate()
         addTeardownBlock { app.terminate() }
         return app
+    }
+}
+
+extension XCUIApplication {
+    /// The defaults the app runs on, as `launchApp` named them.
+    var appDefaults: UserDefaults {
+        guard let path = launchEnvironment["BAE_UI_TESTING_DEFAULTS"],
+            let defaults = UserDefaults(suiteName: path)
+        else {
+            preconditionFailure("the app was not launched by launchApp")
+        }
+        return defaults
     }
 }
