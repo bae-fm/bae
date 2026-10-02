@@ -17,11 +17,17 @@ struct AlbumGrid {
     /// visible area, top to bottom.
     func frames(of text: String) -> [CGRect] {
         let visible = scrollView.frame
-        return scrollView.staticTexts
+        return laidOutFrames(of: text).filter { visible.contains($0) }
+    }
+
+    /// Where each text reading `text` is laid out in the grid, in view or
+    /// scrolled out of it, top to bottom: the grid lays out the rows near
+    /// the ones in view too.
+    func laidOutFrames(of text: String) -> [CGRect] {
+        scrollView.staticTexts
             .matching(NSPredicate(format: "value == %@", text))
             .allElementsBoundByIndex
             .map(\.frame)
-            .filter { visible.contains($0) }
             .sorted { $0.minY < $1.minY }
     }
 
