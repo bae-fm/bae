@@ -178,10 +178,14 @@ private func silentCDAudio(seconds: Int) -> Data {
 
 extension XCTestCase {
     /// Launch the app on a library of its own, under a fresh `HOME`, holding
-    /// the state `library` names.
+    /// the state `library` names, with `defaults` read in place of the app's
+    /// user defaults of those names. The app's user defaults are those of the
+    /// person running the test, which `HOME` does not move, so a test states
+    /// a default here rather than changing it in the app.
     @MainActor
     func launchApp(
-        library: LibraryFixture = LibraryFixture()
+        library: LibraryFixture = LibraryFixture(),
+        defaults: [String: String] = [:]
     ) throws -> XCUIApplication {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
@@ -211,6 +215,9 @@ extension XCTestCase {
             // "Restore on launch", without which the app opens on nothing
             // playing whatever the library last played.
             app.launchArguments += ["-persistPlayback", "YES"]
+        }
+        for (name, value) in defaults.sorted(by: { $0.key < $1.key }) {
+            app.launchArguments += ["-\(name)", value]
         }
         app.launch()
         app.activate()
