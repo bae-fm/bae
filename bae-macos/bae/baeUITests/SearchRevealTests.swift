@@ -49,7 +49,7 @@ final class SearchRevealTests: XCTestCase {
         let grid = gridView.frame
         XCTAssertFalse(shown(Self.farAlbum, in: grid, of: app))
 
-        pick(Self.farAlbum, in: app)
+        pickSearchResult(Self.farAlbum, in: app)
         XCTAssertTrue(
             waitUntil(timeout: 10) {
                 self.shown(Self.farAlbum, in: grid, of: app)
@@ -65,30 +65,13 @@ final class SearchRevealTests: XCTestCase {
         let farTrack = Self.farTracks[10]
         XCTAssertFalse(shown(farTrack, in: grid, of: app))
 
-        pick(farTrack, in: app)
+        pickSearchResult(farTrack, in: app)
         XCTAssertTrue(
             waitUntil(timeout: 10) {
                 self.shown(farTrack, in: grid, of: app)
             },
             "the picked track's row is scrolled into view"
         )
-    }
-
-    /// Search for `title` in the title bar and pick the result it titles.
-    @MainActor
-    private func pick(_ title: String, in app: XCUIApplication) {
-        let field = app.textFields
-            .matching(NSPredicate(format: "placeholderValue == %@", "Search"))
-            .firstMatch
-        XCTAssertTrue(field.waitForExistence(timeout: 10))
-        field.click()
-        field.typeText(title)
-        // A result's label is its title, then what its subtitle says.
-        let result = app.buttons
-            .matching(NSPredicate(format: "label BEGINSWITH %@", "\(title),"))
-            .firstMatch
-        XCTAssertTrue(result.waitForExistence(timeout: 10))
-        result.click()
     }
 
     /// Scroll the grid at `grid` all the way up.
@@ -115,19 +98,5 @@ final class SearchRevealTests: XCTestCase {
     ) -> Bool {
         app.staticTexts.matching(identifier: text).allElementsBoundByIndex
             .contains { grid.contains($0.frame) }
-    }
-
-    /// Whether `condition` holds within `timeout`, checked as the app runs.
-    @MainActor
-    private func waitUntil(
-        timeout: TimeInterval,
-        _ condition: @escaping () -> Bool
-    ) -> Bool {
-        let expectation = XCTNSPredicateExpectation(
-            predicate: NSPredicate { _, _ in condition() },
-            object: nil
-        )
-        return XCTWaiter.wait(for: [expectation], timeout: timeout)
-            == .completed
     }
 }

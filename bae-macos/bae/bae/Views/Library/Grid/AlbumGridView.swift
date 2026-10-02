@@ -108,6 +108,7 @@ struct AlbumGridView<ExpansionContent: View>: View {
                     .allowsHitTesting(false)
                 }
             }
+            .accessibilityIdentifier("album-grid")
             .scrollPosition($scrollPosition, anchor: .top)
             .onScrollGeometryChange(for: AlbumGridScroll.self) { geometry in
                 let top = -geometry.contentInsets.top
