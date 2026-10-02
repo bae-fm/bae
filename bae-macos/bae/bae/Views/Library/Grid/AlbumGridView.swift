@@ -227,6 +227,12 @@ private struct AlbumGridMetrics {
 extension AlbumGridView {
     /// Read the row and viewport from the same layout. Scroll callbacks can
     /// arrive after an animation completion and must not position the row.
+    ///
+    /// The lazy grid places a cell it has just drawn before it grows to hold
+    /// it, so a row near the end can sit below the content's bottom for a
+    /// layout. The scroll bounds that layout gives stop short of the row, and
+    /// a scroll to it would go nowhere; the row counts as placed once the
+    /// content holds it.
     private func placedTrackRow(
         _ row: RevealedTrackRow?,
         in proxy: GeometryProxy
@@ -235,10 +241,12 @@ extension AlbumGridView {
         guard let bounds = proxy.bounds(of: .scrollView) else {
             preconditionFailure("The album grid must be inside its scroll view")
         }
+        let frame = proxy[row.bounds]
+        guard frame.maxY <= proxy.size.height + 0.5 else { return nil }
         return PlacedTrackRow(
             trackId: row.trackId,
             seq: row.seq,
-            frame: proxy[row.bounds],
+            frame: frame,
             scroll: AlbumGridScroll(
                 offset: bounds.minY,
                 visibleHeight: bounds.height,
