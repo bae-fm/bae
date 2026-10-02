@@ -74,13 +74,14 @@ forward! { async this => {
     fn get_album_index(
         sort_criteria: Vec<BridgeSortCriterion>,
         album_id: String,
+        group_by_artist: bool,
     ) -> Option<u64> {
         let sort: Vec<bae_core::db::AlbumSortCriterion> = sort_criteria
             .into_iter()
             .map(BridgeSortCriterion::into_core)
             .collect();
         this.services
-            .get_album_index(&sort, &album_id)
+            .get_album_index(&sort, &album_id, group_by_artist)
             .await
             .map_err(|e| BridgeError::database(format!("{e}")))
     }

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="group_by_artist">Grupiraj po izvođaču</string>
     <string name="back">Natrag</string>
     <string name="cancel">Odustani</string>
     <string name="retry">Pokušaj ponovno</string>

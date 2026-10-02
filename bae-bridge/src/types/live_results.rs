@@ -33,6 +33,13 @@ pub struct BridgeLibraryPageWindow {
     pub limit: u64,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeLibraryBrowseSection {
+    pub id: String,
+    pub title: String,
+    pub window: BridgeLibraryPageWindow,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeLiveQueryCause {
     Initial,

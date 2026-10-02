@@ -255,6 +255,9 @@ mod queue_cover_tests;
 mod live_query_tests;
 
 #[cfg(test)]
+mod album_group_tests;
+
+#[cfg(test)]
 mod import_list_live_query_tests;
 
 #[cfg(test)]

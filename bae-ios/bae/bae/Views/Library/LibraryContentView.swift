@@ -9,6 +9,7 @@ struct LibraryContentView: View {
     let isSearching: Bool
     let mode: LibraryBrowserMode
     let albumList: AlbumList?
+    var groupAlbumsByArtist = false
     let composerList: ComposerList?
     let artistList: ArtistList?
     let searchResults: SearchResults?
@@ -48,7 +49,11 @@ struct LibraryContentView: View {
         switch mode {
         case .albums:
             if let albumList {
-                AlbumGrid(list: albumList, onSelect: onSelectAlbum)
+                AlbumGrid(
+                    list: albumList,
+                    groupByArtist: groupAlbumsByArtist,
+                    onSelect: onSelectAlbum
+                )
             }
             else {
                 ListPlaceholder { ProgressView() }

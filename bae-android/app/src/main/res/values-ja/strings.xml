@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="group_by_artist">アーティスト別にグループ化</string>
     <string name="back">戻る</string>
     <string name="cancel">キャンセル</string>
     <string name="retry">再試行</string>

@@ -182,20 +182,47 @@ impl Database {
     pub(crate) fn subscribe_album_browse(
         &self,
         sort: &[AlbumSortCriterion],
+        group_by_artist: bool,
         initial_windows: crate::library::LibraryPageWindows,
     ) -> coven::ReconfigurableLiveQuery<crate::library::LibraryPageWindows, AlbumBrowseProjection>
     {
-        let (order_by, needs_artist_sort_join) = build_order_by(sort, "a.created_at DESC");
-        let artist_sort_join = album_summary_artist_join(needs_artist_sort_join);
+        let (relation, order_by) = album_browse_order(sort, group_by_artist);
         let page_query = format!(
-            "{} FROM albums a {artist_sort_join} WHERE {ALBUM_A_IS_SHOWN} \
+            "{} {relation} \
              ORDER BY {order_by} LIMIT ? OFFSET ?",
             album_summary_select(),
         );
+        let section_query = group_by_artist.then(|| {
+            format!(
+                "SELECT artist_id, artist_name, MIN(position), COUNT(*) FROM ( \
+                 SELECT art_sort.id AS artist_id, art_sort.name AS artist_name, \
+                 ROW_NUMBER() OVER (ORDER BY {order_by}) - 1 AS position \
+                 {relation}) \
+                 GROUP BY artist_id ORDER BY MIN(position)"
+            )
+        });
         self.inner
             .handle
             .subscribe_reconfigurable(initial_windows, move |requested, sql| {
                 let total_count = album_count_on(&sql).map_err(CovenError::from)?;
+                let sections = match &section_query {
+                    Some(query) => sql.query(query, [], |row| {
+                        Ok(crate::library::LibraryBrowseSection {
+                            id: row.get(0)?,
+                            title: row.get(1)?,
+                            window: crate::library::LibraryPageWindow {
+                                offset: row.get::<_, i64>(2)? as u64,
+                                limit: row.get::<_, i64>(3)? as u64,
+                            },
+                        })
+                    })?,
+                    None => Vec::new(),
+                };
+                let row_count = if group_by_artist {
+                    sections.iter().map(|section| section.window.limit).sum()
+                } else {
+                    total_count
+                };
                 let windows = requested
                     .iter()
                     .map(|window| {
@@ -217,28 +244,32 @@ impl Database {
                     .flat_map(|window| window.rows.iter().map(|row| row.id.clone()))
                     .collect::<Vec<_>>();
                 let cover_versions = album_cover_versions_on(&sql, &album_ids)?;
-                Ok((windows, cover_versions, total_count))
+                Ok((windows, cover_versions, total_count, row_count, sections))
             })
-            .process(|_, (windows, cover_versions, total_count)| {
-                let windows = windows
-                    .into_iter()
-                    .map(|window| {
-                        Ok(crate::library::LibraryBrowseWindow {
-                            window: window.window,
-                            rows: window
-                                .rows
-                                .into_iter()
-                                .map(AlbumSummaryRow::process)
-                                .collect::<Result<_, _>>()?,
+            .process(
+                |_, (windows, cover_versions, total_count, row_count, sections)| {
+                    let windows = windows
+                        .into_iter()
+                        .map(|window| {
+                            Ok(crate::library::LibraryBrowseWindow {
+                                window: window.window,
+                                rows: window
+                                    .rows
+                                    .into_iter()
+                                    .map(AlbumSummaryRow::process)
+                                    .collect::<Result<_, _>>()?,
+                            })
                         })
+                        .collect::<Result<_, CovenError>>()?;
+                    Ok(AlbumBrowseProjection {
+                        windows,
+                        cover_versions,
+                        total_count,
+                        row_count,
+                        sections,
                     })
-                    .collect::<Result<_, CovenError>>()?;
-                Ok(AlbumBrowseProjection {
-                    windows,
-                    cover_versions,
-                    total_count,
-                })
-            })
+                },
+            )
     }
 
     /// Follow the summaries of the albums `initial` names — the grid's
@@ -281,28 +312,23 @@ impl Database {
             })
     }
 
-    /// An album's 0-based position under a sort, or `None` when it isn't in the
-    /// library. Wraps the *identical* `build_order_by` + `album_summary_artist_join`
-    /// that `get_album_page` uses in a `ROW_NUMBER() OVER (ORDER BY …)` window, so
-    /// the index is exactly the offset at which `get_album_page` would return this
-    /// album — the caller can load that page and scroll to the row deterministically.
+    /// The album's first appearance in the browse order, or `None` if absent.
+    /// Uses the same relation and order as the live page query.
     pub async fn get_album_index(
         &self,
         sort: &[AlbumSortCriterion],
         album_id: &str,
+        group_by_artist: bool,
     ) -> Result<Option<u64>, DbError> {
-        let (order_by, needs_artist_sort_join) = build_order_by(sort, "a.created_at DESC");
-        let artist_sort_join = album_summary_artist_join(needs_artist_sort_join);
+        let (relation, order_by) = album_browse_order(sort, group_by_artist);
         let album_id = album_id.to_string();
 
         let query = format!(
             "SELECT idx FROM ( \
                 SELECT a.id AS id, \
                     ROW_NUMBER() OVER (ORDER BY {order_by}) - 1 AS idx \
-                FROM albums a \
-                {artist_sort_join} \
-                WHERE {ALBUM_A_IS_SHOWN} \
-            ) WHERE id = ?"
+                {relation} \
+            ) WHERE id = ? ORDER BY idx LIMIT 1"
         );
 
         self.read(move |sql| {
@@ -686,6 +712,8 @@ pub struct AlbumBrowseProjection {
     pub windows: Vec<crate::library::LibraryBrowseWindow<DbAlbumSummary>>,
     pub cover_versions: HashMap<String, String>,
     pub total_count: u64,
+    pub row_count: u64,
+    pub sections: Vec<crate::library::LibraryBrowseSection>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

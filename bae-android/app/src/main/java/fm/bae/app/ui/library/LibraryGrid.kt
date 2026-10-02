@@ -10,9 +10,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -20,6 +21,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.OpenLibrary
@@ -35,6 +38,7 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.CoverImage
 import uniffi.bae_bridge.BridgeAlbum
+import uniffi.bae_bridge.BridgeLibraryBrowseSection
 
 // Enough fixture albums to fill several grid rows in the screenshot scene.
 private const val SCENE_ALBUM_COUNT = 9
@@ -44,6 +48,7 @@ internal fun LibraryGridContent(
     session: OpenLibrary,
     page: AlbumPageStore,
     gridState: LazyGridState,
+    groupByArtist: Boolean,
     onSelectAlbum: (String) -> Unit,
 ) {
     LibraryPageContent(
@@ -53,6 +58,7 @@ internal fun LibraryGridContent(
     ) {
         LibraryGridBacking(
             count = page.totalCount,
+            sections = if (groupByArtist) page.sections else emptyList(),
             albumAt = page.rows::get,
             gridState = gridState,
             onSelectAlbum = onSelectAlbum,
@@ -67,6 +73,7 @@ internal fun LibraryGridContent(
 @Composable
 private fun LibraryGridBacking(
     count: Int,
+    sections: List<BridgeLibraryBrowseSection> = emptyList(),
     albumAt: (Int) -> BridgeAlbum?,
     gridState: LazyGridState,
     onSelectAlbum: (String) -> Unit,
@@ -79,13 +86,39 @@ private fun LibraryGridBacking(
         verticalArrangement = Arrangement.spacedBy(ThemeSpace.group),
         modifier = Modifier.fillMaxSize(),
     ) {
-        items(count, key = { index -> albumAt(index)?.id ?: "album-slot-$index" }) { index ->
-            val album = albumAt(index)
-            if (album != null) {
-                AlbumGridCard(album = album, onClick = { onSelectAlbum(album.id) })
-            } else {
-                Spacer(modifier = Modifier.fillMaxWidth().aspectRatio(1f))
+        if (sections.isEmpty()) {
+            albumItems(0 until count, albumAt, onSelectAlbum)
+        } else {
+            sections.forEach { section ->
+                item(key = section.id, span = { GridItemSpan(maxLineSpan) }) {
+                    Text(
+                        text = section.title,
+                        style = ThemeText.rowTitle.style,
+                        modifier = Modifier.semantics { heading() },
+                    )
+                }
+                albumItems(
+                    section.window.offset.toInt() until (section.window.offset + section.window.limit).toInt(),
+                    albumAt,
+                    onSelectAlbum,
+                )
             }
+        }
+    }
+}
+
+private fun LazyGridScope.albumItems(
+    positions: IntRange,
+    albumAt: (Int) -> BridgeAlbum?,
+    onSelectAlbum: (String) -> Unit,
+) {
+    items(positions.count(), key = { positions.first + it }) { local ->
+        val index = positions.first + local
+        val album = albumAt(index)
+        if (album != null) {
+            AlbumGridCard(album = album, onClick = { onSelectAlbum(album.id) })
+        } else {
+            Spacer(modifier = Modifier.fillMaxWidth().aspectRatio(1f))
         }
     }
 }

@@ -17,6 +17,7 @@ import uniffi.bae_bridge.BridgeArtistSummary
 import uniffi.bae_bridge.BridgeComposerSortCriterion
 import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeException
+import uniffi.bae_bridge.BridgeLibraryBrowseSection
 import uniffi.bae_bridge.BridgeLibraryPageWindow
 import uniffi.bae_bridge.BridgeSortCriterion
 
@@ -33,6 +34,7 @@ internal class PageError(
 internal class BrowseRows<Row>(
     val windows: List<Pair<BridgeLibraryPageWindow, List<Row>>>,
     val totalCount: Int,
+    val sections: List<BridgeLibraryBrowseSection> = emptyList(),
 )
 
 /** A live browse over one library list whose windows change in place. */
@@ -54,6 +56,8 @@ internal abstract class WindowedBrowserPageStore<Parameter, Row>(
     protected val scope: CoroutineScope,
 ) {
     val rows = mutableStateMapOf<Int, Row>()
+    var sections by mutableStateOf(emptyList<BridgeLibraryBrowseSection>())
+        private set
     var totalCount by mutableStateOf(0)
         private set
     var loading by mutableStateOf(true)
@@ -72,6 +76,7 @@ internal abstract class WindowedBrowserPageStore<Parameter, Row>(
         if (active && this.parameter == parameter) return
         closeQuery()
         rows.clear()
+        sections = emptyList()
         totalCount = 0
         loading = true
         error = null
@@ -89,6 +94,7 @@ internal abstract class WindowedBrowserPageStore<Parameter, Row>(
         active = false
         closeQuery()
         rows.clear()
+        sections = emptyList()
         totalCount = 0
     }
 
@@ -162,6 +168,7 @@ internal abstract class WindowedBrowserPageStore<Parameter, Row>(
         }
         rows.keys.filter { it >= delivered.totalCount }.forEach(rows::remove)
         totalCount = delivered.totalCount
+        sections = delivered.sections
         loading = false
         error = null
     }
@@ -193,14 +200,26 @@ internal abstract class WindowedBrowserPageStore<Parameter, Row>(
     }
 }
 
+internal data class AlbumBrowseParameters(
+    val criterion: BridgeSortCriterion,
+    val groupByArtist: Boolean,
+)
+
 internal class AlbumPageStore(
     private val library: Library,
     appContext: Context,
     scope: CoroutineScope,
-) : WindowedBrowserPageStore<BridgeSortCriterion, BridgeAlbum>(appContext, scope) {
-    override fun open(parameter: BridgeSortCriterion): BrowseRowsQuery<BridgeAlbum> =
-        SnapshotRowsQuery(library.albumBrowse(listOf(parameter))) { snapshot ->
-            BrowseRows(snapshot.windows.map { it.window to it.rows }, snapshot.totalCount.toInt())
+) : WindowedBrowserPageStore<AlbumBrowseParameters, BridgeAlbum>(appContext, scope) {
+    fun activate(
+        criterion: BridgeSortCriterion,
+        groupByArtist: Boolean = false,
+    ) {
+        activate(AlbumBrowseParameters(criterion, groupByArtist))
+    }
+
+    override fun open(parameter: AlbumBrowseParameters): BrowseRowsQuery<BridgeAlbum> =
+        SnapshotRowsQuery(library.albumBrowse(listOf(parameter.criterion), parameter.groupByArtist)) { snapshot ->
+            BrowseRows(snapshot.windows.map { it.window to it.rows }, snapshot.rowCount.toInt(), snapshot.sections)
         }
 }
 

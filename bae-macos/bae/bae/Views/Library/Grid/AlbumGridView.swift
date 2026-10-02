@@ -16,6 +16,7 @@ struct AlbumGridView<ExpansionContent: View>: View {
     let list: AlbumList
     /// The active sort, which `revealAlbum` needs to resolve an album's index.
     let sortCriteria: [BridgeSortCriterion]
+    var groupByArtist = false
     /// Span the window instead of the capped column; it feeds the column
     /// count, so the cap sits inside the ScrollView.
     let fullWidth: Bool
@@ -39,6 +40,19 @@ struct AlbumGridView<ExpansionContent: View>: View {
     )
     @State
     private var viewport = AlbumGridViewport()
+    /// Which appearance was opened; the album itself is shared by its groups.
+    @State
+    private var expandedOccurrence: AlbumGridCell.Identity?
+
+    private var expandedSectionId: String? {
+        guard let albumId = uiStore.selectedAlbumId else { return nil }
+        if case .album(let openedId, let sectionId) = expandedOccurrence,
+            openedId == albumId
+        {
+            return sectionId
+        }
+        return list.position(of: albumId).flatMap { list.section(at: $0)?.id }
+    }
 
     var body: some View {
         GeometryReader { geometry in
@@ -207,12 +221,14 @@ private struct AlbumGridMetrics {
 }
 
 extension AlbumGridView {
-    private func cells(columnCount: Int) -> AlbumGridCells {
-        AlbumGridCells(
+    private func cells(columnCount: Int) -> AlbumGridLayout {
+        AlbumGridLayout(
             totalCount: list.totalCount,
+            sections: groupByArtist ? list.sections : [],
             columnCount: columnCount,
             loaded: list.loadedEntries,
-            openAlbumId: uiStore.selectedAlbumId
+            openAlbumId: uiStore.selectedAlbumId,
+            openSectionId: expandedSectionId
         )
     }
 
@@ -222,14 +238,26 @@ extension AlbumGridView {
         metrics: AlbumGridMetrics
     ) -> some View {
         switch cell {
-        case .album(let position, let albumId):
+        case .heading(_, let title):
+            Text(verbatim: title)
+                .themeText(.rowTitle)
+                .padding(.horizontal, ThemeSpace.compact)
+                .frame(width: metrics.rowWidth, alignment: .leading)
+                .frame(width: metrics.cardWidth, alignment: .leading)
+                .accessibilityAddTraits(.isHeader)
+        case .album(let position, let albumId, let sectionId):
             placed(
-                albumCard(albumId, width: metrics.cardWidth)
-                    .task(
-                        id: RowLoadID(epoch: list.loadEpoch, index: position)
-                    ) {
-                        await list.loadPage(containing: position)
-                    },
+                albumCard(
+                    albumId,
+                    position: position,
+                    sectionId: sectionId,
+                    width: metrics.cardWidth
+                )
+                .task(
+                    id: RowLoadID(epoch: list.loadEpoch, index: position)
+                ) {
+                    await list.loadPage(containing: position)
+                },
                 cell.id,
                 as: .position(position),
                 columnCount: metrics.columnCount
@@ -260,7 +288,7 @@ extension AlbumGridView {
                 columnCount: metrics.columnCount
             )
             .transition(.opacity)
-        case .filler:
+        case .filler, .sectionFiller:
             Color.clear.frame(width: metrics.cardWidth, height: 0)
         }
     }
@@ -294,14 +322,20 @@ extension AlbumGridView {
 
     /// The album's card, or its placeholder until its summary is interned.
     @ViewBuilder
-    private func albumCard(_ albumId: String, width: CGFloat) -> some View {
+    private func albumCard(
+        _ albumId: String,
+        position: Int,
+        sectionId: String?,
+        width: CGFloat
+    ) -> some View {
         if let summary = libraryStore.albumSummaries[albumId] {
             AlbumCardView(
                 title: summary.title,
                 artistNames: summary.artistNames,
                 year: summary.year,
                 cover: summary.cover,
-                isExpanded: uiStore.selectedAlbumId == albumId,
+                isExpanded: uiStore.selectedAlbumId == albumId
+                    && (!groupByArtist || expandedSectionId == sectionId),
                 isSelected: selection.contains(albumId),
                 size: width,
                 menu: cardMenu(for: albumId),
@@ -309,7 +343,7 @@ extension AlbumGridView {
             .frame(width: width)
             .draggable(dragPayload(for: albumId))
             .onTapGesture {
-                handleTap(on: albumId)
+                handleTap(on: albumId, position: position, sectionId: sectionId)
             }
         }
         else {
@@ -336,7 +370,11 @@ extension AlbumGridView {
         let sort = sortCriteria
         let resolved: UInt64?
         do {
-            resolved = try await getAlbumIndex(sort, reveal.albumId)
+            resolved = try await getAlbumIndex(
+                sort,
+                reveal.albumId,
+                groupByArtist
+            )
         }
         catch {
             if Task.isCancelled {
@@ -371,10 +409,22 @@ extension AlbumGridView {
             return
         }
 
+        scrollToRevealedAlbum(reveal, at: index)
+    }
+
+    private func scrollToRevealedAlbum(
+        _ reveal: PendingAlbumReveal,
+        at index: Int
+    ) {
         viewport.release()
+        let sectionId = groupByArtist ? list.section(at: index)?.id : nil
+        expandedOccurrence = .album(reveal.albumId, sectionId: sectionId)
         let scrollToAlbum = {
             scrollPosition.scrollTo(
-                id: AlbumGridCell.Identity.album(reveal.albumId),
+                id: AlbumGridCell.Identity.album(
+                    reveal.albumId,
+                    sectionId: sectionId
+                ),
                 anchor: .top
             )
         }
@@ -432,7 +482,16 @@ extension AlbumGridView {
         let id: AlbumGridCell.Identity
         switch slot {
         case .position(let position) where position < list.totalCount:
-            id = cells(columnCount: columnCount).cell(forPosition: position).id
+            if let albumId = list.idAt(position) {
+                id = .album(
+                    albumId,
+                    sectionId: groupByArtist
+                        ? list.section(at: position)?.id : nil
+                )
+            }
+            else {
+                id = .placeholder(position)
+            }
         case .detail(let albumId) where uiStore.selectedAlbumId == albumId:
             id = .detail
         case .position, .detail:
@@ -446,16 +505,28 @@ extension AlbumGridView {
 
     /// Cmd toggles the album in the selection, shift extends the range, and a
     /// plain click clears the selection and toggles the album's detail.
-    private func handleTap(on albumId: String) {
+    private func handleTap(
+        on albumId: String,
+        position: Int,
+        sectionId: String?
+    ) {
         let modifiers = NSEvent.modifierFlags
         if modifiers.contains(.command) {
-            selection.toggle(albumId)
+            selection.setSelected(
+                albumId,
+                selected: !selection.contains(albumId),
+                sectionId: sectionId
+            )
             gridFocused = true
         }
         else if modifiers.contains(.shift) {
             selection.extendRange(
                 to: albumId,
-                position: { list.position(of: $0) },
+                targetPosition: position,
+                targetSectionId: sectionId,
+                position: {
+                    list.position(of: $0, in: selection.anchor?.sectionId)
+                },
                 idAt: { list.idAt($0) }
             )
             gridFocused = true
@@ -463,8 +534,12 @@ extension AlbumGridView {
         else {
             selection.clear()
             withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                let isOpen =
+                    uiStore.selectedAlbumId == albumId
+                    && (!groupByArtist || expandedSectionId == sectionId)
+                expandedOccurrence = .album(albumId, sectionId: sectionId)
                 uiStore.selectAlbum(
-                    uiStore.selectedAlbumId == albumId ? nil : albumId
+                    isOpen ? nil : albumId
                 )
             }
         }

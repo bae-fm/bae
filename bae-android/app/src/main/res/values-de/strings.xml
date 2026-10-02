@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="group_by_artist">Nach Interpret gruppieren</string>
     <string name="back">Zurück</string>
     <string name="cancel">Abbrechen</string>
     <string name="retry">Erneut versuchen</string>

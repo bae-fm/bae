@@ -107,6 +107,8 @@ struct LibraryView: View {
     @State
     private var sortDirection = BridgeSortDirection.descending
     @State
+    private var albumGrouping = AlbumGrouping()
+    @State
     private var composerSortCriterion =
         BridgeComposerSortCriterion(field: .name, direction: .ascending)
     @State
@@ -116,7 +118,12 @@ struct LibraryView: View {
     private var listSelection: LibraryListSelection {
         switch mode {
         case .albums:
-            .albums(field: sortField, direction: sortDirection)
+            .albums(
+                sort: [
+                    BridgeSortCriterion(field: sortField, direction: sortDirection)
+                ],
+                groupByArtist: albumGrouping.byArtist
+            )
         case .composers:
             .composers(composerSortCriterion)
         case .artists:
@@ -154,7 +161,8 @@ struct LibraryView: View {
                     case .albums:
                         AlbumSortMenu(
                             sortField: $sortField,
-                            sortDirection: $sortDirection
+                            sortDirection: $sortDirection,
+                            grouping: albumGrouping
                         )
                     case .composers:
                         ComposerSortMenu(criterion: $composerSortCriterion)
@@ -195,12 +203,15 @@ struct LibraryView: View {
         .onChange(of: listSelection, initial: true) { _, _ in
             switch mode {
             case .albums:
-                libraryLists.updateAlbums([
-                    BridgeSortCriterion(
-                        field: sortField,
-                        direction: sortDirection
-                    )
-                ])
+                libraryLists.updateAlbums(
+                    [
+                        BridgeSortCriterion(
+                            field: sortField,
+                            direction: sortDirection
+                        )
+                    ],
+                    groupByArtist: albumGrouping.byArtist
+                )
             case .composers:
                 libraryLists.updateComposers([composerSortCriterion])
             case .artists:
@@ -221,6 +232,7 @@ extension LibraryView {
             isSearching: isSearching,
             mode: mode,
             albumList: libraryLists.albums,
+            groupAlbumsByArtist: albumGrouping.byArtist,
             composerList: libraryLists.composers,
             artistList: libraryLists.artists,
             searchResults: libraryProjections.search.value,
@@ -381,7 +393,7 @@ private struct LibraryModePicker: View {
 }
 
 private enum LibraryListSelection: Hashable {
-    case albums(field: BridgeSortField, direction: BridgeSortDirection)
+    case albums(sort: [BridgeSortCriterion], groupByArtist: Bool)
     case composers(BridgeComposerSortCriterion)
     case artists(BridgeArtistSortCriterion)
 }

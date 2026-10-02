@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="group_by_artist">Групувати за виконавцем</string>
     <string name="back">Назад</string>
     <string name="cancel">Скасувати</string>
     <string name="retry">Повторити</string>

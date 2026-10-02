@@ -251,7 +251,10 @@ internal class FakeAppHandle(
         searchSubscriptions[subscription].emit(Result.success(value), revision)
     }
 
-    override fun subscribeAlbumBrowse(sortCriteria: List<BridgeSortCriterion>): AlbumBrowseSubscription =
+    override fun subscribeAlbumBrowse(
+        sortCriteria: List<BridgeSortCriterion>,
+        groupByArtist: Boolean,
+    ): AlbumBrowseSubscription =
         FakeAlbumBrowseSubscription(
             albumPages,
             albumPageWindows,
@@ -426,7 +429,9 @@ internal class FakeAlbumBrowseSubscription(
             Result.success(
                 BridgeAlbumBrowseSnapshot(
                     windows = listOf(BridgeAlbumBrowseWindow(window, rows)),
+                    sections = emptyList(),
                     totalCount = totalCount,
+                    rowCount = totalCount,
                     requestRevision = revision,
                     cause = cause,
                 ),
@@ -449,7 +454,9 @@ internal class FakeAlbumBrowseSubscription(
             Result.success(
                 BridgeAlbumBrowseSnapshot(
                     windows = projected,
+                    sections = emptyList(),
                     totalCount = totalCount ?: projected.sumOf { it.rows.size }.toULong(),
+                    rowCount = totalCount ?: projected.sumOf { it.rows.size }.toULong(),
                     requestRevision = revision,
                     cause = cause,
                 ),
@@ -514,7 +521,7 @@ internal class FakeComposerBrowseSubscription(
     var cancelled = false
 
     init {
-        events.trySend(BridgeComposerBrowseSnapshot(emptyList(), 0uL, revision, BridgeLiveQueryCause.INITIAL))
+        events.trySend(BridgeComposerBrowseSnapshot(emptyList(), emptyList(), 0uL, 0uL, revision, BridgeLiveQueryCause.INITIAL))
     }
 
     override fun setWindows(windows: List<BridgeLibraryPageWindow>) {
@@ -525,6 +532,8 @@ internal class FakeComposerBrowseSubscription(
         events.trySend(
             BridgeComposerBrowseSnapshot(
                 projected,
+                emptyList(),
+                projected.sumOf { it.rows.size }.toULong(),
                 projected.sumOf { it.rows.size }.toULong(),
                 revision,
                 BridgeLiveQueryCause.REQUEST_CHANGED,

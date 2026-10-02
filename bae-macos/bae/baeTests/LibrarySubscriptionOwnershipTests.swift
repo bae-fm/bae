@@ -240,7 +240,7 @@ struct LibraryBrowseSessionAlbumProjectionTests {
         let store = LibraryStore()
         let session = LibraryBrowseSession(
             library: Library(
-                albumBrowse: { _ in probe.query }
+                albumBrowse: { _, _ in probe.query }
             ),
             libraryStore: store,
             uiStore: UiStore()
@@ -261,7 +261,7 @@ struct LibraryBrowseSessionAlbumProjectionTests {
         let selectionProbe = AlbumSelectionProbe()
         let session = LibraryBrowseSession(
             library: Library(
-                albumBrowse: { _ in pageProbe.query },
+                albumBrowse: { _, _ in pageProbe.query },
                 albumSelection: { selectionProbe.query() }
             ),
             libraryStore: LibraryStore(),
@@ -280,7 +280,7 @@ struct LibraryBrowseSessionAlbumProjectionTests {
         try await Wait.until {
             session.albums.list?.totalCount == 2
         }
-        session.albumSelection.toggle("album-a")
+        session.albumSelection.setSelected("album-a", selected: true)
         #expect(selectionProbe.requested.last == ["album-a"])
 
         pageProbe.emit(rows: [makeBridgeAlbum(id: "album-c")], total: 3)
@@ -301,8 +301,8 @@ struct LibraryBrowseSessionAlbumProjectionTests {
             uiStore: UiStore()
         )
 
-        session.albumSelection.toggle("album-a")
-        session.albumSelection.toggle("album-b")
+        session.albumSelection.setSelected("album-a", selected: true)
+        session.albumSelection.setSelected("album-b", selected: true)
         selectionProbe.emit(
             requested: ["album-a", "album-b"],
             albums: [makeBridgeAlbum(id: "album-b")]
@@ -325,9 +325,9 @@ struct LibraryBrowseSessionAlbumProjectionTests {
             uiStore: UiStore()
         )
 
-        session.albumSelection.toggle("album-a")
-        session.albumSelection.toggle("album-b")
-        session.albumSelection.toggle("album-a")
+        session.albumSelection.setSelected("album-a", selected: true)
+        session.albumSelection.setSelected("album-b", selected: true)
+        session.albumSelection.setSelected("album-a", selected: false)
 
         #expect(selectionProbe.opened == 1)
         #expect(
@@ -348,7 +348,7 @@ struct LibraryBrowseSessionAlbumProjectionTests {
         )
         weak var weakSession = session
 
-        session?.albumSelection.toggle("album-a")
+        session?.albumSelection.setSelected("album-a", selected: true)
         session = nil
         try await Wait.until { selectionProbe.cancelled }
 

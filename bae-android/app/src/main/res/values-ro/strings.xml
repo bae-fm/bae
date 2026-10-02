@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="group_by_artist">Grupează după artist</string>
     <string name="back">Înapoi</string>
     <string name="cancel">Anulează</string>
     <string name="retry">Reîncearcă</string>

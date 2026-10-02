@@ -7,6 +7,7 @@ private let cellWidth: CGFloat = 150
 /// The paged album grid: one cell per slot, each loading its own page.
 struct AlbumGrid: View {
     let list: AlbumList
+    var groupByArtist = false
     let onSelect: (String) -> Void
 
     private let columns = [
@@ -33,16 +34,35 @@ struct AlbumGrid: View {
         else {
             ScrollView {
                 LazyVGrid(columns: columns, spacing: ThemeSpace.group) {
-                    ForEach(0..<list.totalCount, id: \.self) { position in
-                        AlbumCell(
-                            list: list,
-                            position: position,
-                            onSelect: onSelect
-                        )
+                    if groupByArtist {
+                        ForEach(list.sections, id: \.id) { section in
+                            Section {
+                                cells(
+                                    Int(
+                                        section.window.offset
+                                    )..<Int(section.window.offset + section.window.limit)
+                                )
+                            } header: {
+                                Text(verbatim: section.title)
+                                    .themeText(.rowTitle)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(.top, ThemeSpace.group)
+                                    .accessibilityAddTraits(.isHeader)
+                            }
+                        }
+                    }
+                    else {
+                        cells(0..<list.totalCount)
                     }
                 }
                 .padding(ThemeSpace.group)
             }
+        }
+    }
+
+    private func cells(_ positions: Range<Int>) -> some View {
+        ForEach(positions, id: \.self) { position in
+            AlbumCell(list: list, position: position, onSelect: onSelect)
         }
     }
 }
@@ -73,7 +93,7 @@ private struct AlbumCell: View {
                     .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.cover))
             }
         }
-        .task(id: list.loadEpoch) {
+        .task(id: RowLoadID(epoch: list.loadEpoch, index: position)) {
             let offset = (position / libraryPageSize) * libraryPageSize
             await list.loadRange(offset: offset, limit: libraryPageSize)
         }

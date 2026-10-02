@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="group_by_artist">Groeperen op artiest</string>
     <string name="back">Terug</string>
     <string name="cancel">Annuleren</string>
     <string name="retry">Opnieuw proberen</string>

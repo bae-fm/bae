@@ -161,7 +161,7 @@ fn first_page() -> BTreeSet<LibraryPageWindow> {
 #[tokio::test]
 async fn album_browse_delivers_rows_count_and_cover_versions() {
     let (db, _temp) = live_db().await;
-    let mut live = db.subscribe_album_browse(&[], first_page());
+    let mut live = db.subscribe_album_browse(&[], false, first_page());
 
     let initial = live.next().await.into_result().unwrap();
     assert_eq!(initial.total_count, 1);
@@ -206,7 +206,7 @@ async fn album_browse_reads_only_the_primary_releases_cover() {
         &[OTHER_RELEASE_ID, ALBUM_ID],
     )
     .await;
-    let mut live = db.subscribe_album_browse(&[], first_page());
+    let mut live = db.subscribe_album_browse(&[], false, first_page());
     live.next().await.into_result().unwrap();
 
     let insert_cover = |release_id: &'static str, blob_id: &'static str| {
@@ -246,7 +246,7 @@ async fn album_browse_subscription_reconfigures_bounded_windows() {
         field: AlbumSortField::DateAdded,
         direction: SortDirection::Ascending,
     }];
-    let mut live = db.subscribe_album_browse(&sort, BTreeSet::new());
+    let mut live = db.subscribe_album_browse(&sort, false, BTreeSet::new());
     let requests = live.requests();
     let initial_event = live.next().await;
     assert_eq!(initial_event.revision().get(), 0);
@@ -721,7 +721,7 @@ async fn library_search_moves_between_queries_on_one_subscription() {
 #[tokio::test]
 async fn album_browse_ignores_an_unread_table() {
     let (db, _temp) = live_db().await;
-    let mut live = db.subscribe_album_browse(&[], first_page());
+    let mut live = db.subscribe_album_browse(&[], false, first_page());
     let initial = live.next().await.into_result().unwrap();
 
     exec(
@@ -837,7 +837,7 @@ async fn album_page_subscription_delivers_a_write_materialized_by_sync() {
         .await
         .unwrap();
 
-    let mut live = reader.subscribe_album_browse(&[], first_page());
+    let mut live = reader.subscribe_album_browse(&[], false, first_page());
     assert_eq!(live.next().await.into_result().unwrap().total_count, 0);
 
     writer

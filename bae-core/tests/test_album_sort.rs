@@ -327,12 +327,15 @@ async fn test_album_index_matches_page_position() {
     assert_eq!(page.len(), titles.len());
 
     for (position, summary) in page.iter().enumerate() {
-        let index = db.get_album_index(&sort, &summary.id).await.unwrap();
+        let index = db.get_album_index(&sort, &summary.id, false).await.unwrap();
         assert_eq!(index, Some(position as u64), "album {}", summary.title);
     }
 
     // An id that isn't in the library has no position.
-    let missing = db.get_album_index(&sort, "no-such-album").await.unwrap();
+    let missing = db
+        .get_album_index(&sort, "no-such-album", false)
+        .await
+        .unwrap();
     assert_eq!(missing, None);
 }
 
@@ -349,7 +352,7 @@ async fn test_album_index_matches_page_position_default_sort() {
     // artist join — same path `get_album_page` takes for the default sort.
     let page = db.get_album_page(&[], 0, 100).await.unwrap();
     for (position, summary) in page.iter().enumerate() {
-        let index = db.get_album_index(&[], &summary.id).await.unwrap();
+        let index = db.get_album_index(&[], &summary.id, false).await.unwrap();
         assert_eq!(index, Some(position as u64));
     }
 }
@@ -374,7 +377,7 @@ async fn test_album_index_matches_page_position_on_ties() {
     let page = db.get_album_page(&sort, 0, 100).await.unwrap();
     assert_eq!(page.len(), 8);
     for (position, summary) in page.iter().enumerate() {
-        let index = db.get_album_index(&sort, &summary.id).await.unwrap();
+        let index = db.get_album_index(&sort, &summary.id, false).await.unwrap();
         assert_eq!(index, Some(position as u64), "album {}", summary.id);
     }
 }

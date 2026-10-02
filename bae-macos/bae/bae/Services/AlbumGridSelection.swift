@@ -11,8 +11,13 @@ import Observation
 @MainActor
 @Observable
 final class AlbumGridSelection {
+    struct Anchor {
+        let albumId: String
+        let sectionId: String?
+    }
+
     private(set) var selectedIds: Set<String> = []
-    private(set) var anchorId: String?
+    private(set) var anchor: Anchor?
     @ObservationIgnored
     private let onSelectionChanged: @MainActor (Set<String>) -> Void
 
@@ -31,15 +36,15 @@ final class AlbumGridSelection {
         selectedIds.contains(id)
     }
 
-    /// cmd-click: toggle the id's membership and make it the new anchor.
-    func toggle(_ id: String) {
-        if selectedIds.contains(id) {
-            selectedIds.remove(id)
-        }
-        else {
+    /// Set the album's membership and anchor at the clicked appearance.
+    func setSelected(_ id: String, selected: Bool, sectionId: String? = nil) {
+        if selected {
             selectedIds.insert(id)
         }
-        anchorId = id
+        else {
+            selectedIds.remove(id)
+        }
+        anchor = Anchor(albumId: id, sectionId: sectionId)
         onSelectionChanged(selectedIds)
     }
 
@@ -47,17 +52,19 @@ final class AlbumGridSelection {
     /// (in grid order) into the selection. Positions come from `position`; ids in
     /// the range that aren't loaded (`idAt` returns nil) are skipped. The anchor is
     /// unchanged. If the anchor no longer resolves — a sort swapped the list and
-    /// its segment isn't fetched — this degrades to toggling `targetId`.
+    /// its segment isn't fetched — the clicked album is selected and anchored.
     func extendRange(
         to targetId: String,
+        targetPosition: Int? = nil,
+        targetSectionId: String? = nil,
         position: (String) -> Int?,
         idAt: (Int) -> String?
     ) {
-        guard let anchorId,
-            let anchorIndex = position(anchorId),
-            let targetIndex = position(targetId)
+        guard let anchor,
+            let anchorIndex = position(anchor.albumId),
+            let targetIndex = targetPosition ?? position(targetId)
         else {
-            toggle(targetId)
+            setSelected(targetId, selected: true, sectionId: targetSectionId)
             return
         }
         for index in min(
@@ -73,7 +80,7 @@ final class AlbumGridSelection {
 
     func clear() {
         selectedIds = []
-        anchorId = nil
+        anchor = nil
         onSelectionChanged(selectedIds)
     }
 
@@ -82,8 +89,8 @@ final class AlbumGridSelection {
     func remove(_ ids: [String]) {
         let prior = selectedIds
         selectedIds.subtract(ids)
-        if let anchorId, ids.contains(anchorId) {
-            self.anchorId = nil
+        if let anchor, ids.contains(anchor.albumId) {
+            self.anchor = nil
         }
         if selectedIds != prior {
             onSelectionChanged(selectedIds)

@@ -29,14 +29,18 @@ impl LibraryManager {
             .collect())
     }
 
-    /// Resolve an album's 0-based position under a sort, matching the paging
-    /// order of `get_album_page`. `None` if the album isn't in the library.
+    /// Resolve the album's first appearance under the active browse order.
+    /// `None` if the album isn't in the library.
     pub async fn get_album_index(
         &self,
         sort: &[crate::db::AlbumSortCriterion],
         album_id: &str,
+        group_by_artist: bool,
     ) -> Result<Option<u64>, LibraryError> {
-        Ok(self.database.get_album_index(sort, album_id).await?)
+        Ok(self
+            .database
+            .get_album_index(sort, album_id, group_by_artist)
+            .await?)
     }
 
     pub async fn get_album_count(&self) -> Result<u64, LibraryError> {
@@ -46,12 +50,14 @@ impl LibraryManager {
     pub(crate) fn subscribe_album_browse(
         &self,
         sort: &[crate::db::AlbumSortCriterion],
+        group_by_artist: bool,
         initial_windows: crate::library::LibraryPageWindows,
     ) -> coven::ReconfigurableLiveQuery<
         crate::library::LibraryPageWindows,
         crate::db::AlbumBrowseProjection,
     > {
-        self.database.subscribe_album_browse(sort, initial_windows)
+        self.database
+            .subscribe_album_browse(sort, group_by_artist, initial_windows)
     }
 
     pub(crate) fn resolve_album_browse(
@@ -71,6 +77,8 @@ impl LibraryManager {
                 })
                 .collect(),
             total_count: projection.total_count,
+            row_count: projection.row_count,
+            sections: projection.sections,
             request_revision,
             cause,
         }

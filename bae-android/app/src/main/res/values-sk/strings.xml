@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="group_by_artist">Zoskupiť podľa interpreta</string>
     <string name="back">Späť</string>
     <string name="cancel">Zrušiť</string>
     <string name="retry">Skúsiť znova</string>

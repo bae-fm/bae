@@ -10,6 +10,15 @@ pub struct LibraryPageWindow {
 
 pub type LibraryPageWindows = BTreeSet<LibraryPageWindow>;
 
+/// A named section of a paged list. Its range includes unloaded rows, so
+/// clients can lay out every section without fetching every album.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LibraryBrowseSection {
+    pub id: String,
+    pub title: String,
+    pub window: LibraryPageWindow,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct LibraryBrowseWindow<Row> {
     pub window: LibraryPageWindow,
@@ -19,7 +28,10 @@ pub struct LibraryBrowseWindow<Row> {
 #[derive(Debug, Clone)]
 pub struct LibraryBrowseSnapshot<Row> {
     pub windows: Vec<LibraryBrowseWindow<Row>>,
+    pub sections: Vec<LibraryBrowseSection>,
     pub total_count: u64,
+    /// Number of displayed appearances, including albums in multiple sections.
+    pub row_count: u64,
     pub request_revision: u64,
     pub cause: coven::ReconfigurableLiveQueryCause,
 }

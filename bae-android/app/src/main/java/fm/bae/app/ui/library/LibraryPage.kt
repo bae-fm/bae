@@ -22,19 +22,23 @@ internal enum class LibraryBrowserMode {
 internal fun rememberLibraryPage(
     session: OpenLibrary,
     sortCriterion: BridgeSortCriterion,
+    groupByArtist: Boolean,
     gridState: LazyGridState,
 ): AlbumPageStore {
     val page = session.browserPages.albums
-    DisposableEffect(page, sortCriterion) {
-        page.activate(sortCriterion)
+    DisposableEffect(page, sortCriterion, groupByArtist) {
+        page.activate(sortCriterion, groupByArtist)
         onDispose(page::deactivate)
     }
-    LaunchedEffect(page, gridState) {
+    LaunchedEffect(page, gridState, sortCriterion, groupByArtist) {
         snapshotFlow {
-            val visible = gridState.layoutInfo.visibleItemsInfo
-            (visible.firstOrNull()?.index ?: 0) to (visible.lastOrNull()?.index ?: 0)
+            // Album keys are their list positions; artist headings have string keys.
+            val visible = gridState.layoutInfo.visibleItemsInfo.mapNotNull { it.key as? Int }
+            Triple(visible.firstOrNull() ?: 0, visible.lastOrNull() ?: 0, page.totalCount)
         }.distinctUntilChanged()
-            .collect { (first, last) -> page.reportVisibleRange(first, last) }
+            .collect { (first, last, total) ->
+                if (total > 0) page.reportVisibleRange(first, last)
+            }
     }
     return page
 }

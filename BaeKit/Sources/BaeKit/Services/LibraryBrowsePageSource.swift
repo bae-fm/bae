@@ -1,4 +1,13 @@
 import Foundation
+import Observation
+
+@MainActor
+@Observable
+private final class LibraryBrowseSections {
+    var values: [BridgeLibraryBrowseSection] = []
+    var itemCount: Int?
+    nonisolated init() {}
+}
 
 /// One value a library browse query delivered: each window it was asked for,
 /// with the rows that landed in it, and the whole list's row count.
@@ -15,10 +24,19 @@ public struct LibraryBrowseDelivery<Row: Sendable>: Sendable {
 
     public let windows: [Window]
     public let totalCount: Int
+    public let itemCount: Int?
+    public let sections: [BridgeLibraryBrowseSection]
 
-    public init(windows: [Window], totalCount: Int) {
+    public init(
+        windows: [Window],
+        totalCount: Int,
+        itemCount: Int? = nil,
+        sections: [BridgeLibraryBrowseSection] = []
+    ) {
         self.windows = windows
         self.totalCount = totalCount
+        self.itemCount = itemCount
+        self.sections = sections
     }
 }
 
@@ -134,6 +152,11 @@ public final class LibraryBrowsePageSource<Row: Identifiable & Sendable>:
     }
 
     private let query: LibraryBrowseQuery<Row>
+    private let sectionStore = LibraryBrowseSections()
+    @MainActor
+    public var sections: [BridgeLibraryBrowseSection] { sectionStore.values }
+    @MainActor
+    public var itemCount: Int? { sectionStore.itemCount }
     private let lock = NSLock()
     private var sinks: [WindowKey: Sink] = [:]
     private var deliveries: Task<Void, Never>?
@@ -214,6 +237,8 @@ public final class LibraryBrowsePageSource<Row: Identifiable & Sendable>:
                 let delivery = try await query.next()
                 let sinks = lock.withLock { self.sinks }
                 await MainActor.run {
+                    sectionStore.values = delivery.sections
+                    sectionStore.itemCount = delivery.itemCount
                     for window in delivery.windows {
                         let key = WindowKey(
                             offset: window.window.offset,

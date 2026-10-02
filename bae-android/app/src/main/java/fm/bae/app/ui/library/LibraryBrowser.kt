@@ -55,6 +55,7 @@ internal class LibraryBrowserState {
     var searchQuery by mutableStateOf("")
     var mode by mutableStateOf(LibraryBrowserMode.ALBUMS)
     var sortCriterion by mutableStateOf(DEFAULT_ALBUM_SORT)
+    var groupAlbumsByArtist by mutableStateOf(false)
     var composerSortCriterion by mutableStateOf(DEFAULT_COMPOSER_SORT)
     var artistSortCriterion by mutableStateOf(DEFAULT_ARTIST_SORT)
     val gridState = LazyGridState()
@@ -95,6 +96,8 @@ internal fun LibraryBrowser(
             onModeChange = { state.mode = it },
             sortCriterion = state.sortCriterion,
             onSortChange = { state.sortCriterion = it },
+            groupAlbumsByArtist = state.groupAlbumsByArtist,
+            onGroupAlbumsByArtistChange = { state.groupAlbumsByArtist = it },
             composerSortCriterion = state.composerSortCriterion,
             onComposerSortChange = { state.composerSortCriterion = it },
             artistSortCriterion = state.artistSortCriterion,
@@ -110,6 +113,7 @@ internal fun LibraryBrowser(
             searchQuery = state.searchQuery,
             mode = state.mode,
             sortCriterion = state.sortCriterion,
+            groupAlbumsByArtist = state.groupAlbumsByArtist,
             composerSortCriterion = state.composerSortCriterion,
             artistSortCriterion = state.artistSortCriterion,
             appError = appError,
@@ -156,6 +160,7 @@ private fun LibraryBrowserContent(
     searchQuery: String,
     mode: LibraryBrowserMode,
     sortCriterion: BridgeSortCriterion,
+    groupAlbumsByArtist: Boolean,
     composerSortCriterion: BridgeComposerSortCriterion,
     artistSortCriterion: BridgeArtistSortCriterion,
     appError: String?,
@@ -182,6 +187,7 @@ private fun LibraryBrowserContent(
                     AlbumBrowserContent(
                         session = session,
                         sortCriterion = sortCriterion,
+                        groupByArtist = groupAlbumsByArtist,
                         appError = appError,
                         syncError = syncError,
                         gridState = gridState,
@@ -217,6 +223,7 @@ private fun LibraryBrowserContent(
 private fun AlbumBrowserContent(
     session: OpenLibrary,
     sortCriterion: BridgeSortCriterion,
+    groupByArtist: Boolean,
     appError: String?,
     syncError: SyncFailure?,
     gridState: LazyGridState,
@@ -226,6 +233,7 @@ private fun AlbumBrowserContent(
         rememberLibraryPage(
             session = session,
             sortCriterion = sortCriterion,
+            groupByArtist = groupByArtist,
             gridState = gridState,
         )
     Column(modifier = Modifier.fillMaxSize()) {
@@ -239,6 +247,7 @@ private fun AlbumBrowserContent(
             session = session,
             page = page,
             gridState = gridState,
+            groupByArtist = groupByArtist,
             onSelectAlbum = onSelectAlbum,
         )
     }
@@ -309,6 +318,8 @@ private fun LibraryBrowserChrome(
     onModeChange: (LibraryBrowserMode) -> Unit,
     sortCriterion: BridgeSortCriterion,
     onSortChange: (BridgeSortCriterion) -> Unit,
+    groupAlbumsByArtist: Boolean,
+    onGroupAlbumsByArtistChange: (Boolean) -> Unit,
     composerSortCriterion: BridgeComposerSortCriterion,
     onComposerSortChange: (BridgeComposerSortCriterion) -> Unit,
     artistSortCriterion: BridgeArtistSortCriterion,
@@ -330,6 +341,8 @@ private fun LibraryBrowserChrome(
             mode = mode,
             sortCriterion = sortCriterion,
             onSortChange = onSortChange,
+            groupAlbumsByArtist = groupAlbumsByArtist,
+            onGroupAlbumsByArtistChange = onGroupAlbumsByArtistChange,
             composerSortCriterion = composerSortCriterion,
             onComposerSortChange = onComposerSortChange,
             artistSortCriterion = artistSortCriterion,
@@ -361,6 +374,8 @@ private fun LibraryBrowserChromePreview() {
             onModeChange = {},
             sortCriterion = DEFAULT_ALBUM_SORT,
             onSortChange = {},
+            groupAlbumsByArtist = false,
+            onGroupAlbumsByArtistChange = {},
             composerSortCriterion = DEFAULT_COMPOSER_SORT,
             onComposerSortChange = {},
             artistSortCriterion = DEFAULT_ARTIST_SORT,

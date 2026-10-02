@@ -195,7 +195,7 @@ pub(super) fn fresh_bridge_handle(test_name: &str) -> (Arc<super::AppHandle>, st
 #[test]
 fn album_browse_subscription_pulls_count_before_any_windows() {
     let (handle, _root) = fresh_bridge_handle("album-browse-empty-windows");
-    let subscription = handle.subscribe_album_browse(Vec::new());
+    let subscription = handle.subscribe_album_browse(Vec::new(), false);
 
     let snapshot = handle
         .runtime
@@ -232,7 +232,7 @@ fn album_browse_subscription_pulls_count_before_any_windows() {
 #[test]
 fn cancelling_album_browse_finishes_pending_next() {
     let (handle, _root) = fresh_bridge_handle("album-browse-cancel");
-    let subscription = handle.subscribe_album_browse(Vec::new());
+    let subscription = handle.subscribe_album_browse(Vec::new(), false);
     handle
         .runtime
         .block_on(subscription.clone().next())

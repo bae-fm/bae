@@ -272,17 +272,9 @@ pub(super) fn artist_summary_query(filter: Option<&str>, tail: Option<&str>) -> 
                 ar.created_at AS artist_created_at,
                 COUNT(DISTINCT link.album_id) AS album_count
          FROM artists ar
-         JOIN (
-             SELECT {primary} AS artist_id, a.id AS album_id FROM albums a
-             WHERE {ALBUM_A_IS_SHOWN}
-             UNION
-             SELECT {additional} AS artist_id, aa.album_id FROM album_artists aa
-             JOIN albums a ON a.id = aa.album_id
-             WHERE {ALBUM_A_IS_SHOWN}
-         ) link ON link.artist_id = ar.id
+         JOIN ({links}) link ON link.artist_id = ar.id
          ",
-        primary = shown_artist_id("a.artist_id"),
-        additional = shown_artist_id("aa.artist_id"),
+        links = album_artist_links_sql(),
     );
     if let Some(filter) = filter {
         query.push_str(filter);
@@ -296,6 +288,64 @@ pub(super) fn artist_summary_query(filter: Option<&str>, tail: Option<&str>) -> 
         query.push_str(tail);
     }
     query
+}
+
+/// One membership per album and credited artist, including merged identities.
+pub(super) fn album_artist_links_sql() -> String {
+    format!(
+        "SELECT {primary} AS artist_id, a.id AS album_id FROM albums a \
+         WHERE {ALBUM_A_IS_SHOWN} UNION \
+         SELECT {additional} AS artist_id, aa.album_id FROM album_artists aa \
+         JOIN albums a ON a.id = aa.album_id WHERE {ALBUM_A_IS_SHOWN}",
+        primary = shown_artist_id("a.artist_id"),
+        additional = shown_artist_id("aa.artist_id"),
+    )
+}
+
+/// The same relation and order serve paging, section ranges, and reveal.
+/// Grouped rows are album appearances; flat rows are distinct albums.
+pub(super) fn album_browse_order(
+    sort: &[AlbumSortCriterion],
+    group_by_artist: bool,
+) -> (String, String) {
+    if !group_by_artist {
+        let (order, needs_artist) = build_order_by(sort, "a.created_at DESC");
+        return (
+            format!(
+                "FROM albums a {} WHERE {ALBUM_A_IS_SHOWN}",
+                album_summary_artist_join(needs_artist)
+            ),
+            order,
+        );
+    }
+    let direction = sort
+        .iter()
+        .find(|c| c.field == AlbumSortField::Artist)
+        .map_or(SortDirection::Ascending, |c| c.direction);
+    let mut grouped_sort = vec![AlbumSortCriterion {
+        field: AlbumSortField::Artist,
+        direction,
+    }];
+    grouped_sort.extend(
+        sort.iter()
+            .filter(|c| c.field != AlbumSortField::Artist)
+            .cloned(),
+    );
+    if sort.is_empty() {
+        grouped_sort.push(AlbumSortCriterion {
+            field: AlbumSortField::DateAdded,
+            direction: SortDirection::Descending,
+        });
+    }
+    let (order, _) = build_order_by(&grouped_sort, "a.created_at DESC");
+    (
+        format!(
+            "FROM albums a JOIN ({}) link ON link.album_id = a.id \
+        JOIN artists art_sort ON art_sort.id = link.artist_id",
+            album_artist_links_sql()
+        ),
+        order,
+    )
 }
 
 pub(super) fn unlinked_release_composer_role_predicate(role_alias: &str) -> String {
@@ -607,9 +657,10 @@ pub(super) fn build_order_by(sort: &[AlbumSortCriterion], default: &str) -> (Str
                     vec![format!("a.title COLLATE NOCASE {dir}")]
                 }
                 AlbumSortField::Artist => {
-                    vec![format!(
-                        "COALESCE(art_sort.sort_name, art_sort.name) COLLATE NOCASE {dir}"
-                    )]
+                    vec![
+                        format!("COALESCE(art_sort.sort_name, art_sort.name) COLLATE NOCASE {dir}"),
+                        format!("art_sort.id {dir}"),
+                    ]
                 }
                 AlbumSortField::Year => {
                     let nulls_order = match c.direction {

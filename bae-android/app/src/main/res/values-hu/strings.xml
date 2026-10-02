@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="group_by_artist">Csoportosítás előadó szerint</string>
     <string name="back">Vissza</string>
     <string name="cancel">Mégse</string>
     <string name="retry">Újra</string>

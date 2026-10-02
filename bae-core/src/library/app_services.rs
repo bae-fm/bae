@@ -174,9 +174,14 @@ impl AppServices {
     pub fn subscribe_album_browse(
         &self,
         sort: &[crate::db::AlbumSortCriterion],
+        group_by_artist: bool,
     ) -> crate::library::AlbumBrowseSubscription {
         let manager = self.inner.manager.clone();
-        let query = manager.subscribe_album_browse(sort, std::collections::BTreeSet::new());
+        let query = manager.subscribe_album_browse(
+            sort,
+            group_by_artist,
+            std::collections::BTreeSet::new(),
+        );
         crate::library::LibraryBrowseSubscription::new(
             query,
             move |projection, request_revision, cause| {
@@ -341,7 +346,7 @@ impl AppServices {
     delegate_async!(manager, get_artist_page => get_artist_page(sort: &[crate::db::ArtistSortCriterion], offset: u64, limit: u64) -> Result<Vec<crate::album_detail::ArtistSummary>, crate::library::LibraryError>);
     delegate_async!(manager, get_artist_detail => get_artist_detail(artist_id: &str) -> Result<Option<crate::album_detail::ArtistDetail>, crate::library::LibraryError>);
     delegate_async!(manager, search_artists => search_artists(query: &crate::library::LibrarySearchQuery) -> Result<Vec<crate::album_detail::ArtistSearchResult>, crate::library::LibraryError>);
-    delegate_async!(manager, get_album_index => get_album_index(sort: &[crate::db::AlbumSortCriterion], album_id: &str) -> Result<Option<u64>, crate::library::LibraryError>);
+    delegate_async!(manager, get_album_index => get_album_index(sort: &[crate::db::AlbumSortCriterion], album_id: &str, group_by_artist: bool) -> Result<Option<u64>, crate::library::LibraryError>);
     delegate_async!(manager, find_album_detail => find_album_detail(album_id: &str) -> Result<Option<crate::album_detail::AlbumDetail>, crate::library::LibraryError>);
     delegate_async!(manager, find_release_detail => find_release_detail(release_id: &str) -> Result<Option<crate::album_detail::ReleaseDetail>, crate::library::LibraryError>);
     delegate_async!(manager, get_albums => get_albums(sort: &[crate::db::AlbumSortCriterion]) -> Result<Vec<crate::db::DbAlbum>, crate::library::LibraryError>);

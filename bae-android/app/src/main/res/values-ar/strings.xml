@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="group_by_artist">تجميع حسب الفنان</string>
     <string name="back">رجوع</string>
     <string name="cancel">إلغاء</string>
     <string name="retry">إعادة المحاولة</string>

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="group_by_artist">Ομαδοποίηση ανά καλλιτέχνη</string>
     <string name="back">Πίσω</string>
     <string name="cancel">Ακύρωση</string>
     <string name="retry">Δοκιμή ξανά</string>

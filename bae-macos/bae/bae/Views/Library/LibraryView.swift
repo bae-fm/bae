@@ -147,6 +147,14 @@ extension LibraryView {
         ) {
             switch uiStore.libraryBrowserMode {
             case .albums:
+                Toggle(
+                    "Group by artist",
+                    isOn: Binding(
+                        get: { session.albumGrouping.byArtist },
+                        set: { session.setGroupAlbumsByArtist($0) }
+                    )
+                )
+                .toggleStyle(.checkbox)
                 sortControls(session.albums)
             case .composers:
                 sortControls(session.composers)
@@ -186,6 +194,7 @@ extension LibraryView {
                     AlbumGridView(
                         list: albumList,
                         sortCriteria: session.albums.sortCriteria,
+                        groupByArtist: session.albumGrouping.byArtist,
                         fullWidth: fullWidth,
                         selection: session.albumSelection,
                         onPlay: { albumIds in

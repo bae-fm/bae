@@ -70,11 +70,13 @@ struct AlbumGridRevealTests {
     struct Harness: View {
         let stage: Stage
         let list: AlbumList
+        var groupByArtist = false
 
         var body: some View {
             AlbumGridView(
                 list: list,
                 sortCriteria: [],
+                groupByArtist: groupByArtist,
                 fullWidth: false,
                 selection: AlbumGridSelection(),
                 onPlay: { _ in },
@@ -108,6 +110,40 @@ struct AlbumGridRevealTests {
         let frame = try #require(frame)
         let height = try #require(hosted.scrollView).contentView.bounds.height
         return frame.minY > -0.5 && frame.maxY < height + 0.5
+    }
+
+    @Test("a track in another artist's grid is revealed beneath its album row")
+    func groupedTrackScrolledIntoView() async throws {
+        let stage = Stage()
+        let sections = [
+            BridgeLibraryBrowseSection(
+                id: "artist-a",
+                title: "Artist A",
+                window: .init(offset: 0, limit: 203)
+            ),
+            BridgeLibraryBrowseSection(
+                id: "artist-b",
+                title: "Artist B",
+                window: .init(offset: 203, limit: 202)
+            ),
+            BridgeLibraryBrowseSection(
+                id: "artist-c",
+                title: "Artist C",
+                window: .init(offset: 405, limit: 195)
+            ),
+        ]
+        let hosted = await HostedAlbumGrid.host(
+            preloaded: false,
+            sections: sections
+        ) { list in
+            Harness(stage: stage, list: list, groupByArtist: true)
+        }
+        defer { hosted.window.close() }
+        hosted.uiStore.navigateToAlbum("grid-404", trackId: "grid-404-t28")
+        await hosted.settle()
+        #expect(hosted.uiStore.pendingAlbumReveal == nil)
+        #expect(stage.flashed?.trackId == "grid-404-t28")
+        #expect(try inView(stage.rowFrames["grid-404-t28"], of: hosted))
     }
 
     @Test("a track far down the grid is scrolled into view, then flashed")

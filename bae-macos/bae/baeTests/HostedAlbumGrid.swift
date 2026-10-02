@@ -28,12 +28,23 @@ struct HostedAlbumGrid {
     static func host(
         preloaded: Bool,
         openAlbumId: String? = nil,
+        sections: [BridgeLibraryBrowseSection] = [],
         grid: (AlbumList) -> some View
     ) async -> HostedAlbumGrid {
         let store = LibraryStore()
         let uiStore = UiStore()
         let albums = Self.albums
-        let list = makeList(store: store, albums: albums)
+        let list = AlbumList(
+            pageSource: LibraryAlbumPageSource(
+                query: query(albums: albums, sections: sections)
+            ),
+            ingest: { rows in
+                for row in rows { _ = store.internAlbumSummary(row) }
+            },
+            onError: { error in
+                preconditionFailure("Hosted grid failed: \(error)")
+            }
+        )
         await list.loadInitial()
         if preloaded {
             for album in albums {
@@ -42,7 +53,7 @@ struct HostedAlbumGrid {
             list.preloadForPreview(ids: albums.map(\.id))
         }
         uiStore.selectAlbum(openAlbumId)
-        let library = Library(getAlbumIndex: { _, albumId in
+        let library = Library(getAlbumIndex: { _, albumId, _ in
             albums.firstIndex { $0.id == albumId }.map(UInt64.init)
         })
         let view = AnyView(
@@ -71,6 +82,25 @@ struct HostedAlbumGrid {
         )
         await hosted.settle()
         return hosted
+    }
+
+    private static func query(
+        albums: [BridgeAlbum],
+        sections: [BridgeLibraryBrowseSection]
+    ) -> LibraryBrowseQuery<BridgeAlbum> {
+        let fixed = LibraryBrowseQuery<BridgeAlbum>.fixed(albums)
+        return LibraryBrowseQuery(
+            setWindows: fixed.setWindows,
+            next: {
+                let page = try await fixed.next()
+                return LibraryBrowseDelivery(
+                    windows: page.windows,
+                    totalCount: page.totalCount,
+                    sections: sections
+                )
+            },
+            cancel: fixed.cancel
+        )
     }
 
     /// Lets springs, scrolls, and the page loads they set off run to the end.

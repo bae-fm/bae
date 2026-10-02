@@ -1,9 +1,120 @@
+import BaeKit
 import Testing
 
 @testable import bae
 
 @Suite("AlbumGridCells")
 struct AlbumGridCellsTests {
+    @Test("artist headings and albums start full rows with one open appearance")
+    func groupedLayoutRows() throws {
+        let sections = [
+            BridgeLibraryBrowseSection(
+                id: "artist-a",
+                title: "Artist A",
+                window: .init(offset: 0, limit: 3)
+            ),
+            BridgeLibraryBrowseSection(
+                id: "artist-b",
+                title: "Artist B",
+                window: .init(offset: 3, limit: 2)
+            ),
+        ]
+        let loaded: [(position: Int, id: String)] = [
+            (0, "shared"), (1, "a"), (2, "b"), (3, "shared"), (4, "c"),
+        ]
+        for columns in 1...5 {
+            let cells = AlbumGridLayout(
+                totalCount: 5,
+                sections: sections,
+                columnCount: columns,
+                loaded: loaded,
+                openAlbumId: "shared",
+                openSectionId: "artist-b"
+            )
+            let headings = cells.indices.filter {
+                if case .heading = cells[$0] { return true }
+                return false
+            }
+            #expect(headings.count == 2)
+            #expect(headings.allSatisfy { $0 % columns == 0 })
+            #expect(
+                cells.filter {
+                    if case .detail = $0 { return true }
+                    return false
+                }
+                .count == 1
+            )
+            #expect(
+                cells.filter {
+                    if case .album = $0 { return true }
+                    return false
+                }
+                .count == 5
+            )
+            #expect(Set(cells.map(\.id)).count == cells.count)
+            let detail = try #require(
+                cells.firstIndex(of: .detail(albumId: "shared"))
+            )
+            #expect(detail % columns == 0)
+        }
+    }
+
+    @Test("a collaboration has a distinct card identity in each artist grid")
+    func collaborationIdentities() {
+        let loaded: [(position: Int, id: String)] = [
+            (0, "shared"), (1, "shared"),
+        ]
+        let first = AlbumGridCells(
+            positions: 0..<1,
+            columnCount: 2,
+            loaded: loaded,
+            openAlbumId: nil,
+            sectionId: "artist-a"
+        )
+        let second = AlbumGridCells(
+            positions: 1..<2,
+            columnCount: 2,
+            loaded: loaded,
+            openAlbumId: "shared",
+            sectionId: "artist-b"
+        )
+        #expect(first[0].id == .album("shared", sectionId: "artist-a"))
+        #expect(second[0].id == .album("shared", sectionId: "artist-b"))
+        #expect(first[0].id != second[0].id)
+        #expect(!first.contains(.detail(albumId: "shared")))
+        #expect(second.contains(.detail(albumId: "shared")))
+    }
+
+    @Test("artist grids place expansion relative to their own first album")
+    func expansionInArtistSection() {
+        let cells = AlbumGridCells(
+            positions: 5..<9,
+            columnCount: 3,
+            loaded: loaded(0..<12),
+            openAlbumId: "a8"
+        )
+        #expect(
+            Array(cells.prefix(4)) == [
+                .album(position: 5, albumId: "a5"),
+                .album(position: 6, albumId: "a6"),
+                .album(position: 7, albumId: "a7"),
+                .album(position: 8, albumId: "a8"),
+            ]
+        )
+        #expect(cells.firstIndex(of: .detail(albumId: "a8")) == 6)
+        #expect(cells.count == 9)
+        let other = AlbumGridCells(
+            positions: 9..<12,
+            columnCount: 3,
+            loaded: loaded(0..<12),
+            openAlbumId: "a8"
+        )
+        #expect(other.count == 3)
+    }
+
+}
+
+extension AlbumGridCellsTests {
     private typealias Loaded = [(position: Int, id: String)]
 
     /// Albums "a0", "a1", … loaded at their own positions.

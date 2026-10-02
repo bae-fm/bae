@@ -14,7 +14,7 @@
         /// `albumContent`/`composerContent` rather than a hand-built stand-in.
         static func emptyLibrary() -> Library {
             Library(
-                albumBrowse: { _ in .fixed([]) },
+                albumBrowse: { _, _ in .fixed([]) },
                 composerBrowse: { _ in .fixed([]) },
                 artistBrowse: { _ in .fixed([]) }
             )
@@ -62,8 +62,8 @@
                     )
                 }
             let library = Library(
-                albumBrowse: { _ in .fixed(albums) },
-                getAlbumIndex: { _, albumId in
+                albumBrowse: { _, _ in .fixed(albums) },
+                getAlbumIndex: { _, albumId, _ in
                     albums.firstIndex { $0.id == albumId }.map(UInt64.init)
                 },
             )

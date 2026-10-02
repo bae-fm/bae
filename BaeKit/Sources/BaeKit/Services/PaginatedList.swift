@@ -16,6 +16,12 @@ private let logger = Logger.bae("PaginatedList")
 public protocol PageSource<Row>: Sendable {
     associatedtype Row: Identifiable & Sendable
 
+    @MainActor
+    var sections: [BridgeLibraryBrowseSection] { get }
+    /// Distinct items, when rows can show the same item more than once.
+    @MainActor
+    var itemCount: Int? { get }
+
     /// Start a live page query. The initial value and every relevant committed
     /// database change deliver the page rows and total count together.
     func subscribe(
@@ -24,6 +30,13 @@ public protocol PageSource<Row>: Sendable {
         onValue: @escaping @MainActor @Sendable ([Row], Int) -> Void,
         onError: @escaping @MainActor @Sendable (any Error) -> Void
     ) -> any PageSubscription
+}
+
+extension PageSource {
+    @MainActor
+    public var sections: [BridgeLibraryBrowseSection] { [] }
+    @MainActor
+    public var itemCount: Int? { nil }
 }
 
 public protocol PageSubscription: AnyObject, Sendable {
@@ -85,6 +98,8 @@ where Row.ID: Sendable {
     /// Total row count from the most recent subscription value.
     public private(set) var totalCount: Int = 0
 
+    public var sections: [BridgeLibraryBrowseSection] { pageSource.sections }
+
     /// Advances when a subscribed page value changes what the list holds: the
     /// ids at its positions, the total, or a row's value. A value that repeats
     /// what the list already holds — a source answering every page again
@@ -116,6 +131,8 @@ where Row.ID: Sendable {
     private let ingest: ([Row]) -> Void
     @ObservationIgnored
     private let onSnapshot: (([Row.ID], Int) -> Void)?
+    @ObservationIgnored
+    private var reportedCount: Int?
     @ObservationIgnored
     /// The failure sink. It takes the error, not a rendered `DisplayError`:
     /// whether a failure is worth showing at all is core's answer (a cancellation
@@ -159,6 +176,21 @@ where Row.ID: Sendable {
     /// Returns the position of `id` in the loaded segments, or nil if not loaded.
     public func position(of id: Row.ID) -> Int? {
         segments.position(of: id)
+    }
+
+    public func section(at position: Int) -> BridgeLibraryBrowseSection? {
+        sections.first {
+            position >= Int($0.window.offset)
+                && position < Int($0.window.offset + $0.window.limit)
+        }
+    }
+
+    public func position(of id: Row.ID, in sectionId: String?) -> Int? {
+        guard let sectionId else { return position(of: id) }
+        return loadedEntries.first {
+            $0.id == id && section(at: $0.position)?.id == sectionId
+        }?
+        .position
     }
 
     /// All IDs currently held in loaded segments, in order.
@@ -325,7 +357,11 @@ where Row.ID: Sendable {
         }
         if positionsChanged {
             segments = next
-            onSnapshot?(allLoadedIds, totalCount)
+        }
+        let itemCount = pageSource.itemCount ?? totalCount
+        if positionsChanged || reportedCount != itemCount {
+            reportedCount = itemCount
+            onSnapshot?(allLoadedIds, itemCount)
         }
         if rowsChanged || positionsChanged || totalChanged {
             contentRevision += 1

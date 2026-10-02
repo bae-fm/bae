@@ -109,6 +109,8 @@ internal fun LibraryTopBar(
     mode: LibraryBrowserMode,
     sortCriterion: BridgeSortCriterion,
     onSortChange: (BridgeSortCriterion) -> Unit,
+    groupAlbumsByArtist: Boolean,
+    onGroupAlbumsByArtistChange: (Boolean) -> Unit,
     composerSortCriterion: BridgeComposerSortCriterion,
     onComposerSortChange: (BridgeComposerSortCriterion) -> Unit,
     artistSortCriterion: BridgeArtistSortCriterion,
@@ -133,7 +135,12 @@ internal fun LibraryTopBar(
             }
             when (mode) {
                 LibraryBrowserMode.ALBUMS -> {
-                    SortMenu(criterion = sortCriterion, onChange = onSortChange)
+                    SortMenu(
+                        criterion = sortCriterion,
+                        onChange = onSortChange,
+                        groupByArtist = groupAlbumsByArtist,
+                        onGroupByArtistChange = onGroupAlbumsByArtistChange,
+                    )
                 }
 
                 LibraryBrowserMode.COMPOSERS -> {
@@ -243,6 +250,8 @@ private val SORT_FIELDS =
 private fun SortMenu(
     criterion: BridgeSortCriterion,
     onChange: (BridgeSortCriterion) -> Unit,
+    groupByArtist: Boolean,
+    onGroupByArtistChange: (Boolean) -> Unit,
 ) {
     fun BridgeSortField.labelRes(): Int =
         when (this) {
@@ -258,6 +267,21 @@ private fun SortMenu(
             Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = stringResource(R.string.sort))
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.group_by_artist)) },
+                onClick = {
+                    onGroupByArtistChange(!groupByArtist)
+                    expanded = false
+                },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Filled.Check,
+                        contentDescription = null,
+                        modifier = Modifier.alpha(if (groupByArtist) 1f else 0f),
+                    )
+                },
+            )
+            HorizontalDivider()
             SORT_FIELDS.forEach { field ->
                 DropdownMenuItem(
                     text = { Text(stringResource(field.labelRes())) },
@@ -308,6 +332,8 @@ private fun LibraryTopBarPreview() {
             mode = LibraryBrowserMode.ALBUMS,
             sortCriterion = previewAlbumSort,
             onSortChange = {},
+            groupAlbumsByArtist = false,
+            onGroupAlbumsByArtistChange = {},
             composerSortCriterion = previewComposerSort,
             onComposerSortChange = {},
             artistSortCriterion = previewArtistSort,

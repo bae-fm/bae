@@ -124,8 +124,10 @@ private fun <Value> detailFlow(
 class Library(
     private val handle: AppHandle,
 ) {
-    internal fun albumBrowse(sortCriteria: List<BridgeSortCriterion>): AlbumBrowseQuery =
-        BridgeAlbumBrowseQuery(handle.subscribeAlbumBrowse(sortCriteria))
+    internal fun albumBrowse(
+        sortCriteria: List<BridgeSortCriterion>,
+        groupByArtist: Boolean = false,
+    ): AlbumBrowseQuery = BridgeAlbumBrowseQuery(handle.subscribeAlbumBrowse(sortCriteria, groupByArtist))
 
     /** A detail view's live reads, each moved to every item its view shows in place. */
     internal fun albumDetail(): DetailRead<BridgeAlbumDetail> =

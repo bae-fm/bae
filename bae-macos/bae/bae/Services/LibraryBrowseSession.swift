@@ -131,6 +131,7 @@ enum ComposerPaneSelection: Equatable {
 @MainActor
 @Observable
 final class LibraryBrowseSession {
+    let albumGrouping: AlbumGrouping
     let albums: BrowseListSlot<BridgeAlbum, BridgeSortCriterion>
     let composers:
         BrowseListSlot<BridgeComposerSummary, BridgeComposerSortCriterion>
@@ -157,23 +158,13 @@ final class LibraryBrowseSession {
             uiStore: uiStore
         )
         self.albumSelection = selectedAlbums.makeSelection()
-        albums = BrowseListSlot(
-            defaultsKey: "librarySortCriteria",
-            defaultCriteria: [
-                BridgeSortCriterion(field: .dateAdded, direction: .descending)
-            ],
-            makePageSource: {
-                LibraryAlbumPageSource(library: library, sort: $0)
-            },
-            ingest: { rows in
-                for row in rows {
-                    _ = libraryStore.internAlbumSummary(row)
-                }
-            },
-            onSnapshot: { _, total in
-                libraryStore.setAlbumTotal(total)
-            },
-            onError: { uiStore.showError($0) }
+        let albumGrouping = AlbumGrouping()
+        self.albumGrouping = albumGrouping
+        albums = Self.makeAlbumList(
+            library: library,
+            store: libraryStore,
+            uiStore: uiStore,
+            grouping: albumGrouping
         )
         composers = BrowseListSlot(
             defaultsKey: "libraryComposerSortCriteria",
@@ -210,7 +201,38 @@ final class LibraryBrowseSession {
         )
     }
 
+    private static func makeAlbumList(
+        library: Library,
+        store: LibraryStore,
+        uiStore: UiStore,
+        grouping: AlbumGrouping
+    ) -> BrowseListSlot<BridgeAlbum, BridgeSortCriterion> {
+        BrowseListSlot(
+            defaultsKey: "librarySortCriteria",
+            defaultCriteria: [
+                BridgeSortCriterion(field: .dateAdded, direction: .descending)
+            ],
+            makePageSource: {
+                LibraryAlbumPageSource(
+                    library: library,
+                    sort: $0,
+                    groupByArtist: grouping.byArtist
+                )
+            },
+            ingest: { rows in
+                for row in rows { _ = store.internAlbumSummary(row) }
+            },
+            onSnapshot: { _, total in store.setAlbumTotal(total) },
+            onError: { uiStore.showError($0) }
+        )
+    }
+
     func start() {
+        albums.startLoad()
+    }
+
+    func setGroupAlbumsByArtist(_ enabled: Bool) {
+        albumGrouping.setByArtist(enabled)
         albums.startLoad()
     }
 

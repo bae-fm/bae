@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="group_by_artist">Ryhmittele esittäjän mukaan</string>
     <string name="back">Takaisin</string>
     <string name="cancel">Peruuta</string>
     <string name="retry">Yritä uudelleen</string>

@@ -5,21 +5,50 @@ import Testing
 @MainActor
 @Suite("AlbumGridSelection")
 struct AlbumGridSelectionTests {
-    @Test("toggle adds, removes, and re-anchors on the clicked id")
-    func toggleSetsUnsetsAndReanchors() {
+    @Test("a range ends at the clicked collaboration and selects albums once")
+    func rangeUsesClickedAppearance() {
+        let ids = ["shared", "first", "second", "shared", "last"]
         let selection = AlbumGridSelection()
-        selection.toggle("a")
+        selection.setSelected("second", selected: true, sectionId: "artist-b")
+        selection.extendRange(
+            to: "shared",
+            targetPosition: 3,
+            position: { ids.firstIndex(of: $0) },
+            idAt: { ids[$0] }
+        )
+        #expect(selection.selectedIds == ["second", "shared"])
+        #expect(selection.anchor?.sectionId == "artist-b")
+        selection.extendRange(
+            to: "shared",
+            targetPosition: 0,
+            position: { ids.firstIndex(of: $0) },
+            idAt: { ids[$0] }
+        )
+        #expect(
+            selection.orderedTargets(
+                for: "shared",
+                position: { ids.firstIndex(of: $0) }
+            )
+                == ["shared", "first", "second"]
+        )
+    }
+
+    @Test("selection commands set membership and anchor at the clicked album")
+    func membershipCommandsAreIdempotent() {
+        let selection = AlbumGridSelection()
+        selection.setSelected("a", selected: true)
         #expect(selection.selectedIds == ["a"])
-        #expect(selection.anchorId == "a")
+        #expect(selection.anchor?.albumId == "a")
 
-        selection.toggle("b")
+        selection.setSelected("b", selected: true)
         #expect(selection.selectedIds == ["a", "b"])
-        #expect(selection.anchorId == "b")
+        #expect(selection.anchor?.albumId == "b")
 
-        selection.toggle("a")
+        selection.setSelected("a", selected: false)
+        selection.setSelected("a", selected: false)
         #expect(selection.selectedIds == ["b"])
         // A cmd-click re-anchors even when it removes the id.
-        #expect(selection.anchorId == "a")
+        #expect(selection.anchor?.albumId == "a")
     }
 
     @Test("shift-range unions [anchor, target] in both directions")
@@ -31,17 +60,17 @@ struct AlbumGridSelectionTests {
         }
 
         let up = AlbumGridSelection()
-        up.toggle("b")
+        up.setSelected("b", selected: true)
         up.extendRange(to: "d", position: position, idAt: idAt)
         #expect(up.selectedIds == ["b", "c", "d"])
         // The anchor is unchanged by a range extend.
-        #expect(up.anchorId == "b")
+        #expect(up.anchor?.albumId == "b")
 
         let down = AlbumGridSelection()
-        down.toggle("d")
+        down.setSelected("d", selected: true)
         down.extendRange(to: "a", position: position, idAt: idAt)
         #expect(down.selectedIds == ["a", "b", "c", "d"])
-        #expect(down.anchorId == "d")
+        #expect(down.anchor?.albumId == "d")
     }
 
     @Test("shift-range skips ids in the span that aren't loaded")
@@ -50,7 +79,7 @@ struct AlbumGridSelectionTests {
         let positions = ["a": 0, "b": 1, "d": 3]
         let loaded = [0: "a", 1: "b", 3: "d"]
         let selection = AlbumGridSelection()
-        selection.toggle("a")
+        selection.setSelected("a", selected: true)
         selection.extendRange(
             to: "d",
             position: { positions[$0] },
@@ -59,29 +88,31 @@ struct AlbumGridSelectionTests {
         #expect(selection.selectedIds == ["a", "b", "d"])
     }
 
-    @Test("shift-range degrades to a toggle when the anchor no longer resolves")
-    func missingAnchorDegradesToToggle() {
+    @Test(
+        "shift-range selects the clicked album when the anchor no longer resolves"
+    )
+    func missingAnchorSelectsTarget() {
         let selection = AlbumGridSelection()
-        selection.toggle("a")
+        selection.setSelected("a", selected: true)
         selection.extendRange(
             to: "c",
             position: { _ in nil },
             idAt: { _ in nil }
         )
         #expect(selection.selectedIds == ["a", "c"])
-        #expect(selection.anchorId == "c")
+        #expect(selection.anchor?.albumId == "c")
     }
 
     @Test("clear empties the selection and its anchor")
     func clearEmpties() {
         let selection = AlbumGridSelection()
-        selection.toggle("a")
-        selection.toggle("b")
-        #expect(selection.anchorId == "b")
+        selection.setSelected("a", selected: true)
+        selection.setSelected("b", selected: true)
+        #expect(selection.anchor?.albumId == "b")
 
         selection.clear()
         #expect(selection.selectedIds.isEmpty)
-        #expect(selection.anchorId == nil)
+        #expect(selection.anchor?.albumId == nil)
     }
 
     @Test(
@@ -90,8 +121,8 @@ struct AlbumGridSelectionTests {
     func orderedTargetsVisibleOrder() {
         let positions = ["a": 0, "b": 1, "c": 2]
         let selection = AlbumGridSelection()
-        selection.toggle("c")
-        selection.toggle("a")
+        selection.setSelected("c", selected: true)
+        selection.setSelected("a", selected: true)
         #expect(
             selection.orderedTargets(for: "a", position: { positions[$0] })
                 == ["a", "c"]
@@ -101,8 +132,8 @@ struct AlbumGridSelectionTests {
     @Test("orderedTargets drops ids that don't resolve to a position")
     func orderedTargetsDropsUnresolvable() {
         let selection = AlbumGridSelection()
-        selection.toggle("a")
-        selection.toggle("b")
+        selection.setSelected("a", selected: true)
+        selection.setSelected("b", selected: true)
         #expect(
             selection.orderedTargets(
                 for: "a",
@@ -116,8 +147,8 @@ struct AlbumGridSelectionTests {
     func orderedTargetsNonMember() {
         let positions = ["a": 0, "b": 1, "c": 2]
         let selection = AlbumGridSelection()
-        selection.toggle("a")
-        selection.toggle("c")
+        selection.setSelected("a", selected: true)
+        selection.setSelected("c", selected: true)
         #expect(
             selection.orderedTargets(for: "b", position: { positions[$0] })
                 == ["b"]
@@ -127,7 +158,7 @@ struct AlbumGridSelectionTests {
     @Test("orderedTargets returns just the clicked id for a single selection")
     func orderedTargetsSingleSelection() {
         let selection = AlbumGridSelection()
-        selection.toggle("a")
+        selection.setSelected("a", selected: true)
         #expect(
             selection.orderedTargets(for: "a", position: { _ in 0 }) == ["a"]
         )
@@ -136,16 +167,16 @@ struct AlbumGridSelectionTests {
     @Test("remove drops only the missing ids and clears a removed anchor")
     func pruneRemovesOnlyMissing() {
         let selection = AlbumGridSelection()
-        selection.toggle("a")
-        selection.toggle("b")
-        selection.toggle("c")
+        selection.setSelected("a", selected: true)
+        selection.setSelected("b", selected: true)
+        selection.setSelected("c", selected: true)
         selection.remove(["b"])
         #expect(selection.selectedIds == ["a", "c"])
         // The anchor (c) survives when it isn't among the removed ids.
-        #expect(selection.anchorId == "c")
+        #expect(selection.anchor?.albumId == "c")
 
         selection.remove(["c"])
         #expect(selection.selectedIds == ["a"])
-        #expect(selection.anchorId == nil)
+        #expect(selection.anchor?.albumId == nil)
     }
 }

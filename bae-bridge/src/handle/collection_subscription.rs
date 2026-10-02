@@ -10,7 +10,7 @@ macro_rules! browse_subscription {
     (
         object: $object:ident,
         inner: $inner:ty,
-        subscribe: $subscribe:ident($criterion:ident),
+        subscribe: $subscribe:ident($criterion:ident $(, $arg:ident: $arg_type:ty)*),
         snapshot: $snapshot:ident,
         window: $window:ident,
         row: $core_row:ty => $bridge_row:ty,
@@ -26,7 +26,9 @@ macro_rules! browse_subscription {
         #[derive(Debug, Clone, uniffi::Record)]
         pub struct $snapshot {
             pub windows: Vec<$window>,
+            pub sections: Vec<crate::types::BridgeLibraryBrowseSection>,
             pub total_count: u64,
+            pub row_count: u64,
             pub request_revision: u64,
             pub cause: crate::types::BridgeLiveQueryCause,
         }
@@ -39,13 +41,13 @@ macro_rules! browse_subscription {
 
         #[uniffi::export]
         impl AppHandle {
-            pub fn $subscribe(&self, sort_criteria: Vec<$criterion>) -> std::sync::Arc<$object> {
+            pub fn $subscribe(&self, sort_criteria: Vec<$criterion>, $($arg: $arg_type),*) -> std::sync::Arc<$object> {
                 let sort = sort_criteria
                     .into_iter()
                     .map($criterion::into_core)
                     .collect::<Vec<_>>();
                 std::sync::Arc::new($object {
-                    inner: self.services.$subscribe(&sort),
+                    inner: self.services.$subscribe(&sort, $($arg),*),
                     runtime: self.runtime.clone(),
                 })
             }
@@ -100,6 +102,18 @@ macro_rules! browse_subscription {
                         })
                         .collect(),
                     total_count: snapshot.total_count,
+                    row_count: snapshot.row_count,
+                    sections: snapshot
+                        .sections
+                        .into_iter()
+                        .map(|section| crate::types::BridgeLibraryBrowseSection {
+                            id: section.id,
+                            title: section.title,
+                            window: crate::types::BridgeLibraryPageWindow::from_core(
+                                section.window,
+                            ),
+                        })
+                        .collect(),
                     request_revision: snapshot.request_revision,
                     cause: crate::types::BridgeLiveQueryCause::from_core(snapshot.cause),
                 }
@@ -111,7 +125,7 @@ macro_rules! browse_subscription {
 browse_subscription! {
     object: AlbumBrowseSubscription,
     inner: bae_core::library::AlbumBrowseSubscription,
-    subscribe: subscribe_album_browse(BridgeSortCriterion),
+    subscribe: subscribe_album_browse(BridgeSortCriterion, group_by_artist: bool),
     snapshot: BridgeAlbumBrowseSnapshot,
     window: BridgeAlbumBrowseWindow,
     row: bae_core::album_detail::AlbumSummary => BridgeAlbum,

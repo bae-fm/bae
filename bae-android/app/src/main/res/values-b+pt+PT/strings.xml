@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="group_by_artist">Agrupar por artista</string>
     <string name="back">Voltar</string>
     <string name="cancel">Cancelar</string>
     <string name="retry">Repetir</string>

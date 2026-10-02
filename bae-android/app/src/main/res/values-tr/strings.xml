@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="group_by_artist">Sanatçıya göre grupla</string>
     <string name="back">Geri</string>
     <string name="cancel">İptal</string>
     <string name="retry">Yeniden dene</string>

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="group_by_artist">Grupuj według wykonawcy</string>
     <string name="back">Wstecz</string>
     <string name="cancel">Anuluj</string>
     <string name="retry">Ponów</string>

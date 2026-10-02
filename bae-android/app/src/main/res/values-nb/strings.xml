@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="group_by_artist">Grupper etter artist</string>
     <string name="back">Tilbake</string>
     <string name="cancel">Avbryt</string>
     <string name="retry">Prøv på nytt</string>

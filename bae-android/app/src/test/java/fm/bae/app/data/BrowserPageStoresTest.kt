@@ -14,11 +14,29 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
+import uniffi.bae_bridge.BridgeLibraryBrowseSection
 import uniffi.bae_bridge.BridgeLibraryPageWindow
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class BrowserPageStoresTest {
+    @Test
+    fun artistSectionsArriveWithPagesAndLeaveWithTheQuery() {
+        val store = RecordingPageStore(CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
+        val sections =
+            listOf(
+                BridgeLibraryBrowseSection("artist-a", "Artist A", BridgeLibraryPageWindow(0uL, 200uL)),
+                BridgeLibraryBrowseSection("artist-b", "Artist B", BridgeLibraryPageWindow(200uL, 300uL)),
+            )
+        store.activate("grouped")
+        store.queries.single().emit(window(0), "album", sections)
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(sections, store.sections)
+        assertEquals("album", store.rows[0])
+        store.deactivate()
+        assertTrue(store.sections.isEmpty())
+    }
+
     @Test
     fun oneQueryReadsAtMostThreeVisibleWindows() {
         val store = RecordingPageStore(CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
@@ -107,8 +125,9 @@ class BrowserPageStoresTest {
         fun emit(
             window: BridgeLibraryPageWindow,
             row: String,
+            sections: List<BridgeLibraryBrowseSection> = emptyList(),
         ) {
-            values.trySend(BrowseRows(listOf(window to listOf(row)), totalCount = 500))
+            values.trySend(BrowseRows(listOf(window to listOf(row)), totalCount = 500, sections = sections))
         }
     }
 }

@@ -7,9 +7,18 @@ struct AlbumSortMenu: View {
     var sortField: BridgeSortField
     @Binding
     var sortDirection: BridgeSortDirection
+    let grouping: AlbumGrouping
 
     var body: some View {
         Menu {
+            Toggle(
+                "Group by artist",
+                isOn: Binding(
+                    get: { grouping.byArtist },
+                    set: { grouping.setByArtist($0) }
+                )
+            )
+            Divider()
             ForEach(BridgeSortField.allCases, id: \.self) { field in
                 Button {
                     sortField = field
@@ -49,6 +58,6 @@ struct AlbumSortMenu: View {
     @Previewable
     @State
     var direction = BridgeSortDirection.descending
-    AlbumSortMenu(sortField: $field, sortDirection: $direction)
+    AlbumSortMenu(sortField: $field, sortDirection: $direction, grouping: AlbumGrouping())
 }
 #endif

@@ -22,6 +22,8 @@ public final class LibraryListsStore {
     @ObservationIgnored
     private var albumSort: [BridgeSortCriterion]?
     @ObservationIgnored
+    private var albumsGroupedByArtist = false
+    @ObservationIgnored
     private var composerSort: [BridgeComposerSortCriterion]?
     @ObservationIgnored
     private var artistSort: [BridgeArtistSortCriterion]?
@@ -36,16 +38,23 @@ public final class LibraryListsStore {
         self.onError = onError
     }
 
-    public func updateAlbums(_ sort: [BridgeSortCriterion]) {
-        guard albumSort != sort else { return }
+    public func updateAlbums(
+        _ sort: [BridgeSortCriterion],
+        groupByArtist: Bool = false
+    ) {
+        guard albumSort != sort || albumsGroupedByArtist != groupByArtist else {
+            return
+        }
         albumSort = sort
+        albumsGroupedByArtist = groupByArtist
         albumTask?.cancel()
         albums?.cancel()
         albumTask = Task { [weak self, library, libraryStore, onError] in
             let list = AlbumList(
                 pageSource: LibraryAlbumPageSource(
                     library: library,
-                    sort: sort
+                    sort: sort,
+                    groupByArtist: groupByArtist
                 ),
                 ingest: { rows in
                     for row in rows {

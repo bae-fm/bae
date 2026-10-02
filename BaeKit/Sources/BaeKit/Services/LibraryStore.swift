@@ -22,8 +22,12 @@ private final class TaskPageSubscription: PageSubscription,
 public typealias LibraryAlbumPageSource = LibraryBrowsePageSource<BridgeAlbum>
 
 extension LibraryBrowsePageSource where Row == BridgeAlbum {
-    public convenience init(library: Library, sort: [BridgeSortCriterion]) {
-        self.init(query: library.albumBrowse(sort))
+    public convenience init(
+        library: Library,
+        sort: [BridgeSortCriterion],
+        groupByArtist: Bool = false
+    ) {
+        self.init(query: library.albumBrowse(sort, groupByArtist))
     }
 }
 

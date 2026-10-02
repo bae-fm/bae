@@ -12,6 +12,7 @@
   locale ships app chrome.
 -->
 <resources>
+    <string name="group_by_artist">Group by artist</string>
     <!-- Common -->
     <string name="back">Back</string>
     <string name="cancel">Cancel</string>

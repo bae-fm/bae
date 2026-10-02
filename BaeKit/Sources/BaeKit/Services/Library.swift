@@ -9,10 +9,13 @@ public final class Library: Sendable, Observable {
     /// The album list under one sort, read through the windows its visible
     /// pages ask for.
     public let albumBrowse:
-        @Sendable (_ sortCriteria: [BridgeSortCriterion])
+        @Sendable (_ sortCriteria: [BridgeSortCriterion], _ groupByArtist: Bool)
             -> LibraryBrowseQuery<BridgeAlbum>
     public let getAlbumIndex:
-        @Sendable (_ sortCriteria: [BridgeSortCriterion], _ albumId: String)
+        @Sendable (
+            _ sortCriteria: [BridgeSortCriterion], _ albumId: String,
+            _ groupByArtist: Bool
+        )
             async throws -> UInt64?
     public let composerBrowse:
         @Sendable (_ sortCriteria: [BridgeComposerSortCriterion])
@@ -53,13 +56,14 @@ public final class Library: Sendable, Observable {
 
     public init(
         albumBrowse:
-            @escaping @Sendable ([BridgeSortCriterion])
-            -> LibraryBrowseQuery<BridgeAlbum> = { _ in
+            @escaping @Sendable ([BridgeSortCriterion], Bool)
+            -> LibraryBrowseQuery<BridgeAlbum> = { _, _ in
                 fatalError("Library album browse is not installed")
             },
         getAlbumIndex:
-            @escaping @Sendable ([BridgeSortCriterion], String) async throws
-            -> UInt64? = { _, _ in throw StubError.notImplemented },
+            @escaping @Sendable ([BridgeSortCriterion], String, Bool)
+            async throws
+            -> UInt64? = { _, _, _ in throw StubError.notImplemented },
         composerBrowse:
             @escaping @Sendable ([BridgeComposerSortCriterion])
             -> LibraryBrowseQuery<BridgeComposerSummary> = { _ in
@@ -140,13 +144,17 @@ public final class Library: Sendable, Observable {
             self.init(
                 albumBrowse: {
                     LibraryBrowseQuery(
-                        handle.subscribeAlbumBrowse(sortCriteria: $0)
+                        handle.subscribeAlbumBrowse(
+                            sortCriteria: $0,
+                            groupByArtist: $1
+                        )
                     )
                 },
                 getAlbumIndex: {
                     try await handle.getAlbumIndex(
                         sortCriteria: $0,
-                        albumId: $1
+                        albumId: $1,
+                        groupByArtist: $2
                     )
                 },
                 composerBrowse: {
@@ -201,7 +209,10 @@ public final class Library: Sendable, Observable {
             self.init(
                 albumBrowse: {
                     LibraryBrowseQuery(
-                        handle.subscribeAlbumBrowse(sortCriteria: $0)
+                        handle.subscribeAlbumBrowse(
+                            sortCriteria: $0,
+                            groupByArtist: $1
+                        )
                     )
                 },
                 composerBrowse: {
@@ -258,7 +269,9 @@ extension LibraryBrowseQuery where Row == BridgeAlbum {
                     windows: snapshot.windows.map {
                         .init(window: $0.window, rows: $0.rows)
                     },
-                    totalCount: Int(snapshot.totalCount)
+                    totalCount: Int(snapshot.rowCount),
+                    itemCount: Int(snapshot.totalCount),
+                    sections: snapshot.sections
                 )
             },
             cancel: { try? await subscription.cancel() }
