@@ -1,4 +1,4 @@
-import CoreGraphics
+import SwiftUI
 import Testing
 
 @testable import bae
@@ -151,20 +151,6 @@ struct AlbumGridViewportTests {
         #expect(viewport.held == nil)
     }
 
-    /// Scrolled 1000 points down 5000 points of content, showing 700.
-    private func placedRow(_ frame: CGRect) -> PlacedTrackRow {
-        PlacedTrackRow(
-            trackId: "t1",
-            seq: 2,
-            frame: frame,
-            scroll: AlbumGridScroll(
-                offset: 1000,
-                visibleHeight: 700,
-                contentHeight: 5000
-            )
-        )
-    }
-
     @Test("a row in full view needs no scroll")
     func rowInViewStays() {
         #expect(
@@ -190,7 +176,7 @@ struct AlbumGridViewportTests {
             scroll: AlbumGridScroll(
                 offset: 18392,
                 visibleHeight: 720,
-                contentHeight: 37010
+                offsets: 0...36290
             )
         )
         viewport.placeRevealedRow(row)
@@ -199,7 +185,7 @@ struct AlbumGridViewportTests {
                 AlbumGridScroll(
                     offset: offset,
                     visibleHeight: 720,
-                    contentHeight: 37010
+                    offsets: 0...36290
                 )
             )
             #expect(viewport.revealedRow(seq: 2)?.scrollOffset == 19478)
@@ -252,20 +238,122 @@ struct AlbumGridViewportTests {
                 == 1200
         )
     }
+}
 
+/// A reveal's scroll to its album, and when it comes to rest there.
+@MainActor
+@Suite("AlbumGridViewport revealing")
+struct AlbumGridViewportRevealTests {
     @Test("a revealed row counts for its own reveal, and once at the album")
     func revealedRowBySeq() {
-        let viewport = AlbumGridViewport()
+        let viewport = scrolled()
         let row = placedRow(CGRect(x: 0, y: 1900, width: 300, height: 40))
         viewport.placeRevealedRow(row)
         #expect(viewport.revealedRow(seq: 2) == row)
         #expect(viewport.revealedRow(seq: 1) == nil)
         // Laid out on the way to the album, it waits for the scroll to stop.
+        #expect(viewport.revealScrolls(seq: 2, to: .album("a9")) == nil)
         #expect(viewport.revealedRow(seq: 2, atAlbum: true) == nil)
-        viewport.revealReachedAlbum(seq: 2)
+        #expect(viewport.setPhase(from: .idle, to: .animating) == nil)
+        #expect(viewport.setPhase(from: .animating, to: .idle) == 2)
         #expect(viewport.revealedRow(seq: 2, atAlbum: true) == row)
 
         viewport.placeRevealedRow(nil)
         #expect(viewport.revealedRow(seq: 2) == nil)
     }
+
+    @Test("a reveal arrives when its animated scroll comes to rest")
+    func revealArrivesWhenScrollEnds() {
+        let viewport = scrolled()
+        #expect(viewport.revealScrolls(seq: 3, to: .album("a9")) == nil)
+        #expect(viewport.setPhase(from: .idle, to: .animating) == nil)
+        // Its card passes the top on the way: still on its way.
+        place(.album("a9"), at: 0, in: viewport)
+        #expect(viewport.revealArrivedInPlace() == nil)
+
+        // Wherever the lazy grid settled the card, the scroll has stopped.
+        place(.album("a9"), at: 12, in: viewport)
+        #expect(viewport.setPhase(from: .animating, to: .idle) == 3)
+        // Once.
+        #expect(viewport.revealArrivedInPlace() == nil)
+    }
+
+    @Test("a reveal whose album is on top already arrives at once")
+    func revealOfAlbumOnTopArrivesAtOnce() {
+        let viewport = scrolled()
+        place(.album("a9"), at: 0, in: viewport)
+
+        #expect(viewport.revealScrolls(seq: 4, to: .album("a9")) == 4)
+    }
+
+    @Test(
+        "a reveal arrives when a scroll without animation puts its album on top"
+    )
+    func revealArrivesAfterUnanimatedScroll() {
+        let viewport = scrolled()
+        place(.album("a9"), at: 900, in: viewport)
+        #expect(viewport.revealScrolls(seq: 5, to: .album("a9")) == nil)
+        #expect(viewport.revealArrivedInPlace() == nil)
+
+        place(.album("a9"), at: 0, in: viewport)
+
+        #expect(viewport.revealArrivedInPlace() == 5)
+    }
+
+    @Test(
+        "an album the content cannot bring to the top arrives as near as it goes"
+    )
+    func revealOfAlbumNearTheEndArrives() {
+        let viewport = AlbumGridViewport()
+        // Scrolled to the end of the content.
+        viewport.setScroll(
+            AlbumGridScroll(offset: 4300, visibleHeight: 700, offsets: 0...4300)
+        )
+        place(.album("a9"), at: 300, in: viewport)
+
+        #expect(viewport.revealScrolls(seq: 6, to: .album("a9")) == 6)
+    }
+
+    /// Lays out `cell`'s 200-point card `y` points below the top.
+    private func place(
+        _ cell: AlbumGridCell.Identity,
+        at y: CGFloat,
+        in viewport: AlbumGridViewport
+    ) {
+        viewport.place(
+            cell,
+            as: .position(9),
+            columnCount: 4,
+            frame: CGRect(x: 0, y: y, width: 200, height: 200)
+        )
+    }
+}
+
+/// Scrolled 1000 points down 5000 points of content, showing 700.
+@MainActor
+private func scrolled() -> AlbumGridViewport {
+    let viewport = AlbumGridViewport()
+    viewport.setScroll(
+        AlbumGridScroll(
+            offset: 1000,
+            visibleHeight: 700,
+            offsets: 0...4300
+        )
+    )
+    return viewport
+}
+
+/// A row of the track reveal 2 names at `frame`, measured scrolled 1000
+/// points down 5000 points of content, showing 700.
+private func placedRow(_ frame: CGRect) -> PlacedTrackRow {
+    PlacedTrackRow(
+        trackId: "t1",
+        seq: 2,
+        frame: frame,
+        scroll: AlbumGridScroll(
+            offset: 1000,
+            visibleHeight: 700,
+            offsets: 0...4300
+        )
+    )
 }
