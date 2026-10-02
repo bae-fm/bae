@@ -761,6 +761,7 @@ impl PlaybackService {
             StreamPosition::START,
         );
         self.emit_state();
+        self.show_paused_load_position();
 
         self.preload_queue_front().await;
 

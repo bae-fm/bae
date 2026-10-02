@@ -28,8 +28,8 @@ impl PlaybackService {
         self.reset_starvation_episode();
     }
 
-    /// Play `track_id` from scratch: tear down whatever was playing, resolve and
-    /// prepare it, spawn its decoder, and install it as current.
+    /// Play `track_id` from scratch on the current renderer: tear down whatever
+    /// was playing, resolve and prepare it, and install it as current.
     /// - `start`: a direct start (pregap skipped), a natural transition (pregap
     ///   played), or a position in the track's stream.
     /// - `target`: where the load lands once audio is ready (Playing, or Paused
@@ -62,12 +62,26 @@ impl PlaybackService {
 
         // A remote renderer is a second renderer behind the same queue: load the
         // track onto the device instead of the local decode pipeline. Everything
-        // above (telemetry) is shared; the local path below is skipped.
+        // above (telemetry) is shared.
         if self.renderer.is_remote() {
             self.play_track_remote(track_id, start, target).await;
-            return;
+        } else {
+            self.play_track_local(track_id, start, target, play_started_at)
+                .await;
         }
+        self.show_paused_load_position();
+    }
 
+    /// The local branch of `play_track`: prepare the track's byte buffers,
+    /// spawn its decoder, and install it as current. `play_started_at` is when
+    /// the load began, for the time-to-first-audio measurement.
+    async fn play_track_local(
+        &mut self,
+        track_id: &str,
+        start: TrackStart,
+        target: PlayTarget,
+        play_started_at: std::time::Instant,
+    ) {
         // Tear the outgoing track and preload down first, so a manual switch
         // silences the old audio at once and stops the old decoders. Their file
         // buffers stay cached and live until the incoming track is prepared — only
@@ -172,6 +186,22 @@ impl PlaybackService {
 
         // Persist the now-playing state so a restart on this device resumes here.
         self.persist_playback_state().await;
+    }
+
+    /// Show where a load that lands paused sits, once its track is installed
+    /// and announced. The audio callback reports position only while it plays,
+    /// so without this a paused load would leave the display on whatever it
+    /// last showed: the old position of a restarted track, or none for a new
+    /// one. A load headed for Playing shows its position through those reports
+    /// once audio flows. A load that failed or was abandoned left no paused
+    /// track, so it shows nothing.
+    pub(super) fn show_paused_load_position(&self) {
+        if matches!(
+            &self.slot,
+            PlaybackSlot::Active(cur) if cur.phase.intent() == PlayIntent::Paused
+        ) {
+            self.emit_position_display();
+        }
     }
 
     pub(super) async fn stop(&mut self) {

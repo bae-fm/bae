@@ -134,6 +134,21 @@ async fn playing_remote_fixture(
     Arc<Mutex<FakeChannelState>>,
     tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
 ) {
+    remote_fixture_from(tracks, position, TrackPhase::Playing).await
+}
+
+/// [`playing_remote_fixture`] with the first track in `phase` when it is
+/// handed to the device.
+async fn remote_fixture_from(
+    tracks: &[&str],
+    position: StreamPosition,
+    phase: TrackPhase,
+) -> (
+    TempDir,
+    PlaybackService,
+    Arc<Mutex<FakeChannelState>>,
+    tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
+) {
     const RELEASE: &str = "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e";
     let (home, mut service, rx) = remote_service(&[(RELEASE, tracks)]).await;
     service.playback_queue.apply(|queue| {
@@ -145,7 +160,7 @@ async fn playing_remote_fixture(
     });
     service.slot = active_slot(
         test_prepared_track(tracks[0], create_sparse_buffer(1_024)),
-        TrackPhase::Playing,
+        phase,
     );
     if let PlaybackSlot::Active(cur) = &mut service.slot {
         cur.position = position;
@@ -420,6 +435,61 @@ async fn ending_remote_playback_after_a_seek_resumes_at_the_seek_target() {
         service.current_track_position(),
         Some((TRACK.to_string(), StreamPosition::from_millis(45_000)))
     );
+}
+
+/// The `Seeked` positions `rx` holds for `track_id`, in track time.
+fn shown_positions(
+    rx: &mut tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
+    track_id: &str,
+) -> Vec<i64> {
+    let mut shown = Vec::new();
+    while let Ok(progress) = rx.try_recv() {
+        if let PlaybackProgress::Seeked {
+            track_id: tid,
+            position_ms,
+            ..
+        } = progress
+        {
+            if tid == track_id {
+                shown.push(position_ms);
+            }
+        }
+    }
+    shown
+}
+
+/// A paused track handed to a device loads there paused, and shows where it
+/// is: nothing plays to report the position.
+#[tokio::test]
+async fn handing_over_a_paused_track_shows_its_position() {
+    const TRACK: &str = "08c7ff07-b56a-4e16-8df6-ae2967fa0806";
+    let (_home, service, state, mut rx) = remote_fixture_from(
+        &[TRACK],
+        StreamPosition::from_millis(30_000),
+        TrackPhase::Paused(PausePhase::Manual),
+    )
+    .await;
+    assert!(wait_until(|| !state.lock().unwrap().loads.is_empty()));
+
+    assert!(matches!(
+        &service.slot,
+        PlaybackSlot::Active(cur) if matches!(cur.phase, TrackPhase::Paused(_))
+    ));
+    assert_eq!(shown_positions(&mut rx, TRACK), vec![30_000]);
+}
+
+/// Ending remote playback resumes locally paused, and shows where.
+#[tokio::test]
+async fn ending_remote_playback_shows_the_resumed_position() {
+    const TRACK: &str = "08c7ff07-b56a-4e16-8df6-ae2967fa0806";
+    let (_home, mut service, state, mut rx) =
+        playing_remote_fixture(&[TRACK], StreamPosition::from_millis(30_000)).await;
+    assert!(wait_until(|| !state.lock().unwrap().loads.is_empty()));
+    while rx.try_recv().is_ok() {}
+
+    service.handle_stop_remote().await;
+
+    assert_eq!(shown_positions(&mut rx, TRACK), vec![30_000]);
 }
 
 /// Pause while remote routes to the device.

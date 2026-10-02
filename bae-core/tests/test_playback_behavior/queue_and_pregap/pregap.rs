@@ -547,3 +547,86 @@ async fn assert_back_twice_reaches_previous(
          {track_id} again",
     );
 }
+
+/// Back 5 s into the paused track 2 restarts it at its start, past its 2.5 s
+/// pregap, and shows it there. It stays paused, so no playing audio reports
+/// that position: the restart has to show it, or the bar keeps showing 5 s.
+#[tokio::test]
+async fn back_on_a_paused_track_shows_the_track_start() {
+    let mut fixture = CueFlacTestFixture::import(
+        support::TestAudioDevice::RealtimeCapture,
+        create_back_album(),
+        generate_back_album_files,
+    )
+    .await
+    .expect("set up the Back album fixture");
+    let pregapped_track_id = fixture.track_ids[1].clone();
+    play_and_wait_on(&fixture.playback_handle, &mut fixture.progress_rx, &pregapped_track_id).await;
+    fixture.playback_handle.seek_by_ratio(0.5);
+    wait_for_track_position_where(&mut fixture.progress_rx, &pregapped_track_id, |ms| ms >= 5_000)
+        .await
+        .expect("the seek lands halfway into the track and plays on");
+    pause_on_back_album(&mut fixture, &pregapped_track_id).await;
+
+    fixture.playback_handle.previous();
+    assert_paused_load_shows_start(&mut fixture, &pregapped_track_id).await;
+}
+
+/// Next on the paused track 2 goes to track 3 still paused, and shows track 3
+/// at its start rather than nothing.
+#[tokio::test]
+async fn next_on_a_paused_track_shows_the_next_track_start() {
+    let mut fixture = CueFlacTestFixture::import(
+        support::TestAudioDevice::RealtimeCapture,
+        create_back_album(),
+        generate_back_album_files,
+    )
+    .await
+    .expect("set up the Back album fixture");
+    let pregapped_track_id = fixture.track_ids[1].clone();
+    let next_track_id = fixture.track_ids[2].clone();
+    play_and_wait_on(&fixture.playback_handle, &mut fixture.progress_rx, &pregapped_track_id).await;
+    pause_on_back_album(&mut fixture, &pregapped_track_id).await;
+
+    fixture.playback_handle.next();
+    assert_paused_load_shows_start(&mut fixture, &next_track_id).await;
+}
+
+/// Pause the playing `track_id` and wait until it reports Paused.
+async fn pause_on_back_album(fixture: &mut CueFlacTestFixture, track_id: &str) {
+    fixture.playback_handle.pause();
+    wait_for_state_on(
+        &mut fixture.progress_rx,
+        |s| matches!(s, PlaybackState::Paused { track, .. } if track.track_id == track_id),
+        Duration::from_secs(5),
+    )
+    .await
+    .expect("the track pauses");
+}
+
+/// The command just sent loaded `track_id` paused, and the position it left
+/// for the UI is `track_id`'s start.
+async fn assert_paused_load_shows_start(fixture: &mut CueFlacTestFixture, track_id: &str) {
+    let events = settled_events_on(&fixture.playback_handle, &mut fixture.progress_rx).await;
+    assert!(
+        !states_in(&events)
+            .iter()
+            .any(|s| matches!(s, PlaybackState::Playing { .. })),
+        "a load from a paused track stays paused, got {:?}",
+        states_in(&events),
+    );
+    assert!(
+        events.iter().any(|event| matches!(
+            event,
+            PlaybackProgress::Seeked { track_id: tid, position_ms: 0, .. } if tid == track_id
+        )),
+        "the paused load shows {track_id} at its start, got {events:?}",
+    );
+    let shown = fixture.playback_handle.subscribe_values().borrow().position.clone();
+    let shown = shown.expect("the UI has a position to show");
+    assert_eq!(
+        (shown.track_id.as_str(), shown.position_ms),
+        (track_id, 0),
+        "the position the UI shows is {track_id} at its start",
+    );
+}

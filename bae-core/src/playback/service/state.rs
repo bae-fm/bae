@@ -27,8 +27,8 @@ impl PlaybackService {
     }
 
     /// Emit the current track's position as a `Seeked` progress event: the
-    /// single emitter for non-tick position updates (seek, restore, handback
-    /// from a device). Nothing without a current track.
+    /// single emitter for non-tick position updates (a seek, a paused load).
+    /// Nothing without a current track.
     pub(super) fn emit_position_display(&self) {
         let PlaybackSlot::Active(cur) = &self.slot else {
             return;
@@ -295,7 +295,8 @@ impl PlaybackService {
             );
         }
 
-        // Start the current track paused at the saved position, if there is one.
+        // Start the current track paused at the saved position, or at its start
+        // without one; loading it paused shows that position.
         if let Some(track_id) = self
             .playback_queue
             .current_track_id()
@@ -314,10 +315,6 @@ impl PlaybackService {
                 TrackTransition::Manual,
             )
             .await;
-
-            // Emit the restored position as a `Seeked` so subscribers position their
-            // display: the saved one, or without one the track's start.
-            self.emit_position_display();
         }
 
         // Dropping a dead context or library-deleted tracks corrected the in-memory
