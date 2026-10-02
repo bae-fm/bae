@@ -1,10 +1,10 @@
 import XCTest
 
-/// The albums a UI test opens the app's library on, as bae-core's
-/// `LibraryFixture` reads them: in the order they were added, so the last is
-/// newest. The app writes them straight into the library's tables when it
-/// opens it.
-struct LibraryFixture: Encodable {
+/// The state a UI test opens the app's library on, as bae-core's
+/// `LibraryFixture` reads it. The app writes it straight into the library's
+/// tables as it opens the library, before any of its services starts.
+struct LibraryFixture {
+    /// One album, as the grid lists it.
     struct Album: Encodable {
         let title: String
         /// Who the album is credited to, in credit order.
@@ -12,24 +12,71 @@ struct LibraryFixture: Encodable {
         let tracks: [String]
     }
 
+    /// A folder the library watches, named below the test's own folder, and
+    /// the candidates the import list lists under it. Nothing is on disk
+    /// there: the import list reads as the fixture states it.
+    struct WatchedFolder {
+        let name: String
+        let candidates: [Candidate]
+    }
+
+    /// One candidate folder of FLAC tracks, in one of Found's states.
+    struct Candidate: Encodable {
+        /// The folder's name, which the import list shows.
+        let folder: String
+        /// Its tracks' file names.
+        let tracks: [String]
+        let state: CandidateState
+    }
+
+    /// A state of Found's that the stored rows hold.
+    enum CandidateState: String, Encodable {
+        case notLookedUp = "not_looked_up"
+        case needsYou = "needs_you"
+        case identified
+        case unmatched
+        case lookupError = "lookup_error"
+        case error
+        case importError = "import_error"
+    }
+
+    /// The library's albums in the order they were added, so the last is
+    /// newest.
     var albums: [Album] = []
+    var watchedFolders: [WatchedFolder] = []
+
+    var isEmpty: Bool {
+        albums.isEmpty && watchedFolders.isEmpty
+    }
 }
 
-/// One album folder a UI test has the library watch: its name, which the
-/// import list shows, and its tracks' file names, each one short silent WAV.
-struct WatchedAlbum {
-    let folder: String
-    let tracks: [String]
+/// A fixture as the app reads it, with every folder at its path.
+private struct EncodedFixture: Encodable {
+    struct WatchedFolder: Encodable {
+        let path: String
+        let candidates: [LibraryFixture.Candidate]
+    }
+
+    let albums: [LibraryFixture.Album]
+    let watchedFolders: [WatchedFolder]
+
+    init(_ fixture: LibraryFixture, under root: URL) {
+        albums = fixture.albums
+        watchedFolders = fixture.watchedFolders.map { folder in
+            WatchedFolder(
+                path: root.appendingPathComponent(folder.name).path,
+                candidates: folder.candidates
+            )
+        }
+    }
 }
 
 extension XCTestCase {
     /// Launch the app on a library of its own, under a fresh `HOME`, holding
-    /// `library`'s albums and watching a folder of `watched` albums with
-    /// identification off.
+    /// the state `library` names.
     @MainActor
     func launchApp(
-        library: LibraryFixture = LibraryFixture(),
-        watching watched: [WatchedAlbum] = []
+        library: LibraryFixture = LibraryFixture()
     ) throws -> XCUIApplication {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
@@ -46,65 +93,18 @@ extension XCTestCase {
         app.launchEnvironment["HOME"] = home.path
         app.launchEnvironment["BAE_UI_TESTING"] = "1"
         app.launchEnvironment["BAE_UI_TESTING_CREATE_LIBRARY"] = "1"
-        if !library.albums.isEmpty {
+        if !library.isEmpty {
             let fixture = root.appendingPathComponent("library.json")
-            try JSONEncoder().encode(library).write(to: fixture)
+            let encoder = JSONEncoder()
+            encoder.keyEncodingStrategy = .convertToSnakeCase
+            try encoder.encode(EncodedFixture(library, under: root))
+                .write(to: fixture)
             app.launchEnvironment["BAE_UI_TESTING_LIBRARY_FIXTURE"] =
                 fixture.path
-        }
-        if !watched.isEmpty {
-            let music = root.appendingPathComponent("music", isDirectory: true)
-            try writeFolders(watched, in: music)
-            app.launchEnvironment["BAE_UI_TESTING_WATCH_FOLDER"] = music.path
         }
         app.launch()
         app.activate()
         addTeardownBlock { app.terminate() }
         return app
     }
-}
-
-private func writeFolders(_ albums: [WatchedAlbum], in music: URL) throws {
-    var fileCount = 0
-    for album in albums {
-        let folder = music.appendingPathComponent(
-            album.folder,
-            isDirectory: true
-        )
-        try FileManager.default.createDirectory(
-            at: folder,
-            withIntermediateDirectories: true
-        )
-        for track in album.tracks {
-            // A different length each, so no two files share their content.
-            try silentWAV(samples: 800 + fileCount)
-                .write(to: folder.appendingPathComponent("\(track).wav"))
-            fileCount += 1
-        }
-    }
-}
-
-/// A mono 16-bit 8 kHz WAV of `samples` silent samples.
-private func silentWAV(samples: Int) -> Data {
-    let dataSize = UInt32(samples * 2)
-    var wav = Data()
-    func append<T: FixedWidthInteger>(_ value: T) {
-        withUnsafeBytes(of: value.littleEndian) {
-            wav.append(contentsOf: $0)
-        }
-    }
-    wav.append(contentsOf: Array("RIFF".utf8))
-    append(UInt32(36) + dataSize)
-    wav.append(contentsOf: Array("WAVEfmt ".utf8))
-    append(UInt32(16))
-    append(UInt16(1))
-    append(UInt16(1))
-    append(UInt32(8000))
-    append(UInt32(16000))
-    append(UInt16(2))
-    append(UInt16(16))
-    wav.append(contentsOf: Array("data".utf8))
-    append(dataSize)
-    wav.append(Data(count: samples * 2))
-    return wav
 }

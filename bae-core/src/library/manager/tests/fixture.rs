@@ -10,7 +10,10 @@ fn fixture_album(title: &str, artists: &[&str], tracks: &[&str]) -> crate::libra
 
 /// The library fixture holding `albums` and nothing else.
 fn fixture_of_albums(albums: Vec<crate::library::FixtureAlbum>) -> crate::library::LibraryFixture {
-    crate::library::LibraryFixture { albums }
+    crate::library::LibraryFixture {
+        albums,
+        watched_folders: Vec::new(),
+    }
 }
 
 /// A fixture's albums land as the grid lists them: added in the fixture's
@@ -159,4 +162,179 @@ async fn a_fixture_album_crediting_no_artist_writes_nothing() {
         crate::library::LibraryFixtureError::NoArtist { ref album } if album == "Uncredited Album"
     ));
     assert!(manager.get_albums(&[]).await.unwrap().is_empty());
+}
+
+/// A fixture candidate in `state`, its folder named `folder`, of two tracks.
+fn fixture_candidate(
+    folder: &str,
+    state: crate::library::FixtureCandidateState,
+) -> crate::library::FixtureCandidate {
+    crate::library::FixtureCandidate {
+        folder: folder.to_string(),
+        tracks: vec!["01 Track.flac".to_string(), "02 Track.flac".to_string()],
+        state,
+    }
+}
+
+/// Found's rows the import list reads, by display path, newest first.
+async fn found_rows(manager: &LibraryManager) -> crate::import::ImportListProjection {
+    manager
+        .load_import_list(crate::import::ImportListRequest {
+            windows: std::iter::once(crate::library::LibraryPageWindow {
+                offset: 0,
+                limit: 50,
+            })
+            .collect(),
+            ..crate::import::ImportListRequest::default()
+        })
+        .await
+        .unwrap()
+}
+
+/// Each candidate of a watched folder lands on Found in the state the
+/// fixture gives it, read back from the stored rows the list reads, and the
+/// folder reads as read through.
+#[tokio::test]
+async fn fixture_candidates_land_on_found_in_their_states() {
+    use crate::import::PendingStanding;
+    use crate::library::FixtureCandidateState as State;
+    let (manager, temp_dir) = setup_test_manager().await;
+    let root = temp_dir.path().join("watched").to_string_lossy().into_owned();
+    let states = [
+        ("Not Looked Up", State::NotLookedUp),
+        ("Needs You", State::NeedsYou),
+        ("Identified", State::Identified),
+        ("Unmatched", State::Unmatched),
+        ("Lookup Error", State::LookupError),
+        ("Error", State::Error),
+        ("Import Error", State::ImportError),
+    ];
+    let fixture = crate::library::LibraryFixture {
+        albums: Vec::new(),
+        watched_folders: vec![crate::library::FixtureWatchedFolder {
+            path: root.clone(),
+            candidates: states
+                .iter()
+                .map(|(folder, state)| fixture_candidate(folder, *state))
+                .collect(),
+        }],
+    };
+
+    manager.write_fixture(&fixture).await.unwrap();
+
+    let projection = found_rows(&manager).await;
+    let standings: std::collections::BTreeMap<String, Option<PendingStanding>> = projection
+        .windows
+        .iter()
+        .flat_map(|window| &window.items)
+        .filter_map(|item| match item {
+            crate::import::ImportListItem::Candidate { row, .. } => {
+                Some((row.display_path.clone(), row.action_basis.standing.clone()))
+            }
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        standings,
+        std::collections::BTreeMap::from([
+            ("Not Looked Up".to_string(), Some(PendingStanding::NotLookedUp)),
+            (
+                "Needs You".to_string(),
+                Some(PendingStanding::NeedsYou {
+                    reason: crate::import::NeedsYouReason::NotFound
+                })
+            ),
+            ("Identified".to_string(), Some(PendingStanding::Identified)),
+            ("Unmatched".to_string(), Some(PendingStanding::Unmatched)),
+            ("Lookup Error".to_string(), Some(PendingStanding::LookupError)),
+            (
+                "Error".to_string(),
+                Some(PendingStanding::Error {
+                    failure: crate::signals::InternalFailure {
+                        detail: crate::library::FIXTURE_LOOKUP_FAILURE.to_string(),
+                    }
+                })
+            ),
+            ("Import Error".to_string(), Some(PendingStanding::ImportError)),
+        ])
+    );
+    assert_eq!(projection.summary.counts.pending, states.len() as u32);
+    assert_eq!(
+        projection
+            .summary
+            .watched_folders
+            .iter()
+            .map(|folder| folder.path.as_str())
+            .collect::<Vec<_>>(),
+        [root.as_str()]
+    );
+    let scans = manager.load_folder_scan_progress().await.unwrap();
+    assert_eq!(scans.activity, None, "no folder reads as being read");
+    assert_eq!(
+        scans
+            .statuses
+            .iter()
+            .map(|status| (status.watched_folder_path.clone(), status.status.clone()))
+            .collect::<Vec<_>>(),
+        [(root, crate::import::FolderScanStatus::Complete)]
+    );
+}
+
+/// An identified candidate leads with the release it is linked to, and a
+/// candidate whose import failed says why.
+#[tokio::test]
+async fn fixture_candidates_carry_what_their_states_name() {
+    use crate::library::FixtureCandidateState as State;
+    let (manager, temp_dir) = setup_test_manager().await;
+    let fixture = crate::library::LibraryFixture {
+        albums: Vec::new(),
+        watched_folders: vec![crate::library::FixtureWatchedFolder {
+            path: temp_dir.path().join("watched").to_string_lossy().into_owned(),
+            candidates: vec![
+                fixture_candidate("Identified Folder", State::Identified),
+                fixture_candidate("Failed Folder", State::ImportError),
+            ],
+        }],
+    };
+
+    manager.write_fixture(&fixture).await.unwrap();
+
+    let rows: Vec<crate::import::TriageRow> = found_rows(&manager)
+        .await
+        .windows
+        .into_iter()
+        .flat_map(|window| window.items)
+        .filter_map(|item| match item {
+            crate::import::ImportListItem::Candidate { row, .. } => Some(row),
+            _ => None,
+        })
+        .collect();
+    let row = |path: &str| {
+        rows.iter()
+            .find(|row| row.display_path == path)
+            .unwrap_or_else(|| panic!("{path} is listed"))
+    };
+    assert_eq!(
+        row("Identified Folder")
+            .matched
+            .as_ref()
+            .map(|matched| matched.title.as_str()),
+        Some("Identified Folder")
+    );
+    assert_eq!(
+        row("Identified Folder")
+            .metadata_summary
+            .as_ref()
+            .map(|summary| summary.album_title.as_str()),
+        Some("Identified Folder"),
+        "the row shows the draft read from the release"
+    );
+    assert_eq!(
+        row("Failed Folder").import_status,
+        Some(crate::import::TriageImportStatus::Error {
+            failure: crate::import::ImportFailureReason::Error {
+                detail: crate::library::FIXTURE_IMPORT_FAILURE.to_string()
+            }
+        })
+    );
 }

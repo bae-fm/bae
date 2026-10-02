@@ -202,7 +202,7 @@ impl CandidatePreparations {
     /// Replace the candidate's draft and its provenance as one transaction,
     /// laying the new tracks over the stored rows' audio. File decisions
     /// about the folder itself and the release link are untouched.
-    #[cfg(any(test, feature = "test-utils"))]
+    #[cfg(any(test, feature = "test-utils", debug_assertions))]
     pub async fn replace_metadata(
         &self,
         content_hash: &str,
@@ -242,7 +242,7 @@ impl CandidatePreparations {
     /// Link the candidate to `link`, or to nothing, leaving everything else
     /// as it is: the state a pick or an unlink leaves the link in, without
     /// fetching or reading any release.
-    #[cfg(any(test, feature = "test-utils"))]
+    #[cfg(any(test, feature = "test-utils", debug_assertions))]
     pub async fn replace_link(
         &self,
         content_hash: &str,

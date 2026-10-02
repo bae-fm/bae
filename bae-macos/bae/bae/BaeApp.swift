@@ -66,13 +66,6 @@ enum AppRuntime: Equatable {
         ) -> String? {
             environment["BAE_UI_TESTING_LIBRARY_FIXTURE"]
         }
-
-        /// The folder a UI test has the opened library watch.
-        static func watchedFolderForUITesting(
-            environment: [String: String]
-        ) -> String? {
-            environment["BAE_UI_TESTING_WATCH_FOLDER"]
-        }
     #endif
 }
 
@@ -735,13 +728,6 @@ extension AppDelegate {
 
     private func landOpenedService(_ service: AppService) {
         appService = service
-        #if DEBUG
-            if let folder = AppRuntime.watchedFolderForUITesting(
-                environment: baeAppProcessEnvironment
-            ) {
-                service.watchFolderForUITesting(folder)
-            }
-        #endif
         screen = .library
         service.reportScreen(.library)
         reloadLibraries()

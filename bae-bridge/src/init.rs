@@ -102,7 +102,7 @@ impl BridgeDiagnostics {
 
     /// [`Self::open_app`] with the fixture a debug UI test left at `fixture`
     /// written into the library before its services start.
-    #[cfg(debug_assertions)]
+    #[cfg(all(debug_assertions, not(any(target_os = "ios", target_os = "android"))))]
     pub(crate) fn open_app_on_fixture(
         &self,
         fixture: std::path::PathBuf,

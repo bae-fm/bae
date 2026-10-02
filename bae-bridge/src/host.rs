@@ -483,7 +483,7 @@ pub fn init_app(
 /// [`init_app`] with the library fixture a debug UI test left at
 /// `fixture_path` written into the library before its services start, so the
 /// app opens on the state the test names.
-#[cfg(debug_assertions)]
+#[cfg(all(debug_assertions, not(any(target_os = "ios", target_os = "android"))))]
 #[uniffi::export]
 pub fn init_app_on_fixture(
     library_id: String,

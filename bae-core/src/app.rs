@@ -131,7 +131,10 @@ where
 /// [`bootstrap`] with the [`crate::library::LibraryFixture`] at `fixture`
 /// written into the library before any of its services starts, so each starts
 /// on the state the fixture names: what a debug UI test opens the app on.
-#[cfg(any(test, feature = "test-utils", debug_assertions))]
+#[cfg(all(
+    any(test, feature = "test-utils", debug_assertions),
+    not(any(target_os = "ios", target_os = "android"))
+))]
 pub fn bootstrap_on_fixture<T, F>(
     fixture: std::path::PathBuf,
     app_dir: crate::config::AppDir,
@@ -162,10 +165,15 @@ where
 
 /// What the library holds as it is brought up.
 enum Opening {
-    /// What it stored.
+    /// What it stored, with every watched folder read again for what
+    /// changed on disk while it was closed.
     Stored,
     /// What it stored with the fixture at this path written over it first.
-    #[cfg(any(test, feature = "test-utils", debug_assertions))]
+    /// No watched folder is read: the fixture states what each one holds.
+    #[cfg(all(
+        any(test, feature = "test-utils", debug_assertions),
+        not(any(target_os = "ios", target_os = "android"))
+    ))]
     Fixture(std::path::PathBuf),
 }
 
@@ -356,9 +364,15 @@ where
         None
     };
 
+    // A fixture states what its watched folders hold, and nothing on disk
+    // backs it, so reading them would replace it with what is there.
+    let reads_watched_folders = matches!(opening, Opening::Stored);
     match opening {
         Opening::Stored => {}
-        #[cfg(any(test, feature = "test-utils", debug_assertions))]
+        #[cfg(all(
+            any(test, feature = "test-utils", debug_assertions),
+            not(any(target_os = "ios", target_os = "android"))
+        ))]
         Opening::Fixture(path) => timing
             .stage(&library_id, "write the fixture", || {
                 let fixture = crate::library::LibraryFixture::read(&path)?;
@@ -398,11 +412,13 @@ where
     diagnostics.event(TelemetryEvent::AppStarted {});
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    timing
-        .stage(&library_id, "request watched-folder scan", || {
-            app_services.import_scan_watched_folders()
-        })
-        .map_err(|error| BootstrapError::Database(error.to_string()))?;
+    if reads_watched_folders {
+        timing
+            .stage(&library_id, "request watched-folder scan", || {
+                app_services.import_scan_watched_folders()
+            })
+            .map_err(|error| BootstrapError::Database(error.to_string()))?;
+    }
 
     let owner = timing.stage(&library_id, "compose frontend owner", || {
         compose(app_services, runtime)

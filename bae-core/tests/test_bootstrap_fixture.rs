@@ -62,6 +62,7 @@ fn a_library_opens_holding_its_fixtures_albums() {
         "albums": [
             { "title": "Album Title", "artists": ["Artist Name"], "tracks": ["Track Title"] },
         ],
+        "watched_folders": [],
     }));
 
     let app = open(&app_dir, &library_id, fixture);
@@ -74,6 +75,45 @@ fn a_library_opens_holding_its_fixtures_albums() {
             .collect::<Vec<_>>(),
         ["Album Title"]
     );
+}
+
+/// The library opens watching the fixture's folders, with the candidates
+/// their last read found.
+#[test]
+fn a_library_opens_watching_its_fixtures_folders() {
+    let dir = TempDir::new().unwrap();
+    let music = dir.path().join("music").to_string_lossy().into_owned();
+    let (_home, app_dir, library_id, fixture) = library_with_fixture(serde_json::json!({
+        "albums": [],
+        "watched_folders": [{
+            "path": music,
+            "candidates": [
+                { "folder": "Album Folder", "tracks": ["01 Track.flac"], "state": "not_looked_up" },
+            ],
+        }],
+    }));
+
+    let app = open(&app_dir, &library_id, fixture);
+
+    let watched = app
+        .runtime
+        .block_on(app.services.import_watched_folders())
+        .unwrap();
+    assert_eq!(
+        watched
+            .iter()
+            .map(|folder| folder.path.as_str())
+            .collect::<Vec<_>>(),
+        [music.as_str()]
+    );
+    let candidate = app
+        .runtime
+        .block_on(
+            app.services
+                .import_get_candidate(&format!("{music}/Album Folder")),
+        )
+        .unwrap();
+    assert!(candidate.is_some(), "the folder's candidate is listed");
 }
 
 /// A fixture that cannot be read fails the open, naming why.

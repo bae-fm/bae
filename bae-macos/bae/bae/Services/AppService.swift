@@ -259,21 +259,6 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         var hasDisplayedErrorForTesting: Bool {
             uiStore.lastError != nil
         }
-
-        /// Watch `path` with automatic identification off, so a UI test has
-        /// import candidates and nothing is looked up for them.
-        func watchFolderForUITesting(_ path: String) {
-            Task {
-                do {
-                    try await importer.setIdentifyAutomatically(false)
-                    await importFolderEntry.take(URL(fileURLWithPath: path))?
-                        .value
-                }
-                catch {
-                    uiStore.showError(error)
-                }
-            }
-        }
     #endif
 
     /// Re-check a Discogs key that was saved while offline. App-launch half of

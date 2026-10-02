@@ -10,21 +10,32 @@ final class EditMenuSelectAllTests: XCTestCase {
     @MainActor
     func testSelectAllReachesEveryListedRowAndStillSelectsText() throws {
         let app = try launchApp(
-            watching: (0..<Self.albumCount)
-                .map { index in
-                    WatchedAlbum(
-                        folder: String(format: "Album %03d", index),
-                        tracks: ["01 Track"]
+            library: LibraryFixture(
+                watchedFolders: [
+                    LibraryFixture.WatchedFolder(
+                        name: "music",
+                        candidates: (0..<Self.albumCount)
+                            .map { index in
+                                LibraryFixture.Candidate(
+                                    folder: String(format: "Album %03d", index),
+                                    tracks: ["01 Track.flac"],
+                                    state: .notLookedUp
+                                )
+                            }
                     )
-                }
+                ]
+            )
         )
         let selectedAll = app.staticTexts["\(Self.albumCount) selected"]
 
+        let window = app.windows.firstMatch
+        XCTAssertTrue(window.waitForExistence(timeout: 20))
+        window.buttons["Import"].click()
         let list = app.outlines.firstMatch
-        // The rows are listed newest first, so wait for the first scanned and
-        // the last: then every album is in the list.
+        // The first and the last of the folder's candidates: then every one is
+        // in the list, whichever order it lists them in.
         for album in ["Album 000", "Album \(Self.albumCount - 1)"] {
-            XCTAssertTrue(list.staticTexts[album].waitForExistence(timeout: 60))
+            XCTAssertTrue(list.staticTexts[album].waitForExistence(timeout: 20))
         }
         // The top row, wherever the list's order put it.
         let topRow = list.coordinate(withNormalizedOffset: .zero)

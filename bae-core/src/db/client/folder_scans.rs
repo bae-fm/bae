@@ -326,7 +326,7 @@ impl Database {
         .await
     }
 
-    #[cfg(test)]
+    #[cfg(any(test, feature = "test-utils", debug_assertions))]
     pub async fn save_folder_scan_item(
         &self,
         watched_folder_path: &str,

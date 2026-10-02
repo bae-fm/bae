@@ -89,9 +89,15 @@ pub(crate) use release::{ImportRows, NewArtistImages};
 mod release_deletion;
 pub use release_deletion::ReleaseDeletion;
 mod release_projection;
-#[cfg(any(test, feature = "test-utils", debug_assertions))]
+#[cfg(all(
+    any(test, feature = "test-utils", debug_assertions),
+    not(any(target_os = "ios", target_os = "android"))
+))]
 mod seeded_albums;
-#[cfg(any(test, feature = "test-utils", debug_assertions))]
+#[cfg(all(
+    any(test, feature = "test-utils", debug_assertions),
+    not(any(target_os = "ios", target_os = "android"))
+))]
 pub(crate) use seeded_albums::SeededAlbum;
 #[cfg(any(test, feature = "test-utils"))]
 mod test_capabilities;

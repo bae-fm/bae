@@ -50,7 +50,7 @@ impl ReleasePayloads {
     /// A set of documents a test states whole: the release's own and
     /// whatever supporting documents it names, each admitted as a fetch
     /// admits it.
-    #[cfg(any(test, feature = "test-utils"))]
+    #[cfg(any(test, feature = "test-utils", debug_assertions))]
     pub fn for_test(release: MetadataRef, anchor: String, supporting: Vec<SourcePayload>) -> Self {
         Self {
             release,
