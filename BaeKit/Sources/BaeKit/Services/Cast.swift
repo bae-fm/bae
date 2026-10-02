@@ -17,19 +17,27 @@ public final class Cast: Sendable, Observable {
     /// discovery and ends a session in flight — core does both off the write, so
     /// the settings toggle only has to make this call.
     public let setEnabled: @Sendable (_ enabled: Bool) async throws -> Void
+    /// What a track a device can't play directly is converted to. Core reads
+    /// it as each track is loaded onto a device.
+    public let setTranscodeFormat:
+        @Sendable (_ format: BridgeCastTranscodeFormat) async throws -> Void
 
     public init(
         startDiscovery: @escaping @Sendable () -> Void = {},
         stopDiscovery: @escaping @Sendable () -> Void = {},
         castTo: @escaping @Sendable (String) async throws -> Void = { _ in },
         stopCasting: @escaping @Sendable () -> Void = {},
-        setEnabled: @escaping @Sendable (Bool) async throws -> Void = { _ in }
+        setEnabled: @escaping @Sendable (Bool) async throws -> Void = { _ in },
+        setTranscodeFormat:
+            @escaping @Sendable (BridgeCastTranscodeFormat) async throws -> Void =
+            { _ in }
     ) {
         self.startDiscovery = startDiscovery
         self.stopDiscovery = stopDiscovery
         self.castTo = castTo
         self.stopCasting = stopCasting
         self.setEnabled = setEnabled
+        self.setTranscodeFormat = setTranscodeFormat
     }
 
     public convenience init(handle: any AppHandleProtocol) {
@@ -38,7 +46,10 @@ public final class Cast: Sendable, Observable {
             stopDiscovery: { handle.stopCastDiscovery() },
             castTo: { try await handle.castTo(deviceId: $0) },
             stopCasting: { handle.stopCasting() },
-            setEnabled: { try await handle.setCastEnabled(enabled: $0) }
+            setEnabled: { try await handle.setCastEnabled(enabled: $0) },
+            setTranscodeFormat: {
+                try await handle.setCastTranscodeFormat(format: $0)
+            }
         )
     }
 

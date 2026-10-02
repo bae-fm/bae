@@ -16,10 +16,6 @@ struct SettingsView: View {
     private var sync
     @Environment(Playback.self)
     private var playback
-    @Environment(Cast.self)
-    private var cast
-    @Environment(CastStore.self)
-    private var castStore
     @Environment(\.dismiss)
     private var dismiss
 
@@ -31,9 +27,6 @@ struct SettingsView: View {
     private var confirmLeave = false
     @State
     private var showRecoveryCode = false
-    /// The device an unconfirmed "turn casting off" would disconnect from.
-    @State
-    private var pendingCastDisconnect: String?
 
     var body: some View {
         NavigationStack {
@@ -123,15 +116,7 @@ struct SettingsView: View {
                     )
                 }
 
-                Section {
-                    Toggle("Enable casting", isOn: castEnabledBinding)
-                } header: {
-                    Text("Casting")
-                } footer: {
-                    Text(
-                        "Plays to Cast and AirPlay receivers on your network. While off, bae does not look for devices."
-                    )
-                }
+                CastingSettingsSections()
 
                 // Members and the recovery code need a live sync session, not
                 // only a configured provider.
@@ -198,21 +183,6 @@ struct SettingsView: View {
             } message: {
                 Text("Your library in the cloud is untouched.")
             }
-            .alert(
-                "Turn off casting?",
-                isPresented: Binding(
-                    get: { pendingCastDisconnect != nil },
-                    set: { presented in
-                        if !presented { pendingCastDisconnect = nil }
-                    }
-                ),
-                presenting: pendingCastDisconnect
-            ) { _ in
-                Button("Turn Off", role: .destructive) { setCastEnabled(false) }
-                Button("Cancel", role: .cancel) {}
-            } message: { device in
-                Text("This will stop casting to \(device).")
-            }
             .sheet(isPresented: $showRecoveryCode) {
                 RecoveryCodeView(
                     generate: sync.generateRestoreCode,
@@ -233,6 +203,65 @@ struct SettingsView: View {
                 }
             }
             .onAppear { holder.reportScreen(.settings) }
+        }
+    }
+}
+
+/// The Casting sections: one toggle that core enforces, with a warning before
+/// turning it off would end a session, and, while casting is on, what a track
+/// a device can't play directly is converted to.
+private struct CastingSettingsSections: View {
+    @Environment(ConfigStore.self)
+    private var configStore
+    @Environment(Cast.self)
+    private var cast
+    @Environment(CastStore.self)
+    private var castStore
+
+    /// The device an unconfirmed "turn casting off" would disconnect from.
+    @State
+    private var pendingCastDisconnect: String?
+
+    var body: some View {
+        Section {
+            Toggle("Enable casting", isOn: castEnabledBinding)
+        } header: {
+            Text("Casting")
+        } footer: {
+            Text(
+                "Plays to Cast and AirPlay receivers on your network. While off, bae does not look for devices."
+            )
+        }
+        .alert(
+            "Turn off casting?",
+            isPresented: Binding(
+                get: { pendingCastDisconnect != nil },
+                set: { presented in
+                    if !presented { pendingCastDisconnect = nil }
+                }
+            ),
+            presenting: pendingCastDisconnect
+        ) { _ in
+            Button("Turn Off", role: .destructive) { setCastEnabled(false) }
+            Button("Cancel", role: .cancel) {}
+        } message: { device in
+            Text("This will stop casting to \(device).")
+        }
+
+        if CastTranscodeFormatPicker.isShown(for: configStore.config) {
+            Section {
+                CastTranscodeFormatPicker(
+                    configStore: configStore,
+                    setFormat: cast.setTranscodeFormat,
+                    showError: { @MainActor error in
+                        configStore.showError(error)
+                    }
+                )
+            } footer: {
+                Text(
+                    "Tracks a Cast device can't play directly, such as tracks from a single file + CUE, are converted while they play. WAV is lossless but takes several times the data of MP3."
+                )
+            }
         }
     }
 

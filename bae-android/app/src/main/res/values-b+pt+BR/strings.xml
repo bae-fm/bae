@@ -211,6 +211,9 @@
     <string name="settings_casting">Transmissão</string>
     <string name="settings_enable_casting">Ativar a transmissão</string>
     <string name="settings_casting_help">Reproduz em receptores Cast, AirPlay e UPnP da sua rede. Quando está desativado, o bae não procura dispositivos.</string>
+    <string name="settings_cast_transcode_format">Converter para</string>
+    <string name="settings_cast_transcode_wav">WAV (sem perdas)</string>
+    <string name="settings_cast_transcode_help">Faixas que um dispositivo Cast ou UPnP não consegue reproduzir diretamente, como as de um arquivo único + CUE, são convertidas durante a reprodução. WAV é sem perdas, mas ocupa várias vezes os dados de um MP3. Dispositivos UPnP sempre recebem MP3, pois não são obrigados a reproduzir WAV.</string>
     <string name="appearance_title">Aparência</string>
     <string name="appearance_mode">Modo</string>
     <string name="appearance_system">Sistema</string>

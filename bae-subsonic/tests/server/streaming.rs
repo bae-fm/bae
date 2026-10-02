@@ -97,6 +97,66 @@ async fn stream_raw_serves_a_cue_track_as_its_own_pcm() {
     );
 }
 
+/// `format=wav` — what a Cast device set to lossless conversion fetches — is
+/// the track's stream as uncompressed PCM at its stored depth: a WAV whose
+/// RIFF and data sizes say "unknown" (the length isn't known until the encode
+/// ends, so nothing claims one), whose `fmt ` chunk matches the song, and whose
+/// data is exactly the stored file's decoded samples, every frame of them.
+#[tokio::test(flavor = "multi_thread")]
+async fn stream_wav_is_the_tracks_pcm_in_an_unsized_wav() {
+    let lib = seed_library().await;
+    let router = bae_subsonic::router(lib.services.clone(), credential());
+    let song_id = first_song_id(&router, &lib.per_track_release).await;
+
+    let served = call(
+        &router,
+        "stream",
+        &authed(&format!("id={song_id}&format=wav")),
+    )
+    .await;
+    assert_eq!(served.status, StatusCode::OK);
+    assert_eq!(served.content_type, "audio/wav");
+    assert!(served.content_length.is_none(), "no length is claimed");
+    let wav = bae_core::audio_codec::parse_streamed_wav(&served.body).expect("a WAV stream");
+    assert_eq!(wav.riff_size, u32::MAX, "RIFF size: unknown");
+    assert_eq!(wav.data_size, u32::MAX, "data size: unknown");
+    assert_eq!(&served.body[36..40], b"data", "data follows fmt directly");
+
+    let song = call(&router, "getSong", &authed(&format!("f=json&id={song_id}"))).await;
+    let song = &song.sub()["song"];
+    assert_eq!(
+        i64::from(wav.channels),
+        song["channelCount"].as_i64().unwrap()
+    );
+    assert_eq!(
+        i64::from(wav.sample_rate),
+        song["samplingRate"].as_i64().unwrap()
+    );
+    assert_eq!(
+        i64::from(wav.bits_per_sample),
+        song["bitDepth"].as_i64().unwrap()
+    );
+
+    let raw = call(
+        &router,
+        "stream",
+        &authed(&format!("id={song_id}&format=raw")),
+    )
+    .await;
+    let stored = decode_bytes(&raw.body);
+    let expected: Vec<u8> = stored
+        .samples
+        .iter()
+        .flat_map(|&sample| ((sample >> 16) as i16).to_le_bytes())
+        .collect();
+    assert_eq!(
+        wav.data.len(),
+        expected.len(),
+        "the data holds every frame of the track, and nothing else"
+    );
+    assert!(wav.data == expected, "the data is the track's own samples");
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn stream_transcode_mp3_is_chunked_and_decodes() {
     let lib = seed_library().await;

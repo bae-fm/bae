@@ -212,6 +212,9 @@
     <string name="settings_casting">Emitiranje</string>
     <string name="settings_enable_casting">Omogući emitiranje</string>
     <string name="settings_casting_help">Reproducira na Cast, AirPlay i UPnP prijamnicima na vašoj mreži. Dok je isključeno, bae ne traži uređaje.</string>
+    <string name="settings_cast_transcode_format">Pretvori u</string>
+    <string name="settings_cast_transcode_wav">WAV (bez gubitaka)</string>
+    <string name="settings_cast_transcode_help">Pjesme koje uređaj Cast ili UPnP ne može reproducirati izravno, poput pjesama iz jedne datoteke + CUE, pretvaraju se tijekom reprodukcije. WAV je bez gubitaka, ali zauzima višestruko više podataka od MP3-a. UPnP uređaji uvijek dobivaju MP3 jer ne moraju reproducirati WAV.</string>
     <string name="appearance_title">Izgled</string>
     <string name="appearance_mode">Način</string>
     <string name="appearance_system">Sustav</string>

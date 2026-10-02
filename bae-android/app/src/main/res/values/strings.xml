@@ -261,6 +261,9 @@
     <string name="settings_casting">Casting</string>
     <string name="settings_enable_casting">Enable casting</string>
     <string name="settings_casting_help">Plays to Cast, AirPlay, and UPnP receivers on your network. While off, bae does not look for devices.</string>
+    <string name="settings_cast_transcode_format">Convert to</string>
+    <string name="settings_cast_transcode_wav">WAV (lossless)</string>
+    <string name="settings_cast_transcode_help">Tracks a Cast or UPnP device can\'t play directly, such as tracks from a single file + CUE, are converted while they play. WAV is lossless but takes several times the data of MP3. UPnP devices always get MP3, since they aren\'t required to play WAV.</string>
     <string name="appearance_title">Appearance</string>
     <string name="appearance_mode">Mode</string>
     <string name="appearance_system">System</string>

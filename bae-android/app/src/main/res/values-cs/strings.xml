@@ -214,6 +214,9 @@
     <string name="settings_casting">Odesílání</string>
     <string name="settings_enable_casting">Povolit odesílání</string>
     <string name="settings_casting_help">Přehrává na přijímače Cast, AirPlay a UPnP ve vaší síti. Když je vypnuto, bae žádná zařízení nehledá.</string>
+    <string name="settings_cast_transcode_format">Převádět do</string>
+    <string name="settings_cast_transcode_wav">WAV (bezeztrátový)</string>
+    <string name="settings_cast_transcode_help">Skladby, které zařízení Cast nebo UPnP nedokáže přehrát přímo, například skladby z jednoho souboru + CUE, se převádějí během přehrávání. WAV je bezeztrátový, ale zabírá několikanásobek dat oproti MP3. Zařízení UPnP vždy dostanou MP3, protože WAV přehrávat nemusejí.</string>
     <string name="appearance_title">Vzhled</string>
     <string name="appearance_mode">Režim</string>
     <string name="appearance_system">Podle systému</string>

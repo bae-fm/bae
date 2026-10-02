@@ -376,4 +376,5 @@ include!("tests/buffers_and_loading.rs");
 include!("tests/starvation_and_start.rs");
 include!("tests/queue_and_diagnostics.rs");
 include!("tests/remote_output.rs");
+include!("tests/remote_serving.rs");
 include!("tests/side_pause_countdown.rs");

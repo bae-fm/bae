@@ -268,6 +268,7 @@ impl AppServices {
     delegate_async!(manager, set_subsonic_password => set_subsonic_password(password: String) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, set_subsonic_config => set_subsonic_config(config: crate::config::SubsonicConfig) -> Result<(), crate::config::ConfigError>);
     delegate_async!(manager, set_cast_enabled => set_cast_enabled(enabled: bool) -> Result<(), crate::config::ConfigError>);
+    delegate_async!(manager, set_cast_transcode_format => set_cast_transcode_format(format: crate::config::CastTranscodeFormat) -> Result<(), crate::config::ConfigError>);
     delegate_sync!(manager, cloud_home_key_state => cloud_home_key_state() -> Result<coven::CloudHomeKeyState, crate::library::LibraryError>);
     delegate_async!(manager, set_max_concurrent_uploads => set_max_concurrent_uploads(n: u32) -> Result<(), crate::config::ConfigError>);
     delegate_async!(manager, set_max_concurrent_downloads => set_max_concurrent_downloads(n: u32) -> Result<(), crate::config::ConfigError>);

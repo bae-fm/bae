@@ -6,7 +6,7 @@
 //! audio over HTTP and is driven by transport commands — so everything but the
 //! wire is shared here: the command [`channel`] trait, the [`session`] that
 //! drives one connected device from its own thread, the served-[`mod@format`]
-//! gate, the [`media_source`] the device fetches each track through, and the
+//! decision, the [`media_source`] the device fetches each track through, and the
 //! merged [`device`] list.
 //!
 //! This is decoupled from both the audio URL source (the caller injects one) and
@@ -33,12 +33,8 @@ pub use device::{RendererConnection, RendererDevice, RendererKind};
 pub use discovery::{
     RendererDiscovery, RendererServiceType, ReportedRenderer, RENDERER_SERVICE_TYPES,
 };
-pub use format::{
-    cast_stream_format, dlna_stream_format, RendererStreamFormat, TRANSCODE_BITRATE_KBPS,
-};
-pub use media_source::{
-    CoverUrlProvider, MediaUrlProvider, RendererMediaSource, ServedTrack, StreamFormatFn,
-};
+pub use format::{RendererFlavor, RendererStreamFormat, TRANSCODE_BITRATE_KBPS};
+pub use media_source::{CoverUrlProvider, MediaUrlProvider, RendererMediaSource, ServedTrack};
 pub use session::{RendererSession, RendererSessionStatus, StatusCallback};
 
 #[cfg(test)]

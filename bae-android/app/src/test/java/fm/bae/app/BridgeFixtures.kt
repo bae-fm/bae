@@ -5,6 +5,7 @@ import uniffi.bae_bridge.BridgeAlbumDetail
 import uniffi.bae_bridge.BridgeAlbumSearchResult
 import uniffi.bae_bridge.BridgeArtistSummary
 import uniffi.bae_bridge.BridgeCastDevice
+import uniffi.bae_bridge.BridgeCastTranscodeFormat
 import uniffi.bae_bridge.BridgeCatalog
 import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeConfig
@@ -328,6 +329,7 @@ object BridgeFixtures {
             defaultTrackSavePreset = "flac",
             defaultReleaseSavePreset = "flac",
             castEnabled = false,
+            castTranscodeFormat = BridgeCastTranscodeFormat.MP3,
             mcp = BridgeMcpConfig(enabled = false, port = 47777u),
             discogsTokenStatus = BridgeDiscogsTokenStatus.NOT_CONFIGURED,
             discogsUsable = false,

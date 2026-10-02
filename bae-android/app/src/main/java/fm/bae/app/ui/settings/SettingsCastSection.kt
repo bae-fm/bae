@@ -1,11 +1,14 @@
 package fm.bae.app.ui.settings
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -33,6 +36,7 @@ import fm.bae.app.ui.components.Eyebrow
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import uniffi.bae_bridge.BridgeCastTranscodeFormat
 import uniffi.bae_bridge.BridgeConfig
 
 private val logger = BaeLogger("bae.SettingsCastSection")
@@ -61,7 +65,10 @@ fun castToggleAction(
         CastToggleAction.Apply(enabled)
     }
 
-/** The Casting settings section: one toggle for the whole feature, which core enforces. */
+/**
+ * The Casting settings section: one toggle for the whole feature, which core enforces, and, while casting
+ * is on, what a track a device can't play directly is converted to.
+ */
 @Composable
 internal fun SettingsCastSection(
     session: OpenLibrary,
@@ -72,6 +79,19 @@ internal fun SettingsCastSection(
     val scope = rememberCoroutineScope()
     val status by session.castStore.status.collectAsState()
     var pendingDisconnect by remember { mutableStateOf<String?>(null) }
+
+    fun setTranscodeFormat(format: BridgeCastTranscodeFormat) {
+        scope.launch {
+            performBridgeAction(
+                logger = logger,
+                operation = "update cast conversion format",
+                errors = LocaleErrorLines(context),
+                showError = session.configStore::showError,
+            ) {
+                withContext(ioDispatcher) { session.cast.setTranscodeFormat(format) }
+            }
+        }
+    }
 
     fun setEnabled(enabled: Boolean) {
         scope.launch {
@@ -113,8 +133,58 @@ internal fun SettingsCastSection(
             style = ThemeText.detail.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        if (config.castEnabled) {
+            CastTranscodeFormatPicker(
+                selected = config.castTranscodeFormat,
+                onSelect = ::setTranscodeFormat,
+            )
+            Text(
+                text = stringResource(R.string.settings_cast_transcode_help),
+                style = ThemeText.detail.style,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
+
+/** What a track a device can't play directly is converted to; core applies it per device flavor. */
+@Composable
+private fun CastTranscodeFormatPicker(
+    selected: BridgeCastTranscodeFormat,
+    onSelect: (BridgeCastTranscodeFormat) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = stringResource(R.string.settings_cast_transcode_format),
+            modifier = Modifier.weight(1f),
+        )
+        Box {
+            TextButton(onClick = { expanded = true }) {
+                Text(castTranscodeFormatLabel(selected))
+            }
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                BridgeCastTranscodeFormat.entries.forEach { choice ->
+                    DropdownMenuItem(
+                        text = { Text(castTranscodeFormatLabel(choice)) },
+                        onClick = {
+                            expanded = false
+                            onSelect(choice)
+                        },
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** A conversion choice as the picker shows it. "MP3" is the format's name, the same in every language. */
+@Composable
+private fun castTranscodeFormatLabel(format: BridgeCastTranscodeFormat): String =
+    when (format) {
+        BridgeCastTranscodeFormat.MP3 -> "MP3"
+        BridgeCastTranscodeFormat.WAV -> stringResource(R.string.settings_cast_transcode_wav)
+    }
 
 /** The casting toggle; the config subscription moves the switch, so a refused flip leaves it in place. */
 @Composable

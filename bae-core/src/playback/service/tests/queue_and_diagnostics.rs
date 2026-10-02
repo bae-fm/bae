@@ -795,6 +795,4 @@ async fn corrupt_resume_row_ships_resume_cache_corrupt_anomaly() {
 
 // -- renderer seam: remote playback -------------------------------------------
 
-use crate::renderer::{
-    cast_stream_format, RendererPlayerState, RendererSessionStatus,
-};
+use crate::renderer::{RendererFlavor, RendererPlayerState, RendererSessionStatus};

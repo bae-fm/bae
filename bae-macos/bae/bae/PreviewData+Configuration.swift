@@ -100,6 +100,7 @@
                         defaultTrackSavePreset: "flac",
                         defaultReleaseSavePreset: "flac",
                         castEnabled: castEnabled,
+                        castTranscodeFormat: .mp3,
                         mcp: BridgeMcpConfig(enabled: false, port: 47777),
                         subsonic: BridgeSubsonicConfig(
                             enabled: false,

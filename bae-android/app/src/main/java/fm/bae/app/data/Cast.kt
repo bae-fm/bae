@@ -3,6 +3,7 @@ package fm.bae.app.data
 import android.content.Context
 import android.net.wifi.WifiManager
 import uniffi.bae_bridge.AppHandle
+import uniffi.bae_bridge.BridgeCastTranscodeFormat
 
 /**
  * Cast transport: browse for devices, and move playback to or from one. Reads
@@ -50,4 +51,7 @@ class Cast(
      * the settings toggle only has to make this call.
      */
     suspend fun setEnabled(enabled: Boolean) = appHandle.setCastEnabled(enabled)
+
+    /** What a track a device can't play directly is converted to; core reads it as each track loads. */
+    suspend fun setTranscodeFormat(format: BridgeCastTranscodeFormat) = appHandle.setCastTranscodeFormat(format)
 }

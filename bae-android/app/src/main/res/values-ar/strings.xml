@@ -218,6 +218,9 @@
     <string name="settings_casting">الإرسال</string>
     <string name="settings_enable_casting">تفعيل الإرسال</string>
     <string name="settings_casting_help">يشغّل الصوت على أجهزة استقبال Cast وAirPlay وUPnP على شبكتك. عند إيقافه، لا يبحث bae عن أي أجهزة.</string>
+    <string name="settings_cast_transcode_format">التحويل إلى</string>
+    <string name="settings_cast_transcode_wav">WAV (بدون فقدان)</string>
+    <string name="settings_cast_transcode_help">المقاطع التي لا يستطيع جهاز Cast أو UPnP تشغيلها مباشرةً، مثل مقاطع ملف واحد + CUE، تُحوَّل أثناء تشغيلها. WAV بلا فقدان، لكنه يستهلك أضعاف بيانات MP3. تتلقى أجهزة UPnP دائمًا MP3، لأنها غير مُلزَمة بتشغيل WAV.</string>
     <string name="appearance_title">المظهر</string>
     <string name="appearance_mode">الوضع</string>
     <string name="appearance_system">النظام</string>

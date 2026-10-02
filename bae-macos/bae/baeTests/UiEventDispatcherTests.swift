@@ -202,6 +202,7 @@ private func makeAppService(handle: FakeAppHandle = FakeAppHandle())
             defaultTrackSavePreset: "flac",
             defaultReleaseSavePreset: "flac",
             castEnabled: false,
+            castTranscodeFormat: .mp3,
             mcp: BridgeMcpConfig(enabled: false, port: 47777),
             subsonic: BridgeSubsonicConfig(
                 enabled: false,

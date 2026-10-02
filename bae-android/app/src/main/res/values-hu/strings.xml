@@ -209,6 +209,9 @@
     <string name="settings_casting">Átküldés</string>
     <string name="settings_enable_casting">Átküldés bekapcsolása</string>
     <string name="settings_casting_help">A hálózatodon lévő Cast-, AirPlay- és UPnP-vevőkre játszik. Kikapcsolva a bae nem keres eszközöket.</string>
+    <string name="settings_cast_transcode_format">Átalakítási formátum</string>
+    <string name="settings_cast_transcode_wav">WAV (veszteségmentes)</string>
+    <string name="settings_cast_transcode_help">Azokat a számokat, amelyeket egy Cast- vagy UPnP-eszköz nem tud közvetlenül lejátszani – például egy fájl + CUE számait –, a bae lejátszás közben átalakítja. A WAV veszteségmentes, de az MP3 adatmennyiségének többszörösét foglalja. Az UPnP-eszközök mindig MP3-at kapnak, mert nem kötelesek lejátszani a WAV-ot.</string>
     <string name="appearance_title">Megjelenés</string>
     <string name="appearance_mode">Mód</string>
     <string name="appearance_system">Rendszer</string>

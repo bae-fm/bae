@@ -210,6 +210,9 @@
     <string name="settings_casting">Casten</string>
     <string name="settings_enable_casting">Casten inschakelen</string>
     <string name="settings_casting_help">Speelt af op Cast-, AirPlay- en UPnP-ontvangers in je netwerk. Als dit uit staat, zoekt bae niet naar apparaten.</string>
+    <string name="settings_cast_transcode_format">Omzetten naar</string>
+    <string name="settings_cast_transcode_wav">WAV (verliesvrij)</string>
+    <string name="settings_cast_transcode_help">Nummers die een Cast- of UPnP-apparaat niet direct kan afspelen, zoals nummers uit één bestand + CUE, worden tijdens het afspelen omgezet. WAV is verliesvrij, maar kost een veelvoud van de data van MP3. UPnP-apparaten krijgen altijd MP3, omdat ze WAV niet hoeven af te spelen.</string>
     <string name="appearance_title">Weergave</string>
     <string name="appearance_mode">Modus</string>
     <string name="appearance_system">Systeem</string>

@@ -13,6 +13,15 @@ forward! {
         fn set_cast_enabled(enabled: bool) -> () {
             Ok(this.services.set_cast_enabled(enabled).await?)
         }
+
+        /// What a track a Cast or UPnP device can't be served as stored is
+        /// converted to. Applies from the next track loaded onto the device.
+        fn set_cast_transcode_format(format: crate::types::BridgeCastTranscodeFormat) -> () {
+            Ok(this
+                .services
+                .set_cast_transcode_format(format.into_core())
+                .await?)
+        }
     }
 }
 

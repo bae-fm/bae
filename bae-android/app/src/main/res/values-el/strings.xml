@@ -209,6 +209,9 @@
     <string name="settings_casting">Μετάδοση</string>
     <string name="settings_enable_casting">Ενεργοποίηση μετάδοσης</string>
     <string name="settings_casting_help">Αναπαράγει σε δέκτες Cast, AirPlay και UPnP στο δίκτυό σας. Όταν είναι ανενεργό, το bae δεν αναζητά συσκευές.</string>
+    <string name="settings_cast_transcode_format">Μετατροπή σε</string>
+    <string name="settings_cast_transcode_wav">WAV (χωρίς απώλειες)</string>
+    <string name="settings_cast_transcode_help">Τα κομμάτια που μια συσκευή Cast ή UPnP δεν μπορεί να αναπαραγάγει απευθείας, όπως κομμάτια από ένα αρχείο + CUE, μετατρέπονται κατά την αναπαραγωγή. Το WAV είναι χωρίς απώλειες, αλλά καταλαμβάνει πολλαπλάσια δεδομένα από το MP3. Οι συσκευές UPnP λαμβάνουν πάντα MP3, καθώς δεν υποχρεούνται να αναπαράγουν WAV.</string>
     <string name="appearance_title">Εμφάνιση</string>
     <string name="appearance_mode">Λειτουργία</string>
     <string name="appearance_system">Σύστημα</string>

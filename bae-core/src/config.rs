@@ -114,6 +114,20 @@ pub enum ReplayGainMode {
     Album,
 }
 
+/// What bae converts a track to for a Cast or UPnP device that cannot be
+/// served the track as stored: a window of a CUE image, a track whose pregap
+/// lives in another file or is generated, or a codec the device doesn't
+/// decode. A device flavor that doesn't take WAV gets MP3 whatever this says
+/// (see `RendererFlavor::stream_format`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum CastTranscodeFormat {
+    /// MP3 at 320 kbps.
+    Mp3,
+    /// Uncompressed PCM at the depth the track was stored at: lossless, and
+    /// several times the data of MP3.
+    Wav,
+}
+
 /// How long a side or disc pause waits before the next side starts on its
 /// own — exactly the choices the settings offer. `Off` waits for Play.
 ///
@@ -360,6 +374,9 @@ pub struct Preferences {
     /// off this machine, so it stays off until the user asks for it. While off,
     /// no discovery runs and no cast session can be started.
     pub cast_enabled: bool,
+    /// What a track a Cast or UPnP device can't be served as stored is
+    /// converted to. Defaults to `Mp3`.
+    pub cast_transcode_format: CastTranscodeFormat,
     /// Local automation server configuration. The bearer token is keyring-only.
     pub mcp: McpConfig,
     /// Subsonic/OpenSubsonic server settings (`enabled`, `port`, `username`).
@@ -386,6 +403,7 @@ impl Default for Preferences {
             import_storage: ImportStoragePreferences::default(),
             identification: IdentificationPreferences::default(),
             cast_enabled: false,
+            cast_transcode_format: CastTranscodeFormat::Mp3,
             mcp: McpConfig::disabled_default(),
             subsonic: SubsonicConfig::disabled_default(),
         }

@@ -50,6 +50,10 @@ pub struct BridgeConfig {
     /// turns it on; while off, core runs no discovery and refuses to start a
     /// session, and the UI hides its Cast control.
     pub cast_enabled: bool,
+    /// What a track a Cast or UPnP device can't be served as stored is
+    /// converted to. A UPnP device gets MP3 whatever this says; the setting's
+    /// help says so.
+    pub cast_transcode_format: BridgeCastTranscodeFormat,
     pub mcp: BridgeMcpConfig,
     pub subsonic: BridgeSubsonicConfig,
     pub discogs_token_status: BridgeDiscogsTokenStatus,
@@ -82,6 +86,23 @@ mirror_enum! {
     from_core: pub(crate) fn,
     into_core: pub(crate) fn,
     variants: { Off, Seconds5, Seconds15, Seconds30, Seconds45, Seconds60 },
+}
+
+/// What bae converts a track to for a Cast or UPnP device that can't be
+/// served it as stored — exactly the choices Settings offer.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeCastTranscodeFormat {
+    /// MP3 at 320 kbps.
+    Mp3,
+    /// Uncompressed PCM at the track's stored depth: lossless.
+    Wav,
+}
+
+mirror_enum! {
+    BridgeCastTranscodeFormat = bae_core::config::CastTranscodeFormat,
+    from_core: pub(crate) fn,
+    into_core: pub(crate) fn,
+    variants: { Mp3, Wav },
 }
 
 /// The import storage choice. Mirrors `bae_core::config::ImportStoragePreferences`.

@@ -88,7 +88,7 @@ async fn stream_inner(
             )),
         }
     } else {
-        let format = transcode_format(requested_format, max_bitrate);
+        let format = transcode_format(&audio, requested_format, max_bitrate);
         let estimated_length = params
             .bool_or("estimateContentLength", false)
             .then(|| estimated_length(&audio, format))
@@ -226,14 +226,18 @@ fn stream_encoded(
         .expect("transcode response builds")
 }
 
-/// The transcode for the requested format and bitrate. An unknown or absent
-/// format defaults to MP3 at 128 kbps — the Subsonic default transcode.
+/// The transcode for the requested format and bitrate. `wav` is the track's
+/// stream uncompressed, at its stored depth (what a Cast device set to
+/// lossless conversion asks for); an unknown or absent format defaults to MP3
+/// at 128 kbps — the Subsonic default transcode.
 fn transcode_format(
+    audio: &ResolvedTrackAudio,
     requested_format: Option<&str>,
     max_bitrate: Option<i64>,
 ) -> StreamEncodeFormat {
     let bitrate = max_bitrate.filter(|&b| b > 0).unwrap_or(128) as u32;
     match requested_format {
+        Some("wav") => audio.wav_stream_format(),
         Some("opus") | Some("ogg") => StreamEncodeFormat::OpusOgg {
             bitrate_kbps: bitrate.clamp(32, 512),
         },

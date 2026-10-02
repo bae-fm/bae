@@ -306,6 +306,7 @@ fn preferences_require_every_field() {
         "import_storage",
         "identification",
         "cast_enabled",
+        "cast_transcode_format",
         "mcp",
         "subsonic",
     ] {
@@ -373,6 +374,7 @@ identification:
     musicbrainz: true
     discogs: true
 cast_enabled: false
+cast_transcode_format: Mp3
 mcp:
   enabled: false
   port: 47777
@@ -400,6 +402,23 @@ fn cast_is_off_by_default_and_survives_yaml_roundtrip() {
     config.save_preferences().unwrap();
 
     assert!(read_preferences(tmp.path()).unwrap().cast_enabled);
+}
+
+/// What a device is sent when a track must be converted is MP3 until the
+/// person picks WAV, and the pick survives a write/read of preferences.yaml.
+#[test]
+fn cast_transcode_format_is_mp3_by_default_and_survives_yaml_roundtrip() {
+    let tmp = TempDir::new().unwrap();
+    let mut config = make_test_config("lib-cast-format", tmp.path().to_path_buf());
+    assert_eq!(config.prefs.cast_transcode_format, CastTranscodeFormat::Mp3);
+
+    config.prefs.cast_transcode_format = CastTranscodeFormat::Wav;
+    config.save_preferences().unwrap();
+
+    assert_eq!(
+        read_preferences(tmp.path()).unwrap().cast_transcode_format,
+        CastTranscodeFormat::Wav
+    );
 }
 
 /// A config that is genuinely unreadable is SHOWN as broken, not skipped. The

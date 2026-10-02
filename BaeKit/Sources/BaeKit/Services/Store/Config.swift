@@ -61,6 +61,9 @@ public struct Config: Equatable {
     /// while off it runs no discovery and refuses to start a session — so the
     /// playback bar reads this only to decide whether to show its Cast control.
     public let castEnabled: Bool
+    /// What a track a Cast or UPnP device can't play directly is converted
+    /// to. Core applies it per device flavor, from the next track loaded.
+    public let castTranscodeFormat: BridgeCastTranscodeFormat
     public let mcp: BridgeMcpConfig
     public let subsonic: BridgeSubsonicConfig
 
@@ -87,6 +90,7 @@ public struct Config: Equatable {
         defaultTrackSavePreset = bridge.defaultTrackSavePreset
         defaultReleaseSavePreset = bridge.defaultReleaseSavePreset
         castEnabled = bridge.castEnabled
+        castTranscodeFormat = bridge.castTranscodeFormat
         mcp = bridge.mcp
         subsonic = bridge.subsonic
     }

@@ -208,6 +208,9 @@
     <string name="settings_casting">投放</string>
     <string name="settings_enable_casting">启用投放</string>
     <string name="settings_casting_help">在你网络中的 Cast、AirPlay 和 UPnP 接收设备上播放。关闭时，bae 不会搜索设备。</string>
+    <string name="settings_cast_transcode_format">转换格式</string>
+    <string name="settings_cast_transcode_wav">WAV（无损）</string>
+    <string name="settings_cast_transcode_help">Cast 或 UPnP 设备无法直接播放的曲目（例如单个文件 + CUE 中的曲目）会在播放时转换。WAV 无损，但数据量是 MP3 的数倍。UPnP 设备不一定支持 WAV，因此始终接收 MP3。</string>
     <string name="appearance_title">外观</string>
     <string name="appearance_mode">模式</string>
     <string name="appearance_system">跟随系统</string>

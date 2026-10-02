@@ -25,10 +25,9 @@ use bae_core::library::AppServices;
 use bae_core::playback::airplay_output::{AirPlaySink, Ap2Sink, RaopSink};
 use bae_core::playback::{PlaybackProgress, RemoteDevice};
 use bae_core::renderer::{
-    cast_stream_format, dlna_stream_format, CoverUrlProvider, MediaUrlProvider, RendererChannel,
-    RendererConnection, RendererDevice, RendererDiscovery, RendererMediaSource,
-    RendererServiceType, RendererStreamFormat, ReportedRenderer, StreamFormatFn,
-    TRANSCODE_BITRATE_KBPS,
+    CoverUrlProvider, MediaUrlProvider, RendererChannel, RendererConnection, RendererDevice,
+    RendererDiscovery, RendererFlavor, RendererMediaSource, RendererServiceType,
+    RendererStreamFormat, ReportedRenderer, TRANSCODE_BITRATE_KBPS,
 };
 use md5::{Digest, Md5};
 use rand::RngCore;
@@ -368,13 +367,12 @@ impl CastController {
         self.start_fetch_renderer(device).await
     }
 
-    /// Build the control channel for a device, and the stream-format gate its
-    /// flavor uses. Cast connects over the network (run off the runtime so it
+    /// Build the control channel for a device, and name its flavor, which
+    /// decides what it is served. Cast connects over the network (run off the runtime so it
     /// never stalls a runtime thread); UPnP has no handshake — each SOAP action
     /// is its own request.
     async fn start_fetch_renderer(&self, device: RendererDevice) -> Result<(), CastError> {
-        let (channel, stream_format): (Box<dyn RendererChannel>, StreamFormatFn) = match &device
-            .connection
+        let (channel, flavor): (Box<dyn RendererChannel>, RendererFlavor) = match &device.connection
         {
             RendererConnection::Cast { addr, port } => {
                 let (addr, port) = (*addr, *port);
@@ -383,7 +381,7 @@ impl CastController {
                         .await
                         .map_err(|e| CastError::Connect(format!("connect task failed: {e}")))?
                         .map_err(|e| CastError::Connect(e.to_string()))?;
-                (Box::new(channel), cast_stream_format)
+                (Box::new(channel), RendererFlavor::Cast)
             }
             RendererConnection::Dlna {
                 av_transport_url,
@@ -392,7 +390,7 @@ impl CastController {
                 let channel =
                     DlnaChannel::connect(av_transport_url.clone(), rendering_control_url.clone())
                         .map_err(|e| CastError::Connect(e.to_string()))?;
-                (Box::new(channel), dlna_stream_format)
+                (Box::new(channel), RendererFlavor::Dlna)
             }
             // AirPlay is handled in `cast_to` before it reaches here — it has no
             // fetch-a-URL channel.
@@ -421,7 +419,7 @@ impl CastController {
                 id: device.id,
                 name: device.name,
             },
-            RendererMediaSource::new(stream_provider, cover_provider, stream_format),
+            RendererMediaSource::new(stream_provider, cover_provider, flavor),
         );
         Ok(())
     }
@@ -458,6 +456,7 @@ fn stream_url_provider(base_url: String, credential: SubsonicCredential) -> Medi
             RendererStreamFormat::TranscodeMp3 => {
                 url.push_str(&format!("&format=mp3&maxBitRate={TRANSCODE_BITRATE_KBPS}"));
             }
+            RendererStreamFormat::TranscodeWav => url.push_str("&format=wav"),
         }
         Ok(url)
     })
@@ -672,9 +671,9 @@ mod tests {
         });
     }
 
-    /// A raw serve carries `format=raw`; a transcode carries
-    /// `format=mp3&maxBitRate=320`. Both name the track as a `tr-` Subsonic id
-    /// and carry the auth triplet.
+    /// A raw serve carries `format=raw`; an MP3 conversion carries
+    /// `format=mp3&maxBitRate=320`, a WAV one `format=wav`. Each names the
+    /// track as a `tr-` Subsonic id and carries the auth triplet.
     #[test]
     fn stream_url_encodes_format_and_track() {
         let provider = stream_url_provider("http://10.0.0.5:9000".to_string(), credential());
@@ -691,6 +690,10 @@ mod tests {
             transcoded.contains("&format=mp3&maxBitRate=320"),
             "{transcoded}"
         );
+
+        let wav = provider("track-3", RendererStreamFormat::TranscodeWav).unwrap();
+        assert!(wav.contains("id=tr-track-3&"), "{wav}");
+        assert!(wav.ends_with("&format=wav"), "{wav}");
     }
 
     /// The token in a minted URL is `md5(password + salt)` over the URL's own

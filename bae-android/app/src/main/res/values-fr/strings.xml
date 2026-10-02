@@ -211,6 +211,9 @@
     <string name="settings_casting">Diffusion</string>
     <string name="settings_enable_casting">Activer la diffusion</string>
     <string name="settings_casting_help">Lit sur les récepteurs Cast, AirPlay et UPnP de votre réseau. Désactivé, bae ne recherche aucun appareil.</string>
+    <string name="settings_cast_transcode_format">Convertir en</string>
+    <string name="settings_cast_transcode_wav">WAV (sans perte)</string>
+    <string name="settings_cast_transcode_help">Les pistes qu\'un appareil Cast ou UPnP ne peut pas lire directement, comme celles d\'un fichier unique + CUE, sont converties pendant la lecture. Le WAV est sans perte, mais pèse plusieurs fois plus lourd que le MP3. Les appareils UPnP reçoivent toujours du MP3, car ils ne sont pas tenus de lire le WAV.</string>
     <string name="appearance_title">Apparence</string>
     <string name="appearance_mode">Mode</string>
     <string name="appearance_system">Système</string>

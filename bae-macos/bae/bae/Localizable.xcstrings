@@ -45920,6 +45920,527 @@
         }
       }
     },
+    "Convert to" : {
+      "comment" : "Casting settings: picker choosing what bae converts a track to when a Cast or UPnP device can't play it directly (MP3, WAV)",
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "التحويل إلى"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Преобразуване в"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Převádět do"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Konvertér til"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Convert to"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Umwandeln in"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Μετατροπή σε"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Convertir a"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Muunna muotoon"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Convertir en"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "פורמט ההמרה"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pretvori u"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Átalakítási formátum"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Converti in"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "変換形式"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "변환 형식"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Konverter til"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Omzetten naar"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Format konwersji"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Converter para"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Converter para"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Convertește în"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Konvertovať do"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Konvertera till"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dönüştürme biçimi"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Формат перетворення"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "转换格式"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "轉換格式"
+          }
+        }
+      }
+    },
+    "WAV (lossless)" : {
+      "comment" : "Casting settings: the lossless choice in the conversion picker; WAV is the format name",
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "WAV (بدون فقدان)"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "WAV (без загуби)"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "WAV (bezeztrátový)"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "WAV (tabsfri)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "WAV (lossless)"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "WAV (verlustfrei)"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "WAV (χωρίς απώλειες)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "WAV (sin pérdida)"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "WAV (häviötön)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "WAV (sans perte)"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "WAV (ללא אובדן)"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "WAV (bez gubitaka)"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "WAV (veszteségmentes)"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "WAV (senza perdita)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "WAV（ロスレス）"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "WAV(무손실)"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "WAV (tapsfri)"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "WAV (verliesvrij)"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "WAV (bezstratny)"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "WAV (sem perdas)"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "WAV (sem perdas)"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "WAV (fără pierderi)"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "WAV (bezstratový)"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "WAV (förlustfri)"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "WAV (kayıpsız)"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "WAV (без втрат)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "WAV（无损）"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "WAV（無損）"
+          }
+        }
+      }
+    },
+    "Tracks a Cast or UPnP device can't play directly, such as tracks from a single file + CUE, are converted while they play. WAV is lossless but takes several times the data of MP3. UPnP devices always get MP3, since they aren't required to play WAV." : {
+      "comment" : "Casting settings footer under the conversion picker. UPnP devices get MP3 whatever the setting, since they aren't required to play WAV",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "المقاطع التي لا يستطيع جهاز Cast أو UPnP تشغيلها مباشرةً، مثل مقاطع ملف واحد + CUE، تُحوَّل أثناء تشغيلها. WAV بلا فقدان، لكنه يستهلك أضعاف بيانات MP3. تتلقى أجهزة UPnP دائمًا MP3، لأنها غير مُلزَمة بتشغيل WAV."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Песните, които устройство Cast или UPnP не може да възпроизведе директно, например песни от един файл + CUE, се преобразуват по време на възпроизвеждане. WAV е без загуби, но заема няколко пъти повече данни от MP3. Устройствата UPnP винаги получават MP3, тъй като не са длъжни да възпроизвеждат WAV."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skladby, které zařízení Cast nebo UPnP nedokáže přehrát přímo, například skladby z jednoho souboru + CUE, se převádějí během přehrávání. WAV je bezeztrátový, ale zabírá několikanásobek dat oproti MP3. Zařízení UPnP vždy dostanou MP3, protože WAV přehrávat nemusejí."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spor, som en Cast- eller UPnP-enhed ikke kan afspille direkte, f.eks. spor fra én fil + CUE, konverteres, mens de afspilles. WAV er tabsfrit, men fylder flere gange så meget som MP3. UPnP-enheder får altid MP3, da de ikke er forpligtet til at afspille WAV."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tracks a Cast or UPnP device can't play directly, such as tracks from a single file + CUE, are converted while they play. WAV is lossless but takes several times the data of MP3. UPnP devices always get MP3, since they aren't required to play WAV."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Titel, die ein Cast- oder UPnP-Gerät nicht direkt abspielen kann, etwa Titel aus einer Einzeldatei + CUE, werden während der Wiedergabe umgewandelt. WAV ist verlustfrei, braucht aber ein Vielfaches der Datenmenge von MP3. UPnP-Geräte erhalten immer MP3, da sie WAV nicht abspielen können müssen."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Τα κομμάτια που μια συσκευή Cast ή UPnP δεν μπορεί να αναπαραγάγει απευθείας, όπως κομμάτια από ένα αρχείο + CUE, μετατρέπονται κατά την αναπαραγωγή. Το WAV είναι χωρίς απώλειες, αλλά καταλαμβάνει πολλαπλάσια δεδομένα από το MP3. Οι συσκευές UPnP λαμβάνουν πάντα MP3, καθώς δεν υποχρεούνται να αναπαράγουν WAV."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las pistas que un dispositivo Cast o UPnP no puede reproducir directamente, como las de un archivo único + CUE, se convierten mientras suenan. WAV no tiene pérdida, pero ocupa varias veces los datos de MP3. Los dispositivos UPnP siempre reciben MP3, ya que no están obligados a reproducir WAV."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Raidat, joita Cast- tai UPnP-laite ei voi toistaa suoraan, kuten raidat yhdestä tiedostosta + CUE, muunnetaan toiston aikana. WAV on häviötön, mutta vie moninkertaisesti dataa MP3:een verrattuna. UPnP-laitteet saavat aina MP3:n, koska niiden ei tarvitse toistaa WAV:ia."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les pistes qu'un appareil Cast ou UPnP ne peut pas lire directement, comme celles d'un fichier unique + CUE, sont converties pendant la lecture. Le WAV est sans perte, mais pèse plusieurs fois plus lourd que le MP3. Les appareils UPnP reçoivent toujours du MP3, car ils ne sont pas tenus de lire le WAV."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "רצועות שמכשיר Cast או UPnP לא יכול לנגן ישירות, כמו רצועות מקובץ יחיד + CUE, מומרות בזמן הניגון. WAV הוא ללא אובדן, אך תופס פי כמה נתונים מ‑MP3. מכשירי UPnP תמיד מקבלים MP3, כי הם לא נדרשים לנגן WAV."
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pjesme koje uređaj Cast ili UPnP ne može reproducirati izravno, poput pjesama iz jedne datoteke + CUE, pretvaraju se tijekom reprodukcije. WAV je bez gubitaka, ali zauzima višestruko više podataka od MP3-a. UPnP uređaji uvijek dobivaju MP3 jer ne moraju reproducirati WAV."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Azokat a számokat, amelyeket egy Cast- vagy UPnP-eszköz nem tud közvetlenül lejátszani – például egy fájl + CUE számait –, a bae lejátszás közben átalakítja. A WAV veszteségmentes, de az MP3 adatmennyiségének többszörösét foglalja. Az UPnP-eszközök mindig MP3-at kapnak, mert nem kötelesek lejátszani a WAV-ot."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I brani che un dispositivo Cast o UPnP non può riprodurre direttamente, come quelli di un file singolo + CUE, vengono convertiti durante la riproduzione. Il WAV è senza perdita, ma occupa diverse volte i dati dell'MP3. I dispositivi UPnP ricevono sempre MP3, perché non sono tenuti a riprodurre il WAV."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cast または UPnP デバイスが直接再生できないトラック（単一ファイル + CUE のトラックなど）は、再生中に変換されます。WAV はロスレスですが、MP3 の数倍のデータ量になります。UPnP デバイスは WAV の再生に対応している必要がないため、常に MP3 を受け取ります。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cast 또는 UPnP 기기가 직접 재생할 수 없는 트랙(예: 단일 파일 + CUE의 트랙)은 재생 중에 변환됩니다. WAV는 무손실이지만 MP3보다 몇 배 많은 데이터를 사용합니다. UPnP 기기는 WAV 재생이 필수가 아니므로 항상 MP3를 받습니다."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spor som en Cast- eller UPnP-enhet ikke kan spille av direkte, for eksempel spor fra én fil + CUE, konverteres mens de spilles. WAV er tapsfritt, men tar flere ganger så mye data som MP3. UPnP-enheter får alltid MP3, siden de ikke er pålagt å spille av WAV."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nummers die een Cast- of UPnP-apparaat niet direct kan afspelen, zoals nummers uit één bestand + CUE, worden tijdens het afspelen omgezet. WAV is verliesvrij, maar kost een veelvoud van de data van MP3. UPnP-apparaten krijgen altijd MP3, omdat ze WAV niet hoeven af te spelen."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utwory, których urządzenie Cast lub UPnP nie może odtworzyć bezpośrednio, np. utwory z jednego pliku + CUE, są konwertowane podczas odtwarzania. WAV jest bezstratny, ale zajmuje kilka razy więcej danych niż MP3. Urządzenia UPnP zawsze dostają MP3, bo nie muszą odtwarzać WAV."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Faixas que um dispositivo Cast ou UPnP não consegue reproduzir diretamente, como as de um arquivo único + CUE, são convertidas durante a reprodução. WAV é sem perdas, mas ocupa várias vezes os dados de um MP3. Dispositivos UPnP sempre recebem MP3, pois não são obrigados a reproduzir WAV."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "As faixas que um dispositivo Cast ou UPnP não consegue reproduzir diretamente, como as de um ficheiro único + CUE, são convertidas durante a reprodução. O WAV é sem perdas, mas ocupa várias vezes os dados de um MP3. Os dispositivos UPnP recebem sempre MP3, pois não são obrigados a reproduzir WAV."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Piesele pe care un dispozitiv Cast sau UPnP nu le poate reda direct, cum ar fi piesele dintr-un singur fișier + CUE, sunt convertite în timpul redării. WAV este fără pierderi, dar ocupă de câteva ori mai multe date decât MP3. Dispozitivele UPnP primesc mereu MP3, deoarece nu sunt obligate să redea WAV."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skladby, ktoré zariadenie Cast alebo UPnP nedokáže prehrať priamo, napríklad skladby z jedného súboru + CUE, sa počas prehrávania konvertujú. WAV je bezstratový, ale zaberá niekoľkonásobok dát oproti MP3. Zariadenia UPnP vždy dostanú MP3, pretože WAV prehrávať nemusia."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spår som en Cast- eller UPnP-enhet inte kan spela direkt, till exempel spår från en fil + CUE, konverteras medan de spelas. WAV är förlustfritt men tar flera gånger så mycket data som MP3. UPnP-enheter får alltid MP3, eftersom de inte måste kunna spela WAV."
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bir Cast veya UPnP cihazının doğrudan çalamadığı parçalar, örneğin tek dosya + CUE parçaları, çalınırken dönüştürülür. WAV kayıpsızdır ancak MP3'ün birkaç katı veri kaplar. UPnP cihazları WAV çalmak zorunda olmadığından her zaman MP3 alır."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Треки, які пристрій Cast або UPnP не може відтворити напряму, наприклад треки з одного файлу + CUE, перетворюються під час відтворення. WAV — без втрат, але займає в кілька разів більше даних, ніж MP3. Пристрої UPnP завжди отримують MP3, бо не зобов'язані відтворювати WAV."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cast 或 UPnP 设备无法直接播放的曲目（例如单个文件 + CUE 中的曲目）会在播放时转换。WAV 无损，但数据量是 MP3 的数倍。UPnP 设备不一定支持 WAV，因此始终接收 MP3。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cast 或 UPnP 裝置無法直接播放的曲目（例如單一檔案 + CUE 中的曲目）會在播放時轉換。WAV 無損，但資料量是 MP3 的數倍。UPnP 裝置不一定支援 WAV，因此一律接收 MP3。"
+          }
+        }
+      }
+    },
     "Enable MCP server" : {
       "comment" : "Automation settings: toggle label",
       "localizations" : {

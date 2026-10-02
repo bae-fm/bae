@@ -209,6 +209,9 @@
     <string name="settings_casting">Caster</string>
     <string name="settings_enable_casting">Slå casting til</string>
     <string name="settings_casting_help">Afspiller til Cast-, AirPlay- og UPnP-modtagere på dit netværk. Når det er slået fra, søger bae ikke efter enheder.</string>
+    <string name="settings_cast_transcode_format">Konvertér til</string>
+    <string name="settings_cast_transcode_wav">WAV (tabsfri)</string>
+    <string name="settings_cast_transcode_help">Spor, som en Cast- eller UPnP-enhed ikke kan afspille direkte, f.eks. spor fra én fil + CUE, konverteres, mens de afspilles. WAV er tabsfrit, men fylder flere gange så meget som MP3. UPnP-enheder får altid MP3, da de ikke er forpligtet til at afspille WAV.</string>
     <string name="appearance_title">Udseende</string>
     <string name="appearance_mode">Tilstand</string>
     <string name="appearance_system">System</string>

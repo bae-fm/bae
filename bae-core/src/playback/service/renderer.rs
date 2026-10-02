@@ -189,6 +189,7 @@ impl RemoteRenderer {
     fn load(
         &self,
         audio: &ResolvedTrackAudio,
+        transcode: crate::config::CastTranscodeFormat,
         prepared: &PlaybackPreparedTrack,
         display: crate::playback::TrackDisplay,
         position: StreamPosition,
@@ -196,9 +197,9 @@ impl RemoteRenderer {
     ) -> Result<(), String> {
         // Serving is resolved here, where the track's stored audio is known, so
         // the URL and the MIME declared below come from the same decision.
-        let served = self
-            .media_source
-            .serve_track(audio, display.cover_image.as_ref())?;
+        let served =
+            self.media_source
+                .serve_track(audio, transcode, display.cover_image.as_ref())?;
         self.session.load(RendererMedia {
             url: served.url,
             content_type: served.content_type,
@@ -499,12 +500,12 @@ impl PlaybackService {
                 return;
             }
         };
-        let replay_gain_mode = self.library_manager.get_config().prefs.replay_gain_mode;
+        let prefs = self.library_manager.get_config().prefs;
         let prepared = finalize_playback_track(
             track_id.to_string(),
             &resolved,
             Vec::new(),
-            replay_gain_mode,
+            prefs.replay_gain_mode,
         );
 
         let Renderer::Remote(remote) = &self.renderer else {
@@ -513,7 +514,14 @@ impl PlaybackService {
         };
         let start_position = start.position(prepared.timeline);
         let paused = matches!(target, PlayTarget::Paused(_));
-        if let Err(reason) = remote.load(&resolved, &prepared, display, start_position, paused) {
+        if let Err(reason) = remote.load(
+            &resolved,
+            prefs.cast_transcode_format,
+            &prepared,
+            display,
+            start_position,
+            paused,
+        ) {
             error!("remote: failed to mint media URL for {track_id}: {reason}");
             self.fail_remote(crate::ui::PlaybackErrorReason::internal(
                 "Couldn't build the audio URL for the renderer.",

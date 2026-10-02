@@ -209,6 +209,9 @@
     <string name="settings_casting">Suoratoisto</string>
     <string name="settings_enable_casting">Ota suoratoisto käyttöön</string>
     <string name="settings_casting_help">Toistaa verkkosi Cast-, AirPlay- ja UPnP-vastaanottimiin. Kun tämä on pois päältä, bae ei etsi laitteita.</string>
+    <string name="settings_cast_transcode_format">Muunna muotoon</string>
+    <string name="settings_cast_transcode_wav">WAV (häviötön)</string>
+    <string name="settings_cast_transcode_help">Raidat, joita Cast- tai UPnP-laite ei voi toistaa suoraan, kuten raidat yhdestä tiedostosta + CUE, muunnetaan toiston aikana. WAV on häviötön, mutta vie moninkertaisesti dataa MP3:een verrattuna. UPnP-laitteet saavat aina MP3:n, koska niiden ei tarvitse toistaa WAV:ia.</string>
     <string name="appearance_title">Ulkoasu</string>
     <string name="appearance_mode">Tila</string>
     <string name="appearance_system">Järjestelmä</string>

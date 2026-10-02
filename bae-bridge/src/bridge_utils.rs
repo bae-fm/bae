@@ -1,10 +1,11 @@
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use crate::types::BridgeOutputKind;
 use crate::types::{
-    BridgeCatalog, BridgeConfig, BridgeDiscogsTokenStatus, BridgeImportStorage,
-    BridgeLookupCatalogSetting, BridgeMcpConfig, BridgeSaveBitDepth, BridgeSaveCodec,
-    BridgeSaveFilenameToken, BridgeSavePregapPlacement, BridgeSavePreset, BridgeSidePauseCountdown,
-    BridgeSourceAvailability, BridgeSubsonicConfig, BridgeSyncConfig, BridgeSyncProvider,
+    BridgeCastTranscodeFormat, BridgeCatalog, BridgeConfig, BridgeDiscogsTokenStatus,
+    BridgeImportStorage, BridgeLookupCatalogSetting, BridgeMcpConfig, BridgeSaveBitDepth,
+    BridgeSaveCodec, BridgeSaveFilenameToken, BridgeSavePregapPlacement, BridgeSavePreset,
+    BridgeSidePauseCountdown, BridgeSourceAvailability, BridgeSubsonicConfig, BridgeSyncConfig,
+    BridgeSyncProvider,
 };
 
 mirror_enum! {
@@ -219,6 +220,7 @@ impl BridgeConfig {
             // Import-time decode verification; not surfaced on the config screen.
             verify_decode_on_import: _,
             cast_enabled,
+            cast_transcode_format,
             mcp,
             subsonic,
         } = prefs;
@@ -264,6 +266,7 @@ impl BridgeConfig {
             default_track_save_preset: default_track_save_preset.clone(),
             default_release_save_preset: default_release_save_preset.clone(),
             cast_enabled: *cast_enabled,
+            cast_transcode_format: BridgeCastTranscodeFormat::from_core(*cast_transcode_format),
             mcp: BridgeMcpConfig {
                 enabled: *enabled,
                 port: *port,

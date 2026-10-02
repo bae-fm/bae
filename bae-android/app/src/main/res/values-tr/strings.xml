@@ -210,6 +210,9 @@
     <string name="settings_casting">Yayınlama</string>
     <string name="settings_enable_casting">Yayınlamayı etkinleştir</string>
     <string name="settings_casting_help">Ağınızdaki Cast, AirPlay ve UPnP alıcılarında çalar. Kapalıyken bae cihaz aramaz.</string>
+    <string name="settings_cast_transcode_format">Dönüştürme biçimi</string>
+    <string name="settings_cast_transcode_wav">WAV (kayıpsız)</string>
+    <string name="settings_cast_transcode_help">Bir Cast veya UPnP cihazının doğrudan çalamadığı parçalar, örneğin tek dosya + CUE parçaları, çalınırken dönüştürülür. WAV kayıpsızdır ancak MP3\'ün birkaç katı veri kaplar. UPnP cihazları WAV çalmak zorunda olmadığından her zaman MP3 alır.</string>
     <string name="appearance_title">Görünüm</string>
     <string name="appearance_mode">Mod</string>
     <string name="appearance_system">Sistem</string>

@@ -214,6 +214,9 @@
     <string name="settings_casting">Трансляція</string>
     <string name="settings_enable_casting">Увімкнути трансляцію</string>
     <string name="settings_casting_help">Відтворює на приймачах Cast, AirPlay і UPnP у вашій мережі. Коли вимкнено, bae не шукає пристроїв.</string>
+    <string name="settings_cast_transcode_format">Формат перетворення</string>
+    <string name="settings_cast_transcode_wav">WAV (без втрат)</string>
+    <string name="settings_cast_transcode_help">Треки, які пристрій Cast або UPnP не може відтворити напряму, наприклад треки з одного файлу + CUE, перетворюються під час відтворення. WAV — без втрат, але займає в кілька разів більше даних, ніж MP3. Пристрої UPnP завжди отримують MP3, бо не зобов\'язані відтворювати WAV.</string>
     <string name="appearance_title">Вигляд</string>
     <string name="appearance_mode">Режим</string>
     <string name="appearance_system">Системний</string>

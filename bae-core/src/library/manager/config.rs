@@ -148,6 +148,14 @@ impl LibraryManager {
         cast_enabled: bool
     );
 
+    pref_setter!(
+        /// What a track a Cast or UPnP device can't be served as stored is
+        /// converted to. Read as each track is loaded onto the device, so a
+        /// change applies from the next track.
+        set_cast_transcode_format,
+        cast_transcode_format: crate::config::CastTranscodeFormat
+    );
+
     /// How many blob uploads coven's upload drain runs at once. Rejected outside
     /// 1..=[`MAX_CONCURRENT_TRANSFERS`](crate::config::MAX_CONCURRENT_TRANSFERS):
     /// zero would leave the drain admitting nothing. Durable in the config and
