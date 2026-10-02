@@ -1,8 +1,8 @@
 import XCTest
 
 /// The running app's album grid: what it draws inside the part of it on
-/// screen. An album's title is on its card and atop its open detail; a
-/// track's title is on its row in its album's open detail.
+/// screen, and scrolling it. An album's title is on its card and atop its
+/// open detail; a track's title is on its row in its album's open detail.
 @MainActor
 struct AlbumGrid {
     let app: XCUIApplication
@@ -34,6 +34,36 @@ struct AlbumGrid {
     /// both.
     func showsOpen(_ album: String) -> Bool {
         frames(of: album).count >= 2
+    }
+
+    /// The titles of the album cards drawn wholly inside the visible area,
+    /// row by row from the top, each row left to right. Every title begins
+    /// with `prefix`.
+    func visibleRows(titledFrom prefix: String) -> [[String]] {
+        let visible = scrollView.frame
+        let titles = scrollView.staticTexts
+            .matching(NSPredicate(format: "value BEGINSWITH %@", prefix))
+            .allElementsBoundByIndex
+            .map { (text: $0.value as? String ?? "", frame: $0.frame) }
+            .filter { visible.contains($0.frame) }
+            .sorted {
+                ($0.frame.minY, $0.frame.minX) < ($1.frame.minY, $1.frame.minX)
+            }
+        var rows: [(minY: CGFloat, titles: [String])] = []
+        for title in titles {
+            if let last = rows.last, abs(last.minY - title.frame.minY) < 2 {
+                rows[rows.count - 1].titles.append(title.text)
+            }
+            else {
+                rows.append((title.frame.minY, [title.text]))
+            }
+        }
+        return rows.map(\.titles)
+    }
+
+    /// Scroll the grid by `deltaY` points: down when negative.
+    func scroll(by deltaY: CGFloat) {
+        scrollView.scroll(byDeltaX: 0, deltaY: deltaY)
     }
 }
 
