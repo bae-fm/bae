@@ -16,11 +16,25 @@ struct AlbumGridScroll: Equatable {
     var contentHeight: CGFloat = 0
 }
 
-/// The row of the track a pending reveal names, placed in the visible area.
+/// The track row and scroll bounds measured in one content layout.
 struct PlacedTrackRow: Equatable {
     let trackId: String
     let seq: Int
     let frame: CGRect
+    let scroll: AlbumGridScroll
+
+    /// The offset showing the whole row, or nil if it is already visible.
+    var scrollOffset: CGFloat? {
+        let height = scroll.visibleHeight
+        if frame.minY > scroll.offset - 0.5,
+            frame.maxY < scroll.offset + height + 0.5
+        {
+            return nil
+        }
+        let target =
+            frame.height > height ? frame.minY : frame.midY - height / 2
+        return min(max(target, 0), max(scroll.contentHeight - height, 0))
+    }
 }
 
 /// Where the grid's slots sit in the visible area, the slot a change of
@@ -115,21 +129,6 @@ final class AlbumGridViewport {
             placement.columnCount == columnCount && shown.slot == slot
                 && abs(shown.frame.minY) < 0.5
         }
-    }
-
-    /// The content offset that brings a view at `frame` in the visible area
-    /// into full view, centred, or `nil` when it is in full view already. A
-    /// view taller than the visible area goes to the top.
-    func offsetShowing(_ frame: CGRect) -> CGFloat? {
-        let height = scroll.visibleHeight
-        if frame.minY > -0.5, frame.maxY < height + 0.5 {
-            return nil
-        }
-        let target =
-            frame.height > height
-            ? scroll.offset + frame.minY
-            : scroll.offset + frame.midY - height / 2
-        return min(max(target, 0), max(scroll.contentHeight - height, 0))
     }
 
     private func topSlot(columnCount: Int) -> AlbumGridSlot? {

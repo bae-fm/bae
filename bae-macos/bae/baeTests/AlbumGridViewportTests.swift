@@ -152,72 +152,103 @@ struct AlbumGridViewportTests {
     }
 
     /// Scrolled 1000 points down 5000 points of content, showing 700.
-    private func scrolled() -> AlbumGridViewport {
-        let viewport = AlbumGridViewport()
-        viewport.setScroll(
-            AlbumGridScroll(
+    private func placedRow(_ frame: CGRect) -> PlacedTrackRow {
+        PlacedTrackRow(
+            trackId: "t1",
+            seq: 2,
+            frame: frame,
+            scroll: AlbumGridScroll(
                 offset: 1000,
                 visibleHeight: 700,
                 contentHeight: 5000
             )
         )
-        return viewport
     }
 
     @Test("a row in full view needs no scroll")
     func rowInViewStays() {
-        let viewport = scrolled()
         #expect(
-            viewport.offsetShowing(CGRect(x: 0, y: 0, width: 300, height: 40))
+            placedRow(CGRect(x: 0, y: 1000, width: 300, height: 40))
+                .scrollOffset
                 == nil
         )
         #expect(
-            viewport.offsetShowing(CGRect(x: 0, y: 660, width: 300, height: 40))
+            placedRow(CGRect(x: 0, y: 1660, width: 300, height: 40))
+                .scrollOffset
                 == nil
         )
     }
 
+    @Test("a track target does not depend on when the scroll offset arrives")
+    func rowTargetIndependentOfScrollDelivery() {
+        let viewport = AlbumGridViewport()
+        let frame = CGRect(x: 16, y: 19818, width: 1148, height: 40)
+        let row = PlacedTrackRow(
+            trackId: "t1",
+            seq: 2,
+            frame: frame,
+            scroll: AlbumGridScroll(
+                offset: 18392,
+                visibleHeight: 720,
+                contentHeight: 37010
+            )
+        )
+        viewport.placeRevealedRow(row)
+        for offset: CGFloat in [0, 18392] {
+            viewport.setScroll(
+                AlbumGridScroll(
+                    offset: offset,
+                    visibleHeight: 720,
+                    contentHeight: 37010
+                )
+            )
+            #expect(viewport.revealedRow(seq: 2)?.scrollOffset == 19478)
+        }
+    }
+
     @Test("a row below or above the visible area is scrolled to its middle")
     func rowOutOfViewCentred() {
-        let viewport = scrolled()
         // Partly under the bottom edge: its middle, 1000 + 690, goes to 350.
         #expect(
-            viewport.offsetShowing(CGRect(x: 0, y: 670, width: 300, height: 40))
+            placedRow(CGRect(x: 0, y: 1670, width: 300, height: 40))
+                .scrollOffset
                 == 1340
         )
         // Wholly above the top.
         #expect(
-            viewport.offsetShowing(
-                CGRect(x: 0, y: -500, width: 300, height: 40)
+            placedRow(
+                CGRect(x: 0, y: 500, width: 300, height: 40)
             )
+            .scrollOffset
                 == 170
         )
     }
 
     @Test("the scroll stays inside the content")
     func targetClamped() {
-        let viewport = scrolled()
         #expect(
-            viewport.offsetShowing(
-                CGRect(x: 0, y: -1000, width: 300, height: 40)
+            placedRow(
+                CGRect(x: 0, y: 0, width: 300, height: 40)
             )
+            .scrollOffset
                 == 0
         )
         #expect(
-            viewport.offsetShowing(
-                CGRect(x: 0, y: 3980, width: 300, height: 40)
+            placedRow(
+                CGRect(x: 0, y: 4980, width: 300, height: 40)
             )
+            .scrollOffset
                 == 4300
         )
     }
 
     @Test("a view taller than the visible area goes to the top")
     func tallViewToTop() {
-        let viewport = scrolled()
         #expect(
-            viewport.offsetShowing(
-                CGRect(x: 0, y: 200, width: 300, height: 900)
+            placedRow(
+                CGRect(x: 0, y: 1200, width: 300, height: 900)
             )
+            .scrollOffset
                 == 1200
         )
     }
@@ -225,11 +256,7 @@ struct AlbumGridViewportTests {
     @Test("a revealed row counts for its own reveal, and once at the album")
     func revealedRowBySeq() {
         let viewport = AlbumGridViewport()
-        let row = PlacedTrackRow(
-            trackId: "t1",
-            seq: 2,
-            frame: CGRect(x: 0, y: 900, width: 300, height: 40)
-        )
+        let row = placedRow(CGRect(x: 0, y: 1900, width: 300, height: 40))
         viewport.placeRevealedRow(row)
         #expect(viewport.revealedRow(seq: 2) == row)
         #expect(viewport.revealedRow(seq: 1) == nil)

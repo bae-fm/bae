@@ -11,6 +11,14 @@ import Testing
 @MainActor
 @Suite("AlbumGridView revealing a track", .serialized)
 struct AlbumGridRevealTests {
+    /// Measure the flash and frame together; separate callbacks can pair
+    /// a new flash with a position from the previous layout.
+    struct Placement: Equatable {
+        let trackId: String
+        let frame: CGRect
+        let flashSeq: Int?
+    }
+
     @Observable
     @MainActor
     final class Stage {
@@ -22,7 +30,7 @@ struct AlbumGridRevealTests {
         var rowFrames: [String: CGRect] = [:]
         /// The track flashed, and where its row sat when the flash came.
         @ObservationIgnored
-        var flashed: (trackId: String, frame: CGRect?)?
+        var flashed: Placement?
     }
 
     /// Thirty 40-point track rows, `<album>-t0` to `<album>-t29`, in place
@@ -44,23 +52,27 @@ struct AlbumGridRevealTests {
                     Color.clear.frame(height: 200)
                 }
             }
-            .onChange(of: uiStore.pendingTrackFlash?.seq) {
-                if let flash = uiStore.pendingTrackFlash {
-                    stage.flashed = (
-                        flash.trackId, stage.rowFrames[flash.trackId]
-                    )
-                }
-            }
         }
 
         private func row(_ trackId: String) -> some View {
             Text(verbatim: trackId)
                 .frame(maxWidth: .infinity, minHeight: 40, maxHeight: 40)
                 .revealsAsTrackRow(trackId)
-                .onGeometryChange(for: CGRect.self) { geometry in
-                    geometry.frame(in: .scrollView)
-                } action: { frame in
-                    stage.rowFrames[trackId] = frame
+                .onGeometryChange(for: Placement.self) { geometry in
+                    Placement(
+                        trackId: trackId,
+                        frame: geometry.frame(in: .scrollView),
+                        flashSeq: uiStore.pendingTrackFlash.flatMap {
+                            $0.trackId == trackId ? $0.seq : nil
+                        }
+                    )
+                } action: { placement in
+                    stage.rowFrames[trackId] = placement.frame
+                    if let seq = placement.flashSeq,
+                        stage.flashed?.flashSeq != seq
+                    {
+                        stage.flashed = placement
+                    }
                 }
         }
     }

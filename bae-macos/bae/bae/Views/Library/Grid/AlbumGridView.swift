@@ -87,6 +87,26 @@ struct AlbumGridView<ExpansionContent: View>: View {
                         selection.clear()
                     }
                 }
+                .overlayPreferenceValue(RevealedTrackRowKey.self) { row in
+                    GeometryReader { proxy in
+                        Color.clear.onChange(
+                            of: placedTrackRow(row, in: proxy),
+                            initial: true
+                        ) { _, placed in
+                            viewport.placeRevealedRow(placed)
+                            if let placed,
+                                viewport.revealedRow(
+                                    seq: placed.seq,
+                                    atAlbum: true
+                                )
+                                    != nil
+                            {
+                                showRevealedRow(placed)
+                            }
+                        }
+                    }
+                    .allowsHitTesting(false)
+                }
             }
             .scrollPosition($scrollPosition, anchor: .top)
             .onScrollGeometryChange(for: AlbumGridScroll.self) { geometry in
@@ -97,32 +117,6 @@ struct AlbumGridView<ExpansionContent: View>: View {
                 )
             } action: { _, scroll in
                 viewport.setScroll(scroll)
-            }
-            // The row a reveal names reports itself from inside the open
-            // album's detail; placed here, over the scroll view, its frame is
-            // in the visible area.
-            .overlayPreferenceValue(RevealedTrackRowKey.self) { row in
-                GeometryReader { proxy in
-                    Color.clear.onChange(
-                        of: row.map {
-                            PlacedTrackRow(
-                                trackId: $0.trackId,
-                                seq: $0.seq,
-                                frame: proxy[$0.bounds]
-                            )
-                        },
-                        initial: true
-                    ) { _, placed in
-                        viewport.placeRevealedRow(placed)
-                        if let placed,
-                            viewport.revealedRow(seq: placed.seq, atAlbum: true)
-                                != nil
-                        {
-                            showRevealedRow(placed)
-                        }
-                    }
-                }
-                .allowsHitTesting(false)
             }
             // A new column count re-lays every row before the scroll view
             // knows which slot was on top, so the grid names it.
@@ -221,6 +215,28 @@ private struct AlbumGridMetrics {
 }
 
 extension AlbumGridView {
+    /// Read the row and viewport from the same layout. Scroll callbacks can
+    /// arrive after an animation completion and must not position the row.
+    private func placedTrackRow(
+        _ row: RevealedTrackRow?,
+        in proxy: GeometryProxy
+    ) -> PlacedTrackRow? {
+        guard let row else { return nil }
+        guard let bounds = proxy.bounds(of: .scrollView) else {
+            preconditionFailure("The album grid must be inside its scroll view")
+        }
+        return PlacedTrackRow(
+            trackId: row.trackId,
+            seq: row.seq,
+            frame: proxy[row.bounds],
+            scroll: AlbumGridScroll(
+                offset: bounds.minY,
+                visibleHeight: bounds.height,
+                contentHeight: proxy.size.height
+            )
+        )
+    }
+
     private func cells(columnCount: Int) -> AlbumGridLayout {
         AlbumGridLayout(
             totalCount: list.totalCount,
@@ -450,7 +466,7 @@ extension AlbumGridView {
             return
         }
         uiStore.consumeAlbumReveal(seq: row.seq)
-        guard let offset = viewport.offsetShowing(row.frame) else {
+        guard let offset = row.scrollOffset else {
             uiStore.flashTrack(row.trackId, seq: row.seq)
             return
         }
