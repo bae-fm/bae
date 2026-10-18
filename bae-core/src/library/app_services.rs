@@ -382,7 +382,7 @@ impl AppServices {
     delegate_async!(manager, delete_release => delete_release(release_id: &str) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, save_s3_config => save_s3_config(data: crate::sync::S3ConfigData, device_name: &str) -> Result<coven::StorageSetup, crate::library::LibraryError>);
     delegate_async!(manager, cloud_only_release_count => cloud_only_release_count() -> Result<u64, crate::library::LibraryError>);
-    delegate_async!(manager, generate_restore_code => generate_restore_code() -> Result<String, crate::library::LibraryError>);
+    delegate_async!(manager, generate_restore_code => generate_restore_code() -> Result<crate::sync::restore_code::RestoreCodeShare, crate::library::LibraryError>);
     delegate_async!(manager, get_members => get_members() -> Result<crate::sync::membership::Membership, crate::library::LibraryError>);
     delegate_async!(manager, remove_member => remove_member(member: &coven::MemberId) -> Result<(), crate::library::LibraryError>);
     delegate_sync!(manager, subscribe_members => subscribe_members() -> coven::LiveQuery<crate::sync::membership::Membership>);

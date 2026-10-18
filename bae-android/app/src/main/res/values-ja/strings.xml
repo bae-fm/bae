@@ -280,4 +280,6 @@
     <string name="settings_stored_in">保存先</string>
     <string name="storage_location_account">%1$s：%2$s</string>
     <string name="storage_location_bucket">%1$s：%2$s（%3$s）</string>
+    <string name="restore_code_carries_s3_key">QR コードには S3 のアクセスキーも含まれているため、読み取ったデバイスはキーを尋ねません。</string>
+    <string name="onboarding_s3_key_scanned">S3 のアクセスキーは読み取ったコードと一緒に届きました。</string>
 </resources>

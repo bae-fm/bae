@@ -336,6 +336,12 @@ impl Database {
         self.inner.handle.restore_code().await
     }
 
+    pub(crate) async fn s3_credentials_for_transfer(
+        &self,
+    ) -> Result<Option<coven::S3Credentials>, coven::SyncError> {
+        self.inner.handle.s3_credentials_for_transfer().await
+    }
+
     pub(crate) async fn members(&self) -> Result<Vec<coven::MemberInfo>, DbError> {
         self.inner.handle.members().await.map_err(DbError::from)
     }

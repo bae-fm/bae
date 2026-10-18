@@ -283,4 +283,6 @@
     <string name="settings_stored_in">Archiviato in</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
+    <string name="restore_code_carries_s3_key">Il codice QR contiene anche la tua chiave di accesso S3, quindi il dispositivo che lo scansiona non ti chiederà la chiave.</string>
+    <string name="onboarding_s3_key_scanned">La tua chiave di accesso S3 è arrivata con il codice scansionato.</string>
 </resources>

@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -41,6 +42,7 @@ import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.QRCodeImage
 import kotlinx.coroutines.CancellationException
 import uniffi.bae_bridge.BridgeException
+import uniffi.bae_bridge.BridgeRestoreCodeShare
 
 private val logger = BaeLogger("bae.RestoreCodeDialog")
 
@@ -57,12 +59,12 @@ internal fun RestoreCodeDialog(
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
-    var code by remember { mutableStateOf<String?>(null) }
+    var share by remember { mutableStateOf<BridgeRestoreCodeShare?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
         try {
-            code = session.appHandle.generateRestoreCode()
+            share = session.appHandle.generateRestoreCode()
         } catch (e: CancellationException) {
             throw e
         } catch (e: BridgeException) {
@@ -71,13 +73,17 @@ internal fun RestoreCodeDialog(
         }
     }
 
-    RestoreCodeDialogContent(code = code, error = error, onDismiss = onDismiss)
+    RestoreCodeDialogContent(share = share, error = error, onDismiss = onDismiss)
 }
 
-/** The dialog body: the secret warning plus the [code], its [error], or a spinner. */
+/**
+ * The dialog body: the secret warning plus the code in [share], its [error],
+ * or a spinner. The QR carries the S3 key beside the code when this device
+ * holds one.
+ */
 @Composable
 internal fun RestoreCodeDialogContent(
-    code: String?,
+    share: BridgeRestoreCodeShare?,
     error: String?,
     onDismiss: () -> Unit,
 ) {
@@ -97,16 +103,8 @@ internal fun RestoreCodeDialogContent(
                 )
                 Spacer(modifier = Modifier.height(ThemeSpace.group))
                 when {
-                    code != null -> {
-                        QRCodeImage(
-                            text = code,
-                            contentDescription = stringResource(R.string.settings_restore_code),
-                            modifier = Modifier.size(qrSize),
-                        )
-                        Spacer(modifier = Modifier.height(ThemeSpace.group))
-                        SelectionContainer {
-                            Text(text = code, style = ThemeText.mono.style)
-                        }
+                    share != null -> {
+                        RestoreCodeShareContent(share)
                     }
 
                     error != null -> {
@@ -120,8 +118,8 @@ internal fun RestoreCodeDialogContent(
             }
         },
         confirmButton = {
-            if (code != null) {
-                TextButton(onClick = { clipboard.setText(AnnotatedString(code)) }) {
+            if (share != null) {
+                TextButton(onClick = { clipboard.setText(AnnotatedString(share.code)) }) {
                     Icon(
                         Icons.Filled.ContentCopy,
                         contentDescription = null,
@@ -138,11 +136,42 @@ internal fun RestoreCodeDialogContent(
     )
 }
 
+/** The QR, which carries the S3 key beside the code when this device holds one, and the code to type. */
+@Composable
+private fun RestoreCodeShareContent(share: BridgeRestoreCodeShare) {
+    QRCodeImage(
+        text = share.qrText,
+        contentDescription = stringResource(R.string.settings_restore_code),
+        modifier = Modifier.size(qrSize),
+    )
+    Spacer(modifier = Modifier.height(ThemeSpace.group))
+    SelectionContainer {
+        Text(text = share.code, style = ThemeText.mono.style)
+    }
+    if (share.qrCarriesS3Key) {
+        Spacer(modifier = Modifier.height(ThemeSpace.group))
+        Text(
+            text = stringResource(R.string.restore_code_carries_s3_key),
+            style = ThemeText.detail.style,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
 @Preview(showBackground = true)
 @Composable
 private fun RestoreCodeDialogContentReadyPreview() {
     BaeTheme {
-        RestoreCodeDialogContent(code = "restore-code-preview", error = null, onDismiss = {})
+        RestoreCodeDialogContent(
+            share =
+                BridgeRestoreCodeShare(
+                    code = "restore-code-preview",
+                    qrText = "restore-code-preview.key-preview",
+                    qrCarriesS3Key = true,
+                ),
+            error = null,
+            onDismiss = {},
+        )
     }
 }
 
@@ -150,6 +179,6 @@ private fun RestoreCodeDialogContentReadyPreview() {
 @Composable
 private fun RestoreCodeDialogContentLoadingPreview() {
     BaeTheme {
-        RestoreCodeDialogContent(code = null, error = null, onDismiss = {})
+        RestoreCodeDialogContent(share = null, error = null, onDismiss = {})
     }
 }

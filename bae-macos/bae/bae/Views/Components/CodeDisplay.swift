@@ -3,12 +3,14 @@ import SwiftUI
 
 /// The QR image, selectable code and "Copy code" button for handing a code to
 /// another device, as a flat group so the enclosing stack sets the spacing.
+/// The QR encodes `qrText`, which can carry more than the code typed or copied.
 struct CodeDisplay: View {
     let code: String
+    let qrText: String
     let qrSize: CGFloat
 
     var body: some View {
-        if let qrImage = QRCode.image(from: code) {
+        if let qrImage = QRCode.image(from: qrText) {
             Image(nsImage: qrImage)
                 .interpolation(.none)
                 .resizable()
@@ -35,7 +37,11 @@ struct CodeDisplay: View {
         VStack(spacing: ThemeSpace.section) {
             // Bare cluster: QR + code + copy button.
             VStack(spacing: ThemeSpace.group) {
-                CodeDisplay(code: "BAE-4F2A-9C81-7D30", qrSize: qrSize)
+                CodeDisplay(
+                    code: "BAE-4F2A-9C81-7D30",
+                    qrText: "BAE-4F2A-9C81-7D30",
+                    qrSize: qrSize
+                )
             }
         }
         .padding(ThemeSpace.section)

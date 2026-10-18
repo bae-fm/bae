@@ -1,4 +1,5 @@
 import AppKit
+import BaeKit
 import SwiftUI
 import Testing
 
@@ -30,7 +31,13 @@ struct CodeShareSheetTests {
 
             // The presenter's off-main write lands: the binding resolves to a
             // code, and the sheet draws something else.
-            holder.result = .success("PAIR-1234-5678")
+            holder.result = .success(
+                BridgeRestoreCodeShare(
+                    code: "PAIR-1234-5678",
+                    qrText: "PAIR-1234-5678",
+                    qrCarriesS3Key: false
+                )
+            )
             try await Wait.until {
                 try await SnapshotTestSupport.capturePNG(host, size: size)
                     != loading
@@ -45,7 +52,7 @@ struct CodeShareSheetTests {
 @Observable
 @MainActor
 private final class CodeShareResultHolder {
-    var result: Result<String, Error>?
+    var result: Result<BridgeRestoreCodeShare, Error>?
 }
 
 private struct CodeShareHarness: View {

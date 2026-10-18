@@ -22,6 +22,7 @@ import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeHost
 import uniffi.bae_bridge.BridgeS3Credentials
 import uniffi.bae_bridge.decodeCodeInfo
+import uniffi.bae_bridge.readScannedCode
 
 private const val TAG = "bae.OnboardingFlow"
 private val logger = BaeLogger(TAG)
@@ -33,10 +34,15 @@ internal sealed interface OnboardingStep {
     /** A code read and waiting on the person. */
     sealed interface CodeRead : OnboardingStep
 
-    /** The person's own restore code, read; S3 asks for its access key before restoring. */
+    /**
+     * The person's own restore code, read; S3 asks for its access key before
+     * restoring unless [s3Credentials] came beside the code from the person's
+     * own device.
+     */
     data class Restore(
         val code: String,
         val metadata: BridgeCodeMetadata,
+        val s3Credentials: BridgeS3Credentials?,
     ) : CodeRead
 
     /** An invite to [libraryName], read; joining asks for the person's name. */
@@ -75,11 +81,16 @@ internal class OnboardingFlow(
 
     private var cancellation: BootstrapCancellation? = null
 
-    /** Read [code] and move to what it asks of the person. */
-    fun enter(code: String) {
-        val info =
+    /**
+     * Read [text], scanned or typed, and move to what its code asks of the
+     * person. A scan from the person's own device can carry their S3 key
+     * beside the code.
+     */
+    fun enter(text: String) {
+        val (scanned, info) =
             try {
-                decodeCodeInfo(code)
+                val scanned = readScannedCode(text)
+                scanned to decodeCodeInfo(scanned.code)
             } catch (e: BridgeException) {
                 logger.warning("the entered code is neither a restore code nor an invite", e)
                 error = context.getString(R.string.onboarding_code_invalid)
@@ -99,8 +110,8 @@ internal class OnboardingFlow(
         error = null
         step =
             when (info) {
-                is BridgeCodeInfo.Restore -> OnboardingStep.Restore(code, info.metadata)
-                is BridgeCodeInfo.Invite -> OnboardingStep.Invite(code, info.metadata, info.libraryName)
+                is BridgeCodeInfo.Restore -> OnboardingStep.Restore(scanned.code, info.metadata, scanned.s3Credentials)
+                is BridgeCodeInfo.Invite -> OnboardingStep.Invite(scanned.code, info.metadata, info.libraryName)
             }
     }
 

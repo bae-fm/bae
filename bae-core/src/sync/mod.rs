@@ -8,6 +8,7 @@
 pub use coven::{decode_code_info, restore_from_code};
 
 pub mod membership;
+pub mod restore_code;
 
 #[cfg(test)]
 mod identity_tests;

@@ -280,4 +280,6 @@
     <string name="settings_stored_in">儲存於</string>
     <string name="storage_location_account">%1$s：%2$s</string>
     <string name="storage_location_bucket">%1$s：%2$s（%3$s）</string>
+    <string name="restore_code_carries_s3_key">此 QR 碼也包含你的 S3 存取金鑰，掃描它的裝置不會再要求輸入金鑰。</string>
+    <string name="onboarding_s3_key_scanned">你的 S3 存取金鑰已隨掃描的代碼一併傳來。</string>
 </resources>

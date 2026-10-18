@@ -6,7 +6,8 @@ public final class Sync: Sendable, Observable {
     /// device under its name.
     public let saveSyncConfig:
         @Sendable (BridgeSaveSyncConfig) async throws -> BridgeStorageSetup
-    public let generateRestoreCode: @Sendable () async throws -> String
+    public let generateRestoreCode:
+        @Sendable () async throws -> BridgeRestoreCodeShare
     public let removeMember: @Sendable (String) async throws -> Void
     public let removeDevice:
         @Sendable (UInt64) async throws -> BridgeProviderSignOut
@@ -50,9 +51,10 @@ public final class Sync: Sendable, Observable {
         saveSyncConfig:
             @escaping @Sendable (BridgeSaveSyncConfig) async throws ->
             BridgeStorageSetup = { _ in throw StubError.notImplemented },
-        generateRestoreCode: @escaping @Sendable () async throws -> String = {
-            throw StubError.notImplemented
-        },
+        generateRestoreCode:
+            @escaping @Sendable () async throws -> BridgeRestoreCodeShare = {
+                throw StubError.notImplemented
+            },
         removeMember: @escaping @Sendable (String) async throws -> Void = { _ in
             throw StubError.notImplemented
         },

@@ -113,7 +113,7 @@ struct InvitePersonSheet: View {
     private func created(_ invite: BridgeInvite) -> some View {
         VStack(spacing: ThemeSpace.edge) {
             Spacer()
-            CodeDisplay(code: invite.code, qrSize: 200)
+            CodeDisplay(code: invite.code, qrText: invite.code, qrSize: 200)
             Text(
                 "Expires \(invite.expiresAt, format: .relative(presentation: .named))"
             )

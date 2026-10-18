@@ -282,4 +282,6 @@
     <string name="settings_stored_in">Съхранява се в</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
+    <string name="restore_code_carries_s3_key">QR кодът съдържа и вашия ключ за достъп до S3, така че устройството, което го сканира, няма да поиска ключа.</string>
+    <string name="onboarding_s3_key_scanned">Ключът ви за достъп до S3 дойде заедно със сканирания код.</string>
 </resources>

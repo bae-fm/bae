@@ -282,4 +282,6 @@
     <string name="settings_stored_in">Depolandığı yer</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
+    <string name="restore_code_carries_s3_key">QR kod S3 erişim anahtarınızı da taşır; bu yüzden onu tarayan cihaz anahtarı sormaz.</string>
+    <string name="onboarding_s3_key_scanned">S3 erişim anahtarınız taranan kodla birlikte geldi.</string>
 </resources>

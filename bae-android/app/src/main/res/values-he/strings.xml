@@ -284,4 +284,6 @@
     <string name="settings_stored_in">מאוחסן ב</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
+    <string name="restore_code_carries_s3_key">קוד ה-QR נושא גם את מפתח הגישה שלך ל-S3, כך שמכשיר שסורק אותו לא יבקש את המפתח.</string>
+    <string name="onboarding_s3_key_scanned">מפתח הגישה שלך ל-S3 הגיע עם הקוד שנסרק.</string>
 </resources>

@@ -80,7 +80,7 @@ struct BootstrapCodeView: View {
         .sheet(isPresented: $showScanner) {
             CodeScannerSheet(
                 onScan: { code in
-                    form.codeInput = code
+                    form.acceptScan(code)
                     showScanner = false
                 },
                 onDismiss: { showScanner = false }
@@ -152,12 +152,17 @@ private struct AttemptDetailsSection: View {
             switch attempt {
             case .restoreSaved:
                 EmptyView()
-            case .restore(_, let metadata):
+            case .restore(_, let metadata, let s3Key):
                 LabeledContent(
                     "Stored in",
                     value: metadata.location.accountLine
                 )
                 signInNote(metadata)
+                if s3Key != nil {
+                    Text("Your S3 access key came with the scanned code.")
+                        .themeText(.detail)
+                        .foregroundStyle(.secondary)
+                }
             case .join(_, let metadata, let libraryName):
                 LabeledContent("Library", value: libraryName)
                 LabeledContent(

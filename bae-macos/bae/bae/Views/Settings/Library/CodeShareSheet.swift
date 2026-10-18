@@ -5,7 +5,7 @@ import SwiftUI
 /// the presenter loads it.
 struct CodeShareSheet: View {
     @Binding
-    var result: Result<String, Error>?
+    var result: Result<BridgeRestoreCodeShare, Error>?
     let onDismiss: () -> Void
 
     var body: some View {
@@ -28,11 +28,15 @@ struct CodeShareSheet: View {
                     ProgressView()
                     Spacer()
                 }
-            case .success(let code):
+            case .success(let share):
                 VStack(spacing: ThemeSpace.edge) {
                     Spacer()
 
-                    CodeDisplay(code: code, qrSize: 200)
+                    CodeDisplay(
+                        code: share.code,
+                        qrText: share.qrText,
+                        qrSize: 200
+                    )
 
                     Text(
                         "Scan or type this code on your new device to add it to the library. Anyone with it and access to your storage can open the library. Keep it secret."
@@ -40,6 +44,15 @@ struct CodeShareSheet: View {
                     .themeText(.detail)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
+
+                    if share.qrCarriesS3Key {
+                        Text(
+                            "The QR code also carries your S3 access key, so a device that scans it won't ask for the key."
+                        )
+                        .themeText(.detail)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                    }
 
                     Spacer()
                 }
@@ -66,7 +79,7 @@ struct CodeShareSheet: View {
     /// Holds the result the presenter normally writes after the sheet is up.
     private struct CodeShareSheetPreview: View {
         @State
-        var result: Result<String, Error>?
+        var result: Result<BridgeRestoreCodeShare, Error>?
 
         var body: some View {
             CodeShareSheet(result: $result, onDismiss: {})
@@ -78,7 +91,15 @@ struct CodeShareSheet: View {
     }
 
     #Preview("Code") {
-        CodeShareSheetPreview(result: .success("restore-code-preview-abcdef"))
+        CodeShareSheetPreview(
+            result: .success(
+                BridgeRestoreCodeShare(
+                    code: "restore-code-preview-abcdef",
+                    qrText: "restore-code-preview-abcdef",
+                    qrCarriesS3Key: false
+                )
+            )
+        )
     }
 
     #Preview("Failed") {

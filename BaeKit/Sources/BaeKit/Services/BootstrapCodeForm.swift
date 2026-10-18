@@ -8,11 +8,17 @@ private let logger = Logger.bae("BootstrapCodeForm")
 /// restore code, or a join by invitation.
 public enum BootstrapAttempt {
     case restoreSaved(SavedRestoreEntry)
-    case restore(code: String, metadata: BridgeCodeMetadata)
+    /// A restore from a typed or scanned code; `s3Key` is the key that came
+    /// beside a scanned code from the person's own device.
+    case restore(
+        code: String,
+        metadata: BridgeCodeMetadata,
+        s3Key: BridgeS3Credentials?
+    )
     case join(code: String, metadata: BridgeCodeMetadata, libraryName: String)
 
     /// Whether this restore needs the person's S3 key typed in: an S3 library
-    /// whose key isn't saved beside the code.
+    /// whose key isn't saved beside the code and didn't come with the scan.
     public var needsS3Key: Bool {
         switch self {
         case .restoreSaved(let saved):
@@ -20,8 +26,8 @@ public enum BootstrapAttempt {
                 return !saved.info.hasS3Credentials
             }
             return false
-        case .restore(_, let metadata):
-            return metadata.provider == .s3
+        case .restore(_, let metadata, let s3Key):
+            return metadata.provider == .s3 && s3Key == nil
         case .join:
             return false
         }
@@ -47,6 +53,9 @@ public final class BootstrapCodeForm {
     public var codeInput = ""
     /// The entered code's kind and metadata, or nil while the field is empty.
     private var decoded: Result<BridgeCodeInfo, Error>?
+    /// The S3 key the last scan carried beside its code. It belongs to that
+    /// code alone: editing the code away from it leaves the key unused.
+    private var scannedKey: (code: String, key: BridgeS3Credentials)?
     public var personName = ""
     public var accessKey = ""
     public var secretKey = ""
@@ -88,8 +97,10 @@ public final class BootstrapCodeForm {
         if let saved { return .restoreSaved(saved) }
         guard case .success(let info) = decoded else { return nil }
         let code = codeInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        let s3Key = scannedKey.flatMap { $0.code == code ? $0.key : nil }
         return switch info {
-        case .restore(let metadata): .restore(code: code, metadata: metadata)
+        case .restore(let metadata):
+            .restore(code: code, metadata: metadata, s3Key: s3Key)
         case .invite(let metadata, let libraryName):
             .join(code: code, metadata: metadata, libraryName: libraryName)
         }
@@ -112,6 +123,25 @@ public final class BootstrapCodeForm {
         return true
     }
 
+    /// Fill the code from a scanned QR code. A key that came beside it from
+    /// the person's own device fills in the S3 key, so the restore asks for
+    /// none.
+    public func acceptScan(_ text: String) {
+        do {
+            let scanned = try readScannedCode(text: text)
+            scannedKey = scanned.s3Credentials.map { (scanned.code, $0) }
+            codeInput = scanned.code
+            decodeCode()
+        }
+        catch {
+            logger.error(
+                "scanned code unreadable: \(error.localizedDescription)"
+            )
+            scannedKey = nil
+            decoded = .failure(error)
+        }
+    }
+
     /// Read what the entered code is. Called whenever the code changes.
     public func decodeCode() {
         error = nil
@@ -127,12 +157,16 @@ public final class BootstrapCodeForm {
         guard let attempt, !isRunning else {
             preconditionFailure("the primary action needs a decoded code")
         }
-        let credentials =
-            attempt.needsS3Key
-            ? BridgeS3Credentials(
-                accessKeyId: accessKey,
-                secretAccessKey: secretKey
-            ) : nil
+        let credentials: BridgeS3Credentials? =
+            switch attempt {
+            case .restore(_, _, let s3Key?): s3Key
+            default:
+                attempt.needsS3Key
+                    ? BridgeS3Credentials(
+                        accessKeyId: accessKey,
+                        secretAccessKey: secretKey
+                    ) : nil
+            }
         let personName = personName.trimmingCharacters(in: .whitespaces)
         let bootstrap = makeBootstrap()
         self.bootstrap = bootstrap
@@ -151,7 +185,7 @@ public final class BootstrapCodeForm {
                         saved: saved.code,
                         credentials: credentials
                     )
-                case .restore(let code, _):
+                case .restore(let code, _, _):
                     result = try await bootstrap.restore(
                         code: code,
                         credentials: credentials

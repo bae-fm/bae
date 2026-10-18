@@ -7,12 +7,12 @@ private let logger = Logger.bae("RestoreCode")
 /// Generates and shows this person's restore code, which adds their other
 /// devices to the library; closing the sheet cancels generation.
 struct RestoreCodeView: View {
-    let generate: @Sendable () async throws -> String
+    let generate: @Sendable () async throws -> BridgeRestoreCodeShare
     let onDismiss: () -> Void
 
     /// `nil` while generating.
     @State
-    private var result: Result<String, Error>?
+    private var result: Result<BridgeRestoreCodeShare, Error>?
 
     var body: some View {
         NavigationStack {
@@ -39,12 +39,13 @@ struct RestoreCodeView: View {
                 ProgressView()
                 Spacer()
             }
-        case .success(let code):
+        case .success(let share):
             VStack(spacing: ThemeSpace.edge) {
                 Spacer()
 
                 CodeShareBlock(
-                    code: code,
+                    code: share.code,
+                    qrText: share.qrText,
                     contentDescription: "Restore code",
                     qrSize: 220
                 )
@@ -55,6 +56,15 @@ struct RestoreCodeView: View {
                 .themeText(.detail)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
+
+                if share.qrCarriesS3Key {
+                    Text(
+                        "The QR code also carries your S3 access key, so a device that scans it won't ask for the key."
+                    )
+                    .themeText(.detail)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                }
 
                 Spacer()
             }
@@ -73,9 +83,9 @@ struct RestoreCodeView: View {
     private func runGenerate() async {
         do {
             // Cancelling this task also cancels the Rust call.
-            let code = try await generate()
+            let share = try await generate()
             try Task.checkCancellation()
-            result = .success(code)
+            result = .success(share)
         }
         catch is CancellationError {
             logger.debug("restore code generation cancelled")
@@ -95,7 +105,13 @@ struct RestoreCodeView: View {
 #if DEBUG
 #Preview {
     RestoreCodeView(
-        generate: { "PREVIEW-RESTORE-CODE" },
+        generate: {
+            BridgeRestoreCodeShare(
+                code: "PREVIEW-RESTORE-CODE",
+                qrText: "PREVIEW-RESTORE-CODE",
+                qrCarriesS3Key: false
+            )
+        },
         onDismiss: {}
     )
 }

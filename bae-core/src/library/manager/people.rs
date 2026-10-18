@@ -66,8 +66,17 @@ impl LibraryManager {
         Ok(people.into_values().collect())
     }
 
-    pub async fn generate_restore_code(&self) -> Result<String, LibraryError> {
-        Ok(self.database.generate_restore_code().await?)
+    /// This person's restore code, and on S3 the key this device holds beside
+    /// it in the QR code, for their own new device.
+    pub async fn generate_restore_code(
+        &self,
+    ) -> Result<crate::sync::restore_code::RestoreCodeShare, LibraryError> {
+        let code = self.database.generate_restore_code().await?;
+        let s3_key = self.database.s3_credentials_for_transfer().await?;
+        Ok(crate::sync::restore_code::RestoreCodeShare::new(
+            code,
+            s3_key.as_ref(),
+        )?)
     }
 
     pub async fn get_members(&self) -> Result<crate::sync::membership::Membership, LibraryError> {

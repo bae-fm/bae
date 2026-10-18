@@ -210,8 +210,10 @@ forward! { async this => {
         Ok(this.services.cloud_only_release_count().await?)
     }
 
-    fn generate_restore_code() -> String {
-        Ok(this.services.generate_restore_code().await?)
+    /// This person's restore code, with the S3 key this device holds beside it
+    /// in the QR text.
+    fn generate_restore_code() -> crate::types::BridgeRestoreCodeShare {
+        Ok(crate::types::BridgeRestoreCodeShare::from_core(this.services.generate_restore_code().await?))
     }
 
     /// Enqueue releases to pin for offline. They join the in-memory serial

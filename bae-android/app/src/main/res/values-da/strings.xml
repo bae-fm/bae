@@ -280,4 +280,6 @@
     <string name="settings_stored_in">Gemt i</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
+    <string name="restore_code_carries_s3_key">QR-koden indeholder også din S3-adgangsnøgle, så en enhed, der scanner den, ikke beder om nøglen.</string>
+    <string name="onboarding_s3_key_scanned">Din S3-adgangsnøgle fulgte med den scannede kode.</string>
 </resources>

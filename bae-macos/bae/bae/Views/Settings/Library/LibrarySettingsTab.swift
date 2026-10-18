@@ -231,12 +231,12 @@ private struct UploadPauseToggle: View {
 /// The "Restore code" section: the code that adds this person's other
 /// devices, shown only on request.
 private struct RestoreCodeSection: View {
-    let generate: @Sendable () async throws -> String
+    let generate: @Sendable () async throws -> BridgeRestoreCodeShare
 
     @State
     private var show = false
     @State
-    private var result: Result<String, Error>?
+    private var result: Result<BridgeRestoreCodeShare, Error>?
 
     var body: some View {
         Section("Restore code") {
@@ -261,8 +261,8 @@ private struct RestoreCodeSection: View {
 
     private func runGenerate() async {
         do {
-            let code = try await generate()
-            result = .success(code)
+            let share = try await generate()
+            result = .success(share)
         }
         catch is CancellationError {
             logger.debug("restore code generation cancelled")

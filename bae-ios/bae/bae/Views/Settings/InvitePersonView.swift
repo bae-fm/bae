@@ -115,6 +115,7 @@ struct InvitePersonView: View {
             VStack(spacing: ThemeSpace.edge) {
                 CodeShareBlock(
                     code: invite.code,
+                    qrText: invite.code,
                     contentDescription: "Invitation code",
                     qrSize: 220
                 )

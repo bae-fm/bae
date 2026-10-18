@@ -284,4 +284,6 @@
     <string name="settings_stored_in">Uložené v</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
+    <string name="restore_code_carries_s3_key">QR kód obsahuje aj tvoj prístupový kľúč S3, takže zariadenie, ktoré ho naskenuje, sa na kľúč nespýta.</string>
+    <string name="onboarding_s3_key_scanned">Tvoj prístupový kľúč S3 prišiel spolu s naskenovaným kódom.</string>
 </resources>

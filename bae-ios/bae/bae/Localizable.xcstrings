@@ -43653,6 +43653,342 @@
           }
         }
       }
+    },
+    "The QR code also carries your S3 access key, so a device that scans it won't ask for the key.": {
+      "comment": "Restore code sheet: the QR code shown on the person's own device also carries their S3 key",
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يحمل رمز QR أيضًا مفتاح الوصول إلى S3 الخاص بك، فلن يطلب الجهاز الذي يمسحه المفتاح."
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QR кодът съдържа и вашия ключ за достъп до S3, така че устройството, което го сканира, няма да поиска ключа."
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QR kód nese i váš přístupový klíč S3, takže zařízení, které ho naskenuje, se na klíč nezeptá."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QR-koden indeholder også din S3-adgangsnøgle, så en enhed, der scanner den, ikke beder om nøglen."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der QR-Code enthält auch deinen S3-Zugriffsschlüssel, daher fragt ein Gerät, das ihn scannt, nicht nach dem Schlüssel."
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ο κωδικός QR περιέχει επίσης το κλειδί πρόσβασης S3, οπότε μια συσκευή που τον σαρώνει δεν θα ζητήσει το κλειδί."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El código QR también lleva tu clave de acceso de S3, así que el dispositivo que lo escanee no te pedirá la clave."
+          }
+        },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QR-koodi sisältää myös S3-käyttöavaimesi, joten sen skannaava laite ei kysy avainta."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le code QR contient aussi votre clé d’accès S3 : l’appareil qui le scanne ne vous la demandera pas."
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "קוד ה-QR נושא גם את מפתח הגישה שלך ל-S3, כך שמכשיר שסורק אותו לא יבקש את המפתח."
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QR kôd sadrži i vaš pristupni ključ za S3, pa uređaj koji ga skenira neće tražiti ključ."
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A QR-kód az S3-hozzáférési kulcsodat is tartalmazza, így az azt beolvasó eszköz nem kéri a kulcsot."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il codice QR contiene anche la tua chiave di accesso S3, quindi il dispositivo che lo scansiona non ti chiederà la chiave."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QR コードには S3 のアクセスキーも含まれているため、読み取ったデバイスはキーを尋ねません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QR 코드에는 S3 액세스 키도 들어 있어, 이 코드를 스캔한 기기는 키를 묻지 않습니다."
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QR-koden inneholder også S3-tilgangsnøkkelen din, så en enhet som skanner den, spør ikke etter nøkkelen."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De QR-code bevat ook je S3-toegangssleutel, dus een apparaat dat hem scant, vraagt niet om de sleutel."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kod QR zawiera też Twój klucz dostępu S3, więc urządzenie, które go zeskanuje, nie zapyta o klucz."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O código QR também leva sua chave de acesso do S3, então o dispositivo que o escanear não vai pedir a chave."
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O código QR também contém a sua chave de acesso S3, por isso o dispositivo que o ler não vai pedir a chave."
+          }
+        },
+        "ro": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codul QR conține și cheia ta de acces S3, așa că dispozitivul care îl scanează nu va cere cheia."
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QR kód obsahuje aj tvoj prístupový kľúč S3, takže zariadenie, ktoré ho naskenuje, sa na kľúč nespýta."
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QR-koden innehåller också din S3-åtkomstnyckel, så en enhet som skannar den frågar inte efter nyckeln."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QR kod S3 erişim anahtarınızı da taşır; bu yüzden onu tarayan cihaz anahtarı sormaz."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QR-код також містить ваш ключ доступу до S3, тож пристрій, який його відсканує, не питатиме ключ."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此二维码还包含你的 S3 访问密钥，扫描它的设备不会再要求输入密钥。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此 QR 碼也包含你的 S3 存取金鑰，掃描它的裝置不會再要求輸入金鑰。"
+          }
+        }
+      }
+    },
+    "Your S3 access key came with the scanned code.": {
+      "comment": "Restore from a scanned code: the S3 key came beside the code, so no key fields are shown",
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "وصل مفتاح الوصول إلى S3 الخاص بك مع الرمز الممسوح."
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ключът ви за достъп до S3 дойде заедно със сканирания код."
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Váš přístupový klíč S3 přišel spolu s naskenovaným kódem."
+          }
+        },
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Din S3-adgangsnøgle fulgte med den scannede kode."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dein S3-Zugriffsschlüssel kam mit dem gescannten Code."
+          }
+        },
+        "el": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Το κλειδί πρόσβασης S3 ήρθε μαζί με τον σαρωμένο κωδικό."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu clave de acceso de S3 venía con el código escaneado."
+          }
+        },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "S3-käyttöavaimesi tuli skannatun koodin mukana."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre clé d’accès S3 est arrivée avec le code scanné."
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "מפתח הגישה שלך ל-S3 הגיע עם הקוד שנסרק."
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vaš pristupni ključ za S3 stigao je uz skenirani kôd."
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Az S3-hozzáférési kulcsod a beolvasott kóddal együtt érkezett."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La tua chiave di accesso S3 è arrivata con il codice scansionato."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "S3 のアクセスキーは読み取ったコードと一緒に届きました。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "S3 액세스 키가 스캔한 코드와 함께 전달되었습니다."
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "S3-tilgangsnøkkelen din fulgte med den skannede koden."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Je S3-toegangssleutel kwam mee met de gescande code."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Twój klucz dostępu S3 przyszedł razem z zeskanowanym kodem."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sua chave de acesso do S3 veio com o código escaneado."
+          }
+        },
+        "pt-PT": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A sua chave de acesso S3 veio com o código lido."
+          }
+        },
+        "ro": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cheia ta de acces S3 a venit odată cu codul scanat."
+          }
+        },
+        "sk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tvoj prístupový kľúč S3 prišiel spolu s naskenovaným kódom."
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Din S3-åtkomstnyckel följde med den skannade koden."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "S3 erişim anahtarınız taranan kodla birlikte geldi."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ваш ключ доступу до S3 надійшов разом із відсканованим кодом."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的 S3 访问密钥已随扫描的代码一同传来。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的 S3 存取金鑰已隨掃描的代碼一併傳來。"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

@@ -280,4 +280,6 @@
     <string name="settings_stored_in">Lagras i</string>
     <string name="storage_location_account">%1$s: %2$s</string>
     <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
+    <string name="restore_code_carries_s3_key">QR-koden innehåller också din S3-åtkomstnyckel, så en enhet som skannar den frågar inte efter nyckeln.</string>
+    <string name="onboarding_s3_key_scanned">Din S3-åtkomstnyckel följde med den skannade koden.</string>
 </resources>

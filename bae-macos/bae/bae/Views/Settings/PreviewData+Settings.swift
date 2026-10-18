@@ -117,7 +117,13 @@
         /// previews never touch cloud storage.
         static func previewSync() -> Sync {
             Sync(
-                generateRestoreCode: { "restore-code-preview" },
+                generateRestoreCode: {
+                    BridgeRestoreCodeShare(
+                        code: "restore-code-preview",
+                        qrText: "restore-code-preview",
+                        qrCarriesS3Key: false
+                    )
+                },
                 cloudOnlyReleaseCount: { 0 }
             )
         }

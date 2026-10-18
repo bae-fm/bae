@@ -6,8 +6,10 @@ import os.log
 private let logger = Logger.bae("CodeShareBlock")
 
 /// Shows a code as a QR image and selectable text, with a button to copy it.
+/// The QR encodes `qrText`, which can carry more than the code typed or copied.
 struct CodeShareBlock: View {
     let code: String
+    let qrText: String
     /// Describes what the QR encodes, for VoiceOver (the image itself is opaque).
     let contentDescription: LocalizedStringKey
     /// Side of the square QR image.
@@ -15,8 +17,8 @@ struct CodeShareBlock: View {
 
     /// The QR image, or nil if rendering failed and the text stands alone.
     private var qrImage: UIImage? {
-        guard let image = QRCode.image(from: code) else {
-            logger.warning("no QR image for a \(code.count)-char code; showing text only")
+        guard let image = QRCode.image(from: qrText) else {
+            logger.warning("no QR image for \(qrText.count) characters; showing text only")
             return nil
         }
         return image
@@ -54,6 +56,7 @@ struct CodeShareBlock: View {
     let description = "Preview code"
     CodeShareBlock(
         code: "PREVIEW-CODE",
+        qrText: "PREVIEW-CODE",
         contentDescription: LocalizedStringKey(description),
         qrSize: 180
     )
