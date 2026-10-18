@@ -23,14 +23,12 @@ const DIRECT_KEYS: &[&str] = &[
     "core.queue.release_missing",
     "core.download.bytes_progress",
     "core.outbox.bytes.uploading",
-    // Status records carry these keys themselves.
+    // Cache-fill and transfer labels resolved by the UI.
     "core.artwork_cache.downloading",
     "core.artwork_cache.cancelled",
     "core.outbox.throughput",
     "core.outbox.eta",
-    // Upload rows word their non-filename labels with these. The cover uses
-    // the import role key directly because no file role names a cover: the
-    // cover is a release's choice, not a file's property.
+    // Returned by the device-reset confirmation object.
     "core.sync.reset_device.warning",
     // Album total playing time: the UI switches on `BridgeDurationUnits` and
     // composes the hours and minutes words through the join pattern.
