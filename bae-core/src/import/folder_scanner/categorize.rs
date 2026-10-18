@@ -1,4 +1,5 @@
 use super::*;
+use crate::import::track_numbers::TrackNumbers;
 
 // ── Extension-based classification (pure, no I/O) ──────────────────────────
 
@@ -613,6 +614,7 @@ pub(super) fn categorize_files_from_tree(
     probed: &ProbedAudio,
 ) -> Result<CategorizeOutcome, FolderScanError> {
     let mut proposed: Vec<(ScannedFile, ProposedRole)> = Vec::new();
+    let mut tagged: HashMap<String, TrackNumbers> = HashMap::new();
 
     for entry in tree.all_files_under(release_root) {
         cancellation.check()?;
@@ -621,27 +623,29 @@ pub(super) fn categorize_files_from_tree(
             Err(reason) => return invalid(reason),
         };
         if role == ProposedRole::Audio {
-            let Some(source_audio) = source_audio_of(&file, probed)? else {
+            let Some(read) = source_audio_of(&file, probed)? else {
                 return invalid(InvalidReason::CorruptAudioFile {
                     path: file.relative_path,
                 });
             };
-            file.source_audio = Some(source_audio);
+            file.source_audio = Some(read.audio);
+            tagged.insert(file.relative_path.clone(), read.tagged);
         }
         proposed.push((file, role));
     }
 
     // One order for everything downstream: the release's own file order.
     //
-    // Natural and case-insensitive, not byte-wise, so `CD10` follows `CD9`,
-    // `10.flac` follows `9.flac`, and `cover.jpg` sits with `Cover.jpg` rather
-    // than after every capitalized name — the order a person reading the
-    // folder expects. It has to be
-    // one order because separate consumers zip against each other: the track
-    // slots lay the audio down in this order, and the file-metadata import reads
-    // embedded tags in it, so a second ordering rule anywhere would pair a
-    // file's tags with a different file's samples.
+    // Files sit in name order — natural and case-insensitive, not byte-wise, so
+    // `CD10` follows `CD9`, `10.flac` follows `9.flac`, and `cover.jpg` sits
+    // with `Cover.jpg` rather than after every capitalized name — and the audio
+    // among them in the order it plays (`lay_audio_in_play_order`). It has to
+    // be one order because separate consumers zip against each other: the
+    // track slots lay the audio down in this order, and the file-metadata
+    // import reads embedded tags in it, so a second ordering rule anywhere
+    // would pair a file's tags with a different file's samples.
     proposed.sort_by(|a, b| natord::compare_ignore_case(&a.0.relative_path, &b.0.relative_path));
+    lay_audio_in_play_order(&mut proposed, &tagged, parts);
 
     // Parse every CUE exactly once. A sheet that will not parse is not a sheet;
     // it stays a document, and the folder imports without it.
@@ -719,6 +723,61 @@ pub(super) fn categorize_files_from_tree(
     }))
 }
 
+/// Reorder the audio among `proposed`, which is in name order, into the
+/// order it plays, each file keeping to the folder of the release it is read
+/// from: by the disc and track numbers its tags state, else the ones its name
+/// starts with ([`TrackNumbers::or_file_name`]), a file stating none after
+/// those that do, and files the numbers do not tell apart in name order. The
+/// audio takes the places audio holds in name order, so every other file —
+/// a track sheet, an image, a log — keeps the place its name gives it.
+fn lay_audio_in_play_order(
+    proposed: &mut [(ScannedFile, ProposedRole)],
+    tagged: &HashMap<String, TrackNumbers>,
+    parts: &[ReleasePart],
+) {
+    let slots: Vec<usize> = proposed
+        .iter()
+        .enumerate()
+        .filter(|(_, (_, role))| *role == ProposedRole::Audio)
+        .map(|(index, _)| index)
+        .collect();
+    // A release read from several folders keeps each folder's audio together,
+    // the folders in the order their names put them in.
+    let mut folder_rank: HashMap<Option<usize>, usize> = HashMap::new();
+    let mut audio: Vec<(usize, TrackNumbers, (ScannedFile, ProposedRole))> = slots
+        .iter()
+        .map(|&slot| {
+            let entry = proposed[slot].clone();
+            let next_rank = folder_rank.len();
+            let rank = *folder_rank
+                .entry(part_of(parts, &entry.0.relative_path))
+                .or_insert(next_rank);
+            let numbers = tagged
+                .get(&entry.0.relative_path)
+                .expect("every audio file's tags were read with its audio facts")
+                .or_file_name(&entry.0.relative_path);
+            (rank, numbers, entry)
+        })
+        .collect();
+    // Stable, so files the numbers do not tell apart stay in name order.
+    audio.sort_by(|(left_rank, left, _), (right_rank, right, _)| {
+        left_rank
+            .cmp(right_rank)
+            .then_with(|| left.play_order(right))
+    });
+    for (slot, (_, _, entry)) in slots.into_iter().zip(audio) {
+        proposed[slot] = entry;
+    }
+}
+
+/// What a pass read of one audio file: its stream, and the disc and track
+/// numbers its tags state.
+#[derive(Debug, Clone)]
+struct ProbedFile {
+    audio: ScannedAudio,
+    tagged: TrackNumbers,
+}
+
 /// The audio facts a pass has read, by the file identity they were read
 /// under (path, size, modification time). A pass categorizes a file again when
 /// it regroups folders — child folders' tracks read as one release, or a
@@ -726,11 +785,11 @@ pub(super) fn categorize_files_from_tree(
 /// first time still describe the same bytes.
 #[derive(Default)]
 pub(super) struct ProbedAudio {
-    facts: std::sync::Mutex<HashMap<(PathBuf, u64, i64), Option<ScannedAudio>>>,
+    facts: std::sync::Mutex<HashMap<(PathBuf, u64, i64), Option<ProbedFile>>>,
 }
 
 impl ProbedAudio {
-    fn get(&self, file: &ScannedFile) -> Option<Option<ScannedAudio>> {
+    fn get(&self, file: &ScannedFile) -> Option<Option<ProbedFile>> {
         self.facts
             .lock()
             .expect("probed audio mutex poisoned")
@@ -738,7 +797,7 @@ impl ProbedAudio {
             .cloned()
     }
 
-    fn insert(&self, file: &ScannedFile, facts: Option<ScannedAudio>) {
+    fn insert(&self, file: &ScannedFile, facts: Option<ProbedFile>) {
         self.facts
             .lock()
             .expect("probed audio mutex poisoned")
@@ -746,13 +805,13 @@ impl ProbedAudio {
     }
 }
 
-/// `file`'s audio facts: the ones `probed` holds for its identity, or read
-/// from the file and kept there. `None` when the file is not audio bae can
-/// play.
+/// `file`'s audio facts and tagged numbers: the ones `probed` holds for its
+/// identity, or read from the file and kept there. `None` when the file is
+/// not audio bae can play.
 fn source_audio_of(
     file: &ScannedFile,
     probed: &ProbedAudio,
-) -> Result<Option<ScannedAudio>, FolderScanError> {
+) -> Result<Option<ProbedFile>, FolderScanError> {
     let metadata =
         std::fs::metadata(&file.path).map_err(|source| FolderScanError::io(&file.path, source))?;
     let modified_at_ns = super::scan::file_modified_at_ns(&file.path, &metadata)?;
@@ -770,7 +829,7 @@ fn source_audio_of(
     Ok(facts)
 }
 
-fn probe_source_audio(file: &ScannedFile) -> Result<Option<ScannedAudio>, FolderScanError> {
+fn probe_source_audio(file: &ScannedFile) -> Result<Option<ProbedFile>, FolderScanError> {
     let path = file.path.to_str().ok_or_else(|| {
         FolderScanError::Other(format!("audio path is not UTF-8: {}", file.path.display()))
     })?;
@@ -784,6 +843,18 @@ fn probe_source_audio(file: &ScannedFile) -> Result<Option<ScannedAudio>, Folder
         );
         return Ok(None);
     };
+    // Playable audio whose tags cannot be read is still the folder's audio;
+    // its tags just place it nowhere, and its name decides.
+    let tagged = match crate::import::file_tag_snapshot::read_tag_numbers(&file.path) {
+        Ok(numbers) => numbers,
+        Err(error) => {
+            tracing::warn!(
+                "{}: its tags could not be read, so its name places it: {error}",
+                file.relative_path
+            );
+            TrackNumbers::unstated()
+        }
+    };
     let metadata =
         std::fs::metadata(&file.path).map_err(|source| FolderScanError::io(&file.path, source))?;
     let modified_at_ns = super::scan::file_modified_at_ns(&file.path, &metadata)?;
@@ -793,7 +864,7 @@ fn probe_source_audio(file: &ScannedFile) -> Result<Option<ScannedAudio>, Folder
             file.path.display()
         )));
     }
-    Ok(Some(audio))
+    Ok(Some(ProbedFile { audio, tagged }))
 }
 
 /// What a file's audio is, as `probe` read it: `None` for audio bae does

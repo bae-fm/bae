@@ -440,8 +440,10 @@ impl crate::import::file_tag_snapshot::FileTagReader for CountingFileTagReader {
             album_title: Some("Album Title".to_string()),
             album_artist: Some("Album Artist".to_string()),
             year: Some(2020),
-            track_number: Some(u32::try_from(index + 1).unwrap()),
-            disc_number: Some(1),
+            numbers: crate::import::track_numbers::TrackNumbers {
+                disc: Some(1),
+                track: Some(u32::try_from(index + 1).unwrap()),
+            },
             embedded_cover: if index == 0 {
                 self.embedded_cover
                     .clone()

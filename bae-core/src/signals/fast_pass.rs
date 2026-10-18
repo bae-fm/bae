@@ -210,17 +210,15 @@ pub(super) fn gather_non_ocr_sources(
     Ok(pass)
 }
 
-/// The filenames the classifier reads: artwork and documents. Audio stems are
-/// track titles, and a sheet's own names are already read from its fields.
 /// Each track's title, in the tracks' order: its file's title tag, or failing
 /// that its file name without the track number, as the text pool reads a file
 /// name.
 ///
 /// Empty when a sheet carves tracks out of one file, which no file's title
 /// names; when a track has no title either way; and when the files' own
-/// numbers do not put them in the order they are laid out in — each file's
-/// disc and track tags, or failing a track tag the number its name starts
-/// with, rising from one file to the next. A folder whose files are not
+/// numbers do not rise from one file to the next — each file's disc and
+/// track tags, or the numbers its name starts with where its tags state none
+/// (`TrackNumbers::or_file_name`). A folder whose files are not
 /// numbered lays them out in an order nothing states, and titles in that
 /// order would tell a tracklist listing them otherwise apart for no reason.
 fn track_titles(
@@ -228,7 +226,7 @@ fn track_titles(
     tags: &crate::import::file_tag_snapshot::FileTagSnapshot,
 ) -> Vec<String> {
     let mut titles = Vec::new();
-    let mut previous: Option<(u32, u32)> = None;
+    let mut previous: Option<(Option<u32>, u32)> = None;
     for unit in crate::import::audio_layout::audio_units(categorized) {
         let crate::import::AudioFile::Standalone { file_id } = unit else {
             return Vec::new();
@@ -237,13 +235,15 @@ fn track_titles(
             .files
             .iter()
             .find(|fact| fact.observation.relative_path == file_id);
-        let Some(number) = fact
-            .and_then(|fact| fact.track_number)
-            .or_else(|| leading_number(&file_id))
-        else {
+        let numbers = match fact {
+            Some(fact) => fact.numbers,
+            None => crate::import::track_numbers::TrackNumbers::unstated(),
+        }
+        .or_file_name(&file_id);
+        let Some(number) = numbers.track else {
             return Vec::new();
         };
-        let position = (fact.and_then(|fact| fact.disc_number).unwrap_or(0), number);
+        let position = (numbers.disc, number);
         if previous.is_some_and(|previous| previous >= position) {
             return Vec::new();
         }
@@ -263,13 +263,8 @@ fn track_titles(
     titles
 }
 
-/// The number a file's name starts with, as a track number: `01 - Title`.
-fn leading_number(file_id: &str) -> Option<u32> {
-    let name = Path::new(file_id).file_name()?.to_str()?.trim_start();
-    let digits: String = name.chars().take_while(char::is_ascii_digit).collect();
-    (1..=3).contains(&digits.len()).then(|| digits.parse().ok()).flatten()
-}
-
+/// The filenames the classifier reads: artwork and documents. Audio stems are
+/// track titles, and a sheet's own names are already read from its fields.
 fn enumerate_filename_inputs(categorized: &CategorizedFiles) -> Vec<PathBuf> {
     categorized
         .artwork()

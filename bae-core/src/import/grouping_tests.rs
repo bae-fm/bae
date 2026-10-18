@@ -206,8 +206,10 @@ fn file_metadata_keeps_the_releases_numbering_instead_of_the_tags() {
                 album_title: Some("Album".into()),
                 album_artist: Some("Artist".into()),
                 year: None,
-                track_number: Some(1),
-                disc_number: Some(7),
+                numbers: crate::import::track_numbers::TrackNumbers {
+                    disc: Some(7),
+                    track: Some(1),
+                },
                 isrc: None,
                 copyright: None,
                 label: None,

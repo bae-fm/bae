@@ -183,7 +183,9 @@ fn each_track_is_titled_by_its_tag_or_its_file_name() {
 }
 
 /// Files nothing numbers are laid out in an order nothing states, so their
-/// titles are not given in it; nor are files whose numbers run backwards.
+/// titles are not given in it; nor are files whose numbers repeat. Files the
+/// tags number against their names' order are laid out by the tags, and give
+/// their titles in that order.
 #[test]
 fn unnumbered_files_give_no_titles() {
     let titles_of = |files: &[(&str, &[(&str, &str)])]| {
@@ -205,10 +207,17 @@ fn unnumbered_files_give_no_titles() {
     };
     assert!(titles_of(&[("Song A.flac", &[]), ("Song B.flac", &[])]).is_empty());
     assert!(titles_of(&[
-        ("a.flac", &[("TITLE", "Song One"), ("TRACKNUMBER", "2")]),
+        ("a.flac", &[("TITLE", "Song One"), ("TRACKNUMBER", "1")]),
         ("b.flac", &[("TITLE", "Song Two"), ("TRACKNUMBER", "1")]),
     ])
     .is_empty());
+    assert_eq!(
+        titles_of(&[
+            ("a.flac", &[("TITLE", "Song Two"), ("TRACKNUMBER", "2")]),
+            ("b.flac", &[("TITLE", "Song One"), ("TRACKNUMBER", "1")]),
+        ]),
+        vec!["Song One", "Song Two"]
+    );
     assert_eq!(
         titles_of(&[
             ("a.flac", &[("TITLE", "Song One"), ("TRACKNUMBER", "1")]),

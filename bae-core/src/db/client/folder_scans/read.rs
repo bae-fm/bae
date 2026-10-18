@@ -320,12 +320,14 @@ fn load_file_tag_facts(
                             })
                         })
                         .transpose()?,
-                    track_number: track_number
-                        .map(|value| to_u32(value, "a file-tag track number"))
-                        .transpose()?,
-                    disc_number: disc_number
-                        .map(|value| to_u32(value, "a file-tag disc number"))
-                        .transpose()?,
+                    numbers: crate::import::track_numbers::TrackNumbers {
+                        disc: disc_number
+                            .map(|value| to_u32(value, "a file-tag disc number"))
+                            .transpose()?,
+                        track: track_number
+                            .map(|value| to_u32(value, "a file-tag track number"))
+                            .transpose()?,
+                    },
                     isrc,
                     label,
                     copyright,

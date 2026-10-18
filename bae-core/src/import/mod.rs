@@ -23,6 +23,7 @@ desktop_only! {
     pub mod file_tag_mapper;
     pub(crate) mod file_tag_snapshot;
     pub(crate) mod file_metadata_seed;
+    pub(crate) mod track_numbers;
     mod file_validation;
     pub mod folder_scanner;
     pub(crate) mod folder_state_commit;

@@ -31,8 +31,9 @@ use std::path::{Path, PathBuf};
 
 /// Map the embedded tags of a rip's audio files to a `ParsedAlbum`.
 ///
-/// `audio_files` is the rip's audio files in order; that order is the fallback
-/// track ordering when DISCNUMBER/TRACKNUMBER tags are absent or partial.
+/// `audio_files` is the rip's audio files in the order its tracks play; each
+/// track is numbered by its file's DISCNUMBER/TRACKNUMBER tags, else by the
+/// numbers its name starts with, else by its position.
 /// `folder_name` is the rip's containing folder — the album-title fallback when
 /// no file carries an ALBUM tag.
 ///
@@ -124,14 +125,6 @@ fn file_tag_facts_ir(
 
     let year = extracted.iter().find_map(|t| t.year).map(|y| y as i32);
 
-    // Missing disc tags carry no claimed grouping. Numbers default to position
-    // independently of whether neighboring files have number tags.
-    let side_of = |track: &FileTagFact| {
-        track
-            .disc_number
-            .filter(|number| *number > 0)
-            .and_then(|number| i32::try_from(number).ok())
-    };
     let tracks: Vec<TrackIr> = extracted
         .iter()
         .map(|t| {
@@ -145,11 +138,12 @@ fn file_tag_facts_ir(
                     .expect("scanned audio file relative path has a stem")
             });
 
-            let side = side_of(t);
-            let number = t
-                .track_number
-                .and_then(|number| i32::try_from(number).ok())
-                .filter(|number| *number > 0);
+            // The tags' numbers, else the ones the file's name starts with. A
+            // file stating no disc claims no grouping; one stating no track is
+            // numbered by its position.
+            let numbers = t.numbers.or_file_name(&t.observation.relative_path);
+            let side = numbers.disc.and_then(|number| i32::try_from(number).ok());
+            let number = numbers.track.and_then(|number| i32::try_from(number).ok());
 
             TrackIr {
                 title,

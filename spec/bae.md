@@ -589,6 +589,17 @@ what one track plays: a whole file, or one slice a bound CUE sheet carves out of
 an image. Units add up: a disc image with two loose bonus tracks offers
 thirteen.
 
+**Track order.** The units play in the order the files' own numbers give
+them. A file's disc and track numbers come from its tags (`DISCNUMBER` and
+`TRACKNUMBER`, ID3 `TPOS` and `TRCK`, MP4 `disk` and `trkn`); a number its tags
+don't state comes from its name, read as `07 Title` (track 7) or `2-07 Title`
+(disc 2, track 7). Files go by disc, then track; a file stating no number goes
+after those that do, and files the numbers don't tell apart go in name order.
+A release read from several folders keeps each folder's files together, the
+folders in name order. Ben's download names its files by title alone, but tags
+`Track Title.mp3` as track 7, so it is the seventh unit: a draft read from the
+tags numbers it 7, and a catalog's tracklist lays its seventh track on it.
+
 Every draft records who wrote it: nobody yet, the folder's tags, an
 identification, or the person. Every pane control is stored the moment it's
 used, under the candidate's hash, so the person can leave a candidate half

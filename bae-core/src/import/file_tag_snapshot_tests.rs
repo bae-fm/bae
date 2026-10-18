@@ -169,8 +169,10 @@ impl FileTagReader for CountingReader {
             album_title: Some("Album Alpha".to_string()),
             album_artist: Some("Artist Alpha".to_string()),
             year: Some(2001),
-            track_number: Some(1),
-            disc_number: None,
+            numbers: crate::import::track_numbers::TrackNumbers {
+                disc: None,
+                track: Some(1),
+            },
             embedded_cover: None,
             isrc: None,
             copyright: None,

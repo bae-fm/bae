@@ -53,15 +53,16 @@ pub(crate) enum UnitContribution<'a> {
     SpokenFor,
 }
 
-/// Every one of the folder's audio files, in the order it sits on disk, with
-/// what each contributes to [`audio_units`].
+/// Every one of the folder's audio files, in the scan's order — the order it
+/// plays, by its disc and track numbers — with what each contributes to
+/// [`audio_units`].
 ///
 /// A carving track sheet contributes one run — one entry per track it describes
 /// — and the audio it speaks for contributes nothing of its own. Every other
 /// audio file contributes one whole unit. That is what makes the mapping
 /// additive rather than one shape winning.
 ///
-/// Runs sit at the disk positions of the sheet-carved containers, but **which
+/// Runs sit at the scan positions of the sheet-carved containers, but **which
 /// run lands in which of those positions is the assignment's to say**: the runs
 /// are ordered by `(disc number, sheet relative_path)` and laid into those
 /// positions in that order, so disc one's tracks precede disc two's however the
@@ -141,9 +142,10 @@ fn units_of(layout: &[(&ScannedFile, UnitContribution<'_>)]) -> Vec<AudioFile> {
 
 /// The audio the folder offers, one entry per track it can produce.
 ///
-/// The order is the scan's own, which is what "disk order" means everywhere
-/// else in the import — the same order the file-metadata path reads embedded tags in,
-/// so the two cannot pair a file's tags with another file's samples.
+/// The order is the scan's own: the audio as it plays, by each file's disc
+/// and track tags, else the numbers its name starts with — the same order the
+/// file-metadata path reads embedded tags in, so the two cannot pair a file's
+/// tags with another file's samples.
 pub(crate) fn audio_units(files: &CategorizedFiles) -> Vec<AudioFile> {
     units_of(&audio_layout(files))
 }

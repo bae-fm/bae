@@ -197,3 +197,4 @@ include!("tests/scan_scenarios.rs");
 include!("tests/bindings.rs");
 include!("tests/audio_formats.rs");
 include!("tests/sidecars.rs");
+include!("tests/track_order.rs");

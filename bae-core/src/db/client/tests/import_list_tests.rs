@@ -880,8 +880,10 @@ async fn the_list_projects_the_persisted_embedded_file_metadata_cover() {
             album_title: None,
             album_artist: None,
             year: None,
-            track_number: None,
-            disc_number: None,
+            numbers: crate::import::track_numbers::TrackNumbers {
+                disc: None,
+                track: None,
+            },
             isrc: None,
             copyright: None,
             label: None,

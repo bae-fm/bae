@@ -1,6 +1,7 @@
 //! A stable reading of one import candidate's embedded metadata.
 
 use super::folder_scanner::ScannedFile;
+use super::track_numbers::TrackNumbers;
 use super::ImportError;
 use crate::signals::StoreMarker;
 use crate::util::content_type::ContentType;
@@ -31,8 +32,8 @@ pub(crate) struct FileTagFact {
     pub album_title: Option<String>,
     pub album_artist: Option<String>,
     pub year: Option<u16>,
-    pub track_number: Option<u32>,
-    pub disc_number: Option<u32>,
+    /// The disc and track numbers the tags state.
+    pub numbers: TrackNumbers,
     /// The code the track's recording is registered under, as the tag writes
     /// it.
     pub isrc: Option<String>,
@@ -117,8 +118,7 @@ pub(crate) struct FileTagRead {
     pub album_title: Option<String>,
     pub album_artist: Option<String>,
     pub year: Option<u16>,
-    pub track_number: Option<u32>,
-    pub disc_number: Option<u32>,
+    pub numbers: TrackNumbers,
     pub isrc: Option<String>,
     pub label: Option<String>,
     pub copyright: Option<String>,
@@ -132,6 +132,30 @@ pub(crate) trait FileTagReader: Send + Sync {
 
 pub(crate) struct LoftyFileTagReader;
 
+/// The tag a file's other tags defer to: its format's own, else the first it
+/// carries.
+fn primary_tag(tagged: &lofty::file::TaggedFile) -> Option<&lofty::tag::Tag> {
+    tagged.primary_tag().or_else(|| tagged.first_tag())
+}
+
+/// The disc and track numbers `path`'s tags state, read from the same tag
+/// [`LoftyFileTagReader`] reads, without its audio properties or artwork.
+pub(crate) fn read_tag_numbers(path: &Path) -> Result<TrackNumbers, ImportError> {
+    let tagged = Probe::open(path)
+        .map_err(|error| ImportError::file_tags("open", path, error))?
+        .options(
+            ParseOptions::new()
+                .read_properties(false)
+                .read_cover_art(false),
+        )
+        .read()
+        .map_err(|error| ImportError::file_tags("read tags from", path, error))?;
+    Ok(match primary_tag(&tagged) {
+        Some(tag) => TrackNumbers::of_tag(tag),
+        None => TrackNumbers::unstated(),
+    })
+}
+
 impl FileTagReader for LoftyFileTagReader {
     fn read(&self, path: &Path) -> Result<FileTagRead, ImportError> {
         let probe =
@@ -140,45 +164,42 @@ impl FileTagReader for LoftyFileTagReader {
         let tagged = probe
             .read()
             .map_err(|error| ImportError::file_tags("read tags from", path, error))?;
-        let tag = tagged.primary_tag().or_else(|| tagged.first_tag());
+        let tag = primary_tag(&tagged);
         let legacy_text = match tag.map(TagExt::tag_type) {
             Some(TagType::Id3v2) => legacy_id3v2_text(path, file_type)?,
             Some(TagType::Id3v1) => legacy_id3v1_text(path)?,
             Some(_) | None => LegacyTagText::default(),
         };
-        let (title, track_artist, album_title, album_artist, track_number, disc_number, year) =
-            match tag {
-                Some(tag) => (
-                    non_empty(legacy_text.title.or_else(|| tag.title().map(String::from))),
-                    non_empty(
-                        legacy_text
-                            .track_artist
-                            .or_else(|| tag.artist().map(String::from)),
-                    ),
-                    non_empty(
-                        legacy_text
-                            .album_title
-                            .or_else(|| tag.album().map(String::from)),
-                    ),
-                    non_empty(
-                        legacy_text
-                            .album_artist
-                            .or_else(|| tag.get_string(ItemKey::AlbumArtist).map(String::from)),
-                    ),
-                    tag.track(),
-                    tag.disk(),
-                    year_from_tag(tag),
+        let (title, track_artist, album_title, album_artist, numbers, year) = match tag {
+            Some(tag) => (
+                non_empty(legacy_text.title.or_else(|| tag.title().map(String::from))),
+                non_empty(
+                    legacy_text
+                        .track_artist
+                        .or_else(|| tag.artist().map(String::from)),
                 ),
-                None => (None, None, None, None, None, None, None),
-            };
+                non_empty(
+                    legacy_text
+                        .album_title
+                        .or_else(|| tag.album().map(String::from)),
+                ),
+                non_empty(
+                    legacy_text
+                        .album_artist
+                        .or_else(|| tag.get_string(ItemKey::AlbumArtist).map(String::from)),
+                ),
+                TrackNumbers::of_tag(tag),
+                year_from_tag(tag),
+            ),
+            None => (None, None, None, None, TrackNumbers::unstated(), None),
+        };
         Ok(FileTagRead {
             title,
             track_artist,
             album_title,
             album_artist,
             year,
-            track_number,
-            disc_number,
+            numbers,
             isrc: non_empty(tag.and_then(|tag| tag.get_string(ItemKey::Isrc).map(String::from))),
             label: non_empty(
                 legacy_text
@@ -409,8 +430,7 @@ pub(crate) fn extract_file_tag_snapshot(
             album_title: read.album_title,
             album_artist: read.album_artist,
             year: read.year,
-            track_number: read.track_number,
-            disc_number: read.disc_number,
+            numbers: read.numbers,
             isrc: read.isrc,
             label: read.label,
             copyright: read.copyright,
