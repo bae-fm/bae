@@ -130,6 +130,66 @@ impl Database {
             .await
     }
 
+    #[cfg(feature = "oauth-providers")]
+    pub(crate) async fn onedrive_root(
+        &self,
+    ) -> Result<coven::StorageFolder, coven::StorageSetupError> {
+        self.inner.handle.onedrive_root().await
+    }
+
+    #[cfg(feature = "oauth-providers")]
+    pub(crate) async fn onedrive_folders(
+        &self,
+        parent: &coven::StorageConfig,
+    ) -> Result<Vec<coven::StorageFolder>, coven::StorageSetupError> {
+        self.inner.handle.onedrive_folders(parent).await
+    }
+
+    #[cfg(feature = "oauth-providers")]
+    pub(crate) async fn create_onedrive_folder(
+        &self,
+        parent: &coven::StorageConfig,
+        name: &str,
+    ) -> Result<coven::StorageFolder, coven::StorageSetupError> {
+        self.inner.handle.create_onedrive_folder(parent, name).await
+    }
+
+    #[cfg(feature = "oauth-providers")]
+    pub(crate) async fn dropbox_shared_folders(
+        &self,
+    ) -> Result<Vec<coven::StorageFolder>, coven::StorageSetupError> {
+        self.inner.handle.dropbox_shared_folders().await
+    }
+
+    pub(crate) async fn retry_with_admin_access(
+        &self,
+        operation: coven::OperationId,
+        source: coven::AdminAccessSource,
+    ) -> Result<(), coven::OperationError> {
+        let admin = self.inner.handle.admin_access(source).await?;
+        self.inner
+            .handle
+            .retry_with_admin_access(operation, admin)
+            .await?;
+        Ok(())
+    }
+
+    pub(crate) async fn delete_access_key(
+        &self,
+        operation: coven::OperationId,
+        source: coven::AdminAccessSource,
+    ) -> Result<(), coven::SyncError> {
+        let admin = self.inner.handle.admin_access(source).await?;
+        self.inner.handle.delete_access_key(operation, admin).await
+    }
+
+    pub(crate) async fn confirm_access_key_deleted(
+        &self,
+        key: &str,
+    ) -> Result<(), coven::SyncError> {
+        self.inner.handle.confirm_access_key_deleted(key).await
+    }
+
     pub(crate) fn store_key_state(&self) -> Result<coven::StoreKeyState, coven::KeyError> {
         self.inner.handle.store_key_state()
     }

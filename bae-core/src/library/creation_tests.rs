@@ -42,3 +42,29 @@ async fn failed_creation_removes_the_partial_library() {
     assert!(app_dir.store_layout().stores().await.unwrap().is_empty());
     assert!(!app_dir.active_library_pointer().exists());
 }
+
+#[tokio::test]
+async fn resetting_an_unconnected_store_replaces_the_device_and_keeps_its_name() {
+    let temp = tempfile::TempDir::new().unwrap();
+    let app_dir = AppDir::at(temp.path());
+    let installation = coven::TestCoven::new();
+    let handle = create_library(
+        installation.builder(app_dir.store_layout()),
+        crate::library_name::LibraryName::parse("Local Library").unwrap(),
+    )
+    .await
+    .unwrap();
+    let store = handle.store_id();
+    let device = handle.device_id();
+    handle.close().await.unwrap();
+    let reopened = reset_device(
+        installation.builder(app_dir.store_layout()),
+        store,
+        "Replacement",
+    )
+    .await
+    .unwrap();
+    assert_ne!(reopened.device_id(), device);
+    assert_eq!(reopened.store_name().await.unwrap(), "Local Library");
+    reopened.close().await.unwrap();
+}

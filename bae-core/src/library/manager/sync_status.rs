@@ -103,6 +103,11 @@ pub enum PendingAction {
     ResumeUploads,
     RetryOperation(coven::OperationId),
     ResetDevice,
+    ProvideAdminAccess(coven::OperationId),
+    DeleteAccessKey {
+        operation: coven::OperationId,
+        access_key_id: String,
+    },
     Review,
 }
 
@@ -113,6 +118,17 @@ pub fn pending_action(record: &coven::PendingRecord) -> PendingAction {
         reason = cleanup;
     }
     match reason {
+        R::AdminAccessRequired => match record.subject {
+            S::Operation { id, .. } => PendingAction::ProvideAdminAccess(id),
+            _ => PendingAction::Review,
+        },
+        R::DeleteAccessKey(key) => match record.subject {
+            S::Operation { id, .. } => PendingAction::DeleteAccessKey {
+                operation: id,
+                access_key_id: key.access_key_id.clone(),
+            },
+            _ => PendingAction::Review,
+        },
         R::NoStorage => PendingAction::Reconnect,
         R::Storage {
             provider,

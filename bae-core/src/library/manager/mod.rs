@@ -33,8 +33,6 @@ use crate::album_detail::{
     ReleaseStorageSummary, SearchResults, StoragePage, StorageRow, WorkDetail, WorkReleaseSummary,
     WorkSummary,
 };
-#[cfg(feature = "oauth-providers")]
-use crate::config::CloudProvider;
 use crate::config::ConfigHandle;
 use crate::db::{
     Database, DbAlbum, DbArtist, DbAudioFormat, DbAudioSegment, DbAudioSegmentRole, DbFile,

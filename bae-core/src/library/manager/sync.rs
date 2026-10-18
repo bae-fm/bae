@@ -83,6 +83,56 @@ impl LibraryManager {
         self.sync.setup_oauth_storage(storage, device_name).await
     }
 
+    #[cfg(feature = "oauth-providers")]
+    pub async fn onedrive_root(&self) -> Result<coven::StorageFolder, LibraryError> {
+        Ok(self.database.onedrive_root().await?)
+    }
+
+    #[cfg(feature = "oauth-providers")]
+    pub async fn onedrive_folders(
+        &self,
+        parent: &coven::StorageConfig,
+    ) -> Result<Vec<coven::StorageFolder>, LibraryError> {
+        Ok(self.database.onedrive_folders(parent).await?)
+    }
+
+    #[cfg(feature = "oauth-providers")]
+    pub async fn create_onedrive_folder(
+        &self,
+        parent: &coven::StorageConfig,
+        name: &str,
+    ) -> Result<coven::StorageFolder, LibraryError> {
+        Ok(self.database.create_onedrive_folder(parent, name).await?)
+    }
+
+    #[cfg(feature = "oauth-providers")]
+    pub async fn dropbox_shared_folders(&self) -> Result<Vec<coven::StorageFolder>, LibraryError> {
+        Ok(self.database.dropbox_shared_folders().await?)
+    }
+
+    pub async fn retry_with_admin_access(
+        &self,
+        operation: coven::OperationId,
+        source: coven::AdminAccessSource,
+    ) -> Result<(), LibraryError> {
+        Ok(self
+            .database
+            .retry_with_admin_access(operation, source)
+            .await?)
+    }
+
+    pub async fn delete_access_key(
+        &self,
+        operation: coven::OperationId,
+        source: coven::AdminAccessSource,
+    ) -> Result<(), LibraryError> {
+        Ok(self.database.delete_access_key(operation, source).await?)
+    }
+
+    pub async fn confirm_access_key_deleted(&self, key: &str) -> Result<(), LibraryError> {
+        Ok(self.database.confirm_access_key_deleted(key).await?)
+    }
+
     pub async fn use_cloudkit(
         &self,
         device_name: &str,

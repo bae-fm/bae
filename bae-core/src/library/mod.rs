@@ -203,6 +203,20 @@ pub async fn join_with_invite(
     .map_err(restore_error)
 }
 
+/// Replace this device after the caller has warned that unsent edits are discarded.
+/// Coven checks storage and custody before replacing the installation. The
+/// returned handle is ready to open in bae; there is no post-reset notification.
+pub async fn reset_device(
+    builder: coven::CovenBuilder,
+    store: coven::StoreId,
+    device_name: &str,
+) -> Result<coven::CovenHandle, RestoreFromCodeError> {
+    configure_store(builder)
+        .reset_device(store, device_name)
+        .await
+        .map_err(restore_error)
+}
+
 pub use coven::saved_restore_codes;
 
 fn restore_error(error: coven::BootstrapError) -> RestoreFromCodeError {
