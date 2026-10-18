@@ -1,16 +1,5 @@
 [advisories]
 ignore = [
-    # Coven's S3 builder selects behavior_version_latest() (2026-01-12) with
-    # default-https-client: aws-smithy-runtime 1.16 selects hyper 1 / rustls 0.23.
-    # Its additional `rustls` feature compiles the legacy connector, but no
-    # application path selects it. Recheck this reachability when the coven or
-    # AWS pins change; these versions have no compatible patched releases.
-    { id = "RUSTSEC-2026-0258", reason = "Unreachable AWS legacy connector; coven selects the current connector" },
-    { id = "RUSTSEC-2026-0346", reason = "Unreachable AWS legacy connector; coven selects the current connector" },
-    { id = "RUSTSEC-2026-0349", reason = "Unreachable AWS legacy connector; coven selects the current connector" },
-    { id = "RUSTSEC-2026-0098", reason = "Unreachable AWS legacy connector; coven selects the current connector" },
-    { id = "RUSTSEC-2026-0099", reason = "Unreachable AWS legacy connector; coven selects the current connector" },
-    { id = "RUSTSEC-2026-0104", reason = "Unreachable AWS legacy connector; coven selects the current connector" },
     # rsa: phantom dep from sqlx-macros-core optional mysql backend, never compiled.
     # https://github.com/rust-lang/cargo/issues/10801
     "RUSTSEC-2023-0071",
@@ -62,56 +51,6 @@ confidence-threshold = 0.8
 # bae's own workspace crates are unpublished (`publish = false`) and not yet
 # licensed; skip them so the allow-list above only gates third-party deps.
 private = { ignore = true }
-
-# Coven's workspace license lives above its crate manifests, which omit
-# package.license. Verify the repository's license bytes for each crate.
-[[licenses.clarify]]
-name = "coven"
-version = "=0.1.0"
-expression = "Apache-2.0"
-license-files = [{ path = "../../LICENSE", hash = 0x3e961b13 }]
-
-[[licenses.clarify]]
-name = "coven-crypto"
-version = "=0.1.0"
-expression = "Apache-2.0"
-license-files = [{ path = "../../LICENSE", hash = 0x3e961b13 }]
-
-[[licenses.clarify]]
-name = "coven-database"
-version = "=0.1.0"
-expression = "Apache-2.0"
-license-files = [{ path = "../../LICENSE", hash = 0x3e961b13 }]
-
-[[licenses.clarify]]
-name = "coven-format"
-version = "=0.1.0"
-expression = "Apache-2.0"
-license-files = [{ path = "../../LICENSE", hash = 0x3e961b13 }]
-
-[[licenses.clarify]]
-name = "coven-foundation"
-version = "=0.1.0"
-expression = "Apache-2.0"
-license-files = [{ path = "../../LICENSE", hash = 0x3e961b13 }]
-
-[[licenses.clarify]]
-name = "coven-merge"
-version = "=0.1.0"
-expression = "Apache-2.0"
-license-files = [{ path = "../../LICENSE", hash = 0x3e961b13 }]
-
-[[licenses.clarify]]
-name = "coven-storage"
-version = "=0.1.0"
-expression = "Apache-2.0"
-license-files = [{ path = "../../LICENSE", hash = 0x3e961b13 }]
-
-[[licenses.clarify]]
-name = "coven-sync"
-version = "=0.1.0"
-expression = "Apache-2.0"
-license-files = [{ path = "../../LICENSE", hash = 0x3e961b13 }]
 
 [bans]
 # Warn on duplicate versions of the same crate — duplicates bloat binaries and
