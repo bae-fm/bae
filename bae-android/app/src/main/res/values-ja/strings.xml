@@ -77,7 +77,6 @@
     <string name="sort_name">名前</string>
     <string name="gallery_load_failed">画像を読み込めませんでした</string>
     <string name="settings_library">ライブラリ</string>
-    <string name="library_discovery_failed">このデバイスのライブラリを読み込めませんでした。</string>
     <string name="settings_sync">同期</string>
     <string name="settings_cloud_sync_on">クラウド同期オン</string>
     <string name="settings_local_only">ローカルのみ</string>
@@ -107,9 +106,9 @@
     <string name="settings_recovery_code_failed">リカバリーコードを生成できませんでした。</string>
     <string name="settings_copy_recovery_code">コードをコピー</string>
     <string name="settings_remove_library">このライブラリをこのデバイスから削除</string>
-    <string name="settings_remove_library_explanation">このライブラリとそのダウンロード済みファイルをこのデバイスから削除します。クラウド上のライブラリはそのまま残ります。このデバイスは後で再ペアリングできます。</string>
+    <string name="settings_remove_library_explanation">このデバイスからライブラリを削除します。デバイスがライブラリから退出したあと、そのコピーとダウンロード済みファイルが削除されます。クラウドの保存先にあるライブラリはそのまま残ります。</string>
     <string name="settings_remove_library_confirm_title">このライブラリをこのデバイスから削除しますか？</string>
-    <string name="settings_remove_library_confirm_body">クラウド上のライブラリはそのまま残ります。このデバイスは後で再ペアリングできます。</string>
+    <string name="settings_remove_library_confirm_body">まずこのデバイスがライブラリから退出します。これには接続が必要です。クラウドの保存先にあるライブラリはそのまま残ります。</string>
     <string name="settings_remove">削除</string>
     <string name="settings_provider">プロバイダ</string>
     <string name="settings_account">アカウント</string>
@@ -172,11 +171,6 @@
     <string name="onboarding_join_action">参加</string>
     <string name="onboarding_joining_title">ライブラリに参加中</string>
     <string name="qr_scanner_instructions">別のデバイスのbae → 設定 → リカバリーコードから、このライブラリのリカバリーQRを表示してください</string>
-    <string name="unlock_title">ライブラリはロックされています</string>
-    <string name="unlock_explanation">このライブラリの暗号化キーがキーリングにありません。ロックを解除するには16進数64文字のキーを入力してください。</string>
-    <string name="unlock_key_label">暗号化キー（16進数64文字）</string>
-    <string name="unlock_failed">ロック解除に失敗しました</string>
-    <string name="unlock_action">ロック解除</string>
     <!-- Downloads -->
     <string name="downloads">ダウンロード</string>
     <string name="download">ダウンロード</string>
@@ -233,4 +227,9 @@
     <string name="appearance_forest">フォレスト</string>
     <string name="appearance_sand">サンド</string>
     <string name="details">詳細</string>
+    <string name="reset_device">このデバイスをリセット</string>
+    <string name="reset_device_confirm_title">このデバイスをリセットしますか？</string>
+    <string name="reset_device_confirm">リセット</string>
+    <string name="profile_required_title">このライブラリへの参加を完了するには、名前を入力してください。</string>
+    <string name="save">保存</string>
 </resources>

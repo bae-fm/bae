@@ -77,7 +77,6 @@
     <string name="sort_name">名稱</string>
     <string name="gallery_load_failed">無法載入影像</string>
     <string name="settings_library">資料庫</string>
-    <string name="library_discovery_failed">無法讀取此裝置上的資料庫。</string>
     <string name="settings_sync">同步</string>
     <string name="settings_cloud_sync_on">你的雲 同步</string>
     <string name="settings_local_only">僅本機</string>
@@ -107,9 +106,9 @@
     <string name="settings_recovery_code_failed">無法產生復原碼。</string>
     <string name="settings_copy_recovery_code">複製代碼</string>
     <string name="settings_remove_library">從此裝置移除此資料庫</string>
-    <string name="settings_remove_library_explanation">從此裝置移除此資料庫及其已下載檔案。你在雲端的資料庫不會受影響。你可以稍後重新配對此裝置。</string>
+    <string name="settings_remove_library_explanation">從此裝置移除此資料庫：此裝置先退出資料庫，然後刪除它的副本和已下載的檔案。雲端儲存位置中的資料庫不受影響。</string>
     <string name="settings_remove_library_confirm_title">要從此裝置移除此資料庫嗎？</string>
-    <string name="settings_remove_library_confirm_body">資料庫 你的雲. 裝置.</string>
+    <string name="settings_remove_library_confirm_body">此裝置會先退出資料庫，這需要連線。雲端儲存位置中的資料庫不受影響。</string>
     <string name="settings_remove">移除</string>
     <string name="settings_provider">提供者</string>
     <string name="settings_account">帳號</string>
@@ -172,11 +171,6 @@
     <string name="onboarding_join_action">加入</string>
     <string name="onboarding_joining_title">正在加入你的資料庫</string>
     <string name="qr_scanner_instructions">在另一台裝置從 bae → 設定 → 復原碼顯示此資料庫的復原 QR</string>
-    <string name="unlock_title">資料庫已鎖定</string>
-    <string name="unlock_explanation">此資料庫的加密金鑰不在鑰匙圈中。請輸入 64 字元十六進位金鑰以解鎖。</string>
-    <string name="unlock_key_label">加密金鑰 (64 個十六進位字元)</string>
-    <string name="unlock_failed">解鎖 · 錯誤</string>
-    <string name="unlock_action">解鎖</string>
     <!-- Downloads -->
     <string name="downloads">下載</string>
     <string name="download">下載</string>
@@ -233,4 +227,9 @@
     <string name="appearance_forest">森林</string>
     <string name="appearance_sand">沙色</string>
     <string name="details">詳細資訊</string>
+    <string name="reset_device">重設此裝置</string>
+    <string name="reset_device_confirm_title">要重設此裝置嗎？</string>
+    <string name="reset_device_confirm">重設</string>
+    <string name="profile_required_title">輸入你的名字以完成加入此資料庫。</string>
+    <string name="save">儲存</string>
 </resources>

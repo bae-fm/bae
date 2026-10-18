@@ -8,17 +8,17 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import fm.bae.app.OpenLibrary
+import fm.bae.app.ui.SessionActions
 import kotlinx.coroutines.flow.StateFlow
 import uniffi.bae_bridge.BridgeLibrary
 
 @Composable
-fun LibraryScreen(
+internal fun LibraryScreen(
     session: OpenLibrary,
     libraries: StateFlow<List<BridgeLibrary>>,
     openSearch: Boolean,
     onSearchOpened: () -> Unit,
-    onSwitchLibrary: (BridgeLibrary) -> Unit,
-    onLeaveLibrary: () -> Unit,
+    actions: SessionActions,
 ) {
     val navigator = remember { LibraryNavigator() }
     val browserState = remember { LibraryBrowserState() }
@@ -60,8 +60,7 @@ fun LibraryScreen(
                     libraries = libraries,
                     onBack = popEntry,
                     onPush = navigator::push,
-                    onSwitchLibrary = onSwitchLibrary,
-                    onLeaveLibrary = onLeaveLibrary,
+                    actions = actions,
                 )
             }
         }

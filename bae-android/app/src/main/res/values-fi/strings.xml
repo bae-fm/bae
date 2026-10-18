@@ -81,7 +81,6 @@
     <string name="sort_name">Nimi</string>
     <string name="gallery_load_failed">Kuvaa ei voitu ladata</string>
     <string name="settings_library">Kirjasto</string>
-    <string name="library_discovery_failed">Tämän laitteen kirjastoja ei voitu lukea.</string>
     <string name="settings_sync">Synkronointi</string>
     <string name="settings_cloud_sync_on">Pilvisynkronointi päällä</string>
     <string name="settings_local_only">Vain paikallisesti</string>
@@ -111,9 +110,9 @@
     <string name="settings_recovery_code_failed">Palautuskoodia ei voitu luoda.</string>
     <string name="settings_copy_recovery_code">Kopioi koodi</string>
     <string name="settings_remove_library">Poista tämä kirjasto tältä laitteelta</string>
-    <string name="settings_remove_library_explanation">Poistaa tämän kirjaston ja sen ladatut tiedostot tältä laitteelta. Kirjastosi pilvessä säilyy koskemattomana. Voit muodostaa pariliitoksen uudelleen myöhemmin.</string>
+    <string name="settings_remove_library_explanation">Poistaa tämän kirjaston tästä laitteesta: laite eroaa kirjastosta, minkä jälkeen sen kopio ja ladatut tiedostot poistetaan. Pilvisijainnissa oleva kirjasto säilyy koskemattomana.</string>
     <string name="settings_remove_library_confirm_title">Poistetaanko tämä kirjasto tältä laitteelta?</string>
-    <string name="settings_remove_library_confirm_body">Kirjastosi pilvessä säilyy koskemattomana. Voit muodostaa pariliitoksen uudelleen myöhemmin.</string>
+    <string name="settings_remove_library_confirm_body">Laite eroaa ensin kirjastosta, mihin tarvitaan yhteys. Pilvisijainnissa oleva kirjasto säilyy koskemattomana.</string>
     <string name="settings_remove">Poista</string>
     <string name="settings_provider">Palveluntarjoaja</string>
     <string name="settings_account">Tili</string>
@@ -193,11 +192,6 @@
     <string name="widget_nothing_playing">Mitään ei toisteta</string>
     <string name="shortcut_resume_long">Jatka toistoa</string>
     <string name="shortcut_search_long">Hae kirjastosta</string>
-    <string name="unlock_title">Kirjasto on lukittu</string>
-    <string name="unlock_explanation">Tämän kirjaston salausavainta ei ole avainnipussa. Avaa lukitus antamalla 64 merkin heksadesimaaliavain.</string>
-    <string name="unlock_key_label">Salausavain (64 heksadesimaalimerkkiä)</string>
-    <string name="unlock_failed">Lukituksen avaaminen epäonnistui</string>
-    <string name="unlock_action">Avaa lukitus</string>
     <string name="cast">Suoratoista</string>
     <string name="cast_casting_to">Suoratoistetaan kohteeseen %1$s</string>
     <string name="cast_disconnect">Katkaise yhteys</string>
@@ -234,4 +228,9 @@
     <string name="appearance_forest">Metsä</string>
     <string name="appearance_sand">Hiekka</string>
     <string name="details">Tiedot</string>
+    <string name="reset_device">Nollaa tämä laite</string>
+    <string name="reset_device_confirm_title">Nollataanko tämä laite?</string>
+    <string name="reset_device_confirm">Nollaa</string>
+    <string name="profile_required_title">Anna nimesi, niin liittyminen tähän kirjastoon viimeistellään.</string>
+    <string name="save">Tallenna</string>
 </resources>

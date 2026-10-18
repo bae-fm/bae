@@ -77,7 +77,6 @@
     <string name="sort_name">Naziv</string>
     <string name="gallery_load_failed">Nije moguće učitati sliku</string>
     <string name="settings_library">Fonoteka</string>
-    <string name="library_discovery_failed">Nije moguće pročitati fonoteke na ovom uređaju.</string>
     <string name="settings_sync">Sinkronizacija</string>
     <string name="settings_cloud_sync_on">Sinkronizacija s oblakom uključena</string>
     <string name="settings_local_only">Samo lokalno</string>
@@ -107,9 +106,9 @@
     <string name="settings_recovery_code_failed">Nije moguće generirati kod za oporavak.</string>
     <string name="settings_copy_recovery_code">Kopiraj kod</string>
     <string name="settings_remove_library">Ukloni ovu fonoteku s ovog uređaja</string>
-    <string name="settings_remove_library_explanation">Uklanja ovu fonoteku i njezine preuzete datoteke s ovog uređaja. Vaša fonoteka u oblaku ostaje netaknuta. Ovaj uređaj možete kasnije ponovno upariti.</string>
+    <string name="settings_remove_library_explanation">Uklanja ovu fonoteku s ovog uređaja: uređaj napušta fonoteku, a zatim se brišu njegova kopija i preuzete datoteke. Fonoteka u pohrani u oblaku ostaje netaknuta.</string>
     <string name="settings_remove_library_confirm_title">Ukloniti ovu fonoteku s ovog uređaja?</string>
-    <string name="settings_remove_library_confirm_body">Vaša fonoteka u oblaku ostaje netaknuta. Ovaj uređaj možete kasnije ponovno upariti.</string>
+    <string name="settings_remove_library_confirm_body">Ovaj uređaj najprije napušta fonoteku, za što je potrebna veza. Fonoteka u pohrani u oblaku ostaje netaknuta.</string>
     <string name="settings_remove">Ukloni</string>
     <string name="settings_provider">Pružatelj usluge</string>
     <string name="settings_account">Račun</string>
@@ -172,11 +171,6 @@
     <string name="onboarding_join_action">Pridruži se</string>
     <string name="onboarding_joining_title">Pridruživanje vašoj fonoteci</string>
     <string name="qr_scanner_instructions">Prikažite QR za oporavak ove fonoteke iz bae → Postavke → Kod za oporavak na drugom uređaju</string>
-    <string name="unlock_title">Fonoteka zaključana</string>
-    <string name="unlock_explanation">Ključ za šifriranje ove fonoteke nije u privjesku ključeva. Unesite 64-znamenkasti heksadecimalni ključ za otključavanje.</string>
-    <string name="unlock_key_label">Ključ za šifriranje (64 heksadecimalna znaka)</string>
-    <string name="unlock_failed">Otključavanje nije uspjelo</string>
-    <string name="unlock_action">Otključaj</string>
     <!-- Downloads -->
     <string name="downloads">Preuzimanja</string>
     <string name="download">Preuzmi</string>
@@ -237,4 +231,9 @@
     <string name="appearance_forest">Šuma</string>
     <string name="appearance_sand">Pijesak</string>
     <string name="details">Pojedinosti</string>
+    <string name="reset_device">Ponovno postavi ovaj uređaj</string>
+    <string name="reset_device_confirm_title">Ponovno postaviti ovaj uređaj?</string>
+    <string name="reset_device_confirm">Ponovno postavi</string>
+    <string name="profile_required_title">Unesite svoje ime kako biste dovršili pridruživanje ovoj fonoteci.</string>
+    <string name="save">Spremi</string>
 </resources>

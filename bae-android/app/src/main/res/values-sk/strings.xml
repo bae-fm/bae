@@ -83,7 +83,6 @@
     <string name="sort_name">Názov</string>
     <string name="gallery_load_failed">Obrázok sa nepodarilo načítať</string>
     <string name="settings_library">Knižnica</string>
-    <string name="library_discovery_failed">Knižnice na tomto zariadení sa nepodarilo prečítať.</string>
     <string name="settings_sync">Synchronizácia</string>
     <string name="settings_cloud_sync_on">Synchronizácia s cloudom zapnutá</string>
     <string name="settings_local_only">Len lokálne</string>
@@ -113,9 +112,9 @@
     <string name="settings_recovery_code_failed">Nepodarilo sa vygenerovať obnovovací kód.</string>
     <string name="settings_copy_recovery_code">Kopírovať kód</string>
     <string name="settings_remove_library">Odstrániť túto knižnicu z tohto zariadenia</string>
-    <string name="settings_remove_library_explanation">Odstráni túto knižnicu a jej stiahnuté súbory z tohto zariadenia. Tvoja knižnica v cloude zostane nedotknutá. Toto zariadenie môžeš neskôr znova spárovať.</string>
+    <string name="settings_remove_library_explanation">Odstráni túto knižnicu z tohto zariadenia: zariadenie knižnicu opustí a potom sa odstráni jeho kópia a stiahnuté súbory. Knižnica v cloudovom úložisku zostane nedotknutá.</string>
     <string name="settings_remove_library_confirm_title">Odstrániť túto knižnicu z tohto zariadenia?</string>
-    <string name="settings_remove_library_confirm_body">Tvoja knižnica v cloude zostane nedotknutá. Toto zariadenie môžeš neskôr znova spárovať.</string>
+    <string name="settings_remove_library_confirm_body">Zariadenie najprv knižnicu opustí, na čo je potrebné pripojenie. Knižnica v cloudovom úložisku zostane nedotknutá.</string>
     <string name="settings_remove">Odstrániť</string>
     <string name="settings_provider">Poskytovateľ</string>
     <string name="settings_account">Účet</string>
@@ -197,11 +196,6 @@
     <string name="widget_nothing_playing">Nič sa neprehráva</string>
     <string name="shortcut_resume_long">Pokračovať v prehrávaní</string>
     <string name="shortcut_search_long">Hľadať v knižnici</string>
-    <string name="unlock_title">Knižnica je zamknutá</string>
-    <string name="unlock_explanation">Šifrovací kľúč tejto knižnice nie je v kľúčenke. Na odomknutie zadaj 64-znakový šestnástkový kľúč.</string>
-    <string name="unlock_key_label">Šifrovací kľúč (64 znakov v šestnástkovej sústave)</string>
-    <string name="unlock_failed">Odomknutie zlyhalo</string>
-    <string name="unlock_action">Odomknúť</string>
     <string name="cast">Prenášať</string>
     <string name="cast_casting_to">Prenáša sa do %1$s</string>
     <string name="cast_disconnect">Odpojiť</string>
@@ -238,4 +232,9 @@
     <string name="appearance_forest">Lesný</string>
     <string name="appearance_sand">Piesočný</string>
     <string name="details">Podrobnosti</string>
+    <string name="reset_device">Obnoviť toto zariadenie</string>
+    <string name="reset_device_confirm_title">Obnoviť toto zariadenie?</string>
+    <string name="reset_device_confirm">Obnoviť</string>
+    <string name="profile_required_title">Zadaj svoje meno a dokonči pripojenie k tejto knižnici.</string>
+    <string name="save">Uložiť</string>
 </resources>

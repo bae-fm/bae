@@ -77,7 +77,6 @@
     <string name="sort_name">Nombre</string>
     <string name="gallery_load_failed">No se pudo cargar la imagen</string>
     <string name="settings_library">Biblioteca</string>
-    <string name="library_discovery_failed">No se pudieron leer las bibliotecas de este dispositivo.</string>
     <string name="settings_sync">Sincronización</string>
     <string name="settings_cloud_sync_on">Sincronización en la nube activada</string>
     <string name="settings_local_only">Solo local</string>
@@ -107,9 +106,9 @@
     <string name="settings_recovery_code_failed">No se pudo generar un código de recuperación.</string>
     <string name="settings_copy_recovery_code">Copiar código</string>
     <string name="settings_remove_library">Quitar esta biblioteca de este dispositivo</string>
-    <string name="settings_remove_library_explanation">Quita esta biblioteca y sus archivos descargados de este dispositivo. Tu biblioteca en la nube no se toca. Puedes volver a emparejar este dispositivo más tarde.</string>
+    <string name="settings_remove_library_explanation">Quita esta biblioteca de este dispositivo: el dispositivo sale de la biblioteca y después se borran su copia y los archivos descargados. La biblioteca en su lugar en la nube no se toca.</string>
     <string name="settings_remove_library_confirm_title">¿Quitar esta biblioteca de este dispositivo?</string>
-    <string name="settings_remove_library_confirm_body">Tu biblioteca en la nube no se toca. Puedes volver a emparejar este dispositivo más tarde.</string>
+    <string name="settings_remove_library_confirm_body">Primero este dispositivo sale de la biblioteca, para lo que necesita conexión. La biblioteca en su lugar en la nube no se toca.</string>
     <string name="settings_remove">Eliminar</string>
     <string name="settings_provider">Proveedor</string>
     <string name="settings_account">Cuenta</string>
@@ -172,11 +171,6 @@
     <string name="onboarding_join_action">Unirse</string>
     <string name="onboarding_joining_title">Uniéndote a tu biblioteca</string>
     <string name="qr_scanner_instructions">Muestra el QR de recuperación de esta biblioteca desde bae → Ajustes → Código de recuperación en otro dispositivo</string>
-    <string name="unlock_title">Biblioteca bloqueada</string>
-    <string name="unlock_explanation">La clave de cifrado de esta biblioteca no está en el llavero. Introduce la clave hexadecimal de 64 caracteres para desbloquearla.</string>
-    <string name="unlock_key_label">Clave de cifrado (64 caracteres hexadecimales)</string>
-    <string name="unlock_failed">Error al desbloquear</string>
-    <string name="unlock_action">Desbloquear</string>
     <!-- Downloads -->
     <string name="downloads">Descargas</string>
     <string name="download">Descargar</string>
@@ -236,4 +230,9 @@
     <string name="appearance_forest">Bosque</string>
     <string name="appearance_sand">Arena</string>
     <string name="details">Detalles</string>
+    <string name="reset_device">Restablecer este dispositivo</string>
+    <string name="reset_device_confirm_title">¿Restablecer este dispositivo?</string>
+    <string name="reset_device_confirm">Restablecer</string>
+    <string name="profile_required_title">Escribe tu nombre para terminar de unirte a esta biblioteca.</string>
+    <string name="save">Guardar</string>
 </resources>

@@ -77,7 +77,6 @@
     <string name="sort_name">Nom</string>
     <string name="gallery_load_failed">Impossible de charger l\'image</string>
     <string name="settings_library">Bibliothèque</string>
-    <string name="library_discovery_failed">Impossible de lire les bibliothèques de cet appareil.</string>
     <string name="settings_sync">Synchronisation</string>
     <string name="settings_cloud_sync_on">Synchronisation cloud activée</string>
     <string name="settings_local_only">Local uniquement</string>
@@ -107,9 +106,9 @@
     <string name="settings_recovery_code_failed">Impossible de générer un code de récupération.</string>
     <string name="settings_copy_recovery_code">Copier le code</string>
     <string name="settings_remove_library">Supprimer cette bibliothèque de cet appareil</string>
-    <string name="settings_remove_library_explanation">Supprime cette bibliothèque et ses fichiers téléchargés de cet appareil. Votre bibliothèque dans le cloud n\'est pas touchée. Vous pourrez réassocier cet appareil plus tard.</string>
+    <string name="settings_remove_library_explanation">Retire cette bibliothèque de cet appareil : l’appareil quitte la bibliothèque, puis sa copie et les fichiers téléchargés sont supprimés. La bibliothèque dans son emplacement cloud n’est pas touchée.</string>
     <string name="settings_remove_library_confirm_title">Supprimer cette bibliothèque de cet appareil ?</string>
-    <string name="settings_remove_library_confirm_body">Votre bibliothèque dans le cloud n\'est pas touchée. Vous pourrez réassocier cet appareil plus tard.</string>
+    <string name="settings_remove_library_confirm_body">Cet appareil quitte d’abord la bibliothèque, ce qui nécessite une connexion. La bibliothèque dans son emplacement cloud n’est pas touchée.</string>
     <string name="settings_remove">Supprimer</string>
     <string name="settings_provider">Fournisseur</string>
     <string name="settings_account">Compte</string>
@@ -172,11 +171,6 @@
     <string name="onboarding_join_action">Rejoindre</string>
     <string name="onboarding_joining_title">Association à votre bibliothèque</string>
     <string name="qr_scanner_instructions">Afficher le QR de récupération de cette bibliothèque depuis bae → Réglages → Code de récupération sur un autre appareil</string>
-    <string name="unlock_title">Bibliothèque verrouillée</string>
-    <string name="unlock_explanation">La clé de chiffrement de cette bibliothèque n\'est pas dans le trousseau. Saisissez la clé hexadécimale de 64 caractères pour déverrouiller.</string>
-    <string name="unlock_key_label">Clé de chiffrement (64 caractères hex)</string>
-    <string name="unlock_failed">Échec du déverrouillage</string>
-    <string name="unlock_action">Déverrouiller</string>
     <!-- Downloads -->
     <string name="downloads">Téléchargements</string>
     <string name="download">Télécharger</string>
@@ -236,4 +230,9 @@
     <string name="appearance_forest">Forêt</string>
     <string name="appearance_sand">Sable</string>
     <string name="details">Détails</string>
+    <string name="reset_device">Réinitialiser cet appareil</string>
+    <string name="reset_device_confirm_title">Réinitialiser cet appareil ?</string>
+    <string name="reset_device_confirm">Réinitialiser</string>
+    <string name="profile_required_title">Saisissez votre nom pour terminer de rejoindre cette bibliothèque.</string>
+    <string name="save">Enregistrer</string>
 </resources>

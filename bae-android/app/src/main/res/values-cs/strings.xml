@@ -77,7 +77,6 @@
     <string name="sort_name">Název</string>
     <string name="gallery_load_failed">Nelze načíst obrázek</string>
     <string name="settings_library">Knihovna</string>
-    <string name="library_discovery_failed">Nelze načíst knihovny v tomto zařízení.</string>
     <string name="settings_sync">Synchronizace</string>
     <string name="settings_cloud_sync_on">Synchronizace s cloudem zapnuta</string>
     <string name="settings_local_only">Pouze místně</string>
@@ -107,9 +106,9 @@
     <string name="settings_recovery_code_failed">Nepodařilo se vygenerovat kód pro obnovení.</string>
     <string name="settings_copy_recovery_code">Kopírovat kód</string>
     <string name="settings_remove_library">Odebrat tuto knihovnu z tohoto zařízení</string>
-    <string name="settings_remove_library_explanation">Odebere tuto knihovnu a její stažené soubory z tohoto zařízení. Vaše knihovna v cloudu zůstane nedotčena. Toto zařízení můžete později znovu spárovat.</string>
+    <string name="settings_remove_library_explanation">Odebere tuto knihovnu z tohoto zařízení: zařízení knihovnu opustí a pak se smaže jeho kopie a stažené soubory. Knihovna v cloudovém úložišti zůstane nedotčena.</string>
     <string name="settings_remove_library_confirm_title">Odebrat tuto knihovnu z tohoto zařízení?</string>
-    <string name="settings_remove_library_confirm_body">Vaše knihovna v cloudu zůstane nedotčena. Toto zařízení můžete později znovu spárovat.</string>
+    <string name="settings_remove_library_confirm_body">Zařízení nejprve knihovnu opustí, k čemuž je potřeba připojení. Knihovna v cloudovém úložišti zůstane nedotčena.</string>
     <string name="settings_remove">Odebrat</string>
     <string name="settings_provider">Poskytovatel</string>
     <string name="settings_account">Účet</string>
@@ -172,11 +171,6 @@
     <string name="onboarding_join_action">Připojit se</string>
     <string name="onboarding_joining_title">Připojování k vaší knihovně</string>
     <string name="qr_scanner_instructions">Zobrazte QR pro obnovení této knihovny z bae → Nastavení → Kód pro obnovení na jiném zařízení</string>
-    <string name="unlock_title">Knihovna zamčena</string>
-    <string name="unlock_explanation">Šifrovací klíč této knihovny není v klíčence. Pro odemčení zadejte šestnáctkový klíč o 64 znacích.</string>
-    <string name="unlock_key_label">Šifrovací klíč (64 šestnáctkových znaků)</string>
-    <string name="unlock_failed">Odemčení selhalo</string>
-    <string name="unlock_action">Odemknout</string>
     <!-- Downloads -->
     <string name="downloads">Stahování</string>
     <string name="download">Stáhnout</string>
@@ -239,4 +233,9 @@
     <string name="appearance_forest">Lesní</string>
     <string name="appearance_sand">Pískový</string>
     <string name="details">Podrobnosti</string>
+    <string name="reset_device">Resetovat toto zařízení</string>
+    <string name="reset_device_confirm_title">Resetovat toto zařízení?</string>
+    <string name="reset_device_confirm">Resetovat</string>
+    <string name="profile_required_title">Zadejte své jméno a dokončete připojení k této knihovně.</string>
+    <string name="save">Uložit</string>
 </resources>

@@ -77,7 +77,6 @@
     <string name="sort_name">Naam</string>
     <string name="gallery_load_failed">Kan afbeelding niet laden</string>
     <string name="settings_library">Bibliotheek</string>
-    <string name="library_discovery_failed">Kan de bibliotheken op dit apparaat niet lezen.</string>
     <string name="settings_sync">Synchronisatie</string>
     <string name="settings_cloud_sync_on">Cloudsynchronisatie aan</string>
     <string name="settings_local_only">Alleen lokaal</string>
@@ -107,9 +106,9 @@
     <string name="settings_recovery_code_failed">Kan geen herstelcode genereren.</string>
     <string name="settings_copy_recovery_code">Code kopiëren</string>
     <string name="settings_remove_library">Verwijder deze bibliotheek van dit apparaat</string>
-    <string name="settings_remove_library_explanation">Verwijdert deze bibliotheek en de gedownloade bestanden van dit apparaat. Je bibliotheek in de cloud blijft ongewijzigd. Je kunt dit apparaat later opnieuw koppelen.</string>
+    <string name="settings_remove_library_explanation">Verwijdert deze bibliotheek van dit apparaat: het apparaat verlaat de bibliotheek, daarna worden de kopie en de gedownloade bestanden verwijderd. De bibliotheek op de cloudlocatie blijft ongewijzigd.</string>
     <string name="settings_remove_library_confirm_title">Deze bibliotheek van dit apparaat verwijderen?</string>
-    <string name="settings_remove_library_confirm_body">Je bibliotheek in de cloud blijft ongewijzigd. Je kunt dit apparaat later opnieuw koppelen.</string>
+    <string name="settings_remove_library_confirm_body">Dit apparaat verlaat eerst de bibliotheek, waarvoor een verbinding nodig is. De bibliotheek op de cloudlocatie blijft ongewijzigd.</string>
     <string name="settings_remove">Verwijderen</string>
     <string name="settings_provider">Provider</string>
     <string name="settings_account">Account</string>
@@ -172,11 +171,6 @@
     <string name="onboarding_join_action">Deelnemen</string>
     <string name="onboarding_joining_title">Deelnemen aan je bibliotheek</string>
     <string name="qr_scanner_instructions">Toon de herstel-QR van deze bibliotheek via bae → Instellingen → Herstelcode op een ander apparaat</string>
-    <string name="unlock_title">Bibliotheek vergrendeld</string>
-    <string name="unlock_explanation">De versleutelingssleutel voor deze bibliotheek staat niet in de sleutelhanger. Voer de hexadecimale sleutel van 64 tekens in om te ontgrendelen.</string>
-    <string name="unlock_key_label">Versleuteling (64 hex)</string>
-    <string name="unlock_failed">Ontgrendelen mislukt</string>
-    <string name="unlock_action">Ontgrendelen</string>
     <!-- Downloads -->
     <string name="downloads">Downloads</string>
     <string name="download">Downloaden</string>
@@ -235,4 +229,9 @@
     <string name="appearance_forest">Bos</string>
     <string name="appearance_sand">Zand</string>
     <string name="details">Details</string>
+    <string name="reset_device">Dit apparaat herstellen</string>
+    <string name="reset_device_confirm_title">Dit apparaat herstellen?</string>
+    <string name="reset_device_confirm">Herstellen</string>
+    <string name="profile_required_title">Vul je naam in om het deelnemen aan deze bibliotheek af te ronden.</string>
+    <string name="save">Opslaan</string>
 </resources>

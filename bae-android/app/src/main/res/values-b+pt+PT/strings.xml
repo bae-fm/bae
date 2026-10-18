@@ -81,7 +81,6 @@
     <string name="sort_name">Nome</string>
     <string name="gallery_load_failed">Não foi possível carregar a imagem</string>
     <string name="settings_library">Biblioteca</string>
-    <string name="library_discovery_failed">Não foi possível ler as bibliotecas neste dispositivo.</string>
     <string name="settings_sync">Sincronização</string>
     <string name="settings_cloud_sync_on">Sincronização na nuvem ligada</string>
     <string name="settings_local_only">Apenas local</string>
@@ -111,9 +110,9 @@
     <string name="settings_recovery_code_failed">Não foi possível gerar um código de recuperação.</string>
     <string name="settings_copy_recovery_code">Copiar código</string>
     <string name="settings_remove_library">Remover esta biblioteca deste dispositivo</string>
-    <string name="settings_remove_library_explanation">Remove esta biblioteca e os respetivos ficheiros transferidos deste dispositivo. A sua biblioteca na nuvem fica intacta. Pode voltar a emparelhar este dispositivo mais tarde.</string>
+    <string name="settings_remove_library_explanation">Remove esta biblioteca deste dispositivo: o dispositivo sai da biblioteca e depois a respetiva cópia e os ficheiros transferidos são eliminados. A biblioteca no local na nuvem fica intacta.</string>
     <string name="settings_remove_library_confirm_title">Remover esta biblioteca deste dispositivo?</string>
-    <string name="settings_remove_library_confirm_body">A sua biblioteca na nuvem fica intacta. Pode voltar a emparelhar este dispositivo mais tarde.</string>
+    <string name="settings_remove_library_confirm_body">Primeiro, este dispositivo sai da biblioteca, o que requer ligação. A biblioteca no local na nuvem fica intacta.</string>
     <string name="settings_remove">Remover</string>
     <string name="settings_provider">Fornecedor</string>
     <string name="settings_account">Conta</string>
@@ -193,11 +192,6 @@
     <string name="widget_nothing_playing">Nada em reprodução</string>
     <string name="shortcut_resume_long">Retomar a reprodução</string>
     <string name="shortcut_search_long">Pesquisar na biblioteca</string>
-    <string name="unlock_title">Biblioteca bloqueada</string>
-    <string name="unlock_explanation">A chave de encriptação desta biblioteca não está no porta-chaves. Introduza a chave hexadecimal de 64 carateres para desbloquear.</string>
-    <string name="unlock_key_label">Chave de encriptação (64 carateres hexadecimais)</string>
-    <string name="unlock_failed">Não foi possível desbloquear</string>
-    <string name="unlock_action">Desbloquear</string>
     <string name="cast">Transmitir</string>
     <string name="cast_casting_to">A transmitir para %1$s</string>
     <string name="cast_disconnect">Desligar</string>
@@ -234,4 +228,9 @@
     <string name="appearance_forest">Floresta</string>
     <string name="appearance_sand">Areia</string>
     <string name="details">Detalhes</string>
+    <string name="reset_device">Repor este dispositivo</string>
+    <string name="reset_device_confirm_title">Repor este dispositivo?</string>
+    <string name="reset_device_confirm">Repor</string>
+    <string name="profile_required_title">Introduza o seu nome para concluir a adesão a esta biblioteca.</string>
+    <string name="save">Guardar</string>
 </resources>

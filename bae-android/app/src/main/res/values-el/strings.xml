@@ -81,7 +81,6 @@
     <string name="sort_name">Όνομα</string>
     <string name="gallery_load_failed">Δεν ήταν δυνατή η φόρτωση της εικόνας</string>
     <string name="settings_library">Βιβλιοθήκη</string>
-    <string name="library_discovery_failed">Δεν ήταν δυνατή η ανάγνωση των βιβλιοθηκών σε αυτή τη συσκευή.</string>
     <string name="settings_sync">Συγχρονισμός</string>
     <string name="settings_cloud_sync_on">Ο συγχρονισμός cloud είναι ενεργός</string>
     <string name="settings_local_only">Μόνο τοπικά</string>
@@ -111,9 +110,9 @@
     <string name="settings_recovery_code_failed">Δεν ήταν δυνατή η δημιουργία κωδικού ανάκτησης.</string>
     <string name="settings_copy_recovery_code">Αντιγραφή κωδικού</string>
     <string name="settings_remove_library">Αφαίρεση αυτής της βιβλιοθήκης από αυτή τη συσκευή</string>
-    <string name="settings_remove_library_explanation">Αφαιρεί αυτή τη βιβλιοθήκη και τα ληφθέντα αρχεία της από αυτή τη συσκευή. Η βιβλιοθήκη σας στο cloud παραμένει ανέπαφη. Μπορείτε να συζεύξετε ξανά αυτή τη συσκευή αργότερα.</string>
+    <string name="settings_remove_library_explanation">Αφαιρεί αυτή τη βιβλιοθήκη από αυτή τη συσκευή: η συσκευή αποχωρεί από τη βιβλιοθήκη και μετά διαγράφονται το αντίγραφό της και τα ληφθέντα αρχεία. Η βιβλιοθήκη στον χώρο της στο cloud παραμένει ανέπαφη.</string>
     <string name="settings_remove_library_confirm_title">Αφαίρεση αυτής της βιβλιοθήκης από αυτή τη συσκευή;</string>
-    <string name="settings_remove_library_confirm_body">Η βιβλιοθήκη σας στο cloud παραμένει ανέπαφη. Μπορείτε να συζεύξετε ξανά αυτή τη συσκευή αργότερα.</string>
+    <string name="settings_remove_library_confirm_body">Η συσκευή αποχωρεί πρώτα από τη βιβλιοθήκη, κάτι που απαιτεί σύνδεση. Η βιβλιοθήκη στον χώρο της στο cloud παραμένει ανέπαφη.</string>
     <string name="settings_remove">Αφαίρεση</string>
     <string name="settings_provider">Πάροχος</string>
     <string name="settings_account">Λογαριασμός</string>
@@ -193,11 +192,6 @@
     <string name="widget_nothing_playing">Δεν αναπαράγεται τίποτα</string>
     <string name="shortcut_resume_long">Συνέχιση αναπαραγωγής</string>
     <string name="shortcut_search_long">Αναζήτηση στη βιβλιοθήκη</string>
-    <string name="unlock_title">Η βιβλιοθήκη είναι κλειδωμένη</string>
-    <string name="unlock_explanation">Το κλειδί κρυπτογράφησης αυτής της βιβλιοθήκης δεν βρίσκεται στο μπρελόκ. Εισαγάγετε το δεκαεξαδικό κλειδί 64 χαρακτήρων για ξεκλείδωμα.</string>
-    <string name="unlock_key_label">Κλειδί κρυπτογράφησης (64 δεκαεξαδικοί χαρακτήρες)</string>
-    <string name="unlock_failed">Το ξεκλείδωμα απέτυχε</string>
-    <string name="unlock_action">Ξεκλείδωμα</string>
     <string name="cast">Μετάδοση</string>
     <string name="cast_casting_to">Μετάδοση σε %1$s</string>
     <string name="cast_disconnect">Αποσύνδεση</string>
@@ -234,4 +228,9 @@
     <string name="appearance_forest">Δάσος</string>
     <string name="appearance_sand">Άμμος</string>
     <string name="details">Λεπτομέρειες</string>
+    <string name="reset_device">Επαναφορά αυτής της συσκευής</string>
+    <string name="reset_device_confirm_title">Επαναφορά αυτής της συσκευής;</string>
+    <string name="reset_device_confirm">Επαναφορά</string>
+    <string name="profile_required_title">Εισαγάγετε το όνομά σας για να ολοκληρώσετε τη συμμετοχή σε αυτή τη βιβλιοθήκη.</string>
+    <string name="save">Αποθήκευση</string>
 </resources>

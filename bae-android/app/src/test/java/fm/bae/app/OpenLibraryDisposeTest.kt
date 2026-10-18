@@ -24,7 +24,11 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.BridgeDiagnostics
+import uniffi.bae_bridge.BridgeErrorCategory
+import uniffi.bae_bridge.BridgeException
+import uniffi.bae_bridge.BridgeIfUnsent
 import uniffi.bae_bridge.BridgeImageRef
+import uniffi.bae_bridge.BridgeLibraryRemoval
 import uniffi.bae_bridge.NoHandle
 import uniffi.bae_bridge.UiEventCallback
 
@@ -32,9 +36,9 @@ import uniffi.bae_bridge.UiEventCallback
  * The switch path relies on [OpenLibrary.dispose] running the bridge's graceful
  * shutdown — which saves the queue, current track, and position to the old
  * library's DB — before closing the handle that frees the DB, so switching back
- * later restores the queue. The forget path takes the opposite order-free route:
- * it closes without shutting down, because the library was already closed for
- * removal and there is nothing left to save into.
+ * later restores the queue. Removal takes the opposite route: core leaves the
+ * store and deletes the library, so the handle closes without a shutdown —
+ * there is nothing left to save into — and it closes even when leaving fails.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -60,17 +64,32 @@ class OpenLibraryDisposeTest {
     }
 
     @Test
-    fun closeForgottenLibraryClosesWithoutShuttingDown() {
+    fun removalRefusesUnsentWorkThenClosesWithoutShuttingDown() {
         val (session, handle) = openLibrary()
 
-        runBlocking { session.closeForgottenLibrary() }
+        val removal = runBlocking { session.removeFromDevice() }
 
-        assertEquals(listOf("close"), handle.calls)
+        assertEquals(BridgeLibraryRemoval.Removed, removal)
+        assertEquals(listOf("removeLibrary REFUSE", "close"), handle.calls)
     }
 
-    private fun openLibrary(failShutdown: Boolean = false): Pair<OpenLibrary, RecordingHandle> {
+    @Test
+    fun aFailedRemovalStillClosesTheHandle() {
+        val (session, handle) = openLibrary(failRemoval = true)
+
+        assertThrows(BridgeException.Diagnostic::class.java) {
+            runBlocking { session.removeFromDevice() }
+        }
+
+        assertEquals(listOf("removeLibrary REFUSE", "close"), handle.calls)
+    }
+
+    private fun openLibrary(
+        failShutdown: Boolean = false,
+        failRemoval: Boolean = false,
+    ): Pair<OpenLibrary, RecordingHandle> {
         val context = RuntimeEnvironment.getApplication()
-        val handle = RecordingHandle(failShutdown)
+        val handle = RecordingHandle(failShutdown, failRemoval)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
         val session =
             OpenLibrary(
@@ -109,6 +128,7 @@ class OpenLibraryDisposeTest {
 
     private class RecordingHandle(
         private val failShutdown: Boolean,
+        private val failRemoval: Boolean,
     ) : AppHandle(NoHandle) {
         val calls = mutableListOf<String>()
 
@@ -121,6 +141,14 @@ class OpenLibraryDisposeTest {
 
         override fun close() {
             calls.add("close")
+        }
+
+        override suspend fun removeLibrary(unsent: BridgeIfUnsent): BridgeLibraryRemoval {
+            calls.add("removeLibrary $unsent")
+            if (failRemoval) {
+                throw BridgeException.Diagnostic(BridgeErrorCategory.Network, "offline")
+            }
+            return BridgeLibraryRemoval.Removed
         }
 
         override fun subscribeUiEvents(callback: UiEventCallback) {}

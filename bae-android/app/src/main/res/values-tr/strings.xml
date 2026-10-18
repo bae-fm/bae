@@ -77,7 +77,6 @@
     <string name="sort_name">Ad</string>
     <string name="gallery_load_failed">Görüntü yüklenemedi</string>
     <string name="settings_library">Kitaplık</string>
-    <string name="library_discovery_failed">Bu cihazdaki kitaplıklar okunamadı.</string>
     <string name="settings_sync">Eşzamanlama</string>
     <string name="settings_cloud_sync_on">Bulut eşzamanlama açık</string>
     <string name="settings_local_only">Yalnızca yerel</string>
@@ -107,9 +106,9 @@
     <string name="settings_recovery_code_failed">Kurtarma kodu oluşturulamadı.</string>
     <string name="settings_copy_recovery_code">Kodu kopyala</string>
     <string name="settings_remove_library">Bu kitaplığı bu cihazdan kaldır</string>
-    <string name="settings_remove_library_explanation">Bu kitaplığı ve indirilen dosyalarını bu cihazdan kaldırır. Buluttaki kitaplığınıza dokunulmaz. Bu cihazı daha sonra yeniden eşleyebilirsiniz.</string>
+    <string name="settings_remove_library_explanation">Bu kitaplığı bu cihazdan kaldırır: cihaz önce kitaplıktan ayrılır, ardından kopyası ve indirilen dosyalar silinir. Bulut konumundaki kitaplığa dokunulmaz.</string>
     <string name="settings_remove_library_confirm_title">Bu kitaplık bu cihazdan kaldırılsın mı?</string>
-    <string name="settings_remove_library_confirm_body">Buluttaki kitaplığınıza dokunulmaz. Bu cihazı daha sonra yeniden eşleyebilirsiniz.</string>
+    <string name="settings_remove_library_confirm_body">Bu cihaz önce kitaplıktan ayrılır; bunun için bağlantı gerekir. Bulut konumundaki kitaplığa dokunulmaz.</string>
     <string name="settings_remove">Kaldır</string>
     <string name="settings_provider">Sağlayıcı</string>
     <string name="settings_account">Hesap</string>
@@ -172,11 +171,6 @@
     <string name="onboarding_join_action">Katıl</string>
     <string name="onboarding_joining_title">Arşivinize katılıyor</string>
     <string name="qr_scanner_instructions">Bu arşivin kurtarma QR\'ını başka bir cihazda bae → Ayarlar → Kurtarma kodu bölümünden gösterin</string>
-    <string name="unlock_title">Kitaplık kilitli</string>
-    <string name="unlock_explanation">Bu kitaplığın şifreleme anahtarı anahtarlıkta yok. Kilidi açmak için 64 karakterlik onaltılık anahtarı girin.</string>
-    <string name="unlock_key_label">Şifreleme (64 hex)</string>
-    <string name="unlock_failed">Kilit açma başarısız</string>
-    <string name="unlock_action">Kilidi aç</string>
     <!-- Downloads -->
     <string name="downloads">İndirilenler</string>
     <string name="download">İndir</string>
@@ -235,4 +229,9 @@
     <string name="appearance_forest">Orman</string>
     <string name="appearance_sand">Kum</string>
     <string name="details">Ayrıntılar</string>
+    <string name="reset_device">Bu cihazı sıfırla</string>
+    <string name="reset_device_confirm_title">Bu cihaz sıfırlansın mı?</string>
+    <string name="reset_device_confirm">Sıfırla</string>
+    <string name="profile_required_title">Bu kitaplığa katılmayı tamamlamak için adınızı girin.</string>
+    <string name="save">Kaydet</string>
 </resources>

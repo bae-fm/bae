@@ -81,7 +81,6 @@
     <string name="sort_name">Név</string>
     <string name="gallery_load_failed">A képet nem sikerült betölteni</string>
     <string name="settings_library">Könyvtár</string>
-    <string name="library_discovery_failed">Nem sikerült beolvasni az eszközön lévő könyvtárakat.</string>
     <string name="settings_sync">Szinkronizálás</string>
     <string name="settings_cloud_sync_on">Felhőszinkronizálás bekapcsolva</string>
     <string name="settings_local_only">Csak helyi</string>
@@ -111,9 +110,9 @@
     <string name="settings_recovery_code_failed">Nem sikerült helyreállítási kódot előállítani.</string>
     <string name="settings_copy_recovery_code">Kód másolása</string>
     <string name="settings_remove_library">Könyvtár eltávolítása erről az eszközről</string>
-    <string name="settings_remove_library_explanation">Eltávolítja ezt a könyvtárat és letöltött fájljait erről az eszközről. A felhőben lévő könyvtárad érintetlen marad. Az eszközt később újra párosíthatod.</string>
+    <string name="settings_remove_library_explanation">Eltávolítja ezt a könyvtárat erről az eszközről: az eszköz kilép a könyvtárból, majd törlődik a másolata és a letöltött fájlok. A felhőbeli tárhelyen lévő könyvtár érintetlen marad.</string>
     <string name="settings_remove_library_confirm_title">Eltávolítod ezt a könyvtárat erről az eszközről?</string>
-    <string name="settings_remove_library_confirm_body">A felhőben lévő könyvtárad érintetlen marad. Az eszközt később újra párosíthatod.</string>
+    <string name="settings_remove_library_confirm_body">Az eszköz előbb kilép a könyvtárból, ehhez kapcsolat kell. A felhőbeli tárhelyen lévő könyvtár érintetlen marad.</string>
     <string name="settings_remove">Eltávolítás</string>
     <string name="settings_provider">Szolgáltató</string>
     <string name="settings_account">Fiók</string>
@@ -193,11 +192,6 @@
     <string name="widget_nothing_playing">Semmi sem szól</string>
     <string name="shortcut_resume_long">Lejátszás folytatása</string>
     <string name="shortcut_search_long">Keresés a könyvtárban</string>
-    <string name="unlock_title">A könyvtár zárolva</string>
-    <string name="unlock_explanation">Ennek a könyvtárnak a titkosítási kulcsa nincs a kulcstartóban. A feloldáshoz add meg a 64 karakteres hexadecimális kulcsot.</string>
-    <string name="unlock_key_label">Titkosítási kulcs (64 hexadecimális karakter)</string>
-    <string name="unlock_failed">A feloldás nem sikerült</string>
-    <string name="unlock_action">Feloldás</string>
     <string name="cast">Átküldés</string>
     <string name="cast_casting_to">Átküldés ide: %1$s</string>
     <string name="cast_disconnect">Leválasztás</string>
@@ -234,4 +228,9 @@
     <string name="appearance_forest">Erdőzöld</string>
     <string name="appearance_sand">Homok</string>
     <string name="details">Részletek</string>
+    <string name="reset_device">Az eszköz alaphelyzetbe állítása</string>
+    <string name="reset_device_confirm_title">Alaphelyzetbe állítod az eszközt?</string>
+    <string name="reset_device_confirm">Alaphelyzetbe állítás</string>
+    <string name="profile_required_title">Add meg a neved, hogy befejezd a csatlakozást ehhez a könyvtárhoz.</string>
+    <string name="save">Mentés</string>
 </resources>

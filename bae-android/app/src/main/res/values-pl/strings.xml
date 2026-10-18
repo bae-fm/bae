@@ -77,7 +77,6 @@
     <string name="sort_name">Nazwa</string>
     <string name="gallery_load_failed">Nie udało się wczytać obrazu</string>
     <string name="settings_library">Biblioteka</string>
-    <string name="library_discovery_failed">Nie udało się odczytać bibliotek na tym urządzeniu.</string>
     <string name="settings_sync">Synchronizacja</string>
     <string name="settings_cloud_sync_on">Synchronizacja z chmurą włączona</string>
     <string name="settings_local_only">Tylko lokalnie</string>
@@ -107,9 +106,9 @@
     <string name="settings_recovery_code_failed">Nie udało się wygenerować kodu odzyskiwania.</string>
     <string name="settings_copy_recovery_code">Kopiuj kod</string>
     <string name="settings_remove_library">Usuń tę bibliotekę z tego urządzenia</string>
-    <string name="settings_remove_library_explanation">Usuwa tę bibliotekę i pobrane pliki z tego urządzenia. Twoja biblioteka w chmurze pozostaje nienaruszona. Możesz później ponownie sparować to urządzenie.</string>
+    <string name="settings_remove_library_explanation">Usuwa tę bibliotekę z tego urządzenia: urządzenie opuszcza bibliotekę, a potem jego kopia i pobrane pliki są usuwane. Biblioteka w miejscu w chmurze pozostaje nienaruszona.</string>
     <string name="settings_remove_library_confirm_title">Usunąć tę bibliotekę z tego urządzenia?</string>
-    <string name="settings_remove_library_confirm_body">Twoja biblioteka w chmurze pozostaje nienaruszona. Możesz później ponownie sparować to urządzenie.</string>
+    <string name="settings_remove_library_confirm_body">Najpierw to urządzenie opuszcza bibliotekę, co wymaga połączenia. Biblioteka w miejscu w chmurze pozostaje nienaruszona.</string>
     <string name="settings_remove">Usuń</string>
     <string name="settings_provider">Dostawca</string>
     <string name="settings_account">Konto</string>
@@ -172,11 +171,6 @@
     <string name="onboarding_join_action">Dołącz</string>
     <string name="onboarding_joining_title">Dołączanie do Twojej biblioteki</string>
     <string name="qr_scanner_instructions">Pokaż QR odzyskiwania tej biblioteki z bae → Ustawienia → Kod odzyskiwania na innym urządzeniu</string>
-    <string name="unlock_title">Biblioteka zablokowana</string>
-    <string name="unlock_explanation">Klucza szyfrującego tej biblioteki nie ma w pęku kluczy. Wprowadź 64-znakowy klucz szesnastkowy, aby odblokować.</string>
-    <string name="unlock_key_label">Klucz szyfrujący (64 znaki szesnastkowe)</string>
-    <string name="unlock_failed">Nie udało się odblokować</string>
-    <string name="unlock_action">Odblokuj</string>
     <!-- Downloads -->
     <string name="downloads">Pobieranie</string>
     <string name="download">Pobierz</string>
@@ -239,4 +233,9 @@
     <string name="appearance_forest">Las</string>
     <string name="appearance_sand">Piasek</string>
     <string name="details">Szczegóły</string>
+    <string name="reset_device">Zresetuj to urządzenie</string>
+    <string name="reset_device_confirm_title">Zresetować to urządzenie?</string>
+    <string name="reset_device_confirm">Zresetuj</string>
+    <string name="profile_required_title">Wpisz swoje imię, aby dokończyć dołączanie do tej biblioteki.</string>
+    <string name="save">Zapisz</string>
 </resources>

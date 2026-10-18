@@ -82,7 +82,6 @@
     <string name="sort_name">Nume</string>
     <string name="gallery_load_failed">Imaginea nu a putut fi încărcată</string>
     <string name="settings_library">Bibliotecă</string>
-    <string name="library_discovery_failed">Bibliotecile de pe acest dispozitiv nu au putut fi citite.</string>
     <string name="settings_sync">Sincronizare</string>
     <string name="settings_cloud_sync_on">Sincronizare cloud activă</string>
     <string name="settings_local_only">Doar local</string>
@@ -112,9 +111,9 @@
     <string name="settings_recovery_code_failed">Nu s-a putut genera un cod de recuperare.</string>
     <string name="settings_copy_recovery_code">Copiază codul</string>
     <string name="settings_remove_library">Elimină această bibliotecă de pe acest dispozitiv</string>
-    <string name="settings_remove_library_explanation">Elimină această bibliotecă și fișierele descărcate de pe acest dispozitiv. Biblioteca ta din cloud rămâne neatinsă. Poți reasocia acest dispozitiv mai târziu.</string>
+    <string name="settings_remove_library_explanation">Elimină această bibliotecă de pe acest dispozitiv: dispozitivul părăsește biblioteca, apoi copia lui și fișierele descărcate sunt șterse. Biblioteca din spațiul ei în cloud rămâne neatinsă.</string>
     <string name="settings_remove_library_confirm_title">Elimini această bibliotecă de pe acest dispozitiv?</string>
-    <string name="settings_remove_library_confirm_body">Biblioteca ta din cloud rămâne neatinsă. Poți reasocia acest dispozitiv mai târziu.</string>
+    <string name="settings_remove_library_confirm_body">Mai întâi acest dispozitiv părăsește biblioteca, ceea ce necesită conexiune. Biblioteca din spațiul ei în cloud rămâne neatinsă.</string>
     <string name="settings_remove">Elimină</string>
     <string name="settings_provider">Furnizor</string>
     <string name="settings_account">Cont</string>
@@ -195,11 +194,6 @@
     <string name="widget_nothing_playing">Nu se redă nimic</string>
     <string name="shortcut_resume_long">Reia redarea</string>
     <string name="shortcut_search_long">Caută în bibliotecă</string>
-    <string name="unlock_title">Bibliotecă blocată</string>
-    <string name="unlock_explanation">Cheia de criptare a acestei biblioteci nu se află în breloc. Introdu cheia hexazecimală de 64 de caractere pentru a debloca.</string>
-    <string name="unlock_key_label">Cheie de criptare (64 de caractere hexazecimale)</string>
-    <string name="unlock_failed">Deblocarea a eșuat</string>
-    <string name="unlock_action">Deblochează</string>
     <string name="cast">Transmite</string>
     <string name="cast_casting_to">Se transmite către %1$s</string>
     <string name="cast_disconnect">Deconectează</string>
@@ -236,4 +230,9 @@
     <string name="appearance_forest">Pădure</string>
     <string name="appearance_sand">Nisip</string>
     <string name="details">Detalii</string>
+    <string name="reset_device">Resetează acest dispozitiv</string>
+    <string name="reset_device_confirm_title">Resetezi acest dispozitiv?</string>
+    <string name="reset_device_confirm">Resetează</string>
+    <string name="profile_required_title">Introdu-ți numele pentru a termina alăturarea la această bibliotecă.</string>
+    <string name="save">Salvează</string>
 </resources>

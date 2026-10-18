@@ -1,5 +1,6 @@
 package fm.bae.app.ui
 
+import android.content.Context
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,7 +26,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.AppScreen
 import fm.bae.app.AppSessionHolder
-import fm.bae.app.OAuthLinker
+import fm.bae.app.OAuthProviders
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.ShortcutAction
@@ -35,17 +36,17 @@ import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.library.ArtworkLoadingBanner
 import fm.bae.app.ui.library.LibraryScreen
 import fm.bae.app.ui.onboarding.OnboardingScreen
-import fm.bae.app.ui.onboarding.UnlockScreen
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeLibrary
 
-/** App root: opens an existing library or onboards, then shows the library once unlocked. */
+/** App root: opens an existing library or onboards, then shows the library once open. */
 @Composable
 fun ContentView(
-    oauthLinking: OAuthLinker?,
-    oauthLinkingError: String?,
+    oauthProviders: OAuthProviders?,
+    oauthProvidersError: String?,
     startupError: String?,
     shortcutAction: ShortcutAction?,
     onShortcutHandled: () -> Unit,
@@ -72,8 +73,8 @@ fun ContentView(
     BaeAppChrome {
         AppScreenRouter(
             screen = screen,
-            oauthLinking = oauthLinking,
-            oauthLinkingError = oauthLinkingError,
+            oauthProviders = oauthProviders,
+            oauthProvidersError = oauthProvidersError,
             shortcutAction = shortcutAction,
             onShortcutHandled = onShortcutHandled,
             onScreen = { screen = it },
@@ -99,8 +100,8 @@ internal fun BaeAppChrome(content: @Composable () -> Unit) {
 @Composable
 private fun AppScreenRouter(
     screen: AppScreen,
-    oauthLinking: OAuthLinker?,
-    oauthLinkingError: String?,
+    oauthProviders: OAuthProviders?,
+    oauthProvidersError: String?,
     shortcutAction: ShortcutAction?,
     onShortcutHandled: () -> Unit,
     onScreen: (AppScreen) -> Unit,
@@ -114,26 +115,9 @@ private fun AppScreenRouter(
 
         AppScreen.Onboarding -> {
             OnboardingScreen(
-                oauthLinking = oauthLinking,
-                oauthLinkingError = oauthLinkingError,
-                onLinked = { info ->
-                    AppSessionHolder.onLinked(info)
-                    scope.launch { AppSessionHolder.openLibrary(context, info.id, onScreen) }
-                },
-            )
-        }
-
-        is AppScreen.Unlock -> {
-            UnlockScreen(
-                libraryName = current.libraryName,
-                onUnlock = { key ->
-                    val session = AppSessionHolder.unlock(key)
-                    onScreen(AppScreen.LibraryOpen(session))
-                },
-                onCancel = {
-                    AppSessionHolder.cancelUnlock()
-                    val open = AppSessionHolder.currentSession()
-                    onScreen(if (open != null) AppScreen.LibraryOpen(open) else AppScreen.Onboarding)
+                oauthProvidersError = oauthProvidersError,
+                onBootstrapped = { result ->
+                    scope.launch { AppSessionHolder.openBootstrapped(context, result, onScreen) }
                 },
             )
         }
@@ -144,12 +128,32 @@ private fun AppScreenRouter(
                 libraries = AppSessionHolder.libraries,
                 shortcutAction = shortcutAction,
                 onShortcutHandled = onShortcutHandled,
-                onSwitchLibrary = { library ->
-                    scope.launch { AppSessionHolder.openLibrary(context, library.id, onScreen) }
+                actions = sessionActions(context, scope, current.session, oauthProviders, onScreen),
+            )
+        }
+
+        is AppScreen.ResetOffered -> {
+            ResetOfferedScreen(
+                libraryId = current.libraryId,
+                message = current.message,
+                onReset = { reset ->
+                    scope.launch { AppSessionHolder.resetDevice(context, current.libraryId, reset, onScreen) }
                 },
-                onLeaveLibrary = {
-                    scope.launch { AppSessionHolder.forgetActiveLibrary(context, onScreen) }
-                },
+            )
+        }
+
+        is AppScreen.ProfileRequired -> {
+            ProfileRequiredScreen(
+                session = current.session,
+                message = current.message,
+                onCreated = { onScreen(AppScreen.LibraryOpen(current.session)) },
+            )
+        }
+
+        is AppScreen.RemovalIncomplete -> {
+            RemovalIncompleteScreen(
+                message = current.message,
+                onRetry = { scope.launch { AppSessionHolder.retryRemoval(context, current.retry, onScreen) } },
             )
         }
 
@@ -159,8 +163,28 @@ private fun AppScreenRouter(
     }
 }
 
+/** What the open library's screens ask of the app, each running in [scope] and ending in a screen. */
+private fun sessionActions(
+    context: Context,
+    scope: CoroutineScope,
+    session: OpenLibrary,
+    oauthProviders: OAuthProviders?,
+    onScreen: (AppScreen) -> Unit,
+) = SessionActions(
+    oauthProviders = oauthProviders,
+    switchLibrary = { library ->
+        scope.launch { AppSessionHolder.openLibrary(context, library.id, onScreen) }
+    },
+    removeLibrary = {
+        scope.launch { AppSessionHolder.removeActiveLibrary(context, onScreen) }
+    },
+    resetDevice = { reset ->
+        scope.launch { AppSessionHolder.resetDevice(context, session.libraryId, reset, onScreen) }
+    },
+)
+
 /**
- * The unlocked library UI plus the snackbar that confirms Play Next and Add to
+ * The open library UI plus the snackbar that confirms Play Next and Add to
  * Queue, since the now-playing bar is hidden while nothing plays.
  */
 @Composable
@@ -169,8 +193,7 @@ private fun LibraryOpenScreen(
     libraries: StateFlow<List<BridgeLibrary>>,
     shortcutAction: ShortcutAction?,
     onShortcutHandled: () -> Unit,
-    onSwitchLibrary: (BridgeLibrary) -> Unit,
-    onLeaveLibrary: () -> Unit,
+    actions: SessionActions,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val appContext = LocalContext.current
@@ -198,8 +221,7 @@ private fun LibraryOpenScreen(
                     libraries = libraries,
                     openSearch = shortcutAction == ShortcutAction.SEARCH,
                     onSearchOpened = onShortcutHandled,
-                    onSwitchLibrary = onSwitchLibrary,
-                    onLeaveLibrary = onLeaveLibrary,
+                    actions = actions,
                 )
             }
         }

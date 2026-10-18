@@ -2,10 +2,7 @@ package fm.bae.app
 
 import android.content.Context
 import android.content.Intent
-import android.os.Looper
 import androidx.glance.appwidget.updateAll
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.ProcessLifecycleOwner
 import fm.bae.app.data.ArtworkLoadingStore
 import fm.bae.app.data.BrowserPageStores
 import fm.bae.app.data.Cast
@@ -16,7 +13,6 @@ import fm.bae.app.data.ImageStore
 import fm.bae.app.data.Library
 import fm.bae.app.data.LibraryQueryStores
 import fm.bae.app.data.LibraryStore
-import fm.bae.app.data.LibraryTransferStores
 import fm.bae.app.data.OpenLibraryStores
 import fm.bae.app.data.OutboxStore
 import fm.bae.app.data.SyncStatusStore
@@ -26,28 +22,18 @@ import fm.bae.app.playback.PlaybackService
 import fm.bae.app.widget.NowPlayingWidget
 import fm.bae.app.widget.WidgetSnapshot
 import fm.bae.app.widget.WidgetSnapshotStore
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import uniffi.bae_bridge.AppHandle
-import uniffi.bae_bridge.BridgeCloudHomeKeyState
 import uniffi.bae_bridge.BridgeConfig
 import uniffi.bae_bridge.BridgeDiagnostics
-import uniffi.bae_bridge.BridgeHost
-import uniffi.bae_bridge.BridgeLibrary
-import uniffi.bae_bridge.BridgeScreen
-import uniffi.bae_bridge.BridgeTelemetryEvent
+import uniffi.bae_bridge.BridgeIfUnsent
+import uniffi.bae_bridge.BridgeLibraryRemoval
 import uniffi.bae_bridge.BridgeUiEvent
 import uniffi.bae_bridge.CastDevicesCallback
 import uniffi.bae_bridge.ConfigCallback
@@ -59,23 +45,11 @@ import uniffi.bae_bridge.PlaybackValuesCallback
 import uniffi.bae_bridge.QueueCallback
 import uniffi.bae_bridge.SyncStatusCallback
 import uniffi.bae_bridge.UiEventCallback
-import uniffi.bae_bridge.initApp
-
-private const val TAG = "bae.AppSession"
-private val logger = BaeLogger(TAG)
 
 /**
- * Position-update tick interval handed to the bridge, in milliseconds. bae-core
- * drives the real playback engine on Android and publishes retained playback
- * values at this cadence; the [BaeCorePlayer] re-anchors its extrapolating
- * position from each value.
- */
-private const val POSITION_UPDATE_INTERVAL_MS = 200u
-
-/**
- * One unlocked library: the open [AppHandle] plus the stores and services
- * wired around it. Built by [AppSessionHolder.openLibrary] after `initApp`
- * succeeds and the encryption key is present. Mirrors the macOS `AppService`.
+ * One open library: the open [AppHandle] plus the stores and services wired
+ * around it. Built by [AppSessionHolder] once the handle is open and its store
+ * keys are held. Mirrors the macOS `AppService`.
  */
 class OpenLibrary internal constructor(
     val libraryId: String,
@@ -174,6 +148,12 @@ class OpenLibrary internal constructor(
                     override fun onValue(value: uniffi.bae_bridge.BridgeEagerCacheFillStatus) {
                         scope.launch(Dispatchers.Main.immediate) {
                             stores.transfers.artworkLoading.apply(value)
+                        }
+                    }
+
+                    override fun onError(error: uniffi.bae_bridge.BridgeException) {
+                        scope.launch(Dispatchers.Main.immediate) {
+                            stores.config.showError(LocaleErrorLines(appContext).line(error))
                         }
                     }
                 },
@@ -290,9 +270,19 @@ class OpenLibrary internal constructor(
         }
     }
 
-    suspend fun closeForgottenLibrary() {
+    /**
+     * Stop this session and remove its library from the device: core leaves the
+     * store before deleting the local copy. The handle is closed whatever the
+     * outcome; a removal that failed leaves the library on the device to be
+     * opened again, and one whose preferences remain carries its own retry.
+     */
+    suspend fun removeFromDevice(): BridgeLibraryRemoval {
         stopSessionServices()
-        appHandle.close()
+        try {
+            return appHandle.removeLibrary(BridgeIfUnsent.REFUSE)
+        } finally {
+            appHandle.close()
+        }
     }
 
     private fun stopSessionServices() {
@@ -321,335 +311,3 @@ internal data class OpenLibraryRuntime(
     val playback: BaeCorePlayer,
     val scope: CoroutineScope,
 )
-
-/**
- * Local libraries discovered on this device — drives the Settings library
- * switcher. Replaced by each discovery scan; a freshly-linked library is
- * appended directly (it is not in the launch scan).
- */
-internal class DiscoveredLibraries {
-    private val state = MutableStateFlow<List<BridgeLibrary>>(emptyList())
-    val libraries: StateFlow<List<BridgeLibrary>> = state.asStateFlow()
-
-    fun replaceAll(libraries: List<BridgeLibrary>) {
-        state.value = libraries
-    }
-
-    /** Append [library] unless a library with its id is already known. */
-    fun noteLinked(library: BridgeLibrary) {
-        state.update { known ->
-            if (known.any { it.id == library.id }) known else known + library
-        }
-    }
-}
-
-/** Lifecycle state for the app root. */
-sealed interface AppScreen {
-    data object Loading : AppScreen
-
-    data object Onboarding : AppScreen
-
-    /** Encryption key isn't in the keyring; the user must enter it to unlock. */
-    data class Unlock(
-        val libraryName: String,
-    ) : AppScreen
-
-    data class LibraryOpen(
-        val session: OpenLibrary,
-    ) : AppScreen
-
-    data class Failed(
-        val message: String,
-    ) : AppScreen
-}
-
-/**
- * Opens libraries and produces the lifecycle [AppScreen]. The `initApp` call
- * and config read happen off the main thread; the resulting [OpenLibrary] holds
- * the app-scoped services for the session.
- */
-object AppSessionHolder {
-    /**
-     * Process-lifetime scope the open session's event subscription and poll
-     * loops run in. Outlives the Activity so a config change / rotation doesn't
-     * cancel them. The `Activity` itself no longer recreates (see the manifest
-     * `configChanges`), so this is the one owner of the session's coroutines.
-     */
-    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-
-    private val discovered = DiscoveredLibraries()
-
-    /** Local libraries on this device, for the Settings switcher. */
-    val libraries: StateFlow<List<BridgeLibrary>> get() = discovered.libraries
-
-    /** The currently open library, if any. Reused across re-opens of the same id. */
-    @Volatile
-    private var current: OpenLibrary? = null
-
-    private data class LockedLibrary(
-        val libraryId: String,
-        val handle: AppHandle,
-        val config: BridgeConfig,
-        val diagnostics: BridgeDiagnostics,
-        val appContext: Context,
-    )
-
-    @Volatile
-    private var locked: LockedLibrary? = null
-
-    /**
-     * Scan [host]'s directory for local libraries off-main, publish the result
-     * to [libraries], and return it. Throws when the scan itself fails, so
-     * callers can surface it rather than mistaking a failed scan for an empty
-     * device.
-     */
-    suspend fun discoverLibraries(host: BridgeHost): List<BridgeLibrary> {
-        val result = withContext(Dispatchers.IO) { host.discoverLibraries() }
-        discovered.replaceAll(result)
-        return result
-    }
-
-    /** Record a library produced by the link/join flow (not in the launch scan). */
-    fun onLinked(library: BridgeLibrary) {
-        discovered.noteLinked(library)
-    }
-
-    /** The open session whose lifecycle the holder owns, if a library is open. */
-    fun currentSession(): OpenLibrary? = current
-
-    /**
-     * Forget the active library on this device. Its handle closes the library
-     * first, so nothing of this process holds its store; the session is then
-     * disposed without a graceful shutdown (there is nothing left to save
-     * into), and the host removes the library — its files, the active
-     * pointer, and every keyring entry kept for it (the cloud copy is
-     * untouched). Then re-discover — opening the next library or onboarding.
-     */
-    suspend fun forgetActiveLibrary(
-        context: Context,
-        onScreen: (AppScreen) -> Unit,
-    ) {
-        val session = current ?: return
-        val host = (context.applicationContext as BaeApp).host
-        try {
-            withContext(Dispatchers.IO) { session.appHandle.closeLibrary() }
-            session.closeForgottenLibrary()
-            current = null
-            withContext(Dispatchers.IO) { host.removeLocalLibrary(session.libraryId) }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            logger.error("removing the library failed", e)
-            onScreen(AppScreen.Failed(e.message ?: "Failed to remove library"))
-            return
-        }
-        openDiscoveredOrOnboard(context, onScreen)
-    }
-
-    /**
-     * Publish a fresh scan and open the first remaining library, or onboard when
-     * the device has none left. A failed scan surfaces as [AppScreen.Failed]
-     * rather than an empty device, so the user isn't invited to restore a
-     * duplicate library on top of one that already exists.
-     */
-    suspend fun openDiscoveredOrOnboard(
-        context: Context,
-        onScreen: (AppScreen) -> Unit,
-    ) {
-        onScreen(AppScreen.Loading)
-        val remaining =
-            try {
-                discoverLibraries((context.applicationContext as BaeApp).host)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                logger.error("discoverLibraries failed", e)
-                onScreen(AppScreen.Failed(e.message ?: context.getString(R.string.library_discovery_failed)))
-                return
-            }
-        val next = remaining.firstOrNull()
-        if (next == null) {
-            onScreen(AppScreen.Onboarding)
-        } else {
-            openLibrary(context, next.id, onScreen)
-        }
-    }
-
-    /**
-     * Open [libraryId]: reuse the open session if it's already this library,
-     * else dispose any other open session, run `initApp` off-main, gate on the
-     * encryption key, and on the happy path build + wire a new [OpenLibrary].
-     * Emits the resulting screen through [onScreen] on the main thread.
-     *
-     * The session's coroutines run in the holder-owned [appScope], not a caller
-     * scope, so a config change can't cancel them and re-opening can't leak the
-     * prior handle.
-     */
-    suspend fun openLibrary(
-        context: Context,
-        libraryId: String,
-        onScreen: (AppScreen) -> Unit,
-    ) {
-        current?.let { open ->
-            if (open.libraryId == libraryId) {
-                onScreen(AppScreen.LibraryOpen(open))
-                return
-            }
-        }
-        onScreen(AppScreen.Loading)
-        locked?.handle?.close()
-        locked = null
-        // The process-lifetime host and telemetry sink, built at app launch.
-        // `init_app` requires the host, and the library-open event ships
-        // through the sink below.
-        val app = context.applicationContext as BaeApp
-        val host = app.host
-        val diagnostics = app.diagnostics
-        try {
-            val handle =
-                withContext(Dispatchers.IO) {
-                    // The "Restore on launch" preference (default on): off
-                    // starts with nothing in playback; the core keeps the
-                    // resume row current either way.
-                    initApp(
-                        libraryId,
-                        POSITION_UPDATE_INTERVAL_MS,
-                        RestorePlaybackPref.load(context),
-                        host,
-                    )
-                }
-            val config: BridgeConfig = handle.getConfig()
-
-            if (handle.cloudHomeKeyState() == BridgeCloudHomeKeyState.LOCKED) {
-                locked =
-                    LockedLibrary(
-                        libraryId,
-                        handle,
-                        config,
-                        diagnostics,
-                        context.applicationContext,
-                    )
-                onScreen(
-                    AppScreen.Unlock(
-                        libraryName = config.libraryName,
-                    ),
-                )
-                return
-            }
-
-            val session =
-                installSession(
-                    libraryId,
-                    handle,
-                    config,
-                    diagnostics,
-                    context.applicationContext,
-                )
-            onScreen(AppScreen.LibraryOpen(session))
-        } catch (e: CancellationException) {
-            // A newer openLibrary (or leaving the screen) cancelled us; let it
-            // propagate so cooperative cancellation works and we don't report a
-            // spurious Failed over the open that superseded us.
-            throw e
-        } catch (e: Exception) {
-            logger.error("openLibrary failed for $libraryId", e)
-            onScreen(AppScreen.Failed(e.message ?: "Failed to open library"))
-        }
-    }
-
-    suspend fun unlock(serializedMasterKey: String): OpenLibrary {
-        val pending = locked ?: throw CancellationException("locked library was superseded")
-        pending.handle.unlockCloudHome(serializedMasterKey)
-        if (locked !== pending) {
-            throw CancellationException("locked library was superseded")
-        }
-        locked = null
-        return installSession(
-            pending.libraryId,
-            pending.handle,
-            pending.config,
-            pending.diagnostics,
-            pending.appContext,
-        )
-    }
-
-    fun cancelUnlock() {
-        locked?.handle?.close()
-        locked = null
-    }
-
-    private suspend fun installSession(
-        libraryId: String,
-        handle: AppHandle,
-        config: BridgeConfig,
-        diagnostics: BridgeDiagnostics,
-        appContext: Context,
-    ): OpenLibrary {
-        val initialOutbox = handle.getOutboxSnapshot()
-        val initialDownloads = handle.getDownloadSnapshot()
-        current?.dispose()
-        current = null
-        val session =
-            buildSession(
-                libraryId,
-                handle,
-                diagnostics,
-                buildStores(config, handle, initialOutbox, initialDownloads),
-                appContext,
-            )
-        current = session
-        session.wireUp(appScope)
-        diagnostics.event(BridgeTelemetryEvent.ScreenOpened(BridgeScreen.LIBRARY))
-        return session
-    }
-
-    private fun buildSession(
-        libraryId: String,
-        handle: AppHandle,
-        diagnostics: BridgeDiagnostics,
-        stores: OpenLibraryStores,
-        appContext: Context,
-    ): OpenLibrary =
-        OpenLibrary(
-            libraryId = libraryId,
-            appHandle = handle,
-            diagnostics = diagnostics,
-            stores = stores,
-            runtime =
-                OpenLibraryRuntime(
-                    playback =
-                        BaeCorePlayer(
-                            applicationLooper = Looper.getMainLooper(),
-                            appHandle = handle,
-                            context = appContext,
-                            scope = appScope,
-                            isAppForeground = {
-                                ProcessLifecycleOwner
-                                    .get()
-                                    .lifecycle.currentState
-                                    .isAtLeast(Lifecycle.State.STARTED)
-                            },
-                        ),
-                    scope = appScope,
-                ),
-            appContext = appContext,
-        )
-
-    private fun buildStores(
-        config: BridgeConfig,
-        handle: AppHandle,
-        initialOutbox: uniffi.bae_bridge.BridgeOutboxSnapshot,
-        initialDownloads: uniffi.bae_bridge.BridgeDownloadSnapshot,
-    ) = OpenLibraryStores(
-        library = LibraryStore(),
-        config = ConfigStore(config),
-        syncStatus = SyncStatusStore(),
-        transfers =
-            LibraryTransferStores(
-                artworkLoading = ArtworkLoadingStore(handle::cancelEagerCacheFill),
-                downloads = DownloadStore(initialDownloads),
-                outbox = OutboxStore(initialOutbox),
-            ),
-        cast = CastStore(),
-    )
-}

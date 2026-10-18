@@ -81,7 +81,6 @@
     <string name="sort_name">Namn</string>
     <string name="gallery_load_failed">Bilden kunde inte läsas in</string>
     <string name="settings_library">Bibliotek</string>
-    <string name="library_discovery_failed">Biblioteken på den här enheten kunde inte läsas.</string>
     <string name="settings_sync">Synkronisering</string>
     <string name="settings_cloud_sync_on">Molnsynkronisering på</string>
     <string name="settings_local_only">Endast lokalt</string>
@@ -111,9 +110,9 @@
     <string name="settings_recovery_code_failed">Kunde inte skapa någon återställningskod.</string>
     <string name="settings_copy_recovery_code">Kopiera koden</string>
     <string name="settings_remove_library">Ta bort det här biblioteket från den här enheten</string>
-    <string name="settings_remove_library_explanation">Tar bort det här biblioteket och dess hämtade filer från den här enheten. Ditt bibliotek i molnet är orört. Du kan parkoppla den här enheten igen senare.</string>
+    <string name="settings_remove_library_explanation">Tar bort det här biblioteket från den här enheten: enheten lämnar biblioteket, sedan raderas dess kopia och nedladdade filer. Biblioteket på molnplatsen är orört.</string>
     <string name="settings_remove_library_confirm_title">Ta bort det här biblioteket från den här enheten?</string>
-    <string name="settings_remove_library_confirm_body">Ditt bibliotek i molnet är orört. Du kan parkoppla den här enheten igen senare.</string>
+    <string name="settings_remove_library_confirm_body">Enheten lämnar först biblioteket, vilket kräver anslutning. Biblioteket på molnplatsen är orört.</string>
     <string name="settings_remove">Ta bort</string>
     <string name="settings_provider">Leverantör</string>
     <string name="settings_account">Konto</string>
@@ -193,11 +192,6 @@
     <string name="widget_nothing_playing">Inget spelas</string>
     <string name="shortcut_resume_long">Fortsätt uppspelningen</string>
     <string name="shortcut_search_long">Sök i biblioteket</string>
-    <string name="unlock_title">Biblioteket är låst</string>
-    <string name="unlock_explanation">Krypteringsnyckeln för det här biblioteket finns inte i nyckelringen. Ange den 64 tecken långa hexadecimala nyckeln för att låsa upp.</string>
-    <string name="unlock_key_label">Krypteringsnyckel (64 hexadecimala tecken)</string>
-    <string name="unlock_failed">Upplåsningen misslyckades</string>
-    <string name="unlock_action">Lås upp</string>
     <string name="cast">Casta</string>
     <string name="cast_casting_to">Castar till %1$s</string>
     <string name="cast_disconnect">Koppla från</string>
@@ -234,4 +228,9 @@
     <string name="appearance_forest">Skog</string>
     <string name="appearance_sand">Sand</string>
     <string name="details">Detaljer</string>
+    <string name="reset_device">Återställ den här enheten</string>
+    <string name="reset_device_confirm_title">Återställa den här enheten?</string>
+    <string name="reset_device_confirm">Återställ</string>
+    <string name="profile_required_title">Ange ditt namn för att slutföra anslutningen till det här biblioteket.</string>
+    <string name="save">Spara</string>
 </resources>

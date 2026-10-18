@@ -77,7 +77,6 @@
     <string name="sort_name">שם</string>
     <string name="gallery_load_failed">לא ניתן לטעון את התמונה.</string>
     <string name="settings_library">ספרייה</string>
-    <string name="library_discovery_failed">לא ניתן לקרוא את הספריות במכשיר הזה.</string>
     <string name="settings_sync">סנכרון</string>
     <string name="settings_cloud_sync_on">סנכרון ענן מופעל</string>
     <string name="settings_local_only">מקומי בלבד</string>
@@ -107,9 +106,9 @@
     <string name="settings_recovery_code_failed">לא ניתן ליצור קוד שחזור.</string>
     <string name="settings_copy_recovery_code">העתק קוד</string>
     <string name="settings_remove_library">הסר ספרייה זו מהמכשיר הזה</string>
-    <string name="settings_remove_library_explanation">מסיר ספרייה זו ואת הקבצים שהורדו ממנה מהמכשיר הזה. הספרייה שלכם בענן לא תיפגע. תוכלו לצמד מחדש את המכשיר הזה מאוחר יותר.</string>
+    <string name="settings_remove_library_explanation">מסיר את הספרייה הזו מהמכשיר הזה: המכשיר עוזב את הספרייה, ואז העותק שלו והקבצים שהורדו נמחקים. הספרייה במיקום שלה בענן לא תיפגע.</string>
     <string name="settings_remove_library_confirm_title">להסיר ספרייה זו מהמכשיר הזה?</string>
-    <string name="settings_remove_library_confirm_body">הספרייה שלכם בענן לא תיפגע. תוכלו לצמד מחדש את המכשיר הזה מאוחר יותר.</string>
+    <string name="settings_remove_library_confirm_body">המכשיר הזה עוזב קודם את הספרייה, ולשם כך נדרש חיבור. הספרייה במיקום שלה בענן לא תיפגע.</string>
     <string name="settings_remove">הסר</string>
     <string name="settings_provider">ספק</string>
     <string name="settings_account">חשבון</string>
@@ -172,11 +171,6 @@
     <string name="onboarding_join_action">הצטרף</string>
     <string name="onboarding_joining_title">מצטרף לספרייה שלך</string>
     <string name="qr_scanner_instructions">הציגו את QR השחזור של הספרייה הזו מתוך bae → הגדרות → קוד שחזור במכשיר אחר</string>
-    <string name="unlock_title">הספרייה נעולה</string>
-    <string name="unlock_explanation">מפתח ההצפנה של ספרייה זו אינו במחזיק המפתחות. הזינו את המפתח ההקסדצימלי באורך 64 תווים כדי לפתוח.</string>
-    <string name="unlock_key_label">מפתח הצפנה (64 תווים הקסדצימליים)</string>
-    <string name="unlock_failed">פתיחת הנעילה נכשלה</string>
-    <string name="unlock_action">פתח נעילה</string>
     <!-- Downloads -->
     <string name="downloads">הורדות</string>
     <string name="download">הורדה</string>
@@ -237,4 +231,9 @@
     <string name="appearance_forest">יער</string>
     <string name="appearance_sand">חול</string>
     <string name="details">פרטים</string>
+    <string name="reset_device">איפוס המכשיר הזה</string>
+    <string name="reset_device_confirm_title">לאפס את המכשיר הזה?</string>
+    <string name="reset_device_confirm">איפוס</string>
+    <string name="profile_required_title">הזינו את שמכם כדי להשלים את ההצטרפות לספרייה הזו.</string>
+    <string name="save">שמירה</string>
 </resources>

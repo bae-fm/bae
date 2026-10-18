@@ -77,7 +77,6 @@
     <string name="sort_name">Nome</string>
     <string name="gallery_load_failed">Impossibile caricare l\'immagine</string>
     <string name="settings_library">Libreria</string>
-    <string name="library_discovery_failed">Impossibile leggere le librerie su questo dispositivo.</string>
     <string name="settings_sync">Sincronizzazione</string>
     <string name="settings_cloud_sync_on">Sincronizzazione cloud attiva</string>
     <string name="settings_local_only">Solo locale</string>
@@ -107,9 +106,9 @@
     <string name="settings_recovery_code_failed">Impossibile generare un codice di recupero.</string>
     <string name="settings_copy_recovery_code">Copia codice</string>
     <string name="settings_remove_library">Rimuovi questa libreria da questo dispositivo</string>
-    <string name="settings_remove_library_explanation">Rimuove questa libreria e i relativi file scaricati da questo dispositivo. La tua libreria nel cloud rimane intatta. Potrai riabbinare questo dispositivo in seguito.</string>
+    <string name="settings_remove_library_explanation">Rimuove questa libreria da questo dispositivo: il dispositivo lascia la libreria, poi la sua copia e i file scaricati vengono eliminati. La libreria nel suo spazio cloud rimane intatta.</string>
     <string name="settings_remove_library_confirm_title">Rimuovere questa libreria da questo dispositivo?</string>
-    <string name="settings_remove_library_confirm_body">La tua libreria nel cloud rimane intatta. Potrai riabbinare questo dispositivo in seguito.</string>
+    <string name="settings_remove_library_confirm_body">Il dispositivo lascia prima la libreria, operazione che richiede una connessione. La libreria nel suo spazio cloud rimane intatta.</string>
     <string name="settings_remove">Rimuovi</string>
     <string name="settings_provider">Provider</string>
     <string name="settings_account">Account</string>
@@ -172,11 +171,6 @@
     <string name="onboarding_join_action">Unisciti</string>
     <string name="onboarding_joining_title">Accesso alla tua libreria</string>
     <string name="qr_scanner_instructions">Mostra il QR di recupero di questa libreria da bae → Impostazioni → Codice di recupero su un altro dispositivo</string>
-    <string name="unlock_title">Libreria bloccata</string>
-    <string name="unlock_explanation">La chiave di crittografia per questa libreria non è nel portachiavi. Inserisci la chiave esadecimale a 64 caratteri per sbloccare.</string>
-    <string name="unlock_key_label">Crittografia (64 hex)</string>
-    <string name="unlock_failed">Sblocco non riuscito</string>
-    <string name="unlock_action">Sblocca</string>
     <!-- Downloads -->
     <string name="downloads">Download</string>
     <string name="download">Scarica</string>
@@ -236,4 +230,9 @@
     <string name="appearance_forest">Foresta</string>
     <string name="appearance_sand">Sabbia</string>
     <string name="details">Dettagli</string>
+    <string name="reset_device">Reimposta questo dispositivo</string>
+    <string name="reset_device_confirm_title">Reimpostare questo dispositivo?</string>
+    <string name="reset_device_confirm">Reimposta</string>
+    <string name="profile_required_title">Inserisci il tuo nome per completare l’ingresso in questa libreria.</string>
+    <string name="save">Salva</string>
 </resources>

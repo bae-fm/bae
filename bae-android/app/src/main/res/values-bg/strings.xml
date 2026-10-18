@@ -77,7 +77,6 @@
     <string name="sort_name">Име</string>
     <string name="gallery_load_failed">Изображението не може да бъде заредено</string>
     <string name="settings_library">Библиотека</string>
-    <string name="library_discovery_failed">Библиотеките на това устройство не могат да бъдат прочетени.</string>
     <string name="settings_sync">Синхронизиране</string>
     <string name="settings_cloud_sync_on">Облачната синхронизация е включена</string>
     <string name="settings_local_only">Само локално</string>
@@ -107,9 +106,9 @@
     <string name="settings_recovery_code_failed">Не можа да бъде генериран код за възстановяване.</string>
     <string name="settings_copy_recovery_code">Копиране на кода</string>
     <string name="settings_remove_library">Премахване на тази библиотека от това устройство</string>
-    <string name="settings_remove_library_explanation">Премахва тази библиотека и изтеглените ѝ файлове от това устройство. Библиотеката ви в облака остава непокътната. Можете да сдвоите това устройство отново по-късно.</string>
+    <string name="settings_remove_library_explanation">Премахва тази библиотека от това устройство: устройството напуска библиотеката, след което копието му и изтеглените файлове се изтриват. Библиотеката в облачното хранилище остава непокътната.</string>
     <string name="settings_remove_library_confirm_title">Премахване на тази библиотека от това устройство?</string>
-    <string name="settings_remove_library_confirm_body">Библиотеката ви в облака остава непокътната. Можете да сдвоите това устройство отново по-късно.</string>
+    <string name="settings_remove_library_confirm_body">Първо устройството напуска библиотеката, за което е нужна връзка. Библиотеката в облачното хранилище остава непокътната.</string>
     <string name="settings_remove">Премахване</string>
     <string name="settings_provider">Доставчик</string>
     <string name="settings_account">Акаунт</string>
@@ -172,11 +171,6 @@
     <string name="onboarding_join_action">Присъединяване</string>
     <string name="onboarding_joining_title">Присъединяване към библиотеката ви</string>
     <string name="qr_scanner_instructions">Покажете QR кода за възстановяване на тази библиотека от bae → Настройки → Код за възстановяване на друго устройство</string>
-    <string name="unlock_title">Библиотеката е заключена</string>
-    <string name="unlock_explanation">Ключът за шифроване на тази библиотека не е в ключодържателя. Въведете 64-знаковия шестнадесетичен ключ за отключване.</string>
-    <string name="unlock_key_label">Ключ за шифроване (64 шестнадесетични знака)</string>
-    <string name="unlock_failed">Отключването не бе успешно</string>
-    <string name="unlock_action">Отключване</string>
     <!-- Downloads -->
     <string name="downloads">Изтегляния</string>
     <string name="download">Изтегляне</string>
@@ -235,4 +229,9 @@
     <string name="appearance_forest">Горски</string>
     <string name="appearance_sand">Пясъчен</string>
     <string name="details">Подробности</string>
+    <string name="reset_device">Нулиране на това устройство</string>
+    <string name="reset_device_confirm_title">Нулиране на това устройство?</string>
+    <string name="reset_device_confirm">Нулиране</string>
+    <string name="profile_required_title">Въведете името си, за да завършите присъединяването към тази библиотека.</string>
+    <string name="save">Запазване</string>
 </resources>

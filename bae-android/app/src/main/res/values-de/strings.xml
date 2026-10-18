@@ -77,7 +77,6 @@
     <string name="sort_name">Name</string>
     <string name="gallery_load_failed">Bild konnte nicht geladen werden</string>
     <string name="settings_library">Bibliothek</string>
-    <string name="library_discovery_failed">Die Bibliotheken auf diesem Gerät konnten nicht gelesen werden.</string>
     <string name="settings_sync">Synchronisierung</string>
     <string name="settings_cloud_sync_on">Cloud-Sync ein</string>
     <string name="settings_local_only">Nur lokal</string>
@@ -107,9 +106,9 @@
     <string name="settings_recovery_code_failed">Wiederherstellungscode konnte nicht erstellt werden.</string>
     <string name="settings_copy_recovery_code">Code kopieren</string>
     <string name="settings_remove_library">Diese Bibliothek von diesem Gerät entfernen</string>
-    <string name="settings_remove_library_explanation">Entfernt diese Bibliothek und ihre heruntergeladenen Dateien von diesem Gerät. Deine Bibliothek in der Cloud bleibt unberührt. Du kannst dieses Gerät später erneut koppeln.</string>
+    <string name="settings_remove_library_explanation">Entfernt diese Bibliothek von diesem Gerät: Das Gerät verlässt die Bibliothek, dann werden seine Kopie und die geladenen Dateien gelöscht. Die Bibliothek am Cloud-Speicherort bleibt unberührt.</string>
     <string name="settings_remove_library_confirm_title">Diese Bibliothek von diesem Gerät entfernen?</string>
-    <string name="settings_remove_library_confirm_body">Deine Bibliothek in der Cloud bleibt unberührt. Du kannst dieses Gerät später erneut koppeln.</string>
+    <string name="settings_remove_library_confirm_body">Dieses Gerät verlässt zuerst die Bibliothek, dafür ist eine Verbindung nötig. Die Bibliothek am Cloud-Speicherort bleibt unberührt.</string>
     <string name="settings_remove">Entfernen</string>
     <string name="settings_provider">Anbieter</string>
     <string name="settings_account">Konto</string>
@@ -172,11 +171,6 @@
     <string name="onboarding_join_action">Beitreten</string>
     <string name="onboarding_joining_title">Deiner Mediathek wird beigetreten</string>
     <string name="qr_scanner_instructions">Zeige den Wiederherstellungs-QR dieser Mediathek von bae → Einstellungen → Wiederherstellungscode auf einem anderen Gerät</string>
-    <string name="unlock_title">Bibliothek gesperrt</string>
-    <string name="unlock_explanation">Der Verschlüsselungsschlüssel für diese Bibliothek ist nicht im Schlüsselbund. Gib den 64-stelligen Hex-Schlüssel zum Entsperren ein.</string>
-    <string name="unlock_key_label">Verschlüsselungsschlüssel (64 Hex-Zeichen)</string>
-    <string name="unlock_failed">Entsperren fehlgeschlagen</string>
-    <string name="unlock_action">Entsperren</string>
     <!-- Downloads -->
     <string name="downloads">Downloads</string>
     <string name="download">Herunterladen</string>
@@ -235,4 +229,9 @@
     <string name="appearance_forest">Wald</string>
     <string name="appearance_sand">Sand</string>
     <string name="details">Details</string>
+    <string name="reset_device">Dieses Gerät zurücksetzen</string>
+    <string name="reset_device_confirm_title">Dieses Gerät zurücksetzen?</string>
+    <string name="reset_device_confirm">Zurücksetzen</string>
+    <string name="profile_required_title">Gib deinen Namen ein, um den Beitritt zu dieser Bibliothek abzuschließen.</string>
+    <string name="save">Speichern</string>
 </resources>

@@ -81,7 +81,6 @@
     <string name="sort_name">Navn</string>
     <string name="gallery_load_failed">Bildet kunne ikke lastes inn</string>
     <string name="settings_library">Bibliotek</string>
-    <string name="library_discovery_failed">Bibliotekene på denne enheten kunne ikke leses.</string>
     <string name="settings_sync">Synkronisering</string>
     <string name="settings_cloud_sync_on">Skysynkronisering er på</string>
     <string name="settings_local_only">Bare lokalt</string>
@@ -111,9 +110,9 @@
     <string name="settings_recovery_code_failed">Kunne ikke generere en gjenopprettingskode.</string>
     <string name="settings_copy_recovery_code">Kopier koden</string>
     <string name="settings_remove_library">Fjern dette biblioteket fra denne enheten</string>
-    <string name="settings_remove_library_explanation">Fjerner dette biblioteket og de nedlastede filene fra denne enheten. Biblioteket ditt i skyen er urørt. Du kan pare denne enheten på nytt senere.</string>
+    <string name="settings_remove_library_explanation">Fjerner dette biblioteket fra denne enheten: enheten forlater biblioteket, og deretter slettes kopien og de nedlastede filene. Biblioteket på skyplasseringen er urørt.</string>
     <string name="settings_remove_library_confirm_title">Fjerne dette biblioteket fra denne enheten?</string>
-    <string name="settings_remove_library_confirm_body">Biblioteket ditt i skyen er urørt. Du kan pare denne enheten på nytt senere.</string>
+    <string name="settings_remove_library_confirm_body">Enheten forlater først biblioteket, og det krever tilkobling. Biblioteket på skyplasseringen er urørt.</string>
     <string name="settings_remove">Fjern</string>
     <string name="settings_provider">Leverandør</string>
     <string name="settings_account">Konto</string>
@@ -193,11 +192,6 @@
     <string name="widget_nothing_playing">Ingenting spilles av</string>
     <string name="shortcut_resume_long">Fortsett avspillingen</string>
     <string name="shortcut_search_long">Søk i biblioteket</string>
-    <string name="unlock_title">Biblioteket er låst</string>
-    <string name="unlock_explanation">Krypteringsnøkkelen for dette biblioteket er ikke i nøkkelringen. Oppgi den 64 tegn lange heksadesimale nøkkelen for å låse opp.</string>
-    <string name="unlock_key_label">Krypteringsnøkkel (64 heksadesimale tegn)</string>
-    <string name="unlock_failed">Opplåsingen mislyktes</string>
-    <string name="unlock_action">Lås opp</string>
     <string name="cast">Cast</string>
     <string name="cast_casting_to">Caster til %1$s</string>
     <string name="cast_disconnect">Koble fra</string>
@@ -234,4 +228,9 @@
     <string name="appearance_forest">Skog</string>
     <string name="appearance_sand">Sand</string>
     <string name="details">Detaljer</string>
+    <string name="reset_device">Tilbakestill denne enheten</string>
+    <string name="reset_device_confirm_title">Vil du tilbakestille denne enheten?</string>
+    <string name="reset_device_confirm">Tilbakestill</string>
+    <string name="profile_required_title">Skriv inn navnet ditt for å fullføre innmeldingen i dette biblioteket.</string>
+    <string name="save">Lagre</string>
 </resources>
