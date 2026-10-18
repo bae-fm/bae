@@ -871,7 +871,7 @@ Each person's own data:
 | `playlists` | playlist | each one private or household |
 | `playlist_entries` | place in a playlist | where its playlist is |
 
-There are no separate favorites: the highest rating is the favorite. A track's
+A rating is one to five stars. A track's
 rating belongs to one release's track, so the tracks of two copies of a
 pressing (§2.7) are rated apart.
 
