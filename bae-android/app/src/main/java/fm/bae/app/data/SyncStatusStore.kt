@@ -31,6 +31,14 @@ class SyncStatusStore {
     private val _indicator = MutableStateFlow<BridgeSyncIndicator>(BridgeSyncIndicator.Loading)
     val indicator: StateFlow<BridgeSyncIndicator> = _indicator.asStateFlow()
 
+    /**
+     * Whether the status line has something to say beyond "Synced" for a
+     * library with a cloud home: a failure, or records coven waits on. The
+     * library shows the line only then.
+     */
+    private val _needsAttention = MutableStateFlow(false)
+    val needsAttention: StateFlow<Boolean> = _needsAttention.asStateFlow()
+
     /** What coven is waiting on, each with the action the person can take on it. */
     private val _pending = MutableStateFlow<BridgePendingRecords>(BridgePendingRecords.Loading)
     val pending: StateFlow<BridgePendingRecords> = _pending.asStateFlow()
@@ -53,6 +61,8 @@ class SyncStatusStore {
                 }
             }
         _indicator.value = status.indicator
+        _needsAttention.value =
+            status.connected && (status.error != null || status.indicator is BridgeSyncIndicator.Waiting)
         _pending.value = status.pending
     }
 }

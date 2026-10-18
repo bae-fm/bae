@@ -118,6 +118,38 @@ struct SyncStatusStoreTests {
         #expect(!sync.canReconnect)
     }
 
+    /// The library shows the status line only when it says more than
+    /// "Synced": records waiting, or a failure.
+    @MainActor
+    @Test(
+        "the status line asks for attention only when it has something to say"
+    )
+    func statusLineAttention() {
+        let sync = SyncStatusStore()
+        sync.apply(status(syncReady: true))
+        #expect(!sync.needsAttention)
+        sync.apply(
+            BridgeSyncStatusSnapshot(
+                error: nil,
+                connected: true,
+                running: true,
+                pending: .ready(records: []),
+                indicator: .waiting(items: 2)
+            )
+        )
+        #expect(sync.needsAttention)
+        sync.apply(
+            BridgeSyncStatusSnapshot(
+                error: .Diagnostic(category: .network, detail: "offline"),
+                connected: true,
+                running: true,
+                pending: .ready(records: []),
+                indicator: .loading
+            )
+        )
+        #expect(sync.needsAttention)
+    }
+
     private func status(syncReady: Bool) -> BridgeSyncStatusSnapshot {
         BridgeSyncStatusSnapshot(
             error: nil,

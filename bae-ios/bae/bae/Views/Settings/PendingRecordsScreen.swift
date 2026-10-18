@@ -5,7 +5,9 @@ import os.log
 private let logger = Logger.bae("PendingRecordsScreen")
 
 /// Each thing coven is waiting on, in plain words with its diagnostic behind
-/// a disclosure, and its action wherever the person can act.
+/// a disclosure, and its action wherever the person can act; above them, why
+/// sync is failing, with Reconnect where reconnecting helps and Reset Device
+/// where sync found another copy of this device.
 struct PendingRecordsScreen: View {
     /// The library's cloud home, which a sign-in reconnects to.
     let location: BridgeStorageLocation
@@ -27,6 +29,23 @@ struct PendingRecordsScreen: View {
 
     var body: some View {
         List {
+            if let error = status.error {
+                Section {
+                    SyncFailureNotice(
+                        error: error,
+                        canReconnect: status.canReconnect,
+                        onReconnect: reconnect
+                    )
+                    if status.offersDeviceReset {
+                        Button(
+                            localizedCoreString("core.sync.reset_device.confirm"),
+                            role: .destructive
+                        ) {
+                            holder.presentDeviceReset()
+                        }
+                    }
+                }
+            }
             Section {
                 PendingRecordsView(records: status.pending, perform: perform)
                     // Each action takes only its own taps, not the row's.
@@ -42,6 +61,19 @@ struct PendingRecordsScreen: View {
                 sheet: sheet,
                 location: location,
                 onDismiss: { self.sheet = nil }
+            )
+        }
+    }
+
+    /// Connect again after a failed launch, or run the next cycle now; a
+    /// failed retry keeps the failure up with the new reason.
+    private func reconnect() async {
+        do {
+            try await sync.reconnectSync()
+        }
+        catch {
+            logger.error(
+                "Sync reconnect failed: \(error.localizedDescription)"
             )
         }
     }

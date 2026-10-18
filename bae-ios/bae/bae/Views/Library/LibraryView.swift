@@ -20,6 +20,8 @@ private enum LibraryRoute: Hashable {
     case composer(String)
     case work(String)
     case artist(String)
+    /// What sync is waiting on, opened from the library's status line.
+    case syncPending
 }
 
 /// Maps a `LibraryRoute` to its pushed screen, threading navigation callbacks
@@ -29,8 +31,15 @@ private struct LibraryRouteDestination: View {
     @Binding
     var routePath: [LibraryRoute]
 
+    @Environment(ConfigStore.self)
+    private var configStore
+
     var body: some View {
         switch route {
+        case .syncPending:
+            if let location = configStore.storage {
+                PendingRecordsScreen(location: location)
+            }
         case .album(let albumId, let releaseId, let entry):
             AlbumDetailView(
                 albumId: albumId,
@@ -131,7 +140,7 @@ struct LibraryView: View {
     var body: some View {
         NavigationStack(path: $routePath) {
             VStack(spacing: 0) {
-                LibraryBanner()
+                LibraryBanner { routePath.append(.syncPending) }
                 LibraryModePicker(mode: $mode)
                 DownloadsStrip { showDownloads = true }
                 content
@@ -335,12 +344,13 @@ private struct DownloadsStrip: View {
 }
 
 private struct LibraryBanner: View {
+    /// Opens what sync is waiting on.
+    let onOpenSyncStatus: () -> Void
+
     @Environment(ConfigStore.self)
     private var configStore
     @Environment(SyncStatusStore.self)
     private var syncStatusStore
-    @Environment(Sync.self)
-    private var sync
 
     // Group, so with nothing to show nothing takes the padding.
     var body: some View {
@@ -359,34 +369,48 @@ private struct LibraryBanner: View {
                 }
                 .notice(.danger)
             }
-            // Disconnecting leaves the recorded sync error behind, so show it
-            // only while the library has a cloud home.
-            else if let error = syncStatusStore.error,
-                configStore.hasCloudHome
-            {
-                SyncFailureNotice(
-                    error: error,
-                    canReconnect: syncStatusStore.canReconnect,
-                    onReconnect: reconnect
-                )
+            // Disconnecting leaves the recorded sync error behind, so show the
+            // line only while the library has a cloud home.
+            else if configStore.hasCloudHome, syncStatusStore.needsAttention {
+                SyncStatusRow(onOpen: onOpenSyncStatus)
             }
             LibraryRemovalNotice()
         }
         .padding(.horizontal, ThemeSpace.edge)
         .padding(.vertical, ThemeSpace.related)
     }
+}
 
-    /// Connect again after a failed launch, or run the next cycle now; a
-    /// failed retry keeps the notice up with the new reason.
-    private func reconnect() async {
-        do {
-            try await sync.reconnectSync()
+/// The sync status line — "Waiting: 3 items", or that sync is failing and
+/// why — that opens what sync is waiting on, where each record has its
+/// action.
+private struct SyncStatusRow: View {
+    let onOpen: () -> Void
+
+    @Environment(SyncStatusStore.self)
+    private var syncStatusStore
+
+    var body: some View {
+        Button(action: onOpen) {
+            HStack(spacing: ThemeSpace.related) {
+                VStack(alignment: .leading, spacing: ThemeSpace.inline) {
+                    Text(syncStatusStore.statusText)
+                        .themeText(.strong)
+                    if let error = syncStatusStore.error {
+                        Text(error.line)
+                            .themeText(.detail)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .themeIcon(.small)
+                    .foregroundStyle(.secondary)
+            }
+            .contentShape(Rectangle())
         }
-        catch {
-            logger.error(
-                "Sync reconnect failed: \(error.localizedDescription)"
-            )
-        }
+        .buttonStyle(.plain)
+        .notice(.warning)
     }
 }
 

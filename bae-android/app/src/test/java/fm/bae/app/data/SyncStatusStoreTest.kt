@@ -49,6 +49,24 @@ class SyncStatusStoreTest {
     }
 
     @Test
+    fun theLibraryShowsTheStatusLineOnlyWhenItHasSomethingToSay() {
+        val sync = SyncStatusStore()
+
+        sync.apply(status(connected = true, error = null), errors)
+        assertEquals(false, sync.needsAttention.value)
+
+        sync.apply(status(connected = true, error = null, indicator = BridgeSyncIndicator.Waiting(1uL)), errors)
+        assertEquals(true, sync.needsAttention.value)
+
+        sync.apply(status(connected = true, error = failure), errors)
+        assertEquals(true, sync.needsAttention.value)
+
+        // Without a cloud home there is no sync to speak of.
+        sync.apply(status(connected = false, error = failure), errors)
+        assertEquals(false, sync.needsAttention.value)
+    }
+
+    @Test
     fun theStatusLineAndPendingListFollowEachSnapshot() {
         val sync = SyncStatusStore()
         val waiting = BridgeSyncIndicator.Waiting(2uL)

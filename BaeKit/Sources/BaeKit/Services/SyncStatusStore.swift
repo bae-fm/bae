@@ -16,6 +16,13 @@ public final class SyncStatusStore {
         snapshot?.error.flatMap { DisplayError($0) }
     }
     public var canReconnect: Bool { snapshot?.connected == false }
+    /// Whether the status line has something to say beyond "Synced": a
+    /// failure, or records coven is waiting on. The library shows the line
+    /// only then.
+    public var needsAttention: Bool {
+        if case .waiting = indicator { return true }
+        return snapshot?.error != nil
+    }
     /// Whether sync stopped because another copy of this device is syncing,
     /// which only resetting this device answers.
     public var offersDeviceReset: Bool {

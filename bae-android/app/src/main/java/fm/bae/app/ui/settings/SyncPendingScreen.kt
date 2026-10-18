@@ -191,6 +191,7 @@ internal fun SyncPendingScreen(
 ) {
     val pending by session.syncStatusStore.pending.collectAsState()
     val indicator by session.syncStatusStore.indicator.collectAsState()
+    val failure by session.syncStatusStore.error.collectAsState()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val runner = remember(session) { PendingActionRunner(session, actions, context, scope) }
@@ -202,8 +203,17 @@ internal fun SyncPendingScreen(
             style = ThemeText.heading.style,
             modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
         )
-        runner.error?.let {
-            ErrorText(it, modifier = Modifier.padding(horizontal = ThemeSpace.edge))
+        Column(
+            modifier = Modifier.padding(horizontal = ThemeSpace.edge),
+            verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
+        ) {
+            SyncFailureNotice(
+                indicator = indicator,
+                error = failure,
+                onReconnect = { runner.perform("reconnect sync") { session.appHandle.reconnectSync() } },
+            )
+            DeviceResetOffer(session = session, error = failure, onResetDevice = actions.resetDevice)
+            runner.error?.let { ErrorText(it) }
         }
         when (val current = pending) {
             BridgePendingRecords.Loading -> {

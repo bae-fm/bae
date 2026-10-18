@@ -23,7 +23,6 @@ import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.data.DownloadStore
-import fm.bae.app.data.SyncFailure
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.downloads.DownloadsSummaryStrip
 import fm.bae.app.ui.playback.NowPlayingBar
@@ -77,9 +76,9 @@ internal fun LibraryBrowser(
     onSelectWork: (String) -> Unit,
     onSettings: () -> Unit,
     onDownloads: () -> Unit,
+    onSyncStatus: () -> Unit,
 ) {
     val syncSnapshot by session.syncStatusStore.snapshot.collectAsState()
-    val syncError by session.syncStatusStore.error.collectAsState()
     val appError by session.configStore.error.collectAsState()
     val appContext = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -106,6 +105,7 @@ internal fun LibraryBrowser(
             onShuffleLibrary = { session.playLibraryShuffledOrReport(appContext, coroutineScope) },
             onSettings = onSettings,
         )
+        LibrarySyncStatus(session = session, onOpen = onSyncStatus)
         DownloadsStrip(session.downloadStore, onDownloads)
         LibraryBrowserContent(
             modifier = Modifier.fillMaxWidth().weight(1f),
@@ -117,7 +117,6 @@ internal fun LibraryBrowser(
             composerSortCriterion = state.composerSortCriterion,
             artistSortCriterion = state.artistSortCriterion,
             appError = appError,
-            syncError = syncError,
             gridState = state.gridState,
             onSelectAlbum = onSelectAlbum,
             onSelectComposer = onSelectComposer,
@@ -164,7 +163,6 @@ private fun LibraryBrowserContent(
     composerSortCriterion: BridgeComposerSortCriterion,
     artistSortCriterion: BridgeArtistSortCriterion,
     appError: String?,
-    syncError: SyncFailure?,
     gridState: LazyGridState,
     onSelectAlbum: (String) -> Unit,
     onSelectComposer: (String) -> Unit,
@@ -189,7 +187,6 @@ private fun LibraryBrowserContent(
                         sortCriterion = sortCriterion,
                         groupByArtist = groupAlbumsByArtist,
                         appError = appError,
-                        syncError = syncError,
                         gridState = gridState,
                         onSelectAlbum = onSelectAlbum,
                     )
@@ -200,7 +197,6 @@ private fun LibraryBrowserContent(
                         session = session,
                         sortCriterion = composerSortCriterion,
                         appError = appError,
-                        syncError = syncError,
                         onSelectComposer = onSelectComposer,
                     )
                 }
@@ -210,7 +206,6 @@ private fun LibraryBrowserContent(
                         session = session,
                         sortCriterion = artistSortCriterion,
                         appError = appError,
-                        syncError = syncError,
                         onSelectArtist = onSelectArtist,
                     )
                 }
@@ -225,7 +220,6 @@ private fun AlbumBrowserContent(
     sortCriterion: BridgeSortCriterion,
     groupByArtist: Boolean,
     appError: String?,
-    syncError: SyncFailure?,
     gridState: LazyGridState,
     onSelectAlbum: (String) -> Unit,
 ) {
@@ -237,12 +231,7 @@ private fun AlbumBrowserContent(
             gridState = gridState,
         )
     Column(modifier = Modifier.fillMaxSize()) {
-        LibraryErrorBanner(
-            page = page,
-            appError = appError,
-            syncError = syncError,
-            session = session,
-        )
+        LibraryErrorBanner(page = page, appError = appError)
         LibraryGridContent(
             session = session,
             page = page,
@@ -258,7 +247,6 @@ private fun ComposerBrowserContent(
     session: OpenLibrary,
     sortCriterion: BridgeComposerSortCriterion,
     appError: String?,
-    syncError: SyncFailure?,
     onSelectComposer: (String) -> Unit,
 ) {
     val page =
@@ -267,11 +255,7 @@ private fun ComposerBrowserContent(
             sortCriterion = sortCriterion,
         )
     Column(modifier = Modifier.fillMaxSize()) {
-        LibraryGlobalErrorBanner(
-            appError = appError,
-            syncError = syncError,
-            session = session,
-        )
+        LibraryGlobalErrorBanner(appError = appError)
         ComposerListContent(
             session = session,
             page = page,
@@ -285,7 +269,6 @@ private fun ArtistBrowserContent(
     session: OpenLibrary,
     sortCriterion: BridgeArtistSortCriterion,
     appError: String?,
-    syncError: SyncFailure?,
     onSelectArtist: (String) -> Unit,
 ) {
     val page =
@@ -294,11 +277,7 @@ private fun ArtistBrowserContent(
             sortCriterion = sortCriterion,
         )
     Column(modifier = Modifier.fillMaxSize()) {
-        LibraryGlobalErrorBanner(
-            appError = appError,
-            syncError = syncError,
-            session = session,
-        )
+        LibraryGlobalErrorBanner(appError = appError)
         ArtistListContent(
             session = session,
             page = page,

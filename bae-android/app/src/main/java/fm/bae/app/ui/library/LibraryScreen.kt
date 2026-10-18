@@ -49,6 +49,7 @@ internal fun LibraryScreen(
                 onSelectWork = { navigator.push(LibraryDestination.Work(it)) },
                 onSettings = { navigator.push(LibraryDestination.Settings) },
                 onDownloads = { navigator.push(LibraryDestination.Downloads) },
+                onSyncStatus = { navigator.push(LibraryDestination.SyncPending) },
             )
         }
 
