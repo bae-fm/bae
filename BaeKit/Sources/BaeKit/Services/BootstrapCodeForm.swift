@@ -45,6 +45,10 @@ public final class BootstrapCodeForm {
         /// A restore, from a saved code or one the person enters.
         case restore(BridgeSavedRestoreCode?)
         case join
+        /// A restore over this device's copy of a library, with the person's
+        /// current restore code, after another of their devices replaced
+        /// their keys. Core refuses any other code.
+        case restoreOver(libraryId: String)
     }
 
     public let entry: Entry
@@ -98,10 +102,13 @@ public final class BootstrapCodeForm {
         guard case .success(let info) = decoded else { return nil }
         let code = codeInput.trimmingCharacters(in: .whitespacesAndNewlines)
         let s3Key = scannedKey.flatMap { $0.code == code ? $0.key : nil }
-        return switch info {
-        case .restore(let metadata):
+        return switch (info, entry) {
+        case (.restore(let metadata), _):
             .restore(code: code, metadata: metadata, s3Key: s3Key)
-        case .invite(let metadata, let libraryName):
+        // Restoring over this device's copy takes no invite; core says so.
+        case (.invite(let metadata, _), .restoreOver):
+            .restore(code: code, metadata: metadata, s3Key: s3Key)
+        case (.invite(let metadata, let libraryName), _):
             .join(code: code, metadata: metadata, libraryName: libraryName)
         }
     }
@@ -178,24 +185,12 @@ public final class BootstrapCodeForm {
                 isRunning = false
             }
             do {
-                let result: BridgeBootstrapResult
-                switch attempt {
-                case .restoreSaved(let saved):
-                    result = try await bootstrap.restore(
-                        saved: saved.code,
-                        credentials: credentials
-                    )
-                case .restore(let code, _, _):
-                    result = try await bootstrap.restore(
-                        code: code,
-                        credentials: credentials
-                    )
-                case .join(let code, _, _):
-                    result = try await bootstrap.join(
-                        code: code,
-                        personName: personName
-                    )
-                }
+                let result = try await run(
+                    attempt,
+                    on: bootstrap,
+                    credentials: credentials,
+                    personName: personName
+                )
                 // A result that holds an open store is delivered even after a
                 // cancel raced it, so the store is opened rather than leaked.
                 deliver(result)
@@ -207,6 +202,33 @@ public final class BootstrapCodeForm {
                 logger.error("bootstrap failed: \(error.localizedDescription)")
                 self.error = DisplayError(error)
             }
+        }
+    }
+
+    /// Run `attempt` on `bootstrap`: a restore from a saved or entered code,
+    /// over this device's copy when the entry says so, or a join.
+    private func run(
+        _ attempt: BootstrapAttempt,
+        on bootstrap: LibraryBootstrap,
+        credentials: BridgeS3Credentials?,
+        personName: String
+    ) async throws -> BridgeBootstrapResult {
+        switch (attempt, entry) {
+        case (.restoreSaved(let saved), _):
+            try await bootstrap.restore(
+                saved: saved.code,
+                credentials: credentials
+            )
+        case (.restore(let code, _, _), .restoreOver(let libraryId)):
+            try await bootstrap.restoreReplacing(
+                libraryId: libraryId,
+                code: code,
+                credentials: credentials
+            )
+        case (.restore(let code, _, _), _):
+            try await bootstrap.restore(code: code, credentials: credentials)
+        case (.join(let code, _, _), _):
+            try await bootstrap.join(code: code, personName: personName)
         }
     }
 

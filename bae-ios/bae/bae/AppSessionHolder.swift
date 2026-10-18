@@ -26,11 +26,13 @@ enum AppScreen {
     /// into the background before that — so it is rarer than on macOS, and it
     /// is not a dead end: the retry runs when the scene becomes active.
     case keychainLocked(libraryId: String)
-    /// Opening found a damaged database or another copy of this device, or a
-    /// pending record asked for it: the person can reset the device for this
-    /// library after its warning. `error` is why it didn't open, or why the
-    /// last reset failed.
+    /// Opening found a damaged database, or sync found another copy of this
+    /// device: the person can reset the device for this library after its
+    /// warning. `error` is why it didn't open, or why the last reset failed.
     case resetRequired(libraryId: String, error: DisplayError?)
+    /// Another of the person's devices replaced their keys: the library is
+    /// closed, and the person restores it with their current restore code.
+    case restoreRequired(libraryId: String)
     case library(AppService)
     case failed(message: String)
 }
@@ -230,57 +232,6 @@ final class AppSessionHolder {
         )
     }
 
-    /// Show the device-reset warning for the open library, from Settings'
-    /// pending list.
-    func presentDeviceReset() {
-        guard let appService else {
-            preconditionFailure("a pending record asks for reset only while open")
-        }
-        screen = .resetRequired(libraryId: appService.libraryId, error: nil)
-    }
-
-    /// Leave the reset warning without resetting.
-    func cancelDeviceReset() {
-        if let appService {
-            screen = .library(appService)
-        }
-        else {
-            start()
-        }
-    }
-
-    /// Reset this device for a library: close it if it is open, then load it
-    /// from storage again under a fresh device id. The person saw the warning
-    /// before choosing, so nothing is shown after.
-    func resetDevice(libraryId: String) {
-        let open = appService.flatMap { $0.libraryId == libraryId ? $0 : nil }
-        opener.cancel()
-        screen = .loading
-        let host = host
-        let deviceName = deviceName
-        lifecycleSlot.replace {
-            do {
-                if let open {
-                    try await open.shutdown()
-                    try await DetachedWork.run { try open.closeLibrary() }
-                    self.appService = nil
-                }
-                let reset = try await host.resetDevice(
-                    libraryId: libraryId,
-                    deviceName: deviceName
-                )
-                self.openOpenedLibrary(reset.library, warning: reset.warning)
-            }
-            catch {
-                logger.error("Device reset failed: \(error.localizedDescription)")
-                self.screen = .resetRequired(
-                    libraryId: libraryId,
-                    error: DisplayError(error)
-                )
-            }
-        }
-    }
-
     /// Remove the open library from this device: it leaves the store's
     /// members, then its local copy is deleted, and the next library opens. A
     /// refused removal opens it again with why.
@@ -338,5 +289,86 @@ final class AppSessionHolder {
 
     func reportScreen(_ screen: BridgeScreen) {
         appService?.reportScreen(screen)
+    }
+}
+
+/// Recovering a library this device can no longer sync: resetting this
+/// device, or restoring the library over its copy with the person's code.
+extension AppSessionHolder {
+    /// Show the device-reset warning for the open library, from Settings'
+    /// sync status after sync found another copy of this device.
+    func presentDeviceReset() {
+        guard let appService else {
+            preconditionFailure("sync asks for a reset only while open")
+        }
+        screen = .resetRequired(libraryId: appService.libraryId, error: nil)
+    }
+
+    /// Leave the reset warning without resetting.
+    func cancelDeviceReset() {
+        if let appService {
+            screen = .library(appService)
+        }
+        else {
+            start()
+        }
+    }
+
+    /// Reset this device for a library: close it if it is open, then load it
+    /// from storage again under a fresh device id. The person saw the warning
+    /// before choosing, so nothing is shown after.
+    func resetDevice(libraryId: String) {
+        let open = appService.flatMap { $0.libraryId == libraryId ? $0 : nil }
+        opener.cancel()
+        screen = .loading
+        let host = host
+        let deviceName = deviceName
+        lifecycleSlot.replace {
+            do {
+                if let open {
+                    try await open.shutdown()
+                    try await DetachedWork.run { try open.closeLibrary() }
+                    self.appService = nil
+                }
+                let reset = try await host.resetDevice(
+                    libraryId: libraryId,
+                    deviceName: deviceName
+                )
+                self.openOpenedLibrary(reset.library, warning: reset.warning)
+            }
+            catch {
+                logger.error("Device reset failed: \(error.localizedDescription)")
+                self.screen = .resetRequired(
+                    libraryId: libraryId,
+                    error: DisplayError(error)
+                )
+            }
+        }
+    }
+
+    /// Close the open library and ask for the person's current restore code,
+    /// to restore it over this device's copy after another of their devices
+    /// replaced their keys. Going back opens the library again as it was.
+    func presentDeviceRestore() {
+        guard let open = appService else {
+            preconditionFailure("a pending record asks for a restore only while open")
+        }
+        let libraryId = open.libraryId
+        opener.cancel()
+        screen = .loading
+        lifecycleSlot.replace {
+            do {
+                try await open.shutdown()
+                try await DetachedWork.run { try open.closeLibrary() }
+                self.appService = nil
+                self.screen = .restoreRequired(libraryId: libraryId)
+            }
+            catch {
+                logger.error(
+                    "Closing the library to restore it failed: \(error.localizedDescription)"
+                )
+                self.openLibrary(id: libraryId, notice: DisplayError(error))
+            }
+        }
     }
 }

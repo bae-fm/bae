@@ -55,11 +55,10 @@ pub(super) fn sync_category(error: &coven::SyncError) -> C {
         E::Database(_) => C::Database,
         E::NoStorage => C::Config,
         E::UpdateRequired(_) => C::SyncUpdateRequired,
-        E::StoreOwner
-        | E::InvitationChanged
-        | E::Removed
-        | E::MemberKeysReplaced { .. }
-        | E::Rejected(_) => C::Membership,
+        E::Removed => C::DeviceRemoved,
+        E::StoreOwner | E::InvitationChanged | E::MemberKeysReplaced { .. } | E::Rejected(_) => {
+            C::Membership
+        }
         E::Cleanup { operation, .. } => sync_category(operation),
         _ => C::Internal,
     }

@@ -175,7 +175,7 @@ pub enum BridgePendingAction {
     RetryOperation {
         id: i64,
     },
-    ResetDevice,
+    RestoreFromCode,
     ProvideAdminAccess {
         id: i64,
     },
@@ -198,7 +198,7 @@ impl BridgePendingAction {
             A::RestoreFile => Self::RestoreFile,
             A::ResumeUploads => Self::ResumeUploads,
             A::RetryOperation(id) => Self::RetryOperation { id: id.0 },
-            A::ResetDevice => Self::ResetDevice,
+            A::RestoreFromCode => Self::RestoreFromCode,
             A::ProvideAdminAccess(id) => Self::ProvideAdminAccess { id: id.0 },
             A::DeleteAccessKey {
                 operation,
@@ -254,7 +254,7 @@ pub fn bridge_pending_action_key(action: &BridgePendingAction) -> Option<String>
             A::RestoreFile => "core.pending.action.restore_file",
             A::ResumeUploads => "core.pending.action.resume_uploads",
             A::RetryOperation { .. } => "core.pending.action.retry",
-            A::ResetDevice => "core.pending.action.reset_device",
+            A::RestoreFromCode => "core.pending.action.restore_from_code",
             A::ProvideAdminAccess { .. } => "core.pending.action.provide_admin_access",
             A::DeleteAccessKey { .. } => "core.pending.action.delete_access_key",
             A::Review => "core.pending.action.review",

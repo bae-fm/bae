@@ -10,7 +10,9 @@ private let logger = Logger.bae("SyncStatusLine")
 struct SyncStatusLine: View {
     /// The library's cloud home, which a sign-in reconnects to.
     let location: BridgeStorageLocation
+    /// Offered when sync found another copy of this device.
     let onResetDevice: () -> Void
+    let onRestoreFromCode: () -> Void
     let onCheckForUpdates: () -> Void
 
     @Environment(SyncStatusStore.self)
@@ -53,6 +55,13 @@ struct SyncStatusLine: View {
         if let error = status.error {
             ErrorDetailDisclosure(error: error)
         }
+        if status.offersDeviceReset {
+            Button(
+                localizedCoreString("core.sync.reset_device.confirm"),
+                role: .destructive,
+                action: onResetDevice
+            )
+        }
     }
 
     private func reconnect() {
@@ -82,8 +91,8 @@ struct SyncStatusLine: View {
             try await sync.setSyncPaused(false)
         case .retryOperation(let id):
             try await sync.retryPendingOperation(id)
-        case .resetDevice:
-            onResetDevice()
+        case .restoreFromCode:
+            onRestoreFromCode()
         case .wait, .restoreFile, .provideAdminAccess, .deleteAccessKey,
             .review:
             preconditionFailure(

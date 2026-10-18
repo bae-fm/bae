@@ -186,6 +186,7 @@
     <string name="reset_device">このデバイスをリセット</string>
     <string name="reset_device_confirm_title">このデバイスをリセットしますか？</string>
     <string name="reset_device_confirm">リセット</string>
+    <string name="restore_device_title">このライブラリを復元</string>
     <string name="profile_required_title">このライブラリへの参加を完了するには、名前を入力してください。</string>
     <string name="save">保存</string>
     <string name="onboarding_scan_code">コードをスキャン</string>

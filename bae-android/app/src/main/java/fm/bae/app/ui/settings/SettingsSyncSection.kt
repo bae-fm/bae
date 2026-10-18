@@ -19,13 +19,16 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import fm.bae.app.AppSessionHolder
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
@@ -33,6 +36,7 @@ import fm.bae.app.data.SyncFailure
 import fm.bae.app.localizedLine
 import fm.bae.app.reconnectFailedSync
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.DeviceResetDialog
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.cloudProviderLabel
@@ -45,6 +49,7 @@ import fm.bae.app.ui.components.StatusTone
 import fm.bae.app.ui.library.LibraryDestination
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeCloudProvider
+import uniffi.bae_bridge.BridgeDeviceReset
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeSyncIndicator
@@ -57,6 +62,7 @@ import uniffi.bae_bridge.bridgeSyncIndicatorKey
  */
 @Composable
 internal fun SettingsSyncSection(
+    onResetDevice: (BridgeDeviceReset) -> Unit,
     session: OpenLibrary,
     cloudHome: CloudHome,
     onPush: (LibraryDestination) -> Unit,
@@ -90,7 +96,11 @@ internal fun SettingsSyncSection(
 
             is CloudHome.At -> {
                 CloudHomeRows(cloudHome.location)
-                SyncStatus(session = session, onOpenPending = { onPush(LibraryDestination.SyncPending) })
+                SyncStatus(
+                    session = session,
+                    onOpenPending = { onPush(LibraryDestination.SyncPending) },
+                    onResetDevice = onResetDevice,
+                )
                 SyncUploadPauseControl(session)
                 DisconnectControl(session = session, onDisconnected = onCloudHomeChanged)
             }
@@ -98,21 +108,43 @@ internal fun SettingsSyncSection(
     }
 }
 
-/** The status line and, under it, the last failure with Reconnect where reconnecting is the remedy. */
+/**
+ * The status line and, under it, the last failure with Reconnect where
+ * reconnecting is the remedy, or Reset Device, after its warning, where sync
+ * found another copy of this device.
+ */
 @Composable
 private fun SyncStatus(
     session: OpenLibrary,
     onOpenPending: () -> Unit,
+    onResetDevice: (BridgeDeviceReset) -> Unit,
 ) {
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val indicator by session.syncStatusStore.indicator.collectAsState()
     val error by session.syncStatusStore.error.collectAsState()
+    var reset by remember(session) { mutableStateOf<BridgeDeviceReset?>(null) }
     SyncStatusLine(indicator = indicator, onOpenPending = onOpenPending)
     SyncFailureNotice(
         indicator = indicator,
         error = error,
         onReconnect = { scope.launch { reconnectFailedSync(session.appHandle) } },
     )
+    if (error?.offersDeviceReset == true) {
+        OutlinedButton(onClick = { reset = AppSessionHolder.prepareDeviceReset(context, session.libraryId) }) {
+            Text(context.coreString("core.sync.reset_device.confirm"))
+        }
+    }
+    reset?.let { prepared ->
+        DeviceResetDialog(
+            reset = prepared,
+            onConfirm = {
+                reset = null
+                onResetDevice(prepared)
+            },
+            onDismiss = { reset = null },
+        )
+    }
 }
 
 /**

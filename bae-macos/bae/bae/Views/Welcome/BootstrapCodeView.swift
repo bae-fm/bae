@@ -29,7 +29,7 @@ struct BootstrapCodeView: View {
                 .themeText(.title)
                 .padding(.top, ThemeSpace.section)
                 .padding(.bottom, ThemeSpace.line)
-            Text(subtitle)
+            subtitle
                 .themeText(.body)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -92,17 +92,22 @@ struct BootstrapCodeView: View {
         switch form.entry {
         case .restore: "Restore from cloud"
         case .join: "Join a library"
+        case .restoreOver: "Restore this library"
         }
     }
 
-    private var subtitle: LocalizedStringKey {
+    private var subtitle: Text {
         switch form.entry {
         case .restore(.some):
-            "Restore with the code saved in iCloud Keychain."
+            Text("Restore with the code saved in iCloud Keychain.")
         case .restore(nil):
-            "Scan or paste your restore code."
+            Text("Scan or paste your restore code.")
         case .join:
-            "Scan or paste the invitation an admin of the library sent you."
+            Text(
+                "Scan or paste the invitation an admin of the library sent you."
+            )
+        case .restoreOver:
+            Text(localizedCoreString("core.sync.restore_device.warning"))
         }
     }
 

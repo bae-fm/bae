@@ -68,16 +68,6 @@ private func baeAppDir(environment: [String: String]) -> BridgeAppDir {
     return BridgeAppDir(home: home)
 }
 
-enum AppScreen {
-    case loading
-    case welcome
-    /// Opening found a damaged database or another copy of this device; the
-    /// person can reset the device for this library.
-    case resetRequired(libraryId: String)
-    case keychainLocked(libraryId: String)
-    case library
-}
-
 /// The process's host. A UI test's launch keeps its keys and credentials in
 /// an in-memory keychain, so the tests never read or write the login keychain.
 @MainActor
@@ -204,6 +194,8 @@ struct BaeApp: App {
             ProgressView()
         case .resetRequired(let libraryId):
             deviceResetView(libraryId: libraryId)
+        case .restoreRequired(let libraryId):
+            deviceRestoreView(libraryId: libraryId)
         case .keychainLocked:
             KeychainLockedView(onRetry: appDelegate.retryKeychainOpen)
         case .library:
@@ -217,6 +209,19 @@ struct BaeApp: App {
             onReset: { appDelegate.resetDevice(libraryId: libraryId) },
             onCancel: appDelegate.cancelDeviceReset
         )
+    }
+
+    /// The person's current restore code, to restore a library over this
+    /// device's copy; going back opens the library again as it was.
+    private func deviceRestoreView(libraryId: String) -> some View {
+        BootstrapCodeView(
+            form: applicationServices.librarySetup.bootstrapForm(
+                entry: .restoreOver(libraryId: libraryId),
+                onLibraryReady: appDelegate.openOpenedLibrary
+            ),
+            onBack: { appDelegate.openLocalLibrary(id: libraryId) }
+        )
+        .id(libraryId)
     }
 
     /// The welcome and rename modals the File menu presents.
@@ -264,6 +269,8 @@ struct BaeApp: App {
             welcomeView(loadError: appDelegate.loadError)
         case .resetRequired(let libraryId):
             deviceResetView(libraryId: libraryId)
+        case .restoreRequired(let libraryId):
+            deviceRestoreView(libraryId: libraryId)
         case .keychainLocked:
             KeychainLockedView(onRetry: appDelegate.retryKeychainOpen)
         case .library:
@@ -424,6 +431,11 @@ extension BaeApp {
                         onForgetLibrary: { appDelegate.forgetActiveLibrary() },
                         onResetDevice: {
                             appDelegate.presentDeviceReset(
+                                libraryId: appService.libraryId
+                            )
+                        },
+                        onRestoreFromCode: {
+                            appDelegate.presentDeviceRestore(
                                 libraryId: appService.libraryId
                             )
                         }
@@ -725,6 +737,35 @@ extension AppDelegate {
     func presentDeviceReset(libraryId: String) {
         loadError = nil
         screen = .resetRequired(libraryId: libraryId)
+    }
+
+    /// Close the library and ask for the person's current restore code, to
+    /// restore it over this device's copy after another of their devices
+    /// replaced their keys. Going back opens the library again as it was.
+    func presentDeviceRestore(libraryId: String) {
+        let open = appService.flatMap { $0.libraryId == libraryId ? $0 : nil }
+        if open != nil {
+            prepareForLibraryShutdown()
+        }
+        loadError = nil
+        screen = .loading
+        resetSlot.replace {
+            do {
+                if let open {
+                    try await open.shutdown()
+                    try await DetachedWork.run { try open.closeLibrary() }
+                    self.releaseLibrarySession(open)
+                }
+                self.screen = .restoreRequired(libraryId: libraryId)
+            }
+            catch {
+                baeAppLogger.error(
+                    "Closing the library to restore it failed: \(error.localizedDescription)"
+                )
+                self.loadError = DisplayError(error)
+                self.screen = .welcome
+            }
+        }
     }
 
     /// Leave the reset warning without resetting.

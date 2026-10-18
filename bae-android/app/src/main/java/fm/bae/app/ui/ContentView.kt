@@ -36,6 +36,7 @@ import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.library.ArtworkLoadingBanner
 import fm.bae.app.ui.library.LibraryScreen
 import fm.bae.app.ui.onboarding.OnboardingScreen
+import fm.bae.app.ui.onboarding.RestoreOver
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
@@ -119,6 +120,7 @@ private fun AppScreenRouter(
                 onBootstrapped = { result ->
                     scope.launch { AppSessionHolder.openBootstrapped(context, result, onScreen) }
                 },
+                restoreOver = null,
             )
         }
 
@@ -142,6 +144,10 @@ private fun AppScreenRouter(
             )
         }
 
+        is AppScreen.RestoreOffered -> {
+            RestoreOfferedScreen(libraryId = current.libraryId, oauthProvidersError, onScreen)
+        }
+
         is AppScreen.ProfileRequired -> {
             ProfileRequiredScreen(
                 session = current.session,
@@ -163,6 +169,31 @@ private fun AppScreenRouter(
     }
 }
 
+/**
+ * The person's current restore code restores [libraryId] over this device's
+ * copy; going back opens the library again as it was.
+ */
+@Composable
+private fun RestoreOfferedScreen(
+    libraryId: String,
+    oauthProvidersError: String?,
+    onScreen: (AppScreen) -> Unit,
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    OnboardingScreen(
+        oauthProvidersError = oauthProvidersError,
+        onBootstrapped = { result ->
+            scope.launch { AppSessionHolder.openBootstrapped(context, result, onScreen) }
+        },
+        restoreOver =
+            RestoreOver(
+                libraryId = libraryId,
+                onBack = { scope.launch { AppSessionHolder.openLibrary(context, libraryId, onScreen) } },
+            ),
+    )
+}
+
 /** What the open library's screens ask of the app, each running in [scope] and ending in a screen. */
 private fun sessionActions(
     context: Context,
@@ -181,6 +212,7 @@ private fun sessionActions(
     resetDevice = { reset ->
         scope.launch { AppSessionHolder.resetDevice(context, session.libraryId, reset, onScreen) }
     },
+    restoreFromCode = { scope.launch { AppSessionHolder.presentDeviceRestore(onScreen) } },
 )
 
 /**

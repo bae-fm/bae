@@ -10,6 +10,9 @@ pub enum UiErrorCategory {
     /// Sync encountered data written by a newer app schema.
     SyncUpdateRequired,
     DeviceResetRequired,
+    /// This device, or its person, was removed from the library; syncing has
+    /// stopped for good and nothing on this device registers it again.
+    DeviceRemoved,
     Import,
     /// Source metadata or artwork could not be parsed or decoded.
     ImportData,

@@ -190,6 +190,7 @@
     <string name="reset_device">Ponovno postavi ovaj uređaj</string>
     <string name="reset_device_confirm_title">Ponovno postaviti ovaj uređaj?</string>
     <string name="reset_device_confirm">Ponovno postavi</string>
+    <string name="restore_device_title">Vraćanje ove fonoteke</string>
     <string name="profile_required_title">Unesite svoje ime kako biste dovršili pridruživanje ovoj fonoteci.</string>
     <string name="save">Spremi</string>
     <string name="onboarding_scan_code">Skeniraj kod</string>

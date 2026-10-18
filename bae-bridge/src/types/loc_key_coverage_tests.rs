@@ -30,6 +30,10 @@ const DIRECT_KEYS: &[&str] = &[
     "core.outbox.eta",
     // Returned by the device-reset confirmation object.
     "core.sync.reset_device.warning",
+    // The device-reset screens' confirm button.
+    "core.sync.reset_device.confirm",
+    // The warning before restoring over this device's copy with a code.
+    "core.sync.restore_device.warning",
     // Album total playing time: the UI switches on `BridgeDurationUnits` and
     // composes the hours and minutes words through the join pattern.
     "core.duration.hours",
@@ -229,6 +233,7 @@ fn produced_keys() -> Vec<String> {
         BridgeErrorCategory::Export,
         BridgeErrorCategory::Save,
         BridgeErrorCategory::DeviceResetRequired,
+        BridgeErrorCategory::DeviceRemoved,
         BridgeErrorCategory::StorageCheck {
             check: BridgeStorageCheck::Read,
             failure: BridgeStorageFailure::Network,
@@ -356,7 +361,7 @@ fn produced_keys() -> Vec<String> {
         BridgePendingAction::RestoreFile,
         BridgePendingAction::ResumeUploads,
         BridgePendingAction::RetryOperation { id: 1 },
-        BridgePendingAction::ResetDevice,
+        BridgePendingAction::RestoreFromCode,
         BridgePendingAction::ProvideAdminAccess { id: 1 },
         BridgePendingAction::DeleteAccessKey {
             operation: 1,

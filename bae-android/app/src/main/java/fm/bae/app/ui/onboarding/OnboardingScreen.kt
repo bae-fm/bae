@@ -71,6 +71,19 @@ private val logger = BaeLogger(TAG)
 
 private val actionWidth = 220.dp
 
+/** Restoring a library over this device's copy, and going back to the library as it was. */
+data class RestoreOver(
+    val libraryId: String,
+    val onBack: () -> Unit,
+)
+
+/** What the start screen says: bae's welcome, or the warning before restoring over this device's copy. */
+private class OnboardingIntro(
+    val title: String?,
+    val message: String,
+    val onBack: (() -> Unit)?,
+)
+
 private class OnboardingStartCallbacks(
     val onScan: () -> Unit,
     val onShowCodeDialog: () -> Unit,
@@ -82,17 +95,33 @@ private class OnboardingStartCallbacks(
 /**
  * First run on a device: a restore code from one of the person's devices, or
  * an invite to someone's library, scanned or typed, restores or joins here.
+ * With [restoreOver], the person's current restore code restores that library
+ * over this device's copy, after another of their devices replaced their keys.
  */
 @Composable
 fun OnboardingScreen(
     oauthProvidersError: String?,
     onBootstrapped: (BridgeBootstrapResult) -> Unit,
+    restoreOver: RestoreOver?,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     // The process-lifetime host built at app launch; restore and join run over it.
     val host = (context.applicationContext as BaeApp).host
-    val flow = remember { OnboardingFlow(scope, context, host, oauthProvidersError, onBootstrapped) }
+    val flow =
+        remember(restoreOver?.libraryId) {
+            OnboardingFlow(scope, context, host, oauthProvidersError, restoreOver?.libraryId, onBootstrapped)
+        }
+    val intro =
+        if (restoreOver == null) {
+            OnboardingIntro(title = null, message = stringResource(R.string.onboarding_tagline), onBack = null)
+        } else {
+            OnboardingIntro(
+                title = stringResource(R.string.restore_device_title),
+                message = context.coreString("core.sync.restore_device.warning"),
+                onBack = restoreOver.onBack,
+            )
+        }
     var scanning by remember { mutableStateOf(false) }
     val requestScan = rememberScanRequest(onDenied = { flow.error = it }, onOpen = { scanning = true })
 
@@ -107,7 +136,8 @@ fun OnboardingScreen(
                     onDismiss = { scanning = false },
                 )
             } else {
-                OnboardingStart(flow = flow, onScan = requestScan)
+                restoreOver?.let { BackHandler(onBack = it.onBack) }
+                OnboardingStart(flow = flow, intro = intro, onScan = requestScan)
             }
         }
 
@@ -165,11 +195,13 @@ private fun rememberScanRequest(
 @Composable
 private fun OnboardingStart(
     flow: OnboardingFlow,
+    intro: OnboardingIntro,
     onScan: () -> Unit,
 ) {
     var showCodeDialog by remember { mutableStateOf(false) }
     var codeInput by remember { mutableStateOf("") }
     OnboardingStartContent(
+        intro = intro,
         error = flow.error,
         showCodeDialog = showCodeDialog,
         codeInput = codeInput,
@@ -196,6 +228,7 @@ private fun OnboardingStart(
 
 @Composable
 private fun OnboardingStartContent(
+    intro: OnboardingIntro,
     error: String?,
     showCodeDialog: Boolean,
     codeInput: String,
@@ -210,9 +243,13 @@ private fun OnboardingStartContent(
         )
         Spacer(modifier = Modifier.height(ThemeSpace.related))
         Text(text = "bae", style = ThemeText.wordmark.style)
+        intro.title?.let {
+            Spacer(modifier = Modifier.height(ThemeSpace.group))
+            Text(text = it, style = ThemeText.title.style)
+        }
         Spacer(modifier = Modifier.height(ThemeSpace.group))
         Text(
-            text = stringResource(R.string.onboarding_tagline),
+            text = intro.message,
             style = ThemeText.body.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
@@ -224,6 +261,12 @@ private fun OnboardingStartContent(
         Spacer(modifier = Modifier.height(ThemeSpace.related))
         OutlinedButton(onClick = callbacks.onShowCodeDialog, modifier = Modifier.width(actionWidth)) {
             Text(stringResource(R.string.onboarding_enter_code))
+        }
+        intro.onBack?.let { onBack ->
+            Spacer(modifier = Modifier.height(ThemeSpace.related))
+            TextButton(onClick = onBack, modifier = Modifier.width(actionWidth)) {
+                Text(stringResource(R.string.back))
+            }
         }
         if (error != null) {
             Spacer(modifier = Modifier.height(ThemeSpace.related))
@@ -406,6 +449,12 @@ private fun OnboardingContainer(content: @Composable ColumnScope.() -> Unit) {
 internal fun WelcomeScene() {
     BaeAppChrome {
         OnboardingStartContent(
+            intro =
+                OnboardingIntro(
+                    title = null,
+                    message = stringResource(R.string.onboarding_tagline),
+                    onBack = null,
+                ),
             error = null,
             showCodeDialog = false,
             codeInput = "",

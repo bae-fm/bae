@@ -187,6 +187,7 @@
     <string name="reset_device">Az eszköz alaphelyzetbe állítása</string>
     <string name="reset_device_confirm_title">Alaphelyzetbe állítod az eszközt?</string>
     <string name="reset_device_confirm">Alaphelyzetbe állítás</string>
+    <string name="restore_device_title">Ennek a könyvtárnak a visszaállítása</string>
     <string name="profile_required_title">Add meg a neved, hogy befejezd a csatlakozást ehhez a könyvtárhoz.</string>
     <string name="save">Mentés</string>
     <string name="onboarding_scan_code">Kód beolvasása</string>

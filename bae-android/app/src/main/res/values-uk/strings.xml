@@ -192,6 +192,7 @@
     <string name="reset_device">Скинути цей пристрій</string>
     <string name="reset_device_confirm_title">Скинути цей пристрій?</string>
     <string name="reset_device_confirm">Скинути</string>
+    <string name="restore_device_title">Відновити цю бібліотеку</string>
     <string name="profile_required_title">Введіть своє ім’я, щоб завершити приєднання до цієї бібліотеки.</string>
     <string name="save">Зберегти</string>
     <string name="onboarding_scan_code">Сканувати код</string>

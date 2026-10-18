@@ -186,6 +186,7 @@
     <string name="reset_device">重設此裝置</string>
     <string name="reset_device_confirm_title">要重設此裝置嗎？</string>
     <string name="reset_device_confirm">重設</string>
+    <string name="restore_device_title">還原此資料庫</string>
     <string name="profile_required_title">輸入你的名字以完成加入此資料庫。</string>
     <string name="save">儲存</string>
     <string name="onboarding_scan_code">掃描代碼</string>

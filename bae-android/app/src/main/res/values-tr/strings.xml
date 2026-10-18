@@ -188,6 +188,7 @@
     <string name="reset_device">Bu cihazı sıfırla</string>
     <string name="reset_device_confirm_title">Bu cihaz sıfırlansın mı?</string>
     <string name="reset_device_confirm">Sıfırla</string>
+    <string name="restore_device_title">Bu kitaplığı geri yükle</string>
     <string name="profile_required_title">Bu kitaplığa katılmayı tamamlamak için adınızı girin.</string>
     <string name="save">Kaydet</string>
     <string name="onboarding_scan_code">Kod tara</string>

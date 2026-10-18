@@ -122,6 +122,7 @@ pub enum BridgeErrorCategory {
     Internal,
     SyncUpdateRequired,
     DeviceResetRequired,
+    DeviceRemoved,
     Import,
     /// Source metadata or artwork could not be parsed or decoded.
     ImportData,
@@ -286,6 +287,7 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
         BridgeErrorCategory::Config => "core.error.category.config",
         BridgeErrorCategory::Internal => "core.error.category.internal",
         BridgeErrorCategory::DeviceResetRequired => "core.error.device_reset_required",
+        BridgeErrorCategory::DeviceRemoved => "core.error.device_removed",
         BridgeErrorCategory::SyncUpdateRequired => "core.error.sync_update_required",
         BridgeErrorCategory::Import | BridgeErrorCategory::ImportData => {
             "core.error.category.import"
@@ -448,6 +450,7 @@ mirror_enum! {
         Internal,
         SyncUpdateRequired,
         DeviceResetRequired,
+        DeviceRemoved,
         Import,
         ImportData,
         CandidateImportInProgress,

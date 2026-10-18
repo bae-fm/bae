@@ -63,8 +63,8 @@ struct PendingRecordsScreen: View {
             try await sync.setSyncPaused(false)
         case .retryOperation(let id):
             try await sync.retryPendingOperation(id)
-        case .resetDevice:
-            holder.presentDeviceReset()
+        case .restoreFromCode:
+            holder.presentDeviceRestore()
         case .wait, .restoreFile, .provideAdminAccess, .deleteAccessKey,
             .review:
             preconditionFailure(

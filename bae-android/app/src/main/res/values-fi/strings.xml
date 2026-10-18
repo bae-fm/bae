@@ -187,6 +187,7 @@
     <string name="reset_device">Nollaa tämä laite</string>
     <string name="reset_device_confirm_title">Nollataanko tämä laite?</string>
     <string name="reset_device_confirm">Nollaa</string>
+    <string name="restore_device_title">Palauta tämä kirjasto</string>
     <string name="profile_required_title">Anna nimesi, niin liittyminen tähän kirjastoon viimeistellään.</string>
     <string name="save">Tallenna</string>
     <string name="onboarding_scan_code">Skannaa koodi</string>

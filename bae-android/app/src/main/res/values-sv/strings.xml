@@ -187,6 +187,7 @@
     <string name="reset_device">Återställ den här enheten</string>
     <string name="reset_device_confirm_title">Återställa den här enheten?</string>
     <string name="reset_device_confirm">Återställ</string>
+    <string name="restore_device_title">Återställ det här biblioteket</string>
     <string name="profile_required_title">Ange ditt namn för att slutföra anslutningen till det här biblioteket.</string>
     <string name="save">Spara</string>
     <string name="onboarding_scan_code">Skanna en kod</string>

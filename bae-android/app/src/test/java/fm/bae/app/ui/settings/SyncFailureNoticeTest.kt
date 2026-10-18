@@ -34,7 +34,7 @@ class SyncFailureNoticeTest {
             BaeTheme {
                 SyncFailureNotice(
                     BridgeSyncIndicator.Synced,
-                    error = SyncFailure("Update the app to continue syncing.", canReconnect = false),
+                    error = SyncFailure("Update the app to continue syncing.", canReconnect = false, offersDeviceReset = false),
                     onReconnect = {},
                 )
             }

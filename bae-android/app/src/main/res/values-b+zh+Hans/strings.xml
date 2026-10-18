@@ -186,6 +186,7 @@
     <string name="reset_device">重置此设备</string>
     <string name="reset_device_confirm_title">要重置此设备吗？</string>
     <string name="reset_device_confirm">重置</string>
+    <string name="restore_device_title">恢复此库</string>
     <string name="profile_required_title">输入你的名字以完成加入此库。</string>
     <string name="save">保存</string>
     <string name="onboarding_scan_code">扫描代码</string>

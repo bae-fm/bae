@@ -88,7 +88,7 @@ impl SyncStatusSnapshot {
                 let category = match error {
                     coven::SyncFailure::UpdateRequired(_) => C::SyncUpdateRequired,
                     coven::SyncFailure::DeviceIdInUse(_) => C::DeviceResetRequired,
-                    coven::SyncFailure::Removed => C::Membership,
+                    coven::SyncFailure::Removed => C::DeviceRemoved,
                     coven::SyncFailure::Storage(error) => {
                         super::error_category::cloud_home_category(error)
                     }
@@ -122,6 +122,12 @@ impl SyncStatusSnapshot {
 
 /// The action a pending record offers. The record itself retains the subject
 /// and typed reason, including both failures when an undo cannot finish.
+///
+/// None of them resets the device: a reset is offered only when opening finds
+/// a damaged database, or when sync finds another copy of this device, which
+/// coven reports as the status's failure rather than as a record. A removed
+/// device offers nothing that would register it again; its record is only
+/// reviewed.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PendingAction {
     Wait,
@@ -131,7 +137,10 @@ pub enum PendingAction {
     RestoreFile,
     ResumeUploads,
     RetryOperation(coven::OperationId),
-    ResetDevice,
+    /// Another of the person's devices replaced their keys: this copy can't
+    /// send, and restoring it with the person's current restore code
+    /// registers this device again under those keys.
+    RestoreFromCode,
     ProvideAdminAccess(coven::OperationId),
     DeleteAccessKey {
         operation: coven::OperationId,
@@ -166,7 +175,8 @@ pub fn pending_action(record: &coven::PendingRecord) -> PendingAction {
         } => PendingAction::SignIn(*provider),
         R::FileUnavailable(coven::FileMissingReason::Source(_)) => PendingAction::RestoreFile,
         R::UpdateRequired(_) | R::Refused(_) => PendingAction::UpdateApp,
-        R::Removed | R::MemberKeysReplaced { .. } => PendingAction::ResetDevice,
+        R::MemberKeysReplaced { .. } => PendingAction::RestoreFromCode,
+        R::Removed => PendingAction::Review,
         R::Paused if matches!(record.subject, S::File { .. }) => PendingAction::ResumeUploads,
         _ => match record.retry() {
             coven::Retry::Automatic => PendingAction::Wait,
@@ -277,5 +287,63 @@ mod tests {
             error: None,
         };
         assert_eq!(snapshot.indicator(), SyncIndicator::Loading);
+    }
+
+    fn record(reason: coven::PendingReason) -> coven::PendingRecord {
+        coven::PendingRecord {
+            subject: coven::PendingSubject::Connection,
+            reason,
+        }
+    }
+
+    fn failed(error: coven::SyncFailure) -> SyncStatusSnapshot {
+        SyncStatusSnapshot {
+            status: coven::SyncStatus::Failed { error },
+            pending: Some(Ok(Vec::new())),
+            error: None,
+        }
+    }
+
+    fn category(snapshot: &SyncStatusSnapshot) -> crate::ui::UiErrorCategory {
+        let Some(UiError::Diagnostic { category, .. }) = snapshot.failure() else {
+            panic!("the failed pass is the status's failure");
+        };
+        category
+    }
+
+    /// A removed device says it was removed, and nothing it offers would
+    /// register it again: its record is only reviewed, never reset.
+    #[test]
+    fn a_removed_device_says_so_and_offers_nothing_that_registers_it() {
+        assert_eq!(
+            pending_action(&record(coven::PendingReason::Removed)),
+            PendingAction::Review
+        );
+        assert_eq!(
+            category(&failed(coven::SyncFailure::Removed)),
+            crate::ui::UiErrorCategory::DeviceRemoved
+        );
+    }
+
+    /// Keys replaced by another of the person's devices are restored with the
+    /// person's current code, not by resetting this device.
+    #[test]
+    fn replaced_member_keys_offer_restoring_from_the_code() {
+        let member = coven::MemberId(uuid::Uuid::from_u128(7));
+        assert_eq!(
+            pending_action(&record(coven::PendingReason::MemberKeysReplaced { member })),
+            PendingAction::RestoreFromCode
+        );
+    }
+
+    /// Another copy of this device is the one sync failure a reset answers.
+    #[test]
+    fn another_copy_of_this_device_is_answered_by_a_reset() {
+        assert_eq!(
+            category(&failed(coven::SyncFailure::DeviceIdInUse(
+                coven::DeviceIdEvidence::Replaced
+            ))),
+            crate::ui::UiErrorCategory::DeviceResetRequired
+        );
     }
 }

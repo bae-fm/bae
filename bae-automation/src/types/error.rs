@@ -111,6 +111,7 @@ impl From<bae_core::ui::UiError> for AutomationError {
             UiErrorCategory::Config => Self::Validation(detail),
             UiErrorCategory::Internal => Self::Internal(detail),
             UiErrorCategory::DeviceResetRequired
+            | UiErrorCategory::DeviceRemoved
             | UiErrorCategory::SyncUpdateRequired
             | UiErrorCategory::Export
             | UiErrorCategory::Save

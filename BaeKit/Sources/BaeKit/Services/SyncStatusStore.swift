@@ -16,6 +16,16 @@ public final class SyncStatusStore {
         snapshot?.error.flatMap { DisplayError($0) }
     }
     public var canReconnect: Bool { snapshot?.connected == false }
+    /// Whether sync stopped because another copy of this device is syncing,
+    /// which only resetting this device answers.
+    public var offersDeviceReset: Bool {
+        if case BridgeError.Diagnostic(.deviceResetRequired, _)? = snapshot?
+            .error
+        {
+            return true
+        }
+        return false
+    }
     /// The one line sync shows: "Synced", "Waiting: 3 items", or that the
     /// library isn't connected.
     public var statusText: String {

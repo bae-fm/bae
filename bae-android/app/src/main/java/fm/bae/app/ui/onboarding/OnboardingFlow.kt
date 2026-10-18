@@ -87,6 +87,8 @@ internal class OnboardingFlow(
     private val context: Context,
     private val host: BridgeHost,
     private val oauthProvidersError: String?,
+    /** The library this device's copy of is restored over, or null for a new library. */
+    private val restoringOver: String?,
     private val onBootstrapped: (BridgeBootstrapResult) -> Unit,
 ) {
     var step by mutableStateOf<OnboardingStep>(OnboardingStep.Start)
@@ -122,7 +124,13 @@ internal class OnboardingFlow(
             return
         }
         error = null
-        step = codeReadStep(scanned.code, info, scanned.s3Credentials)
+        step =
+            if (restoringOver != null) {
+                // Restoring over this device's copy takes no invite; core says so.
+                OnboardingStep.Restore(scanned.code, metadata, scanned.s3Credentials)
+            } else {
+                codeReadStep(scanned.code, info, scanned.s3Credentials)
+            }
     }
 
     /** Back to the start from a code waiting on the person. */
@@ -135,7 +143,18 @@ internal class OnboardingFlow(
         from: OnboardingStep.Restore,
         credentials: BridgeS3Credentials?,
     ) = run(from) { callback, cancellation ->
-        host.restoreFromCode(from.code, credentials, deviceName(context), callback, cancellation)
+        if (restoringOver != null) {
+            host.restoreReplacingDevice(
+                restoringOver,
+                from.code,
+                credentials,
+                deviceName(context),
+                callback,
+                cancellation,
+            )
+        } else {
+            host.restoreFromCode(from.code, credentials, deviceName(context), callback, cancellation)
+        }
     }
 
     fun join(

@@ -64,6 +64,7 @@ struct SettingsView: View {
     let checkForUpdatesViewModel: CheckForUpdatesViewModel
     let onForgetLibrary: () -> Void
     let onResetDevice: () -> Void
+    let onRestoreFromCode: () -> Void
 
     @Environment(SettingsNavigation.self)
     private var navigation
@@ -100,6 +101,7 @@ struct SettingsView: View {
             LibrarySettingsTab(
                 onForgetLibrary: onForgetLibrary,
                 onResetDevice: onResetDevice,
+                onRestoreFromCode: onRestoreFromCode,
                 onCheckForUpdates: {
                     checkForUpdatesViewModel.checkForUpdates()
                 }

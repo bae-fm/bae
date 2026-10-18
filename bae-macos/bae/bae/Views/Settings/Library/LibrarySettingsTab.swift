@@ -9,6 +9,9 @@ struct LibrarySettingsTab: View {
     let onForgetLibrary: () -> Void
     /// Shows the device-reset warning for the active library.
     let onResetDevice: () -> Void
+    /// Closes the active library and asks for the person's restore code to
+    /// restore it over this device's copy.
+    let onRestoreFromCode: () -> Void
     /// Asks Sparkle for a newer version of the app.
     let onCheckForUpdates: () -> Void
 
@@ -57,6 +60,7 @@ struct LibrarySettingsTab: View {
                     SyncStatusLine(
                         location: location,
                         onResetDevice: onResetDevice,
+                        onRestoreFromCode: onRestoreFromCode,
                         onCheckForUpdates: onCheckForUpdates
                     )
                     UploadPauseToggle()
@@ -288,6 +292,7 @@ private struct RestoreCodeSection: View {
         LibrarySettingsTab(
             onForgetLibrary: {},
             onResetDevice: {},
+            onRestoreFromCode: {},
             onCheckForUpdates: {}
         )
         .frame(width: 500, height: 640)

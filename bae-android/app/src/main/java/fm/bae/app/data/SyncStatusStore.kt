@@ -4,14 +4,20 @@ import fm.bae.app.ErrorLines
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import uniffi.bae_bridge.BridgeErrorCategory
+import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgePendingRecords
 import uniffi.bae_bridge.BridgeSyncIndicator
 import uniffi.bae_bridge.BridgeSyncStatusSnapshot
 
-/** The last sync failure as a line, and whether reconnecting is what fixes it. */
+/**
+ * The last sync failure as a line, whether reconnecting is what fixes it, and
+ * whether sync found another copy of this device, which only a reset answers.
+ */
 data class SyncFailure(
     val message: String,
     val canReconnect: Boolean,
+    val offersDeviceReset: Boolean,
 )
 
 /** Runtime sync state. The sync-status value stream is its only writer. */
@@ -35,7 +41,17 @@ class SyncStatusStore {
     ) {
         _snapshot.value = status
         // Disconnected, reconnecting is the remedy; connected, the failure names its own.
-        _error.value = status.error?.let(errors::line)?.let { SyncFailure(it, canReconnect = !status.connected) }
+        _error.value =
+            status.error?.let { error ->
+                errors.line(error)?.let { line ->
+                    SyncFailure(
+                        line,
+                        canReconnect = !status.connected,
+                        offersDeviceReset =
+                            (error as? BridgeException.Diagnostic)?.category is BridgeErrorCategory.DeviceResetRequired,
+                    )
+                }
+            }
         _indicator.value = status.indicator
         _pending.value = status.pending
     }

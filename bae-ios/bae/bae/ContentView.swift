@@ -97,6 +97,16 @@ struct ContentView: View {
                 onCancel: holder.cancelDeviceReset
             )
 
+        case .restoreRequired(let libraryId):
+            BootstrapCodeScreen(
+                form: holder.setup.bootstrapForm(
+                    entry: .restoreOver(libraryId: libraryId),
+                    onLibraryReady: holder.openOpenedLibrary
+                ),
+                onBack: { holder.openLibrary(id: libraryId) }
+            )
+            .id(libraryId)
+
         case .library(let service):
             service.installEnvironment(
                 VStack(spacing: 0) {

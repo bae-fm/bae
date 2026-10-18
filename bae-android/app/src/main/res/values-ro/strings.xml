@@ -189,6 +189,7 @@
     <string name="reset_device">Resetează acest dispozitiv</string>
     <string name="reset_device_confirm_title">Resetezi acest dispozitiv?</string>
     <string name="reset_device_confirm">Resetează</string>
+    <string name="restore_device_title">Restaurează această bibliotecă</string>
     <string name="profile_required_title">Introdu-ți numele pentru a termina alăturarea la această bibliotecă.</string>
     <string name="save">Salvează</string>
     <string name="onboarding_scan_code">Scanează un cod</string>

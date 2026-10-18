@@ -159,6 +159,7 @@ internal fun SettingsScreen(
         )
         SectionDivider()
         SettingsSyncSection(
+            onResetDevice = actions.resetDevice,
             session = session,
             cloudHome = model.cloudHome,
             onPush = onPush,

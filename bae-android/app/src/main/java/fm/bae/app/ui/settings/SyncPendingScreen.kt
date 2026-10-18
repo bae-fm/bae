@@ -39,7 +39,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import fm.bae.app.AppSessionHolder
 import fm.bae.app.BaeLogger
 import fm.bae.app.LocaleErrorLines
 import fm.bae.app.OpenLibrary
@@ -47,7 +46,6 @@ import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.BaeTheme
-import fm.bae.app.ui.DeviceResetDialog
 import fm.bae.app.ui.SessionActions
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
@@ -56,7 +54,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeAdminAccess
 import uniffi.bae_bridge.BridgeCloudProvider
-import uniffi.bae_bridge.BridgeDeviceReset
 import uniffi.bae_bridge.BridgePendingAction
 import uniffi.bae_bridge.BridgePendingReason
 import uniffi.bae_bridge.BridgePendingReasonKind
@@ -75,9 +72,10 @@ private data class KeyDeletion(
 )
 
 /**
- * Runs the action a pending record offers. Most run at once; a reset, an
+ * Runs the action a pending record offers. Most run at once; an
  * administrator's credentials and an access key's deletion first ask the
- * person through a dialog, which [PendingActionDialogs] shows.
+ * person through a dialog, which [PendingActionDialogs] shows. Restoring with
+ * the person's code closes the library for the restore screen.
  */
 private class PendingActionRunner(
     private val session: OpenLibrary,
@@ -86,7 +84,6 @@ private class PendingActionRunner(
     private val scope: CoroutineScope,
 ) {
     var error by mutableStateOf<String?>(null)
-    var reset by mutableStateOf<BridgeDeviceReset?>(null)
     var adminAccessFor by mutableStateOf<Long?>(null)
     var keyDeletion by mutableStateOf<KeyDeletion?>(null)
 
@@ -127,8 +124,8 @@ private class PendingActionRunner(
                 perform("retry pending operation ${action.id}") { handle.retryPendingOperation(action.id) }
             }
 
-            BridgePendingAction.ResetDevice -> {
-                reset = AppSessionHolder.prepareDeviceReset(context, session.libraryId)
+            BridgePendingAction.RestoreFromCode -> {
+                actions.restoreFromCode()
             }
 
             is BridgePendingAction.ProvideAdminAccess -> {
@@ -148,11 +145,6 @@ private class PendingActionRunner(
         } else {
             perform("sign in to $provider") { providers.signIn(session.appHandle, provider) }
         }
-    }
-
-    fun confirmReset(prepared: BridgeDeviceReset) {
-        reset = null
-        actions.resetDevice(prepared)
     }
 
     fun retryWithAdminAccess(
@@ -185,8 +177,8 @@ private class PendingActionRunner(
 
 /**
  * Everything sync waits on, in plain words, each with its action where the
- * person can act: sign in, retry, resume uploads, reset this device, give
- * administrator access. A wait the person can't help offers nothing; its
+ * person can act: sign in, retry, resume uploads, restore with the person's
+ * code, give administrator access. A wait the person can't help offers nothing; its
  * diagnostic details stay behind Details.
  */
 @Composable
@@ -236,13 +228,6 @@ internal fun SyncPendingScreen(
 /** The dialog an action waits on, while it waits. */
 @Composable
 private fun PendingActionDialogs(runner: PendingActionRunner) {
-    runner.reset?.let { prepared ->
-        DeviceResetDialog(
-            reset = prepared,
-            onConfirm = { runner.confirmReset(prepared) },
-            onDismiss = { runner.reset = null },
-        )
-    }
     runner.adminAccessFor?.let { operation ->
         AdminAccessDialog(
             title = stringResource(R.string.admin_access_title),

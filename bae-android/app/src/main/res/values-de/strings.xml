@@ -188,6 +188,7 @@
     <string name="reset_device">Dieses Gerät zurücksetzen</string>
     <string name="reset_device_confirm_title">Dieses Gerät zurücksetzen?</string>
     <string name="reset_device_confirm">Zurücksetzen</string>
+    <string name="restore_device_title">Diese Bibliothek wiederherstellen</string>
     <string name="profile_required_title">Gib deinen Namen ein, um den Beitritt zu dieser Bibliothek abzuschließen.</string>
     <string name="save">Speichern</string>
     <string name="onboarding_scan_code">Code scannen</string>

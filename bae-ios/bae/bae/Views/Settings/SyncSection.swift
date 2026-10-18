@@ -18,6 +18,8 @@ struct SyncSection: View {
     private var sync
     @Environment(ConfigStore.self)
     private var configStore
+    @Environment(AppSessionHolder.self)
+    private var holder
 
     @State
     private var reconnectTask: Task<Void, Never>?
@@ -40,6 +42,14 @@ struct SyncSection: View {
             }
             if let error = status.error {
                 ErrorDetailDisclosure(error: error)
+            }
+            if status.offersDeviceReset {
+                Button(
+                    localizedCoreString("core.sync.reset_device.confirm"),
+                    role: .destructive
+                ) {
+                    holder.presentDeviceReset()
+                }
             }
             Toggle(
                 "Pause uploads",

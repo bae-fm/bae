@@ -118,6 +118,50 @@ impl BridgeHost {
         )
         .await
     }
+    /// Restore a library this device holds with the person's current restore
+    /// code, after another of their devices replaced their keys. The caller
+    /// closed the library and showed the restore's warning before calling.
+    pub async fn restore_replacing_device(
+        self: Arc<Self>,
+        library_id: String,
+        code: String,
+        credentials: Option<BridgeS3Credentials>,
+        device_name: String,
+        callback: Box<dyn BootstrapCallback>,
+        cancellation: Arc<BootstrapCancellation>,
+    ) -> Result<BridgeBootstrapResult, BridgeError> {
+        let store = coven::StoreId(library_id.parse().map_err(BridgeError::config)?);
+        let cancel = cancellation.cancel.subscribe();
+        let _cancel_on_drop = CancelOnDrop(cancellation);
+        crate::operation_runtime::run_to_completion(
+            self.runtime
+                .as_ref()
+                .expect("host runtime exists until drop")
+                .handle()
+                .clone(),
+            self.clone(),
+            "restore library over this device",
+            move || async move {
+                match bae_core::library::restore_replacing_device(
+                    &self.keychain,
+                    &self.app_dir,
+                    self.builder(),
+                    store,
+                    &code,
+                    credentials.map(BridgeS3Credentials::into_core),
+                    &device_name,
+                    |status| callback.on_status(BridgeBootstrapStatus::from_core(status)),
+                    &cancel,
+                )
+                .await
+                {
+                    Ok(handle) => Ok(BridgeBootstrapResult::opened(handle, self)),
+                    Err(error) => BridgeBootstrapResult::failure(error, self),
+                }
+            },
+        )
+        .await
+    }
     pub async fn restore_from_keychain(
         self: Arc<Self>,
         saved: Arc<BridgeSavedRestoreCode>,

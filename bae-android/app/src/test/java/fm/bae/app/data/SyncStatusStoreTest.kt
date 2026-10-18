@@ -26,7 +26,7 @@ class SyncStatusStoreTest {
 
         sync.apply(status(connected = false, error = failure), errors)
 
-        assertEquals(SyncFailure("line for $failure", canReconnect = true), sync.error.value)
+        assertEquals(SyncFailure("line for $failure", canReconnect = true, offersDeviceReset = false), sync.error.value)
     }
 
     @Test
@@ -35,7 +35,17 @@ class SyncStatusStoreTest {
 
         sync.apply(status(connected = true, error = failure), errors)
 
-        assertEquals(SyncFailure("line for $failure", canReconnect = false), sync.error.value)
+        assertEquals(SyncFailure("line for $failure", canReconnect = false, offersDeviceReset = false), sync.error.value)
+    }
+
+    @Test
+    fun anotherCopyOfThisDeviceOffersAReset() {
+        val sync = SyncStatusStore()
+        val copy = BridgeException.Diagnostic(BridgeErrorCategory.DeviceResetRequired, "DeviceIdInUse(Replaced)")
+
+        sync.apply(status(connected = true, error = copy), errors)
+
+        assertEquals(SyncFailure("line for $copy", canReconnect = false, offersDeviceReset = true), sync.error.value)
     }
 
     @Test

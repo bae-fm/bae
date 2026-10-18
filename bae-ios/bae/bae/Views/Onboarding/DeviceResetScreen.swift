@@ -30,7 +30,7 @@ struct DeviceResetScreen: View {
                 Button("Cancel", action: onCancel)
                     .buttonStyle(.bordered)
                 Button(
-                    localizedCoreString("core.pending.action.reset_device"),
+                    localizedCoreString("core.sync.reset_device.confirm"),
                     role: .destructive,
                     action: onReset
                 )

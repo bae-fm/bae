@@ -45,6 +45,26 @@ public final class LibraryBootstrap {
         }
     }
 
+    /// Restore a library this device holds with the person's current restore
+    /// code, after another of their devices replaced their keys. The library
+    /// is closed and its warning shown before this runs.
+    public func restoreReplacing(
+        libraryId: String,
+        code: String,
+        credentials: BridgeS3Credentials?
+    ) async throws -> BridgeBootstrapResult {
+        try await run { callback, cancellation in
+            try await self.host.restoreReplacingDevice(
+                libraryId: libraryId,
+                code: code,
+                credentials: credentials,
+                deviceName: self.deviceName,
+                callback: callback,
+                cancellation: cancellation
+            )
+        }
+    }
+
     public func join(code: String, personName: String) async throws
         -> BridgeBootstrapResult
     {

@@ -89,6 +89,14 @@ pub enum RestoreFromCodeError {
     Cancelled,
     #[error("restore failed: {0}")]
     Restore(#[source] Box<coven::BootstrapError>),
+    /// Restoring over this device's copy needs the person's restore code for
+    /// that library; this code is an invite, or restores another library.
+    #[error("this code doesn't restore library {library}")]
+    OtherLibrary { library: coven::StoreId },
+    /// Discarding this device's copy before restoring it failed; the copy
+    /// stays as it was.
+    #[error("discarding this device's copy failed: {0}")]
+    Discard(#[source] coven::StoreDeletionError),
 }
 
 impl RestoreFromCodeError {
@@ -99,6 +107,8 @@ impl RestoreFromCodeError {
             Self::Profile(error) => error.category(),
             Self::Cancelled => crate::ui::UiErrorCategory::Internal,
             Self::Restore(error) => manager::bootstrap_category(error),
+            Self::OtherLibrary { .. } => crate::ui::UiErrorCategory::Config,
+            Self::Discard(error) => manager::deletion_category(error),
         }
     }
 }
@@ -143,6 +153,22 @@ impl Keychain {
             #[cfg(any(test, feature = "test-utils"))]
             Self::InMemory(installation) => installation.builder(layout),
         })
+    }
+
+    /// Delete a closed store from this device without opening it: its
+    /// directory and every entry coven keeps for it in this keychain. A store
+    /// already gone deletes nothing more.
+    async fn discard_store(
+        &self,
+        app_dir: &AppDir,
+        store: coven::StoreId,
+    ) -> Result<(), coven::StoreDeletionError> {
+        let directory = app_dir.store_layout().store_dir(&store);
+        match self {
+            Self::System => coven::Coven::discard_store(&directory).await,
+            #[cfg(any(test, feature = "test-utils"))]
+            Self::InMemory(installation) => installation.discard_store(&directory).await,
+        }
     }
 
     /// The restore codes saved in this keychain (iCloud Keychain on Apple).
@@ -276,6 +302,47 @@ pub async fn reset_device(
         .reset_device(store, device_name)
         .await
         .map_err(restore_error)
+}
+
+/// Restore a library this device holds but can no longer send for, because
+/// another of the person's devices replaced their keys. The code must be the
+/// person's restore code for this library, checked before anything changes;
+/// then this device's copy is discarded and the library restored from the
+/// code under a new device id. The caller closed the library and warned that
+/// edits on this device that haven't synced are discarded. A restore that
+/// fails after the discard leaves the library off this device and says so;
+/// restoring again with the same code finishes it.
+#[allow(clippy::too_many_arguments)]
+pub async fn restore_replacing_device(
+    keychain: &Keychain,
+    app_dir: &AppDir,
+    builder: coven::CovenBuilder,
+    store: coven::StoreId,
+    code: &str,
+    s3_credentials: Option<coven::S3Credentials>,
+    device_name: &str,
+    on_status: impl Fn(coven::BootstrapStatus),
+    cancel: &watch::Receiver<bool>,
+) -> Result<coven::CovenHandle, RestoreFromCodeError> {
+    match coven::decode_code_info(code)
+        .map_err(|error| restore_error(coven::BootstrapError::Code(error)))?
+    {
+        coven::CodeInfo::Restore(metadata) if metadata.store_id == store => {}
+        _ => return Err(RestoreFromCodeError::OtherLibrary { library: store }),
+    }
+    keychain
+        .discard_store(app_dir, store)
+        .await
+        .map_err(RestoreFromCodeError::Discard)?;
+    restore_from_code(
+        builder,
+        code,
+        s3_credentials,
+        device_name,
+        on_status,
+        cancel,
+    )
+    .await
 }
 
 fn restore_error(error: coven::BootstrapError) -> RestoreFromCodeError {

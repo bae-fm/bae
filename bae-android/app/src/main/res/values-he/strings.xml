@@ -190,6 +190,7 @@
     <string name="reset_device">איפוס המכשיר הזה</string>
     <string name="reset_device_confirm_title">לאפס את המכשיר הזה?</string>
     <string name="reset_device_confirm">איפוס</string>
+    <string name="restore_device_title">שחזור הספרייה הזו</string>
     <string name="profile_required_title">הזינו את שמכם כדי להשלים את ההצטרפות לספרייה הזו.</string>
     <string name="save">שמירה</string>
     <string name="onboarding_scan_code">סריקת קוד</string>

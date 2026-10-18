@@ -85,6 +85,15 @@ sealed interface AppScreen {
     ) : AppScreen
 
     /**
+     * Another of the person's devices replaced their keys, so this copy can't
+     * send. The library is closed and the person restores it with their
+     * current restore code, which registers this device again.
+     */
+    data class RestoreOffered(
+        val libraryId: String,
+    ) : AppScreen
+
+    /**
      * Joining made this device a member, but writing the person's profile
      * failed. The library stays open on this device's membership; the person
      * gives their name again.
@@ -320,6 +329,18 @@ object AppSessionHolder {
                 return
             }
         openBootstrapped(context, result, onScreen)
+    }
+
+    /**
+     * Close the open library and offer restoring it with the person's current
+     * restore code, after another of their devices replaced their keys.
+     */
+    suspend fun presentDeviceRestore(onScreen: (AppScreen) -> Unit) {
+        val open = checkNotNull(current) { "a pending record asks for a restore only while open" }
+        onScreen(AppScreen.Loading)
+        current = null
+        open.dispose()
+        onScreen(AppScreen.RestoreOffered(open.libraryId))
     }
 
     /**

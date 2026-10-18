@@ -189,6 +189,7 @@
     <string name="reset_device">Redefinir este dispositivo</string>
     <string name="reset_device_confirm_title">Redefinir este dispositivo?</string>
     <string name="reset_device_confirm">Redefinir</string>
+    <string name="restore_device_title">Restaurar esta biblioteca</string>
     <string name="profile_required_title">Digite seu nome para concluir a entrada nesta biblioteca.</string>
     <string name="save">Salvar</string>
     <string name="onboarding_scan_code">Ler um código</string>

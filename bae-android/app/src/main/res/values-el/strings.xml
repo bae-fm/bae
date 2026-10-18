@@ -187,6 +187,7 @@
     <string name="reset_device">Επαναφορά αυτής της συσκευής</string>
     <string name="reset_device_confirm_title">Επαναφορά αυτής της συσκευής;</string>
     <string name="reset_device_confirm">Επαναφορά</string>
+    <string name="restore_device_title">Επαναφορά αυτής της βιβλιοθήκης</string>
     <string name="profile_required_title">Εισαγάγετε το όνομά σας για να ολοκληρώσετε τη συμμετοχή σε αυτή τη βιβλιοθήκη.</string>
     <string name="save">Αποθήκευση</string>
     <string name="onboarding_scan_code">Σάρωση κωδικού</string>

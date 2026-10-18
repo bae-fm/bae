@@ -186,6 +186,7 @@
     <string name="reset_device">이 기기 초기화</string>
     <string name="reset_device_confirm_title">이 기기를 초기화할까요?</string>
     <string name="reset_device_confirm">초기화</string>
+    <string name="restore_device_title">이 라이브러리 복원</string>
     <string name="profile_required_title">이 라이브러리 참여를 마치려면 이름을 입력하세요.</string>
     <string name="save">저장</string>
     <string name="onboarding_scan_code">코드 스캔</string>
