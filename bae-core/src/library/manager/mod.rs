@@ -53,6 +53,7 @@ use storage_operations::*;
 
 mod album;
 mod artist;
+mod collections;
 mod composer;
 mod config;
 mod coven_blobs;

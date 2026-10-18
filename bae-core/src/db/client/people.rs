@@ -202,20 +202,10 @@ fn profile_name(name: &str) -> Result<String, ProfileError> {
 }
 
 fn profile_row(row: &Row<'_>) -> rusqlite::Result<PersonProfile> {
-    fn id(row: &Row<'_>, index: usize) -> rusqlite::Result<uuid::Uuid> {
-        let text: String = row.get(index)?;
-        uuid::Uuid::parse_str(&text).map_err(|error| {
-            rusqlite::Error::FromSqlConversionFailure(
-                index,
-                rusqlite::types::Type::Text,
-                Box::new(error),
-            )
-        })
-    }
     Ok(PersonProfile {
-        id: coven::MemberId(id(row, 0)?),
+        id: coven::MemberId(uuid_column(row, 0)?),
         name: row.get(1)?,
-        private_circle: coven::CircleId(id(row, 2)?),
+        private_circle: coven::CircleId(uuid_column(row, 2)?),
         history_sharing: Sharing::from_sql(&row.get::<_, String>(3)?)?,
         avatar_id: row.get(4)?,
     })

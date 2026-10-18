@@ -2004,3 +2004,32 @@ CREATE TABLE people (
     hash BLOB,
     location TEXT
 ) STRICT;
+
+-- Ratings identify one person's judgment of an album or one release's track.
+CREATE TABLE ratings (
+    id TEXT PRIMARY KEY NOT NULL,
+    person_id TEXT NOT NULL REFERENCES people(id) ON DELETE CASCADE,
+    album_id TEXT REFERENCES albums(id) ON DELETE CASCADE,
+    track_id TEXT REFERENCES tracks(id) ON DELETE CASCADE,
+    stars INTEGER NOT NULL CHECK (stars BETWEEN 1 AND 5),
+    CHECK ((album_id IS NULL) <> (track_id IS NULL)),
+    UNIQUE (person_id, album_id),
+    UNIQUE (person_id, track_id)
+) STRICT;
+
+CREATE TABLE playlists (
+    id TEXT PRIMARY KEY NOT NULL,
+    person_id TEXT NOT NULL REFERENCES people(id) ON DELETE CASCADE,
+    name TEXT NOT NULL CHECK (length(trim(name)) > 0),
+    audience TEXT NOT NULL
+) STRICT;
+
+-- The position id distinguishes repeated tracks and concurrent insertions.
+-- Integer order is not unique: ties retain both entries, ordered by position id.
+CREATE TABLE playlist_entries (
+    playlist_id TEXT NOT NULL REFERENCES playlists(id) ON DELETE CASCADE,
+    position_id TEXT NOT NULL,
+    track_id TEXT NOT NULL REFERENCES tracks(id) ON DELETE CASCADE,
+    position INTEGER NOT NULL CHECK (position >= 0),
+    PRIMARY KEY (playlist_id, position_id)
+) STRICT;

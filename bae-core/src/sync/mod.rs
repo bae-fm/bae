@@ -59,7 +59,7 @@ pub const CACHE_BUDGETS: [(&str, u64); 4] = [
     (RELEASE_FILES_NAMESPACE, 20 * 1024 * 1024 * 1024), // 20 GiB
     (COVERS_NAMESPACE, 512 * 1024 * 1024),              // 512 MiB
     (ARTIST_IMAGES_NAMESPACE, 256 * 1024 * 1024),
-    (PEOPLE_NAMESPACE, 64 * 1024 * 1024), // 256 MiB
+    (PEOPLE_NAMESPACE, 64 * 1024 * 1024), // 64 MiB
 ];
 
 /// The library rows shared with the store. Local audio paths are deliberately
@@ -112,6 +112,14 @@ pub fn synced_tables() -> Vec<SyncedTable> {
             .with_id_column("blob_id")
             .with_size_column("file_size"),
         ),
+        SyncedTable::new("ratings", RowIdentity::SharedKey).owner_only(),
+        SyncedTable::new("playlists", RowIdentity::IndependentUuid)
+            .owner_only()
+            .audience_column("audience"),
+        SyncedTable::new("playlist_entries", RowIdentity::SharedKey)
+            .key_columns(["playlist_id", "position_id"])
+            .owner_only()
+            .audience_from("playlist_id"),
         SyncedTable::new("people", RowIdentity::SharedKey)
             .owner_only()
             .carries_files(
@@ -159,13 +167,33 @@ mod tests {
                 "covers",
                 "artist_images",
                 "people",
+                "ratings",
+                "playlists",
+                "playlist_entries",
             ])
         );
         for table in &tables {
-            assert_eq!(table.get_key_columns(), &["id"]);
-            assert_eq!(table.get_audience_column(), None);
-            assert_eq!(table.get_audience_from(), None);
-            assert_eq!(table.is_owner_only(), table.name() == "people");
+            let keys: &[&str] = if table.name() == "playlist_entries" {
+                &["playlist_id", "position_id"]
+            } else {
+                &["id"]
+            };
+            assert_eq!(table.get_key_columns(), keys);
+            assert_eq!(
+                table.get_audience_column(),
+                (table.name() == "playlists").then_some("audience")
+            );
+            assert_eq!(
+                table.get_audience_from(),
+                (table.name() == "playlist_entries").then_some("playlist_id")
+            );
+            assert_eq!(
+                table.is_owner_only(),
+                matches!(
+                    table.name(),
+                    "people" | "ratings" | "playlists" | "playlist_entries"
+                )
+            );
             let expected = match table.name() {
                 "release_files" => Some((
                     RELEASE_FILES_NAMESPACE,
