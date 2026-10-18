@@ -378,9 +378,11 @@ where
     // Install the sync-status and outbox subscriptions before connection starts.
     // coven's status receiver may be subscribed before a provider connects, so the
     // attachment's first events cannot race the library/UI observers.
-    timing.stage(&library_id, "start library observation", || {
-        library_manager.start()
-    });
+    timing
+        .stage(&library_id, "start library observation", || {
+            library_manager.start()
+        })
+        .map_err(|e| BootstrapError::Internal(e.to_string()))?;
 
     let startup_sync_manager = if provider_configured && !locked {
         Some(library_manager.clone())
@@ -469,9 +471,11 @@ where
     // failures flow through the sync-status subscription installed above. A later
     // reconnect still uses the direct awaited attachment path.
     if let Some(manager) = startup_sync_manager {
-        timing.stage(&library_id, "schedule startup sync attachment", || {
-            manager.start_sync_at_startup()
-        });
+        timing
+            .stage(&library_id, "schedule startup sync attachment", || {
+                manager.start_sync_at_startup()
+            })
+            .map_err(|e| BootstrapError::Internal(e.to_string()))?;
     }
 
     timing.complete(&library_id);

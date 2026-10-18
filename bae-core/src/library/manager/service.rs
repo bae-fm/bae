@@ -163,42 +163,50 @@ impl LibraryManager {
             #[cfg(not(any(target_os = "ios", target_os = "android")))]
             outputs: crate::library::Outputs::new(),
         };
-        manager.start_queue_workers();
+        manager
+            .start_queue_workers()
+            .expect("a manager being assembled has not closed");
         manager
     }
 
-    pub(super) fn start_queue_workers(&self) {
+    pub(super) fn start_queue_workers(&self) -> Result<(), LibraryError> {
         self.spawn_queue_worker("download queue worker", |manager| async move {
             manager.run_download_worker().await;
-        });
+        })?;
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
         self.spawn_queue_worker("output queue worker", |manager| async move {
             manager.run_output_worker().await;
-        });
+        })?;
+        Ok(())
     }
 
-    fn spawn_queue_worker<F, Fut>(&self, task_name: &'static str, worker: F)
+    fn spawn_queue_worker<F, Fut>(
+        &self,
+        task_name: &'static str,
+        worker: F,
+    ) -> Result<(), LibraryError>
     where
         F: FnOnce(Self) -> Fut + Send + 'static,
         Fut: Future<Output = ()> + Send + 'static,
     {
         let manager = self.clone();
-        self.spawn_supervised_task(task_name, worker(manager));
+        self.spawn_supervised_task(task_name, worker(manager))
     }
 
     /// Run `task` on the manager's runtime until it ends or the manager closes.
-    /// A task that panics is reported, since nothing else awaits it.
-    pub(super) fn spawn_supervised_task<F>(&self, task_name: &'static str, task: F)
+    /// A task that panics is reported, since nothing else awaits it. A library
+    /// that has closed starts nothing and says so to the caller.
+    pub(super) fn spawn_supervised_task<F>(
+        &self,
+        task_name: &'static str,
+        task: F,
+    ) -> Result<(), LibraryError>
     where
         F: Future<Output = ()> + Send + 'static,
     {
         let closed = self.tasks.closed.lock().unwrap();
         if *closed {
-            tracing::warn!(
-                task = task_name,
-                "cannot start a task after the library closes"
-            );
-            return;
+            return Err(LibraryError::Closed(task_name));
         }
         let closing = self.tasks.closing.clone();
         let task = self.runtime_handle.spawn(async move {
@@ -211,6 +219,7 @@ impl LibraryManager {
             report_background_task_exit(task_name, task),
             &self.runtime_handle,
         );
+        Ok(())
     }
 
     /// A file operation owns its rollback even when its caller disappears.
@@ -227,7 +236,7 @@ impl LibraryManager {
         let task = {
             let closed = self.tasks.closed.lock().unwrap();
             if *closed {
-                return Err(LibraryError::Storage("the library is closing".into()));
+                return Err(LibraryError::Closed(name));
             }
             let work = operation(self.tasks.closing.clone());
             self.tasks.tracker.spawn_on(
@@ -379,14 +388,15 @@ impl LibraryManager {
         self.database.every_row_for_test().await.unwrap()
     }
 
-    /// Subscribe to the sync loop's status and publish the current banner value.
-    /// Call once after construction, with a tokio runtime available.
-    pub fn start(&self) {
+    /// Subscribe to the sync loop's status and publish the current status
+    /// line value. Call once after construction, with a tokio runtime
+    /// available.
+    pub fn start(&self) -> Result<(), LibraryError> {
         let outbox = self.database.subscribe_cloud_outbox();
         let sync = self.sync.clone();
         self.spawn_supervised_task("cloud outbox subscription", async move {
             sync.run_cloud_outbox_subscription(outbox).await;
-        });
+        })?;
 
         let mut rx = self.database.subscribe_sync_status();
         let lm = self.clone();
@@ -411,14 +421,14 @@ impl LibraryManager {
                     break;
                 }
             }
-        });
+        })?;
         let mut pending = self.database.subscribe_pending();
         let state = self.sync_status.clone();
         self.spawn_supervised_task("pending sync records", async move {
             loop {
                 state.set_pending(pending.next().await);
             }
-        });
+        })
     }
 
     /// Every deletion of tracks from now on, none dropped, as the ids each

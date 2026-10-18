@@ -589,7 +589,7 @@ async fn startup_and_retry_publish_the_native_connection_status() {
     let (manager, _temp) = setup_test_manager_with_clock(clock.clone()).await;
     connect_test_cloud(&manager).await;
     manager.storage.set_online(false);
-    manager.start();
+    manager.start().unwrap();
     let mut values = manager.subscribe_sync_status_values();
     manager.attach_and_start_sync_at_startup().await;
     tokio::time::timeout(std::time::Duration::from_secs(20), values.wait_for(|value| matches!(value.status, coven::SyncStatus::Failed { .. } | coven::SyncStatus::Offline { .. }))).await.unwrap().unwrap();
@@ -612,7 +612,7 @@ async fn reconnect_sync_clears_the_failure_it_retries() {
     let (manager, _temp) = setup_test_manager().await;
     connect_test_cloud(&manager).await;
     manager.database.disconnect_storage().await.unwrap();
-    manager.start();
+    manager.start().unwrap();
     manager.installation.fail_next_keychain_operation();
     manager.attach_and_start_sync_at_startup().await;
     let recorded = manager
@@ -635,4 +635,20 @@ async fn reconnect_sync_clears_the_failure_it_retries() {
         "the stale failure is gone the moment the retry runs"
     );
     manager.close().await.unwrap();
+}
+
+/// Work asked of a closed library starts nothing, and the caller hears so
+/// rather than a log line: starting sync after close is refused.
+#[tokio::test]
+async fn starting_work_after_close_is_refused_to_the_caller() {
+    let (manager, _temp) = setup_test_manager().await;
+    manager.close().await.unwrap();
+    let error = manager
+        .start_sync_at_startup()
+        .expect_err("a closed library starts no work");
+    assert!(
+        matches!(error, LibraryError::Closed("startup sync attachment")),
+        "got {error:?}"
+    );
+    assert!(matches!(manager.start(), Err(LibraryError::Closed(_))));
 }

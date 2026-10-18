@@ -27,7 +27,7 @@ pub async fn storage_library(
         .await
         .unwrap();
     let (manager, database) = crate::test_library_from_handle(handle, directory, providers);
-    manager.start();
+    manager.start().unwrap();
     (manager, database, storage)
 }
 

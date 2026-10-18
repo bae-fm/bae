@@ -182,11 +182,11 @@ impl LibraryManager {
     /// outbox subscriptions so the connection's first events have consumers.
     /// The task runs on the runtime retained by the app and is supervised like
     /// the manager's other background workers.
-    pub fn start_sync_at_startup(&self) {
+    pub fn start_sync_at_startup(&self) -> Result<(), LibraryError> {
         let manager = self.clone();
         self.spawn_supervised_task("startup sync attachment", async move {
             manager.attach_and_start_sync_at_startup().await;
-        });
+        })
     }
 
     /// Attach the sync manager at startup, tolerating a connect failure.

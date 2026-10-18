@@ -471,7 +471,7 @@ async fn a_move_to_cloud_batch_refuses_duplicate_release_ids_without_admission()
 async fn outbox_subscription_reacts_to_release_display_context_changes() {
     let (manager, temp_dir) = setup_test_manager().await;
     connect_test_cloud(&manager).await;
-    manager.start();
+    manager.start().unwrap();
     let mut values = manager.subscribe_outbox_values();
     let release = insert_release_with_queued_uploads(
         &manager,

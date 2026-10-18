@@ -169,6 +169,9 @@ pub enum LibraryError {
     },
     #[error("Playback error: {0}")]
     Playback(String),
+    /// Work asked of a library after it closed; nothing of it started.
+    #[error("{0} cannot start: the library is closed")]
+    Closed(&'static str),
     /// An internal invariant the caller can't act on (a missing platform driver,
     /// a provider used through the wrong entry point).
     #[error("{0}")]
@@ -312,6 +315,7 @@ impl LibraryError {
             | LibraryError::Encryption(_)
             | LibraryError::Storage(_)
             | LibraryError::Playback(_)
+            | LibraryError::Closed(_)
             | LibraryError::Internal(_) => C::Internal,
         }
     }
