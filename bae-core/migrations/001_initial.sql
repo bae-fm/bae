@@ -1029,7 +1029,7 @@ CREATE TABLE IF NOT EXISTS import_candidate_album_artist_assignment (
     discogs_artist_id     TEXT,
     PRIMARY KEY (content_hash, position),
     FOREIGN KEY (content_hash) REFERENCES import_candidate_edit (content_hash) ON DELETE CASCADE,
-    FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE RESTRICT,
+    FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE CASCADE,
     CHECK (
         (assignment_kind = 'picked' AND artist_id IS NOT NULL AND name IS NULL
             AND sort_name IS NULL AND musicbrainz_artist_id IS NULL AND discogs_artist_id IS NULL)
@@ -1076,7 +1076,7 @@ CREATE TABLE IF NOT EXISTS import_candidate_track_artist_assignment (
     PRIMARY KEY (content_hash, track_id, position),
     FOREIGN KEY (content_hash, track_id)
         REFERENCES import_candidate_track (content_hash, track_id) ON DELETE CASCADE,
-    FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE RESTRICT,
+    FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE CASCADE,
     CHECK (
         (assignment_kind = 'picked' AND artist_id IS NOT NULL AND name IS NULL
             AND sort_name IS NULL AND musicbrainz_artist_id IS NULL AND discogs_artist_id IS NULL)
@@ -1293,8 +1293,8 @@ CREATE TABLE IF NOT EXISTS import_candidate_artist_identity_conflict (
     musicbrainz_library_artist_id TEXT NOT NULL,
     FOREIGN KEY (content_hash)
         REFERENCES import_candidate_failure (content_hash) ON DELETE CASCADE,
-    FOREIGN KEY (discogs_library_artist_id) REFERENCES artists (id) ON DELETE RESTRICT,
-    FOREIGN KEY (musicbrainz_library_artist_id) REFERENCES artists (id) ON DELETE RESTRICT
+    FOREIGN KEY (discogs_library_artist_id) REFERENCES artists (id) ON DELETE CASCADE,
+    FOREIGN KEY (musicbrainz_library_artist_id) REFERENCES artists (id) ON DELETE CASCADE
 ) STRICT;
 
 -- A person's answer for one conflicting credit in this candidate. The original
