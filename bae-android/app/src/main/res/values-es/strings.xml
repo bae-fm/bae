@@ -271,4 +271,7 @@
     <string name="invite_cancel">Cancelar invitación</string>
     <string name="join_requests_title">Solicitudes para unirse</string>
     <string name="join_request_decline">Rechazar</string>
+    <string name="settings_rename_library">Cambiar nombre</string>
+    <string name="settings_library_name">Nombre de la biblioteca</string>
+    <string name="settings_library_switch">Cambiar a otra biblioteca de este dispositivo</string>
 </resources>

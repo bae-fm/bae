@@ -269,4 +269,7 @@
     <string name="invite_cancel">Annuller invitation</string>
     <string name="join_requests_title">Anmodninger om at deltage</string>
     <string name="join_request_decline">Afvis</string>
+    <string name="settings_rename_library">Omdøb</string>
+    <string name="settings_library_name">Bibliotekets navn</string>
+    <string name="settings_library_switch">Skift til et andet bibliotek på denne enhed</string>
 </resources>

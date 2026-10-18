@@ -270,4 +270,7 @@
     <string name="invite_cancel">Daveti iptal et</string>
     <string name="join_requests_title">Katılma istekleri</string>
     <string name="join_request_decline">Reddet</string>
+    <string name="settings_rename_library">Yeniden adlandır</string>
+    <string name="settings_library_name">Kitaplık adı</string>
+    <string name="settings_library_switch">Bu cihazdaki başka bir kitaplığa geç</string>
 </resources>

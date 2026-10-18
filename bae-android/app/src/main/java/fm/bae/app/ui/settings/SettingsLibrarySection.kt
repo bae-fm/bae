@@ -1,0 +1,250 @@
+package fm.bae.app.ui.settings
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
+import fm.bae.app.BaeLogger
+import fm.bae.app.LocaleErrorLines
+import fm.bae.app.OpenLibrary
+import fm.bae.app.R
+import fm.bae.app.performBridgeAction
+import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.appearance.ThemeSpace
+import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.components.ErrorText
+import fm.bae.app.ui.components.Eyebrow
+import kotlinx.coroutines.launch
+import uniffi.bae_bridge.BridgeException
+import uniffi.bae_bridge.BridgeLibrary
+import uniffi.bae_bridge.LibraryNameCallback
+
+private val logger = BaeLogger("bae.LibraryNameRow")
+
+/** The open library's name, renamed by admins, and the switch to another library on this device. */
+@Composable
+internal fun SettingsLibrarySection(
+    session: OpenLibrary,
+    libraries: List<BridgeLibrary>,
+    canRename: Boolean,
+    onSwitchLibrary: (BridgeLibrary) -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge),
+        verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
+    ) {
+        Eyebrow(text = stringResource(R.string.settings_library))
+        LibraryNameRow(session = session, canRename = canRename)
+        if (libraries.size > 1) {
+            LibrarySwitcher(
+                libraries = libraries,
+                activeLibraryId = session.libraryId,
+                onSwitchLibrary = onSwitchLibrary,
+            )
+        }
+    }
+}
+
+@Composable
+private fun LibrarySwitcher(
+    libraries: List<BridgeLibrary>,
+    activeLibraryId: String,
+    onSwitchLibrary: (BridgeLibrary) -> Unit,
+) {
+    Text(
+        text = stringResource(R.string.settings_library_switch),
+        style = ThemeText.detail.style,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    libraries.forEach { library ->
+        // The active library comes from the open session; BridgeLibrary.isActive goes stale after an in-app switch.
+        val isActive = library.id == activeLibraryId
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .clickable(enabled = !isActive) { onSwitchLibrary(library) },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(text = library.name, modifier = Modifier.weight(1f))
+            // Always present but alpha-toggled so switching the active row
+            // never re-measures the row heights.
+            Icon(
+                imageVector = Icons.Filled.Check,
+                contentDescription = null,
+                modifier = Modifier.alpha(if (isActive) 1f else 0f),
+            )
+        }
+    }
+}
+
+/**
+ * The library's one name, as its store holds it now, with Rename for an admin:
+ * the name is the household's, and renaming is an admin entry.
+ */
+@Composable
+private fun LibraryNameRow(
+    session: OpenLibrary,
+    canRename: Boolean,
+) {
+    val context = LocalContext.current
+    var name by remember(session) { mutableStateOf<String?>(null) }
+    var renaming by remember { mutableStateOf(false) }
+    DisposableEffect(session) {
+        val subscription =
+            session.appHandle.subscribeLibraryName(
+                object : LibraryNameCallback {
+                    override fun onValue(value: String) {
+                        name = value
+                    }
+
+                    override fun onError(error: BridgeException) {
+                        logger.error("reading the library's name failed", error)
+                        session.configStore.showError(LocaleErrorLines(context).line(error))
+                    }
+                },
+            )
+        onDispose { subscription.cancel() }
+    }
+    val current = name ?: return
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(text = current, style = ThemeText.heading.style, modifier = Modifier.weight(1f))
+        if (canRename) {
+            TextButton(onClick = { renaming = true }) { Text(stringResource(R.string.settings_rename_library)) }
+        }
+    }
+    if (renaming) {
+        RenameLibraryDialog(session = session, current = current, onDismiss = { renaming = false })
+    }
+}
+
+@Composable
+private fun RenameLibraryDialog(
+    session: OpenLibrary,
+    current: String,
+    onDismiss: () -> Unit,
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var draft by remember { mutableStateOf(current) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var saving by remember { mutableStateOf(false) }
+    RenameLibraryDialogContent(
+        draft = draft,
+        error = error,
+        saving = saving,
+        onDraftChange = { draft = it },
+        onSave = {
+            saving = true
+            error = null
+            scope.launch {
+                var renamed = false
+                performBridgeAction(
+                    logger = logger,
+                    operation = "rename the library",
+                    errors = LocaleErrorLines(context),
+                    showError = { error = it },
+                ) {
+                    session.appHandle.renameLibrary(draft.trim())
+                    renamed = true
+                }
+                saving = false
+                if (renamed) onDismiss()
+            }
+        },
+        onDismiss = onDismiss,
+    )
+}
+
+@Composable
+private fun RenameLibraryDialogContent(
+    draft: String,
+    error: String?,
+    saving: Boolean,
+    onDraftChange: (String) -> Unit,
+    onSave: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.settings_rename_library)) },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = draft,
+                    onValueChange = onDraftChange,
+                    label = { Text(stringResource(R.string.settings_library_name)) },
+                    supportingText = { Text(stringResource(R.string.name_shown_to_everyone)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                error?.let { ErrorText(it) }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onSave, enabled = draft.isNotBlank() && !saving) {
+                Text(stringResource(R.string.save))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+        },
+    )
+}
+
+@Preview
+@Composable
+private fun RenameLibraryDialogContentPreview() {
+    BaeTheme {
+        RenameLibraryDialogContent(
+            draft = "Household",
+            error = null,
+            saving = false,
+            onDraftChange = {},
+            onSave = {},
+            onDismiss = {},
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun LibrarySwitcherPreview() {
+    BaeTheme {
+        Column {
+            LibrarySwitcher(
+                libraries =
+                    listOf(
+                        PreviewData.library(),
+                        PreviewData.library(id = "lib-2", name = "Other Library", isActive = false),
+                    ),
+                activeLibraryId = "lib-1",
+                onSwitchLibrary = {},
+            )
+        }
+    }
+}

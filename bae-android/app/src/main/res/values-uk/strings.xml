@@ -274,4 +274,7 @@
     <string name="invite_cancel">Скасувати запрошення</string>
     <string name="join_requests_title">Запити на приєднання</string>
     <string name="join_request_decline">Відхилити</string>
+    <string name="settings_rename_library">Перейменувати</string>
+    <string name="settings_library_name">Назва бібліотеки</string>
+    <string name="settings_library_switch">Перейти до іншої бібліотеки на цьому пристрої</string>
 </resources>

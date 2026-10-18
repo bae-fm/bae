@@ -269,4 +269,7 @@
     <string name="invite_cancel">Avbryt inbjudan</string>
     <string name="join_requests_title">Förfrågningar om att gå med</string>
     <string name="join_request_decline">Avböj</string>
+    <string name="settings_rename_library">Byt namn</string>
+    <string name="settings_library_name">Bibliotekets namn</string>
+    <string name="settings_library_switch">Byt till ett annat bibliotek på den här enheten</string>
 </resources>

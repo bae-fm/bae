@@ -269,4 +269,7 @@
     <string name="invite_cancel">Meghívó visszavonása</string>
     <string name="join_requests_title">Csatlakozási kérelmek</string>
     <string name="join_request_decline">Elutasítás</string>
+    <string name="settings_rename_library">Átnevezés</string>
+    <string name="settings_library_name">Könyvtár neve</string>
+    <string name="settings_library_switch">Váltás egy másik könyvtárra ezen az eszközön</string>
 </resources>

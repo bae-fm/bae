@@ -278,4 +278,7 @@
     <string name="invite_cancel">إلغاء الدعوة</string>
     <string name="join_requests_title">طلبات الانضمام</string>
     <string name="join_request_decline">رفض</string>
+    <string name="settings_rename_library">إعادة التسمية</string>
+    <string name="settings_library_name">اسم المكتبة</string>
+    <string name="settings_library_switch">التبديل إلى مكتبة أخرى على هذا الجهاز</string>
 </resources>

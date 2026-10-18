@@ -268,4 +268,7 @@
     <string name="invite_cancel">초대 취소</string>
     <string name="join_requests_title">참여 요청</string>
     <string name="join_request_decline">거절</string>
+    <string name="settings_rename_library">이름 변경</string>
+    <string name="settings_library_name">라이브러리 이름</string>
+    <string name="settings_library_switch">이 기기의 다른 라이브러리로 전환</string>
 </resources>

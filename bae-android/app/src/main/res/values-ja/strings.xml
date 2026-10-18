@@ -268,4 +268,7 @@
     <string name="invite_cancel">招待を取り消す</string>
     <string name="join_requests_title">参加リクエスト</string>
     <string name="join_request_decline">拒否</string>
+    <string name="settings_rename_library">名前を変更</string>
+    <string name="settings_library_name">ライブラリ名</string>
+    <string name="settings_library_switch">このデバイスの別のライブラリに切り替え</string>
 </resources>

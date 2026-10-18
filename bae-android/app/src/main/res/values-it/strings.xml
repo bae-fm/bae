@@ -271,4 +271,7 @@
     <string name="invite_cancel">Annulla invito</string>
     <string name="join_requests_title">Richieste di ingresso</string>
     <string name="join_request_decline">Rifiuta</string>
+    <string name="settings_rename_library">Rinomina</string>
+    <string name="settings_library_name">Nome della libreria</string>
+    <string name="settings_library_switch">Passa a un’altra libreria su questo dispositivo</string>
 </resources>

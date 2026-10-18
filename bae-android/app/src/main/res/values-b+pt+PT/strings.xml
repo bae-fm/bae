@@ -269,4 +269,7 @@
     <string name="invite_cancel">Cancelar convite</string>
     <string name="join_requests_title">Pedidos de adesão</string>
     <string name="join_request_decline">Recusar</string>
+    <string name="settings_rename_library">Mudar o nome</string>
+    <string name="settings_library_name">Nome da biblioteca</string>
+    <string name="settings_library_switch">Mudar para outra biblioteca neste dispositivo</string>
 </resources>

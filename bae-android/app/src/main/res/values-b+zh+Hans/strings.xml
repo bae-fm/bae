@@ -268,4 +268,7 @@
     <string name="invite_cancel">取消邀请</string>
     <string name="join_requests_title">加入请求</string>
     <string name="join_request_decline">拒绝</string>
+    <string name="settings_rename_library">重命名</string>
+    <string name="settings_library_name">库名称</string>
+    <string name="settings_library_switch">切换到此设备上的另一个库</string>
 </resources>

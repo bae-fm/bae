@@ -270,4 +270,7 @@
     <string name="invite_cancel">Uitnodiging annuleren</string>
     <string name="join_requests_title">Verzoeken om deel te nemen</string>
     <string name="join_request_decline">Afwijzen</string>
+    <string name="settings_rename_library">Naam wijzigen</string>
+    <string name="settings_library_name">Naam van de bibliotheek</string>
+    <string name="settings_library_switch">Overschakelen naar een andere bibliotheek op dit apparaat</string>
 </resources>

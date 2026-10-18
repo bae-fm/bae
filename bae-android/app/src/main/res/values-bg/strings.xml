@@ -270,4 +270,7 @@
     <string name="invite_cancel">Отмяна на поканата</string>
     <string name="join_requests_title">Заявки за присъединяване</string>
     <string name="join_request_decline">Отхвърляне</string>
+    <string name="settings_rename_library">Преименуване</string>
+    <string name="settings_library_name">Име на библиотеката</string>
+    <string name="settings_library_switch">Превключване към друга библиотека на това устройство</string>
 </resources>

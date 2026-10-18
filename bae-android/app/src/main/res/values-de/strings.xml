@@ -270,4 +270,7 @@
     <string name="invite_cancel">Einladung zurückziehen</string>
     <string name="join_requests_title">Beitrittsanfragen</string>
     <string name="join_request_decline">Ablehnen</string>
+    <string name="settings_rename_library">Umbenennen</string>
+    <string name="settings_library_name">Name der Bibliothek</string>
+    <string name="settings_library_switch">Zu einer anderen Bibliothek auf diesem Gerät wechseln</string>
 </resources>

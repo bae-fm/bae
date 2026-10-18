@@ -274,4 +274,7 @@
     <string name="invite_cancel">Anuluj zaproszenie</string>
     <string name="join_requests_title">Prośby o dołączenie</string>
     <string name="join_request_decline">Odrzuć</string>
+    <string name="settings_rename_library">Zmień nazwę</string>
+    <string name="settings_library_name">Nazwa biblioteki</string>
+    <string name="settings_library_switch">Przełącz na inną bibliotekę na tym urządzeniu</string>
 </resources>

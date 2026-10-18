@@ -272,4 +272,7 @@
     <string name="invite_cancel">ביטול ההזמנה</string>
     <string name="join_requests_title">בקשות הצטרפות</string>
     <string name="join_request_decline">דחייה</string>
+    <string name="settings_rename_library">שינוי שם</string>
+    <string name="settings_library_name">שם הספרייה</string>
+    <string name="settings_library_switch">מעבר לספרייה אחרת במכשיר הזה</string>
 </resources>

@@ -271,4 +271,7 @@
     <string name="invite_cancel">Anulează invitația</string>
     <string name="join_requests_title">Cereri de alăturare</string>
     <string name="join_request_decline">Refuză</string>
+    <string name="settings_rename_library">Redenumește</string>
+    <string name="settings_library_name">Numele bibliotecii</string>
+    <string name="settings_library_switch">Comută la altă bibliotecă de pe acest dispozitiv</string>
 </resources>

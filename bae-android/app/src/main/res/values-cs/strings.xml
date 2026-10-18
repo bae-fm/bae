@@ -274,4 +274,7 @@
     <string name="invite_cancel">Zrušit pozvánku</string>
     <string name="join_requests_title">Žádosti o připojení</string>
     <string name="join_request_decline">Odmítnout</string>
+    <string name="settings_rename_library">Přejmenovat</string>
+    <string name="settings_library_name">Název knihovny</string>
+    <string name="settings_library_switch">Přepnout na jinou knihovnu v tomto zařízení</string>
 </resources>

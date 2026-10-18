@@ -269,4 +269,7 @@
     <string name="invite_cancel">Peruuta kutsu</string>
     <string name="join_requests_title">Liittymispyynnöt</string>
     <string name="join_request_decline">Hylkää</string>
+    <string name="settings_rename_library">Nimeä uudelleen</string>
+    <string name="settings_library_name">Kirjaston nimi</string>
+    <string name="settings_library_switch">Vaihda toiseen tämän laitteen kirjastoon</string>
 </resources>
