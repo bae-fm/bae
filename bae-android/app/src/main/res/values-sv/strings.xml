@@ -84,15 +84,8 @@
     <string name="settings_sync">Synkronisering</string>
     <string name="settings_cloud_sync_on">Molnsynkronisering på</string>
     <string name="settings_local_only">Endast lokalt</string>
-    <string name="settings_synced">Synkroniserad</string>
-    <string name="settings_syncing">Synkroniserar…</string>
-    <string name="settings_sync_disconnected">Frånkopplad</string>
+    <string name="settings_sync_unconnected">Frånkopplad</string>
     <string name="settings_reconnect">Anslut igen</string>
-    <string name="settings_retry">Försök igen</string>
-    <string name="settings_sync_waiting">Synkroniseringen väntar på dig</string>
-    <string name="sync_blocked_write">Biblioteksändring</string>
-    <string name="sync_blocked_circle_operation">Delningsändring</string>
-    <string name="sync_blocked_reclaim">Molnstädning</string>
     <string name="settings_pause_between_sides">Paus mellan sidor och skivor</string>
     <string name="settings_side_pause_countdown">Nedräkning</string>
     <string name="settings_side_pause_countdown_off">Av</string>
@@ -234,4 +227,15 @@
     <string name="onboarding_status_waiting_for_approval">Väntar på att en administratör för biblioteket godkänner den här enheten …</string>
     <string name="onboarding_status_loading">Läser in biblioteket …</string>
     <string name="onboarding_invite_declined">Inbjudan avböjdes eller har gått ut.</string>
+    <string name="pending_update_no_store">Ingen appbutik på den här enheten kan uppdatera bae.</string>
+    <string name="admin_access_title">Administratörsåtkomst</string>
+    <string name="admin_access_explanation">Det här kräver inloggningsuppgifter som kan hantera lagringens åtkomstnycklar. bae använder dem bara för det här steget och sparar dem inte.</string>
+    <string name="admin_access_key">Åtkomstnyckel</string>
+    <string name="admin_access_token">API-token</string>
+    <string name="admin_access_session_token">Sessionstoken (valfritt)</string>
+    <string name="admin_access_iam_endpoint">IAM-slutpunkt (valfritt)</string>
+    <string name="delete_key_title">Radera åtkomstnyckel</string>
+    <string name="delete_key_body">Åtkomstnyckeln %1$s, som en borttagen enhet använde, behöver fortfarande raderas. Radera den här med administratörsåtkomst, eller bekräfta att du har raderat den i leverantörens konsol.</string>
+    <string name="delete_key_with_admin">Radera den här</string>
+    <string name="delete_key_done">Jag har raderat den</string>
 </resources>

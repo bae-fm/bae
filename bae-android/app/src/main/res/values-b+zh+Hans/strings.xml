@@ -80,15 +80,8 @@
     <string name="settings_sync">同步</string>
     <string name="settings_cloud_sync_on">云同步已开启</string>
     <string name="settings_local_only">仅本地</string>
-    <string name="settings_synced">已同步</string>
-    <string name="settings_syncing">同步中…</string>
-    <string name="settings_sync_disconnected">已断开连接</string>
+    <string name="settings_sync_unconnected">已断开连接</string>
     <string name="settings_reconnect">重新连接</string>
-    <string name="settings_retry">重试</string>
-    <string name="settings_sync_waiting">同步正在等待你的处理</string>
-    <string name="sync_blocked_write">库更改</string>
-    <string name="sync_blocked_circle_operation">共享更改</string>
-    <string name="sync_blocked_reclaim">云端清理</string>
     <string name="settings_pause_between_sides">面或碟片之间暂停</string>
     <string name="settings_side_pause_countdown">倒计时</string>
     <string name="settings_side_pause_countdown_off">关闭</string>
@@ -233,4 +226,15 @@
     <string name="onboarding_status_waiting_for_approval">正在等待库的管理员批准此设备…</string>
     <string name="onboarding_status_loading">正在载入库…</string>
     <string name="onboarding_invite_declined">邀请已被拒绝或已过期。</string>
+    <string name="pending_update_no_store">此设备上没有可以更新 bae 的应用商店。</string>
+    <string name="admin_access_title">管理员访问权限</string>
+    <string name="admin_access_explanation">这需要能够管理存储访问密钥的凭据。bae 只在这一步使用它们，不会保留。</string>
+    <string name="admin_access_key">访问密钥</string>
+    <string name="admin_access_token">API 令牌</string>
+    <string name="admin_access_session_token">会话令牌（可选）</string>
+    <string name="admin_access_iam_endpoint">IAM 端点（可选）</string>
+    <string name="delete_key_title">删除访问密钥</string>
+    <string name="delete_key_body">已移除设备使用的访问密钥 %1$s 仍需删除。可在此使用管理员访问权限删除，或确认你已在提供商的控制台中删除。</string>
+    <string name="delete_key_with_admin">在此删除</string>
+    <string name="delete_key_done">我已删除</string>
 </resources>

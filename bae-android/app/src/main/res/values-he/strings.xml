@@ -80,15 +80,8 @@
     <string name="settings_sync">סנכרון</string>
     <string name="settings_cloud_sync_on">סנכרון ענן מופעל</string>
     <string name="settings_local_only">מקומי בלבד</string>
-    <string name="settings_synced">מסונכרן</string>
-    <string name="settings_syncing">מסנכרן…</string>
-    <string name="settings_sync_disconnected">מנותק</string>
+    <string name="settings_sync_unconnected">מנותק</string>
     <string name="settings_reconnect">התחבר מחדש</string>
-    <string name="settings_retry">נסה שוב</string>
-    <string name="settings_sync_waiting">הסנכרון ממתין לך</string>
-    <string name="sync_blocked_write">שינוי בספרייה</string>
-    <string name="sync_blocked_circle_operation">שינוי בשיתוף</string>
-    <string name="sync_blocked_reclaim">ניקוי בענן</string>
     <string name="settings_pause_between_sides">השהיה בין צדדים ודיסקים</string>
     <string name="settings_side_pause_countdown">ספירה לאחור</string>
     <string name="settings_side_pause_countdown_off">כבוי</string>
@@ -237,4 +230,15 @@
     <string name="onboarding_status_waiting_for_approval">ממתינים שמנהל של הספרייה יאשר את המכשיר הזה…</string>
     <string name="onboarding_status_loading">טוענים את הספרייה…</string>
     <string name="onboarding_invite_declined">ההזמנה נדחתה או שתוקפה פג.</string>
+    <string name="pending_update_no_store">אין במכשיר הזה חנות אפליקציות שיכולה לעדכן את bae.</string>
+    <string name="admin_access_title">גישת מנהל</string>
+    <string name="admin_access_explanation">נדרשים פרטי התחברות שיכולים לנהל את מפתחות הגישה של האחסון. bae משתמש בהם לשלב הזה בלבד ואינו שומר אותם.</string>
+    <string name="admin_access_key">מפתח גישה</string>
+    <string name="admin_access_token">אסימון API</string>
+    <string name="admin_access_session_token">אסימון הפעלה (אופציונלי)</string>
+    <string name="admin_access_iam_endpoint">נקודת קצה של IAM (אופציונלי)</string>
+    <string name="delete_key_title">מחיקת מפתח הגישה</string>
+    <string name="delete_key_body">עדיין צריך למחוק את מפתח הגישה %1$s, שבו השתמש מכשיר שהוסר. מחקו אותו כאן עם גישת מנהל, או אשרו שמחקתם אותו במסוף של הספק.</string>
+    <string name="delete_key_with_admin">מחיקה כאן</string>
+    <string name="delete_key_done">מחקתי אותו</string>
 </resources>

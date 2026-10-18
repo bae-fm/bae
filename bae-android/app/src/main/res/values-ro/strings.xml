@@ -85,15 +85,8 @@
     <string name="settings_sync">Sincronizare</string>
     <string name="settings_cloud_sync_on">Sincronizare cloud activă</string>
     <string name="settings_local_only">Doar local</string>
-    <string name="settings_synced">Sincronizat</string>
-    <string name="settings_syncing">Se sincronizează…</string>
-    <string name="settings_sync_disconnected">Deconectat</string>
+    <string name="settings_sync_unconnected">Deconectat</string>
     <string name="settings_reconnect">Reconectează</string>
-    <string name="settings_retry">Reîncearcă</string>
-    <string name="settings_sync_waiting">Sincronizarea te așteaptă</string>
-    <string name="sync_blocked_write">Modificare de bibliotecă</string>
-    <string name="sync_blocked_circle_operation">Modificare de partajare</string>
-    <string name="sync_blocked_reclaim">Curățare cloud</string>
     <string name="settings_pause_between_sides">Pauză între fețe și discuri</string>
     <string name="settings_side_pause_countdown">Numărătoare inversă</string>
     <string name="settings_side_pause_countdown_off">Oprit</string>
@@ -236,4 +229,15 @@
     <string name="onboarding_status_waiting_for_approval">Se așteaptă ca un administrator al bibliotecii să aprobe acest dispozitiv…</string>
     <string name="onboarding_status_loading">Se încarcă biblioteca…</string>
     <string name="onboarding_invite_declined">Invitația a fost refuzată sau a expirat.</string>
+    <string name="pending_update_no_store">Niciun magazin de aplicații de pe acest dispozitiv nu poate actualiza bae.</string>
+    <string name="admin_access_title">Acces de administrator</string>
+    <string name="admin_access_explanation">Este nevoie de date de autentificare care pot gestiona cheile de acces ale spațiului de stocare. bae le folosește doar pentru acest pas și nu le păstrează.</string>
+    <string name="admin_access_key">Cheie de acces</string>
+    <string name="admin_access_token">Token API</string>
+    <string name="admin_access_session_token">Token de sesiune (opțional)</string>
+    <string name="admin_access_iam_endpoint">Endpoint IAM (opțional)</string>
+    <string name="delete_key_title">Șterge cheia de acces</string>
+    <string name="delete_key_body">Cheia de acces %1$s, folosită de un dispozitiv eliminat, trebuie încă ștearsă. Șterge-o aici cu acces de administrator sau confirmă că ai șters-o în consola furnizorului.</string>
+    <string name="delete_key_with_admin">Șterge-o aici</string>
+    <string name="delete_key_done">Am șters-o</string>
 </resources>

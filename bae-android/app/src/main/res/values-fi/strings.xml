@@ -84,15 +84,8 @@
     <string name="settings_sync">Synkronointi</string>
     <string name="settings_cloud_sync_on">Pilvisynkronointi päällä</string>
     <string name="settings_local_only">Vain paikallisesti</string>
-    <string name="settings_synced">Synkronoitu</string>
-    <string name="settings_syncing">Synkronoidaan…</string>
-    <string name="settings_sync_disconnected">Yhteys katkaistu</string>
+    <string name="settings_sync_unconnected">Yhteys katkaistu</string>
     <string name="settings_reconnect">Yhdistä uudelleen</string>
-    <string name="settings_retry">Yritä uudelleen</string>
-    <string name="settings_sync_waiting">Synkronointi odottaa sinua</string>
-    <string name="sync_blocked_write">Kirjaston muutos</string>
-    <string name="sync_blocked_circle_operation">Jakamisen muutos</string>
-    <string name="sync_blocked_reclaim">Pilven siivous</string>
     <string name="settings_pause_between_sides">Tauko puolten ja levyjen välissä</string>
     <string name="settings_side_pause_countdown">Lähtölaskenta</string>
     <string name="settings_side_pause_countdown_off">Pois</string>
@@ -234,4 +227,15 @@
     <string name="onboarding_status_waiting_for_approval">Odotetaan, että kirjaston ylläpitäjä hyväksyy tämän laitteen…</string>
     <string name="onboarding_status_loading">Ladataan kirjastoa…</string>
     <string name="onboarding_invite_declined">Kutsu hylättiin tai se on vanhentunut.</string>
+    <string name="pending_update_no_store">Mikään tämän laitteen sovelluskauppa ei voi päivittää bae-sovellusta.</string>
+    <string name="admin_access_title">Järjestelmänvalvojan käyttöoikeus</string>
+    <string name="admin_access_explanation">Tähän tarvitaan tunnukset, joilla voi hallita tallennustilan käyttöavaimia. bae käyttää niitä vain tähän vaiheeseen eikä säilytä niitä.</string>
+    <string name="admin_access_key">Käyttöavain</string>
+    <string name="admin_access_token">API-tunnus</string>
+    <string name="admin_access_session_token">Istuntotunnus (valinnainen)</string>
+    <string name="admin_access_iam_endpoint">IAM-päätepiste (valinnainen)</string>
+    <string name="delete_key_title">Poista käyttöavain</string>
+    <string name="delete_key_body">Poistetun laitteen käyttämä käyttöavain %1$s on vielä poistettava. Poista se tässä järjestelmänvalvojan oikeuksilla tai vahvista, että poistit sen palveluntarjoajan konsolissa.</string>
+    <string name="delete_key_with_admin">Poista tässä</string>
+    <string name="delete_key_done">Poistin sen</string>
 </resources>

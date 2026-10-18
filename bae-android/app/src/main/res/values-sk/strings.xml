@@ -86,15 +86,8 @@
     <string name="settings_sync">Synchronizácia</string>
     <string name="settings_cloud_sync_on">Synchronizácia s cloudom zapnutá</string>
     <string name="settings_local_only">Len lokálne</string>
-    <string name="settings_synced">Synchronizované</string>
-    <string name="settings_syncing">Synchronizuje sa…</string>
-    <string name="settings_sync_disconnected">Odpojené</string>
+    <string name="settings_sync_unconnected">Odpojené</string>
     <string name="settings_reconnect">Znova pripojiť</string>
-    <string name="settings_retry">Skúsiť znova</string>
-    <string name="settings_sync_waiting">Synchronizácia čaká na teba</string>
-    <string name="sync_blocked_write">Zmena knižnice</string>
-    <string name="sync_blocked_circle_operation">Zmena zdieľania</string>
-    <string name="sync_blocked_reclaim">Vyčistenie cloudu</string>
     <string name="settings_pause_between_sides">Pauza medzi stranami a diskami</string>
     <string name="settings_side_pause_countdown">Odpočítavanie</string>
     <string name="settings_side_pause_countdown_off">Vypnuté</string>
@@ -238,4 +231,15 @@
     <string name="onboarding_status_waiting_for_approval">Čaká sa, kým správca knižnice schváli toto zariadenie…</string>
     <string name="onboarding_status_loading">Načítava sa knižnica…</string>
     <string name="onboarding_invite_declined">Pozvánka bola odmietnutá alebo jej platnosť vypršala.</string>
+    <string name="pending_update_no_store">Žiadny obchod s aplikáciami v tomto zariadení nemôže aktualizovať bae.</string>
+    <string name="admin_access_title">Prístup správcu</string>
+    <string name="admin_access_explanation">Sú potrebné prihlasovacie údaje, ktoré môžu spravovať prístupové kľúče úložiska. bae ich použije len na tento krok a neuchováva ich.</string>
+    <string name="admin_access_key">Prístupový kľúč</string>
+    <string name="admin_access_token">Token API</string>
+    <string name="admin_access_session_token">Token relácie (voliteľné)</string>
+    <string name="admin_access_iam_endpoint">Koncový bod IAM (voliteľné)</string>
+    <string name="delete_key_title">Odstrániť prístupový kľúč</string>
+    <string name="delete_key_body">Prístupový kľúč %1$s, ktorý používalo odstránené zariadenie, je ešte potrebné odstrániť. Odstráň ho tu s prístupom správcu alebo potvrď, že bol odstránený v konzole poskytovateľa.</string>
+    <string name="delete_key_with_admin">Odstrániť tu</string>
+    <string name="delete_key_done">Kľúč je odstránený</string>
 </resources>

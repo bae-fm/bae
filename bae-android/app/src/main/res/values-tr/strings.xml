@@ -80,15 +80,8 @@
     <string name="settings_sync">Eşzamanlama</string>
     <string name="settings_cloud_sync_on">Bulut eşzamanlama açık</string>
     <string name="settings_local_only">Yalnızca yerel</string>
-    <string name="settings_synced">Eşzamanlandı</string>
-    <string name="settings_syncing">Eşzamanlanıyor…</string>
-    <string name="settings_sync_disconnected">Bağlantı kesildi</string>
+    <string name="settings_sync_unconnected">Bağlantı kesildi</string>
     <string name="settings_reconnect">Yeniden bağlan</string>
-    <string name="settings_retry">Yeniden dene</string>
-    <string name="settings_sync_waiting">Eşzamanlama sizi bekliyor</string>
-    <string name="sync_blocked_write">Kitaplık değişikliği</string>
-    <string name="sync_blocked_circle_operation">Paylaşım değişikliği</string>
-    <string name="sync_blocked_reclaim">Bulut temizliği</string>
     <string name="settings_pause_between_sides">Yüzler ve diskler arasında duraklat</string>
     <string name="settings_side_pause_countdown">Geri sayım</string>
     <string name="settings_side_pause_countdown_off">Kapalı</string>
@@ -235,4 +228,15 @@
     <string name="onboarding_status_waiting_for_approval">Kitaplığın bir yöneticisinin bu cihazı onaylaması bekleniyor…</string>
     <string name="onboarding_status_loading">Kitaplık yükleniyor…</string>
     <string name="onboarding_invite_declined">Davet reddedildi veya süresi doldu.</string>
+    <string name="pending_update_no_store">Bu cihazdaki hiçbir uygulama mağazası bae’yi güncelleyemiyor.</string>
+    <string name="admin_access_title">Yönetici erişimi</string>
+    <string name="admin_access_explanation">Bunun için depolamanın erişim anahtarlarını yönetebilen kimlik bilgileri gerekir. bae bunları yalnızca bu adımda kullanır ve saklamaz.</string>
+    <string name="admin_access_key">Erişim anahtarı</string>
+    <string name="admin_access_token">API belirteci</string>
+    <string name="admin_access_session_token">Oturum belirteci (isteğe bağlı)</string>
+    <string name="admin_access_iam_endpoint">IAM uç noktası (isteğe bağlı)</string>
+    <string name="delete_key_title">Erişim anahtarını sil</string>
+    <string name="delete_key_body">Kaldırılan bir cihazın kullandığı %1$s erişim anahtarının hâlâ silinmesi gerekiyor. Yönetici erişimiyle burada silin ya da sağlayıcının konsolunda sildiğinizi onaylayın.</string>
+    <string name="delete_key_with_admin">Burada sil</string>
+    <string name="delete_key_done">Sildim</string>
 </resources>

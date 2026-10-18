@@ -80,15 +80,8 @@
     <string name="settings_sync">Sinkronizacija</string>
     <string name="settings_cloud_sync_on">Sinkronizacija s oblakom uključena</string>
     <string name="settings_local_only">Samo lokalno</string>
-    <string name="settings_synced">Sinkronizirano</string>
-    <string name="settings_syncing">Sinkronizacija…</string>
-    <string name="settings_sync_disconnected">Veza prekinuta</string>
+    <string name="settings_sync_unconnected">Veza prekinuta</string>
     <string name="settings_reconnect">Ponovno poveži</string>
-    <string name="settings_retry">Pokušaj ponovno</string>
-    <string name="settings_sync_waiting">Sinkronizacija čeka na vas</string>
-    <string name="sync_blocked_write">Promjena u fonoteci</string>
-    <string name="sync_blocked_circle_operation">Promjena dijeljenja</string>
-    <string name="sync_blocked_reclaim">Čišćenje u oblaku</string>
     <string name="settings_pause_between_sides">Pauza između strana i diskova</string>
     <string name="settings_side_pause_countdown">Odbrojavanje</string>
     <string name="settings_side_pause_countdown_off">Isključeno</string>
@@ -237,4 +230,15 @@
     <string name="onboarding_status_waiting_for_approval">Čeka se da administrator fonoteke odobri ovaj uređaj…</string>
     <string name="onboarding_status_loading">Učitavanje fonoteke…</string>
     <string name="onboarding_invite_declined">Pozivnica je odbijena ili je istekla.</string>
+    <string name="pending_update_no_store">Nijedna trgovina aplikacija na ovom uređaju ne može ažurirati bae.</string>
+    <string name="admin_access_title">Administratorski pristup</string>
+    <string name="admin_access_explanation">Za to su potrebne vjerodajnice koje mogu upravljati pristupnim ključevima pohrane. bae ih koristi samo za ovaj korak i ne čuva ih.</string>
+    <string name="admin_access_key">Pristupni ključ</string>
+    <string name="admin_access_token">API token</string>
+    <string name="admin_access_session_token">Token sesije (neobavezno)</string>
+    <string name="admin_access_iam_endpoint">IAM krajnja točka (neobavezno)</string>
+    <string name="delete_key_title">Izbriši pristupni ključ</string>
+    <string name="delete_key_body">Pristupni ključ %1$s, koji je koristio uklonjeni uređaj, još treba izbrisati. Izbrišite ga ovdje administratorskim pristupom ili potvrdite da ste ga izbrisali u konzoli pružatelja.</string>
+    <string name="delete_key_with_admin">Izbriši ga ovdje</string>
+    <string name="delete_key_done">Ključ je izbrisan</string>
 </resources>

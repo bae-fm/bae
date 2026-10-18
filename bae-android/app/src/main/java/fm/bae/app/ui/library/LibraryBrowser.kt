@@ -102,7 +102,7 @@ internal fun LibraryBrowser(
             onComposerSortChange = { state.composerSortCriterion = it },
             artistSortCriterion = state.artistSortCriterion,
             onArtistSortChange = { state.artistSortCriterion = it },
-            syncing = syncSnapshot?.syncing == true,
+            syncing = syncSnapshot?.running == true,
             onShuffleLibrary = { session.playLibraryShuffledOrReport(appContext, coroutineScope) },
             onSettings = onSettings,
         )

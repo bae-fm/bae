@@ -80,15 +80,8 @@
     <string name="settings_sync">Synchronisatie</string>
     <string name="settings_cloud_sync_on">Cloudsynchronisatie aan</string>
     <string name="settings_local_only">Alleen lokaal</string>
-    <string name="settings_synced">Gesynchroniseerd</string>
-    <string name="settings_syncing">Synchroniseren…</string>
-    <string name="settings_sync_disconnected">Verbinding verbroken</string>
+    <string name="settings_sync_unconnected">Verbinding verbroken</string>
     <string name="settings_reconnect">Opnieuw verbinden</string>
-    <string name="settings_retry">Opnieuw proberen</string>
-    <string name="settings_sync_waiting">Synchronisatie wacht op jou</string>
-    <string name="sync_blocked_write">Bibliotheekwijziging</string>
-    <string name="sync_blocked_circle_operation">Wijziging in delen</string>
-    <string name="sync_blocked_reclaim">Cloudopruiming</string>
     <string name="settings_pause_between_sides">Pauze tussen kanten en schijven</string>
     <string name="settings_side_pause_countdown">Aftellen</string>
     <string name="settings_side_pause_countdown_off">Uit</string>
@@ -235,4 +228,15 @@
     <string name="onboarding_status_waiting_for_approval">Wachten tot een beheerder van de bibliotheek dit apparaat goedkeurt…</string>
     <string name="onboarding_status_loading">Bibliotheek laden…</string>
     <string name="onboarding_invite_declined">De uitnodiging is afgewezen of verlopen.</string>
+    <string name="pending_update_no_store">Geen enkele appwinkel op dit apparaat kan bae bijwerken.</string>
+    <string name="admin_access_title">Beheerderstoegang</string>
+    <string name="admin_access_explanation">Hiervoor zijn inloggegevens nodig die de toegangssleutels van de opslag kunnen beheren. bae gebruikt ze alleen voor deze stap en bewaart ze niet.</string>
+    <string name="admin_access_key">Toegangssleutel</string>
+    <string name="admin_access_token">API-token</string>
+    <string name="admin_access_session_token">Sessietoken (optioneel)</string>
+    <string name="admin_access_iam_endpoint">IAM-eindpunt (optioneel)</string>
+    <string name="delete_key_title">Toegangssleutel verwijderen</string>
+    <string name="delete_key_body">De toegangssleutel %1$s, gebruikt door een verwijderd apparaat, moet nog worden verwijderd. Verwijder hem hier met beheerderstoegang, of bevestig dat je hem in de console van de provider hebt verwijderd.</string>
+    <string name="delete_key_with_admin">Hier verwijderen</string>
+    <string name="delete_key_done">Ik heb hem verwijderd</string>
 </resources>

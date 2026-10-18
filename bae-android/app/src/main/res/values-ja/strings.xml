@@ -80,15 +80,8 @@
     <string name="settings_sync">同期</string>
     <string name="settings_cloud_sync_on">クラウド同期オン</string>
     <string name="settings_local_only">ローカルのみ</string>
-    <string name="settings_synced">同期済み</string>
-    <string name="settings_syncing">同期中…</string>
-    <string name="settings_sync_disconnected">切断されました</string>
+    <string name="settings_sync_unconnected">切断されました</string>
     <string name="settings_reconnect">再接続</string>
-    <string name="settings_retry">再試行</string>
-    <string name="settings_sync_waiting">同期があなたの操作を待っています</string>
-    <string name="sync_blocked_write">ライブラリの変更</string>
-    <string name="sync_blocked_circle_operation">共有の変更</string>
-    <string name="sync_blocked_reclaim">クラウドの整理</string>
     <string name="settings_pause_between_sides">面やディスクの間で一時停止</string>
     <string name="settings_side_pause_countdown">カウントダウン</string>
     <string name="settings_side_pause_countdown_off">オフ</string>
@@ -233,4 +226,15 @@
     <string name="onboarding_status_waiting_for_approval">ライブラリの管理者がこのデバイスを承認するのを待っています…</string>
     <string name="onboarding_status_loading">ライブラリを読み込んでいます…</string>
     <string name="onboarding_invite_declined">招待は拒否されたか、有効期限が切れています。</string>
+    <string name="pending_update_no_store">このデバイスには bae を更新できるアプリストアがありません。</string>
+    <string name="admin_access_title">管理者アクセス</string>
+    <string name="admin_access_explanation">ストレージのアクセスキーを管理できる認証情報が必要です。bae はこの手順にのみ使用し、保存しません。</string>
+    <string name="admin_access_key">アクセスキー</string>
+    <string name="admin_access_token">API トークン</string>
+    <string name="admin_access_session_token">セッショントークン（任意）</string>
+    <string name="admin_access_iam_endpoint">IAM エンドポイント（任意）</string>
+    <string name="delete_key_title">アクセスキーを削除</string>
+    <string name="delete_key_body">削除したデバイスが使っていたアクセスキー %1$s をまだ削除する必要があります。ここで管理者アクセスを使って削除するか、プロバイダのコンソールで削除したことを確認してください。</string>
+    <string name="delete_key_with_admin">ここで削除</string>
+    <string name="delete_key_done">削除しました</string>
 </resources>

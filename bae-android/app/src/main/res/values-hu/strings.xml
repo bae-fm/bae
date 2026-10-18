@@ -84,15 +84,8 @@
     <string name="settings_sync">Szinkronizálás</string>
     <string name="settings_cloud_sync_on">Felhőszinkronizálás bekapcsolva</string>
     <string name="settings_local_only">Csak helyi</string>
-    <string name="settings_synced">Szinkronizálva</string>
-    <string name="settings_syncing">Szinkronizálás…</string>
-    <string name="settings_sync_disconnected">Leválasztva</string>
+    <string name="settings_sync_unconnected">Leválasztva</string>
     <string name="settings_reconnect">Újrakapcsolódás</string>
-    <string name="settings_retry">Újra</string>
-    <string name="settings_sync_waiting">A szinkronizálás rád vár</string>
-    <string name="sync_blocked_write">Könyvtármódosítás</string>
-    <string name="sync_blocked_circle_operation">Megosztásmódosítás</string>
-    <string name="sync_blocked_reclaim">Felhőtakarítás</string>
     <string name="settings_pause_between_sides">Szünet a lemezoldalak és lemezek között</string>
     <string name="settings_side_pause_countdown">Visszaszámlálás</string>
     <string name="settings_side_pause_countdown_off">Ki</string>
@@ -234,4 +227,15 @@
     <string name="onboarding_status_waiting_for_approval">Várakozás arra, hogy a könyvtár egyik adminisztrátora jóváhagyja ezt az eszközt…</string>
     <string name="onboarding_status_loading">A könyvtár betöltése…</string>
     <string name="onboarding_invite_declined">A meghívót elutasították, vagy lejárt.</string>
+    <string name="pending_update_no_store">Ezen az eszközön nincs olyan alkalmazásbolt, amely frissíteni tudná a bae-t.</string>
+    <string name="admin_access_title">Rendszergazdai hozzáférés</string>
+    <string name="admin_access_explanation">Ehhez olyan hitelesítő adatok kellenek, amelyek kezelhetik a tárhely hozzáférési kulcsait. A bae csak ehhez a lépéshez használja, és nem tárolja őket.</string>
+    <string name="admin_access_key">Hozzáférési kulcs</string>
+    <string name="admin_access_token">API-token</string>
+    <string name="admin_access_session_token">Munkamenet-token (nem kötelező)</string>
+    <string name="admin_access_iam_endpoint">IAM-végpont (nem kötelező)</string>
+    <string name="delete_key_title">Hozzáférési kulcs törlése</string>
+    <string name="delete_key_body">Az eltávolított eszköz által használt %1$s hozzáférési kulcsot még törölni kell. Töröld itt rendszergazdai hozzáféréssel, vagy erősítsd meg, hogy a szolgáltató konzoljában törölted.</string>
+    <string name="delete_key_with_admin">Törlés itt</string>
+    <string name="delete_key_done">Töröltem</string>
 </resources>

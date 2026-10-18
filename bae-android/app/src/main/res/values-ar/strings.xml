@@ -80,15 +80,8 @@
     <string name="settings_sync">المزامنة</string>
     <string name="settings_cloud_sync_on">المزامنة السحابية مفعّلة</string>
     <string name="settings_local_only">محلي فقط</string>
-    <string name="settings_synced">تمت المزامنة</string>
-    <string name="settings_syncing">جارٍ المزامنة…</string>
-    <string name="settings_sync_disconnected">غير متصل</string>
+    <string name="settings_sync_unconnected">غير متصل</string>
     <string name="settings_reconnect">إعادة الاتصال</string>
-    <string name="settings_retry">إعادة المحاولة</string>
-    <string name="settings_sync_waiting">المزامنة في انتظارك</string>
-    <string name="sync_blocked_write">تغيير في المكتبة</string>
-    <string name="sync_blocked_circle_operation">تغيير في المشاركة</string>
-    <string name="sync_blocked_reclaim">تنظيف السحابة</string>
     <string name="settings_pause_between_sides">إيقاف مؤقت بين الجوانب والأقراص</string>
     <string name="settings_side_pause_countdown">العد التنازلي</string>
     <string name="settings_side_pause_countdown_off">إيقاف</string>
@@ -243,4 +236,15 @@
     <string name="onboarding_status_waiting_for_approval">في انتظار موافقة أحد مسؤولي المكتبة على هذا الجهاز…</string>
     <string name="onboarding_status_loading">جارٍ تحميل المكتبة…</string>
     <string name="onboarding_invite_declined">رُفضت الدعوة أو انتهت صلاحيتها.</string>
+    <string name="pending_update_no_store">لا يوجد متجر تطبيقات على هذا الجهاز يمكنه تحديث bae.</string>
+    <string name="admin_access_title">وصول المسؤول</string>
+    <string name="admin_access_explanation">يتطلب هذا بيانات اعتماد يمكنها إدارة مفاتيح الوصول إلى التخزين. يستخدمها bae لهذه الخطوة فقط ولا يحتفظ بها.</string>
+    <string name="admin_access_key">مفتاح وصول</string>
+    <string name="admin_access_token">رمز API</string>
+    <string name="admin_access_session_token">رمز الجلسة (اختياري)</string>
+    <string name="admin_access_iam_endpoint">نقطة نهاية IAM (اختياري)</string>
+    <string name="delete_key_title">حذف مفتاح الوصول</string>
+    <string name="delete_key_body">لا يزال مفتاح الوصول %1$s، الذي استخدمه جهاز أُزيل، بحاجة إلى الحذف. احذفه هنا باستخدام وصول المسؤول، أو أكّد أنك حذفته في وحدة تحكم المزوّد.</string>
+    <string name="delete_key_with_admin">حذفه هنا</string>
+    <string name="delete_key_done">لقد حذفته</string>
 </resources>

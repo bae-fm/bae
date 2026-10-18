@@ -84,15 +84,8 @@
     <string name="settings_sync">Synkronisering</string>
     <string name="settings_cloud_sync_on">Skysynkronisering er på</string>
     <string name="settings_local_only">Bare lokalt</string>
-    <string name="settings_synced">Synkronisert</string>
-    <string name="settings_syncing">Synkroniserer…</string>
-    <string name="settings_sync_disconnected">Frakoblet</string>
+    <string name="settings_sync_unconnected">Frakoblet</string>
     <string name="settings_reconnect">Koble til på nytt</string>
-    <string name="settings_retry">Prøv på nytt</string>
-    <string name="settings_sync_waiting">Synkroniseringen venter på deg</string>
-    <string name="sync_blocked_write">Biblioteksendring</string>
-    <string name="sync_blocked_circle_operation">Delingsendring</string>
-    <string name="sync_blocked_reclaim">Skyopprydding</string>
     <string name="settings_pause_between_sides">Pause mellom sider og plater</string>
     <string name="settings_side_pause_countdown">Nedtelling</string>
     <string name="settings_side_pause_countdown_off">Av</string>
@@ -234,4 +227,15 @@
     <string name="onboarding_status_waiting_for_approval">Venter på at en administrator for biblioteket godkjenner denne enheten …</string>
     <string name="onboarding_status_loading">Laster inn biblioteket …</string>
     <string name="onboarding_invite_declined">Invitasjonen ble avslått eller har utløpt.</string>
+    <string name="pending_update_no_store">Ingen appbutikk på denne enheten kan oppdatere bae.</string>
+    <string name="admin_access_title">Administratortilgang</string>
+    <string name="admin_access_explanation">Dette krever påloggingsinformasjon som kan administrere lagringens tilgangsnøkler. bae bruker den bare til dette trinnet og tar ikke vare på den.</string>
+    <string name="admin_access_key">Tilgangsnøkkel</string>
+    <string name="admin_access_token">API-token</string>
+    <string name="admin_access_session_token">Økttoken (valgfritt)</string>
+    <string name="admin_access_iam_endpoint">IAM-endepunkt (valgfritt)</string>
+    <string name="delete_key_title">Slett tilgangsnøkkel</string>
+    <string name="delete_key_body">Tilgangsnøkkelen %1$s, som en fjernet enhet brukte, må fortsatt slettes. Slett den her med administratortilgang, eller bekreft at du har slettet den i leverandørens konsoll.</string>
+    <string name="delete_key_with_admin">Slett den her</string>
+    <string name="delete_key_done">Jeg har slettet den</string>
 </resources>

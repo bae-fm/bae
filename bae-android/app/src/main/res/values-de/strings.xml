@@ -80,15 +80,8 @@
     <string name="settings_sync">Synchronisierung</string>
     <string name="settings_cloud_sync_on">Cloud-Sync ein</string>
     <string name="settings_local_only">Nur lokal</string>
-    <string name="settings_synced">Synchronisiert</string>
-    <string name="settings_syncing">Synchronisierung …</string>
-    <string name="settings_sync_disconnected">Getrennt</string>
+    <string name="settings_sync_unconnected">Getrennt</string>
     <string name="settings_reconnect">Erneut verbinden</string>
-    <string name="settings_retry">Erneut versuchen</string>
-    <string name="settings_sync_waiting">Sync wartet auf dich</string>
-    <string name="sync_blocked_write">Bibliotheksänderung</string>
-    <string name="sync_blocked_circle_operation">Freigabeänderung</string>
-    <string name="sync_blocked_reclaim">Cloud-Bereinigung</string>
     <string name="settings_pause_between_sides">Pause zwischen Seiten und Discs</string>
     <string name="settings_side_pause_countdown">Countdown</string>
     <string name="settings_side_pause_countdown_off">Aus</string>
@@ -235,4 +228,15 @@
     <string name="onboarding_status_waiting_for_approval">Warten, bis ein Admin der Bibliothek dieses Gerät genehmigt …</string>
     <string name="onboarding_status_loading">Bibliothek wird geladen …</string>
     <string name="onboarding_invite_declined">Die Einladung wurde abgelehnt oder ist abgelaufen.</string>
+    <string name="pending_update_no_store">Kein App-Store auf diesem Gerät kann bae aktualisieren.</string>
+    <string name="admin_access_title">Administratorzugriff</string>
+    <string name="admin_access_explanation">Dafür sind Zugangsdaten nötig, die die Zugriffsschlüssel des Speichers verwalten können. bae nutzt sie nur für diesen Schritt und behält sie nicht.</string>
+    <string name="admin_access_key">Zugriffsschlüssel</string>
+    <string name="admin_access_token">API-Token</string>
+    <string name="admin_access_session_token">Sitzungstoken (optional)</string>
+    <string name="admin_access_iam_endpoint">IAM-Endpunkt (optional)</string>
+    <string name="delete_key_title">Zugriffsschlüssel löschen</string>
+    <string name="delete_key_body">Der Zugriffsschlüssel %1$s, den ein entferntes Gerät verwendet hat, muss noch gelöscht werden. Lösche ihn hier mit Administratorzugriff oder bestätige, dass du ihn in der Konsole des Anbieters gelöscht hast.</string>
+    <string name="delete_key_with_admin">Hier löschen</string>
+    <string name="delete_key_done">Ich habe ihn gelöscht</string>
 </resources>

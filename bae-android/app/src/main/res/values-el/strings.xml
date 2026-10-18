@@ -84,15 +84,8 @@
     <string name="settings_sync">Συγχρονισμός</string>
     <string name="settings_cloud_sync_on">Ο συγχρονισμός cloud είναι ενεργός</string>
     <string name="settings_local_only">Μόνο τοπικά</string>
-    <string name="settings_synced">Συγχρονισμένο</string>
-    <string name="settings_syncing">Συγχρονισμός…</string>
-    <string name="settings_sync_disconnected">Αποσυνδεδεμένο</string>
+    <string name="settings_sync_unconnected">Αποσυνδεδεμένο</string>
     <string name="settings_reconnect">Επανασύνδεση</string>
-    <string name="settings_retry">Δοκιμή ξανά</string>
-    <string name="settings_sync_waiting">Ο συγχρονισμός σάς περιμένει</string>
-    <string name="sync_blocked_write">Αλλαγή βιβλιοθήκης</string>
-    <string name="sync_blocked_circle_operation">Αλλαγή κοινής χρήσης</string>
-    <string name="sync_blocked_reclaim">Εκκαθάριση cloud</string>
     <string name="settings_pause_between_sides">Παύση ανάμεσα σε πλευρές και δίσκους</string>
     <string name="settings_side_pause_countdown">Αντίστροφη μέτρηση</string>
     <string name="settings_side_pause_countdown_off">Ανενεργό</string>
@@ -234,4 +227,15 @@
     <string name="onboarding_status_waiting_for_approval">Αναμονή για έγκριση αυτής της συσκευής από διαχειριστή της βιβλιοθήκης…</string>
     <string name="onboarding_status_loading">Γίνεται φόρτωση της βιβλιοθήκης…</string>
     <string name="onboarding_invite_declined">Η πρόσκληση απορρίφθηκε ή έληξε.</string>
+    <string name="pending_update_no_store">Κανένα κατάστημα εφαρμογών σε αυτή τη συσκευή δεν μπορεί να ενημερώσει το bae.</string>
+    <string name="admin_access_title">Πρόσβαση διαχειριστή</string>
+    <string name="admin_access_explanation">Χρειάζονται διαπιστευτήρια που μπορούν να διαχειριστούν τα κλειδιά πρόσβασης του χώρου αποθήκευσης. Το bae τα χρησιμοποιεί μόνο για αυτό το βήμα και δεν τα κρατά.</string>
+    <string name="admin_access_key">Κλειδί πρόσβασης</string>
+    <string name="admin_access_token">Διακριτικό API</string>
+    <string name="admin_access_session_token">Διακριτικό συνεδρίας (προαιρετικό)</string>
+    <string name="admin_access_iam_endpoint">Τελικό σημείο IAM (προαιρετικό)</string>
+    <string name="delete_key_title">Διαγραφή κλειδιού πρόσβασης</string>
+    <string name="delete_key_body">Το κλειδί πρόσβασης %1$s, που χρησιμοποιούσε μια συσκευή που αφαιρέθηκε, πρέπει ακόμη να διαγραφεί. Διαγράψτε το εδώ με πρόσβαση διαχειριστή ή επιβεβαιώστε ότι το διαγράψατε στην κονσόλα του παρόχου.</string>
+    <string name="delete_key_with_admin">Διαγραφή εδώ</string>
+    <string name="delete_key_done">Το διέγραψα</string>
 </resources>

@@ -80,15 +80,8 @@
     <string name="settings_sync">Синхронізація</string>
     <string name="settings_cloud_sync_on">Хмарну синхронізацію ввімкнено</string>
     <string name="settings_local_only">Лише локально</string>
-    <string name="settings_synced">Синхронізовано</string>
-    <string name="settings_syncing">Синхронізація…</string>
-    <string name="settings_sync_disconnected">Відключено</string>
+    <string name="settings_sync_unconnected">Відключено</string>
     <string name="settings_reconnect">Підключити знову</string>
-    <string name="settings_retry">Повторити</string>
-    <string name="settings_sync_waiting">Синхронізація чекає на вас</string>
-    <string name="sync_blocked_write">Зміна бібліотеки</string>
-    <string name="sync_blocked_circle_operation">Зміна спільного доступу</string>
-    <string name="sync_blocked_reclaim">Очищення у хмарі</string>
     <string name="settings_pause_between_sides">Пауза між сторонами та дисками</string>
     <string name="settings_side_pause_countdown">Зворотний відлік</string>
     <string name="settings_side_pause_countdown_off">Вимкнено</string>
@@ -239,4 +232,15 @@
     <string name="onboarding_status_waiting_for_approval">Очікування, поки адміністратор бібліотеки схвалить цей пристрій…</string>
     <string name="onboarding_status_loading">Завантаження бібліотеки…</string>
     <string name="onboarding_invite_declined">Запрошення відхилено, або його термін минув.</string>
+    <string name="pending_update_no_store">Жодна крамниця застосунків на цьому пристрої не може оновити bae.</string>
+    <string name="admin_access_title">Доступ адміністратора</string>
+    <string name="admin_access_explanation">Для цього потрібні облікові дані, які можуть керувати ключами доступу до сховища. bae використовує їх лише для цього кроку й не зберігає.</string>
+    <string name="admin_access_key">Ключ доступу</string>
+    <string name="admin_access_token">Токен API</string>
+    <string name="admin_access_session_token">Токен сеансу (необов’язково)</string>
+    <string name="admin_access_iam_endpoint">Кінцева точка IAM (необов’язково)</string>
+    <string name="delete_key_title">Видалити ключ доступу</string>
+    <string name="delete_key_body">Ключ доступу %1$s, який використовував вилучений пристрій, ще потрібно видалити. Видаліть його тут із доступом адміністратора або підтвердьте, що видалили його в консолі постачальника.</string>
+    <string name="delete_key_with_admin">Видалити тут</string>
+    <string name="delete_key_done">Ключ видалено</string>
 </resources>

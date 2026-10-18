@@ -80,15 +80,8 @@
     <string name="settings_sync">Synchronizacja</string>
     <string name="settings_cloud_sync_on">Synchronizacja z chmurą włączona</string>
     <string name="settings_local_only">Tylko lokalnie</string>
-    <string name="settings_synced">Zsynchronizowano</string>
-    <string name="settings_syncing">Synchronizowanie…</string>
-    <string name="settings_sync_disconnected">Rozłączono</string>
+    <string name="settings_sync_unconnected">Rozłączono</string>
     <string name="settings_reconnect">Połącz ponownie</string>
-    <string name="settings_retry">Ponów</string>
-    <string name="settings_sync_waiting">Synchronizacja czeka na Ciebie</string>
-    <string name="sync_blocked_write">Zmiana w bibliotece</string>
-    <string name="sync_blocked_circle_operation">Zmiana udostępniania</string>
-    <string name="sync_blocked_reclaim">Porządkowanie w chmurze</string>
     <string name="settings_pause_between_sides">Pauza między stronami i płytami</string>
     <string name="settings_side_pause_countdown">Odliczanie</string>
     <string name="settings_side_pause_countdown_off">Wyłączone</string>
@@ -239,4 +232,15 @@
     <string name="onboarding_status_waiting_for_approval">Oczekiwanie, aż administrator biblioteki zatwierdzi to urządzenie…</string>
     <string name="onboarding_status_loading">Wczytywanie biblioteki…</string>
     <string name="onboarding_invite_declined">Zaproszenie zostało odrzucone lub wygasło.</string>
+    <string name="pending_update_no_store">Żaden sklep z aplikacjami na tym urządzeniu nie może zaktualizować bae.</string>
+    <string name="admin_access_title">Dostęp administratora</string>
+    <string name="admin_access_explanation">Potrzebne są dane logowania, które mogą zarządzać kluczami dostępu do magazynu. bae używa ich tylko w tym kroku i ich nie przechowuje.</string>
+    <string name="admin_access_key">Klucz dostępu</string>
+    <string name="admin_access_token">Token API</string>
+    <string name="admin_access_session_token">Token sesji (opcjonalnie)</string>
+    <string name="admin_access_iam_endpoint">Punkt końcowy IAM (opcjonalnie)</string>
+    <string name="delete_key_title">Usuń klucz dostępu</string>
+    <string name="delete_key_body">Klucz dostępu %1$s, używany przez usunięte urządzenie, nadal trzeba usunąć. Usuń go tutaj z dostępem administratora albo potwierdź, że usunięto go w konsoli dostawcy.</string>
+    <string name="delete_key_with_admin">Usuń tutaj</string>
+    <string name="delete_key_done">Usunięto go</string>
 </resources>

@@ -80,15 +80,8 @@
     <string name="settings_sync">Synchronisation</string>
     <string name="settings_cloud_sync_on">Synchronisation cloud activée</string>
     <string name="settings_local_only">Local uniquement</string>
-    <string name="settings_synced">Synchronisé</string>
-    <string name="settings_syncing">Synchronisation…</string>
-    <string name="settings_sync_disconnected">Déconnecté</string>
+    <string name="settings_sync_unconnected">Déconnecté</string>
     <string name="settings_reconnect">Reconnecter</string>
-    <string name="settings_retry">Réessayer</string>
-    <string name="settings_sync_waiting">La synchronisation vous attend</string>
-    <string name="sync_blocked_write">Modification de la bibliothèque</string>
-    <string name="sync_blocked_circle_operation">Modification du partage</string>
-    <string name="sync_blocked_reclaim">Nettoyage du cloud</string>
     <string name="settings_pause_between_sides">Pause entre les faces et les disques</string>
     <string name="settings_side_pause_countdown">Compte à rebours</string>
     <string name="settings_side_pause_countdown_off">Désactivé</string>
@@ -236,4 +229,15 @@
     <string name="onboarding_status_waiting_for_approval">En attente de l’approbation de cet appareil par un administrateur de la bibliothèque…</string>
     <string name="onboarding_status_loading">Chargement de la bibliothèque…</string>
     <string name="onboarding_invite_declined">L’invitation a été refusée ou a expiré.</string>
+    <string name="pending_update_no_store">Aucune boutique d’applications sur cet appareil ne peut mettre à jour bae.</string>
+    <string name="admin_access_title">Accès administrateur</string>
+    <string name="admin_access_explanation">Il faut des identifiants capables de gérer les clés d’accès du stockage. bae les utilise pour cette étape uniquement et ne les conserve pas.</string>
+    <string name="admin_access_key">Clé d’accès</string>
+    <string name="admin_access_token">Jeton d’API</string>
+    <string name="admin_access_session_token">Jeton de session (facultatif)</string>
+    <string name="admin_access_iam_endpoint">Point de terminaison IAM (facultatif)</string>
+    <string name="delete_key_title">Supprimer la clé d’accès</string>
+    <string name="delete_key_body">La clé d’accès %1$s, utilisée par un appareil retiré, doit encore être supprimée. Supprimez-la ici avec un accès administrateur, ou confirmez que vous l’avez supprimée dans la console du fournisseur.</string>
+    <string name="delete_key_with_admin">La supprimer ici</string>
+    <string name="delete_key_done">Je l’ai supprimée</string>
 </resources>

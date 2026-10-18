@@ -80,15 +80,8 @@
     <string name="settings_sync">同步</string>
     <string name="settings_cloud_sync_on">你的雲 同步</string>
     <string name="settings_local_only">僅本機</string>
-    <string name="settings_synced">同步</string>
-    <string name="settings_syncing">同步</string>
-    <string name="settings_sync_disconnected">已中斷連接</string>
+    <string name="settings_sync_unconnected">已中斷連接</string>
     <string name="settings_reconnect">重新連接</string>
-    <string name="settings_retry">重試</string>
-    <string name="settings_sync_waiting">同步正在等待你的處理</string>
-    <string name="sync_blocked_write">資料庫變更</string>
-    <string name="sync_blocked_circle_operation">分享變更</string>
-    <string name="sync_blocked_reclaim">雲端清理</string>
     <string name="settings_pause_between_sides">面或碟片之間暫停</string>
     <string name="settings_side_pause_countdown">倒數計時</string>
     <string name="settings_side_pause_countdown_off">關閉</string>
@@ -233,4 +226,15 @@
     <string name="onboarding_status_waiting_for_approval">正在等候資料庫的管理員核准此裝置…</string>
     <string name="onboarding_status_loading">正在載入資料庫…</string>
     <string name="onboarding_invite_declined">邀請已被拒絕或已過期。</string>
+    <string name="pending_update_no_store">此裝置上沒有可以更新 bae 的 App 商店。</string>
+    <string name="admin_access_title">管理員存取權限</string>
+    <string name="admin_access_explanation">這需要能夠管理儲存空間存取金鑰的憑證。bae 只在這一步使用它們，不會保留。</string>
+    <string name="admin_access_key">存取金鑰</string>
+    <string name="admin_access_token">API 權杖</string>
+    <string name="admin_access_session_token">工作階段權杖（選填）</string>
+    <string name="admin_access_iam_endpoint">IAM 端點（選填）</string>
+    <string name="delete_key_title">刪除存取金鑰</string>
+    <string name="delete_key_body">已移除裝置使用的存取金鑰 %1$s 仍需刪除。可在此使用管理員存取權限刪除，或確認你已在提供者的主控台中刪除。</string>
+    <string name="delete_key_with_admin">在此刪除</string>
+    <string name="delete_key_done">我已刪除</string>
 </resources>

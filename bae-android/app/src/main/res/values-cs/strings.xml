@@ -80,15 +80,8 @@
     <string name="settings_sync">Synchronizace</string>
     <string name="settings_cloud_sync_on">Synchronizace s cloudem zapnuta</string>
     <string name="settings_local_only">Pouze místně</string>
-    <string name="settings_synced">Synchronizováno</string>
-    <string name="settings_syncing">Synchronizace…</string>
-    <string name="settings_sync_disconnected">Odpojeno</string>
+    <string name="settings_sync_unconnected">Odpojeno</string>
     <string name="settings_reconnect">Znovu připojit</string>
-    <string name="settings_retry">Zopakovat</string>
-    <string name="settings_sync_waiting">Synchronizace čeká na vás</string>
-    <string name="sync_blocked_write">Změna knihovny</string>
-    <string name="sync_blocked_circle_operation">Změna sdílení</string>
-    <string name="sync_blocked_reclaim">Úklid v cloudu</string>
     <string name="settings_pause_between_sides">Pauza mezi stranami a disky</string>
     <string name="settings_side_pause_countdown">Odpočet</string>
     <string name="settings_side_pause_countdown_off">Vypnuto</string>
@@ -239,4 +232,15 @@
     <string name="onboarding_status_waiting_for_approval">Čeká se, až správce knihovny toto zařízení schválí…</string>
     <string name="onboarding_status_loading">Načítání knihovny…</string>
     <string name="onboarding_invite_declined">Pozvánka byla odmítnuta nebo vypršela.</string>
+    <string name="pending_update_no_store">Na tomto zařízení není žádný obchod s aplikacemi, který by mohl bae aktualizovat.</string>
+    <string name="admin_access_title">Přístup správce</string>
+    <string name="admin_access_explanation">Je potřeba přihlašovací údaje, které mohou spravovat přístupové klíče úložiště. bae je použije jen pro tento krok a neuchovává je.</string>
+    <string name="admin_access_key">Přístupový klíč</string>
+    <string name="admin_access_token">Token API</string>
+    <string name="admin_access_session_token">Token relace (volitelné)</string>
+    <string name="admin_access_iam_endpoint">Koncový bod IAM (volitelné)</string>
+    <string name="delete_key_title">Smazat přístupový klíč</string>
+    <string name="delete_key_body">Přístupový klíč %1$s, který používalo odebrané zařízení, je ještě potřeba smazat. Smažte ho zde s přístupem správce, nebo potvrďte, že jste ho smazali v konzoli poskytovatele.</string>
+    <string name="delete_key_with_admin">Smazat zde</string>
+    <string name="delete_key_done">Klíč je smazaný</string>
 </resources>

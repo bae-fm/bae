@@ -114,15 +114,8 @@
     <string name="settings_sync">Sync</string>
     <string name="settings_cloud_sync_on">Cloud sync on</string>
     <string name="settings_local_only">Local only</string>
-    <string name="settings_synced">Synced</string>
-    <string name="settings_syncing">Syncing…</string>
-    <string name="settings_sync_disconnected">Disconnected</string>
+    <string name="settings_sync_unconnected">Disconnected</string>
     <string name="settings_reconnect">Reconnect</string>
-    <string name="settings_retry">Retry</string>
-    <string name="settings_sync_waiting">Sync is waiting on you</string>
-    <string name="sync_blocked_write">Library change</string>
-    <string name="sync_blocked_circle_operation">Sharing change</string>
-    <string name="sync_blocked_reclaim">Cloud cleanup</string>
     <string name="settings_pause_between_sides">Pause between sides and discs</string>
     <string name="settings_side_pause_countdown">Countdown</string>
     <string name="settings_side_pause_countdown_off">Off</string>
@@ -284,4 +277,16 @@
     <string name="onboarding_status_waiting_for_approval">Waiting for an admin of the library to approve this device…</string>
     <string name="onboarding_status_loading">Loading the library…</string>
     <string name="onboarding_invite_declined">The invite was declined or has expired.</string>
+    <string name="pending_update_no_store">No app store on this device can update bae.</string>
+    <string name="admin_access_title">Administrator access</string>
+    <string name="admin_access_explanation">This needs credentials that can manage the storage’s access keys. bae uses them for this step only and doesn’t keep them.</string>
+    <string name="admin_access_key">Access key</string>
+    <string name="admin_access_token">API token</string>
+    <string name="admin_access_session_token">Session token (optional)</string>
+    <string name="admin_access_iam_endpoint">IAM endpoint (optional)</string>
+    <string name="delete_key_title">Delete access key</string>
+    <!-- %1$s = the access key's ID -->
+    <string name="delete_key_body">The access key %1$s, used by a removed device, still needs to be deleted. Delete it here with administrator access, or confirm you deleted it in the provider’s console.</string>
+    <string name="delete_key_with_admin">Delete it here</string>
+    <string name="delete_key_done">I deleted it</string>
 </resources>

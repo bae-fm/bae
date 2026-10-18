@@ -80,15 +80,8 @@
     <string name="settings_sync">Sincronização</string>
     <string name="settings_cloud_sync_on">Sincronização na nuvem ativada</string>
     <string name="settings_local_only">Somente local</string>
-    <string name="settings_synced">Sincronizado</string>
-    <string name="settings_syncing">Sincronizando…</string>
-    <string name="settings_sync_disconnected">Desconectado</string>
+    <string name="settings_sync_unconnected">Desconectado</string>
     <string name="settings_reconnect">Reconectar</string>
-    <string name="settings_retry">Tentar novamente</string>
-    <string name="settings_sync_waiting">A sincronização está esperando por você</string>
-    <string name="sync_blocked_write">Alteração na biblioteca</string>
-    <string name="sync_blocked_circle_operation">Alteração no compartilhamento</string>
-    <string name="sync_blocked_reclaim">Limpeza na nuvem</string>
     <string name="settings_pause_between_sides">Pausa entre lados e discos</string>
     <string name="settings_side_pause_countdown">Contagem regressiva</string>
     <string name="settings_side_pause_countdown_off">Desativado</string>
@@ -236,4 +229,15 @@
     <string name="onboarding_status_waiting_for_approval">Aguardando um administrador da biblioteca aprovar este dispositivo…</string>
     <string name="onboarding_status_loading">Carregando a biblioteca…</string>
     <string name="onboarding_invite_declined">O convite foi recusado ou expirou.</string>
+    <string name="pending_update_no_store">Nenhuma loja de apps neste dispositivo pode atualizar o bae.</string>
+    <string name="admin_access_title">Acesso de administrador</string>
+    <string name="admin_access_explanation">Isso exige credenciais que possam gerenciar as chaves de acesso do armazenamento. O bae as usa só nesta etapa e não as guarda.</string>
+    <string name="admin_access_key">Chave de acesso</string>
+    <string name="admin_access_token">Token de API</string>
+    <string name="admin_access_session_token">Token de sessão (opcional)</string>
+    <string name="admin_access_iam_endpoint">Endpoint do IAM (opcional)</string>
+    <string name="delete_key_title">Excluir chave de acesso</string>
+    <string name="delete_key_body">A chave de acesso %1$s, usada por um dispositivo removido, ainda precisa ser excluída. Exclua-a aqui com acesso de administrador ou confirme que você a excluiu no console do provedor.</string>
+    <string name="delete_key_with_admin">Excluir aqui</string>
+    <string name="delete_key_done">Já excluí</string>
 </resources>

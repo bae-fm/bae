@@ -80,15 +80,8 @@
     <string name="settings_sync">Синхронизиране</string>
     <string name="settings_cloud_sync_on">Облачната синхронизация е включена</string>
     <string name="settings_local_only">Само локално</string>
-    <string name="settings_synced">Синхронизирано</string>
-    <string name="settings_syncing">Синхронизиране…</string>
-    <string name="settings_sync_disconnected">Връзката е прекъсната</string>
+    <string name="settings_sync_unconnected">Връзката е прекъсната</string>
     <string name="settings_reconnect">Свържи отново</string>
-    <string name="settings_retry">Повторен опит</string>
-    <string name="settings_sync_waiting">Синхронизирането чака вас</string>
-    <string name="sync_blocked_write">Промяна в библиотеката</string>
-    <string name="sync_blocked_circle_operation">Промяна в споделянето</string>
-    <string name="sync_blocked_reclaim">Почистване в облака</string>
     <string name="settings_pause_between_sides">Пауза между страните и дисковете</string>
     <string name="settings_side_pause_countdown">Обратно броене</string>
     <string name="settings_side_pause_countdown_off">Изкл.</string>
@@ -235,4 +228,15 @@
     <string name="onboarding_status_waiting_for_approval">Изчаква се администратор на библиотеката да одобри това устройство…</string>
     <string name="onboarding_status_loading">Библиотеката се зарежда…</string>
     <string name="onboarding_invite_declined">Поканата е отхвърлена или е изтекла.</string>
+    <string name="pending_update_no_store">Няма магазин за приложения на това устройство, който да актуализира bae.</string>
+    <string name="admin_access_title">Администраторски достъп</string>
+    <string name="admin_access_explanation">Нужни са данни за вход, които могат да управляват ключовете за достъп до хранилището. bae ги използва само за тази стъпка и не ги пази.</string>
+    <string name="admin_access_key">Ключ за достъп</string>
+    <string name="admin_access_token">API токен</string>
+    <string name="admin_access_session_token">Токен за сесия (по избор)</string>
+    <string name="admin_access_iam_endpoint">IAM крайна точка (по избор)</string>
+    <string name="delete_key_title">Изтриване на ключа за достъп</string>
+    <string name="delete_key_body">Ключът за достъп %1$s, използван от премахнато устройство, все още трябва да бъде изтрит. Изтрийте го тук с администраторски достъп или потвърдете, че сте го изтрили в конзолата на доставчика.</string>
+    <string name="delete_key_with_admin">Изтриване тук</string>
+    <string name="delete_key_done">Изтрих го</string>
 </resources>
