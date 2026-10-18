@@ -1,13 +1,12 @@
 package fm.bae.app.ui.settings
 
+import android.content.Context
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -30,6 +29,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,155 +38,196 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
-import fm.bae.app.data.SyncFailure
+import fm.bae.app.localizedLine
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.SessionActions
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.Eyebrow
 import fm.bae.app.ui.components.PrimaryButton
+import fm.bae.app.ui.library.LibraryDestination
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
-import uniffi.bae_bridge.BridgeBlockedSyncOperation
+import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeConfig
+import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeLibrary
+import uniffi.bae_bridge.BridgeMemberRole
+import uniffi.bae_bridge.BridgePerson
 import uniffi.bae_bridge.BridgeScreen
-import uniffi.bae_bridge.BridgeSyncIndicator
+import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeTelemetryEvent
+
+private val logger = BaeLogger("bae.SettingsScreen")
+
+/** Where the open library is stored, as Settings knows it. */
+internal sealed interface CloudHome {
+    data object Loading : CloudHome
+
+    /** The library has no cloud home and lives on this device only. */
+    data object None : CloudHome
+
+    data class At(
+        val location: BridgeStorageLocation,
+    ) : CloudHome
+
+    data class Failed(
+        val message: String,
+    ) : CloudHome
+}
+
+/**
+ * What Settings reads from the open library beyond its config: its cloud home,
+ * and this device's person — their profile and whether they are an admin.
+ */
+private class SettingsLibraryModel(
+    private val session: OpenLibrary,
+    private val appContext: Context,
+) {
+    var cloudHome by mutableStateOf<CloudHome>(CloudHome.Loading)
+        private set
+
+    /** This device's person; null while unread, and when the library has no members yet. */
+    var self by mutableStateOf<BridgePerson?>(null)
+        private set
+
+    suspend fun load() {
+        cloudHome =
+            try {
+                session.appHandle.storageLocation()?.let(CloudHome::At) ?: CloudHome.None
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: BridgeException) {
+                logger.error("reading the library's cloud home failed", e)
+                CloudHome.Failed(appContext.localizedLine(e) ?: e.toString())
+            }
+        loadSelf()
+    }
+
+    suspend fun loadSelf() {
+        self =
+            try {
+                session.appHandle.people().firstOrNull { it.membership?.isSelf == true }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: BridgeException) {
+                logger.error("reading the library's people failed", e)
+                session.configStore.showError(appContext.localizedLine(e))
+                null
+            }
+    }
+}
 
 /** Per-device settings, reached from the gear in the library top bar. */
 @Composable
-fun SettingsScreen(
+internal fun SettingsScreen(
     session: OpenLibrary,
     libraries: StateFlow<List<BridgeLibrary>>,
+    actions: SessionActions,
     onBack: () -> Unit,
-    onManageDevices: () -> Unit,
-    onSwitchLibrary: (BridgeLibrary) -> Unit,
-    onLeaveLibrary: () -> Unit,
+    onPush: (LibraryDestination) -> Unit,
     ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
+    val appContext = LocalContext.current.applicationContext
+    val scope = rememberCoroutineScope()
     val config by session.configStore.config.collectAsState()
-    val syncSnapshot by session.syncStatusStore.snapshot.collectAsState()
-    val syncIndicator by session.syncStatusStore.indicator.collectAsState()
-    val syncError by session.syncStatusStore.error.collectAsState()
-    val syncBlocked by session.syncStatusStore.blocked.collectAsState()
     val allLibraries by libraries.collectAsState()
-    var confirmLeave by remember { mutableStateOf(false) }
-    var showRecoveryCode by remember { mutableStateOf(false) }
+    val model = remember(session) { SettingsLibraryModel(session, appContext) }
+    var showRestoreCode by remember { mutableStateOf(false) }
 
-    ReportScreenOpened(session, BridgeScreen.SETTINGS)
-
-    SettingsSections(
-        session = session,
-        config = config,
-        libraries = allLibraries,
-        syncIndicator = syncIndicator,
-        syncError = syncError,
-        syncBlocked = syncBlocked,
-        syncReady = syncSnapshot?.syncReady == true,
-        ioDispatcher = ioDispatcher,
-        onBack = onBack,
-        onSwitchLibrary = onSwitchLibrary,
-        onManageDevices = onManageDevices,
-        onRevealRecoveryCode = { showRecoveryCode = true },
-        onRequestLeave = { confirmLeave = true },
-    )
-
-    if (confirmLeave) {
-        LeaveLibraryConfirmDialog(
-            onConfirm = {
-                confirmLeave = false
-                onLeaveLibrary()
-            },
-            onDismiss = { confirmLeave = false },
-        )
+    LaunchedEffect(session) {
+        session.diagnostics.event(BridgeTelemetryEvent.ScreenOpened(BridgeScreen.SETTINGS))
+        model.load()
     }
 
-    if (showRecoveryCode) {
-        RecoveryCodeDialog(session = session, onDismiss = { showRecoveryCode = false })
-    }
-}
-
-/** The settings screen's sections, top to bottom, in one scrolling column. */
-@Composable
-private fun SettingsSections(
-    session: OpenLibrary,
-    config: BridgeConfig,
-    libraries: List<BridgeLibrary>,
-    syncIndicator: BridgeSyncIndicator,
-    syncError: SyncFailure?,
-    syncBlocked: List<BridgeBlockedSyncOperation>,
-    syncReady: Boolean,
-    ioDispatcher: CoroutineDispatcher,
-    onBack: () -> Unit,
-    onSwitchLibrary: (BridgeLibrary) -> Unit,
-    onManageDevices: () -> Unit,
-    onRevealRecoveryCode: () -> Unit,
-    onRequestLeave: () -> Unit,
-) {
+    val self = model.self
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         SettingsTopBar(onBack = onBack)
         AppearanceSection()
-        HorizontalDivider(modifier = Modifier.padding(horizontal = ThemeSpace.edge))
-        if (libraries.size > 1) {
-            SettingsLibrarySection(
-                libraries = libraries,
-                activeLibraryId = session.libraryId,
-                onSwitchLibrary = onSwitchLibrary,
-            )
-            HorizontalDivider(modifier = Modifier.padding(horizontal = ThemeSpace.edge))
-        }
-        SettingsConfigSection(
+        SectionDivider()
+        SettingsLibrarySection(
             session = session,
-            config = config,
-            syncIndicator = syncIndicator,
-            syncError = syncError,
-            syncBlocked = syncBlocked,
+            libraries = allLibraries,
+            canRename = self?.membership?.role == BridgeMemberRole.ADMIN,
+            onSwitchLibrary = actions.switchLibrary,
         )
-        HorizontalDivider(modifier = Modifier.padding(horizontal = ThemeSpace.edge))
-        SettingsPlaybackSection(
+        SectionDivider()
+        SettingsSyncSection(
             session = session,
-            config = config,
-            ioDispatcher = ioDispatcher,
+            cloudHome = model.cloudHome,
+            onPush = onPush,
+            onCloudHomeChanged = { scope.launch { model.load() } },
         )
-        HorizontalDivider(modifier = Modifier.padding(horizontal = ThemeSpace.edge))
-        SettingsCastSection(
-            session = session,
-            config = config,
-            ioDispatcher = ioDispatcher,
-        )
-        // Devices and the recovery code read the membership chain from cloud storage, so they need sync running now.
-        if (syncReady) {
-            HorizontalDivider(modifier = Modifier.padding(horizontal = ThemeSpace.edge))
-            SettingsDevicesSection(
-                onManageDevices = onManageDevices,
-                onRevealRecoveryCode = onRevealRecoveryCode,
+        self?.profile?.let { profile ->
+            SectionDivider()
+            HistorySharingSection(
+                session = session,
+                sharing = profile.historySharing,
+                onChanged = { scope.launch { model.loadSelf() } },
             )
         }
-        HorizontalDivider(modifier = Modifier.padding(horizontal = ThemeSpace.edge))
-        SettingsLeaveSection(onRequestLeave = onRequestLeave)
-        HorizontalDivider(modifier = Modifier.padding(horizontal = ThemeSpace.edge))
-        SettingsAboutSection()
+        SettingsPlaybackSections(session = session, config = config, ioDispatcher = ioDispatcher)
+        // People, devices and restore codes live in the library's store, which only a cloud home has.
+        if (model.cloudHome is CloudHome.At) {
+            SectionDivider()
+            SettingsPeopleSection(
+                onManagePeople = { onPush(LibraryDestination.Members) },
+                onShowRestoreCode = { showRestoreCode = true },
+            )
+        }
+        SettingsClosingSections(onRemove = actions.removeLibrary)
+    }
+
+    if (showRestoreCode) {
+        RestoreCodeDialog(session = session, onDismiss = { showRestoreCode = false })
     }
 }
 
-/** Reports the screen open as a telemetry event when this enters the composition. */
+/** How this device plays: sides and discs, restoring on launch, and casting. */
 @Composable
-private fun ReportScreenOpened(
+private fun SettingsPlaybackSections(
     session: OpenLibrary,
-    screen: BridgeScreen,
+    config: BridgeConfig,
+    ioDispatcher: CoroutineDispatcher,
 ) {
-    LaunchedEffect(Unit) {
-        session.diagnostics.event(BridgeTelemetryEvent.ScreenOpened(screen))
+    SectionDivider()
+    SettingsPlaybackSection(session = session, config = config, ioDispatcher = ioDispatcher)
+    SectionDivider()
+    SettingsCastSection(session = session, config = config, ioDispatcher = ioDispatcher)
+}
+
+/** Removing the library from this device, once confirmed, and what is installed. */
+@Composable
+private fun SettingsClosingSections(onRemove: () -> Unit) {
+    var confirmRemove by remember { mutableStateOf(false) }
+    SectionDivider()
+    SettingsRemoveSection(onRequestRemove = { confirmRemove = true })
+    SectionDivider()
+    SettingsAboutSection()
+    if (confirmRemove) {
+        RemoveLibraryConfirmDialog(
+            onConfirm = {
+                confirmRemove = false
+                onRemove()
+            },
+            onDismiss = { confirmRemove = false },
+        )
     }
 }
 
 @Composable
-private fun LeaveLibraryConfirmDialog(
+private fun SectionDivider() {
+    HorizontalDivider(modifier = Modifier.padding(horizontal = ThemeSpace.edge))
+}
+
+@Composable
+private fun RemoveLibraryConfirmDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -224,73 +265,6 @@ private fun SettingsTopBar(onBack: () -> Unit) {
 }
 
 @Composable
-private fun SettingsLibrarySection(
-    libraries: List<BridgeLibrary>,
-    activeLibraryId: String,
-    onSwitchLibrary: (BridgeLibrary) -> Unit,
-) {
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge),
-        verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
-    ) {
-        Eyebrow(text = stringResource(R.string.settings_library))
-        libraries.forEach { library ->
-            // The active library comes from the open session; BridgeLibrary.isActive goes stale after an in-app switch.
-            val isActive = library.id == activeLibraryId
-            val error = library.error
-            Row(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .clickable(enabled = !isActive && error == null) { onSwitchLibrary(library) },
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(text = library.name)
-                    // A library whose config won't load stays listed.
-                    if (error != null) {
-                        ErrorText(error, maxLines = 2)
-                    }
-                }
-                // Always present but alpha-toggled so switching the active row
-                // never re-measures the row heights.
-                Icon(
-                    imageVector = Icons.Filled.Check,
-                    contentDescription = null,
-                    modifier = Modifier.alpha(if (isActive) 1f else 0f),
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun SettingsConfigSection(
-    session: OpenLibrary,
-    config: BridgeConfig,
-    syncIndicator: BridgeSyncIndicator,
-    syncError: SyncFailure?,
-    syncBlocked: List<BridgeBlockedSyncOperation>,
-) {
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge),
-        verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
-    ) {
-        Eyebrow(text = stringResource(R.string.settings_sync))
-        Text(stringResource(if (config.sync != null) R.string.settings_cloud_sync_on else R.string.settings_local_only))
-        config.sync?.let { sync ->
-            SyncConnectedControls(
-                session = session,
-                sync = sync,
-                indicator = syncIndicator,
-                syncError = syncError,
-                blocked = syncBlocked,
-            )
-        }
-    }
-}
-
-@Composable
 private fun SettingsAboutSection() {
     val context = LocalContext.current
     // Read from the package rather than BuildConfig so it reflects what is installed.
@@ -318,40 +292,40 @@ private fun SettingsAboutSection() {
     }
 }
 
+/** The library's people and their devices, and this person's restore code for a new device. */
 @Composable
-private fun SettingsDevicesSection(
-    onManageDevices: () -> Unit,
-    onRevealRecoveryCode: () -> Unit,
+private fun SettingsPeopleSection(
+    onManagePeople: () -> Unit,
+    onShowRestoreCode: () -> Unit,
 ) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge),
         verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
     ) {
-        Eyebrow(text = stringResource(R.string.settings_devices))
-        PrimaryButton(onClick = onManageDevices) {
-            Text(stringResource(R.string.settings_manage_devices))
+        Eyebrow(text = stringResource(R.string.settings_people))
+        PrimaryButton(onClick = onManagePeople) {
+            Text(stringResource(R.string.members_title))
         }
-        Spacer(modifier = Modifier.height(ThemeSpace.related))
-        Eyebrow(text = stringResource(R.string.settings_recovery_code))
+        Eyebrow(text = stringResource(R.string.settings_restore_code))
         Text(
-            text = stringResource(R.string.settings_recovery_code_explanation),
+            text = stringResource(R.string.settings_restore_code_explanation),
             style = ThemeText.detail.style,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        OutlinedButton(onClick = onRevealRecoveryCode) {
-            Text(stringResource(R.string.settings_reveal_recovery_code))
+        OutlinedButton(onClick = onShowRestoreCode) {
+            Text(stringResource(R.string.settings_show_restore_code))
         }
     }
 }
 
 @Composable
-private fun SettingsLeaveSection(onRequestLeave: () -> Unit) {
+private fun SettingsRemoveSection(onRequestRemove: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(ThemeSpace.edge),
         verticalArrangement = Arrangement.spacedBy(ThemeSpace.related),
     ) {
         PrimaryButton(
-            onClick = onRequestLeave,
+            onClick = onRequestRemove,
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
         ) {
             Text(stringResource(R.string.settings_remove_library))
@@ -366,24 +340,8 @@ private fun SettingsLeaveSection(onRequestLeave: () -> Unit) {
 
 @Preview(showBackground = true)
 @Composable
-private fun SettingsLibrarySectionPreview() {
+private fun SettingsPeopleSectionPreview() {
     BaeTheme {
-        SettingsLibrarySection(
-            libraries =
-                listOf(
-                    PreviewData.library(),
-                    PreviewData.library(id = "lib-2", name = "Other Library", isActive = false),
-                ),
-            activeLibraryId = "lib-1",
-            onSwitchLibrary = {},
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun SettingsDevicesSectionPreview() {
-    BaeTheme {
-        SettingsDevicesSection(onManageDevices = {}, onRevealRecoveryCode = {})
+        SettingsPeopleSection(onManagePeople = {}, onShowRestoreCode = {})
     }
 }

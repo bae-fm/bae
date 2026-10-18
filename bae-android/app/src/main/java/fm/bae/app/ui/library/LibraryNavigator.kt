@@ -3,10 +3,13 @@ package fm.bae.app.ui.library
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateListOf
 import fm.bae.app.OpenLibrary
+import fm.bae.app.ui.SessionActions
 import fm.bae.app.ui.albumdetail.AlbumDetailScreen
 import fm.bae.app.ui.downloads.DownloadsScreen
 import fm.bae.app.ui.settings.MembersScreen
 import fm.bae.app.ui.settings.SettingsScreen
+import fm.bae.app.ui.settings.StorageSetupScreen
+import fm.bae.app.ui.settings.SyncPendingScreen
 import kotlinx.coroutines.flow.StateFlow
 import uniffi.bae_bridge.BridgeLibrary
 
@@ -32,9 +35,18 @@ internal sealed interface LibraryDestination {
         val artistId: String,
     ) : LibraryDestination
 
-    data object Members : LibraryDestination
+    /** Settings and the screens it opens. */
+    sealed interface Setting : LibraryDestination
 
-    data object Settings : LibraryDestination
+    data object Members : Setting
+
+    data object Settings : Setting
+
+    /** What sync waits on, each with its action. */
+    data object SyncPending : Setting
+
+    /** Choosing and setting up a cloud home for a library without one. */
+    data object StorageSetup : Setting
 
     data object Downloads : LibraryDestination
 }
@@ -81,8 +93,7 @@ internal fun LibraryDestinationScreen(
     libraries: StateFlow<List<BridgeLibrary>>,
     onBack: () -> Unit,
     onPush: (LibraryDestination) -> Unit,
-    onSwitchLibrary: (BridgeLibrary) -> Unit,
-    onLeaveLibrary: () -> Unit,
+    actions: SessionActions,
 ) {
     val pushWork: (String) -> Unit = { onPush(LibraryDestination.Work(it)) }
     val pushAlbum: (String, String) -> Unit = { albumId, releaseId ->
@@ -128,23 +139,47 @@ internal fun LibraryDestinationScreen(
             )
         }
 
-        LibraryDestination.Members -> {
-            MembersScreen(session = session, onBack = onBack)
-        }
-
-        LibraryDestination.Settings -> {
-            SettingsScreen(
-                session = session,
-                libraries = libraries,
-                onBack = onBack,
-                onManageDevices = { onPush(LibraryDestination.Members) },
-                onSwitchLibrary = onSwitchLibrary,
-                onLeaveLibrary = onLeaveLibrary,
-            )
+        is LibraryDestination.Setting -> {
+            SettingsDestinationScreen(session, destination, libraries, actions, onBack, onPush)
         }
 
         LibraryDestination.Downloads -> {
             DownloadsScreen(session = session, onBack = onBack)
+        }
+    }
+}
+
+/** Settings and the screens it opens. */
+@Composable
+private fun SettingsDestinationScreen(
+    session: OpenLibrary,
+    destination: LibraryDestination.Setting,
+    libraries: StateFlow<List<BridgeLibrary>>,
+    actions: SessionActions,
+    onBack: () -> Unit,
+    onPush: (LibraryDestination) -> Unit,
+) {
+    when (destination) {
+        LibraryDestination.Settings -> {
+            SettingsScreen(
+                session = session,
+                libraries = libraries,
+                actions = actions,
+                onBack = onBack,
+                onPush = onPush,
+            )
+        }
+
+        LibraryDestination.Members -> {
+            MembersScreen(session = session, onBack = onBack)
+        }
+
+        LibraryDestination.SyncPending -> {
+            SyncPendingScreen(session = session, actions = actions, onBack = onBack)
+        }
+
+        LibraryDestination.StorageSetup -> {
+            StorageSetupScreen(session = session, oauthProviders = actions.oauthProviders, onBack = onBack)
         }
     }
 }
