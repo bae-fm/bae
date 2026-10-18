@@ -61,3 +61,22 @@ impl AppHandle {
         })
     }
 }
+
+impl AppHandle {
+    pub(super) fn subscribe_query<T>(
+        &self,
+        open: impl FnOnce(&AppServices) -> coven::LiveQuery<T> + Send + 'static,
+        deliver: impl Fn(coven::CovenResult<T>) + Send + 'static,
+    ) -> std::sync::Arc<crate::LiveSubscription>
+    where
+        T: Send + Clone + PartialEq + 'static,
+    {
+        self.live_subscription(move |services, _| async move {
+            let mut values = open(&services);
+            loop {
+                let result = values.next().await;
+                deliver(result);
+            }
+        })
+    }
+}
