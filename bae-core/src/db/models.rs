@@ -269,11 +269,6 @@ pub struct DbRelease {
     /// document a draft was read from, and a release with neither started
     /// blank.
     pub draft_from_tags: bool,
-    /// Shared, synced fact (the coven gate column): is this release's audio in
-    /// the cloud home (remote) or local to one device (local). A local release's
-    /// in-place files are registered with coven as the user's own external
-    /// files; a remote release's bytes live in coven's blob cache.
-    pub remote: bool,
     /// Name of the source folder this release was imported from (just the final
     /// path component, not the full path).
     pub source_folder_name: Option<String>,
@@ -360,12 +355,8 @@ pub struct DbTrack {
 /// Holds enough of the original file's information to reconstruct the folder
 /// structure on export.
 ///
-/// Where the bytes live follows the release's storage state, resolved by coven:
-/// a local release keeps the user's own file in place, registered with coven as
-/// an external file and read straight from the user's path; a remote
-/// release's bytes sit in coven's blob cache (`storage/pinned/` or
-/// `storage/cache/`), read by file id through coven's locality-aware read — never
-/// a bae path.
+/// Unattached files use the importing device's local path. Attached files are
+/// read through coven, which owns their originals, cache and cloud references.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbFile {
     pub id: String,
@@ -376,12 +367,8 @@ pub struct DbFile {
     /// The scan's complete facts for this physical source file. `None` for
     /// non-audio files.
     pub source_audio: Option<crate::album_detail::SourceAudioFile>,
-    /// Readable cloud key for this file's blob, relative to the `release_files`
-    /// namespace coven prepends (mirroring coven's `BlobRef.cloud_path`). `None`
-    /// = the hashed-by-id layout (opaque homes); `Some` = the explicit readable
-    /// key computed at import for a browsable home. coven derives every
-    /// upload/read/delete key from this column via the table's `BlobDecl`.
-    pub cloud_path: Option<String>,
+    /// Whether coven has attached bytes to this synced row.
+    pub attached: bool,
     pub created_at: DateTime<Utc>,
 }
 
@@ -667,11 +654,7 @@ impl DbAlbum {
 
 impl DbRelease {
     #[cfg(any(test, feature = "test-utils"))]
-    /// A minimal release fixture. It lands **Local**, the way every import does:
-    /// a Remote release is one whose every blob reached the cloud, which no bare
-    /// row insert can make true — coven refuses to register an external file
-    /// against a Remote-gated row. A test that wants Remote takes a release
-    /// through the real transition.
+    /// A release fixture with no attached files.
     pub fn new_test(album_id: &str, release_id: &str) -> Self {
         let now = chrono::Utc::now();
         DbRelease {
@@ -680,19 +663,12 @@ impl DbRelease {
             release_name: None,
             pressing: crate::pressing::Pressing::blank(),
             draft_from_tags: false,
-            remote: false,
             source_folder_name: None,
             content_hash: None,
             album_loudness_lufs: None,
             album_peak_linear: None,
             created_at: now,
         }
-    }
-    /// Storage state derived from the shared `remote` fact. Pinned-ness is an
-    /// orthogonal coven-cache property the caller carries separately; it is never
-    /// part of this.
-    pub fn storage_state(&self) -> crate::album_detail::ReleaseStorageState {
-        crate::album_detail::storage_state(self.remote)
     }
 }
 
@@ -739,9 +715,7 @@ impl DbFile {
             file_size,
             content_type,
             source_audio: None,
-            // Files start opaque-keyed (hashed by id). A browsable remote
-            // import / manage sets the readable key explicitly before insert.
-            cloud_path: None,
+            attached: false,
             created_at: now,
         }
     }

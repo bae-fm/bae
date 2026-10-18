@@ -117,20 +117,16 @@ async fn seeded_library_manager_with_diagnostics(
             .await
             .unwrap();
     seed_test_releases(&database, releases).await;
-    let library_id = "playback-service-test".to_string();
-    let config = crate::config::Config::with_defaults(
-        library_id.clone(),
-        "test-device".to_string(),
-        coven::StoreDir::new(home.path().join("library")),
-        "Test Library".to_string(),
-    );
-    crate::config::install_test_keyring();
+
+    let config =
+        crate::config::Config::with_defaults(database.store_id(), home.path().join("preferences"));
+
     let manager = LibraryManager::new(
         database,
         crate::config::AppDir::under_home(home.path()),
         Arc::new(crate::config::ConfigHandle::new(config)),
         Arc::new(coven::SystemClock),
-        Arc::new(coven::UuidProvider),
+        Arc::new(coven::UuidIds),
         diagnostics,
         tokio::runtime::Handle::current(),
         crate::import::cover_art::RemoteImageCache::for_test(crate::util::http::Http::for_test()),
@@ -173,7 +169,7 @@ fn recording_diagnostics() -> (
     let diagnostics = Diagnostics::with_transport(
         config,
         Arc::new(coven::SystemClock),
-        Arc::new(coven::SequentialIdProvider::new("request-id")),
+        Arc::new(coven::SequentialIds::new()),
         transport.clone(),
     )
     .expect("diagnostics starts");
@@ -200,7 +196,7 @@ fn playback_service_over(
     PlaybackService,
     tokio_mpsc::UnboundedReceiver<PlaybackProgress>,
 ) {
-    let queue_ids = Arc::new(coven::SequentialIdProvider::new("queue-entry"));
+    let queue_ids = Arc::new(coven::SequentialIds::new());
     let (command_tx, command_rx) = tokio_mpsc::unbounded_channel();
     let (progress_tx, progress_rx) = tokio_mpsc::unbounded_channel();
     let preview = PreviewPlayer::new(progress_tx.clone(), command_tx.clone(), 50);

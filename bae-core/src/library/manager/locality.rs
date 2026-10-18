@@ -1,90 +1,67 @@
-//! coven-owned locality transitions (make-Remote / make-Local / cancel) and
-//! membership, plus the download/pin queue and transfers.
+//! Release file transitions and the download queue.
 
 use super::*;
 
 impl LibraryManager {
-    /// Make a release Remote (Local → Remote) through coven: coven enqueues an
-    /// upload per user-provided blob from its external file, uploads each, and on
-    /// the last flips the `remote` gate true, drops coven's external references,
-    /// and re-emits the subtree. The user's source files remain untouched.
-    /// Returns once enqueued; durable make-Remote state reports completion.
+    /// Attach every local file in one write, then keep the requested offline copies.
     pub async fn coven_make_remote(
         &self,
         release_id: &str,
         pin: bool,
     ) -> Result<u64, LibraryError> {
-        let ordered_blobs = self
-            .release_pinnable_blobs(release_id)
-            .await?
-            .into_iter()
-            .map(|entry| entry.blob)
-            .collect();
-        self.database
-            .make_remote("releases", release_id, pin, ordered_blobs)
-            .await
-            .map_err(|error| LibraryError::MakeRemote {
-                operation: MakeRemoteOperation::Make,
-                release_id: release_id.to_string(),
-                error: Box::new(error),
-            })?;
-        // Publish the same canonical projection the durable live query emits
-        // before the initiating command can clear its foreground label or emit
-        // RemoteUploadQueued. This gives both entrypoints one continuous state
-        // path independently of live-query delivery timing.
-        Ok(self.emit_outbox_changed().await)
+        let manager = self.clone();
+        let release_id = release_id.to_string();
+        // Finish attachment and pinning even if the caller leaves; committed uploads cannot be recalled.
+        let task = self.runtime_handle.spawn(async move {
+            manager.database.attach_release_files(&release_id).await?;
+            if pin {
+                let result = manager.pin_release_blobs_with_progress(&release_id, |_| {}).await;
+                if let Err(error) = result {
+                    manager.emit_outbox_changed().await;
+                    return Err(LibraryError::Storage(format!(
+                        "release {release_id} was attached for upload, but pinning failed: {error}; retry pinning the release"
+                    )));
+                }
+            }
+            Ok(manager.emit_outbox_changed().await)
+        });
+        match task.await {
+            Ok(result) => result,
+            Err(error) => Err(LibraryError::Storage(format!(
+                "attaching release files failed: {error}"
+            ))),
+        }
     }
 
-    /// Cancel an in-flight make-Remote of `release_id` through coven. coven
-    /// records the cancel durably, so the release stays Local from here on; the
-    /// sync loop's drain then drops the still-queued uploads and takes back out
-    /// any object they already wrote, retrying while the cloud refuses. Until
-    /// it does the outbox shows the transition as cancelling. Recording needs
-    /// no provider, so the cancel does not wait on one.
-    pub(crate) async fn coven_cancel_make_remote(
-        &self,
-        release_id: &str,
-    ) -> Result<(), LibraryError> {
-        self.database
-            .cancel_make_remote("releases", release_id)
-            .await
-            .map_err(|error| LibraryError::MakeRemote {
-                operation: MakeRemoteOperation::Cancel,
-                release_id: release_id.to_string(),
-                error: Box::new(error),
-            })?;
-        // Start the unwind now rather than at the loop's next idle tick.
-        self.database.sync_now();
-        Ok(())
-    }
-
-    /// Make a release Local (Remote → Local) through coven: coven materializes each
-    /// blob back to a local file durability-first — every release file (a
-    /// user-provided blob) to `new_path/{original_filename}`, the host-provided
-    /// cover to coven's local store (no dest) — then flips the `remote` gate false
-    /// and registers the external refs in one atomic commit. That flip releases
-    /// the cloud objects, which coven's accepted reclaim retires on its own.
-    /// `cancel` aborts before the commit (the release stays Remote).
+    /// Copy and verify the files before atomically returning the release to local paths.
     pub async fn coven_make_local(
         &self,
         release_id: &str,
         new_path: &str,
         cancel: &crate::library::CancellationToken,
     ) -> Result<(), LibraryError> {
-        let dest = self.make_local_dest(release_id, new_path).await?;
-        let (cancel_rx, bridge) =
-            crate::library::cancel_token_to_watch(&self.runtime_handle, cancel.clone());
-        let result = self
-            .database
-            .make_local("releases", release_id, &dest, &cancel_rx)
-            .await;
-        bridge.abort();
-        Self::map_make_local_result(release_id, result)
+        let destinations = self.make_local_dest(release_id, new_path).await?;
+        let operation = cancel.child_token();
+        let cancel_on_drop = operation.clone().drop_guard();
+        let manager = self.clone();
+        let release_id = release_id.to_string();
+        let root = PathBuf::from(new_path);
+        let task = self.runtime_handle.spawn(async move {
+            manager
+                .copy_release_to_local(&release_id, root, destinations, &operation)
+                .await
+        });
+        let result = match task.await {
+            Ok(result) => result,
+            Err(error) => Err(LibraryError::Storage(format!(
+                "making release local failed: {error}"
+            ))),
+        };
+        cancel_on_drop.disarm();
+        result
     }
 
-    /// The make-Local destination map: each release file's blob id → the user path
-    /// (`new_path/original_filename`) its bytes go back to. Host-provided blobs (the
-    /// cover) take no dest — coven restores them to its local store.
+    /// Each release file's destination. Covers remain attached and shared.
     ///
     /// `original_filename` is a synced column another device wrote, and coven writes
     /// wherever this map points, so each fragment is validated before it is joined
@@ -111,50 +88,6 @@ impl LibraryManager {
         Ok(dest)
     }
 
-    /// Map a coven `make_local` result to bae's: a cancel before the commit is a
-    /// successful return after coven rolled back the partial copies and left the
-    /// release Remote; every other error is surfaced.
-    fn map_make_local_result(
-        release_id: &str,
-        result: Result<(), coven::MakeLocalError>,
-    ) -> Result<(), LibraryError> {
-        match result {
-            Ok(()) => Ok(()),
-            Err(coven::MakeLocalError::Cancelled) => {
-                debug!(
-                    release_id,
-                    "make-local cancelled before commit; release stays Remote"
-                );
-                Ok(())
-            }
-            Err(error) => Err(LibraryError::MakeLocal {
-                release_id: release_id.to_string(),
-                error: Box::new(error),
-            }),
-        }
-    }
-
-    /// Mint a restore code, seeded with the store's current membership-head
-    /// floor read from the cloud — a network round trip, hence async (coven's
-    /// own `CovenHandle::generate_restore_code` is the same way).
-    pub async fn generate_restore_code(&self) -> Result<String, LibraryError> {
-        Ok(self.database.generate_restore_code().await?)
-    }
-
-    /// The library's membership: its devices (with this device flagged, each
-    /// member's fingerprint, and whether it can be removed) and whether the
-    /// running device is an owner.
-    pub async fn get_members(&self) -> Result<crate::sync::membership::Membership, LibraryError> {
-        self.sync.get_members().await
-    }
-
-    /// Remove a device from the library and rotate the library key so the removed
-    /// device can no longer read new data. Records the rotated key's fingerprint
-    /// in this device's config.
-    pub async fn remove_member(&self, public_key_hex: &str) -> Result<(), LibraryError> {
-        self.sync.remove_member(public_key_hex).await
-    }
-
     // ── Download (pin) queue ─────────────────────────────────────────
     //
     // Pinning routes through an in-memory serial queue rather than an ephemeral
@@ -170,7 +103,8 @@ impl LibraryManager {
     /// worker and publishes the queue's new contents.
     pub async fn enqueue_pins(&self, release_ids: Vec<String>) {
         // One timestamp for the whole batch — read the clock once, not per row.
-        let enqueued_at = self.clock.now().timestamp_millis();
+        let enqueued_at =
+            chrono::DateTime::<chrono::Utc>::from(self.clock.now()).timestamp_millis();
         let mut ops = Vec::with_capacity(release_ids.len());
         for release_id in release_ids {
             if self.downloads.contains(&release_id) {
@@ -218,10 +152,8 @@ impl LibraryManager {
         self.downloads.set_paused(paused);
     }
 
-    /// Cancel a release's download. Drops a queued/failed entry; for the active
-    /// one, aborts its in-flight pin task (the `.part` temp file it was writing
-    /// is left behind — a partial never renames into place, so the release stays
-    /// cloud-only). Emits a fresh snapshot.
+    /// Cancel a release's download. Drops a queued or failed entry; cancelling
+    /// an active pin signals its worker to restore the previous pin state.
     pub fn cancel_download(&self, release_id: &str) {
         // An active entry needs no follow-up here: the aborted pin task closes its
         // progress channel, and the worker's drain clears the streamed transfer
@@ -286,7 +218,7 @@ impl LibraryManager {
             .await
     }
 
-    /// Unpin a release: coven moves its blobs out of `storage/pinned/` and into the
+    /// Unpin a release: coven moves its blobs out of the pinned cache and into the
     /// evictable cache, so they stay readable but become droppable.
     pub async fn unpin_release(&self, release_id: &str) -> Result<(), LibraryError> {
         let transfer_service = crate::storage::transfer::TransferService::new(self.clone());
@@ -300,7 +232,7 @@ impl LibraryManager {
     /// checked and admitted. Empty and duplicate selections are invalid commands;
     /// release-specific refusals are returned beside the durable receipt for the
     /// releases that were admitted. The stored import storage choice says
-    /// whether coven keeps the blobs in `storage/pinned/` (offline) or the
+    /// whether coven keeps the blobs in the pinned cache (offline) or the
     /// evictable cache. Once the upload lands, a remote release no longer
     /// refers to the user's source path; the source file itself remains
     /// untouched.
@@ -375,9 +307,8 @@ impl LibraryManager {
         })
     }
 
-    /// Make a Cloud release Local: copy its files back out to `new_path` and
-    /// drop the remote copies. coven owns the durability-first ordering: every
-    /// copy is verified at the new path before any delete is queued.
+    /// Make an attached release Local: verify every file at `new_path` before
+    /// one write clears its attachments and records this device's paths.
     pub async fn make_release_local(
         &self,
         release_id: &str,
@@ -410,9 +341,8 @@ impl LibraryManager {
     /// The transitions this process registered say what they are: a
     /// make-Local transfer is stopped by its token, which the registry fires;
     /// a pin is stopped through the download queue, which also holds the pins
-    /// not yet started. An upload lives in coven's outbox, and is cancelled
-    /// only when that store says one is pending — cancelling a settled
-    /// release's upload would delete its blobs.
+    /// not yet started. Committed uploads cannot be cancelled through coven's
+    /// API; a pending upload therefore returns that refusal to the caller.
     pub async fn cancel_release_transition(&self, release_id: &str) -> Result<(), LibraryError> {
         match self.transitions.cancel(release_id) {
             Some(ReleaseStorageAction::MakeLocal) => return Ok(()),

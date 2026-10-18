@@ -2,11 +2,9 @@
 /// exact instant is immaterial to what they assert (artist-row
 /// preservation / rebuild), only that the same one feeds every row.
 fn test_clock() -> FixedClock {
-    FixedClock(
-        chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
+    FixedClock::new((chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
             .unwrap()
-            .with_timezone(&chrono::Utc),
-    )
+            .with_timezone(&chrono::Utc)).into())
 }
 
 // ── apply_user_edit_to_seed ────────────────────────────────────────
@@ -73,7 +71,7 @@ fn make_seed_album_release_track() -> (
             barcode: None,
         },
         draft_from_tags: false,
-        remote: true,
+
         source_folder_name: None,
         content_hash: None,
         album_loudness_lufs: None,
@@ -124,7 +122,7 @@ fn user_edit_overrides_album_year_and_pressing_fields() {
         &edit,
         &mut seed,
         &test_clock(),
-        &SequentialIdProvider::new("seed"),
+        &SequentialIds::new(),
     )
     .unwrap();
 
@@ -196,7 +194,7 @@ fn user_edit_can_fill_country_for_approximate_seed() {
         &edit,
         &mut seed,
         &test_clock(),
-        &SequentialIdProvider::new("seed"),
+        &SequentialIds::new(),
     )
     .unwrap();
 
@@ -241,7 +239,7 @@ fn user_edit_track_count_mismatch_is_an_error() {
         &edit,
         &mut seed,
         &test_clock(),
-        &SequentialIdProvider::new("seed"),
+        &SequentialIds::new(),
     )
     .unwrap_err();
     assert!(
@@ -287,7 +285,7 @@ fn user_edit_preserves_source_id_artist_rows_when_names_unchanged() {
             barcode: None,
         },
         draft_from_tags: false,
-        remote: true,
+
         source_folder_name: None,
         content_hash: None,
         album_loudness_lufs: None,
@@ -345,7 +343,7 @@ fn user_edit_preserves_source_id_artist_rows_when_names_unchanged() {
         &edit,
         &mut seed,
         &test_clock(),
-        &SequentialIdProvider::new("seed"),
+        &SequentialIds::new(),
     )
     .unwrap();
     assert_eq!(picked, HashSet::from([seed_artist.id.clone()]));
@@ -394,7 +392,7 @@ fn user_edit_renaming_album_artist_rebuilds_credits() {
         &edit,
         &mut seed,
         &test_clock(),
-        &SequentialIdProvider::new("seed"),
+        &SequentialIds::new(),
     )
     .unwrap();
 
@@ -410,7 +408,7 @@ fn user_edit_renaming_album_artist_rebuilds_credits() {
 
 #[test]
 fn dropping_a_track_removes_its_disconnected_work_graph() {
-    let now = test_clock().0;
+    let now = chrono::DateTime::<chrono::Utc>::from(coven::Clock::now(&test_clock()));
     let (album, release, first_track, artist) = make_seed_album_release_track();
     let second_track = crate::db::DbTrack {
         id: "track-2".to_string(),
@@ -554,7 +552,7 @@ fn dropping_a_track_removes_its_disconnected_work_graph() {
     settle_track_rows(
         &mut parsed,
         &draft,
-        &SequentialIdProvider::new("track"),
+        &SequentialIds::new(),
         now,
     )
     .unwrap();
@@ -602,8 +600,8 @@ fn deleting_the_first_track_keeps_the_second_tracks_source_identity() {
     settle_track_rows(
         &mut parsed,
         &draft,
-        &SequentialIdProvider::new("import"),
-        test_clock().0,
+        &SequentialIds::new(),
+        chrono::DateTime::<chrono::Utc>::from(coven::Clock::now(&test_clock())),
     )
     .unwrap();
     assert_eq!(parsed.tracks.len(), 1);
@@ -640,7 +638,7 @@ fn cue_backed_tracks(dir: &str) -> Vec<TrackFile> {
                 track_number: Some(index as i32 + 1),
                 duration_ms: None,
                 discogs_position: None,
-                created_at: test_clock().0,
+                created_at: chrono::DateTime::<chrono::Utc>::from(coven::Clock::now(&test_clock())),
             },
             audio: crate::import::TrackAudio::CueBacked {
                 cue_pair: Arc::clone(&cue_pair),
@@ -682,7 +680,7 @@ fn build_audio_formats_gives_ape_cue_tracks_real_end_bytes() {
         &tracks,
         &file_ids,
         &test_clock(),
-        &SequentialIdProvider::new("seed"),
+        &SequentialIds::new(),
     )
     .expect("build_audio_formats");
 

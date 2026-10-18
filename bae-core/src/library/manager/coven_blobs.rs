@@ -12,7 +12,7 @@ impl LibraryManager {
     pub async fn release_blob_ref_for_test(
         &self,
         file_id: &str,
-    ) -> Result<coven::RowBlobRef, LibraryError> {
+    ) -> Result<coven::FileRef, LibraryError> {
         self.release_file_row_blob_ref(file_id).await
     }
 
@@ -20,19 +20,14 @@ impl LibraryManager {
     pub async fn materialize_release_blob_for_test(
         &self,
         file_id: &str,
-    ) -> Result<coven::RowBlobRef, LibraryError> {
-        let blob = self.release_file_row_blob_ref(file_id).await?;
-        self.database
-            .read_blob(&blob)
-            .await
-            .map_err(|error| LibraryError::blob(format!("materialize {file_id}"), error))?;
-        Ok(blob)
+    ) -> Result<Vec<u8>, LibraryError> {
+        Ok(self.database.read_release_file(file_id).await?)
     }
 
     #[cfg(any(test, feature = "test-utils"))]
-    pub async fn evict_blob_for_test(&self, blob: &coven::RowBlobRef) -> Result<(), LibraryError> {
+    pub async fn evict_blob_for_test(&self, blob: &coven::FileRef) -> Result<(), LibraryError> {
         self.database
-            .evict_blob(blob)
+            .evict_file(blob)
             .await
             .map_err(|error| LibraryError::blob("evict", error))
     }
@@ -53,9 +48,9 @@ impl LibraryManager {
     pub(crate) async fn release_file_row_blob_ref(
         &self,
         file_id: &str,
-    ) -> Result<coven::RowBlobRef, LibraryError> {
+    ) -> Result<coven::FileRef, LibraryError> {
         self.database
-            .row_blob_ref(crate::sync::RELEASE_FILES_NAMESPACE, file_id)
+            .file_ref(crate::sync::RELEASE_FILES_NAMESPACE, file_id)
             .await
             .map_err(|e| LibraryError::Storage(format!("blob ref for release file {file_id}: {e}")))
     }
@@ -66,26 +61,16 @@ impl LibraryManager {
         &self,
         table: &str,
         row_id: &str,
-    ) -> Result<coven::RowBlobRef, LibraryError> {
+    ) -> Result<coven::FileRef, LibraryError> {
         self.database
-            .row_blob_ref(table, row_id)
+            .file_ref(table, row_id)
             .await
             .map_err(|e| LibraryError::Storage(format!("blob ref for {table} {row_id}: {e}")))
     }
 
-    /// Read a release file's whole plaintext through coven's locality-aware read:
-    /// served from the user's file (Local user-provided), coven's local store
-    /// (Local host-provided), `storage/pinned`/`storage/cache` on a Remote hit, or
-    /// fetched from the cloud (into `cache/`) on a Remote miss. For the
-    /// non-streaming readers (export, gallery images); playback streams ranges via
-    /// `open_blob_stream` instead. A vanished/changed external file maps to a
-    /// storage error so the caller surfaces a "files missing / moved" state.
+    /// Read through the same local-or-attached source used for playback.
     pub(crate) async fn read_release_blob(&self, file: &DbFile) -> Result<Vec<u8>, LibraryError> {
-        let blob = self.release_file_row_blob_ref(&file.id).await?;
-        self.database
-            .read_blob(&blob)
-            .await
-            .map_err(|e| LibraryError::blob(format!("read of {}", file.id), e))
+        Ok(self.database.read_release_file(&file.id).await?)
     }
 
     /// The cover [`ImageRef`] for one release — its image id paired with the
@@ -154,18 +139,13 @@ impl LibraryManager {
         let blob = self.image_row_blob_ref(image_type.namespace(), id).await?;
         let bytes = self
             .database
-            .read_blob(&blob)
+            .read_file(&blob)
             .await
             .map_err(|e| LibraryError::blob(format!("read image {id}"), e))?;
         Ok(Some(bytes))
     }
 
-    /// Whether coven holds this release pinned on this device — true iff its
-    /// representative blob (any one of the release's files; pin/unpin act on all a
-    /// release's blobs together) is kept in coven's `storage/pinned/`. `None` (a
-    /// release with no files) reads as not pinned. Pinned-ness is coven cache
-    /// state, never a bae column — answered through the handle, not by stat-ing
-    /// coven's cache layout.
+    /// A release is pinned only when every one of its files is pinned.
     pub(crate) async fn release_pinned(
         &self,
         any_file_id: Option<&str>,
@@ -195,8 +175,10 @@ impl LibraryManager {
         ReleasePinWatch {
             manager: self.clone(),
             query: None,
+            file_query: None,
             watched: Vec::new(),
-            answers: Vec::new(),
+            groups: Vec::new(),
+            answers: None,
         }
     }
 
@@ -218,33 +200,14 @@ impl LibraryManager {
             .collect()
     }
 
-    /// Every blob a release keeps pinned: its cover when present, followed by
-    /// audio files in the same natural filename order the release table renders.
-    /// coven's `make_remote` pins the release's whole root
-    /// batch — the cover rides along — so this is the set a pin must fetch and an
-    /// unpin must release. Both read it here rather than enumerating rows
-    /// themselves, so the two can't act on different sets: enumerating only
-    /// `release_files` stranded the cover in `storage/pinned/` on unpin (nothing
-    /// else ever names it again) and left it evictable after a Pin.
+    /// Audio and companion files stay pinned together. Covers use their own
+    /// eager cache budget and are never pinned.
     pub(super) async fn release_pinnable_blobs(
         &self,
         release_id: &str,
     ) -> Result<Vec<PinnableBlob>, LibraryError> {
         let files = self.database.get_files_for_release(release_id).await?;
-        let mut pinnable = Vec::with_capacity(files.len() + 1);
-        let cover_type = LibraryImageType::Cover;
-        if let Some(cover) = self
-            .database
-            .find_library_image(release_id, &cover_type)
-            .await?
-        {
-            pinnable.push(PinnableBlob {
-                blob: self
-                    .image_row_blob_ref(cover_type.namespace(), release_id)
-                    .await?,
-                bytes: pinnable_bytes(release_id, release_id, cover.file_size)?,
-            });
-        }
+        let mut pinnable = Vec::with_capacity(files.len());
         for file in &files {
             pinnable.push(PinnableBlob {
                 blob: self.release_file_row_blob_ref(&file.id).await?,
@@ -252,56 +215,6 @@ impl LibraryManager {
             });
         }
         Ok(pinnable)
-    }
-
-    /// Pin a remote release's blobs for offline: coven fetches every blob into
-    /// `storage/pinned/` (from the evictable cache if already there, else the
-    /// cloud). Idempotent. Pinned-ness is coven cache state — there is no bae flag.
-    /// The low-level cache op behind the "Pin" transition.
-    ///
-    /// One pin over the whole set, reporting as bytes arrive. Coven counts in
-    /// the blobs' stored (encrypted) sizes; the Downloads pane counts in the
-    /// release's own file sizes, the same total
-    /// [`Self::initial_download_progress`] opens with, so coven's fraction is
-    /// carried over onto that total and the bar never changes denominator.
-    pub(crate) async fn pin_release_blobs_with_progress(
-        &self,
-        release_id: &str,
-        on_progress: impl FnMut(crate::library::DownloadTransferProgress) + Send,
-    ) -> Result<(), LibraryError> {
-        let pinnable = self.release_pinnable_blobs(release_id).await?;
-        let bytes_total = total_bytes(release_id, &pinnable)?;
-        let blobs = pinnable
-            .into_iter()
-            .map(|entry| entry.blob)
-            .collect::<Vec<_>>();
-        let reporter = std::sync::Mutex::new((on_progress, None::<LibraryError>));
-        let report = |progress: coven::PinProgress| {
-            let mut reporter = reporter.lock().expect("pin progress reporter");
-            if reporter.1.is_some() {
-                return;
-            }
-            let bytes_done = if progress.bytes_total == 0 {
-                bytes_total
-            } else {
-                // `bytes_pinned <= bytes_total`, so this never exceeds the total.
-                (u128::from(bytes_total) * u128::from(progress.bytes_pinned)
-                    / u128::from(progress.bytes_total)) as u64
-            };
-            match crate::library::DownloadTransferProgress::new(release_id, bytes_done, bytes_total)
-            {
-                Ok(progress) => (reporter.0)(progress),
-                Err(error) => reporter.1 = Some(error),
-            }
-        };
-        self.database
-            .pin(&blobs, &report)
-            .await
-            .map_err(|e| LibraryError::blob(format!("pin release {release_id}"), e))?;
-        match reporter.into_inner().expect("pin progress reporter").1 {
-            Some(error) => Err(error),
-            None => Ok(()),
-        }
     }
 
     /// The Downloads pane's opening progress for a queued pin: zero of the same
@@ -320,11 +233,11 @@ impl LibraryManager {
     }
 
     /// Unpin a remote release's blobs: coven moves every blob from
-    /// `storage/pinned/` to the evictable `storage/cache/` (still readable, now
+    /// the pinned cache to the evictable cache (still readable, now
     /// droppable). No cloud read, no bae flag. The low-level cache op behind the
     /// "Unpin" transition.
     pub(crate) async fn unpin_release_blobs(&self, release_id: &str) -> Result<(), LibraryError> {
-        let blobs: Vec<coven::RowBlobRef> = self
+        let blobs: Vec<coven::FileRef> = self
             .release_pinnable_blobs(release_id)
             .await?
             .into_iter()
@@ -350,7 +263,7 @@ impl LibraryManager {
 /// One blob of a release's pinned set, with the plaintext byte size its row
 /// records — what a pin fetches, and what the Downloads pane counts.
 pub(super) struct PinnableBlob {
-    pub(super) blob: coven::RowBlobRef,
+    pub(super) blob: coven::FileRef,
     bytes: u64,
 }
 
@@ -370,75 +283,90 @@ fn total_bytes(release_id: &str, pinnable: &[PinnableBlob]) -> Result<u64, Libra
     })
 }
 
-/// A view's releases' pin markers, kept current by coven's pin-state live
-/// query (see [`LibraryManager::watch_release_pins`]).
+type ReleaseFileGroups = Vec<Option<Vec<String>>>;
+
+/// Follows both release file membership and coven's per-file pin answers.
 pub(crate) struct ReleasePinWatch {
     manager: LibraryManager,
-    /// Opened with the first releases watched; a view with none asks coven
-    /// nothing.
-    query: Option<coven::RowsPinnedLiveQuery>,
-    /// Each watched release's representative file id, or `None` for a release
-    /// with no files.
+    query: Option<coven::LiveQuery<Vec<Option<bool>>>>,
+    file_query: Option<coven::ReconfigurableLiveQuery<Vec<Option<String>>, ReleaseFileGroups>>,
     watched: Vec<Option<String>>,
-    /// Coven's latest answer for the watched files, one per named file.
-    answers: Vec<Option<bool>>,
+    groups: ReleaseFileGroups,
+    answers: Option<Vec<Option<bool>>>,
 }
 
 impl ReleasePinWatch {
-    /// Watch `any_file_ids` — one per release, its representative file or
-    /// `None` — and return their markers now, one per release in order. The
-    /// same files watched again answer from coven's latest answer; other files
-    /// are asked about at once.
     pub(crate) async fn watch(
         &mut self,
-        any_file_ids: Vec<Option<String>>,
+        files: Vec<Option<String>>,
     ) -> Result<Vec<bool>, LibraryError> {
-        let named = named_file_ids(&slots(&any_file_ids));
-        let unchanged = self.query.is_some() && named == named_file_ids(&slots(&self.watched));
-        self.watched = any_file_ids;
-        if unchanged {
+        if self.file_query.is_none() || self.watched != files {
+            self.watched = files.clone();
+            self.file_query = Some(self.manager.database.subscribe_release_pin_files(files));
+            self.query = None;
+            self.answers = None;
+        }
+        if self.answers.is_some() {
             return Ok(self.markers());
         }
-        match &mut self.query {
-            Some(query) => query.set_rows(named),
-            None => {
-                self.query = Some(
-                    self.manager
-                        .database
-                        .subscribe_rows_pinned(crate::sync::RELEASE_FILES_NAMESPACE, named),
-                );
-            }
-        }
-        self.next().await
+        self.changed().await
     }
 
-    /// Wait until the watched releases' markers change and return them.
-    /// Cancel-safe: an answer stays owed until a read of it completes. Waits
-    /// forever until [`Self::watch`] has named releases.
     pub(crate) async fn changed(&mut self) -> Result<Vec<bool>, LibraryError> {
-        if self.query.is_none() {
+        if self.file_query.is_none() {
             return std::future::pending().await;
         }
-        self.next().await
+        if self.query.is_none() {
+            let event = self
+                .file_query
+                .as_mut()
+                .expect("file query installed")
+                .next()
+                .await;
+            self.install_groups(event.result?);
+        }
+        if self.answers.is_none() {
+            return self.read_answers().await;
+        }
+        let file_query = self.file_query.as_mut().expect("file query installed");
+        let query = self.query.as_mut().expect("pin query installed");
+        tokio::select! {
+            event = file_query.next() => {
+                self.install_groups(event.result?);
+                self.read_answers().await
+            }
+            answers = query.next() => {
+                self.answers = Some(answers?);
+                Ok(self.markers())
+            }
+        }
     }
 
-    async fn next(&mut self) -> Result<Vec<bool>, LibraryError> {
-        let query = self.query.as_mut().expect("a watched release set");
-        self.answers = query
-            .next()
-            .await
-            .map_err(|e| LibraryError::blob("pin-state for a view's releases", e))?;
+    fn install_groups(&mut self, groups: ReleaseFileGroups) {
+        self.query = Some(
+            self.manager
+                .database
+                .subscribe_rows_pinned(crate::sync::RELEASE_FILES_NAMESPACE, pin_file_ids(&groups)),
+        );
+        self.groups = groups;
+        self.answers = None;
+    }
+
+    async fn read_answers(&mut self) -> Result<Vec<bool>, LibraryError> {
+        self.answers = Some(
+            self.query
+                .as_mut()
+                .expect("pin query installed")
+                .next()
+                .await?,
+        );
         Ok(self.markers())
     }
 
     fn markers(&self) -> Vec<bool> {
         self.manager.pin_markers(release_pin_states_from_answers(
-            &slots(&self.watched),
-            &self.answers,
+            &self.groups,
+            self.answers.as_ref().expect("pin answers read"),
         ))
     }
-}
-
-fn slots(any_file_ids: &[Option<String>]) -> Vec<Option<&str>> {
-    any_file_ids.iter().map(Option::as_deref).collect()
 }

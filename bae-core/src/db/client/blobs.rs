@@ -13,39 +13,17 @@ pub(crate) struct OutboxDisplayRequest {
 /// Display values read reactively for an [`OutboxDisplayRequest`].
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct OutboxDisplayContext {
-    pub(crate) file_names: HashMap<String, String>,
+    pub(crate) file_names: HashMap<String, (String, String)>,
 }
 
 impl Database {
     pub async fn upsert_library_image(&self, image: &DbLibraryImage) -> Result<(), DbError> {
         let image = image.clone();
-        self.call_sql(move |sql| {
-            let reg = sql.stamp();
-            upsert_library_image_row(&sql, &image, &reg)
-        })
-        .await
+        self.call_sql(move |sql| upsert_library_image_row(&sql, &image))
+            .await
     }
 
-    /// Write a host-provided image blob and its `covers`/`artist_images` row as one
-    /// coven batch — storing an image for the first time, and replacing one that is
-    /// already there.
-    ///
-    /// A coven blob id names one immutable byte-string, so replacing an image's
-    /// bytes means a **new blob**, never new bytes under the live id (coven refuses
-    /// that outright). `image.blob_id` is the new blob; when the row already
-    /// references a different one, the old blob is deleted in the same batch. coven
-    /// admits both halves: the new blob id is referenced by no row before the
-    /// closure runs, and the old one is referenced by none after it repoints the
-    /// row. The old blob is read before the write opens, so the write refuses a
-    /// row that names a different blob by then rather than leave that one
-    /// undeclared.
-    ///
-    /// The replaced blob's cloud object is coven's to retire: once the row points
-    /// at the new blob nothing names the old object, and accepted reclaim removes
-    /// the orphan. It is never the object the new blob writes — an image's cloud
-    /// key is a pure function of its blob id under both home layouts (the hashed
-    /// id on an opaque home, the `cover-{blob_id}` / `artist-{blob_id}` readable
-    /// path on a browsable one) and a blob id is minted fresh per stored image.
+    /// Replace an image's bytes and row atomically; coven manages the old file.
     pub async fn write_library_image_blob(
         &self,
         image: &DbLibraryImage,
@@ -86,55 +64,40 @@ impl Database {
             .find_library_image(&image.id, &image.image_type)
             .await?;
         let planned_blob_id = existing.as_ref().map(|existing| existing.blob_id.clone());
-        let replaced = existing
-            .filter(|existing| existing.blob_id != image.blob_id)
-            .map(|existing| {
-                crate::sync::image_blob_ref(namespace, &existing.blob_id, existing.cloud_path)
-            });
         after_planning().await;
-
-        let new_blob =
-            crate::sync::image_blob_ref(namespace, &image.blob_id, image.cloud_path.clone());
+        let new_file_id = image.blob_id.clone();
         let bytes = bytes.to_vec();
-        self.inner
-            .handle
-            .write_with_blobs(
-                move |w| {
-                    w.put_blob(new_blob.namespace.clone(), new_blob.id.clone(), bytes);
-                    if let Some(old) = replaced {
-                        w.delete_blob(old);
-                    }
-                    Ok(())
-                },
-                move |sql| {
-                    // The replaced blob was declared from a read before the
-                    // write opened; a replacement that landed since would go
-                    // undeclared, so the row must still name that blob.
-                    let current_blob_id: Option<String> = sql
-                        .query_row(
-                            &format!(
-                                "SELECT blob_id FROM {} WHERE id = ?",
-                                image_table(&image.image_type)
-                            ),
-                            params![image.id],
-                            |row| row.get(0),
-                        )
-                        .optional()
-                        .map_err(|error| CovenError::from(DbError::from(error)))?;
-                    if current_blob_id != planned_blob_id {
-                        return Err(CovenError::from(DbError::Message(format!(
-                            "{} image for {} changed after planning",
-                            namespace, image.id
-                        ))));
-                    }
-                    let reg = sql.stamp();
-                    upsert_library_image_row(&sql, &image, &reg).map_err(CovenError::from)?;
-                    Ok(())
-                },
-            )
-            .await
-            .map(|_| ())
-            .map_err(Self::coven_error)
+        self.write_with_files(
+            move |w| {
+                w.put_file(namespace, new_file_id, bytes);
+                Ok(())
+            },
+            move |sql| {
+                // Refuse a replacement when another edit changed this row.
+                let current_blob_id: Option<String> = sql
+                    .query_row(
+                        &format!(
+                            "SELECT blob_id FROM {} WHERE id = ?",
+                            image_table(&image.image_type)
+                        ),
+                        params![image.id],
+                        |row| row.get(0),
+                    )
+                    .optional()
+                    .map_err(|error| CovenError::from(DbError::from(error)))?;
+                if current_blob_id != planned_blob_id {
+                    return Err(CovenError::from(DbError::Message(format!(
+                        "{} image for {} changed after planning",
+                        namespace, image.id
+                    ))));
+                }
+                upsert_library_image_row(&sql, &image).map_err(CovenError::from)?;
+                Ok(())
+            },
+        )
+        .await
+        .map(|_| ())
+        .map_err(Self::coven_error)
     }
 
     /// Find a host-provided image (cover / artist image) by its subject id. The
@@ -204,79 +167,83 @@ impl Database {
         Ok(self.cover_versions(&ids).await?.remove(release_id))
     }
 
-    /// Run a cloud-key resolver, but only on a browsable home: an opaque home keys
-    /// blobs by hashed id and stores no `cloud_path`, so it returns `Ok(None)`
-    /// without running the resolver. The resolver runs on coven's connection —
-    /// that is where it reads the release's album id.
-    async fn cloud_path_if_browsable<F>(
-        &self,
-        storage: crate::config::HomeStorage,
-        resolve: F,
-    ) -> Result<Option<String>, DbError>
-    where
-        F: for<'conn> FnOnce(&SqlReadContext<'conn>) -> Result<String, DbError> + Send + 'static,
-    {
-        if !storage.is_browsable() {
-            return Ok(None);
+    /// The original this device has for a file. Unattached rows read bae's local
+    /// paths; attached rows read coven's original-file registration.
+    pub async fn external_blob(&self, file_id: &str) -> Result<Option<coven::UserFile>, DbError> {
+        let id = file_id.to_string();
+        let local = self
+            .read(move |sql| {
+                sql.query_row(
+                    "SELECT f.hash IS NOT NULL, l.path, l.modified_at, f.file_size \
+                 FROM release_files f LEFT JOIN local_release_files l ON l.file_id = f.id \
+                 WHERE f.id = ?",
+                    [id],
+                    |row| {
+                        Ok((
+                            row.get::<_, bool>(0)?,
+                            row.get::<_, Option<String>>(1)?,
+                            row.get::<_, Option<String>>(2)?,
+                            row.get::<_, i64>(3)?,
+                        ))
+                    },
+                )
+                .optional()
+                .map_err(DbError::from)
+            })
+            .await?;
+        match local {
+            None => Ok(None),
+            Some((true, _, _, _)) => self
+                .inner
+                .handle
+                .user_file("release_files", file_id)
+                .await
+                .map_err(DbError::from),
+            Some((false, Some(path), Some(modified_at), size)) => {
+                let modified_at =
+                    chrono::DateTime::parse_from_rfc3339(&modified_at).map_err(|error| {
+                        DbError::Message(format!("invalid original modification time: {error}"))
+                    })?;
+                Ok(Some(coven::UserFile {
+                    path: path.into(),
+                    size: u64::try_from(size)
+                        .map_err(|error| DbError::Message(error.to_string()))?,
+                    modified_at: modified_at.into(),
+                }))
+            }
+            Some((false, None, None, _)) => Ok(None),
+            Some(_) => Err(DbError::Message(format!(
+                "incomplete original for {file_id}"
+            ))),
         }
-        self.read(move |sql| resolve(&sql).map(Some)).await
     }
 
-    /// The `cloud_path` for a cover image under `storage`: `None` for an opaque
-    /// home, or `{album_id}/{release_id}/cover-{blob_id}.{ext}` for a browsable one.
-    /// `blob_id` is the blob these bytes become, so a replaced cover keys to a new
-    /// object rather than overwriting the one it replaces.
-    pub async fn cover_cloud_path_for_storage(
-        &self,
-        storage: crate::config::HomeStorage,
-        release_id: &str,
-        blob_id: &str,
-        content_type: &ContentType,
-    ) -> Result<Option<String>, DbError> {
-        let release_id = release_id.to_string();
-        let blob_id = blob_id.to_string();
-        let content_type = content_type.clone();
-        self.cloud_path_if_browsable(storage, move |sql| {
-            resolve_cover_cloud_path(sql, &release_id, &blob_id, &content_type)
-        })
-        .await
-    }
-
-    /// Where the user's own file for a release file lives on disk, or `None`
-    /// when the row carries no external registration.
-    ///
-    /// `release_files` is bae's only user-provided table — every other blob is
-    /// coven's own copy — so a file id is all this needs. Callers that want the
-    /// *bytes* read them through coven instead (`LibraryManager::read_release_blob`);
-    /// this is for the paths themselves: re-reading a file's tags, or telling a
-    /// user where their music actually is.
-    pub async fn external_blob(
-        &self,
-        file_id: &str,
-    ) -> Result<Option<coven::ExternalBlob>, DbError> {
-        self.inner
-            .handle
-            .external_blob(crate::sync::RELEASE_FILES_NAMESPACE, file_id)
-            .await
-    }
-
-    /// Whether a queued cloud upload exists for `file_id` — a failed attempt
-    /// stays queued for retry, so it still counts. Playback's read-failure
-    /// classification uses this to tell "source file gone while its upload is
-    /// queued" from "source file gone, files moved or deleted".
+    /// Whether an attached file is still waiting for upload.
     pub async fn has_pending_cloud_upload(&self, file_id: &str) -> Result<bool, DbError> {
-        // coven owns the upload queue; a queued upload names the blob-bearing
-        // row it belongs to, which for audio is the `release_files` row itself.
         Ok(self
             .inner
             .handle
-            .queued_uploads()
+            .uploads()
             .await?
+            .files
             .iter()
             .any(|upload| {
-                upload.blob.table() == crate::sync::RELEASE_FILES_NAMESPACE
-                    && upload.blob.row_id() == file_id
+                upload.file.table() == "release_files"
+                    && upload.file.key() == &coven::RowKey::from(file_id)
             }))
+    }
+
+    /// Release ids in upload queue order; image uploads without a release remain
+    /// visible in the queue but do not enter the release storage filter.
+    pub async fn uploading_releases(&self) -> Result<Vec<String>, DbError> {
+        let queue = self.outbox_queue().await?;
+        let mut seen = HashSet::new();
+        Ok(queue
+            .uploads
+            .into_iter()
+            .filter_map(|entry| entry.release_id)
+            .filter(|id| seen.insert(id.clone()))
+            .collect())
     }
 
     /// What coven's durable cloud queue is holding, joined to the bae context the
@@ -299,13 +266,13 @@ impl Database {
         &self,
     ) -> Result<
         (
-            coven::CloudOutboxSnapshot,
+            coven::UploadQueue,
             OutboxDisplayRequest,
             OutboxDisplayContext,
         ),
         DbError,
     > {
-        let snapshot = self.inner.handle.cloud_outbox_snapshot().await?;
+        let snapshot = self.inner.handle.uploads().await?;
         let request = Self::outbox_display_request(&snapshot)?;
         let names = self.outbox_display_context(request.clone()).await?;
         Ok((snapshot, request, names))
@@ -315,44 +282,23 @@ impl Database {
     /// committed stream. Each value is labelled by the display rows
     /// `subscribe_outbox_display` follows and
     /// joined by `outbox_queue_from_context`.
-    pub fn subscribe_cloud_outbox(&self) -> coven::CloudOutboxLiveQuery {
-        self.inner.handle.subscribe_cloud_outbox()
+    pub fn subscribe_cloud_outbox(&self) -> coven::LiveQuery<coven::UploadQueue> {
+        self.inner.handle.subscribe_uploads()
     }
 
     /// Identify the bae rows that label an exact durable outbox snapshot.
     /// Invalid roots fail here rather than producing a partially labelled UI.
     pub(crate) fn outbox_display_request(
-        snapshot: &coven::CloudOutboxSnapshot,
+        snapshot: &coven::UploadQueue,
     ) -> Result<OutboxDisplayRequest, DbError> {
         let mut release_file_ids = snapshot
-            .uploads
+            .files
             .iter()
-            .filter(|upload| upload.blob.table() == crate::sync::RELEASE_FILES_NAMESPACE)
-            .map(|upload| upload.blob.row_id().to_string())
-            .collect::<Vec<_>>();
+            .filter(|upload| upload.file.table() == "release_files")
+            .map(|upload| file_row_id(&upload.file).map(str::to_string))
+            .collect::<Result<Vec<_>, DbError>>()?;
         release_file_ids.sort();
         release_file_ids.dedup();
-
-        if let Some(upload) = snapshot
-            .uploads
-            .iter()
-            .find(|upload| upload.root_table != "releases")
-        {
-            return Err(DbError::Message(format!(
-                "queued upload root {}:{} is not a release",
-                upload.root_table, upload.root_id
-            )));
-        }
-        if let Some(transition) = snapshot
-            .make_remotes
-            .iter()
-            .find(|transition| transition.root_table != "releases")
-        {
-            return Err(DbError::Message(format!(
-                "make-Remote root {}:{} is not a release",
-                transition.root_table, transition.root_id
-            )));
-        }
 
         Ok(OutboxDisplayRequest { release_file_ids })
     }
@@ -386,74 +332,37 @@ impl Database {
     }
 
     pub(crate) fn outbox_queue_from_context(
-        snapshot: coven::CloudOutboxSnapshot,
+        snapshot: coven::UploadQueue,
         context: OutboxDisplayContext,
     ) -> Result<DbOutboxQueue, DbError> {
-        let coven::CloudOutboxSnapshot {
-            uploads,
-            make_remotes,
-        } = snapshot;
-
-        let OutboxDisplayContext { file_names } = context;
-
-        let uploads = uploads
-            .into_iter()
-            .map(|upload| {
-                let label = match upload.blob.table() {
-                    // A file whose row went with its release has nothing left
-                    // to name it, and needs nothing: the entry is on its way
-                    // out, which is what the row says it is.
-                    crate::sync::RELEASE_FILES_NAMESPACE => file_names
-                        .get(upload.blob.row_id())
-                        .map_or(crate::library::UploadFileLabel::Unwinding, |file_name| {
-                            crate::library::UploadFileLabel::Filename(file_name.clone())
-                        }),
-                    crate::sync::COVERS_NAMESPACE => crate::library::UploadFileLabel::Cover,
-                    crate::sync::ARTIST_IMAGES_NAMESPACE => {
-                        crate::library::UploadFileLabel::ArtistImage
-                    }
-                    table => {
-                        return Err(DbError::Message(format!(
-                            "queued upload names undeclared blob table {table:?}"
-                        )));
-                    }
-                };
-                let phase = match (upload.phase, upload.provider_bytes_total) {
-                    (coven::QueuedUploadPhase::Pending, None) => DbUploadPhase::Pending,
-                    (coven::QueuedUploadPhase::Prepared, Some(provider_bytes_total)) => {
-                        DbUploadPhase::Prepared {
-                            provider_bytes_total,
-                        }
-                    }
-                    (coven::QueuedUploadPhase::Created, Some(provider_bytes_total)) => {
-                        DbUploadPhase::Created {
-                            provider_bytes_total,
-                        }
-                    }
-                    (phase, provider_bytes_total) => {
-                        return Err(DbError::Message(format!(
-                            "queued upload {}:{} is {phase:?} with provider size \
-                             {provider_bytes_total:?}",
-                            upload.blob.table(),
-                            upload.blob.row_id()
-                        )));
-                    }
-                };
-                Ok(DbOutboxUpload {
-                    release_id: upload.root_id,
-                    blob: upload.blob,
-                    phase,
-                    attempt_count: upload.attempt_count,
-                    last_failure: upload.last_failure,
-                    created_at: stamp_millis(&upload.created_at)?,
-                    label,
-                })
-            })
-            .collect::<Result<Vec<_>, DbError>>()?;
-
+        let mut uploads = Vec::with_capacity(snapshot.files.len());
+        for upload in snapshot.files {
+            let id = file_row_id(&upload.file)?;
+            let (release_id, label) = match upload.file.table() {
+                "release_files" => match context.file_names.get(id) {
+                    Some((release, name)) => (
+                        Some(release.clone()),
+                        crate::library::UploadFileLabel::Filename(name.clone()),
+                    ),
+                    None => (None, crate::library::UploadFileLabel::Unwinding),
+                },
+                "covers" => (Some(id.to_string()), crate::library::UploadFileLabel::Cover),
+                "artist_images" => (None, crate::library::UploadFileLabel::ArtistImage),
+                table => {
+                    return Err(DbError::Message(format!(
+                        "upload names undeclared file table {table:?}"
+                    )))
+                }
+            };
+            uploads.push(DbOutboxUpload {
+                release_id,
+                upload,
+                label,
+            });
+        }
         Ok(DbOutboxQueue {
+            paused: snapshot.paused,
             uploads,
-            make_remotes,
         })
     }
 }
@@ -463,32 +372,33 @@ impl Database {
 fn outbox_release_file_names_on(
     sql: &SqlReadContext<'_>,
     file_ids: &[String],
-) -> Result<HashMap<String, String>, DbError> {
+) -> Result<HashMap<String, (String, String)>, DbError> {
     let mut map = HashMap::new();
     for chunk in file_ids.chunks(SQL_MAX_IN_VARS) {
-        let placeholders = in_clause_placeholders(chunk.len());
         let query = format!(
-            "SELECT rf.id, rf.original_filename \
-             FROM release_files rf \
-             WHERE rf.id IN ({placeholders})"
+            "SELECT id, release_id, original_filename FROM release_files WHERE id IN ({})",
+            in_clause_placeholders(chunk.len())
         );
-        let rows = sql.query(
-            &query,
-            coven::rusqlite::params_from_iter(chunk.iter()),
-            |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
-        )?;
-        map.extend(rows);
+        map.extend(
+            sql.query(&query, rusqlite::params_from_iter(chunk.iter()), |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    (row.get::<_, String>(1)?, row.get::<_, String>(2)?),
+                ))
+            })?,
+        );
     }
     Ok(map)
 }
 
-/// coven stamps a queue entry's `created_at` with its HLC (`millis-counter-device`);
-/// the UI needs an instant for the "queued N ago" label, so take the stamp's
-/// physical millis. A value that isn't a coven stamp is corrupt, not a default.
-fn stamp_millis(raw: &str) -> Result<i64, DbError> {
-    coven::Timestamp::parse(raw)
-        .map(|t| t.millis as i64)
-        .ok_or_else(|| DbError::Message(format!("queue created_at {raw:?} is not a coven stamp")))
+pub(super) fn file_row_id(file: &coven::FileRef) -> Result<&str, DbError> {
+    match file.key().values() {
+        [rusqlite::types::Value::Text(id)] => Ok(id),
+        key => Err(DbError::Message(format!(
+            "file {} has unexpected key {key:?}",
+            file.table()
+        ))),
+    }
 }
 
 /// `ids` is a whole page's worth of releases (or, for the storage page, each row's
@@ -504,11 +414,11 @@ pub(super) fn image_versions_on(
     for chunk in ids.chunks(SQL_MAX_IN_VARS) {
         let placeholders = in_clause_placeholders(chunk.len());
         let query = format!("SELECT id, blob_id FROM {table} WHERE id IN ({placeholders})");
-        map.extend(sql.query(
-            &query,
-            coven::rusqlite::params_from_iter(chunk.iter()),
-            |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
-        )?);
+        map.extend(
+            sql.query(&query, rusqlite::params_from_iter(chunk.iter()), |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+            })?,
+        );
     }
     Ok(map)
 }

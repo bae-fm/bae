@@ -33,14 +33,8 @@ impl OutboxSnapshot {
     pub fn summary_parts(&self) -> Vec<CountLabel> {
         let mut parts = Vec::new();
         for (key, count) in [
-            ("core.outbox.cancelling", self.total.cancelling),
-            ("core.outbox.publishing", self.total.publishing),
             ("core.queue.uploading", self.total.uploading),
-            ("core.outbox.preparing", self.total.preparing),
-            ("core.outbox.retrying", self.total.retrying),
-            ("core.outbox.prepared", self.total.prepared),
             ("core.queue.queued", self.total.queued),
-            ("core.outbox.uploaded", self.total.uploaded),
         ] {
             if count > 0 {
                 parts.push(CountLabel {

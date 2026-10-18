@@ -146,7 +146,7 @@ impl ArtistAssignment {
     /// it says, which the write resolves to a library artist when it commits.
     pub(crate) fn write_row(
         &self,
-        ids: &dyn coven::IdProvider,
+        ids: &dyn coven::IdSource,
         now: chrono::DateTime<chrono::Utc>,
     ) -> crate::db::DbArtist {
         match self {
@@ -159,7 +159,7 @@ impl ArtistAssignment {
                 created_at: now,
             },
             Self::Credit { credit } => crate::db::DbArtist {
-                id: ids.new_id(),
+                id: ids.new_id().to_string(),
                 name: credit.name.clone(),
                 sort_name: credit.sort_name.clone(),
                 discogs_artist_id: credit.discogs_artist_id.clone(),

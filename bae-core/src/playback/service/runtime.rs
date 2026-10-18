@@ -632,7 +632,7 @@ impl PlaybackService {
     /// production passes one over the library's wall clock.
     pub(crate) fn start(
         library_manager: LibraryManager,
-        queue_ids: coven::IdRef,
+        queue_ids: coven::IdSourceRef,
         runtime_handle: tokio::runtime::Handle,
         position_update_interval_ms: u32,
         restore_playback: bool,
@@ -655,7 +655,7 @@ impl PlaybackService {
     #[cfg(any(test, feature = "test-utils"))]
     pub(crate) fn start_with_audio_device(
         library_manager: LibraryManager,
-        queue_ids: coven::IdRef,
+        queue_ids: coven::IdSourceRef,
         runtime_handle: tokio::runtime::Handle,
         position_update_interval_ms: u32,
         restore_playback: bool,
@@ -675,7 +675,7 @@ impl PlaybackService {
 
     pub(super) fn start_inner(
         library_manager: LibraryManager,
-        queue_ids: coven::IdRef,
+        queue_ids: coven::IdSourceRef,
         runtime_handle: tokio::runtime::Handle,
         position_update_interval_ms: u32,
         restore_playback: bool,

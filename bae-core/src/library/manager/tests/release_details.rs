@@ -16,9 +16,8 @@ async fn add_cover_row(manager: &LibraryManager, release_id: &str, blob: &str) {
             height: None,
             source: "local".to_string(),
             source_url: None,
-            cloud_path: None,
-            content_hash: crate::util::fs::hash_bytes(b"fixture"),
-            created_at: manager.clock.now(),
+
+            created_at: manager.clock.now().into(),
         })
         .await
         .unwrap();
@@ -48,8 +47,7 @@ async fn find_release_detail_does_not_panic_on_traversal_filenames_from_a_peer()
     let (manager, _temp_dir) = setup_test_manager().await;
 
     let album = create_test_album();
-    let mut release = create_test_release(&album.id);
-    release.remote = false;
+    let release = create_test_release(&album.id);
     manager.database.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
 

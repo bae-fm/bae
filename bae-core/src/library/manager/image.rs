@@ -104,32 +104,15 @@ impl LibraryManager {
             .await
             .map_err(|e| LibraryError::Import(format!("cover resize task failed: {e}")))?
             .map_err(|e| LibraryError::Import(format!("Failed to resize cover: {e}")))?;
-        let mut library_image = DbLibraryImage::cover(
+        let library_image = DbLibraryImage::cover(
             release_id,
-            &self.ids.new_id(),
+            &self.ids.new_id().to_string(),
             &source,
             source_url,
             &bytes,
-            self.clock.now(),
+            chrono::DateTime::<chrono::Utc>::from(self.clock.now()),
         );
 
-        // Record the cover blob and row in one coven write; the cover's `id` IS the
-        // release id, and its `blob_id` is fresh: a coven blob id names one
-        // immutable byte-string, so a changed cover is a NEW blob — the write
-        // repoints the row at it and deletes the one it replaced. On a browsable
-        // home the blob lands at a readable `{album_id}/{release_id}/cover.{ext}`
-        // key, computed and stored here; an opaque home leaves `cloud_path` NULL
-        // (hashed-by-id).
-        let storage = self.config_handle.config().cloud_home.storage;
-        library_image.cloud_path = self
-            .database
-            .cover_cloud_path_for_storage(
-                storage,
-                release_id,
-                &library_image.blob_id,
-                &library_image.content_type,
-            )
-            .await?;
         self.store_library_image_blob(&library_image, &bytes)
             .await?;
 

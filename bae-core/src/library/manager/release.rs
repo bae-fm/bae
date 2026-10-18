@@ -400,7 +400,7 @@ impl LibraryManager {
             )));
         }
 
-        let now = self.clock.now();
+        let now = chrono::DateTime::<chrono::Utc>::from(self.clock.now());
         let mut credits: Vec<DbArtist> = Vec::new();
         let mut picked: Vec<String> = Vec::new();
         let mut credit_of = |assignment: &crate::import::ArtistAssignment| {
@@ -476,7 +476,7 @@ impl LibraryManager {
                     &existing.id,
                     &credit_of(assignment),
                     i as i32,
-                    self.ids.new_id(),
+                    self.ids.new_id().to_string(),
                     now,
                 ));
             }
@@ -738,7 +738,7 @@ fn parsed_for_existing_release(
     source: crate::import::Catalog,
     tracks: &[DbTrack],
     clock: &dyn coven::Clock,
-    ids: &dyn coven::IdProvider,
+    ids: &dyn coven::IdSource,
 ) -> Result<crate::import::ParsedAlbum, LibraryError> {
     release
         .parsed(&layout_lengths(source, tracks)?, clock, ids)
@@ -796,7 +796,7 @@ async fn project_file_metadata(
     database: &Database,
     release: &DbRelease,
     clock: ClockRef,
-    ids: IdRef,
+    ids: IdSourceRef,
 ) -> Result<crate::import::ParsedAlbum, LibraryError> {
     let files = database.get_files_for_release(&release.id).await?;
     let mut audio_paths = Vec::new();

@@ -60,8 +60,8 @@ impl AlbumSelectionSubscription {
             .next()
             .await
             .map_err(|_| AlbumSelectionSubscriptionError::Cancelled)?;
-        let requested = event.request().clone();
-        let projection = event.into_result()?;
+        let requested = event.request.clone();
+        let projection = event.result?;
         Ok(AlbumSelectionSnapshot {
             requested,
             albums: (self.resolve)(projection),

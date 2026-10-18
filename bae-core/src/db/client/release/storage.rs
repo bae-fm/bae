@@ -17,7 +17,7 @@ impl Database {
             r.album_id, \
             a.title AS album_title, \
             r.media, \
-            r.remote, \
+            ({RELEASE_R_ATTACHED}) AS remote, \
             (SELECT rf.id FROM release_files rf WHERE rf.release_id = r.id LIMIT 1) AS any_file_id, \
             {artist_names} AS artist_names, \
             COALESCE(( \
@@ -75,7 +75,7 @@ impl Database {
             .subscribe_reconfigurable(initial, |release_ids, sql| {
                 queued_releases_on(&sql, release_ids).map_err(CovenError::from)
             })
-            .process(|_, releases| Ok(releases))
+            .process(Ok)
     }
 
     /// A representative file id for every remote release — one per release, `None`
@@ -87,8 +87,8 @@ impl Database {
     pub async fn get_remote_release_file_ids(&self) -> Result<Vec<Option<String>>, DbError> {
         self.read(move |sql| {
             sql.query(
-                "SELECT (SELECT rf.id FROM release_files rf WHERE rf.release_id = r.id LIMIT 1) \
-                     FROM releases r WHERE r.remote = 1",
+                &format!("SELECT (SELECT rf.id FROM release_files rf WHERE rf.release_id = r.id LIMIT 1) \
+                     FROM releases r WHERE {RELEASE_R_ATTACHED}"),
                 [],
                 |row| row.get::<_, Option<String>>(0),
             )
@@ -108,18 +108,7 @@ impl Database {
         if filter != StorageFilter::Uploading {
             return Ok(Vec::new());
         }
-        let mut seen = HashSet::new();
-        let ids = self
-            .inner
-            .handle
-            .queued_uploads()
-            .await?
-            .into_iter()
-            .filter(|upload| upload.root_table == "releases")
-            .map(|upload| upload.root_id)
-            .filter(|release_id| seen.insert(release_id.clone()))
-            .collect();
-        Ok(ids)
+        self.uploading_releases().await
     }
 
     /// Count storage rows matching `filter`, using the same filter logic as
@@ -232,10 +221,16 @@ impl Database {
                     LibraryImageType::Cover,
                     &release_ids,
                 )?);
-                Ok((windows, total_count, total_size, cover_versions))
+                Ok((
+                    request.clone(),
+                    windows,
+                    total_count,
+                    total_size,
+                    cover_versions,
+                ))
             })
             .process(
-                |request, (windows, total_count, total_size, cover_versions)| {
+                |(request, windows, total_count, total_size, cover_versions)| {
                     let windows = windows
                         .into_iter()
                         .map(|(window, rows)| {
@@ -276,20 +271,16 @@ fn queued_releases_on(
             WHERE r.id IN ({})",
             in_clause_placeholders(chunk.len())
         );
-        let rows = sql.query(
-            &query,
-            coven::rusqlite::params_from_iter(chunk.iter()),
-            |row| {
-                Ok((
-                    row.get::<_, String>(0)?,
-                    crate::library::QueuedRelease {
-                        title: row.get(1)?,
-                        file_count: row.get(2)?,
-                        total_size: row.get(3)?,
-                    },
-                ))
-            },
-        )?;
+        let rows = sql.query(&query, rusqlite::params_from_iter(chunk.iter()), |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                crate::library::QueuedRelease {
+                    title: row.get(1)?,
+                    file_count: row.get(2)?,
+                    total_size: row.get(3)?,
+                },
+            ))
+        })?;
         releases.extend(rows);
     }
     Ok(releases)

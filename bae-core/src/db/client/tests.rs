@@ -24,14 +24,11 @@ const ARTIST_PRIMARY: &str = "7cdf9a34-0746-472b-8c68-0a669c11f2f1";
 const ARTIST_SOLO: &str = "49549823-0e72-4747-891e-ee50e1611e3a";
 const ARTIST_VARIOUS: &str = "f862abf2-3b15-4518-889b-1996d7100201";
 const ARTIST_WORK_ONLY: &str = "b96d8066-777d-408d-8ae4-ed58c767e40c";
-const BLOB_1: &str = "222d362a-5ce1-45ff-8a54-341cde525c2c";
-const BLOB_2: &str = "b1b46178-280d-48d4-86b3-62b31c040179";
 const COMPOSER_A: &str = "5dcc4999-03bd-42cc-8d14-8bf0a05effa3";
 const COMPOSER_B: &str = "2b748d47-e5b7-4c40-8716-1e608b9dfc3d";
 const COMPOSER_C: &str = "80cd3a5e-7fb7-4766-8ec3-d8e86575743b";
 const COMPOSER_SOLO: &str = "4d93d615-4549-45d9-81d9-644f079d59bf";
 const ENTRY_A: &str = "e2ebff4e-4ed0-4a73-88ed-93453a79b463";
-const REL_1: &str = "cccb6034-5922-40d2-8d0b-d94619230882";
 const RELEASE_1: &str = "c0218676-4c47-4eb7-8d65-57a8d328c3d1";
 const RELEASE_A: &str = "0252dedb-ee39-4547-8803-438dbeb57a64";
 const RELEASE_B: &str = "64e79a1f-404a-4c34-809a-a3cb44bf1942";
@@ -130,7 +127,7 @@ async fn empty_db() -> (super::Database, tempfile::TempDir) {
     let tmp = tempfile::TempDir::new().unwrap();
     let db = super::Database::new_test(
         tmp.path().join("test.db").to_str().unwrap(),
-        std::sync::Arc::new(coven::FixedClock(fixed_now())),
+        std::sync::Arc::new(coven::FixedClock::new((fixed_now()).into())),
     )
     .await
     .unwrap();
@@ -154,7 +151,7 @@ async fn queue_items(
 ) -> Vec<crate::queue::QueueItem> {
     let mut live =
         db.subscribe_queue_catalog(super::QueueCatalogRequest::for_entries(entries, None));
-    live.next().await.into_result().unwrap().items(entries)
+    live.next().await.result.unwrap().items(entries)
 }
 
 /// Run one statement against the test database, panicking if it fails.
@@ -162,9 +159,9 @@ async fn exec(db: &super::Database, sql: &str, args: &[&str]) {
     let sql = sql.to_string();
     let args: Vec<String> = args.iter().map(|arg| arg.to_string()).collect();
     db.call(move |conn| {
-        conn.execute(&sql, coven::rusqlite::params_from_iter(args))
+        conn.execute(&sql, rusqlite::params_from_iter(args))
             .map(|_| ())
-            .map_err(coven::DbError::from)
+            .map_err(crate::db::DbError::from)
     })
     .await
     .unwrap();
@@ -173,23 +170,28 @@ async fn exec(db: &super::Database, sql: &str, args: &[&str]) {
 /// `exec` for a multi-statement script, which takes no bound parameters.
 async fn exec_batch(db: &super::Database, sql: &str) {
     let sql = sql.to_string();
-    db.call(move |conn| conn.execute_batch(&sql).map_err(coven::DbError::from))
+    db.call(move |conn| conn.execute_batch(&sql).map_err(crate::db::DbError::from))
         .await
         .unwrap();
 }
 
+/// Store a real cover so coven supplies the file's managed columns.
+async fn write_cover(db: &super::Database, release: &str, version: &str) {
+    let bytes = b"fixture cover";
+    let image =
+        crate::db::DbLibraryImage::cover(release, version, "discogs", None, bytes, fixed_now());
+    db.write_library_image_blob(&image, bytes).await.unwrap();
+}
+
 /// `ARTIST_PRIMARY` owning `ALBUM_A`, whose primary release is `RELEASE_A`.
-fn seed_artist_album_release(conn: &coven::SqlContext<'_, '_>) -> Result<(), coven::DbError> {
+fn seed_artist_album_release(conn: &coven::SqlContext<'_, '_>) -> Result<(), crate::db::DbError> {
     conn.execute_batch(
         "
-        INSERT INTO artists (id, name, name_key, _updated_at, created_at)
-        VALUES ('7cdf9a34-0746-472b-8c68-0a669c11f2f1', 'Artist Name Primary', 'artist name primary', 'stamp', '2026-01-01T00:00:00Z');
+        INSERT INTO artists (id, name, name_key, created_at) VALUES ('7cdf9a34-0746-472b-8c68-0a669c11f2f1', 'Artist Name Primary', 'artist name primary', '2026-01-01T00:00:00Z');
 
-        INSERT INTO albums (id, title, artist_id, year, primary_release_id, is_compilation, _updated_at, created_at)
-        VALUES ('a67c03ad-425f-45e9-8279-0144c852aaa5', 'Album Title A', '7cdf9a34-0746-472b-8c68-0a669c11f2f1', 2026, '0252dedb-ee39-4547-8803-438dbeb57a64', 0, 'stamp', '2026-01-01T00:00:00Z');
+        INSERT INTO albums (id, title, artist_id, year, primary_release_id, is_compilation, created_at) VALUES ('a67c03ad-425f-45e9-8279-0144c852aaa5', 'Album Title A', '7cdf9a34-0746-472b-8c68-0a669c11f2f1', 2026, '0252dedb-ee39-4547-8803-438dbeb57a64', 0, '2026-01-01T00:00:00Z');
 
-        INSERT INTO releases (id, album_id, remote, _updated_at, created_at)
-        VALUES ('0252dedb-ee39-4547-8803-438dbeb57a64', 'a67c03ad-425f-45e9-8279-0144c852aaa5', 1, 'stamp', '2026-01-01T00:00:00Z');
+        INSERT INTO releases (id, album_id, created_at) VALUES ('0252dedb-ee39-4547-8803-438dbeb57a64', 'a67c03ad-425f-45e9-8279-0144c852aaa5', '2026-01-01T00:00:00Z');
         ",
     )?;
     Ok(())
@@ -199,9 +201,6 @@ fn seed_artist_album_release(conn: &coven::SqlContext<'_, '_>) -> Result<(), cov
 mod queue_ordering_tests;
 
 #[cfg(test)]
-mod store_file_helpers;
-
-#[cfg(test)]
 mod in_clause_chunking_tests;
 
 #[cfg(test)]
@@ -209,9 +208,6 @@ mod aggregate_ordering_tests;
 
 #[cfg(test)]
 mod connection_boundary_tests;
-
-#[cfg(test)]
-mod readable_cloud_path_tests;
 
 #[cfg(test)]
 mod row_mapper_error_tests;

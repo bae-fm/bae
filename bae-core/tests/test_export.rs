@@ -11,8 +11,7 @@ use bae_core::config::{
     SaveBitDepth, SaveCodec, SaveFilenameToken, SavePregapPlacement, SavePreset,
 };
 use bae_core::library::{LibraryManager, OutputKind};
-use coven::EncryptionService;
-use coven::InMemoryCloudHome;
+use coven::MemoryStorage;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
@@ -21,32 +20,8 @@ use tempfile::TempDir;
 struct ExportFixture {
     mgr: LibraryManager,
     handle: bae_core::import::ImportServiceHandle,
-    cloud: Arc<InMemoryCloudHome>,
+    cloud: Arc<MemoryStorage>,
     _temp: TempDir,
-}
-
-/// Remove one release file's cloud object from the mock home.
-///
-/// coven keys an exact object by its locator hash — `release_files/opaque/<hash>`
-/// — so a test cannot name the object from the blob id. Read the blob through
-/// coven once, which records the slot that read touched, remove exactly that
-/// slot, then drop the cache copy the read just populated so the next read has
-/// to go back to the (now empty) cloud.
-async fn remove_cloud_blob(mgr: &LibraryManager, cloud: &InMemoryCloudHome, file_id: &str) {
-    let blob = mgr
-        .release_blob_ref_for_test(file_id)
-        .await
-        .expect("the release_files row");
-    cloud.clear_exact_reads();
-    mgr.materialize_release_blob_for_test(file_id)
-        .await
-        .expect("the blob is readable before it is removed");
-    let slots = cloud.exact_reads();
-    assert_eq!(slots.len(), 1, "one exact read for one blob");
-    cloud.remove_exact_object(&slots[0]);
-    mgr.evict_blob_for_test(&blob)
-        .await
-        .expect("drop the cache copy the probe read populated");
 }
 
 impl ExportFixture {
@@ -55,14 +30,9 @@ impl ExportFixture {
         let db_dir = temp.path().join("db");
         fs::create_dir_all(&db_dir).unwrap();
 
-        let (mgr, _db) = support::open_test_library(&db_dir).await;
-        let cloud = Arc::new(InMemoryCloudHome::new());
-        mgr.connect_test_cloud_home_caller_driven(
-            cloud.clone(),
-            bae_core::sync::CloudCipher::Encrypted(EncryptionService::from_key([7u8; 32])),
-        )
-        .await
-        .unwrap();
+        let (mgr, _, cloud) =
+            support::storage_library(&db_dir, bae_core::providers::Providers::offline()).await;
+        support::connect_storage(&mgr, &cloud).await;
 
         let handle = mgr
             .start_import_service(tokio::runtime::Handle::current())
@@ -108,6 +78,11 @@ async fn import_then_strand_in_cloud(f: &ExportFixture, album_dir: &Path) -> (St
     let uploaded = f.mgr.drain_uploads_expecting_work().await.unwrap();
     assert_eq!(uploaded, files.len(), "each release blob uploaded");
 
+    for file in files {
+        let reference = f.mgr.release_blob_ref_for_test(&file.id).await.unwrap();
+        f.mgr.evict_blob_for_test(&reference).await.unwrap();
+    }
+    fs::remove_dir_all(album_dir).unwrap();
     (release_id, original_bytes)
 }
 
@@ -375,7 +350,7 @@ async fn export_release_missing_blob_is_hard_error() {
 
     // Blow away the seeded blob.
     let files = f.mgr.get_files_for_release(&release_id).await.unwrap();
-    remove_cloud_blob(&f.mgr, &f.cloud, &files[0].id).await;
+    support::remove_uploaded_file(&f.mgr, &f.cloud, &files[0].id).await;
 
     let target = f.temp_path().join("export-target");
     fs::create_dir_all(&target).unwrap();

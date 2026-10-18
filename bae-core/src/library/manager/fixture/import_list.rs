@@ -129,7 +129,7 @@ impl LibraryManager {
                 .await
             }
             FixtureCandidateState::Unmatched => {
-                let release = fixture_release(candidate, self.ids.new_id());
+                let release = fixture_release(candidate, self.ids.new_id().to_string());
                 self.store_fixture_verdict(
                     candidate,
                     TerminalVerdict::of_pick(release, track_count),
@@ -162,7 +162,7 @@ impl LibraryManager {
                 .await
             }
             FixtureCandidateState::Identified => {
-                let release_id = self.ids.new_id();
+                let release_id = self.ids.new_id().to_string();
                 let record = crate::import::MetadataRef::new(Catalog::MusicBrainz, &release_id);
                 let document = musicbrainz_release(candidate, &release_id);
                 let release = crate::import::payloads::ReleasePayloads::for_test(
@@ -217,7 +217,7 @@ impl LibraryManager {
                             reason: crate::import::ImportFailureReason {
                                 detail: FIXTURE_IMPORT_FAILURE.to_string(),
                             },
-                            failed_at: self.clock.now(),
+                            failed_at: chrono::DateTime::<chrono::Utc>::from(self.clock.now()),
                             artist_identity_conflict: None,
                         },
                     )

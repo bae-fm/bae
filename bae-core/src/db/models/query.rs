@@ -141,9 +141,8 @@ pub struct DbReleaseStorageSummary {
     pub album_title: String,
     pub artist_names: String,
     pub media: Vec<crate::pressing::MediaCount>,
-    /// The shared `releases.remote` fact: audio in the cloud vs local to a device.
-    /// The resolver reads `Local` straight off `!remote`; for a remote release it
-    /// asks coven's cache (via `any_file_id`) whether it is pinned.
+    /// Whether all audio files are attached for sharing. Pending uploads are
+    /// reported independently by the upload queue.
     pub remote: bool,
     /// The id of one of the release's files, or `None` when it has none. Used to
     /// ask coven's cache whether the release is pinned — pin/unpin act on all a
@@ -252,9 +251,8 @@ pub struct DbReleaseSummary {
     pub id: String,
     pub album_id: String,
     pub media: Vec<crate::pressing::MediaCount>,
-    /// The shared `releases.remote` fact: audio in the cloud vs local to a device.
-    /// The resolver reads `Local` straight off `!remote`; for a remote release it
-    /// asks coven's cache (via `any_file_id`) whether it is pinned.
+    /// Whether all audio files are attached for sharing. Pending uploads are
+    /// reported independently by the upload queue.
     pub remote: bool,
     /// The id of one of the release's files, or `None` when it has none. Used to
     /// ask coven's cache whether the release is pinned — pin/unpin act on all a
@@ -300,55 +298,17 @@ pub enum StorageFilter {
     Uploading,
 }
 
-/// What coven's durable cloud queue is holding, as the Storage Manager renders
-/// it: pending uploads and pending make-Remote transitions, each oldest first.
-///
-/// coven owns the queue itself — which blob, under which gated root, how many
-/// attempts and why the last one failed. bae joins only each file's name from
-/// its own tables; a release's album title is read live wherever the release is
-/// rendered, never off the queue.
-/// [`Database::outbox_queue`](crate::db::Database::outbox_queue) reads the first
-/// from coven and joins the second.
+/// Coven's committed upload queue with each file's bae display context.
 #[derive(Debug, Clone, Default)]
 pub struct DbOutboxQueue {
+    pub paused: bool,
     pub uploads: Vec<DbOutboxUpload>,
-    pub make_remotes: Vec<coven::QueuedMakeRemote>,
 }
 
-/// Where coven's durable handoff has taken one queued upload. Each phase past
-/// preparation carries the exact encrypted/browsable object size preparation
-/// produced; pending preparation has no provider size yet. A queue row whose
-/// phase and provider size disagree fails the outbox projection.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum DbUploadPhase {
-    Pending,
-    Prepared { provider_bytes_total: u64 },
-    Created { provider_bytes_total: u64 },
-}
-
-/// One queued blob upload plus its bae context.
+/// One queued file and its label. Artist images have no release parent.
 #[derive(Debug, Clone)]
 pub struct DbOutboxUpload {
-    /// The release whose make-Remote enqueued this upload — the gated root
-    /// every one of a release's uploads shares, and what the queue pane groups
-    /// by. Roots outside `releases` fail the outbox projection.
-    pub release_id: String,
-    /// Coven's exact blob-bearing row version. It carries the table-scoped row
-    /// identity, immutable cloud blob identity, and declared plaintext size as
-    /// one value shared with upload lifecycle callbacks.
-    pub blob: coven::RowBlobRef,
-    /// Coven's durable upload handoff. Transient preparation/upload callbacks
-    /// refine this while work is moving, but never replace it as the restart
-    /// truth.
-    pub phase: DbUploadPhase,
-    /// Failed transfer attempts so far; 0 for one never yet tried.
-    pub attempt_count: u64,
-    /// Why the last attempt failed, if one has. Coven preserves the failure's
-    /// actionable kind rather than reducing it to display prose.
-    pub last_failure: Option<coven::OutboxFailure>,
-    /// Enqueue time as Unix epoch milliseconds, taken from coven's HLC stamp.
-    pub created_at: i64,
-    /// The domain label for this upload. Platforms localize the named image
-    /// kinds and render an original filename verbatim.
+    pub release_id: Option<String>,
+    pub upload: coven::QueuedUpload,
     pub label: crate::library::UploadFileLabel,
 }

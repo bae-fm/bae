@@ -373,7 +373,7 @@ fn make_release(album_id: &str) -> DbRelease {
             barcode: None,
         },
         draft_from_tags: true,
-        remote: true,
+
         source_folder_name: None,
         content_hash: None,
         album_loudness_lufs: None,

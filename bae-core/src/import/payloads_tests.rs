@@ -2,7 +2,7 @@ use super::*;
 use crate::db::Database;
 use crate::import::source_release::{UnfetchedDocument, UnfetchedReason};
 use chrono::{DateTime, Utc};
-use coven::{FixedClock, SequentialIdProvider};
+use coven::{FixedClock, SequentialIds};
 use std::sync::Arc;
 
 #[test]
@@ -617,7 +617,7 @@ async fn test_database() -> (Database, tempfile::TempDir) {
     let path = dir.path().join("test.db");
     let database = Database::new_test(
         path.to_str().expect("a UTF-8 temp path"),
-        Arc::new(FixedClock(now())),
+        Arc::new(FixedClock::new((now()).into())),
     )
     .await
     .expect("the test database opens");
@@ -658,7 +658,7 @@ fn a_discogs_release_reaches_its_master_through_the_anchor() {
     let parsed = payloads
         .extract()
         .unwrap()
-        .parsed(&[], &FixedClock(now()), &SequentialIdProvider::new("album"))
+        .parsed(&[], &FixedClock::new((now()).into()), &SequentialIds::new())
         .expect("the documents map");
     assert_eq!(
         parsed.album.year,
@@ -868,8 +868,8 @@ fn discogs_master_cross_reference_retains_album_links_without_claiming_a_pressin
         .unwrap()
         .parsed(
             &[],
-            &FixedClock(now()),
-            &SequentialIdProvider::new("linked-album"),
+            &FixedClock::new((now()).into()),
+            &SequentialIds::new(),
         )
         .unwrap();
     assert_eq!(parsed.album.year, Some(1966));

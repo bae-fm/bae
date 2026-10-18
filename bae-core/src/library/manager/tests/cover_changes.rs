@@ -54,8 +54,7 @@ async fn assert_changed_cover(
 ) {
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
-    let mut release = create_test_release(&album.id);
-    release.remote = false;
+    let release = create_test_release(&album.id);
     manager.database.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
 
@@ -111,16 +110,13 @@ async fn assert_changed_cover(
 
 /// A cover can be changed again and again. coven's `(namespace, blob id)` names one
 /// immutable byte-string — a blob's bytes are never rewritten under a live id — so
-/// each change mints a NEW `blob_id`, repoints the `covers` row at it, and records
-/// deletion of the blob it replaced. The row's hash and size describe the newly
-/// stored bytes, and retained replay inputs own the old bytes until baseline
-/// adoption.
+/// each change mints a new `blob_id` and repoints the `covers` row at it.
+/// Captured references to the replaced row must be refused.
 #[tokio::test]
 async fn change_cover_twice_replaces_the_cover_blob() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
-    let mut release = create_test_release(&album.id);
-    release.remote = false;
+    let release = create_test_release(&album.id);
     manager.database.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
 
@@ -176,6 +172,7 @@ async fn change_cover_twice_replaces_the_cover_blob() {
 
     change_to(&green).await.unwrap();
     let first = cover_row().await;
+    let first_ref = manager.database.file_ref("covers", &release.id).await.unwrap();
 
     // The second change is the one that used to fail: it re-put a blob under an id
     // the `covers` row already referenced.
@@ -193,7 +190,7 @@ async fn change_cover_twice_replaces_the_cover_blob() {
         .unwrap()
         .expect("cover blob stored");
     assert_eq!(
-        second.content_hash.as_str(),
+        manager.database.file_ref("covers", &release.id).await.unwrap().content_hash().as_bytes().iter().map(|byte| format!("{byte:02x}")).collect::<String>().as_str(),
         crate::util::fs::hash_bytes(&stored).as_str()
     );
     assert_eq!(second.file_size, stored.len() as i64);
@@ -206,113 +203,26 @@ async fn change_cover_twice_replaces_the_cover_blob() {
         "the two source images must produce different thumbnails for this test to mean anything"
     );
 
-    // The row now points at the new blob. The old insert and replacement remain
-    // local replay inputs until baseline adoption, so coven keeps the old bytes
-    // under their replay lease while the live row exposes only the new blob.
-    assert!(
-        manager
-            .local_blob_exists_for_test(crate::sync::COVERS_NAMESPACE, &first.blob_id)
-            .expect("a valid blob path"),
-        "the replaced cover blob's replay input must remain readable"
-    );
-    assert_eq!(
-        manager
-            .local_blob_cleanup_intent_count_for_test(
-                crate::sync::COVERS_NAMESPACE,
-                &first.blob_id,
-            )
-            .await
-            .unwrap(),
-        1,
-        "the replaced cover records eventual blob cleanup"
-    );
+    assert!(matches!(manager.database.read_file(&first_ref).await,
+        Err(coven::FileReadError::Database(coven::DbError::FileRefChanged { .. }))));
 }
 
-/// On a browsable home, replacements have distinct readable paths and exact
-/// stored objects. Reusing an object's key would let a replacement overwrite
-/// bytes still referenced by an earlier change.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
-async fn replacing_a_cover_on_a_browsable_home_writes_a_distinct_cloud_key() {
-    let (manager, _temp_dir) = setup_browsable_test_manager().await;
-    manager
-        .connect_test_cloud_home(Arc::new(InMemoryCloudHome::new()), CloudCipher::Plaintext)
-        .await
-        .expect("connect browsable in-memory cloud home");
+async fn replacing_an_uploaded_cover_refuses_its_captured_reference() {
+    let (manager, _temp) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
     let album = create_test_album();
     let release = create_test_release(&album.id);
     manager.database.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
-
-    let jpeg = |rgb: [u8; 3]| {
-        let img = ::image::RgbImage::from_pixel(400, 400, ::image::Rgb(rgb));
-        let mut buf = std::io::Cursor::new(Vec::new());
-        ::image::DynamicImage::ImageRgb8(img)
-            .write_to(&mut buf, ::image::ImageFormat::Png)
-            .unwrap();
-        crate::util::cover::resize_cover(&buf.into_inner()).unwrap()
-    };
-    let store_cover = async |bytes: Vec<u8>| {
-        let mut image = DbLibraryImage::cover(
-            &release.id,
-            &Uuid::new_v4().to_string(),
-            "local",
-            None,
-            &bytes,
-            manager.clock.now(),
-        );
-        image.cloud_path = manager
-            .database
-            .cover_cloud_path_for_storage(
-                crate::config::HomeStorage::Browsable,
-                &image.id,
-                &image.blob_id,
-                &image.content_type,
-            )
-            .await
-            .unwrap();
-        manager
-            .store_library_image_blob(&image, &bytes)
-            .await
-            .unwrap();
-        wait_for_published_blob(&manager, crate::sync::COVERS_NAMESPACE, &release.id).await;
-        let stored = manager
-            .database
-            .row_blob_ref(crate::sync::COVERS_NAMESPACE, &release.id)
-            .await
-            .unwrap();
-        let image = manager
-            .get_library_image(&release.id, &LibraryImageType::Cover)
-            .await
-            .unwrap()
-            .expect("cover row stored");
-        (image, stored)
-    };
-
-    let (first, first_stored) = store_cover(jpeg([20, 160, 90])).await;
-    let (second, second_stored) = store_cover(jpeg([200, 40, 40])).await;
-
-    // Each row's readable path names its own blob, so the two never collide.
-    assert_eq!(
-        first.cloud_path.as_deref(),
-        Some(format!("{}/{}/cover-{}.jpg", album.id, release.id, first.blob_id).as_str())
-    );
-    assert_ne!(
-        first.cloud_path, second.cloud_path,
-        "a replaced cover must not reuse the object its predecessor occupies"
-    );
-
-    // The two keys really are distinct objects, so writing the second never
-    // overwrites the first.
-    let old_stored = first_stored
-        .stored()
-        .expect("first cover reached the cloud");
-    let new_stored = second_stored
-        .stored()
-        .expect("second cover reached the cloud");
-    assert_ne!(
-        old_stored.object().slot().logical_key(),
-        new_stored.object().slot().logical_key()
-    );
-    assert_ne!(old_stored, new_stored);
+    store_test_cover(&manager, &release.id, b"first cover").await;
+    let first = manager.database.file_ref("covers", &release.id).await.unwrap();
+    manager.drain_uploads_expecting_work().await.unwrap();
+    store_test_cover(&manager, &release.id, b"second cover").await;
+    let second = manager.database.file_ref("covers", &release.id).await.unwrap();
+    manager.drain_uploads_expecting_work().await.unwrap();
+    assert_ne!(first.id(), second.id());
+    assert!(matches!(manager.database.read_file(&first).await,
+        Err(coven::FileReadError::Database(coven::DbError::FileRefChanged { .. }))));
+    assert_eq!(manager.database.read_file(&second).await.unwrap(), b"second cover");
 }

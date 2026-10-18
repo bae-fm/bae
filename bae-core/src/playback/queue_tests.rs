@@ -1,9 +1,9 @@
 use super::*;
-use coven::SequentialIdProvider;
+use coven::SequentialIds;
 use std::sync::Arc;
 
 fn queue() -> PlaybackQueue {
-    PlaybackQueue::new(Arc::new(SequentialIdProvider::new("entry")))
+    PlaybackQueue::new(Arc::new(SequentialIds::new()))
 }
 
 /// The upcoming projection's track ids in order — the per-instance ids vary,

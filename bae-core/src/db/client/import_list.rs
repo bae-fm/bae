@@ -521,11 +521,20 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
     Ok(states)
 }
 
+#[derive(Clone, PartialEq)]
+struct ImportListRows {
+    windows: Vec<(crate::library::LibraryPageWindow, Vec<window::WindowItemRows>)>,
+    total_count: u64,
+    summary: crate::import::ImportQueueSummary,
+    selection_revision: u64,
+    found_states: crate::import::list::FoundStates,
+}
+
 /// One read of the list for `request`.
 fn load_import_list_on(
     sql: &SqlReadContext<'_>,
     request: &ImportListRequest,
-) -> Result<impl FnOnce() -> Result<ImportListProjection, DbError> + Send + 'static, DbError> {
+) -> Result<ImportListRows, DbError> {
     let rows = load_import_queue_on(sql, DoneRowText::of(&request.view))?;
     let flat = flatten(&rows, request).map_err(|error| DbError::Message(error.to_string()))?;
     let windows = request
@@ -538,8 +547,13 @@ fn load_import_list_on(
             ))
         })
         .collect::<Result<Vec<_>, DbError>>()?;
-    Ok(move || {
-        let windows = windows
+    Ok(ImportListRows { windows, total_count: flat.items.len() as u64, summary: flat.summary,
+        selection_revision: rows.selection_revision, found_states: flat.found_states })
+}
+
+impl ImportListRows {
+    fn process(self) -> Result<ImportListProjection, DbError> {
+        let windows = self.windows
             .into_iter()
             .map(|(window, items)| {
                 Ok(ImportListWindow {
@@ -552,13 +566,13 @@ fn load_import_list_on(
             })
             .collect::<Result<_, DbError>>()?;
         Ok(ImportListProjection {
-            total_count: flat.items.len() as u64,
+            total_count: self.total_count,
             windows,
-            summary: flat.summary,
-            selection_revision: rows.selection_revision,
-            found_states: flat.found_states,
+            summary: self.summary,
+            selection_revision: self.selection_revision,
+            found_states: self.found_states,
         })
-    })
+    }
 }
 
 impl Database {
@@ -573,7 +587,7 @@ impl Database {
             .subscribe_reconfigurable(initial, move |request, sql| {
                 load_import_list_on(&sql, request).map_err(CovenError::from)
             })
-            .process(|_, process| process().map_err(CovenError::from))
+            .process(|rows| rows.process().map_err(CovenError::from))
     }
 
     /// One read of the list, for a caller with no subscription.
@@ -582,7 +596,7 @@ impl Database {
         request: ImportListRequest,
     ) -> Result<ImportListProjection, DbError> {
         self.read(move |sql| load_import_list_on(&sql, &request))
-            .process(|process| process())
+            .process(ImportListRows::process)
             .await
     }
 
@@ -631,9 +645,9 @@ impl Database {
                 None => Ok(None),
                 Some(key) => window::load_candidate_detail_on(&sql, key).map_err(CovenError::from),
             })
-            .process(|_, process| {
+            .process(|process| {
                 process
-                    .map(|process| process())
+                    .map(window::CandidateDetailRows::process)
                     .transpose()
                     .map_err(CovenError::from)
             })
@@ -646,7 +660,7 @@ impl Database {
     ) -> Result<Option<ImportCandidateDetailProjection>, DbError> {
         let key = key.to_string();
         self.read(move |sql| window::load_candidate_detail_on(&sql, &key))
-            .process(|process| process.map(|process| process()).transpose())
+            .process(|process| process.map(window::CandidateDetailRows::process).transpose())
             .await
     }
 }

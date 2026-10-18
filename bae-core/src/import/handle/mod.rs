@@ -310,7 +310,7 @@ pub struct ImportServiceHandle {
     /// The one writer of candidates' stored state.
     preparations: crate::import::CandidatePreparations,
     clock: coven::ClockRef,
-    ids: coven::IdRef,
+    ids: coven::IdSourceRef,
     /// Reads a folder's audio files for their embedded tags; the scan's
     /// pre-fill uses the same reader.
     file_tags: std::sync::Arc<dyn crate::import::file_tag_snapshot::FileTagReader>,

@@ -144,23 +144,18 @@ async fn make_library_manager() -> (crate::library::LibraryManager, TempDir) {
         crate::db::Database::new_test(tmp.path().join("test.db").to_str().unwrap(), clock.clone())
             .await
             .unwrap();
-    let library_dir = coven::StoreDir::new(tmp.path());
+
     // Unique per test so keyring entries don't collide in the shared mock store.
-    let library_id = format!("test-{}", uuid::Uuid::new_v4());
-    let config = crate::config::Config::with_defaults(
-        library_id.clone(),
-        "test-device".to_string(),
-        library_dir.clone(),
-        "Test Library".to_string(),
-    );
+
+    let config = crate::config::Config::with_defaults(database.store_id(), tmp.path().join("preferences"));
     let config_handle = Arc::new(crate::config::ConfigHandle::new(config));
-    crate::config::install_test_keyring();
+
     let manager = crate::library::LibraryManager::new(
         database,
         crate::config::AppDir::under_home(tmp.path()),
         config_handle,
         clock,
-        Arc::new(coven::UuidProvider),
+        Arc::new(coven::UuidIds),
         crate::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
         crate::import::cover_art::RemoteImageCache::for_test(crate::util::http::Http::for_test()),

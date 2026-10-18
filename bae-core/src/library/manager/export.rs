@@ -2,6 +2,7 @@
 //! byte-for-byte. The output queue, staging, marker, and replace logic live in
 //! [`super::output`]; the save (rendered-output) arm in [`super::save`].
 
+use super::local_files::blocking_io;
 use super::*;
 use crate::storage::path_fragment::validate_path_fragment;
 use tracing::info;
@@ -53,12 +54,7 @@ impl LibraryManager {
             &format!("original_filename for file {}", file.id),
             &file.original_filename,
         )?;
-        let blob = self.release_file_row_blob_ref(&file.id).await?;
-        let stream = self
-            .database
-            .open_blob_stream(&blob)
-            .await
-            .map_err(|e| LibraryError::blob(format!("read of {}", file.id), e))?;
+        let stream = self.database.open_release_file(&file.id).await?;
         let size = stream.plaintext_size();
 
         let file_path = staging_dir.join(&file.original_filename);
@@ -72,10 +68,7 @@ impl LibraryManager {
         let mut offset = 0;
         while offset < size {
             let len = EXPORT_WINDOW.min(size - offset);
-            let window = stream
-                .read_at(offset, len)
-                .await
-                .map_err(|e| LibraryError::blob(format!("read of {}", file.id), e))?;
+            let window = stream.read_at(offset, len).await?;
             output = blocking_io(move || {
                 std::io::Write::write_all(&mut output, &window)?;
                 Ok(output)
@@ -90,13 +83,3 @@ impl LibraryManager {
 
 /// How much of a file an export holds in memory at once.
 const EXPORT_WINDOW: u64 = 4 * 1024 * 1024;
-
-/// Run filesystem work on a blocking thread.
-pub(super) async fn blocking_io<T: Send + 'static>(
-    work: impl FnOnce() -> Result<T, LibraryError> + Send + 'static,
-) -> Result<T, LibraryError> {
-    match tokio::task::spawn_blocking(work).await {
-        Ok(result) => result,
-        Err(error) => std::panic::resume_unwind(error.into_panic()),
-    }
-}

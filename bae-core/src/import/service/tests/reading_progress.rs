@@ -1,5 +1,14 @@
 #[tokio::test]
 async fn reading_progress_advances_while_coven_prepares_a_dominant_file() {
+    assert_reading_progress(ImportDestination::Remote { pin: false }).await;
+}
+
+#[tokio::test]
+async fn local_file_preparation_reports_complete_progress() {
+    assert_reading_progress(ImportDestination::Local).await;
+}
+
+async fn assert_reading_progress(destination: ImportDestination) {
     let test = setup_import_service().await;
     let folder = test.temp.path().join("reading-progress-candidate");
     std::fs::create_dir(&folder).unwrap();
@@ -26,7 +35,7 @@ async fn reading_progress_advances_while_coven_prepares_a_dominant_file() {
                 scope: crate::import::ReleaseFileScope::Recursive, parts: Vec::new(), 
             },
             expectation,
-            ImportDestination::Local,
+            destination,
         )
         .await
         .unwrap();
@@ -51,7 +60,7 @@ async fn reading_progress_advances_while_coven_prepares_a_dominant_file() {
     assert_eq!(reading_percents.first(), Some(&0));
     assert_eq!(reading_percents.last(), Some(&100));
     assert!(
-        reading_percents
+        matches!(destination, ImportDestination::Local) || reading_percents
             .iter()
             .any(|percent| (1..25).contains(percent)),
         "a release dominated by one file must advance before that file finishes: {reading_percents:?}",

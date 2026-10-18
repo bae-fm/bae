@@ -27,9 +27,9 @@ pub enum UiErrorCategory {
     GroupingBlocked(GroupingBlockReason),
     Export,
     Save,
-    /// A failed cloud-home installation keeps Coven's exact reason so every UI
+    /// A failed storage setup keeps coven's exact provider reason so every UI
     /// can tell the user what must change before retrying.
-    CloudSetup(coven::CloudHomeSetupFailure),
+    CloudSetup(coven::StorageFailure),
     /// The local store has no device identity. Create, join, and restore establish
     /// that identity before exposing a library.
     DeviceIdentityMissing,

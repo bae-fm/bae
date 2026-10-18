@@ -7,12 +7,12 @@ use crate::playback::context::{
     permute, ContextSource, ContextStart, PlaybackContext, ShuffleState,
 };
 use crate::playback::timeline::TrackTime;
-use coven::IdRef;
+use coven::IdSourceRef;
 
 /// Per-instance identity for an enqueued track. Distinct from `track_id`: the
 /// same track enqueued twice yields two entries with two ids, each removable,
 /// reorderable, and skippable independently. Minted from the injected
-/// `IdProvider` on enqueue.
+/// `IdSource` on enqueue.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct QueueEntryId(pub String);
 
@@ -132,7 +132,7 @@ pub struct PlaybackQueue {
     /// The now-playing instance, from whichever lane produced it.
     current: Option<QueueEntry>,
     repeat: RepeatMode,
-    ids: IdRef,
+    ids: IdSourceRef,
     /// Bumped by every mutation that changes the projected queue (enqueue,
     /// insert, remove, reorder, clear, advance/previous/skip-to, context
     /// set/replace, restore) — never by a read. Lets a UI that fetched a page
@@ -145,7 +145,7 @@ pub struct PlaybackQueue {
 }
 
 impl PlaybackQueue {
-    pub fn new(ids: IdRef) -> Self {
+    pub fn new(ids: IdSourceRef) -> Self {
         Self {
             manual: VecDeque::new(),
             context: None,
@@ -159,7 +159,7 @@ impl PlaybackQueue {
     /// Wrap a track id in a fresh `QueueEntry` with a newly minted id.
     fn mint(&self, track_id: String) -> QueueEntry {
         QueueEntry {
-            id: QueueEntryId(self.ids.new_id()),
+            id: QueueEntryId(self.ids.new_id().to_string()),
             track_id,
         }
     }

@@ -39,7 +39,7 @@ async fn store_user_folder_decision(
     db: &Database,
     key: &crate::import::folder_scanner::FolderReleaseDecisionKey,
     decision: crate::import::folder_scanner::FolderReleaseDecision,
-) -> Result<(), coven::DbError> {
+) -> Result<(), crate::db::DbError> {
     let key = key.clone();
     let grouping = format!(
         "grouping:{}/{}",

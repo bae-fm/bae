@@ -6,14 +6,14 @@ use crate::import::{ArtistIdentityConflict, ExistingArtist, ImportFailure, Impor
 /// The diagnostic column read by both the list and the candidate pane.
 pub(crate) const FAILURE_REASON_COLUMNS: &str = "failure.error AS failure_error";
 
-pub(crate) fn failure_reason_from_row(row: &Row<'_>) -> coven::rusqlite::Result<ImportFailureReason> {
+pub(crate) fn failure_reason_from_row(row: &Row<'_>) -> rusqlite::Result<ImportFailureReason> {
     Ok(ImportFailureReason { detail: row.get("failure_error")? })
 }
 
 fn existing_artist_from_row(
     row: &Row<'_>,
     prefix: &str,
-) -> coven::rusqlite::Result<ExistingArtist> {
+) -> rusqlite::Result<ExistingArtist> {
     let column = |suffix: &str| format!("{prefix}_{suffix}");
     Ok(ExistingArtist {
         artist_id: row.get(column("id").as_str())?,

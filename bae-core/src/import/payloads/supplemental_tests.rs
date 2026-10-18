@@ -1,18 +1,16 @@
 use super::*;
 use crate::import::ParsedAlbum;
 use chrono::{DateTime, Utc};
-use coven::{FixedClock, SequentialIdProvider};
+use coven::{FixedClock, SequentialIds};
 use serde_json::json;
 
 fn parse(payloads: &ReleasePayloads) -> Result<ParsedAlbum, ImportError> {
-    let clock = FixedClock(
-        DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
+    let clock = FixedClock::new((DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
             .unwrap()
-            .with_timezone(&Utc),
-    );
+            .with_timezone(&Utc)).into());
     payloads
         .extract()
-        .and_then(|release| release.parsed(&[], &clock, &SequentialIdProvider::new("supplemental")))
+        .and_then(|release| release.parsed(&[], &clock, &SequentialIds::new()))
 }
 
 fn selected_release() -> ReleasePayloads {

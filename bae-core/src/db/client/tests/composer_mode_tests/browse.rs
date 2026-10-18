@@ -50,29 +50,22 @@ async fn search_library_treats_like_metacharacters_as_literals() {
     db.call(|conn| {
         conn.execute_batch(
             "
-            INSERT INTO artists (id, name, name_key, _updated_at, created_at)
-            VALUES ('7cdf9a34-0746-472b-8c68-0a669c11f2f1', 'Artist Name Primary', 'artist name primary', 'stamp', '2026-01-01T00:00:00Z');
+            INSERT INTO artists (id, name, name_key, created_at) VALUES ('7cdf9a34-0746-472b-8c68-0a669c11f2f1', 'Artist Name Primary', 'artist name primary', '2026-01-01T00:00:00Z');
 
-            INSERT INTO albums (id, title, artist_id, year, primary_release_id, is_compilation, _updated_at, created_at)
-            VALUES
-                ('7e9948c4-f2d0-4a73-8e5c-a885eda086ff', '50% Album Title', '7cdf9a34-0746-472b-8c68-0a669c11f2f1', 2026, '94d062dd-9dc8-4e59-8c13-e5731b702157', 0, 'stamp', '2026-01-01T00:00:00Z'),
-                ('531c76e6-3ed8-45cd-8ee8-63366ef42031', '500 Album Title', '7cdf9a34-0746-472b-8c68-0a669c11f2f1', 2026, '7a4de476-4ce8-4e2f-805a-d4c23dffaf8e', 0, 'stamp', '2026-01-01T00:00:00Z'),
-                ('2dd55a3f-3208-4faf-8737-453f474074cb', 'A_B Album Title', '7cdf9a34-0746-472b-8c68-0a669c11f2f1', 2026, '07d51116-f6e3-4b4c-8ae2-601d5a972bf9', 0, 'stamp', '2026-01-01T00:00:00Z'),
-                ('e00e6a4d-b8c9-4dce-8b2a-9a4c69553abc', 'ACB Album Title', '7cdf9a34-0746-472b-8c68-0a669c11f2f1', 2026, '3dc45e4f-fe7f-47aa-84fc-4d6027c57276', 0, 'stamp', '2026-01-01T00:00:00Z');
+            INSERT INTO albums (id, title, artist_id, year, primary_release_id, is_compilation, created_at) VALUES ('7e9948c4-f2d0-4a73-8e5c-a885eda086ff', '50% Album Title', '7cdf9a34-0746-472b-8c68-0a669c11f2f1', 2026, '94d062dd-9dc8-4e59-8c13-e5731b702157', 0, '2026-01-01T00:00:00Z'),
+             ('531c76e6-3ed8-45cd-8ee8-63366ef42031', '500 Album Title', '7cdf9a34-0746-472b-8c68-0a669c11f2f1', 2026, '7a4de476-4ce8-4e2f-805a-d4c23dffaf8e', 0, '2026-01-01T00:00:00Z'),
+             ('2dd55a3f-3208-4faf-8737-453f474074cb', 'A_B Album Title', '7cdf9a34-0746-472b-8c68-0a669c11f2f1', 2026, '07d51116-f6e3-4b4c-8ae2-601d5a972bf9', 0, '2026-01-01T00:00:00Z'),
+             ('e00e6a4d-b8c9-4dce-8b2a-9a4c69553abc', 'ACB Album Title', '7cdf9a34-0746-472b-8c68-0a669c11f2f1', 2026, '3dc45e4f-fe7f-47aa-84fc-4d6027c57276', 0, '2026-01-01T00:00:00Z');
 
-            INSERT INTO releases (id, album_id, remote, _updated_at, created_at)
-            VALUES
-                ('94d062dd-9dc8-4e59-8c13-e5731b702157', '7e9948c4-f2d0-4a73-8e5c-a885eda086ff', 1, 'stamp', '2026-01-01T00:00:00Z'),
-                ('7a4de476-4ce8-4e2f-805a-d4c23dffaf8e', '531c76e6-3ed8-45cd-8ee8-63366ef42031', 1, 'stamp', '2026-01-01T00:00:00Z'),
-                ('07d51116-f6e3-4b4c-8ae2-601d5a972bf9', '2dd55a3f-3208-4faf-8737-453f474074cb', 1, 'stamp', '2026-01-01T00:00:00Z'),
-                ('3dc45e4f-fe7f-47aa-84fc-4d6027c57276', 'e00e6a4d-b8c9-4dce-8b2a-9a4c69553abc', 1, 'stamp', '2026-01-01T00:00:00Z');
+            INSERT INTO releases (id, album_id, created_at) VALUES ('94d062dd-9dc8-4e59-8c13-e5731b702157', '7e9948c4-f2d0-4a73-8e5c-a885eda086ff', '2026-01-01T00:00:00Z'),
+             ('7a4de476-4ce8-4e2f-805a-d4c23dffaf8e', '531c76e6-3ed8-45cd-8ee8-63366ef42031', '2026-01-01T00:00:00Z'),
+             ('07d51116-f6e3-4b4c-8ae2-601d5a972bf9', '2dd55a3f-3208-4faf-8737-453f474074cb', '2026-01-01T00:00:00Z'),
+             ('3dc45e4f-fe7f-47aa-84fc-4d6027c57276', 'e00e6a4d-b8c9-4dce-8b2a-9a4c69553abc', '2026-01-01T00:00:00Z');
 
-            INSERT INTO tracks (id, release_id, title, side, track_number, duration_ms, discogs_position, _updated_at, created_at)
-            VALUES
-                ('4dc8cde9-15fb-470d-802c-b7e5f1ccc63d', '94d062dd-9dc8-4e59-8c13-e5731b702157', '50% Track Title', 1, 1, 1000, NULL, 'stamp', '2026-01-01T00:00:00Z'),
-                ('37610729-bd6c-4511-81a9-8848a832ac73', '7a4de476-4ce8-4e2f-805a-d4c23dffaf8e', '500 Track Title', 1, 1, 1000, NULL, 'stamp', '2026-01-01T00:00:00Z'),
-                ('b2930937-dae6-4719-8150-aa61422eeeac', '07d51116-f6e3-4b4c-8ae2-601d5a972bf9', 'A_B Track Title', 1, 1, 1000, NULL, 'stamp', '2026-01-01T00:00:00Z'),
-                ('1f084b57-7c9c-457f-80fb-c61688c31175', '3dc45e4f-fe7f-47aa-84fc-4d6027c57276', 'ACB Track Title', 1, 1, 1000, NULL, 'stamp', '2026-01-01T00:00:00Z');
+            INSERT INTO tracks (id, release_id, title, side, track_number, duration_ms, discogs_position, created_at) VALUES ('4dc8cde9-15fb-470d-802c-b7e5f1ccc63d', '94d062dd-9dc8-4e59-8c13-e5731b702157', '50% Track Title', 1, 1, 1000, NULL, '2026-01-01T00:00:00Z'),
+             ('37610729-bd6c-4511-81a9-8848a832ac73', '7a4de476-4ce8-4e2f-805a-d4c23dffaf8e', '500 Track Title', 1, 1, 1000, NULL, '2026-01-01T00:00:00Z'),
+             ('b2930937-dae6-4719-8150-aa61422eeeac', '07d51116-f6e3-4b4c-8ae2-601d5a972bf9', 'A_B Track Title', 1, 1, 1000, NULL, '2026-01-01T00:00:00Z'),
+             ('1f084b57-7c9c-457f-80fb-c61688c31175', '3dc45e4f-fe7f-47aa-84fc-4d6027c57276', 'ACB Track Title', 1, 1, 1000, NULL, '2026-01-01T00:00:00Z');
             ",
         )
         .map(|_| ())
@@ -170,23 +163,17 @@ async fn composer_page_uses_id_tiebreaker() {
     db.call(|conn| {
         conn.execute_batch(
             "
-            INSERT INTO artists (id, name, name_key, sort_name, discogs_artist_id, musicbrainz_artist_id, _updated_at, created_at)
-            VALUES
-                ('80cd3a5e-7fb7-4766-8ec3-d8e86575743b', 'Composer Name Shared', 'composer name shared', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-                ('5dcc4999-03bd-42cc-8d14-8bf0a05effa3', 'Composer Name Shared', 'composer name shared', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-                ('2b748d47-e5b7-4c40-8716-1e608b9dfc3d', 'Composer Name Shared', 'composer name shared', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+            INSERT INTO artists (id, name, name_key, sort_name, discogs_artist_id, musicbrainz_artist_id, created_at) VALUES ('80cd3a5e-7fb7-4766-8ec3-d8e86575743b', 'Composer Name Shared', 'composer name shared', NULL, NULL, NULL, '2026-01-01T00:00:00Z'),
+             ('5dcc4999-03bd-42cc-8d14-8bf0a05effa3', 'Composer Name Shared', 'composer name shared', NULL, NULL, NULL, '2026-01-01T00:00:00Z'),
+             ('2b748d47-e5b7-4c40-8716-1e608b9dfc3d', 'Composer Name Shared', 'composer name shared', NULL, NULL, NULL, '2026-01-01T00:00:00Z');
 
-            INSERT INTO works (id, title, work_type, musicbrainz_work_id, _updated_at, created_at)
-            VALUES
-                ('432c8996-8af0-43dc-868a-822a256f65c4', 'Work Title A', 'work', 'mb-work-a', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-                ('d866f97d-e57f-45e8-8c4e-f81ad8717882', 'Work Title B', 'work', 'mb-work-b', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-                ('00e1ff99-c327-477d-846d-28d2f27fa004', 'Work Title C', 'work', 'mb-work-c', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+            INSERT INTO works (id, title, work_type, musicbrainz_work_id, created_at) VALUES ('432c8996-8af0-43dc-868a-822a256f65c4', 'Work Title A', 'work', 'mb-work-a', '2026-01-01T00:00:00Z'),
+             ('d866f97d-e57f-45e8-8c4e-f81ad8717882', 'Work Title B', 'work', 'mb-work-b', '2026-01-01T00:00:00Z'),
+             ('00e1ff99-c327-477d-846d-28d2f27fa004', 'Work Title C', 'work', 'mb-work-c', '2026-01-01T00:00:00Z');
 
-            INSERT INTO work_artists (id, work_id, artist_id, position, source, _updated_at, created_at)
-            VALUES
-                ('f6fc3bd0-99db-4e6e-8efa-c8e5a1c35d74', '00e1ff99-c327-477d-846d-28d2f27fa004', '80cd3a5e-7fb7-4766-8ec3-d8e86575743b', 0, 'file_tags', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-                ('ec41a8cd-a9a4-473e-8b70-d78168aefd8e', '432c8996-8af0-43dc-868a-822a256f65c4', '5dcc4999-03bd-42cc-8d14-8bf0a05effa3', 0, 'file_tags', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-                ('08d921ba-8e6b-4b5b-8583-498117bbefe4', 'd866f97d-e57f-45e8-8c4e-f81ad8717882', '2b748d47-e5b7-4c40-8716-1e608b9dfc3d', 0, 'file_tags', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+            INSERT INTO work_artists (id, work_id, artist_id, position, source, created_at) VALUES ('f6fc3bd0-99db-4e6e-8efa-c8e5a1c35d74', '00e1ff99-c327-477d-846d-28d2f27fa004', '80cd3a5e-7fb7-4766-8ec3-d8e86575743b', 0, 'file_tags', '2026-01-01T00:00:00Z'),
+             ('ec41a8cd-a9a4-473e-8b70-d78168aefd8e', '432c8996-8af0-43dc-868a-822a256f65c4', '5dcc4999-03bd-42cc-8d14-8bf0a05effa3', 0, 'file_tags', '2026-01-01T00:00:00Z'),
+             ('08d921ba-8e6b-4b5b-8583-498117bbefe4', 'd866f97d-e57f-45e8-8c4e-f81ad8717882', '2b748d47-e5b7-4c40-8716-1e608b9dfc3d', 0, 'file_tags', '2026-01-01T00:00:00Z');
             ",
         )
         .map(|_| ())
@@ -223,27 +210,21 @@ async fn composer_page_applies_secondary_criterion() {
     db.call(|conn| {
         conn.execute_batch(
             "
-            INSERT INTO artists (id, name, name_key, sort_name, discogs_artist_id, musicbrainz_artist_id, _updated_at, created_at)
-            VALUES
-                ('5dcc4999-03bd-42cc-8d14-8bf0a05effa3', 'Composer Name A', 'composer name a', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-                ('2b748d47-e5b7-4c40-8716-1e608b9dfc3d', 'Composer Name B', 'composer name b', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-                ('4d93d615-4549-45d9-81d9-644f079d59bf', 'Composer Name Solo', 'composer name solo', NULL, NULL, NULL, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+            INSERT INTO artists (id, name, name_key, sort_name, discogs_artist_id, musicbrainz_artist_id, created_at) VALUES ('5dcc4999-03bd-42cc-8d14-8bf0a05effa3', 'Composer Name A', 'composer name a', NULL, NULL, NULL, '2026-01-01T00:00:00Z'),
+             ('2b748d47-e5b7-4c40-8716-1e608b9dfc3d', 'Composer Name B', 'composer name b', NULL, NULL, NULL, '2026-01-01T00:00:00Z'),
+             ('4d93d615-4549-45d9-81d9-644f079d59bf', 'Composer Name Solo', 'composer name solo', NULL, NULL, NULL, '2026-01-01T00:00:00Z');
 
-            INSERT INTO works (id, title, work_type, musicbrainz_work_id, _updated_at, created_at)
-            VALUES
-                ('1d446150-576e-479f-87a7-40ac7a511fa1', 'Work Title A1', 'work', 'mb-work-a1', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-                ('6a32dca0-bf5b-4baa-829d-dc2ef531e763', 'Work Title A2', 'work', 'mb-work-a2', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-                ('735e697c-f2ce-4512-806c-4f872446f6e6', 'Work Title B1', 'work', 'mb-work-b1', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-                ('d5f30cc0-a35a-4294-851b-ce2d9c172d1c', 'Work Title B2', 'work', 'mb-work-b2', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-                ('5dc2446b-5241-46e0-8be4-4325e06f1417', 'Work Title Solo', 'work', 'mb-work-solo', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+            INSERT INTO works (id, title, work_type, musicbrainz_work_id, created_at) VALUES ('1d446150-576e-479f-87a7-40ac7a511fa1', 'Work Title A1', 'work', 'mb-work-a1', '2026-01-01T00:00:00Z'),
+             ('6a32dca0-bf5b-4baa-829d-dc2ef531e763', 'Work Title A2', 'work', 'mb-work-a2', '2026-01-01T00:00:00Z'),
+             ('735e697c-f2ce-4512-806c-4f872446f6e6', 'Work Title B1', 'work', 'mb-work-b1', '2026-01-01T00:00:00Z'),
+             ('d5f30cc0-a35a-4294-851b-ce2d9c172d1c', 'Work Title B2', 'work', 'mb-work-b2', '2026-01-01T00:00:00Z'),
+             ('5dc2446b-5241-46e0-8be4-4325e06f1417', 'Work Title Solo', 'work', 'mb-work-solo', '2026-01-01T00:00:00Z');
 
-            INSERT INTO work_artists (id, work_id, artist_id, position, source, _updated_at, created_at)
-            VALUES
-                ('c6ad84f8-3ff6-4528-8b5e-f90d24c33908', '1d446150-576e-479f-87a7-40ac7a511fa1', '5dcc4999-03bd-42cc-8d14-8bf0a05effa3', 0, 'file_tags', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-                ('b6b51719-ad5f-4e9e-8aae-0b51883677ce', '6a32dca0-bf5b-4baa-829d-dc2ef531e763', '5dcc4999-03bd-42cc-8d14-8bf0a05effa3', 0, 'file_tags', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-                ('72f0c48b-5fcf-40ff-8fff-3dc15a0cf06d', '735e697c-f2ce-4512-806c-4f872446f6e6', '2b748d47-e5b7-4c40-8716-1e608b9dfc3d', 0, 'file_tags', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-                ('7b13d5f1-3836-422f-831a-10ac1435a502', 'd5f30cc0-a35a-4294-851b-ce2d9c172d1c', '2b748d47-e5b7-4c40-8716-1e608b9dfc3d', 0, 'file_tags', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'),
-                ('aeccde70-29b8-4f81-85c4-5135f2c7a40c', '5dc2446b-5241-46e0-8be4-4325e06f1417', '4d93d615-4549-45d9-81d9-644f079d59bf', 0, 'file_tags', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+            INSERT INTO work_artists (id, work_id, artist_id, position, source, created_at) VALUES ('c6ad84f8-3ff6-4528-8b5e-f90d24c33908', '1d446150-576e-479f-87a7-40ac7a511fa1', '5dcc4999-03bd-42cc-8d14-8bf0a05effa3', 0, 'file_tags', '2026-01-01T00:00:00Z'),
+             ('b6b51719-ad5f-4e9e-8aae-0b51883677ce', '6a32dca0-bf5b-4baa-829d-dc2ef531e763', '5dcc4999-03bd-42cc-8d14-8bf0a05effa3', 0, 'file_tags', '2026-01-01T00:00:00Z'),
+             ('72f0c48b-5fcf-40ff-8fff-3dc15a0cf06d', '735e697c-f2ce-4512-806c-4f872446f6e6', '2b748d47-e5b7-4c40-8716-1e608b9dfc3d', 0, 'file_tags', '2026-01-01T00:00:00Z'),
+             ('7b13d5f1-3836-422f-831a-10ac1435a502', 'd5f30cc0-a35a-4294-851b-ce2d9c172d1c', '2b748d47-e5b7-4c40-8716-1e608b9dfc3d', 0, 'file_tags', '2026-01-01T00:00:00Z'),
+             ('aeccde70-29b8-4f81-85c4-5135f2c7a40c', '5dc2446b-5241-46e0-8be4-4325e06f1417', '4d93d615-4549-45d9-81d9-644f079d59bf', 0, 'file_tags', '2026-01-01T00:00:00Z');
             ",
         )
         .map(|_| ())

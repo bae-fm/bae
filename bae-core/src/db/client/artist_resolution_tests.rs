@@ -17,15 +17,13 @@ fn add_artist(
     musicbrainz_artist_id: Option<&str>,
 ) {
     conn.execute(
-        "INSERT INTO artists (id, name, name_key, discogs_artist_id, musicbrainz_artist_id, \
-         _updated_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO artists (id, name, name_key, discogs_artist_id, musicbrainz_artist_id, created_at) VALUES (?, ?, ?, ?, ?, ?)",
         params![
             id,
             name,
             crate::text_match::artist_name_key(name),
             discogs_artist_id,
             musicbrainz_artist_id,
-            NOW,
             NOW
         ],
     )
@@ -172,9 +170,8 @@ fn an_absorbed_artist_is_not_matched_by_its_name() {
     add_artist(&conn, "absorbed", "Artist Name", None, None);
     add_artist(&conn, "survivor", "Other Name", None, None);
     conn.execute(
-        "INSERT INTO artist_merges (id, into_artist_id, _updated_at, created_at) \
-         VALUES ('absorbed', 'survivor', ?, ?)",
-        params![NOW, NOW],
+        "INSERT INTO artist_merges (id, into_artist_id, created_at) VALUES ('absorbed', 'survivor', ?)",
+        params![NOW],
     )
     .unwrap();
 

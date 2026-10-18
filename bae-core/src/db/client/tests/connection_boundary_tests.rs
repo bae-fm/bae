@@ -18,16 +18,17 @@ async fn coven_connection_enforces_foreign_keys_for_bae_schema() {
 }
 
 #[tokio::test]
-async fn processing_uses_separate_workers_and_preserves_database_errors() {
+async fn processing_runs_off_the_runtime_and_preserves_database_errors() {
     let (db, _tmp) = super::temp_db().await;
+    let runtime_thread = std::thread::current().id();
     let fetched_thread = db
         .read(|sql| {
             let value = sql.query_row("SELECT 42", [], |row| row.get::<_, i64>(0))?;
             Ok((value, std::thread::current().id()))
         })
-        .process(|(value, reader)| {
+        .process(move |(value, reader)| {
             assert_eq!(value, 42);
-            assert_ne!(reader, std::thread::current().id());
+            assert_ne!(runtime_thread, std::thread::current().id());
             Ok(reader)
         })
         .await
@@ -41,16 +42,16 @@ async fn processing_uses_separate_workers_and_preserves_database_errors() {
         .unwrap_err();
     assert!(matches!(
         error,
-        DbError::Sqlite(coven::rusqlite::Error::QueryReturnedNoRows)
+        DbError::Sqlite(rusqlite::Error::QueryReturnedNoRows)
     ));
 
     let error = db
         .read(|_| Ok(()))
-        .process(|()| Err::<(), _>(DbError::Sqlite(coven::rusqlite::Error::QueryReturnedNoRows)))
+        .process(|()| Err::<(), _>(DbError::Sqlite(rusqlite::Error::QueryReturnedNoRows)))
         .await
         .unwrap_err();
     assert!(matches!(
         error,
-        DbError::Sqlite(coven::rusqlite::Error::QueryReturnedNoRows)
+        DbError::Sqlite(rusqlite::Error::QueryReturnedNoRows)
     ));
 }

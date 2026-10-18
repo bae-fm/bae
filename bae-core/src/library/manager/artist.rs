@@ -109,7 +109,7 @@ impl LibraryManager {
         &self,
         projection: crate::db::ArtistBrowseProjection,
         request_revision: u64,
-        cause: coven::ReconfigurableLiveQueryCause,
+        cause: coven::LiveQueryCause,
     ) -> crate::library::LibraryBrowseSnapshot<ArtistSummary> {
         let images = image_refs(projection.image_versions, LibraryImageType::Artist);
         crate::library::LibraryBrowseSnapshot {

@@ -3,14 +3,13 @@ use super::*;
 pub(super) fn insert_artist_row(
     conn: &SqlContext<'_, '_>,
     artist: &DbArtist,
-    reg: &str,
 ) -> Result<(), DbError> {
     conn.execute(
         r#"
         INSERT INTO artists (
             id, name, name_key, sort_name, discogs_artist_id,
-            musicbrainz_artist_id, _updated_at, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            musicbrainz_artist_id, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
         "#,
         params![
             artist.id,
@@ -19,26 +18,11 @@ pub(super) fn insert_artist_row(
             artist.sort_name,
             artist.discogs_artist_id,
             artist.musicbrainz_artist_id,
-            reg,
             artist.created_at.to_rfc3339(),
         ],
     )
     .map(|_| ())
     .map_err(DbError::from)
-}
-
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(super) fn upsert_library_image_row_with_cloud_path(
-    conn: &SqlContext<'_, '_>,
-    image: &DbLibraryImage,
-    cloud_path: Option<String>,
-    reg: &str,
-) -> Result<(), DbError> {
-    let image = DbLibraryImage {
-        cloud_path,
-        ..image.clone()
-    };
-    upsert_library_image_row(conn, &image, reg)
 }
 
 pub(super) fn update_artist_external_ids_row(
@@ -47,33 +31,27 @@ pub(super) fn update_artist_external_ids_row(
     discogs_artist_id: Option<&str>,
     musicbrainz_artist_id: Option<&str>,
     sort_name: Option<&str>,
-    reg: &str,
 ) -> Result<usize, DbError> {
     conn.execute(
         r#"
         UPDATE artists SET
             discogs_artist_id = COALESCE(discogs_artist_id, ?),
             musicbrainz_artist_id = COALESCE(musicbrainz_artist_id, ?),
-            sort_name = COALESCE(sort_name, ?),
-            _updated_at = ?
+            sort_name = COALESCE(sort_name, ?)
         WHERE id = ?
         "#,
-        params![discogs_artist_id, musicbrainz_artist_id, sort_name, reg, id,],
+        params![discogs_artist_id, musicbrainz_artist_id, sort_name, id,],
     )
     .map_err(DbError::from)
 }
 
-pub(super) fn insert_album_row(
-    conn: &SqlContext<'_, '_>,
-    album: &DbAlbum,
-    reg: &str,
-) -> Result<(), DbError> {
+pub(super) fn insert_album_row(conn: &SqlContext<'_, '_>, album: &DbAlbum) -> Result<(), DbError> {
     conn.execute(
         r#"
         INSERT INTO albums (
             id, title, artist_id, year, primary_release_id, is_compilation,
-            _updated_at, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
         "#,
         params![
             album.id,
@@ -82,7 +60,6 @@ pub(super) fn insert_album_row(
             album.year,
             album.primary_release_id,
             album.is_compilation,
-            reg,
             album.created_at.to_rfc3339(),
         ],
     )
@@ -93,24 +70,19 @@ pub(super) fn insert_album_row(
 /// Write `album` whether or not its row is here: a group's album (whose id is
 /// the group's) can be here already, emptied, when a release is filed under it
 /// again.
-pub(super) fn upsert_album_row(
-    conn: &SqlContext<'_, '_>,
-    album: &DbAlbum,
-    reg: &str,
-) -> Result<(), DbError> {
+pub(super) fn upsert_album_row(conn: &SqlContext<'_, '_>, album: &DbAlbum) -> Result<(), DbError> {
     conn.execute(
         r#"
         INSERT INTO albums (
             id, title, artist_id, year, primary_release_id, is_compilation,
-            _updated_at, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT (id) DO UPDATE SET
             title = excluded.title,
             artist_id = excluded.artist_id,
             year = excluded.year,
             primary_release_id = excluded.primary_release_id,
-            is_compilation = excluded.is_compilation,
-            _updated_at = excluded._updated_at
+            is_compilation = excluded.is_compilation
         "#,
         params![
             album.id,
@@ -119,7 +91,6 @@ pub(super) fn upsert_album_row(
             album.year,
             album.primary_release_id,
             album.is_compilation,
-            reg,
             album.created_at.to_rfc3339(),
         ],
     )
@@ -130,19 +101,17 @@ pub(super) fn upsert_album_row(
 pub(super) fn insert_album_artist_row(
     conn: &SqlContext<'_, '_>,
     aa: &DbAlbumArtist,
-    reg: &str,
 ) -> Result<(), DbError> {
     conn.execute(
         r#"
-        INSERT INTO album_artists (id, album_id, artist_id, position, _updated_at, created_at)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO album_artists (id, album_id, artist_id, position, created_at)
+        VALUES (?, ?, ?, ?, ?)
         "#,
         params![
             aa.id(),
             aa.album_id,
             aa.artist_id,
             aa.position,
-            reg,
             aa.created_at.to_rfc3339()
         ],
     )
@@ -156,7 +125,6 @@ pub(super) fn insert_album_artist_row(
 pub(super) fn insert_release_row(
     conn: &SqlContext<'_, '_>,
     release: &DbRelease,
-    reg: &str,
 ) -> Result<(), DbError> {
     if let Some(folder) = &release.source_folder_name {
         crate::storage::path_fragment::validate_path_fragment(
@@ -174,11 +142,10 @@ pub(super) fn insert_release_row(
             draft_from_tags,
             labels, barcode,
             country, region, media, status, packaging, discogs_details,
-            remote,
             source_folder_name, content_hash,
             album_loudness_lufs, album_peak_linear,
-            _updated_at, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         "#,
         params![
             release.id,
@@ -194,12 +161,10 @@ pub(super) fn insert_release_row(
             facts.status,
             facts.packaging,
             facts.discogs_details,
-            release.remote,
             release.source_folder_name,
             release.content_hash,
             release.album_loudness_lufs,
             release.album_peak_linear,
-            reg,
             release.created_at.to_rfc3339(),
         ],
     )
@@ -207,17 +172,13 @@ pub(super) fn insert_release_row(
     .map_err(DbError::from)
 }
 
-pub(super) fn insert_track_row(
-    conn: &SqlContext<'_, '_>,
-    track: &DbTrack,
-    reg: &str,
-) -> Result<(), DbError> {
+pub(super) fn insert_track_row(conn: &SqlContext<'_, '_>, track: &DbTrack) -> Result<(), DbError> {
     conn.execute(
         r#"
         INSERT INTO tracks (
             id, release_id, title, side, track_number, duration_ms,
-            discogs_position, _updated_at, created_at, position
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?,
+            discogs_position, created_at, position
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?,
             (SELECT COALESCE(MAX(position) + 1, 0) FROM tracks WHERE release_id = ?))
         "#,
         params![
@@ -228,7 +189,6 @@ pub(super) fn insert_track_row(
             track.track_number,
             track.duration_ms,
             track.discogs_position,
-            reg,
             track.created_at.to_rfc3339(),
             track.release_id,
         ],
@@ -240,19 +200,17 @@ pub(super) fn insert_track_row(
 pub(super) fn insert_track_artist_row(
     conn: &SqlContext<'_, '_>,
     ta: &DbTrackArtist,
-    reg: &str,
 ) -> Result<(), DbError> {
     conn.execute(
         r#"
-        INSERT INTO track_artists (id, track_id, artist_id, position, _updated_at, created_at)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO track_artists (id, track_id, artist_id, position, created_at)
+        VALUES (?, ?, ?, ?, ?)
         "#,
         params![
             ta.id,
             ta.track_id,
             ta.artist_id,
             ta.position,
-            reg,
             ta.created_at.to_rfc3339()
         ],
     )
@@ -265,16 +223,12 @@ pub(super) fn insert_track_artist_row(
     feature = "test-utils",
     not(any(target_os = "ios", target_os = "android"))
 ))]
-pub(super) fn insert_work_row(
-    conn: &SqlContext<'_, '_>,
-    work: &DbWork,
-    reg: &str,
-) -> Result<(), DbError> {
+pub(super) fn insert_work_row(conn: &SqlContext<'_, '_>, work: &DbWork) -> Result<(), DbError> {
     conn.execute(
         r#"
         INSERT OR IGNORE INTO works (
-            id, title, disambiguation, work_type, musicbrainz_work_id, _updated_at, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            id, title, disambiguation, work_type, musicbrainz_work_id, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?)
         "#,
         params![
             work.id,
@@ -282,7 +236,6 @@ pub(super) fn insert_work_row(
             work.disambiguation,
             work.work_type,
             work.musicbrainz_work_id,
-            reg,
             work.created_at.to_rfc3339()
         ],
     )
@@ -294,12 +247,11 @@ pub(super) fn insert_work_row(
 pub(super) fn insert_work_artist_row(
     conn: &SqlContext<'_, '_>,
     link: &DbWorkArtist,
-    reg: &str,
 ) -> Result<(), DbError> {
     conn.execute(
         r#"
-        INSERT OR IGNORE INTO work_artists (id, work_id, artist_id, position, source, _updated_at, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT OR IGNORE INTO work_artists (id, work_id, artist_id, position, source, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)
         "#,
         params![
             link.id(),
@@ -307,7 +259,6 @@ pub(super) fn insert_work_artist_row(
             link.artist_id,
             link.position,
             link.source.as_str(),
-            reg,
             link.created_at.to_rfc3339()
         ],
     )
@@ -319,13 +270,12 @@ pub(super) fn insert_work_artist_row(
 pub(super) fn insert_work_part_row(
     conn: &SqlContext<'_, '_>,
     part: &DbWorkPart,
-    reg: &str,
 ) -> Result<(), DbError> {
     conn.execute(
         r#"
         INSERT OR IGNORE INTO work_parts (
-            id, parent_work_id, child_work_id, position, source, _updated_at, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            id, parent_work_id, child_work_id, position, source, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?)
         "#,
         params![
             part.id(),
@@ -333,7 +283,6 @@ pub(super) fn insert_work_part_row(
             part.child_work_id,
             part.position,
             part.source.as_str(),
-            reg,
             part.created_at.to_rfc3339()
         ],
     )
@@ -349,12 +298,11 @@ pub(super) fn insert_work_part_row(
 pub(super) fn insert_track_work_row(
     conn: &SqlContext<'_, '_>,
     link: &DbTrackWork,
-    reg: &str,
 ) -> Result<(), DbError> {
     conn.execute(
         r#"
-        INSERT INTO track_works (id, track_id, work_id, position, source, _updated_at, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO track_works (id, track_id, work_id, position, source, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)
         "#,
         params![
             link.id,
@@ -362,7 +310,6 @@ pub(super) fn insert_track_work_row(
             link.work_id,
             link.position,
             link.source.as_str(),
-            reg,
             link.created_at.to_rfc3339()
         ],
     )
@@ -374,7 +321,6 @@ pub(super) fn insert_track_work_row(
 pub(super) fn insert_release_artist_role_row(
     conn: &SqlContext<'_, '_>,
     role: &DbReleaseArtistRole,
-    reg: &str,
 ) -> Result<(), DbError> {
     insert_artist_role_row(
         conn,
@@ -387,7 +333,6 @@ pub(super) fn insert_release_artist_role_row(
             role.position,
             role.source.as_str(),
             role.source_credit,
-            reg,
             role.created_at.to_rfc3339()
         ],
     )
@@ -397,7 +342,6 @@ pub(super) fn insert_release_artist_role_row(
 pub(super) fn insert_track_artist_role_row(
     conn: &SqlContext<'_, '_>,
     role: &DbTrackArtistRole,
-    reg: &str,
 ) -> Result<(), DbError> {
     insert_artist_role_row(
         conn,
@@ -410,7 +354,6 @@ pub(super) fn insert_track_artist_role_row(
             role.position,
             role.source.as_str(),
             role.source_credit,
-            reg,
             role.created_at.to_rfc3339()
         ],
     )
@@ -426,8 +369,8 @@ pub(super) fn insert_artist_role_row(
     let sql = format!(
         r#"
         INSERT INTO {table} (
-            id, {target_column}, artist_id, position, source, source_credit, _updated_at, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            id, {target_column}, artist_id, position, source, source_credit, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
         "#
     );
     conn.execute(&sql, values)
@@ -446,19 +389,18 @@ const INSERT_RELEASE_FILE_SQL: &str = r#"
         source_audio_layout, source_audio_content_type, source_audio_duration_ms,
         source_audio_sample_rate_hz, source_audio_bits_per_sample,
         source_audio_bitrate_kbps, source_audio_channels,
-        cloud_path, hash, _updated_at, created_at
+        created_at
     ) VALUES (
         :id, :release_id, :original_filename, :file_size, :content_type,
         :source_audio_layout, :source_audio_content_type, :source_audio_duration_ms,
         :source_audio_sample_rate_hz, :source_audio_bits_per_sample,
         :source_audio_bitrate_kbps, :source_audio_channels,
-        :cloud_path, :coven_external_blob_hash, :updated_at, :created_at
+        :created_at
     )
 "#;
 
-/// Validate and expose the non-hash values for the one `release_files` insert.
-/// The callback keeps references to derived audio values inside this scope while
-/// either Coven or a test fixture supplies the hash parameter.
+/// Validate the file name and bind the application-owned columns. Hash and
+/// location belong to coven and never appear in application SQL.
 #[cfg(any(
     test,
     feature = "test-utils",
@@ -466,8 +408,7 @@ const INSERT_RELEASE_FILE_SQL: &str = r#"
 ))]
 fn with_file_row_params<T>(
     file: &DbFile,
-    reg: &str,
-    write: impl FnOnce(&[(&str, &dyn coven::rusqlite::ToSql)]) -> Result<T, DbError>,
+    write: impl FnOnce(&[(&str, &dyn rusqlite::ToSql)]) -> Result<T, DbError>,
 ) -> Result<T, DbError> {
     crate::storage::path_fragment::validate_path_fragment(
         &file.release_id,
@@ -505,7 +446,7 @@ fn with_file_row_params<T>(
         .as_ref()
         .map(|audio| audio.format.channels);
     let created_at = file.created_at.to_rfc3339();
-    write(coven::rusqlite::named_params! {
+    write(rusqlite::named_params! {
         ":id": file.id,
         ":release_id": file.release_id,
         ":original_filename": file.original_filename,
@@ -518,8 +459,6 @@ fn with_file_row_params<T>(
         ":source_audio_bits_per_sample": source_audio_bits_per_sample,
         ":source_audio_bitrate_kbps": source_audio_bitrate_kbps,
         ":source_audio_channels": source_audio_channels,
-        ":cloud_path": file.cloud_path,
-        ":updated_at": reg,
         ":created_at": created_at,
     })
 }
@@ -531,33 +470,63 @@ fn with_file_row_params<T>(
 pub(super) fn insert_external_file_row(
     conn: &SqlContext<'_, '_>,
     file: &DbFile,
-    reg: &str,
-    blob: coven::PreparedExternalBlob,
+    blob: coven::PreparedUserFile,
 ) -> Result<(), DbError> {
-    with_file_row_params(file, reg, |params| {
-        conn.insert_external_blob(
+    with_file_row_params(file, |params| {
+        conn.insert_user_file(
             crate::sync::RELEASE_FILES_NAMESPACE,
-            &file.id,
+            file.id.as_str(),
             blob,
             INSERT_RELEASE_FILE_SQL,
             params,
         )
+        .map_err(DbError::from)
     })
 }
 
-/// Seed a non-blob fixture row with a deterministic hash. Tests that exercise
-/// external bytes use the production insert-and-register path instead.
+/// Keep an unattached original on this device alongside its synced file row.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub(super) fn insert_local_file_row(
+    conn: &SqlContext<'_, '_>,
+    file: &DbFile,
+    original: &coven::UserFile,
+) -> Result<(), DbError> {
+    let path = original.path.to_str().ok_or_else(|| {
+        DbError::Message(format!(
+            "original path is not UTF-8: {}",
+            original.path.display()
+        ))
+    })?;
+    if original.size != file.file_size as u64 {
+        return Err(DbError::Message(format!(
+            "original size changed for {}",
+            file.id
+        )));
+    }
+    with_file_row_params(file, |params| {
+        conn.execute(INSERT_RELEASE_FILE_SQL, params)
+            .map_err(DbError::from)
+    })?;
+    conn.execute(
+        "INSERT INTO local_release_files (file_id, path, modified_at) VALUES (?, ?, ?)",
+        params![
+            file.id,
+            path,
+            chrono::DateTime::<chrono::Utc>::from(original.modified_at).to_rfc3339()
+        ],
+    )?;
+    Ok(())
+}
+
+/// Insert an unattached file row. Tests that exercise bytes attach a real file
+/// through the production registration path.
 #[cfg(any(test, feature = "test-utils"))]
 pub(super) fn insert_file_row_for_test(
     conn: &SqlContext<'_, '_>,
     file: &DbFile,
-    reg: &str,
-    content_hash: &str,
 ) -> Result<(), DbError> {
-    with_file_row_params(file, reg, |params| {
-        let mut params = params.to_vec();
-        params.push((":coven_external_blob_hash", &content_hash));
-        conn.execute(INSERT_RELEASE_FILE_SQL, params.as_slice())
+    with_file_row_params(file, |params| {
+        conn.execute(INSERT_RELEASE_FILE_SQL, params)
             .map(|_| ())
             .map_err(DbError::from)
     })
@@ -571,13 +540,12 @@ pub(super) fn insert_file_row_for_test(
 pub(super) fn insert_audio_format_row(
     conn: &SqlContext<'_, '_>,
     af: &DbAudioFormat,
-    reg: &str,
 ) -> Result<(), DbError> {
     conn.execute(
         r#"
         INSERT INTO audio_formats (
-            id, track_id, content_type, pregap_ms, generated_pregap_ms, pregap_samples, generated_pregap_samples, sample_rate, bits_per_sample, channels, track_loudness_lufs, track_peak_linear, _updated_at, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            id, track_id, content_type, pregap_ms, generated_pregap_ms, pregap_samples, generated_pregap_samples, sample_rate, bits_per_sample, channels, track_loudness_lufs, track_peak_linear, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         "#,
         params![
             af.id,
@@ -592,7 +560,6 @@ pub(super) fn insert_audio_format_row(
             af.channels,
             af.track_loudness_lufs,
             af.track_peak_linear,
-            reg,
             af.created_at.to_rfc3339(),
         ],
     )
@@ -608,13 +575,12 @@ pub(super) fn insert_audio_format_row(
 pub(super) fn insert_audio_segment_row(
     conn: &SqlContext<'_, '_>,
     segment: &DbAudioSegment,
-    reg: &str,
 ) -> Result<(), DbError> {
     conn.execute(
         r#"
         INSERT INTO audio_format_segments (
-            id, audio_format_id, segment_index, role, file_id, start_sample, end_sample, start_byte, end_byte, _updated_at, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            id, audio_format_id, segment_index, role, file_id, start_sample, end_sample, start_byte, end_byte, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         "#,
         params![
             segment.id,
@@ -626,7 +592,6 @@ pub(super) fn insert_audio_segment_row(
             optional_sqlite_count(segment.end_sample, "end_sample")?,
             optional_sqlite_count(segment.start_byte, "start_byte")?,
             optional_sqlite_count(segment.end_byte, "end_byte")?,
-            reg,
             segment.created_at.to_rfc3339(),
         ],
     )
@@ -658,13 +623,12 @@ fn optional_sqlite_count(value: Option<u64>, what: &str) -> Result<Option<i64>, 
 pub(super) fn upsert_library_image_row(
     conn: &SqlContext<'_, '_>,
     image: &DbLibraryImage,
-    reg: &str,
 ) -> Result<(), DbError> {
     let table = image_table(&image.image_type);
     conn.execute(
         &format!(
-            "INSERT INTO {table} (id, blob_id, content_type, file_size, width, height, source, source_url, cloud_path, hash, _updated_at, created_at) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) \
+            "INSERT INTO {table} (id, blob_id, content_type, file_size, width, height, source, source_url, created_at) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) \
              ON CONFLICT(id) DO UPDATE SET \
                  blob_id = excluded.blob_id, \
                  content_type = excluded.content_type, \
@@ -672,10 +636,7 @@ pub(super) fn upsert_library_image_row(
                  width = excluded.width, \
                  height = excluded.height, \
                  source = excluded.source, \
-                 source_url = excluded.source_url, \
-                 cloud_path = excluded.cloud_path, \
-                 hash = excluded.hash, \
-                 _updated_at = excluded._updated_at"
+                 source_url = excluded.source_url"
         ),
         params![
             image.id,
@@ -686,93 +647,11 @@ pub(super) fn upsert_library_image_row(
             image.height,
             image.source,
             image.source_url,
-            image.cloud_path,
-            image.content_hash,
-            reg,
             image.created_at.to_rfc3339(),
         ],
     )
     .map(|_| ())
     .map_err(DbError::from)
-}
-
-/// A release's `(album_id, source_folder_name)` — the release-scoped context a
-/// browsable key is built from. The release row always exists when one of its
-/// blobs is being keyed (it was just inserted), so a missing row is a broken
-/// invariant surfaced as an error, not masked. `source_folder_name` is `None`
-/// for a non-folder import.
-pub(super) fn release_path_context<C: QueryOne>(
-    conn: &C,
-    release_id: &str,
-) -> Result<(String, Option<String>), DbError> {
-    conn.query_row(
-        "SELECT album_id, source_folder_name FROM releases WHERE id = ?",
-        params![release_id],
-        |row| Ok((row.get::<_, String>(0)?, row.get::<_, Option<String>>(1)?)),
-    )
-    .map_err(DbError::from)
-}
-
-/// Build a release-scoped browsable key: look up the release's `(album_id,
-/// source_folder)` context once, then let `make_key` shape the final path. Shared
-/// by the audio and cover resolvers; the artist-image resolver stands apart, keyed
-/// off the artist id alone.
-pub(super) fn resolve_release_path<C: QueryOne>(
-    conn: &C,
-    release_id: &str,
-    make_key: impl FnOnce(&str, &str, Option<&str>) -> String,
-) -> Result<String, DbError> {
-    let (album_id, source_folder) = release_path_context(conn, release_id)?;
-    Ok(make_key(&album_id, release_id, source_folder.as_deref()))
-}
-
-/// The `cloud_path` for a release file on a browsable home:
-/// `{album_id}/{release_id}/{source_folder}/{filename}` (relative to the
-/// `release_files` namespace coven prepends), mirroring the imported folder. Ids
-/// are immutable and unique, so the key is stable and collision-free by
-/// construction — no disambiguation.
-#[cfg(any(test, not(any(target_os = "ios", target_os = "android"))))]
-pub(super) fn resolve_audio_cloud_path<C: QueryOne>(
-    conn: &C,
-    release_id: &str,
-    original_filename: &str,
-) -> Result<String, DbError> {
-    resolve_release_path(conn, release_id, |album_id, release_id, source_folder| {
-        crate::storage::readable_path::audio_key(
-            album_id,
-            release_id,
-            source_folder,
-            original_filename,
-        )
-    })
-}
-
-/// The `cloud_path` for a cover image on a browsable home:
-/// `{album_id}/{release_id}/cover-{blob_id}.{ext}` (relative to the `covers`
-/// namespace coven prepends). The cover row's id is its release id; the key carries
-/// the row's blob id so a replaced cover writes a new object. Covers are bae's own
-/// art, not part of the imported folder, so they carry no `{source_folder}` level.
-pub(super) fn resolve_cover_cloud_path<C: QueryOne>(
-    conn: &C,
-    release_id: &str,
-    blob_id: &str,
-    content_type: &ContentType,
-) -> Result<String, DbError> {
-    resolve_release_path(conn, release_id, |album_id, release_id, _source_folder| {
-        crate::storage::readable_path::cover_cloud_path(album_id, release_id, blob_id, content_type)
-    })
-}
-
-/// The `cloud_path` for an artist image on a browsable home:
-/// `{artist_id}/artist.{ext}` (relative to the `artist_images` namespace). Keyed
-/// by the artist id alone, so it needs no DB lookup.
-#[cfg(any(test, not(any(target_os = "ios", target_os = "android"))))]
-pub(super) fn resolve_artist_cloud_path(
-    artist_id: &str,
-    blob_id: &str,
-    content_type: &ContentType,
-) -> String {
-    crate::storage::readable_path::artist_cloud_path(artist_id, blob_id, content_type)
 }
 
 /// Write `records` as `release_id`'s records, replacing any it had, and set the
@@ -785,7 +664,6 @@ pub(super) fn write_release_records(
     conn: &SqlContext<'_, '_>,
     release_id: &str,
     records: &[crate::import::ReleaseRecord],
-    reg: &str,
     now: &str,
 ) -> Result<(), DbError> {
     let mut draft_catalogs = records
@@ -813,8 +691,8 @@ pub(super) fn write_release_records(
             r#"
             INSERT INTO release_records (
                 id, release_id, catalog, kind, key, album_key,
-                url, _updated_at, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                url, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             "#,
             params![
                 crate::db::identity::release_record_id(release_id, record.catalog()),
@@ -824,15 +702,14 @@ pub(super) fn write_release_records(
                 record.key(),
                 album_key,
                 record.url(),
-                reg,
                 now,
             ],
         )?;
     }
     conn.execute(
-        "UPDATE releases SET draft_catalog = ?, _updated_at = ? \
+        "UPDATE releases SET draft_catalog = ? \
          WHERE id = ? AND draft_catalog IS NOT ?",
-        params![draft_catalog, reg, release_id, draft_catalog],
+        params![draft_catalog, release_id, draft_catalog],
     )?;
     Ok(())
 }
@@ -843,7 +720,6 @@ pub(super) fn replace_album_artists(
     conn: &SqlContext<'_, '_>,
     album_id: &str,
     artists: &[DbAlbumArtist],
-    reg: &str,
     now: &str,
 ) -> Result<(), DbError> {
     conn.execute(
@@ -852,14 +728,13 @@ pub(super) fn replace_album_artists(
     )?;
     for aa in artists {
         conn.execute(
-            r#"INSERT INTO album_artists (id, album_id, artist_id, position, _updated_at, created_at)
-            VALUES (?, ?, ?, ?, ?, ?)"#,
+            r#"INSERT INTO album_artists (id, album_id, artist_id, position, created_at)
+            VALUES (?, ?, ?, ?, ?)"#,
             params![
                 crate::db::identity::album_artist_id(album_id, &aa.artist_id),
                 album_id,
                 aa.artist_id,
                 aa.position,
-                reg,
                 now
             ],
         )?;
@@ -875,7 +750,6 @@ pub(super) fn replace_track_artists(
     conn: &SqlContext<'_, '_>,
     track_ids: &[&str],
     artists: &[DbTrackArtist],
-    reg: &str,
     now: &str,
 ) -> Result<(), DbError> {
     for track_id in track_ids {
@@ -886,9 +760,9 @@ pub(super) fn replace_track_artists(
     }
     for ta in artists {
         conn.execute(
-            r#"INSERT INTO track_artists (id, track_id, artist_id, position, _updated_at, created_at)
-            VALUES (?, ?, ?, ?, ?, ?)"#,
-            params![ta.id, ta.track_id, ta.artist_id, ta.position, reg, now],
+            r#"INSERT INTO track_artists (id, track_id, artist_id, position, created_at)
+            VALUES (?, ?, ?, ?, ?)"#,
+            params![ta.id, ta.track_id, ta.artist_id, ta.position, now],
         )?;
     }
     Ok(())

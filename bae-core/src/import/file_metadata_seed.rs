@@ -28,7 +28,7 @@ impl FileMetadataSeed {
         scan_generation: u64,
         reader: &dyn crate::import::file_tag_snapshot::FileTagReader,
         clock: &dyn coven::Clock,
-        ids: &dyn coven::IdProvider,
+        ids: &dyn coven::IdSource,
     ) -> Result<Self, ImportError> {
         let audio_files = candidate.files.audio().cloned().collect::<Vec<_>>();
         let snapshot = crate::import::file_tag_snapshot::extract_file_tag_snapshot(
@@ -51,7 +51,7 @@ impl FileMetadataSeed {
         snapshot: FileTagSnapshot,
         keeping: Option<&[CandidateTrack]>,
         clock: &dyn coven::Clock,
-        ids: &dyn coven::IdProvider,
+        ids: &dyn coven::IdSource,
     ) -> Result<Self, ImportError> {
         let edit = crate::import::pane::file_metadata_edit(candidate, &snapshot, clock, ids)?;
         let mut draft = crate::import::pane::candidate_draft_from_edit(edit)?.draft;

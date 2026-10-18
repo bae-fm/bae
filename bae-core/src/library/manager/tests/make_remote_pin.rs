@@ -31,14 +31,9 @@ async fn make_remote_pins_as_the_stored_choice_says() {
         .await
         .unwrap();
 
-    let queue = manager.database.outbox_queue().await.unwrap();
-    let retained = |release_id: &str| {
-        queue
-            .make_remotes
-            .iter()
-            .find(|entry| entry.root_id == release_id)
-            .map(|entry| entry.retain_pinned)
-    };
-    assert_eq!(retained(&kept.id), Some(true));
-    assert_eq!(retained(&evictable.id), Some(false));
+    manager.drain_uploads_expecting_work().await.unwrap();
+    let kept_file = release_files(&manager, &kept.id).await[0].id.clone();
+    let evictable_file = release_files(&manager, &evictable.id).await[0].id.clone();
+    assert!(manager.release_pinned(Some(&kept_file)).await.unwrap());
+    assert!(!manager.release_pinned(Some(&evictable_file)).await.unwrap());
 }

@@ -258,7 +258,7 @@ async fn next_resolution(
             let projection = pane
                 .next()
                 .await
-                .into_result()
+                .result
                 .expect("the pane reads")
                 .expect("the candidate stays in the queue");
             let Some(resolved) = projection

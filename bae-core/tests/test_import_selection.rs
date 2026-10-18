@@ -90,7 +90,7 @@ async fn a_bulk_action_runs_over_every_selected_row() {
         .unwrap();
     assert_eq!(pending.summary.counts.pending, 0);
     assert_eq!(pending.summary.counts.skipped, 3);
-    services.close().await;
+    services.close().await.unwrap();
 }
 
 /// The selection lasts one app session: a library reopens with none.
@@ -106,11 +106,11 @@ async fn a_reopened_library_has_nothing_selected() {
         .await
         .unwrap();
     assert_eq!(summary(&services).await.count, 2);
-    services.close().await;
+    services.close().await.unwrap();
 
     let reopened = open(&db_dir).await;
     assert_eq!(summary(&reopened).await.count, 0);
-    reopened.close().await;
+    reopened.close().await.unwrap();
 }
 
 /// The list sorted by path, last to first, so the order it shows is the
@@ -228,7 +228,7 @@ async fn a_bulk_identify_admits_the_rows_as_the_list_shows_them() {
     })
     .await;
     assert_eq!(admitted, expected);
-    services.close().await;
+    services.close().await.unwrap();
 }
 
 /// A bulk Import over rows selected out of order starts them in the order the
@@ -263,5 +263,5 @@ async fn a_bulk_import_starts_the_rows_as_the_list_shows_them() {
     })
     .await;
     assert_eq!(started, expected);
-    services.close().await;
+    services.close().await.unwrap();
 }

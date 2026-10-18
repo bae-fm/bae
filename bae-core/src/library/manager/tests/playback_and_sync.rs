@@ -1,7 +1,7 @@
 #[tokio::test]
 async fn discogs_operations_withheld_when_rejected() {
     use crate::config::DiscogsValidation;
-    let (manager, _temp_dir) = setup_test_manager_with_library_id("discogs-withheld-test").await;
+    let (manager, _temp_dir) = setup_test_manager().await;
     manager
         .set_discogs_key(
             "f7228aaf-52b3-40ea-8526-a7e8aa0bf5da",
@@ -36,7 +36,7 @@ async fn discogs_operations_withheld_when_rejected() {
 /// both stores to agree it exists.
 #[tokio::test]
 async fn discogs_operations_withheld_when_config_has_no_key() {
-    let (manager, _temp_dir) = setup_test_manager_with_library_id("discogs-orphan-key").await;
+    let (manager, _temp_dir) = setup_test_manager().await;
 
     // Keyring bytes present, config untouched (still `None`).
     manager
@@ -55,7 +55,7 @@ async fn discogs_operations_withheld_when_config_has_no_key() {
 #[tokio::test]
 async fn set_and_clear_discogs_key_move_both_stores() {
     use crate::config::DiscogsValidation;
-    let (manager, _temp_dir) = setup_test_manager_with_library_id("discogs-atomic").await;
+    let (manager, _temp_dir) = setup_test_manager().await;
 
     manager
         .set_discogs_key("the-key", DiscogsValidation::Valid).await
@@ -90,7 +90,7 @@ async fn set_and_clear_discogs_key_move_both_stores() {
 async fn revalidate_errors_when_config_claims_a_key_the_keyring_lacks() {
     use crate::config::DiscogsValidation;
 
-    let (manager, _temp_dir) = setup_test_manager_with_library_id("discogs-revalidate-torn").await;
+    let (manager, _temp_dir) = setup_test_manager().await;
     // Config claims an Unvalidated key; the keyring has none — the torn state.
     manager
         .config_handle
@@ -307,121 +307,42 @@ async fn test_playback_state_source_column_round_trips_both_kinds() {
     }
 }
 
-/// Each sync/membership/cloud-setup failure class carries a distinct diagnostic
-/// category to the bridge, so the UI shows different messages for bad
-/// credentials, an unreachable backend, a keyring failure, a config-write
-/// failure, and a membership-chain failure. Builds the exact coven boundary
-/// errors these flows return and asserts the class the bridge reads.
 #[test]
-fn setup_failure_classes_map_to_distinct_categories() {
+fn setup_failure_classes_retain_the_actionable_category() {
     use crate::ui::UiErrorCategory as C;
-
+    use coven::StorageFailure as F;
     let cases: Vec<(LibraryError, C)> = vec![
-        (
-            coven::CloudHomeError::Configuration("rejected credentials".into()).into(),
-            C::Credentials,
-        ),
-        (
-            coven::CloudHomeError::NotFound("missing bucket".into()).into(),
-            C::Credentials,
-        ),
-        (
-            coven::CloudHomeError::Transport("unreachable endpoint".into()).into(),
-            C::Network,
-        ),
-        (
-            LibraryError::CloudSetup(coven::CloudHomeSetupError::Connection(Box::new(
-                coven::SyncError::CloudHome(coven::CloudHomeError::Configuration(
-                    "oauth denied".into(),
-                )),
-            ))),
-            C::CloudSetup(coven::CloudHomeSetupFailure::InvalidConfiguration),
-        ),
-        (
-            coven::KeyError::Custody {
-                operation: "write keyring",
-                source: Box::new(std::io::Error::other("keyring write failed")),
-            }
-            .into(),
-            C::Keyring,
-        ),
-        (
-            crate::config::ConfigError::Config("config write failed".into()).into(),
-            C::Config,
-        ),
-        (
-            coven::SyncError::Key(coven::KeyError::Custody {
-                operation: "write keyring",
-                source: Box::new(std::io::Error::other("keyring write failed")),
-            })
-            .into(),
-            C::Keyring,
-        ),
-        (
-            coven::SyncError::Key(coven::KeyError::NoDeviceIdentity).into(),
-            C::DeviceIdentityMissing,
-        ),
-        (
-            coven::SyncError::CloudHome(coven::CloudHomeError::Transport("t".into())).into(),
-            C::Network,
-        ),
-        // `SyncError::Membership` maps to `C::Membership` (see `sync_category`),
-        // but its payload `MembershipOpsError` is no longer part of coven's
-        // curated public API, so a host test can't fabricate that variant.
-        (coven::SyncError::NotConfigured.into(), C::Internal),
-        (
-            LibraryError::Storage("pin ended without completion".into()),
-            C::Internal,
-        ),
-        (
-            LibraryError::Validation("library name cannot be empty".into()),
-            C::Config,
-        ),
+        (coven::StorageError::from(F::Authentication).into(), C::Credentials),
+        (coven::StorageError::from(F::ContainerNotFound).into(), C::Credentials),
+        (coven::StorageError::from(F::Network).into(), C::Network),
+        (coven::KeyError::ServiceNotRegistered.into(), C::Keyring),
+        (crate::config::ConfigError::Config("invalid preference".into()).into(), C::Config),
+        (coven::SyncError::SecureStorage(coven::KeyError::ServiceNotRegistered).into(), C::Keyring),
+        (coven::SyncError::Storage(F::Network.into()).into(), C::Network),
+        (coven::SyncError::NoStorage.into(), C::Config),
+        (coven::SyncError::Removed.into(), C::Membership),
+        (LibraryError::Storage("pin ended without completion".into()), C::Internal),
+        (LibraryError::Validation("library name cannot be empty".into()), C::Config),
     ];
-
-    for (error, expected) in &cases {
-        assert_eq!(error.category(), *expected, "{error}");
-    }
+    for (error, expected) in cases { assert_eq!(error.category(), expected, "{error}"); }
 }
 
 #[test]
-fn every_cloud_setup_failure_keeps_its_exact_user_action() {
-    use coven::CloudHomeSetupFailure as F;
-
-    for failure in [
-        F::Authentication,
-        F::PermissionDenied,
-        F::ContainerNotFound,
-        F::RegionMismatch,
-        F::QuotaExceeded,
-        F::InvalidConfiguration,
-        F::LocationOccupied,
-        F::Network,
-        F::DeviceIdentityMissing,
-        F::SecureStorage,
-        F::Internal,
-    ] {
-        assert_eq!(
-            cloud_setup_failure_category(failure),
-            crate::ui::UiErrorCategory::CloudSetup(failure),
-        );
+fn every_storage_setup_failure_keeps_its_exact_user_action() {
+    use coven::StorageFailure as F;
+    for failure in [F::Authentication, F::PermissionDenied, F::ContainerNotFound,
+        F::RegionMismatch, F::QuotaExceeded, F::InvalidConfiguration, F::Network] {
+        let error = LibraryError::CloudSetup(coven::StorageSetupError::Storage(failure.into()));
+        assert_eq!(error.category(), crate::ui::UiErrorCategory::CloudSetup(failure));
     }
 }
 
-/// A coven-typed sync error propagates through the sync controller and the
-/// manager forwarder without being flattened to a string: an unconfigured
-/// library surfaces `SyncError::NotConfigured` intact, and its class is Internal.
 #[tokio::test]
-async fn get_members_on_unconfigured_library_propagates_typed_sync_error() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let Err(err) = manager.get_members().await else {
-        panic!("no cloud home is connected, so get_members must fail");
-    };
-    assert!(
-        matches!(err, LibraryError::Sync(coven::SyncError::NotConfigured)),
-        "expected a typed SyncError::NotConfigured, got {err:?}"
-    );
-    assert_eq!(err.category(), crate::ui::UiErrorCategory::Internal);
+async fn membership_reads_committed_local_state_without_a_provider() {
+    let (manager, _temp) = setup_test_manager().await;
+    let membership = manager.get_members().await.unwrap();
+    assert!(!manager.is_sync_configured().await.unwrap());
+    assert!(membership.members.iter().all(|member| member.member.is_self));
 }
 
 // ── Queue windowing tests ───────────────────────────────────────────
@@ -458,7 +379,7 @@ async fn resolve_queue(
         .subscribe_queue_catalog(crate::library::manager::queue_catalog_request(&projection))
         .next()
         .await
-        .into_result()
+        .result
         .unwrap();
     manager.resolve_queue_catalog(projection, catalog)
 }
@@ -615,7 +536,7 @@ async fn a_reordered_queue_reads_the_same_tracks_and_resolves_from_one_read() {
         .subscribe_queue_catalog(request)
         .next()
         .await
-        .into_result()
+        .result
         .unwrap();
     let resolved = manager.resolve_queue_catalog(reordered, read);
     let shown: Vec<(&str, &str)> = resolved
@@ -636,200 +557,46 @@ async fn a_reordered_queue_reads_the_same_tracks_and_resolves_from_one_read() {
     assert_eq!(resolved.revision, 2);
 }
 
-/// A failed opaque-home setup leaves both the proposed provider and generated
-/// master key uncommitted. Coven owns that transaction; bae persists the returned
-/// provider config only after Coven returns success.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
-async fn a_failed_connect_commits_neither_provider_nor_master_key() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-
-    let error = manager
-        .use_cloudkit(crate::config::HomeStorage::Opaque)
-        .await
-        .expect_err("no CloudKit driver is installed, so the connect must fail");
-    assert!(
-        error.to_string().contains("CloudKit driver not provided"),
-        "the failure must be the connect, not the key step: {error}"
-    );
-
-    assert_eq!(manager.get_config().cloud_home.provider, None);
-    assert_eq!(
-        manager
-            .database
-            .cloud_home_key_state(crate::config::HomeStorage::Opaque)
-            .unwrap(),
-        coven::CloudHomeKeyState::Locked,
-        "a generated master key is not retained after connection failure"
-    );
+async fn failed_storage_setup_keeps_the_library_unconfigured() {
+    let (manager, _temp) = setup_test_manager().await;
+    manager.storage.set_online(false);
+    manager.database.setup_s3_storage(manager.storage.config(), "Device", "key".into(), coven::SecretText::new("secret".into()))
+        .await.expect_err("offline storage cannot be set up");
+    assert!(!manager.is_sync_configured().await.unwrap());
+    assert_eq!(manager.library_name().await.unwrap(), "Test Library");
 }
 
 #[tokio::test]
-async fn a_local_library_without_a_cloud_provider_does_not_require_a_master_key() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-
-    assert_eq!(manager.get_config().cloud_home.provider, None);
-    assert_eq!(
-        manager.cloud_home_key_state().unwrap(),
-        coven::CloudHomeKeyState::NotRequired,
-    );
+async fn a_local_library_does_not_need_storage_for_its_rows() {
+    let (manager, _temp, album, release) = manager_with_release().await;
+    assert!(!manager.is_sync_configured().await.unwrap());
+    assert!(find_album(&manager, &album.id).await.is_some());
+    assert!(find_release(&manager, &release.id).await.is_some());
 }
 
-/// Cancelling a release's upload has to leave the durable state telling the truth:
-/// the release is Local again, coven's make-Remote intent is gone, and its outbox
-/// carries no pending uploads. That outbox — not a status column — is what a restart
-/// reads to know an import is still uploading, and it is what the Processing pane
-/// renders. bae used to keep a second copy of that fact in an `imports.status`
-/// column that the cancel never touched (so it stayed `importing` forever) and that
-/// nothing ever read back; this pins the fact to the place that is actually correct.
-#[cfg(feature = "test-utils")]
-#[tokio::test]
-async fn cancelling_an_upload_leaves_no_in_flight_import_behind() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
-    let release = insert_partially_uploaded_make_remote_release(&manager, temp_dir.path()).await;
-
-    manager.cancel_release_upload(&release.id).await.unwrap();
-    manager.drain_uploads_for_test().await.unwrap();
-
-    assert!(
-        make_remote_progress(&manager, &release.id).await.is_none(),
-        "the drain after the cancel clears coven's make-Remote intent"
-    );
-    assert!(
-        queued_upload_count(&manager).await == 0,
-        "no upload is left queued, so nothing reads as still importing"
-    );
-    let after = find_release(&manager, &release.id)
-        .await
-        .expect("the release survives the cancel");
-    assert!(!after.remote, "the cancelled release stays Local");
-}
-
-/// Cancelling is recorded, not performed: coven marks the transition
-/// cancelling and a drain takes the uploaded object back out when the cloud
-/// allows it. A cloud that refuses that removal does not fail the cancel —
-/// the unwind stays owed and shows as cancelling, the way a deleted release's
-/// does.
-#[cfg(feature = "test-utils")]
-#[tokio::test]
-async fn cancelling_an_upload_survives_a_cloud_that_refuses_the_cleanup() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    let home = connect_test_cloud(&manager).await;
-    let release = insert_partially_uploaded_make_remote_release(&manager, temp_dir.path()).await;
-    home.fail_exact_delete_on_call(1);
-
-    manager
-        .cancel_release_upload(&release.id)
-        .await
-        .expect("the cancel does not wait on the cloud");
-
-    assert_eq!(
-        make_remote_progress(&manager, &release.id).await,
-        Some(coven::MakeRemoteProgress::Cancelling),
-        "the unwind is still owed"
-    );
-    let after = find_release(&manager, &release.id)
-        .await
-        .expect("the release survives the cancel");
-    assert!(!after.remote, "the cancelled release stays Local");
-}
-
-/// A manager whose config names a cloud provider the host gave it no driver
-/// for, so every connect attempt fails deterministically the way a startup
-/// connect against an unreachable provider does.
-async fn setup_configured_but_unconnectable_manager() -> (LibraryManager, TempDir) {
-    let temp_dir = TempDir::new().unwrap();
-    let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
-    let mut config = Config::with_defaults(
-        format!("test-{}", Uuid::new_v4()),
-        "test-device".to_string(),
-        library_dir,
-        "Test Library".to_string(),
-    );
-    config.cloud_home.provider = Some(crate::config::CloudProvider::CloudKit);
-    crate::config::install_test_keyring();
-    assemble_test_manager(temp_dir, config).await
-}
-
-/// Reconnect on a library with no cloud provider has nothing to reconnect to.
-/// It refuses rather than reporting a retry it never ran, and the refusal stays
-/// with its caller: a library that was never set up is not a library whose sync
-/// is failing, so the sync status it would poison stays clean.
 #[tokio::test]
 async fn reconnect_sync_refuses_a_library_with_no_provider() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-
-    let error = manager
-        .reconnect_sync()
-        .await
-        .expect_err("reconnecting with no configured provider must fail");
-
-    assert!(
-        matches!(error, LibraryError::Sync(coven::SyncError::NotConfigured)),
-        "got {error:?}"
-    );
-    assert!(
-        manager.get_sync_status().error.is_none(),
-        "an unconfigured library reports no sync failure"
-    );
+    let (manager, _temp) = setup_test_manager().await;
+    let error = manager.reconnect_sync().await.unwrap_err();
+    assert!(matches!(error, LibraryError::Sync(coven::SyncError::NoStorage)));
+    assert!(manager.get_sync_status().error.is_none());
 }
 
-/// A launch whose connect failed leaves no connection and no loop, so a retry
-/// has to connect — waking a loop that was never built does nothing. The
-/// returned failure comes from the connect itself, and it replaces the older
-/// one in the sync status, so a user who retries sees why this attempt didn't
-/// take rather than the reason from launch.
 #[tokio::test]
-async fn reconnect_sync_connects_when_the_startup_connect_left_nothing_running() {
-    let (manager, _temp_dir) = setup_configured_but_unconnectable_manager().await;
+async fn startup_and_retry_publish_the_native_connection_status() {
+    let clock = Arc::new(coven::FixedClock::new(std::time::UNIX_EPOCH));
+    let (manager, _temp) = setup_test_manager_with_clock(clock.clone()).await;
+    connect_test_cloud(&manager).await;
+    manager.storage.set_online(false);
+    manager.start();
+    let mut values = manager.subscribe_sync_status_values();
     manager.attach_and_start_sync_at_startup().await;
-    assert!(
-        !manager.is_sync_ready(),
-        "the failed startup connect left no sync loop to wake"
-    );
-
-    let error = manager
-        .reconnect_sync()
-        .await
-        .expect_err("the retry hits the same missing driver");
-
-    assert!(
-        error.to_string().contains("CloudKit driver not provided"),
-        "the failure is the connect's own, so the retry attempted one: {error}"
-    );
-    let crate::ui::UiError::Diagnostic { detail, .. } = manager
-        .get_sync_status()
-        .error
-        .expect("the retry's failure reaches the sync-failure surfaces");
-    assert_eq!(
-        detail,
-        error.to_string(),
-        "the retry's failure is what those surfaces now show"
-    );
-}
-
-/// A retry that gets under way supersedes the failure that prompted it: the
-/// recorded error clears as the retry starts, so the failure banner reflects
-/// the attempt in flight instead of the one that already failed. The next
-/// cycle's own verdict then sets the error again, or leaves it clear.
-#[cfg(feature = "test-utils")]
-#[tokio::test]
-async fn reconnect_sync_clears_the_failure_it_retries() {
-    let (manager, _temp_dir) = setup_configured_but_unconnectable_manager().await;
-    manager.attach_and_start_sync_at_startup().await;
-    assert!(manager.get_sync_status().error.is_some());
-
-    connect_test_cloud_with_sync_loop(&manager).await;
-    assert!(manager.is_sync_ready(), "a loop is running to be woken");
-
-    manager
-        .reconnect_sync()
-        .await
-        .expect("a connected library retries by waking its loop");
-
-    assert!(
-        manager.get_sync_status().error.is_none(),
-        "the stale failure is gone the moment the retry runs"
-    );
+    tokio::time::timeout(std::time::Duration::from_secs(20), values.wait_for(|value| matches!(value.status, coven::SyncStatus::Failed { .. } | coven::SyncStatus::Offline { .. }))).await.unwrap().unwrap();
+    assert!(manager.is_sync_ready(), "the loop keeps the failed connection retryable");
+    manager.storage.set_online(true);
+    clock.set(std::time::UNIX_EPOCH + std::time::Duration::from_secs(60));
+    manager.reconnect_sync().await.unwrap();
+    tokio::time::timeout(std::time::Duration::from_secs(20), values.wait_for(|value| matches!(value.status, coven::SyncStatus::Synced { .. }))).await.unwrap().unwrap();
+    manager.close().await.unwrap();
 }

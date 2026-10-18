@@ -39,14 +39,14 @@ impl WallPlaybackClock {
 
 impl PlaybackClock for WallPlaybackClock {
     fn now(&self) -> DateTime<Utc> {
-        self.wall.now()
+        self.wall.now().into()
     }
 
     fn sleep_until(&self, deadline: DateTime<Utc>) -> PlaybackSleep {
-        let remaining = (deadline - self.wall.now())
+        let remaining = (deadline - self.now())
             .to_std()
             .unwrap_or(std::time::Duration::ZERO);
-        Box::pin(tokio::time::sleep(remaining))
+        self.wall.sleep(remaining)
     }
 }
 

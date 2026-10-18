@@ -345,36 +345,27 @@ async fn scan_whose_stored_decisions_cannot_be_read_records_the_failure() {
     generate_album_files(&album, &["01 Track.flac"]);
     let root_key = root.to_string_lossy().into_owned();
 
-    f.db.rename_host_table_for_test("import_candidate_sheet_disc")
-        .await
-        .unwrap();
+    let invalid_folder = format!("{root_key}/a/./b");
+    f.db.execute_local_sql_for_test(&format!(
+        "INSERT INTO release_grouping (key, anchor_folder, combined, author) \
+         VALUES ('grouping:corrupt', '{}', 1, 'user')",
+        invalid_folder.replace('\'', "''"),
+    )).await.unwrap();
+    let mut events = f.handle.every_scan_event_for_test();
     f.handle.add_watched_folder(root_key.clone()).await.unwrap();
-
-    let projection = wait_for_candidates(
-        &f,
-        "the unreadable file decisions leave the root failed",
-        |projection| {
-            projection.folder_scans.statuses.iter().any(|status| {
-                status.watched_folder_path == root_key
-                    && matches!(
-                        status.status,
-                        bae_core::import::FolderScanStatus::Failed { .. }
-                    )
-            })
-        },
-    )
-    .await;
-    let status = projection
-        .folder_scans
-        .statuses
-        .iter()
-        .find(|status| status.watched_folder_path == root_key)
-        .expect("the added root reports a scan status");
-    let bae_core::import::FolderScanStatus::Failed { error } = &status.status else {
-        panic!("expected a failed scan, got {:?}", status.status);
-    };
+    let error = support::next_matching(&mut events, std::time::Duration::from_secs(10), |event| {
+        match event {
+            ScanEvent::FolderScanStatusChanged { status } if status.watched_folder_path == root_key => {
+                match status.status {
+                    bae_core::import::FolderScanStatus::Failed { error } => Some(error),
+                    _ => None,
+                }
+            }
+            _ => None,
+        }
+    }).await.expect("unreadable decisions leave a failed scan status");
     assert!(
-        error.contains("import_candidate_sheet_disc"),
+        error.contains(&invalid_folder),
         "the failed status carries what went wrong, got {error:?}"
     );
 }

@@ -20,7 +20,7 @@ impl FolderCandidate {
         &self,
         snapshot: &super::file_tag_snapshot::FileTagSnapshot,
         clock: &dyn coven::Clock,
-        ids: &dyn coven::IdProvider,
+        ids: &dyn coven::IdSource,
     ) -> Result<super::ReleaseUserEdit, super::ImportError> {
         let parsed = super::file_tag_mapper::map_file_metadata_to_db(
             &self.files,

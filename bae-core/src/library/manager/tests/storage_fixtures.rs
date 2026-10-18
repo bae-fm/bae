@@ -5,44 +5,26 @@
 //
 // `include!`d into `manager::tests` beside the tests that use them.
 
-/// Connect a real `SyncManager` over an in-memory cloud home (opaque,
-/// encrypted) so the manager's cloud read/write/transition paths run against
-/// it — the in-module counterpart of the integration tests' `setup_with_cloud`.
-/// After this, `has_cloud_home()` holds.
-///
-/// No sync loop runs behind it: the tests here drive the upload queue with
-/// `drain_uploads_expecting_work` and assert what that pass moved, which is only
-/// a fact if nothing else drains. A test that needs the loop's own work — the
-/// Store write that publishes a transition, or `is_sync_ready()` — takes
-/// [`connect_test_cloud_with_sync_loop`] instead.
+/// Connect injected storage and pause uploads while a test seeds its queue.
 #[cfg(feature = "test-utils")]
-async fn connect_test_cloud(manager: &LibraryManager) -> Arc<InMemoryCloudHome> {
-    let home = Arc::new(InMemoryCloudHome::new());
-    manager
-        .connect_test_cloud_home_caller_driven(
-            home.clone(),
-            CloudCipher::Encrypted(EncryptionService::from_key([7u8; 32])),
-        )
-        .await
-        .expect("connect in-memory cloud home");
-    home
+async fn connect_test_cloud(manager: &TestManager) -> Arc<MemoryStorage> {
+    connect_test_cloud_with_sync_loop(manager).await;
+    manager.database.stop_sync();
+    let mut status = manager.database.subscribe_sync_status();
+    tokio::time::timeout(std::time::Duration::from_secs(20), status.wait_for(|status| matches!(status, coven::SyncStatus::Stopped))).await.unwrap().unwrap();
+    manager.database.unlock_store_key().await.unwrap();
+    manager.database.set_uploads_paused(true).await.unwrap();
+    manager.sync_status.set_status(status.borrow().clone());
+    manager.storage.clone()
 }
 
-/// [`connect_test_cloud`] with the production sync loop running behind it, for
-/// the tests that wait on a cycle to publish a transition's Store write. Their
-/// drains are the loop's as well as their own, so they assert on published
-/// state rather than on a drain's count.
 #[cfg(feature = "test-utils")]
-async fn connect_test_cloud_with_sync_loop(manager: &LibraryManager) -> Arc<InMemoryCloudHome> {
-    let home = Arc::new(InMemoryCloudHome::new());
-    manager
-        .connect_test_cloud_home(
-            home.clone(),
-            CloudCipher::Encrypted(EncryptionService::from_key([7u8; 32])),
-        )
-        .await
-        .expect("connect in-memory cloud home");
-    home
+async fn connect_test_cloud_with_sync_loop(manager: &TestManager) -> Arc<MemoryStorage> {
+    manager.database.setup_s3_storage(manager.storage.config(), "Test Device", "test-key".into(), coven::SecretText::new("test-secret".into())).await.unwrap();
+    let mut status = manager.database.subscribe_sync_status();
+    tokio::time::timeout(std::time::Duration::from_secs(20), status.wait_for(|status| matches!(status, coven::SyncStatus::Synced { .. }))).await.unwrap().unwrap();
+    manager.sync_status.set_status(status.borrow().clone());
+    manager.storage.clone()
 }
 
 /// A release mid-make-Remote: its uploads are enqueued in coven's durable queue
@@ -90,44 +72,22 @@ impl ReleaseRef {
     }
 }
 
-/// Wait until a host-provided blob on a Remote release has a committed cloud
-/// object.
-///
-/// Publication is the sync loop's Store write, not the row write: storing a
-/// cover leaves its blob `PendingRemote` with no locator, and only the next
-/// cycle gives it one. A test that needs a genuinely published blob — one whose
-/// row names a committed cloud object — has to be past that point.
+/// Wait for the current file's upload to leave coven's durable queue.
 #[cfg(feature = "test-utils")]
-async fn wait_for_published_blob(manager: &LibraryManager, namespace: &str, row_id: &str) {
-    for tick in 0..2_000 {
-        // Re-kick periodically: a cycle already in flight ignores the nudge, and
-        // the write only activates on a cycle that starts after it was queued.
-        if tick % 50 == 0 {
-            manager.database.sync_now();
+async fn wait_for_published_blob(manager: &LibraryManager, table: &str, row_id: &str) {
+    let reference = manager.database.file_ref(table, row_id).await.unwrap();
+    let mut uploads = manager.database.subscribe_cloud_outbox();
+    manager.database.sync_now();
+    tokio::time::timeout(std::time::Duration::from_secs(20), async {
+        loop {
+            if !uploads.next().await.unwrap().files.iter().any(|file| file.file == reference) { return; }
         }
-        let blob = manager
-            .database
-            .row_blob_ref(namespace, row_id)
-            .await
-            .expect("the blob-bearing row exists");
-        if blob.stored().is_some() {
-            return;
-        }
-        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
-    }
-    let (pending, blocked) = manager
-        .database
-        .pending_and_blocked_writes_for_test()
-        .await
-        .unwrap();
-    panic!(
-        "blob {namespace}/{row_id} never reached the cloud; pending={pending} blocked={blocked}"
-    );
+    }).await.expect("file uploaded");
 }
 
 /// Create a Remote release the real way: a Local release with one source file
-/// on disk (coven's external ref), made Remote (`pin` keeps its blob in the
-/// offline cache) and drained so the gate flips. Returns its id. The manager
+/// on disk, attached for upload (`pin` keeps its offline copy), then uploaded.
+/// Returns its id. The manager
 /// must already be connected via [`connect_test_cloud`].
 #[cfg(feature = "test-utils")]
 async fn make_remote_release(
@@ -184,30 +144,10 @@ async fn make_remote_release_under_sync_loop(
     release.id
 }
 
-/// Wait for a release's make-Remote to finish under a running sync loop, and
-/// assert it landed: no upload work outstanding, the durable intent retired, and
-/// the gate flipped.
-///
-/// The intent is part of "landed", not a detail: while it stands, the release's
-/// cloud objects are the transition's rather than accepted history, and coven
-/// refuses a make-Local against it.
 #[cfg(feature = "test-utils")]
 async fn wait_for_landed_make_remote(manager: &LibraryManager, release_id: &str) {
     wait_for_settled_uploads(manager, release_id).await;
-    for tick in 0..2_000 {
-        if tick % 50 == 0 {
-            manager.database.sync_now();
-        }
-        if make_remote_progress(manager, release_id).await.is_none() {
-            assert!(
-                find_release(manager, release_id).await.unwrap().remote,
-                "every upload landed, so the release is Remote"
-            );
-            return;
-        }
-        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
-    }
-    panic!("release {release_id} never retired its make-Remote intent");
+    assert!(release_files(manager, release_id).await.iter().all(|file| file.attached));
 }
 
 #[cfg(feature = "test-utils")]
@@ -225,16 +165,12 @@ async fn insert_partially_uploaded_make_remote_release(
     .await;
 
     manager.coven_make_remote(&release.id, true).await.unwrap();
-    assert!(make_remote_progress(manager, &release.id).await.is_some());
     assert_eq!(queued_upload_count(manager).await, 2);
 
     std::fs::remove_file(source_dir.join("b.flac")).unwrap();
     let uploaded = manager.drain_uploads_expecting_work().await.unwrap();
     assert_eq!(uploaded, 1);
-    assert!(
-        !find_release(manager, &release.id).await.unwrap().remote,
-        "the release must still be Local while one upload is unresolved"
-    );
+    assert!(release_files(manager, &release.id).await.iter().all(|file| file.attached));
     release
 }
 
@@ -259,8 +195,7 @@ async fn insert_local_release_in_album(
     dir: &std::path::Path,
     files: &[(&str, &[u8])],
 ) -> DbRelease {
-    let mut release = create_test_release(album_id);
-    release.remote = false;
+    let release = create_test_release(album_id);
     insert_release(manager, &release).await;
     std::fs::create_dir_all(dir).unwrap();
     let created_at = Utc::now();
@@ -290,8 +225,7 @@ async fn insert_local_release_without_local_files(
     manager: &LibraryManager,
     album_id: &str,
 ) -> DbRelease {
-    let mut release = create_test_release(album_id);
-    release.remote = false;
+    let release = create_test_release(album_id);
     insert_release(manager, &release).await;
     let file = DbFile::new(
         &release.id,
@@ -361,7 +295,7 @@ async fn store_test_cover(manager: &LibraryManager, release_id: &str, bytes: &[u
         "local",
         None,
         bytes,
-        manager.clock.now(),
+        manager.clock.now().into(),
     );
     manager
         .store_library_image_blob(&cover, bytes)
@@ -369,9 +303,9 @@ async fn store_test_cover(manager: &LibraryManager, release_id: &str, bytes: &[u
         .unwrap();
 }
 
-/// Whether coven keeps a row's blob in `storage/pinned/`. Asked of that row's
-/// own blob rather than through `release_pinned`, which answers from a
-/// representative *file* and so cannot see a stranded cover.
+/// Whether coven keeps a row's blob in the pinned cache. Asked of that row's
+/// own file rather than through `release_pinned`, which checks the release's
+/// files and deliberately excludes covers.
 #[cfg(feature = "test-utils")]
 async fn blob_pinned(manager: &LibraryManager, namespace: &str, row_id: &str) -> bool {
     manager

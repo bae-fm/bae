@@ -33,7 +33,7 @@ pub struct LibraryBrowseSnapshot<Row> {
     /// Number of displayed appearances, including albums in multiple sections.
     pub row_count: u64,
     pub request_revision: u64,
-    pub cause: coven::ReconfigurableLiveQueryCause,
+    pub cause: coven::LiveQueryCause,
 }
 
 pub type AlbumBrowseSubscription =
@@ -58,9 +58,7 @@ pub enum LibraryBrowseSubscriptionError {
 pub struct LibraryBrowseSubscription<Projection, Row> {
     query: CancellableLiveQuery<LibraryPageWindows, Projection>,
     resolve: Arc<
-        dyn Fn(Projection, u64, coven::ReconfigurableLiveQueryCause) -> LibraryBrowseSnapshot<Row>
-            + Send
-            + Sync,
+        dyn Fn(Projection, u64, coven::LiveQueryCause) -> LibraryBrowseSnapshot<Row> + Send + Sync,
     >,
 }
 
@@ -71,7 +69,7 @@ where
 {
     pub(crate) fn new(
         query: coven::ReconfigurableLiveQuery<LibraryPageWindows, Projection>,
-        resolve: impl Fn(Projection, u64, coven::ReconfigurableLiveQueryCause) -> LibraryBrowseSnapshot<Row>
+        resolve: impl Fn(Projection, u64, coven::LiveQueryCause) -> LibraryBrowseSnapshot<Row>
             + Send
             + Sync
             + 'static,
@@ -98,9 +96,9 @@ where
             .next()
             .await
             .map_err(|_| LibraryBrowseSubscriptionError::Cancelled)?;
-        let revision = event.revision().get();
-        let cause = event.cause();
-        let projection = event.into_result()?;
+        let revision = event.revision.0;
+        let cause = event.cause;
+        let projection = event.result?;
         Ok((self.resolve)(projection, revision, cause))
     }
 

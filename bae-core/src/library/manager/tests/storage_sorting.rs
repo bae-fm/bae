@@ -110,7 +110,7 @@ async fn storage_page_sort_by_file_count() {
                 file_size: 1000,
                 content_type: crate::util::content_type::ContentType::Flac,
                 source_audio: None,
-                cloud_path: None,
+                attached: false,
                 created_at: Utc::now(),
             };
             manager.database.insert_file(&file).await.unwrap();
@@ -146,7 +146,7 @@ async fn storage_page_sort_by_total_size() {
             file_size: *file_size,
             content_type: crate::util::content_type::ContentType::Flac,
             source_audio: None,
-            cloud_path: None,
+            attached: false,
             created_at: Utc::now(),
         };
         manager.database.insert_file(&file).await.unwrap();

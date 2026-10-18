@@ -54,7 +54,7 @@ async fn album_detail_delivers_while_sync_shaped_load_runs() {
         .start_import_service(tokio::runtime::Handle::current())
         .await
         .expect("start the import service");
-    let services = crate::library::AppServices::new(manager, playback, import);
+    let services = crate::library::AppServices::new(manager.clone(), playback, import);
 
     let values = services.subscribe_album_detail(&tokio::runtime::Handle::current());
     values.set(Some(album.id.clone())).unwrap();
@@ -100,7 +100,7 @@ async fn album_detail_moves_between_albums_on_one_subscription() {
         insert_release(&manager, &create_test_release(&album.id)).await;
         albums.push(album);
     }
-    let services = crate::library::AppServices::for_test(manager)
+    let services = crate::library::AppServices::for_test(manager.clone())
         .await
         .unwrap();
     let values = services.subscribe_album_detail(&tokio::runtime::Handle::current());

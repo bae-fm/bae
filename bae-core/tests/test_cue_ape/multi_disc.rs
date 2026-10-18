@@ -138,33 +138,9 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(destination: ImportDestinati
         std::fs::write(dir.join("CDImage.cue"), cue_body).expect("write cue");
     }
 
-    let library_dir = StoreDir::new(db_dir.clone());
-    let config_handle = test_config(&library_dir);
-    let library_manager = LibraryManager::open(
-        bae_core::config::AppDir::under_home(temp_root.path()),
-        config_handle,
-        std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-        bae_core::diagnostics::Diagnostics::noop(),
-        tokio::runtime::Handle::current(),
-        None,
-        coven::OAuthClients::empty(),
-        bae_core::import::cover_art::RemoteImageCache::for_test(bae_core::util::http::Http::for_test()),
-        bae_core::providers::Providers::offline(),
-    )
-    .expect("open library manager");
+    let (library_manager, _, storage) = support::storage_library(&db_dir, bae_core::providers::Providers::offline()).await;
     if let ImportDestination::Remote { .. } = destination {
-        library_manager
-            .connect_test_cloud_home(
-                Arc::new(coven::InMemoryCloudHome::new()),
-                CloudCipher::Encrypted(EncryptionService::from_key([7u8; 32])),
-            )
-            .await
-            .expect("connect in-memory cloud home");
-        assert!(
-            library_manager.is_sync_ready(),
-            "remote import test cloud should start sync"
-        );
+        support::connect_storage(&library_manager, &storage).await;
     }
 
     // Discogs multi-disc tracklist: positions "1-1".."1-3", "2-1".."2-3".
@@ -276,27 +252,7 @@ async fn wait_for_multi_disc_cue_ape_import_ready(
         ImportDestination::Local => wait_for_import_complete(progress_rx).await,
         ImportDestination::Remote { .. } => {
             let (release_id, album_id) = wait_for_import_complete(progress_rx).await;
-            // The store may still be finishing its first snapshot; the guard
-            // fails a stuck upload rather than timing one.
-            timeout(Duration::from_secs(60), async {
-                loop {
-                    let release = library_manager
-                        .get_release_by_id(&release_id)
-                        .await
-                        .expect("find imported release")
-                        .expect("imported release exists");
-                    let pending = library_manager
-                        .count_pending_uploads_for_release(&release_id)
-                        .await
-                        .expect("count pending release uploads");
-                    if release.remote && pending == 0 {
-                        break;
-                    }
-                    sleep(Duration::from_millis(10)).await;
-                }
-            })
-            .await
-            .expect("remote multi-disc CUE/APE import uploads all files");
+            library_manager.drain_uploads_expecting_work().await.expect("upload every imported file");
             let files = library_manager
                 .get_files_for_release(&release_id)
                 .await

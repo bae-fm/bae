@@ -9,18 +9,14 @@ pub(super) fn storage_page_on(
 ) -> Result<Vec<(DbReleaseSummary, AlbumSummaryRow)>, DbError> {
     let mut binds = uploading
         .iter()
-        .map(|id| Box::new(id.clone()) as Box<dyn coven::rusqlite::ToSql>)
+        .map(|id| Box::new(id.clone()) as Box<dyn rusqlite::ToSql>)
         .collect::<Vec<_>>();
     binds.push(Box::new(limit as i64));
     binds.push(Box::new(offset as i64));
-    sql.query(
-        query,
-        coven::rusqlite::params_from_iter(binds.iter()),
-        |row| {
-            let release = row_to_release_summary(row)?;
-            Ok((release, AlbumSummaryRow::read(row)?))
-        },
-    )
+    sql.query(query, rusqlite::params_from_iter(binds.iter()), |row| {
+        let release = row_to_release_summary(row)?;
+        Ok((release, AlbumSummaryRow::read(row)?))
+    })
     .map_err(DbError::from)
 }
 
@@ -46,6 +42,7 @@ pub(super) fn find_release_detail_context_on(
     }))
 }
 
+#[derive(Clone, PartialEq)]
 pub(super) struct ReleaseContextRows {
     detail: ReleaseDetailRows,
     album_artists: Vec<DbArtist>,
@@ -85,7 +82,7 @@ pub(super) fn storage_count_on(
     let query = format!("SELECT COUNT(*) FROM releases r {where_clause}");
     sql.query_row(
         &query,
-        coven::rusqlite::params_from_iter(uploading.iter()),
+        rusqlite::params_from_iter(uploading.iter()),
         |row| row.get::<_, i64>(0),
     )
     .map(|count| count as u64)
@@ -104,7 +101,7 @@ pub(super) fn storage_total_size_on(
     );
     sql.query_row(
         &query,
-        coven::rusqlite::params_from_iter(uploading.iter()),
+        rusqlite::params_from_iter(uploading.iter()),
         |row| row.get::<_, i64>(0),
     )
     .map(|size| size as u64)

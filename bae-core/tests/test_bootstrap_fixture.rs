@@ -6,7 +6,7 @@
 use bae_core::app::bootstrap_on_fixture;
 use bae_core::config::AppDir;
 use bae_core::library::create_library;
-use coven::UuidProvider;
+use coven::TestCoven;
 use tempfile::TempDir;
 
 struct TestApp {
@@ -25,22 +25,38 @@ impl TestApp {
 
 /// A fresh home with one library created in it, and the fixture `json`
 /// written beside it. Bind the `TempDir` for the whole test.
-fn library_with_fixture(json: serde_json::Value) -> (TempDir, AppDir, String, std::path::PathBuf) {
+fn library_with_fixture(
+    json: serde_json::Value,
+) -> (TempDir, AppDir, String, std::path::PathBuf, TestCoven) {
     let dir = TempDir::new().unwrap();
     let app_dir = AppDir::under_home(dir.path());
-    bae_core::config::install_test_keyring();
-    let config = create_library(
-        &app_dir,
-        bae_core::library_name::LibraryName::parse("Fixture Library").unwrap(),
-        &UuidProvider,
-    )
-    .unwrap();
+    let installation = TestCoven::new();
+    let runtime = bae_test_support::multi_thread_runtime();
+    let id = runtime.block_on(async {
+        let handle = create_library(
+            installation.builder(coven::StoreLayout::new(dir.path().join(".bae"))),
+            bae_core::library_name::LibraryName::parse("Fixture Library").unwrap(),
+        )
+        .await
+        .unwrap();
+        let id = handle.store_id().to_string();
+        handle.close().await.unwrap();
+        id
+    });
     let fixture = dir.path().join("fixture.json");
     std::fs::write(&fixture, serde_json::to_vec(&json).unwrap()).unwrap();
-    (dir, app_dir, config.store_id.clone(), fixture)
+    (dir, app_dir, id, fixture, installation)
 }
 
-fn open(app_dir: &AppDir, library_id: &str, fixture: std::path::PathBuf) -> TestApp {
+fn open(
+    app_dir: &AppDir,
+    library_id: &str,
+    fixture: std::path::PathBuf,
+    installation: &TestCoven,
+) -> TestApp {
+    let builder = installation.builder(coven::StoreLayout::new(
+        fixture.parent().unwrap().join(".bae"),
+    ));
     bootstrap_on_fixture(
         fixture,
         app_dir.clone(),
@@ -48,8 +64,7 @@ fn open(app_dir: &AppDir, library_id: &str, fixture: std::path::PathBuf) -> Test
         200,
         true,
         bae_core::diagnostics::Diagnostics::noop(),
-        None,
-        coven::OAuthClients::empty(),
+        builder,
         TestApp::start,
     )
     .expect("the library opens on its fixture")
@@ -58,14 +73,15 @@ fn open(app_dir: &AppDir, library_id: &str, fixture: std::path::PathBuf) -> Test
 /// The library opens holding the fixture's albums.
 #[test]
 fn a_library_opens_holding_its_fixtures_albums() {
-    let (_dir, app_dir, library_id, fixture) = library_with_fixture(serde_json::json!({
-        "albums": [
-            { "title": "Album Title", "artists": ["Artist Name"], "tracks": ["Track Title"] },
-        ],
-        "watched_folders": [],
-    }));
+    let (_dir, app_dir, library_id, fixture, installation) =
+        library_with_fixture(serde_json::json!({
+            "albums": [
+                { "title": "Album Title", "artists": ["Artist Name"], "tracks": ["Track Title"] },
+            ],
+            "watched_folders": [],
+        }));
 
-    let app = open(&app_dir, &library_id, fixture);
+    let app = open(&app_dir, &library_id, fixture, &installation);
 
     let albums = app.runtime.block_on(app.services.get_albums(&[])).unwrap();
     assert_eq!(
@@ -83,17 +99,19 @@ fn a_library_opens_holding_its_fixtures_albums() {
 fn a_library_opens_watching_its_fixtures_folders() {
     let dir = TempDir::new().unwrap();
     let music = dir.path().join("music").to_string_lossy().into_owned();
-    let (_home, app_dir, library_id, fixture) = library_with_fixture(serde_json::json!({
-        "albums": [],
-        "watched_folders": [{
-            "path": music,
-            "candidates": [
-                { "folder": "Album Folder", "tracks": ["01 Track.flac"], "state": "not_looked_up" },
-            ],
-        }],
-    }));
+    let (_home, app_dir, library_id, fixture, installation) = library_with_fixture(
+        serde_json::json!({
+            "albums": [],
+            "watched_folders": [{
+                "path": music,
+                "candidates": [
+                    { "folder": "Album Folder", "tracks": ["01 Track.flac"], "state": "not_looked_up" },
+                ],
+            }],
+        }),
+    );
 
-    let app = open(&app_dir, &library_id, fixture);
+    let app = open(&app_dir, &library_id, fixture, &installation);
 
     let watched = app
         .runtime
@@ -119,7 +137,7 @@ fn a_library_opens_watching_its_fixtures_folders() {
 /// A fixture that cannot be read fails the open, naming why.
 #[test]
 fn a_fixture_that_cannot_be_read_fails_the_open() {
-    let (dir, app_dir, library_id, _) = library_with_fixture(serde_json::json!({}));
+    let (dir, app_dir, library_id, _, installation) = library_with_fixture(serde_json::json!({}));
 
     let failed = bootstrap_on_fixture(
         dir.path().join("missing.json"),
@@ -128,8 +146,7 @@ fn a_fixture_that_cannot_be_read_fails_the_open() {
         200,
         true,
         bae_core::diagnostics::Diagnostics::noop(),
-        None,
-        coven::OAuthClients::empty(),
+        installation.builder(coven::StoreLayout::new(dir.path().join(".bae"))),
         TestApp::start,
     );
 

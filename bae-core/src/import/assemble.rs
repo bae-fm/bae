@@ -20,7 +20,7 @@ use crate::pressing::Pressing;
 use crate::import::types::{Catalog, MetadataProvenance};
 use crate::import::{ParsedAlbum, ParsedWorkGraph};
 use chrono::{DateTime, Utc};
-use coven::{Clock, IdProvider};
+use coven::{Clock, IdSource};
 use std::collections::{HashMap, HashSet};
 use tracing::debug;
 
@@ -161,11 +161,11 @@ pub(crate) struct ReleaseIr {
 fn push_artist(
     artists: &mut Vec<DbArtist>,
     artist_ref: &ArtistRef,
-    ids: &dyn IdProvider,
+    ids: &dyn IdSource,
     now: DateTime<Utc>,
 ) -> String {
     let artist = DbArtist {
-        id: ids.new_id(),
+        id: ids.new_id().to_string(),
         name: artist_ref.name.clone(),
         sort_name: artist_ref.sort_name.clone(),
         discogs_artist_id: artist_ref.discogs_artist_id.clone(),
@@ -192,7 +192,7 @@ fn find_or_push_artist(
     artists: &mut Vec<DbArtist>,
     artist_ref: &ArtistRef,
     source: Option<Catalog>,
-    ids: &dyn IdProvider,
+    ids: &dyn IdSource,
     now: DateTime<Utc>,
 ) -> String {
     let existing = artists.iter().find(|artist| {
@@ -284,7 +284,7 @@ fn push_work_graph(
     parent: Option<&str>,
     source: Catalog,
     pools: &mut WorkPools,
-    ids: &dyn IdProvider,
+    ids: &dyn IdSource,
     now: DateTime<Utc>,
 ) -> String {
     let work_id = match pools.work_row_ids.get(&node.musicbrainz_work_id) {
@@ -368,7 +368,7 @@ fn push_work_ref(
     parent: Option<&str>,
     source: Catalog,
     pools: &mut WorkPools,
-    ids: &dyn IdProvider,
+    ids: &dyn IdSource,
     now: DateTime<Utc>,
 ) -> String {
     match work {
@@ -402,9 +402,9 @@ fn push_work_ref(
 pub(crate) fn assemble_parsed_album(
     ir: ReleaseIr,
     clock: &dyn Clock,
-    ids: &dyn IdProvider,
+    ids: &dyn IdSource,
 ) -> ParsedAlbum {
-    let now = clock.now();
+    let now = chrono::DateTime::<chrono::Utc>::from(clock.now());
     let artist_source = match &ir.metadata_provenance {
         Some(MetadataProvenance::ExternalRelease { record, .. }) => Some(record.catalog),
         Some(MetadataProvenance::FileMetadata) | None => None,
@@ -419,7 +419,7 @@ pub(crate) fn assemble_parsed_album(
     let release_artist_count = artists.len();
 
     let album = DbAlbum {
-        id: ids.new_id(),
+        id: ids.new_id().to_string(),
         title: ir.album_title,
         artist_id: artists[0].id.clone(),
         year: ir.album_year,
@@ -429,7 +429,7 @@ pub(crate) fn assemble_parsed_album(
     };
 
     let release = DbRelease {
-        id: ids.new_id(),
+        id: ids.new_id().to_string(),
         album_id: album.id.clone(),
         release_name: None,
         pressing: ir.pressing,
@@ -439,9 +439,6 @@ pub(crate) fn assemble_parsed_album(
         ),
         // Which lookup found the record is the candidate's answer, not this
         // assembly's; `run_import` stamps it onto the row it writes.
-        // Imports land local; the upload observer flips `remote` true once the
-        // release's audio is durably in the cloud.
-        remote: false,
         source_folder_name: None,
         content_hash: None,
         // Album loudness is measured by `loudness::measure_loudness` and stamped
@@ -460,7 +457,7 @@ pub(crate) fn assemble_parsed_album(
             role.position,
             role.source,
             role.source_credit.clone(),
-            ids.new_id(),
+            ids.new_id().to_string(),
             now,
         ));
     }
@@ -483,7 +480,7 @@ pub(crate) fn assemble_parsed_album(
         );
 
         let db_track = DbTrack {
-            id: ids.new_id(),
+            id: ids.new_id().to_string(),
             release_id: release.id.clone(),
             title: track_ir.title.clone(),
             side: track_ir.side,
@@ -507,7 +504,7 @@ pub(crate) fn assemble_parsed_album(
                         &db_track.id,
                         &artist_id,
                         *position,
-                        ids.new_id(),
+                        ids.new_id().to_string(),
                         now,
                     ));
                 }
@@ -525,7 +522,7 @@ pub(crate) fn assemble_parsed_album(
                         *position,
                         *source,
                         source_credit.clone(),
-                        ids.new_id(),
+                        ids.new_id().to_string(),
                         now,
                     ));
                 }
@@ -558,7 +555,7 @@ pub(crate) fn assemble_parsed_album(
                         &work_id,
                         *position,
                         *source,
-                        ids.new_id(),
+                        ids.new_id().to_string(),
                         now,
                     ));
                 }

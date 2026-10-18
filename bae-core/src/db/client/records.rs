@@ -14,12 +14,9 @@ impl Database {
     ) -> Result<(), DbError> {
         let release_id = release_id.to_string();
         let records = records.to_vec();
-        let now = self.inner.clock.now().to_rfc3339();
-        self.call_sql(move |sql| {
-            let reg = sql.stamp();
-            write_release_records(&sql, &release_id, &records, &reg, &now)
-        })
-        .await
+        let now = chrono::DateTime::<chrono::Utc>::from(self.inner.clock.now()).to_rfc3339();
+        self.call_sql(move |sql| write_release_records(&sql, &release_id, &records, &now))
+            .await
     }
 
     /// Every record for a release. Empty if no catalog describes it.
@@ -146,13 +143,11 @@ impl Database {
         let current_album_id = current_album_id.to_string();
         let target_album_id = target_album_id.to_string();
         let new_album = new_album.cloned();
-        let now_dt = self.inner.clock.now();
+        let now_dt = chrono::DateTime::<chrono::Utc>::from(self.inner.clock.now());
         let now = now_dt.to_rfc3339();
 
         self.call_sql(move |sql| {
             let tx = &sql;
-            // One HLC stamp for every synced row this transaction touches.
-            let reg = sql.stamp();
 
             // 1. Write the destination album when it is new to this release's
             //    history: absent, or here but empty (a group's album another
@@ -167,7 +162,7 @@ impl Database {
                     |row| row.get(0),
                 )?;
                 if !holds_releases {
-                    upsert_album_row(tx, album, &reg)?;
+                    upsert_album_row(tx, album)?;
                     let source_artists: Vec<DbAlbumArtist> = tx.query(
                         "SELECT artist_id, position FROM album_artists \
                                  WHERE album_id = ? ORDER BY position",
@@ -181,23 +176,22 @@ impl Database {
                             ))
                         },
                     )?;
-                    replace_album_artists(tx, &album.id, &source_artists, &reg, &now)?;
+                    replace_album_artists(tx, &album.id, &source_artists, &now)?;
                 }
             }
 
             // 2. Replace the records and the catalog the draft was read from.
-            write_release_records(tx, &release_id, &new_records, &reg, &now)?;
+            write_release_records(tx, &release_id, &new_records, &now)?;
 
             // 3. Update release: album and where its draft was read.
             tx.execute(
                 r#"
                     UPDATE releases SET
                         album_id = ?,
-                        draft_from_tags = ?,
-                        _updated_at = ?
+                        draft_from_tags = ?
                     WHERE id = ?
                     "#,
-                params![target_album_id, draft_from_tags, reg, release_id],
+                params![target_album_id, draft_from_tags, release_id],
             )?;
 
             // 4. Source-album cleanup. Only runs when the release actually
@@ -205,7 +199,7 @@ impl Database {
             //    inside the transaction (TOCTOU: a writer may have added a
             //    release to the source since the manager's pre-flight read).
             if target_album_id != current_album_id {
-                vacate_album_on(tx, &current_album_id, &release_id, &reg)?;
+                vacate_album_on(tx, &current_album_id, &release_id)?;
             }
 
             Ok(())
@@ -254,7 +248,7 @@ impl Database {
                 let checks: Vec<LibraryCheck> = checks.iter().cloned().collect();
                 check_releases_in_library_on(&sql, &checks).map_err(CovenError::from)
             })
-            .process(|_, statuses| Ok(statuses))
+            .process(Ok)
     }
 }
 
@@ -270,7 +264,7 @@ fn find_album_by_record_pairs<T>(
     key_expression: &str,
     pairs: &[(String, String)],
     exclude_release_ids: &[String],
-    row_to: impl FnOnce(&Row<'_>) -> coven::rusqlite::Result<T>,
+    row_to: impl FnOnce(&Row<'_>) -> rusqlite::Result<T>,
 ) -> Result<Option<T>, DbError> {
     let placeholders = pairs
         .iter()
@@ -303,13 +297,9 @@ fn find_album_by_record_pairs<T>(
     for release_id in exclude_release_ids {
         binds.push(release_id);
     }
-    sql.query_row(
-        &query,
-        coven::rusqlite::params_from_iter(binds.iter()),
-        row_to,
-    )
-    .optional()
-    .map_err(DbError::from)
+    sql.query_row(&query, rusqlite::params_from_iter(binds.iter()), row_to)
+        .optional()
+        .map_err(DbError::from)
 }
 
 pub(super) fn check_releases_in_library_on(

@@ -3,64 +3,48 @@
 
 use super::*;
 impl LibraryManager {
-    /// Whether a cloud provider is connected. Reads config, not manager presence:
-    /// the connected provider lives in config and is known synchronously from the
-    /// first read, whereas the `SyncManager` (and its cloud client) is built lazily
-    /// once connected and still absent on mobile when the first listing query runs.
-    pub fn is_sync_configured(&self) -> bool {
-        self.config_handle.config().cloud_home.provider.is_some()
+    pub async fn is_sync_configured(&self) -> Result<bool, LibraryError> {
+        Ok(self.database.storage_config().await?.is_some())
     }
 
-    /// Whether a cloud connection is installed, as coven's status stream says
-    /// now.
     pub fn has_cloud_home(&self) -> bool {
-        self.sync_connection() != super::sync_status::SyncConnection::Disconnected
+        self.sync_status.snapshot().connected()
     }
 
-    /// Every change to [`Self::has_cloud_home`], as the status stream reports
-    /// it.
     pub(crate) fn subscribe_cloud_home(&self) -> tokio::sync::watch::Receiver<bool> {
         self.sync_status.subscribe_cloud_home()
     }
 
-    fn sync_connection(&self) -> super::sync_status::SyncConnection {
-        super::sync_status::SyncConnection::of(&self.database.subscribe_sync_status().borrow())
-    }
-
-    /// Pause or resume the cloud-upload pipeline. New enqueues still land in
-    /// the outbox; coven suspends active preparation and provider request
-    /// bodies while retaining their open upload sessions. Re-emits the outbox
-    /// snapshot so the UI's paused indicator and bottom-panel summary update.
-    pub async fn set_sync_paused(&self, paused: bool) {
+    pub async fn set_sync_paused(&self, paused: bool) -> Result<(), LibraryError> {
         self.sync.set_sync_paused(paused).await
     }
 
-    /// Current paused state of the upload pipeline. The snapshot builder
-    /// reads this so the UI can render its paused indicator.
-    pub fn is_sync_paused(&self) -> bool {
-        self.sync.is_sync_paused()
+    pub async fn is_sync_paused(&self) -> Result<bool, LibraryError> {
+        self.sync.is_sync_paused().await
     }
 
-    /// Whether the background sync loop is running and draining uploads.
-    /// Make-Remote does not require this: it durably queues against a connected
-    /// cloud home, then remains queued until a loop can drain and publish it.
     pub fn is_sync_ready(&self) -> bool {
-        self.sync_connection() == super::sync_status::SyncConnection::Running
+        self.sync_status.snapshot().running()
     }
 
     pub fn get_sync_status(&self) -> SyncStatusSnapshot {
         self.sync_status.snapshot()
     }
 
-    /// Hand one operation from `SyncStatusSnapshot::blocked` back to the sync
-    /// loop, which revalidates it from scratch and runs a cycle. An id that names
-    /// no operation, or one that is no longer blocked, is refused — a stale retry
-    /// cannot pass as a fresh decision, so the caller is told rather than left
-    /// watching a list that never changes.
-    pub async fn retry_blocked_sync_operation(&self, id: &str) -> Result<(), LibraryError> {
-        let operation = super::sync_status::decode_id(id)?;
-        self.database.retry_blocked_operation(operation).await?;
+    pub async fn pending(&self) -> Result<Vec<coven::PendingRecord>, LibraryError> {
+        Ok(self.database.pending().await?)
+    }
+
+    pub async fn retry_pending_operation(
+        &self,
+        id: coven::OperationId,
+    ) -> Result<(), LibraryError> {
+        self.database.retry_pending_operation(id).await?;
         Ok(())
+    }
+
+    pub fn stop_sync(&self) {
+        self.database.stop_sync();
     }
 
     pub fn trigger_sync(&self) {
@@ -69,50 +53,49 @@ impl LibraryManager {
 
     pub fn subscribe_eager_cache_fill_status(
         &self,
-    ) -> tokio::sync::watch::Receiver<crate::library::EagerCacheFillStatus> {
+    ) -> coven::LiveQuery<crate::library::EagerCacheFillStatus> {
         self.database.subscribe_eager_cache_fill_status()
     }
 
-    pub fn cancel_eager_cache_fill(&self) {
-        self.database.cancel_eager_cache_fill();
+    pub async fn cancel_eager_cache_fill(&self) -> Result<(), LibraryError> {
+        Ok(self.database.cancel_eager_cache_fill().await?)
     }
 
-    pub async fn save_s3_config(&self, data: S3ConfigData) -> Result<(), LibraryError> {
-        self.sync.save_s3_config(data).await?;
-        Ok(())
+    pub async fn save_s3_config(
+        &self,
+        data: S3ConfigData,
+        device_name: &str,
+    ) -> Result<coven::StorageSetup, LibraryError> {
+        self.sync.save_s3_config(data, device_name).await
     }
 
     #[cfg(feature = "oauth-providers")]
-    pub async fn sign_in_cloud_provider(
+    pub async fn authenticate(&self, access: coven::OAuthAccess) -> Result<(), LibraryError> {
+        self.sync.authenticate(access).await
+    }
+
+    #[cfg(feature = "oauth-providers")]
+    pub async fn setup_oauth_storage(
         &self,
-        provider: CloudProvider,
-        storage: crate::config::HomeStorage,
-    ) -> Result<(), LibraryError> {
-        self.sync.sign_in_cloud_provider(provider, storage).await?;
-        Ok(())
+        storage: coven::StorageConfig,
+        device_name: &str,
+    ) -> Result<coven::StorageSetup, LibraryError> {
+        self.sync.setup_oauth_storage(storage, device_name).await
     }
 
     pub async fn use_cloudkit(
         &self,
-        storage: crate::config::HomeStorage,
-    ) -> Result<(), LibraryError> {
-        self.sync.use_cloudkit(storage).await?;
-        Ok(())
+        device_name: &str,
+    ) -> Result<coven::StorageSetup, LibraryError> {
+        self.sync.use_cloudkit(device_name).await
     }
 
     pub async fn disconnect_cloud_provider(&self) -> Result<(), LibraryError> {
         self.sync.disconnect_cloud_provider().await
     }
 
-    pub async fn unlock_cloud_home(&self, serialized_master_key: &str) -> Result<(), LibraryError> {
-        self.sync.unlock_cloud_home(serialized_master_key).await?;
-        let config = self.config_handle.config().clone();
-        let app_dir = self.app_dir.clone();
-        match tokio::task::spawn_blocking(move || config.save_active_library(&app_dir)).await {
-            Ok(saved) => saved?,
-            Err(error) => std::panic::resume_unwind(error.into_panic()),
-        }
-        Ok(())
+    pub async fn unlock_store_key(&self) -> Result<(), LibraryError> {
+        self.sync.unlock_store_key().await
     }
 
     /// How many releases are reachable only through cloud sync — remote and not
@@ -123,8 +106,8 @@ impl LibraryManager {
     /// with its own locale's plural rules from the `core.sync.cloud_only_releases`
     /// catalog key.
     ///
-    /// Asks coven's cache per remote release (a representative blob in
-    /// `storage/pinned/`); pinned-ness is coven cache state, never a bae column.
+    /// A representative file identifies each release, then every file must be
+    /// pinned. Pin state belongs to coven, never a bae column.
     pub async fn cloud_only_release_count(&self) -> Result<u64, LibraryError> {
         let remote_file_ids = self.database.get_remote_release_file_ids().await?;
         let mut count: u64 = 0;
@@ -195,8 +178,8 @@ impl LibraryManager {
     /// with no provider is not failing sync, it has none, so that refusal goes
     /// back to the caller alone rather than posing as a sync failure.
     pub async fn reconnect_sync(&self) -> Result<(), LibraryError> {
-        if !self.is_sync_configured() {
-            return Err(coven::SyncError::NotConfigured.into());
+        if !self.is_sync_configured().await? {
+            return Err(coven::SyncError::NoStorage.into());
         }
         if !self.is_sync_ready() {
             if let Err(error) = self.attach_and_start_sync().await {
@@ -213,9 +196,7 @@ impl LibraryManager {
     /// Write the sync-status error the UI's failure banner reads, matching the
     /// sync loop's own failure path. `None` clears it.
     fn set_sync_error(&self, error: Option<String>) {
-        self.sync_status.apply(|state| {
-            state.error = error.map(crate::ui::UiError::internal);
-            (true, ())
-        });
+        self.sync_status
+            .set_error(error.map(crate::ui::UiError::internal));
     }
 }

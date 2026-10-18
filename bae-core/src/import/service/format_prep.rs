@@ -298,11 +298,11 @@ impl ImportService {
         role: DbAudioSegmentRole,
         file_id: &str,
         span: SegmentSpan,
-        ids: &dyn coven::IdProvider,
+        ids: &dyn coven::IdSource,
         now: chrono::DateTime<chrono::Utc>,
     ) -> DbAudioSegment {
         DbAudioSegment {
-            id: ids.new_id(),
+            id: ids.new_id().to_string(),
             audio_format_id: audio_format_id.to_string(),
             segment_index,
             role,
@@ -336,7 +336,7 @@ impl ImportService {
         cue_index: usize,
         file_ids: &HashMap<PathBuf, String>,
         byte_landings_by_file: &HashMap<PathBuf, Option<HashMap<u64, u64>>>,
-        ids: &dyn coven::IdProvider,
+        ids: &dyn coven::IdSource,
         now: chrono::DateTime<chrono::Utc>,
     ) -> Result<Vec<DbAudioSegment>, ImportError> {
         let cue_track = cue_track_by_playable_index(cue_pair, cue_index)?;
@@ -420,9 +420,9 @@ impl ImportService {
         tracks_to_files: &[TrackFile],
         file_ids: &HashMap<PathBuf, String>,
         clock: &dyn coven::Clock,
-        ids: &dyn coven::IdProvider,
+        ids: &dyn coven::IdSource,
     ) -> Result<BuiltAudioFormats, ImportError> {
-        let now = clock.now();
+        let now = chrono::DateTime::<chrono::Utc>::from(clock.now());
         let mut audio_formats = Vec::with_capacity(tracks_to_files.len());
         let mut audio_segments = Vec::new();
         let mut cue_landings_by_file: HashMap<PathBuf, Option<HashMap<u64, u64>>> = HashMap::new();
@@ -439,7 +439,7 @@ impl ImportService {
                         &db_track.id,
                         cue_pair,
                         *cue_index,
-                        ids.new_id(),
+                        ids.new_id().to_string(),
                         now,
                     )?;
                     for audio_file in &cue_pair.audio_files {
@@ -471,7 +471,7 @@ impl ImportService {
                             detail: format!("No DbFile registered for track source {file_path:?}"),
                         })?;
                     let af =
-                        standalone_audio_format(&db_track.id, source_audio, ids.new_id(), now)?;
+                        standalone_audio_format(&db_track.id, source_audio, ids.new_id().to_string(), now)?;
                     let segment = Self::audio_segment(
                         &af.id,
                         0,

@@ -16,8 +16,8 @@ fn candidate() -> CategorizedFiles {
 
 #[test]
 fn direct_entry_uses_the_physical_track_layout_without_provenance() {
-    let clock = coven::FixedClock("2026-01-01T00:00:00Z".parse().expect("timestamp"));
-    let ids = coven::SequentialIdProvider::new("manual-seed");
+    let clock = coven::FixedClock::new(("2026-01-01T00:00:00Z".parse::<chrono::DateTime<chrono::Utc>>().expect("timestamp")).into());
+    let ids = coven::SequentialIds::new();
 
     let parsed = map_direct_entry_candidate_to_db(&candidate(), &clock, &ids);
 

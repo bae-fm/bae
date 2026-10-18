@@ -26,7 +26,7 @@ pub use telemetry::*;
 use std::{collections::VecDeque, fmt, sync::Arc, time::Duration};
 
 use chrono::{DateTime, Utc};
-use coven::{ClockRef, IdRef};
+use coven::{ClockRef, IdSourceRef};
 use reqwest::{
     header::{HeaderMap, HeaderValue, CONTENT_TYPE},
     StatusCode, Url,
@@ -195,7 +195,7 @@ impl Diagnostics {
     pub fn configure(
         config: DiagnosticsConfig,
         clock: ClockRef,
-        ids: IdRef,
+        ids: IdSourceRef,
     ) -> Result<Self, DiagnosticsError> {
         let DiagnosticsConfig::Enabled(config) = config else {
             return Ok(Self::noop());
@@ -210,14 +210,14 @@ impl Diagnostics {
     pub(crate) fn with_transport(
         config: DatadogDiagnosticsConfig,
         clock: ClockRef,
-        ids: IdRef,
+        ids: IdSourceRef,
         transport: Arc<dyn DiagnosticsTransport>,
     ) -> Result<Self, DiagnosticsError> {
         let (tx, rx) = mpsc::unbounded_channel();
         let app = config.app.clone();
         // One session id per construction (per launch), minted from the same
         // injected id source the worker uses for request ids.
-        let session_id = ids.new_id();
+        let session_id = ids.new_id().to_string();
         let worker = DiagnosticsWorker::new(config, ids, transport, rx);
         let runtime = tokio::runtime::Builder::new_current_thread()
             .enable_all()
@@ -272,7 +272,7 @@ impl Diagnostics {
             name: event.name().to_string(),
             level: event.level(),
             message: event.name().to_string(),
-            timestamp: clock.now(),
+            timestamp: chrono::DateTime::<chrono::Utc>::from(clock.now()),
             // The worker stamps the device id when it has one (set-once
             // enrichment); an event enqueued before that ships without it.
             device_id: None,
@@ -306,7 +306,7 @@ enum WorkerMessage {
 
 struct DiagnosticsWorker {
     config: DatadogDiagnosticsConfig,
-    ids: IdRef,
+    ids: IdSourceRef,
     transport: Arc<dyn DiagnosticsTransport>,
     rx: mpsc::UnboundedReceiver<WorkerMessage>,
     buffered: VecDeque<DiagnosticEvent>,
@@ -318,7 +318,7 @@ struct DiagnosticsWorker {
 impl DiagnosticsWorker {
     fn new(
         config: DatadogDiagnosticsConfig,
-        ids: IdRef,
+        ids: IdSourceRef,
         transport: Arc<dyn DiagnosticsTransport>,
         rx: mpsc::UnboundedReceiver<WorkerMessage>,
     ) -> Self {
@@ -396,13 +396,14 @@ impl DiagnosticsWorker {
 
         let batch_len = self.buffered.len().min(BATCH_SIZE);
         let batch: Vec<_> = self.buffered.drain(..batch_len).collect();
-        let request = match DatadogRequest::build(&self.config, &batch, self.ids.new_id()) {
-            Ok(request) => request,
-            Err(e) => {
-                self.restore_front(batch);
-                return Err(e);
-            }
-        };
+        let request =
+            match DatadogRequest::build(&self.config, &batch, self.ids.new_id().to_string()) {
+                Ok(request) => request,
+                Err(e) => {
+                    self.restore_front(batch);
+                    return Err(e);
+                }
+            };
 
         match send_with_retry(self.transport.as_ref(), request).await {
             Ok(()) => Ok(()),
@@ -650,15 +651,16 @@ mod tests {
     }
 
     fn clock() -> ClockRef {
-        Arc::new(coven::FixedClock(
-            DateTime::parse_from_rfc3339("2026-06-20T00:00:00Z")
+        Arc::new(coven::FixedClock::new(
+            (DateTime::parse_from_rfc3339("2026-06-20T00:00:00Z")
                 .expect("test timestamp parses")
-                .with_timezone(&Utc),
+                .with_timezone(&Utc))
+            .into(),
         ))
     }
 
-    fn ids() -> IdRef {
-        Arc::new(coven::SequentialIdProvider::new("request-id"))
+    fn ids() -> IdSourceRef {
+        Arc::new(coven::SequentialIds::new())
     }
 
     fn event() -> DiagnosticEvent {
@@ -670,7 +672,7 @@ mod tests {
             name: telemetry.name().to_string(),
             level: telemetry.level(),
             message: telemetry.name().to_string(),
-            timestamp: clock().now(),
+            timestamp: clock().now().into(),
             device_id: Some("device-abc".to_string()),
             session_id: "session-xyz".to_string(),
             fields: telemetry.fields(),

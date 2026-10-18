@@ -110,7 +110,7 @@ async fn repeated_imports_keep_independent_copies() {
         }
         if matches!(destination, ImportDestination::Remote { .. }) {
             assert_eq!(f.library_manager.drain_uploads_expecting_work().await.unwrap(), 1);
-            assert!(f.db.find_release_by_id(&id).await.unwrap().unwrap().remote);
+            assert!(f.db.get_files_for_release(&id).await.unwrap().iter().all(|file| file.attached));
         } else {
             assert_release_has_external_ref(&f, &id).await;
         }
@@ -158,13 +158,8 @@ async fn a_remote_import_without_a_cloud_connection_queues_its_uploads() {
     .await
     .expect("a Remote import commits with no cloud connected");
 
-    let release = f
-        .db
-        .find_release_by_id(&release_id)
-        .await
-        .unwrap()
-        .expect("the release is committed");
-    assert!(!release.remote, "its uploads have not run yet");
+    assert!(f.db.find_release_by_id(&release_id).await.unwrap().is_some());
+    assert!(f.db.get_files_for_release(&release_id).await.unwrap().iter().all(|file| file.attached));
     let outbox = f.library_manager.outbox_snapshot().await.unwrap();
     assert!(
         outbox

@@ -7,8 +7,7 @@ async fn deleting_an_artist_removes_local_draft_references() {
         for artist in [ARTIST_A, ARTIST_B] {
             exec(
                 &db,
-                "INSERT INTO artists (id, name, name_key, _updated_at, created_at) \
-                 VALUES (?, 'Artist Name', 'artist name', 'stamp', '2026-01-01T00:00:00Z')",
+                "INSERT INTO artists (id, name, name_key, created_at) VALUES (?, 'Artist Name', 'artist name', '2026-01-01T00:00:00Z')",
                 &[artist],
             )
             .await;

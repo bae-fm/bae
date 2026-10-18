@@ -17,7 +17,7 @@ impl Database {
         metadata_revision: u64,
     ) -> Result<(), DbError> {
         let hash = content_hash.to_string();
-        let now = self.inner.clock.now().to_rfc3339();
+        let now = chrono::DateTime::<chrono::Utc>::from(self.inner.clock.now()).to_rfc3339();
         let plan = self
             .read(move |sql| {
                 super::artist_identity_choice::require_revision(&sql, &hash, metadata_revision)?;
@@ -31,31 +31,44 @@ impl Database {
         &self,
         plan: ArtistIdentityMergePlan,
     ) -> Result<(), DbError> {
-        let deleted_image = plan.deleted_image.clone();
-        self.inner
-            .handle
-            .write_with_blobs(
-                move |write| {
-                    if let Some(image) = deleted_image {
-                        write.delete_blob(image);
-                    }
-                    Ok(())
-                },
-                move |sql| {
-                    let current = plan_artist_identity_merge(&sql, &plan.content_hash, &plan.now)
-                        .map_err(CovenError::from)?;
-                    if current != plan {
-                        return Err(CovenError::from(DbError::Message(format!(
-                            "artist identity merge plan for {} changed before commit",
-                            plan.content_hash
-                        ))));
-                    }
-                    apply_artist_identity_merge(&sql, &plan).map_err(CovenError::from)
-                },
-            )
-            .await
-            .map(|_| ())
-            .map_err(Self::coven_error)
+        let moved = if let (None, Some(file_id)) = &plan.images {
+            let reference = self
+                .file_ref("artist_images", &plan.absorbed_artist_id)
+                .await?;
+            let bytes = self
+                .read_file(&reference)
+                .await
+                .map_err(DbError::FileRead)?;
+            Some((file_id.clone(), reference, bytes))
+        } else {
+            None
+        };
+        let reference = moved.as_ref().map(|(_, reference, _)| reference.clone());
+        self.write_with_files(
+            move |write| {
+                if let Some((id, _, bytes)) = moved {
+                    write.put_file(crate::sync::ARTIST_IMAGES_NAMESPACE, id, bytes);
+                }
+                Ok(())
+            },
+            move |sql| {
+                if let Some(reference) = reference {
+                    sql.validate_file_ref(&reference)?;
+                }
+                let current = plan_artist_identity_merge(&sql, &plan.content_hash, &plan.now)
+                    .map_err(CovenError::from)?;
+                if current != plan {
+                    return Err(CovenError::from(DbError::Message(format!(
+                        "artist identity merge plan for {} changed before commit",
+                        plan.content_hash
+                    ))));
+                }
+                apply_artist_identity_merge(&sql, &plan).map_err(CovenError::from)
+            },
+        )
+        .await
+        .map(|_| ())
+        .map_err(Self::coven_error)
     }
 }
 
@@ -68,11 +81,8 @@ struct ArtistIdentityMergePlan {
     discogs_artist_id: String,
     musicbrainz_artist_id: String,
     surviving_sort_name: Option<String>,
-    move_absorbed_image: bool,
-    /// The absorbed artist's image row goes: moved to the survivor, or
-    /// superseded by the survivor's own.
-    absorbed_image_leaves: bool,
-    deleted_image: Option<coven::BlobRef>,
+    /// The survivor's and absorbed artist's image versions.
+    images: (Option<String>, Option<String>),
     /// `created_at` for the merge record.
     now: String,
 }
@@ -143,29 +153,15 @@ fn plan_artist_identity_merge<Q: QueryOne + QueryRows>(
     let surviving_sort_name = discogs_artist.sort_name.or(musicbrainz_artist.sort_name);
     let image = |artist_id: &str| {
         sql.query_row(
-            "SELECT blob_id, cloud_path FROM artist_images WHERE id = ?",
+            "SELECT blob_id FROM artist_images WHERE id = ?",
             [artist_id],
-            |row| {
-                let blob_id = row.get::<_, String>(0)?;
-                let cloud_path = row.get(1)?;
-                Ok(crate::sync::image_blob_ref(
-                    crate::sync::ARTIST_IMAGES_NAMESPACE,
-                    &blob_id,
-                    cloud_path,
-                ))
-            },
+            |row| row.get::<_, String>(0),
         )
         .optional()
         .map_err(DbError::from)
     };
     let surviving_image = image(surviving_artist_id)?;
     let absorbed_image = image(&absorbed_artist_id)?;
-    let move_absorbed_image = surviving_image.is_none() && absorbed_image.is_some();
-    let absorbed_image_leaves = absorbed_image.is_some();
-    let deleted_image = match (surviving_image, absorbed_image) {
-        (Some(surviving), Some(absorbed)) if surviving.id != absorbed.id => Some(absorbed),
-        _ => None,
-    };
 
     let metadata_revision = sql.query_row(
         "SELECT metadata_revision FROM import_candidate_state WHERE content_hash = ?",
@@ -180,9 +176,7 @@ fn plan_artist_identity_merge<Q: QueryOne + QueryRows>(
         discogs_artist_id,
         musicbrainz_artist_id,
         surviving_sort_name,
-        move_absorbed_image,
-        absorbed_image_leaves,
-        deleted_image,
+        images: (surviving_image, absorbed_image),
         now: now.to_string(),
     })
 }
@@ -191,7 +185,6 @@ fn apply_artist_identity_merge(
     sql: &SqlContext<'_, '_>,
     plan: &ArtistIdentityMergePlan,
 ) -> Result<(), DbError> {
-    let reg = sql.stamp();
     super::artist_identity_choice::record_choice_on(
         sql,
         &plan.content_hash,
@@ -201,7 +194,7 @@ fn apply_artist_identity_merge(
         &plan.surviving_artist_id,
     )?;
     // Removing the parent failure also removes the conflict row whose
-    // restrictive artist FKs would otherwise prevent consolidation.
+    // stored conflict no longer applies after consolidation.
     sql.execute(
         "DELETE FROM import_candidate_failure WHERE content_hash = ?",
         [&plan.content_hash],
@@ -230,17 +223,17 @@ fn apply_artist_identity_merge(
         )?;
     }
 
-    if plan.move_absorbed_image {
+    if matches!(&plan.images, (None, Some(_))) {
         sql.execute(
             "INSERT INTO artist_images (id, content_type, file_size, width, height, source, \
-                 source_url, cloud_path, _updated_at, created_at, hash, blob_id) \
-             SELECT ?, content_type, file_size, width, height, source, source_url, cloud_path, \
-                 ?, created_at, hash, blob_id FROM artist_images WHERE id = ?",
-            params![plan.surviving_artist_id, reg, plan.absorbed_artist_id],
+                 source_url, created_at, blob_id) \
+             SELECT ?, content_type, file_size, width, height, source, source_url, \
+                 created_at, blob_id FROM artist_images WHERE id = ?",
+            params![plan.surviving_artist_id, plan.absorbed_artist_id],
         )?;
     }
 
-    if plan.absorbed_image_leaves {
+    if plan.images.1.is_some() {
         sql.execute(
             "DELETE FROM artist_images WHERE id = ?",
             [&plan.absorbed_artist_id],
@@ -276,7 +269,6 @@ fn apply_artist_identity_merge(
         Some(&plan.discogs_artist_id),
         Some(&plan.musicbrainz_artist_id),
         plan.surviving_sort_name.as_deref(),
-        &reg,
     )?;
     if changed != 1 {
         return Err(DbError::Message(format!(
@@ -286,22 +278,16 @@ fn apply_artist_identity_merge(
     // The absorbed artist stays, recorded as merged: a chain that ended at it
     // now ends at the survivor.
     sql.execute(
-        "UPDATE artist_merges SET into_artist_id = ?1, _updated_at = ?2 \
-         WHERE into_artist_id = ?3",
-        params![plan.surviving_artist_id, reg, plan.absorbed_artist_id],
+        "UPDATE artist_merges SET into_artist_id = ?1 \
+         WHERE into_artist_id = ?2",
+        params![plan.surviving_artist_id, plan.absorbed_artist_id],
     )?;
     sql.execute(
-        "INSERT INTO artist_merges (id, into_artist_id, _updated_at, created_at) \
-         VALUES (?1, ?2, ?3, ?4) \
+        "INSERT INTO artist_merges (id, into_artist_id, created_at) \
+         VALUES (?1, ?2, ?3) \
          ON CONFLICT (id) DO UPDATE SET \
-             into_artist_id = excluded.into_artist_id, \
-             _updated_at = excluded._updated_at",
-        params![
-            plan.absorbed_artist_id,
-            plan.surviving_artist_id,
-            reg,
-            plan.now
-        ],
+             into_artist_id = excluded.into_artist_id",
+        params![plan.absorbed_artist_id, plan.surviving_artist_id, plan.now],
     )?;
     Ok(())
 }

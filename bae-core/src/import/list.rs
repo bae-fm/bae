@@ -156,13 +156,7 @@ impl UploadStanding {
             .filter_map(|group| {
                 let standing = match group.progress.activity()? {
                     UploadActivity::Queued => Self::Queued,
-                    UploadActivity::Cancelling
-                    | UploadActivity::Publishing
-                    | UploadActivity::Uploading
-                    | UploadActivity::Preparing
-                    | UploadActivity::Retrying
-                    | UploadActivity::Prepared
-                    | UploadActivity::Uploaded => Self::Working,
+                    UploadActivity::Uploading => Self::Working,
                 };
                 Some((group.release_id.clone(), standing))
             })
@@ -496,7 +490,7 @@ pub struct ImportListProjection {
 ///
 /// A change to the scans alone, or to what is running for a row on the page,
 /// delivers the last projection again beside it, with its revision and a
-/// [`coven::ReconfigurableLiveQueryCause::DatabaseChanged`] cause: the value
+/// [`coven::LiveQueryCause::Write`] cause: the value
 /// of the same request changed.
 #[derive(Debug, Clone)]
 pub struct ImportListSnapshot {
@@ -507,7 +501,7 @@ pub struct ImportListSnapshot {
     /// The person's changes to the selection the rows' `selected` reflects.
     pub selection_revision: u64,
     pub request_revision: u64,
-    pub cause: coven::ReconfigurableLiveQueryCause,
+    pub cause: coven::LiveQueryCause,
 }
 
 /// One candidate as the pane reads it, before its runtime is joined.

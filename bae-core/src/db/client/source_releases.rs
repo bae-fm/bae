@@ -319,7 +319,7 @@ pub(super) fn replace_source_release_on(
     Ok(())
 }
 
-fn artist_at(row: &Row<'_>, first: usize) -> coven::rusqlite::Result<ArtistRef> {
+fn artist_at(row: &Row<'_>, first: usize) -> rusqlite::Result<ArtistRef> {
     Ok(ArtistRef {
         name: row.get(first)?,
         sort_name: row.get(first + 1)?,

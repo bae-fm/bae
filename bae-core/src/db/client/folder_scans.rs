@@ -303,7 +303,7 @@ impl Database {
         let watched_folder_path = watched_folder_path.to_string();
         let generation = generation_column(generation)?;
         let item = item.clone();
-        let observed_at = self.inner.clock.now().timestamp_millis();
+        let observed_at = chrono::DateTime::<chrono::Utc>::from(self.inner.clock.now()).timestamp_millis();
         if self.current_scan_generation(&watched_folder_path).await? != Some(generation) {
             return Ok(None);
         }

@@ -140,7 +140,7 @@ impl<'a> StatementColumns<'a> {
 const GROUP_LINK_COLUMNS: &str = "release_group, catalog, key, stated, wikidata_item, \
      musicbrainz_release, release_catalog, release_key";
 
-fn read_group_link(row: &Row<'_>) -> coven::rusqlite::Result<(String, AlbumLinkRow)> {
+fn read_group_link(row: &Row<'_>) -> rusqlite::Result<(String, AlbumLinkRow)> {
     Ok((
         row.get(0)?,
         AlbumLinkRow {

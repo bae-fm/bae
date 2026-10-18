@@ -8,15 +8,13 @@ use crate::queue::QueueItem;
 use crate::util::content_type::ContentType;
 use chrono::{DateTime, Utc};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-use coven::rusqlite::named_params;
-use coven::rusqlite::{params, OptionalExtension, Params, Row};
-// bae holds no production connection — coven owns them all. Only the cloud-path
-// resolvers' unit tests seed a bare one to run against.
+use rusqlite::named_params;
+use rusqlite::{params, OptionalExtension, Params, Row};
+// coven owns production connections; row-mapping tests also use bare SQLite.
+use crate::db::DbError;
+use coven::{ClockRef, CovenError, CovenHandle, SqlContext, SqlReadContext};
 #[cfg(test)]
-use coven::rusqlite::Connection;
-#[cfg(any(test, feature = "test-utils"))]
-use coven::Coven;
-use coven::{ClockRef, CovenError, CovenHandle, DbError, SqlContext, SqlReadContext};
+use rusqlite::Connection;
 use std::collections::{BTreeSet, HashMap, HashSet};
 // Only the test-only external-ref helper names a path type here; production
 // paths live on the types that carry them.
@@ -86,6 +84,10 @@ pub(crate) use playback::{QueueCatalogProjection, QueueCatalogRequest};
 mod release;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use release::{ImportRows, NewArtistImages};
+mod release_file;
+mod release_locality;
+mod release_pins;
+pub(crate) use release_file::ReleaseFileStream;
 mod release_deletion;
 pub use release_deletion::ReleaseDeletion;
 mod release_projection;
@@ -126,7 +128,6 @@ struct DatabaseInner {
     /// path. Writes to synced tables are captured by coven's attached session.
     handle: CovenHandle,
     /// Wall clock for `created_at` and status timestamps bound into write SQL.
-    /// Synced-table `_updated_at` is stamped from coven's SQL context.
     clock: ClockRef,
 }
 
@@ -164,28 +165,11 @@ impl Database {
     //    ID. A missing row surfaces as `QueryReturnedNoRows`.
 
     fn coven_error(error: CovenError) -> DbError {
-        match error {
-            CovenError::Database(error) => *error,
-            other => DbError::Message(other.to_string()),
-        }
+        error.into()
     }
 
-    // ── The three SQL entry points ────────────────────────────────────────
-    //
-    // `read`     — pure reads, on coven's bounded read-only connections: no
-    //              changeset journal, concurrent with the writer rather than
-    //              queued behind it. The closure cannot write — a
-    //              `SqlReadContext` offers only `query`/`query_row`, and the
-    //              connection behind it is SQLITE_OPEN_READONLY.
-    // `call`     — writes that do not stamp `_updated_at` (INSERT/DELETE, or an
-    //              UPDATE that sets the register clock itself), on the writer
-    //              connection with a changeset session attached.
-    // `call_sql` — writes that stamp `_updated_at` from coven's SQL context.
-    //
-    // Read-your-writes holds: every `call`/`call_sql` write commits before its
-    // future resolves and the WAL reader sees the last committed state, so a
-    // `read` after an awaited write is correct. A closure that reads and then
-    // conditionally writes is a write — it belongs on `call`, not `read`.
+    // Reads release their connection before optional result processing. Every
+    // write commits before its future resolves; an error rolls back the write.
 
     /// Run a pure read on Coven's bounded readers. Attach `.process()` for
     /// result assembly after releasing the connection.
@@ -206,8 +190,7 @@ impl Database {
         )
     }
 
-    /// Run a write that does not stamp `_updated_at`. See the entry points note
-    /// above.
+    /// Run a write with a borrowed transaction context.
     async fn call<R>(
         &self,
         f: impl for<'ctx, 'conn> FnOnce(&SqlContext<'ctx, 'conn>) -> Result<R, DbError> + Send + 'static,
@@ -218,8 +201,7 @@ impl Database {
         self.call_sql(move |sql| f(&sql)).await
     }
 
-    /// Run a write that stamps `_updated_at` from coven's SQL context. See the
-    /// entry points note above.
+    /// Run an atomic write through coven.
     async fn call_sql<R>(
         &self,
         f: impl for<'ctx, 'conn> FnOnce(SqlContext<'ctx, 'conn>) -> Result<R, DbError> + Send + 'static,
@@ -227,39 +209,24 @@ impl Database {
     where
         R: Send + 'static,
     {
-        self.inner
-            .handle
-            .write(move |sql| f(sql).map_err(CovenError::from))
+        self.write_with_files(|_| Ok(()), move |sql| f(sql).map_err(CovenError::from))
             .await
-            .map(|receipt| receipt.value)
             .map_err(Self::coven_error)
     }
 
-    /// [`call_sql`](Self::call_sql) for a write that stops referencing
-    /// `deleted`: coven records the cleanup of each blob's on-device copies
-    /// with the commit, so no copy outlives the rows that named it.
-    async fn call_sql_deleting_blobs<R>(
+    /// Keep coven's file-staging buffers off the caller's async stack, including
+    /// the import worker's stack. Row-only writes use this same boundary.
+    fn write_with_files<R>(
         &self,
-        deleted: Vec<coven::BlobRef>,
-        f: impl for<'ctx, 'conn> FnOnce(SqlContext<'ctx, 'conn>) -> Result<R, DbError> + Send + 'static,
-    ) -> Result<R, DbError>
+        build: impl FnOnce(&mut coven::WriteBatch) -> Result<(), CovenError> + Send + 'static,
+        sql: impl for<'ctx, 'conn> FnOnce(SqlContext<'ctx, 'conn>) -> Result<R, CovenError>
+            + Send
+            + 'static,
+    ) -> impl std::future::Future<Output = Result<R, CovenError>> + Send + '_
     where
         R: Send + 'static,
     {
-        self.inner
-            .handle
-            .write_with_blobs(
-                move |batch| {
-                    for blob in deleted {
-                        batch.delete_blob(blob);
-                    }
-                    Ok(())
-                },
-                move |sql| f(sql).map_err(CovenError::from),
-            )
-            .await
-            .map(|receipt| receipt.value)
-            .map_err(Self::coven_error)
+        Box::pin(self.inner.handle.write_with_files(build, sql))
     }
 
     pub fn from_handle(handle: CovenHandle, clock: ClockRef) -> Self {
@@ -268,57 +235,23 @@ impl Database {
         }
     }
 
-    /// Open the database through coven's top-level builder, running coven's
-    /// bookkeeping migration plus bae's schema.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub fn open(
-        store_dir: coven::StoreDir,
-        config: impl Into<coven::CovenConfig>,
-        clock: ClockRef,
-        synced_tables: Vec<coven::SyncedTable>,
-        observer: Option<Arc<dyn coven::BlobTransitionObserver>>,
-    ) -> Result<Self, DbError> {
-        let mut builder = Coven::builder(store_dir, config)
-            .synced_tables(synced_tables)
-            .coven_migration_policy(coven::CovenMigrationPolicy::ApplyPending)
-            .clock(clock.clone());
-        if let Some(observer) = observer {
-            builder = builder.observer(observer);
-        }
-        let handle = builder
-            .migrations(crate::migrations::all())
-            .open()
-            .map_err(Self::coven_error)?;
-        Ok(Self::from_handle(handle, clock))
-    }
-
-    /// Test convenience: open over `path` with a fresh device id and bae's real
-    /// synced-table set, so unit/integration tests don't repeat the wiring.
+    /// Create an isolated installation with bae's real schema and declarations.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn new_test(database_path: &str, clock: ClockRef) -> Result<Self, DbError> {
-        tracing::info!("Opening database at {}", database_path);
-        let path = Path::new(database_path);
-        let library_root = path
+        let root = Path::new(database_path)
             .parent()
             .filter(|parent| !parent.as_os_str().is_empty())
             .ok_or_else(|| {
                 DbError::Message(format!("database path has no parent: {database_path}"))
             })?;
-        let library_dir = coven::StoreDir::new(library_root);
-        let config = coven::Config::with_defaults(
-            "test-library".to_string(),
-            "test-device".to_string(),
-            "Test Library".to_string(),
-        );
-        // Coven's custody owners capture the registered keyring service when
-        // the builder opens, so install the test service first.
-        crate::config::install_test_keyring();
-        Self::open(
-            library_dir,
-            config,
-            clock,
-            crate::sync::synced_tables(),
-            None,
-        )
+        let installation = coven::TestCoven::new();
+        let handle = installation
+            .builder(coven::StoreLayout::new(root.into()))
+            .synced_tables(crate::sync::synced_tables())
+            .migrations(crate::migrations::all())
+            .clock(clock.clone())
+            .create_store("Test Library")
+            .await?;
+        Ok(Self::from_handle(handle, clock))
     }
 }

@@ -126,7 +126,7 @@ impl DecisionFixture {
         let (seen_tx, mut seen_rx) = tokio::sync::mpsc::unbounded_channel();
         let watcher = tokio::spawn(async move {
             loop {
-                let projection = live.next().await.into_result().unwrap();
+                let projection = live.next().await.result.unwrap();
                 let names: Vec<String> = projection
                     .windows
                     .iter()

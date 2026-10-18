@@ -9,7 +9,7 @@
 //!
 //! coven owns the transitions; tests drive them through the manager's coven
 //! seams (`coven_make_remote` + the upload drain via `drain_uploads_expecting_work`,
-//! `coven_make_local`) over a `SyncManager` connected to an injected cloud home.
+//! `coven_make_local`) over coven connected to `MemoryStorage`.
 
 use bae_test_support as support;
 use support::tracing_init;
@@ -23,14 +23,9 @@ use bae_core::library::{
     AppServices, CancellationToken, LibraryManager, StorageBrowseSubscription, StorageBrowseView,
 };
 use bae_core::storage::transfer::{read_release_file_bytes, TransferProgress, TransferService};
-use bae_core::sync::CloudCipher;
 use bae_core::util::content_type::ContentType;
 use chrono::Utc;
-use coven::EncryptionService;
-use coven::InMemoryCloudHome;
-use coven::StoreDir;
 use std::path::Path;
-use std::sync::Arc;
 use tempfile::TempDir;
 use uuid::Uuid;
 
@@ -49,74 +44,14 @@ async fn storage(mgr: &LibraryManager, release_id: &str) -> (ReleaseStorageState
 }
 
 async fn setup(tmp: &TempDir) -> LibraryManager {
-    let library_dir = StoreDir::new(tmp.path());
-    let config_handle = support::test_config(&library_dir);
-    LibraryManager::open(
-        bae_core::config::AppDir::under_home(tmp.path()),
-        config_handle,
-        Arc::new(coven::SystemClock),
-        Arc::new(coven::UuidProvider),
-        bae_core::diagnostics::Diagnostics::noop(),
-        tokio::runtime::Handle::current(),
-        None,
-        coven::OAuthClients::empty(),
-        bae_core::import::cover_art::RemoteImageCache::for_test(
-            bae_core::util::http::Http::for_test(),
-        ),
-        bae_core::providers::Providers::offline(),
-    )
-    .unwrap()
+    support::open_test_library(tmp.path()).await.0
 }
 
-/// A manager with a `SyncManager` connected over an injected `InMemoryCloudHome`,
-/// sealing blobs under `enc`, and no sync loop behind it — these tests drive the
-/// upload drain themselves. After this, `get_cloud_home` is Some. Opaque home
-/// (the default at-rest mode), so blobs are keyed hashed and
-/// `release_files.cloud_path` stays NULL.
 async fn setup_with_cloud(tmp: &TempDir) -> LibraryManager {
-    let mgr = setup(tmp).await;
-    let cloud = Arc::new(InMemoryCloudHome::new());
-    let enc = EncryptionService::from_key([9u8; 32]);
-    mgr.connect_test_cloud_home_caller_driven(cloud, CloudCipher::Encrypted(enc))
-        .await
-        .unwrap();
-    mgr
-}
-
-/// The same connection with the production sync loop running behind it, for the
-/// make-Local half of the round trip: coven offers make-Local only a root whose
-/// make-Remote has been accepted, and only a cycle accepts one.
-async fn setup_with_synced_cloud(tmp: &TempDir) -> LibraryManager {
-    let mgr = setup(tmp).await;
-    let cloud = Arc::new(InMemoryCloudHome::new());
-    let enc = EncryptionService::from_key([9u8; 32]);
-    mgr.connect_test_cloud_home(cloud, CloudCipher::Encrypted(enc))
-        .await
-        .unwrap();
-    mgr
-}
-
-/// Wait until the cloud queue has consumed a release's make-Remote transition.
-/// An upload group outlives its uploads — it leaves only when coven retires the
-/// durable transition — and until then the release's cloud objects belong to
-/// that transition rather than to accepted history, so coven refuses a
-/// make-Local against it.
-async fn wait_for_landed_make_remote(mgr: &LibraryManager, release_id: &str) {
-    for tick in 0..2_000 {
-        if tick % 50 == 0 {
-            mgr.trigger_sync();
-        }
-        let snapshot = mgr.outbox_snapshot().await.unwrap();
-        if !snapshot
-            .upload_groups
-            .iter()
-            .any(|group| group.release_id == release_id)
-        {
-            return;
-        }
-        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
-    }
-    panic!("release {release_id} never finished its make-Remote");
+    let (manager, _, storage) =
+        support::storage_library(tmp.path(), bae_core::providers::Providers::offline()).await;
+    support::connect_storage(&manager, &storage).await;
+    manager
 }
 
 /// Insert a Local release: an album + release with `remote = false`, its originals
@@ -154,7 +89,6 @@ async fn create_local_release(
         release_name: None,
         pressing: bae_core::pressing::Pressing::blank(),
         draft_from_tags: true,
-        remote: false,
         source_folder_name: None,
         content_hash: None,
         album_loudness_lufs: None,
@@ -186,9 +120,7 @@ async fn create_local_release(
 }
 
 /// Get a Remote (cloud-only, not pinned) release whose blobs sit in `cloud`:
-/// create it Local, enqueue make-Remote via coven, and drain the uploads so the
-/// drain flips the gate Remote (dropping the external refs + deleting the
-/// originals, exactly as production does).
+/// create it Local, attach its files, and finish the uploads.
 async fn create_remote_release(
     mgr: &LibraryManager,
     source_dir: &Path,
@@ -302,7 +234,6 @@ async fn durable_outbox_subscription_emits_enqueue_without_a_sync_cycle() {
     let tmp = TempDir::new().unwrap();
     let mgr = setup_with_cloud(&tmp).await;
     let mut values = mgr.subscribe_outbox_values();
-    mgr.start();
     let source = tmp.path().join("live-outbox");
     let (_album_id, release_id, _) =
         create_local_release(&mgr, &source, &[("track.flac", b"audio")]).await;
@@ -367,8 +298,6 @@ async fn test_cover_blob_stored_via_local_files_is_readable() {
             height: None,
             source: "local".to_string(),
             source_url: None,
-            cloud_path: None,
-            content_hash: bae_core::util::fs::hash_bytes(bytes),
             created_at: chrono::Utc::now(),
         },
         bytes,
@@ -427,7 +356,7 @@ async fn test_unpin_rejects_local_release() {
 // ---------------------------------------------------------------------------
 
 /// Pin a Remote cloud-only release: coven fetches its blobs from the cloud into
-/// `storage/pinned/`, so it reads as (Remote, pinned).
+/// the pinned cache, so it reads as (Remote, pinned).
 #[tokio::test]
 async fn test_pin_remote_fetches_into_pinned_cache() {
     tracing_init();
@@ -474,7 +403,7 @@ async fn test_pin_remote_fetches_into_pinned_cache() {
     );
 }
 
-/// Unpin a Remote pinned release: coven moves its blobs out of `storage/pinned/`
+/// Unpin a Remote pinned release: coven moves its blobs out of the pinned cache
 /// into the evictable cache, so it reads as (Remote, not pinned).
 #[tokio::test]
 async fn test_unpin_remote_drops_from_pinned_cache() {
@@ -548,7 +477,7 @@ async fn test_missing_external_source_maps_to_error() {
 async fn transition_completions_deliver_storage_values() {
     tracing_init();
     let tmp = TempDir::new().unwrap();
-    let mgr = setup_with_synced_cloud(&tmp).await;
+    let mgr = setup_with_cloud(&tmp).await;
     let source_dir = tmp.path().join("src");
     let (_a, release_id, _named) =
         create_local_release(&mgr, &source_dir, &[("a.flac", b"round-trip-bytes")]).await;
@@ -572,7 +501,7 @@ async fn transition_completions_deliver_storage_values() {
     expect_storage_state(&values, &release_id, ReleaseStorageState::Local).await;
 
     mgr.coven_make_remote(&release_id, false).await.unwrap();
-    wait_for_landed_make_remote(&mgr, &release_id).await;
+    mgr.drain_uploads_expecting_work().await.unwrap();
     expect_storage_state(&values, &release_id, ReleaseStorageState::Remote).await;
 
     let dest = tmp.path().join("brought-back");

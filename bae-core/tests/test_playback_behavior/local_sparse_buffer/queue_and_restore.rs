@@ -490,7 +490,7 @@ async fn set_shuffle_rearranges_the_context_lane_over_sparse_buffer() {
 // ============================================================================
 // Remote (cloud-path) variant: local files make the fill near-instant, so the
 // tests above never exercise a real ranged read. This imports the same
-// multi-window CUE album as remote-unpinned against an InMemoryCloudHome and
+// multi-window CUE album as remote-unpinned against an MemoryStorage and
 // deletes the local originals, so every byte the fill touches comes from an
 // actual ranged cloud read — the fetch arbiter and window fetches over the real
 // remote path, not just the local-disk fast path.

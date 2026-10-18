@@ -1,28 +1,13 @@
-//! Release storage transitions — moving a release between Local and Remote,
-//! and pinning/unpinning a Remote release in coven's cache.
+//! Release file attachment, verified local copies, and offline pins.
 //!
-//! coven owns the blob lifecycle; bae drives the user-facing transition (guards,
-//! progress events) and calls into coven:
+//! Every release's rows sync. Making a release Remote attaches all of its local
+//! files in one write; coven then uploads their bytes. Making it Local first
+//! writes and verifies every destination, then atomically clears the attachments
+//! and records this device's paths. A failure removes the copies it created.
+//! Covers remain attached throughout both transitions.
 //!
-//! - `make_releases_remote`: each selected release is independently admitted to
-//!   coven's durable queue, so one release may start uploading while later
-//!   releases are still being admitted and one refusal does not block its
-//!   siblings. coven uploads each blob from its external (in-place) source, and
-//!   on the last publishes `remote` true and drops the external refs.
-//!   User-provided source files stay in place; host-provided local-store copies
-//!   follow coven's cache retention policy. The cover rides along. The commit
-//!   wakes subscribed release projections.
-//! - `make_release_local`: `coven.make_local` materializes every blob back to a
-//!   local file durability-first (release files to the chosen folder, the cover to
-//!   coven's local store), then flips `remote` false and registers the external
-//!   refs — one atomic commit. That flip releases the cloud objects, which coven's
-//!   accepted reclaim retires on its own. A cancel before the commit rolls back
-//!   the partial copies and leaves the release Remote.
-//! - `pin_release` / `unpin_release`: pin/unpin a Remote release's blobs in
-//!   coven's cache (`storage/pinned/` vs the evictable `storage/cache/`).
-//!
-//! Pinned-ness is coven cache state; bae stores no pin flag. A Remote release's
-//! bytes live only in coven's cache — never a bae `storage/` path.
+//! Pins keep attached files available offline. Coven owns their cache and pin
+//! state; bae owns the release-level progress and cancellation controls.
 
 use std::future::Future;
 
@@ -37,12 +22,8 @@ use tracing::{debug, error, info};
 type TransferResult = Result<(), LibraryError>;
 type ProgressTx = mpsc::UnboundedSender<TransferProgress>;
 
-/// Read one release file's whole plaintext through coven's locality-aware read:
-/// the user's own file (a Local user-provided blob's external ref), coven's local
-/// store (a Local host-provided blob), or coven's cache/cloud for a Remote blob.
-/// Checks `bytes.len() == file.file_size` so a short or zero read aborts the
-/// caller before it trusts the bytes — a second check over coven's own, which
-/// validates an external file's size and a torn cache file.
+/// Read a release file through its device-local source or coven attachment,
+/// and require the byte count its row declares before handing it to a decoder.
 pub async fn read_release_file_bytes(
     file: &DbFile,
     mgr: &LibraryManager,
@@ -130,8 +111,8 @@ impl TransferService {
         RunningOp::new(abort, outcome)
     }
 
-    /// Unpin a release: move its blobs from `storage/pinned/` to the evictable
-    /// `storage/cache/`. Returns a receiver for progress updates.
+    /// Unpin a release: move its blobs from the pinned cache to the evictable
+    /// cache. Returns a receiver for progress updates.
     pub fn unpin_release(&self, release_id: String) -> mpsc::UnboundedReceiver<TransferProgress> {
         let library_manager = self.library_manager.clone();
         let unpinned_release_id = release_id.clone();
@@ -169,11 +150,8 @@ impl TransferService {
                 ReleaseStorageAction::MakeLocal,
             ),
             move |_tx| async move {
-                tokio::fs::create_dir_all(std::path::Path::new(&new_path)).await?;
-
-                // coven materializes each blob durability-first, flips the gate false,
-                // and registers the external refs in one atomic commit; a cancel before
-                // the commit is rolled back and surfaced as Ok.
+                // The copy operation owns every created file and directory;
+                // it removes them if verification or the final write fails.
                 library_manager
                     .coven_make_local(&localized_release_id, &new_path, &cancel)
                     .await?;
@@ -220,24 +198,16 @@ impl ReleaseTransfer {
     /// Guard the transfer's preconditions; returns the release's file count so
     /// the completion can report it.
     pub(crate) async fn start(&self) -> Result<u32, LibraryError> {
-        let release = self
-            .library_manager
+        self.library_manager
             .get_release_by_id(&self.release_id)
             .await?
             .ok_or_else(|| {
                 LibraryError::TrackMapping(format!("Release not found: {}", self.release_id))
             })?;
-        if release.remote != action_expects_remote(self.action) {
-            return Err(LibraryError::Storage(
-                wrong_state_error(self.action).to_string(),
-            ));
-        }
         if matches!(self.action, ReleaseStorageAction::MakeRemote)
-            && !self.library_manager.has_cloud_home()
+            && !self.library_manager.is_sync_configured().await?
         {
-            return Err(LibraryError::Storage(
-                "Cannot make a release remote without a cloud home".to_string(),
-            ));
+            return Err(coven::SyncError::NoStorage.into());
         }
 
         let files = self
@@ -246,6 +216,12 @@ impl ReleaseTransfer {
             .await?;
         if files.is_empty() {
             return Err(LibraryError::Storage("Release has no files".to_string()));
+        }
+
+        if files.iter().all(|file| file.attached) != action_expects_remote(self.action) {
+            return Err(LibraryError::Storage(
+                wrong_state_error(self.action).to_string(),
+            ));
         }
 
         Ok(files.len() as u32)
@@ -395,25 +371,22 @@ mod tests {
         let diagnostics = Diagnostics::with_transport(
             config,
             Arc::new(coven::SystemClock),
-            Arc::new(coven::SequentialIdProvider::new("request-id")),
+            Arc::new(coven::SequentialIds::new()),
             transport.clone(),
         )
         .expect("diagnostics starts");
 
-        let library_id = "transfer-test".to_string();
         let config = crate::config::Config::with_defaults(
-            library_id.clone(),
-            "test-device".to_string(),
-            coven::StoreDir::new(home.path().join("library")),
-            "Test Library".to_string(),
+            database.store_id(),
+            home.path().join("preferences"),
         );
-        crate::config::install_test_keyring();
+
         let manager = LibraryManager::new(
             database,
             crate::config::AppDir::under_home(home.path()),
             Arc::new(crate::config::ConfigHandle::new(config)),
             Arc::new(coven::SystemClock),
-            Arc::new(coven::UuidProvider),
+            Arc::new(coven::UuidIds),
             diagnostics.clone(),
             tokio::runtime::Handle::current(),
             crate::import::cover_art::RemoteImageCache::for_test(

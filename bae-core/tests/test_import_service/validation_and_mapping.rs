@@ -28,8 +28,7 @@ async fn import_truncated_album(verify: bool) -> Result<(String, String), String
     )
     .await
     .unwrap();
-    let library_dir = StoreDir::new(db_dir.clone());
-    let config_handle = support::test_config(&library_dir);
+    let config_handle = support::test_config(&db, &db_dir.join("preferences"));
     config_handle
         .update_preferences(move |prefs| prefs.verify_decode_on_import = verify)
         .await
@@ -39,7 +38,7 @@ async fn import_truncated_album(verify: bool) -> Result<(String, String), String
         bae_core::config::AppDir::under_home(temp.path()),
         config_handle,
         std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
+        std::sync::Arc::new(coven::UuidIds),
         bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
         bae_core::import::cover_art::RemoteImageCache::for_test(bae_core::util::http::Http::for_test()),

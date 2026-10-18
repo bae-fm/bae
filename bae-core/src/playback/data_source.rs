@@ -105,9 +105,8 @@ pub type FillErrorHandler = Box<dyn FnOnce(Arc<PlaybackError>) + Send>;
 
 /// Reads audio data into a sparse buffer for streaming decode.
 ///
-/// Local reads serve plaintext bytes from disk; cloud reads apply the home's
-/// at-rest cipher to each blob — decrypting under the library key on an opaque
-/// home, or reading the verbatim bytes on a browsable one.
+/// Local reads serve bytes from disk; attached files are read through coven,
+/// which verifies and decrypts their stored contents.
 pub trait AudioDataReader: Send + 'static {
     /// Start reading data into the buffer.
     ///
@@ -115,9 +114,8 @@ pub trait AudioDataReader: Send + 'static {
     /// reader needs next (read-ahead), evicts what they have passed, and idles
     /// when every read-ahead window is full -- so playback starts after one
     /// window and memory stays bounded to a window around the playhead instead
-    /// of the whole file. A cloud blob's bytes are decrypted once, when the
-    /// reader opens its stream (under the library key on an opaque home, verbatim
-    /// on a browsable one); the windows are then read from that plaintext.
+    /// of the whole file. Coven's opened file stream supplies verified plaintext
+    /// for each requested window.
     ///
     /// Returns the fill task, which holds the source open until the buffer is
     /// stopped or dropped. A caller that must know the source is closed awaits
@@ -241,48 +239,21 @@ impl AudioDataReader for LocalReader {
     }
 }
 
-/// Map a coven blob-read failure onto the playback error the UI can key on.
-/// `NoCloudHome` — a Remote blob needed the cloud and no provider is
-/// connected — is the "reconnect sync" state. `ExternalMissing` — the
-/// user-provided source file is gone — is "still uploading" when a queued
-/// upload for this file explains the missing source, and a plain diagnostic
-/// otherwise (the user moved or deleted their files). Everything else is
-/// un-enumerable for the UI and stays diagnostic with the coven error chain
-/// as the opaque detail.
-async fn playback_error_for_blob_read(
-    db: &crate::db::Database,
-    file_id: &str,
-    error: coven::BlobCacheError,
-) -> PlaybackError {
-    match &error {
-        coven::BlobCacheError::NoCloudHome => PlaybackError::SyncDisconnected,
-        coven::BlobCacheError::ExternalMissing { .. } => {
-            match db.has_pending_cloud_upload(file_id).await {
-                Ok(true) => PlaybackError::UploadPending,
-                Ok(false) => PlaybackError::internal(format!("Blob read failed: {error}")),
-                // The read already failed; a broken outbox check must not
-                // mask it (or be masked) — carry both.
-                Err(db_error) => PlaybackError::internal(format!(
-                    "Blob read failed: {error}; pending-upload check also failed: {db_error}"
-                )),
-            }
+/// Preserve the actionable storage failure when opening or reading audio.
+fn playback_error_for_file_read(error: crate::db::DbError) -> PlaybackError {
+    match error {
+        crate::db::DbError::FileRead(coven::FileReadError::NoStorage) => {
+            PlaybackError::SyncDisconnected
         }
-        _ => PlaybackError::internal(format!("Blob read failed: {error}")),
+        crate::db::DbError::FileNotUploaded(_)
+        | crate::db::DbError::FileRead(coven::FileReadError::Uploading { .. }) => {
+            PlaybackError::UploadPending
+        }
+        error => PlaybackError::internal(error.to_string()),
     }
 }
 
-/// Create the playback reader for a release file. coven owns locality: the reader
-/// opens one [`coven::BlobStream`] over the file, which resolves *where the bytes
-/// are* once — the user's own file (a Local user-provided blob's external ref),
-/// coven's local store (a Local host-provided blob), `storage/pinned`/`storage/cache`
-/// on a Remote hit, or the cloud on a Remote miss (decrypting under the home's
-/// at-rest cipher, and populating the cache) — and then serves every window off that
-/// one proven handle. A failure to open (a vanished external file, or a Remote blob
-/// with no cloud home) surfaces through the fill, so this is infallible to build.
-///
-/// Neither the blob's size nor its cloud path is passed in: coven derives both from
-/// the live `release_files` row, and the opened stream reports the plaintext length
-/// it actually proved.
+/// Create a reader for this device's local file or its shared attachment.
 pub fn create_audio_reader(
     library_manager: &crate::library::LibraryManager,
     file_id: &str,
@@ -293,7 +264,7 @@ pub fn create_audio_reader(
     library_manager.create_audio_reader(file_id, arbiter, prefetch_byte, prefetch_file_end)
 }
 
-/// Streams a release file's plaintext off one opened [`coven::BlobStream`]. The
+/// Streams a release file's plaintext from one opened source. The
 /// single playback reader: coven resolves locality and proves the blob's identity
 /// when the stream opens, so playback never branches on locality and every window
 /// after that costs only its own bytes.
@@ -348,37 +319,10 @@ impl AudioDataReader for CovenBlobReader {
         let buffer_id = buffer.id();
 
         FillTask(tokio::spawn(async move {
-            // Bind the exact-row blob reference once for this reader, from the live
-            // `release_files` row; the stream opened from it is bound to that exact
-            // row version, so a later row replacement can't redirect a read. A missing
-            // row surfaces through the fill like any other read failure.
-            let blob = match db
-                .row_blob_ref(crate::sync::RELEASE_FILES_NAMESPACE, &file_id)
-                .await
-            {
-                Ok(blob) => blob,
-                Err(e) => {
-                    fail_audio_read(
-                        on_error,
-                        &buffer,
-                        PlaybackError::internal(format!("blob ref for {file_id}: {e}")),
-                    );
-                    return;
-                }
-            };
-
-            // Open the stream once for this reader. coven binds the row's exact blob
-            // reference and resolves its locality here; each positioned read then
-            // verifies and returns only the requested local bytes or authenticated
-            // remote chunks. Opening is also where a missing external file or
-            // unavailable cloud home surfaces, so its failure takes the same
-            // classification as a failed range read: that is what carries "reconnect
-            // sync" and "still uploading" to the UI.
-            let stream = match db.open_blob_stream(&blob).await {
+            let stream = match db.open_release_file(&file_id).await {
                 Ok(stream) => Arc::new(stream),
-                Err(e) => {
-                    let error = playback_error_for_blob_read(&db, blob.row_id(), e).await;
-                    fail_audio_read(on_error, &buffer, error);
+                Err(error) => {
+                    fail_audio_read(on_error, &buffer, playback_error_for_file_read(error));
                     return;
                 }
             };
@@ -433,8 +377,6 @@ impl AudioDataReader for CovenBlobReader {
                 let fut = stream.read_at(src_off, len);
                 let arbiter = &arbiter;
                 let fetched = &fetched;
-                let db = &db;
-                let blob = &blob;
                 async move {
                     // The playing track fetches immediately; a preload waits
                     // while the playing track has a fetch in flight so it can't
@@ -454,7 +396,7 @@ impl AudioDataReader for CovenBlobReader {
                                 if foreground { "playing" } else { "preload" },
                                 fetch_started.elapsed().as_millis(),
                             );
-                            return Err(playback_error_for_blob_read(db, blob.row_id(), e).await);
+                            return Err(playback_error_for_file_read(e));
                         }
                     };
                     let total =
@@ -492,7 +434,7 @@ const CLOUD_STREAM_READ_SIZE: u64 = FILL_WINDOW_SIZE;
 /// just leaves the fill to fetch the window on demand. `what` labels the window
 /// (track-start / file-end) in the log.
 fn spawn_window_prefetch(
-    stream: Arc<coven::BlobStream>,
+    stream: Arc<crate::db::ReleaseFileStream>,
     arbiter: Arc<FetchArbiter>,
     buffer: &SharedSparseBuffer,
     source_size: u64,

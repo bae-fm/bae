@@ -54,7 +54,7 @@ pub enum ArtistWriteError {
 pub(super) fn artist_write_failure(error: ArtistWriteError) -> CovenError {
     match error {
         ArtistWriteError::Db(error) => CovenError::from(error),
-        other => CovenError::Host(Box::new(other)),
+        other => rusqlite::Error::UserFunctionError(Box::new(other)).into(),
     }
 }
 
@@ -74,7 +74,6 @@ impl Database {
             .handle
             .write(move |sql| f(sql).map_err(artist_write_failure))
             .await
-            .map(|receipt| receipt.value)
             .map_err(Self::artist_write_error)
     }
 
@@ -114,13 +113,12 @@ impl Database {
     ) -> Result<Vec<String>, ArtistWriteError> {
         let credits = credits.to_vec();
         self.write_resolving_artists(move |sql| {
-            let reg = sql.stamp();
             let resolved = ArtistCredits {
                 credits: &credits,
                 picked: &[],
             }
             .resolve_on(&sql)?;
-            resolved.write_on(&sql, &reg)?;
+            resolved.write_on(&sql)?;
             Ok(resolved.ids)
         })
         .await
@@ -140,17 +138,21 @@ impl Database {
     /// database error it failed with otherwise.
     pub(super) fn artist_write_error(error: CovenError) -> ArtistWriteError {
         match error {
-            CovenError::Host(host) => match host.downcast::<ArtistWriteError>() {
+            CovenError::Database(coven::DbError::Sqlite(rusqlite::Error::UserFunctionError(
+                host,
+            ))) => match host.downcast::<ArtistWriteError>() {
                 Ok(error) => *error,
-                Err(other) => ArtistWriteError::Db(Self::coven_error(CovenError::Host(other))),
+                Err(other) => ArtistWriteError::Db(Self::coven_error(
+                    rusqlite::Error::UserFunctionError(other).into(),
+                )),
             },
             other => ArtistWriteError::Db(Self::coven_error(other)),
         }
     }
 }
 
-impl From<coven::rusqlite::Error> for ArtistWriteError {
-    fn from(error: coven::rusqlite::Error) -> Self {
+impl From<rusqlite::Error> for ArtistWriteError {
+    fn from(error: rusqlite::Error) -> Self {
         Self::Db(error.into())
     }
 }
@@ -171,9 +173,9 @@ pub(crate) struct ResolvedArtists {
 impl ResolvedArtists {
     /// Insert the new artists and fill in the linked ones, before any link
     /// that points at them is written.
-    pub(super) fn write_on(&self, tx: &SqlContext<'_, '_>, reg: &str) -> Result<(), DbError> {
+    pub(super) fn write_on(&self, tx: &SqlContext<'_, '_>) -> Result<(), DbError> {
         for artist in &self.inserts {
-            insert_artist_row(tx, artist, reg)?;
+            insert_artist_row(tx, artist)?;
         }
         for (artist_id, artist) in &self.external_id_updates {
             update_artist_external_ids_row(
@@ -182,7 +184,6 @@ impl ResolvedArtists {
                 artist.discogs_artist_id.as_deref(),
                 artist.musicbrainz_artist_id.as_deref(),
                 artist.sort_name.as_deref(),
-                reg,
             )?;
         }
         Ok(())

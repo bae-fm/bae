@@ -11,7 +11,7 @@ use bae_core::playback::{
     PlaybackState, RepeatMode, TrackTime,
 };
 use bae_test_support as support;
-use coven::{IdProvider, SequentialIdProvider};
+use coven::{IdSource, SequentialIds};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use support::start_test_import;
@@ -380,62 +380,7 @@ fn start_capture_service_with_restore(
     (handle, capture_stream_rx)
 }
 
-/// The three-track FLAC album every `PlaybackTestFixture` plays, imported once
-/// per process into a library that each fixture copies. The FLAC files are not
-/// copied: `local_blob_refs` stores absolute paths, so every copy reads the
-/// template's `album/` directory.
-struct PlaybackFixtureTemplate {
-    dir: TempDir,
-    album_dir: std::path::PathBuf,
-    track_ids: Vec<String>,
-}
-
-static PLAYBACK_FIXTURE_TEMPLATE: std::sync::LazyLock<PlaybackFixtureTemplate> =
-    std::sync::LazyLock::new(|| {
-        // Import on its own runtime and drop it before any copy, so no SQLite
-        // connection is still open with unmerged WAL data when the files are
-        // copied.
-        let rt =
-            tokio::runtime::Runtime::new().expect("build the playback template import's runtime");
-        let template = rt.block_on(async {
-            let import_ids = SequentialIdProvider::new("playback-fixture-template");
-            let (_library_manager, imported) = imported_release_setup(
-                create_test_album(),
-                "test",
-                import_ids.new_id(),
-                |album_dir| {
-                    let _track_data = generate_test_flac_files(album_dir);
-                },
-            )
-            .await
-            .expect("import the playback fixture template release");
-            assert!(
-                !imported.track_ids.is_empty(),
-                "the playback fixture template should import tracks"
-            );
-            PlaybackFixtureTemplate {
-                album_dir: imported.album_dir.clone(),
-                dir: imported.temp_dir,
-                track_ids: imported.track_ids,
-            }
-        });
-        drop(rt);
-        template
-    });
-
-/// Copy the playback fixture template into a fresh `TempDir`. Call it on a
-/// blocking thread: the template's first use blocks on its own runtime.
-fn clone_playback_fixture_library() -> (TempDir, std::path::PathBuf, Vec<String>) {
-    let template = &*PLAYBACK_FIXTURE_TEMPLATE;
-    let fresh = clone_template_library(template.dir.path());
-    (
-        fresh,
-        template.album_dir.clone(),
-        template.track_ids.clone(),
-    )
-}
-
-/// A playback service over a copy of the three-track template album.
+/// A playback service over an imported three-track album.
 struct PlaybackTestFixture {
     playback_handle: bae_core::playback::PlaybackHandle,
     progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
@@ -449,12 +394,13 @@ struct PlaybackTestFixture {
 }
 impl PlaybackTestFixture {
     async fn new() -> Self {
-        let (temp_dir, album_dir, track_ids) =
-            tokio::task::spawn_blocking(clone_playback_fixture_library)
-                .await
-                .expect("clone the playback fixture template library");
-
-        let (library_manager, _database) = open_test_library(temp_dir.path()).await;
+        let (library_manager, imported) = imported_release_setup(
+            create_test_album(), "playback", uuid::Uuid::new_v4().to_string(),
+            |directory| { generate_test_flac_files(directory); },
+        ).await.expect("import the playback fixture");
+        let temp_dir = imported.temp_dir;
+        let album_dir = imported.album_dir;
+        let track_ids = imported.track_ids;
         let runtime_handle = tokio::runtime::Handle::current();
 
         let (capture_device, capture_stream_rx) =

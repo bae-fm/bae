@@ -98,7 +98,7 @@ impl LibraryManager {
                 crate::import::probe::sheet_track_duration_ms(&analysis, index, &sheet_name)
                     .map_err(|error| invalid(error.to_string()))?;
             let db_track = DbTrack {
-                id: self.ids.new_id(),
+                id: self.ids.new_id().to_string(),
                 release_id: release_id.clone(),
                 title,
                 side: Some(1),
@@ -132,7 +132,7 @@ impl LibraryManager {
                 &audio.file_reference,
                 size as i64,
                 audio.probe.content_type.clone(),
-                self.ids.new_id(),
+                self.ids.new_id().to_string(),
                 added,
             );
             // What the scan read of it, as an import records it.
@@ -142,7 +142,7 @@ impl LibraryManager {
                 content_type: scanned.content_type,
                 duration_ms: scanned.duration_ms as i64,
             });
-            let blob = coven::prepare_external_blob(&audio.path, |_| {})
+            let blob = coven::prepare_user_file(&audio.path, |_| {})
                 .await
                 .map_err(|error| invalid(format!("{}: {error}", audio.path.display())))?;
             file_ids.insert(audio.path.clone(), file.id.clone());

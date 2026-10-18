@@ -1,13 +1,6 @@
 //! Live queries owned by a task of their own, so a subscription that merges
 //! one with other streams never cancels the query's read.
 
-fn live_query_error(error: coven::CovenError) -> crate::library::LibraryError {
-    crate::library::LibraryError::Database(match error {
-        coven::CovenError::Database(error) => *error,
-        other => coven::DbError::Message(other.to_string()),
-    })
-}
-
 /// A live query's events, produced on a task of the query's own, whose
 /// request changes while it runs: [`set`](Self::set) points the same query at
 /// a new request instead of opening another one.
@@ -87,9 +80,12 @@ where
     let task = runtime_handle.spawn(async move {
         loop {
             let event = query.next().await;
-            let revision = event.revision();
+            let revision = event.revision;
             if tx
-                .send((revision, event.into_result().map_err(live_query_error)))
+                .send((
+                    revision,
+                    event.result.map_err(crate::library::LibraryError::from),
+                ))
                 .is_err()
             {
                 return;

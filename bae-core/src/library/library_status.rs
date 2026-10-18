@@ -54,9 +54,9 @@ impl LibraryStatusSubscription {
             .next()
             .await
             .map_err(|_| LibraryStatusSubscriptionError::Cancelled)?;
-        let request_revision = event.revision().get();
+        let request_revision = event.revision.0;
         Ok(LibraryStatusSnapshot {
-            statuses: event.into_result()?,
+            statuses: event.result?,
             request_revision,
         })
     }

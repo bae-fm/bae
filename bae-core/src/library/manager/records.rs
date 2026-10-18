@@ -221,9 +221,9 @@ impl LibraryManager {
             .ok_or_else(|| {
                 LibraryError::Import(format!("Source album '{seed_album_id}' not found"))
             })?;
-        let now = self.clock.now();
+        let now = chrono::DateTime::<chrono::Utc>::from(self.clock.now());
         Ok(DbAlbum {
-            id: self.ids.new_id(),
+            id: self.ids.new_id().to_string(),
             title: source.title,
             artist_id: source.artist_id,
             year: source.year,

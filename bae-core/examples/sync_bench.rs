@@ -1,7 +1,6 @@
 //! Headless sync benchmark: open a library from a fixture `.bae` tree, connect
 //! its configured cloud provider, let the sync loop run for a fixed duration,
-//! and report what a cycle costs — the stage-timing lines stream to stderr via
-//! tracing, and the retained-materialization row stats print before and after.
+//! and report the stage timings and library row counts before and after.
 //!
 //! Points at a copied `.bae` tree via `--home <dir>` (a directory containing a
 //! `.bae/`), so a frozen fixture library measures a redesign without touching
@@ -75,39 +74,33 @@ fn main() {
             std::process::exit(1);
         }
     };
-    let config = match bae_core::config::Config::load_registered_library(&app_dir, &library_id) {
-        Ok(config) => config,
+    let store_id = match uuid::Uuid::parse_str(&library_id).map(coven::StoreId) {
+        Ok(id) => id,
         Err(e) => {
-            eprintln!("load config failed: {e}");
+            eprintln!("invalid active-library id: {e}");
             std::process::exit(1);
         }
     };
-    eprintln!(
-        "bench library: {} ({}) at {}",
-        config.store_name,
-        config.store_id,
-        config.library_path().display()
-    );
-
-    report_store_stats(&config, "before");
 
     let runtime = tokio::runtime::Runtime::new().expect("build tokio runtime");
     let result: Result<(), String> = runtime.block_on(async {
-        let handle = coven::Coven::builder(
-            coven::StoreDir::new(config.library_path().to_path_buf()),
-            config.to_coven(),
-        )
-        .synced_tables(bae_core::sync::synced_tables())
-        .coven_migration_policy(coven::CovenMigrationPolicy::ApplyPending)
-        .migrations(bae_core::migrations::all())
-        .open()
-        .map_err(|e| format!("open store failed: {e}"))?;
-        handle
-            .connect_sync()
+        let handle = coven::Coven::builder(coven::StoreLayout::new(home.join(".bae")))
+            .synced_tables(bae_core::sync::synced_tables())
+            .migrations(bae_core::migrations::all())
+            .open(store_id)
             .await
-            .map_err(|e| format!("connect_sync failed: {e}"))?;
-        eprintln!("connected; running the sync loop for {seconds}s");
+            .map_err(|e| format!("open store failed: {e}"))?;
+        let name = handle.store_name().await.map_err(|e| e.to_string())?;
+        eprintln!("bench library: {name} ({store_id})");
+        report_store_stats(&handle, "before").await?;
+        handle
+            .start_sync()
+            .await
+            .map_err(|e| format!("start_sync failed: {e}"))?;
+        eprintln!("running the sync loop for {seconds}s");
         tokio::time::sleep(std::time::Duration::from_secs(seconds)).await;
+        report_store_stats(&handle, "after").await?;
+        handle.close().await.map_err(|e| e.to_string())?;
         Ok(())
     });
     if let Err(e) = result {
@@ -115,18 +108,26 @@ fn main() {
         std::process::exit(1);
     }
 
-    report_store_stats(&config, "after");
     let _ = std::io::stderr().flush();
 }
 
-/// Store-file size — the coarse growth signal; row-level stats come from
-/// `sqlite3` against the same file, which needs no dependency here.
-fn report_store_stats(config: &bae_core::config::Config, label: &str) {
-    let db_path = config.library_path().join("store.db");
-    let db_bytes = std::fs::metadata(&db_path).map(|m| m.len()).unwrap_or(0);
-    eprintln!(
-        "store stats [{label}]: db {:.1} MB at {}",
-        db_bytes as f64 / 1_048_576.0,
-        db_path.display()
-    );
+async fn report_store_stats(handle: &coven::CovenHandle, label: &str) -> Result<(), String> {
+    let (albums, releases, tracks) = handle
+        .read(|sql| {
+            Ok((
+                sql.query_row("SELECT COUNT(*) FROM albums", [], |row| {
+                    row.get::<_, i64>(0)
+                })?,
+                sql.query_row("SELECT COUNT(*) FROM releases", [], |row| {
+                    row.get::<_, i64>(0)
+                })?,
+                sql.query_row("SELECT COUNT(*) FROM tracks", [], |row| {
+                    row.get::<_, i64>(0)
+                })?,
+            ))
+        })
+        .await
+        .map_err(|e| e.to_string())?;
+    eprintln!("store stats [{label}]: {albums} albums, {releases} releases, {tracks} tracks");
+    Ok(())
 }

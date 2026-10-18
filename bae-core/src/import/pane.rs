@@ -200,7 +200,7 @@ pub(crate) fn redraw_draft_for_files(
     previous_files: &CategorizedFiles,
     initialized: CandidateDraft,
     draft: &CandidateDraft,
-    ids: &dyn coven::IdProvider,
+    ids: &dyn coven::IdSource,
 ) -> CandidateDraft {
     let mut result = draft.clone();
     result.tracks = initialized
@@ -222,7 +222,7 @@ pub(crate) fn redraw_draft_for_files(
                 }
                 return retained;
             }
-            fresh.edit.id = ids.new_id();
+            fresh.edit.id = ids.new_id().to_string();
             fresh.source_index = None;
             fresh
         })
@@ -265,7 +265,7 @@ pub(crate) fn file_metadata_edit(
     candidate: &super::folder_scanner::FolderCandidate,
     snapshot: &crate::import::file_tag_snapshot::FileTagSnapshot,
     clock: &dyn coven::Clock,
-    ids: &dyn coven::IdProvider,
+    ids: &dyn coven::IdSource,
 ) -> Result<RawReleaseEdit, ImportError> {
     let mut seed = candidate.file_tag_edit(snapshot, clock, ids)?;
     let units = crate::import::audio_layout::audio_units(&candidate.files);

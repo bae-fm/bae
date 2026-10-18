@@ -62,14 +62,13 @@ fn transitioning_release_ids_preserve_upload_group_order() {
 
 #[cfg(feature = "test-utils")]
 #[tokio::test]
-async fn make_remote_enqueues_cover_then_files_in_display_order() {
+async fn make_remote_keeps_the_cover_and_every_file_in_the_queue() {
     let (manager, temp_dir) = setup_test_manager().await;
     connect_test_cloud(&manager).await;
     let mut album = create_test_album();
     album.title = "Album Title".to_string();
     manager.database.insert_album(&album).await.unwrap();
-    let mut release = create_test_release(&album.id);
-    release.remote = false;
+    let release = create_test_release(&album.id);
     insert_release(&manager, &release).await;
     let source_dir = temp_dir.path().join("ordered-upload");
     std::fs::create_dir_all(&source_dir).unwrap();
@@ -108,7 +107,7 @@ async fn make_remote_enqueues_cover_then_files_in_display_order() {
         "local",
         None,
         cover_bytes,
-        manager.clock.now(),
+        manager.clock.now().into(),
     );
     manager
         .store_library_image_blob(&cover, cover_bytes)
@@ -123,7 +122,7 @@ async fn make_remote_enqueues_cover_then_files_in_display_order() {
             .database
             .queued_upload_rows_for_root_for_test("releases", &release.id)
             .await
-            .unwrap(),
+            .unwrap().into_iter().collect::<std::collections::BTreeSet<_>>(),
         vec![
             (crate::sync::COVERS_NAMESPACE.to_string(), release.id),
             (
@@ -134,6 +133,6 @@ async fn make_remote_enqueues_cover_then_files_in_display_order() {
                 crate::sync::RELEASE_FILES_NAMESPACE.to_string(),
                 files[1].id.clone(),
             ),
-        ],
+        ].into_iter().collect::<std::collections::BTreeSet<_>>(),
     );
 }

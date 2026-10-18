@@ -4,7 +4,7 @@ use crate::db::Database;
 use crate::import::import_cancel::ImportStop;
 use crate::import::watched_folder::host_root;
 use coven::FixedClock;
-use coven::SequentialIdProvider;
+use coven::SequentialIds;
 use std::sync::Mutex;
 use std::time::Duration;
 use tempfile::TempDir;
@@ -32,22 +32,16 @@ async fn setup_import_service() -> TestService {
     )
     .await
     .unwrap();
-    let library_dir = coven::StoreDir::new(temp_dir.path());
-    let library_id = format!("test-{}", temp_dir.path().display());
-    let config = Config::with_defaults(
-        library_id.clone(),
-        "test-device".to_string(),
-        library_dir.clone(),
-        "Test Library".to_string(),
-    );
-    crate::config::install_test_keyring();
+
+    let config = Config::with_defaults(database.store_id(), temp_dir.path().join("preferences"));
+
     let preparations = crate::import::CandidatePreparations::new(database.clone());
     let manager = LibraryManager::new(
         database,
         crate::config::AppDir::under_home(temp_dir.path()),
         Arc::new(ConfigHandle::new(config)),
         Arc::new(coven::SystemClock),
-        Arc::new(coven::UuidProvider),
+        Arc::new(coven::UuidIds),
         crate::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
         crate::import::cover_art::RemoteImageCache::for_test(crate::util::http::Http::for_test()),
@@ -61,7 +55,7 @@ async fn setup_import_service() -> TestService {
             event_tx,
             library_manager: manager,
             clock: Arc::new(coven::SystemClock),
-            ids: Arc::new(coven::UuidProvider),
+            ids: Arc::new(coven::UuidIds),
             import_cancels: Default::default(),
         },
         preparations,

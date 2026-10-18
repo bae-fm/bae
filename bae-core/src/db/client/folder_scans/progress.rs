@@ -10,17 +10,9 @@ use crate::import::list::FolderScanProgress;
 use crate::import::watched_folder::WatchedFolder;
 use crate::import::{FolderScanStatus, WatchedFolderScanStatus};
 
-/// One scanned root as stored.
-struct StoredScanStatus {
-    watched_folder_path: String,
-    watched_folder_name: String,
-    status: FolderScanStatus,
-    volume: crate::import::VolumeKind,
-}
-
 fn load_folder_scan_progress_on(
     sql: &SqlReadContext<'_>,
-) -> Result<impl FnOnce() -> Result<FolderScanProgress, DbError> + Send + 'static, DbError> {
+) -> Result<Vec<WatchedFolderScanStatus>, DbError> {
     let watched_folders: Vec<WatchedFolder> = sql
         .query(
             "SELECT path FROM watched_import_folders ORDER BY position",
@@ -78,35 +70,23 @@ fn load_folder_scan_progress_on(
         };
         statuses.push((
             position,
-            StoredScanStatus {
+            WatchedFolderScanStatus {
+                on_network_volume: volume == crate::import::VolumeKind::Network,
                 watched_folder_name: watched_folders[position].name.clone(),
                 watched_folder_path,
                 status,
-                volume,
             },
         ));
     }
     statuses.sort_by_key(|(position, _)| *position);
-    Ok(move || {
-        Ok(FolderScanProgress::of(
-            statuses
-                .into_iter()
-                .map(|(_, stored)| WatchedFolderScanStatus {
-                    on_network_volume: stored.volume == crate::import::VolumeKind::Network,
-                    watched_folder_path: stored.watched_folder_path,
-                    watched_folder_name: stored.watched_folder_name,
-                    status: stored.status,
-                })
-                .collect(),
-        ))
-    })
+    Ok(statuses.into_iter().map(|(_, status)| status).collect())
 }
 
 impl Database {
     /// Where each watched folder's scan stands now.
     pub(crate) async fn load_folder_scan_progress(&self) -> Result<FolderScanProgress, DbError> {
-        let process = self.read(move |sql| load_folder_scan_progress_on(&sql)).await?;
-        process()
+        self.read(move |sql| load_folder_scan_progress_on(&sql))
+            .process(|statuses| Ok(FolderScanProgress::of(statuses))).await
     }
 
     /// Where each watched folder's scan stands, live.
@@ -114,6 +94,6 @@ impl Database {
         self.inner
             .handle
             .subscribe(move |sql| load_folder_scan_progress_on(&sql).map_err(CovenError::from))
-            .process(|process| process().map_err(CovenError::from))
+            .process(|statuses| Ok(FolderScanProgress::of(statuses)))
     }
 }

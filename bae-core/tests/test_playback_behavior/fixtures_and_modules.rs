@@ -285,8 +285,8 @@ impl SidePauseTestFixture {
         pause_between_sides: bool,
         countdown: SidePauseCountdown,
     ) -> Result<Self, Box<dyn std::error::Error>> {
-        let import_ids = SequentialIdProvider::new("side-pause-import");
-        let import_id = import_ids.new_id();
+        let import_ids = SequentialIds::new();
+        let import_id = import_ids.new_id().to_string();
         let (library_manager, imported) = imported_release_setup(
             create_side_pause_test_album(format, positions),
             "side-pause",

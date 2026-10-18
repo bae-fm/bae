@@ -5,7 +5,7 @@
 //! queue without the stream following it, so no reader can see a queue the
 //! stream never carried.
 
-use coven::IdRef;
+use coven::IdSourceRef;
 
 use super::{PlaybackQueue, PlaybackQueueProjection, QueueSnapshot, RepeatMode};
 
@@ -15,7 +15,7 @@ pub struct PublishedQueue {
 }
 
 impl PublishedQueue {
-    pub fn new(ids: IdRef) -> Self {
+    pub fn new(ids: IdSourceRef) -> Self {
         let queue = PlaybackQueue::new(ids);
         let (values, _) = tokio::sync::watch::channel(PlaybackQueueProjection::from_queue(&queue));
         Self { queue, values }

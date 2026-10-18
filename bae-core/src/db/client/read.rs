@@ -95,6 +95,7 @@ pub(super) fn build_release_detail_on(
     })
 }
 
+#[derive(Clone, PartialEq)]
 pub(super) struct ReleaseDetailRows {
     pub(super) release: DbRelease,
     tracks: Vec<(DbTrack, Option<DbArtist>)>,
@@ -269,9 +270,9 @@ pub(super) fn get_release_records_on(
                     row.get("reads_draft")?,
                 )),
                 "album" => Ok(crate::import::ReleaseRecord::album(&identity)),
-                kind => Err(coven::rusqlite::Error::FromSqlConversionFailure(
+                kind => Err(rusqlite::Error::FromSqlConversionFailure(
                     row.as_ref().column_index("kind")?,
-                    coven::rusqlite::types::Type::Text,
+                    rusqlite::types::Type::Text,
                     format!("unknown record kind: {kind}").into(),
                 )),
             }
@@ -289,17 +290,13 @@ pub(super) fn get_release_records_on(
 /// Build a column-conversion error for a named column whose stored text the
 /// mapper could not turn into its typed value, so a corrupt column surfaces like
 /// any other bad read instead of panicking or silently mis-defaulting.
-pub(super) fn column_conversion_error(
-    row: &Row,
-    column: &str,
-    message: String,
-) -> coven::rusqlite::Error {
+pub(super) fn column_conversion_error(row: &Row, column: &str, message: String) -> rusqlite::Error {
     // The column was just read, so its index resolves; if it somehow doesn't,
     // that lookup error is itself a faithful failure to return.
     match row.as_ref().column_index(column) {
-        Ok(idx) => coven::rusqlite::Error::FromSqlConversionFailure(
+        Ok(idx) => rusqlite::Error::FromSqlConversionFailure(
             idx,
-            coven::rusqlite::types::Type::Text,
+            rusqlite::types::Type::Text,
             message.into(),
         ),
         Err(e) => e,
@@ -308,7 +305,7 @@ pub(super) fn column_conversion_error(
 
 /// Read a named rfc3339 timestamp column, surfacing a malformed value as a
 /// column-conversion error rather than panicking on the parse.
-pub(super) fn rfc3339_column(row: &Row, column: &str) -> coven::rusqlite::Result<DateTime<Utc>> {
+pub(super) fn rfc3339_column(row: &Row, column: &str) -> rusqlite::Result<DateTime<Utc>> {
     let raw: String = row.get(column)?;
     DateTime::parse_from_rfc3339(&raw)
         .map(|dt| dt.with_timezone(&Utc))
@@ -324,17 +321,14 @@ pub(super) fn rfc3339_column(row: &Row, column: &str) -> coven::rusqlite::Result
 /// Read a named integer column that holds a count or a position, which the
 /// schema keeps non-negative, surfacing a negative one as a column-conversion
 /// error.
-pub(super) fn count_column(row: &Row, column: &str) -> coven::rusqlite::Result<u64> {
+pub(super) fn count_column(row: &Row, column: &str) -> rusqlite::Result<u64> {
     let raw: i64 = row.get(column)?;
     u64::try_from(raw)
         .map_err(|_| column_conversion_error(row, column, format!("{column} {raw} is negative")))
 }
 
 /// [`count_column`] for a nullable column.
-pub(super) fn optional_count_column(
-    row: &Row,
-    column: &str,
-) -> coven::rusqlite::Result<Option<u64>> {
+pub(super) fn optional_count_column(row: &Row, column: &str) -> rusqlite::Result<Option<u64>> {
     match row.get::<_, Option<i64>>(column)? {
         None => Ok(None),
         Some(_) => count_column(row, column).map(Some),
@@ -343,7 +337,7 @@ pub(super) fn optional_count_column(
 
 /// Read a named text column back into the type whose `FromStr` it was written
 /// from, surfacing a word no variant answers to as a column-conversion error.
-pub(super) fn parsed_column<T>(row: &Row, column: &str) -> coven::rusqlite::Result<T>
+pub(super) fn parsed_column<T>(row: &Row, column: &str) -> rusqlite::Result<T>
 where
     T: std::str::FromStr<Err = String>,
 {
@@ -360,10 +354,7 @@ where
 // taking that prefix, plus a bare-column wrapper — which is also the `fn(&Row)`
 // value the single-table queries hand to `query` / `query_row`.
 
-pub(super) fn row_to_artist_with_prefix(
-    row: &Row,
-    prefix: &str,
-) -> coven::rusqlite::Result<DbArtist> {
+pub(super) fn row_to_artist_with_prefix(row: &Row, prefix: &str) -> rusqlite::Result<DbArtist> {
     let column = |name: &str| format!("{prefix}{name}");
     Ok(DbArtist {
         id: row.get(column("id").as_str())?,
@@ -375,10 +366,7 @@ pub(super) fn row_to_artist_with_prefix(
     })
 }
 
-pub(super) fn row_to_album_with_prefix(
-    row: &Row,
-    prefix: &str,
-) -> coven::rusqlite::Result<DbAlbum> {
+pub(super) fn row_to_album_with_prefix(row: &Row, prefix: &str) -> rusqlite::Result<DbAlbum> {
     let column = |name: &str| format!("{prefix}{name}");
     Ok(DbAlbum {
         id: row.get(column("id").as_str())?,
@@ -391,10 +379,7 @@ pub(super) fn row_to_album_with_prefix(
     })
 }
 
-pub(super) fn row_to_track_with_prefix(
-    row: &Row,
-    prefix: &str,
-) -> coven::rusqlite::Result<DbTrack> {
+pub(super) fn row_to_track_with_prefix(row: &Row, prefix: &str) -> rusqlite::Result<DbTrack> {
     let column = |name: &str| format!("{prefix}{name}");
     Ok(DbTrack {
         id: row.get(column("id").as_str())?,
@@ -408,7 +393,7 @@ pub(super) fn row_to_track_with_prefix(
     })
 }
 
-pub(super) fn row_to_release(row: &Row) -> coven::rusqlite::Result<DbRelease> {
+pub(super) fn row_to_release(row: &Row) -> rusqlite::Result<DbRelease> {
     Ok(DbRelease {
         id: row.get("id")?,
         album_id: row.get("album_id")?,
@@ -420,7 +405,6 @@ pub(super) fn row_to_release(row: &Row) -> coven::rusqlite::Result<DbRelease> {
             facts: super::pressing_columns::read_facts(row, "")?,
         },
         draft_from_tags: row.get("draft_from_tags")?,
-        remote: row.get("remote")?,
         source_folder_name: row.get("source_folder_name")?,
         content_hash: row.get("content_hash")?,
         album_loudness_lufs: row.get("album_loudness_lufs")?,
@@ -429,15 +413,15 @@ pub(super) fn row_to_release(row: &Row) -> coven::rusqlite::Result<DbRelease> {
     })
 }
 
-pub(super) fn row_to_file(row: &Row) -> coven::rusqlite::Result<DbFile> {
+pub(super) fn row_to_file(row: &Row) -> rusqlite::Result<DbFile> {
     let layout = row
         .get::<_, Option<String>>("source_audio_layout")?
         .map(|layout| match layout.as_str() {
             "file" => Ok(crate::album_detail::SourceAudioLayout::File),
             "cue" => Ok(crate::album_detail::SourceAudioLayout::Cue),
-            other => Err(coven::rusqlite::Error::FromSqlConversionFailure(
+            other => Err(rusqlite::Error::FromSqlConversionFailure(
                 0,
-                coven::rusqlite::types::Type::Text,
+                rusqlite::types::Type::Text,
                 format!("invalid source_audio_layout {other:?}").into(),
             )),
         })
@@ -473,9 +457,9 @@ pub(super) fn row_to_file(row: &Row) -> coven::rusqlite::Result<DbFile> {
             },
         }),
         columns => {
-            return Err(coven::rusqlite::Error::FromSqlConversionFailure(
+            return Err(rusqlite::Error::FromSqlConversionFailure(
                 0,
-                coven::rusqlite::types::Type::Text,
+                rusqlite::types::Type::Text,
                 format!("inconsistent release source-audio facts: {columns:?}").into(),
             ))
         }
@@ -487,24 +471,24 @@ pub(super) fn row_to_file(row: &Row) -> coven::rusqlite::Result<DbFile> {
         file_size: row.get("file_size")?,
         content_type: ContentType::from_mime(&row.get::<_, String>("content_type")?),
         source_audio,
-        cloud_path: row.get("cloud_path")?,
+        attached: row.get::<_, Option<Vec<u8>>>("hash")?.is_some(),
         created_at: rfc3339_column(row, "created_at")?,
     })
 }
 
-pub(super) fn row_to_artist(row: &Row) -> coven::rusqlite::Result<DbArtist> {
+pub(super) fn row_to_artist(row: &Row) -> rusqlite::Result<DbArtist> {
     row_to_artist_with_prefix(row, "")
 }
 
-pub(super) fn row_to_album(row: &Row) -> coven::rusqlite::Result<DbAlbum> {
+pub(super) fn row_to_album(row: &Row) -> rusqlite::Result<DbAlbum> {
     row_to_album_with_prefix(row, "")
 }
 
-pub(super) fn row_to_track(row: &Row) -> coven::rusqlite::Result<DbTrack> {
+pub(super) fn row_to_track(row: &Row) -> rusqlite::Result<DbTrack> {
     row_to_track_with_prefix(row, "")
 }
 
-pub(super) fn row_to_audio_format(row: &Row) -> coven::rusqlite::Result<DbAudioFormat> {
+pub(super) fn row_to_audio_format(row: &Row) -> rusqlite::Result<DbAudioFormat> {
     Ok(DbAudioFormat {
         id: row.get("id")?,
         track_id: row.get("track_id")?,
@@ -522,12 +506,12 @@ pub(super) fn row_to_audio_format(row: &Row) -> coven::rusqlite::Result<DbAudioF
     })
 }
 
-pub(super) fn row_to_audio_segment(row: &Row) -> coven::rusqlite::Result<DbAudioSegment> {
+pub(super) fn row_to_audio_segment(row: &Row) -> rusqlite::Result<DbAudioSegment> {
     let role_text: String = row.get("role")?;
     let role = DbAudioSegmentRole::from_db_value(&role_text).ok_or_else(|| {
-        coven::rusqlite::Error::FromSqlConversionFailure(
+        rusqlite::Error::FromSqlConversionFailure(
             0,
-            coven::rusqlite::types::Type::Text,
+            rusqlite::types::Type::Text,
             format!("unknown audio segment role: {role_text}").into(),
         )
     })?;
@@ -547,7 +531,7 @@ pub(super) fn row_to_audio_segment(row: &Row) -> coven::rusqlite::Result<DbAudio
 
 pub(super) fn row_to_release_storage_summary(
     row: &Row,
-) -> coven::rusqlite::Result<DbReleaseStorageSummary> {
+) -> rusqlite::Result<DbReleaseStorageSummary> {
     Ok(DbReleaseStorageSummary {
         release_id: row.get("release_id")?,
         album_id: row.get("album_id")?,
@@ -560,7 +544,3 @@ pub(super) fn row_to_release_storage_summary(
         total_size: row.get("total_size")?,
     })
 }
-
-// ─── Synced-row INSERT helpers. Run inside `call_sql` — they take its
-// `_updated_at` stamp — against a `&Connection` or a `&Transaction`, both of
-// which deref to `&Connection`. ─────────────────────────────────────────────

@@ -1,7 +1,7 @@
 use super::*;
 use crate::import::ParsedAlbum;
 use chrono::{DateTime, Utc};
-use coven::{FixedClock, SequentialIdProvider};
+use coven::{FixedClock, SequentialIds};
 use serde_json::json;
 
 fn selected(urls: &[&str]) -> ReleasePayloads {
@@ -50,8 +50,8 @@ fn parsed(payloads: &ReleasePayloads) -> ParsedAlbum {
         .unwrap()
         .parsed(
             &[],
-            &FixedClock(now),
-            &SequentialIdProvider::new("ambiguity"),
+            &FixedClock::new((now).into()),
+            &SequentialIds::new(),
         )
         .unwrap()
 }

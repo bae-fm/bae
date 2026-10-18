@@ -3,27 +3,18 @@ use super::*;
 impl Database {
     pub async fn insert_artist(&self, artist: &DbArtist) -> Result<(), DbError> {
         let artist = artist.clone();
-        self.call_sql(move |sql| {
-            let reg = sql.stamp();
-            insert_artist_row(&sql, &artist, &reg)
-        })
-        .await
+        self.call_sql(move |sql| insert_artist_row(&sql, &artist))
+            .await
     }
     pub async fn insert_album_artist(&self, album_artist: &DbAlbumArtist) -> Result<(), DbError> {
         let album_artist = album_artist.clone();
-        self.call_sql(move |sql| {
-            let reg = sql.stamp();
-            insert_album_artist_row(&sql, &album_artist, &reg)
-        })
-        .await
+        self.call_sql(move |sql| insert_album_artist_row(&sql, &album_artist))
+            .await
     }
     pub async fn insert_track_artist(&self, track_artist: &DbTrackArtist) -> Result<(), DbError> {
         let track_artist = track_artist.clone();
-        self.call_sql(move |sql| {
-            let reg = sql.stamp();
-            insert_track_artist_row(&sql, &track_artist, &reg)
-        })
-        .await
+        self.call_sql(move |sql| insert_track_artist_row(&sql, &track_artist))
+            .await
     }
     /// Ordered by position, primary artist first.
     pub async fn get_artists_for_album(&self, album_id: &str) -> Result<Vec<DbArtist>, DbError> {
@@ -293,7 +284,7 @@ impl Database {
                 let cover_versions = album_cover_versions_on(&sql, &album_ids)?;
                 Ok((detail, image_versions, cover_versions))
             })
-            .process(|_, (detail, image_versions, cover_versions)| {
+            .process(|(detail, image_versions, cover_versions)| {
                 Ok(ArtistDetailProjection {
                     detail: detail.map(ArtistDetailRows::process).transpose()?,
                     image_versions,
@@ -345,7 +336,7 @@ impl Database {
                         .map_err(CovenError::from)?;
                 Ok((detail, image_versions, cover_versions))
             })
-            .process(|_, (detail, image_versions, cover_versions)| {
+            .process(|(detail, image_versions, cover_versions)| {
                 Ok(ComposerDetailProjection {
                     detail: detail.map(ComposerDetailRows::process),
                     image_versions,
@@ -532,6 +523,7 @@ fn find_artist_detail_on(
     Ok(Some(ArtistDetailRows { artist, albums }))
 }
 
+#[derive(Clone, PartialEq)]
 struct ArtistDetailRows {
     artist: DbArtistSummary,
     albums: Vec<AlbumSummaryRow>,
@@ -592,7 +584,7 @@ fn find_composer_detail_on(
         let query = work_summary_query(Some(&filter), None);
         sql.query(
             &query,
-            coven::rusqlite::params_from_iter(parent_ids.iter()),
+            rusqlite::params_from_iter(parent_ids.iter()),
             |row| row_to_work_summary(row).map(|summary| (summary.work.id.clone(), summary)),
         )?
         .into_iter()
@@ -674,6 +666,7 @@ fn find_composer_detail_on(
     }))
 }
 
+#[derive(Clone, PartialEq)]
 struct ComposerDetailRows {
     composer: DbComposerSummary,
     works: Vec<DbWorkSummary>,

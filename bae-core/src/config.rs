@@ -1,7 +1,7 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::num::{NonZeroU32, NonZeroUsize};
 use std::path::PathBuf;
-use tracing::{debug, info, warn};
+use tracing::info;
 
 mod app_dir;
 mod handle;
@@ -16,14 +16,12 @@ pub use handle::ConfigHandle;
 pub use identification::{IdentificationPreferences, LookupCatalogPreferences};
 pub use import_storage::ImportStoragePreferences;
 pub use keyring::init_keyring;
-#[cfg(any(test, feature = "test-utils", debug_assertions))]
-pub use keyring::install_test_keyring;
 pub use save::{SaveBitDepth, SaveCodec, SaveFilenameToken, SavePregapPlacement, SavePreset};
 pub use server::{
     McpConfig, SubsonicConfig, SubsonicCredential, MCP_DEFAULT_PORT, SUBSONIC_DEFAULT_PORT,
 };
 
-use coven::{write_atomic, StoreDir, WriteError};
+use coven::write_atomic;
 use save::default_save_presets;
 
 /// Blob transfers bae runs at once, per direction, on a fresh library. Serial
@@ -36,14 +34,6 @@ pub const MAX_CONCURRENT_TRANSFERS: u32 = 8;
 
 fn default_transfer_concurrency() -> NonZeroU32 {
     NonZeroU32::new(DEFAULT_CONCURRENT_TRANSFERS).expect("DEFAULT_CONCURRENT_TRANSFERS is non-zero")
-}
-
-pub(crate) fn default_transfer_limits() -> coven::TransferLimits {
-    let limit = usize_bound(default_transfer_concurrency());
-    coven::TransferLimits {
-        uploads: limit,
-        downloads: limit,
-    }
 }
 
 /// A blob-transfer concurrency setting must be at least 1 — coven's drain admits
@@ -66,18 +56,7 @@ pub(crate) fn usize_bound(n: NonZeroU32) -> NonZeroUsize {
     NonZeroUsize::new(n.get() as usize).expect("a NonZeroU32 widened to usize stays non-zero")
 }
 
-/// Cloud home provider selection.
-pub use coven::CloudProvider;
-
-/// Cloud home settings (provider + per-provider fields).
-pub use coven::CloudHomeConfig;
-
-/// How a cloud home stores its objects: opaque (encrypted, obfuscated blob paths)
-/// or browsable (in the clear, at readable paths). Chosen when the home is
-/// created; drives both encryption-at-rest and the blob-path scheme. Not access
-/// control — the provider's credentials gate the bucket either way; this only
-/// decides whether what's stored is legible.
-pub use coven::HomeStorage;
+pub use coven::{CloudProvider, StorageConfig};
 
 /// The validation state of a stored Discogs API key. Only carried when a key
 /// exists (`Config::discogs` is `Some`). Distinct from `DiscogsTokenStatus`:
@@ -236,43 +215,6 @@ impl Config {
             other => unreachable!("{} answers no lookups", other.as_str()),
         }
     }
-
-    /// The coven sync/cloud config bae embeds. Handed to the `CovenHandle` (via
-    /// its config provider) and read fresh by coven for the cloud-home selection,
-    /// the blob-path scheme, sync, and restore-code generation.
-    pub fn to_coven(&self) -> coven::Config {
-        self.inner.clone()
-    }
-
-    /// Display string for the connected cloud account, derived from config
-    /// alone. For OAuth providers, a set provider implies stored credentials
-    /// (sign-in saves the keyring entry, then sets the provider), so we report
-    /// "Connected" without reading the keyring — rendering settings never
-    /// triggers a keychain prompt. `None` when no provider is configured.
-    pub fn cloud_account_display(&self) -> Option<String> {
-        match self.cloud_home.provider.as_ref()? {
-            CloudProvider::S3 => self
-                .cloud_home
-                .s3_bucket
-                .as_ref()
-                .map(|b| format!("s3://{b}")),
-            CloudProvider::CloudKit => Some("iCloud".to_string()),
-            CloudProvider::Dropbox | CloudProvider::OneDrive => Some("Connected".to_string()),
-            unsupported => panic!("unsupported cloud provider: {unsupported:?}"),
-        }
-    }
-
-    /// The running config for a store coven just restored or joined. coven
-    /// wrote that store's `config.yaml` itself; bae has recorded no preferences
-    /// for it yet, so they start at their defaults, as they do on any library
-    /// whose `preferences.toml` has not been written.
-    pub fn from_coven(c: coven::Config, library_path: PathBuf) -> Self {
-        Self {
-            inner: c,
-            library_path,
-            prefs: Preferences::default(),
-        }
-    }
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -283,10 +225,12 @@ pub enum ConfigError {
     Serialization(String),
     #[error("configuration file: {0}")]
     Io(#[from] std::io::Error),
-    /// coven could not read or write the library's `config.yaml`, which it
-    /// owns.
-    #[error("store configuration: {0}")]
-    Store(#[from] coven::ConfigError),
+    #[error(transparent)]
+    File(#[from] coven::FileError),
+    #[error(transparent)]
+    Stores(#[from] coven::StoreLayoutError),
+    #[error(transparent)]
+    Storage(#[from] coven::StorageError),
 }
 
 /// TOML has no null value. Spell the no-key state explicitly so every
@@ -315,15 +259,8 @@ where
     })
 }
 
-/// The file in a library directory that holds bae's [`Preferences`], next to
-/// coven's `config.yaml`.
-///
-/// Two files because two owners: coven writes `config.yaml` (store identity,
-/// device id, snapshot policy, cloud home) on create, restore, and join, and
-/// reads it back as the mark of a finished join; bae writes only this one.
-/// A library directory whose `preferences.toml` has not been written yet — a
-/// new, restored, or joined library before any setting changes — has every
-/// preference at its default.
+/// bae's preferences in its own per-library directory. A missing file means
+/// the person has not changed any preferences on this device.
 pub const PREFERENCES_FILENAME: &str = "preferences.toml";
 
 /// bae's own per-library settings: `preferences.toml`.
@@ -427,8 +364,7 @@ impl Default for Preferences {
     }
 }
 
-/// Metadata about a discovered library (for the library switcher UI)
-/// A library registered under the app directory, whether or not it can be opened.
+/// A store discovered through coven, with its current committed name.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct LibraryInfo {
     pub id: String,
@@ -436,220 +372,100 @@ pub struct LibraryInfo {
     pub path: PathBuf,
     pub is_active: bool,
     pub cloud_provider: Option<CloudProvider>,
-    /// Why this library cannot be opened, or `None` when its config loaded.
-    ///
-    /// A library whose config.yaml will not parse is still listed — it must not
-    /// silently vanish from the picker. Its `id` and `name` use the directory
-    /// name because the configured values could not be read.
-    pub error: Option<String>,
 }
 
-/// Application configuration.
-///
-/// Three parts: coven's sync/cloud config (`inner`), bae's own settings
-/// (`prefs`), and where this library lives on this machine.
-/// `Deref`/`DerefMut` expose coven's fields directly, so `config.store_id`,
-/// `config.device_id`, and `config.cloud_home.provider = …` read and write
-/// through to `inner`.
+/// Device-local preferences and the store they belong to. Store names, device
+/// identity and storage settings are owned and read by coven.
 #[derive(Clone, Debug)]
 pub struct Config {
-    /// Sync/cloud config coven owns — embedded, not re-declared.
-    pub inner: coven::Config,
-    /// Runtime location of this library. It is host context rather than synced
-    /// configuration, so it stays outside `coven::Config` and off the wire.
+    pub store_id: coven::StoreId,
     library_path: PathBuf,
-    /// bae's own settings, exactly as `preferences.toml` carries them.
     pub prefs: Preferences,
 }
 
-impl std::ops::Deref for Config {
-    type Target = coven::Config;
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
-
-impl std::ops::DerefMut for Config {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.inner
-    }
-}
-
 impl Config {
-    /// The local library path for host UI and host-owned files. Callers receive
-    /// the path value, not Coven's store owner.
+    /// bae's directory for preferences and caches, outside coven's store.
     pub fn library_path(&self) -> &std::path::Path {
         &self.library_path
     }
 
-    /// Open the library registered as `library_id`: coven's `config.yaml` and
-    /// bae's `preferences.toml` from its directory.
     pub fn load_registered_library(
         app_dir: &AppDir,
         library_id: &str,
     ) -> Result<Self, ConfigError> {
-        let library_dir = app_dir.registered_library(library_id);
-        let inner = coven::Config::load_from_config_yaml(&StoreDir::new(&library_dir))?;
-        if inner.store_id != library_id {
-            return Err(ConfigError::Config(format!(
-                "registered library directory {} contains store_id {}",
-                library_dir.display(),
-                inner.store_id
-            )));
-        }
-        let prefs = read_preferences(&library_dir)?;
+        let store_id = coven::StoreId(uuid::Uuid::parse_str(library_id).map_err(|error| {
+            ConfigError::Config(format!("invalid library id {library_id}: {error}"))
+        })?);
+        let library_path = app_dir.registered_library(&store_id.to_string());
+        let prefs = read_preferences(&library_path)?;
         Ok(Self {
-            inner,
-            library_path: library_dir,
+            store_id,
+            library_path,
             prefs,
         })
     }
 
-    /// Record this library as the one this device last opened, in the app
-    /// directory's active-library pointer.
     pub fn save_active_library(&self, app_dir: &AppDir) -> Result<(), ConfigError> {
         app_dir.create()?;
-        write_atomic(&app_dir.active_library_pointer(), self.store_id.as_bytes())
-            .map_err(WriteError::into_inner)?;
+        write_atomic(
+            &app_dir.active_library_pointer(),
+            self.store_id.to_string().as_bytes(),
+        )?;
         Ok(())
     }
 
-    /// Write coven's part of this config to the library's `config.yaml`,
-    /// through coven.
-    pub fn save_store_config(&self) -> Result<(), ConfigError> {
-        self.write_store_config().map_err(WriteError::into_inner)
-    }
-
-    /// Write bae's preferences to the library's `preferences.toml`.
     pub fn save_preferences(&self) -> Result<(), ConfigError> {
-        self.write_preferences().map_err(WriteError::into_inner)
-    }
-
-    /// [`Self::save_store_config`], reporting whether the new file was
-    /// installed when the write failed.
-    fn write_store_config(&self) -> Result<(), WriteError<ConfigError>> {
-        self.inner
-            .save_to_config_yaml(&StoreDir::new(&self.library_path))
-            .map_err(|error| {
-                if error.installed_new_file() {
-                    WriteError::AfterCommit(error.into())
-                } else {
-                    WriteError::BeforeCommit(error.into())
-                }
-            })
-    }
-
-    fn write_preferences(&self) -> Result<(), WriteError<ConfigError>> {
-        std::fs::create_dir_all(&self.library_path)
-            .map_err(|e| WriteError::BeforeCommit(ConfigError::from(e)))?;
+        std::fs::create_dir_all(&self.library_path)?;
         let serialized = toml::to_string_pretty(&self.prefs)
-            .map_err(|e| WriteError::BeforeCommit(ConfigError::Serialization(e.to_string())))?;
+            .map_err(|error| ConfigError::Serialization(error.to_string()))?;
         write_atomic(
             &self.library_path.join(PREFERENCES_FILENAME),
             serialized.as_bytes(),
-        )
-        .map_err(|e| e.map(ConfigError::from))
+        )?;
+        Ok(())
     }
 
-    /// Construct a Config with defaults for a new library.
-    pub fn with_defaults(
-        library_id: String,
-        device_id: String,
-        library_path: impl AsRef<std::path::Path>,
-        library_name: String,
-    ) -> Self {
+    pub fn with_defaults(store_id: coven::StoreId, library_path: impl Into<PathBuf>) -> Self {
         Self {
-            inner: coven::Config::with_defaults(library_id, device_id, library_name),
-            library_path: library_path.as_ref().to_path_buf(),
+            store_id,
+            library_path: library_path.into(),
             prefs: Preferences::default(),
         }
     }
 
-    /// Discover every library registered under the app directory.
-    pub fn discover_libraries(app_dir: &AppDir) -> Result<Vec<LibraryInfo>, ConfigError> {
+    pub async fn discover_libraries(app_dir: &AppDir) -> Result<Vec<LibraryInfo>, ConfigError> {
         let active_id = Self::active_library_id(app_dir)?;
-
-        let mut libraries: Vec<LibraryInfo> = discover_all_library_paths(app_dir)
-            .into_iter()
-            .map(|(path, store)| match store {
-                Ok(store) => LibraryInfo {
-                    is_active: active_id.as_deref() == Some(&store.store_id),
-                    id: store.store_id,
-                    name: store.store_name,
-                    path,
-                    cloud_provider: store.cloud_home.provider,
-                    error: None,
-                },
-                // The config is the only thing that knows the library's id and name, and
-                // it is what failed — so the directory name stands in for both. It is a
-                // UUID, which is what the id would have been anyway.
-                Err(e) => {
-                    let dir_name = path
-                        .file_name()
-                        .and_then(|n| n.to_str())
-                        .unwrap_or_default()
-                        .to_string();
-                    LibraryInfo {
-                        is_active: active_id.as_deref() == Some(dir_name.as_str()),
-                        id: dir_name.clone(),
-                        name: dir_name,
-                        path,
-                        cloud_provider: None,
-                        error: Some(e.to_string()),
-                    }
-                }
-            })
-            .collect();
-
-        // Broken libraries sort last: they are visible, but they are not what the user
-        // is looking for.
+        let layout = app_dir.store_layout();
+        let mut libraries = Vec::new();
+        for store in layout.stores().await? {
+            let storage = coven::Coven::storage_config(&layout.store_dir(&store.id)).await?;
+            let id = store.id.to_string();
+            libraries.push(LibraryInfo {
+                is_active: active_id.as_deref() == Some(id.as_str()),
+                path: app_dir.registered_library(&id),
+                id,
+                name: store.name,
+                cloud_provider: storage.as_ref().map(StorageConfig::provider),
+            });
+        }
         libraries.sort_by(|a, b| {
-            a.error
-                .is_some()
-                .cmp(&b.error.is_some())
-                .then_with(|| b.is_active.cmp(&a.is_active))
+            b.is_active
+                .cmp(&a.is_active)
                 .then_with(|| a.name.cmp(&b.name))
         });
-
         Ok(libraries)
     }
 
-    /// The library this device last opened, from the app directory's
-    /// active-library pointer; `None` when no library has been opened yet.
     pub fn active_library_id(app_dir: &AppDir) -> Result<Option<String>, ConfigError> {
         let pointer_path = app_dir.active_library_pointer();
         let Some(content) = read_optional_file(&pointer_path)? else {
             return Ok(None);
         };
-        let id = content.trim().to_string();
-        if id.is_empty() {
-            return Err(ConfigError::Config(format!(
-                "active-library pointer at {} is empty",
-                pointer_path.display()
-            )));
-        }
-        Ok(Some(id))
+        let id = content.trim();
+        let parsed = uuid::Uuid::parse_str(id)
+            .map_err(|error| ConfigError::Config(format!("{}: {error}", pointer_path.display())))?;
+        Ok(Some(parsed.to_string()))
     }
-}
-
-/// Rename a library by id without loading it into memory: locate its directory,
-/// read its `config.yaml` through coven, replace `store_name`, write it back
-/// through coven. Used by
-/// `LibraryManager::rename_library` for libraries that aren't the active one —
-/// the active one renames through [`ConfigHandle::rename_library`], so its
-/// subscribers see the change.
-pub fn rename_inactive_library(
-    app_dir: &AppDir,
-    library_id: &str,
-    new_name: &crate::library_name::LibraryName,
-) -> Result<(), ConfigError> {
-    let library_dir = find_library_by_id(app_dir, library_id)
-        .ok_or_else(|| ConfigError::Config(format!("library not found: {library_id}")))?;
-    let store_dir = StoreDir::new(library_dir);
-    let mut store = coven::Config::load_from_config_yaml(&store_dir)?;
-    store.store_name = new_name.as_str().to_string();
-    store.save_to_config_yaml(&store_dir)?;
-    Ok(())
 }
 
 /// Read bae's preferences from a library directory. A directory with no
@@ -666,105 +482,6 @@ fn read_preferences(library_dir: &std::path::Path) -> Result<Preferences, Config
     };
     toml::from_str(&content)
         .map_err(|e| ConfigError::Serialization(format!("{}: {e}", path.display())))
-}
-
-/// Find a library's directory by its UUID, scanning the app directory's
-/// registered libraries.
-fn find_library_by_id(app_dir: &AppDir, uuid: &str) -> Option<PathBuf> {
-    for (path, store) in discover_all_library_paths(app_dir) {
-        // A library whose config will not parse cannot be addressed by id — its id
-        // is precisely what we could not read.
-        if store.is_ok_and(|store| store.store_id == uuid) {
-            return Some(path);
-        }
-    }
-    None
-}
-
-/// Collect every library directory registered under the app directory with the
-/// outcome of reading its config — `Err` for one that cannot be read.
-///
-/// The failure is carried, not dropped, so an unreadable library remains visible
-/// in the picker.
-fn discover_all_library_paths(
-    app_dir: &AppDir,
-) -> Vec<(PathBuf, Result<coven::Config, ConfigError>)> {
-    let mut results = Vec::new();
-    let libraries_dir = app_dir.libraries();
-
-    if libraries_dir.is_dir() {
-        let entries = match std::fs::read_dir(&libraries_dir) {
-            Ok(entries) => entries,
-            Err(e) => {
-                warn!("cannot read libraries dir {}: {e}", libraries_dir.display());
-                return results;
-            }
-        };
-        for entry in entries {
-            let entry = match entry {
-                Ok(entry) => entry,
-                Err(e) => {
-                    warn!("skipping unreadable libraries dir entry: {e}");
-                    continue;
-                }
-            };
-            let path = entry.path();
-            if !path.is_dir() {
-                debug!(
-                    "skipping non-directory entry in libraries dir: {}",
-                    path.display()
-                );
-                continue;
-            }
-            // A libraries dir entry bae created is UTF-8 by construction
-            // (the id is a UUID). A non-UTF-8 name is foreign or corrupt: its
-            // bytes can't round-trip through the `String` path the rest of the
-            // app addresses files by, so skip it rather than lossily mangle
-            // the path into one that points at nothing.
-            if path.to_str().is_none() {
-                warn!(
-                    "skipping library dir with non-UTF-8 name: {}",
-                    path.display()
-                );
-                continue;
-            }
-            match read_store_config(&path) {
-                Ok(Some(store)) => results.push((path, Ok(store))),
-                // Not a library at all — nothing to show, nothing to report.
-                Ok(None) => {
-                    debug!(
-                        "skipping library dir with no config.yaml: {}",
-                        path.display()
-                    );
-                }
-                // A library that exists but will not load. It stays in the list,
-                // marked broken, so the user sees it rather than losing it.
-                Err(e) => {
-                    warn!("library at {} cannot be read: {e}", path.display());
-                    results.push((path, Err(e)));
-                }
-            }
-        }
-    }
-
-    results
-}
-
-/// Read coven's `config.yaml` from a library directory, if it exists.
-///
-/// Returns `Ok(None)` if the file doesn't exist, `Err` if it exists but can't be
-/// read.
-fn read_store_config(path: &std::path::Path) -> Result<Option<coven::Config>, ConfigError> {
-    let store_dir = StoreDir::new(path);
-    let config_path = store_dir.config_path();
-    match config_path.try_exists() {
-        Ok(false) => Ok(None),
-        Ok(true) => Ok(Some(coven::Config::load_from_config_yaml(&store_dir)?)),
-        Err(e) => Err(ConfigError::Io(std::io::Error::new(
-            e.kind(),
-            format!("{}: {e}", config_path.display()),
-        ))),
-    }
 }
 
 fn read_optional_file(path: &std::path::Path) -> Result<Option<String>, ConfigError> {

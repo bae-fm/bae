@@ -56,7 +56,7 @@ async fn every_artist_identity_choice_controls_the_imported_credits_and_ids() {
                 .is_err(),
             "a conflict must wait for the person"
         );
-        db.choose_import_artist_identity(&hash, 0, choice, &coven::UuidProvider)
+        db.choose_import_artist_identity(&hash, 0, choice, &coven::UuidIds)
             .await
             .unwrap();
         if choice == Choice::ChangeMatch {
@@ -228,8 +228,6 @@ async fn every_artist_identity_choice_controls_the_imported_credits_and_ids() {
                 images: &[],
             },
             None,
-            crate::config::HomeStorage::Opaque,
-            crate::import::ImportDestination::Local,
         )
         .await
         .unwrap();
@@ -311,7 +309,7 @@ async fn a_stale_artist_identity_choice_changes_nothing() {
         Choice::ChangeMatch,
     ] {
         let (db, _tmp, hash, discogs, musicbrainz, incoming) = fixture().await;
-        db.choose_import_artist_identity(&hash, 1, choice, &coven::UuidProvider)
+        db.choose_import_artist_identity(&hash, 1, choice, &coven::UuidIds)
             .await
             .expect_err("an answer to an old draft cannot change this one");
         assert_eq!(
@@ -341,7 +339,7 @@ async fn a_stale_artist_identity_choice_changes_nothing() {
 #[tokio::test]
 async fn edits_keep_an_answer_but_changing_the_source_discards_it() {
     let (db, _tmp, hash, discogs, _musicbrainz, incoming) = fixture().await;
-    db.choose_import_artist_identity(&hash, 0, Choice::DiscogsArtist, &coven::UuidProvider)
+    db.choose_import_artist_identity(&hash, 0, Choice::DiscogsArtist, &coven::UuidIds)
         .await
         .unwrap();
     crate::import::CandidatePreparations::new(db.clone())
@@ -379,7 +377,7 @@ async fn edits_keep_an_answer_but_changing_the_source_discards_it() {
 #[tokio::test]
 async fn repeated_credits_share_the_neither_artist_and_picked_credits_stay_picked() {
     let (db, _tmp, hash, discogs, _musicbrainz, incoming) = fixture().await;
-    db.choose_import_artist_identity(&hash, 0, Choice::Neither, &coven::UuidProvider)
+    db.choose_import_artist_identity(&hash, 0, Choice::Neither, &coven::UuidIds)
         .await
         .unwrap();
     let repeated = DbArtist {

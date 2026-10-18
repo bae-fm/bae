@@ -11,20 +11,6 @@ use std::path::{Path, PathBuf};
 use tempfile::TempDir;
 use uuid::Uuid;
 
-fn test_config(library_dir: &coven::StoreDir) -> std::sync::Arc<crate::config::ConfigHandle> {
-    // Unique id per test so keyring entries don't collide in the shared
-    // process-global mock store (see `install_test_keyring`).
-    let library_id = format!("test-{}", uuid::Uuid::new_v4());
-    let config = crate::config::Config::with_defaults(
-        library_id.clone(),
-        "test-device".to_string(),
-        library_dir.clone(),
-        "Test Library".to_string(),
-    );
-    crate::config::install_test_keyring();
-    std::sync::Arc::new(crate::config::ConfigHandle::new(config))
-}
-
 async fn setup_test_manager() -> (LibraryManager, TempDir) {
     setup_test_manager_with(crate::util::http::Http::for_test()).await
 }
@@ -39,14 +25,13 @@ async fn setup_test_manager_with(http: crate::util::http::Http) -> (LibraryManag
     )
     .await
     .unwrap();
-    let library_dir = coven::StoreDir::new(temp_dir.path());
-    let config_handle = test_config(&library_dir);
+    let config_handle = Arc::new(crate::config::ConfigHandle::new(crate::config::Config::with_defaults(database.store_id(), temp_dir.path().join("preferences"))));
     let manager = LibraryManager::new(
         database,
         crate::config::AppDir::under_home(temp_dir.path()),
         config_handle,
         std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
+        std::sync::Arc::new(coven::UuidIds),
         crate::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
         crate::import::cover_art::RemoteImageCache::for_test(http.clone()),

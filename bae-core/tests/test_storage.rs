@@ -102,12 +102,17 @@ async fn test_local_import() {
 
     info!("All tracks have audio_format records with segment file links");
 
-    let release = database
+    assert!(database
         .find_release_by_id(&release_id)
         .await
-        .expect("query")
-        .expect("release should exist");
-    assert!(!release.remote, "Local import should not be remote");
+        .unwrap()
+        .is_some());
+    assert!(database
+        .get_files_for_release(&release_id)
+        .await
+        .unwrap()
+        .iter()
+        .all(|file| !file.attached));
     // A local release's files are external refs at their own location.
     let files = library_manager
         .get_files_for_release(&release_id)
@@ -259,7 +264,12 @@ async fn run_import_with_cover_test() {
         .await
         .expect("Failed to query release")
         .expect("release should exist");
-    assert!(!release.remote, "Import without cloud home should be local");
+    assert!(database
+        .get_files_for_release(&release_id)
+        .await
+        .unwrap()
+        .iter()
+        .all(|file| !file.attached));
     let local_files = library_manager
         .get_files_for_release(&release_id)
         .await

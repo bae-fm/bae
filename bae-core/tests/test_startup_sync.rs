@@ -1,249 +1,153 @@
 #![cfg(feature = "test-utils")]
 
-use std::sync::{mpsc, Arc, Mutex};
+use std::sync::{mpsc, Arc};
 use std::time::Duration;
 
-use bae_core::app::bootstrap;
-use bae_core::config::{AppDir, CloudProvider};
-use bae_core::library::create_library;
-use coven::{
-    CloudHomeError, CloudKitAcceptedShareRecord, CloudKitAtomicCreateBatch, CloudKitOps,
-    CloudKitProviderIdentity, CloudKitRecordCreate, CloudKitRecordVersion, CloudKitScope,
-    CloudKitShare, UuidProvider,
-};
+use bae_core::app::{bootstrap, BootstrapError};
+use bae_core::config::AppDir;
+use coven::{Clock, Storage};
 use tempfile::TempDir;
-
-fn write_cloudkit_library(app_dir: &AppDir) -> String {
-    let mut config = create_library(
-        app_dir,
-        bae_core::library_name::LibraryName::parse("Test Library")
-            .expect("valid test library name"),
-        &UuidProvider,
-    )
-    .expect("create test library");
-    config.cloud_home.provider = Some(CloudProvider::CloudKit);
-    config.cloud_home.storage = coven::HomeStorage::Browsable;
-    config.save_store_config().expect("save test config");
-    config.store_id.clone()
-}
 
 struct TestApp {
     services: bae_core::library::AppServices,
     runtime: tokio::runtime::Runtime,
 }
 
+struct StorageClock {
+    time: coven::FixedClock,
+    sleeping: tokio::sync::Notify,
+}
+
+impl Clock for StorageClock {
+    fn now(&self) -> std::time::SystemTime {
+        self.time.now()
+    }
+    fn elapsed(&self) -> Duration {
+        self.time.elapsed()
+    }
+    fn sleep(
+        &self,
+        duration: Duration,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>> {
+        let sleep = self.time.sleep(duration);
+        self.sleeping.notify_one();
+        sleep
+    }
+}
+
 impl TestApp {
     fn start(
         services: bae_core::library::AppServices,
         runtime: tokio::runtime::Runtime,
-    ) -> Result<Self, bae_core::app::BootstrapError> {
+    ) -> Result<Self, BootstrapError> {
         Ok(Self { services, runtime })
     }
 }
 
-struct PendingCloudKit {
-    entered: mpsc::SyncSender<()>,
-    release: Mutex<mpsc::Receiver<()>>,
-}
-
-impl PendingCloudKit {
-    fn new(entered: mpsc::SyncSender<()>, release: mpsc::Receiver<()>) -> Self {
-        Self {
-            entered,
-            release: Mutex::new(release),
-        }
-    }
-
-    fn unexpected<T>(&self, operation: &str) -> Result<T, CloudHomeError> {
-        panic!("unexpected CloudKit operation while provider identity is pending: {operation}")
-    }
-}
-
-impl CloudKitOps for PendingCloudKit {
-    fn provider_identity(
-        &self,
-        _scope: &CloudKitScope,
-    ) -> Result<CloudKitProviderIdentity, CloudHomeError> {
-        self.entered
-            .send(())
-            .expect("test still waits for CloudKit attachment");
-        self.release
-            .lock()
-            .expect("release receiver lock")
-            .recv()
-            .expect("test releases CloudKit attachment");
-        Err(CloudHomeError::Transport(
-            "test provider unavailable".to_string(),
-        ))
-    }
-
-    fn accepted_read_write_share(
-        &self,
-        _scope: &CloudKitScope,
-    ) -> Result<CloudKitAcceptedShareRecord, CloudHomeError> {
-        self.unexpected("accepted_read_write_share")
-    }
-
-    fn list_records(
-        &self,
-        _scope: &CloudKitScope,
-        _prefix: &str,
-    ) -> Result<Vec<String>, CloudHomeError> {
-        self.unexpected("list_records")
-    }
-
-    fn delete_record(&self, _scope: &CloudKitScope, _key: &str) -> Result<(), CloudHomeError> {
-        self.unexpected("delete_record")
-    }
-
-    fn record_exists(&self, _scope: &CloudKitScope, _key: &str) -> Result<bool, CloudHomeError> {
-        self.unexpected("record_exists")
-    }
-
-    fn read_versioned_record(
-        &self,
-        _scope: &CloudKitScope,
-        _key: &str,
-    ) -> Result<coven::CloudVersionedObject, CloudHomeError> {
-        self.unexpected("read_versioned_record")
-    }
-
-    fn replace_record_if_version(
-        &self,
-        _scope: &CloudKitScope,
-        _key: &str,
-        _expected: &coven::CloudObjectVersion,
-        _data: Vec<u8>,
-    ) -> Result<coven::ConditionalWriteOutcome, CloudHomeError> {
-        self.unexpected("replace_record_if_version")
-    }
-
-    fn begin_atomic_create(
-        &self,
-        _scope: &CloudKitScope,
-    ) -> Result<CloudKitAtomicCreateBatch, CloudHomeError> {
-        self.unexpected("begin_atomic_create")
-    }
-
-    fn stage_atomic_create_record(
-        &self,
-        _scope: &CloudKitScope,
-        _batch: &CloudKitAtomicCreateBatch,
-        _record: CloudKitRecordCreate,
-    ) -> Result<(), CloudHomeError> {
-        self.unexpected("stage_atomic_create_record")
-    }
-
-    fn commit_atomic_create(
-        &self,
-        _scope: &CloudKitScope,
-        _batch: &CloudKitAtomicCreateBatch,
-    ) -> Result<Vec<CloudKitRecordVersion>, CloudHomeError> {
-        self.unexpected("commit_atomic_create")
-    }
-
-    fn discard_atomic_create(
-        &self,
-        _scope: &CloudKitScope,
-        _batch: &CloudKitAtomicCreateBatch,
-    ) -> Result<(), CloudHomeError> {
-        self.unexpected("discard_atomic_create")
-    }
-
-    fn delete_record_versions(
-        &self,
-        _scope: &CloudKitScope,
-        _records: &[CloudKitRecordVersion],
-    ) -> Result<(), CloudHomeError> {
-        self.unexpected("delete_record_versions")
-    }
-
-    fn share_for_member(
-        &self,
-        _member_pubkey: &str,
-    ) -> Result<Option<CloudKitShare>, CloudHomeError> {
-        self.unexpected("share_for_member")
-    }
-
-    fn grant_share(&self, _member_pubkey: &str) -> Result<CloudKitShare, CloudHomeError> {
-        self.unexpected("grant_share")
-    }
-
-    fn revoke_share(&self, _member_pubkey: &str) -> Result<(), CloudHomeError> {
-        self.unexpected("revoke_share")
-    }
-
-    fn accept_share(&self, _share_url: &str) -> Result<CloudKitShare, CloudHomeError> {
-        self.unexpected("accept_share")
-    }
-}
-
 #[test]
-fn local_startup_returns_while_cloud_attachment_is_pending() {
-    let home = TempDir::new().expect("create test home");
+fn local_startup_returns_while_storage_is_pending_and_reports_its_failure() {
+    let home = TempDir::new().unwrap();
     let app_dir = AppDir::under_home(home.path());
-    bae_core::config::install_test_keyring();
-    let library_id = write_cloudkit_library(&app_dir);
-    let (entered_tx, entered_rx) = mpsc::sync_channel(1);
-    let (release_tx, release_rx) = mpsc::sync_channel(1);
-    let cloudkit = Arc::new(PendingCloudKit::new(entered_tx, release_rx));
-    let (app_tx, app_rx) = mpsc::sync_channel(1);
-
-    let bootstrap_thread = std::thread::spawn(move || {
-        let result = bootstrap(
-            app_dir,
-            library_id,
-            200,
-            true,
-            bae_core::diagnostics::Diagnostics::noop(),
-            Some(cloudkit),
-            coven::OAuthClients::empty(),
-            TestApp::start,
-        );
-        app_tx.send(result).expect("test receives bootstrap result");
+    let layout = coven::StoreLayout::new(home.path().join(".bae"));
+    let installation = coven::TestCoven::new();
+    let clock = Arc::new(StorageClock {
+        time: coven::FixedClock::new(std::time::UNIX_EPOCH),
+        sleeping: tokio::sync::Notify::new(),
     });
-
-    if entered_rx.recv_timeout(Duration::from_secs(10)).is_err() {
-        match app_rx.try_recv() {
-            Ok(Ok(app)) => panic!(
-                "bootstrap returned before probing CloudKit: {:?}",
-                app.services.get_sync_status().error
-            ),
-            Ok(Err(error)) => panic!("bootstrap failed before probing CloudKit: {error}"),
-            Err(error) => panic!("startup did not reach CloudKit attachment: {error}"),
-        }
-    }
-    // CloudKit stays held until the release below, so a result arriving here
-    // came back while cloud attachment was still pending.
-    let returned = app_rx.recv_timeout(Duration::from_secs(10));
-    release_tx
-        .send(())
-        .expect("release the pending CloudKit operation");
-    let app = match returned {
-        Ok(result) => result.expect("local startup succeeds"),
-        Err(mpsc::RecvTimeoutError::Timeout) => {
-            panic!("local services must return before cloud attachment completes")
-        }
-        Err(mpsc::RecvTimeoutError::Disconnected) => {
-            panic!("bootstrap result sender disconnected")
-        }
-    };
-    bootstrap_thread.join().expect("bootstrap thread joins");
-
+    let storage = Arc::new(
+        coven::MemoryStorage::builder()
+            .clock(clock.clone())
+            .build()
+            .unwrap(),
+    );
+    let setup = bae_test_support::multi_thread_runtime();
+    let library_id = setup.block_on(async {
+        let handle = bae_core::library::create_library(
+            installation
+                .builder(layout.clone())
+                .storage_connector(storage.clone()),
+            bae_core::library_name::LibraryName::parse("Test Library").unwrap(),
+        )
+        .await
+        .unwrap();
+        handle
+            .setup_s3_storage(
+                storage.config(),
+                "Device",
+                "key".into(),
+                coven::SecretText::new("secret".into()),
+            )
+            .await
+            .unwrap();
+        let mut status = handle.subscribe_sync_status();
+        tokio::time::timeout(
+            Duration::from_secs(20),
+            status.wait_for(|status| matches!(status, coven::SyncStatus::Synced { .. })),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+        let id = handle.store_id().to_string();
+        handle.close().await.unwrap();
+        storage
+            .set_faults(coven::Faults {
+                delay: Duration::from_secs(60),
+                fail_next: 1,
+                failure: coven::StorageFailure::Network,
+                ..coven::Faults::none()
+            })
+            .await;
+        id
+    });
+    let builder = installation
+        .builder(layout)
+        .storage_connector(storage.clone());
+    let (app_tx, app_rx) = mpsc::sync_channel(1);
+    let startup = std::thread::spawn(move || {
+        app_tx
+            .send(bootstrap(
+                app_dir,
+                library_id,
+                200,
+                true,
+                bae_core::diagnostics::Diagnostics::noop(),
+                builder,
+                TestApp::start,
+            ))
+            .unwrap();
+    });
+    setup.block_on(async {
+        tokio::time::timeout(Duration::from_secs(20), clock.sleeping.notified())
+            .await
+            .unwrap();
+    });
+    let app = app_rx
+        .recv_timeout(Duration::from_secs(20))
+        .expect("startup returns while the provider's clock is held")
+        .unwrap();
+    startup.join().unwrap();
     let mut status = app.services.subscribe_sync_status_values();
     app.runtime.block_on(async {
-        tokio::time::timeout(Duration::from_secs(10), async {
-            loop {
-                if status.borrow_and_update().error.is_some() {
-                    return;
-                }
-                status
-                    .changed()
-                    .await
-                    .expect("sync-status sender remains owned by the app");
-            }
-        })
+        storage.set_online(false);
+        storage.set_faults(coven::Faults::none()).await;
+        clock.time.set(clock.now() + Duration::from_secs(60));
+        let observed = tokio::time::timeout(
+            Duration::from_secs(20),
+            status.wait_for(|status| {
+                status.error.is_some()
+                    || matches!(
+                        status.status,
+                        coven::SyncStatus::Failed { .. } | coven::SyncStatus::Offline { .. }
+                    )
+            }),
+        )
         .await
-        .expect("provider attachment failure reaches sync status");
+        .map(|result| result.map(|_| ()));
+        assert!(
+            matches!(observed, Ok(Ok(()))),
+            "startup failure must reach its observer: {:?}",
+            status.borrow()
+        );
+        app.services.close().await.unwrap();
     });
 }

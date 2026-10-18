@@ -12,7 +12,7 @@ impl ImportService {
         library_manager: LibraryManager,
         preparations: crate::import::CandidatePreparations,
         clock: coven::ClockRef,
-        ids: coven::IdRef,
+        ids: coven::IdSourceRef,
     ) -> Result<ImportServiceHandle, crate::import::ImportError> {
         let runtime = CandidateRuntime::default();
         let event_tx = crate::import::handle::ImportEventBus::new(runtime.clone());
@@ -34,7 +34,7 @@ impl ImportService {
         library_manager: LibraryManager,
         preparations: crate::import::CandidatePreparations,
         clock: coven::ClockRef,
-        ids: coven::IdRef,
+        ids: coven::IdSourceRef,
         file_tags: Arc<dyn crate::import::file_tag_snapshot::FileTagReader>,
     ) -> ImportServiceHandle {
         let runtime = CandidateRuntime::default();
@@ -368,7 +368,7 @@ impl ImportService {
             &mut parsed,
             &preparation.draft,
             self.ids.as_ref(),
-            self.clock.now(),
+            chrono::DateTime::<chrono::Utc>::from(self.clock.now()),
         )?;
 
         let mut prepared = self
@@ -610,7 +610,12 @@ impl ImportService {
             let import_id_for_progress = import_id.to_string();
             let reported_percent = Arc::new(std::sync::atomic::AtomicU8::new(last_release_percent));
             let reported_percent_for_progress = Arc::clone(&reported_percent);
-            let prepared_blob = coven::prepare_external_blob(&file.path, move |consumed| {
+            let prepared_source = match destination {
+                ImportDestination::Local => PreparedImportSource::Local(coven::UserFile {
+                    path: file.path.clone(), size: file.size,
+                    modified_at: chrono::DateTime::from_timestamp_nanos(file.modified_at_ns).into(),
+                }),
+                ImportDestination::Remote { .. } => PreparedImportSource::Shared(Box::pin(coven::prepare_user_file(&file.path, move |consumed| {
                 let completed = bytes_read_before_file + u128::from(consumed);
                 let percent = ((completed * 100) / total_bytes).min(100) as u8;
                 let previous = reported_percent_for_progress
@@ -627,16 +632,21 @@ impl ImportService {
                         ImportPhase::ReadingFiles,
                     );
                 }
-            })
+            }))
             .await
             .map_err(|error| crate::import::ImportError::UnusableFile {
                 detail: format!(
                     "coven could not prepare {} for import: {error}",
                     file.path.display()
                 ),
-            })?;
+            })?),
+            };
             bytes_read += u128::from(file.size);
-            last_release_percent = reported_percent.load(std::sync::atomic::Ordering::Relaxed);
+            let completed_percent = ((bytes_read * 100) / total_bytes).min(100) as u8;
+            if reported_percent.load(std::sync::atomic::Ordering::Relaxed) != completed_percent {
+                self.emit_phase_progress(run, &db_release.id, Some(completed_percent), ImportPhase::ReadingFiles);
+            }
+            last_release_percent = completed_percent;
             let mut db_file = DbFile::new(
                 &db_release.id,
                 &file.relative_path,
@@ -658,7 +668,7 @@ impl ImportService {
             file_ids.insert(file.path.clone(), db_file.id.clone());
             prepared_files.push(PreparedImportFile {
                 row: db_file,
-                blob: prepared_blob,
+                source: prepared_source,
             });
             debug!(
                 "Read file {}/{}: {}",
@@ -767,9 +777,7 @@ impl ImportService {
         };
         // Resize the winner to a ≤600px JPEG thumbnail — one funnel for all three
         // sources — and build the row from that output, so its hash, size and
-        // content type describe the blob that gets stored rather than the image it
-        // was made from. `finalize_import_atomic` derives the readable
-        // `cloud_path` extension from the same row.
+        // content type describe the file that gets stored rather than its source.
         let cover_winner = match cover_candidate {
             Some(candidate) => {
                 // Decoding and re-encoding the image is CPU work.
@@ -803,13 +811,7 @@ impl ImportService {
         self.import_cancels.begin_writing(candidate_key, import_id)?;
         self.emit_phase_progress(run, &db_release.id, None, ImportPhase::Finalizing);
 
-        // A Remote import is made Remote in the same write that creates it —
-        // the same flow the "Make Remote" action runs afterwards: coven uploads
-        // each file from its external (in-place) source, and on the last flips
-        // `remote` true, drops the external refs, and re-emits the subtree (the
-        // cover rides along). The user's original files stay where they are.
-        // Recording needs no cloud connection, so a Remote import offline
-        // commits and uploads once one exists.
+        // Attaching the originals queues their uploads in the import transaction.
         let outbox_revision = library_manager
             .finalize_import_atomic(
                 commit_guard,

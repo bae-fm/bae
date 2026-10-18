@@ -35,6 +35,8 @@ mod import;
 mod library;
 mod musicbrainz;
 mod playback;
+mod storage;
+pub use storage::{connect_storage, remove_uploaded_file, storage_library};
 
 pub use audio::{assert_captured_matches_reference, samples_as_f32};
 pub use discogs::{
@@ -53,7 +55,7 @@ pub use import::{
 pub use library::{
     multi_thread_runtime, open_test_library, open_test_library_with, runtime_with_services,
     setup_fresh_library, setup_test_library, setup_test_library_with_album_dir, temp_test_db,
-    test_config, test_uuid, tracing_init,
+    test_config, test_library_from_handle, test_uuid, tracing_init,
 };
 pub use musicbrainz::{mb_medium, mb_release, mb_track, seed_mb_release};
 pub use playback::{

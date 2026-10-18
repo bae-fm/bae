@@ -1,27 +1,8 @@
 use super::*;
 
 impl Database {
-    /// Admit the second device used by the cross-device database tests.
-    #[cfg(test)]
-    pub(crate) async fn approve_device_pairing(
-        &self,
-        host: &coven::DevicePairingHost,
-        request: &coven::DevicePairingRequest,
-        on_progress: &(dyn Fn(coven::AdmittingDeviceJoinProgress) + Send + Sync),
-        cancel: tokio::sync::watch::Receiver<bool>,
-    ) -> Result<coven::DeviceJoinDriveOutcome, coven::ApproveDevicePairingError> {
-        self.inner
-            .handle
-            .approve_device_pairing(
-                host,
-                request,
-                coven::MemberRole::Member,
-                coven::DeviceJoinApprovalPolicy::AutoApproveSelfIssued,
-                None,
-                on_progress,
-                cancel,
-            )
-            .await
+    pub fn store_id_for_test(&self) -> coven::StoreId {
+        self.store_id()
     }
 
     /// Every row of every table bae can read, rendered, by table name: what
@@ -33,17 +14,19 @@ impl Database {
     ) -> Result<std::collections::BTreeMap<String, Vec<String>>, DbError> {
         self.read(|sql| {
             let tables: Vec<String> = sql.query(
-                "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name",
+                "SELECT name FROM sqlite_master WHERE type = 'table' \
+                 AND substr(name, 1, 7) <> '_coven_' AND substr(name, 1, 7) <> 'sqlite_' \
+                 ORDER BY name",
                 [],
                 |row| row.get(0),
             )?;
             let mut every_row = std::collections::BTreeMap::new();
             for table in tables {
-                let rows = sql.query(&format!("SELECT * FROM \"{table}\""), [], |row| {
+                let mut rows = sql.query(&format!("SELECT * FROM \"{table}\""), [], |row| {
                     (0..row.as_ref().column_count())
                         .map(|column| {
                             row.get_ref(column).map(|value| match value {
-                                coven::rusqlite::types::ValueRef::Text(text) => {
+                                rusqlite::types::ValueRef::Text(text) => {
                                     String::from_utf8_lossy(text).into_owned()
                                 }
                                 other => format!("{other:?}"),
@@ -51,17 +34,7 @@ impl Database {
                         })
                         .collect::<Result<Vec<_>, _>>()
                         .map(|values| values.join(" | "))
-                });
-                let mut rows = match rows {
-                    Ok(rows) => rows,
-                    Err(coven::rusqlite::Error::SqliteFailure(error, _))
-                        if error.code
-                            == coven::rusqlite::ErrorCode::AuthorizationForStatementDenied =>
-                    {
-                        continue
-                    }
-                    Err(error) => return Err(error.into()),
-                };
+                })?;
                 rows.sort();
                 every_row.insert(table, rows);
             }
@@ -70,19 +43,8 @@ impl Database {
         .await
     }
 
-    pub async fn local_blob_cleanup_intent_count_for_test(
-        &self,
-        namespace: &str,
-        blob_id: &str,
-    ) -> Result<i64, coven::DbError> {
-        self.inner
-            .handle
-            .cleanup_intent_count_for_test(namespace, blob_id)
-            .await
-    }
-
     pub async fn queued_upload_count_for_test(&self) -> Result<usize, DbError> {
-        Ok(self.inner.handle.queued_uploads().await?.len())
+        Ok(self.inner.handle.uploads().await?.files.len())
     }
 
     pub async fn queued_upload_count_for_root_for_test(
@@ -91,9 +53,7 @@ impl Database {
         root_id: &str,
     ) -> Result<usize, DbError> {
         Ok(self
-            .inner
-            .handle
-            .queued_uploads_for_root(root_table, root_id)
+            .queued_upload_rows_for_root_for_test(root_table, root_id)
             .await?
             .len())
     }
@@ -103,43 +63,23 @@ impl Database {
         root_table: &str,
         root_id: &str,
     ) -> Result<Vec<(String, String)>, DbError> {
-        Ok(self
-            .inner
-            .handle
-            .queued_uploads_for_root(root_table, root_id)
+        if root_table != "releases" {
+            return Err(DbError::Message(format!(
+                "unknown upload root {root_table}"
+            )));
+        }
+        self.outbox_queue()
             .await?
+            .uploads
             .into_iter()
-            .map(|upload| {
-                (
-                    upload.blob.table().to_string(),
-                    upload.blob.row_id().to_string(),
-                )
+            .filter(|entry| entry.release_id.as_deref() == Some(root_id))
+            .map(|entry| {
+                Ok((
+                    entry.upload.file.table().to_string(),
+                    super::blobs::file_row_id(&entry.upload.file)?.to_string(),
+                ))
             })
-            .collect())
-    }
-
-    pub async fn first_queued_upload_failure_for_test(
-        &self,
-    ) -> Result<Option<(u64, bool)>, DbError> {
-        Ok(self
-            .inner
-            .handle
-            .queued_uploads()
-            .await?
-            .first()
-            .map(|upload| (upload.attempt_count, upload.last_failure.is_some())))
-    }
-
-    /// Connect a device that joined over an injected cloud home: coven resolves
-    /// the store key from the custody the join installed it into.
-    pub async fn connect_sync_with_test_home_custody_for_test(
-        &self,
-        home: Arc<dyn coven::ExactCloudHome>,
-    ) -> Result<(), coven::SyncError> {
-        self.inner
-            .handle
-            .connect_sync_with_test_home_custody(home)
-            .await
+            .collect()
     }
 
     /// Write rows into this device's local-only tables — state no sync ever
@@ -159,28 +99,6 @@ impl Database {
         self.read(move |sql| {
             sql.query(&query, [], |row| row.get::<_, String>(0))
                 .map_err(DbError::from)
-        })
-        .await
-    }
-
-    pub async fn pending_and_blocked_writes_for_test(
-        &self,
-    ) -> Result<(String, String), CovenError> {
-        Ok((
-            format!("{:?}", self.inner.handle.pending_writes().await?),
-            format!("{:?}", self.inner.handle.blocked_writes().await?),
-        ))
-    }
-
-    /// Take one of bae's own tables away, the way a database left behind by an
-    /// older build is missing what the current one reads. The table keeps its
-    /// rows under `{table}_unavailable`, so the read that needed it fails
-    /// rather than silently seeing nothing.
-    pub async fn rename_host_table_for_test(&self, table: &str) -> Result<(), DbError> {
-        let statement = format!("ALTER TABLE {table} RENAME TO {table}_unavailable");
-        self.call_sql(move |sql| {
-            sql.execute(&statement, [])?;
-            Ok(())
         })
         .await
     }
@@ -210,14 +128,14 @@ impl Database {
         let shared_composer_id = shared_composer_id.to_string();
         let exclusive_composer_id = exclusive_composer_id.to_string();
         self.read(move |sql| {
-            let work_exists = |id: &str| -> coven::rusqlite::Result<bool> {
+            let work_exists = |id: &str| -> rusqlite::Result<bool> {
                 sql.query_row(
                     "SELECT EXISTS(SELECT 1 FROM works WHERE musicbrainz_work_id = ?1)",
                     [id],
                     |row| row.get(0),
                 )
             };
-            let composer_exists = |id: &str| -> coven::rusqlite::Result<bool> {
+            let composer_exists = |id: &str| -> rusqlite::Result<bool> {
                 sql.query_row(
                     "SELECT EXISTS(SELECT 1 FROM artists WHERE musicbrainz_artist_id = ?1)",
                     [id],

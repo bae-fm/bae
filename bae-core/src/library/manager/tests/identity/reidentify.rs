@@ -49,8 +49,7 @@ async fn re_identify_with_file_metadata_clears_identities_and_moves_album() {
     }
 
     let album = create_test_album();
-    let mut release = create_test_release(&album.id);
-    release.remote = false;
+    let release = create_test_release(&album.id);
 
     manager.database.insert_album(&album).await.unwrap();
     manager.database.insert_release(&release).await.unwrap();
@@ -450,8 +449,7 @@ async fn re_identify_with_file_metadata_reseeds_rows_from_file_tags() {
 
     let album = create_test_album();
     // The record inserted below is MusicBrainz's; the rows carry MB metadata.
-    let mut release = create_test_release(&album.id);
-    release.remote = false;
+    let release = create_test_release(&album.id);
 
     manager.database.insert_album(&album).await.unwrap();
     manager.database.insert_release(&release).await.unwrap();
@@ -573,7 +571,6 @@ async fn re_identify_with_file_metadata_replaces_previously_edited_fields() {
 
     let album = create_test_album();
     let mut release = create_test_release(&album.id);
-    release.remote = false;
     // A release read from MusicBrainz with one field a person typed over it.
     release.pressing.labels = vec![crate::pressing::ReleaseLabel::of(Some("Typed Label"), None)];
 

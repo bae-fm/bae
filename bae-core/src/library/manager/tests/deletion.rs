@@ -24,7 +24,7 @@ async fn work_detail_release_rows_are_display_ready() {
     );
     let cover = DbLibraryImage {
         id: release.id.clone(),
-        blob_id: format!("{}-cover-blob", release.id),
+        blob_id: bae_test_support::test_uuid(&format!("{}-cover-blob", release.id)),
         image_type: LibraryImageType::Cover,
         content_type: ContentType::Jpeg,
         file_size: 100,
@@ -32,8 +32,7 @@ async fn work_detail_release_rows_are_display_ready() {
         height: None,
         source: "local".to_string(),
         source_url: None,
-        cloud_path: None,
-        content_hash: crate::util::fs::hash_bytes(b"fixture"),
+
         created_at: now,
     };
 
@@ -106,161 +105,53 @@ async fn test_delete_release_with_multiple_releases_preserves_album() {
     assert_eq!(releases[0].id, release2.id);
 }
 
-#[cfg(feature = "test-utils")]
+/// Deleted rows disappear immediately; committed file uploads remain readable
+/// and drain independently, because earlier shared writes still name them.
 #[tokio::test]
-async fn delete_release_cancels_in_flight_make_remote() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    let home = connect_test_cloud(&manager).await;
-    let release = insert_partially_uploaded_make_remote_release(&manager, temp_dir.path()).await;
-    let deleted_before = home.exact_delete_count();
-
-    manager.delete_release(&release.id).await.unwrap();
-
-    assert!(find_release(&manager, &release.id).await.is_none());
-    // The delete records the unwind rather than performing it: the object
-    // already in the cloud has to be taken back out, and only a drain can do
-    // that. Until it runs the queue is intact and says what it is doing.
-    assert_eq!(
-        make_remote_progress(&manager, &release.id).await,
-        Some(coven::MakeRemoteProgress::Cancelling),
-        "the deleted release's transition is being unwound"
-    );
-    manager.drain_uploads_for_test().await.unwrap();
-
-    assert!(
-        queued_upload_count(&manager).await == 0,
-        "the drain took the deleted release's uploads out of the queue"
-    );
-    assert!(make_remote_progress(&manager, &release.id).await.is_none());
-    // The object that already reached the cloud is removed outright by the
-    // cancel's own unwind: the make-Remote never published, so no accepted
-    // history names the object and coven's reclaim could never find it.
-    assert!(
-        home.exact_delete_count() > deleted_before,
-        "the uploaded object is deleted from the cloud"
-    );
+async fn deletion_keeps_committed_file_uploads_without_losing_the_outbox() {
+    for delete_album in [false, true] {
+        let (manager, temp) = setup_test_manager().await;
+        let storage = connect_test_cloud(&manager).await;
+        let source = temp.path().join("source");
+        let release = insert_release_with_queued_uploads(&manager, &source, "Album", &[("track.flac", b"audio")]).await;
+        store_test_cover(&manager, &release.id, b"cover").await;
+        storage.set_online(false);
+        if delete_album { manager.delete_album(&release.album_id).await.unwrap(); }
+        else { manager.delete_release(&release.id).await.unwrap(); }
+        assert!(find_release(&manager, &release.id).await.is_none());
+        let snapshot = manager.outbox_snapshot().await.unwrap();
+        assert_eq!(snapshot.total.queued, 2);
+        assert_eq!(std::fs::read(source.join("track.flac")).unwrap(), b"audio");
+        storage.set_online(true);
+        assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 2);
+        let snapshot = manager.outbox_snapshot().await.unwrap();
+        assert!(snapshot.upload_groups.is_empty());
+        assert!(snapshot.other_files.is_empty());
+    }
 }
 
-#[cfg(feature = "test-utils")]
+/// A closed store refuses deletion; reopening it proves no rows were changed.
 #[tokio::test]
-/// Deleting is local work. A cloud that refuses the object's removal does not
-/// keep the release: the removal stays owed and waits for a drain that can
-/// carry it out, the way any pending transfer does.
-async fn delete_release_survives_a_cloud_that_refuses_the_cleanup() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    let home = connect_test_cloud(&manager).await;
-    let release = insert_partially_uploaded_make_remote_release(&manager, temp_dir.path()).await;
-    home.fail_exact_delete_on_call(1);
-
-    manager
-        .delete_release(&release.id)
-        .await
-        .expect("the delete does not wait on the cloud");
-
-    assert!(find_release(&manager, &release.id).await.is_none());
-    assert_eq!(
-        make_remote_progress(&manager, &release.id).await,
-        Some(coven::MakeRemoteProgress::Cancelling),
-        "and the unwind is still owed"
-    );
-}
-
-#[cfg(feature = "test-utils")]
-#[tokio::test]
-async fn delete_album_cancels_in_flight_make_remote() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    let home = connect_test_cloud(&manager).await;
-    let release = insert_partially_uploaded_make_remote_release(&manager, temp_dir.path()).await;
-    let deleted_before = home.exact_delete_count();
-
-    manager.delete_album(&release.album_id).await.unwrap();
-
-    assert!(find_release(&manager, &release.id).await.is_none());
-    assert_eq!(
-        make_remote_progress(&manager, &release.id).await,
-        Some(coven::MakeRemoteProgress::Cancelling),
-        "each deleted release's transition is being unwound"
-    );
-    manager.drain_uploads_for_test().await.unwrap();
-
-    assert!(
-        queued_upload_count(&manager).await == 0,
-        "the drain took the deleted album's uploads out of the queue"
-    );
-    assert!(make_remote_progress(&manager, &release.id).await.is_none());
-    // The object that already reached the cloud is removed outright by the
-    // cancel's own unwind: the make-Remote never published, so no accepted
-    // history names the object and coven's reclaim could never find it.
-    assert!(
-        home.exact_delete_count() > deleted_before,
-        "the uploaded object is deleted from the cloud"
-    );
-}
-
-#[cfg(feature = "test-utils")]
-#[tokio::test]
-/// See the release case: a cloud that refuses the removal does not keep the
-/// album. The removal stays owed.
-async fn delete_album_survives_a_cloud_that_refuses_the_cleanup() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    let home = connect_test_cloud(&manager).await;
-    let release = insert_partially_uploaded_make_remote_release(&manager, temp_dir.path()).await;
-    home.fail_exact_delete_on_call(1);
-
-    manager
-        .delete_album(&release.album_id)
-        .await
-        .expect("the delete does not wait on the cloud");
-
-    assert!(find_release(&manager, &release.id).await.is_none());
-    assert_eq!(
-        make_remote_progress(&manager, &release.id).await,
-        Some(coven::MakeRemoteProgress::Cancelling),
-        "and the unwind is still owed"
-    );
-}
-
-#[tokio::test]
-async fn delete_release_fails_before_rows_are_deleted_when_file_cleanup_lookup_fails() {
-    let (manager, _temp_dir, _album, release) = manager_with_release().await;
-
-    let file = DbFile::new(
-        &release.id,
-        "track1.flac",
-        5,
-        crate::util::content_type::ContentType::Flac,
-        Uuid::new_v4().to_string(),
-        Utc::now(),
-    );
-    manager.add_file(&file).await.unwrap();
-
-    rename_table_for_test(&manager, "release_files").await;
-
-    let error = manager.delete_release(&release.id).await.unwrap_err();
-    assert!(matches!(error, LibraryError::Database(_)));
-    assert!(find_release(&manager, &release.id).await.is_some());
-}
-
-#[tokio::test]
-async fn delete_album_fails_before_rows_are_deleted_when_track_lookup_fails() {
-    let (manager, _temp_dir, album, _release) = manager_with_release().await;
-
-    rename_table_for_test(&manager, "tracks").await;
-
-    let error = manager.delete_album(&album.id).await.unwrap_err();
-    assert!(matches!(error, LibraryError::Database(_)));
-    assert!(find_album(&manager, &album.id).await.is_some());
-}
-
-#[tokio::test]
-async fn delete_album_fails_before_rows_are_deleted_when_file_cleanup_lookup_fails() {
-    let (manager, _temp_dir, album, _release) = manager_with_release().await;
-
-    rename_table_for_test(&manager, "release_files").await;
-
-    let error = manager.delete_album(&album.id).await.unwrap_err();
-    assert!(matches!(error, LibraryError::Database(_)));
-    assert!(find_album(&manager, &album.id).await.is_some());
+async fn deletion_refuses_an_unavailable_database_without_losing_rows() {
+    for delete_album in [false, true] {
+        let (manager, _temp, album, release) = manager_with_release().await;
+        store_test_cover_image(&manager, &release.id).await;
+        let before = manager.database.every_row_for_test().await.unwrap();
+        let id = manager.database.store_id();
+        manager.database.close().await.unwrap();
+        let error = if delete_album {
+            manager.delete_album(&album.id).await.unwrap_err()
+        } else {
+            manager.delete_release(&release.id).await.unwrap_err()
+        };
+        assert!(matches!(error, LibraryError::Database(_)), "{error}");
+        let handle = crate::library::configure_store(
+            manager.installation.builder(manager.app_dir.store_layout())
+        ).open(id).await.unwrap();
+        let reopened = Database::from_handle(handle, manager.clock.clone());
+        assert_eq!(reopened.every_row_for_test().await.unwrap(), before);
+        reopened.close().await.unwrap();
+    }
 }
 
 /// A track's display carries the cover reference the UI caches its art under,
@@ -312,18 +203,6 @@ async fn track_display_carries_the_cover_version() {
     );
 }
 
-#[tokio::test]
-async fn delete_release_fails_before_rows_are_deleted_when_cover_lookup_fails() {
-    let (manager, _temp_dir, _album, release) = manager_with_release().await;
-    store_test_cover_image(&manager, &release.id).await;
-
-    rename_table_for_test(&manager, "covers").await;
-
-    let error = manager.delete_release(&release.id).await.unwrap_err();
-    assert!(matches!(error, LibraryError::Database(_)));
-    assert!(find_release(&manager, &release.id).await.is_some());
-}
-
 /// Deleting a release cascade-deletes its `covers` row (the FK on `covers.id`
 /// to `releases`), including a cover whose blob really did reach the cloud —
 /// the delete plan reads the published cover's blob reference before the row
@@ -348,8 +227,7 @@ async fn delete_release_removes_its_cover_image() {
     )
     .await;
     // A sibling release so the album survives the single-release delete.
-    let mut release2 = create_test_release(&release1.album_id);
-    release2.remote = false;
+    let release2 = create_test_release(&release1.album_id);
     insert_release(&manager, &release2).await;
 
     // Give release1 a cover: a `covers` row plus its blob in one coven batch.
@@ -365,9 +243,8 @@ async fn delete_release_removes_its_cover_image() {
                 height: None,
                 source: "local".to_string(),
                 source_url: None,
-                cloud_path: None,
-                content_hash: crate::util::fs::hash_bytes(b"image"),
-                created_at: manager.clock.now(),
+
+                created_at: manager.clock.now().into(),
             },
             b"image",
         )
@@ -416,9 +293,8 @@ async fn delete_album_removes_release_covers() {
                 height: None,
                 source: "local".to_string(),
                 source_url: None,
-                cloud_path: None,
-                content_hash: crate::util::fs::hash_bytes(b"image"),
-                created_at: manager.clock.now(),
+
+                created_at: manager.clock.now().into(),
             },
             b"image",
         )
@@ -434,49 +310,6 @@ async fn delete_album_removes_release_covers() {
         .await
         .unwrap()
         .is_none());
-}
-
-/// A cover's bytes live in coven's own store, which reclaims only blobs a write
-/// declares deleted. A release delete that only drops the `covers` row leaves
-/// the bytes behind for good, so the delete declares the cover blob in the same
-/// write and coven records the cleanup with it.
-#[tokio::test]
-async fn delete_release_declares_its_cover_blob_deleted() {
-    let (manager, _temp_dir, _album, release) = manager_with_release().await;
-    store_test_cover_image(&manager, &release.id).await;
-    let cover_blob = bae_test_support::test_uuid(&format!("{}-{COVER_BLOB}", release.id));
-
-    manager.delete_release(&release.id).await.unwrap();
-
-    assert_eq!(
-        manager
-            .database
-            .local_blob_cleanup_intent_count_for_test(crate::sync::COVERS_NAMESPACE, &cover_blob)
-            .await
-            .unwrap(),
-        1,
-        "the deleted release's cover blob is cleaned up"
-    );
-}
-
-/// The album delete takes each release's cover with it the same way.
-#[tokio::test]
-async fn delete_album_declares_each_cover_blob_deleted() {
-    let (manager, _temp_dir, album, release) = manager_with_release().await;
-    store_test_cover_image(&manager, &release.id).await;
-    let cover_blob = bae_test_support::test_uuid(&format!("{}-{COVER_BLOB}", release.id));
-
-    manager.delete_album(&album.id).await.unwrap();
-
-    assert_eq!(
-        manager
-            .database
-            .local_blob_cleanup_intent_count_for_test(crate::sync::COVERS_NAMESPACE, &cover_blob)
-            .await
-            .unwrap(),
-        1,
-        "the deleted album's cover blob is cleaned up"
-    );
 }
 
 /// The blobs a delete declares are read before its write opens. A cover

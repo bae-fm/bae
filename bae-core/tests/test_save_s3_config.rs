@@ -11,7 +11,6 @@
 
 use bae_test_support as support;
 
-use bae_core::config::HomeStorage;
 use bae_core::sync::S3ConfigData;
 use bae_core::ui::UiErrorCategory;
 use support::setup_fresh_library;
@@ -24,7 +23,7 @@ fn unreachable_s3_config() -> S3ConfigData {
         key_prefix: None,
         access_key: "any-key".to_string(),
         secret_key: "any-secret".to_string(),
-        storage: HomeStorage::Opaque,
+        profile: None,
     }
 }
 
@@ -36,20 +35,18 @@ fn probe_failure_persists_nothing_and_surfaces_as_cloud_setup_network() {
     // Nothing listens on port 1, so the probe fails with connection-refused
     // before `save_s3_config` reaches any of its persisting steps.
     let err = runtime
-        .block_on(lm.save_s3_config(unreachable_s3_config()))
+        .block_on(lm.save_s3_config(unreachable_s3_config(), "Test Device"))
         .expect_err("an unreachable endpoint must fail the probe");
     // An unreachable backend is the network case within the cloud-setup
     // category, distinct from the authentication and permission cases.
     assert_eq!(
         err.category(),
-        UiErrorCategory::CloudSetup(coven::CloudHomeSetupFailure::Network),
+        UiErrorCategory::CloudSetup(coven::StorageFailure::Network),
         "got: {err}"
     );
 
     // The library is untouched: no provider recorded and sync is unconfigured.
-    let config = lm.get_config();
-    assert_eq!(config.cloud_home.provider, None);
-    assert!(!lm.is_sync_configured());
+    assert!(!runtime.block_on(lm.is_sync_configured()).unwrap());
 }
 
 #[test]
@@ -64,7 +61,7 @@ fn save_s3_config_survives_a_narrow_host_stack() {
                 .stack_size(512 * 1024)
                 .spawn_scoped(scope, move || {
                     runtime
-                        .block_on(manager.save_s3_config(unreachable_s3_config()))
+                        .block_on(manager.save_s3_config(unreachable_s3_config(), "Test Device"))
                         .expect_err("an unreachable endpoint must fail the probe");
                 })
                 .expect("spawn narrow S3 host")

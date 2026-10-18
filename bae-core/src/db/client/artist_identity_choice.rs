@@ -11,7 +11,7 @@ impl Database {
         content_hash: &str,
         metadata_revision: u64,
         choice: Choice,
-        ids: &dyn coven::IdProvider,
+        ids: &dyn coven::IdSource,
     ) -> Result<(), DbError> {
         if choice == Choice::SameArtist {
             return self
@@ -19,7 +19,7 @@ impl Database {
                 .await;
         }
         let hash = content_hash.to_string();
-        let new_id = (choice == Choice::Neither).then(|| ids.new_id());
+        let new_id = (choice == Choice::Neither).then(|| ids.new_id().to_string());
         self.call(move |sql| {
             require_revision(sql, &hash, metadata_revision)?;
             let (discogs, musicbrainz, discogs_library, musicbrainz_library): (

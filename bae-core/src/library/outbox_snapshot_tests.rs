@@ -1,197 +1,152 @@
 use super::*;
 use crate::db::DbOutboxUpload;
 
-const RELEASE: &str = "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e";
-const SMALL_FILE: &str = "00415c7f-b363-4ed9-8aad-422b93e974e9";
-const LARGE_FILE: &str = "357d9eb4-a021-4555-8713-0bc652d83c65";
-const OTHER_RELEASE: &str = "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b";
-const OTHER_FILE: &str = "36ebe9b3-749f-4638-82b2-57cba256ff68";
-
-fn row_blob(
-    table: &str,
-    row_id: &str,
-    namespace: &str,
-    blob_id: &str,
-    plaintext_size: u64,
-) -> coven::RowBlobRef {
-    coven::RowBlobRef::new(
-        table.to_string(),
-        row_id.to_string(),
-        "0000000001000-0000-device-a".to_string(),
-        "blob_id".to_string(),
-        coven::BlobRef {
-            namespace: namespace.to_string(),
-            id: blob_id.to_string(),
-            scope: coven::BlobScope::Master,
-            cloud_path: None,
-            provenance: coven::Provenance::HostProvided,
-            fill: coven::CacheFill::CacheEager,
-        },
-        plaintext_size,
-        coven::ObjectHash::digest(blob_id.as_bytes()),
-        coven::RowBlobAuthority::Local,
-        None,
-    )
-    .expect("valid queued test blob")
+/// File references are issued by coven; the tests supply its public progress values.
+async fn queued_files() -> (
+    coven::CovenHandle,
+    tempfile::TempDir,
+    Vec<coven::QueuedUpload>,
+) {
+    let directory = tempfile::tempdir().unwrap();
+    let installation = coven::TestCoven::new();
+    let tables = ["release_files", "covers", "artist_images"]
+        .map(|table| {
+            coven::SyncedTable::new(table, coven::RowIdentity::SharedKey).carries_files(
+                coven::FileDecl::new(
+                    table,
+                    1024 * 1024,
+                    coven::Provenance::AppProvided,
+                    coven::CacheFill::CacheLazy,
+                ),
+            )
+        })
+        .to_vec();
+    let schema =
+        "CREATE TABLE release_files(id TEXT PRIMARY KEY NOT NULL,size INTEGER,hash BLOB,location TEXT);\n\
+        CREATE TABLE covers(id TEXT PRIMARY KEY NOT NULL,size INTEGER,hash BLOB,location TEXT);\n\
+        CREATE TABLE artist_images(id TEXT PRIMARY KEY NOT NULL,size INTEGER,hash BLOB,location TEXT);";
+    let handle = installation
+        .builder(coven::StoreLayout::new(directory.path().into()))
+        .synced_tables(tables)
+        .migrations(vec![coven::Migration::addition(
+            1,
+            "upload fixtures",
+            schema,
+        )])
+        .create_store("Upload Test")
+        .await
+        .unwrap();
+    handle.write_with_files(|batch| {
+        for (table, id, size) in [("release_files", "first", 100), ("release_files", "second", 1000), ("covers", "first", 20), ("artist_images", "portrait", 30)] {
+            batch.put_file(table, id, vec![7; size]);
+        }
+        Ok(())
+    }, |sql| {
+        sql.execute_batch("INSERT INTO release_files(id) VALUES('first'),('second'); INSERT INTO covers(id) VALUES('first'); INSERT INTO artist_images(id) VALUES('portrait');")?;
+        Ok(())
+    }).await.unwrap();
+    let mut files = handle.uploads().await.unwrap().files;
+    files.sort_by_key(|upload| {
+        (
+            upload.file.table().to_string(),
+            format!("{:?}", upload.file.key()),
+        )
+    });
+    (handle, directory, files)
 }
 
-fn upload_id(namespace: &str, blob_id: &str) -> String {
-    format!("{namespace}:{blob_id}")
+fn labelled(
+    upload: coven::QueuedUpload,
+    release: Option<&str>,
+    label: UploadFileLabel,
+) -> DbOutboxUpload {
+    DbOutboxUpload {
+        upload,
+        release_id: release.map(str::to_string),
+        label,
+    }
 }
 
 #[test]
-fn activity_ranks_the_real_upload_journey() {
+fn active_uploads_take_precedence_over_waiting_files() {
     let mut progress = UploadProgress::default();
     assert_eq!(progress.activity(), None);
-    for (activity, set) in [
-        (UploadActivity::Queued, 0),
-        (UploadActivity::Prepared, 1),
-        (UploadActivity::Retrying, 2),
-        (UploadActivity::Preparing, 3),
-        (UploadActivity::Uploading, 4),
-        (UploadActivity::Publishing, 5),
-        (UploadActivity::Cancelling, 6),
-    ] {
-        match set {
-            0 => progress.queued = 1,
-            1 => progress.prepared = 1,
-            2 => progress.retrying = 1,
-            3 => progress.preparing = 1,
-            4 => progress.uploading = 1,
-            5 => progress.publishing = 1,
-            6 => progress.cancelling = 1,
-            _ => unreachable!(),
-        }
-        assert_eq!(progress.activity(), Some(activity));
-    }
-}
-
-#[test]
-#[should_panic(expected = "outbox progress overflow: upload_bytes_done")]
-fn aggregate_progress_cannot_wrap_its_byte_counters() {
-    let mut total = UploadProgress {
-        upload_bytes_done: u64::MAX,
-        ..Default::default()
-    };
-    let next = UploadProgress {
-        upload_bytes_done: 1,
-        ..Default::default()
-    };
-
-    total.add_progress(&next);
-}
-
-/// One release with two queued uploads (100 and 1000 bytes), as coven's
-/// queue plus bae's context report them.
-fn two_queued_uploads() -> DbOutboxQueue {
-    DbOutboxQueue {
-        uploads: vec![
-            queued_upload(SMALL_FILE, "01 Track Title.flac", 100),
-            queued_upload(LARGE_FILE, "02 Track Title.flac", 1000),
-        ],
-        make_remotes: Vec::new(),
-    }
-}
-
-fn queued_upload(file_id: &str, file_name: &str, file_size: u64) -> DbOutboxUpload {
-    DbOutboxUpload {
-        release_id: RELEASE.to_string(),
-        blob: row_blob(
-            crate::sync::RELEASE_FILES_NAMESPACE,
-            file_id,
-            crate::sync::RELEASE_FILES_NAMESPACE,
-            file_id,
-            file_size,
-        ),
-        phase: crate::db::DbUploadPhase::Pending,
-        attempt_count: 0,
-        last_failure: None,
-        created_at: 1_700_000_000_000,
-        label: UploadFileLabel::Filename(file_name.to_string()),
-    }
-}
-
-fn build(
-    queue: DbOutboxQueue,
-    transient: &HashMap<UploadBlobKey, TransientUploadState>,
-) -> OutboxSnapshot {
-    build_outbox_snapshot(queue, transient, &UploadThroughput::new(), false)
-}
-
-/// The durable queue query and the in-process callback stream are independent
-/// feeds: a provider callback can arrive before the requery delivers the
-/// Prepared row, and a failed attempt's rollback can land while its last
-/// callback is still in flight. A provider-transfer transient paired with a
-/// durable Pending row refines nothing — the row renders from its durable
-/// state alone.
-#[test]
-fn a_provider_transient_on_a_pending_row_is_a_stale_straggler() {
-    for straggler in [
-        TransientUploadState::UploadStarted,
-        TransientUploadState::Uploading(ByteProgress::new(250, 1016).unwrap()),
-    ] {
-        let transient = HashMap::from([(
-            UploadBlobKey::new(crate::sync::RELEASE_FILES_NAMESPACE, LARGE_FILE),
-            straggler,
-        )]);
-
-        // No recorded failure: the durable row still reads Queued.
-        let snapshot = build(two_queued_uploads(), &transient);
-        assert_eq!(
-            snapshot.upload_groups[0].files[1].state,
-            UploadState::Queued
-        );
-        assert_eq!(snapshot.total.upload_bytes_done, 0);
-
-        // A recorded failure: the durable row reads its retry state.
-        let mut queue = two_queued_uploads();
-        queue.uploads[1].attempt_count = 1;
-        queue.uploads[1].last_failure = Some(coven::OutboxFailure::other("provider write failed"));
-        let snapshot = build(queue, &transient);
-        assert_eq!(
-            snapshot.upload_groups[0].files[1].state,
-            UploadState::RetryingPreparation {
-                last_error: "provider write failed".to_string(),
-            }
-        );
-    }
-}
-
-/// The queue enqueues in whatever order the walk produced. A release's files
-/// are listed by name instead, naturally and ignoring case, with the release's
-/// own artwork ahead of them — core cannot sort the artwork's name, which each
-/// platform localizes.
-#[test]
-fn a_releases_files_are_listed_by_name_with_the_cover_first() {
-    let names = [
-        "disc 2/09 Track.flac",
-        "Disc 1/18 Track.flac",
-        "Disc 1/05 Track.flac",
-    ];
-    let mut uploads: Vec<DbOutboxUpload> = names
-        .iter()
-        .enumerate()
-        .map(|(i, name)| queued_upload(&format!("file-{i}"), name, 100))
-        .collect();
-    uploads.push(DbOutboxUpload {
-        blob: row_blob(
-            crate::sync::COVERS_NAMESPACE,
-            "cover-row",
-            crate::sync::COVERS_NAMESPACE,
-            "cover-blob",
-            20,
-        ),
-        label: UploadFileLabel::Cover,
-        ..queued_upload("cover-row", "unused", 0)
+    progress.add(UploadState::Waiting);
+    assert_eq!(progress.activity(), Some(UploadActivity::Queued));
+    assert_eq!(progress.bar(), None);
+    progress.add(UploadState::Uploading {
+        bytes_confirmed: 40,
+        bytes_total: 116,
     });
-    let snapshot = build(
+    assert_eq!(progress.activity(), Some(UploadActivity::Uploading));
+    assert_eq!(
+        progress.bar(),
+        Some(UploadBar {
+            bytes_done: 40,
+            bytes_total: 116
+        })
+    );
+}
+
+#[test]
+#[should_panic(expected = "upload bytes overflow")]
+fn aggregate_progress_cannot_wrap_its_counters() {
+    let mut progress = UploadProgress::default();
+    progress.add(UploadState::Uploading {
+        bytes_confirmed: u64::MAX,
+        bytes_total: u64::MAX,
+    });
+    progress.add(UploadState::Uploading {
+        bytes_confirmed: 1,
+        bytes_total: 1,
+    });
+}
+
+#[test]
+#[should_panic(expected = "provider progress exceeds file size")]
+fn progress_cannot_exceed_its_denominator() {
+    UploadProgress::default().add(UploadState::Uploading {
+        bytes_confirmed: 117,
+        bytes_total: 116,
+    });
+}
+
+#[tokio::test]
+async fn files_group_by_release_and_sort_naturally_with_artwork_first() {
+    let (handle, _directory, files) = queued_files().await;
+    let mut uploads = Vec::new();
+    let audio = files
+        .iter()
+        .filter(|file| file.file.table() == "release_files")
+        .cloned()
+        .collect::<Vec<_>>();
+    for (file, name) in audio
+        .into_iter()
+        .zip(["Disc 1/18 Track.flac", "disc 1/05 Track.flac"])
+    {
+        uploads.push(labelled(
+            file,
+            Some("release"),
+            UploadFileLabel::Filename(name.into()),
+        ));
+    }
+    uploads.push(labelled(
+        files
+            .iter()
+            .find(|file| file.file.table() == "covers")
+            .unwrap()
+            .clone(),
+        Some("release"),
+        UploadFileLabel::Cover,
+    ));
+    let snapshot = OutboxSnapshot::from_queue(
         DbOutboxQueue {
+            paused: false,
             uploads,
-            make_remotes: Vec::new(),
         },
         &HashMap::new(),
     );
-
+    assert_eq!(snapshot.upload_groups.len(), 1);
     assert_eq!(
         snapshot.upload_groups[0]
             .files
@@ -200,781 +155,169 @@ fn a_releases_files_are_listed_by_name_with_the_cover_first() {
             .collect::<Vec<_>>(),
         vec![
             UploadFileLabel::Cover,
-            UploadFileLabel::Filename("Disc 1/05 Track.flac".to_string()),
-            UploadFileLabel::Filename("Disc 1/18 Track.flac".to_string()),
-            UploadFileLabel::Filename("disc 2/09 Track.flac".to_string()),
+            UploadFileLabel::Filename("disc 1/05 Track.flac".into()),
+            UploadFileLabel::Filename("Disc 1/18 Track.flac".into())
         ]
     );
+    assert_eq!(snapshot.total.queued, 3);
+    assert_eq!(snapshot.total.upload_bytes_total, 0);
+    assert_eq!(snapshot.total.bar(), None);
+    handle.close().await.unwrap();
 }
 
-#[test]
-fn upload_groups_group_a_releases_files_with_aggregate_progress() {
-    let snapshot = build(two_queued_uploads(), &HashMap::new());
-
-    // The release's two files collapse to one group carrying both.
-    assert_eq!(snapshot.upload_groups.len(), 1);
-    let group = &snapshot.upload_groups[0];
-    assert_eq!(group.release_id, RELEASE);
-    assert_eq!(group.files.len(), 2);
-    assert_eq!(
-        group.files[0].label,
-        UploadFileLabel::Filename("01 Track Title.flac".to_string())
-    );
-    assert_eq!(group.files[0].state, UploadState::Queued);
-    // Aggregate progress: both queued, summed bytes (100 + 1000).
-    assert_eq!(group.progress.queued, 2);
-    assert_eq!(group.progress.uploading, 0);
-    assert_eq!(group.progress.preparation_bytes_total, 1100);
-    assert!(group.progress.can_cancel());
-}
-
-#[test]
-fn source_unavailable_failure_projects_its_path_for_the_release() {
-    let mut queue = two_queued_uploads();
-    let source_path = std::path::PathBuf::from("/Volumes/Library/Album/01 Track.flac");
-    queue.uploads[0].attempt_count = 1;
-    queue.uploads[0].last_failure = Some(coven::OutboxFailure::source_unavailable(
-        source_path.clone(),
-        "source file is unavailable",
-    ));
-
-    let snapshot = build(queue, &HashMap::new());
-
-    assert_eq!(
-        snapshot.upload_groups[0].progress.issue,
-        Some(UploadIssue::SourceUnavailable {
-            paths: vec![source_path]
-        })
-    );
-}
-
-#[test]
-fn live_bytes_ride_the_active_file_and_the_totals() {
-    // The large file is uploading right now (250 of 1000 bytes done); the
-    // small file is still queued.
-    let mut queue = two_queued_uploads();
-    queue.uploads[1].phase = crate::db::DbUploadPhase::Prepared {
-        provider_bytes_total: 1016,
+#[tokio::test]
+async fn provider_bytes_and_file_bytes_stay_distinct() {
+    let (handle, _directory, files) = queued_files().await;
+    let mut audio = files
+        .into_iter()
+        .filter(|file| file.file.table() == "release_files")
+        .collect::<Vec<_>>();
+    audio[1].phase = UploadState::Uploading {
+        bytes_confirmed: 250,
+        bytes_total: 1016,
     };
-    let transient = HashMap::from([(
-        UploadBlobKey::new(crate::sync::RELEASE_FILES_NAMESPACE, LARGE_FILE),
-        TransientUploadState::Uploading(ByteProgress::new(250, 1016).unwrap()),
-    )]);
-    let snapshot = build(queue, &transient);
-
-    assert_eq!(snapshot.total.preparation_bytes_total, 1100);
+    let uploads = audio
+        .into_iter()
+        .map(|file| {
+            labelled(
+                file,
+                Some("release"),
+                UploadFileLabel::Filename("Track.flac".into()),
+            )
+        })
+        .collect();
+    let snapshot = OutboxSnapshot::from_queue(
+        DbOutboxQueue {
+            paused: false,
+            uploads,
+        },
+        &HashMap::new(),
+    );
+    assert_eq!(snapshot.total.queued, 1);
+    assert_eq!(snapshot.total.uploading, 1);
+    assert_eq!(snapshot.total.upload_bytes_done, 250);
     assert_eq!(snapshot.total.upload_bytes_total, 1016);
-    // bytes_done is the in-flight file's live progress.
-    assert_eq!(snapshot.total.upload_bytes_done, 250);
-    assert_eq!(snapshot.total.uploading, 1);
-    assert_eq!(snapshot.total.queued, 1);
-    assert!(
-        !snapshot.total.upload_bytes_total_complete,
-        "the queued file's provider size is not known yet"
-    );
-    let group = &snapshot.upload_groups[0];
-    let active = group
+    let active = snapshot.upload_groups[0]
         .files
         .iter()
-        .find(|f| f.file_id == upload_id(crate::sync::RELEASE_FILES_NAMESPACE, LARGE_FILE))
-        .expect("active file listed");
+        .find(|file| matches!(file.state, UploadState::Uploading { .. }))
+        .unwrap();
+    assert_eq!(active.source_bytes_total, 1000);
     assert_eq!(
-        active.state,
-        UploadState::Uploading(ByteProgress::new(250, 1016).unwrap())
-    );
-}
-
-#[test]
-fn pause_state_is_absolute_while_transfer_work_is_active() {
-    let mut queue = two_queued_uploads();
-    queue.uploads[1].phase = crate::db::DbUploadPhase::Prepared {
-        provider_bytes_total: 1016,
-    };
-    let transient = HashMap::from([(
-        UploadBlobKey::new(crate::sync::RELEASE_FILES_NAMESPACE, LARGE_FILE),
-        TransientUploadState::Uploading(ByteProgress::new(250, 1016).unwrap()),
-    )]);
-
-    let paused_during_upload =
-        build_outbox_snapshot(queue.clone(), &transient, &UploadThroughput::new(), true);
-    assert_eq!(paused_during_upload.pause_state, OutboxPauseState::Paused);
-
-    let paused = build_outbox_snapshot(queue, &HashMap::new(), &UploadThroughput::new(), true);
-    assert_eq!(paused.pause_state, OutboxPauseState::Paused);
-
-    let preparing = HashMap::from([(
-        UploadBlobKey::new(crate::sync::RELEASE_FILES_NAMESPACE, SMALL_FILE),
-        TransientUploadState::Preparing(ByteProgress::new(20, 100).unwrap()),
-    )]);
-    let paused_during_preparation = build_outbox_snapshot(
-        two_queued_uploads(),
-        &preparing,
-        &UploadThroughput::new(),
-        true,
-    );
-    assert_eq!(
-        paused_during_preparation.pause_state,
-        OutboxPauseState::Paused
-    );
-
-    let running = build(two_queued_uploads(), &HashMap::new());
-    assert_eq!(running.pause_state, OutboxPauseState::Running);
-}
-
-/// Row ids do not identify immutable bytes. A cover whose row id equals an
-/// audio file's id must not make that audio blob active or completed.
-#[test]
-fn upload_state_uses_the_blob_bearing_table_and_row() {
-    let shared_row_id = SMALL_FILE;
-    let cover_blob_id = "8ff02583-dd77-47e0-9db5-8be5a7295729";
-    let mut queue = DbOutboxQueue {
-        uploads: vec![
-            queued_upload(shared_row_id, "01 Track Title.flac", 100),
-            DbOutboxUpload {
-                blob: row_blob(
-                    crate::sync::COVERS_NAMESPACE,
-                    shared_row_id,
-                    crate::sync::COVERS_NAMESPACE,
-                    cover_blob_id,
-                    20,
-                ),
-                label: UploadFileLabel::Cover,
-                ..queued_upload(shared_row_id, "unused", 0)
-            },
-        ],
-        make_remotes: Vec::new(),
-    };
-    queue.uploads[1].release_id = RELEASE.to_string();
-    let transient = HashMap::from([(
-        UploadBlobKey::new(crate::sync::COVERS_NAMESPACE, cover_blob_id),
-        TransientUploadState::Preparing(ByteProgress::new(10, 20).unwrap()),
-    )]);
-
-    let snapshot = build(queue, &transient);
-
-    let audio = snapshot.upload_groups[0]
-        .files
-        .iter()
-        .find(|upload| {
-            upload.file_id == upload_id(crate::sync::RELEASE_FILES_NAMESPACE, shared_row_id)
-        })
-        .expect("audio upload");
-    assert_eq!(audio.state, UploadState::Queued);
-    let cover = snapshot.upload_groups[0]
-        .files
-        .iter()
-        .find(|upload| upload.file_id == upload_id(crate::sync::COVERS_NAMESPACE, cover_blob_id))
-        .expect("cover upload");
-    assert_eq!(
-        cover.state,
-        UploadState::Preparing(ByteProgress::new(10, 20).unwrap())
-    );
-}
-
-/// A queue entry coven has recorded a failed attempt on derives as retrying,
-/// so the release badge reads "Retrying" rather than "Queued".
-#[test]
-fn a_recorded_failure_derives_retrying_with_its_error() {
-    let mut queue = two_queued_uploads();
-    queue.uploads[1].attempt_count = 1;
-    queue.uploads[1].last_failure = Some(coven::OutboxFailure::other("boom"));
-
-    let snapshot = build(queue, &HashMap::new());
-
-    assert_eq!(snapshot.total.retrying, 1);
-    assert_eq!(snapshot.total.queued, 1);
-    assert_eq!(
-        snapshot.total.activity(),
-        Some(UploadActivity::Retrying),
-        "a failure awaiting retry outranks the file still only queued"
-    );
-    assert!(snapshot
-        .summary_parts()
-        .iter()
-        .any(|part| part.key == "core.outbox.retrying" && part.count == 1));
-    let failed = snapshot.upload_groups[0]
-        .files
-        .iter()
-        .find(|f| f.file_id == upload_id(crate::sync::RELEASE_FILES_NAMESPACE, LARGE_FILE))
-        .expect("failed file listed");
-    assert_eq!(
-        failed.state,
-        UploadState::RetryingPreparation {
-            last_error: "boom".to_string()
-        }
-    );
-}
-
-/// Created is the durable handoff after upload and before publication; it
-/// must never reappear as queued while the release gate is still Local.
-#[test]
-fn created_file_with_lingering_entry_derives_uploaded() {
-    let mut queue = two_queued_uploads();
-    queue.uploads[0].phase = crate::db::DbUploadPhase::Created {
-        provider_bytes_total: 116,
-    };
-    let snapshot = build(queue, &HashMap::new());
-
-    let group = &snapshot.upload_groups[0];
-    assert_eq!(group.files.len(), 2, "done file represented exactly once");
-    let done = group
-        .files
-        .iter()
-        .find(|f| f.file_id == upload_id(crate::sync::RELEASE_FILES_NAMESPACE, SMALL_FILE))
-        .expect("done file listed");
-    assert_eq!(done.state, UploadState::Uploaded { bytes_total: 116 });
-    assert_eq!(group.progress.uploaded, 1);
-    assert_eq!(group.progress.queued, 1);
-    assert_eq!(group.progress.preparation_bytes_done, 100);
-    assert_eq!(group.progress.upload_bytes_done, 116);
-    assert_eq!(group.progress.upload_bytes_total, 116);
-    assert_eq!(group.progress.preparation_bytes_total, 1100);
-}
-
-#[test]
-fn created_handoff_outranks_final_transient_progress() {
-    let mut queue = two_queued_uploads();
-    queue.uploads.truncate(1);
-    queue.uploads[0].phase = crate::db::DbUploadPhase::Created {
-        provider_bytes_total: 116,
-    };
-    let transient = HashMap::from([(
-        UploadBlobKey::new(crate::sync::RELEASE_FILES_NAMESPACE, SMALL_FILE),
-        TransientUploadState::Uploading(ByteProgress::new(116, 116).unwrap()),
-    )]);
-
-    let snapshot = build(queue, &transient);
-
-    assert_eq!(
-        snapshot.upload_groups[0].files[0].state,
-        UploadState::Uploaded { bytes_total: 116 }
-    );
-}
-
-#[test]
-fn created_file_with_a_terminalization_error_remains_retryable() {
-    let mut queue = two_queued_uploads();
-    queue.uploads.truncate(1);
-    queue.uploads[0].phase = crate::db::DbUploadPhase::Created {
-        provider_bytes_total: 116,
-    };
-    queue.uploads[0].attempt_count = 1;
-    queue.uploads[0].last_failure = Some(coven::OutboxFailure::other("publication failed"));
-
-    let snapshot = build(queue, &HashMap::new());
-
-    assert_eq!(snapshot.total.retrying, 1);
-    // The provider object exists; only publication failed, so the bar stands
-    // at the end of the upload phase rather than resetting.
-    assert_eq!(
-        snapshot.total.bar(),
+        active.bar(),
         Some(UploadBar {
-            phase: UploadPhase::Uploading,
-            bytes_done: 116,
-            bytes_total: 116,
-        })
-    );
-    assert_eq!(
-        snapshot.upload_groups[0].files[0].state,
-        UploadState::RetryingPublication {
-            last_error: "publication failed".to_string(),
-            bytes_total: 116,
-        }
-    );
-}
-
-/// A release with nothing left to ship stops being rendered: its group
-/// leaves the snapshot while other releases keep uploading, and the totals
-/// cover only the work still on screen.
-#[test]
-fn fully_done_group_is_dropped_while_queue_busy() {
-    // Both of this release's files completed and their queue entries are
-    // consumed; a second release still has a queued upload keeping the queue
-    // busy.
-    let queue = DbOutboxQueue {
-        uploads: vec![DbOutboxUpload {
-            release_id: OTHER_RELEASE.to_string(),
-            ..queued_upload(OTHER_FILE, "03 Track Title.flac", 500)
-        }],
-        make_remotes: Vec::new(),
-    };
-    let snapshot = build(queue, &HashMap::new());
-
-    assert_eq!(snapshot.upload_groups.len(), 1);
-    let group = &snapshot.upload_groups[0];
-    assert_eq!(group.release_id, OTHER_RELEASE);
-    assert_eq!(snapshot.total.preparation_bytes_total, 500);
-    assert_eq!(snapshot.total.queued, 1);
-    assert!(
-        !snapshot.per_release_progress().contains_key(RELEASE),
-        "a finished release must fall back to its resting storage badge"
-    );
-}
-
-/// An idle durable queue is terminal; no transient callback can keep a
-/// release visible after publication consumes the intent and upload rows.
-#[test]
-fn idle_durable_queue_is_terminal() {
-    let transient = HashMap::from([(
-        UploadBlobKey::new(crate::sync::RELEASE_FILES_NAMESPACE, SMALL_FILE),
-        TransientUploadState::Uploading(ByteProgress::new(116, 116).unwrap()),
-    )]);
-    let snapshot = build(DbOutboxQueue::default(), &transient);
-
-    assert!(snapshot.upload_groups.is_empty());
-}
-
-#[test]
-fn durable_and_streamed_upload_phases_never_collapse_back_to_queued() {
-    let mut queue = two_queued_uploads();
-    queue.uploads[0].phase = crate::db::DbUploadPhase::Prepared {
-        provider_bytes_total: 1016,
-    };
-    queue.uploads[1].phase = crate::db::DbUploadPhase::Created {
-        provider_bytes_total: 1000,
-    };
-    let transient = HashMap::from([(
-        UploadBlobKey::new(crate::sync::RELEASE_FILES_NAMESPACE, SMALL_FILE),
-        TransientUploadState::Uploading(ByteProgress::new(400, 1016).unwrap()),
-    )]);
-
-    let snapshot = build_outbox_snapshot(queue, &transient, &UploadThroughput::new(), false);
-
-    assert_eq!(snapshot.total.queued, 0);
-    assert_eq!(snapshot.total.uploading, 1);
-    assert_eq!(snapshot.total.uploaded, 1);
-    assert_eq!(snapshot.total.preparation_bytes_done, 1100);
-    assert_eq!(snapshot.total.upload_bytes_done, 1400);
-    assert_eq!(snapshot.total.upload_bytes_total, 2016);
-}
-
-#[test]
-fn publishing_intent_keeps_the_release_visible_after_upload_rows_leave() {
-    let queue = DbOutboxQueue {
-        uploads: Vec::new(),
-        make_remotes: vec![coven::QueuedMakeRemote {
-            root_table: "releases".to_string(),
-            root_id: RELEASE.to_string(),
-            root_label: RELEASE.to_string(),
-            retain_pinned: false,
-            progress: coven::MakeRemoteProgress::Publishing,
-        }],
-    };
-
-    let snapshot = build(queue, &HashMap::new());
-
-    assert_eq!(snapshot.upload_groups.len(), 1);
-    assert_eq!(snapshot.total.publishing, 1);
-    assert_eq!(snapshot.total.activity(), Some(UploadActivity::Publishing));
-    assert!(!snapshot.total.can_cancel());
-}
-
-#[test]
-fn eta_never_reports_zero_while_provider_bytes_remain() {
-    assert_eq!(upload_eta_seconds(1, 10), 1);
-    assert_eq!(upload_eta_seconds(11, 10), 2);
-}
-
-#[test]
-fn queue_eta_is_hidden_until_every_provider_denominator_is_known() {
-    let mut queue = two_queued_uploads();
-    queue.uploads[1].phase = crate::db::DbUploadPhase::Prepared {
-        provider_bytes_total: 1016,
-    };
-    let key = UploadBlobKey::new(crate::sync::RELEASE_FILES_NAMESPACE, LARGE_FILE);
-    let transient = HashMap::from([(
-        key.clone(),
-        TransientUploadState::Uploading(ByteProgress::new(250, 1016).unwrap()),
-    )]);
-    let throughput = UploadThroughput::with_window(std::time::Duration::from_secs(10));
-    throughput.begin_upload(key.clone());
-    throughput.record_upload(&key, 250);
-
-    let snapshot = build_outbox_snapshot(queue, &transient, &throughput, false);
-
-    assert_eq!(snapshot.eta_seconds, None);
-}
-
-#[test]
-fn queue_eta_uses_every_exact_provider_denominator_when_they_are_known() {
-    let mut queue = two_queued_uploads();
-    queue.uploads[0].phase = crate::db::DbUploadPhase::Prepared {
-        provider_bytes_total: 116,
-    };
-    queue.uploads[1].phase = crate::db::DbUploadPhase::Prepared {
-        provider_bytes_total: 1016,
-    };
-    let key = UploadBlobKey::new(crate::sync::RELEASE_FILES_NAMESPACE, LARGE_FILE);
-    let transient = HashMap::from([(
-        key.clone(),
-        TransientUploadState::Uploading(ByteProgress::new(250, 1016).unwrap()),
-    )]);
-    let throughput = UploadThroughput::with_window(std::time::Duration::from_secs(10));
-    throughput.begin_upload(key.clone());
-    throughput.record_upload(&key, 250);
-
-    let snapshot = build_outbox_snapshot(queue, &transient, &throughput, false);
-
-    assert_eq!(snapshot.total.upload_bytes_done, 250);
-    assert_eq!(snapshot.total.upload_bytes_total, 1132);
-    assert!(snapshot.eta_seconds.is_some());
-}
-
-#[test]
-fn each_release_group_carries_only_its_own_upload_rate() {
-    let first_key = UploadBlobKey::new(crate::sync::RELEASE_FILES_NAMESPACE, LARGE_FILE);
-    let second_key = UploadBlobKey::new(crate::sync::RELEASE_FILES_NAMESPACE, OTHER_FILE);
-    let first = queued_upload(LARGE_FILE, "01 Track Title.flac", 1000);
-    let mut second = queued_upload(OTHER_FILE, "02 Track Title.flac", 2000);
-    second.release_id = OTHER_RELEASE.to_string();
-    second.phase = crate::db::DbUploadPhase::Prepared {
-        provider_bytes_total: 2016,
-    };
-    let transient = HashMap::from([
-        (
-            first_key.clone(),
-            TransientUploadState::Preparing(ByteProgress::new(500, 1000).unwrap()),
-        ),
-        (
-            second_key.clone(),
-            TransientUploadState::Uploading(ByteProgress::new(200, 2016).unwrap()),
-        ),
-    ]);
-    let throughput = UploadThroughput::with_window(std::time::Duration::from_secs(10));
-    let started = std::time::Instant::now();
-    throughput.begin_preparation_at(first_key.clone(), started);
-    throughput.begin_upload_at(second_key.clone(), started);
-    let measured = started + std::time::Duration::from_secs(10);
-    throughput.record_preparation_at(&first_key, 10_000_000, measured);
-    throughput.record_upload_at(&second_key, 20_000_000, measured);
-
-    for paused in [false, true] {
-        let snapshot = build_outbox_snapshot_at(
-            DbOutboxQueue {
-                uploads: vec![first.clone(), second.clone()],
-                make_remotes: Vec::new(),
-            },
-            &transient,
-            &throughput,
-            paused,
-            measured,
-        );
-        let first_rate = if paused { 0 } else { 1_000_000 };
-        let second_rate = if paused { 0 } else { 2_000_000 };
-        assert_eq!(snapshot.upload_groups[0].throughput_bps, first_rate);
-        assert_eq!(snapshot.upload_groups[1].throughput_bps, second_rate);
-        assert_eq!(
-            snapshot.upload_groups[0].files[0].throughput_bps,
-            first_rate
-        );
-        assert_eq!(
-            snapshot.upload_groups[1].files[0].throughput_bps,
-            second_rate
-        );
-        assert_eq!(snapshot.throughput_bps, first_rate + second_rate);
-    }
-}
-
-#[test]
-fn byte_progress_never_counts_past_its_total() {
-    assert_eq!(ByteProgress::new(101, 100), None);
-
-    let mut progress = ByteProgress::none_of(100);
-    assert_eq!(progress.advance(40, 100), Some(40));
-    assert_eq!(
-        progress.advance(30, 100),
-        None,
-        "a report cannot go backwards"
-    );
-    assert_eq!(
-        progress.advance(50, 90),
-        None,
-        "a report cannot change its total"
-    );
-    assert_eq!(
-        progress.advance(101, 100),
-        None,
-        "a report cannot overshoot"
-    );
-    assert_eq!(progress, ByteProgress::new(40, 100).unwrap());
-    assert_eq!(progress.advance(100, 100), Some(60));
-    assert!(progress.is_complete());
-}
-
-/// Preparation reads the source's own plaintext, so a preparation report over
-/// any other total describes some other attempt and refines nothing.
-#[test]
-fn a_preparation_transient_over_another_total_is_a_stale_straggler() {
-    let transient = HashMap::from([(
-        UploadBlobKey::new(crate::sync::RELEASE_FILES_NAMESPACE, LARGE_FILE),
-        TransientUploadState::Preparing(ByteProgress::new(40, 90).unwrap()),
-    )]);
-
-    let snapshot = build(two_queued_uploads(), &transient);
-
-    assert_eq!(
-        snapshot.upload_groups[0].files[1].state,
-        UploadState::Queued
-    );
-    assert_eq!(snapshot.total.preparation_bytes_done, 0);
-}
-
-/// An attempt whose callbacks stopped making sense is left untracked; its
-/// row renders the durable state with no bar.
-#[test]
-fn an_untracked_attempt_renders_its_durable_row() {
-    let mut queue = two_queued_uploads();
-    queue.uploads[1].phase = crate::db::DbUploadPhase::Prepared {
-        provider_bytes_total: 1016,
-    };
-    let transient = HashMap::from([(
-        UploadBlobKey::new(crate::sync::RELEASE_FILES_NAMESPACE, LARGE_FILE),
-        TransientUploadState::Untracked,
-    )]);
-
-    let snapshot = build(queue, &transient);
-
-    assert_eq!(
-        snapshot.upload_groups[0].files[1].state,
-        UploadState::Prepared { bytes_total: 1016 }
-    );
-}
-
-#[test]
-fn a_slice_counts_source_bytes_until_every_provider_size_is_exact() {
-    // The large file is uploading; the small one has not been prepared, so no
-    // exact provider denominator exists for the slice yet.
-    let mut queue = two_queued_uploads();
-    queue.uploads[1].phase = crate::db::DbUploadPhase::Prepared {
-        provider_bytes_total: 1016,
-    };
-    let transient = HashMap::from([(
-        UploadBlobKey::new(crate::sync::RELEASE_FILES_NAMESPACE, LARGE_FILE),
-        TransientUploadState::Uploading(ByteProgress::new(250, 1016).unwrap()),
-    )]);
-
-    let snapshot = build(queue, &transient);
-
-    // Source bytes, against the source total — never 250 provider bytes under a
-    // source denominator, and never the source size standing in for the
-    // unknown provider one.
-    assert_eq!(
-        snapshot.total.bar(),
-        Some(UploadBar {
-            phase: UploadPhase::Preparing,
-            bytes_done: 1000,
-            bytes_total: 1100,
-        })
-    );
-}
-
-#[test]
-fn a_slice_counts_provider_bytes_once_every_upload_is_prepared() {
-    let mut queue = two_queued_uploads();
-    for (upload, provider_total) in queue.uploads.iter_mut().zip([116, 1016]) {
-        upload.phase = crate::db::DbUploadPhase::Prepared {
-            provider_bytes_total: provider_total,
-        };
-    }
-    let transient = HashMap::from([(
-        UploadBlobKey::new(crate::sync::RELEASE_FILES_NAMESPACE, LARGE_FILE),
-        TransientUploadState::Uploading(ByteProgress::new(250, 1016).unwrap()),
-    )]);
-
-    let snapshot = build(queue, &transient);
-
-    assert_eq!(
-        snapshot.total.bar(),
-        Some(UploadBar {
-            phase: UploadPhase::Uploading,
             bytes_done: 250,
-            bytes_total: 1132,
+            bytes_total: 1016
         })
     );
+    assert_eq!(snapshot.eta_seconds, None);
+    handle.close().await.unwrap();
 }
 
-#[test]
-fn a_queued_slice_counts_the_source_bytes_it_has_yet_to_read() {
-    let snapshot = build(two_queued_uploads(), &HashMap::new());
-
-    assert_eq!(
-        snapshot.total.bar(),
-        Some(UploadBar {
-            phase: UploadPhase::Preparing,
-            bytes_done: 0,
-            bytes_total: 1100,
-        })
-    );
-}
-
-#[test]
-fn cancelling_and_publishing_slices_carry_no_byte_counters() {
-    let cancelling = UploadProgress {
-        cancelling: 1,
-        preparation_bytes_done: 500,
-        preparation_bytes_total: 1100,
-        upload_bytes_total_complete: false,
-        ..Default::default()
-    };
-    assert_eq!(cancelling.bar(), None);
-
-    // A release down to its make-Remote transition has no upload rows left to
-    // count.
-    let publishing = UploadProgress {
-        publishing: 1,
-        ..Default::default()
-    };
-    assert_eq!(publishing.bar(), None);
-}
-
-#[test]
-fn a_files_bar_counts_the_phase_that_file_is_in() {
-    assert_eq!(
-        UploadState::Preparing(ByteProgress::new(40, 100).unwrap()).bar(),
-        Some(UploadBar {
-            phase: UploadPhase::Preparing,
-            bytes_done: 40,
-            bytes_total: 100,
-        })
-    );
-    assert_eq!(
-        UploadState::Uploading(ByteProgress::new(40, 116).unwrap()).bar(),
-        Some(UploadBar {
-            phase: UploadPhase::Uploading,
-            bytes_done: 40,
-            bytes_total: 116,
-        })
-    );
-    // Resting states render their state and size; a bar there would draw
-    // motion that is not happening.
-    for state in [
-        UploadState::Queued,
-        UploadState::Prepared { bytes_total: 116 },
-        UploadState::RetryingPreparation {
-            last_error: "read failed".to_string(),
-        },
-        UploadState::RetryingUpload {
-            last_error: "provider refused".to_string(),
-            bytes_total: 116,
-        },
-        UploadState::RetryingPublication {
-            last_error: "publication failed".to_string(),
-            bytes_total: 116,
-        },
-        UploadState::Uploaded { bytes_total: 116 },
-    ] {
-        assert_eq!(state.bar(), None, "{state:?} must not draw a bar");
+#[tokio::test]
+async fn rates_belong_to_exact_files_and_pausing_removes_rates_and_eta() {
+    let (handle, _directory, files) = queued_files().await;
+    let mut uploads = Vec::new();
+    let mut rates = HashMap::new();
+    for (index, mut file) in files.into_iter().enumerate() {
+        rates.insert(file.file.id(), 10 * (index as u64 + 1));
+        file.phase = UploadState::Uploading {
+            bytes_confirmed: 100,
+            bytes_total: 111,
+        };
+        let (release, label) = match file.file.table() {
+            "covers" => (Some("first"), UploadFileLabel::Cover),
+            "artist_images" => (None, UploadFileLabel::ArtistImage),
+            _ => (
+                Some("second"),
+                UploadFileLabel::Filename("Track.flac".into()),
+            ),
+        };
+        uploads.push(labelled(file, release, label));
     }
-}
-
-#[test]
-#[should_panic(expected = "folded provider progress stays within its total")]
-fn a_bar_rejects_progress_beyond_its_denominator() {
-    let progress = UploadProgress {
-        uploaded: 1,
-        preparation_bytes_done: 100,
-        preparation_bytes_total: 100,
-        upload_bytes_done: 200,
-        upload_bytes_total: 116,
-        upload_bytes_total_complete: true,
-        ..Default::default()
-    };
-
-    progress.bar();
-}
-
-fn coven_queued_upload(file_id: &str, root_label: &str) -> coven::QueuedUpload {
-    coven::QueuedUpload {
-        blob: row_blob(
-            crate::sync::RELEASE_FILES_NAMESPACE,
-            file_id,
-            crate::sync::RELEASE_FILES_NAMESPACE,
-            file_id,
-            100,
-        ),
-        root_table: "releases".to_string(),
-        root_id: RELEASE.to_string(),
-        root_label: root_label.to_string(),
-        retain_pinned: false,
-        phase: coven::QueuedUploadPhase::Pending,
-        provider_bytes_total: None,
-        attempt_count: 0,
-        last_failure: None,
-        created_at: "0000000001000-0000-device-a".to_string(),
-        last_attempt_at: None,
+    for paused in [false, true] {
+        let snapshot = OutboxSnapshot::from_queue(
+            DbOutboxQueue {
+                paused,
+                uploads: uploads.clone(),
+            },
+            &rates,
+        );
+        assert_eq!(snapshot.other_files.len(), 1);
+        assert_eq!(snapshot.upload_groups.len(), 2);
+        assert_eq!(snapshot.total.uploading, 4, "artist images also count");
+        assert_eq!(
+            snapshot.pause_state,
+            if paused {
+                OutboxPauseState::Paused
+            } else {
+                OutboxPauseState::Running
+            }
+        );
+        assert_eq!(snapshot.throughput_bps, if paused { 0 } else { 100 });
+        assert_eq!(snapshot.eta_seconds, if paused { None } else { Some(1) });
+        let summed = snapshot
+            .upload_groups
+            .iter()
+            .map(|group| group.throughput_bps)
+            .sum::<u64>()
+            + snapshot
+                .other_files
+                .iter()
+                .map(|file| file.throughput_bps)
+                .sum::<u64>();
+        assert_eq!(summed, snapshot.throughput_bps);
     }
+    handle.close().await.unwrap();
 }
 
-/// coven rewrites a row's label whenever the host queues it again, so one
-/// release's queue rows can carry different labels after an album rename.
-/// The queue groups by release id and never reads a title off its rows.
-#[test]
-fn one_release_groups_its_uploads_whatever_labels_the_queue_rows_carry() {
-    let durable = coven::CloudOutboxSnapshot {
-        uploads: vec![
-            coven_queued_upload(SMALL_FILE, "Album Title"),
-            coven_queued_upload(LARGE_FILE, "Album Title Renamed"),
-        ],
-        make_remotes: vec![coven::QueuedMakeRemote {
-            root_table: "releases".to_string(),
-            root_id: RELEASE.to_string(),
-            root_label: "Album Title Renamed Again".to_string(),
-            retain_pinned: false,
-            progress: coven::MakeRemoteProgress::Uploading,
-        }],
-    };
+#[tokio::test]
+async fn completed_files_leave_no_empty_release_groups_or_stale_rates() {
+    let (handle, _directory, files) = queued_files().await;
+    let rates = files.iter().map(|file| (file.file.id(), 100)).collect();
+    let snapshot = OutboxSnapshot::from_queue(DbOutboxQueue::default(), &rates);
+    assert!(snapshot.upload_groups.is_empty());
+    assert!(snapshot.per_release_progress().is_empty());
+    assert_eq!(snapshot.throughput_bps, 0);
+    assert_eq!(snapshot.eta_seconds, None);
+    assert_eq!(snapshot.total.activity(), None);
+    handle.close().await.unwrap();
+}
+
+#[tokio::test]
+async fn display_names_join_by_table_and_row_while_rates_use_object_identity() {
+    let (handle, _directory, files) = queued_files().await;
     let context = crate::db::OutboxDisplayContext {
         file_names: HashMap::from([
-            (SMALL_FILE.to_string(), "01 Track Title.flac".to_string()),
-            (LARGE_FILE.to_string(), "02 Track Title.flac".to_string()),
+            ("first".into(), ("release".into(), "First.flac".into())),
+            ("second".into(), ("release".into(), "Renamed.flac".into())),
         ]),
     };
-    let queue =
-        crate::db::Database::outbox_queue_from_context(durable, context).expect("queue projection");
-
-    let snapshot = build(queue, &HashMap::new());
-
-    assert_eq!(snapshot.upload_groups.len(), 1);
-    assert_eq!(snapshot.upload_groups[0].release_id, RELEASE);
-    assert_eq!(snapshot.upload_groups[0].files.len(), 2);
-}
-
-/// coven's durable row pairs each phase past preparation with the provider
-/// size preparation produced. A row that does not is a broken queue, which
-/// the projection reports rather than the snapshot crashing on it.
-#[test]
-fn a_created_upload_without_a_provider_size_fails_the_projection() {
-    let mut upload = coven_queued_upload(SMALL_FILE, RELEASE);
-    upload.phase = coven::QueuedUploadPhase::Created;
-    let durable = coven::CloudOutboxSnapshot {
-        uploads: vec![upload],
-        make_remotes: Vec::new(),
-    };
-    let context = crate::db::OutboxDisplayContext {
-        file_names: HashMap::from([(SMALL_FILE.to_string(), "01 Track Title.flac".to_string())]),
-    };
-
-    assert!(crate::db::Database::outbox_queue_from_context(durable, context).is_err());
-}
-
-/// A retried preparation can produce a provider object of a different size
-/// while the previous attempt's last provider callback is still in flight.
-/// That straggler refines nothing; the row renders its durable state.
-#[test]
-fn a_provider_transient_with_another_total_is_a_stale_straggler() {
-    let mut queue = two_queued_uploads();
-    queue.uploads[1].phase = crate::db::DbUploadPhase::Prepared {
-        provider_bytes_total: 1016,
-    };
-    let transient = HashMap::from([(
-        UploadBlobKey::new(crate::sync::RELEASE_FILES_NAMESPACE, LARGE_FILE),
-        TransientUploadState::Uploading(ByteProgress::new(250, 1032).unwrap()),
-    )]);
-
-    let snapshot = build(queue, &transient);
-
+    let queue = crate::db::Database::outbox_queue_from_context(
+        coven::UploadQueue {
+            paused: false,
+            files,
+        },
+        context,
+    )
+    .unwrap();
+    let snapshot = OutboxSnapshot::from_queue(queue, &HashMap::new());
+    let release = snapshot
+        .upload_groups
+        .iter()
+        .find(|group| group.release_id == "release")
+        .unwrap();
+    assert_eq!(release.files.len(), 2);
     assert_eq!(
-        snapshot.upload_groups[0].files[1].state,
-        UploadState::Prepared { bytes_total: 1016 }
+        release.files[1].label,
+        UploadFileLabel::Filename("Renamed.flac".into())
     );
+    let cover = snapshot
+        .upload_groups
+        .iter()
+        .find(|group| group.release_id == "first")
+        .unwrap();
+    assert_eq!(cover.files[0].label, UploadFileLabel::Cover);
+    assert_ne!(cover.files[0].file_id, release.files[0].file_id);
+    handle.close().await.unwrap();
 }

@@ -1,7 +1,7 @@
 use super::*;
 use crate::db::Database;
 use chrono::{DateTime, Utc};
-use coven::{FixedClock, SequentialIdProvider};
+use coven::{FixedClock, SequentialIds};
 use serde_json::json;
 use std::sync::Arc;
 
@@ -56,7 +56,7 @@ async fn database() -> (Database, tempfile::TempDir) {
     let temp = tempfile::TempDir::new().unwrap();
     let db = Database::new_test(
         temp.path().join("library.db").to_str().unwrap(),
-        Arc::new(FixedClock(instant())),
+        Arc::new(FixedClock::new((instant()).into())),
     )
     .await
     .unwrap();
@@ -98,8 +98,8 @@ async fn a_master_backlink_is_followed_and_the_stored_release_reads_back() {
     let parsed = fetched
         .parsed(
             &[],
-            &FixedClock(instant()),
-            &SequentialIdProvider::new("before"),
+            &FixedClock::new((instant()).into()),
+            &SequentialIds::new(),
         )
         .unwrap();
     assert_eq!(parsed.album.title, "Selected Album");
@@ -144,8 +144,8 @@ fn selected_pressing_wins_and_linked_release_fills_only_absent_details() {
         .unwrap()
         .parsed(
             &[],
-            &FixedClock(instant()),
-            &SequentialIdProvider::new("precedence"),
+            &FixedClock::new((instant()).into()),
+            &SequentialIds::new(),
         )
         .unwrap();
     assert_eq!(parsed.album.title, "Selected Album");
@@ -198,8 +198,8 @@ fn linked_album_fills_missing_title_and_artists_without_setting_pressing_year() 
         .unwrap()
         .parsed(
             &[],
-            &FixedClock(instant()),
-            &SequentialIdProvider::new("missing"),
+            &FixedClock::new((instant()).into()),
+            &SequentialIds::new(),
         )
         .unwrap();
     assert_eq!(parsed.album.title, "Master Album");
@@ -264,8 +264,8 @@ fn linked_release_album_date_survives_an_unavailable_parent_document() {
         .unwrap()
         .parsed(
             &[],
-            &FixedClock(instant()),
-            &SequentialIdProvider::new("inline-date"),
+            &FixedClock::new((instant()).into()),
+            &SequentialIds::new(),
         )
         .unwrap();
     assert_eq!(parsed.album.year, Some(1979));
@@ -295,8 +295,8 @@ fn selected_album_credits_keep_every_artist_in_detail_and_import() {
         .unwrap()
         .parsed(
             &[],
-            &FixedClock(instant()),
-            &SequentialIdProvider::new("credits"),
+            &FixedClock::new((instant()).into()),
+            &SequentialIds::new(),
         )
         .unwrap();
     assert_eq!(

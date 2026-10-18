@@ -5,7 +5,7 @@ use crate::db::Database;
 
 /// The subscription over an empty queue. Nothing publishes an outbox snapshot
 /// here; these tests are about the request round trip.
-async fn subscription() -> (ImportListSubscription, tempfile::TempDir) {
+async fn subscription() -> (ImportListSubscription, Database, tempfile::TempDir) {
     let tmp = tempfile::TempDir::new().expect("a temp library dir");
     let database = Database::new_test(
         tmp.path()
@@ -27,17 +27,17 @@ async fn subscription() -> (ImportListSubscription, tempfile::TempDir) {
         crate::import::candidate_runtime::RuntimeFactsWatch::of(&Default::default()),
         &tokio::runtime::Handle::current(),
     );
-    (subscription, tmp)
+    (subscription, database, tmp)
 }
 
 /// The windows travel in the request, so asking for one reruns the query and
 /// the value says it was the request that changed.
 #[tokio::test]
 async fn setting_the_windows_reruns_the_query_as_a_request_change() {
-    let (subscription, _tmp) = subscription().await;
+    let (subscription, _database, _tmp) = subscription().await;
 
     let initial = subscription.next().await.expect("the initial value");
-    assert_eq!(initial.cause, coven::ReconfigurableLiveQueryCause::Initial);
+    assert_eq!(initial.cause, coven::LiveQueryCause::Request);
     assert!(initial.windows.is_empty());
 
     subscription
@@ -52,7 +52,7 @@ async fn setting_the_windows_reruns_the_query_as_a_request_change() {
     let requested = subscription.next().await.expect("the requested value");
     assert_eq!(
         requested.cause,
-        coven::ReconfigurableLiveQueryCause::RequestChanged
+        coven::LiveQueryCause::Request
     );
     assert_eq!(requested.windows.len(), 1);
     assert_eq!(requested.request_revision, 1);
@@ -62,7 +62,7 @@ async fn setting_the_windows_reruns_the_query_as_a_request_change() {
 /// the list is gone, not merely quiet.
 #[tokio::test]
 async fn cancelling_refuses_a_later_view_change() {
-    let (subscription, _tmp) = subscription().await;
+    let (subscription, _database, _tmp) = subscription().await;
     subscription.next().await.expect("the initial value");
 
     subscription.cancel().await;

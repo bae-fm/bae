@@ -1,8 +1,6 @@
 use std::path::{Path, PathBuf};
 
-/// The directory registered libraries live under, as its name inside the app
-/// directory. coven's store layout is told the same name, so a library it
-/// restores or joins lands where discovery looks.
+/// bae-owned preferences and caches, separate from coven's `stores` directory.
 const LIBRARIES_DIRNAME: &str = "libraries";
 
 /// bae's own directory: `.bae` under the home directory the host passes in.
@@ -43,10 +41,44 @@ impl AppDir {
         self.path.join("active-library")
     }
 
-    /// coven's layout for bae's stores: a store restored or joined through it
-    /// lands at [`Self::registered_library`], as a created one does.
+    /// coven owns store directories under the app directory.
     pub(crate) fn store_layout(&self) -> coven::StoreLayout {
-        coven::StoreLayout::new(self.path.clone()).stores_dirname(LIBRARIES_DIRNAME)
+        coven::StoreLayout::new(self.path.clone())
+    }
+
+    /// A bae-owned installation id shared by this installation's libraries.
+    /// Publishing without replacement makes concurrent first launches agree.
+    pub(crate) fn install_id(
+        &self,
+        ids: &dyn coven::IdSource,
+    ) -> Result<String, super::ConfigError> {
+        use std::io::Write;
+        self.create()?;
+        let path = self.path.join("install-id");
+        let read = || -> Result<String, super::ConfigError> {
+            let text = std::fs::read_to_string(&path)?;
+            let id = uuid::Uuid::parse_str(text.trim()).map_err(|error| {
+                super::ConfigError::Config(format!("invalid installation id: {error}"))
+            })?;
+            Ok(id.to_string())
+        };
+        match read() {
+            Ok(id) => return Ok(id),
+            Err(super::ConfigError::Io(error)) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => return Err(error),
+        }
+        let id = ids.new_id().to_string();
+        let mut staged = tempfile::NamedTempFile::new_in(&self.path)?;
+        staged.write_all(id.as_bytes())?;
+        staged.as_file().sync_all()?;
+        match staged.persist_noclobber(&path) {
+            Ok(_) => {
+                std::fs::File::open(&self.path)?.sync_all()?;
+                Ok(id)
+            }
+            Err(error) if error.error.kind() == std::io::ErrorKind::AlreadyExists => read(),
+            Err(error) => Err(error.error.into()),
+        }
     }
 
     /// Create the app directory itself if it does not exist yet.

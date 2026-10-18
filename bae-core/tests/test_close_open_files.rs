@@ -69,7 +69,7 @@ async fn closing_a_playing_library_leaves_none_of_its_files_open() {
         "a playing library holds files open"
     );
 
-    services.close().await;
+    services.close().await.unwrap();
 
     coven::assert_no_open_files_under(imported.temp_dir.path());
 }

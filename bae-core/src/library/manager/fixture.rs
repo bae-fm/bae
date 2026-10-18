@@ -83,7 +83,7 @@ impl LibraryManager {
     /// distinct name; then its watched folders, each write the one the scan or
     /// identification makes; then where playback resumes.
     pub async fn write_fixture(&self, fixture: &LibraryFixture) -> Result<(), LibraryFixtureError> {
-        let now = self.clock.now();
+        let now = chrono::DateTime::<chrono::Utc>::from(self.clock.now());
         let count = (fixture.albums.len() + usize::from(fixture.playing.is_some())) as i64;
         let added = |index: usize| now - chrono::Duration::seconds(count - 1 - index as i64);
         let mut artists: Vec<DbArtist> = Vec::new();
@@ -137,9 +137,9 @@ impl LibraryManager {
                 album: album.title.clone(),
             });
         };
-        let release_id = self.ids.new_id();
+        let release_id = self.ids.new_id().to_string();
         let db_album = DbAlbum {
-            id: self.ids.new_id(),
+            id: self.ids.new_id().to_string(),
             title: album.title.clone(),
             artist_id,
             year: None,
@@ -162,7 +162,7 @@ impl LibraryManager {
             .iter()
             .enumerate()
             .map(|(number, title)| DbTrack {
-                id: self.ids.new_id(),
+                id: self.ids.new_id().to_string(),
                 release_id: release_id.clone(),
                 title: title.clone(),
                 side: Some(1),
@@ -184,7 +184,7 @@ impl LibraryManager {
                 release_name: None,
                 pressing: crate::pressing::Pressing::blank(),
                 draft_from_tags: false,
-                remote: false,
+
                 source_folder_name: None,
                 content_hash: None,
                 album_loudness_lufs: None,
@@ -210,7 +210,7 @@ impl LibraryManager {
             return artist.id.clone();
         }
         let artist = DbArtist {
-            id: self.ids.new_id(),
+            id: self.ids.new_id().to_string(),
             name: name.to_string(),
             sort_name: None,
             discogs_artist_id: None,
@@ -242,8 +242,14 @@ impl LibraryManager {
         .await
         .map_err(|error| failed(error.to_string()))?
         .map_err(failed)?;
-        let image =
-            DbLibraryImage::cover(release_id, &self.ids.new_id(), "local", None, &bytes, added);
+        let image = DbLibraryImage::cover(
+            release_id,
+            &self.ids.new_id().to_string(),
+            "local",
+            None,
+            &bytes,
+            added,
+        );
         Ok((image, bytes))
     }
 }

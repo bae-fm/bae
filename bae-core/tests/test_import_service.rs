@@ -18,10 +18,6 @@ use bae_core::musicbrainz::{
     MbUrlResource, MbWork,
 };
 use bae_core::pressing::ReleaseLabel;
-use bae_core::sync::CloudCipher;
-use coven::EncryptionService;
-use coven::InMemoryCloudHome;
-use coven::StoreDir;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
@@ -32,9 +28,10 @@ use tempfile::TempDir;
 
 struct ImportFixture {
     db: Database,
+    storage: Arc<coven::MemoryStorage>,
     handle: bae_core::import::ImportServiceHandle,
     library_manager: LibraryManager,
-    ids: Arc<dyn coven::IdProvider>,
+    ids: Arc<dyn coven::IdSource>,
     /// The Cover Art Archive and image host this library's requests reach.
     /// Every MusicBrainz release group offers a derived cover address, and an
     /// address no test registered answers 404.
@@ -49,14 +46,14 @@ impl ImportFixture {
         let db_dir = temp.path().join("db");
         fs::create_dir_all(&db_dir).unwrap();
 
-        let (library_manager, db) = support::open_test_library_with(
+        let (library_manager, db, storage) = support::storage_library(
             &db_dir,
             bae_core::providers::Providers::for_test(
                 images.route(bae_core::util::http::Http::for_test()),
             ),
         )
         .await;
-        let ids: Arc<dyn coven::IdProvider> = Arc::new(coven::UuidProvider);
+        let ids: Arc<dyn coven::IdSource> = Arc::new(coven::UuidIds);
         support::configure_test_discogs(&library_manager).await;
 
         let handle = library_manager
@@ -66,6 +63,7 @@ impl ImportFixture {
 
         Self {
             db,
+            storage,
             handle,
             library_manager,
             ids,
@@ -81,13 +79,7 @@ impl ImportFixture {
     /// No sync loop behind the connection: the remote-import tests drain the
     /// upload queue themselves and assert what that pass moved.
     async fn connect_cloud(&self) {
-        self.library_manager
-            .connect_test_cloud_home_caller_driven(
-                Arc::new(InMemoryCloudHome::new()),
-                CloudCipher::Encrypted(EncryptionService::from_key([7u8; 32])),
-            )
-            .await
-            .expect("connect in-memory cloud home");
+        support::connect_storage(&self.library_manager, &self.storage).await;
     }
 }
 
@@ -98,7 +90,7 @@ async fn import_folder(
     destination: ImportDestination,
     draft_source: support::DraftSource,
 ) -> Result<(String, String), String> {
-    let import_id = f.ids.new_id();
+    let import_id = f.ids.new_id().to_string();
     f.handle
         .send_command(ImportCommand {
             selected_cover,

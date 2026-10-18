@@ -1,22 +1,13 @@
-//! Two devices of one library, syncing through one in-memory cloud home.
-//!
-//! The first device opens the library with its keys held in memory, connects
-//! it to the home, and admits the second through the production pairing flow;
-//! the second joins over the same home and opens the store the join installed.
-//! Each device is a whole `LibraryManager`, so a test drives the same writers
-//! the app does and reads back what sync left on each side.
-
+//! Two isolated installations of one library, restored over shared memory storage.
 use std::sync::Arc;
 use std::time::Duration;
 
+use coven::Storage;
 use tempfile::TempDir;
 
 use crate::config::{AppDir, Config, ConfigHandle};
 use crate::db::Database;
 use crate::library::LibraryManager;
-
-/// The store key both devices seal the home's objects with.
-const STORE_KEY: [u8; 32] = [23; 32];
 
 /// How long a test waits for sync to reach a state before failing.
 const SETTLE: Duration = Duration::from_secs(20);
@@ -42,10 +33,9 @@ impl TestDevice {
 pub(crate) struct TwoDevices {
     a: TestDevice,
     b: TestDevice,
-    home: Arc<coven::InMemoryCloudHome>,
 }
 
-/// Run `test` on a runtime with a deep stack: pairing and snapshot installation
+/// Run `test` on a runtime with a deep stack: restoration and snapshot installation
 /// recurse further than a default test thread allows.
 pub(crate) fn run_two_device_test<F, Fut>(test: F)
 where
@@ -80,73 +70,94 @@ impl TwoDevices {
 }
 
 impl TwoDevices {
-    /// Open device A, connect it to a fresh home, and pair device B onto the
-    /// same library. Both sync loops are running when this returns.
-    pub(crate) async fn pair() -> Self {
-        crate::config::install_test_keyring();
-        let home = Arc::new(coven::InMemoryCloudHome::new());
-        let store_id = uuid::Uuid::new_v4().to_string();
-        let encryption = coven::EncryptionService::from_key(STORE_KEY);
-
-        // Device A holds its store key and device identity in memory: the
-        // process-wide test keyring names both by store id, and device B —
-        // same store id — keeps its own there once its join installs them.
-        let dir_a = TempDir::new().expect("device A directory");
-        let app_a = AppDir::at(dir_a.path());
-        let store_dir_a = coven::StoreDir::new(app_a.registered_library(&store_id));
-        let config_a = Config::with_defaults(
-            store_id.clone(),
-            uuid::Uuid::new_v4().to_string(),
-            &store_dir_a,
-            "Two Devices".to_string(),
+    pub(crate) async fn new() -> Self {
+        let clock: coven::ClockRef = Arc::new(coven::SystemClock);
+        let storage = Arc::new(
+            coven::MemoryStorage::builder()
+                .clock(clock)
+                .build()
+                .unwrap(),
         );
-        let handle_a = coven::Coven::builder(store_dir_a, config_a.to_coven())
-            .synced_tables(crate::sync::synced_tables())
-            .coven_migration_policy(coven::CovenMigrationPolicy::ApplyPending)
-            .migrations(crate::migrations::all())
-            .key_custody(coven::KeyCustody::InMemory(coven::MasterKeyring::from(
-                encryption,
-            )))
-            .identity_custody(coven::IdentityCustody::InMemory(
-                coven::UserKeypair::generate(),
-            ))
-            .open()
-            .expect("open device A");
+        let dir_a = TempDir::new().unwrap();
+        let app_a = AppDir::at(dir_a.path());
+        let installation_a = coven::TestCoven::new();
+        let handle_a =
+            crate::library::configure_store(installation_a.builder(app_a.store_layout()))
+                .storage_connector(storage.clone())
+                .create_store("Two Devices")
+                .await
+                .unwrap();
+        handle_a
+            .setup_s3_storage(
+                storage.config(),
+                "Device A",
+                "owner-key".into(),
+                coven::SecretText::new("owner-secret".into()),
+            )
+            .await
+            .unwrap();
+        let mut status = handle_a.subscribe_sync_status();
+        tokio::time::timeout(
+            SETTLE,
+            status.wait_for(|status| matches!(status, coven::SyncStatus::Synced { .. })),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+        let code = handle_a.restore_code().await.unwrap();
+        let config_a = Config::with_defaults(
+            handle_a.store_id(),
+            app_a.registered_library(&handle_a.store_id().to_string()),
+        );
         let a = device(dir_a, app_a, config_a, handle_a);
-        connect_a(a.database(), &home).await;
-        wait_for_cycle(a.database()).await;
 
-        let dir_b = TempDir::new().expect("device B directory");
+        let dir_b = TempDir::new().unwrap();
         let app_b = AppDir::at(dir_b.path());
-        let layout_b = app_b.store_layout();
-        let joined = join(a.database(), &layout_b, home.clone()).await;
-        let store_dir_b = layout_b.store_dir(&joined.store_id);
-        let config_b = Config::from_coven(joined.clone(), store_dir_b.to_path_buf());
-        let handle_b = coven::Coven::builder(store_dir_b, joined)
-            .synced_tables(crate::sync::synced_tables())
-            .coven_migration_policy(coven::CovenMigrationPolicy::ApplyPending)
-            .migrations(crate::migrations::all())
-            .open()
-            .expect("open device B's joined store");
+        let installation_b = coven::TestCoven::new();
+        let builder = crate::library::configure_store(installation_b.builder(app_b.store_layout()))
+            .storage_connector(Arc::new(storage.for_device()));
+        let (_sender, cancel) = tokio::sync::watch::channel(false);
+        let handle_b = coven::restore_from_code(
+            builder,
+            &code,
+            Some(coven::S3Credentials {
+                access_key_id: "owner-key".into(),
+                secret_access_key: coven::SecretText::new("owner-secret".into()),
+            }),
+            "Device B",
+            |_| {},
+            &cancel,
+        )
+        .await
+        .unwrap();
+        let config_b = Config::with_defaults(
+            handle_b.store_id(),
+            app_b.registered_library(&handle_b.store_id().to_string()),
+        );
         let b = device(dir_b, app_b, config_b, handle_b);
-        connect_b(b.database(), &home).await;
-        wait_for_cycle(b.database()).await;
-        Self { a, b, home }
+        b.database.start_sync().await.unwrap();
+        Self { a, b }
     }
 
-    /// Stop both sync loops: whatever each device writes next, the other does
-    /// not see until [`Self::resume`].
-    pub(crate) fn pause(&self) {
-        self.a.database().stop_sync();
-        self.b.database().stop_sync();
+    /// Wait until both loops have stopped before making concurrent offline edits.
+    pub(crate) async fn pause(&self) {
+        for device in [&self.a, &self.b] {
+            device.database.stop_sync();
+            let mut status = device.database.subscribe_sync_status();
+            tokio::time::timeout(
+                SETTLE,
+                status.wait_for(|status| matches!(status, coven::SyncStatus::Stopped)),
+            )
+            .await
+            .unwrap()
+            .unwrap();
+        }
     }
 
-    /// Reconnect both devices to the home, starting their loops again. A
-    /// restart would rebuild each home from its configured provider, which a
-    /// test home has none of.
     pub(crate) async fn resume(&self) {
-        connect_a(self.a.database(), &self.home).await;
-        connect_b(self.b.database(), &self.home).await;
+        for device in [&self.a, &self.b] {
+            device.database.start_sync().await.unwrap();
+        }
     }
 
     /// Run cycles on both devices until `settled` holds for both and neither
@@ -196,7 +207,9 @@ impl TwoDevices {
                     Some((from_a, from_b))
                         if completed_a >= from_a + 2 && completed_b >= from_b + 2 =>
                     {
-                        if self.a.held().is_empty() && self.b.held().is_empty() {
+                        if self.a.database.pending().await.unwrap().is_empty()
+                            && self.b.database.pending().await.unwrap().is_empty()
+                        {
                             return;
                         }
                     }
@@ -206,9 +219,9 @@ impl TwoDevices {
             if tokio::time::Instant::now() >= deadline {
                 panic!(
                     "{what} never settled.\nA held {:?} after {}\nB held {:?} after {}",
-                    self.a.held(),
+                    self.a.database.pending().await.unwrap(),
                     self.a.last(),
-                    self.b.held(),
+                    self.b.database.pending().await.unwrap(),
                     self.b.last(),
                 );
             }
@@ -231,17 +244,10 @@ async fn sorted_rows(database: &Database, query: &str) -> Vec<String> {
 #[derive(Default)]
 struct Cycles {
     completed: u64,
-    held: Vec<coven::HeldStorePosition>,
     last: String,
 }
 
 impl TestDevice {
-    /// The positions this device's latest completed cycle held back from its
-    /// library, each with the reason it cannot apply.
-    pub(crate) fn held(&self) -> Vec<coven::HeldStorePosition> {
-        self.cycles.lock().expect("cycle record").held.clone()
-    }
-
     fn completed(&self) -> u64 {
         self.cycles.lock().expect("cycle record").completed
     }
@@ -261,44 +267,22 @@ fn record_cycles(
     let watcher = tokio::spawn(async move {
         while status.changed().await.is_ok() {
             let current = status.borrow_and_update().clone();
-            let (held, last) = match &current {
-                coven::SyncLoopStatus::Synchronized(success)
-                | coven::SyncLoopStatus::Blocked { success, .. } => (
-                    success.alerts.held_positions.clone(),
-                    format!("{:?}", success.alerts),
-                ),
-                coven::SyncLoopStatus::Failed { error } => (Vec::new(), format!("failed: {error}")),
+            let last = match &current {
+                coven::SyncStatus::Synced { .. } => format!("{current:?}"),
+                coven::SyncStatus::Failed { error } => format!("failed: {error}"),
                 _ => continue,
             };
             let mut cycles = recorded.lock().expect("cycle record");
             cycles.completed += 1;
-            cycles.held = held;
             cycles.last = last;
         }
     });
     (cycles, watcher)
 }
 
-async fn connect_a(database: &Database, home: &Arc<coven::InMemoryCloudHome>) {
-    database
-        .connect_sync_with_test_home(
-            home.clone(),
-            coven::CloudCipher::Encrypted(coven::EncryptionService::from_key(STORE_KEY)),
-        )
-        .await
-        .expect("connect device A to the home");
-}
-
-async fn connect_b(database: &Database, home: &Arc<coven::InMemoryCloudHome>) {
-    database
-        .connect_sync_with_test_home_custody_for_test(home.clone())
-        .await
-        .expect("connect device B to the home");
-}
-
 fn device(dir: TempDir, app_dir: AppDir, config: Config, handle: coven::CovenHandle) -> TestDevice {
     let clock: coven::ClockRef = Arc::new(coven::SystemClock);
-    let ids: coven::IdRef = Arc::new(coven::UuidProvider);
+    let ids: coven::IdSourceRef = Arc::new(coven::UuidIds);
     let database = Database::from_handle(handle, clock.clone());
     let manager = LibraryManager::new(
         database.clone(),
@@ -318,97 +302,5 @@ fn device(dir: TempDir, app_dir: AppDir, config: Config, handle: coven::CovenHan
         cycles,
         _watcher: watcher,
         _dir: dir,
-    }
-}
-
-/// Wait for one completed cycle, so the library's Store and the snapshot a
-/// joining device bootstraps from exist.
-async fn wait_for_cycle(database: &Database) {
-    let mut status = database.subscribe_sync_status();
-    database.sync_now();
-    tokio::time::timeout(SETTLE, async {
-        loop {
-            match &*status.borrow_and_update() {
-                coven::SyncLoopStatus::Synchronized(_) => return,
-                coven::SyncLoopStatus::Failed { error } => panic!("sync cycle failed: {error}"),
-                _ => {}
-            }
-            status.changed().await.expect("sync status stays open");
-        }
-    })
-    .await
-    .expect("a sync cycle completes");
-}
-
-/// Admit a new device through pairing: `owner` hosts the pairing session and
-/// approves the request, the joining side installs the library under `layout`.
-async fn join(
-    owner: &Database,
-    layout: &coven::StoreLayout,
-    home: Arc<coven::InMemoryCloudHome>,
-) -> coven::Config {
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
-        .await
-        .expect("bind the pairing listener");
-    let endpoint = listener.local_addr().expect("pairing endpoint");
-    let pairing_key = coven::UserKeypair::generate();
-    let offer = coven::DevicePairingOffer::new(
-        &pairing_key,
-        vec![endpoint],
-        "Two Devices".to_string(),
-        coven::CloudProvider::S3,
-        1_900_000_000,
-    )
-    .expect("pairing offer");
-    let journal = TempDir::new().expect("pairing journal directory");
-    let host = coven::DevicePairingHost::start(
-        listener,
-        offer.clone(),
-        pairing_key,
-        journal.path().join("pairing.json"),
-        Arc::new(coven::SystemClock),
-    )
-    .await
-    .expect("start the pairing host");
-    let pairing = coven::PreparedDevicePairing::open_or_create(&offer.encode(), None, layout)
-        .expect("prepare the joining identity");
-    // Coven reads a closed cancellation channel as a failed pairing, so both
-    // senders live as long as the join does.
-    let (_cancel_join, cancel) = tokio::sync::watch::channel(false);
-    let (_cancel_approval, cancel_approval) = tokio::sync::watch::channel(false);
-    let joining = coven_domain::joining::join_with_device_pairing_over_test_home(
-        &pairing,
-        layout.clone(),
-        crate::sync::synced_tables(),
-        crate::migrations::all(),
-        coven::CovenMigrationPolicy::ApplyPending,
-        Arc::new(coven::SystemClock),
-        home,
-        coven::DeviceJoinTransportTiming {
-            poll: Duration::from_millis(2),
-            deadline: SETTLE,
-        },
-        Arc::new(|_| {}),
-        &cancel,
-    );
-    let admitting = async {
-        let request = host
-            .wait_for_request()
-            .await
-            .expect("receive the joining device's request");
-        owner
-            .approve_device_pairing(&host, &request, &|_| {}, cancel_approval)
-            .await
-    };
-    let (joined, admitted) = tokio::join!(Box::pin(joining), Box::pin(admitting));
-    let joined =
-        joined.unwrap_or_else(|error| panic!("device B joins: {error:?} (A: {admitted:?})"));
-    assert!(matches!(
-        admitted.expect("device A admits device B"),
-        coven::DeviceJoinDriveOutcome::Activated(_)
-    ));
-    match joined {
-        coven::DeviceJoinTransportOutcome::Joined(config) => config,
-        outcome => panic!("device B did not install the library: {outcome:?}"),
     }
 }

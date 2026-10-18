@@ -74,7 +74,9 @@ async fn stored_dates_order_the_list_and_survive_candidate_replacement() {
     );
     let later = Database::from_handle(
         db.inner.handle.clone(),
-        Arc::new(FixedClock(fixed_now() + chrono::Duration::days(1))),
+        Arc::new(FixedClock::new(
+            (fixed_now() + chrono::Duration::days(1)).into(),
+        )),
     );
     let generation = later
         .begin_folder_scan(&root, crate::import::VolumeKind::Local)
@@ -149,7 +151,9 @@ async fn a_rescan_captures_dates_even_when_the_candidate_files_are_unchanged() {
 fn days_later(db: &Database, days: i64) -> Database {
     Database::from_handle(
         db.inner.handle.clone(),
-        Arc::new(FixedClock(fixed_now() + chrono::Duration::days(days))),
+        Arc::new(FixedClock::new(
+            (fixed_now() + chrono::Duration::days(days)).into(),
+        )),
     )
 }
 

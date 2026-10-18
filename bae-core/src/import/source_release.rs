@@ -505,7 +505,7 @@ impl SourceRelease {
         &self,
         audio_durations_ms: &[u64],
         clock: &dyn coven::Clock,
-        ids: &dyn coven::IdProvider,
+        ids: &dyn coven::IdSource,
     ) -> Result<ParsedAlbum, ImportError> {
         let coverage = self.coverage(audio_durations_ms);
         match self.release.catalog {
@@ -538,7 +538,7 @@ impl AppliedSource {
     pub fn parsed(
         &self,
         clock: &dyn coven::Clock,
-        ids: &dyn coven::IdProvider,
+        ids: &dyn coven::IdSource,
     ) -> Result<ParsedAlbum, ImportError> {
         self.release.parsed(&self.audio_durations_ms, clock, ids)
     }

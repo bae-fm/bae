@@ -301,36 +301,30 @@ fn fixed_now() -> chrono::DateTime<chrono::Utc> {
 
 impl Fixture {
     async fn new(name: &str) -> Self {
-        Self::with_ids(name, Arc::new(coven::SequentialIdProvider::new(name))).await
+        Self::with_ids(name, Arc::new(coven::SequentialIds::new())).await
     }
 
     /// A fixture that makes UUIDs, which an import's release rows need.
     async fn importing(name: &str) -> Self {
-        Self::with_ids(name, Arc::new(coven::UuidProvider)).await
+        Self::with_ids(name, Arc::new(coven::UuidIds)).await
     }
 
-    async fn with_ids(name: &str, ids: coven::IdRef) -> Self {
+    async fn with_ids(_name: &str, ids: coven::IdSourceRef) -> Self {
         let _ = tracing_subscriber::fmt()
-            .with_max_level(tracing::Level::DEBUG)
+            .with_env_filter("warn,bae_core=debug")
             .with_test_writer()
             .with_ansi(false)
             .try_init();
         let temp = TempDir::new().unwrap();
-        let clock: coven::ClockRef = Arc::new(coven::FixedClock(fixed_now()));
+        let clock: coven::ClockRef = Arc::new(coven::FixedClock::new((fixed_now()).into()));
         let database =
             Database::new_test(temp.path().join("test.db").to_str().unwrap(), clock.clone())
                 .await
                 .unwrap();
         let preparations = crate::import::CandidatePreparations::new(database.clone());
-        let library_dir = coven::StoreDir::new(temp.path());
-        let library_id = format!("sweep-{name}-{}", uuid::Uuid::new_v4());
-        let config = Config::with_defaults(
-            library_id.clone(),
-            "test-device".to_string(),
-            library_dir,
-            "Test Library".to_string(),
-        );
-        crate::config::install_test_keyring();
+
+        let config = Config::with_defaults(database.store_id(), temp.path().join("preferences"));
+
         let provider = FakeProvider::start().await;
         // Discogs goes to the fake too, so no test reaches the real API.
         let http = crate::util::http::Http::for_test()

@@ -20,7 +20,7 @@ pub(crate) struct SeededAlbum {
 /// user's own file prepared as an import registers it, and how each track's
 /// audio is laid out in them.
 pub(crate) struct SeededAudio {
-    pub(crate) files: Vec<(DbFile, coven::PreparedExternalBlob)>,
+    pub(crate) files: Vec<(DbFile, coven::PreparedUserFile)>,
     pub(crate) audio_formats: Vec<DbAudioFormat>,
     pub(crate) audio_segments: Vec<DbAudioSegment>,
 }
@@ -44,54 +44,50 @@ impl Database {
                 )
             })
             .collect();
-        self.inner
-            .handle
-            .write_with_blobs(
-                move |batch| {
-                    for (namespace, id, bytes) in cover_blobs {
-                        batch.put_blob(namespace, id, bytes);
+        self.write_with_files(
+            move |batch| {
+                for (namespace, id, bytes) in cover_blobs {
+                    batch.put_file(namespace, id, bytes);
+                }
+                Ok(())
+            },
+            move |sql| {
+                let tx = &sql;
+                for artist in &artists {
+                    insert_artist_row(tx, artist)?;
+                }
+                for seeded in &albums {
+                    insert_album_row(tx, &seeded.album)?;
+                    for credit in &seeded.credits {
+                        insert_album_artist_row(tx, credit)?;
                     }
-                    Ok(())
-                },
-                move |sql| {
-                    let tx = &sql;
-                    // One HLC stamp for every synced row this transaction writes.
-                    let reg = sql.stamp();
-                    for artist in &artists {
-                        insert_artist_row(tx, artist, &reg)?;
+                    insert_release_row(tx, &seeded.release)?;
+                    for track in &seeded.tracks {
+                        insert_track_row(tx, track)?;
                     }
-                    for seeded in &albums {
-                        insert_album_row(tx, &seeded.album, &reg)?;
-                        for credit in &seeded.credits {
-                            insert_album_artist_row(tx, credit, &reg)?;
-                        }
-                        insert_release_row(tx, &seeded.release, &reg)?;
-                        for track in &seeded.tracks {
-                            insert_track_row(tx, track, &reg)?;
-                        }
-                        if let Some((image, _)) = &seeded.cover {
-                            upsert_library_image_row(tx, image, &reg)?;
-                        }
+                    if let Some((image, _)) = &seeded.cover {
+                        upsert_library_image_row(tx, image)?;
                     }
-                    // The files go in after every release, each registered as
-                    // the user's own file as an import registers it, then the
-                    // layouts reading them.
-                    for audio in albums.into_iter().filter_map(|seeded| seeded.audio) {
-                        for (file, blob) in audio.files {
-                            insert_external_file_row(tx, &file, &reg, blob)?;
-                        }
-                        for format in &audio.audio_formats {
-                            insert_audio_format_row(tx, format, &reg)?;
-                        }
-                        for segment in &audio.audio_segments {
-                            insert_audio_segment_row(tx, segment, &reg)?;
-                        }
+                }
+                // The files go in after every release, each registered as
+                // the user's own file as an import registers it, then the
+                // layouts reading them.
+                for audio in albums.into_iter().filter_map(|seeded| seeded.audio) {
+                    for (file, blob) in audio.files {
+                        insert_external_file_row(tx, &file, blob)?;
                     }
-                    Ok(())
-                },
-            )
-            .await
-            .map(|_| ())
-            .map_err(Self::coven_error)
+                    for format in &audio.audio_formats {
+                        insert_audio_format_row(tx, format)?;
+                    }
+                    for segment in &audio.audio_segments {
+                        insert_audio_segment_row(tx, segment)?;
+                    }
+                }
+                Ok(())
+            },
+        )
+        .await
+        .map(|_| ())
+        .map_err(Self::coven_error)
     }
 }

@@ -3,7 +3,7 @@ use crate::musicbrainz::{
     MbArtistCredit, MbArtistRef, MbMedium, MbRecording, MbReleaseResponse, MbTrack, MbWork,
 };
 use coven::FixedClock;
-use coven::SequentialIdProvider;
+use coven::SequentialIds;
 
 /// Project archived source documents through the same metadata and mapping
 /// path as import, with only clock and ID generation replaced.
@@ -17,12 +17,10 @@ fn map(
         serde_json::to_string(response).expect("MusicBrainz fixture serializes"),
         supporting,
     );
-    let clock = FixedClock(
-        chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
+    let clock = FixedClock::new((chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
             .unwrap()
-            .with_timezone(&chrono::Utc),
-    );
-    let ids = SequentialIdProvider::new("mb");
+            .with_timezone(&chrono::Utc)).into());
+    let ids = SequentialIds::new();
     payloads.extract().unwrap().parsed(&[], &clock, &ids)
 }
 
@@ -102,12 +100,10 @@ fn map_for_audio(
         serde_json::to_string(response).expect("MusicBrainz fixture serializes"),
         Vec::new(),
     );
-    let clock = FixedClock(
-        chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
+    let clock = FixedClock::new((chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
             .unwrap()
-            .with_timezone(&chrono::Utc),
-    );
-    let ids = SequentialIdProvider::new("mb");
+            .with_timezone(&chrono::Utc)).into());
+    let ids = SequentialIds::new();
     payloads.extract().unwrap().parsed(audio_durations_ms, &clock, &ids)
 }
 

@@ -23,32 +23,28 @@ async fn library_statuses_follow_the_offered_releases_on_one_subscription() {
     let mut live = db.subscribe_library_statuses(BTreeSet::new());
     let requests = live.requests();
     assert!(
-        live.next().await.into_result().unwrap().is_empty(),
+        live.next().await.result.unwrap().is_empty(),
         "no offers check nothing"
     );
 
     requests
         .set([offered.clone(), other.clone()].into_iter().collect())
         .unwrap();
-    let initial = live.next().await.into_result().unwrap();
+    let initial = live.next().await.result.unwrap();
     assert_eq!(initial.len(), 2);
     assert!(initial.iter().all(|status| !status.album_in_library));
 
     exec(
         &db,
         "INSERT INTO release_records
-         (id, release_id, catalog, kind, key, album_key, url,
-          _updated_at, created_at)
-         VALUES (?1, ?2, 'musicbrainz', 'pressing', 'source-release-1', 'source-group-1',
-                 'https://musicbrainz.org/release/source-release-1',
-                 'identity-v1', '2026-01-01T00:00:00Z')",
+         (id, release_id, catalog, kind, key, album_key, url, created_at) VALUES (?1, ?2, 'musicbrainz', 'pressing', 'source-release-1', 'source-group-1', 'https://musicbrainz.org/release/source-release-1', '2026-01-01T00:00:00Z')",
         &[IDENTITY_ID, RELEASE_ID],
     )
     .await;
     let updated = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
         .expect("identity write wakes the library statuses")
-        .into_result()
+        .result
         .unwrap();
     let status = |statuses: &[LibraryStatus], release_id: &str| {
         statuses
@@ -70,14 +66,14 @@ async fn library_statuses_follow_the_offered_releases_on_one_subscription() {
     let album_only = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
         .expect("identity kind change wakes the library statuses")
-        .into_result()
+        .result
         .unwrap();
     let held = status(&album_only, "source-release-1");
     assert!(!held.release_in_library);
     assert!(held.album_in_library);
 
     requests.set([other].into_iter().collect()).unwrap();
-    let narrowed = live.next().await.into_result().unwrap();
+    let narrowed = live.next().await.result.unwrap();
     assert_eq!(
         narrowed
             .iter()
@@ -96,7 +92,7 @@ async fn album_selection_follows_its_ids_on_one_subscription() {
     let (db, _temp) = live_db().await;
     let mut live = db.subscribe_album_selection(BTreeSet::new());
     let requests = live.requests();
-    assert!(live.next().await.into_result().unwrap().albums.is_empty());
+    assert!(live.next().await.result.unwrap().albums.is_empty());
 
     requests
         .set(
@@ -106,8 +102,8 @@ async fn album_selection_follows_its_ids_on_one_subscription() {
         )
         .unwrap();
     let selected = live.next().await;
-    assert_eq!(selected.request().len(), 2);
-    let selected = selected.into_result().unwrap();
+    assert_eq!(selected.request.len(), 2);
+    let selected = selected.result.unwrap();
     assert_eq!(
         selected
             .albums
@@ -121,7 +117,7 @@ async fn album_selection_follows_its_ids_on_one_subscription() {
     let deleted = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
         .expect("deleting a selected album wakes the selection")
-        .into_result()
+        .result
         .unwrap();
     assert!(deleted.albums.is_empty());
 }

@@ -1,7 +1,4 @@
-//! bae's storage helpers around coven's cloud backends. The locality-aware blob
-//! read/write and the blob-store layout live behind [`coven::CovenHandle`], and
-//! callers name coven's cloud types directly; what's here is bae's transfer
-//! adapter and its readable-home cloud-key policy.
+//! Release transfers and validation of paths chosen for local copies.
+//! Coven owns attached files, their storage locations and their cache.
 pub mod path_fragment;
-pub mod readable_path;
 pub mod transfer;

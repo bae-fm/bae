@@ -128,7 +128,7 @@ impl AppServices {
     /// library, the track it was playing included, or the store's lock. The
     /// order is the one dropping the last handle to these services keeps;
     /// whichever runs first stops each worker, and the other finds it stopped.
-    pub async fn close(&self) {
+    pub async fn close(&self) -> Result<(), crate::library::LibraryError> {
         self.inner.playback.shutdown().await;
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
         {
@@ -147,7 +147,7 @@ impl AppServices {
                 std::panic::resume_unwind(error.into_panic());
             }
         }
-        self.inner.manager.close().await;
+        self.inner.manager.close().await
     }
 
     #[cfg(all(
@@ -269,7 +269,7 @@ impl AppServices {
     delegate_async!(manager, set_subsonic_config => set_subsonic_config(config: crate::config::SubsonicConfig) -> Result<(), crate::config::ConfigError>);
     delegate_async!(manager, set_cast_enabled => set_cast_enabled(enabled: bool) -> Result<(), crate::config::ConfigError>);
     delegate_async!(manager, set_cast_transcode_format => set_cast_transcode_format(format: crate::config::CastTranscodeFormat) -> Result<(), crate::config::ConfigError>);
-    delegate_sync!(manager, cloud_home_key_state => cloud_home_key_state() -> Result<coven::CloudHomeKeyState, crate::library::LibraryError>);
+    delegate_sync!(manager, store_key_state => store_key_state() -> Result<coven::StoreKeyState, crate::library::LibraryError>);
     delegate_async!(manager, set_max_concurrent_uploads => set_max_concurrent_uploads(n: u32) -> Result<(), crate::config::ConfigError>);
     delegate_async!(manager, set_max_concurrent_downloads => set_max_concurrent_downloads(n: u32) -> Result<(), crate::config::ConfigError>);
     delegate_async!(manager, set_side_pause_countdown => set_side_pause_countdown(countdown: crate::config::SidePauseCountdown) -> Result<(), crate::config::ConfigError>);
@@ -330,12 +330,12 @@ impl AppServices {
     delegate_async!(manager, set_save_presets => set_save_presets(presets: Vec<crate::config::SavePreset>) -> Result<(), crate::config::ConfigError>);
     delegate_async!(manager, set_default_track_save_preset => set_default_track_save_preset(preset_id: String) -> Result<(), crate::config::ConfigError>);
     delegate_async!(manager, set_default_release_save_preset => set_default_release_save_preset(preset_id: String) -> Result<(), crate::config::ConfigError>);
-    delegate_async!(manager, rename_library => rename_library(library_id: &str, name: &crate::library_name::LibraryName) -> Result<(), crate::library::LibraryError>);
+    delegate_async!(manager, rename_library => rename_library(name: &crate::library_name::LibraryName) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, forget_encryption_key => forget_encryption_key() -> Result<(), crate::library::LibraryError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_async!(manager, get_discogs_token => get_discogs_token() -> Result<Option<String>, crate::library::LibraryError>);
     delegate_async!(manager, disconnect_cloud_provider => disconnect_cloud_provider() -> Result<(), crate::library::LibraryError>);
-    delegate_async!(manager, unlock_cloud_home => unlock_cloud_home(serialized_master_key: &str) -> Result<(), crate::library::LibraryError>);
+    delegate_async!(manager, unlock_store_key => unlock_store_key() -> Result<(), crate::library::LibraryError>);
     delegate_sync!(manager, trigger_sync => trigger_sync() -> ());
     delegate_async!(manager, reconnect_sync => reconnect_sync() -> Result<(), crate::library::LibraryError>);
     delegate_sync!(manager, is_sync_ready => is_sync_ready() -> bool);
@@ -376,20 +376,31 @@ impl AppServices {
     delegate_async!(manager, make_releases_remote => make_releases_remote(release_ids: &[String]) -> Result<crate::library::MakeReleasesRemoteOutcome, crate::library::LibraryError>);
     delegate_async!(manager, make_release_local => make_release_local(release_id: &str, new_path: &str) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, delete_release => delete_release(release_id: &str) -> Result<(), crate::library::LibraryError>);
-    delegate_async!(manager, save_s3_config => save_s3_config(data: crate::sync::S3ConfigData) -> Result<(), crate::library::LibraryError>);
+    delegate_async!(manager, save_s3_config => save_s3_config(data: crate::sync::S3ConfigData, device_name: &str) -> Result<coven::StorageSetup, crate::library::LibraryError>);
     delegate_async!(manager, cloud_only_release_count => cloud_only_release_count() -> Result<u64, crate::library::LibraryError>);
     delegate_async!(manager, generate_restore_code => generate_restore_code() -> Result<String, crate::library::LibraryError>);
     delegate_async!(manager, get_members => get_members() -> Result<crate::sync::membership::Membership, crate::library::LibraryError>);
-    delegate_async!(manager, remove_member => remove_member(public_key_hex: &str) -> Result<(), crate::library::LibraryError>);
+    delegate_async!(manager, remove_member => remove_member(member: &coven::MemberId) -> Result<(), crate::library::LibraryError>);
+    delegate_sync!(manager, subscribe_members => subscribe_members() -> coven::LiveQuery<crate::sync::membership::Membership>);
+    delegate_async!(manager, remove_device => remove_device(device: coven::DeviceId) -> Result<coven::ProviderSignOut, crate::library::LibraryError>);
+    delegate_async!(manager, set_member_role => set_member_role(member: &coven::MemberId, role: coven::MemberRole) -> Result<(), crate::library::LibraryError>);
+    delegate_async!(manager, invite_person => invite_person(role: coven::MemberRole, access: coven::InviteAccess) -> Result<coven::Invite, crate::library::LibraryError>);
+    delegate_sync!(manager, subscribe_join_requests => subscribe_join_requests() -> tokio::sync::watch::Receiver<Vec<coven::JoinRequest>>);
+    delegate_async!(manager, approve_join_request => approve_join_request(request: &coven::JoinRequest) -> Result<(), crate::library::LibraryError>);
+    delegate_async!(manager, decline_join_request => decline_join_request(request: &coven::JoinRequest) -> Result<(), crate::library::LibraryError>);
+    delegate_async!(manager, cancel_invite => cancel_invite(invite: &coven::InviteId) -> Result<(), crate::library::LibraryError>);
+
     delegate_async!(manager, outbox_snapshot => outbox_snapshot() -> Result<crate::library::OutboxSnapshot, crate::library::LibraryError>);
     delegate_async!(manager, retry_outbox_now => retry_outbox_now() -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, cancel_release_transition => cancel_release_transition(release_id: &str) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, cancel_all_release_uploads => cancel_all_release_uploads() -> Result<(), crate::library::LibraryError>);
-    delegate_async!(manager, set_sync_paused => set_sync_paused(paused: bool) -> ());
+    delegate_async!(manager, set_sync_paused => set_sync_paused(paused: bool) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, enqueue_pins => enqueue_pins(release_ids: Vec<String>) -> ());
-    delegate_async!(manager, use_cloudkit => use_cloudkit(storage: crate::config::HomeStorage) -> Result<(), crate::library::LibraryError>);
+    delegate_async!(manager, use_cloudkit => use_cloudkit(device_name: &str) -> Result<coven::StorageSetup, crate::library::LibraryError>);
     #[cfg(feature = "oauth-providers")]
-    delegate_async!(manager, sign_in_cloud_provider => sign_in_cloud_provider(provider: crate::config::CloudProvider, storage: crate::config::HomeStorage) -> Result<(), crate::library::LibraryError>);
+    delegate_async!(manager, authenticate => authenticate(access: coven::OAuthAccess) -> Result<(), crate::library::LibraryError>);
+    #[cfg(feature = "oauth-providers")]
+    delegate_async!(manager, setup_oauth_storage => setup_oauth_storage(storage: coven::StorageConfig, device_name: &str) -> Result<coven::StorageSetup, crate::library::LibraryError>);
     delegate_async!(manager, get_album_id_for_release => get_album_id_for_release(release_id: &str) -> Result<String, crate::library::LibraryError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_async!(manager, release_edit_seed => release_edit_seed(release_id: &str) -> Result<crate::import::ReleaseEditSeed, crate::library::LibraryError>);
@@ -422,7 +433,7 @@ impl AppServices {
     #[cfg(any(test, feature = "test-utils"))]
     delegate_sync!(manager, has_cloud_home => has_cloud_home() -> bool);
     #[cfg(any(test, feature = "test-utils"))]
-    delegate_sync!(manager, is_sync_configured => is_sync_configured() -> bool);
+    delegate_async!(manager, is_sync_configured => is_sync_configured() -> Result<bool, crate::library::LibraryError>);
 
     delegate_sync!(playback, playback_play_release => play_release(release_id: String, start_track_id: Option<String>, shuffle: bool) -> ());
     delegate_sync!(playback, playback_play_releases => play_releases(release_ids: Vec<String>) -> ());
@@ -528,22 +539,26 @@ impl AppServices {
         self.inner.manager.subscribe_sync_status_values()
     }
 
-    pub async fn retry_blocked_sync_operation(
+    pub async fn retry_pending_operation(
         &self,
-        id: &str,
+        id: coven::OperationId,
     ) -> Result<(), crate::library::LibraryError> {
-        self.inner.manager.retry_blocked_sync_operation(id).await
+        self.inner.manager.retry_pending_operation(id).await
     }
 
     pub fn subscribe_eager_cache_fill_status(
         &self,
-    ) -> tokio::sync::watch::Receiver<crate::library::EagerCacheFillStatus> {
+    ) -> coven::LiveQuery<crate::library::EagerCacheFillStatus> {
         self.inner.manager.subscribe_eager_cache_fill_status()
     }
 
-    pub fn cancel_eager_cache_fill(&self) {
-        self.inner.manager.cancel_eager_cache_fill();
+    pub async fn cancel_eager_cache_fill(&self) -> Result<(), crate::library::LibraryError> {
+        self.inner.manager.cancel_eager_cache_fill().await
     }
+
+    delegate_async!(manager, pending => pending() -> Result<Vec<coven::PendingRecord>, crate::library::LibraryError>);
+    delegate_async!(manager, library_name => library_name() -> Result<String, crate::library::LibraryError>);
+    delegate_sync!(manager, subscribe_library_name => subscribe_library_name() -> coven::LiveQuery<String>);
 
     pub fn subscribe_outbox_values(
         &self,

@@ -161,11 +161,8 @@ async fn assert_cover_row_describes_stored_bytes(f: &ImportFixture, release_id: 
     let bytes = support::read_cover_image_blob(&f.library_manager, release_id)
         .await
         .expect("cover blob readable");
-    assert_eq!(
-        cover.content_hash.as_str(),
-        bae_core::util::fs::hash_bytes(&bytes).as_str(),
-        "the covers row's hash must be the hash of the stored blob",
-    );
+    let stored_hash = f.db.query_texts_for_test(&format!("SELECT lower(hex(hash)) FROM covers WHERE id = '{release_id}'")).await.unwrap();
+    assert_eq!(stored_hash, vec![bae_core::util::fs::hash_bytes(&bytes)]);
     assert_eq!(
         cover.file_size,
         bytes.len() as i64,
@@ -278,89 +275,6 @@ async fn import_resizes_oversized_cover_to_jpeg_thumbnail() {
     assert_cover_row_describes_stored_bytes(&f, &release_id).await;
 }
 
-/// On a browsable home the readable cloud_path is computed AT IMPORT — for every
-/// release file and for the cover — and stored on its row, so coven keys the blob
-/// readably when the gate flips. (An opaque home leaves them NULL; covered by the
-/// other imports, which assert nothing here.)
-#[tokio::test]
-async fn import_on_browsable_home_writes_readable_cloud_paths_at_import() {
-    support::tracing_init();
-
-    let f = ImportFixture::new().await;
-
-    let release = discogs_release("Browsable Album", &["Track"]);
-    let release_id_key = seed_discogs_test_release(f.library_manager.providers(), release);
-    // Make the home browsable BEFORE importing, so finalize computes readable keys.
-    f.library_manager
-        .set_home_storage(bae_core::config::HomeStorage::Browsable).await;
-
-    let album_dir = f.temp_path().join("album");
-    fs::create_dir_all(&album_dir).unwrap();
-    generate_album_with_cover(&album_dir, &["01 Track.flac"]);
-
-    let import_id = uuid::Uuid::new_v4().to_string();
-    f.handle
-        .send_command(ImportCommand {
-            selected_cover: Some(CoverSelection::Local("scans/back.jpg".to_string())),
-            ..support::folder_import(
-                &import_id,
-                album_dir,
-                support::discogs_release(release_id_key),
-            )
-        })
-        .await
-        .unwrap();
-    let mut progress_rx = f.handle.subscribe_import(import_id);
-    let (release_id, _) = support::wait_for_import_complete(&mut progress_rx).await;
-
-    let album_id =
-        f.db.find_release_by_id(&release_id)
-            .await
-            .unwrap()
-            .unwrap()
-            .album_id;
-    let prefix = format!("{album_id}/{release_id}/");
-
-    // Every release file carries a readable cloud_path under the release prefix.
-    let files = f.db.get_files_for_release(&release_id).await.unwrap();
-    assert!(!files.is_empty(), "the import recorded release files");
-    for file in &files {
-        // The readable key is `{album}/{release}/{source_folder}/{original_filename}`,
-        // and `original_filename` is the file's path within the release folder — so a
-        // `scans/back.jpg` image file keys under a `scans/` level, mirroring the
-        // folder the release was imported from.
-        let cp = file.cloud_path.as_deref().unwrap_or_else(|| {
-            panic!(
-                "file {} has no cloud_path on a browsable home",
-                file.original_filename
-            )
-        });
-        assert!(
-            cp.starts_with(&prefix),
-            "audio cloud_path {cp} is under the release prefix {prefix}",
-        );
-        assert!(
-            cp.ends_with(&file.original_filename),
-            "audio cloud_path {cp} ends with the file's stored path {}",
-            file.original_filename,
-        );
-    }
-
-    // The cover carries its readable cloud_path too. It names the cover's blob, not
-    // just the release, so a later cover change writes a new object rather than
-    // overwriting this one.
-    let cover =
-        f.db.find_library_image(&release_id, &LibraryImageType::Cover)
-            .await
-            .unwrap()
-            .expect("cover row present");
-    assert_eq!(
-        cover.cloud_path.as_deref(),
-        Some(format!("{prefix}cover-{}.jpg", cover.blob_id).as_str()),
-        "the cover's readable cloud_path is computed at import and names its blob",
-    );
-}
-
 // ── metadata draft + user edit at commit ───────────────────────────────────
 
 #[tokio::test]
@@ -395,7 +309,7 @@ async fn import_gif_and_webp_covers_stores_first_image_as_jpeg() {
         fs::create_dir_all(&album_dir).unwrap();
         generate_album_files(&album_dir, &["01 Track.flac"]);
         fs::write(album_dir.join(name), bytes).unwrap();
-        let import_id = f.ids.new_id();
+        let import_id = f.ids.new_id().to_string();
         f.handle
             .send_command(ImportCommand {
                 selected_cover: Some(CoverSelection::Local(name.to_string())),

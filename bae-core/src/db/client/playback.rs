@@ -14,7 +14,7 @@ impl Database {
             .subscribe_reconfigurable(initial, |request, sql| {
                 queue_catalog_on(&sql, request).map_err(CovenError::from)
             })
-            .process(|_, projection| Ok(projection))
+            .process(Ok)
     }
 
     /// Follow the display of the track `initial` names, `None` when it names
@@ -30,7 +30,7 @@ impl Database {
                 Some(track_id) => track_display_on(&sql, track_id).map_err(CovenError::from),
                 None => Ok(None),
             })
-            .process(|_, display| Ok(display))
+            .process(Ok)
     }
 
     /// Follow the side facts of the tracks `initial` names, in its order,
@@ -65,7 +65,7 @@ impl Database {
                 }
                 Ok(infos)
             })
-            .process(|_, infos| Ok(infos))
+            .process(Ok)
     }
 
     /// The display of `track_id` as the library holds it now, or `None` when it
@@ -260,7 +260,7 @@ fn track_displays_on(
         );
         meta_by_track.extend(sql.query(
             &query,
-            coven::rusqlite::params_from_iter(chunk.iter()),
+            rusqlite::params_from_iter(chunk.iter()),
             |row| {
                 let track_id: String = row.get("track_id")?;
                 let release_id: String = row.get("release_id")?;

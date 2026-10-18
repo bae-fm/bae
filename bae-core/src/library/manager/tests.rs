@@ -22,72 +22,61 @@ use crate::db::{
     LibraryImageType,
 };
 use crate::import::Catalog;
-#[cfg(feature = "test-utils")]
-use crate::sync::CloudCipher;
 use crate::util::content_type::ContentType;
 use chrono::Utc;
-#[cfg(feature = "test-utils")]
-use coven::EncryptionService;
-#[cfg(feature = "test-utils")]
-use coven::InMemoryCloudHome;
-use coven::StoreDir;
+use coven::{MemoryStorage, Storage};
 use tempfile::TempDir;
 use uuid::Uuid;
 
-async fn setup_test_manager() -> (LibraryManager, TempDir) {
-    // A unique id per test so keyring entries don't collide in the shared
-    // process-global mock store (see `install_test_keyring`).
-    setup_test_manager_with_library_id(&format!("test-{}", Uuid::new_v4())).await
+struct TestManager {
+    library: LibraryManager,
+    storage: Arc<MemoryStorage>,
+    installation: coven::TestCoven,
 }
 
-/// The keyring entries the mock keyring stores are namespaced by library id
-/// (`<base>:<library_id>`) in one process-global store. Tests that read or
-/// write keyring secrets (the Discogs key) must use a unique library id so
-/// parallel tests don't clobber each other's entries.
-async fn setup_test_manager_with_library_id(library_id: &str) -> (LibraryManager, TempDir) {
+impl std::ops::Deref for TestManager {
+    type Target = LibraryManager;
+    fn deref(&self) -> &LibraryManager {
+        &self.library
+    }
+}
+
+async fn setup_test_manager() -> (TestManager, TempDir) {
+    setup_test_manager_with_clock(Arc::new(coven::SystemClock)).await
+}
+
+async fn setup_test_manager_with_clock(clock: coven::ClockRef) -> (TestManager, TempDir) {
     let temp_dir = TempDir::new().unwrap();
-    let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
+    let app_dir = crate::config::AppDir::at(temp_dir.path());
+    let installation = coven::TestCoven::new();
+    let storage = Arc::new(
+        MemoryStorage::builder()
+            .clock(clock.clone())
+            .build()
+            .unwrap(),
+    );
+    let handle = crate::library::configure_store(installation.builder(app_dir.store_layout()))
+        .clock(clock.clone())
+        .storage_connector(storage.clone())
+        .create_store("Test Library")
+        .await
+        .unwrap();
     let config = Config::with_defaults(
-        library_id.to_string(),
-        "test-device".to_string(),
-        library_dir.clone(),
-        "Test Library".to_string(),
+        handle.store_id(),
+        app_dir.registered_library(&handle.store_id().to_string()),
     );
-    crate::config::install_test_keyring();
-    assemble_test_manager(temp_dir, config).await
-}
-
-#[cfg(feature = "test-utils")]
-async fn setup_browsable_test_manager() -> (LibraryManager, TempDir) {
-    let library_id = format!("test-{}", Uuid::new_v4());
-    let temp_dir = TempDir::new().unwrap();
-    let library_dir = StoreDir::new(temp_dir.path().to_path_buf());
-    let mut config = Config::with_defaults(
-        library_id.clone(),
-        "test-device".to_string(),
-        library_dir.clone(),
-        "Test Library".to_string(),
-    );
-    config.cloud_home.storage = crate::config::HomeStorage::Browsable;
-    crate::config::install_test_keyring();
-    assemble_test_manager(temp_dir, config).await
-}
-
-async fn assemble_test_manager(temp_dir: TempDir, config: Config) -> (LibraryManager, TempDir) {
-    let config_handle = Arc::new(ConfigHandle::new(config));
-    let manager = LibraryManager::open(
-        crate::config::AppDir::under_home(temp_dir.path()),
-        config_handle,
-        Arc::new(coven::SystemClock),
-        Arc::new(coven::UuidProvider),
+    let database = Database::from_handle(handle, clock.clone());
+    let manager = LibraryManager::new(
+        database,
+        app_dir,
+        Arc::new(ConfigHandle::new(config)),
+        clock,
+        Arc::new(coven::UuidIds),
         crate::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
-        None,
-        coven::OAuthClients::empty(),
         crate::import::cover_art::RemoteImageCache::for_test(crate::util::http::Http::for_test()),
         crate::providers::Providers::offline(),
-    )
-    .expect("open test library manager through the production object graph");
+    );
 
     // Insert the test artist that create_test_album() references
     let artist = DbArtist {
@@ -99,7 +88,14 @@ async fn assemble_test_manager(temp_dir: TempDir, config: Config) -> (LibraryMan
         created_at: Utc::now(),
     };
     manager.database.insert_artist(&artist).await.unwrap();
-    (manager, temp_dir)
+    (
+        TestManager {
+            library: manager,
+            storage,
+            installation,
+        },
+        temp_dir,
+    )
 }
 
 // One-line reads and writes against the manager's database. Spelled out at a
@@ -129,17 +125,6 @@ async fn album_releases(manager: &LibraryManager, album_id: &str) -> Vec<DbRelea
     manager
         .database
         .get_releases_for_album(album_id)
-        .await
-        .unwrap()
-}
-
-async fn make_remote_progress(
-    manager: &LibraryManager,
-    release_id: &str,
-) -> Option<coven::MakeRemoteProgress> {
-    manager
-        .database
-        .make_remote_progress_for_release(release_id)
         .await
         .unwrap()
 }
@@ -187,7 +172,7 @@ fn create_test_release(album_id: &str) -> DbRelease {
             barcode: None,
         },
         draft_from_tags: true,
-        remote: true,
+
         source_folder_name: None,
         content_hash: None,
         album_loudness_lufs: None,
@@ -199,7 +184,7 @@ fn create_test_release(album_id: &str) -> DbRelease {
 /// A manager holding one album with one release — the spine most of these
 /// tests start from before adding tracks, files, or covers of their own. The
 /// `TempDir` owns the library directory, so callers keep it.
-async fn manager_with_release() -> (LibraryManager, TempDir, DbAlbum, DbRelease) {
+async fn manager_with_release() -> (TestManager, TempDir, DbAlbum, DbRelease) {
     let (manager, temp_dir) = setup_test_manager().await;
     let album = create_test_album();
     let release = create_test_release(&album.id);

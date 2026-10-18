@@ -555,9 +555,6 @@ impl LibraryManager {
             .iter()
             .map(|(image, bytes)| (image, bytes.as_slice()))
             .collect();
-        // The home's storage mode decides the blob layout, and the manager owns
-        // config.
-        let storage = self.config_handle.config().cloud_home.storage;
         self.database
             .finalize_import_atomic(
                 guard,
@@ -572,10 +569,15 @@ impl LibraryManager {
                     images: &artist_images,
                 },
                 primary_release_id,
-                storage,
-                destination,
             )
             .await?;
+        if matches!(
+            destination,
+            crate::import::ImportDestination::Remote { pin: true }
+        ) {
+            self.pin_release_blobs_with_progress(&release.id, |_| {})
+                .await?;
+        }
         let remote = matches!(destination, crate::import::ImportDestination::Remote { .. });
         // A Remote import returns this revision, which already shows its
         // uploads queued.

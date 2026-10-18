@@ -104,23 +104,6 @@ fn block_column(reason: GroupingBlockReason) -> &'static str {
     }
 }
 
-fn cloud_setup_column(failure: coven::CloudHomeSetupFailure) -> &'static str {
-    use coven::CloudHomeSetupFailure as F;
-    match failure {
-        F::Authentication => "authentication",
-        F::PermissionDenied => "permission_denied",
-        F::ContainerNotFound => "container_not_found",
-        F::RegionMismatch => "region_mismatch",
-        F::QuotaExceeded => "quota_exceeded",
-        F::InvalidConfiguration => "invalid_configuration",
-        F::LocationOccupied => "location_occupied",
-        F::Network => "network",
-        F::DeviceIdentityMissing => "device_identity_missing",
-        F::SecureStorage => "secure_storage",
-        F::Internal => "internal",
-    }
-}
-
 /// How a failure's class is stored: its name, and for a class that carries a
 /// reason or counts, each after a dot.
 fn category_column(category: UiErrorCategory) -> String {
@@ -141,7 +124,7 @@ fn category_column(category: UiErrorCategory) -> String {
         C::GroupingBlocked(reason) => format!("grouping_blocked.{}", block_column(reason)),
         C::Export => "export".to_string(),
         C::Save => "save".to_string(),
-        C::CloudSetup(failure) => format!("cloud_setup.{}", cloud_setup_column(failure)),
+        C::CloudSetup(failure) => format!("cloud_setup.{}", serde_json::to_string(&failure).expect("storage failure serializes")),
         C::DeviceIdentityMissing => "device_identity_missing".to_string(),
         C::Credentials => "credentials".to_string(),
         C::Network => "network".to_string(),
@@ -152,7 +135,6 @@ fn category_column(category: UiErrorCategory) -> String {
 }
 
 fn category_of(column: &str) -> Result<UiErrorCategory, DbError> {
-    use coven::CloudHomeSetupFailure as F;
     use GroupingBlockReason as B;
     use UiErrorCategory as C;
     let unreadable = || DbError::Message(format!("unreadable failure class {column:?}"));
@@ -170,22 +152,7 @@ fn category_of(column: &str) -> Result<UiErrorCategory, DbError> {
             .ok_or_else(unreadable)?,
         ),
         Some(("cloud_setup", stored)) => C::CloudSetup(
-            [
-                F::Authentication,
-                F::PermissionDenied,
-                F::ContainerNotFound,
-                F::RegionMismatch,
-                F::QuotaExceeded,
-                F::InvalidConfiguration,
-                F::LocationOccupied,
-                F::Network,
-                F::DeviceIdentityMissing,
-                F::SecureStorage,
-                F::Internal,
-            ]
-            .into_iter()
-            .find(|failure| cloud_setup_column(*failure) == stored)
-            .ok_or_else(unreadable)?,
+            serde_json::from_str(stored).map_err(|_| unreadable())?,
         ),
         Some(("metadata_track_count", stored)) => {
             let (folder_tracks, release_tracks) = stored.split_once('.').ok_or_else(unreadable)?;
@@ -236,7 +203,7 @@ const SESSION_SELECT: &str = "SELECT presentation, search_tab, search_artist, se
             error_command, error_category, error_detail, find_online_section \
      FROM import_candidate_session WHERE content_hash = ?";
 
-fn session_row(row: &coven::rusqlite::Row<'_>) -> coven::rusqlite::Result<SessionRow> {
+fn session_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<SessionRow> {
     Ok((
         row.get(0)?,
         row.get(1)?,
@@ -426,7 +393,7 @@ mod tests {
     /// Every failure class reads back as the class it was stored as.
     #[test]
     fn every_failure_class_reads_back_as_itself() {
-        use coven::CloudHomeSetupFailure as F;
+        use coven::StorageFailure as F;
         use GroupingBlockReason as B;
         use UiErrorCategory as C;
         let classes = [
@@ -455,11 +422,11 @@ mod tests {
             C::CloudSetup(F::RegionMismatch),
             C::CloudSetup(F::QuotaExceeded),
             C::CloudSetup(F::InvalidConfiguration),
-            C::CloudSetup(F::LocationOccupied),
+            C::CloudSetup(F::StoreExists),
             C::CloudSetup(F::Network),
-            C::CloudSetup(F::DeviceIdentityMissing),
-            C::CloudSetup(F::SecureStorage),
-            C::CloudSetup(F::Internal),
+            C::CloudSetup(F::MemberKeysMissing),
+            C::CloudSetup(F::File),
+            C::CloudSetup(F::Protocol),
             C::DeviceIdentityMissing,
             C::Credentials,
             C::Network,

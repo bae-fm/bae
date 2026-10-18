@@ -125,19 +125,6 @@ async fn enqueue_release_save_captures_the_preset() {
     );
 }
 
-/// Break one of bae's own tables so the next read or write against it fails,
-/// standing in for a database that has gone bad under a delete. Only bae's tables
-/// are renameable: coven's SQL authorizer refuses a host statement that alters one
-/// of its reserved tables, so a cleanup step coven owns is failed by handing it
-/// input it refuses instead (see the rollback tests below).
-async fn rename_table_for_test(manager: &LibraryManager, table: &str) {
-    manager
-        .database
-        .rename_host_table_for_test(table)
-        .await
-        .unwrap();
-}
-
 async fn store_test_cover_image(manager: &LibraryManager, release_id: &str) {
     store_test_cover_image_with_blob(manager, release_id, COVER_BLOB).await;
 }
@@ -162,11 +149,8 @@ async fn store_test_cover_image_with_blob(
                 height: None,
                 source: "local".to_string(),
                 source_url: None,
-                cloud_path: None,
-                // The hash must be of the bytes actually stored: coven verifies
-                // a blob against its row's signed hash.
-                content_hash: crate::util::fs::hash_bytes(b"image"),
-                created_at: manager.clock.now(),
+
+                created_at: manager.clock.now().into(),
             },
             b"image",
         )
@@ -215,104 +199,19 @@ async fn replacing_a_cover_refuses_a_replacement_that_landed_first() {
     );
 }
 
-/// A library opened at its registered directory, connected to a test cloud
-/// home (so it holds a device identity, a master key, and cloud credentials),
-/// with a host secret stored beside them.
-async fn open_library_to_forget(
-    app_dir: &crate::config::AppDir,
-    library_id: &str,
-) -> LibraryManager {
-    let library_dir = app_dir.registered_library(library_id);
-    let mut config = Config::with_defaults(
-        library_id.to_string(),
-        "test-device".to_string(),
-        StoreDir::new(library_dir.clone()),
-        "Test Library".to_string(),
-    );
-    config.cloud_home.provider = Some(crate::config::CloudProvider::CloudKit);
-    crate::config::install_test_keyring();
-    let database = Database::open(
-        StoreDir::new(library_dir),
-        config.inner.clone(),
-        Arc::new(coven::SystemClock),
-        crate::sync::synced_tables(),
-        None,
-    )
-    .unwrap();
-    let manager = LibraryManager::new(
-        database,
-        app_dir.clone(),
-        Arc::new(ConfigHandle::new(config)),
-        Arc::new(coven::SystemClock),
-        Arc::new(coven::UuidProvider),
-        crate::diagnostics::Diagnostics::noop(),
-        tokio::runtime::Handle::current(),
-        crate::import::cover_art::RemoteImageCache::for_test(crate::util::http::Http::for_test()),
-        crate::providers::Providers::offline(),
-    );
-    manager
-        .connect_test_cloud_home(
-            Arc::new(coven::InMemoryCloudHome::new()),
-            crate::sync::CloudCipher::Encrypted(coven::EncryptionService::from_key([7u8; 32])),
-        )
-        .await
-        .unwrap();
-    manager
-        .database
-        .set_host_secret(crate::keys::MCP_BEARER_TOKEN, "forget-test-secret")
-        .unwrap();
-    manager
-}
-
-/// Forgetting a library on this device, once it is closed, leaves no keyring
-/// entry for it — master key, cloud credentials, host secrets — no directory,
-/// and no active-library pointer at it.
+/// Removing the active library closes its custody and removes both directories.
 #[tokio::test]
-async fn forgetting_a_closed_library_leaves_no_keyring_entry_or_directory() {
-    let home = TempDir::new().unwrap();
-    let app_dir = crate::config::AppDir::under_home(home.path());
-    let library_id = format!("forget-{}", Uuid::new_v4());
-    let manager = open_library_to_forget(&app_dir, &library_id).await;
-    std::fs::write(app_dir.active_library_pointer(), &library_id).unwrap();
-    let keys = coven::StoreKeys::bind(library_id.clone());
-    assert!(keys.get_encryption_key().unwrap().is_some());
-    assert!(keys.get_host_secret(crate::keys::MCP_BEARER_TOKEN).unwrap().is_some());
-
-    manager.close().await;
-    coven::assert_no_open_files_under(&app_dir.registered_library(&library_id));
-    crate::library::remove_local_library(&app_dir, &library_id).unwrap();
-
-    assert_eq!(keys.get_encryption_key().unwrap(), None);
-    assert!(keys.get_cloud_home_credentials().unwrap().is_none());
-    for name in crate::keys::HOST_SECRET_NAMES {
-        assert_eq!(keys.get_host_secret(name).unwrap(), None, "{name}");
-    }
-    assert!(!app_dir.registered_library(&library_id).exists());
-    assert!(!app_dir.active_library_pointer().exists());
-}
-
-/// A library still open anywhere is not removed: coven refuses, and every
-/// keyring entry, the directory, and the active-library pointer stay.
-#[tokio::test]
-async fn removing_an_open_library_is_refused_and_removes_nothing() {
-    let home = TempDir::new().unwrap();
-    let app_dir = crate::config::AppDir::under_home(home.path());
-    let library_id = format!("forget-open-{}", Uuid::new_v4());
-    let manager = open_library_to_forget(&app_dir, &library_id).await;
-    std::fs::write(app_dir.active_library_pointer(), &library_id).unwrap();
-
-    let error = crate::library::remove_local_library(&app_dir, &library_id)
-        .expect_err("an open library is not removed");
-
-    assert!(error.to_string().contains("Failed to remove library data"), "{error}");
-    let keys = coven::StoreKeys::bind(library_id.clone());
-    assert!(keys.get_encryption_key().unwrap().is_some());
-    assert!(app_dir.registered_library(&library_id).exists());
-    assert_eq!(
-        std::fs::read_to_string(app_dir.active_library_pointer()).unwrap(),
-        library_id
-    );
-    drop(manager);
+async fn removal_releases_custody_and_preferences() {
+    let (manager, _temp) = setup_test_manager().await;
+    let id = manager.database.store_id().to_string();
+    manager.ensure_mcp_token().await.unwrap();
+    manager.set_mcp_config(crate::config::McpConfig::disabled_default()).await.unwrap();
+    manager.get_config().save_active_library(&manager.app_dir).unwrap();
+    manager.remove_library(coven::IfUnsent::Refuse).await.unwrap();
+    assert!(manager.get_mcp_token().await.is_err());
+    assert!(!manager.app_dir.registered_library(&id).exists());
+    assert!(manager.app_dir.store_layout().stores().await.unwrap().is_empty());
+    assert!(!manager.app_dir.active_library_pointer().exists());
 }
 
 #[tokio::test]

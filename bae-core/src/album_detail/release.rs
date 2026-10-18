@@ -34,7 +34,7 @@ pub struct ReleaseSummary {
     /// What the release is made of, each carrier with its count; empty if
     /// unknown.
     pub media: Vec<crate::pressing::MediaCount>,
-    /// Local or Remote, from the shared `releases.remote` fact. Orthogonal to
+    /// Whether every release file has been attached for upload. Orthogonal to
     /// `pinned`.
     pub storage_state: ReleaseStorageState,
     /// Whether coven keeps this release's blobs offline on this device. Meaningful
@@ -313,6 +313,7 @@ impl ReleaseDetail {
 
         let track_groups: Vec<TrackGroup> = crate::util::format::group_tracks_by_side(&tracks);
 
+        let remote = !raw.files.is_empty() && raw.files.iter().all(|file| file.attached);
         let mut cover_files = Vec::new();
         let files: Vec<FileDetail> = raw
             .files
@@ -382,7 +383,7 @@ impl ReleaseDetail {
                 id: release.id.clone(),
                 album_id: release.album_id.clone(),
                 media: release.pressing.facts.media.clone(),
-                remote: release.remote,
+                remote,
                 any_file_id: files.first().map(|f| f.id.clone()),
                 file_count,
                 total_size,

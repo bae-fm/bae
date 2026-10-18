@@ -5,7 +5,7 @@ use super::folder_scanner::CategorizedFiles;
 use super::audio_layout::direct_entry_track_rows;
 use super::ParsedAlbum;
 use crate::pressing::Pressing;
-use coven::{Clock, IdProvider};
+use coven::{Clock, IdSource};
 
 /// Build blank release metadata without reading filenames, CUE titles, embedded
 /// tags, or provider documents. Only the audio units, disc assignment, and
@@ -14,7 +14,7 @@ use coven::{Clock, IdProvider};
 pub(crate) fn map_direct_entry_candidate_to_db(
     files: &CategorizedFiles,
     clock: &dyn Clock,
-    ids: &dyn IdProvider,
+    ids: &dyn IdSource,
 ) -> ParsedAlbum {
     let tracks = direct_entry_track_rows(files)
         .into_iter()

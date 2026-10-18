@@ -14,7 +14,6 @@ CREATE TABLE IF NOT EXISTS artists (
     discogs_artist_id TEXT,
     musicbrainz_artist_id TEXT,
 
-    _updated_at TEXT NOT NULL,
     created_at TEXT NOT NULL
 ) STRICT;
 
@@ -32,7 +31,6 @@ CREATE INDEX IF NOT EXISTS idx_artists_mb_id ON artists (musicbrainz_artist_id);
 CREATE TABLE IF NOT EXISTS artist_merges (
     id TEXT PRIMARY KEY,
     into_artist_id TEXT NOT NULL,
-    _updated_at TEXT NOT NULL,
     created_at TEXT NOT NULL,
     CHECK (id <> into_artist_id),
     FOREIGN KEY (id) REFERENCES artists (id) ON DELETE CASCADE,
@@ -72,13 +70,10 @@ CREATE TABLE IF NOT EXISTS artist_images (
     height INTEGER,
     source TEXT NOT NULL,
     source_url TEXT,
-    -- Cloud object key under the `artist_images` namespace: NULL where the home
-    -- names blobs by id, `{artist}/artist.{ext}` on a browsable home.
-    cloud_path TEXT,
-    _updated_at TEXT NOT NULL,
     created_at TEXT NOT NULL,
-    -- Content hash, as on release_files.hash.
-    hash TEXT NOT NULL,
+    -- coven writes both columns when a file is attached.
+    hash BLOB,
+    location TEXT,
     -- The coven blob holding the bytes; a new one per stored image, as on
     -- covers.blob_id.
     blob_id TEXT NOT NULL,
@@ -98,7 +93,6 @@ CREATE TABLE IF NOT EXISTS albums (
     -- means the first release.
     primary_release_id TEXT,
     is_compilation INTEGER NOT NULL DEFAULT 0,
-    _updated_at TEXT NOT NULL,
     created_at TEXT NOT NULL
 ) STRICT;
 
@@ -110,7 +104,6 @@ CREATE TABLE IF NOT EXISTS album_artists (
     album_id TEXT NOT NULL,
     artist_id TEXT NOT NULL,
     position INTEGER NOT NULL,
-    _updated_at TEXT NOT NULL,
     created_at TEXT NOT NULL,
     FOREIGN KEY (album_id) REFERENCES albums (id) ON DELETE CASCADE,
     FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE CASCADE,
@@ -128,7 +121,6 @@ CREATE TABLE IF NOT EXISTS works (
     disambiguation TEXT,
     work_type TEXT,
     musicbrainz_work_id TEXT NOT NULL,
-    _updated_at TEXT NOT NULL,
     created_at TEXT NOT NULL
 ) STRICT;
 
@@ -141,7 +133,6 @@ CREATE TABLE IF NOT EXISTS work_artists (
     artist_id TEXT NOT NULL,
     position INTEGER NOT NULL,
     source TEXT NOT NULL,
-    _updated_at TEXT NOT NULL,
     created_at TEXT NOT NULL,
     FOREIGN KEY (work_id) REFERENCES works (id) ON DELETE CASCADE,
     FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE CASCADE,
@@ -159,7 +150,6 @@ CREATE TABLE IF NOT EXISTS work_parts (
     child_work_id TEXT NOT NULL,
     position INTEGER NOT NULL,
     source TEXT NOT NULL,
-    _updated_at TEXT NOT NULL,
     created_at TEXT NOT NULL,
     FOREIGN KEY (parent_work_id) REFERENCES works (id) ON DELETE CASCADE,
     FOREIGN KEY (child_work_id) REFERENCES works (id) ON DELETE CASCADE,
@@ -195,10 +185,6 @@ CREATE TABLE IF NOT EXISTS releases (
     -- of `crate::pressing::DiscogsDetail` keys, each once, in its order.
     discogs_details    TEXT NOT NULL DEFAULT '[]'
         CHECK (json_valid(discogs_details) AND json_type(discogs_details) = 'array'),
-    -- Whether the audio is in the cloud home (1) or on this device only (0).
-    -- coven syncs the release and the rows under it only when 1; a local
-    -- release's files are tracked in coven's device-local `local_blob_refs`.
-    remote INTEGER NOT NULL,
     source_folder_name TEXT,
     -- SHA-256 over sorted relative paths, sizes and modification times. A hint
     -- that a folder may already be in the library, never a release identity:
@@ -210,7 +196,6 @@ CREATE TABLE IF NOT EXISTS releases (
     -- True peak as a linear ratio (1.0 = 0 dBTP), the max over all tracks;
     -- playback caps the gain at 1.0/peak.
     album_peak_linear REAL,
-    _updated_at TEXT NOT NULL,
     created_at TEXT NOT NULL,
     -- Whether the stored metadata came from the folder's file tags rather than
     -- a catalog record.
@@ -238,13 +223,10 @@ CREATE TABLE IF NOT EXISTS covers (
     height INTEGER,
     source TEXT NOT NULL,
     source_url TEXT,
-    -- Cloud object key under the `covers` namespace: NULL where the home names
-    -- blobs by id, `{album}/{release}/cover.{ext}` on a browsable home.
-    cloud_path TEXT,
-    _updated_at TEXT NOT NULL,
     created_at TEXT NOT NULL,
-    -- Content hash, as on release_files.hash.
-    hash TEXT NOT NULL,
+    -- coven writes both columns when a file is attached.
+    hash BLOB,
+    location TEXT,
     -- The coven blob holding the bytes. coven never rewrites a blob, so
     -- replacing a cover points the row at a new blob id.
     blob_id TEXT NOT NULL,
@@ -259,15 +241,10 @@ CREATE TABLE IF NOT EXISTS release_files (
     original_filename TEXT NOT NULL,
     file_size INTEGER NOT NULL,
     content_type TEXT NOT NULL,
-    -- Cloud object key for the file's blob: NULL where the home names blobs by
-    -- id, `{artist}/{album}/{filename}` on a browsable home. Set once at upload,
-    -- so renaming metadata never moves the blob.
-    cloud_path TEXT,
-    _updated_at TEXT NOT NULL,
     created_at TEXT NOT NULL,
-    -- Lowercase-hex SHA-256 of the blob's plaintext; coven checks fetched bytes
-    -- against it.
-    hash TEXT NOT NULL,
+    -- coven writes both columns when this file is attached for upload.
+    hash BLOB,
+    location TEXT,
     -- What the file held before import rewrote it: its own audio ('file') or
     -- one slice of a CUE-described disc ('cue').
     source_audio_layout TEXT,
@@ -315,6 +292,15 @@ CREATE TABLE IF NOT EXISTS release_files (
 
 CREATE INDEX IF NOT EXISTS idx_release_files_release_id ON release_files (release_id);
 
+-- Original files of a local release. These paths never leave this device;
+-- attaching a file to its synced row removes its local-only entry atomically.
+CREATE TABLE IF NOT EXISTS local_release_files (
+    file_id TEXT NOT NULL PRIMARY KEY REFERENCES release_files(id) ON DELETE CASCADE,
+    path TEXT NOT NULL,
+    modified_at TEXT NOT NULL
+) STRICT;
+
+
 -- Who is credited on a release, and in what role, as the catalog stated it.
 CREATE TABLE IF NOT EXISTS release_artist_roles (
     id TEXT PRIMARY KEY,
@@ -323,7 +309,6 @@ CREATE TABLE IF NOT EXISTS release_artist_roles (
     position INTEGER NOT NULL,
     source TEXT NOT NULL,
     source_credit TEXT,
-    _updated_at TEXT NOT NULL,
     created_at TEXT NOT NULL,
     FOREIGN KEY (release_id) REFERENCES releases (id) ON DELETE CASCADE,
     FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE CASCADE,
@@ -343,7 +328,6 @@ CREATE TABLE IF NOT EXISTS release_records (
     key         TEXT NOT NULL,
     album_key   TEXT,
     url         TEXT NOT NULL CHECK (url <> ''),
-    _updated_at TEXT NOT NULL,
     created_at  TEXT NOT NULL,
     kind        TEXT NOT NULL CHECK (kind IN ('pressing', 'album')),
     CHECK (kind = 'pressing' OR album_key IS NULL),
@@ -364,7 +348,6 @@ CREATE TABLE IF NOT EXISTS tracks (
     track_number INTEGER,
     duration_ms INTEGER,
     discogs_position TEXT,
-    _updated_at TEXT NOT NULL,
     created_at TEXT NOT NULL,
     -- Playing order within the release, from zero across all sides.
     position INTEGER NOT NULL DEFAULT 0 CHECK (position >= 0),
@@ -383,7 +366,6 @@ CREATE TABLE IF NOT EXISTS track_artists (
     track_id TEXT NOT NULL,
     artist_id TEXT NOT NULL,
     position INTEGER NOT NULL,
-    _updated_at TEXT NOT NULL,
     created_at TEXT NOT NULL,
     FOREIGN KEY (track_id) REFERENCES tracks (id) ON DELETE CASCADE,
     FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE CASCADE
@@ -401,7 +383,6 @@ CREATE TABLE IF NOT EXISTS track_artist_roles (
     position INTEGER NOT NULL,
     source TEXT NOT NULL,
     source_credit TEXT,
-    _updated_at TEXT NOT NULL,
     created_at TEXT NOT NULL,
     FOREIGN KEY (track_id) REFERENCES tracks (id) ON DELETE CASCADE,
     FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE CASCADE,
@@ -419,7 +400,6 @@ CREATE TABLE IF NOT EXISTS track_works (
     work_id TEXT NOT NULL,
     position INTEGER NOT NULL,
     source TEXT NOT NULL,
-    _updated_at TEXT NOT NULL,
     created_at TEXT NOT NULL,
     FOREIGN KEY (track_id) REFERENCES tracks (id) ON DELETE CASCADE,
     FOREIGN KEY (work_id) REFERENCES works (id) ON DELETE CASCADE,
@@ -451,7 +431,6 @@ CREATE TABLE IF NOT EXISTS audio_formats (
     -- True peak as a linear ratio (1.0 = 0 dBTP), the max over channels;
     -- playback caps the gain at 1.0/peak.
     track_peak_linear REAL,
-    _updated_at TEXT NOT NULL,
     created_at TEXT NOT NULL,
     FOREIGN KEY (track_id) REFERENCES tracks (id) ON DELETE CASCADE
 ) STRICT;
@@ -471,7 +450,6 @@ CREATE TABLE IF NOT EXISTS audio_format_segments (
     end_sample INTEGER CHECK (end_sample >= 0),
     start_byte INTEGER CHECK (start_byte >= 0),
     end_byte INTEGER CHECK (end_byte >= 0),
-    _updated_at TEXT NOT NULL,
     created_at TEXT NOT NULL,
     UNIQUE (audio_format_id, segment_index),
     FOREIGN KEY (audio_format_id) REFERENCES audio_formats (id) ON DELETE CASCADE,

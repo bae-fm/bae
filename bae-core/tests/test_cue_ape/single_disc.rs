@@ -2,20 +2,16 @@ use bae_core::discogs::models::DiscogsRelease;
 use bae_core::import::{ImportCommand, ImportDestination};
 use bae_core::library::LibraryManager;
 use bae_core::playback::{PlaybackProgress, PlaybackState, TrackTime};
-use bae_core::sync::CloudCipher;
 use bae_core::util::content_type::ContentType;
 use bae_test_support as support;
-use coven::{EncryptionService, StoreDir};
 use std::path::Path;
-use std::sync::Arc;
 use std::time::Duration;
 use support::start_test_import;
 use support::{
     assert_captured_matches_reference, open_test_library, samples_as_f32,
-    seed_discogs_test_release, test_config, tracing_init, wait_for_import_complete,
+    seed_discogs_test_release, tracing_init, wait_for_import_complete,
 };
 use tempfile::TempDir;
-use tokio::time::{sleep, timeout};
 use tracing::info;
 
 fn copy_cue_ape_fixture(dir: &Path) {

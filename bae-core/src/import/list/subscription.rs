@@ -155,7 +155,7 @@ struct Delivered {
 struct AnsweredList {
     projection: ImportListProjection,
     request_revision: u64,
-    cause: coven::ReconfigurableLiveQueryCause,
+    cause: coven::LiveQueryCause,
 }
 
 impl AnsweredList {
@@ -188,7 +188,7 @@ impl Delivered {
             return None;
         };
         let cause = if beside_list && self.sent {
-            coven::ReconfigurableLiveQueryCause::DatabaseChanged
+            coven::LiveQueryCause::Write
         } else {
             list.cause
         };
@@ -314,13 +314,13 @@ impl ImportListSubscription {
             };
             let beside_list = match arrival {
                 Arrival::List(event) => {
-                    let request_revision = event.revision().get();
-                    let cause = event.cause();
+                    let request_revision = event.revision.0;
+                    let cause = event.cause;
                     // A list read that fails takes the whole import tab with
                     // it — no rows, no watched folders — so the reason is
                     // worth a line whether or not anyone is on screen to be
                     // shown it.
-                    let mut projection = match event.into_result() {
+                    let mut projection = match event.result {
                         Ok(projection) => projection,
                         Err(error) => {
                             tracing::error!(

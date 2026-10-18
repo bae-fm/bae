@@ -7,52 +7,49 @@ pub(super) fn in_clause_placeholders(count: usize) -> String {
 }
 
 /// One-row SELECT shared by coven's write [`SqlContext`] and its read
-/// [`SqlReadContext`]. The release-path resolvers run their lookup under a write
-/// transaction in production and on the read connection elsewhere; both expose
-/// the same `query_row`, so the resolvers stay generic over this.
+/// [`SqlReadContext`], used when artist resolution runs inside either context.
 pub(super) trait QueryOne {
-    fn query_row<T, P: Params, F: FnOnce(&Row<'_>) -> coven::rusqlite::Result<T>>(
+    fn query_row<T, P: Params, F: FnOnce(&Row<'_>) -> rusqlite::Result<T>>(
         &self,
         sql: &str,
         params: P,
         f: F,
-    ) -> coven::rusqlite::Result<T>;
+    ) -> rusqlite::Result<T>;
 }
 
 /// Multi-row SELECT shared by coven's read and write SQL contexts. Kept
-/// separate from [`QueryOne`] because the release-path resolvers need only a
-/// single-row lookup, while deletion planning needs both forms.
+/// separate from [`QueryOne`] so callers require only the queries they use.
 pub(super) trait QueryRows {
-    fn query<T, P: Params, F: FnMut(&Row<'_>) -> coven::rusqlite::Result<T>>(
+    fn query<T, P: Params, F: FnMut(&Row<'_>) -> rusqlite::Result<T>>(
         &self,
         sql: &str,
         params: P,
         f: F,
-    ) -> coven::rusqlite::Result<Vec<T>>;
+    ) -> rusqlite::Result<Vec<T>>;
 }
 
 /// The resolvers' unit tests run them against a bare seeded connection, which is
 /// the only place bae still holds one — coven owns every production connection.
 #[cfg(test)]
 impl QueryOne for Connection {
-    fn query_row<T, P: Params, F: FnOnce(&Row<'_>) -> coven::rusqlite::Result<T>>(
+    fn query_row<T, P: Params, F: FnOnce(&Row<'_>) -> rusqlite::Result<T>>(
         &self,
         sql: &str,
         params: P,
         f: F,
-    ) -> coven::rusqlite::Result<T> {
+    ) -> rusqlite::Result<T> {
         Connection::query_row(self, sql, params, f)
     }
 }
 
 #[cfg(all(test, not(any(target_os = "ios", target_os = "android"))))]
 impl QueryRows for Connection {
-    fn query<T, P: Params, F: FnMut(&Row<'_>) -> coven::rusqlite::Result<T>>(
+    fn query<T, P: Params, F: FnMut(&Row<'_>) -> rusqlite::Result<T>>(
         &self,
         sql: &str,
         params: P,
         f: F,
-    ) -> coven::rusqlite::Result<Vec<T>> {
+    ) -> rusqlite::Result<Vec<T>> {
         let mut statement = self.prepare(sql)?;
         let values = statement.query_map(params, f)?.collect();
         values
@@ -60,70 +57,46 @@ impl QueryRows for Connection {
 }
 
 impl QueryOne for SqlReadContext<'_> {
-    fn query_row<T, P: Params, F: FnOnce(&Row<'_>) -> coven::rusqlite::Result<T>>(
+    fn query_row<T, P: Params, F: FnOnce(&Row<'_>) -> rusqlite::Result<T>>(
         &self,
         sql: &str,
         params: P,
         f: F,
-    ) -> coven::rusqlite::Result<T> {
+    ) -> rusqlite::Result<T> {
         SqlReadContext::query_row(self, sql, params, f)
     }
 }
 
 impl QueryRows for SqlReadContext<'_> {
-    fn query<T, P: Params, F: FnMut(&Row<'_>) -> coven::rusqlite::Result<T>>(
+    fn query<T, P: Params, F: FnMut(&Row<'_>) -> rusqlite::Result<T>>(
         &self,
         sql: &str,
         params: P,
         f: F,
-    ) -> coven::rusqlite::Result<Vec<T>> {
+    ) -> rusqlite::Result<Vec<T>> {
         SqlReadContext::query(self, sql, params, f)
     }
 }
 
 impl QueryOne for SqlContext<'_, '_> {
-    fn query_row<T, P: Params, F: FnOnce(&Row<'_>) -> coven::rusqlite::Result<T>>(
+    fn query_row<T, P: Params, F: FnOnce(&Row<'_>) -> rusqlite::Result<T>>(
         &self,
         sql: &str,
         params: P,
         f: F,
-    ) -> coven::rusqlite::Result<T> {
+    ) -> rusqlite::Result<T> {
         SqlContext::query_row(self, sql, params, f)
     }
 }
 
 impl QueryRows for SqlContext<'_, '_> {
-    fn query<T, P: Params, F: FnMut(&Row<'_>) -> coven::rusqlite::Result<T>>(
+    fn query<T, P: Params, F: FnMut(&Row<'_>) -> rusqlite::Result<T>>(
         &self,
         sql: &str,
         params: P,
         f: F,
-    ) -> coven::rusqlite::Result<Vec<T>> {
+    ) -> rusqlite::Result<Vec<T>> {
         SqlContext::query(self, sql, params, f)
-    }
-}
-
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-impl QueryOne for coven::MigrationContext<'_> {
-    fn query_row<T, P: Params, F: FnOnce(&Row<'_>) -> coven::rusqlite::Result<T>>(
-        &self,
-        sql: &str,
-        params: P,
-        f: F,
-    ) -> coven::rusqlite::Result<T> {
-        coven::MigrationContext::query_row(self, sql, params, f)
-    }
-}
-
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-impl QueryRows for coven::MigrationContext<'_> {
-    fn query<T, P: Params, F: FnMut(&Row<'_>) -> coven::rusqlite::Result<T>>(
-        &self,
-        sql: &str,
-        params: P,
-        f: F,
-    ) -> coven::rusqlite::Result<Vec<T>> {
-        coven::MigrationContext::query(self, sql, params, f)
     }
 }
 
@@ -137,18 +110,6 @@ pub(super) fn image_table(image_type: &LibraryImageType) -> &'static str {
     }
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(super) fn artist_image_cloud_path_for_storage(
-    storage: crate::config::HomeStorage,
-    artist_id: &str,
-    blob_id: &str,
-    content_type: &ContentType,
-) -> Option<String> {
-    storage
-        .is_browsable()
-        .then(|| resolve_artist_cloud_path(artist_id, blob_id, content_type))
-}
-
 /// After `removed_release_id` has left `album_id` inside the current
 /// transaction: NULL a `primary_release_id` that pointed at the removed release
 /// (the user's cover-release choice is gone with it, and read paths fall back to
@@ -158,7 +119,7 @@ pub(super) fn artist_image_cloud_path_for_storage(
 /// to it while apart, and a delete wins over that release in the merge and
 /// leaves it without a parent, so the pull that carries it could never apply.
 /// An empty album is inert instead: every listing shows only albums with a
-/// release, and coven keeps an album with no remote release off other devices.
+/// release.
 /// A release that later lands in it, from any device, fills it again.
 ///
 /// Precondition: the release row must already be deleted or repointed away from
@@ -167,12 +128,11 @@ pub(super) fn vacate_album_on(
     conn: &SqlContext<'_, '_>,
     album_id: &str,
     removed_release_id: &str,
-    reg: &str,
 ) -> Result<bool, DbError> {
     conn.execute(
-        "UPDATE albums SET primary_release_id = NULL, _updated_at = ? \
+        "UPDATE albums SET primary_release_id = NULL \
          WHERE id = ? AND primary_release_id = ?",
-        params![reg, album_id, removed_release_id],
+        params![album_id, removed_release_id],
     )?;
     let remaining: i64 = conn.query_row(
         "SELECT COUNT(*) FROM releases WHERE album_id = ?",
@@ -435,7 +395,7 @@ pub(super) fn work_summary_query(filter: Option<&str>, tail: Option<&str>) -> St
     query
 }
 
-pub(super) fn row_to_work_summary(row: &Row<'_>) -> coven::rusqlite::Result<DbWorkSummary> {
+pub(super) fn row_to_work_summary(row: &Row<'_>) -> rusqlite::Result<DbWorkSummary> {
     Ok(DbWorkSummary {
         work: DbWork {
             id: row.get("work_id")?,
@@ -452,7 +412,7 @@ pub(super) fn row_to_work_summary(row: &Row<'_>) -> coven::rusqlite::Result<DbWo
     })
 }
 
-pub(super) fn row_to_composer_summary(row: &Row<'_>) -> coven::rusqlite::Result<DbComposerSummary> {
+pub(super) fn row_to_composer_summary(row: &Row<'_>) -> rusqlite::Result<DbComposerSummary> {
     Ok(DbComposerSummary {
         artist: row_to_artist_with_prefix(row, "artist_")?,
         work_count: row.get("work_count")?,
@@ -461,7 +421,7 @@ pub(super) fn row_to_composer_summary(row: &Row<'_>) -> coven::rusqlite::Result<
     })
 }
 
-pub(super) fn row_to_artist_summary(row: &Row<'_>) -> coven::rusqlite::Result<DbArtistSummary> {
+pub(super) fn row_to_artist_summary(row: &Row<'_>) -> rusqlite::Result<DbArtistSummary> {
     Ok(DbArtistSummary {
         artist: row_to_artist_with_prefix(row, "artist_")?,
         album_count: row.get("album_count")?,
@@ -472,9 +432,7 @@ pub(super) fn work_summary_sort_key(work: &DbWorkSummary) -> String {
     work.work.title.to_lowercase()
 }
 
-pub(super) fn row_to_track_role_summary(
-    row: &Row<'_>,
-) -> coven::rusqlite::Result<DbTrackRoleSummary> {
+pub(super) fn row_to_track_role_summary(row: &Row<'_>) -> rusqlite::Result<DbTrackRoleSummary> {
     Ok(DbTrackRoleSummary {
         role: DbTrackArtistRole {
             id: row.get("track_artist_role_id")?,
@@ -527,9 +485,7 @@ pub(super) fn work_release_rows(
     .map_err(DbError::from)
 }
 
-pub(super) fn row_to_work_release_summary(
-    row: &Row<'_>,
-) -> coven::rusqlite::Result<DbWorkReleaseSummary> {
+pub(super) fn row_to_work_release_summary(row: &Row<'_>) -> rusqlite::Result<DbWorkReleaseSummary> {
     Ok(DbWorkReleaseSummary {
         release_id: row.get("release_id")?,
         album_id: row.get("album_id")?,
@@ -541,7 +497,7 @@ pub(super) fn row_to_work_release_summary(
     })
 }
 
-pub(super) fn row_to_release_summary(row: &Row<'_>) -> coven::rusqlite::Result<DbReleaseSummary> {
+pub(super) fn row_to_release_summary(row: &Row<'_>) -> rusqlite::Result<DbReleaseSummary> {
     Ok(DbReleaseSummary {
         id: row.get("release_id")?,
         album_id: row.get("album_id")?,
@@ -609,7 +565,7 @@ pub(super) fn artist_order_by(sort: &[ArtistSortCriterion]) -> String {
 pub(super) fn row_to_library_image(
     row: &Row,
     image_type: LibraryImageType,
-) -> coven::rusqlite::Result<DbLibraryImage> {
+) -> rusqlite::Result<DbLibraryImage> {
     Ok(DbLibraryImage {
         id: row.get("id")?,
         blob_id: row.get("blob_id")?,
@@ -620,8 +576,6 @@ pub(super) fn row_to_library_image(
         height: row.get("height")?,
         source: row.get("source")?,
         source_url: row.get("source_url")?,
-        cloud_path: row.get("cloud_path")?,
-        content_hash: row.get("hash")?,
         created_at: rfc3339_column(row, "created_at")?,
     })
 }
@@ -715,6 +669,12 @@ pub(super) fn storage_order_by(sort: &StorageSortCriterion) -> (String, bool) {
     }
 }
 
+/// All of a release's files have been attached for sharing. The upload queue
+/// separately reports whether their transfer is still pending.
+pub(super) const RELEASE_R_ATTACHED: &str =
+    "EXISTS (SELECT 1 FROM release_files f WHERE f.release_id = r.id) AND \
+     NOT EXISTS (SELECT 1 FROM release_files f WHERE f.release_id = r.id AND f.hash IS NULL)";
+
 /// Paginated storage-page query. Joins releases × albums × (optional)
 /// primary-artist sort table; both halves of the returned row are the
 /// raw aggregates the resolver maps to `ReleaseSummary` / `AlbumSummary`.
@@ -742,7 +702,7 @@ pub(super) fn storage_page_query(
             r.id AS release_id, \
             r.album_id, \
             r.media AS release_media, \
-            r.remote, \
+            ({RELEASE_R_ATTACHED}) AS remote, \
             (SELECT rf.id FROM release_files rf WHERE rf.release_id = r.id LIMIT 1) AS any_file_id, \
             COALESCE(( \
                 SELECT COUNT(*) FROM release_files rf WHERE rf.release_id = r.id \
@@ -773,8 +733,8 @@ pub(super) fn storage_page_query(
 pub(super) fn storage_filter_where(filter: StorageFilter, uploading_count: usize) -> String {
     match filter {
         StorageFilter::All => String::new(),
-        StorageFilter::Remote => "WHERE r.remote = 1".to_string(),
-        StorageFilter::Local => "WHERE r.remote = 0".to_string(),
+        StorageFilter::Remote => format!("WHERE ({RELEASE_R_ATTACHED})"),
+        StorageFilter::Local => format!("WHERE NOT ({RELEASE_R_ATTACHED})"),
         StorageFilter::Uploading if uploading_count == 0 => "WHERE 0".to_string(),
         StorageFilter::Uploading => {
             format!(
@@ -860,6 +820,7 @@ pub(super) fn album_summary_artist_join(needs_artist_join: bool) -> String {
 }
 
 /// Owned SQL columns; JSON decoding runs after the read connection is released.
+#[derive(Clone, PartialEq)]
 pub(super) struct AlbumSummaryRow {
     pub(super) id: String,
     title: String,
@@ -871,7 +832,7 @@ pub(super) struct AlbumSummaryRow {
 }
 
 impl AlbumSummaryRow {
-    pub(super) fn read(row: &Row) -> coven::rusqlite::Result<Self> {
+    pub(super) fn read(row: &Row) -> rusqlite::Result<Self> {
         Ok(Self {
             id: row.get("id")?,
             title: row.get("title")?,
@@ -920,11 +881,9 @@ pub(super) fn album_cover_versions_on(
             in_clause_placeholders(chunk.len())
         );
         primaries.extend(
-            sql.query(
-                &query,
-                coven::rusqlite::params_from_iter(chunk.iter()),
-                |row| row.get::<_, Option<String>>(0),
-            )?
+            sql.query(&query, rusqlite::params_from_iter(chunk.iter()), |row| {
+                row.get::<_, Option<String>>(0)
+            })?
             .into_iter()
             .flatten(),
         );

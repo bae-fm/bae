@@ -1,22 +1,14 @@
-/// Insert a remote, not-pinned release with one file and return its id.
-/// `remote: true` + no pinned cache copy makes it eligible for pinning.
-async fn insert_pinnable_release(manager: &LibraryManager) -> String {
-    let album = create_test_album();
-    let release = create_test_release(&album.id);
-    manager.database.insert_album(&album).await.unwrap();
-    insert_release(manager, &release).await;
-    let file = DbFile {
-        id: bae_test_support::test_uuid(&format!("{}-file", release.id)),
-        release_id: release.id.clone(),
-        original_filename: "a.flac".to_string(),
-        file_size: 1000,
-        content_type: crate::util::content_type::ContentType::Flac,
-        source_audio: None,
-        cloud_path: None,
-        created_at: Utc::now(),
-    };
-    manager.database.insert_file(&file).await.unwrap();
-    release.id
+/// Upload one real file and evict its cache so the release needs a download.
+async fn insert_pinnable_release(manager: &TestManager) -> String {
+    connect_test_cloud(manager).await;
+    let source = manager.get_config().library_path().join("pin-source");
+    let release = make_remote_release(manager, &source, "Test Album", false).await;
+    let file = release_files(manager, &release).await.remove(0);
+    manager
+        .evict_blob_for_test(&manager.release_file_row_blob_ref(&file.id).await.unwrap())
+        .await
+        .unwrap();
+    release
 }
 
 /// Pausing before the first enqueue parks the worker, so the queue's
@@ -115,14 +107,15 @@ async fn download_queue_skips_local_release() {
     );
 }
 
-/// A pin that fails (no cloud home for a cloud-only release) lands `Failed`
+/// A pin that fails because storage is offline lands `Failed`
 /// and stays in the queue; `retry_downloads` flips it back to `Queued`.
 #[tokio::test]
 async fn download_queue_failed_pin_retries() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let release_id = insert_pinnable_release(&manager).await;
 
-    // No cloud home + no local copy ⇒ the pin can't read the file and fails.
+    manager.storage.set_online(false);
+    // The evicted file cannot be fetched while storage is offline.
     manager.enqueue_pins(vec![release_id.clone()]).await;
 
     // Let the worker pick it up, fail, and mark it Failed. Poll the snapshot
@@ -134,10 +127,13 @@ async fn download_queue_failed_pin_retries() {
         )
     })
     .await;
-    assert!(failed, "the pin should land Failed without a cloud home");
+    assert!(
+        failed,
+        "the pin should land Failed while storage is offline"
+    );
     assert_eq!(manager.download_queue().total().failed, 1);
 
-    // Retry flips it back to Queued; with no cloud home it'll fail again,
+    // Retry flips it back to Queued; while storage is offline it will fail again,
     // but the immediate post-retry state is Queued (or already re-failed).
     manager.retry_downloads();
     let snap = manager.download_queue();

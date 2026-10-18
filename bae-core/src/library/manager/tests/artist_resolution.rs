@@ -7,7 +7,7 @@ async fn exact_various_artists_source_match_wins_over_the_other_provider_row() {
         sort_name: None,
         discogs_artist_id: Some(crate::db::VARIOUS_ARTISTS.discogs.to_string()),
         musicbrainz_artist_id: None,
-        created_at: manager.clock.now(),
+        created_at: manager.clock.now().into(),
     };
     let musicbrainz_artist = DbArtist {
         id: bae_test_support::test_uuid("9556efc5-bd4b-47b2-b699-4c2f44c83c91"),
@@ -15,7 +15,7 @@ async fn exact_various_artists_source_match_wins_over_the_other_provider_row() {
         sort_name: None,
         discogs_artist_id: None,
         musicbrainz_artist_id: Some(crate::db::VARIOUS_ARTISTS.musicbrainz.to_string()),
-        created_at: manager.clock.now(),
+        created_at: manager.clock.now().into(),
     };
     manager.insert_artist(&discogs_artist).await.unwrap();
     manager.insert_artist(&musicbrainz_artist).await.unwrap();
@@ -26,7 +26,7 @@ async fn exact_various_artists_source_match_wins_over_the_other_provider_row() {
         sort_name: None,
         discogs_artist_id: None,
         musicbrainz_artist_id: Some(crate::db::VARIOUS_ARTISTS.musicbrainz.to_string()),
-        created_at: manager.clock.now(),
+        created_at: manager.clock.now().into(),
     };
     let resolved = manager
         .find_or_create_artists(std::slice::from_ref(&incoming))
@@ -50,7 +50,7 @@ async fn cross_provider_mismatch_is_not_offered_as_a_two_artist_merge() {
         sort_name: None,
         discogs_artist_id: Some("discogs-1".to_string()),
         musicbrainz_artist_id: Some("musicbrainz-other".to_string()),
-        created_at: manager.clock.now(),
+        created_at: manager.clock.now().into(),
     };
     let musicbrainz_artist = DbArtist {
         id: bae_test_support::test_uuid("cross-provider-musicbrainz-artist"),
@@ -58,7 +58,7 @@ async fn cross_provider_mismatch_is_not_offered_as_a_two_artist_merge() {
         sort_name: None,
         discogs_artist_id: None,
         musicbrainz_artist_id: Some("musicbrainz-1".to_string()),
-        created_at: manager.clock.now(),
+        created_at: manager.clock.now().into(),
     };
     manager.insert_artist(&discogs_artist).await.unwrap();
     manager.insert_artist(&musicbrainz_artist).await.unwrap();
@@ -68,7 +68,7 @@ async fn cross_provider_mismatch_is_not_offered_as_a_two_artist_merge() {
         sort_name: None,
         discogs_artist_id: Some("discogs-1".to_string()),
         musicbrainz_artist_id: Some("musicbrainz-1".to_string()),
-        created_at: manager.clock.now(),
+        created_at: manager.clock.now().into(),
     };
 
     let error = manager

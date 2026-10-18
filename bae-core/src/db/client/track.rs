@@ -3,11 +3,8 @@ use super::*;
 impl Database {
     pub async fn insert_track(&self, track: &DbTrack) -> Result<(), DbError> {
         let track = track.clone();
-        self.call_sql(move |sql| {
-            let reg = sql.stamp();
-            insert_track_row(&sql, &track, &reg)
-        })
-        .await
+        self.call_sql(move |sql| insert_track_row(&sql, &track))
+            .await
     }
 
     /// Find track by ID. Caller-provided ID — may not exist.
@@ -75,7 +72,7 @@ impl Database {
                 let query = format!("SELECT id FROM tracks WHERE id IN ({placeholders})");
                 existing.extend(sql.query(
                     &query,
-                    coven::rusqlite::params_from_iter(chunk.iter()),
+                    rusqlite::params_from_iter(chunk.iter()),
                     |row| row.get::<_, String>("id"),
                 )?);
             }

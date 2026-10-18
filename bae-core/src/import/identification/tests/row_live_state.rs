@@ -127,7 +127,7 @@ async fn a_claimed_import_reaches_its_row_on_the_page() {
     );
     assert_eq!(
         claimed.cause,
-        coven::ReconfigurableLiveQueryCause::DatabaseChanged
+        coven::LiveQueryCause::Write
     );
     let queued = &page_live(&claimed)[&key];
     assert_eq!(
@@ -188,7 +188,7 @@ async fn a_claimed_import_reaches_its_row_on_the_page() {
     assert_eq!(moved.request_revision, initial.request_revision + 1);
     assert_eq!(
         moved.cause,
-        coven::ReconfigurableLiveQueryCause::RequestChanged
+        coven::LiveQueryCause::Request
     );
     assert_eq!(
         moved.windows[0].items, writing.windows[0].items,
@@ -243,7 +243,7 @@ async fn a_row_off_the_page_delivers_nothing_until_the_window_holds_it() {
     );
     assert_eq!(
         widened.cause,
-        coven::ReconfigurableLiveQueryCause::RequestChanged
+        coven::LiveQueryCause::Request
     );
     assert_eq!(
         page_live(&widened)[&off_key].facts.import,

@@ -270,7 +270,7 @@ async fn test_preview_seek_while_paused_emits_position_update() {
 struct CloudOnlyPlaybackFixture {
     playback_handle: bae_core::playback::PlaybackHandle,
     progress_rx: tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
-    cloud: Arc<coven::InMemoryCloudHome>,
+    cloud: Arc<coven::MemoryStorage>,
     track_ids: Vec<String>,
     _capture_stream_rx: support::CaptureStreamRx,
     _temp_dir: TempDir,
@@ -286,17 +286,8 @@ impl CloudOnlyPlaybackFixture {
         let temp_dir = TempDir::new()?;
         let album_dir = temp_dir.path().join("album");
         std::fs::create_dir_all(&album_dir)?;
-        let (library_manager, _database) = open_test_library(temp_dir.path()).await;
-        let master_key = [11u8; 32];
-        let cloud = Arc::new(coven::InMemoryCloudHome::new());
-        library_manager
-            .connect_test_cloud_home(
-                cloud.clone(),
-                bae_core::sync::CloudCipher::Encrypted(coven::EncryptionService::from_key(
-                    master_key,
-                )),
-            )
-            .await?;
+        let (library_manager, _, cloud) = support::storage_library(temp_dir.path(), bae_core::providers::Providers::offline()).await;
+        support::connect_storage(&library_manager, &cloud).await;
 
         let runtime_handle = tokio::runtime::Handle::current();
         let discogs_release = create_test_album();
@@ -327,6 +318,11 @@ impl CloudOnlyPlaybackFixture {
             library_manager.drain_uploads_for_test().await?,
             coven::DrainOutcome::Drained { uploaded, .. } if uploaded > 0
         ) {}
+
+        for file in library_manager.get_files_for_release(&release_id).await? {
+            let reference = library_manager.release_blob_ref_for_test(&file.id).await?;
+            library_manager.evict_blob_for_test(&reference).await?;
+        }
 
         // Delete the import originals so file resolution can't fall back to them.
         std::fs::remove_dir_all(&album_dir)?;
@@ -365,23 +361,7 @@ async fn mid_flight_cloud_read_failure_ends_in_stopped() {
         "fixture must import at least one playable track"
     );
 
-    // Every release-file object leaves the cloud, so the background reader's
-    // fetch 404s and it cancels the buffer and emits PlaybackError. Arming the
-    // legacy range-read failure no longer covers this: coven reads an exact
-    // object by its locator, on a path that hook does not sit on.
-    let objects: Vec<String> = fixture
-        .cloud
-        .keys()
-        .into_iter()
-        .filter(|key| key.starts_with("release_files/"))
-        .collect();
-    assert!(
-        !objects.is_empty(),
-        "the fixture uploaded its release files"
-    );
-    for key in objects {
-        fixture.cloud.remove(&key);
-    }
+    fixture.cloud.set_online(false);
 
     let track_id = fixture.track_ids[0].clone();
     fixture.playback_handle.play(track_id);

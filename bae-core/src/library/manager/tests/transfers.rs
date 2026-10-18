@@ -3,7 +3,7 @@
 /// queued for upload. Returns the release and the id of that queued file;
 /// `folder` names the source directory under the temp dir.
 #[cfg(feature = "test-utils")]
-async fn queued_upload_fixture(folder: &str) -> (LibraryManager, TempDir, DbRelease, String) {
+async fn queued_upload_fixture(folder: &str) -> (TestManager, TempDir, DbRelease, String) {
     let (manager, temp_dir) = setup_test_manager().await;
     connect_test_cloud(&manager).await;
     let release = insert_release_with_queued_uploads(
@@ -46,13 +46,11 @@ async fn remote_read_with_sync_disconnected_reports_sync_disconnected() {
     );
 }
 
-/// A Local track whose source file was removed while its cloud upload is still
-/// queued reports `UploadPending` — wait for the upload — because a
-/// queued upload for the file explains the missing source. coven
-/// raises `ExternalMissing`; the outbox check keys it.
+/// An upload whose original vanished cannot finish by waiting. Playback reports
+/// the source failure, and the pending list offers restoring the file.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
-async fn pending_upload_with_missing_source_reports_upload_pending() {
+async fn pending_upload_with_missing_source_reports_the_missing_original() {
     use crate::ui::PlaybackErrorReason;
     let (manager, temp_dir) = setup_test_manager().await;
     connect_test_cloud(&manager).await;
@@ -65,16 +63,17 @@ async fn pending_upload_with_missing_source_reports_upload_pending() {
         .expect("the un-uploaded file whose source was removed");
     let reason = playback_error_reason_for_file(&manager, file).await;
     assert!(
-        matches!(reason, PlaybackErrorReason::UploadPending),
+        matches!(reason, PlaybackErrorReason::Diagnostic { .. }),
         "got {reason:?}"
     );
+    assert!(manager.pending().await.unwrap().iter().any(|record|
+        crate::library::pending_action(record) == crate::library::PendingAction::RestoreFile));
 }
 
-/// A Local track whose source file is gone with no queued upload stays a
-/// diagnostic — the "files missing / moved" state, not `UploadPending`. This
-/// pins the discriminator: `ExternalMissing` alone is not upload-pending.
+/// A shared local release with no path on this device waits for its importer
+/// to attach the files.
 #[tokio::test]
-async fn missing_source_without_pending_upload_stays_diagnostic() {
+async fn an_unattached_file_on_another_device_waits_for_upload() {
     use crate::ui::PlaybackErrorReason;
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
@@ -85,16 +84,14 @@ async fn missing_source_without_pending_upload_stays_diagnostic() {
     let file = files.first().expect("the release has a file");
     let reason = playback_error_reason_for_file(&manager, file).await;
     assert!(
-        matches!(reason, PlaybackErrorReason::Diagnostic { .. }),
+        matches!(reason, PlaybackErrorReason::UploadPending),
         "got {reason:?}"
     );
 }
 
 /// The read layer surfaces a local release even when no local copy
 /// resolves on this device — there is no availability filter to hide one.
-/// The substrate gate (coven's `gated_by_descendants`) prunes such a
-/// release's album from a *peer's* sync entirely, so a receiver never
-/// materializes an orphan album; nothing is hidden on read here.
+/// Every release is shared, including one whose files have not been uploaded.
 #[tokio::test]
 async fn surfaces_local_release_with_no_local_files() {
     let (manager, _temp_dir) = setup_test_manager().await;
@@ -190,31 +187,13 @@ async fn cancel_release_transition_fires_a_registered_transfer_token() {
     manager.cancel_release_transition(REL_NONE).await.unwrap();
 }
 
-#[cfg(feature = "test-utils")]
 #[tokio::test]
-async fn publishing_release_cannot_report_a_successful_cancel() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    connect_test_cloud(&manager).await;
-    let release = insert_local_release_with_files(
-        &manager,
-        &temp_dir.path().join("publishing-cancel"),
-        "Album Title",
-        &[("track.flac", b"track-bytes")],
-    )
-    .await;
-    manager.coven_make_remote(&release.id, false).await.unwrap();
-    assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 1);
-    assert_eq!(
-        make_remote_progress(&manager, &release.id).await,
-        Some(coven::MakeRemoteProgress::Publishing)
-    );
-
-    let error = manager
-        .cancel_release_transition(&release.id)
-        .await
-        .expect_err("a publishing Store write cannot be cancelled");
-
-    assert!(error.to_string().contains("already publishing"));
+async fn cancelling_a_completed_upload_preserves_the_attachment() {
+    let (manager, temp, release, _) = queued_upload_fixture("completed").await;
+    manager.drain_uploads_expecting_work().await.unwrap();
+    manager.cancel_release_transition(&release.id).await.unwrap();
+    assert!(release_files(&manager, &release.id).await.iter().all(|file| file.attached));
+    assert_eq!(std::fs::read(temp.path().join("completed/a.flac")).unwrap().len(), 1000);
 }
 
 // Needs the test-utils mock cloud home with its sync loop: make-Local is only
@@ -237,206 +216,60 @@ async fn unmanage_cancelled_before_copy_leaves_release_remote() {
     .await;
 
     // A token cancelled before the materialize loop runs: coven aborts at the
-    // first check, before reading/writing any blob, and never flips state. A
-    // cancelled make-Local is a clean stop (Ok), not a failure.
+    // first check, before reading or writing a file, and reports cancellation.
     let token = crate::library::CancellationToken::new();
     token.cancel();
     let dest = temp_dir.path().join("out");
     manager
         .coven_make_local(&release_id, dest.to_str().unwrap(), &token)
         .await
-        .expect("a cancelled make-Local ends cleanly");
+        .expect_err("a cancelled make-Local must not report completion");
 
-    let after = manager
-        .get_release_by_id(&release_id)
-        .await
-        .unwrap()
-        .unwrap();
-    assert!(
-        after.remote,
-        "cancelled make-Local leaves the release remote"
-    );
+    assert!(release_files(&manager, &release_id).await.iter().all(|file| file.attached),
+        "cancellation preserves every attachment");
+    assert!(!dest.exists());
 }
 
-/// The snapshot over a real make-Remote: queued, in flight, mid-file progress,
-/// a genuine upload failure, and the cancel that empties the queue.
-#[cfg(feature = "test-utils")]
+/// Source failures belong in coven's pending list; the queue retains the
+/// committed file and cancellation must not claim to remove it.
 #[tokio::test]
-async fn outbox_snapshot_tracks_queued_active_failed_and_cancel() {
-    let (manager, temp_dir, release, file_id) = queued_upload_fixture("queued").await;
-    let source_dir = temp_dir.path().join("queued");
-
-    // Freshly queued: per-release count is 1 queued, joined to the album title.
-    let snap = manager.outbox_snapshot().await.unwrap();
-    assert_eq!(snap.total.queued, 1);
-    assert_eq!(snap.total.uploading, 0);
-    assert_eq!(snap.total.retrying, 0);
-    assert_eq!(snap.total.preparation_bytes_total, 1000);
-    assert_eq!(snap.total.upload_bytes_done, 0);
-    assert_eq!(snap.upload_groups.len(), 1);
-    let group = &snap.upload_groups[0];
-    assert_eq!(group.release_id, release.id);
-    assert_eq!(group.files.len(), 1);
-    assert_eq!(
-        group.files[0].label,
-        crate::library::UploadFileLabel::Filename("a.flac".to_string())
-    );
-    assert_eq!(group.progress.queued, 1);
-    assert_eq!(group.progress.preparation_bytes_total, 1000);
-
-    // Source preparation starts before coven has produced the encrypted object.
-    manager
-        .observe_blob_preparation_started_for_test(&file_id)
-        .await;
-    let snap = manager.outbox_snapshot().await.unwrap();
-    assert_eq!(snap.total.preparing, 1);
-    assert_eq!(snap.total.queued, 0);
-    assert_eq!(snap.upload_groups[0].progress.preparing, 1);
-    assert_eq!(snap.total.preparation_bytes_done, 0);
-
-    // Mid-preparation progress advances at the source stream's buffer cadence.
-    manager
-        .observe_blob_preparation_progress_for_test(&file_id, 400, 1000)
-        .await;
-    let snap = manager.outbox_snapshot().await.unwrap();
-    assert_eq!(snap.upload_groups[0].progress.preparing, 1);
-    assert_eq!(snap.upload_groups[0].progress.preparation_bytes_done, 400);
-    assert_eq!(snap.total.preparation_bytes_done, 400);
-    assert_eq!(snap.total.upload_bytes_done, 0);
-    assert_eq!(snap.total.preparation_bytes_total, 1000);
-    manager.sync.clear_upload_observation_for_test(&file_id);
-
-    // A real failure: the user's file is gone, so the drain cannot seal it. The
-    // entry stays queued with coven's own attempt count and error on it.
-    std::fs::remove_file(source_dir.join("a.flac")).unwrap();
-    assert_eq!(
-        manager.drain_uploads_expecting_work().await.unwrap(),
-        0,
-        "the entry was attempted and sealed nothing"
-    );
-    let snap = manager.outbox_snapshot().await.unwrap();
-    assert_eq!(snap.total.retrying, 1);
-    assert_eq!(snap.total.queued, 0);
-    assert_eq!(snap.upload_groups[0].progress.retrying, 1);
-    let failure = manager
-        .database
-        .first_queued_upload_failure_for_test()
-        .await
-        .unwrap()
-        .expect("the failed upload remains queued");
-    assert_eq!(failure.0, 1);
-    assert!(failure.1, "coven records why the attempt failed");
-
-    // Cancelling the release's make-Remote records the unwind; the drain that
-    // carries it out clears the queue and the snapshot empties.
-    manager.cancel_release_upload(&release.id).await.unwrap();
-    manager.drain_uploads_for_test().await.unwrap();
-    let snap = manager.outbox_snapshot().await.unwrap();
-    assert!(snap.upload_groups.is_empty());
-    assert_eq!(snap.total.retrying, 0);
-}
-
-/// Cancelling every upload unwinds each release's make-Remote, as cancelling
-/// each one would, and leaves the outbox empty.
-#[cfg(feature = "test-utils")]
-#[tokio::test]
-async fn cancelling_every_upload_empties_the_outbox() {
-    let (manager, temp_dir, first, _) = queued_upload_fixture("first").await;
-    let second = insert_release_with_queued_uploads(
-        &manager,
-        &temp_dir.path().join("second"),
-        "Album",
-        &[("b.flac", &vec![b'b'; 1000])],
-    )
-    .await;
-    let queued: Vec<String> = manager
-        .outbox_snapshot()
-        .await
-        .unwrap()
-        .upload_groups
-        .iter()
-        .map(|group| group.release_id.clone())
-        .collect();
-    assert_eq!(queued.len(), 2);
-    assert!(queued.contains(&first.id) && queued.contains(&second.id));
-
-    manager.cancel_all_release_uploads().await.unwrap();
-    manager.drain_uploads_for_test().await.unwrap();
-
+async fn a_missing_upload_source_is_pending_and_cannot_be_cancelled() {
+    let (manager, temp, release, file_id) = queued_upload_fixture("queued").await;
     let snapshot = manager.outbox_snapshot().await.unwrap();
-    assert!(
-        snapshot.upload_groups.is_empty(),
-        "every upload was unwound: {:?}",
-        snapshot.upload_groups
-    );
-    for release in [&first, &second] {
-        assert!(
-            !manager
-                .database
-                .has_pending_uploads_for_release(&release.id)
-                .await
-                .unwrap(),
-            "{} keeps nothing queued",
-            release.id
-        );
+    assert_eq!(snapshot.total.queued, 1);
+    assert_eq!(snapshot.upload_groups[0].files[0].source_bytes_total, 1000);
+    assert_eq!(snapshot.upload_groups[0].files[0].label, crate::library::UploadFileLabel::Filename("a.flac".into()));
+    std::fs::remove_file(temp.path().join("queued/a.flac")).unwrap();
+    assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 0);
+    assert!(!manager.pending().await.unwrap().is_empty());
+    manager.cancel_release_upload(&release.id).await.expect_err("committed upload cannot be cancelled");
+    assert!(manager.database.find_file_by_id(&file_id).await.unwrap().unwrap().attached);
+    assert_eq!(manager.outbox_snapshot().await.unwrap().total.queued, 1);
+}
+
+#[tokio::test]
+async fn cancelling_all_committed_uploads_refuses_without_detaching_any() {
+    let (manager, temp, first, _) = queued_upload_fixture("first").await;
+    let second = insert_release_with_queued_uploads(&manager, &temp.path().join("second"), "Album", &[("b.flac", b"audio")]).await;
+    manager.cancel_all_release_uploads().await.expect_err("committed uploads cannot be recalled");
+    assert_eq!(manager.outbox_snapshot().await.unwrap().total.queued, 2);
+    for release in [first, second] {
+        assert!(release_files(&manager, &release.id).await.iter().all(|file| file.attached));
     }
 }
 
-/// The sequence a live library hit: queue an upload, cancel it while it is
-/// still queued, then delete the release. Nothing may be left in the outbox
-/// naming a release that is gone — the snapshot reads the release row for its
-/// album title, so one orphan takes the whole storage view down.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
-async fn cancelling_an_upload_then_deleting_its_release_leaves_no_orphan() {
-    let (manager, _temp_dir, release, _file_id) = queued_upload_fixture("queued").await;
-    assert_eq!(manager.outbox_snapshot().await.unwrap().total.queued, 1);
-
-    manager.cancel_release_upload(&release.id).await.unwrap();
+async fn deleting_a_release_keeps_its_committed_upload_visible_until_it_finishes() {
+    let (manager, _temp, release, _) = queued_upload_fixture("queued").await;
     manager.delete_release(&release.id).await.unwrap();
-    manager.drain_uploads_for_test().await.unwrap();
-
-    // The drain carries out the recorded cancel, so nothing is left to
-    // unwind and the outbox is empty.
-    let snapshot = manager
-        .outbox_snapshot()
-        .await
-        .expect("the outbox still reads after the release it queued work for is gone");
-    assert!(
-        snapshot.upload_groups.is_empty(),
-        "the deleted release left uploads behind: {:?}",
-        snapshot.upload_groups
-    );
-}
-
-/// The same ending without the cancel: the release is deleted while its upload
-/// is still queued. The delete owns taking the queue with it.
-#[cfg(feature = "test-utils")]
-#[tokio::test]
-async fn deleting_a_release_mid_upload_leaves_no_orphan() {
-    let (manager, _temp_dir, release, _file_id) = queued_upload_fixture("queued").await;
-    assert_eq!(manager.outbox_snapshot().await.unwrap().total.queued, 1);
-
-    manager.delete_release(&release.id).await.unwrap();
-
-    // The queue outlives the row on purpose: the object may be in the cloud
-    // already and only a drain can take it back out. It reads, and it still
-    // names the release it is removing, which the release row can no longer
-    // say.
-    let snapshot = manager
-        .outbox_snapshot()
-        .await
-        .expect("the outbox still reads after the release it queued work for is gone");
-    assert_eq!(snapshot.upload_groups.len(), 1);
-    assert_eq!(snapshot.total.cancelling, 1);
-
-    manager.drain_uploads_for_test().await.unwrap();
-    let snapshot = manager.outbox_snapshot().await.expect("the outbox reads");
-    assert!(
-        snapshot.upload_groups.is_empty(),
-        "the drain finished the unwind: {:?}",
-        snapshot.upload_groups
-    );
+    let snapshot = manager.outbox_snapshot().await.unwrap();
+    assert_eq!(snapshot.total.queued, 1);
+    assert_eq!(snapshot.other_files.len(), 1);
+    assert!(snapshot.upload_groups.is_empty());
+    assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 1);
+    let snapshot = manager.outbox_snapshot().await.unwrap();
+    assert_eq!(snapshot.total.queued, 0);
+    assert!(snapshot.other_files.is_empty());
 }
 
 /// A cover upload is carried by the `covers` row whose primary key is the
@@ -463,7 +296,7 @@ async fn outbox_snapshot_identifies_the_cover_blob() {
         "local",
         None,
         cover_bytes,
-        manager.clock.now(),
+        manager.clock.now().into(),
     );
     manager
         .store_library_image_blob(&cover, cover_bytes)
@@ -484,7 +317,7 @@ async fn outbox_snapshot_identifies_the_cover_blob() {
         .expect("the cover is a typed upload row");
     assert_eq!(
         cover_upload.file_id,
-        format!("{}:{cover_blob_id}", crate::sync::COVERS_NAMESPACE)
+        format!("{}:{}", crate::sync::COVERS_NAMESPACE, manager.database.file_ref("covers", &release.id).await.unwrap().id())
     );
     assert_eq!(cover_upload.source_bytes_total, cover_bytes.len() as u64);
 }
@@ -604,15 +437,8 @@ async fn an_active_target_does_not_block_sibling_cloud_admissions() {
     assert!(detail.contains(&active_release.id));
 
     for release in [first_new_release, last_new_release] {
-        assert_eq!(
-            manager
-                .database
-                .make_remote_progress_for_release(&release.id)
-                .await
-                .expect("read the sibling target's transition"),
-            Some(coven::MakeRemoteProgress::Uploading),
-            "each independent target is durably admitted",
-        );
+        assert!(has_pending_uploads(&manager, &release.id).await);
+        assert!(release_files(&manager, &release.id).await.iter().all(|file| file.attached));
     }
 }
 
@@ -634,15 +460,8 @@ async fn a_move_to_cloud_batch_refuses_duplicate_release_ids_without_admission()
         .await
         .expect_err("a duplicate target refuses the whole batch");
 
-    assert_eq!(
-        manager
-            .database
-            .make_remote_progress_for_release(&release.id)
-            .await
-            .expect("read the target's transition"),
-        None,
-        "the duplicate target was not admitted",
-    );
+    assert!(!has_pending_uploads(&manager, &release.id).await);
+    assert!(release_files(&manager, &release.id).await.iter().all(|file| !file.attached));
 }
 
 /// The queue names each queued file by its row's current original filename,
@@ -736,210 +555,30 @@ async fn retry_outbox_now_surfaces_a_missing_cloud_connection() {
     assert!(matches!(error, LibraryError::Sync(_)), "got {error:?}");
 }
 
-/// Storage Manager retry bypasses an automatic retry delay, but a paused retry
-/// neither attempts the upload nor changes that delay.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
-async fn retry_outbox_now_respects_pause_and_bypasses_backoff() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    let home = connect_test_cloud(&manager).await;
-    insert_release_with_queued_uploads(
-        &manager,
-        &temp_dir.path().join("retry-queue"),
-        "Album Title",
-        &[("track.flac", b"track-bytes")],
-    )
-    .await;
-
-    home.fail_exact_create_before_call(1);
-    assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 0);
-    assert_eq!(home.exact_create_count(), 1);
-    assert!(matches!(
-        manager.drain_uploads_for_test().await.unwrap(),
-        coven::DrainOutcome::AllInBackoff
-    ));
-
-    manager.set_sync_paused(true).await;
-    let paused = manager
-        .retry_outbox_now()
-        .await
-        .expect_err("a paused retry must report that it did not run");
-    assert!(matches!(paused, LibraryError::Storage(_)));
-    assert_eq!(home.exact_create_count(), 1);
-    manager.set_sync_paused(false).await;
-    assert!(matches!(
-        manager.drain_uploads_for_test().await.unwrap(),
-        coven::DrainOutcome::AllInBackoff
-    ));
-
+async fn upload_pause_survives_retry_and_resuming_allows_progress() {
+    let (manager, _temp, _release, _) = queued_upload_fixture("paused").await;
+    manager.set_sync_paused(true).await.unwrap();
+    let before = manager.storage.request_count();
+    assert!(matches!(manager.database.retry_uploads_now().await.unwrap(), coven::DrainOutcome::Paused));
+    assert_eq!(manager.storage.request_count(), before);
+    assert_eq!(manager.outbox_snapshot().await.unwrap().pause_state, crate::library::OutboxPauseState::Paused);
+    manager.set_sync_paused(false).await.unwrap();
     manager.retry_outbox_now().await.unwrap();
-    assert_eq!(home.exact_create_count(), 2);
+    assert_eq!(manager.outbox_snapshot().await.unwrap().total.queued, 0);
 }
 
-/// Test managers that connect a cloud must install the same upload observer as
-/// the app; otherwise a paused queue drains because coven cannot see bae's
-/// pause state.
-#[cfg(feature = "test-utils")]
 #[tokio::test]
-async fn connected_test_manager_uses_the_production_upload_observer() {
-    let (manager, temp_dir) = setup_test_manager().await;
-    let home = connect_test_cloud(&manager).await;
-    insert_release_with_queued_uploads(
-        &manager,
-        &temp_dir.path().join("paused-queue"),
-        "Album Title",
-        &[("track.flac", b"track-bytes")],
-    )
-    .await;
-
-    let creates_before_pause = home.exact_create_count();
-    manager.set_sync_paused(true).await;
-    let outcome = manager.database.retry_uploads_now().await.unwrap();
-
-    assert!(matches!(outcome, coven::DrainOutcome::Paused));
-    assert_eq!(home.exact_create_count(), creates_before_pause);
-}
-
-/// The real observer drives source-preparation byte progress into the canonical
-/// snapshot at coven's buffer cadence. Provider callback ordering is tested at
-/// the observer itself; the snapshot's provider-phase join is a pure projection
-/// test with coven's matching durable phase.
-#[cfg(feature = "test-utils")]
-#[tokio::test]
-async fn preparation_observer_advances_snapshot_bytes_done() {
-    let (manager, _temp_dir, _release, file_id) = queued_upload_fixture("queued").await;
-
-    manager
-        .observe_blob_preparation_started_for_test(&file_id)
-        .await;
-    manager
-        .observe_blob_preparation_progress_for_test(&file_id, 300, 1000)
-        .await;
-    let snap = manager.outbox_snapshot().await.unwrap();
-    assert_eq!(snap.upload_groups[0].progress.preparing, 1);
-    assert_eq!(snap.total.preparation_bytes_done, 300);
-    assert_eq!(snap.total.upload_bytes_done, 0);
-}
-
-/// One coven callback is one outbox value, built over the durable queue the
-/// projection already holds. Publishing it twice would double the revision
-/// churn at every progress tick.
-#[cfg(feature = "test-utils")]
-#[tokio::test]
-async fn one_upload_observer_callback_publishes_one_outbox_revision() {
-    let (manager, _temp_dir, _release, file_id) = queued_upload_fixture("queued").await;
-    manager.start();
-    let mut values = manager.subscribe_outbox_values();
-    let before = next_outbox_value_where(&mut values, |snapshot| snapshot.total.queued == 1)
-        .await
-        .revision;
-
-    manager
-        .observe_blob_preparation_started_for_test(&file_id)
-        .await;
-
-    let after = next_outbox_value_where(&mut values, |_| true).await;
-    assert_eq!(after.revision, before + 1);
-    assert_eq!(after.total.preparing, 1);
-
-    // A second callback's value is the next revision, so the first published
-    // nothing more after its own.
-    manager
-        .observe_blob_preparation_progress_for_test(&file_id, 300, 1000)
-        .await;
-    let progressed = next_outbox_value_where(&mut values, |snapshot| {
-        snapshot.total.preparation_bytes_done == 300
-    })
-    .await;
-    assert_eq!(
-        progressed.revision,
-        before + 2,
-        "one callback publishes once"
-    );
-}
-
-/// Wait for the next published outbox value `accept` takes.
-#[cfg(feature = "test-utils")]
-async fn next_outbox_value_where(
-    values: &mut tokio::sync::watch::Receiver<Option<Result<crate::library::OutboxSnapshot, String>>>,
-    accept: impl Fn(&crate::library::OutboxSnapshot) -> bool,
-) -> crate::library::OutboxSnapshot {
-    tokio::time::timeout(std::time::Duration::from_secs(2), async {
-        loop {
-            values.changed().await.expect("outbox value stream");
-            let current = values.borrow_and_update();
-            let snapshot = current
-                .as_ref()
-                .expect("the outbox published a value")
-                .as_ref()
-                .unwrap_or_else(|error| panic!("outbox projection failed: {error}"));
-            if accept(snapshot) {
-                return snapshot.clone();
-            }
-        }
-    })
-    .await
-    .expect("the outbox publishes the awaited value")
-}
-
-/// coven awaits each observer callback inside its upload, so a callback that
-/// waits for the outbox projection holds the transfer up behind the UI. The
-/// callback records its fact and returns even while the projection is busy.
-#[cfg(feature = "test-utils")]
-#[tokio::test]
-async fn an_upload_callback_does_not_wait_for_the_outbox_projection() {
-    let (manager, _temp_dir, _release, file_id) = queued_upload_fixture("queued").await;
-    manager.start();
-    let _projection_busy = manager.sync.hold_outbox_projection_for_test().await;
-
-    tokio::time::timeout(
-        std::time::Duration::from_secs(1),
-        manager.observe_blob_preparation_started_for_test(&file_id),
-    )
-    .await
-    .expect("the callback returns while the projection is busy");
-}
-
-/// Preparation progress with no preparation start before it contradicts the
-/// callback order; the attempt is left untracked and the file renders its
-/// durable Queued row rather than crashing the app.
-#[cfg(feature = "test-utils")]
-#[tokio::test]
-async fn preparation_progress_without_a_start_renders_the_durable_row() {
-    let (manager, _temp_dir, _release, file_id) = queued_upload_fixture("queued").await;
-
-    manager
-        .observe_blob_preparation_progress_for_test(&file_id, 300, 1000)
-        .await;
-
-    let snapshot = manager.outbox_snapshot().await.expect("the outbox reads");
-    assert_eq!(
-        snapshot.upload_groups[0].files[0].state,
-        crate::library::UploadState::Queued
-    );
-}
-
-/// Preparation measures the exact plaintext source declared by the row; a
-/// report over another total leaves the attempt untracked and the file renders
-/// its durable Queued row.
-#[cfg(feature = "test-utils")]
-#[tokio::test]
-async fn preparation_progress_over_another_total_renders_the_durable_row() {
-    let (manager, _temp_dir, _release, file_id) = queued_upload_fixture("queued").await;
-
-    manager
-        .observe_blob_preparation_started_for_test(&file_id)
-        .await;
-    manager
-        .observe_blob_preparation_progress_for_test(&file_id, 300, 999)
-        .await;
-
-    let snapshot = manager.outbox_snapshot().await.expect("the outbox reads");
-    assert_eq!(
-        snapshot.upload_groups[0].files[0].state,
-        crate::library::UploadState::Queued
-    );
-    assert_eq!(snapshot.total.preparation_bytes_done, 0);
+async fn retry_outbox_surfaces_a_provider_failure_and_can_be_retried() {
+    let (manager, _temp, _release, _) = queued_upload_fixture("retry").await;
+    manager.storage.set_online(false);
+    manager.set_sync_paused(false).await.unwrap();
+    manager.retry_outbox_now().await.unwrap();
+    assert!(!manager.pending().await.unwrap().is_empty());
+    assert_eq!(manager.outbox_snapshot().await.unwrap().total.queued, 1);
+    manager.storage.set_online(true);
+    manager.retry_outbox_now().await.unwrap();
+    assert_eq!(manager.outbox_snapshot().await.unwrap().total.queued, 0);
 }
 
 /// The concurrency settings reach the open store when they are written, not

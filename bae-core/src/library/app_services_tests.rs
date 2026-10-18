@@ -1,7 +1,6 @@
 use super::*;
 use crate::config::{Config, ConfigHandle};
 use crate::db::{Database, DbAlbum, DbArtist, DbRelease, DbTrack};
-use coven::StoreDir;
 use tempfile::TempDir;
 
 /// Build a real `AppServices` — library manager, actor-backed playback,
@@ -47,21 +46,15 @@ async fn playing_app_services(track_count: usize) -> (AppServices, Vec<String>, 
         track_ids.push(track_id);
     }
 
-    let library_id = format!("app-services-test-{}", uuid::Uuid::new_v4());
-    let config = Config::with_defaults(
-        library_id.clone(),
-        "test-device".to_string(),
-        StoreDir::new(temp_dir.path().to_path_buf()),
-        "Test Library".to_string(),
-    );
+    let config = Config::with_defaults(database.store_id(), temp_dir.path().join("preferences"));
     let config_handle = Arc::new(ConfigHandle::new(config));
-    crate::config::install_test_keyring();
+
     let manager = LibraryManager::new(
         database,
         crate::config::AppDir::under_home(temp_dir.path()),
         config_handle,
         Arc::new(coven::SystemClock),
-        Arc::new(coven::UuidProvider),
+        Arc::new(coven::UuidIds),
         crate::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
         crate::import::cover_art::RemoteImageCache::for_test(crate::util::http::Http::for_test()),

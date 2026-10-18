@@ -123,8 +123,7 @@ async fn storage_page_rows_carry_state_appropriate_actions() {
     // Local: not remote, files at a local path.
     let mut local_album = create_test_album();
     local_album.title = "Local Album".to_string();
-    let mut local = create_test_release(&local_album.id);
-    local.remote = false;
+    let local = create_test_release(&local_album.id);
     manager.database.insert_album(&local_album).await.unwrap();
     insert_release(&manager, &local).await;
 
@@ -193,8 +192,7 @@ async fn album_detail_releases_carry_their_own_pin_state() {
 async fn storage_page_rows_have_no_actions_without_cloud_home() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();
-    let mut release = create_test_release(&album.id);
-    release.remote = false;
+    let release = create_test_release(&album.id);
     manager.database.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;
 
@@ -205,18 +203,10 @@ async fn storage_page_rows_have_no_actions_without_cloud_home() {
 
 #[tokio::test]
 async fn storage_page_local_filter_matches_local_path() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let album_remote = create_test_album();
-    let mut album_local = create_test_album();
-    album_local.title = "Local Album".to_string();
-    let remote_release = create_test_release(&album_remote.id);
-    let mut local_release = create_test_release(&album_local.id);
-    local_release.remote = false;
-
-    manager.database.insert_album(&album_remote).await.unwrap();
-    manager.database.insert_album(&album_local).await.unwrap();
-    insert_release(&manager, &remote_release).await;
-    insert_release(&manager, &local_release).await;
+    let (manager, temp_dir) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
+    let remote_id = make_remote_release(&manager, &temp_dir.path().join("remote"), "Remote Album", false).await;
+    let local_release = insert_local_release_with_files(&manager, &temp_dir.path().join("local"), "Local Album", &[("track.flac", b"local")]).await;
 
     let local = storage_page(&manager, crate::db::StorageFilter::Local, 0, 10).await;
     assert_eq!(local.rows.len(), 1);
@@ -229,7 +219,7 @@ async fn storage_page_local_filter_matches_local_path() {
 
     let remote = storage_page(&manager, crate::db::StorageFilter::Remote, 0, 10).await;
     assert_eq!(remote.rows.len(), 1);
-    assert_eq!(remote.rows[0].release.id, remote_release.id);
+    assert_eq!(remote.rows[0].release.id, remote_id);
     assert_ne!(
         remote.rows[0].release.storage_state,
         crate::album_detail::ReleaseStorageState::Local
@@ -238,21 +228,17 @@ async fn storage_page_local_filter_matches_local_path() {
 
 #[tokio::test]
 async fn storage_count_matches_filtered_page_total() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    // Three albums, one release each. Mark the second release
-    // local at insert time so filters produce distinct counts.
+    let (manager, temp_dir) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
     let mut inserted_local = None;
     for i in 0..3 {
-        let mut album = create_test_album();
-        album.title = format!("Album {i}");
-        let mut release = create_test_release(&album.id);
-        let local = i == 1;
-        if local {
-            release.remote = false;
-            inserted_local = Some(release.id.clone());
+        let release = insert_local_release_with_files(&manager, &temp_dir.path().join(format!("album-{i}")), &format!("Album {i}"), &[("track.flac", b"track")]).await;
+        if i == 1 {
+            inserted_local = Some(release.id);
+        } else {
+            manager.coven_make_remote(&release.id, false).await.unwrap();
+            manager.drain_uploads_expecting_work().await.unwrap();
         }
-        manager.database.insert_album(&album).await.unwrap();
-        insert_release(&manager, &release).await;
     }
 
     assert_eq!(
@@ -302,43 +288,9 @@ async fn storage_total_size_matches_page_total_size_sum() {
     let (manager, temp_dir) = setup_test_manager().await;
     connect_test_cloud(&manager).await;
 
-    // Three releases: one local, one remote-and-quiet, and one mid-make-Remote
-    // — its uploads are queued but undrained, so its gate has not flipped and it
-    // is still Local as well as Uploading.
-    let album_local = create_test_album();
-    let album_remote = create_test_album();
-    let mut release_local = create_test_release(&album_local.id);
-    release_local.remote = false;
-    let release_remote = create_test_release(&album_remote.id);
-
-    manager.database.insert_album(&album_local).await.unwrap();
-    manager.database.insert_album(&album_remote).await.unwrap();
-    insert_release(&manager, &release_local).await;
-    insert_release(&manager, &release_remote).await;
-
-    for (release_id, file_size) in [(&release_local.id, 1_000i64), (&release_remote.id, 100)] {
-        let file = DbFile {
-            id: bae_test_support::test_uuid(&format!("{release_id}-file")),
-            release_id: release_id.clone(),
-            original_filename: "a.flac".to_string(),
-            file_size,
-            content_type: crate::util::content_type::ContentType::Flac,
-            source_audio: None,
-            cloud_path: None,
-            created_at: Utc::now(),
-        };
-        manager.database.insert_file(&file).await.unwrap();
-    }
-
-    // The uploading release goes through the real transition, so its 10_000
-    // bytes are what coven actually has queued.
-    insert_release_with_queued_uploads(
-        &manager,
-        &temp_dir.path().join("uploading"),
-        "Uploading Album",
-        &[("a.flac", &vec![0u8; 10_000])],
-    )
-    .await;
+    insert_local_release_with_files(&manager, &temp_dir.path().join("local"), "Local Album", &[("a.flac", &vec![0u8; 1_000])]).await;
+    make_remote_release_with_files(&manager, &temp_dir.path().join("remote"), "Remote Album", &[("a.flac", &[0u8; 100])], false).await;
+    insert_release_with_queued_uploads(&manager, &temp_dir.path().join("uploading"), "Uploading Album", &[("a.flac", &vec![0u8; 10_000])]).await;
 
     for filter in [
         crate::db::StorageFilter::All,
@@ -359,9 +311,7 @@ async fn storage_total_size_matches_page_total_size_sum() {
         );
     }
 
-    // Concrete expectations, so a bug that moves the *same* wrong figure on
-    // both sides doesn't slip through. The uploading release counts as Local
-    // too — its gate flips only once every upload lands.
+    // Attaching a file makes the release remote while its upload is pending.
     assert_eq!(
         manager
             .get_storage_total_size(crate::db::StorageFilter::All)
@@ -374,14 +324,14 @@ async fn storage_total_size_matches_page_total_size_sum() {
             .get_storage_total_size(crate::db::StorageFilter::Local)
             .await
             .unwrap(),
-        11_000
+        1_000
     );
     assert_eq!(
         manager
             .get_storage_total_size(crate::db::StorageFilter::Remote)
             .await
             .unwrap(),
-        100
+        10_100
     );
     assert_eq!(
         manager
@@ -392,14 +342,10 @@ async fn storage_total_size_matches_page_total_size_sum() {
     );
 }
 
-/// A pinned release's cover belongs to its pinned set: coven's `make_remote`
-/// pins the whole root batch, cover included, so unpinning has to move all of it
-/// to the evictable cache. Enumerating `release_files` alone left the cover in
-/// `storage/pinned/` forever — unreachable by any later unpin, since nothing
-/// else names it.
+/// Audio stays pinned while the cover remains in its separate evictable cache.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
-async fn unpin_release_unpins_the_cover_with_its_files() {
+async fn unpin_release_releases_audio_and_keeps_cover_evictable() {
     let (manager, temp_dir) = setup_test_manager().await;
     connect_test_cloud(&manager).await;
     let release = insert_local_release_with_files(
@@ -420,8 +366,8 @@ async fn unpin_release_unpins_the_cover_with_its_files() {
         "make-Remote with pin leaves the release file pinned"
     );
     assert!(
-        blob_pinned(&manager, crate::sync::COVERS_NAMESPACE, &release.id).await,
-        "make-Remote with pin leaves the cover pinned — it rides along in coven's batch"
+        !blob_pinned(&manager, crate::sync::COVERS_NAMESPACE, &release.id).await,
+        "covers remain evictable when audio is pinned"
     );
 
     manager.unpin_release(&release.id).await.unwrap();
@@ -432,18 +378,14 @@ async fn unpin_release_unpins_the_cover_with_its_files() {
     );
     assert!(
         !blob_pinned(&manager, crate::sync::COVERS_NAMESPACE, &release.id).await,
-        "the cover unpinned with the files; nothing of the release stays pinned"
+        "the cover remains evictable"
     );
 }
 
-/// The Pin transition covers the same set make-Remote pins: pinning a Remote
-/// release from the UI must bring its cover into `storage/pinned/` too, or the
-/// cover stays evictable and an offline library loses its art. The cover's bytes
-/// count toward the Downloads pane's total, so the bar still lands exactly on
-/// its denominator.
+/// Pin progress counts only the release's files; cover art keeps its own budget.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
-async fn pin_release_pins_the_cover_and_counts_its_bytes() {
+async fn pin_release_counts_audio_and_keeps_cover_evictable() {
     let (manager, temp_dir) = setup_test_manager().await;
     connect_test_cloud(&manager).await;
     let file_bytes: &[u8] = b"track-bytes";
@@ -464,7 +406,7 @@ async fn pin_release_pins_the_cover_and_counts_its_bytes() {
         "make-Remote without pin leaves the cover evictable"
     );
 
-    let expected_total = (file_bytes.len() + cover_bytes.len()) as u64;
+    let expected_total = file_bytes.len() as u64;
     assert_eq!(
         manager
             .initial_download_progress(&release.id)
@@ -487,8 +429,8 @@ async fn pin_release_pins_the_cover_and_counts_its_bytes() {
         "the release file pinned"
     );
     assert!(
-        blob_pinned(&manager, crate::sync::COVERS_NAMESPACE, &release.id).await,
-        "the cover pinned with the files"
+        !blob_pinned(&manager, crate::sync::COVERS_NAMESPACE, &release.id).await,
+        "the cover remains evictable"
     );
     let last = progress.last().expect("the pin reports progress");
     assert_eq!(last.bytes_done, expected_total);
@@ -582,10 +524,13 @@ async fn a_pin_the_provider_refuses_is_a_cloud_setup_failure() {
         .unwrap();
 
     for failure in [
-        coven::StorageBackendFailure::Authentication,
-        coven::StorageBackendFailure::ContainerNotFound,
+        coven::StorageFailure::Authentication,
+        coven::StorageFailure::ContainerNotFound,
     ] {
-        home.fail_exact_stream_reads_with(Some(failure));
+        let mut faults = coven::Faults::none();
+        faults.fail_next = 1;
+        faults.failure = failure;
+        home.set_faults(faults).await;
         let error = manager
             .pin_release_blobs_with_progress(&release.id, |_| {})
             .await
@@ -621,7 +566,7 @@ async fn a_pin_the_cloud_cannot_serve_is_a_network_failure() {
         .evict_blob_for_test(&manager.release_file_row_blob_ref(&file_id).await.unwrap())
         .await
         .unwrap();
-    home.fail_next_exact_stream_reads(1);
+    home.set_online(false);
 
     let error = manager
         .pin_release_blobs_with_progress(&release.id, |_| {})
@@ -631,19 +576,14 @@ async fn a_pin_the_cloud_cannot_serve_is_a_network_failure() {
     assert_eq!(error.category(), crate::ui::UiErrorCategory::Network, "{error}");
 }
 
-/// Making a release Remote while no provider is connected is the cloud being
-/// unreachable from here, which the person retries; it is not an internal
-/// fault.
+/// Attaching files requires a configured provider; absence is a setup issue.
 #[tokio::test]
-async fn making_a_release_remote_with_no_provider_connected_is_a_network_failure() {
+async fn making_a_release_remote_without_storage_requires_configuration() {
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
-
-    let error = manager
-        .coven_make_remote(&release.id, false)
-        .await
-        .expect_err("no provider is connected");
-
-    assert_eq!(error.category(), crate::ui::UiErrorCategory::Network, "{error}");
+    let transfer = crate::storage::transfer::ReleaseTransfer::new(
+        manager.library.clone(), release.id, ReleaseStorageAction::MakeRemote);
+    let error = transfer.start().await.expect_err("storage must be configured");
+    assert_eq!(error.category(), crate::ui::UiErrorCategory::Config, "{error}");
 }
 
 #[cfg(feature = "test-utils")]

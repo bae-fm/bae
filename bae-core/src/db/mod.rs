@@ -1,7 +1,10 @@
 mod client;
+mod error;
+pub use error::DbError;
 pub mod identity;
 mod models;
 pub(crate) use client::ArtistCredits;
+pub(crate) use client::ReleaseFileStream;
 pub use client::{
     AlbumBrowseProjection, AlbumDetailProjection, AlbumSelectionProjection, ArtistBrowseProjection,
     ArtistDetailProjection, ComposerBrowseProjection, ComposerDetailProjection,

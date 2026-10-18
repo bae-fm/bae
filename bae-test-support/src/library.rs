@@ -10,21 +10,14 @@ pub fn tracing_init() {
         .try_init();
 }
 
-/// Create a test config handle for integration tests.
+/// Preferences for the same store the test database owns.
 pub fn test_config(
-    library_dir: &coven::StoreDir,
+    database: &bae_core::db::Database,
+    directory: &std::path::Path,
 ) -> std::sync::Arc<bae_core::config::ConfigHandle> {
-    bae_core::config::install_test_keyring();
-    // Unique id per test so keyring entries don't collide in the shared
-    // process-global mock store (see `install_test_keyring`).
-    let library_id = format!("test-{}", uuid::Uuid::new_v4());
-    let config = bae_core::config::Config::with_defaults(
-        library_id,
-        "test-device".to_string(),
-        library_dir,
-        "Test Library".to_string(),
-    );
-    std::sync::Arc::new(bae_core::config::ConfigHandle::new(config))
+    std::sync::Arc::new(bae_core::config::ConfigHandle::new(
+        bae_core::config::Config::with_defaults(database.store_id_for_test(), directory),
+    ))
 }
 
 /// Open `dir/test.db` under the real clock and real UUID provider.
@@ -69,13 +62,34 @@ pub async fn open_test_library_with(
     providers: bae_core::providers::Providers,
 ) -> (bae_core::library::LibraryManager, bae_core::db::Database) {
     let database = open_test_db(dir).await;
-    let config_handle = test_config(&coven::StoreDir::new(dir.to_path_buf()));
+    manager_for_database(database, dir, providers)
+}
+
+/// A manager over an installation the test created with its own storage and custody.
+pub fn test_library_from_handle(
+    handle: coven::CovenHandle,
+    dir: &std::path::Path,
+    providers: bae_core::providers::Providers,
+) -> (bae_core::library::LibraryManager, bae_core::db::Database) {
+    manager_for_database(
+        bae_core::db::Database::from_handle(handle, std::sync::Arc::new(coven::SystemClock)),
+        dir,
+        providers,
+    )
+}
+
+fn manager_for_database(
+    database: bae_core::db::Database,
+    dir: &std::path::Path,
+    providers: bae_core::providers::Providers,
+) -> (bae_core::library::LibraryManager, bae_core::db::Database) {
+    let config_handle = test_config(&database, &dir.join("preferences"));
     let library_manager = bae_core::library::LibraryManager::new(
         database.clone(),
         bae_core::config::AppDir::under_home(dir),
         config_handle,
         std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
+        std::sync::Arc::new(coven::UuidIds),
         bae_core::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
         bae_core::import::cover_art::RemoteImageCache::for_test(providers.http().clone()),
@@ -120,28 +134,34 @@ pub fn setup_fresh_library(
 ) -> (bae_core::library::LibraryManager, tempfile::TempDir) {
     let tmp = tempfile::TempDir::new().unwrap();
     let app_dir = bae_core::config::AppDir::under_home(tmp.path());
-    bae_core::config::install_test_keyring();
-    let config = bae_core::library::create_library(
-        &app_dir,
-        bae_core::library_name::LibraryName::parse("Test Library").unwrap(),
-        &coven::UuidProvider,
-    )
-    .expect("create fresh library");
-    let config_handle = std::sync::Arc::new(bae_core::config::ConfigHandle::new(config));
+    let installation = coven::TestCoven::new();
+    let handle = runtime
+        .block_on(
+            installation
+                .builder(coven::StoreLayout::new(tmp.path().join(".bae")))
+                .synced_tables(bae_core::sync::synced_tables())
+                .migrations(bae_core::migrations::all())
+                .create_store("Test Library"),
+        )
+        .expect("create fresh test store");
+    let clock: coven::ClockRef = std::sync::Arc::new(coven::SystemClock);
+    let config = bae_core::config::Config::with_defaults(
+        handle.store_id(),
+        app_dir.registered_library(&handle.store_id().to_string()),
+    );
+    let database = bae_core::db::Database::from_handle(handle, clock.clone());
     let providers = bae_core::providers::Providers::offline();
-    let lm = bae_core::library::LibraryManager::open(
+    let lm = bae_core::library::LibraryManager::new(
+        database,
         app_dir,
-        config_handle,
-        std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
+        std::sync::Arc::new(bae_core::config::ConfigHandle::new(config)),
+        clock,
+        std::sync::Arc::new(coven::UuidIds),
         bae_core::diagnostics::Diagnostics::noop(),
         runtime.handle().clone(),
-        None,
-        coven::OAuthClients::empty(),
         bae_core::import::cover_art::RemoteImageCache::for_test(providers.http().clone()),
         providers,
-    )
-    .expect("open library manager");
+    );
 
     (lm, tmp)
 }

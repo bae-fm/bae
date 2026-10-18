@@ -1,6 +1,6 @@
 use super::*;
 use coven::FixedClock;
-use coven::SequentialIdProvider;
+use coven::SequentialIds;
 use lofty::config::WriteOptions;
 use lofty::tag::items::Timestamp;
 use lofty::tag::{Tag, TagType};
@@ -74,17 +74,15 @@ fn cue_and_loose_audio_both_keep_their_metadata_in_playback_order() {
             })
             .collect(),
     };
-    let clock = FixedClock(
-        chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
+    let clock = FixedClock::new((chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
             .unwrap()
-            .with_timezone(&chrono::Utc),
-    );
+            .with_timezone(&chrono::Utc)).into());
     let parsed = map_file_metadata_to_db(
         &files,
         &snapshot,
         Some("Folder"),
         &clock,
-        &SequentialIdProvider::new("mixed"),
+        &SequentialIds::new(),
     )
     .unwrap();
     assert_eq!(
@@ -108,12 +106,10 @@ fn map_tags_with_folder(
     audio_files: &[PathBuf],
     folder_name: Option<&str>,
 ) -> Result<ParsedAlbum, ImportError> {
-    let clock = FixedClock(
-        chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
+    let clock = FixedClock::new((chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
             .unwrap()
-            .with_timezone(&chrono::Utc),
-    );
-    let ids = SequentialIdProvider::new("ft");
+            .with_timezone(&chrono::Utc)).into());
+    let ids = SequentialIds::new();
     map_file_tags_to_db(audio_files, folder_name, &clock, &ids)
 }
 
@@ -158,12 +154,10 @@ fn stored_file_tag_facts_project_without_opening_the_source_file() {
         }],
         embedded_cover: None,
     };
-    let clock = FixedClock(
-        chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
+    let clock = FixedClock::new((chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
             .unwrap()
-            .with_timezone(&chrono::Utc),
-    );
-    let ids = SequentialIdProvider::new("snapshot");
+            .with_timezone(&chrono::Utc)).into());
+    let ids = SequentialIds::new();
 
     let parsed =
         map_file_metadata_to_db(&files, &snapshot, Some("Folder Alpha"), &clock, &ids).unwrap();
@@ -242,17 +236,15 @@ fn map_cue_folder(sheets: Vec<CueSheet>, folder_name: Option<&str>) -> ParsedAlb
             })
             .collect(),
     };
-    let clock = FixedClock(
-        chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
+    let clock = FixedClock::new((chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
             .unwrap()
-            .with_timezone(&chrono::Utc),
-    );
+            .with_timezone(&chrono::Utc)).into());
     map_file_metadata_to_db(
         &files,
         &snapshot,
         folder_name,
         &clock,
-        &SequentialIdProvider::new("cue"),
+        &SequentialIds::new(),
     )
     .unwrap()
 }

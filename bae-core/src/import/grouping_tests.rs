@@ -180,11 +180,9 @@ fn rejects_duplicate_members_and_overlapping_files() {
 #[test]
 fn file_metadata_keeps_the_releases_numbering_instead_of_the_tags() {
     use crate::import::file_tag_snapshot::{FileObservation, FileTagFact, FileTagSnapshot};
-    let clock = coven::FixedClock(
-        chrono::DateTime::parse_from_rfc3339("2026-01-15T12:00:00Z")
+    let clock = coven::FixedClock::new((chrono::DateTime::parse_from_rfc3339("2026-01-15T12:00:00Z")
             .unwrap()
-            .with_timezone(&chrono::Utc),
-    );
+            .with_timezone(&chrono::Utc)).into());
     let release = composed(&[
         folder_at("/music", "Volume B"),
         folder_at("/archive", "Volume A"),
@@ -218,7 +216,7 @@ fn file_metadata_keeps_the_releases_numbering_instead_of_the_tags() {
             .collect(),
     };
     let edit = release
-        .file_tag_edit(&snapshot, &clock, &coven::UuidProvider)
+        .file_tag_edit(&snapshot, &clock, &coven::UuidIds)
         .unwrap();
     assert_eq!(
         edit.tracks

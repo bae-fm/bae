@@ -25,9 +25,9 @@ impl super::Config {
     /// Where an import goes: to the cloud, pinned as chosen, when the choice is
     /// the cloud and the library has a cloud home; locally otherwise.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub fn import_destination(&self) -> crate::import::ImportDestination {
+    pub fn import_destination(&self, storage_configured: bool) -> crate::import::ImportDestination {
         let storage = self.prefs.import_storage;
-        if storage.cloud && self.cloud_home.provider.is_some() {
+        if storage.cloud && storage_configured {
             crate::import::ImportDestination::Remote {
                 pin: storage.pinned,
             }

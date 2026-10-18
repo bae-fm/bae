@@ -26,7 +26,7 @@ use crate::pressing::Pressing;
 #[cfg(test)]
 use crate::util::content_type::ContentType;
 use coven::Clock;
-use coven::IdProvider;
+use coven::IdSource;
 use std::path::{Path, PathBuf};
 
 /// Map the embedded tags of a rip's audio files to a `ParsedAlbum`.
@@ -49,7 +49,7 @@ pub fn map_file_tags_to_db(
     audio_files: &[PathBuf],
     folder_name: Option<&str>,
     clock: &dyn Clock,
-    ids: &dyn IdProvider,
+    ids: &dyn IdSource,
 ) -> Result<ParsedAlbum, ImportError> {
     if audio_files.is_empty() {
         return Err(ImportError::FileTags {
@@ -84,7 +84,7 @@ fn map_file_tag_facts_to_db(
     extracted: &[FileTagFact],
     folder_name: Option<&str>,
     clock: &dyn Clock,
-    ids: &dyn IdProvider,
+    ids: &dyn IdSource,
 ) -> Result<ParsedAlbum, ImportError> {
     Ok(assemble_parsed_album(
         file_tag_facts_ir(extracted, folder_name)?,
@@ -225,7 +225,7 @@ pub(crate) fn map_file_metadata_to_db(
     snapshot: &FileTagSnapshot,
     folder_name: Option<&str>,
     clock: &dyn Clock,
-    ids: &dyn IdProvider,
+    ids: &dyn IdSource,
 ) -> Result<ParsedAlbum, ImportError> {
     let audio_file_ids = categorized
         .audio()

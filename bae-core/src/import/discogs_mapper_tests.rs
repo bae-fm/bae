@@ -2,7 +2,7 @@ use super::*;
 use crate::import::source_release::SourceRelease;
 use crate::discogs::models::{DiscogsArtist, DiscogsRoleArtist, DiscogsTrack};
 use coven::FixedClock;
-use coven::SequentialIdProvider;
+use coven::SequentialIds;
 
 /// A lone Discogs release document as bae keeps it: its own facts and
 /// tracklist, no other document behind it.
@@ -37,12 +37,10 @@ fn map_with(
     release: &DiscogsRelease,
     audio_durations_ms: Option<&[u64]>,
 ) -> Result<ParsedAlbum, ImportError> {
-    let clock = FixedClock(
-        chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
+    let clock = FixedClock::new((chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
             .unwrap()
-            .with_timezone(&chrono::Utc),
-    );
-    let ids = SequentialIdProvider::new("d");
+            .with_timezone(&chrono::Utc)).into());
+    let ids = SequentialIds::new();
     let stored = stored(release);
     super::map(&stored, &all_discs(&stored), audio_durations_ms, &clock, &ids)
 }

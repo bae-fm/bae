@@ -12,7 +12,7 @@ use crate::import::source_release::{
 };
 use crate::import::{Catalog, ImportError, MetadataRef};
 use coven::Clock;
-use coven::IdProvider;
+use coven::IdSource;
 use std::collections::HashSet;
 use tracing::{debug, warn};
 
@@ -296,7 +296,7 @@ pub(crate) fn map(
     coverage: &MediumCoverage,
     audio_durations_ms: Option<&[u64]>,
     clock: &dyn Clock,
-    ids: &dyn IdProvider,
+    ids: &dyn IdSource,
 ) -> Result<ParsedAlbum, ImportError> {
     let release_id = &release.release.key;
     let entries = release.covered_entries(coverage);

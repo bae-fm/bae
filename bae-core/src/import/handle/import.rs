@@ -305,7 +305,7 @@ impl ImportServiceHandle {
             source: candidate.source(),
             #[cfg(any(test, feature = "test-utils"))]
             selected_cover: None,
-            destination: self.library_manager.get_config().import_destination(),
+            destination: self.library_manager.get_config().import_destination(self.library_manager.is_sync_configured().await?),
             #[cfg(any(test, feature = "test-utils"))]
             pick: None,
             #[cfg(any(test, feature = "test-utils"))]

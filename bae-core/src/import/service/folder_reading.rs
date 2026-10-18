@@ -413,6 +413,6 @@ fn read_top_level_folder(
 
 /// A key for a grouping the store has not seen: the key the release it reads
 /// as is addressed by from here on.
-pub(super) fn new_grouping_key(ids: &dyn coven::IdProvider) -> String {
+pub(super) fn new_grouping_key(ids: &dyn coven::IdSource) -> String {
     format!("grouping:{}", ids.new_id())
 }

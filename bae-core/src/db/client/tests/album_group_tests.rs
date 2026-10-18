@@ -11,8 +11,7 @@ async fn grouped_library() -> (Database, tempfile::TempDir) {
     ] {
         exec(
             &db,
-            "INSERT INTO artists (id, name, name_key, sort_name, _updated_at, created_at) \
-            VALUES (?, ?, ?, ?, 'seed', '2026-01-01T00:00:00Z')",
+            "INSERT INTO artists (id, name, name_key, sort_name, created_at) VALUES (?, ?, ?, ?, '2026-01-01T00:00:00Z')",
             &[id, name, name, sort_name],
         )
         .await;
@@ -32,10 +31,8 @@ async fn grouped_library() -> (Database, tempfile::TempDir) {
         exec_batch(
             &db,
             &format!(
-            "INSERT INTO albums (id, title, artist_id, is_compilation, _updated_at, created_at) \
-             VALUES ('{album}', '{title}', '{artist}', 0, 'seed', '2026-01-01T00:00:00Z'); \
-             INSERT INTO releases (id, album_id, remote, _updated_at, created_at) \
-             VALUES ('{release}', '{album}', 1, 'seed', '2026-01-01T00:00:00Z');"
+            "INSERT INTO albums (id, title, artist_id, is_compilation, created_at) VALUES ('{album}', '{title}', '{artist}', 0, '2026-01-01T00:00:00Z'); \
+             INSERT INTO releases (id, album_id, created_at) VALUES ('{release}', '{album}', '2026-01-01T00:00:00Z');"
         ),
         )
         .await;
@@ -66,7 +63,7 @@ async fn artist_sections_cover_unloaded_albums_and_match_page_and_reveal_order()
             }]
             .into(),
         );
-        let value = browse.next().await.into_result().unwrap();
+        let value = browse.next().await.result.unwrap();
         assert_eq!(value.windows[0].rows.len(), 1);
         assert_eq!(value.total_count, 5);
         assert_eq!(value.sections.len(), 3);
@@ -100,7 +97,7 @@ async fn artist_sections_follow_renames_and_disappearing_groups() {
         direction: SortDirection::Ascending,
     }];
     let mut browse = db.subscribe_album_browse(&sort, true, BTreeSet::new());
-    let initial = browse.next().await.into_result().unwrap();
+    let initial = browse.next().await.result.unwrap();
     assert_eq!(initial.sections[0].id, ARTIST_C);
     exec(
         &db,
@@ -108,7 +105,7 @@ async fn artist_sections_follow_renames_and_disappearing_groups() {
         &[ARTIST_C],
     )
     .await;
-    let renamed = browse.next().await.into_result().unwrap();
+    let renamed = browse.next().await.result.unwrap();
     assert_eq!(renamed.sections[2].title, "Renamed Artist");
     assert_eq!(renamed.sections[2].window.offset, 4);
     exec(
@@ -117,7 +114,7 @@ async fn artist_sections_follow_renames_and_disappearing_groups() {
         &[ARTIST_C],
     )
     .await;
-    let removed = browse.next().await.into_result().unwrap();
+    let removed = browse.next().await.result.unwrap();
     assert_eq!(removed.total_count, 4);
     assert_eq!(removed.sections.len(), 2);
     assert!(!removed
@@ -125,7 +122,7 @@ async fn artist_sections_follow_renames_and_disappearing_groups() {
         .iter()
         .any(|section| section.id == ARTIST_C));
     let mut flat = db.subscribe_album_browse(&sort, false, BTreeSet::new());
-    assert!(flat.next().await.into_result().unwrap().sections.is_empty());
+    assert!(flat.next().await.result.unwrap().sections.is_empty());
 }
 
 #[tokio::test]
@@ -134,8 +131,7 @@ async fn collaborations_appear_under_each_credit_but_count_once() {
     let album_id = "00000000-0000-4000-8000-000000000000";
     exec(
         &db,
-        "INSERT INTO album_artists (id, album_id, artist_id, position, _updated_at, created_at) \
-         VALUES ('extra', ?, ?, 1, 'seed', '2026-01-01T00:00:00Z')",
+        "INSERT INTO album_artists (id, album_id, artist_id, position, created_at) VALUES ('extra', ?, ?, 1, '2026-01-01T00:00:00Z')",
         &[album_id, ARTIST_B],
     )
     .await;
@@ -152,7 +148,7 @@ async fn collaborations_appear_under_each_credit_but_count_once() {
         }]
         .into(),
     );
-    let value = browse.next().await.into_result().unwrap();
+    let value = browse.next().await.result.unwrap();
     assert_eq!(value.total_count, 5);
     assert_eq!(value.row_count, 6);
     let rows = &value.windows[0].rows;
@@ -185,7 +181,7 @@ async fn collaborations_appear_under_each_credit_but_count_once() {
         }]
         .into(),
     );
-    let flat = flat.next().await.into_result().unwrap();
+    let flat = flat.next().await.result.unwrap();
     assert_eq!(flat.row_count, 5);
     assert!(flat.sections.is_empty());
     assert_eq!(
@@ -202,7 +198,7 @@ async fn collaborations_appear_under_each_credit_but_count_once() {
         &[album_id],
     )
     .await;
-    let removed = browse.next().await.into_result().unwrap();
+    let removed = browse.next().await.result.unwrap();
     assert_eq!(removed.row_count, 5);
     assert_eq!(removed.total_count, 5);
 }
@@ -213,8 +209,7 @@ async fn merged_and_repeated_credits_make_one_appearance_per_artist() {
     let album_id = "00000000-0000-4000-8000-000000000000";
     for (id, artist) in [("primary-again", ARTIST_A), ("other-credit", ARTIST_B)] {
         exec(&db,
-            "INSERT INTO album_artists (id, album_id, artist_id, position, _updated_at, created_at) \
-             VALUES (?, ?, ?, 1, 'seed', '2026-01-01T00:00:00Z')",
+            "INSERT INTO album_artists (id, album_id, artist_id, position, created_at) VALUES (?, ?, ?, 1, '2026-01-01T00:00:00Z')",
             &[id, album_id, artist]).await;
     }
     let mut browse = db.subscribe_album_browse(
@@ -226,16 +221,15 @@ async fn merged_and_repeated_credits_make_one_appearance_per_artist() {
         }]
         .into(),
     );
-    let initial = browse.next().await.into_result().unwrap();
+    let initial = browse.next().await.result.unwrap();
     assert_eq!(initial.row_count, 6);
     exec(
         &db,
-        "INSERT INTO artist_merges (id, into_artist_id, _updated_at, created_at) \
-         VALUES (?, ?, 'seed', '2026-01-01T00:00:00Z')",
+        "INSERT INTO artist_merges (id, into_artist_id, created_at) VALUES (?, ?, '2026-01-01T00:00:00Z')",
         &[ARTIST_B, ARTIST_A],
     )
     .await;
-    let merged = browse.next().await.into_result().unwrap();
+    let merged = browse.next().await.result.unwrap();
     assert_eq!(merged.total_count, 5);
     assert_eq!(merged.row_count, 5);
     assert_eq!(merged.sections.len(), 2);

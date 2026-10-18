@@ -6,7 +6,6 @@ use crate::db::Database;
 use crate::import::ImportEvent;
 use crate::library::{AppServices, LibraryManager};
 use crate::util::rate_limiter::CallPriority;
-use coven::StoreDir;
 use std::sync::Arc;
 use std::time::Duration;
 use tempfile::TempDir;
@@ -24,19 +23,14 @@ async fn services() -> (AppServices, TempDir) {
     )
     .await
     .expect("the test database opens");
-    crate::config::install_test_keyring();
-    let config = Config::with_defaults(
-        format!("ui-bus-test-{}", uuid::Uuid::new_v4()),
-        "test-device".to_string(),
-        StoreDir::new(temp_dir.path().to_path_buf()),
-        "Test Library".to_string(),
-    );
+
+    let config = Config::with_defaults(database.store_id(), temp_dir.path().join("preferences"));
     let manager = LibraryManager::new(
         database,
         crate::config::AppDir::under_home(temp_dir.path()),
         Arc::new(ConfigHandle::new(config)),
         Arc::new(coven::SystemClock),
-        Arc::new(coven::UuidProvider),
+        Arc::new(coven::UuidIds),
         crate::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
         crate::import::cover_art::RemoteImageCache::for_test(crate::util::http::Http::for_test()),

@@ -39,7 +39,7 @@ async fn seed(db: &Database) -> (String, String) {
         release_name: None,
         pressing: bae_core::pressing::Pressing::blank(),
         draft_from_tags: true,
-        remote: true,
+
         source_folder_name: None,
         content_hash: None,
         album_loudness_lufs: None,

@@ -34,8 +34,7 @@ async fn local_folder_import() {
     let (release_id, _album_id) = support::wait_for_import_complete(&mut progress_rx).await;
 
     // The release's files resolve to the folder they were imported from.
-    let release = f.db.find_release_by_id(&release_id).await.unwrap().unwrap();
-    assert!(!release.remote);
+    assert!(f.db.get_files_for_release(&release_id).await.unwrap().iter().all(|file| !file.attached));
     let files = f.db.get_files_for_release(&release_id).await.unwrap();
     let local_path = f
         .library_manager
@@ -83,7 +82,7 @@ async fn import_progress_names_every_operation_before_loudness() {
         }],
     );
 
-    let import_id = f.ids.new_id();
+    let import_id = f.ids.new_id().to_string();
     f.handle
         .send_command(support::folder_import(
             &import_id,

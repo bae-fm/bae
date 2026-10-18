@@ -15,28 +15,10 @@ pub(super) struct BackgroundTasks {
 
 impl BackgroundTasks {
     /// End every task and wait for each to be gone, with whatever it held.
-    async fn close(&self) {
+    pub(super) async fn close(&self) {
         self.closing.cancel();
         self.tracker.close();
         self.tracker.wait().await;
-    }
-}
-
-/// The live upload observer both constructors build before assembling the
-/// manager: the upload list coven's blob transitions are reported into and the
-/// observer that reports them.
-struct UploadObserver {
-    uploads: crate::library::live_uploads::LiveUploads,
-    observer: Arc<crate::sync::upload_observer::ReleaseUploadObserver>,
-}
-
-impl UploadObserver {
-    fn new() -> Self {
-        let uploads = crate::library::live_uploads::LiveUploads::new();
-        let observer = Arc::new(crate::sync::upload_observer::ReleaseUploadObserver::new(
-            uploads.clone(),
-        ));
-        Self { uploads, observer }
     }
 }
 
@@ -44,20 +26,18 @@ impl LibraryManager {
     /// Open coven through the top-level builder and create the library manager
     /// over the resulting handle.
     #[allow(clippy::too_many_arguments)]
-    pub fn open(
+    pub async fn open(
         app_dir: crate::config::AppDir,
         config_handle: Arc<ConfigHandle>,
         clock: ClockRef,
-        ids: IdRef,
+        ids: IdSourceRef,
         diagnostics: Diagnostics,
         runtime_handle: tokio::runtime::Handle,
-        cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
-        oauth_clients: coven::OAuthClients,
+        builder: coven::CovenBuilder,
         remote_images: crate::import::cover_art::RemoteImageCache,
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
         providers: crate::providers::Providers,
-    ) -> Result<Self, coven::DbError> {
-        let uploads = UploadObserver::new();
+    ) -> Result<Self, crate::db::DbError> {
         let (max_uploads, max_downloads) = {
             let config = config_handle.config();
             (
@@ -65,21 +45,13 @@ impl LibraryManager {
                 crate::config::usize_bound(config.prefs.max_concurrent_downloads),
             )
         };
-        let handle = config_handle
-            .coven_builder()
-            .synced_tables(crate::sync::synced_tables())
+        let store_id = config_handle.config().store_id;
+        let handle = crate::library::configure_store(builder)
             .clock(clock.clone())
-            .oauth_clients(oauth_clients)
-            .apply_cloudkit_ops(cloudkit_ops.clone())
-            .observer(uploads.observer.clone() as Arc<dyn coven::BlobTransitionObserver>)
-            .migrations(crate::migrations::all())
             .max_concurrent_uploads(max_uploads)
             .max_concurrent_downloads(max_downloads)
-            .open()
-            .map_err(|e| match e {
-                coven::CovenError::Database(error) => *error,
-                other => coven::DbError::Message(other.to_string()),
-            })?;
+            .open(store_id)
+            .await?;
         Ok(Self::assemble(
             Database::from_handle(handle, clock.clone()),
             app_dir,
@@ -91,22 +63,18 @@ impl LibraryManager {
             remote_images,
             #[cfg(not(any(target_os = "ios", target_os = "android")))]
             providers,
-            cloudkit_ops,
-            uploads,
         ))
     }
 
     /// Create a library manager over an already-open database handle. Production
-    /// uses [`Self::open`] so the upload observer is installed into coven before
-    /// sync starts; this constructor remains for tests that exercise database-only
-    /// manager behavior.
+    /// uses [`Self::open`]; tests can supply a handle built with `TestCoven`.
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         database: Database,
         app_dir: crate::config::AppDir,
         config_handle: Arc<ConfigHandle>,
         clock: ClockRef,
-        ids: IdRef,
+        ids: IdSourceRef,
         diagnostics: Diagnostics,
         runtime_handle: tokio::runtime::Handle,
         remote_images: crate::import::cover_art::RemoteImageCache,
@@ -124,37 +92,25 @@ impl LibraryManager {
             remote_images,
             #[cfg(not(any(target_os = "ios", target_os = "android")))]
             providers,
-            None,
-            UploadObserver::new(),
         )
     }
 
-    /// The construction both constructors share: everything downstream of an open
-    /// database and a live upload observer, through to a manager with its workers
-    /// running. `cloudkit_ops` is `None` where no CloudKit host was handed in.
+    /// Assemble the services that share this open library.
     #[allow(clippy::too_many_arguments)]
     fn assemble(
         database: Database,
         app_dir: crate::config::AppDir,
         config_handle: Arc<ConfigHandle>,
         clock: ClockRef,
-        ids: IdRef,
+        ids: IdSourceRef,
         diagnostics: Diagnostics,
         runtime_handle: tokio::runtime::Handle,
         remote_images: crate::import::cover_art::RemoteImageCache,
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
         providers: crate::providers::Providers,
-        cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
-        uploads: UploadObserver,
     ) -> Self {
-        let sync_status = SyncStatus::new(&database);
-        let sync = SyncController::new(
-            config_handle.clone(),
-            database.clone(),
-            uploads.uploads,
-            cloudkit_ops,
-            diagnostics.clone(),
-        );
+        let sync_status = SyncStatusState::new(&database);
+        let sync = SyncController::new(database.clone(), diagnostics.clone(), clock.clone());
         let manager = LibraryManager {
             #[cfg(not(any(target_os = "ios", target_os = "android")))]
             preparations: crate::import::CandidatePreparations::new(database.clone()),
@@ -178,8 +134,6 @@ impl LibraryManager {
             downloads: crate::library::Downloads::new(),
             #[cfg(not(any(target_os = "ios", target_os = "android")))]
             outputs: crate::library::Outputs::new(),
-            #[cfg(test)]
-            upload_observer: uploads.observer,
         };
         manager.start_queue_workers();
         manager
@@ -228,10 +182,11 @@ impl LibraryManager {
     /// the manager holds a file in the library directory. The services built
     /// on the manager (playback, import) end their own work when they are
     /// dropped.
-    pub async fn close(&self) {
+    pub async fn close(&self) -> Result<(), LibraryError> {
         self.database.stop_sync();
         self.tasks.close().await;
-        self.database.close().await;
+        self.database.close().await?;
+        Ok(())
     }
 
     pub(crate) fn current_transfer_action(&self, release_id: &str) -> Option<ReleaseStorageAction> {
@@ -244,72 +199,15 @@ impl LibraryManager {
         self.transitions.subscribe()
     }
 
-    /// Connect a real `SyncManager` over an injected cloud home for tests, so the
-    /// handle's make-Remote / make-Local / upload-drain / read paths all run
-    /// against a mock cloud with no live provider — the test counterpart of
-    /// `attach_and_start_sync`. `cipher` is the home's at-rest protection:
-    /// `Plaintext` for a browsable mock, `Encrypted(service)` for an opaque one.
-    /// After this, `has_cloud_home` and `is_sync_ready` resolve off the
-    /// connected manager, no override needed.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn connect_test_cloud_home(
-        &self,
-        cloud_home: Arc<dyn ExactCloudHome>,
-        cipher: crate::sync::CloudCipher,
-    ) -> Result<(), LibraryError> {
-        self.sync
-            .connect_test_cloud_home(cloud_home, cipher)
-            .await?;
-        Ok(())
-    }
-
-    /// The same connection with no sync loop behind it, so an explicitly
-    /// draining test is the only drainer of the upload queue. See
-    /// `SyncController::connect_test_cloud_home_caller_driven` for what a
-    /// test gives up by taking it.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn connect_test_cloud_home_caller_driven(
-        &self,
-        cloud_home: Arc<dyn ExactCloudHome>,
-        cipher: crate::sync::CloudCipher,
-    ) -> Result<(), LibraryError> {
-        self.sync
-            .connect_test_cloud_home_caller_driven(cloud_home, cipher)
-            .await?;
-        Ok(())
-    }
-
-    /// Set the cloud home's storage mode in config, so a test can exercise the
-    /// browsable read/write paths against an injected cloud home (production sets
-    /// this through the cloud-setup wizard). The connected home's cipher must match
-    /// — `Plaintext` for browsable, `Encrypted` for opaque.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn set_home_storage(&self, storage: crate::config::HomeStorage) {
-        self.config_handle
-            .update_store(move |c| c.cloud_home.storage = storage)
-            .await
-            .expect("set test home storage mode");
-    }
-
-    /// Record `provider` as the library's cloud home in config, as connecting
-    /// a real one does, so an injected test home reads as configured.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn set_test_cloud_provider(&self, provider: crate::config::CloudProvider) {
-        self.config_handle
-            .update_store(move |c| c.cloud_home.provider = Some(provider))
-            .await
-            .expect("set test cloud provider");
-    }
-
     /// Read the injected wall clock without handing its service to callers.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) fn now(&self) -> chrono::DateTime<chrono::Utc> {
-        self.clock.now()
+        self.clock.now().into()
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) fn new_id(&self) -> String {
-        self.ids.new_id()
+        self.ids.new_id().to_string()
     }
 
     pub(crate) fn record_telemetry(&self, event: TelemetryEvent) {
@@ -413,62 +311,6 @@ impl LibraryManager {
         self.database.every_row_for_test().await.unwrap()
     }
 
-    #[cfg(test)]
-    pub(crate) fn local_blob_exists_for_test(
-        &self,
-        namespace: &str,
-        blob_id: &str,
-    ) -> Result<bool, String> {
-        self.config_handle
-            .local_blob_exists_for_test(namespace, blob_id)
-    }
-
-    #[cfg(test)]
-    pub(crate) async fn local_blob_cleanup_intent_count_for_test(
-        &self,
-        namespace: &str,
-        blob_id: &str,
-    ) -> Result<i64, coven::DbError> {
-        self.database
-            .local_blob_cleanup_intent_count_for_test(namespace, blob_id)
-            .await
-    }
-
-    #[cfg(test)]
-    pub(crate) async fn observe_blob_preparation_started_for_test(&self, file_id: &str) {
-        let blob = self
-            .database
-            .row_blob_ref(crate::sync::RELEASE_FILES_NAMESPACE, file_id)
-            .await
-            .unwrap();
-        coven::BlobTransitionObserver::on_blob_preparation_started(
-            self.upload_observer.as_ref(),
-            &blob,
-        )
-        .await;
-    }
-
-    #[cfg(test)]
-    pub(crate) async fn observe_blob_preparation_progress_for_test(
-        &self,
-        file_id: &str,
-        bytes_done: u64,
-        bytes_total: u64,
-    ) {
-        let blob = self
-            .database
-            .row_blob_ref(crate::sync::RELEASE_FILES_NAMESPACE, file_id)
-            .await
-            .unwrap();
-        coven::BlobTransitionObserver::on_blob_preparation_progress(
-            self.upload_observer.as_ref(),
-            &blob,
-            bytes_done,
-            bytes_total,
-        )
-        .await;
-    }
-
     /// Subscribe to the sync loop's status and publish the current banner value.
     /// Call once after construction, with a tokio runtime available.
     pub fn start(&self) {
@@ -483,84 +325,30 @@ impl LibraryManager {
         self.spawn_supervised_task("sync status subscription", async move {
             loop {
                 let status = rx.borrow_and_update().clone();
-                // A cycle in progress (CheckingStorage / Publishing) shows the
-                // spinner; a terminal status ends it. `SyncStatusUpdate` holds
-                // what the status says about the rest of the banner.
-                let syncing = super::sync_status::is_cycling(&status);
-                let connection = super::sync_status::SyncConnection::of(&status);
-                let SyncStatusUpdate {
-                    error: error_update,
-                    last_sync_time: last_sync_update,
-                    blocked: blocked_update,
-                } = SyncStatusUpdate::from_loop_status(&status);
-                let (new_failure, newly_blocked) = lm.sync_status.apply(|state| {
-                    let mut changed = false;
-                    let mut new_failure = false;
-                    let mut newly_blocked: Option<usize> = None;
-                    if let Some(error) = error_update {
-                        if error != state.error {
-                            state.error = error.clone();
-                            new_failure = error.is_some();
-                            changed = true;
-                        }
-                    }
-                    if let Some(blocked) = blocked_update {
-                        if blocked != state.blocked {
-                            newly_blocked = (!blocked.is_empty()).then_some(blocked.len());
-                            state.blocked = blocked;
-                            changed = true;
-                        }
-                    }
-                    if syncing != state.syncing {
-                        state.syncing = syncing;
-                        changed = true;
-                    }
-                    if connection != state.connection {
-                        state.connection = connection;
-                        changed = true;
-                    }
-                    if let Some(raw) = last_sync_update {
-                        if state.last_sync_time_raw.as_deref() != Some(raw.as_str()) {
-                            // The parse error is handled, not swallowed: an
-                            // unparseable timestamp is surfaced rather than
-                            // becoming a wrong instant.
-                            match chrono::DateTime::parse_from_rfc3339(&raw) {
-                                Ok(parsed) => {
-                                    state.last_sync_time_raw = Some(raw);
-                                    state.last_sync_time = Some(parsed.timestamp_millis());
-                                    changed = true;
-                                }
-                                Err(e) => {
-                                    let message =
-                                        format!("unparseable last_sync_time {raw:?}: {e}");
-                                    warn!("{message}");
-                                    state.error = Some(crate::ui::UiError::internal(message));
-                                    new_failure = true;
-                                    changed = true;
-                                }
-                            }
-                        }
-                    }
-                    (changed, (new_failure, newly_blocked))
-                });
-                // Blocked operations wait on a person indefinitely, and the UI
-                // reports them as one localized line — without this record the
-                // reason coven gave lives nowhere a log reader can find it.
-                if let Some(count) = newly_blocked {
-                    warn!("sync cycle left {count} operation(s) waiting on a decision");
-                }
-                if new_failure {
-                    let provider = lm.config_handle.config().cloud_home.provider.clone();
-                    if let Some(provider) = provider {
-                        lm.diagnostics.event(TelemetryEvent::SyncFailed {
-                            provider,
+                if let coven::SyncStatus::Failed { error } = &status {
+                    warn!(%error, "sync failed");
+                    match lm.database.storage_config().await {
+                        Ok(Some(storage)) => lm.diagnostics.event(TelemetryEvent::SyncFailed {
+                            provider: storage.provider(),
                             operation: SyncOperation::Cycle,
-                        });
+                        }),
+                        Ok(None) => {}
+                        Err(error) => {
+                            warn!(%error, "could not identify sync provider for diagnostics")
+                        }
                     }
                 }
+                lm.sync_status.set_status(status);
                 if rx.changed().await.is_err() {
                     break;
                 }
+            }
+        });
+        let mut pending = self.database.subscribe_pending();
+        let state = self.sync_status.clone();
+        self.spawn_supervised_task("pending sync records", async move {
+            loop {
+                state.set_pending(pending.next().await);
             }
         });
     }

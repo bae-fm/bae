@@ -64,7 +64,7 @@ impl LibraryManager {
         &self,
         projection: crate::db::AlbumBrowseProjection,
         request_revision: u64,
-        cause: coven::ReconfigurableLiveQueryCause,
+        cause: coven::LiveQueryCause,
     ) -> crate::library::LibraryBrowseSnapshot<AlbumSummary> {
         let covers = image_refs(projection.cover_versions, LibraryImageType::Cover);
         crate::library::LibraryBrowseSnapshot {

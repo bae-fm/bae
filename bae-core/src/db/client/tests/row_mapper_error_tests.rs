@@ -9,20 +9,18 @@ fn seeded_conn() -> Connection {
         .unwrap();
     let now = "2026-01-01T00:00:00Z";
     conn.execute(
-        "INSERT INTO artists (id, name, name_key, _updated_at, created_at) VALUES ('6c441836-aef7-4239-8a84-5336c4cce52c', 'Artist Name', 'artist name', ?, ?)",
-        params![now, now],
+        "INSERT INTO artists (id, name, name_key, created_at) VALUES ('6c441836-aef7-4239-8a84-5336c4cce52c', 'Artist Name', 'artist name', ?)",
+        params![now],
     )
     .unwrap();
     conn.execute(
-        "INSERT INTO albums (id, title, artist_id, is_compilation, _updated_at, created_at) \
-         VALUES ('9644b84d-94b2-4b3b-863a-d6583931920c', 'Album Title', '6c441836-aef7-4239-8a84-5336c4cce52c', 0, ?, ?)",
-        params![now, now],
+        "INSERT INTO albums (id, title, artist_id, is_compilation, created_at) VALUES ('9644b84d-94b2-4b3b-863a-d6583931920c', 'Album Title', '6c441836-aef7-4239-8a84-5336c4cce52c', 0, ?)",
+        params![now],
     )
     .unwrap();
     conn.execute(
-        "INSERT INTO releases (id, album_id, remote, _updated_at, created_at) \
-         VALUES ('cccb6034-5922-40d2-8d0b-d94619230882', '9644b84d-94b2-4b3b-863a-d6583931920c', 1, ?, ?)",
-        params![now, now],
+        "INSERT INTO releases (id, album_id, created_at) VALUES ('cccb6034-5922-40d2-8d0b-d94619230882', '9644b84d-94b2-4b3b-863a-d6583931920c', ?)",
+        params![now],
     )
     .unwrap();
     conn
@@ -52,7 +50,7 @@ fn insert_file(
     id: &str,
     layout: Option<&str>,
     audio: Option<(&str, i64)>,
-) -> coven::rusqlite::Result<usize> {
+) -> rusqlite::Result<usize> {
     let now = "2026-01-01T00:00:00Z";
     let (content_type, duration_ms, sample_rate_hz, bits_per_sample, channels) = match audio {
         Some((content_type, bits)) => (
@@ -65,11 +63,7 @@ fn insert_file(
         None => (None, None, None, None, None),
     };
     conn.execute(
-        "INSERT INTO release_files (id, release_id, original_filename, file_size, content_type, \
-         hash, _updated_at, created_at, source_audio_layout, source_audio_content_type, \
-         source_audio_duration_ms, source_audio_sample_rate_hz, source_audio_bits_per_sample, \
-         source_audio_channels) \
-         VALUES (?1, 'cccb6034-5922-40d2-8d0b-d94619230882', ?1, 1, 'audio/flac', 'hash', ?2, ?2, \
+        "INSERT INTO release_files (id, release_id, original_filename, file_size, content_type, hash, created_at, source_audio_layout, source_audio_content_type, source_audio_duration_ms, source_audio_sample_rate_hz, source_audio_bits_per_sample, source_audio_channels) VALUES (?1, 'cccb6034-5922-40d2-8d0b-d94619230882', ?1, 1, 'audio/flac', NULL, ?2, \
          ?3, ?4, ?5, ?6, ?7, ?8)",
         params![
             id,
@@ -125,21 +119,17 @@ fn seeded_audio_segment() -> Connection {
     let now = "2026-01-01T00:00:00Z";
     insert_file(&conn, "file-1", Some("file"), Some(("audio/flac", 16))).unwrap();
     conn.execute(
-        "INSERT INTO tracks (id, release_id, title, _updated_at, created_at) \
-         VALUES ('track-1', 'cccb6034-5922-40d2-8d0b-d94619230882', 'Track Title', ?1, ?1)",
+        "INSERT INTO tracks (id, release_id, title, created_at) VALUES ('track-1', 'cccb6034-5922-40d2-8d0b-d94619230882', 'Track Title', ?1)",
         params![now],
     )
     .unwrap();
     conn.execute(
-        "INSERT INTO audio_formats (id, track_id, content_type, sample_rate, channels, \
-         _updated_at, created_at) VALUES ('format-1', 'track-1', 'audio/flac', 44100, 2, ?1, ?1)",
+        "INSERT INTO audio_formats (id, track_id, content_type, sample_rate, channels, created_at) VALUES ('format-1', 'track-1', 'audio/flac', 44100, 2, ?1)",
         params![now],
     )
     .unwrap();
     conn.execute(
-        "INSERT INTO audio_format_segments (id, audio_format_id, segment_index, role, file_id, \
-         start_sample, end_sample, start_byte, end_byte, _updated_at, created_at) \
-         VALUES ('segment-1', 'format-1', 0, 'main', 'file-1', 0, 44100, 0, 1000, ?1, ?1)",
+        "INSERT INTO audio_format_segments (id, audio_format_id, segment_index, role, file_id, start_sample, end_sample, start_byte, end_byte, created_at) VALUES ('segment-1', 'format-1', 0, 'main', 'file-1', 0, 44100, 0, 1000, ?1)",
         params![now],
     )
     .unwrap();

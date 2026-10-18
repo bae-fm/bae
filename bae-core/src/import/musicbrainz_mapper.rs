@@ -24,7 +24,7 @@ use crate::import::source_release::{
 };
 use crate::musicbrainz::{release_labels, MbArtistRef, MbRelation, MbReleaseResponse, MbTrack, MbWork};
 use coven::Clock;
-use coven::IdProvider;
+use coven::IdSource;
 use std::collections::HashSet;
 use tracing::{debug, warn};
 
@@ -494,7 +494,7 @@ pub(crate) fn map(
     release: &SourceRelease,
     coverage: &MediumCoverage,
     clock: &dyn Clock,
-    ids: &dyn IdProvider,
+    ids: &dyn IdSource,
 ) -> Result<ParsedAlbum, ImportError> {
     let release_id = &release.release.key;
     let mut metadata = release.metadata.clone();

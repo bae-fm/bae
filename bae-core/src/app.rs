@@ -12,7 +12,7 @@ use crate::config::{Config, ConfigHandle};
 use crate::diagnostics::{AnomalyKind, Diagnostics, TelemetryEvent};
 use crate::library::AppServices;
 use coven::{ClockRef, SystemClock};
-use coven::{IdRef, UuidProvider};
+use coven::{IdSourceRef, UuidIds};
 
 struct BootstrapTiming {
     started: Instant,
@@ -80,9 +80,9 @@ pub enum BootstrapError {
 /// library that was fine.
 pub(crate) fn classify_key_state_error(error: crate::library::LibraryError) -> BootstrapError {
     match error {
-        crate::library::LibraryError::Keyring(coven::KeyError::KeychainTemporarilyUnavailable) => {
-            BootstrapError::KeyringUnavailable
-        }
+        crate::library::LibraryError::Keyring(coven::KeyError::KeychainTemporarilyUnavailable(
+            _,
+        )) => BootstrapError::KeyringUnavailable,
         error => BootstrapError::Config(error.to_string()),
     }
 }
@@ -95,8 +95,7 @@ pub(crate) fn classify_key_state_error(error: crate::library::LibraryError) -> B
 /// pipeline) is running. For an unlocked cloud library, sync attachment starts
 /// on the returned runtime and reports readiness or failure through sync status.
 ///
-/// `oauth_clients` are the OAuth applications the library's cloud home signs in
-/// with when that home is an account-based provider.
+/// `builder` supplies the installation's custody, OAuth presentation, and storage.
 ///
 /// Opening by registered id records the library as this device's active library
 /// only once the open fully completes and the library is unlocked on this device;
@@ -107,8 +106,8 @@ pub fn bootstrap<T, F>(
     position_update_interval_ms: u32,
     restore_playback: bool,
     diagnostics: Diagnostics,
-    cloudkit_ops: Option<crate::CloudKitOpsRef>,
-    oauth_clients: coven::OAuthClients,
+
+    builder: coven::CovenBuilder,
     compose: F,
 ) -> Result<T, BootstrapError>
 where
@@ -122,8 +121,7 @@ where
         position_update_interval_ms,
         restore_playback,
         diagnostics,
-        cloudkit_ops,
-        oauth_clients,
+        builder,
         compose,
     )
 }
@@ -142,8 +140,8 @@ pub fn bootstrap_on_fixture<T, F>(
     position_update_interval_ms: u32,
     restore_playback: bool,
     diagnostics: Diagnostics,
-    cloudkit_ops: Option<crate::CloudKitOpsRef>,
-    oauth_clients: coven::OAuthClients,
+
+    builder: coven::CovenBuilder,
     compose: F,
 ) -> Result<T, BootstrapError>
 where
@@ -157,8 +155,7 @@ where
         position_update_interval_ms,
         restore_playback,
         diagnostics,
-        cloudkit_ops,
-        oauth_clients,
+        builder,
         compose,
     )
 }
@@ -184,8 +181,8 @@ fn bootstrap_opening<T, F>(
     position_update_interval_ms: u32,
     restore_playback: bool,
     diagnostics: Diagnostics,
-    cloudkit_ops: Option<crate::CloudKitOpsRef>,
-    oauth_clients: coven::OAuthClients,
+
+    builder: coven::CovenBuilder,
     compose: F,
 ) -> Result<T, BootstrapError>
 where
@@ -207,8 +204,7 @@ where
                 position_update_interval_ms,
                 restore_playback,
                 diagnostics,
-                cloudkit_ops,
-                oauth_clients,
+                builder,
                 compose,
             )
         })
@@ -235,8 +231,8 @@ fn bootstrap_inner<T, F>(
     position_update_interval_ms: u32,
     restore_playback: bool,
     diagnostics: Diagnostics,
-    cloudkit_ops: Option<crate::CloudKitOpsRef>,
-    oauth_clients: coven::OAuthClients,
+
+    builder: coven::CovenBuilder,
     compose: F,
 ) -> Result<T, BootstrapError>
 where
@@ -245,7 +241,7 @@ where
     let timing = BootstrapTiming::start(&library_id);
 
     let clock: ClockRef = Arc::new(SystemClock);
-    let ids: IdRef = Arc::new(UuidProvider);
+    let ids: IdSourceRef = Arc::new(UuidIds);
 
     let config = timing
         .stage(&library_id, "load config", || {
@@ -257,15 +253,12 @@ where
             }
             other => BootstrapError::Config(other.to_string()),
         })?;
-    let library_id = config.store_id.clone();
+    let library_id = config.store_id.to_string();
 
-    // Telemetry was built by the host at process start (from compiled-in values
-    // only) and handed in. Enrich it now with the stable per-device id recorded
-    // when the library was created or joined — a set-once post-construction
-    // step, the one place late mutability is accepted. Events before this point
-    // (host launch, keyring, config load) ship without the field rather than a
-    // placeholder.
-    diagnostics.set_device_id(config.device_id.clone());
+    let install_id = app_dir
+        .install_id(ids.as_ref())
+        .map_err(|error| BootstrapError::Config(error.to_string()))?;
+    diagnostics.set_device_id(install_id);
 
     let runtime = timing
         .stage(&library_id, "build async runtime", || {
@@ -300,44 +293,34 @@ where
 
     let library_manager = timing
         .stage(&library_id, "open library manager", || {
-            crate::library::LibraryManager::open(
+            runtime.block_on(crate::library::LibraryManager::open(
                 app_dir.clone(),
                 Arc::clone(&config_handle),
                 Arc::clone(&clock),
                 ids,
                 diagnostics.clone(),
                 runtime.handle().clone(),
-                cloudkit_ops,
-                oauth_clients,
+                builder,
                 crate::import::cover_art::RemoteImageCache::new(
                     config_handle.config().library_path(),
                     http,
                 ),
                 #[cfg(not(any(target_os = "ios", target_os = "android")))]
                 providers,
-            )
+            ))
         })
         .map_err(|e| BootstrapError::Database(format!("Failed to open database: {e}")))?;
 
-    let provider_configured = config_handle.config().cloud_home.provider.is_some();
-    let key_state = timing
-        .stage(&library_id, "read cloud-home key state", || {
-            library_manager.cloud_home_key_state()
-        })
+    let provider_configured = runtime
+        .block_on(library_manager.is_sync_configured())
+        .map_err(|error| BootstrapError::Config(error.to_string()))?;
+    let key_state = library_manager
+        .store_key_state()
         .map_err(classify_key_state_error)?;
-    let locked = provider_configured && key_state == coven::CloudHomeKeyState::Locked;
+    let locked = provider_configured && key_state == coven::StoreKeyState::Locked;
     let advance_active_pointer = !locked;
     if locked {
-        // Reads as Locked both for a genuinely missing master key and when the
-        // OS keychain refuses the read — e.g. an app relaunched by a launch
-        // agent while the screen is locked. Without this line such a boot is
-        // indistinguishable in the log from a healthy one: sync silently never
-        // starts and the first visible symptom is the absence of cycles.
-        warn!(
-            "cloud home key unavailable at startup; opening library locked, sync not started \
-             (provider {provider:?})",
-            provider = config_handle.config().cloud_home.provider
-        );
+        warn!("store key unavailable at startup; opening library locked");
         diagnostics.event(TelemetryEvent::Anomaly {
             kind: AnomalyKind::EncryptionKeyMissing,
         });
@@ -366,6 +349,7 @@ where
 
     // A fixture states what its watched folders hold, and nothing on disk
     // backs it, so reading them would replace it with what is there.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     let reads_watched_folders = matches!(opening, Opening::Stored);
     match opening {
         Opening::Stored => {}
@@ -458,9 +442,22 @@ mod tests {
     use super::{classify_key_state_error, BootstrapError};
     use crate::library::LibraryError;
 
-    #[test]
-    fn a_keychain_that_refused_right_now_is_not_a_config_failure() {
-        let error = LibraryError::Keyring(coven::KeyError::KeychainTemporarilyUnavailable);
+    #[tokio::test]
+    async fn a_keychain_that_refused_right_now_is_not_a_config_failure() {
+        let temp = tempfile::tempdir().unwrap();
+        let installation = coven::TestCoven::new();
+        installation.fail_next_keychain_operation();
+        let failure = crate::library::configure_store(
+            installation.builder(coven::StoreLayout::new(temp.path().into())),
+        )
+        .create_store("Unavailable Keychain")
+        .await
+        .err()
+        .unwrap();
+        let coven::StoreCreationError::Store(coven::CovenError::Key(key)) = failure else {
+            panic!("unexpected failure: {failure}")
+        };
+        let error = LibraryError::Keyring(key);
 
         assert!(matches!(
             classify_key_state_error(error),
@@ -472,11 +469,7 @@ mod tests {
     fn every_other_keyring_failure_still_reads_as_config() {
         // A keyring that is genuinely broken is not something unlocking fixes,
         // so it must not join the retry path.
-        let error = LibraryError::Keyring(coven::KeyError::InvalidLength {
-            subject: "cloud home master key",
-            expected: 32,
-            actual: 3,
-        });
+        let error = LibraryError::Keyring(coven::KeyError::DeviceIdEncoding);
 
         assert!(matches!(
             classify_key_state_error(error),

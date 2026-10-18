@@ -98,21 +98,17 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
     let seed_work_id = work_id.clone();
     let seed_pending_hash = pending_hash.clone();
     db.call(move |sql| {
-        let reg = sql.stamp();
         sql.execute(
-            "INSERT INTO releases (id, album_id, remote, _updated_at, created_at) \
-             VALUES (?, ?, 1, ?, '2026-01-02T03:04:05Z')",
-            params![seed_release_id, seed_album_id, reg],
+            "INSERT INTO releases (id, album_id, created_at) VALUES (?, ?, '2026-01-02T03:04:05Z')",
+            params![seed_release_id, seed_album_id],
         )?;
         sql.execute(
-            "INSERT INTO tracks (id, release_id, title, side, _updated_at, created_at) \
-             VALUES (?, ?, 'Track Title', 1, ?, '2026-01-02T03:04:05Z')",
-            params![seed_track_id, seed_release_id, reg],
+            "INSERT INTO tracks (id, release_id, title, side, created_at) VALUES (?, ?, 'Track Title', 1, '2026-01-02T03:04:05Z')",
+            params![seed_track_id, seed_release_id],
         )?;
         sql.execute(
-            "INSERT INTO works (id, title, musicbrainz_work_id, _updated_at, created_at) \
-             VALUES (?, 'Work Title', 'work-1', ?, '2026-01-02T03:04:05Z')",
-            params![seed_work_id, reg],
+            "INSERT INTO works (id, title, musicbrainz_work_id, created_at) VALUES (?, 'Work Title', 'work-1', '2026-01-02T03:04:05Z')",
+            params![seed_work_id],
         )?;
         let reference_tables = [
             ("album_artists", "album_id", seed_album_id.as_str(), false),
@@ -142,16 +138,15 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
                     &format!(
                         "INSERT INTO {table} \
                              (id, {owner_column}, artist_id, position{source_column}, \
-                              _updated_at, created_at) \
-                         VALUES (?, ?, ?, 0{source_value}, ?, '2026-01-02T03:04:05Z')"
+                              created_at) \
+                         VALUES (?, ?, ?, 0{source_value}, '2026-01-02T03:04:05Z')"
                     ),
                     params![
                         bae_test_support::test_uuid(&format!(
                             "conflict-merge-{table}-{artist_index}"
                         )),
                         owner_id,
-                        artist_id,
-                        reg
+                        artist_id
                     ],
                 )?;
             }
@@ -189,22 +184,20 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
                 params![seed_pending_hash, position as i64, artist_id],
             )?;
         }
-        sql.execute(
-            "INSERT INTO artist_images (id, blob_id, content_type, file_size, source, hash, \
-                 _updated_at, created_at) \
-             VALUES \
-                 (?, '44444444-4444-4444-8444-444444444444', 'image/jpeg', 4, 'discogs', \
-                  '1111111111111111111111111111111111111111111111111111111111111111', \
-                  ?, '2026-01-02T03:04:05Z'), \
-                 (?, '33333333-3333-4333-8333-333333333333', 'image/jpeg', 3, 'musicbrainz', \
-                  '0000000000000000000000000000000000000000000000000000000000000000', \
-                  ?, '2026-01-02T03:04:05Z')",
-            params![seed_discogs_id, reg, seed_musicbrainz_id, reg],
-        )?;
         Ok(())
     })
     .await
     .unwrap();
+    for (artist, version, source, bytes) in [
+        (&discogs.id, "44444444-4444-4444-8444-444444444444", "discogs", b"four".as_slice()),
+        (&musicbrainz.id, "33333333-3333-4333-8333-333333333333", "musicbrainz", b"one".as_slice()),
+    ] {
+        db.write_library_image_blob(&DbLibraryImage {
+            id: artist.clone(), blob_id: version.into(), image_type: LibraryImageType::Artist,
+            content_type: crate::util::content_type::ContentType::Jpeg, file_size: bytes.len() as i64,
+            width: None, height: None, source: source.into(), source_url: None, created_at: fixed_now(),
+        }, bytes).await.unwrap();
+    }
     let failure = artist_identity_failure(&discogs, &musicbrainz);
     db.save_import_candidate_failure(&hash, 0, &failure)
         .await
@@ -213,7 +206,7 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
         .await
         .unwrap();
 
-    db.choose_import_artist_identity(&hash, 0, crate::import::ArtistIdentityConflictChoice::SameArtist, &coven::UuidProvider)
+    db.choose_import_artist_identity(&hash, 0, crate::import::ArtistIdentityConflictChoice::SameArtist, &coven::UuidIds)
         .await
         .unwrap();
 
@@ -323,7 +316,7 @@ async fn resolving_a_conflict_refuses_a_third_provider_identity_without_changing
         .await
         .unwrap();
 
-    db.choose_import_artist_identity(&hash, 0, crate::import::ArtistIdentityConflictChoice::SameArtist, &coven::UuidProvider)
+    db.choose_import_artist_identity(&hash, 0, crate::import::ArtistIdentityConflictChoice::SameArtist, &coven::UuidIds)
         .await
         .expect_err("a two-artist merge must not absorb an unrelated provider identity");
 

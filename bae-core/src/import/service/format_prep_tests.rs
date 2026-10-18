@@ -78,11 +78,9 @@ fn resolve_file_content_type_without_an_extension_is_opaque_binary() {
 }
 
 fn test_clock() -> coven::FixedClock {
-    coven::FixedClock(
-        chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
+    coven::FixedClock::new((chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
             .unwrap()
-            .with_timezone(&chrono::Utc),
-    )
+            .with_timezone(&chrono::Utc)).into())
 }
 
 #[test]
@@ -131,7 +129,7 @@ INDEX 01 00:00:00
         &analysis,
         1,
         "format-2".to_string(),
-        test_clock().0,
+        chrono::DateTime::<chrono::Utc>::from(coven::Clock::now(&test_clock())),
     )
     .expect("build audio format");
 
@@ -215,7 +213,7 @@ INDEX 01 01:00:00
         })
         .collect();
     let file_ids = HashMap::from([(audio_path, "file-id".to_string())]);
-    let ids = coven::SequentialIdProvider::new("audio");
+    let ids = coven::SequentialIds::new();
 
     let built =
         ImportService::build_audio_formats(&tracks_to_files, &file_ids, &test_clock(), &ids)
@@ -305,7 +303,7 @@ fn build_audio_formats_uses_stored_standalone_facts() {
         },
     };
     let file_ids = HashMap::from([(path, "file-0".to_string())]);
-    let ids = coven::SequentialIdProvider::new("af");
+    let ids = coven::SequentialIds::new();
 
     let built = ImportService::build_audio_formats(&[track], &file_ids, &test_clock(), &ids)
         .expect("build audio formats");
@@ -465,12 +463,10 @@ INDEX 01 11:01:30
         })
         .collect();
     let file_ids = HashMap::from([(audio_path, "file-id".to_string())]);
-    let clock = coven::FixedClock(
-        chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
+    let clock = coven::FixedClock::new((chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
             .unwrap()
-            .with_timezone(&chrono::Utc),
-    );
-    let ids = coven::SequentialIdProvider::new("audio");
+            .with_timezone(&chrono::Utc)).into());
+    let ids = coven::SequentialIds::new();
 
     let built = ImportService::build_audio_formats(&tracks_to_files, &file_ids, &clock, &ids)
         .expect("build audio formats");
@@ -531,8 +527,8 @@ fn a_slice_before_a_data_track_ends_where_the_data_starts() {
         0,
         &HashMap::from([(path, "file-1".to_string())]),
         &HashMap::new(),
-        &coven::SequentialIdProvider::new("segment"),
-        test_clock().0,
+        &coven::SequentialIds::new(),
+        chrono::DateTime::<chrono::Utc>::from(coven::Clock::now(&test_clock())),
     )
     .expect("build segments");
 

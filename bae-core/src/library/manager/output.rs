@@ -17,8 +17,8 @@ impl LibraryManager {
     // the download/pin queue): one release copies out at a time, the rest wait,
     // and the user can pause/cancel/retry. The queue is transient — on restart
     // it's empty. Export changes no release state: it only reads (through coven's
-    // locality-aware read) and writes to a user directory, so a Remote release
-    // stays Remote and no gate flips, external ref changes, or cloud writes.
+    // file reader) and writes to a user directory. Its attachments and local
+    // source paths remain unchanged.
 
     /// Enqueue a release to export its files verbatim to `target_dir` — the
     /// inverse of import, reconstructing the imported file set byte-for-byte.
@@ -90,7 +90,7 @@ impl LibraryManager {
 
         let op = crate::library::OutputOp {
             release_id: release_id.to_string(),
-            created_at: self.clock.now().timestamp_millis(),
+            created_at: chrono::DateTime::<chrono::Utc>::from(self.clock.now()).timestamp_millis(),
             payload: crate::library::output_snapshot::OutputRequest { target_dir, kind },
             state: crate::library::OutputState::Queued,
         };
@@ -230,7 +230,7 @@ impl LibraryManager {
             .target_dir
             .join(format!(".{folder}.export-{release_id}"));
         let staging =
-            super::export::blocking_io(move || Ok(StagingDir::create(staging_path)?)).await?;
+            super::local_files::blocking_io(move || Ok(StagingDir::create(staging_path)?)).await?;
 
         match request.kind {
             crate::library::OutputKind::Export => {
@@ -252,7 +252,7 @@ impl LibraryManager {
 
         let staging_path = staging.path().to_path_buf();
         let marker_release_id = release_id.to_string();
-        super::export::blocking_io(move || {
+        super::local_files::blocking_io(move || {
             write_output_marker(&staging_path, &marker_release_id)?;
             replace_output_dir(&staging_path, &final_dir, &folder, &marker_release_id)
         })

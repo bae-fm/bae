@@ -99,116 +99,6 @@ fn create_multi_window_cue_album() -> DiscogsRelease {
     }
 }
 
-/// The multi-window CUE album, imported once (decode-verify + loudness over
-/// ~30 MiB) into a template library directory that outlives every test. Each
-/// `MultiWindowPlayback` clones the template's small DB/library files into
-/// its own `TempDir` instead of re-importing, so porting many behaviors onto
-/// this fixture doesn't multiply the import cost by the number of tests.
-///
-/// The audio file itself is never cloned: `local_blob_refs` stores an
-/// absolute path, so a clone's DB rows point straight back at the template's
-/// stable `album/` directory, which is held alive for the process's lifetime.
-struct MultiWindowTemplate {
-    dir: TempDir,
-    track_ids: Vec<String>,
-}
-
-static MULTI_WINDOW_TEMPLATE: std::sync::LazyLock<MultiWindowTemplate> =
-    std::sync::LazyLock::new(|| {
-        // A dedicated runtime, not the calling test's: the import must finish
-        // and every task/connection it spawned must be torn down (dropping
-        // the runtime blocks until they are) before the template directory
-        // is safe to copy — coven opens SQLite in WAL mode, so a copy taken
-        // while a connection is still live could catch an unmerged -wal file.
-        let rt = tokio::runtime::Runtime::new().expect("build the template import's runtime");
-        let template = rt.block_on(async {
-            let import_ids = SequentialIdProvider::new("multi-window-template");
-            let (_library_manager, imported) = imported_release_setup(
-                create_multi_window_cue_album(),
-                "multi-window-template",
-                import_ids.new_id(),
-                generate_multi_window_cue_flac_files,
-            )
-            .await
-            .expect("import the multi-window template release");
-            assert_eq!(imported.track_ids.len(), 3, "the CUE album imports 3 tracks");
-            MultiWindowTemplate {
-                dir: imported.temp_dir,
-                track_ids: imported.track_ids,
-            }
-        });
-        drop(rt);
-        template
-    });
-
-/// Recursively copy `src` into `dst` (which must not yet exist).
-fn copy_dir_recursive(src: &std::path::Path, dst: &std::path::Path) {
-    std::fs::create_dir_all(dst).expect("create cloned directory");
-    for entry in std::fs::read_dir(src).expect("read directory to clone") {
-        let entry = entry.expect("directory entry to clone");
-        let dest = dst.join(entry.file_name());
-        let file_type = entry.file_type().expect("entry file type");
-        if file_type.is_dir() {
-            copy_dir_recursive(&entry.path(), &dest);
-        } else {
-            std::fs::copy(entry.path(), &dest).expect("clone file");
-        }
-    }
-}
-
-/// SQLite's WAL-mode sidecar files: present only while a connection has
-/// uncommitted WAL data, and reclaimed by SQLite itself around a connection's
-/// close. A file matching one of these suffixes disappearing between
-/// `read_dir` and `copy` is that reclaim, not a real race on the template's
-/// stable content — its absence at clone time means "fully checkpointed,"
-/// exactly the state a fresh open of the (always-present) main `.db` file
-/// needs.
-fn is_sqlite_wal_sidecar(name: &std::ffi::OsStr) -> bool {
-    let Some(name) = name.to_str() else {
-        return false;
-    };
-    name.ends_with("-wal") || name.ends_with("-shm") || name.ends_with("-journal")
-}
-
-/// Clone a template library's DB/library files into a fresh `TempDir`, skipping
-/// the `album/` directory — the imported audio stays at the template's own
-/// stable path, which the cloned DB's `local_blob_refs` rows (absolute paths)
-/// already point at — and skipping SQLite's WAL sidecars, reclaimed around a
-/// connection's close. Blocking (file I/O only); callers run it on a blocking
-/// thread. Shared by every import-once template fixture so the WAL-race
-/// handling lives in one place.
-fn clone_template_library(template_dir: &std::path::Path) -> TempDir {
-    let fresh = TempDir::new().expect("fresh cloned library dir");
-    for entry in std::fs::read_dir(template_dir).expect("read template dir") {
-        let entry = entry.expect("template dir entry");
-        if entry.file_name() == "album" {
-            continue;
-        }
-        let dest = fresh.path().join(entry.file_name());
-        let file_type = entry.file_type().expect("template entry file type");
-        if file_type.is_dir() {
-            copy_dir_recursive(&entry.path(), &dest);
-        } else if let Err(e) = std::fs::copy(entry.path(), &dest) {
-            if e.kind() == std::io::ErrorKind::NotFound && is_sqlite_wal_sidecar(&entry.file_name())
-            {
-                debug!(
-                    "template clone: {:?} was reclaimed before copy (fully checkpointed); skipping",
-                    entry.file_name()
-                );
-            } else {
-                panic!("clone template file {:?}: {e}", entry.path());
-            }
-        }
-    }
-    fresh
-}
-
-fn clone_multi_window_library() -> (TempDir, Vec<String>) {
-    let template = &*MULTI_WINDOW_TEMPLATE;
-    let fresh = clone_template_library(template.dir.path());
-    (fresh, template.track_ids.clone())
-}
-
 /// An imported multi-window CUE album with a real-time-paced playback service
 /// over it, for tests that drive switches, advances, and boundaries against a
 /// sparsely buffered file.
@@ -223,16 +113,14 @@ struct MultiWindowPlayback {
 }
 
 impl MultiWindowPlayback {
-    /// Build against a fresh clone of the shared multi-window template. `name`
-    /// only labels the clone in test failure output — the import itself runs
-    /// once per process, in `MULTI_WINDOW_TEMPLATE`.
+    /// Import this test's release into its own store.
     async fn new(name: &str) -> Self {
-        let (temp_dir, track_ids) = tokio::task::spawn_blocking(clone_multi_window_library)
-            .await
-            .expect("clone the multi-window template library");
-        tracing::debug!("multi-window clone ready for {name}");
-
-        let (library_manager, _database) = open_test_library(temp_dir.path()).await;
+        let (library_manager, imported) = imported_release_setup(
+            create_multi_window_cue_album(), name, uuid::Uuid::new_v4().to_string(),
+            generate_multi_window_cue_flac_files,
+        ).await.expect("import the multi-window fixture");
+        let temp_dir = imported.temp_dir;
+        let track_ids = imported.track_ids;
         let runtime_handle = tokio::runtime::Handle::current();
 
         let (playback_handle, capture_stream_rx) =
@@ -735,11 +623,11 @@ async fn auto_advance_plays_pregap_over_sparse_buffer() {
 #[tokio::test]
 async fn stopping_playback_closes_the_files_it_streamed() {
     tracing_init();
-    let import_ids = SequentialIdProvider::new("stopping-playback");
+    let import_ids = SequentialIds::new();
     let (library_manager, imported) = imported_release_setup(
         create_test_album(),
         "test",
-        import_ids.new_id(),
+        import_ids.new_id().to_string(),
         |album_dir| {
             let _track_data = generate_test_flac_files(album_dir);
         },

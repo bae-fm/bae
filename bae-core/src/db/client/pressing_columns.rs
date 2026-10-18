@@ -12,7 +12,7 @@ use crate::pressing::{
     Country, DiscogsDetail, MediaCount, Packaging, PressingFacts, Region, ReleaseArea,
     ReleaseLabel, ReleaseStatus,
 };
-use coven::rusqlite::Row;
+use rusqlite::Row;
 
 /// One pressing's facts as column values.
 pub(super) struct FactColumns {
@@ -75,7 +75,7 @@ pub(super) fn labels_column(labels: &[ReleaseLabel]) -> String {
 }
 
 /// Read a `labels` column: every label, each with its catalog number.
-pub(super) fn read_labels(row: &Row, column: &str) -> coven::rusqlite::Result<Vec<ReleaseLabel>> {
+pub(super) fn read_labels(row: &Row, column: &str) -> rusqlite::Result<Vec<ReleaseLabel>> {
     let labels: String = row.get(column)?;
     serde_json::from_str::<Vec<ReleaseLabel>>(&labels).map_err(|error| {
         column_conversion_error(row, column, format!("labels {labels:?}: {error}"))
@@ -84,14 +84,14 @@ pub(super) fn read_labels(row: &Row, column: &str) -> coven::rusqlite::Result<Ve
 
 /// Read the facts a row's columns hold. `prefix` is what a joined query puts
 /// before each column's name; a single-table query passes `""`.
-pub(super) fn read_facts(row: &Row, prefix: &str) -> coven::rusqlite::Result<PressingFacts> {
+pub(super) fn read_facts(row: &Row, prefix: &str) -> rusqlite::Result<PressingFacts> {
     let mut facts = read_facts_without_media(row, prefix)?;
     facts.media = read_media(row, &format!("{prefix}media"))?;
     Ok(facts)
 }
 
 /// Read a `media` column: the carriers and their counts.
-pub(super) fn read_media(row: &Row, column: &str) -> coven::rusqlite::Result<Vec<MediaCount>> {
+pub(super) fn read_media(row: &Row, column: &str) -> rusqlite::Result<Vec<MediaCount>> {
     let media: String = row.get(column)?;
     serde_json::from_str::<Vec<MediaCount>>(&media)
         .map_err(|error| column_conversion_error(row, column, format!("media {media:?}: {error}")))
@@ -99,10 +99,7 @@ pub(super) fn read_media(row: &Row, column: &str) -> coven::rusqlite::Result<Vec
 
 /// Read every fact but the media, for a table that keeps a record's media in
 /// rows of their own.
-pub(super) fn read_facts_without_media(
-    row: &Row,
-    prefix: &str,
-) -> coven::rusqlite::Result<PressingFacts> {
+pub(super) fn read_facts_without_media(row: &Row, prefix: &str) -> rusqlite::Result<PressingFacts> {
     let column = |name: &str| format!("{prefix}{name}");
     let country: Option<String> = row.get(column("country").as_str())?;
     let region: Option<String> = row.get(column("region").as_str())?;
@@ -134,7 +131,7 @@ pub(super) fn keyed<T>(
     row: &Row,
     column: &str,
     from_key: fn(&str) -> Option<T>,
-) -> coven::rusqlite::Result<Option<T>> {
+) -> rusqlite::Result<Option<T>> {
     let key: Option<String> = row.get(column)?;
     key.map(|key| {
         from_key(&key)

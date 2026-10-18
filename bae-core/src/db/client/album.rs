@@ -105,7 +105,7 @@ impl Database {
                         .map_err(CovenError::from)?;
                 Ok(Some((results, cover_versions, artist_image_versions)))
             })
-            .process(|_, raw| {
+            .process(|raw| {
                 let Some((results, cover_versions, artist_image_versions)) = raw else {
                     return Ok(LibrarySearchProjection::default());
                 };
@@ -120,11 +120,8 @@ impl Database {
 
     pub async fn insert_album(&self, album: &DbAlbum) -> Result<(), DbError> {
         let album = album.clone();
-        self.call_sql(move |sql| {
-            let reg = sql.stamp();
-            insert_album_row(&sql, &album, &reg)
-        })
-        .await
+        self.call_sql(move |sql| insert_album_row(&sql, &album))
+            .await
     }
 
     /// Every album, sorted by `sort` — or `created_at DESC` (newest first) when
@@ -247,7 +244,7 @@ impl Database {
                 Ok((windows, cover_versions, total_count, row_count, sections))
             })
             .process(
-                |_, (windows, cover_versions, total_count, row_count, sections)| {
+                |(windows, cover_versions, total_count, row_count, sections)| {
                     let windows = windows
                         .into_iter()
                         .map(|window| {
@@ -294,14 +291,14 @@ impl Database {
                     rows.extend(album_rows_on(
                         &sql,
                         &query,
-                        coven::rusqlite::params_from_iter(chunk.iter()),
+                        rusqlite::params_from_iter(chunk.iter()),
                     )?);
                 }
                 let shown = rows.iter().map(|row| row.id.clone()).collect::<Vec<_>>();
                 let cover_versions = album_cover_versions_on(&sql, &shown)?;
                 Ok((rows, cover_versions))
             })
-            .process(|_, (rows, cover_versions)| {
+            .process(|(rows, cover_versions)| {
                 Ok(AlbumSelectionProjection {
                     albums: rows
                         .into_iter()
@@ -413,7 +410,7 @@ impl Database {
                         .map_err(CovenError::from)?;
                 Ok((detail, cover_versions))
             })
-            .process(|_, (detail, cover_versions)| {
+            .process(|(detail, cover_versions)| {
                 Ok(AlbumDetailProjection {
                     detail: detail.map(AlbumDetailRows::process),
                     cover_versions,
@@ -438,22 +435,15 @@ impl Database {
         .await
     }
 
-    /// Delete every release an album holds, in the write that declares each
-    /// release's blobs deleted (see [`ReleaseDeletion`]). `releases` must plan
-    /// every release the album holds when the write runs: one added since would
-    /// go without its blobs declared, so the write refuses a set that no longer
-    /// matches.
+    /// Delete the releases the person selected atomically. Refuse if the album
+    /// has changed since planning; coven owns retention of unreferenced files.
     pub async fn delete_album_with_cleanup(
         &self,
         album_id: &str,
         releases: Vec<ReleaseDeletion>,
     ) -> Result<(), DbError> {
         let album_id = album_id.to_string();
-        let deleted = releases
-            .iter()
-            .flat_map(ReleaseDeletion::blob_deletes)
-            .collect();
-        self.call_sql_deleting_blobs(deleted, move |sql| {
+        self.call_sql(move |sql| {
             let mut current: Vec<String> = sql.query(
                 "SELECT id FROM releases WHERE album_id = ? ORDER BY id",
                 params![album_id],
@@ -489,10 +479,9 @@ impl Database {
     ) -> Result<(), DbError> {
         let (album_id, primary_release_id) = (album_id.to_string(), primary_release_id.to_string());
         self.call_sql(move |sql| {
-            let reg = sql.stamp();
             sql.execute(
-                "UPDATE albums SET primary_release_id = ?, _updated_at = ? WHERE id = ?",
-                params![primary_release_id, reg, album_id],
+                "UPDATE albums SET primary_release_id = ? WHERE id = ?",
+                params![primary_release_id, album_id],
             )
             .map(|_| ())
             .map_err(DbError::from)
@@ -596,6 +585,7 @@ fn search_library_on(
     })
 }
 
+#[derive(Clone, PartialEq)]
 struct AlbumSearchRow {
     id: String,
     title: String,
@@ -605,6 +595,7 @@ struct AlbumSearchRow {
     artist_name: String,
 }
 
+#[derive(Clone, PartialEq)]
 struct LibrarySearchRows {
     albums: Vec<AlbumSearchRow>,
     artists: Vec<DbArtistSummary>,
@@ -620,9 +611,9 @@ impl LibrarySearchRows {
             .into_iter()
             .map(|row| {
                 let release_ids = serde_json::from_str(&row.release_ids_json).map_err(|error| {
-                    coven::rusqlite::Error::FromSqlConversionFailure(
+                    rusqlite::Error::FromSqlConversionFailure(
                         0,
-                        coven::rusqlite::types::Type::Text,
+                        rusqlite::types::Type::Text,
                         format!("malformed release_ids_json: {error}").into(),
                     )
                 })?;
@@ -669,6 +660,7 @@ fn find_album_detail_on(
     }))
 }
 
+#[derive(Clone, PartialEq)]
 struct AlbumDetailRows {
     album: DbAlbum,
     artists: Vec<DbArtist>,

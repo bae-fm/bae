@@ -79,5 +79,3 @@ pub mod ui;
 pub mod util;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod wikidata;
-
-pub type CloudKitOpsRef = std::sync::Arc<dyn coven::CloudKitOps>;

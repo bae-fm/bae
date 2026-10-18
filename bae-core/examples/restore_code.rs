@@ -35,43 +35,33 @@ fn main() {
         }
     };
 
-    let config = match bae_core::config::Config::load_registered_library(&app_dir, &library_id) {
-        Ok(config) => config,
+    let store_id = match uuid::Uuid::parse_str(&library_id).map(coven::StoreId) {
+        Ok(id) => id,
         Err(e) => {
-            eprintln!("load config failed: {e}");
+            eprintln!("invalid active-library id: {e}");
             std::process::exit(1);
         }
     };
-    eprintln!(
-        "active library: {} ({})",
-        config.store_name, config.store_id,
-    );
-
-    // Minting a restore code needs a connected sync manager: coven seeds it
-    // from the store's CURRENT membership-head floor, read live from the
-    // cloud (not a pure function of local config and keyring state anymore),
-    // so this opens the real store and connects its configured provider the
-    // same way the running app does at startup, rather than calling a
-    // storage-free generator directly.
     let runtime = tokio::runtime::Runtime::new().expect("build tokio runtime");
     let result: Result<String, String> = runtime.block_on(async {
-        let handle = coven::Coven::builder(
-            coven::StoreDir::new(config.library_path().to_path_buf()),
-            config.to_coven(),
-        )
-        .synced_tables(bae_core::sync::synced_tables())
-        .coven_migration_policy(coven::CovenMigrationPolicy::ApplyPending)
-        .migrations(bae_core::migrations::all())
-        .open()
-        .map_err(|e| format!("open store failed: {e}"))?;
-        handle
-            .connect_sync()
+        let handle = coven::Coven::builder(coven::StoreLayout::new(home.join(".bae")))
+            .synced_tables(bae_core::sync::synced_tables())
+            .migrations(bae_core::migrations::all())
+            .open(store_id)
             .await
-            .map_err(|e| format!("connect_sync failed: {e}"))?;
+            .map_err(|e| format!("open store failed: {e}"))?;
+        let name = handle.store_name().await.map_err(|e| e.to_string())?;
+        eprintln!("active library: {name} ({store_id})");
         handle
-            .generate_restore_code()
+            .unlock_store_key()
             .await
-            .map_err(|e| format!("generate_restore_code failed: {e}"))
+            .map_err(|e| format!("unlock_store_key failed: {e}"))?;
+        let code = handle
+            .restore_code()
+            .await
+            .map_err(|e| format!("restore_code failed: {e}"))?;
+        handle.close().await.map_err(|e| e.to_string())?;
+        Ok(code)
     });
 
     match result {

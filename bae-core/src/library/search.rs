@@ -93,9 +93,9 @@ impl LibrarySearchSubscription {
             .next()
             .await
             .map_err(|_| LibrarySearchSubscriptionError::Cancelled)?;
-        let request_revision = event.revision().get();
-        let query = event.request().clone();
-        let projection = event.into_result()?;
+        let request_revision = event.revision.0;
+        let query = event.request.clone();
+        let projection = event.result?;
         Ok(LibrarySearchSnapshot {
             query,
             results: (self.resolve)(projection),

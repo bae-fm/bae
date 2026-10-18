@@ -21,7 +21,7 @@ async fn import_list_wakes_on_a_scan_item() {
 
     let mut live =
         db.subscribe_import_list(list_request(crate::import::TriageTab::Pending, [(0, 50)]));
-    let initial = live.next().await.into_result().unwrap();
+    let initial = live.next().await.result.unwrap();
     assert_eq!(candidate_names(&initial), vec!["first".to_string()]);
 
     db.save_folder_scan_item(root, generation, &scan_candidate(root, "second"))
@@ -30,7 +30,7 @@ async fn import_list_wakes_on_a_scan_item() {
     let grown = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
         .expect("a scan item wakes the list")
-        .into_result()
+        .result
         .unwrap();
     assert_eq!(
         candidate_names(&grown),
@@ -178,7 +178,7 @@ async fn import_list_sleeps_through_a_rescan_that_reconfirms_its_candidates() {
 
     let mut live =
         db.subscribe_import_list(list_request(crate::import::TriageTab::Pending, [(0, 50)]));
-    let initial = live.next().await.into_result().unwrap();
+    let initial = live.next().await.result.unwrap();
     assert_eq!(
         candidate_names(&initial),
         vec!["first".to_string(), "second".to_string()]
@@ -194,7 +194,7 @@ async fn import_list_sleeps_through_a_rescan_that_reconfirms_its_candidates() {
         list_request(crate::import::TriageTab::Pending, [(0, 49)]),
     )
     .await
-    .into_result()
+    .result
     .unwrap();
     assert_eq!(moved.windows[0].items, initial.windows[0].items);
 }
@@ -233,7 +233,7 @@ async fn import_list_subscription_delivers_scan_progress_beside_its_last_read() 
         &tokio::runtime::Handle::current(),
     );
     let initial = subscription.next().await.unwrap();
-    assert_eq!(initial.cause, coven::ReconfigurableLiveQueryCause::Initial);
+    assert_eq!(initial.cause, coven::LiveQueryCause::Request);
     assert_eq!(
         initial
             .folder_scans
@@ -250,10 +250,7 @@ async fn import_list_subscription_delivers_scan_progress_beside_its_last_read() 
         .await
         .expect("the re-confirmed folder moves the scan progress")
         .unwrap();
-    assert_eq!(
-        progressed.cause,
-        coven::ReconfigurableLiveQueryCause::DatabaseChanged
-    );
+    assert_eq!(progressed.cause, coven::LiveQueryCause::Write);
     assert_eq!(progressed.request_revision, initial.request_revision);
     assert_eq!(progressed.total_count, 2);
     assert_eq!(

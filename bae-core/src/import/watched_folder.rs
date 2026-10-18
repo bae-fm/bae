@@ -38,7 +38,7 @@ impl From<WatchedPathError> for crate::import::ImportError {
     }
 }
 
-impl From<WatchedPathError> for coven::DbError {
+impl From<WatchedPathError> for crate::db::DbError {
     fn from(error: WatchedPathError) -> Self {
         Self::Message(error.to_string())
     }

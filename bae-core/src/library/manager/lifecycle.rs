@@ -1,44 +1,40 @@
-//! Library-lifecycle operations for [`LibraryManager`]: rename a library and
-//! lock it (forget the active encryption key). Removing a library from this
-//! device happens once it is closed ([`LibraryManager::close`]), through
-//! [`crate::library::remove_local_library`].
+//! Names and removal follow coven's shared store lifecycle.
 
 use super::*;
 
 impl LibraryManager {
-    /// Rename a library by id. The active library renames through the reactive
-    /// `ConfigHandle`, so current subscribers see it; any other library isn't loaded
-    /// in memory, so its `config.yaml` is edited on disk instead. The name is
-    /// already validated non-blank by its type.
-    ///
-    /// Either way the write is a file replace, so it runs on a blocking thread.
+    /// Coven enforces administrator authority and publishes the new name.
     pub async fn rename_library(
         &self,
-        library_id: &str,
         name: &crate::library_name::LibraryName,
     ) -> Result<(), LibraryError> {
-        let is_active = library_id == self.config_handle.config().store_id;
-        if is_active {
-            self.config_handle.rename_library(name).await?;
-            return Ok(());
-        }
-        let app_dir = self.app_dir.clone();
-        let library_id = library_id.to_string();
-        let name = name.clone();
-        match tokio::task::spawn_blocking(move || {
-            crate::config::rename_inactive_library(&app_dir, &library_id, &name)
-        })
-        .await
-        {
-            Ok(renamed) => renamed?,
-            Err(error) => std::panic::resume_unwind(error.into_panic()),
-        }
+        self.database.rename_store(name.as_str()).await?;
         Ok(())
     }
 
-    /// Lock the active library by asking Coven to stop every operation retaining
-    /// the master key before removing it from custody.
+    pub async fn library_name(&self) -> Result<String, LibraryError> {
+        Ok(self.database.store_name().await?)
+    }
+
+    pub fn subscribe_library_name(&self) -> coven::LiveQuery<String> {
+        self.database.subscribe_store_name()
+    }
+
+    /// The caller stops its playback and import services before removal.
+    /// Coven leaves the store first; a failure returns without deleting it.
+    pub async fn remove_library(&self, unsent: coven::IfUnsent) -> Result<(), LibraryError> {
+        let id = self.database.store_id();
+        self.database.delete_store(unsent).await?;
+        self.tasks.close().await;
+        crate::library::local_lifecycle::remove_preferences(&self.app_dir, id).await
+    }
+
     pub async fn forget_encryption_key(&self) -> Result<(), LibraryError> {
-        self.sync.forget_master_key().await
+        self.database.forget_store_keys().await?;
+        Ok(())
+    }
+
+    pub fn store_key_state(&self) -> Result<coven::StoreKeyState, LibraryError> {
+        Ok(self.database.store_key_state()?)
     }
 }

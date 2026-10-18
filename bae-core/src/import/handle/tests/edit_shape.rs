@@ -161,7 +161,7 @@ fn seed_for(response: &crate::musicbrainz::MbReleaseResponse) -> crate::import::
     .parsed(
         &[],
         &coven::SystemClock,
-        &coven::UuidProvider,
+        &coven::UuidIds,
     )
     .expect("synthetic MB response maps");
     parsed_album_to_user_edit(&parsed)

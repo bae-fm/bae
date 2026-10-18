@@ -188,6 +188,7 @@ fn imported_release_summary(
     })
 }
 
+#[derive(Clone, PartialEq)]
 pub(super) enum WindowItemRows {
     Ready(ImportListItem),
     Candidate {
@@ -253,11 +254,13 @@ impl WindowItemRows {
 
 /// What a linked row's link reads: a pressing's stored releases, or an
 /// album's records, which the link names itself.
+#[derive(Clone, PartialEq)]
 pub(super) enum LinkedRows {
     Pressing(PickedReleaseRows),
     Album(Vec<crate::import::ReleaseRecord>),
 }
 
+#[derive(Clone, PartialEq)]
 pub(super) struct PickedReleaseRows {
     /// Every release the link claims, the primary first and then its
     /// partners.
@@ -442,13 +445,32 @@ fn picked_release(
     })
 }
 
+#[derive(Clone, PartialEq)]
+pub(super) struct CandidateDetailRows {
+    candidate: FolderCandidate,
+    source_error: Option<crate::import::GroupingBlock>,
+    actionable: bool,
+    skipped: bool,
+    imported_releases: Vec<ImportedRelease>,
+    current: Option<DbImportCandidateState>,
+    pane_rows: DbCandidatePaneRows,
+    artist_resolutions: Vec<crate::import::ResolvedCredit>,
+    metadata_revision: u64,
+    statuses: Option<Vec<LibraryStatus>>,
+    claimed: Vec<crate::import::source_release::SourceRelease>,
+    draft_source: Option<crate::import::source_release::SourceRelease>,
+    records: Vec<crate::import::ReleaseRecord>,
+    picked_library_status: Option<LibraryStatus>,
+    embedded_cover: Option<(FileVersion, Vec<u8>)>,
+}
+
 /// One candidate, whole, before its runtime is folded in. `None` when the key
 /// names no scanned folder — which is what clears a selection.
 pub(super) fn load_candidate_detail_on(
     sql: &SqlReadContext<'_>,
     key: &str,
 ) -> Result<
-    Option<impl FnOnce() -> Result<ImportCandidateDetailProjection, DbError> + Send + 'static>,
+    Option<CandidateDetailRows>,
     DbError,
 > {
     let Some(stored) = load_candidate_on(sql, key)? else {
@@ -482,16 +504,6 @@ pub(super) fn load_candidate_detail_on(
     let release_link = current
         .as_ref()
         .and_then(|state| state.release_link.clone());
-    let metadata_author = current
-        .as_ref()
-        .map_or(crate::import::MetadataAuthor::Nobody, |state| {
-            state.metadata_author
-        });
-    let signals = current.as_ref().and_then(|state| state.signals.clone());
-    let lookup_choices = current
-        .as_ref()
-        .map(|state| state.lookup_choices.clone())
-        .unwrap_or_default();
     let pane_rows = load_pane_rows_on(sql, &content_hash)?;
     // Read here, inside the pane's live query, so an artist another import
     // commits — or any artist row that changes — reads the credits again.
@@ -562,7 +574,29 @@ pub(super) fn load_candidate_detail_on(
         )?),
         _ => None,
     };
-    Ok(Some(move || {
+    Ok(Some(CandidateDetailRows { candidate, source_error, actionable, skipped,
+        imported_releases, current, pane_rows, artist_resolutions, metadata_revision,
+        statuses, claimed, draft_source, records, picked_library_status, embedded_cover }))
+}
+
+impl CandidateDetailRows {
+    pub(super) fn process(self) -> Result<ImportCandidateDetailProjection, DbError> {
+        let Self { candidate, source_error, actionable, skipped, imported_releases, current,
+            pane_rows, artist_resolutions, metadata_revision, statuses, claimed, draft_source,
+            records, picked_library_status, embedded_cover } = self;
+        let metadata_provenance = current.as_ref().and_then(|state| state.metadata_provenance.clone());
+        let release_link = current.as_ref().and_then(|state| state.release_link.clone());
+    let metadata_author = current
+        .as_ref()
+        .map_or(crate::import::MetadataAuthor::Nobody, |state| {
+            state.metadata_author
+        });
+    let signals = current.as_ref().and_then(|state| state.signals.clone());
+    let lookup_choices = current
+        .as_ref()
+        .map(|state| state.lookup_choices.clone())
+        .unwrap_or_default();
+
         let audio = crate::signals::AudioFacts::of_files(&candidate.files)
             .map_err(|error| DbError::Message(error.to_string()))?;
         let durations = &audio.durations;
@@ -668,7 +702,7 @@ pub(super) fn load_candidate_detail_on(
             failure: pane_rows.failure,
             session: pane_rows.session,
         })
-    }))
+    }
 }
 
 /// Read every release the linked pressing claims in the pane's SQL snapshot,

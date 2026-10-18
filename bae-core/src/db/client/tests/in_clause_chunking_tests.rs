@@ -16,8 +16,8 @@ async fn chunked_track_db() -> (Database, tempfile::TempDir, Vec<String>) {
         for (index, track_id) in seed_track_ids.iter().enumerate() {
             conn.execute(
                 "INSERT INTO tracks \
-                     (position, id, release_id, title, side, track_number, duration_ms, discogs_position, _updated_at, created_at) \
-                 VALUES (?3, ?1, '0252dedb-ee39-4547-8803-438dbeb57a64', ?2, 1, ?3, 1000, NULL, 'stamp', '2026-01-01T00:00:00Z')",
+                     (position, id, release_id, title, side, track_number, duration_ms, discogs_position, created_at) \
+                 VALUES (?3, ?1, '0252dedb-ee39-4547-8803-438dbeb57a64', ?2, 1, ?3, 1000, NULL, '2026-01-01T00:00:00Z')",
                 params![track_id, format!("Track Title {index}"), index as i64],
             )?;
         }
@@ -45,34 +45,57 @@ async fn cover_versions_merges_chunks() {
     db.call(move |conn| {
         conn.execute_batch(
             "
-            INSERT INTO artists (id, name, name_key, _updated_at, created_at)
-            VALUES ('7cdf9a34-0746-472b-8c68-0a669c11f2f1', 'Artist Name Primary', 'artist name primary', 'stamp', '2026-01-01T00:00:00Z');
+            INSERT INTO artists (id, name, name_key, created_at) VALUES ('7cdf9a34-0746-472b-8c68-0a669c11f2f1', 'Artist Name Primary', 'artist name primary', '2026-01-01T00:00:00Z');
 
-            INSERT INTO albums (id, title, artist_id, year, primary_release_id, is_compilation, _updated_at, created_at)
-            VALUES ('a67c03ad-425f-45e9-8279-0144c852aaa5', 'Album Title A', '7cdf9a34-0746-472b-8c68-0a669c11f2f1', 2026, 'cdb9e2f2-ba4c-43ac-8422-765445141290', 0, 'stamp', '2026-01-01T00:00:00Z');
+            INSERT INTO albums (id, title, artist_id, year, primary_release_id, is_compilation, created_at) VALUES ('a67c03ad-425f-45e9-8279-0144c852aaa5', 'Album Title A', '7cdf9a34-0746-472b-8c68-0a669c11f2f1', 2026, 'cdb9e2f2-ba4c-43ac-8422-765445141290', 0, '2026-01-01T00:00:00Z');
             ",
         )?;
         // covers.id is a FK to releases.id, so every cover needs its release.
-        for (index, release_id) in seed_release_ids.iter().enumerate() {
+        for release_id in &seed_release_ids {
             conn.execute(
-                "INSERT INTO releases (id, album_id, remote, _updated_at, created_at) \
-                 VALUES (?1, 'a67c03ad-425f-45e9-8279-0144c852aaa5', 1, 'stamp', '2026-01-01T00:00:00Z')",
+                "INSERT INTO releases (id, album_id, created_at) VALUES (?1, 'a67c03ad-425f-45e9-8279-0144c852aaa5', '2026-01-01T00:00:00Z')",
                 params![release_id],
-            )?;
-            conn.execute(
-                "INSERT INTO covers \
-                     (id, blob_id, content_type, file_size, source, hash, _updated_at, created_at) \
-                 VALUES (?1, ?2, 'image/jpeg', 1024, 'discogs', ?3, ?4, '2026-01-01T00:00:00Z')",
-                params![
-                    release_id,
-                    bae_test_support::test_uuid(&format!("cover-blob-{index}")),
-                    crate::util::fs::hash_bytes(b"fixture"),
-                    format!("stamp-{index}")
-                ],
             )?;
         }
         Ok(())
     })
+    .await
+    .unwrap();
+
+    let images: Vec<_> = release_ids
+        .iter()
+        .enumerate()
+        .map(|(index, release_id)| {
+            DbLibraryImage::cover(
+                release_id,
+                &bae_test_support::test_uuid(&format!("cover-blob-{index}")),
+                "local",
+                None,
+                b"cover",
+                chrono::Utc::now(),
+            )
+        })
+        .collect();
+    let files = images.clone();
+    Box::pin(db.inner.handle.write_with_files(
+        move |writer| {
+            for image in files {
+                writer.put_file(
+                    crate::sync::COVERS_NAMESPACE,
+                    image.blob_id,
+                    b"cover".to_vec(),
+                );
+            }
+            Ok(())
+        },
+        move |sql| {
+            for image in images {
+                super::super::write::upsert_library_image_row(&sql, &image)
+                    .map_err(CovenError::from)?;
+            }
+            Ok(())
+        },
+    ))
     .await
     .unwrap();
 

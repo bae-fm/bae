@@ -2,8 +2,6 @@
 
 use std::collections::HashMap;
 
-use super::outbox_snapshot::UploadBlobKey;
-
 /// Preserve the original file and transfer records across the projection.
 /// The bridge instantiates these with its wire records, without duplicating
 /// the joining logic or round-tripping their display fields through core.
@@ -86,7 +84,7 @@ fn storage_inspector_files<File, Upload>(
     let mut rows = Vec::with_capacity(files.len());
     for (id, file) in files {
         // release_files is write-once and its blob id is its primary key.
-        let upload_id = UploadBlobKey::new(crate::sync::RELEASE_FILES_NAMESPACE, id).stable_id();
+        let upload_id = format!("{}:{id}", crate::sync::RELEASE_FILES_NAMESPACE);
         rows.push(StorageInspectorFile::ReleaseFile {
             file,
             upload: by_id.remove(&upload_id),

@@ -115,7 +115,7 @@ async fn commit_reading(
     folder: &str,
     decision: crate::import::folder_scanner::FolderReleaseDecision,
     items: Vec<crate::import::folder_scanner::ScanItem>,
-) -> Result<crate::db::FolderReadingWrite, coven::DbError> {
+) -> Result<crate::db::FolderReadingWrite, crate::db::DbError> {
     let stamp = db.begin_folder_reading(root).await?;
     commit_reading_under(db, root, folder, decision, items, stamp).await
 }
@@ -127,7 +127,7 @@ async fn commit_reading_under(
     decision: crate::import::folder_scanner::FolderReleaseDecision,
     items: Vec<crate::import::folder_scanner::ScanItem>,
     stamp: crate::db::FolderReadingStamp,
-) -> Result<crate::db::FolderReadingWrite, coven::DbError> {
+) -> Result<crate::db::FolderReadingWrite, crate::db::DbError> {
     db.commit_folder_reading(crate::db::FolderReadingCommit {
         watched_folder_path: root.to_string(),
         folder: folder.to_string(),

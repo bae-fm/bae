@@ -47,9 +47,7 @@ use crate::library::sync_controller::SyncController;
 use crate::queue::QueueItem;
 use crate::sync::S3ConfigData;
 use coven::ClockRef;
-#[cfg(any(test, feature = "test-utils"))]
-use coven::ExactCloudHome;
-use coven::IdRef;
+use coven::IdSourceRef;
 
 mod service;
 mod storage_operations;
@@ -89,9 +87,12 @@ mod image;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod import;
 mod lifecycle;
+mod local_files;
 mod locality;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod output;
+mod people;
+mod pin;
 mod playback_state;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod records;
@@ -107,20 +108,17 @@ pub(crate) use save::SaveWindow;
 mod storage;
 mod sync;
 mod sync_status;
-pub(crate) use error_category::bootstrap_category;
-#[cfg(test)]
-use error_category::cloud_setup_failure_category;
 use error_category::{
-    blob_category, cloud_home_category, cloud_setup_category, cloud_unlock_category,
-    make_local_category, make_remote_category, sync_category,
+    blob_category, cloud_home_category, cloud_setup_category, cloud_unlock_category, sync_category,
 };
+pub(crate) use error_category::{bootstrap_category, creation_category};
 mod track;
 pub(crate) use track::queue_catalog_request;
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use discogs::discogs_validation_from_result;
-pub use sync_status::{BlockedSyncOperation, BlockedSyncOperationKind};
-use sync_status::{SyncStatus, SyncStatusUpdate};
+use sync_status::SyncStatusState;
+pub use sync_status::{pending_action, PendingAction};
 
 /// Outcome of `resolve_records_target_album` — where a release should
 /// land after a `set_records` call. `new_album` carries the album row
@@ -135,7 +133,7 @@ struct RecordsTargetAlbum {
 #[derive(Error, Debug)]
 pub enum LibraryError {
     #[error("Database error: {0}")]
-    Database(#[from] coven::DbError),
+    Database(#[from] crate::db::DbError),
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
     #[error("Import error: {0}")]
@@ -158,7 +156,7 @@ pub enum LibraryError {
     #[error("Track mapping error: {0}")]
     TrackMapping(String),
     #[error("Encryption error: {0}")]
-    Encryption(#[from] coven::EncryptionError),
+    Encryption(#[from] coven::CryptoError),
     #[error("Storage error: {0}")]
     Storage(String),
     /// coven refused or failed a make-Remote of the release, or its cancel.
@@ -167,21 +165,21 @@ pub enum LibraryError {
         operation: MakeRemoteOperation,
         release_id: String,
         #[source]
-        error: Box<coven::MakeRemoteError>,
+        error: Box<crate::db::DbError>,
     },
     /// coven refused or failed a make-Local of the release.
     #[error("make release {release_id} local: {error}")]
     MakeLocal {
         release_id: String,
         #[source]
-        error: Box<coven::MakeLocalError>,
+        error: Box<LibraryError>,
     },
     /// Reading, pinning, or unpinning a blob's bytes through coven failed.
     #[error("{operation}: {error}")]
     Blob {
         operation: String,
         #[source]
-        error: Box<coven::BlobCacheError>,
+        error: Box<coven::FileReadError>,
     },
     #[error("Playback error: {0}")]
     Playback(String),
@@ -199,30 +197,30 @@ pub enum LibraryError {
     /// Building or probing a cloud home failed — bad credentials/config
     /// (`Configuration`) or an unreachable backend (`Transport`).
     #[error("Cloud home error: {0}")]
-    CloudHome(#[from] coven::CloudHomeError),
+    CloudHome(#[from] coven::StorageError),
     #[error("Cloud setup error: {0}")]
-    CloudSetup(#[from] coven::CloudHomeSetupError),
+    CloudSetup(#[from] coven::StorageSetupError),
     #[error("Cloud unlock error: {0}")]
-    CloudUnlock(#[from] coven::CloudHomeUnlockError),
+    CloudUnlock(#[from] coven::StoreKeyUnlockError),
     /// A sync-manager connection or membership operation failed.
     #[error("Sync error: {0}")]
     Sync(#[from] coven::SyncError),
     /// Handing one blocked sync operation back to the sync loop failed — most
     /// often because it is no longer blocked, so there is nothing to retry.
     #[error("Retry blocked operation error: {0}")]
-    RetryBlockedOperation(#[source] Box<coven::RetryBlockedOperationError>),
+    RetryBlockedOperation(#[source] Box<coven::OperationError>),
     /// A bae-level input validation failed (an empty library name). bae's own
     /// validation, not coven's — the detail is log-only, so the user sees the
     /// generic settings line.
     #[error("{0}")]
     Validation(String),
-    /// Establishing this store's master key (or finding one already
-    /// established when none was expected) failed.
-    #[error("Master key error: {0}")]
-    MasterKey(#[from] coven::MasterKeyError),
-    /// Establishing this store's device identity failed.
-    #[error("Identity error: {0}")]
-    Identity(#[from] coven::IdentityError),
+    #[error(transparent)]
+    StoreDeletion(#[from] coven::StoreDeletionError),
+    #[error("{operation}; cleanup also failed: {cleanup}")]
+    Cleanup {
+        operation: Box<LibraryError>,
+        cleanup: Box<LibraryError>,
+    },
 }
 
 /// Which half of a make-Remote failed: starting it or cancelling it.
@@ -242,7 +240,7 @@ impl std::fmt::Display for MakeRemoteOperation {
 }
 
 impl LibraryError {
-    pub(crate) fn blob(operation: impl Into<String>, error: coven::BlobCacheError) -> Self {
+    pub(crate) fn blob(operation: impl Into<String>, error: coven::FileReadError) -> Self {
         Self::Blob {
             operation: operation.into(),
             error: Box::new(error),
@@ -250,9 +248,15 @@ impl LibraryError {
     }
 }
 
-impl From<coven::RetryBlockedOperationError> for LibraryError {
-    fn from(error: coven::RetryBlockedOperationError) -> Self {
-        Self::RetryBlockedOperation(Box::new(error))
+impl From<coven::DbError> for LibraryError {
+    fn from(error: coven::DbError) -> Self {
+        Self::Database(error.into())
+    }
+}
+
+impl From<coven::CovenError> for LibraryError {
+    fn from(error: coven::CovenError) -> Self {
+        Self::Database(error.into())
     }
 }
 
@@ -319,7 +323,7 @@ impl LibraryError {
             // A keychain that refused this second is not a broken keyring. It
             // is the one keyring failure a host should wait out, so it keeps
             // its own class all the way to the UI.
-            LibraryError::Keyring(coven::KeyError::KeychainTemporarilyUnavailable) => {
+            LibraryError::Keyring(coven::KeyError::KeychainTemporarilyUnavailable(_)) => {
                 C::KeyringLocked
             }
             LibraryError::Keyring(_) => C::Keyring,
@@ -327,19 +331,16 @@ impl LibraryError {
             LibraryError::CloudSetup(error) => cloud_setup_category(error),
             LibraryError::CloudUnlock(error) => cloud_unlock_category(error),
             LibraryError::Sync(e) => sync_category(e),
-            LibraryError::RetryBlockedOperation(error) => match error.as_ref() {
-                coven::RetryBlockedOperationError::Write(_) => C::Database,
-                coven::RetryBlockedOperationError::Circle(_) => C::Membership,
-                coven::RetryBlockedOperationError::Reclaim(error) => sync_category(error),
-            },
+            LibraryError::RetryBlockedOperation(_) => C::Membership,
             LibraryError::Import(_) | LibraryError::Edit(_) => C::Import,
             LibraryError::ArtistIdentityConflict(_) => C::Import,
             LibraryError::Export(_) => C::Export,
             LibraryError::Save(_) => C::Save,
-            LibraryError::MasterKey(_) | LibraryError::Identity(_) => C::Keyring,
-            LibraryError::MakeRemote { error, .. } => make_remote_category(error),
-            LibraryError::MakeLocal { error, .. } => make_local_category(error),
+            LibraryError::MakeRemote { .. } => C::Database,
+            LibraryError::MakeLocal { error, .. } => error.category(),
             LibraryError::Blob { error, .. } => blob_category(error),
+            LibraryError::Cleanup { operation, .. } => operation.category(),
+            LibraryError::StoreDeletion(_) => C::Config,
             LibraryError::Io(_)
             | LibraryError::TrackMapping(_)
             | LibraryError::ReleaseEditLoad(_)
@@ -370,161 +371,21 @@ impl From<crate::import::ImportError> for LibraryError {
     }
 }
 
-/// Current sync status for query callers. Event subscribers receive the same
-/// fields as transition events; this snapshot is the current value.
+/// Sync activity and the complete list of things coven is waiting on.
 #[derive(Debug, Clone)]
 pub struct SyncStatusSnapshot {
+    pub status: coven::SyncStatus,
+    pub pending: Option<Result<Vec<coven::PendingRecord>, crate::ui::UiError>>,
     pub error: Option<crate::ui::UiError>,
-    /// The durable operations the last completed cycle left waiting on a person.
-    /// A cycle that completes clean clears the list; a cycle that fails leaves it
-    /// as it stood, because a cycle that never finished has no verdict on it.
-    pub blocked: Vec<BlockedSyncOperation>,
-    pub last_sync_time: Option<i64>,
-    pub syncing: bool,
-    pub sync_ready: bool,
 }
 
-/// What the sync indicator shows, in precedence order. One decision, so the four
-/// front-ends stop each writing their own — and so `Synced` can only ever carry a
-/// time when the loop is actually running, which is the bug it replaces (a stale
-/// timestamp read as "Synced" on a loop that never came up).
+/// The settings status line. Platforms localize these cases and the item count.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SyncIndicator {
-    /// A sync error is present, or an operation is blocked waiting on a person.
-    /// The banner shows the line; the badge shows the error state. A cycle that
-    /// completes while leaving an operation stopped is not "Synced": the library
-    /// is not fully published until the person resolves it.
-    Error,
-    /// A sync cycle is actively running.
-    Syncing,
-    /// The loop is running and idle. Carries the last successful sync time, the
-    /// only place it is exposed — so it cannot be shown for a stopped loop.
-    Synced { last_sync_time: Option<i64> },
-    /// A cloud home is connected but its loop is not running, with nothing to
-    /// report. Neither an error nor "synced".
-    Idle,
-}
-
-impl SyncIndicator {
-    /// The one place the indicator's precedence lives. A fault — a failed cycle
-    /// or an operation blocked waiting on a person — over an active cycle over a
-    /// running-and-idle loop over nothing. `last_sync_time` reaches the result
-    /// only through `Synced`, so it cannot surface for a stopped loop.
-    pub fn resolve(
-        has_error: bool,
-        has_blocked_operation: bool,
-        syncing: bool,
-        sync_ready: bool,
-        last_sync_time: Option<i64>,
-    ) -> SyncIndicator {
-        if has_error || has_blocked_operation {
-            SyncIndicator::Error
-        } else if syncing {
-            SyncIndicator::Syncing
-        } else if sync_ready {
-            SyncIndicator::Synced { last_sync_time }
-        } else {
-            SyncIndicator::Idle
-        }
-    }
-}
-
-impl SyncStatusSnapshot {
-    /// The indicator this status resolves to.
-    pub fn indicator(&self) -> SyncIndicator {
-        SyncIndicator::resolve(
-            self.error.is_some(),
-            !self.blocked.is_empty(),
-            self.syncing,
-            self.sync_ready,
-            self.last_sync_time,
-        )
-    }
-}
-
-#[cfg(test)]
-mod sync_indicator_tests {
-    use super::*;
-
-    #[test]
-    fn library_error_fits_the_workspace_result_error_limit() {
-        assert!(std::mem::size_of::<LibraryError>() <= 128);
-    }
-
-    fn snapshot(
-        sync_ready: bool,
-        syncing: bool,
-        error: bool,
-        time: Option<i64>,
-    ) -> SyncStatusSnapshot {
-        SyncStatusSnapshot {
-            error: error.then(|| crate::ui::UiError::Diagnostic {
-                category: crate::ui::UiErrorCategory::Network,
-                detail: "boom".to_string(),
-            }),
-            blocked: Vec::new(),
-            last_sync_time: time,
-            syncing,
-            sync_ready,
-        }
-    }
-
-    /// An error wins over everything, including a ready loop with a recent sync.
-    #[test]
-    fn error_wins() {
-        assert_eq!(
-            snapshot(true, false, true, Some(100)).indicator(),
-            SyncIndicator::Error
-        );
-    }
-
-    /// An active cycle shows as syncing even once the loop is ready.
-    #[test]
-    fn an_active_cycle_shows_syncing() {
-        assert_eq!(
-            snapshot(true, true, false, Some(100)).indicator(),
-            SyncIndicator::Syncing
-        );
-    }
-
-    /// A ready, idle loop is synced and carries its time.
-    #[test]
-    fn a_ready_idle_loop_is_synced_with_its_time() {
-        assert_eq!(
-            snapshot(true, false, false, Some(100)).indicator(),
-            SyncIndicator::Synced {
-                last_sync_time: Some(100)
-            }
-        );
-    }
-
-    /// A cycle that completed but left an operation waiting on a person is not
-    /// "Synced": the library is not fully published until someone resolves it,
-    /// and the badge has to say so without the front-ends deciding it themselves.
-    #[test]
-    fn a_blocked_operation_shows_the_error_state() {
-        let mut snapshot = snapshot(true, false, false, Some(100));
-        snapshot.blocked.push(BlockedSyncOperation {
-            id: "reclaim:abc".to_string(),
-            kind: BlockedSyncOperationKind::Reclaim,
-            description: "a published batch of library changes".to_string(),
-            error: "object store-v1/library/packages/1.json: the slot already holds \
-                    another object"
-                .to_string(),
-        });
-
-        assert_eq!(snapshot.indicator(), SyncIndicator::Error);
-    }
-
-    /// The bug this replaces: a loop that never came up is Idle, not Synced —
-    /// even with a stale timestamp from a previous session.
-    #[test]
-    fn a_stopped_loop_with_a_stale_time_is_idle_not_synced() {
-        assert_eq!(
-            snapshot(false, false, false, Some(100)).indicator(),
-            SyncIndicator::Idle
-        );
-    }
+    Unconnected,
+    Loading,
+    Synced,
+    Waiting { items: usize },
 }
 
 /// All DB data needed to play or serve a track: the internal aggregate behind
@@ -597,7 +458,7 @@ impl TrackAudioMeta {
 pub struct ResolvedTrackAudioSegment {
     pub role: DbAudioSegmentRole,
     pub file_id: String,
-    pub cloud_path: Option<String>,
+    pub attached: bool,
     pub file_size: u64,
     /// Where this segment sits inside its backing file, in samples and bytes.
     pub span: crate::db::SegmentSpan,
@@ -639,10 +500,8 @@ pub struct ResolvedTrackAudio {
 }
 
 impl ResolvedTrackAudio {
-    /// Build a resolved view of a track's audio from raw DB records. coven owns the
-    /// locality resolution at read time (external ref / local store / cache /
-    /// cloud), so this carries only the blob's identity (`file_id` + `cloud_path`)
-    /// and the playback parameters — not a resolved read source.
+    /// Carry each segment's attachment state with its playback parameters so
+    /// readers choose coven or the device-local original directly.
     pub(crate) fn from_meta(meta: &TrackAudioMeta) -> Self {
         let segments = meta
             .audio_segments
@@ -656,7 +515,7 @@ impl ResolvedTrackAudio {
                 ResolvedTrackAudioSegment {
                     role: segment.role.clone(),
                     file_id: segment.file_id.clone(),
-                    cloud_path: audio_file.cloud_path.clone(),
+                    attached: audio_file.attached,
                     file_size: audio_file.file_size as u64,
                     span: segment.span(),
                 }
@@ -843,7 +702,7 @@ pub struct LibraryManager {
     /// and where forgetting this library removes it from.
     app_dir: crate::config::AppDir,
     clock: ClockRef,
-    ids: IdRef,
+    ids: IdSourceRef,
     /// Typed telemetry sink, injected at bootstrap alongside the clock/id
     /// sources. The sync-failure path emits through it; the playback and import
     /// services read it back off this manager for their own events.
@@ -861,7 +720,7 @@ pub struct LibraryManager {
     /// make-Remote/make-Local primitives.
     sync: SyncController,
     /// The sync banner's state and the stream the front-ends read it from.
-    sync_status: SyncStatus,
+    sync_status: SyncStatusState,
     /// Every storage transition in flight, and the stream the storage rows
     /// read them from.
     transitions: crate::library::storage_transitions::StorageTransitions,
@@ -876,10 +735,6 @@ pub struct LibraryManager {
     /// and writes to a user directory. Desktop-only: see the `output` module.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     outputs: crate::library::Outputs,
-    /// The upload observer coven reports blob transitions to, for tests that
-    /// drive its callbacks by hand.
-    #[cfg(test)]
-    upload_observer: Arc<crate::sync::upload_observer::ReleaseUploadObserver>,
     /// Session cache of provider image responses, keyed by URL. Candidate
     /// preparation and library images own their bytes independently.
     remote_images: crate::import::cover_art::RemoteImageCache,

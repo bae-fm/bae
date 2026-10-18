@@ -33,8 +33,8 @@ where
         let task = tokio::spawn(async move {
             loop {
                 let event = query.next().await;
-                let request = event.request().clone();
-                match event.into_result() {
+                let request = event.request.clone();
+                match event.result {
                     Ok(value) => {
                         if tx.send((request, value)).is_err() {
                             return;

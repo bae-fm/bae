@@ -221,8 +221,7 @@ mod tests {
         use crate::library::LibraryManager;
         use crate::util::content_type::ContentType;
         use chrono::Utc;
-        use coven::StoreDir;
-        use uuid::Uuid;
+                use uuid::Uuid;
 
         let temp = tempfile::TempDir::new().unwrap();
         let library_root = temp.path().join("library");
@@ -244,22 +243,15 @@ mod tests {
         };
         database.insert_artist(&artist).await.unwrap();
 
-        let library_dir = StoreDir::new(library_root.clone());
-        let library_id = format!("test-{}", uuid::Uuid::new_v4());
-        let config = Config::with_defaults(
-            library_id.clone(),
-            "test-device".to_string(),
-            library_dir.clone(),
-            "Test Library".to_string(),
-        );
+        let config = Config::with_defaults(database.store_id(), library_root.join("preferences"));
         let config_handle = Arc::new(ConfigHandle::new(config));
-        crate::config::install_test_keyring();
+
         let manager = LibraryManager::new(
             database.clone(),
             crate::config::AppDir::under_home(temp.path()),
             config_handle,
             Arc::new(coven::SystemClock),
-            Arc::new(coven::UuidProvider),
+            Arc::new(coven::UuidIds),
             crate::diagnostics::Diagnostics::noop(),
             tokio::runtime::Handle::current(),
             crate::import::cover_art::RemoteImageCache::for_test(crate::util::http::Http::for_test()),
@@ -283,7 +275,7 @@ mod tests {
             release_name: None,
             pressing: crate::pressing::Pressing::blank(),
             draft_from_tags: true,
-            remote: false,
+
             source_folder_name: None,
             content_hash: None,
             album_loudness_lufs: None,
@@ -299,7 +291,7 @@ mod tests {
             file_size: 5,
             content_type: ContentType::Jpeg,
             source_audio: None,
-            cloud_path: None,
+            attached: false,
             created_at: Utc::now(),
         };
         let missing_dir = temp.path().join("missing-image-dir");
@@ -342,8 +334,7 @@ mod tests {
         use crate::library::LibraryManager;
         use crate::util::content_type::ContentType;
         use chrono::Utc;
-        use coven::StoreDir;
-        use std::sync::Arc;
+                use std::sync::Arc;
         use uuid::Uuid;
 
         let temp = tempfile::TempDir::new().unwrap();
@@ -385,24 +376,18 @@ mod tests {
         };
         database.insert_artist(&artist).await.unwrap();
 
-        let library_dir = StoreDir::new(library_root.clone());
         // Unique id per test so keyring entries don't collide in the shared
         // process-global mock store (see `install_test_keyring`).
-        let library_id = format!("test-{}", uuid::Uuid::new_v4());
-        let config = Config::with_defaults(
-            library_id.clone(),
-            "test-device".to_string(),
-            library_dir.clone(),
-            "Test Library".to_string(),
-        );
+
+        let config = Config::with_defaults(database.store_id(), library_root.join("preferences"));
         let config_handle = Arc::new(ConfigHandle::new(config));
-        crate::config::install_test_keyring();
+
         let manager = LibraryManager::new(
             database.clone(),
             crate::config::AppDir::under_home(temp.path()),
             config_handle,
             Arc::new(coven::SystemClock),
-            Arc::new(coven::UuidProvider),
+            Arc::new(coven::UuidIds),
             crate::diagnostics::Diagnostics::noop(),
             tokio::runtime::Handle::current(),
             crate::import::cover_art::RemoteImageCache::for_test(crate::util::http::Http::for_test()),
@@ -426,7 +411,7 @@ mod tests {
             release_name: None,
             pressing: crate::pressing::Pressing::blank(),
             draft_from_tags: true,
-            remote: false,
+
             source_folder_name: None,
             content_hash: None,
             album_loudness_lufs: None,
@@ -449,7 +434,7 @@ mod tests {
                 file_size: size,
                 content_type,
                 source_audio: None,
-                cloud_path: None,
+                attached: false,
                 created_at: Utc::now(),
             };
             database

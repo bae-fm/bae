@@ -20,12 +20,7 @@ async fn make_exportable_release(
     release.id
 }
 
-/// Wait until a release's make-Remote is fully finished — not just uploaded.
-///
-/// The drain flips the gate, but coven holds each queue entry until the Store
-/// write that publishes the transition activates, a cycle later. A test that
-/// asserts "no upload work outstanding" has to be past that, or it reads the
-/// transition's own leftovers as new work.
+/// Wait until coven no longer lists this release's uploads.
 #[cfg(feature = "test-utils")]
 async fn wait_for_settled_uploads(manager: &LibraryManager, release_id: &str) {
     for tick in 0..2_000 {
@@ -49,7 +44,6 @@ async fn insert_export_release_rows(
 ) -> (DbRelease, Vec<DbFile>) {
     let album = create_test_album();
     let mut release = create_test_release(&album.id);
-    release.remote = false;
     release.source_folder_name = Some(folder_name.to_string());
     manager.database.insert_album(&album).await.unwrap();
     insert_release(manager, &release).await;
@@ -171,12 +165,7 @@ async fn export_writes_exact_bytes_in_source_folder_and_leaves_release_remote() 
         make_exportable_release(&manager, &source_dir, "Album Title (2020)", files).await;
 
     // Precondition: Remote, no pending uploads after the drain.
-    let before = manager
-        .get_release_by_id(&release_id)
-        .await
-        .unwrap()
-        .unwrap();
-    assert!(before.remote);
+    assert!(release_files(&manager, &release_id).await.iter().all(|file| file.attached));
     assert!(!has_pending_uploads(&manager, &release_id).await);
 
     let target = temp_dir.path().join("export-out");
@@ -208,12 +197,7 @@ async fn export_writes_exact_bytes_in_source_folder_and_leaves_release_remote() 
     );
 
     // Export changed no release state: still Remote, no new outbox rows.
-    let after = manager
-        .get_release_by_id(&release_id)
-        .await
-        .unwrap()
-        .unwrap();
-    assert!(after.remote, "export leaves the release Remote");
+    assert!(release_files(&manager, &release_id).await.iter().all(|file| file.attached));
     assert!(
         !has_pending_uploads(&manager, &release_id).await,
         "export enqueues no cloud uploads"
@@ -418,7 +402,6 @@ async fn export_mid_failure_leaves_no_partial_output_at_final_path() {
     std::fs::create_dir_all(&source_dir).unwrap();
     let album = create_test_album();
     let mut release = create_test_release(&album.id);
-    release.remote = false;
     release.source_folder_name = Some("Album Title".to_string());
     manager.database.insert_album(&album).await.unwrap();
     insert_release(&manager, &release).await;

@@ -20,14 +20,6 @@ impl LibraryManager {
             .await?
             .map(|ext| ext.path))
     }
-
-    // =========================================================================
-    // Encryption
-    // =========================================================================
-
-    pub fn cloud_home_key_state(&self) -> Result<coven::CloudHomeKeyState, LibraryError> {
-        self.sync.cloud_home_key_state()
-    }
 }
 
 impl LibraryManager {
@@ -49,7 +41,7 @@ impl LibraryManager {
     /// upload drain immediately. Connection, queue-state, and provider failures
     /// are returned to the caller instead of reporting that a retry ran.
     pub async fn retry_outbox_now(&self) -> Result<(), LibraryError> {
-        if self.is_sync_paused() {
+        if self.is_sync_paused().await? {
             return Err(LibraryError::Storage(
                 "upload retry cannot run while cloud sync is paused".to_string(),
             ));
@@ -58,12 +50,6 @@ impl LibraryManager {
         self.trigger_sync();
         self.emit_outbox_changed().await;
         match outcome {
-            coven::DrainOutcome::Drained { failures, .. } if !failures.failures().is_empty() => {
-                Err(LibraryError::Storage(failures.to_string()))
-            }
-            coven::DrainOutcome::AllInBackoff => Err(LibraryError::Storage(
-                "upload retry remained in backoff after the delay was cleared".to_string(),
-            )),
             coven::DrainOutcome::Paused => Err(LibraryError::Storage(
                 "cloud upload pipeline paused after the retry began".to_string(),
             )),
@@ -71,52 +57,75 @@ impl LibraryManager {
         }
     }
 
-    /// Stop uploading a release that's mid-make-Remote and keep it Local.
-    ///
-    /// coven owns the cancel: it clears the durable make-Remote intent and the
-    /// release's pending upload rows, and the drain deletes each object the
-    /// uploads already wrote. The gate never flips, so the release stays Local —
-    /// its files are still the external refs coven holds, untouched.
+    /// A committed attachment is part of shared history. Coven retains its
+    /// upload even if a later write clears or deletes the row.
     pub async fn cancel_release_upload(&self, release_id: &str) -> Result<(), LibraryError> {
-        self.coven_cancel_make_remote(release_id).await?;
-        self.emit_outbox_changed().await;
-        Ok(())
-    }
-
-    /// Stop every make-Remote transition coven can still unwind, as
-    /// [`Self::cancel_release_upload`] stops one. A release already publishing
-    /// has committed its objects and finishes; one already cancelling is on
-    /// its way. Each release's cancel is its own durable write, so a failure
-    /// partway leaves the earlier releases cancelled and says which failed.
-    pub async fn cancel_all_release_uploads(&self) -> Result<(), LibraryError> {
-        let snapshot = self.outbox_snapshot().await?;
-        for group in snapshot
-            .upload_groups
-            .iter()
-            .filter(|group| group.progress.can_cancel())
+        if self
+            .database
+            .has_pending_uploads_for_release(release_id)
+            .await?
         {
-            self.coven_cancel_make_remote(&group.release_id).await?;
+            return Err(LibraryError::Validation(format!(
+                "release {release_id} has committed uploads that cannot be cancelled; uploads can be paused"
+            )));
         }
-        self.emit_outbox_changed().await;
         Ok(())
     }
 
-    /// Drive coven's upload drain once through the handle's connected sync
-    /// manager, for tests that connected an injected cloud home via
-    /// [`connect_test_cloud_home`](Self::connect_test_cloud_home). Production
-    /// drains from the running sync loop, so this stays out of release builds.
-    ///
-    /// The [`DrainOutcome`](coven::DrainOutcome) says what the pass found. Only
-    /// `Drained` carries a count; an empty queue, one held entirely in retry
-    /// backoff, and a paused one are each their own answer, so a caller that
-    /// planted work and expects it moved wants
-    /// [`drain_uploads_expecting_work`](Self::drain_uploads_expecting_work).
+    pub async fn cancel_all_release_uploads(&self) -> Result<(), LibraryError> {
+        if !self.database.uploads().await?.files.is_empty() {
+            return Err(LibraryError::Validation(
+                "committed uploads cannot be cancelled; uploads can be paused".into(),
+            ));
+        }
+        Ok(())
+    }
+
+    /// Resume seeded uploads for one drain, then restore the fixture's pause
+    /// setting. Coven's background uploader shares the drain lock, so count
+    /// confirmed queue removals regardless of which caller drained them.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn drain_uploads_for_test(&self) -> Result<coven::DrainOutcome, String> {
-        self.database
-            .drain_uploads()
+        let before = self
+            .database
+            .uploads()
             .await
-            .map_err(|error| error.to_string())
+            .map_err(|error| error.to_string())?;
+        self.database
+            .set_uploads_paused(false)
+            .await
+            .map_err(|error| error.to_string())?;
+        let drained = self.database.retry_uploads_now().await;
+        let restored = self.database.set_uploads_paused(before.paused).await;
+        restored.map_err(|error| {
+            format!("restoring the upload pause setting failed: {error}; drain: {drained:?}")
+        })?;
+        match drained.map_err(|error| error.to_string())? {
+            coven::DrainOutcome::Paused => {
+                return Err("uploads paused during the fixture drain".into())
+            }
+            coven::DrainOutcome::Drained { .. } | coven::DrainOutcome::QueueEmpty => {}
+        }
+        let after = self
+            .database
+            .uploads()
+            .await
+            .map_err(|error| error.to_string())?;
+        if before.files.is_empty() {
+            Ok(coven::DrainOutcome::QueueEmpty)
+        } else {
+            let uploaded = before
+                .files
+                .iter()
+                .filter(|queued| {
+                    !after
+                        .files
+                        .iter()
+                        .any(|remaining| remaining.file == queued.file)
+                })
+                .count();
+            Ok(coven::DrainOutcome::Drained { uploaded })
+        }
     }
 
     /// Drive one drain that is expected to attempt queued work, and report the

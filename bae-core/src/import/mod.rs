@@ -124,7 +124,7 @@ pub(crate) struct ImportServices {
     library_manager: crate::library::LibraryManager,
     preparations: preparations::CandidatePreparations,
     clock: coven::ClockRef,
-    ids: coven::IdRef,
+    ids: coven::IdSourceRef,
     /// What reads a folder's audio files for their embedded tags. Held here
     /// rather than reached for, so a test can hand the scan a reader whose
     /// answers — and whose count of calls — it decides.
@@ -147,7 +147,7 @@ impl ImportServices {
         library_manager: crate::library::LibraryManager,
         preparations: preparations::CandidatePreparations,
         clock: coven::ClockRef,
-        ids: coven::IdRef,
+        ids: coven::IdSourceRef,
     ) -> Self {
         Self {
             event_tx,

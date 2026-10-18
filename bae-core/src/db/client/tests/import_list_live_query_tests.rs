@@ -65,7 +65,7 @@ async fn import_list_moves_a_row_to_done_when_its_content_hash_is_imported() {
 
     let mut live =
         db.subscribe_import_list(list_request(crate::import::TriageTab::Pending, [(0, 50)]));
-    let initial = live.next().await.into_result().unwrap();
+    let initial = live.next().await.result.unwrap();
     assert_eq!(initial.total_count, 1);
     assert_eq!(initial.summary.counts.pending, 1);
     assert_eq!(initial.summary.counts.done, 0);
@@ -80,7 +80,7 @@ async fn import_list_moves_a_row_to_done_when_its_content_hash_is_imported() {
     let imported = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
         .expect("the imported release wakes the list")
-        .into_result()
+        .result
         .unwrap();
     assert_eq!(imported.total_count, 0, "Pending no longer holds the row");
     assert_eq!(imported.summary.counts.done, 1);
@@ -132,7 +132,7 @@ async fn import_list_done_row_reads_the_library_release() {
 
     let mut live =
         db.subscribe_import_list(list_request(crate::import::TriageTab::Done, [(0, 50)]));
-    let initial = imported_rows(&live.next().await.into_result().unwrap());
+    let initial = imported_rows(&live.next().await.result.unwrap());
     assert_eq!(initial.len(), 1);
     let release = &initial[0].releases[0];
     assert_eq!(release.release_id, RELEASE_ID);
@@ -143,20 +143,12 @@ async fn import_list_done_row_reads_the_library_release() {
     assert!(release.records.is_empty());
 
     let cover_blob = "bd5c1f6c-3b6e-4d16-9f0a-2c1d5f61a0aa";
-    let cover_hash = crate::util::fs::hash_bytes(b"cover fixture");
-    exec(
-        &db,
-        "INSERT INTO covers
-         (id, blob_id, content_type, file_size, source, hash, _updated_at, created_at)
-         VALUES (?1, ?2, 'image/jpeg', 12, 'file_tags', ?3, 'cover-v1', '2026-01-01T00:00:00Z')",
-        &[RELEASE_ID, cover_blob, cover_hash.as_str()],
-    )
-    .await;
+    super::write_cover(&db, RELEASE_ID, cover_blob).await;
     let covered = imported_rows(
         &tokio::time::timeout(Duration::from_secs(2), live.next())
             .await
             .expect("a new cover wakes the list")
-            .into_result()
+            .result
             .unwrap(),
     );
     assert_eq!(
@@ -171,10 +163,7 @@ async fn import_list_done_row_reads_the_library_release() {
     exec(
         &db,
         "INSERT INTO release_records
-         (id, release_id, catalog, kind, key, album_key, url, _updated_at, created_at)
-         VALUES (?1, ?2, 'musicbrainz', 'pressing', 'source-release-1', 'source-group-1',
-                 'https://musicbrainz.org/release/source-release-1',
-                 'identity-v1', '2026-01-01T00:00:00Z')",
+         (id, release_id, catalog, kind, key, album_key, url, created_at) VALUES (?1, ?2, 'musicbrainz', 'pressing', 'source-release-1', 'source-group-1', 'https://musicbrainz.org/release/source-release-1', '2026-01-01T00:00:00Z')",
         &[IDENTITY_ID, RELEASE_ID],
     )
     .await;
@@ -182,7 +171,7 @@ async fn import_list_done_row_reads_the_library_release() {
         &tokio::time::timeout(Duration::from_secs(2), live.next())
             .await
             .expect("a catalog record wakes the list")
-            .into_result()
+            .result
             .unwrap(),
     );
     assert_eq!(
@@ -198,7 +187,7 @@ async fn import_list_done_row_reads_the_library_release() {
     let deleted = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
         .expect("deleting the release wakes the list")
-        .into_result()
+        .result
         .unwrap();
     assert_eq!(deleted.total_count, 0, "Done no longer holds the row");
     assert_eq!(deleted.summary.counts.pending, 1);
@@ -240,7 +229,7 @@ async fn import_list_filter_finds_a_done_row_by_its_library_title() {
     let live = db.subscribe_import_list(filtered("album title"));
     let requests = live.requests();
     let mut live = live;
-    assert_eq!(live.next().await.into_result().unwrap().total_count, 1);
+    assert_eq!(live.next().await.result.unwrap().total_count, 1);
 
     exec(
         &db,
@@ -251,7 +240,7 @@ async fn import_list_filter_finds_a_done_row_by_its_library_title() {
     let renamed = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
         .expect("renaming the album wakes a filtered list")
-        .into_result()
+        .result
         .unwrap();
     assert_eq!(renamed.total_count, 0, "the old title is no longer shown");
 
@@ -259,7 +248,7 @@ async fn import_list_filter_finds_a_done_row_by_its_library_title() {
     let found = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
         .expect("the filter change reruns the query")
-        .into_result()
+        .result
         .unwrap();
     assert_eq!(found.total_count, 1, "the new title finds the row");
 }
@@ -334,12 +323,9 @@ async fn import_list_moving_the_window_reruns_without_a_commit() {
     let requests = live.requests();
     let mut live = live;
     let initial = live.next().await;
+    assert_eq!(initial.cause, coven::LiveQueryCause::Request);
     assert_eq!(
-        initial.cause(),
-        coven::ReconfigurableLiveQueryCause::Initial
-    );
-    assert_eq!(
-        candidate_names(&initial.into_result().unwrap()),
+        candidate_names(&initial.result.unwrap()),
         vec!["first".to_string()]
     );
 
@@ -349,12 +335,9 @@ async fn import_list_moving_the_window_reruns_without_a_commit() {
     let moved = tokio::time::timeout(Duration::from_secs(2), live.next())
         .await
         .expect("the window change reruns the query");
+    assert_eq!(moved.cause, coven::LiveQueryCause::Request);
     assert_eq!(
-        moved.cause(),
-        coven::ReconfigurableLiveQueryCause::RequestChanged
-    );
-    assert_eq!(
-        candidate_names(&moved.into_result().unwrap()),
+        candidate_names(&moved.result.unwrap()),
         vec!["second".to_string()]
     );
 }
@@ -379,7 +362,7 @@ async fn import_list_withholds_a_commit_that_changes_nothing_it_reads() {
 
     let mut live =
         db.subscribe_import_list(list_request(crate::import::TriageTab::Pending, [(0, 1)]));
-    let initial = live.next().await.into_result().unwrap();
+    let initial = live.next().await.result.unwrap();
     assert_eq!(candidate_names(&initial), vec!["first".to_string()]);
 
     // What a walk records about the directories it read: the list projects
@@ -397,7 +380,7 @@ async fn import_list_withholds_a_commit_that_changes_nothing_it_reads() {
         list_request(crate::import::TriageTab::Pending, [(0, 1), (1, 1)]),
     )
     .await
-    .into_result()
+    .result
     .unwrap();
     assert_eq!(moved.windows[0].items, initial.windows[0].items);
 }
@@ -429,20 +412,20 @@ async fn import_candidate_moves_between_candidates_on_one_subscription() {
     let mut live = db.subscribe_import_candidate(None);
     let requests = live.requests();
     assert!(
-        live.next().await.into_result().unwrap().is_none(),
+        live.next().await.result.unwrap().is_none(),
         "no key reads nothing"
     );
 
     for (key, name) in keys.iter().zip(["first", "second"]) {
         requests.set(Some(key.clone())).unwrap();
         let read = live.next().await;
-        assert_eq!(read.request().as_deref(), Some(key.as_str()));
-        let detail = read.into_result().unwrap().expect("the candidate reads");
+        assert_eq!(read.request.as_deref(), Some(key.as_str()));
+        let detail = read.result.unwrap().expect("the candidate reads");
         assert_eq!(detail.candidate.name, name);
     }
 
     requests.set(None).unwrap();
-    assert!(live.next().await.into_result().unwrap().is_none());
+    assert!(live.next().await.result.unwrap().is_none());
 }
 
 #[tokio::test]

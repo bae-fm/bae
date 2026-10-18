@@ -1,22 +1,16 @@
 use super::*;
-use std::num::NonZeroU64;
 use std::sync::{Arc, Barrier};
 use std::time::Duration;
 use tempfile::TempDir;
 
-fn make_test_config(library_id: &str, library_path: PathBuf) -> Config {
-    Config::with_defaults(
-        library_id.to_string(),
-        "test-device-id".to_string(),
-        library_path,
-        "Test Library".to_string(),
-    )
+fn make_test_config(library_path: PathBuf) -> Config {
+    Config::with_defaults(coven::StoreId(uuid::Uuid::new_v4()), library_path)
 }
 
 #[test]
 fn export_settings_survive_toml_roundtrip() {
     let tmp = TempDir::new().unwrap();
-    let mut config = make_test_config("lib", tmp.path().to_path_buf());
+    let mut config = make_test_config(tmp.path().to_path_buf());
     // Filename tokens are per-preset now; a preset's edited pattern survives.
     config.prefs.save_presets[0].filename_tokens =
         vec![SaveFilenameToken::Artist, SaveFilenameToken::Title];
@@ -41,7 +35,7 @@ fn export_settings_survive_toml_roundtrip() {
 #[test]
 fn transfer_concurrency_defaults_to_three() {
     let tmp = TempDir::new().unwrap();
-    let config = make_test_config("lib", tmp.path().to_path_buf());
+    let config = make_test_config(tmp.path().to_path_buf());
     assert_eq!(config.prefs.max_concurrent_uploads.get(), 3);
     assert_eq!(config.prefs.max_concurrent_downloads.get(), 3);
 }
@@ -72,7 +66,7 @@ fn validate_concurrency_bounds() {
 #[test]
 fn stored_concurrency_widens_to_the_builder_bound() {
     let tmp = TempDir::new().unwrap();
-    let mut config = make_test_config("lib", tmp.path().to_path_buf());
+    let mut config = make_test_config(tmp.path().to_path_buf());
     config.prefs.max_concurrent_uploads = NonZeroU32::new(5).unwrap();
     config.prefs.max_concurrent_downloads = NonZeroU32::new(2).unwrap();
     assert_eq!(usize_bound(config.prefs.max_concurrent_uploads).get(), 5);
@@ -82,7 +76,7 @@ fn stored_concurrency_widens_to_the_builder_bound() {
 #[test]
 fn transfer_concurrency_survives_toml_roundtrip() {
     let tmp = TempDir::new().unwrap();
-    let mut config = make_test_config("lib", tmp.path().to_path_buf());
+    let mut config = make_test_config(tmp.path().to_path_buf());
     config.prefs.max_concurrent_uploads = NonZeroU32::new(7).unwrap();
     config.prefs.max_concurrent_downloads = NonZeroU32::new(4).unwrap();
     config.save_preferences().unwrap();
@@ -95,7 +89,7 @@ fn transfer_concurrency_survives_toml_roundtrip() {
 #[test]
 fn a_new_library_identifies_automatically() {
     let tmp = TempDir::new().unwrap();
-    let config = make_test_config("lib", tmp.path().to_path_buf());
+    let config = make_test_config(tmp.path().to_path_buf());
 
     assert!(config.prefs.identification.automatic);
 }
@@ -128,31 +122,30 @@ fn importing_when_identified_needs_automatic_identification() {
 fn an_import_s_destination_is_the_stored_choice() {
     use crate::import::ImportDestination;
     let tmp = TempDir::new().unwrap();
-    let mut config = make_test_config("lib", tmp.path().to_path_buf());
+    let mut config = make_test_config(tmp.path().to_path_buf());
     assert_eq!(
-        config.import_destination(),
+        config.import_destination(false),
         ImportDestination::Local,
-        "no cloud home: local, whatever the choice"
+        "without storage, imports stay local"
     );
-    config.cloud_home.provider = Some(CloudProvider::Dropbox);
     assert_eq!(
-        config.import_destination(),
+        config.import_destination(true),
         ImportDestination::Remote { pin: true }
     );
     config.prefs.import_storage.pinned = false;
     assert_eq!(
-        config.import_destination(),
+        config.import_destination(true),
         ImportDestination::Remote { pin: false }
     );
     config.prefs.import_storage.cloud = false;
-    assert_eq!(config.import_destination(), ImportDestination::Local);
+    assert_eq!(config.import_destination(true), ImportDestination::Local);
 }
 
 #[test]
 fn identify_automatically_roundtrips() {
     for identify in [true, false] {
         let tmp = TempDir::new().unwrap();
-        let mut config = make_test_config("lib", tmp.path().to_path_buf());
+        let mut config = make_test_config(tmp.path().to_path_buf());
         config.prefs.identification.automatic = identify;
         config.save_preferences().unwrap();
 
@@ -231,7 +224,7 @@ fn subsonic_config_allows_disabled_without_username() {
 #[test]
 fn cast_is_off_by_default_and_survives_toml_roundtrip() {
     let tmp = TempDir::new().unwrap();
-    let mut config = make_test_config("lib-cast", tmp.path().to_path_buf());
+    let mut config = make_test_config(tmp.path().to_path_buf());
     assert!(!config.prefs.cast_enabled, "casting is opt-in");
 
     config.prefs.cast_enabled = true;
@@ -245,7 +238,7 @@ fn cast_is_off_by_default_and_survives_toml_roundtrip() {
 #[test]
 fn cast_transcode_format_is_mp3_by_default_and_survives_toml_roundtrip() {
     let tmp = TempDir::new().unwrap();
-    let mut config = make_test_config("lib-cast-format", tmp.path().to_path_buf());
+    let mut config = make_test_config(tmp.path().to_path_buf());
     assert_eq!(config.prefs.cast_transcode_format, CastTranscodeFormat::Mp3);
 
     config.prefs.cast_transcode_format = CastTranscodeFormat::Wav;
@@ -255,53 +248,6 @@ fn cast_transcode_format_is_mp3_by_default_and_survives_toml_roundtrip() {
         read_preferences(tmp.path()).unwrap().cast_transcode_format,
         CastTranscodeFormat::Wav
     );
-}
-
-/// A config that is genuinely unreadable is SHOWN as broken, not skipped. The
-/// user must be able to see that the library is there and in trouble.
-#[test]
-fn a_broken_library_is_listed_as_broken() {
-    let tmp = TempDir::new().unwrap();
-    let app_dir = AppDir::at(tmp.path());
-    let library_dir = app_dir.libraries().join("lib-broken");
-    std::fs::create_dir_all(&library_dir).unwrap();
-    std::fs::write(library_dir.join("config.yaml"), "{ this is not: [valid").unwrap();
-
-    let libraries = Config::discover_libraries(&app_dir).unwrap();
-
-    assert_eq!(libraries.len(), 1, "a broken library must not disappear");
-    let broken = &libraries[0];
-    assert!(broken.error.is_some(), "it must be marked broken");
-    // Its name is unreadable — that is the failure — so the directory stands in.
-    assert_eq!(broken.id, "lib-broken");
-    assert_eq!(broken.name, "lib-broken");
-}
-
-/// A working library and a broken one coexist: the broken one sorts last but
-/// is still there.
-#[test]
-fn a_broken_library_does_not_hide_a_working_one() {
-    let tmp = TempDir::new().unwrap();
-    let app_dir = AppDir::at(tmp.path());
-    let libraries_dir = app_dir.libraries();
-
-    let good_dir = libraries_dir.join("lib-good");
-    std::fs::create_dir_all(&good_dir).unwrap();
-    let mut good = make_test_config("lib-good", good_dir.clone());
-    good.store_name = "Good".to_string();
-    good.save_store_config().unwrap();
-
-    let broken_dir = libraries_dir.join("lib-broken");
-    std::fs::create_dir_all(&broken_dir).unwrap();
-    std::fs::write(broken_dir.join("config.yaml"), "{ nope: [").unwrap();
-
-    let libraries = Config::discover_libraries(&app_dir).unwrap();
-
-    assert_eq!(libraries.len(), 2);
-    assert_eq!(libraries[0].name, "Good");
-    assert!(libraries[0].error.is_none());
-    assert_eq!(libraries[1].id, "lib-broken");
-    assert!(libraries[1].error.is_some());
 }
 
 /// The TOML table names its fields, but nothing reads them by name: the
@@ -328,7 +274,7 @@ fn lookup_catalog_preferences_are_total_over_the_asked_catalogs() {
 fn metadata_sources_fold_the_credential_and_the_switch() {
     use crate::import::{Catalog, SourceAvailability};
 
-    let mut config = make_test_config("abc-123", PathBuf::from("unused"));
+    let mut config = make_test_config(PathBuf::from("unused"));
     assert_eq!(
         config
             .metadata_sources()
@@ -368,7 +314,7 @@ fn metadata_sources_fold_the_credential_and_the_switch() {
 fn the_only_asked_source_is_the_one_that_cannot_be_switched_off() {
     use crate::import::{is_the_only_asked_source, Catalog};
 
-    let mut config = make_test_config("abc-123", PathBuf::from("unused"));
+    let mut config = make_test_config(PathBuf::from("unused"));
     let sources = config.metadata_sources();
     assert!(is_the_only_asked_source(&sources, Catalog::MusicBrainz));
     assert!(
@@ -402,7 +348,7 @@ fn discogs_token_status_usability() {
 #[test]
 fn discogs_token_status_derives_from_option() {
     let tmp = TempDir::new().unwrap();
-    let mut config = make_test_config("lib-discogs", tmp.path().to_path_buf());
+    let mut config = make_test_config(tmp.path().to_path_buf());
 
     assert!(config.prefs.discogs.is_none());
     assert!(matches!(
@@ -423,336 +369,6 @@ fn discogs_token_status_derives_from_option() {
     ));
 }
 
-/// A library bae created and changed a preference in opens with both: coven's
-/// config from `config.yaml` and bae's preferences from `preferences.toml`.
-#[test]
-fn a_saved_library_loads_back() {
-    let tmp = TempDir::new().unwrap();
-    let app_dir = AppDir::at(tmp.path());
-    let mut config = make_test_config("my-library-id", app_dir.registered_library("my-library-id"));
-    config.prefs.cast_enabled = true;
-    config.save_store_config().unwrap();
-    config.save_preferences().unwrap();
-
-    let loaded = Config::load_registered_library(&app_dir, "my-library-id").unwrap();
-
-    assert_eq!(loaded.to_coven(), config.to_coven());
-    assert!(loaded.prefs.cast_enabled);
-    assert_eq!(loaded.prefs.mcp, McpConfig::disabled_default());
-}
-
-#[test]
-fn load_registered_library_rejects_mismatched_config_id() {
-    let tmp = TempDir::new().unwrap();
-    let app_dir = AppDir::at(tmp.path());
-    make_test_config(
-        "wrong-lib-id",
-        app_dir.registered_library("expected-lib-id"),
-    )
-    .save_store_config()
-    .unwrap();
-
-    let result = Config::load_registered_library(&app_dir, "expected-lib-id");
-
-    assert!(matches!(result, Err(ConfigError::Config(_))));
-}
-
-#[test]
-fn active_library_id_errors_when_pointer_is_empty() {
-    let tmp = TempDir::new().unwrap();
-    let app_dir = AppDir::at(tmp.path());
-    std::fs::write(app_dir.active_library_pointer(), " \n").unwrap();
-
-    let err = Config::active_library_id(&app_dir).unwrap_err();
-
-    assert!(matches!(err, ConfigError::Config(_)));
-    assert!(err.to_string().contains("active-library pointer"));
-}
-
-#[test]
-fn discover_libraries_returns_active_pointer_read_error() {
-    let tmp = TempDir::new().unwrap();
-    let app_dir = AppDir::at(tmp.path());
-    let library_path = app_dir.registered_library("auto-lib");
-
-    make_test_config("auto-lib", library_path)
-        .save_store_config()
-        .unwrap();
-    std::fs::create_dir(app_dir.active_library_pointer()).unwrap();
-
-    assert!(Config::discover_libraries(&app_dir).is_err());
-}
-
-/// A library dir whose name isn't valid UTF-8 can't round-trip through the
-/// `String` paths the app addresses files by, so discovery skips it (rather
-/// than panicking or lossily mangling the path) and still finds the valid
-/// siblings.
-///
-/// Unix-only, and even there only on a filesystem that accepts non-UTF-8
-/// names: APFS/HFS+ reject the raw byte at the syscall (EILSEQ), so the
-/// directory can't exist and the skip branch is unreachable — in that case
-/// the test has nothing to exercise and returns after confirming the
-/// filesystem refused the name.
-#[cfg(unix)]
-#[test]
-fn discovery_skips_non_utf8_library_dir() {
-    use std::os::unix::ffi::OsStrExt;
-
-    let tmp = TempDir::new().unwrap();
-    let app_dir = AppDir::at(tmp.path());
-    let libraries_dir = app_dir.libraries();
-    std::fs::create_dir_all(&libraries_dir).unwrap();
-
-    // A valid library: UTF-8 dir name + config.yaml.
-    let library_path = libraries_dir.join("valid-lib");
-    make_test_config("valid-lib", library_path.clone())
-        .save_store_config()
-        .unwrap();
-
-    // A sibling dir whose name is not valid UTF-8 (a lone 0xFF byte). On a
-    // filesystem that rejects such names there's nothing to skip — the
-    // discovery is then trivially correct and the rest of the test moot.
-    let bad_name = std::ffi::OsStr::from_bytes(b"bad-\xff-name");
-    if std::fs::create_dir(libraries_dir.join(bad_name)).is_err() {
-        return;
-    }
-
-    let discovered = discover_all_library_paths(&app_dir);
-    assert_eq!(discovered.len(), 1, "non-UTF-8 dir should be skipped");
-    assert_eq!(discovered[0].1.as_ref().unwrap().store_id, "valid-lib");
-}
-
-#[test]
-fn library_name_roundtrip() {
-    let tmp = TempDir::new().unwrap();
-    let library_path = tmp.path().to_path_buf();
-    let mut config = make_test_config("lib-1", library_path.clone());
-    config.store_name = "My Music".to_string();
-    config.save_store_config().unwrap();
-
-    let store = coven::Config::load_from_config_yaml(&StoreDir::new(&library_path)).unwrap();
-    assert_eq!(store.store_name, "My Music");
-}
-
-#[test]
-fn discover_libraries_finds_dirs_with_config() {
-    let tmp = TempDir::new().unwrap();
-    let app_dir = AppDir::at(tmp.path());
-    let libraries_dir = app_dir.libraries();
-
-    // Create two libraries
-    let lib1_path = libraries_dir.join("lib-1");
-    make_test_config("lib-1", lib1_path.clone())
-        .save_store_config()
-        .unwrap();
-
-    let lib2_path = libraries_dir.join("lib-2");
-    let mut lib2 = make_test_config("lib-2", lib2_path.clone());
-    lib2.store_name = "Second Library".to_string();
-    lib2.save_store_config().unwrap();
-
-    // Create an invalid dir (no config.yaml)
-    std::fs::create_dir_all(libraries_dir.join("invalid")).unwrap();
-
-    let discovered = discover_all_library_paths(&app_dir);
-    assert_eq!(discovered.len(), 2);
-
-    let ids: Vec<&str> = discovered
-        .iter()
-        .map(|(_, y)| y.as_ref().unwrap().store_id.as_str())
-        .collect();
-    assert!(ids.contains(&"lib-1"));
-    assert!(ids.contains(&"lib-2"));
-
-    let lib2_entry = discovered
-        .iter()
-        .find(|(_, y)| y.as_ref().unwrap().store_id == "lib-2")
-        .unwrap();
-    assert_eq!(lib2_entry.1.as_ref().unwrap().store_name, "Second Library");
-}
-
-#[test]
-fn find_library_by_id_scans_libraries_dir() {
-    let tmp = TempDir::new().unwrap();
-    let app_dir = AppDir::at(tmp.path());
-    let libraries_dir = app_dir.libraries();
-
-    let lib1_path = libraries_dir.join("lib-1");
-    make_test_config("lib-1", lib1_path.clone())
-        .save_store_config()
-        .unwrap();
-
-    let lib2_path = libraries_dir.join("lib-2");
-    make_test_config("lib-2", lib2_path.clone())
-        .save_store_config()
-        .unwrap();
-
-    let found = find_library_by_id(&app_dir, "lib-1");
-    assert!(found.is_some());
-    assert_eq!(&*found.unwrap(), lib1_path.as_path());
-
-    let found = find_library_by_id(&app_dir, "lib-2");
-    assert!(found.is_some());
-    assert_eq!(&*found.unwrap(), lib2_path.as_path());
-
-    assert!(find_library_by_id(&app_dir, "nonexistent").is_none());
-}
-
-#[tokio::test]
-async fn rename_library_updates_config_yaml() {
-    let tmp = TempDir::new().unwrap();
-    let library_path = tmp.path().to_path_buf();
-    let config = make_test_config("lib-1", library_path.clone());
-    config.save_store_config().unwrap();
-    let handle = Arc::new(ConfigHandle::new(config));
-
-    handle
-        .rename_library(&crate::library_name::LibraryName::parse("New Name").unwrap())
-        .await
-        .unwrap();
-    assert_eq!(handle.config().store_name, "New Name");
-
-    let store = coven::Config::load_from_config_yaml(&StoreDir::new(&library_path)).unwrap();
-    assert_eq!(store.store_name, "New Name");
-    assert_eq!(store.store_id, "lib-1"); // unchanged
-}
-
-/// An `update` is reflected by the `Config` that `config()` returns — the
-/// same `Config` the bridge reads to build the UI's Discogs token status. If
-/// a write only reached an on-disk copy or a side cache, the bridge would
-/// keep reporting "not configured" until the next load.
-#[tokio::test]
-async fn update_is_reflected_by_config() {
-    let tmp = TempDir::new().unwrap();
-    let config = make_test_config("lib-update", tmp.path().to_path_buf());
-    config.save_store_config().unwrap();
-    let handle = Arc::new(ConfigHandle::new(config));
-
-    assert!(handle.config().prefs.discogs.is_none());
-    handle
-        .update_preferences(|prefs| prefs.discogs = Some(DiscogsValidation::Valid))
-        .await
-        .unwrap();
-    assert_eq!(
-        handle.config().prefs.discogs,
-        Some(DiscogsValidation::Valid)
-    );
-}
-
-/// A store edit and a preference edit racing each other both land, in memory
-/// and in their own files.
-#[test]
-fn update_serializes_concurrent_edits() {
-    let tmp = TempDir::new().unwrap();
-    let library_path = tmp.path().to_path_buf();
-    let config = make_test_config("lib-update-race", library_path.clone());
-    config.save_store_config().unwrap();
-    let handle = Arc::new(ConfigHandle::new(config));
-    let start = Arc::new(Barrier::new(3));
-
-    let rename = {
-        let handle = Arc::clone(&handle);
-        let start = Arc::clone(&start);
-        std::thread::spawn(move || {
-            start.wait();
-            handle
-                .update_store_now(|store| {
-                    std::thread::sleep(Duration::from_millis(100));
-                    store.store_name = "Renamed Library".to_string();
-                })
-                .unwrap();
-        })
-    };
-    let playback = {
-        let handle = Arc::clone(&handle);
-        let start = Arc::clone(&start);
-        std::thread::spawn(move || {
-            start.wait();
-            handle
-                .update_preferences_now(|prefs| {
-                    std::thread::sleep(Duration::from_millis(100));
-                    prefs.pause_between_sides = false;
-                })
-                .unwrap();
-        })
-    };
-
-    start.wait();
-    rename.join().unwrap();
-    playback.join().unwrap();
-
-    let final_config = handle.config().clone();
-    assert_eq!(final_config.store_name, "Renamed Library");
-    assert!(!final_config.prefs.pause_between_sides);
-
-    let store = coven::Config::load_from_config_yaml(&StoreDir::new(&library_path)).unwrap();
-    assert_eq!(store.store_name, "Renamed Library");
-    assert!(!read_preferences(&library_path).unwrap().pause_between_sides);
-}
-
-/// A store coven just restored or joined keeps every field coven gave it, and
-/// starts bae's preferences at their defaults.
-#[test]
-fn from_coven_keeps_coven_config_and_defaults_preferences() {
-    let mut coven_config = coven::Config::with_defaults(
-        "restored-lib-abc-123".to_string(),
-        "restored-device".to_string(),
-        "Test Library".to_string(),
-    );
-    coven_config.cloud_home.provider = Some(CloudProvider::CloudKit);
-    coven_config.snapshot_commit_threshold = NonZeroU64::new(7).unwrap();
-    coven_config.cloud_home.cloudkit_owner_name = Some("_owner".to_string());
-    coven_config.cloud_home.cloudkit_zone_name = Some("bae-library".to_string());
-
-    let config = Config::from_coven(coven_config.clone(), PathBuf::from("unused"));
-
-    assert_eq!(config.to_coven(), coven_config);
-    assert_eq!(config.prefs.mcp, McpConfig::disabled_default());
-}
-
-/// coven's restore and join write `config.yaml` themselves and treat it as the
-/// finished store. A library that has only that file — nothing bae wrote after
-/// coven returned — opens, with bae's preferences at their defaults.
-#[test]
-fn a_library_coven_wrote_opens_with_default_preferences() {
-    let tmp = TempDir::new().unwrap();
-    let app_dir = AppDir::at(tmp.path());
-    let store_dir = app_dir.store_layout().store_dir("restored-lib");
-    let mut coven_config = coven::Config::with_defaults(
-        "restored-lib".to_string(),
-        "restored-device".to_string(),
-        "Restored Library".to_string(),
-    );
-    coven_config.snapshot_commit_threshold = NonZeroU64::new(7).unwrap();
-    coven_config.save_to_config_yaml(&store_dir).unwrap();
-
-    let config = Config::load_registered_library(&app_dir, "restored-lib").unwrap();
-
-    assert_eq!(config.to_coven(), coven_config);
-    assert_eq!(config.prefs.mcp, McpConfig::disabled_default());
-}
-
-/// `config.yaml` stays in coven's format after bae changes a setting, so coven
-/// can still read it back (join reads it as its completion marker).
-#[tokio::test]
-async fn changing_a_preference_leaves_coven_config_readable_by_coven() {
-    let tmp = TempDir::new().unwrap();
-    let config = make_test_config("lib-owned", tmp.path().to_path_buf());
-    config.save_store_config().unwrap();
-    let handle = Arc::new(ConfigHandle::new(config.clone()));
-
-    handle
-        .update_preferences(|prefs| prefs.pause_between_sides = false)
-        .await
-        .unwrap();
-
-    let store_dir = coven::StoreDir::new(tmp.path());
-    assert_eq!(
-        coven::Config::load_from_config_yaml(&store_dir).unwrap(),
-        config.to_coven()
-    );
-}
-
 /// Every countdown choice a person can pick is written to `preferences.toml`
 /// and read back unchanged.
 #[tokio::test]
@@ -766,8 +382,7 @@ async fn side_pause_countdown_round_trips_through_preferences_toml() {
         SidePauseCountdown::Seconds60,
     ] {
         let tmp = TempDir::new().unwrap();
-        let config = make_test_config("lib-countdown", tmp.path().to_path_buf());
-        config.save_store_config().unwrap();
+        let config = make_test_config(tmp.path().to_path_buf());
         let handle = Arc::new(ConfigHandle::new(config));
 
         handle
@@ -809,3 +424,174 @@ fn side_pause_countdown_duration_is_the_offered_length() {
 
 #[path = "config/preferences_tests.rs"]
 mod preferences;
+
+#[test]
+fn preferences_load_by_store_id_without_duplicating_store_settings() {
+    let tmp = TempDir::new().unwrap();
+    let app_dir = AppDir::at(tmp.path());
+    let id = coven::StoreId(uuid::Uuid::new_v4());
+    let mut config = Config::with_defaults(id, app_dir.registered_library(&id.to_string()));
+    config.prefs.cast_enabled = true;
+    config.save_preferences().unwrap();
+    let loaded = Config::load_registered_library(&app_dir, &id.to_string()).unwrap();
+    assert_eq!(loaded.store_id, id);
+    assert_eq!(loaded.prefs, config.prefs);
+    assert!(!config.library_path().join("config.yaml").exists());
+}
+
+#[test]
+fn load_registered_library_rejects_a_path_or_non_uuid() {
+    let tmp = TempDir::new().unwrap();
+    let app_dir = AppDir::at(tmp.path());
+    for id in ["../outside", "invalid"] {
+        assert!(matches!(
+            Config::load_registered_library(&app_dir, id),
+            Err(ConfigError::Config(_))
+        ));
+    }
+}
+
+#[test]
+fn missing_preferences_are_defaults_and_invalid_preferences_are_errors() {
+    let tmp = TempDir::new().unwrap();
+    let app_dir = AppDir::at(tmp.path());
+    let id = coven::StoreId(uuid::Uuid::new_v4()).to_string();
+    assert_eq!(
+        Config::load_registered_library(&app_dir, &id)
+            .unwrap()
+            .prefs,
+        Preferences::default()
+    );
+    let directory = app_dir.registered_library(&id);
+    std::fs::create_dir_all(&directory).unwrap();
+    std::fs::write(directory.join(PREFERENCES_FILENAME), "invalid = [").unwrap();
+    assert!(Config::load_registered_library(&app_dir, &id).is_err());
+}
+
+#[tokio::test]
+async fn discovery_uses_coven_names_and_sorts_the_active_store_first() {
+    let tmp = TempDir::new().unwrap();
+    let app_dir = AppDir::at(tmp.path());
+    let installation = coven::TestCoven::new();
+    let first = crate::library::configure_store(installation.builder(app_dir.store_layout()))
+        .create_store("First")
+        .await
+        .unwrap();
+    let second = crate::library::configure_store(installation.builder(app_dir.store_layout()))
+        .create_store("Second")
+        .await
+        .unwrap();
+    let first_id = first.store_id();
+    let second_id = second.store_id();
+    Config::with_defaults(
+        second_id,
+        app_dir.registered_library(&second_id.to_string()),
+    )
+    .save_active_library(&app_dir)
+    .unwrap();
+    first.close().await.unwrap();
+    second.close().await.unwrap();
+    let libraries = Config::discover_libraries(&app_dir).await.unwrap();
+    assert_eq!(
+        libraries
+            .iter()
+            .map(|l| (l.id.as_str(), l.name.as_str(), l.is_active))
+            .collect::<Vec<_>>(),
+        vec![
+            (second_id.to_string().as_str(), "Second", true),
+            (first_id.to_string().as_str(), "First", false)
+        ]
+    );
+    assert!(libraries.iter().all(|l| l.cloud_provider.is_none()));
+    assert_eq!(
+        libraries[0].path,
+        app_dir.registered_library(&second_id.to_string())
+    );
+}
+
+#[tokio::test]
+async fn discovery_reports_a_broken_store_instead_of_omitting_it() {
+    let tmp = TempDir::new().unwrap();
+    let app_dir = AppDir::at(tmp.path());
+    let id = coven::StoreId(uuid::Uuid::new_v4());
+    app_dir
+        .store_layout()
+        .create_store_dir(id, &coven::UuidIds)
+        .unwrap();
+    let error = Config::discover_libraries(&app_dir).await.unwrap_err();
+    assert!(error.to_string().contains(&id.to_string()), "{error}");
+}
+
+#[tokio::test]
+async fn discovery_reports_invalid_or_unreadable_active_pointers() {
+    let tmp = TempDir::new().unwrap();
+    let app_dir = AppDir::at(tmp.path());
+    std::fs::write(app_dir.active_library_pointer(), " \n").unwrap();
+    assert!(Config::discover_libraries(&app_dir).await.is_err());
+    std::fs::remove_file(app_dir.active_library_pointer()).unwrap();
+    std::fs::create_dir(app_dir.active_library_pointer()).unwrap();
+    assert!(Config::discover_libraries(&app_dir).await.is_err());
+}
+
+#[tokio::test]
+async fn preference_updates_publish_after_persistence() {
+    let tmp = TempDir::new().unwrap();
+    let handle = Arc::new(ConfigHandle::new(make_test_config(tmp.path().into())));
+    let mut changes = handle.subscribe();
+    handle
+        .update_preferences(|prefs| prefs.discogs = Some(DiscogsValidation::Valid))
+        .await
+        .unwrap();
+    changes.changed().await.unwrap();
+    assert_eq!(
+        changes.borrow().prefs.discogs,
+        Some(DiscogsValidation::Valid)
+    );
+    assert_eq!(read_preferences(tmp.path()).unwrap(), handle.config().prefs);
+}
+
+#[test]
+fn concurrent_preference_edits_preserve_both_changes() {
+    let tmp = TempDir::new().unwrap();
+    let handle = Arc::new(ConfigHandle::new(make_test_config(tmp.path().into())));
+    let start = Arc::new(Barrier::new(3));
+    let workers: Vec<_> = [true, false]
+        .into_iter()
+        .map(|cast| {
+            let handle = handle.clone();
+            let start = start.clone();
+            std::thread::spawn(move || {
+                start.wait();
+                handle
+                    .update_preferences_now(|prefs| {
+                        if cast {
+                            prefs.cast_enabled = true;
+                        } else {
+                            prefs.pause_between_sides = false;
+                        }
+                    })
+                    .unwrap();
+            })
+        })
+        .collect();
+    start.wait();
+    for worker in workers {
+        worker.join().unwrap();
+    }
+    let prefs = read_preferences(tmp.path()).unwrap();
+    assert!(prefs.cast_enabled);
+    assert!(!prefs.pause_between_sides);
+    assert_eq!(prefs, handle.config().prefs);
+}
+
+#[test]
+fn installation_id_is_shared_by_libraries_and_survives_reopening() {
+    let tmp = TempDir::new().unwrap();
+    let app_dir = AppDir::at(tmp.path());
+    let ids = coven::SequentialIds::new();
+    let first = app_dir.install_id(&ids).unwrap();
+    assert_eq!(app_dir.install_id(&ids).unwrap(), first);
+    assert_eq!(AppDir::at(tmp.path()).install_id(&ids).unwrap(), first);
+    std::fs::write(tmp.path().join("install-id"), "invalid").unwrap();
+    assert!(app_dir.install_id(&ids).is_err());
+}

@@ -5,9 +5,7 @@ async fn an_import_goes_where_the_stored_choice_says_as_it_starts() {
     support::tracing_init();
     let f = ImportFixture::new().await;
     f.connect_cloud().await;
-    f.library_manager
-        .set_test_cloud_provider(bae_core::config::CloudProvider::Dropbox)
-        .await;
+
 
     let collection = f.temp_path().join("Collection");
     let mut keys = Vec::new();
@@ -44,13 +42,13 @@ async fn an_import_goes_where_the_stored_choice_says_as_it_starts() {
     }
 
     f.library_manager.set_import_to_cloud(true).await.unwrap();
-    assert!(
-        matches!(
-            import_outcome(&f, &keys[0]).await,
-            bae_core::import::ImportProgress::RemoteUploadQueued { .. }
-        ),
-        "the cloud choice queues the release's upload"
-    );
+    f.library_manager.set_import_pinned(true).await.unwrap();
+    let outcome = import_outcome(&f, &keys[0]).await;
+    let bae_core::import::ImportProgress::RemoteUploadQueued { id, .. } = outcome else {
+        panic!("the cloud choice queues the release's upload: {outcome:?}");
+    };
+    let storage = f.library_manager.find_release_storage_summary(&id).await.unwrap().unwrap();
+    assert!(storage.pinned, "the import keeps the selected offline pin");
 
     f.library_manager.set_import_to_cloud(false).await.unwrap();
     assert!(

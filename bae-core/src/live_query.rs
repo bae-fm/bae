@@ -43,7 +43,7 @@ where
             .as_ref()
             .ok_or(LiveQueryCancelled)?
             .set(request)
-            .map(|revision| revision.get())
+            .map(|revision| revision.0)
             .map_err(|_| LiveQueryCancelled)
     }
 

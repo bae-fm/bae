@@ -22,7 +22,7 @@ fn read_preferences_value(value: &toml::Value) -> Result<Preferences, ConfigErro
 fn defaults_roundtrip_through_preferences_toml() {
     assert_eq!(PREFERENCES_FILENAME, "preferences.toml");
     let tmp = TempDir::new().unwrap();
-    let config = make_test_config("lib", tmp.path().to_path_buf());
+    let config = make_test_config(tmp.path().to_path_buf());
     config.save_preferences().unwrap();
 
     let written = std::fs::read_to_string(tmp.path().join("preferences.toml")).unwrap();
@@ -42,7 +42,7 @@ fn defaults_roundtrip_through_preferences_toml() {
 #[test]
 fn every_preference_roundtrips_when_set() {
     let tmp = TempDir::new().unwrap();
-    let mut config = make_test_config("lib", tmp.path().to_path_buf());
+    let mut config = make_test_config(tmp.path().to_path_buf());
     config.prefs = Preferences {
         discogs: Some(DiscogsValidation::Valid),
         replay_gain_mode: ReplayGainMode::Album,
@@ -107,7 +107,7 @@ fn every_preference_roundtrips_when_set() {
 #[test]
 fn discogs_states_roundtrip_with_explicit_spelling() {
     let tmp = TempDir::new().unwrap();
-    let mut config = make_test_config("lib", tmp.path().to_path_buf());
+    let mut config = make_test_config(tmp.path().to_path_buf());
     for (state, spelling) in [
         (Some(DiscogsValidation::Unvalidated), "Unvalidated"),
         (Some(DiscogsValidation::Valid), "Valid"),
@@ -126,7 +126,7 @@ fn discogs_states_roundtrip_with_explicit_spelling() {
 #[test]
 fn replay_gain_modes_roundtrip() {
     let tmp = TempDir::new().unwrap();
-    let mut config = make_test_config("lib", tmp.path().to_path_buf());
+    let mut config = make_test_config(tmp.path().to_path_buf());
     for mode in [
         ReplayGainMode::Off,
         ReplayGainMode::Track,
@@ -141,7 +141,7 @@ fn replay_gain_modes_roundtrip() {
 #[test]
 fn save_codec_variants_roundtrip() {
     let tmp = TempDir::new().unwrap();
-    let mut config = make_test_config("lib", tmp.path().to_path_buf());
+    let mut config = make_test_config(tmp.path().to_path_buf());
     for codec in [
         SaveCodec::Flac {
             bit_depth: SaveBitDepth::Source,

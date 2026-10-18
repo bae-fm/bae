@@ -131,8 +131,8 @@ mod tests {
             segments: vec![ResolvedTrackAudioSegment {
                 role: DbAudioSegmentRole::Main,
                 file_id: "file".to_string(),
-                cloud_path: None,
                 file_size: 1_000_000,
+                attached: false,
                 span,
             }],
             duration_ms: Some(10_000),

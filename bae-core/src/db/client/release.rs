@@ -48,11 +48,8 @@ pub(crate) struct NewArtistImages<'a> {
 impl Database {
     pub async fn insert_release(&self, release: &DbRelease) -> Result<(), DbError> {
         let release = release.clone();
-        self.call_sql(move |sql| {
-            let reg = sql.stamp();
-            insert_release_row(&sql, &release, &reg)
-        })
-        .await
+        self.call_sql(move |sql| insert_release_row(&sql, &release))
+            .await
     }
 
     #[cfg(any(test, feature = "test-utils"))]
@@ -64,16 +61,15 @@ impl Database {
     ) -> Result<(), DbError> {
         let (works, track_works, images) = (works.to_vec(), track_works.to_vec(), images.to_vec());
         self.call_sql(move |sql| {
-            let reg = sql.stamp();
             let conn = &sql;
             for work in &works {
-                insert_work_row(conn, work, &reg)?;
+                insert_work_row(conn, work)?;
             }
             for track_work in &track_works {
-                insert_track_work_row(conn, track_work, &reg)?;
+                insert_track_work_row(conn, track_work)?;
             }
             for image in &images {
-                upsert_library_image_row(conn, image, &reg)?;
+                upsert_library_image_row(conn, image)?;
             }
             Ok(())
         })
@@ -98,15 +94,14 @@ impl Database {
         );
         self.call_sql(move |sql| {
             let tx = &sql;
-            // One HLC stamp for every synced row this transaction writes.
-            let reg = sql.stamp();
-            insert_album_row(tx, &album, &reg)?;
-            insert_release_row(tx, &release, &reg)?;
+
+            insert_album_row(tx, &album)?;
+            insert_release_row(tx, &release)?;
             for track in &tracks {
-                insert_track_row(tx, track, &reg)?;
+                insert_track_row(tx, track)?;
             }
             for ta in &track_artists {
-                insert_track_artist_row(tx, ta, &reg)?;
+                insert_track_artist_row(tx, ta)?;
             }
             Ok(())
         })
@@ -124,14 +119,13 @@ impl Database {
             (release.clone(), tracks.to_vec(), track_artists.to_vec());
         self.call_sql(move |sql| {
             let tx = &sql;
-            // One HLC stamp for every synced row this transaction writes.
-            let reg = sql.stamp();
-            insert_release_row(tx, &release, &reg)?;
+
+            insert_release_row(tx, &release)?;
             for track in &tracks {
-                insert_track_row(tx, track, &reg)?;
+                insert_track_row(tx, track)?;
             }
             for ta in &track_artists {
-                insert_track_artist_row(tx, ta, &reg)?;
+                insert_track_artist_row(tx, ta)?;
             }
             Ok(())
         })
@@ -185,11 +179,10 @@ impl Database {
             album_artists.to_vec(),
             track_artists.to_vec(),
         );
-        let now = self.inner.clock.now().to_rfc3339();
+        let now = chrono::DateTime::<chrono::Utc>::from(self.inner.clock.now()).to_rfc3339();
         self.write_resolving_artists(move |sql| {
             let tx = &sql;
-            // One HLC stamp for every synced row this edit touches.
-            let reg = sql.stamp();
+
 
             // Decide every credit against the library as it stands now, then
             // insert new artist rows and fill empty source-ID fields on linked
@@ -199,21 +192,19 @@ impl Database {
                 picked: &picked_artists,
             }
             .resolve_on(tx)?;
-            resolved.write_on(tx, &reg)?;
+            resolved.write_on(tx)?;
             let artist_ids = resolved.id_map(&artist_credits);
             let album = relinked_album(&album, &artist_ids)?;
             let album_artists = relink_album_artists(Some(&album), &album_artists, &artist_ids)?;
             let track_artists = relink_track_artists(&track_artists, &artist_ids)?;
 
             tx.execute(
-                r#"UPDATE albums SET title = ?, artist_id = ?, year = ?, is_compilation = ?,
-                    _updated_at = ? WHERE id = ?"#,
+                r#"UPDATE albums SET title = ?, artist_id = ?, year = ?, is_compilation = ? WHERE id = ?"#,
                 params![
                     album.title,
                     album.artist_id,
                     album.year,
                     album.is_compilation,
-                    reg,
                     album_id,
                 ],
             )?;
@@ -222,8 +213,7 @@ impl Database {
             tx.execute(
                 r#"UPDATE releases SET year = ?, labels = ?, barcode = ?,
                     country = ?, region = ?, media = ?, status = ?, packaging = ?,
-                    discogs_details = ?,
-                    _updated_at = ? WHERE id = ?"#,
+                    discogs_details = ? WHERE id = ?"#,
                 params![
                     release.pressing.year,
                     super::pressing_columns::labels_column(&release.pressing.labels),
@@ -234,29 +224,26 @@ impl Database {
                     facts.status,
                     facts.packaging,
                     facts.discogs_details,
-                    reg,
                     release_id,
                 ],
             )?;
 
             for (existing_id, new_track) in &track_updates {
                 tx.execute(
-                    r#"UPDATE tracks SET title = ?, side = ?, track_number = ?,
-                        _updated_at = ? WHERE id = ?"#,
+                    r#"UPDATE tracks SET title = ?, side = ?, track_number = ? WHERE id = ?"#,
                     params![
                         new_track.title,
                         new_track.side,
                         new_track.track_number,
-                        reg,
-                        existing_id,
+                            existing_id,
                     ],
                 )?;
             }
 
-            replace_album_artists(tx, &album_id, &album_artists, &reg, &now)?;
+            replace_album_artists(tx, &album_id, &album_artists, &now)?;
 
             let track_ids: Vec<&str> = track_updates.iter().map(|(id, _)| id.as_str()).collect();
-            replace_track_artists(tx, &track_ids, &track_artists, &reg, &now)?;
+            replace_track_artists(tx, &track_ids, &track_artists, &now)?;
 
             Ok(())
         })
@@ -330,7 +317,7 @@ impl Database {
                 .map_err(CovenError::from)?;
                 Ok((context, cover_versions))
             })
-            .process(|_, (context, cover_versions)| {
+            .process(|(context, cover_versions)| {
                 Ok(ReleaseDetailProjection {
                     context: context.map(super::release_projection::ReleaseContextRows::process),
                     cover_versions,
@@ -350,26 +337,36 @@ impl Database {
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn insert_file(&self, file: &DbFile) -> Result<(), DbError> {
         let file = file.clone();
-        self.call_sql(move |sql| {
-            let reg = sql.stamp();
-            let fixture_hash = crate::util::fs::hash_bytes(file.id.as_bytes());
-            insert_file_row_for_test(&sql, &file, &reg, &fixture_hash)
-        })
-        .await
+        self.call_sql(move |sql| insert_file_row_for_test(&sql, &file))
+            .await
     }
 
-    /// Insert a release-file fixture through the production opaque-hash path.
+    /// A local release's original is device-local until explicitly attached.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn insert_external_file_for_test(
         &self,
         file: &DbFile,
         path: &std::path::Path,
     ) -> Result<(), DbError> {
-        let prepared = coven::prepare_external_blob(path, |_| {}).await?;
+        let metadata = tokio::fs::metadata(path).await?;
+        if metadata.len()
+            != u64::try_from(file.file_size).map_err(|error| DbError::Message(error.to_string()))?
+        {
+            return Err(DbError::LocalFileChanged(path.into()));
+        }
+        let path = path
+            .to_str()
+            .ok_or_else(|| DbError::Message("local path is not UTF-8".into()))?
+            .to_string();
+        let modified = DateTime::<Utc>::from(metadata.modified()?).to_rfc3339();
         let file = file.clone();
         self.call_sql(move |sql| {
-            let reg = sql.stamp();
-            insert_external_file_row(&sql, &file, &reg, prepared)
+            insert_file_row_for_test(&sql, &file)?;
+            sql.execute(
+                "INSERT INTO local_release_files(file_id,path,modified_at) VALUES(?1,?2,?3)",
+                params![file.id, path, modified],
+            )?;
+            Ok(())
         })
         .await
     }
@@ -392,10 +389,9 @@ impl Database {
     ) -> Result<(), DbError> {
         let (audio_format, segments) = (audio_format.clone(), segments.to_vec());
         self.call_sql(move |sql| {
-            let reg = sql.stamp();
-            insert_audio_format_row(&sql, &audio_format, &reg)?;
+            insert_audio_format_row(&sql, &audio_format)?;
             for segment in &segments {
-                insert_audio_segment_row(&sql, segment, &reg)?;
+                insert_audio_segment_row(&sql, segment)?;
             }
             Ok(())
         })
@@ -432,13 +428,6 @@ impl Database {
         library_image: Option<(&DbLibraryImage, &[u8])>,
         artist_images: NewArtistImages<'_>,
         primary_release_id: Option<(&str, &str)>, // (album_id, release_id)
-        // The cloud home's storage mode, which decides the blob layout: `Opaque`
-        // keys each blob by its hashed id, `Browsable` lays it out at a readable
-        // `cloud_path` computed inside this transaction, ready when the gate flips.
-        storage: crate::config::HomeStorage,
-        // A release that goes Remote from the start has its uploads and
-        // intent recorded in this same write.
-        destination: crate::import::ImportDestination,
     ) -> Result<(), ArtistWriteError> {
         let album = album.cloned();
         let release = release.clone();
@@ -481,251 +470,167 @@ impl Database {
             .collect();
         let primary_release_id = primary_release_id.map(|(a, r)| (a.to_string(), r.to_string()));
         let records = rows.records.to_vec();
-        let now_dt = self.inner.clock.now();
+        let now_dt = chrono::DateTime::<chrono::Utc>::from(self.inner.clock.now());
         let now = now_dt.to_rfc3339();
-        self.inner
-            .handle
-            .write_with_blobs(
-                move |w| {
-                    for (namespace, id, bytes) in image_blobs {
-                        w.put_blob(namespace, id, bytes);
-                    }
-                    Ok(())
-                },
-                move |sql| {
-                    let tx = &sql;
-                    require_import_commit_guard(tx, &guard)?;
-                    end_import_attempt_of_commit(tx, &guard)?;
-                    // Every synced row this transaction inserts shares one HLC stamp
-                    // for `_updated_at`; wall-clock `now` stays for `created_at`.
-                    let reg = sql.stamp();
+        self.write_with_files(
+            move |w| {
+                for (namespace, id, bytes) in image_blobs {
+                    w.put_file(namespace, id, bytes);
+                }
+                Ok(())
+            },
+            move |sql| {
+                let tx = &sql;
+                require_import_commit_guard(tx, &guard)?;
+                end_import_attempt_of_commit(tx, &guard)?;
 
-                    // Every credit is decided here, against the library as it
-                    // stands inside this transaction, so an artist another
-                    // import committed a moment ago is the one this import
-                    // links to. New artists go in and linked ones are filled in
-                    // before the links below point at them.
-                    let credits = ArtistCredits {
-                        credits: &artist_credits,
-                        picked: &picked_artists,
-                    };
-                    let resolved = credits.resolve_for_import_on(tx, release.content_hash.as_deref()).map_err(artist_write_failure)?;
-                    let inserted: BTreeSet<String> = resolved
-                        .inserts
-                        .iter()
-                        .map(|artist| artist.id.clone())
-                        .collect();
-                    if inserted != expected_new_artists {
-                        return Err(artist_write_failure(ArtistWriteError::LibraryChanged));
-                    }
-                    resolved.write_on(tx, &reg)?;
-                    let artist_ids = resolved.id_map(&artist_credits);
-                    let album_artists = relink_album_artists(album.as_ref(), &album_artists, &artist_ids)?;
-                    let track_artists = relink_track_artists(&track_artists, &artist_ids)?;
-                    let release_artist_roles = relink(&release_artist_roles, &artist_ids, "release artist role", |role| &mut role.artist_id)?;
-                    let track_artist_roles = relink(&track_artist_roles, &artist_ids, "track artist role", |role| &mut role.artist_id)?;
-                    let work_artists = relink(&work_artists, &artist_ids, "work artist", |link| &mut link.artist_id)?;
+                // Every credit is decided here, against the library as it
+                // stands inside this transaction, so an artist another
+                // import committed a moment ago is the one this import
+                // links to. New artists go in and linked ones are filled in
+                // before the links below point at them.
+                let credits = ArtistCredits {
+                    credits: &artist_credits,
+                    picked: &picked_artists,
+                };
+                let resolved = credits
+                    .resolve_for_import_on(tx, release.content_hash.as_deref())
+                    .map_err(artist_write_failure)?;
+                let inserted: BTreeSet<String> = resolved
+                    .inserts
+                    .iter()
+                    .map(|artist| artist.id.clone())
+                    .collect();
+                if inserted != expected_new_artists {
+                    return Err(artist_write_failure(ArtistWriteError::LibraryChanged));
+                }
+                resolved.write_on(tx)?;
+                let artist_ids = resolved.id_map(&artist_credits);
+                let album_artists =
+                    relink_album_artists(album.as_ref(), &album_artists, &artist_ids)?;
+                let track_artists = relink_track_artists(&track_artists, &artist_ids)?;
+                let release_artist_roles = relink(
+                    &release_artist_roles,
+                    &artist_ids,
+                    "release artist role",
+                    |role| &mut role.artist_id,
+                )?;
+                let track_artist_roles = relink(
+                    &track_artist_roles,
+                    &artist_ids,
+                    "track artist role",
+                    |role| &mut role.artist_id,
+                )?;
+                let work_artists = relink(&work_artists, &artist_ids, "work artist", |link| {
+                    &mut link.artist_id
+                })?;
 
-                    // A new album for a release group carries the group's id, so
-                    // its row can be here already, emptied by an earlier delete
-                    // or move: the import writes it whole either way.
-                    if let Some(album) = &album {
-                        let album = relinked_album(album, &artist_ids)?;
-                        upsert_album_row(tx, &album, &reg)?;
-                        replace_album_artists(tx, &album.id, &album_artists, &reg, &now)?;
-                    }
+                // A new album for a release group carries the group's id, so
+                // its row can be here already, emptied by an earlier delete
+                // or move: the import writes it whole either way.
+                if let Some(album) = &album {
+                    let album = relinked_album(album, &artist_ids)?;
+                    upsert_album_row(tx, &album)?;
+                    replace_album_artists(tx, &album.id, &album_artists, &now)?;
+                }
 
-                    insert_release_row(tx, &release, &reg)?;
+                insert_release_row(tx, &release)?;
 
-                    // One row per catalog that describes the release, empty when
-                    // none does. The records are uniquely keyed on
-                    // `(release_id, catalog)`, so a release never carries two
-                    // rows for one catalog.
-                    write_release_records(tx, &release.id, &records, &reg, &now)?;
+                // One row per catalog that describes the release, empty when
+                // none does. The records are uniquely keyed on
+                // `(release_id, catalog)`, so a release never carries two
+                // rows for one catalog.
+                write_release_records(tx, &release.id, &records, &now)?;
 
-                    // Works are globally identified; they go in before their links.
-                    for work in &works {
-                        insert_work_row(tx, work, &reg)?;
-                    }
+                // Works are globally identified; they go in before their links.
+                for work in &works {
+                    insert_work_row(tx, work)?;
+                }
 
-                    for work_artist in &work_artists {
-                        insert_work_artist_row(tx, work_artist, &reg)?;
-                    }
+                for work_artist in &work_artists {
+                    insert_work_artist_row(tx, work_artist)?;
+                }
 
-                    for work_part in &work_parts {
-                        insert_work_part_row(tx, work_part, &reg)?;
-                    }
+                for work_part in &work_parts {
+                    insert_work_part_row(tx, work_part)?;
+                }
 
-                    for role in &release_artist_roles {
-                        insert_release_artist_role_row(tx, role, &reg)?;
-                    }
+                for role in &release_artist_roles {
+                    insert_release_artist_role_row(tx, role)?;
+                }
 
-                    // The tracks came out of `tracks_to_files`; their `duration_ms`
-                    // was set by the mapper, from the CUE sheet or a standalone-file
-                    // probe.
-                    for track in &tracks {
-                        insert_track_row(tx, track, &reg)?;
-                    }
+                // The tracks came out of `tracks_to_files`; their `duration_ms`
+                // was set by the mapper, from the CUE sheet or a standalone-file
+                // probe.
+                for track in &tracks {
+                    insert_track_row(tx, track)?;
+                }
 
-                    for ta in &track_artists {
-                        insert_track_artist_row(tx, ta, &reg)?;
-                    }
+                for ta in &track_artists {
+                    insert_track_artist_row(tx, ta)?;
+                }
 
-                    for track_work in &track_works {
-                        insert_track_work_row(tx, track_work, &reg)?;
-                    }
+                for track_work in &track_works {
+                    insert_track_work_row(tx, track_work)?;
+                }
 
-                    for role in &track_artist_roles {
-                        insert_track_artist_role_row(tx, role, &reg)?;
-                    }
+                for role in &track_artist_roles {
+                    insert_track_artist_role_row(tx, role)?;
+                }
 
-                    // Each file is also registered as a coven user-provided external
-                    // ref. Every import lands Local — the files ARE the user's own
-                    // files prepared by coven, and a later make-Remote uploads
-                    // from them and drops the refs. On a browsable home the readable
-                    // cloud_path is computed here (the album/release rows exist in
-                    // this tx) so it is ready when the gate flips; an opaque home
-                    // leaves it NULL and coven hashes the id. A populated key on a
-                    // Local row is harmless.
-                    // Every blob-bearing row of the release in the order its
-                    // uploads are admitted: the cover, then the files in the
-                    // natural order every file list shows.
-                    let mut upload_files: Vec<(String, String)> = files
-                        .iter()
-                        .map(|file| (file.row.original_filename.clone(), file.row.id.clone()))
-                        .collect();
-                    upload_files.sort_by(|(a_name, a_id), (b_name, b_id)| {
-                        natord::compare_ignore_case(a_name, b_name).then_with(|| a_id.cmp(b_id))
-                    });
-                    for prepared in files {
-                        let crate::import::service::PreparedImportFile {
-                            row: mut file,
-                            blob,
-                        } = prepared;
-                        let cloud_path = if storage.is_browsable() {
-                            Some(resolve_audio_cloud_path(
-                                tx,
-                                &file.release_id,
-                                &file.original_filename,
-                            )?)
-                        } else {
-                            None
-                        };
-                        file.cloud_path = cloud_path;
-                        // Coven inserts its private hash and registers the exact
-                        // prepared path atomically with the rest of the import.
-                        // `release_files` is the only user-provided blob table;
-                        // image tables are host-provided copies.
-                        insert_external_file_row(tx, &file, &reg, blob)?;
-                    }
-
-                    for af in &audio_formats {
-                        insert_audio_format_row(tx, af, &reg)?;
-                    }
-                    for segment in &audio_segments {
-                        insert_audio_segment_row(tx, segment, &reg)?;
-                    }
-
-                    // The cover row; its blob went into the same coven write above.
-                    // On a browsable home the readable cloud_path
-                    // (`{album}/{release}/cover-{blob_id}.{ext}`) is computed here,
-                    // ready when the gate flips; an opaque home leaves it NULL
-                    // (hashed). The cover rides the release's gate, so a Local
-                    // release's cover stays private until the release is made Remote.
-                    if let Some((image, _)) = &library_image {
-                        let cloud_path = if storage.is_browsable() {
-                            Some(resolve_cover_cloud_path(
-                                tx,
-                                &image.id,
-                                &image.blob_id,
-                                &image.content_type,
-                            )?)
-                        } else {
-                            None
-                        };
-                        upsert_library_image_row_with_cloud_path(tx, image, cloud_path, &reg)?;
-                    }
-
-                    // Artist image rows; their blobs went into the same batch above.
-                    for (image, _) in &artist_images {
-                        let cloud_path = artist_image_cloud_path_for_storage(
-                            storage,
-                            &image.id,
-                            &image.blob_id,
-                            &image.content_type,
-                        );
-                        upsert_library_image_row_with_cloud_path(tx, image, cloud_path, &reg)?;
-                    }
-
-                    if let Some((album_id, release_id)) = &primary_release_id {
-                        tx.execute(
-                            "UPDATE albums SET primary_release_id = ?, _updated_at = ? WHERE id = ?",
-                            params![release_id, reg, album_id],
-                        )?;
-                    }
-
-                    // A Remote import records its make-Remote with its rows, so
-                    // the release never commits Local with the choice lost, and
-                    // recording needs no cloud connection.
-                    if let crate::import::ImportDestination::Remote { pin } = destination {
-                        let mut blob_rows: Vec<(&str, &str)> = Vec::new();
-                        if library_image.is_some() {
-                            blob_rows.push(("covers", release.id.as_str()));
+                for prepared in files {
+                    match prepared.source {
+                        crate::import::service::PreparedImportSource::Local(original) => {
+                            insert_local_file_row(tx, &prepared.row, &original)?;
                         }
-                        blob_rows.extend(
-                            upload_files
-                                .iter()
-                                .map(|(_, id)| ("release_files", id.as_str())),
-                        );
-                        // The queue row's label is the release id, as
-                        // `Database::make_remote` gives it.
-                        tx.make_remote("releases", &release.id, &release.id, pin, &blob_rows)?;
+                        crate::import::service::PreparedImportSource::Shared(original) => {
+                            insert_external_file_row(tx, &prepared.row, original)?;
+                        }
                     }
+                }
 
+                for af in &audio_formats {
+                    insert_audio_format_row(tx, af)?;
+                }
+                for segment in &audio_segments {
+                    insert_audio_segment_row(tx, segment)?;
+                }
 
-                    Ok(())
-                },
-            )
-            .await
-            .map(|_| ())
-            .map_err(Self::artist_write_error)
+                if let Some((image, _)) = &library_image {
+                    upsert_library_image_row(tx, image)?;
+                }
+                for (image, _) in &artist_images {
+                    upsert_library_image_row(tx, image)?;
+                }
+
+                if let Some((album_id, release_id)) = &primary_release_id {
+                    tx.execute(
+                        "UPDATE albums SET primary_release_id = ? WHERE id = ?",
+                        params![release_id, album_id],
+                    )?;
+                }
+
+                Ok(())
+            },
+        )
+        .await
+        .map(|_| ())
+        .map_err(Self::artist_write_error)
     }
 
-    /// Delete a release row in the write that declares its blobs deleted (see
-    /// [`ReleaseDeletion`]). Returns whether its album is now empty.
-    /// Deliberately does NOT delete the emptied album (see `vacate_album_on`)
-    /// or sweep now-orphaned artists, works, work_parts, or artist-image blobs
-    /// — retaining them is a sync-safety invariant.
-    ///
-    /// This delete may target a remote (sync-visible) release, and artist/work rows
-    /// are shared across devices (import find-or-create reuses them by
-    /// Discogs/MusicBrainz id or name). Deleting a locally-orphaned artist or work
-    /// row here would emit that DELETE to peers, and a peer that concurrently
-    /// imported a release referencing the same row either cascade-loses its link
-    /// rows (the link tables are ON DELETE CASCADE) or hits a foreign-key violation
-    /// (`albums.artist_id` has no delete action) that rolls back the whole incoming
-    /// changeset and holds that device's pull cursor forever. The deleting device
-    /// wedges the same way in reverse when the peer's link-row INSERTs referencing
-    /// the deleted row arrive.
-    ///
-    /// Orphaned rows are inert instead: unreachable from the UI (artists and works
-    /// surface only through albums, tracks, and work links), and cut from outgoing
-    /// changesets and bootstrap snapshots by coven's descendant gate, so they never
-    /// reach new devices and are re-referenced in place if a later import matches
-    /// the same artist or work.
+    /// Delete a release and clear its album's primary-release pointer atomically.
+    /// Shared artists and works remain available to other releases and devices.
     pub async fn delete_release_with_cleanup(
         &self,
         plan: ReleaseDeletion,
     ) -> Result<bool, DbError> {
-        let deleted = plan.blob_deletes().collect();
-        self.call_sql_deleting_blobs(deleted, move |sql| {
-            let reg = sql.stamp();
+        self.call_sql(move |sql| {
             plan.apply_on(&sql)?;
             sql.execute(
                 "DELETE FROM releases WHERE id = ?",
                 params![plan.release_id()],
             )?;
-            vacate_album_on(&sql, plan.album_id(), plan.release_id(), &reg)
+            vacate_album_on(&sql, plan.album_id(), plan.release_id())
         })
         .await
     }
@@ -791,47 +696,26 @@ impl Database {
         .await
     }
 
-    /// How many of this release's blobs are still queued to upload.
-    ///
-    /// The release is the gated root every one of its uploads is enqueued under,
-    /// so coven filters them in SQL rather than bae joining its own tables to
-    /// coven's queue. Note this reaches zero before the make-remote transition
-    /// finishes — see [`CovenHandle::make_remote_progress`] for that.
+    /// The audio uploads still queued for this release.
     pub async fn count_pending_uploads_for_release(
         &self,
         release_id: &str,
     ) -> Result<i64, DbError> {
-        Ok(self
-            .inner
-            .handle
-            .queued_uploads_for_root("releases", release_id)
-            .await?
-            .len() as i64)
+        let files = self.get_files_for_release(release_id).await?;
+        let uploads = self.inner.handle.uploads().await?;
+        Ok(uploads
+            .files
+            .iter()
+            .filter(|upload| {
+                upload.file.table() == "release_files"
+                    && files
+                        .iter()
+                        .any(|file| upload.file.key() == &coven::RowKey::from(file.id.as_str()))
+            })
+            .count() as i64)
     }
 
-    /// Whether any of this release's blobs are still queued to upload. See
-    /// [`count_pending_uploads_for_release`](Self::count_pending_uploads_for_release).
     pub async fn has_pending_uploads_for_release(&self, release_id: &str) -> Result<bool, DbError> {
-        Ok(!self
-            .inner
-            .handle
-            .queued_uploads_for_root("releases", release_id)
-            .await?
-            .is_empty())
-    }
-
-    /// How far this release's make-Remote has got, or `None` when it has none
-    /// running. The transition outlasts its queued uploads — a release with an
-    /// empty upload queue can still be `Publishing` — so this, not
-    /// [`has_pending_uploads_for_release`](Self::has_pending_uploads_for_release),
-    /// answers "is this release still becoming Remote?".
-    pub async fn make_remote_progress_for_release(
-        &self,
-        release_id: &str,
-    ) -> Result<Option<coven::MakeRemoteProgress>, DbError> {
-        self.inner
-            .handle
-            .make_remote_progress("releases", release_id)
-            .await
+        Ok(self.count_pending_uploads_for_release(release_id).await? > 0)
     }
 }

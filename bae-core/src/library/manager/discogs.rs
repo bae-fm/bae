@@ -380,8 +380,6 @@ impl LibraryManager {
                 height: None,
                 source: crate::import::Catalog::Discogs.as_str().to_string(),
                 source_url: Some(source_url.clone()),
-                cloud_path: None,
-                content_hash: crate::util::fs::hash_bytes(&image.bytes),
                 created_at: self.now(),
             };
             images.push((row, image.bytes.clone()));

@@ -1,23 +1,8 @@
 #![cfg(feature = "test-utils")]
-//! Tests for the release storage state machine onto coven's owned-blob model:
-//! make-Remote (Local → Remote, the drain flips the gate after the uploads land)
-//! and make-Local (Remote → Local, materialize back through coven's cache then
-//! retract). The local-only windows live in `test_transfer.rs`.
-//!
-//! Storage is TWO states — Local (the user's own file in place, a coven
-//! user-provided external ref) and Remote (a cloud blob fronted by coven's
-//! cache). Pinned-ness is the ORTHOGONAL per-device coven-cache property: whether
-//! coven keeps a Remote blob in `storage/pinned/` (offline) vs the evictable
-//! `storage/cache/`. A `retain_pinned` make-Remote populates the pinned cache as
-//! it drains, so the release becomes (Remote, pinned) only after the upload lands.
-//!
-//! coven owns the transitions (gate flip, source delete, materialize, retract)
-//! and the durable-copy-before-delete ordering; tests drive them through the
-//! manager's coven seams (`coven_make_remote` + the upload drain via
-//! `drain_uploads_expecting_work`, `coven_make_local`). The
-//! cross-device gate retract + asset keep/leak behavior is exercised in coven's
-//! own gate tests (a `covers`/`artist_images` asset rides its subject's gate and
-//! never keeps it alive).
+//! Release rows always sync. These tests exercise the manager's atomic file
+//! attachment, durable upload queue, verified local copies, and pin state.
+//! A release becomes Remote when attached, including while uploads are pending.
+//! Pins independently keep its audio available offline; covers remain shared.
 
 use bae_test_support as support;
 
@@ -29,11 +14,9 @@ use bae_core::db::{
 use bae_core::library::{
     AppServices, CancellationToken, LibraryManager, StorageBrowseSubscription, StorageBrowseView,
 };
-use bae_core::sync::CloudCipher;
 use bae_core::util::content_type::ContentType;
 use chrono::Utc;
-use coven::EncryptionService;
-use coven::InMemoryCloudHome;
+use coven::MemoryStorage;
 use std::sync::Arc;
 use tempfile::TempDir;
 use uuid::Uuid;
@@ -52,82 +35,16 @@ async fn storage(mgr: &LibraryManager, release_id: &str) -> (ReleaseStorageState
     (s.storage_state, s.pinned)
 }
 
-/// This device's raw `releases.remote` gate flag for a release.
-async fn remote_flag(mgr: &LibraryManager, release_id: &str) -> bool {
-    mgr.get_release_by_id(release_id)
-        .await
-        .unwrap()
-        .unwrap()
-        .remote
+async fn setup_manager(tmp: &TempDir) -> (Database, LibraryManager, Arc<MemoryStorage>) {
+    let (manager, database, storage) =
+        support::storage_library(tmp.path(), bae_core::providers::Providers::offline()).await;
+    (database, manager, storage)
 }
 
-/// Build a manager plus a `InMemoryCloudHome`/encryption pair WITHOUT injecting them,
-/// so a test can decide when the cloud home appears.
-async fn setup_manager(
-    tmp: &TempDir,
-) -> (
-    Database,
-    LibraryManager,
-    Arc<InMemoryCloudHome>,
-    EncryptionService,
-) {
-    let (mgr, db) = support::open_test_library(tmp.path()).await;
-    let cloud = Arc::new(InMemoryCloudHome::new());
-    let enc = EncryptionService::from_key([9u8; 32]);
-    (db, mgr, cloud, enc)
-}
-
-/// Build a manager with a connected `SyncManager` over an injected
-/// `InMemoryCloudHome`, sealing blobs under `enc`, and no sync loop behind it —
-/// these tests drive the upload drain themselves and assert what each pass
-/// moved, which only holds while nothing else drains the queue.
-async fn setup_with_cloud(tmp: &TempDir) -> (Database, LibraryManager, Arc<InMemoryCloudHome>) {
-    let (db, mgr, cloud, enc) = setup_manager(tmp).await;
-    mgr.connect_test_cloud_home_caller_driven(cloud.clone(), CloudCipher::Encrypted(enc))
-        .await
-        .unwrap();
-    (db, mgr, cloud)
-}
-
-/// The same connection with the production sync loop running behind it. The
-/// make-Local tests need it: coven offers make-Local only a root whose
-/// make-Remote has been *accepted*, and only a cycle accepts one. Their drains
-/// are the loop's as well as their own, so they wait on published state instead
-/// of asserting a pass's count.
-async fn setup_with_synced_cloud(
-    tmp: &TempDir,
-) -> (Database, LibraryManager, Arc<InMemoryCloudHome>) {
-    let (db, mgr, cloud, enc) = setup_manager(tmp).await;
-    mgr.connect_test_cloud_home(cloud.clone(), CloudCipher::Encrypted(enc))
-        .await
-        .unwrap();
-    (db, mgr, cloud)
-}
-
-/// Wait until a release's make-Remote is accepted: the durable intent retired,
-/// not merely its uploads drained. While the intent stands, the release's cloud
-/// objects belong to the transition rather than to accepted history, and coven
-/// refuses a make-Local against it.
-async fn wait_for_landed_make_remote(db: &Database, mgr: &LibraryManager, release_id: &str) {
-    for tick in 0..2_000 {
-        if tick % 50 == 0 {
-            mgr.trigger_sync();
-        }
-        if db
-            .make_remote_progress_for_release(release_id)
-            .await
-            .unwrap()
-            .is_none()
-        {
-            assert!(
-                remote_flag(mgr, release_id).await,
-                "an accepted make-Remote leaves the release Remote"
-            );
-            return;
-        }
-        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
-    }
-    panic!("release {release_id} never retired its make-Remote intent");
+async fn setup_with_cloud(tmp: &TempDir) -> (Database, LibraryManager, Arc<MemoryStorage>) {
+    let (database, manager, storage) = setup_manager(tmp).await;
+    support::connect_storage(&manager, &storage).await;
+    (database, manager, storage)
 }
 
 /// Insert an artist + album + a Local release, write its originals under
@@ -170,7 +87,6 @@ async fn create_local_release(
         release_name: None,
         pressing: bae_core::pressing::Pressing::blank(),
         draft_from_tags: true,
-        remote: false,
         source_folder_name: None,
         content_hash: None,
         album_loudness_lufs: None,
@@ -204,7 +120,7 @@ async fn create_local_release(
 }
 
 /// A Remote (cloud-only, not pinned) release whose blobs sit in `cloud`: create it
-/// Local, make-Remote via coven, and drain so the gate flips. Returns (release_id,
+/// Local, attach its files, and finish the uploads. Returns (release_id,
 /// [(file_id, original_filename, plaintext)]).
 async fn create_remote_cloud_only_release(
     db: &Database,
@@ -225,7 +141,8 @@ async fn create_remote_cloud_only_release(
     }
 
     mgr.coven_make_remote(&release_id, false).await.unwrap();
-    wait_for_landed_make_remote(db, mgr, &release_id).await;
+    mgr.drain_uploads_expecting_work().await.unwrap();
+    assert_eq!(db.queued_upload_count_for_test().await.unwrap(), 0);
     assert_eq!(
         storage(mgr, &release_id).await,
         (ReleaseStorageState::Remote, false),
@@ -250,25 +167,30 @@ async fn test_multiple_releases_independent_completion() {
     mgr.coven_make_remote(&release_a, true).await.unwrap();
     mgr.coven_make_remote(&release_b, true).await.unwrap();
 
-    // First drain: release_a completes and flips; the drain breaks to publish, so
-    // release_b is left for the next pass.
-    let count = mgr.drain_uploads_expecting_work().await.unwrap();
-    assert_eq!(count, 1);
-    assert!(
-        remote_flag(&mgr, &release_a).await,
-        "release_a flipped remote"
+    assert_eq!(
+        mgr.count_pending_uploads_for_release(&release_a)
+            .await
+            .unwrap(),
+        1
     );
-    assert!(
-        !remote_flag(&mgr, &release_b).await,
-        "release_b is untouched while release_a completes"
+    assert_eq!(
+        mgr.count_pending_uploads_for_release(&release_b)
+            .await
+            .unwrap(),
+        1
     );
-
-    // Second drain: release_b completes on its own.
-    let count = mgr.drain_uploads_expecting_work().await.unwrap();
-    assert_eq!(count, 1);
-    assert!(
-        remote_flag(&mgr, &release_b).await,
-        "release_b flipped remote"
+    assert_eq!(mgr.drain_uploads_expecting_work().await.unwrap(), 2);
+    assert_eq!(
+        mgr.count_pending_uploads_for_release(&release_a)
+            .await
+            .unwrap(),
+        0
+    );
+    assert_eq!(
+        mgr.count_pending_uploads_for_release(&release_b)
+            .await
+            .unwrap(),
+        0
     );
 
     assert_eq!(
@@ -289,7 +211,7 @@ async fn test_multiple_releases_independent_completion() {
 async fn test_manage_refused_when_sync_not_running() {
     let tmp = TempDir::new().unwrap();
     // No cloud home connected, so the sync loop is NOT running.
-    let (db, mgr, _cloud, _enc) = setup_manager(&tmp).await;
+    let (db, mgr, _cloud) = setup_manager(&tmp).await;
     assert!(
         !mgr.is_sync_ready(),
         "precondition: no cloud home / sync loop not running"
@@ -331,12 +253,11 @@ async fn test_manage_refused_when_sync_not_running() {
 }
 
 // ---------------------------------------------------------------------------
-// make-Remote (cloud-only): bae's storage summary is Local while the uploads are
-// queued and Remote (NOT pinned) once the drain flips the gate.
+// Attached files make a release Remote while uploads are still queued.
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn make_remote_summary_is_local_until_drain_then_remote_not_pinned() {
+async fn attached_release_is_remote_before_its_uploads_finish() {
     let tmp = TempDir::new().unwrap();
     let (_db, mgr, _cloud) = setup_with_cloud(&tmp).await;
     let source_dir = tmp.path().join("originals");
@@ -352,7 +273,7 @@ async fn make_remote_summary_is_local_until_drain_then_remote_not_pinned() {
     // Still Local until the uploads finish.
     assert_eq!(
         storage(&mgr, &release_id).await,
-        (ReleaseStorageState::Local, false)
+        (ReleaseStorageState::Remote, false)
     );
 
     let count = mgr.drain_uploads_expecting_work().await.unwrap();
@@ -369,7 +290,7 @@ async fn make_remote_summary_is_local_until_drain_then_remote_not_pinned() {
 /// gate, so the summary stays Local and the upload stays pending (retriable) in
 /// the count the UI reads. The upload-retry semantics are coven's.
 #[tokio::test]
-async fn upload_failure_leaves_summary_local_and_upload_pending() {
+async fn upload_failure_keeps_attachment_and_pending_work() {
     let tmp = TempDir::new().unwrap();
     let (_db, mgr, cloud) = setup_with_cloud(&tmp).await;
     let source_dir = tmp.path().join("originals");
@@ -384,13 +305,13 @@ async fn upload_failure_leaves_summary_local_and_upload_pending() {
 
     // The connect bootstrap already wrote through the home; arm the failure only
     // now, so the upload drain fails every blob.
-    cloud.arm_write_failures();
+    cloud.set_online(false);
     let count = mgr.drain_uploads_expecting_work().await.unwrap();
     assert_eq!(count, 0, "no upload should succeed");
 
     assert_eq!(
         storage(&mgr, &release_id).await,
-        (ReleaseStorageState::Local, false)
+        (ReleaseStorageState::Remote, false)
     );
     assert_ne!(
         mgr.count_pending_uploads_for_release(&release_id)
@@ -420,20 +341,14 @@ async fn truncated_source_keeps_root_local_and_failed_work_queued() {
         .await
         .unwrap();
 
-    mgr.coven_make_remote(&release_id, false).await.unwrap();
-    assert_eq!(
-        mgr.drain_uploads_expecting_work().await.unwrap(),
-        1,
-        "the intact sibling uploads and remains reusable for retry"
-    );
-
-    assert_eq!(
-        db.queued_upload_count_for_test().await.unwrap(),
-        files.len(),
-        "the failed root remains queued for an explicit retry"
-    );
-    for (name, _) in &files {
-        assert!(source_dir.join(name).exists(), "source {name} must survive");
+    let error = mgr
+        .coven_make_remote(&release_id, false)
+        .await
+        .expect_err("a source changed since import");
+    assert!(!error.to_string().is_empty());
+    assert_eq!(db.queued_upload_count_for_test().await.unwrap(), 0);
+    for (name, _) in files {
+        assert!(source_dir.join(name).exists());
     }
     assert_eq!(
         storage(&mgr, &release_id).await,
@@ -450,7 +365,7 @@ async fn truncated_source_keeps_root_local_and_failed_work_queued() {
 #[tokio::test]
 async fn make_local_updates_summary_and_external_refs() {
     let tmp = TempDir::new().unwrap();
-    let (db, mgr, _cloud) = setup_with_synced_cloud(&tmp).await;
+    let (db, mgr, _cloud) = setup_with_cloud(&tmp).await;
     let source_dir = tmp.path().join("originals");
     let (release_id, files) = create_remote_cloud_only_release(
         &db,
@@ -484,42 +399,6 @@ async fn make_local_updates_summary_and_external_refs() {
     }
 }
 
-/// Remove one release file's cloud object from the mock home.
-///
-/// coven keys an exact object by its locator hash — `release_files/opaque/<hash>`
-/// — so a test cannot name the object from the blob id. Read the blob through
-/// coven once, which records the slot that read touched, remove exactly that
-/// slot, then drop the cache copy the read just populated so the next read has
-/// to go back to the (now empty) cloud.
-///
-/// The running sync loop reads the store's own objects each cycle, so the
-/// recorded reads are narrowed to the release-file namespace: a release file is
-/// `CacheLazy`, which no cycle fetches, so the probe's read is the only one
-/// there.
-async fn remove_cloud_blob(mgr: &LibraryManager, cloud: &InMemoryCloudHome, file_id: &str) {
-    let blob = mgr
-        .release_blob_ref_for_test(file_id)
-        .await
-        .expect("the release_files row");
-    cloud.clear_exact_reads();
-    mgr.materialize_release_blob_for_test(file_id)
-        .await
-        .expect("the blob is readable before it is removed");
-    let slots: Vec<_> = cloud
-        .exact_reads()
-        .into_iter()
-        .filter(|slot| {
-            slot.logical_key()
-                .starts_with(bae_core::sync::RELEASE_FILES_NAMESPACE)
-        })
-        .collect();
-    assert_eq!(slots.len(), 1, "one exact read for one release file");
-    cloud.remove_exact_object(&slots[0]);
-    mgr.evict_blob_for_test(&blob)
-        .await
-        .expect("drop the cache copy the probe read populated");
-}
-
 /// A failed make-Local (a missing cloud blob 404s on the cache-miss read) leaves
 /// bae's state consistent: the manager surfaces the error and the summary stays
 /// Remote. The read-404 and make-Local rollback are coven's; this asserts the
@@ -527,7 +406,7 @@ async fn remove_cloud_blob(mgr: &LibraryManager, cloud: &InMemoryCloudHome, file
 #[tokio::test]
 async fn make_local_missing_blob_fails_leaving_summary_remote() {
     let tmp = TempDir::new().unwrap();
-    let (db, mgr, cloud) = setup_with_synced_cloud(&tmp).await;
+    let (db, mgr, cloud) = setup_with_cloud(&tmp).await;
     let source_dir = tmp.path().join("originals");
     let (release_id, files) = create_remote_cloud_only_release(
         &db,
@@ -539,7 +418,7 @@ async fn make_local_missing_blob_fails_leaving_summary_remote() {
 
     // Remove the SECOND file's blob from the cloud so its cache-miss read 404s.
     // `files` carries `(file_id, original_filename, plaintext)`.
-    remove_cloud_blob(&mgr, &cloud, &files[1].0).await;
+    support::remove_uploaded_file(&mgr, &cloud, &files[1].0).await;
 
     let new_path = tmp.path().join("exported");
     let result = mgr
@@ -587,10 +466,9 @@ async fn storage_subscription_delivers_actions_on_cloud_home_transition() {
     use bae_core::album_detail::ReleaseStorageAction;
 
     let tmp = TempDir::new().unwrap();
-    let (_db, mgr, cloud, enc) = setup_manager(&tmp).await;
+    let (_db, mgr, cloud) = setup_manager(&tmp).await;
     // The status subscription folds coven's connection lifecycle into the
     // sync values the storage view re-resolves on.
-    mgr.start();
     let source_dir = tmp.path().join("originals");
     let (release_id, _files) = create_local_release(&mgr, &source_dir, &[("a.flac", b"a")]).await;
 
@@ -617,9 +495,7 @@ async fn storage_subscription_delivers_actions_on_cloud_home_transition() {
         "no cloud home → no storage actions"
     );
 
-    mgr.connect_test_cloud_home(cloud, CloudCipher::Encrypted(enc))
-        .await
-        .unwrap();
+    support::connect_storage(&mgr, &cloud).await;
     let after = next_storage_release(&values, &release_id).await;
     assert!(
         after

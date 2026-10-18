@@ -5,22 +5,11 @@ set -euo pipefail
 ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
 
-# Run the checker from the exact coven revision that bae builds against. This
-# keeps the local hook and CI on the same ownership rule as the dependency.
+# The application-configurable checker has its own pin. Newer coven checkers
+# enforce coven's internal workspace policy and no longer accept bae's policy.
+# This tool pin is independent of the runtime dependency in Cargo.toml.
+checker_revision="c24cf1d530396c1a8050213cd97e1e5812c51038"
 metadata="$(cargo metadata --format-version 1 --locked)"
-coven_manifest="$(printf '%s' "$metadata" | python3 -c '
-import json
-import sys
-
-manifests = [
-    package["manifest_path"]
-    for package in json.load(sys.stdin)["packages"]
-    if package["name"] == "coven"
-]
-if len(manifests) != 1:
-    raise SystemExit(f"expected one coven package, found {len(manifests)}")
-print(manifests[0])
-')"
 target_directory="$(printf '%s' "$metadata" | python3 -c '
 import json
 import sys
@@ -39,13 +28,14 @@ for package_id in metadata["workspace_members"]:
     package_root = pathlib.Path(packages[package_id]["manifest_path"]).resolve().parent
     print(package_root.relative_to(root).as_posix())
 ' "$ROOT")"
-coven_root="$(cd "$(dirname "$coven_manifest")/../.." && pwd)"
-coven_revision="$(git -C "$coven_root" rev-parse HEAD)"
-
-# The repository uses one shared Cargo target directory. Give each pinned coven
-# revision its own checker target so an identically named binary built from an
-# earlier checkout cannot satisfy this invocation.
-checker_target="$target_directory/owner-construction-check/$coven_revision"
+# Isolate the executable and Cargo artifacts by the exact checker revision.
+checker_target="$target_directory/owner-construction-check/$checker_revision"
+checker_install="$checker_target/install"
+if [ ! -x "$checker_install/bin/owner-construction-check" ]; then
+    cargo install --locked --git https://github.com/bae-fm/coven \
+        --rev "$checker_revision" --root "$checker_install" \
+        --target-dir "$checker_target" owner-construction-check
+fi
 
 # These are retained state and service capabilities, not values passed between
 # operations. The checker also follows fields containing them, so an owner made
@@ -88,9 +78,12 @@ capability_types=(
   ExtractionService
   ExtractionServiceHandle
   FetchArbiter
+  FileStream
   FolderWatcher
   Handle
   IdProvider
+  IdSource
+  IdSourceRef
   IdentifyService
   IdentifyServiceHandle
   ImportQueue
@@ -162,6 +155,7 @@ allowed_capability_outputs=(
   AudioDataReader
   AudioStream
   BlobStream
+  FileStream
   DiscogsClient
   ExtractionServiceHandle
   IdentifyServiceHandle
@@ -179,10 +173,7 @@ for output_type in "${allowed_capability_outputs[@]}"; do
   checker_args+=(--allowed-capability-output "$output_type")
 done
 
-cargo run --quiet \
-  --manifest-path "$coven_root/tools/owner-construction-check/Cargo.toml" \
-  --target-dir "$checker_target" \
-  -- "${checker_args[@]}" "$ROOT"
+"$checker_install/bin/owner-construction-check" "${checker_args[@]}" "$ROOT"
 
 python3 scripts/swift-owner-dependency-boundary.py
 python3 scripts/ui-projection-boundary.py

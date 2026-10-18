@@ -6,45 +6,30 @@ use crate::playback::QueueEntryId;
 /// a release that the queued track is NOT on.
 async fn cover_db() -> (Database, tempfile::TempDir) {
     let (db, tmp) = super::temp_db().await;
-    // coven verifies a blob row's declared hash, so the seeded covers carry
-    // real content hashes rather than placeholder strings.
-    let lonely_hash = crate::util::fs::hash_bytes(b"cover-lonely");
-    let other_hash = crate::util::fs::hash_bytes(b"cover-other");
     db.call(move |conn| {
         conn.execute_batch(
-            &format!(
             "
-            INSERT INTO artists (id, name, name_key, _updated_at, created_at)
-            VALUES ('d7d8141f-54ff-467d-8b60-4f34a4d2e528', 'Artist Name', 'artist name', 'stamp', '2026-01-01T00:00:00Z');
+            INSERT INTO artists (id, name, name_key, created_at) VALUES ('d7d8141f-54ff-467d-8b60-4f34a4d2e528', 'Artist Name', 'artist name', '2026-01-01T00:00:00Z');
 
-            INSERT INTO albums (id, title, artist_id, year, primary_release_id, is_compilation, _updated_at, created_at)
-            VALUES
-                ('c6648d5a-617e-4b69-87da-b7f1c4fb5e65', 'Album With No Primary', 'd7d8141f-54ff-467d-8b60-4f34a4d2e528', 2026, NULL, 0, 'stamp', '2026-01-01T00:00:00Z'),
-                ('82a53f44-1b76-435b-89f0-42749371ee15', 'Album With A Primary', 'd7d8141f-54ff-467d-8b60-4f34a4d2e528', 2026, '2ffa8060-aa00-4147-8ad4-f373ef66c407', 0, 'stamp', '2026-01-01T00:00:00Z');
+            INSERT INTO albums (id, title, artist_id, year, primary_release_id, is_compilation, created_at) VALUES ('c6648d5a-617e-4b69-87da-b7f1c4fb5e65', 'Album With No Primary', 'd7d8141f-54ff-467d-8b60-4f34a4d2e528', 2026, NULL, 0, '2026-01-01T00:00:00Z'),
+             ('82a53f44-1b76-435b-89f0-42749371ee15', 'Album With A Primary', 'd7d8141f-54ff-467d-8b60-4f34a4d2e528', 2026, '2ffa8060-aa00-4147-8ad4-f373ef66c407', 0, '2026-01-01T00:00:00Z');
 
-            INSERT INTO releases (id, album_id, remote, _updated_at, created_at)
-            VALUES
-                ('fcf4be32-159f-4790-87a1-697700a74462', 'c6648d5a-617e-4b69-87da-b7f1c4fb5e65', 1, 'stamp', '2026-01-01T00:00:00Z'),
-                ('2ffa8060-aa00-4147-8ad4-f373ef66c407', '82a53f44-1b76-435b-89f0-42749371ee15', 1, 'stamp', '2026-01-01T00:00:00Z'),
-                ('ce596bd7-be97-4416-8b6d-47f315bae466', '82a53f44-1b76-435b-89f0-42749371ee15', 1, 'stamp', '2026-01-01T00:00:01Z');
+            INSERT INTO releases (id, album_id, created_at) VALUES ('fcf4be32-159f-4790-87a1-697700a74462', 'c6648d5a-617e-4b69-87da-b7f1c4fb5e65', '2026-01-01T00:00:00Z'),
+             ('2ffa8060-aa00-4147-8ad4-f373ef66c407', '82a53f44-1b76-435b-89f0-42749371ee15', '2026-01-01T00:00:00Z'),
+             ('ce596bd7-be97-4416-8b6d-47f315bae466', '82a53f44-1b76-435b-89f0-42749371ee15', '2026-01-01T00:00:01Z');
 
-            INSERT INTO tracks (id, release_id, title, side, track_number, duration_ms, discogs_position, _updated_at, created_at)
-            VALUES
-                ('03c41035-ce18-4fa0-8e83-c446df26a551', 'fcf4be32-159f-4790-87a1-697700a74462', 'Track On The Only Release', 1, 1, 1000, NULL, 'stamp', '2026-01-01T00:00:00Z'),
-                ('69e67928-545a-4dcf-8ae7-ef7778331231', 'ce596bd7-be97-4416-8b6d-47f315bae466', 'Track On The Non-Primary Release', 1, 1, 1000, NULL, 'stamp', '2026-01-01T00:00:00Z');
+            INSERT INTO tracks (id, release_id, title, side, track_number, duration_ms, discogs_position, created_at) VALUES ('03c41035-ce18-4fa0-8e83-c446df26a551', 'fcf4be32-159f-4790-87a1-697700a74462', 'Track On The Only Release', 1, 1, 1000, NULL, '2026-01-01T00:00:00Z'),
+             ('69e67928-545a-4dcf-8ae7-ef7778331231', 'ce596bd7-be97-4416-8b6d-47f315bae466', 'Track On The Non-Primary Release', 1, 1, 1000, NULL, '2026-01-01T00:00:00Z');
 
-            INSERT INTO covers (id, blob_id, content_type, file_size, source, hash, _updated_at, created_at)
-            VALUES
-                ('fcf4be32-159f-4790-87a1-697700a74462', 'bd5c1f6c-3b6e-4d16-9f0a-2c1d5f61a0aa', 'image/jpeg', 1024, 'discogs', '{lonely_hash}', 'cover-stamp-lonely', '2026-01-01T00:00:00Z'),
-                ('ce596bd7-be97-4416-8b6d-47f315bae466', '0f2b9a51-7d2c-4a2f-8f16-9c0a3f1b2d44', 'image/jpeg', 1024, 'discogs', '{other_hash}', 'cover-stamp-other', '2026-01-01T00:00:00Z');
-            "
-            ),
+            ",
         )
         .map(|_| ())
         .map_err(DbError::from)
     })
     .await
     .unwrap();
+    super::write_cover(&db, RELEASE_LONELY, "bd5c1f6c-3b6e-4d16-9f0a-2c1d5f61a0aa").await;
+    super::write_cover(&db, RELEASE_OTHER, "0f2b9a51-7d2c-4a2f-8f16-9c0a3f1b2d44").await;
     (db, tmp)
 }
 
@@ -91,25 +76,16 @@ async fn queue_row_covers_the_track_s_own_release_not_the_album_s_primary() {
     );
 }
 
-/// coven merges a pulled edit column by column, so a cover whose blob another
-/// device replaced can land here with its new `blob_id` while the row keeps
-/// its local `_updated_at` — the local stamp won arbitration, the incoming
-/// column was folded in. The image version follows the bytes, so it moves
-/// all the same, on the queue's read and on every list's.
+/// Replacing the bytes changes the queue and list image versions.
 #[tokio::test]
-async fn a_cover_repointed_without_a_new_stamp_takes_a_new_version() {
+async fn replacing_a_cover_changes_its_version() {
     let (db, _tmp) = cover_db().await;
     let before = cover_of(&db, TRACK_LONELY)
         .await
         .expect("the release has a cover");
     let listed_before = db.cover_version(RELEASE_LONELY).await.unwrap();
 
-    super::exec(
-        &db,
-        "UPDATE covers SET blob_id = ?1 WHERE id = ?2",
-        &["6a1e4c2b-9d3f-4b57-8e21-3c4d5e6f7a8b", RELEASE_LONELY],
-    )
-    .await;
+    super::write_cover(&db, RELEASE_LONELY, "6a1e4c2b-9d3f-4b57-8e21-3c4d5e6f7a8b").await;
 
     let after = cover_of(&db, TRACK_LONELY)
         .await

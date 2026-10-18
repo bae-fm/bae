@@ -391,7 +391,7 @@ struct StoredDraftRow {
 }
 
 /// The draft's `labels` column: the form's label rows as typed.
-fn read_label_rows(row: &coven::rusqlite::Row) -> coven::rusqlite::Result<Vec<RawLabelEdit>> {
+fn read_label_rows(row: &rusqlite::Row) -> rusqlite::Result<Vec<RawLabelEdit>> {
     let labels: String = row.get("labels")?;
     serde_json::from_str::<Vec<RawLabelEdit>>(&labels).map_err(|error| {
         super::super::read::column_conversion_error(

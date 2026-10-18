@@ -56,7 +56,7 @@ fn make_release(album_id: &str) -> DbRelease {
         release_name: None,
         pressing: bae_core::pressing::Pressing::blank(),
         draft_from_tags: false,
-        remote: true,
+
         source_folder_name: None,
         content_hash: None,
         album_loudness_lufs: None,
@@ -529,7 +529,6 @@ async fn reset_file_metadata_unknown_returns_tags_from_disk() {
     let album = make_album(&artist.id, "Original Album");
     let mut release = make_release(&album.id);
     release.draft_from_tags = true;
-    release.remote = false;
     let t1 = make_track(&release.id, 1, "Original Track 1");
     let t2 = make_track(&release.id, 2, "Original Track 2");
 
@@ -547,7 +546,7 @@ async fn reset_file_metadata_unknown_returns_tags_from_disk() {
         file_size: std::fs::metadata(&f1).unwrap().len() as i64,
         content_type: ContentType::Flac,
         source_audio: None,
-        cloud_path: None,
+        attached: false,
         created_at: now,
     };
     let file2 = DbFile {
@@ -557,7 +556,7 @@ async fn reset_file_metadata_unknown_returns_tags_from_disk() {
         file_size: std::fs::metadata(&f2).unwrap().len() as i64,
         content_type: ContentType::Flac,
         source_audio: None,
-        cloud_path: None,
+        attached: false,
         created_at: now,
     };
     db.insert_external_file_for_test(&file1, &f1).await.unwrap();

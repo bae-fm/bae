@@ -12,21 +12,15 @@ async fn setup_inner() -> (Arc<IdentifyServiceInner>, tempfile::TempDir) {
     let database = Database::new_test(db_path.to_str().unwrap(), Arc::new(coven::SystemClock))
         .await
         .unwrap();
-    let library_dir = coven::StoreDir::new(temp_dir.path());
-    let library_id = format!("test-{}", temp_dir.path().display());
-    let config = Config::with_defaults(
-        library_id.clone(),
-        "test-device".to_string(),
-        library_dir,
-        "Test Library".to_string(),
-    );
-    crate::config::install_test_keyring();
+
+    let config = Config::with_defaults(database.store_id(), temp_dir.path().join("preferences"));
+
     let manager = LibraryManager::new(
         database,
         crate::config::AppDir::under_home(temp_dir.path()),
         Arc::new(ConfigHandle::new(config)),
         Arc::new(coven::SystemClock),
-        Arc::new(coven::UuidProvider),
+        Arc::new(coven::UuidIds),
         crate::diagnostics::Diagnostics::noop(),
         tokio::runtime::Handle::current(),
         crate::import::cover_art::RemoteImageCache::for_test(crate::util::http::Http::for_test()),

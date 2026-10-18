@@ -99,10 +99,16 @@ struct PreparedMetadata {
     album_title: String,
 }
 
-/// One release-file row and Coven's preparation of the file it names.
+/// A release-file row and the source its destination needs.
 pub(crate) struct PreparedImportFile {
     pub(crate) row: DbFile,
-    pub(crate) blob: coven::PreparedExternalBlob,
+    pub(crate) source: PreparedImportSource,
+}
+
+/// Local originals stay on this device; shared originals attach to their row.
+pub(crate) enum PreparedImportSource {
+    Local(coven::UserFile),
+    Shared(coven::PreparedUserFile),
 }
 
 fn destination_label(destination: ImportDestination) -> &'static str {
@@ -179,7 +185,7 @@ pub struct ImportService {
     event_tx: crate::import::handle::ImportEventBus,
     library_manager: LibraryManager,
     clock: coven::ClockRef,
-    ids: coven::IdRef,
+    ids: coven::IdSourceRef,
     import_cancels: crate::import::import_cancel::ImportCancels,
 }
 
@@ -565,7 +571,7 @@ fn spawn_root_scan(
 fn settle_track_rows(
     parsed: &mut crate::import::ParsedAlbum,
     draft: &crate::import::CandidateDraft,
-    ids: &dyn coven::IdProvider,
+    ids: &dyn coven::IdSource,
     now: chrono::DateTime<chrono::Utc>,
 ) -> Result<Vec<AudioFile>, crate::import::ImportError> {
     let mut seeded: Vec<Option<crate::db::DbTrack>> = std::mem::take(&mut parsed.tracks)
@@ -586,7 +592,7 @@ fn settle_track_rows(
                     ),
                 })?,
             None => crate::db::DbTrack {
-                id: ids.new_id(),
+                id: ids.new_id().to_string(),
                 release_id: parsed.release.id.clone(),
                 title: row.edit.title.clone(),
                 side: row.edit.side,
@@ -654,7 +660,7 @@ fn apply_user_edit_to_seed(
     edit: &crate::import::ReleaseUserEdit,
     seed: &mut crate::import::ParsedAlbum,
     clock: &dyn coven::Clock,
-    ids: &dyn coven::IdProvider,
+    ids: &dyn coven::IdSource,
 ) -> Result<HashSet<String>, crate::import::ImportError> {
     use crate::db::{DbAlbumArtist, DbTrackArtist};
 
@@ -681,7 +687,7 @@ fn apply_user_edit_to_seed(
         });
     }
 
-    let now = clock.now();
+    let now = chrono::DateTime::<chrono::Utc>::from(clock.now());
     let mut picked_artist_ids = HashSet::new();
 
     db_album.title = edit.album_title.clone();
@@ -731,7 +737,7 @@ fn apply_user_edit_to_seed(
                     &track.id,
                     &artist_id,
                     position as i32,
-                    ids.new_id(),
+                    ids.new_id().to_string(),
                     now,
                 ));
             }
@@ -747,7 +753,7 @@ fn materialize_artist_assignment(
     assignment: &crate::import::ArtistAssignment,
     artists: &mut Vec<crate::db::DbArtist>,
     picked: &mut HashSet<String>,
-    ids: &dyn coven::IdProvider,
+    ids: &dyn coven::IdSource,
     now: chrono::DateTime<chrono::Utc>,
 ) -> String {
     let artist = assignment.write_row(ids, now);

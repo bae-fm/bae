@@ -241,7 +241,6 @@ impl TelemetryValue for CloudProvider {
             CloudProvider::Dropbox => "dropbox",
             CloudProvider::OneDrive => "onedrive",
             CloudProvider::CloudKit => "cloudkit",
-            unsupported => panic!("unsupported cloud provider: {unsupported:?}"),
         };
         serde_json::Value::String(value.to_string())
     }
