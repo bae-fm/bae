@@ -24,7 +24,7 @@ struct PaneFailureTests {
     @Test("an import command's failure is stated as why it failed")
     func importCommandsStateWhy() {
         #expect(!Self.why.isEmpty)
-        for command in [BridgePaneCommand.import, .mergeArtists] {
+        for command in [BridgePaneCommand.import, .chooseArtistIdentity] {
             #expect(Self.line(command) == Self.why)
         }
     }

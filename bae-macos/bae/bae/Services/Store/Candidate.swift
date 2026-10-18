@@ -231,7 +231,8 @@ extension BridgePaneFailure {
         guard let displayed = DisplayError(error) else { return nil }
         let why = displayed.line
         switch command {
-        case .import, .mergeArtists, .keepOwnDraft, .linkSharedAlbum, .unlink:
+        case .import, .chooseArtistIdentity, .keepOwnDraft, .linkSharedAlbum,
+            .unlink:
             return why
         case .readFileTags:
             return String(localized: "Couldn't read file tags: \(why)")

@@ -21,19 +21,19 @@ impl AppServices {
             .await
     }
 
-    /// Take the two library artists the candidate's import found to be one as
-    /// one, keeping `surviving_artist_id`.
-    pub async fn pane_merge_artists(
+    /// Apply the person's answer to the candidate's artist conflict.
+    pub async fn pane_choose_artist_identity(
         &self,
         candidate_key: &str,
-        surviving_artist_id: &str,
+        metadata_revision: u64,
+        choice: crate::import::ArtistIdentityConflictChoice,
     ) -> Result<PaneOutcome, ImportError> {
         let import = &self.inner.import;
         import
             .run_pane_command(
                 candidate_key,
-                PaneCommand::MergeArtists,
-                import.merge_candidate_artist_identity_conflict(candidate_key, surviving_artist_id),
+                PaneCommand::ChooseArtistIdentity,
+                import.choose_candidate_artist_identity(candidate_key, metadata_revision, choice),
             )
             .await
     }

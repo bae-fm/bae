@@ -450,28 +450,32 @@ async fn draft_crediting(device: &TestDevice, artist_id: &str) {
 }
 
 /// Device A confirms that its Discogs artist and its MusicBrainz artist are
-/// one artist while device B has a draft crediting the Discogs one. B's own
+/// one artist while device B has a draft crediting the MusicBrainz one. B's own
 /// draft never stops it from taking A's library.
 #[test]
 fn a_draft_on_one_device_never_blocks_an_artist_merge_from_another() {
     run_two_device_test(|| async {
         let devices = TwoDevices::pair().await;
-        let (discogs, album_id, release_id) = remote_album_by(
+        let (discogs, _, release_id) = remote_album_by(
             devices.a(),
             catalog_artist(None, Some(DISCOGS_ARTIST)),
             "Album",
         )
         .await;
-        let (musicbrainz, _, other_release) =
+        let (musicbrainz, album_id, other_release) =
             remote_album_by(devices.a(), catalog_artist(Some(MB_ARTIST), None), "Other").await;
         releases_on_both(&devices, &[&release_id, &other_release]).await;
-        draft_crediting(devices.b(), &discogs).await;
+        draft_crediting(devices.b(), &musicbrainz).await;
 
         record_identity_conflict(devices.a(), &discogs, &musicbrainz).await;
         devices
             .a()
             .manager()
-            .merge_import_artist_identity_conflict("conflict", &musicbrainz)
+            .choose_import_artist_identity(
+                "conflict",
+                0,
+                crate::import::ArtistIdentityConflictChoice::SameArtist,
+            )
             .await
             .unwrap();
 
@@ -479,7 +483,7 @@ fn a_draft_on_one_device_never_blocks_an_artist_merge_from_another() {
         for database in [devices.a().database(), devices.b().database()] {
             assert_eq!(
                 album_artist_ids(database, &album_id).await,
-                vec![musicbrainz.clone()]
+                vec![discogs.clone()]
             );
         }
         assert_nothing_held(&devices);
@@ -508,23 +512,23 @@ fn an_artist_merge_and_a_concurrent_credit_of_the_merged_artist_both_land() {
         devices
             .a()
             .manager()
-            .merge_import_artist_identity_conflict("conflict", &musicbrainz)
+            .choose_import_artist_identity(
+                "conflict",
+                0,
+                crate::import::ArtistIdentityConflictChoice::SameArtist,
+            )
             .await
             .unwrap();
-        let (credited, new_album, new_release) = remote_album_by(
-            devices.b(),
-            catalog_artist(None, Some(DISCOGS_ARTIST)),
-            "New",
-        )
-        .await;
-        assert_eq!(credited, discogs, "B credits the artist it already has");
+        let (credited, new_album, new_release) =
+            remote_album_by(devices.b(), catalog_artist(Some(MB_ARTIST), None), "New").await;
+        assert_eq!(credited, musicbrainz, "B credits the artist it already has");
         devices.resume().await;
 
         releases_on_both(&devices, &[&release_id, &other_release, &new_release]).await;
         for database in [devices.a().database(), devices.b().database()] {
             assert_eq!(
                 album_artist_ids(database, &new_album).await,
-                vec![musicbrainz.clone()]
+                vec![discogs.clone()]
             );
         }
         assert_nothing_held(&devices);

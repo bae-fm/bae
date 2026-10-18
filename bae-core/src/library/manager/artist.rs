@@ -30,13 +30,19 @@ impl LibraryManager {
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub async fn merge_import_artist_identity_conflict(
+    pub(crate) async fn choose_import_artist_identity(
         &self,
         content_hash: &str,
-        surviving_artist_id: &str,
+        metadata_revision: u64,
+        choice: crate::import::ArtistIdentityConflictChoice,
     ) -> Result<(), LibraryError> {
         self.database
-            .merge_import_artist_identity_conflict(content_hash, surviving_artist_id)
+            .choose_import_artist_identity(
+                content_hash,
+                metadata_revision,
+                choice,
+                self.ids.as_ref(),
+            )
             .await?;
         Ok(())
     }

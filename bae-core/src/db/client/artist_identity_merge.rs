@@ -7,23 +7,30 @@ impl Database {
     /// identity conflict. The absorbed artist is recorded as merged into the
     /// survivor (`artist_merges`), the survivor takes its source ids and image,
     /// and this device's drafts and conflicts move to the survivor, all in one
-    /// database commit; the failed candidate becomes ready again with it.
+    /// database commit; the candidate's recorded conflict is dismissed with it.
     /// Neither artist row is deleted and no library credit is rewritten: both
     /// are shared with devices that may be crediting the absorbed artist while
     /// apart, and every read shows the survivor.
-    pub async fn merge_import_artist_identity_conflict(
+    pub(super) async fn merge_import_artist_identity_choice(
         &self,
         content_hash: &str,
-        surviving_artist_id: &str,
+        metadata_revision: u64,
     ) -> Result<(), DbError> {
-        let content_hash = content_hash.to_string();
-        let surviving_artist_id = surviving_artist_id.to_string();
+        let hash = content_hash.to_string();
         let now = self.inner.clock.now().to_rfc3339();
         let plan = self
             .read(move |sql| {
-                plan_artist_identity_merge(&sql, &content_hash, &surviving_artist_id, &now)
+                super::artist_identity_choice::require_revision(&sql, &hash, metadata_revision)?;
+                plan_artist_identity_merge(&sql, &hash, &now)
             })
             .await?;
+        self.commit_artist_identity_merge(plan).await
+    }
+
+    async fn commit_artist_identity_merge(
+        &self,
+        plan: ArtistIdentityMergePlan,
+    ) -> Result<(), DbError> {
         let deleted_image = plan.deleted_image.clone();
         self.inner
             .handle
@@ -35,13 +42,8 @@ impl Database {
                     Ok(())
                 },
                 move |sql| {
-                    let current = plan_artist_identity_merge(
-                        &sql,
-                        &plan.content_hash,
-                        &plan.surviving_artist_id,
-                        &plan.now,
-                    )
-                    .map_err(CovenError::from)?;
+                    let current = plan_artist_identity_merge(&sql, &plan.content_hash, &plan.now)
+                        .map_err(CovenError::from)?;
                     if current != plan {
                         return Err(CovenError::from(DbError::Message(format!(
                             "artist identity merge plan for {} changed before commit",
@@ -61,6 +63,7 @@ impl Database {
 struct ArtistIdentityMergePlan {
     content_hash: String,
     surviving_artist_id: String,
+    metadata_revision: i64,
     absorbed_artist_id: String,
     discogs_artist_id: String,
     musicbrainz_artist_id: String,
@@ -77,7 +80,6 @@ struct ArtistIdentityMergePlan {
 fn plan_artist_identity_merge<Q: QueryOne + QueryRows>(
     sql: &Q,
     content_hash: &str,
-    surviving_artist_id: &str,
     now: &str,
 ) -> Result<ArtistIdentityMergePlan, DbError> {
     let conflict = sql
@@ -107,15 +109,8 @@ fn plan_artist_identity_merge<Q: QueryOne + QueryRows>(
             "candidate {content_hash} has no artist identity conflict to merge"
         )));
     };
-    let absorbed_artist_id = if surviving_artist_id == discogs_library_id {
-        musicbrainz_library_id.clone()
-    } else if surviving_artist_id == musicbrainz_library_id {
-        discogs_library_id.clone()
-    } else {
-        return Err(DbError::Message(format!(
-            "artist {surviving_artist_id} is not part of candidate {content_hash}'s identity conflict"
-        )));
-    };
+    let surviving_artist_id = discogs_library_id.as_str();
+    let absorbed_artist_id = musicbrainz_library_id.clone();
     if surviving_artist_id == absorbed_artist_id {
         return Err(DbError::Message(format!(
             "candidate {content_hash}'s artist identity conflict names one library artist twice"
@@ -145,11 +140,7 @@ fn plan_artist_identity_merge<Q: QueryOne + QueryRows>(
             "candidate {content_hash}'s library artists no longer contain only the recorded source IDs"
         )));
     }
-    let surviving_sort_name = if surviving_artist_id == discogs_library_id {
-        discogs_artist.sort_name.or(musicbrainz_artist.sort_name)
-    } else {
-        musicbrainz_artist.sort_name.or(discogs_artist.sort_name)
-    };
+    let surviving_sort_name = discogs_artist.sort_name.or(musicbrainz_artist.sort_name);
     let image = |artist_id: &str| {
         sql.query_row(
             "SELECT blob_id, cloud_path FROM artist_images WHERE id = ?",
@@ -176,7 +167,13 @@ fn plan_artist_identity_merge<Q: QueryOne + QueryRows>(
         _ => None,
     };
 
+    let metadata_revision = sql.query_row(
+        "SELECT metadata_revision FROM import_candidate_state WHERE content_hash = ?",
+        [content_hash],
+        |row| row.get(0),
+    )?;
     Ok(ArtistIdentityMergePlan {
+        metadata_revision,
         content_hash: content_hash.to_string(),
         surviving_artist_id: surviving_artist_id.to_string(),
         absorbed_artist_id,
@@ -195,6 +192,14 @@ fn apply_artist_identity_merge(
     plan: &ArtistIdentityMergePlan,
 ) -> Result<(), DbError> {
     let reg = sql.stamp();
+    super::artist_identity_choice::record_choice_on(
+        sql,
+        &plan.content_hash,
+        &plan.discogs_artist_id,
+        &plan.musicbrainz_artist_id,
+        crate::import::ArtistIdentityConflictChoice::SameArtist,
+        &plan.surviving_artist_id,
+    )?;
     // Removing the parent failure also removes the conflict row whose
     // restrictive artist FKs would otherwise prevent consolidation.
     sql.execute(

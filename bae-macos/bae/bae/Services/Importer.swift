@@ -81,8 +81,9 @@ private struct ImportOperations: Sendable {
     let candidateRuntime: @Sendable (String) -> BridgeCandidateRuntimeSnapshot?
     let candidateSignals: @Sendable (String) -> Signals?
     let startImport: @Sendable (String) async throws -> BridgePaneOutcome
-    let mergeCandidateArtistIdentityConflict:
-        @Sendable (String, String) async throws -> BridgePaneOutcome
+    let chooseCandidateArtistIdentity:
+        @Sendable (String, UInt64, BridgeArtistIdentityConflictChoice)
+            async throws -> BridgePaneOutcome
     let setIdentifyAutomatically:
         @MainActor @Sendable (Bool) async throws -> Void
     let setMetadataSourceEnabled:
@@ -265,10 +266,11 @@ extension ImportOperations {
             startImport: {
                 try await handle.startImport(candidateKey: $0)
             },
-            mergeCandidateArtistIdentityConflict: {
-                try await handle.mergeCandidateArtistIdentityConflict(
+            chooseCandidateArtistIdentity: {
+                try await handle.chooseCandidateArtistIdentity(
                     candidateKey: $0,
-                    survivingArtistId: $1
+                    metadataRevision: $1,
+                    choice: $2
                 )
             },
             setIdentifyAutomatically: {
@@ -480,7 +482,7 @@ final class Importer: Sendable, Observable {
             candidateRuntime: candidateRuntime,
             candidateSignals: candidateSignals,
             startImport: startImport,
-            mergeCandidateArtistIdentityConflict: { _, _ in
+            chooseCandidateArtistIdentity: { _, _, _ in
                 throw StubError.notImplemented
             },
             setIdentifyAutomatically: setIdentifyAutomatically,
@@ -763,15 +765,16 @@ extension Importer {
         try await operations.startImport(candidateKey)
     }
 
-    /// Take the two library artists the candidate's import found to be one as
-    /// one, a pane command.
-    func mergeCandidateArtistIdentityConflict(
+    /// Record the person's answer to the candidate's artist conflict.
+    func chooseCandidateArtistIdentity(
         _ candidateKey: String,
-        keeping survivingArtistId: String
+        metadataRevision: UInt64,
+        choice: BridgeArtistIdentityConflictChoice
     ) async throws -> BridgePaneOutcome {
-        try await operations.mergeCandidateArtistIdentityConflict(
+        try await operations.chooseCandidateArtistIdentity(
             candidateKey,
-            survivingArtistId
+            metadataRevision,
+            choice
         )
     }
 

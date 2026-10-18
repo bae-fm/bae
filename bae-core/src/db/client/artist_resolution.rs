@@ -9,7 +9,7 @@
 //! 1. **A catalog id is decisive.** A credit carrying a MusicBrainz or Discogs
 //!    id is the library artist holding that id, followed through any merge. Two
 //!    different artists holding the credit's two ids is the conflict a person
-//!    settles by merging them; a matched artist holding a different id of the
+//!    settles on the import page; a matched artist holding a different id of the
 //!    same catalog is refused outright.
 //! 2. **Otherwise the name.** A credit is the one library artist whose
 //!    `name_key` equals the credit's folded name and whose catalog ids do not
@@ -31,7 +31,7 @@ use super::*;
 #[derive(Debug, thiserror::Error)]
 pub enum ArtistWriteError {
     /// Two library artists each hold one of the credit's catalog ids — the
-    /// conflict a person resolves by merging them.
+    /// conflict a person resolves on the import page.
     #[error(transparent)]
     IdentityConflict(Box<crate::import::ArtistIdentityConflict>),
     /// The credit cannot be linked to the library as it stands: its ids
@@ -86,8 +86,10 @@ impl Database {
         &self,
         credits: &[DbArtist],
         picked: &[String],
+        content_hash: Option<&str>,
     ) -> Result<ResolvedArtists, ArtistWriteError> {
         let (credits, picked) = (credits.to_vec(), picked.to_vec());
+        let content_hash = content_hash.map(str::to_string);
         self.inner
             .handle
             .read(move |sql| {
@@ -95,7 +97,7 @@ impl Database {
                     credits: &credits,
                     picked: &picked,
                 }
-                .resolve_on(&sql)
+                .resolve_for_import_on(&sql, content_hash.as_deref())
                 .map_err(artist_write_failure)
             })
             .await
@@ -358,6 +360,15 @@ pub(crate) fn resolve_credits_on<'a, Q: QueryOne + QueryRows>(
     sql: &Q,
     credits: impl IntoIterator<Item = &'a crate::import::ArtistCredit>,
 ) -> Result<Vec<crate::import::ResolvedCredit>, DbError> {
+    resolve_credits_with(credits, |credit| resolve_credit_on(sql, credit))
+}
+
+pub(super) fn resolve_credits_with<'a>(
+    credits: impl IntoIterator<Item = &'a crate::import::ArtistCredit>,
+    mut resolve: impl FnMut(
+        &crate::import::ArtistCredit,
+    ) -> Result<crate::import::CreditResolution, DbError>,
+) -> Result<Vec<crate::import::ResolvedCredit>, DbError> {
     let mut resolved: Vec<crate::import::ResolvedCredit> = Vec::new();
     for credit in credits {
         if resolved.iter().any(|known| known.credit == *credit) {
@@ -365,7 +376,7 @@ pub(crate) fn resolve_credits_on<'a, Q: QueryOne + QueryRows>(
         }
         resolved.push(crate::import::ResolvedCredit {
             credit: credit.clone(),
-            resolution: resolve_credit_on(sql, credit)?,
+            resolution: resolve(credit)?,
         });
     }
     Ok(resolved)

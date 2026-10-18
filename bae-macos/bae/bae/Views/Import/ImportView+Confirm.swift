@@ -20,17 +20,17 @@ extension ImportView {
         }
     }
 
-    /// Consolidate the two library artist rows named by the persisted import
-    /// conflict. The candidate subscription removes the conflict banner only
-    /// after core commits every reference move and deletes the absorbed row.
-    func mergeArtistIdentityConflict(
+    /// Record the answer against the draft the person saw.
+    func chooseArtistIdentityConflict(
         candidate: Candidate,
-        keeping survivingArtistId: String
+        metadataRevision: UInt64,
+        choice: BridgeArtistIdentityConflictChoice
     ) {
         runCandidateMutation(candidate: candidate) {
-            try await importer.mergeCandidateArtistIdentityConflict(
+            try await importer.chooseCandidateArtistIdentity(
                 candidate.key,
-                keeping: survivingArtistId
+                metadataRevision: metadataRevision,
+                choice: choice
             )
         }
     }

@@ -13,8 +13,8 @@ struct ImportConfirmationBanners: View {
     let canEdit: Bool
     /// Try the failed import again.
     let onRetry: () -> Void
-    /// Keep the named library artist and absorb the other row.
-    let onMergeArtists: (String) -> Void
+    /// The person's answer, including returning to the release picker.
+    let onChooseArtistIdentity: (BridgeArtistIdentityConflictChoice) -> Void
     let onViewInLibrary: (String) -> Void
 
     var body: some View {
@@ -132,17 +132,20 @@ struct ImportConfirmationBanners: View {
                 .themeText(.body)
                 .foregroundStyle(StatusTone.warning.color)
             }
-            HStack(spacing: ThemeSpace.related) {
+            VStack(alignment: .leading, spacing: ThemeSpace.related) {
+                artistChoiceButton(key: "same_artist", choice: .sameArtist)
                 artistChoiceButton(
-                    titleKey:
-                        "ui.import.artist_identity_conflict.keep_discogs",
+                    key: "discogs_artist",
+                    choice: .discogsArtist,
                     artist: conflict.discogsArtist
                 )
                 artistChoiceButton(
-                    titleKey:
-                        "ui.import.artist_identity_conflict.keep_musicbrainz",
+                    key: "musicbrainz_artist",
+                    choice: .musicBrainzArtist,
                     artist: conflict.musicbrainzArtist
                 )
+                artistChoiceButton(key: "neither", choice: .neither)
+                artistChoiceButton(key: "change_match", choice: .changeMatch)
             }
             .controlSize(.small)
             .disabled(!canEdit)
@@ -156,18 +159,26 @@ struct ImportConfirmationBanners: View {
     }
 
     private func artistChoiceButton(
-        titleKey: String,
-        artist: BridgeExistingArtist
+        key: String,
+        choice: BridgeArtistIdentityConflictChoice,
+        artist: BridgeExistingArtist? = nil
     ) -> some View {
         Button {
-            onMergeArtists(artist.artistId)
+            onChooseArtistIdentity(choice)
         } label: {
             VStack(alignment: .leading, spacing: ThemeSpace.hairline) {
-                Text(verbatim: coreString(titleKey))
-                Text(verbatim: artist.name)
-                    .themeText(.detail)
+                Text(
+                    verbatim: coreString(
+                        "ui.import.artist_identity_conflict.\(key)"
+                    )
+                )
+                if let artist {
+                    Text(verbatim: artist.name)
+                        .themeText(.detail)
+                }
             }
         }
+        .accessibilityIdentifier("artist-identity-\(key)")
     }
 }
 
@@ -192,7 +203,7 @@ struct ImportConfirmationBanners: View {
                 ),
                 canEdit: true,
                 onRetry: {},
-                onMergeArtists: { _ in },
+                onChooseArtistIdentity: { _ in },
                 onViewInLibrary: { _ in },
             )
         }

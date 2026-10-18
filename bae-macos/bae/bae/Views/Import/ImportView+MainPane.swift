@@ -168,8 +168,12 @@ extension ImportView {
     {
         ImportCommitActions(
             confirmImport: { commitConfirmedImport(candidate: candidate) },
-            mergeArtists: {
-                mergeArtistIdentityConflict(candidate: candidate, keeping: $0)
+            chooseArtistIdentity: {
+                chooseArtistIdentityConflict(
+                    candidate: candidate,
+                    metadataRevision: $0,
+                    choice: $1
+                )
             },
             viewInLibrary: { uiStore.navigateToAlbum($0) }
         )

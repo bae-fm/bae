@@ -333,7 +333,7 @@ pub struct BridgeCandidateSession {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgePaneCommand {
     Import,
-    MergeArtists,
+    ChooseArtistIdentity,
     ReadFileTags,
     ChangeLookups,
     ChangeSearchWords,
@@ -369,7 +369,7 @@ mirror_enum! {
     from_core: pub(crate) fn,
     variants: {
         Import,
-        MergeArtists,
+        ChooseArtistIdentity,
         ReadFileTags,
         ChangeLookups,
         ChangeSearchWords,
@@ -456,7 +456,7 @@ mirror_struct! {
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeImportFailure {
     /// One incoming artist matched two library artists; the pane offers to
-    /// consolidate them.
+    /// choose how this import credits the artist.
     ArtistIdentityConflict {
         conflict: BridgeArtistIdentityConflict,
         error: BridgeError,
@@ -471,4 +471,22 @@ pub struct BridgeArtistIdentityConflict {
     pub incoming_artist_name: String,
     pub discogs_artist: BridgeExistingArtist,
     pub musicbrainz_artist: BridgeExistingArtist,
+}
+
+/// The person's answer on the import page. Mirrors the core choice without
+/// deciding which artist an answer credits.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeArtistIdentityConflictChoice {
+    SameArtist,
+    DiscogsArtist,
+    MusicBrainzArtist,
+    Neither,
+    ChangeMatch,
+}
+
+mirror_enum! {
+    #[cfg(feature = "desktop")]
+    BridgeArtistIdentityConflictChoice = bae_core::import::ArtistIdentityConflictChoice,
+    into_core: pub(crate) fn,
+    variants: { SameArtist, DiscogsArtist, MusicBrainzArtist, Neither, ChangeMatch },
 }

@@ -209,6 +209,21 @@ pub(super) fn save_preparation_on(
         .map(|scanned| scanned.verify(sql, content_hash, expected.edit_revision))
         .transpose()?;
 
+    let previous_link = super::rows::load_release_link_rows_on(sql, Some(content_hash))?()?
+        .remove(content_hash);
+    let previous_provenance = super::rows::load_provenance_rows_on(sql, Some(content_hash))?()?
+        .remove(content_hash);
+    if previous_link != prep.link
+        || previous_provenance != prep.metadata.provenance
+        || extras.reset_lookup_choices_from.is_some()
+        || prep.metadata.draft.release_edit().is_blank()
+    {
+        // An answer belongs to these source credits. Changing their source or
+        // resetting the setup requires the person to decide any new conflict.
+        sql.execute("DELETE FROM import_candidate_artist_identity_choice WHERE content_hash = ?", [content_hash])?;
+        sql.execute("DELETE FROM import_candidate_failure WHERE content_hash = ? AND content_hash IN (SELECT content_hash FROM import_candidate_artist_identity_conflict)", [content_hash])?;
+    }
+
     // The matches hang off the verdict row, so this clears them too.
     delete_verdict(sql, content_hash)?;
     if let Some(identification) = &prep.identification {

@@ -10,8 +10,7 @@
 use crate::import::Catalog;
 
 /// Two exact provider identities that currently belong to different library
-/// artists. Import stops until a person confirms that the two rows represent
-/// one artist or corrects the source metadata.
+/// artists. Import stops until the person chooses how this credit is used.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 #[error("artist '{incoming_artist_name}' has source IDs belonging to different library artists")]
 pub struct ArtistIdentityConflict {
@@ -20,6 +19,22 @@ pub struct ArtistIdentityConflict {
     pub musicbrainz_artist_id: String,
     pub discogs_artist: crate::import::ExistingArtist,
     pub musicbrainz_artist: crate::import::ExistingArtist,
+}
+
+/// The person's answer to an import's conflicting artist identities. Nothing
+/// selects an answer automatically. The first four answers decide this credit;
+/// changing the match opens the candidate's existing release picker.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ArtistIdentityConflictChoice {
+    /// Merge into the Discogs library artist, retaining both provider ids.
+    SameArtist,
+    /// Credit the Discogs library artist without attaching the incoming MusicBrainz id.
+    DiscogsArtist,
+    /// Credit the MusicBrainz library artist without attaching the Discogs id.
+    MusicBrainzArtist,
+    /// Create an independent artist without either provider id when importing.
+    Neither,
+    ChangeMatch,
 }
 
 /// Whether every provider ID both artists carry agrees. An absent ID makes no

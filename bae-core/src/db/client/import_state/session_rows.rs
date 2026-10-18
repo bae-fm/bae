@@ -64,7 +64,7 @@ fn tab_of(column: &str) -> Result<SearchTab, DbError> {
 fn command_column(command: PaneCommand) -> &'static str {
     match command {
         PaneCommand::Import => "import",
-        PaneCommand::MergeArtists => "merge_artists",
+        PaneCommand::ChooseArtistIdentity => "choose_artist_identity",
         PaneCommand::ReadFileTags => "read_file_tags",
         PaneCommand::ChangeLookups => "change_lookups",
         PaneCommand::ChangeSearchWords => "change_search_words",
@@ -78,7 +78,7 @@ fn command_column(command: PaneCommand) -> &'static str {
 fn command_of(column: &str) -> Result<PaneCommand, DbError> {
     Ok(match column {
         "import" => PaneCommand::Import,
-        "merge_artists" => PaneCommand::MergeArtists,
+        "choose_artist_identity" => PaneCommand::ChooseArtistIdentity,
         "read_file_tags" => PaneCommand::ReadFileTags,
         "change_lookups" => PaneCommand::ChangeLookups,
         "change_search_words" => PaneCommand::ChangeSearchWords,

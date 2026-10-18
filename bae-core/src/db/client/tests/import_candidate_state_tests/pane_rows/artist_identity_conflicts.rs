@@ -1,3 +1,6 @@
+#[path = "artist_identity_choices.rs"]
+mod choices;
+
 use super::*;
 
 fn artist_identity_failure(discogs: &DbArtist, musicbrainz: &DbArtist) -> ImportFailure {
@@ -210,7 +213,7 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
         .await
         .unwrap();
 
-    db.merge_import_artist_identity_conflict(&hash, &discogs.id)
+    db.choose_import_artist_identity(&hash, 0, crate::import::ArtistIdentityConflictChoice::SameArtist, &coven::UuidProvider)
         .await
         .unwrap();
 
@@ -320,7 +323,7 @@ async fn resolving_a_conflict_refuses_a_third_provider_identity_without_changing
         .await
         .unwrap();
 
-    db.merge_import_artist_identity_conflict(&hash, &discogs.id)
+    db.choose_import_artist_identity(&hash, 0, crate::import::ArtistIdentityConflictChoice::SameArtist, &coven::UuidProvider)
         .await
         .expect_err("a two-artist merge must not absorb an unrelated provider identity");
 

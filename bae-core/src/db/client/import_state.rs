@@ -39,6 +39,15 @@ use rows::{insert_provenance, load_states_rows_on};
 use std::collections::HashSet;
 use verdict_rows::{delete_verdict, insert_verdict};
 
+/// Move the pane inside a candidate write, without splitting the transaction.
+pub(super) fn move_pane_on(
+    sql: &SqlContext<'_, '_>,
+    content_hash: &str,
+    pane_move: crate::import::PaneMove,
+) -> Result<(), DbError> {
+    session_rows::move_pane_on(sql, content_hash, pane_move)
+}
+
 impl Database {
     /// Whether a draft is stored for `content_hash`; the pre-fill never
     /// re-seeds a candidate that has one.

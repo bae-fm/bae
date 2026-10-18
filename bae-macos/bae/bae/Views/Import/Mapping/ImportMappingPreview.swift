@@ -55,7 +55,7 @@
                 mappingActions: inertMappingActions(),
                 commitActions: ImportCommitActions(
                     confirmImport: {},
-                    mergeArtists: { _ in },
+                    chooseArtistIdentity: { _, _ in },
                     viewInLibrary: { _ in },
                 ),
                 onMovePane: { _ in },

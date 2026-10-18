@@ -538,7 +538,11 @@ impl LibraryManager {
     ) -> Result<Option<u64>, LibraryError> {
         let expected = self
             .database
-            .resolve_artists(rows.artists.credits, rows.artists.picked)
+            .resolve_artists(
+                rows.artists.credits,
+                rows.artists.picked,
+                release.content_hash.as_deref(),
+            )
             .await?;
         let expected_new_artists: Vec<String> = expected
             .inserts

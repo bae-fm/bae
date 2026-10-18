@@ -324,25 +324,26 @@ impl ImportServiceHandle {
         Ok(import_id)
     }
 
-    /// Resolve the recoverable artist conflict stored for this candidate by
-    /// keeping the selected library row and absorbing the other one.
-    pub async fn merge_candidate_artist_identity_conflict(
+    /// Store the person's artist answer while this candidate is editable.
+    pub async fn choose_candidate_artist_identity(
         &self,
         candidate_key: &str,
-        surviving_artist_id: &str,
+        metadata_revision: u64,
+        choice: crate::import::ArtistIdentityConflictChoice,
     ) -> Result<(), crate::import::ImportError> {
-        let Some(candidate) = self.get_release_candidate(candidate_key).await? else {
-            return Err(crate::import::ImportError::Internal {
-                detail: format!("{candidate_key} is not a scanned folder candidate"),
-            });
-        };
-        self.library_manager
-            .merge_import_artist_identity_conflict(
-                &candidate.files.content_hash(),
-                surviving_artist_id,
-            )
-            .await?;
-        Ok(())
+        let this = self.clone();
+        let key = candidate_key.to_string();
+        self.committed(async move {
+            let _commit = this.folder_state_commit.lock("choose an import artist").await;
+            let candidate = this.get_release_candidate(&key).await?.ok_or_else(|| crate::import::ImportError::Internal {
+                detail: format!("{key} is not a scanned folder candidate"),
+            })?;
+            this.candidate_standing(&key, &candidate).await?.editable()?;
+            this.library_manager.choose_import_artist_identity(
+                &candidate.files.content_hash(), metadata_revision, choice,
+            ).await?;
+            Ok(())
+        }).await
     }
 
     /// Check a submitted Discogs key against Discogs and store it unless

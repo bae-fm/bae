@@ -509,7 +509,7 @@ impl Database {
                         credits: &artist_credits,
                         picked: &picked_artists,
                     };
-                    let resolved = credits.resolve_on(tx).map_err(artist_write_failure)?;
+                    let resolved = credits.resolve_for_import_on(tx, release.content_hash.as_deref()).map_err(artist_write_failure)?;
                     let inserted: BTreeSet<String> = resolved
                         .inserts
                         .iter()

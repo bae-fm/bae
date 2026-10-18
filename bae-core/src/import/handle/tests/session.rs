@@ -76,7 +76,7 @@ async fn a_pane_command_s_failure_is_stored_until_the_next_command() {
         .unwrap();
 
     let failed = handle
-        .run_pane_command(&key, PaneCommand::MergeArtists, async {
+        .run_pane_command(&key, PaneCommand::ChooseArtistIdentity, async {
             Err::<(), _>(ImportError::CandidateImportInProgress)
         })
         .await
@@ -86,7 +86,7 @@ async fn a_pane_command_s_failure_is_stored_until_the_next_command() {
     assert_eq!(
         session.error,
         Some(PaneFailure {
-            command: PaneCommand::MergeArtists,
+            command: PaneCommand::ChooseArtistIdentity,
             error: UiError::diagnostic(
                 UiErrorCategory::CandidateImportInProgress,
                 ImportError::CandidateImportInProgress

@@ -72,9 +72,9 @@ pub(crate) fn load_provenance_on(
 }
 
 pub(crate) fn load_provenance_rows_on(
-    sql: &SqlReadContext<'_>,
+    sql: &impl super::super::query::QueryRows,
     only: Option<&str>,
-) -> Result<impl FnOnce() -> Result<CandidateProvenances, DbError> + Send + 'static, DbError> {
+) -> Result<Box<dyn FnOnce() -> Result<CandidateProvenances, DbError> + Send + 'static>, DbError> {
     let rows = sql.query(
         "SELECT content_hash, kind, source, release_id \
          FROM import_candidate_draft_provenance \
@@ -89,7 +89,7 @@ pub(crate) fn load_provenance_rows_on(
             ))
         },
     )?;
-    Ok(move || {
+    Ok(Box::new(move || {
         let mut out = HashMap::with_capacity(rows.len());
         for (content_hash, kind, source, release_id) in rows {
             let provenance = match kind.as_str() {
@@ -113,7 +113,7 @@ pub(crate) fn load_provenance_rows_on(
             out.insert(content_hash, provenance);
         }
         Ok(out)
-    })
+    }))
 }
 
 /// Replace the candidate's release link with `link`, or remove it.
@@ -179,9 +179,9 @@ pub(crate) fn load_release_links_on(
 }
 
 pub(crate) fn load_release_link_rows_on(
-    sql: &SqlReadContext<'_>,
+    sql: &impl super::super::query::QueryRows,
     only: Option<&str>,
-) -> Result<impl FnOnce() -> Result<CandidateLinks, DbError> + Send + 'static, DbError> {
+) -> Result<Box<dyn FnOnce() -> Result<CandidateLinks, DbError> + Send + 'static>, DbError> {
     let read = |row: &Row<'_>| {
         Ok((
             row.get::<_, String>(0)?,
@@ -215,7 +215,7 @@ pub(crate) fn load_release_link_rows_on(
             ))
         },
     )?;
-    Ok(move || {
+    Ok(Box::new(move || {
         let reference = |catalog: String, key: String| {
             Ok::<_, DbError>(MetadataRef::new(
                 Catalog::from_str(&catalog).map_err(DbError::Message)?,
@@ -258,7 +258,7 @@ pub(crate) fn load_release_link_rows_on(
             out.insert(content_hash, link);
         }
         Ok(out)
-    })
+    }))
 }
 
 /// Every candidate's verdict, or the one `only` names, each rebuilt with the

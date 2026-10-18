@@ -37,6 +37,8 @@ pub use artist::{
 };
 mod artist;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+mod artist_identity_choice;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod artist_identity_merge;
 mod artist_resolution;
 pub(crate) use artist_resolution::ArtistCredits;

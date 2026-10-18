@@ -176,8 +176,8 @@ desktop_only! {
     pub use import_failure::{ImportFailure, ImportFailureReason};
 }
 pub(crate) use error::artist_source_ids_are_compatible;
-pub use error::ArtistIdentityConflict;
 pub use error::ImportError;
+pub use error::{ArtistIdentityConflict, ArtistIdentityConflictChoice};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use folder_state_commit::{FolderStateCommit, FolderStateCommitGuard};
 desktop_only! {

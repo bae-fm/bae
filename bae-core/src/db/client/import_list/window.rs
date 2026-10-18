@@ -495,8 +495,9 @@ pub(super) fn load_candidate_detail_on(
     let pane_rows = load_pane_rows_on(sql, &content_hash)?;
     // Read here, inside the pane's live query, so an artist another import
     // commits — or any artist row that changes — reads the credits again.
-    let artist_resolutions = super::super::artist_resolution::resolve_credits_on(
+    let artist_resolutions = super::super::artist_identity_choice::resolve_import_credits_on(
         sql,
+        &content_hash,
         pane_rows.draft.credits(),
     )?;
     let metadata_revision = sql.query_row(

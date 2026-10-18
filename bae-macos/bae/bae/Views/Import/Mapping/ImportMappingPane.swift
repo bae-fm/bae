@@ -140,16 +140,24 @@ struct ImportMappingPane: View {
         )
     }
 
+    @ViewBuilder
     private var banners: some View {
-        ImportConfirmationBanners(
-            libraryStatus: libraryStatus,
-            importStatus: candidate.importStatus,
-            error: candidate.error,
-            failure: candidate.failure,
-            canEdit: candidate.detail?.actionable == true,
-            onRetry: commitActions.confirmImport,
-            onMergeArtists: commitActions.mergeArtists,
-            onViewInLibrary: commitActions.viewInLibrary,
-        )
+        if let detail = candidate.detail {
+            ImportConfirmationBanners(
+                libraryStatus: libraryStatus,
+                importStatus: candidate.importStatus,
+                error: candidate.error,
+                failure: candidate.failure,
+                canEdit: detail.actionable,
+                onRetry: commitActions.confirmImport,
+                onChooseArtistIdentity: {
+                    commitActions.chooseArtistIdentity(
+                        detail.metadataRevision,
+                        $0
+                    )
+                },
+                onViewInLibrary: commitActions.viewInLibrary,
+            )
+        }
     }
 }

@@ -50,7 +50,46 @@ struct ImportConfirmationBannersTests {
             )
         )
 
-        #expect(conflictControlCount == retryControlCount + 1)
+        #expect(conflictControlCount == retryControlCount + 4)
+    }
+
+    @MainActor
+    @Test("keyboard activation sends all five choices; none is automatic")
+    func eachButtonSendsItsChoice() async throws {
+        var choices: [BridgeArtistIdentityConflictChoice] = []
+        try await SnapshotTestSupport.withHostedWindow(
+            ImportConfirmationBanners(
+                libraryStatus: nil,
+                importStatus: nil,
+                error: nil,
+                failure: conflictFailure(),
+                canEdit: true,
+                onRetry: { Issue.record("a conflict does not offer retry") },
+                onChooseArtistIdentity: { choices.append($0) },
+                onViewInLibrary: { _ in }
+            ),
+            size: NSSize(width: 720, height: 480)
+        ) { window, host in
+            try await SnapshotTestSupport.settle(host)
+            #expect(choices.isEmpty)
+            let controls = host.subviews.filter {
+                $0.nextKeyView != nil || $0.previousKeyView != nil
+            }
+            // The banner also has selectable diagnostic text and its disclosure
+            // button. Traverse the whole focus order; only the five choices
+            // may send an artist answer.
+            for control in controls {
+                #expect(HostedInput.focus(control, in: window))
+                try HostedInput.keyDown(.space, in: window)
+                try await SnapshotTestSupport.settle(host)
+            }
+            #expect(
+                choices == [
+                    .sameArtist, .discogsArtist, .musicBrainzArtist, .neither,
+                    .changeMatch,
+                ]
+            )
+        }
     }
 
     @MainActor
@@ -70,10 +109,10 @@ struct ImportConfirmationBannersTests {
                 failure: failure,
                 canEdit: true,
                 onRetry: {},
-                onMergeArtists: { _ in },
+                onChooseArtistIdentity: { _ in },
                 onViewInLibrary: { _ in }
             ),
-            size: NSSize(width: 640, height: 240)
+            size: NSSize(width: 640, height: 480)
         ) { _, host in
             try await SnapshotTestSupport.settle(host)
             let count = host.subviews

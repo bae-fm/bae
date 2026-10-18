@@ -1264,7 +1264,7 @@ CREATE TABLE IF NOT EXISTS import_candidate_session (
     -- The pane's last command, when it failed: which command, the class of
     -- its failure, and the failure's untranslated text.
     error_command  TEXT CHECK (error_command IN (
-        'import', 'merge_artists', 'read_file_tags',
+        'import', 'choose_artist_identity', 'read_file_tags',
         'change_lookups', 'change_search_words', 'change_agreements', 'keep_own_draft',
         'link_shared_album', 'unlink')),
     error_category TEXT,
@@ -1295,6 +1295,19 @@ CREATE TABLE IF NOT EXISTS import_candidate_artist_identity_conflict (
         REFERENCES import_candidate_failure (content_hash) ON DELETE CASCADE,
     FOREIGN KEY (discogs_library_artist_id) REFERENCES artists (id) ON DELETE RESTRICT,
     FOREIGN KEY (musicbrainz_library_artist_id) REFERENCES artists (id) ON DELETE RESTRICT
+) STRICT;
+
+-- A person's answer for one conflicting credit in this candidate. The original
+-- ids remain evidence; only a merge attaches both to one artist. For
+-- 'neither', artist_id reserves the new row's identity; import creates it in
+-- the same transaction as the release. These choices are device-local.
+CREATE TABLE IF NOT EXISTS import_candidate_artist_identity_choice (
+    content_hash TEXT NOT NULL REFERENCES import_candidate_state(content_hash) ON DELETE CASCADE,
+    discogs_artist_id TEXT NOT NULL,
+    musicbrainz_artist_id TEXT NOT NULL,
+    choice TEXT NOT NULL CHECK (choice IN ('same_artist', 'discogs_artist', 'musicbrainz_artist', 'neither')),
+    artist_id TEXT NOT NULL,
+    PRIMARY KEY (content_hash, discogs_artist_id, musicbrainz_artist_id)
 ) STRICT;
 
 -- ── Identification ────────────────────────────────────────────────────────────
