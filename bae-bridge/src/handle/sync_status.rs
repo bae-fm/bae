@@ -29,14 +29,16 @@ impl AppHandle {
         &self,
         callback: Box<dyn crate::types::EagerCacheFillStatusCallback>,
     ) -> std::sync::Arc<crate::LiveSubscription> {
-        self.subscribe_watch(
-            |services| services.subscribe_eager_cache_fill_status(),
-            move |value| {
-                callback.on_value(crate::types::BridgeEagerCacheFillStatus::from_core(
-                    value.clone(),
-                ))
-            },
-        )
+        self.live_subscription(move |services, _| async move {
+            let mut values = services.subscribe_eager_cache_fill_status();
+            loop {
+                match values.next().await {
+                    Ok(value) => callback
+                        .on_value(crate::types::BridgeEagerCacheFillStatus::from_core(value)),
+                    Err(error) => callback.on_error(BridgeError::database_query(error)),
+                }
+            }
+        })
     }
 
     pub fn subscribe_outbox(
@@ -87,12 +89,11 @@ forward! { sync this => {
         crate::types::BridgeSyncStatusSnapshot::from_core(this.services.get_sync_status())
     }
 
-    fn cancel_eager_cache_fill() {
-        this.services.cancel_eager_cache_fill();
-    }
+
 } }
 
 forward! { async this => {
+    fn cancel_eager_cache_fill() -> () { Ok(this.services.cancel_eager_cache_fill().await?) }
     /// Retry sync with the provider this library already has configured: connect
     /// if a failed startup left no connection, then run a cycle now. The failure
     /// reaches the caller and is recorded as the sync-status error the failure
@@ -101,17 +102,17 @@ forward! { async this => {
         this.services
             .reconnect_sync()
             .await
-            .map_err(BridgeError::internal)
+            .map_err(BridgeError::from)
     }
 
-    /// Hand one operation from `BridgeSyncStatusSnapshot::blocked` back to the
+    /// Hand one operation from `BridgeSyncStatusSnapshot::pending` back to the
     /// sync loop, which revalidates it and runs a cycle. `id` is the one carried
     /// on that operation. The operation leaves the list on the next status the
     /// UI receives; an operation whose cause still stands simply blocks again,
     /// and an id that names nothing blocked fails here.
-    fn retry_blocked_sync_operation(id: String) -> () {
+    fn retry_pending_operation(id: i64) -> () {
         this.services
-            .retry_blocked_sync_operation(&id)
+            .retry_pending_operation(coven::OperationId(id))
             .await
             .map_err(BridgeError::from)
     }
@@ -122,7 +123,7 @@ forward! { async this => {
             .services
             .outbox_snapshot()
             .await
-            .map_err(BridgeError::internal)?;
+            .map_err(BridgeError::from)?;
         Ok(crate::types::BridgeOutboxSnapshot::from_core(snapshot))
     }
 
@@ -132,35 +133,24 @@ forward! { async this => {
         this.services
             .retry_outbox_now()
             .await
-            .map_err(BridgeError::internal)
+            .map_err(BridgeError::from)
     }
 
     /// Cancel whatever transition a release is mid-flight — a pin (download), a
-    /// remote upload, or a make-Local transfer — leaving it in its prior state. The UI
+    /// remote upload, or an audio detachment — leaving it in its prior state. The UI
     /// calls this from the storage row and the queue pane without knowing which
     /// is running; a no-op if nothing is in progress.
     fn cancel_release_transition(release_id: String) -> () {
         this.services
             .cancel_release_transition(&release_id)
             .await
-            .map_err(BridgeError::internal)
-    }
-
-    /// Stop every upload coven can still unwind, leaving each release Local. A
-    /// release already publishing finishes.
-    fn cancel_all_release_uploads() -> () {
-        this.services
-            .cancel_all_release_uploads()
-            .await
             .map_err(BridgeError::from)
     }
 
-    /// Pause or resume the cloud-upload pipeline. While paused, new enqueues
-    /// still land in the outbox but the sync cycle won't drain them; the
-    /// snapshot's pause phase changes so the UI can distinguish pausing from
-    /// fully paused.
+    /// Set coven's persistent upload pause state. New files remain queued
+    /// while paused; metadata sync continues.
     fn set_sync_paused(paused: bool) -> () {
-        this.services.set_sync_paused(paused).await;
+        this.services.set_sync_paused(paused).await?;
         Ok(())
     }
 } }

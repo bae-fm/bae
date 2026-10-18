@@ -46,150 +46,91 @@ pub enum BridgeUiEvent {
     ImportsInFlight { count: u32 },
 }
 
-/// The dominant activity of a slice of the upload queue. Mirrors bae-core's
-/// `UploadActivity`; `Uploaded` still awaits publication.
+/// The activity exposed by coven's committed upload queue.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeUploadActivity {
-    Cancelling,
-    Publishing,
     Uploading,
-    Preparing,
-    Retrying,
-    Prepared,
     Queued,
-    Uploaded,
 }
 
-/// What a retrying upload needs from the person; a transient failure has none.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeUploadIssue {
-    SourceUnavailable { paths: Vec<String> },
-}
-
-/// The releases one move-to-cloud command queued, and the outbox revision
+/// The releases one upload command queued, and the outbox revision
 /// published before it returned.
 #[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeMakeRemoteReceipt {
+pub struct BridgeUploadReceipt {
     pub outbox_revision: u64,
     pub release_ids: Vec<String>,
 }
 
-/// The releases one move-to-cloud command refused, and why.
+/// The releases one upload command refused, and why.
 #[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeMakeRemoteBatchFailure {
+pub struct BridgeUploadBatchFailure {
     pub release_ids: Vec<String>,
     pub error: BridgeError,
 }
 
-/// Per-release admission outcome for one move-to-cloud command.
+/// Per-release admission outcome for one upload command.
 #[derive(Debug, Clone, uniffi::Enum)]
-pub enum BridgeMakeReleasesRemoteOutcome {
+pub enum BridgeUploadReleasesOutcome {
     Complete {
-        receipt: BridgeMakeRemoteReceipt,
+        receipt: BridgeUploadReceipt,
     },
     Partial {
-        receipt: Option<BridgeMakeRemoteReceipt>,
-        failure: BridgeMakeRemoteBatchFailure,
+        receipt: Option<BridgeUploadReceipt>,
+        failure: BridgeUploadBatchFailure,
     },
 }
 
 mirror_struct! {
-    BridgeMakeRemoteReceipt = bae_core::library::MakeRemoteReceipt,
+    BridgeUploadReceipt = bae_core::library::MakeRemoteReceipt,
     from_core: fn,
     fields: { outbox_revision, release_ids },
 }
 
 mirror_struct! {
-    BridgeMakeRemoteBatchFailure = bae_core::library::MakeRemoteBatchFailure,
+    BridgeUploadBatchFailure = bae_core::library::MakeRemoteBatchFailure,
     from_core: fn,
     fields: { release_ids, error: (BridgeError) },
 }
 
 mirror_enum! {
-    BridgeMakeReleasesRemoteOutcome = bae_core::library::MakeReleasesRemoteOutcome,
+    BridgeUploadReleasesOutcome = bae_core::library::MakeReleasesRemoteOutcome,
     from_core: pub(crate) fn,
     variants: {
-        Complete { receipt: (BridgeMakeRemoteReceipt) },
+        Complete { receipt: (BridgeUploadReceipt) },
         Partial {
-            receipt: (opt BridgeMakeRemoteReceipt),
-            failure: (BridgeMakeRemoteBatchFailure),
+            receipt: (opt BridgeUploadReceipt),
+            failure: (BridgeUploadBatchFailure),
         },
     },
 }
 
-/// Which phase's bytes a progress bar counts: plaintext source bytes while
-/// preparing, encrypted bytes while uploading. Mirrors `UploadPhase`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeUploadPhase {
-    Preparing,
-    Uploading,
-}
-
-/// One phase's progress bar, both numbers in that phase's bytes, so its fill
-/// and label count the same thing. Mirrors `UploadBar`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeUploadBar {
-    pub phase: BridgeUploadPhase,
     pub bytes_done: u64,
     pub bytes_total: u64,
 }
 
-/// Localization key for a progress bar's label ("Preparing 3 MB of 224.2 MB").
-#[uniffi::export]
-pub fn bridge_upload_phase_bytes_key(phase: BridgeUploadPhase) -> String {
-    match phase {
-        BridgeUploadPhase::Preparing => "core.outbox.bytes.preparing",
-        BridgeUploadPhase::Uploading => "core.outbox.bytes.uploading",
-    }
-    .to_string()
-}
-
-/// One file's state in the queue pane; `Uploaded` while the rest of its
-/// release is still going.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeUploadFileState {
-    Queued,
-    Preparing,
-    Prepared,
+    Waiting,
     Uploading,
-    Retrying,
-    Uploaded,
 }
 
-/// The label for one queued upload; image roles are typed so each platform
-/// localizes them.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeUploadFileLabel {
-    Filename {
-        name: String,
-    },
+    Filename { name: String },
     Cover,
     ArtistImage,
-    /// A file of a release being removed from the cloud, which has no name
-    /// left.
-    Unwinding,
+    Avatar,
+    DeletedReleaseFile,
 }
 
-/// A slice of the upload queue — one release's or the whole queue's — with its
-/// counts, bar and badge. Uploaded files count until publication.
 #[derive(Debug, Clone, Default, uniffi::Record)]
 pub struct BridgeUploadProgress {
     pub queued: u32,
-    pub preparing: u32,
-    pub prepared: u32,
     pub uploading: u32,
-    pub retrying: u32,
-    pub uploaded: u32,
-    pub publishing: u32,
-    pub cancelling: u32,
-    /// `None` while there are no bytes to count.
     pub bar: Option<BridgeUploadBar>,
-    /// `None` when idle.
     pub activity: Option<BridgeUploadActivity>,
-    /// Whether the transition can still be unwound.
-    pub can_cancel: bool,
-    /// What the retry needs from the person, if anything.
-    pub issue: Option<BridgeUploadIssue>,
 }
 
 /// A queued download's state.
@@ -396,13 +337,13 @@ pub struct BridgeOutputSnapshot {
 /// flattened; `bar` is present only while the file is moving bytes.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeUploadFileOp {
+    pub pending: Option<crate::BridgePendingRecord>,
     pub file_id: String,
+    pub release_file_key: Option<std::sync::Arc<BridgeRowKey>>,
     pub label: BridgeUploadFileLabel,
     pub bar: Option<BridgeUploadBar>,
-    pub source_bytes_total: u64,
     pub throughput_bps: u64,
     pub state: BridgeUploadFileState,
-    pub last_error: Option<String>,
 }
 
 /// A release's uploads, files in queue order. Mirrors `UploadReleaseGroup`.
@@ -435,8 +376,9 @@ pub struct BridgeOutboxSnapshot {
     /// Increases with each publication, so a subscriber that skipped values
     /// can still tell an enqueue it was told about has finished.
     pub revision: u64,
-    /// A group leaves only once its release is published.
+    /// A group leaves when coven has no uploads remaining for its release.
     pub upload_groups: Vec<BridgeUploadReleaseGroup>,
+    pub other_files: Vec<BridgeUploadFileOp>,
     /// `upload_groups` per release id.
     pub per_release: std::collections::HashMap<String, BridgeReleaseUploadProgress>,
     /// Across all uploads.
@@ -448,4 +390,18 @@ pub struct BridgeOutboxSnapshot {
     pub throughput_bps: u64,
     /// Seconds remaining at the current rate.
     pub eta_seconds: Option<u64>,
+}
+
+#[uniffi::export]
+pub fn bridge_upload_file_label_key(label: &BridgeUploadFileLabel) -> Option<String> {
+    Some(
+        match label {
+            BridgeUploadFileLabel::Filename { .. } => return None,
+            BridgeUploadFileLabel::Cover => "core.import.role.cover",
+            BridgeUploadFileLabel::ArtistImage => "core.outbox.file.artist_image",
+            BridgeUploadFileLabel::Avatar => "core.outbox.file.avatar",
+            BridgeUploadFileLabel::DeletedReleaseFile => "core.outbox.file.deleted_release",
+        }
+        .to_string(),
+    )
 }

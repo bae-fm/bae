@@ -42,10 +42,9 @@ pub struct BridgeLibraryBrowseSection {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeLiveQueryCause {
-    Initial,
-    RequestChanged,
-    DatabaseChanged,
-    RequestAndDatabaseChanged,
+    Request,
+    Write,
+    RequestAndWrite,
 }
 
 callbacks! {
@@ -56,7 +55,7 @@ callbacks! {
     CastDevicesCallback: on_value(devices: Vec<super::BridgeCastDevice>);
     ConfigCallback: on_value(config: BridgeConfig);
     SyncStatusCallback: on_value(value: BridgeSyncStatusSnapshot);
-    EagerCacheFillStatusCallback: on_value(value: BridgeEagerCacheFillStatus);
+    EagerCacheFillStatusCallback: on_value(value: BridgeEagerCacheFillStatus) + on_error;
     PlaybackValuesCallback: on_value(value: BridgePlaybackValues) + on_error;
     DownloadCallback: on_value(value: BridgeDownloadSnapshot) + on_error;
     #[cfg(not(any(target_os = "ios", target_os = "android")))]

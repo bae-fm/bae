@@ -166,15 +166,15 @@ forward! { async this => {
 
     /// Move the releases to the cloud, pinned here as the stored import
     /// storage choice says.
-    fn make_releases_remote(release_ids: Vec<String>) -> BridgeMakeReleasesRemoteOutcome {
+    fn upload_releases(release_ids: Vec<String>) -> BridgeUploadReleasesOutcome {
         this.services
             .make_releases_remote(&release_ids)
             .await
-            .map(BridgeMakeReleasesRemoteOutcome::from_core)
+            .map(BridgeUploadReleasesOutcome::from_core)
             .map_err(BridgeError::from)
     }
 
-    fn make_release_local(release_id: String, new_path: String) -> () {
+    fn detach_release_audio(release_id: String, new_path: String) -> () {
         Ok(this.services.make_release_local(&release_id, &new_path).await?)
     }
 
@@ -182,7 +182,7 @@ forward! { async this => {
         Ok(this.services.delete_release(&release_id).await?)
     }
 
-    fn save_sync_config(config_data: BridgeSaveSyncConfig) -> () {
+    fn save_sync_config(config_data: BridgeSaveSyncConfig, device_name: String) -> crate::types::BridgeStorageSetup {
         use bae_core::sync::S3ConfigData;
         Ok(this
             .services
@@ -193,9 +193,9 @@ forward! { async this => {
                 key_prefix: config_data.key_prefix,
                 access_key: config_data.access_key,
                 secret_key: config_data.secret_key,
-                storage: crate::types::BridgeHomeStorage::into_core(config_data.storage),
-            })
-            .await?)
+                profile: config_data.profile.map(crate::types::BridgeS3Profile::into_core),
+            }, &device_name)
+            .await.map(crate::types::BridgeStorageSetup::from_core)?)
     }
 
     fn disconnect_cloud_provider() -> () {
@@ -212,19 +212,6 @@ forward! { async this => {
 
     fn generate_restore_code() -> String {
         Ok(this.services.generate_restore_code().await?)
-    }
-
-    /// The library's membership (devices, with this device flagged, and whether
-    /// the running device is an owner). Reads the membership chain from cloud
-    /// storage.
-    fn get_members() -> crate::types::BridgeMembership {
-        let membership = this.services.get_members().await?;
-        Ok(crate::types::BridgeMembership::from_core(membership))
-    }
-
-    /// Remove a device from the library and rotate the library key.
-    fn remove_member(public_key_hex: String) -> () {
-        Ok(this.services.remove_member(&public_key_hex).await?)
     }
 
     /// Enqueue releases to pin for offline. They join the in-memory serial

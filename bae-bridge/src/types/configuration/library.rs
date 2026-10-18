@@ -306,156 +306,71 @@ pub struct BridgePlaybackContext {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeSyncStatusSnapshot {
     pub error: Option<BridgeError>,
-    /// Whether reconnecting can retry this sync error.
-    pub can_reconnect: bool,
-    /// The durable sync operations waiting on a person. Each is shown with its
-    /// kind, description, and error, and retried by handing `id` back to
-    /// `AppHandle::retry_blocked_sync_operation`. Empty once a cycle completes
-    /// with nothing left waiting.
-    pub blocked: Vec<BridgeBlockedSyncOperation>,
-    pub last_sync_time: Option<i64>,
-    pub syncing: bool,
-    pub sync_ready: bool,
-    /// The one badge state the fields above come to, by bae-core's
-    /// precedence. Carried so a surface draws it without asking the bridge.
+    pub connected: bool,
+    pub running: bool,
+    pub pending: BridgePendingRecords,
     pub indicator: BridgeSyncIndicator,
-}
-
-/// One durable sync operation that stopped on a fault running it again cannot
-/// change, and runs again only when the person asks. Mirror of bae-core's
-/// `BlockedSyncOperation`.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct BridgeBlockedSyncOperation {
-    /// Names this operation to `AppHandle::retry_blocked_sync_operation`. Opaque
-    /// to the UI, which only carries it back.
-    pub id: String,
-    pub kind: BridgeBlockedSyncOperationKind,
-    /// Which operation this is, in coven's own vocabulary — the rows a write
-    /// touches, what a reclaim was going to delete. Technical detail shown
-    /// under the localized kind; never translated.
-    pub description: String,
-    /// coven's reason the operation stopped. Never translated.
-    pub error: String,
-}
-
-/// Which of coven's durable operation journals a blocked operation came from.
-/// The UI names the kind in its own locale; all three retry the same way.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeBlockedSyncOperationKind {
-    Write,
-    CircleOperation,
-    Reclaim,
-}
-
-mirror_enum! {
-    BridgeBlockedSyncOperationKind = bae_core::library::BlockedSyncOperationKind,
-    from_core: fn,
-    variants: { Write, CircleOperation, Reclaim },
-}
-
-mirror_struct! {
-    BridgeBlockedSyncOperation = bae_core::library::BlockedSyncOperation,
-    from_core: pub(crate) fn,
-    fields: {
-        id,
-        kind: (BridgeBlockedSyncOperationKind),
-        description,
-        error,
-    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeEagerCacheFillProgress {
-    pub files_done: u64,
+    pub files_completed: u64,
     pub files_total: u64,
-    pub bytes_done: u64,
+    pub bytes_cached: u64,
     pub bytes_total: u64,
 }
-
 mirror_struct! {
-    BridgeEagerCacheFillProgress = bae_core::library::EagerCacheFillProgress,
+    BridgeEagerCacheFillProgress = coven::PinProgress,
     from_core: fn,
-    fields: { files_done, files_total, bytes_done, bytes_total },
+    fields: { files_completed, files_total, bytes_cached, bytes_total },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeEagerCacheFillStatus {
-    NotRunning,
-    Scanning {
-        title_key: String,
-    },
+    Idle,
     Downloading {
-        title_key: String,
         progress: BridgeEagerCacheFillProgress,
-    },
-    Complete {
-        files_total: u64,
-        bytes_total: u64,
     },
     Cancelled {
-        title_key: String,
         progress: BridgeEagerCacheFillProgress,
-    },
-    Failed {
-        title_key: String,
-        progress: BridgeEagerCacheFillProgress,
-        error: String,
     },
 }
+mirror_enum! {
+    BridgeEagerCacheFillStatus = coven::EagerCacheFillStatus,
+    from_core: pub(crate) fn,
+    variants: { Idle, Downloading(progress: (BridgeEagerCacheFillProgress)), Cancelled(progress: (BridgeEagerCacheFillProgress)) },
+}
 
-impl BridgeEagerCacheFillStatus {
-    pub(crate) fn from_core(status: bae_core::library::EagerCacheFillStatus) -> Self {
-        use bae_core::library::EagerCacheFillStatus;
-        let title_key = bae_core::sync::eager_cache_fill_title_key(&status).map(str::to_string);
-        match status {
-            EagerCacheFillStatus::NotRunning => Self::NotRunning,
-            EagerCacheFillStatus::Scanning => Self::Scanning {
-                title_key: title_key.expect("visible eager cache status has a title key"),
-            },
-            EagerCacheFillStatus::Downloading(progress) => Self::Downloading {
-                title_key: title_key.expect("visible eager cache status has a title key"),
-                progress: BridgeEagerCacheFillProgress::from_core(progress),
-            },
-            EagerCacheFillStatus::Complete {
-                files_total,
-                bytes_total,
-            } => Self::Complete {
-                files_total,
-                bytes_total,
-            },
-            EagerCacheFillStatus::Cancelled(progress) => Self::Cancelled {
-                title_key: title_key.expect("visible eager cache status has a title key"),
-                progress: BridgeEagerCacheFillProgress::from_core(progress),
-            },
-            EagerCacheFillStatus::Failed { progress, error } => Self::Failed {
-                title_key: title_key.expect("visible eager cache status has a title key"),
-                progress: BridgeEagerCacheFillProgress::from_core(progress),
-                error: error.to_string(),
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeSyncIndicator {
+    Unconnected,
+    Loading,
+    Synced,
+    Waiting { items: u64 },
+}
+impl BridgeSyncIndicator {
+    pub(crate) fn from_core(value: bae_core::library::SyncIndicator) -> Self {
+        match value {
+            bae_core::library::SyncIndicator::Unconnected => Self::Unconnected,
+            bae_core::library::SyncIndicator::Loading => Self::Loading,
+            bae_core::library::SyncIndicator::Synced => Self::Synced,
+            bae_core::library::SyncIndicator::Waiting { items } => Self::Waiting {
+                items: items as u64,
             },
         }
     }
 }
 
-/// What the sync indicator shows, in precedence order. Mirror of bae-core's
-/// `SyncIndicator`. The UI maps a variant to a label and colour and renders the
-/// `Synced` time; it never decides which state wins — a stale timestamp used to
-/// read as "Synced" on a loop that never came up, on Windows, because each app
-/// wrote its own precedence.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeSyncIndicator {
-    Error,
-    Syncing,
-    Synced { last_sync_time: Option<i64> },
-    Idle,
-}
-
-mirror_enum! {
-    BridgeSyncIndicator = bae_core::library::SyncIndicator,
-    from_core: pub(crate) fn,
-    variants: {
-        Error,
-        Syncing,
-        Synced { last_sync_time },
-        Idle,
-    },
+/// Waiting uses the indicator's `items` as the catalog's `count` argument.
+#[uniffi::export]
+pub fn bridge_sync_indicator_key(indicator: &BridgeSyncIndicator) -> Option<String> {
+    Some(
+        match indicator {
+            BridgeSyncIndicator::Unconnected => return None,
+            BridgeSyncIndicator::Loading => "core.sync.loading",
+            BridgeSyncIndicator::Synced => "core.sync.synced",
+            BridgeSyncIndicator::Waiting { .. } => "core.sync.waiting",
+        }
+        .to_string(),
+    )
 }

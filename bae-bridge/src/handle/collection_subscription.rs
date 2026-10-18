@@ -183,15 +183,8 @@ impl crate::types::BridgeLibraryPageWindow {
     }
 }
 
-impl crate::types::BridgeLiveQueryCause {
-    pub(super) fn from_core(cause: coven::ReconfigurableLiveQueryCause) -> Self {
-        match cause {
-            coven::ReconfigurableLiveQueryCause::Initial => Self::Initial,
-            coven::ReconfigurableLiveQueryCause::RequestChanged => Self::RequestChanged,
-            coven::ReconfigurableLiveQueryCause::DatabaseChanged => Self::DatabaseChanged,
-            coven::ReconfigurableLiveQueryCause::RequestAndDatabaseChanged => {
-                Self::RequestAndDatabaseChanged
-            }
-        }
-    }
+mirror_enum! {
+    crate::types::BridgeLiveQueryCause = coven::LiveQueryCause,
+    from_core: pub(super) fn,
+    variants: { Request, Write, RequestAndWrite },
 }

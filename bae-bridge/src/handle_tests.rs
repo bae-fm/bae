@@ -146,36 +146,41 @@ pub(super) fn fresh_bridge_handle(test_name: &str) -> (Arc<super::AppHandle>, st
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
         Err(error) => panic!("remove stale test library dir: {error}"),
     }
-    let library_dir = coven::StoreDir::new(root.join("library"));
-    std::fs::create_dir_all(&*library_dir).expect("create test library dir");
-    bae_core::config::install_test_keyring();
-
-    let library_id = format!("test-{test_name}");
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .thread_stack_size(16 * 1024 * 1024)
+        .enable_all()
+        .build()
+        .expect("test runtime");
+    let installation = coven::TestCoven::new();
+    let app_dir = bae_core::config::AppDir::under_home(&root);
+    let handle = runtime
+        .block_on(
+            installation
+                .builder(coven::StoreLayout::new(root.join(".bae")))
+                .synced_tables(bae_core::sync::synced_tables())
+                .migrations(bae_core::migrations::all())
+                .create_store("Test Library"),
+        )
+        .expect("test store");
     let config = bae_core::config::Config::with_defaults(
-        library_id.clone(),
-        format!("device-{test_name}"),
-        library_dir.clone(),
-        "Test Library".to_string(),
+        handle.store_id(),
+        app_dir.registered_library(&handle.store_id().to_string()),
     );
-    // The library owner mints every id from this one provider.
-    let ids: coven::IdRef = Arc::new(coven::SequentialIdProvider::new(test_name));
-    let runtime = tokio::runtime::Runtime::new().expect("create test runtime");
-    let config_handle = Arc::new(bae_core::config::ConfigHandle::new(config));
-    let manager = bae_core::library::LibraryManager::open(
-        bae_core::config::AppDir::under_home(&root),
-        config_handle,
-        Arc::new(coven::SystemClock),
-        ids,
-        bae_core::diagnostics::Diagnostics::noop(),
-        runtime.handle().clone(),
-        None,
-        coven::OAuthClients::empty(),
-        bae_core::import::cover_art::RemoteImageCache::for_test(
-            bae_core::util::http::Http::for_test(),
-        ),
-        bae_core::providers::Providers::offline(),
-    )
-    .expect("open test library");
+    let manager = runtime
+        .block_on(bae_core::library::LibraryManager::open(
+            app_dir,
+            Arc::new(bae_core::config::ConfigHandle::new(config)),
+            Arc::new(coven::SystemClock),
+            Arc::new(coven::UuidIds),
+            bae_core::diagnostics::Diagnostics::noop(),
+            runtime.handle().clone(),
+            bae_core::library::LibraryOpening::Open(handle),
+            bae_core::import::cover_art::RemoteImageCache::for_test(
+                bae_core::util::http::Http::for_test(),
+            ),
+            bae_core::providers::Providers::offline(),
+        ))
+        .expect("open test library");
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     let services = runtime
         .block_on(bae_core::library::AppServices::for_test(manager))
@@ -204,7 +209,7 @@ fn album_browse_subscription_pulls_count_before_any_windows() {
 
     assert_eq!(snapshot.total_count, 0);
     assert!(snapshot.windows.is_empty());
-    assert_eq!(snapshot.cause, crate::types::BridgeLiveQueryCause::Initial);
+    assert_eq!(snapshot.cause, crate::types::BridgeLiveQueryCause::Request);
     assert_eq!(snapshot.request_revision, 0);
 
     subscription
@@ -217,10 +222,7 @@ fn album_browse_subscription_pulls_count_before_any_windows() {
         .runtime
         .block_on(subscription.clone().next())
         .expect("requested album browse snapshot");
-    assert_eq!(
-        requested.cause,
-        crate::types::BridgeLiveQueryCause::RequestChanged
-    );
+    assert_eq!(requested.cause, crate::types::BridgeLiveQueryCause::Request);
     assert_eq!(requested.request_revision, 1);
     assert_eq!(requested.windows.len(), 1);
     assert_eq!(requested.windows[0].window.offset, 0);
@@ -273,16 +275,20 @@ fn save_sync_config_survives_the_uniffi_worker_stack() {
             .stack_size(544 * 1024)
             .spawn(move || {
                 caller_runtime
-                    .block_on(handle.save_sync_config(crate::types::BridgeSaveSyncConfig {
-                        bucket: "bucket".to_string(),
-                        region: "us-east-1".to_string(),
-                        endpoint: Some("http://127.0.0.1:1".to_string()),
-                        key_prefix: None,
-                        access_key: "access-key".to_string(),
-                        secret_key: "secret-key".to_string(),
-                        storage: crate::types::BridgeHomeStorage::Opaque,
-                    }))
-                    .expect_err("an unreachable endpoint must fail the probe");
+                    .block_on(handle.save_sync_config(
+                        crate::types::BridgeSaveSyncConfig {
+                            bucket: "bucket".to_string(),
+                            region: "us-east-1".to_string(),
+                            endpoint: Some("http://127.0.0.1:1".to_string()),
+                            key_prefix: None,
+                            access_key: "access-key".to_string(),
+                            secret_key: "secret-key".to_string(),
+                            profile: None,
+                        },
+                        "Test device".into(),
+                    ))
+                    .err()
+                    .expect("an unreachable endpoint must fail the probe");
             })
             .expect("start UniFFI-sized worker")
             .join()
@@ -372,140 +378,73 @@ fn extracted_signals_cross_with_their_key() {
     assert_eq!(catalogs, vec!["CAT-1".to_string()]);
 }
 
-/// The per-file converter keeps source size separate from the active phase's
-/// own bar and preserves every durable phase.
-#[test]
-fn upload_file_op_flattens_state_into_fields() {
-    use crate::types::{BridgeUploadBar, BridgeUploadFileState, BridgeUploadPhase};
-    use bae_core::library::{ByteProgress, UploadFileOp, UploadState};
-
-    let convert = |state: UploadState| {
-        crate::types::BridgeUploadFileOp::from_core(UploadFileOp {
-            file_id: "file-1".into(),
-            label: bae_core::library::UploadFileLabel::Filename("01 Track Title.flac".into()),
-            source_bytes_total: 1000,
-            throughput_bps: 250,
-            state,
-        })
+#[tokio::test]
+async fn upload_file_op_preserves_object_and_row_identity() {
+    let directory = tempfile::tempdir().unwrap();
+    let handle=coven::TestCoven::new().builder(coven::StoreLayout::new(directory.path().into()))
+        .synced_tables(vec![coven::SyncedTable::new("release_files",coven::RowIdentity::SharedKey)
+            .carries_files(coven::FileDecl::new("release_files",1024,coven::Provenance::AppProvided,coven::CacheFill::CacheLazy))])
+        .migrations(vec![coven::Migration::addition(1,"file fixture","CREATE TABLE release_files(id TEXT PRIMARY KEY NOT NULL,size INTEGER,hash BLOB,location TEXT);")])
+        .create_store("Upload Test").await.unwrap();
+    handle
+        .write_with_files(
+            |batch| {
+                batch.put_file("release_files", "row", vec![7; 100]);
+                Ok(())
+            },
+            |sql| {
+                sql.execute("INSERT INTO release_files(id) VALUES('row')", [])?;
+                Ok(())
+            },
+        )
+        .await
+        .unwrap();
+    let mut upload = handle.uploads().await.unwrap().files.pop().unwrap();
+    let id = upload.file.id().to_string();
+    upload.phase = coven::UploadPhase::Uploading {
+        bytes_confirmed: 40,
+        bytes_total: 116,
     };
-
-    let queued = convert(UploadState::Queued);
-    assert_eq!(
-        queued.label,
-        crate::types::BridgeUploadFileLabel::Filename {
-            name: "01 Track Title.flac".into()
-        }
-    );
-    assert_eq!(queued.state, BridgeUploadFileState::Queued);
-    assert_eq!((queued.bar, queued.last_error), (None, None));
-
-    let preparing = convert(UploadState::Preparing(
-        ByteProgress::new(400, 1000).unwrap(),
-    ));
-    assert_eq!(preparing.state, BridgeUploadFileState::Preparing);
-    assert_eq!(
-        preparing.bar,
-        Some(BridgeUploadBar {
-            phase: BridgeUploadPhase::Preparing,
-            bytes_done: 400,
-            bytes_total: 1000,
-        })
-    );
-
-    let prepared = convert(UploadState::Prepared { bytes_total: 1016 });
-    assert_eq!(prepared.state, BridgeUploadFileState::Prepared);
-    assert_eq!(prepared.bar, None);
-
-    let uploading = convert(UploadState::Uploading(
-        ByteProgress::new(420, 1016).unwrap(),
-    ));
-    assert_eq!(uploading.state, BridgeUploadFileState::Uploading);
-    assert_eq!(uploading.throughput_bps, 250);
-    assert_eq!(
-        uploading.bar,
-        Some(BridgeUploadBar {
-            phase: BridgeUploadPhase::Uploading,
-            bytes_done: 420,
-            bytes_total: 1016,
-        })
-    );
-
-    let failed = convert(UploadState::RetryingUpload {
-        last_error: "cloud write failed".into(),
-        bytes_total: 1016,
+    let bridge = crate::types::BridgeUploadFileOp::from_core(bae_core::library::UploadFileOp {
+        upload,
+        pending: None,
+        label: bae_core::library::UploadFileLabel::Filename("Track.flac".into()),
+        throughput_bps: 20,
     });
-    assert_eq!(failed.state, BridgeUploadFileState::Retrying);
-    assert_eq!(failed.last_error.as_deref(), Some("cloud write failed"));
-    assert_eq!(failed.bar, None);
-
-    let uploaded = convert(UploadState::Uploaded { bytes_total: 1016 });
-    assert_eq!(uploaded.state, BridgeUploadFileState::Uploaded);
-    assert_eq!(uploaded.bar, None);
-    assert_eq!(uploaded.source_bytes_total, 1000);
-}
-
-/// The aggregate converter carries core's phase-scoped bar across unchanged.
-#[test]
-fn upload_progress_carries_the_phase_scoped_bar() {
-    use crate::types::{BridgeUploadBar, BridgeUploadPhase};
-
-    let preparing =
-        crate::types::BridgeUploadProgress::from_core(bae_core::library::UploadProgress {
-            queued: 1,
-            uploading: 1,
-            preparation_bytes_done: 1000,
-            preparation_bytes_total: 1100,
-            upload_bytes_done: 250,
-            upload_bytes_total: 1016,
-            upload_bytes_total_complete: false,
-            ..Default::default()
-        });
+    assert_eq!(bridge.file_id, id);
+    assert!(bridge.release_file_key.is_some());
+    assert_eq!(bridge.state, crate::types::BridgeUploadFileState::Uploading);
     assert_eq!(
-        preparing.bar,
-        Some(BridgeUploadBar {
-            phase: BridgeUploadPhase::Preparing,
-            bytes_done: 1000,
-            bytes_total: 1100,
+        bridge.bar,
+        Some(crate::types::BridgeUploadBar {
+            bytes_done: 40,
+            bytes_total: 116
         })
     );
-
-    let uploading =
-        crate::types::BridgeUploadProgress::from_core(bae_core::library::UploadProgress {
-            uploading: 1,
-            prepared: 1,
-            preparation_bytes_done: 1100,
-            preparation_bytes_total: 1100,
-            upload_bytes_done: 250,
-            upload_bytes_total: 1132,
-            upload_bytes_total_complete: true,
-            ..Default::default()
-        });
-    assert_eq!(
-        uploading.bar,
-        Some(BridgeUploadBar {
-            phase: BridgeUploadPhase::Uploading,
-            bytes_done: 250,
-            bytes_total: 1132,
-        })
-    );
+    handle.close().await.unwrap();
 }
 
 #[test]
-fn upload_progress_preserves_core_cancellation_availability() {
-    let queued = crate::types::BridgeUploadProgress::from_core(bae_core::library::UploadProgress {
+fn upload_progress_preserves_the_provider_byte_counts() {
+    let value = crate::types::BridgeUploadProgress::from_core(bae_core::library::UploadProgress {
         queued: 1,
-        retrying: 2,
-        ..Default::default()
+        uploading: 2,
+        upload_bytes_done: 250,
+        upload_bytes_total: 1132,
     });
-    assert!(queued.can_cancel);
-    assert_eq!(queued.retrying, 2);
-
-    let publishing =
-        crate::types::BridgeUploadProgress::from_core(bae_core::library::UploadProgress {
-            publishing: 1,
-            ..Default::default()
-        });
-    assert!(!publishing.can_cancel);
+    assert_eq!(value.queued, 1);
+    assert_eq!(value.uploading, 2);
+    assert_eq!(
+        value.bar,
+        Some(crate::types::BridgeUploadBar {
+            bytes_done: 250,
+            bytes_total: 1132
+        })
+    );
+    assert_eq!(
+        value.activity,
+        Some(crate::types::BridgeUploadActivity::Uploading)
+    );
 }
 
 #[test]
@@ -667,15 +606,16 @@ fn a_failed_sync_status_crosses_with_its_fault() {
                  has an unresolved foreign-key dependency";
     let snapshot = bae_core::library::SyncStatusSnapshot {
         error: Some(bae_core::ui::UiError::internal(fault)),
-        blocked: Vec::new(),
-        last_sync_time: None,
-        syncing: false,
-        sync_ready: false,
+        status: coven::SyncStatus::Disconnected,
+        pending: None,
     };
 
     let bridge = crate::types::BridgeSyncStatusSnapshot::from_core(snapshot);
 
-    assert_eq!(bridge.indicator, crate::types::BridgeSyncIndicator::Error);
+    assert_eq!(
+        bridge.indicator,
+        crate::types::BridgeSyncIndicator::Unconnected
+    );
     let Some(crate::types::BridgeError::Diagnostic { category, detail }) = bridge.error else {
         panic!("a recorded sync failure crosses as a diagnostic");
     };
@@ -691,22 +631,17 @@ fn a_failed_sync_status_crosses_with_its_fault() {
 fn a_healthy_sync_status_crosses_without_an_error() {
     let snapshot = bae_core::library::SyncStatusSnapshot {
         error: None,
-        blocked: Vec::new(),
-        last_sync_time: Some(1_700_000_000_000),
-        syncing: false,
-        sync_ready: true,
+        status: coven::SyncStatus::Synced {
+            finished_at: std::time::UNIX_EPOCH,
+        },
+        pending: Some(Ok(Vec::new())),
     };
 
     let bridge = crate::types::BridgeSyncStatusSnapshot::from_core(snapshot);
 
     assert!(bridge.error.is_none());
-    assert!(bridge.sync_ready);
-    assert_eq!(
-        bridge.indicator,
-        crate::types::BridgeSyncIndicator::Synced {
-            last_sync_time: Some(1_700_000_000_000)
-        }
-    );
+    assert!(bridge.running);
+    assert_eq!(bridge.indicator, crate::types::BridgeSyncIndicator::Synced);
 }
 
 /// The runtime stream end to end: a claim crosses as a key in flight, its

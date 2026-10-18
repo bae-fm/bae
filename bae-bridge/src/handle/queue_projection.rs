@@ -10,64 +10,44 @@ mirror_struct! {
 }
 
 impl crate::types::BridgeUploadFileOp {
-    /// Flatten core's per-file `UploadState` into `state` + `bar` +
-    /// `last_error`, so the UI reads plain fields instead of switching on
-    /// associated data.
-    pub(super) fn from_core(f: bae_core::library::UploadFileOp) -> Self {
-        use bae_core::library::UploadState;
+    pub(super) fn from_core(file: bae_core::library::UploadFileOp) -> Self {
+        let bar = file.bar().map(crate::types::BridgeUploadBar::from_core);
+        let release_file_key = file
+            .release_file_key()
+            .cloned()
+            .map(crate::types::BridgeRowKey::from_core);
         let bae_core::library::UploadFileOp {
-            file_id,
+            upload,
+            pending,
             label,
-            source_bytes_total,
             throughput_bps,
-            state,
-        } = f;
-        let bar = state.bar().map(crate::types::BridgeUploadBar::from_core);
-        let (state, last_error) = match state {
-            UploadState::Queued => (crate::types::BridgeUploadFileState::Queued, None),
-            UploadState::Preparing(_) => (crate::types::BridgeUploadFileState::Preparing, None),
-            UploadState::Prepared { .. } => (crate::types::BridgeUploadFileState::Prepared, None),
-            UploadState::Uploading(_) => (crate::types::BridgeUploadFileState::Uploading, None),
-            UploadState::RetryingPreparation { last_error }
-            | UploadState::RetryingUpload { last_error, .. }
-            | UploadState::RetryingPublication { last_error, .. } => (
-                crate::types::BridgeUploadFileState::Retrying,
-                Some(last_error),
-            ),
-            UploadState::Uploaded { .. } => (crate::types::BridgeUploadFileState::Uploaded, None),
-        };
+        } = file;
         Self {
-            file_id,
+            pending: pending.map(crate::BridgePendingRecord::from_core),
+            file_id: upload.file.id().to_string(),
+            release_file_key,
             label: crate::types::BridgeUploadFileLabel::from_core(label),
-            bar,
-            source_bytes_total,
             throughput_bps,
-            state,
-            last_error,
+            bar,
+            state: match upload.phase {
+                coven::UploadPhase::Waiting => crate::types::BridgeUploadFileState::Waiting,
+                coven::UploadPhase::Uploading { .. } => {
+                    crate::types::BridgeUploadFileState::Uploading
+                }
+            },
         }
     }
 }
-
 mirror_struct! {
     crate::types::BridgeUploadBar = bae_core::library::UploadBar,
     from_core: fn,
-    fields: {
-        phase: (crate::types::BridgeUploadPhase),
-        bytes_done,
-        bytes_total,
-    },
-}
-
-mirror_enum! {
-    crate::types::BridgeUploadPhase = bae_core::library::UploadPhase,
-    from_core: fn,
-    variants: { Preparing, Uploading },
+    fields: { bytes_done, bytes_total },
 }
 
 mirror_enum! {
     crate::types::BridgeUploadFileLabel = bae_core::library::UploadFileLabel,
     from_core: fn,
-    variants: { Filename(name), Cover, ArtistImage, Unwinding },
+    variants: { Filename(name), Cover, ArtistImage, Avatar, DeletedReleaseFile },
 }
 
 impl crate::types::BridgeOutboxSnapshot {
@@ -97,6 +77,7 @@ impl crate::types::BridgeOutboxSnapshot {
         let bae_core::library::OutboxSnapshot {
             revision,
             upload_groups,
+            other_files,
             total,
             pause_state,
             throughput_bps,
@@ -110,6 +91,10 @@ impl crate::types::BridgeOutboxSnapshot {
                 .map(crate::types::BridgeUploadReleaseGroup::from_core)
                 .collect(),
             per_release,
+            other_files: other_files
+                .into_iter()
+                .map(crate::types::BridgeUploadFileOp::from_core)
+                .collect(),
             total: crate::types::BridgeUploadProgress::from_core(total),
             summary_parts,
             pause_state: crate::types::BridgeOutboxPauseState::from_core(pause_state),
@@ -126,76 +111,29 @@ mirror_enum! {
 }
 
 impl crate::types::BridgeUploadProgress {
-    pub(super) fn from_core(p: bae_core::library::UploadProgress) -> Self {
-        // Derived fields borrow `&p`; compute them before destructuring `p`.
-        let activity = p
+    pub(super) fn from_core(progress: bae_core::library::UploadProgress) -> Self {
+        let activity = progress
             .activity()
             .map(crate::types::BridgeUploadActivity::from_core);
-        let can_cancel = p.can_cancel();
-        let bar = p.bar().map(crate::types::BridgeUploadBar::from_core);
+        let bar = progress.bar().map(crate::types::BridgeUploadBar::from_core);
         let bae_core::library::UploadProgress {
             queued,
-            preparing,
-            prepared,
             uploading,
-            retrying,
-            uploaded,
-            publishing,
-            cancelling,
-            preparation_bytes_done: _,
-            preparation_bytes_total: _,
             upload_bytes_done: _,
             upload_bytes_total: _,
-            // The phase-scoped `bar` is what the UI draws and labels; the raw
-            // per-phase byte sums it derives from stay in core.
-            upload_bytes_total_complete: _,
-            issue,
-        } = p;
-        crate::types::BridgeUploadProgress {
+        } = progress;
+        Self {
             queued,
-            preparing,
-            prepared,
             uploading,
-            retrying,
-            uploaded,
-            publishing,
-            cancelling,
             bar,
             activity,
-            can_cancel,
-            issue: issue.map(crate::types::BridgeUploadIssue::from_core),
         }
     }
 }
-
-impl crate::types::BridgeUploadIssue {
-    fn from_core(issue: bae_core::library::UploadIssue) -> Self {
-        match issue {
-            bae_core::library::UploadIssue::SourceUnavailable { paths } => {
-                Self::SourceUnavailable {
-                    paths: paths
-                        .into_iter()
-                        .map(|path| path.to_string_lossy().into_owned())
-                        .collect(),
-                }
-            }
-        }
-    }
-}
-
 mirror_enum! {
     crate::types::BridgeUploadActivity = bae_core::library::UploadActivity,
     from_core: pub(super) fn,
-    variants: {
-        Cancelling,
-        Publishing,
-        Uploading,
-        Preparing,
-        Retrying,
-        Prepared,
-        Queued,
-        Uploaded,
-    },
+    variants: { Uploading, Queued },
 }
 
 mirror_struct! {
@@ -424,29 +362,21 @@ mirror_struct! {
 
 impl crate::types::BridgeSyncStatusSnapshot {
     pub(super) fn from_core(snapshot: bae_core::library::SyncStatusSnapshot) -> Self {
-        let can_reconnect = snapshot
-            .error
-            .as_ref()
-            .is_some_and(bae_core::ui::UiError::can_reconnect_sync);
         let indicator = crate::types::BridgeSyncIndicator::from_core(snapshot.indicator());
+        let error = snapshot.failure();
+        let connected = snapshot.connected();
+        let running = snapshot.running();
         let bae_core::library::SyncStatusSnapshot {
-            error,
-            blocked,
-            last_sync_time,
-            syncing,
-            sync_ready,
+            status: _,
+            pending,
+            error: _,
         } = snapshot;
-        crate::types::BridgeSyncStatusSnapshot {
+        Self {
             indicator,
+            connected,
+            running,
             error: error.map(crate::types::BridgeError::from_core),
-            can_reconnect,
-            blocked: blocked
-                .into_iter()
-                .map(crate::types::BridgeBlockedSyncOperation::from_core)
-                .collect(),
-            last_sync_time,
-            syncing,
-            sync_ready,
+            pending: crate::types::BridgePendingRecords::from_core(pending),
         }
     }
 }

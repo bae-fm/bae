@@ -161,7 +161,8 @@ pub fn pending_action(record: &coven::PendingRecord) -> PendingAction {
         R::NoStorage => PendingAction::Reconnect,
         R::Storage {
             provider,
-            failure: coven::StorageFailure::Authentication,
+            failure:
+                coven::StorageFailure::Authentication | coven::StorageFailure::AccessNotGranted { .. },
         } => PendingAction::SignIn(*provider),
         R::FileUnavailable(coven::FileMissingReason::Source(_)) => PendingAction::RestoreFile,
         R::UpdateRequired(_) | R::Refused(_) => PendingAction::UpdateApp,
@@ -222,6 +223,23 @@ mod tests {
             reason: coven::PendingReason::Storage {
                 provider: coven::CloudProvider::Dropbox,
                 failure: coven::StorageFailure::Authentication,
+            },
+        };
+        assert_eq!(
+            pending_action(&record),
+            PendingAction::SignIn(coven::CloudProvider::Dropbox)
+        );
+    }
+
+    #[test]
+    fn missing_provider_permission_offers_sign_in() {
+        let record = coven::PendingRecord {
+            subject: coven::PendingSubject::Connection,
+            reason: coven::PendingReason::Storage {
+                provider: coven::CloudProvider::Dropbox,
+                failure: coven::StorageFailure::AccessNotGranted {
+                    required: coven::OAuthAccess::Dropbox(coven::DropboxAccess::FullDropbox),
+                },
             },
         };
         assert_eq!(

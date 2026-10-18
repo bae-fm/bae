@@ -8,7 +8,7 @@ use super::{
 pub enum BridgeStorageInspectorFile {
     ReleaseFile {
         file: BridgeFile,
-        operation: Option<BridgeUploadFileOp>,
+        operations: Vec<BridgeUploadFileOp>,
     },
     Upload {
         operation: BridgeUploadFileOp,
@@ -107,7 +107,15 @@ pub fn bridge_storage_inspector_files(
                     group
                         .files
                         .into_iter()
-                        .map(|upload| (upload.file_id.clone(), upload))
+                        .map(|upload| {
+                            (
+                                upload
+                                    .release_file_key
+                                    .as_ref()
+                                    .map(|key| key.inner.clone()),
+                                upload,
+                            )
+                        })
                         .collect(),
                 )
             })
@@ -115,10 +123,10 @@ pub fn bridge_storage_inspector_files(
     )
     .into_iter()
     .map(|row| match row {
-        StorageInspectorFile::ReleaseFile { file, upload } => {
+        StorageInspectorFile::ReleaseFile { file, uploads } => {
             BridgeStorageInspectorFile::ReleaseFile {
                 file,
-                operation: upload,
+                operations: uploads,
             }
         }
         StorageInspectorFile::Upload { upload } => {
@@ -126,4 +134,15 @@ pub fn bridge_storage_inspector_files(
         }
     })
     .collect()
+}
+
+/// Opaque row identity, retained for the storage inspector's core projection.
+#[derive(Debug, uniffi::Object)]
+pub struct BridgeRowKey {
+    inner: coven::RowKey,
+}
+impl BridgeRowKey {
+    pub(crate) fn from_core(key: coven::RowKey) -> std::sync::Arc<Self> {
+        std::sync::Arc::new(Self { inner: key })
+    }
 }
