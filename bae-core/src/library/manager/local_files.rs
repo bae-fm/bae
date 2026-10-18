@@ -207,8 +207,9 @@ impl LibraryManager {
                         path.display()
                     )));
                 }
-                std::fs::File::open(path.parent().expect("validated destination parent"))?
-                    .sync_all()?;
+                crate::util::fs::sync_directory(
+                    path.parent().expect("validated destination parent"),
+                )?;
                 Ok(coven::UserFile {
                     path,
                     size: after.len(),
