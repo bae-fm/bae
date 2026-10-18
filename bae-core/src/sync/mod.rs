@@ -285,4 +285,132 @@ mod tests {
             &RowIdentity::SharedKey
         );
     }
+
+    /// Tables whose rows never leave this device. A table the schema creates
+    /// is either declared in `synced_tables()` or named here, so a new table
+    /// is a decision rather than a row that silently stays on one device.
+    const DEVICE_LOCAL_TABLES: &[&str] = &[
+        // This device's own copies: original paths of local releases, plays
+        // before a person exists, and what this device was playing.
+        "local_release_files",
+        "local_history",
+        "playback_state",
+        // Import: the folders this device watches, what scanning found in
+        // them, and each candidate's state while it is imported.
+        "watched_import_folders",
+        "release_grouping",
+        "release_grouping_member",
+        "skipped_import_candidates",
+        "folder_discovery",
+        "folder_scan_generation_sequence",
+        "folder_scan_roots",
+        "folder_scan_directory",
+        "scan_candidate",
+        "scan_candidate_file",
+        "scan_candidate_tag_snapshot",
+        "scan_candidate_file_tag",
+        "scan_candidate_part",
+        "scan_sidecar",
+        "scan_sidecar_file",
+        "scan_cue_sheet",
+        "scan_cue_track",
+        "scan_cue_index",
+        "scan_sheet_audio_file",
+        "candidate_selection",
+        "candidate_selection_revision",
+        "import_candidate_state",
+        "import_candidate_folder",
+        "import_candidate_edit",
+        "import_candidate_album_artist_assignment",
+        "import_candidate_track",
+        "import_candidate_track_artist_assignment",
+        "import_candidate_sheet_disc",
+        "import_candidate_sheet_reference",
+        "import_candidate_cover",
+        "import_candidate_cover_copy",
+        "import_candidate_remote_cover_asset",
+        "import_candidate_source_artist",
+        "import_candidate_artist_asset",
+        "import_candidate_asset_preparation",
+        "import_candidate_draft_provenance",
+        "import_candidate_applied_source",
+        "import_candidate_applied_length",
+        "import_candidate_release_link",
+        "import_candidate_release_link_partner",
+        "import_candidate_release_link_album",
+        "import_candidate_session",
+        "import_candidate_failure",
+        "import_candidate_artist_identity_conflict",
+        "import_candidate_signals",
+        "import_candidate_signal_value",
+        "import_candidate_text_line",
+        "import_candidate_lookup_choices",
+        "import_candidate_chosen_catalog",
+        "import_candidate_discounted_catalog",
+        "import_candidate_excluded_barcode",
+        "import_candidate_verdict",
+        "import_candidate_match",
+        "import_candidate_match_barcode",
+        "import_candidate_match_cover_copy",
+        "import_candidate_match_link",
+        "import_candidate_match_album_link",
+        "import_candidate_match_medium",
+        // Catalog releases this device fetched; any device can fetch them.
+        "source_release",
+        "source_release_album_artist",
+        "source_release_link",
+        "source_release_album_link",
+        "source_release_format",
+        "source_release_record",
+        "release_group_album_link",
+        "source_release_cover",
+        "source_release_cover_copy",
+        "source_release_archive_group",
+        "source_release_role",
+        "source_release_medium",
+        "source_release_entry",
+        "source_release_entry_credit",
+        "source_release_entry_role",
+        "source_release_work",
+        "source_release_work_composer",
+        "source_release_unfetched",
+    ];
+
+    #[test]
+    fn every_schema_table_is_synced_or_declared_device_local() {
+        let create = regex::Regex::new(r"(?m)^\s*CREATE TABLE (?:IF NOT EXISTS )?(\w+)").unwrap();
+        let schema: BTreeSet<&str> = create
+            .captures_iter(include_str!("../../migrations/001_initial.sql"))
+            .map(|captures| captures.get(1).unwrap().as_str())
+            .collect();
+        let tables = synced_tables();
+        let synced: BTreeSet<&str> = tables.iter().map(SyncedTable::name).collect();
+        let local: BTreeSet<&str> = DEVICE_LOCAL_TABLES.iter().copied().collect();
+        assert_eq!(
+            local.len(),
+            DEVICE_LOCAL_TABLES.len(),
+            "a device-local table is listed twice"
+        );
+        let undeclared: Vec<_> = schema
+            .iter()
+            .filter(|table| !synced.contains(*table) && !local.contains(*table))
+            .collect();
+        assert!(
+            undeclared.is_empty(),
+            "tables neither synced nor listed as device-local: {undeclared:?}"
+        );
+        let both: Vec<_> = synced.intersection(&local).collect();
+        assert!(
+            both.is_empty(),
+            "tables both synced and device-local: {both:?}"
+        );
+        let missing: Vec<_> = synced
+            .union(&local)
+            .filter(|table| !schema.contains(*table))
+            .collect();
+        assert!(
+            missing.is_empty(),
+            "declared tables the schema doesn't create: {missing:?}"
+        );
+    }
 }
