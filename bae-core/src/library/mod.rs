@@ -37,7 +37,9 @@ pub use library_status::{
     LibraryStatusSnapshot, LibraryStatusSubscription, LibraryStatusSubscriptionError,
 };
 pub use live_read::{LiveRead, LiveReadError};
-pub use local_lifecycle::{remove_local_library, LibraryRemovalError, RemovedLibrary};
+pub use local_lifecycle::{
+    finish_removals, remove_local_library, LibraryRemovalError, UnfinishedRemoval,
+};
 pub use manager::*;
 pub use outbox_snapshot::{
     OutboxPauseState, OutboxSnapshot, UploadActivity, UploadBar, UploadFileLabel, UploadFileOp,

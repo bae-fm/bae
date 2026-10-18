@@ -1,8 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// A library removal that failed, or that left this device's preferences for
-/// a library it already left, with Retry for the latter. Nothing while every
+/// A library removal that failed, or that left this device's files for a
+/// library it already left, with Retry for the latter. Nothing while every
 /// removal finished.
 struct LibraryRemovalNotice: View {
     @Environment(LibraryRemovals.self)

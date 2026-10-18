@@ -53,7 +53,11 @@
         /// Removals whose every attempt fails, for the welcome previews.
         @MainActor
         static func welcomeRemovals() -> LibraryRemovals {
-            LibraryRemovals { _, _ in throw StubError.notImplemented }
+            LibraryRemovals(
+                removeClosed: { _, _ in throw StubError.notImplemented },
+                findUnfinished: { nil },
+                finishUnfinished: {}
+            )
         }
     }
 #endif

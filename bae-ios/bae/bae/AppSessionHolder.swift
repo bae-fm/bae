@@ -72,8 +72,8 @@ final class AppSessionHolder {
     /// Restore, join and saved-code listing before a library is open.
     @ObservationIgnored
     let setup: LibrarySetup
-    /// The removal that left a library's store but couldn't delete its
-    /// preferences, with its retry.
+    /// Removals of libraries from this device, including one that left the
+    /// store but not this device's files for it.
     @ObservationIgnored
     let removals: LibraryRemovals
 

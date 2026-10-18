@@ -333,8 +333,8 @@ private struct WelcomeLoadErrorCallout: View {
     }
 }
 
-/// A removal that failed, or left this Mac's preferences for a library it
-/// already left, with Retry for the latter.
+/// A removal that failed, or left this Mac's files for a library it already
+/// left, with Retry for the latter.
 private struct RemovalErrorCallout: View {
     let error: DisplayError
     let removals: LibraryRemovals

@@ -56,6 +56,7 @@ struct ContentView: View {
             }
             started = true
             holder.start()
+            await holder.removals.loadUnfinished()
         }
         .onChange(of: scenePhase) { _, phase in
             // Every unlock a person is present for makes the scene active, so

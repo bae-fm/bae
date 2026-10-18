@@ -573,10 +573,13 @@ extension AppDelegate {
     }
 
     /// Discover this Mac's libraries and land on a screen, auto-opening one
-    /// only when `canOpenLibraries`.
+    /// only when `canOpenLibraries` and no earlier removal was left
+    /// unfinished: the welcome screen shows that removal with its Retry.
     func loadInitialState(canOpenLibraries: Bool) {
         let host = requiredApplicationServices.host
+        let removals = requiredApplicationServices.libraryRemovals
         Task {
+            await removals.loadUnfinished()
             do {
                 libraries = try await discoverInitialLibraries(
                     host: host,
@@ -594,8 +597,8 @@ extension AppDelegate {
             }
             // Core lists the active library first; one whose settings can't
             // be read shows on the welcome, saying why.
-            guard canOpenLibraries, let library = libraries.first,
-                library.isOpenable
+            guard canOpenLibraries, removals.unfinished == nil,
+                let library = libraries.first, library.isOpenable
             else {
                 screen = .welcome
                 return

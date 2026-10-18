@@ -160,7 +160,7 @@ private fun UnsentLine(text: String) {
     )
 }
 
-/** The library left its store, but deleting its preferences failed; finishing is retried here. */
+/** A library left its store, but deleting this device's files for it failed; finishing is retried here. */
 @Composable
 internal fun RemovalIncompleteScreen(
     message: String,

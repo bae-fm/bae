@@ -65,7 +65,11 @@ enum PreviewData {
     /// Removals whose every attempt fails, for previews.
     @MainActor
     static func removals() -> LibraryRemovals {
-        LibraryRemovals { _, _ in throw StubError.notImplemented }
+        LibraryRemovals(
+            removeClosed: { _, _ in throw StubError.notImplemented },
+            findUnfinished: { nil },
+            finishUnfinished: {}
+        )
     }
 
     // MARK: - Albums

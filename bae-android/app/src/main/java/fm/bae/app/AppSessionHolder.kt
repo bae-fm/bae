@@ -33,7 +33,6 @@ import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeHost
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeLibraryRemoval
-import uniffi.bae_bridge.BridgeRemovalRetry
 import uniffi.bae_bridge.BridgeScreen
 import uniffi.bae_bridge.BridgeStoreKeyState
 import uniffi.bae_bridge.BridgeTelemetryEvent
@@ -114,9 +113,11 @@ sealed interface AppScreen {
         val files: ULong,
     ) : AppScreen
 
-    /** The library left its store, but its preferences on this device remain. */
+    /**
+     * A library left its store, but this device's files for it remain, from
+     * this run or an earlier one; finishing deletes them.
+     */
     data class RemovalIncomplete(
-        val retry: BridgeRemovalRetry,
         val message: String,
     ) : AppScreen
 
@@ -164,18 +165,27 @@ object AppSessionHolder {
 
     /**
      * Publish a fresh listing and open the first library, or onboard when the
-     * device has none. A failed listing surfaces as [AppScreen.Failed] rather
-     * than an empty device, so the person isn't invited to restore a duplicate
-     * library on top of one that already exists.
+     * device has none. A removal an earlier run left unfinished shows first,
+     * as [AppScreen.RemovalIncomplete]. A failed listing surfaces as
+     * [AppScreen.Failed] rather than an empty device, so the person isn't
+     * invited to restore a duplicate library on top of one that already
+     * exists.
      */
     suspend fun openDiscoveredOrOnboard(
         context: Context,
         onScreen: (AppScreen) -> Unit,
     ) {
         onScreen(AppScreen.Loading)
+        val host = (context.applicationContext as BaeApp).host
         val remaining =
             try {
-                listLibraries((context.applicationContext as BaeApp).host)
+                val unfinished = host.unfinishedRemoval()
+                if (unfinished != null) {
+                    logger.error("a removed library's files remain", unfinished.error)
+                    onScreen(AppScreen.RemovalIncomplete(errorMessage(context, unfinished.error)))
+                    return
+                }
+                listLibraries(host)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: BridgeException) {
@@ -415,9 +425,9 @@ object AppSessionHolder {
                 openDiscoveredOrOnboard(context, onScreen)
             }
 
-            is BridgeLibraryRemoval.PreferencesRemain -> {
-                logger.error("library ${session.libraryId} left its store but its preferences remain", removal.error)
-                onScreen(AppScreen.RemovalIncomplete(removal.retry, errorMessage(context, removal.error)))
+            is BridgeLibraryRemoval.Unfinished -> {
+                logger.error("library ${session.libraryId} left its store but its files remain", removal.removal.error)
+                onScreen(AppScreen.RemovalIncomplete(errorMessage(context, removal.removal.error)))
             }
 
             is BridgeLibraryRemoval.Unsent -> {
@@ -426,20 +436,19 @@ object AppSessionHolder {
         }
     }
 
-    /** Finish deleting the preferences of a library that already left its store. */
+    /** Finish deleting the files of libraries that already left their stores. */
     suspend fun retryRemoval(
         context: Context,
-        retry: BridgeRemovalRetry,
         onScreen: (AppScreen) -> Unit,
     ) {
         onScreen(AppScreen.Loading)
         try {
-            retry.retry()
+            (context.applicationContext as BaeApp).host.finishRemovals()
         } catch (e: CancellationException) {
             throw e
         } catch (e: BridgeException) {
             logger.error("finishing the library removal failed", e)
-            onScreen(AppScreen.RemovalIncomplete(retry, errorMessage(context, e)))
+            onScreen(AppScreen.RemovalIncomplete(errorMessage(context, e)))
             return
         }
         openDiscoveredOrOnboard(context, onScreen)

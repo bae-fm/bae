@@ -4,10 +4,11 @@ import os.log
 private let logger = Logger.bae("LibraryRemovals")
 
 /// Removing libraries from this device, the question a removal asks when this
-/// device has changes it hasn't sent, and the one removal that left the store
-/// but couldn't delete this device's preferences for it. Process-wide, so a
-/// removal started in Settings and one started where libraries are listed
-/// finish in the same place.
+/// device has changes it hasn't sent, and a removal that left the store but
+/// not this device's files for it. Core reads that last one from disk, so it
+/// shows again after the app restarts. Process-wide, so a removal started in
+/// Settings and one started where libraries are listed finish in the same
+/// place.
 @MainActor
 @Observable
 public final class LibraryRemovals {
@@ -16,9 +17,8 @@ public final class LibraryRemovals {
     /// A removal this device's unsent changes stopped; nothing was removed
     /// until the person removes the library anyway or keeps it.
     public private(set) var unsent: UnsentRemoval?
-    /// A removal whose preferences remain, with why; its retry keeps what it
-    /// needs to finish.
-    public private(set) var unfinished: BridgeRemovalRetry?
+    /// A removal that left the store but not this device's files for it.
+    public private(set) var unfinished: BridgeUnfinishedRemoval?
     /// The last removal failure, or why `unfinished` stopped.
     public private(set) var error: DisplayError?
     public private(set) var isRetrying = false
@@ -28,20 +28,53 @@ public final class LibraryRemovals {
         @Sendable (String, BridgeIfUnsent) async throws ->
             BridgeLibraryRemoval
     @ObservationIgnored
+    private let findUnfinished:
+        @Sendable () async throws -> BridgeUnfinishedRemoval?
+    @ObservationIgnored
+    private let finishUnfinished: @Sendable () async throws -> Void
+    @ObservationIgnored
     private var task: Task<Void, Never>?
 
     public init(
         removeClosed:
             @escaping @Sendable (String, BridgeIfUnsent) async throws ->
-            BridgeLibraryRemoval
+            BridgeLibraryRemoval,
+        findUnfinished:
+            @escaping @Sendable () async throws -> BridgeUnfinishedRemoval?,
+        finishUnfinished: @escaping @Sendable () async throws -> Void
     ) {
         self.removeClosed = removeClosed
+        self.findUnfinished = findUnfinished
+        self.finishUnfinished = finishUnfinished
     }
 
     /// The production wiring over the process's host.
     public static func live(host: BridgeHost) -> LibraryRemovals {
-        LibraryRemovals { libraryId, unsent in
-            try await removeClosedLibrary(libraryId, unsent: unsent, host: host)
+        LibraryRemovals(
+            removeClosed: { libraryId, unsent in
+                try await removeClosedLibrary(
+                    libraryId,
+                    unsent: unsent,
+                    host: host
+                )
+            },
+            findUnfinished: { try await host.unfinishedRemoval() },
+            finishUnfinished: { try await host.finishRemovals() }
+        )
+    }
+
+    /// Show a removal an earlier run of the app left unfinished, if any.
+    public func loadUnfinished() async {
+        do {
+            if let removal = try await findUnfinished() {
+                show(removal)
+            }
+        }
+        catch {
+            logger.error(
+                "Couldn't read unfinished library removals: \(error.localizedDescription)"
+            )
+            self.error = DisplayError(error)
         }
     }
 
@@ -170,17 +203,16 @@ public final class LibraryRemovals {
         unsent.keep()
     }
 
-    /// Note how a removal ended: its preferences may remain to be deleted. A
-    /// removal stopped for unsent changes is asked about, not recorded.
+    /// Note how a removal ended: this device's files for it may remain to be
+    /// deleted. A removal stopped for unsent changes is asked about, not
+    /// recorded.
     public func record(_ removal: BridgeLibraryRemoval) {
         switch removal {
         case .removed:
             unfinished = nil
             error = nil
-        case .preferencesRemain(let retry, let failure):
-            logger.error("A removed library's preferences remain: \(failure)")
-            unfinished = retry
-            error = DisplayError(failure)
+        case .unfinished(let leftover):
+            show(leftover)
         case .unsent:
             preconditionFailure(
                 "a removal stopped for unsent changes is asked about"
@@ -188,11 +220,18 @@ public final class LibraryRemovals {
         }
     }
 
-    /// Delete the preferences an unfinished removal left.
+    private func show(_ removal: BridgeUnfinishedRemoval) {
+        logger.error("A removed library's files remain: \(removal.error)")
+        unfinished = removal
+        error = DisplayError(removal.error)
+    }
+
+    /// Delete the files unfinished removals left.
     public func retryUnfinished() {
-        guard let retry = unfinished else {
-            preconditionFailure("Retry shows only for an unfinished removal")
-        }
+        precondition(
+            unfinished != nil,
+            "Retry shows only for an unfinished removal"
+        )
         precondition(task == nil, "one library removal at a time")
         error = nil
         isRetrying = true
@@ -202,7 +241,7 @@ public final class LibraryRemovals {
                 task = nil
             }
             do {
-                try await retry.retry()
+                try await finishUnfinished()
                 unfinished = nil
             }
             catch {

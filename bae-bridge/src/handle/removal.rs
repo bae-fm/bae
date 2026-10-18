@@ -1,5 +1,4 @@
 use super::*;
-use std::sync::Arc;
 
 #[derive(Clone, Copy, uniffi::Enum)]
 pub enum BridgeIfUnsent {
@@ -16,54 +15,36 @@ pub enum BridgeLibraryRemoval {
         writes: u64,
         files: u64,
     },
-    PreferencesRemain {
-        retry: Arc<BridgeRemovalRetry>,
-        error: BridgeError,
+    /// The library left its store, but this device's files for it remain.
+    Unfinished {
+        removal: BridgeUnfinishedRemoval,
     },
 }
-#[derive(uniffi::Object)]
-pub struct BridgeRemovalRetry {
-    library: tokio::sync::Mutex<Option<bae_core::library::RemovedLibrary>>,
-    app: Arc<AppHandle>,
+
+/// A removal that left its store but not this device's files for it, with
+/// why. `BridgeHost::finish_removals` deletes them; until then
+/// `BridgeHost::unfinished_removal` reports it, across restarts.
+#[derive(Clone, uniffi::Record)]
+pub struct BridgeUnfinishedRemoval {
+    pub error: BridgeError,
 }
-#[uniffi::export(async_runtime = "tokio", cancellable)]
-impl BridgeRemovalRetry {
-    pub async fn retry(self: Arc<Self>) -> Result<(), BridgeError> {
-        crate::operation_runtime::run_to_completion(
-            self.app.runtime.clone(),
-            self.clone(),
-            "finish library removal",
-            move || async move {
-                let mut pending = self.library.lock().await;
-                let Some(library) = pending.take() else {
-                    return Ok(());
-                };
-                match self.app.services.finish_removed_library(library).await {
-                    Ok(()) => Ok(()),
-                    Err(error) => {
-                        let diagnostic = BridgeError::diagnostic(
-                            crate::BridgeErrorCategory::from_core(error.category()),
-                            &error,
-                        );
-                        if let bae_core::library::LibraryRemovalError::Preferences {
-                            library, ..
-                        } = error
-                        {
-                            *pending = Some(library);
-                        }
-                        Err(diagnostic)
-                    }
-                }
-            },
-        )
-        .await
+
+impl BridgeUnfinishedRemoval {
+    pub(crate) fn new(
+        category: bae_core::ui::UiErrorCategory,
+        why: &dyn std::fmt::Display,
+    ) -> Self {
+        Self {
+            error: BridgeError::diagnostic(crate::BridgeErrorCategory::from_core(category), why),
+        }
     }
 }
+
 #[uniffi::export(async_runtime = "tokio", cancellable)]
 impl AppHandle {
     /// Stop services and leave the store before deleting its local files.
     pub async fn remove_library(
-        self: Arc<Self>,
+        self: std::sync::Arc<Self>,
         unsent: BridgeIfUnsent,
     ) -> Result<BridgeLibraryRemoval, BridgeError> {
         crate::operation_runtime::run_to_completion(
@@ -77,33 +58,20 @@ impl AppHandle {
                     BridgeIfUnsent::Refuse => coven::IfUnsent::Refuse,
                     BridgeIfUnsent::Discard => coven::IfUnsent::Discard,
                 };
+                use bae_core::library::LibraryRemovalError as E;
                 match self.services.remove_library(unsent).await {
                     Ok(()) => Ok(BridgeLibraryRemoval::Removed),
-                    Err(bae_core::library::LibraryRemovalError::Unsent(work)) => {
-                        Ok(BridgeLibraryRemoval::Unsent {
-                            writes: work.writes,
-                            files: work.files,
-                        })
-                    }
-                    Err(error) => {
-                        let diagnostic = BridgeError::diagnostic(
-                            crate::BridgeErrorCategory::from_core(error.category()),
-                            &error,
-                        );
-                        match error {
-                            bae_core::library::LibraryRemovalError::Unsent(_)
-                            | bae_core::library::LibraryRemovalError::Store(_) => Err(diagnostic),
-                            bae_core::library::LibraryRemovalError::Preferences {
-                                library, ..
-                            } => Ok(BridgeLibraryRemoval::PreferencesRemain {
-                                retry: Arc::new(BridgeRemovalRetry {
-                                    library: tokio::sync::Mutex::new(Some(library)),
-                                    app: self.clone(),
-                                }),
-                                error: diagnostic,
-                            }),
-                        }
-                    }
+                    Err(E::Unsent(work)) => Ok(BridgeLibraryRemoval::Unsent {
+                        writes: work.writes,
+                        files: work.files,
+                    }),
+                    Err(error @ E::Unfinished(_)) => Ok(BridgeLibraryRemoval::Unfinished {
+                        removal: BridgeUnfinishedRemoval::new(error.category(), &error),
+                    }),
+                    Err(error @ E::Store(_)) => Err(BridgeError::diagnostic(
+                        crate::BridgeErrorCategory::from_core(error.category()),
+                        &error,
+                    )),
                 }
             },
         )
@@ -114,40 +82,52 @@ impl AppHandle {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Arc;
 
+    /// A removal that stops after leaving the store is reported, read back by
+    /// the host after the library is gone, and finished there.
+    #[cfg(unix)]
     #[test]
-    fn removal_retry_keeps_its_runtime_after_the_ui_releases_the_library() {
-        let root = tempfile::tempdir().unwrap();
+    fn an_unfinished_removal_is_reported_and_finished_by_the_host() {
+        use std::os::unix::fs::PermissionsExt;
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .worker_threads(2)
             .thread_stack_size(16 * 1024 * 1024)
             .enable_all()
             .build()
             .unwrap();
-        let (manager, _, storage) = runtime.block_on(bae_test_support::storage_library(
-            root.path(),
-            bae_core::providers::Providers::offline(),
-        ));
-        runtime.block_on(bae_test_support::connect_storage(&manager, &storage));
+        let (manager, root) = bae_test_support::setup_fresh_library(&runtime);
+        manager.get_config().save_preferences().unwrap();
         let services = runtime.block_on(AppServices::for_test(manager)).unwrap();
         let app = Arc::new(AppHandle::start(services, runtime).unwrap());
-        let pointer = bae_core::config::AppDir::under_home(root.path()).active_library_pointer();
-        std::fs::create_dir_all(&pointer).unwrap();
+        let host = crate::BridgeHost::new(
+            crate::BridgeDiagnostics::noop(),
+            crate::BridgeAppDir::new(root.path().to_str().unwrap().into()),
+        )
+        .unwrap();
+        let libraries = bae_core::config::AppDir::under_home(root.path()).libraries();
+        std::fs::set_permissions(&libraries, std::fs::Permissions::from_mode(0o555)).unwrap();
         let caller = tokio::runtime::Runtime::new().unwrap();
         let result = caller
             .block_on(app.clone().remove_library(BridgeIfUnsent::Discard))
             .unwrap();
-        let BridgeLibraryRemoval::PreferencesRemain { retry, .. } = result else {
-            panic!("the invalid preference pointer must be reported");
+        let BridgeLibraryRemoval::Unfinished { removal } = result else {
+            panic!("the directory left behind must be reported");
         };
+        assert!(
+            removal.error.to_string().contains("store was removed"),
+            "{}",
+            removal.error
+        );
         drop(app);
-        std::fs::remove_dir(&pointer).unwrap();
+
         caller.block_on(async {
-            tokio::time::timeout(std::time::Duration::from_secs(5), retry.clone().retry())
-                .await
-                .unwrap()
-                .unwrap();
-            retry.retry().await.unwrap();
+            assert!(host.clone().unfinished_removal().await.unwrap().is_some());
+            assert!(host.clone().finish_removals().await.is_err());
+            std::fs::set_permissions(&libraries, std::fs::Permissions::from_mode(0o755)).unwrap();
+            host.clone().finish_removals().await.unwrap();
+            assert!(host.clone().unfinished_removal().await.unwrap().is_none());
+            host.clone().finish_removals().await.unwrap();
         });
     }
 }

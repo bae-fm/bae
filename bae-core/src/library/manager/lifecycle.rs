@@ -30,9 +30,7 @@ impl LibraryManager {
         let id = self.database.store_id();
         self.tasks.close().await;
         self.database.delete_store(unsent).await?;
-        crate::library::RemovedLibrary::new(id)
-            .finish(&self.app_dir)
-            .await
+        crate::library::local_lifecycle::after_store_deleted(&self.app_dir, id).await
     }
 
     pub async fn forget_encryption_key(&self) -> Result<(), LibraryError> {
@@ -42,14 +40,5 @@ impl LibraryManager {
 
     pub fn store_key_state(&self) -> Result<coven::StoreKeyState, LibraryError> {
         Ok(self.database.store_key_state()?)
-    }
-}
-
-impl LibraryManager {
-    pub async fn finish_removed_library(
-        &self,
-        library: crate::library::RemovedLibrary,
-    ) -> Result<(), crate::library::LibraryRemovalError> {
-        library.finish(&self.app_dir).await
     }
 }

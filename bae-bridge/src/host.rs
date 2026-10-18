@@ -144,6 +144,44 @@ impl BridgeHost {
         .await
     }
 
+    /// A removal that left its store but not this device's files for it, read
+    /// from disk so it outlives the process that started it.
+    pub async fn unfinished_removal(
+        self: Arc<Self>,
+    ) -> Result<Option<crate::BridgeUnfinishedRemoval>, BridgeError> {
+        crate::operation_runtime::run(
+            self.runtime
+                .as_ref()
+                .expect("host runtime exists until drop")
+                .handle()
+                .clone(),
+            move || async move {
+                Ok(bae_core::library::UnfinishedRemoval::find(&self.app_dir)
+                    .await?
+                    .map(|removal| {
+                        crate::BridgeUnfinishedRemoval::new(removal.category(), &removal)
+                    }))
+            },
+        )
+        .await
+    }
+
+    /// Delete this device's files for every library whose store is gone.
+    /// Safe to retry after any failure.
+    pub async fn finish_removals(self: Arc<Self>) -> Result<(), BridgeError> {
+        crate::operation_runtime::run_to_completion(
+            self.runtime
+                .as_ref()
+                .expect("host runtime exists until drop")
+                .handle()
+                .clone(),
+            self.clone(),
+            "finish library removals",
+            move || async move { Ok(bae_core::library::finish_removals(&self.app_dir).await?) },
+        )
+        .await
+    }
+
     pub async fn create_library(
         self: Arc<Self>,
         name: Option<String>,

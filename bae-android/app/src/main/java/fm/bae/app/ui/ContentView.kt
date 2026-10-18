@@ -163,7 +163,7 @@ private fun AppScreenRouter(
         is AppScreen.RemovalIncomplete -> {
             RemovalIncompleteScreen(
                 message = current.message,
-                onRetry = { scope.launch { AppSessionHolder.retryRemoval(context, current.retry, onScreen) } },
+                onRetry = { scope.launch { AppSessionHolder.retryRemoval(context, onScreen) } },
             )
         }
 
