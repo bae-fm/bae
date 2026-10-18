@@ -12,12 +12,12 @@ public sealed class BridgeSmokeTests : IDisposable
     private readonly string _home = Directory.CreateTempSubdirectory("bae-avalonia-smoke-").FullName;
 
     [Fact]
-    public void AnEmptyHomeHasNoLibraries()
+    public async Task AnEmptyHomeHasNoLibraries()
     {
         var diagnostics = NativeBae.ConfigureDiagnostics(new BridgeDiagnosticsConfig.Disabled());
         var host = NativeBae.CreateHost(diagnostics, new BridgeAppDir(_home));
 
-        Assert.Equal(0, NativeBae.LibraryCount(host));
+        Assert.Equal(0, await NativeBae.LibraryCount(host));
     }
 
     public void Dispose() => Directory.Delete(_home, recursive: true);

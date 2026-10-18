@@ -17,23 +17,28 @@ internal sealed class MainWindow : Window
         Title = App.Edition;
         Width = 480;
         Height = 160;
-        Content = new TextBlock
+        var summary = new TextBlock
         {
-            Text = Summary(host),
+            Text = "Reading the libraries on this device…",
             Margin = new Thickness(24),
             TextWrapping = TextWrapping.Wrap,
         };
+        Content = summary;
+        // The listing runs on the host's runtime; the window shows it once the
+        // read completes. An exception the summary does not handle reaches the
+        // dispatcher's crash capture.
+        Opened += async (_, _) => summary.Text = await Summary(host);
     }
 
-    private static string Summary(BridgeHost host)
+    private static async Task<string> Summary(BridgeHost host)
     {
         try
         {
-            return $"{NativeBae.LibraryCount(host)} libraries on this device.";
+            return $"{await NativeBae.LibraryCount(host)} libraries on this device.";
         }
         catch (BridgeException exception)
         {
-            BaeDiagnostics.Logger.Error("Failed to discover libraries.", exception);
+            BaeDiagnostics.Logger.Error("Failed to list libraries.", exception);
             return $"Could not read the libraries on this device: {exception.Message}";
         }
     }

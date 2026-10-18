@@ -94,6 +94,7 @@ internal static class NativeBae
                 or BridgeCloudProvider.OneDrive);
 
     /// <summary>The number of libraries registered on this device, read by the
-    /// core from bae's directory.</summary>
-    internal static int LibraryCount(BridgeHost host) => host.DiscoverLibraries().Length;
+    /// core from bae's directory on the host's runtime.</summary>
+    internal static async Task<int> LibraryCount(BridgeHost host) =>
+        (await host.ListLibraries()).Length;
 }
