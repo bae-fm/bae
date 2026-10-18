@@ -273,4 +273,8 @@
     <string name="settings_rename_library">Преименуване</string>
     <string name="settings_library_name">Име на библиотеката</string>
     <string name="settings_library_switch">Превключване към друга библиотека на това устройство</string>
+    <string name="settings_history">История на слушането</string>
+    <string name="settings_history_private">Само аз</string>
+    <string name="settings_history_household">Домакинството</string>
+    <string name="settings_history_explanation">Кой вижда какво пускате. Промяната важи за пусканията отсега нататък; по-ранните запазват кой е можел да ги вижда.</string>
 </resources>

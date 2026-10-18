@@ -274,4 +274,8 @@
     <string name="settings_rename_library">Rinomina</string>
     <string name="settings_library_name">Nome della libreria</string>
     <string name="settings_library_switch">Passa a un’altra libreria su questo dispositivo</string>
+    <string name="settings_history">Cronologia di ascolto</string>
+    <string name="settings_history_private">Solo io</string>
+    <string name="settings_history_household">Famiglia</string>
+    <string name="settings_history_explanation">Chi vede cosa ascolti. Una modifica vale per gli ascolti da ora in poi; quelli precedenti restano visibili a chi poteva vederli.</string>
 </resources>

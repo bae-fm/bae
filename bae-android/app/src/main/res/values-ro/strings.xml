@@ -274,4 +274,8 @@
     <string name="settings_rename_library">Redenumește</string>
     <string name="settings_library_name">Numele bibliotecii</string>
     <string name="settings_library_switch">Comută la altă bibliotecă de pe acest dispozitiv</string>
+    <string name="settings_history">Istoric de ascultare</string>
+    <string name="settings_history_private">Doar eu</string>
+    <string name="settings_history_household">Gospodăria</string>
+    <string name="settings_history_explanation">Cine vede ce asculți. O schimbare se aplică redărilor de acum înainte; redările anterioare rămân vizibile pentru aceleași persoane.</string>
 </resources>

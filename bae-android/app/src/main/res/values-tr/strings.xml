@@ -273,4 +273,8 @@
     <string name="settings_rename_library">Yeniden adlandır</string>
     <string name="settings_library_name">Kitaplık adı</string>
     <string name="settings_library_switch">Bu cihazdaki başka bir kitaplığa geç</string>
+    <string name="settings_history">Dinleme geçmişi</string>
+    <string name="settings_history_private">Yalnızca ben</string>
+    <string name="settings_history_household">Hane</string>
+    <string name="settings_history_explanation">Çaldıklarınızı kimin gördüğü. Değişiklik bundan sonraki çalmalara uygulanır; önceki çalmaları görebilenler aynı kalır.</string>
 </resources>

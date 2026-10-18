@@ -274,4 +274,8 @@
     <string name="settings_rename_library">Renommer</string>
     <string name="settings_library_name">Nom de la bibliothèque</string>
     <string name="settings_library_switch">Passer à une autre bibliothèque de cet appareil</string>
+    <string name="settings_history">Historique d’écoute</string>
+    <string name="settings_history_private">Moi uniquement</string>
+    <string name="settings_history_household">Foyer</string>
+    <string name="settings_history_explanation">Qui voit ce que vous écoutez. Un changement s’applique aux écoutes à partir de maintenant ; les écoutes précédentes restent visibles par les mêmes personnes.</string>
 </resources>

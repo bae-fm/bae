@@ -272,4 +272,8 @@
     <string name="settings_rename_library">Omdøb</string>
     <string name="settings_library_name">Bibliotekets navn</string>
     <string name="settings_library_switch">Skift til et andet bibliotek på denne enhed</string>
+    <string name="settings_history">Lyttehistorik</string>
+    <string name="settings_history_private">Kun mig</string>
+    <string name="settings_history_household">Husstanden</string>
+    <string name="settings_history_explanation">Hvem der kan se, hvad du afspiller. En ændring gælder afspilninger fra nu af; tidligere afspilninger beholder, hvem der kunne se dem.</string>
 </resources>

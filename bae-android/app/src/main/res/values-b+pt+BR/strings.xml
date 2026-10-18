@@ -274,4 +274,8 @@
     <string name="settings_rename_library">Renomear</string>
     <string name="settings_library_name">Nome da biblioteca</string>
     <string name="settings_library_switch">Mudar para outra biblioteca neste dispositivo</string>
+    <string name="settings_history">Histórico de reprodução</string>
+    <string name="settings_history_private">Só eu</string>
+    <string name="settings_history_household">Casa</string>
+    <string name="settings_history_explanation">Quem vê o que você ouve. Uma mudança vale para as reproduções daqui em diante; as anteriores mantêm quem podia vê-las.</string>
 </resources>

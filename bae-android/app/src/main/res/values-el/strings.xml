@@ -272,4 +272,8 @@
     <string name="settings_rename_library">Μετονομασία</string>
     <string name="settings_library_name">Όνομα βιβλιοθήκης</string>
     <string name="settings_library_switch">Εναλλαγή σε άλλη βιβλιοθήκη σε αυτή τη συσκευή</string>
+    <string name="settings_history">Ιστορικό ακρόασης</string>
+    <string name="settings_history_private">Μόνο εγώ</string>
+    <string name="settings_history_household">Νοικοκυριό</string>
+    <string name="settings_history_explanation">Ποιος βλέπει τι παίζετε. Μια αλλαγή ισχύει για τις αναπαραγωγές από εδώ και πέρα· οι προηγούμενες κρατούν όσους μπορούσαν να τις δουν.</string>
 </resources>

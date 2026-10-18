@@ -271,4 +271,8 @@
     <string name="settings_rename_library">重命名</string>
     <string name="settings_library_name">库名称</string>
     <string name="settings_library_switch">切换到此设备上的另一个库</string>
+    <string name="settings_history">收听记录</string>
+    <string name="settings_history_private">仅自己</string>
+    <string name="settings_history_household">家人</string>
+    <string name="settings_history_explanation">谁能看到你播放的内容。更改只对今后的播放生效；之前的播放仍保持原来的可见范围。</string>
 </resources>

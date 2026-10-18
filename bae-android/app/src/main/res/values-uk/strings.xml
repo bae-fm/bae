@@ -277,4 +277,8 @@
     <string name="settings_rename_library">Перейменувати</string>
     <string name="settings_library_name">Назва бібліотеки</string>
     <string name="settings_library_switch">Перейти до іншої бібліотеки на цьому пристрої</string>
+    <string name="settings_history">Історія прослуховування</string>
+    <string name="settings_history_private">Лише я</string>
+    <string name="settings_history_household">Домівка</string>
+    <string name="settings_history_explanation">Хто бачить, що ви слухаєте. Зміна діє для прослуховувань відтепер; попередні лишаються видимими для тих самих людей.</string>
 </resources>

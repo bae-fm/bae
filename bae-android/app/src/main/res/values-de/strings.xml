@@ -273,4 +273,8 @@
     <string name="settings_rename_library">Umbenennen</string>
     <string name="settings_library_name">Name der Bibliothek</string>
     <string name="settings_library_switch">Zu einer anderen Bibliothek auf diesem Gerät wechseln</string>
+    <string name="settings_history">Hörverlauf</string>
+    <string name="settings_history_private">Nur ich</string>
+    <string name="settings_history_household">Haushalt</string>
+    <string name="settings_history_explanation">Wer sieht, was du abspielst. Eine Änderung gilt für Wiedergaben ab jetzt; frühere Wiedergaben behalten, wer sie sehen konnte.</string>
 </resources>

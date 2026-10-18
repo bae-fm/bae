@@ -277,4 +277,8 @@
     <string name="settings_rename_library">Přejmenovat</string>
     <string name="settings_library_name">Název knihovny</string>
     <string name="settings_library_switch">Přepnout na jinou knihovnu v tomto zařízení</string>
+    <string name="settings_history">Historie poslechu</string>
+    <string name="settings_history_private">Jen já</string>
+    <string name="settings_history_household">Domácnost</string>
+    <string name="settings_history_explanation">Kdo vidí, co přehráváte. Změna platí pro přehrávání od teď; dřívější přehrávání si ponechá, kdo je mohl vidět.</string>
 </resources>

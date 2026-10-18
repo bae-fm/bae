@@ -272,4 +272,8 @@
     <string name="settings_rename_library">Byt namn</string>
     <string name="settings_library_name">Bibliotekets namn</string>
     <string name="settings_library_switch">Byt till ett annat bibliotek på den här enheten</string>
+    <string name="settings_history">Lyssningshistorik</string>
+    <string name="settings_history_private">Bara jag</string>
+    <string name="settings_history_household">Hushållet</string>
+    <string name="settings_history_explanation">Vem som ser vad du spelar. En ändring gäller uppspelningar från och med nu; tidigare uppspelningar behåller vem som kunde se dem.</string>
 </resources>

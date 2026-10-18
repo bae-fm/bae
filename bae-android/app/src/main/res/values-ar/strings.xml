@@ -281,4 +281,8 @@
     <string name="settings_rename_library">إعادة التسمية</string>
     <string name="settings_library_name">اسم المكتبة</string>
     <string name="settings_library_switch">التبديل إلى مكتبة أخرى على هذا الجهاز</string>
+    <string name="settings_history">سجل الاستماع</string>
+    <string name="settings_history_private">أنا فقط</string>
+    <string name="settings_history_household">أهل البيت</string>
+    <string name="settings_history_explanation">من يرى ما تشغّله. يسري التغيير على ما تشغّله من الآن فصاعدًا؛ وتحتفظ المرات السابقة بمن كان يستطيع رؤيتها.</string>
 </resources>

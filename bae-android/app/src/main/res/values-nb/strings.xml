@@ -272,4 +272,8 @@
     <string name="settings_rename_library">Gi nytt navn</string>
     <string name="settings_library_name">Bibliotekets navn</string>
     <string name="settings_library_switch">Bytt til et annet bibliotek på denne enheten</string>
+    <string name="settings_history">Lyttehistorikk</string>
+    <string name="settings_history_private">Bare meg</string>
+    <string name="settings_history_household">Husstanden</string>
+    <string name="settings_history_explanation">Hvem som ser hva du spiller. En endring gjelder avspillinger fra nå av; tidligere avspillinger beholder hvem som kunne se dem.</string>
 </resources>
