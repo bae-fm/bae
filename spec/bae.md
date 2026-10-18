@@ -136,6 +136,9 @@ album    Album Title, Artist Name
   release  download                           (Ben's MP3s)
 ```
 
+Every import is its own release, so the library can hold one pressing twice:
+two folders of the same CD are two releases under one album (§2.7).
+
 An album names one *primary* release: the one whose cover it shows and that
 opens by default. With none set, the first release serves.
 
@@ -188,11 +191,16 @@ Artists credit albums, releases, tracks and works:
 An artist row holds a name, a sort name, and the artist's MusicBrainz and
 Discogs ids where known. It may carry one picture, bae's own copy (§4.1).
 
-Two artists can be merged into one. Merging records that one artist was
-absorbed into the other; both rows stay, so a credit another device gave the
-absorbed artist still resolves. Every read shows the survivor. A chain of
-merges shows its last artist, and a loop, left by two devices merging a pair in
-opposite directions, shows the artist with the smallest id.
+Two artists can be merged into one, and only one way: on the import page, when
+an import's credit shows that two library artists are the same person and the
+person says so (§3.7). That is the one place bae shows both artists beside the
+evidence that they are one; bae has no other merge action.
+
+Merging records that one artist was absorbed into the other; both rows stay, so
+a credit another device gave the absorbed artist still resolves. Every read
+shows the survivor. A chain of merges shows its last artist, and a loop, left by
+two devices merging a pair in opposite directions, shows the artist with the
+smallest id.
 
 **Which artist a credit names.** One rule decides, inside the transaction that
 writes the credit, so nothing landing in between can make it wrong:
@@ -211,8 +219,8 @@ name.
 
 - **Two ids, two artists.** A credit names MusicBrainz artist X and Discogs
   artist Y, and the library holds X and Y as separate artists. The write is
-  refused, and the import shows the conflict for the person to settle by
-  merging them (§3.7).
+  refused, and the import page shows the conflict for the person to settle
+  (§3.7). bae never settles it on its own.
 - **A contradicting id.** A credit whose name matches an artist that holds a
   different id of the same catalog is refused outright.
 
@@ -273,21 +281,39 @@ stating one fact write one row
 
 ### 2.7 A release's identity
 
-A release's id comes from a hash of its folder's contents. The hash covers
-every file of the release: each one's path relative to the release folder, its
-size and its modification time, sorted, so the same rip hashes the same
-wherever it sits.
+Every import is its own release. It gets a fresh random id, its own tracks and
+its own files: rows of its own and, once uploaded, copies of its own in
+storage. Two releases never share a track or a file row.
 
-Importing the same contents again, on any device, is the same release: a
-re-import, not a copy. Ana edits her tags and wants bae to read them again;
-she imports the folder again, and her release is replaced in place.
+Ana imports her 1979 CD rip. Her backup drive holds a copy of the same rip,
+whose modification times the copy changed, and she imports that too. The album
+now shows two releases, 1979 CD and 1979 CD, and each behaves as a separate
+copy everywhere, local or uploaded. Ben's MP3s, different contents of the same
+album, are a third release under it. Ratings, history and playlist entries
+point at one copy's tracks and stay on that copy.
 
-Different contents of the same pressing, such as Ana's FLAC rip and Ben's
-MP3s, are separate releases under one album.
+Nothing is refused as already in the library. A release keyed by its contents
+would make a second import replace the first, and with it the tracks that
+ratings, history and playlists point at.
+
+**The folder's hash.** Each release records a hash of its folder's contents
+(`releases.content_hash`). The hash covers every file of the release: each
+one's path relative to the release folder, its size and its modification time,
+sorted, so moving the folder doesn't change its hash. It is never a key and
+never refuses anything. It does one job: it tells the import list that the
+household probably already has a folder (§3.2).
+
+"Probably", because the hash reads no bytes: two folders can hash alike and
+still differ. A copy to another disk usually changes the modification times,
+so the same rip copied elsewhere usually hashes differently.
+
+To have bae read edited tags again, Ana resets the release's metadata from its
+source (§3.7); she doesn't import it again.
 
 The hash covers files, never decisions. Carol tells bae which disc each CUE
-sheet is; that is stored under the hash, and a hash that moved with it would
-lose the very decision it keys. No decision removes a file from a release.
+sheet is; that is stored under the candidate's hash, and a hash that moved with
+it would lose the very decision it keys. No decision removes a file from a
+release.
 
 ---
 ## 3. Import
@@ -369,8 +395,8 @@ The import list shows every candidate in one of three tabs:
 
 | Tab | Holds |
 |---|---|
-| Pending | not imported and not skipped, including a failed import |
-| Done | imported; ordered by upload, what is moving first |
+| Pending | no release carries the folder's hash, and not skipped; including a failed import |
+| Done | some library release carries the folder's hash; ordered by upload, what is moving first |
 | Skipped | dismissed by the person, or broken |
 
 Each Pending row is in exactly one state. The first that applies wins:
@@ -393,6 +419,15 @@ Each Pending row is in exactly one state. The first that applies wins:
 
 A filter narrows Pending to one group of these states: needs you, in progress,
 identified, unmatched, or not looked up.
+
+**Done.** A folder is Done when some release in the library, from any device,
+carries its content hash (§2.7). Its row lists every release that does. Ben
+copies Ana's rip folder to his laptop, keeping the modification times. His scan
+finds it, and Ana's release carries its hash, so the folder lands in Done
+beside her release: Ben probably already has it.
+
+Done offers no re-import. A second copy comes from importing another folder,
+such as a copy whose modification times changed.
 
 The person can select any number of rows. The selection is stored as rows,
 not held by a surface, and a bulk action runs in core over the selected rows
@@ -585,13 +620,14 @@ Ana clicks Import. bae:
 4. **Checks the audio decodes**, in the same pass. A track that fails, or
    decodes short, fails the import rather than failing later at play time.
    This check is a setting, on by default.
-5. **Finds the album.** A release whose records name a pressing already in the
-   library is refused as already there. A release whose record's album matches
-   an album in the library joins it. Otherwise the album takes its id from its
+5. **Finds the album.** A release whose record's album matches an album in the
+   library joins it, even when the library already holds that pressing: the
+   import is another copy (§2.7). Otherwise the album takes its id from its
    group (§2.6).
-6. **Writes everything in one transaction**: the album, release, tracks,
-   files, segments, credits, works, records and cover. The artists are decided
-   in that transaction (§2.3).
+6. **Writes everything in one transaction**: the album; the release, with a
+   fresh random id and the folder's hash; its tracks, files, segments,
+   credits, works, records and cover. The artists are decided in that
+   transaction (§2.3).
 
 Nothing durable is written before the last step, so a cancel before it leaves
 the library as it was. Once the write begins, a cancel is refused and the
@@ -605,12 +641,9 @@ itself needs no network. Every stored image is downscaled to at most 600
 pixels on a side and stored as JPEG.
 
 **Where it goes.** Each import lands on this device or goes to the cloud, as
-the person last chose (§4.2). A cloud import records its upload in the same
-transaction as its rows, so the choice is never lost, and needs no connection
-to record it.
-
-**Re-import.** Importing a folder whose hash matches a release in the library
-replaces that release in the same transaction (§2.7).
+the person last chose (§4.2). A cloud import attaches its files in the same
+transaction as its rows, which queues their upload, so the choice is never
+lost, and needs no connection to record it.
 
 **Automatic identification and import.** By default, each release a scan finds
 for the first time is identified on its own, in the background, behind
@@ -620,9 +653,24 @@ run that picks unattended imports straight away. Both are settings
 
 **Edge cases.**
 
-- **Two artists for one name.** An import whose credit names two library
-  artists, each linked to a different catalog, fails with the conflict. The
-  person merges them and the candidate is ready again (§2.3).
+- **Two ids, two artists.** Carol imports a release crediting *Artist Name*
+  with a Discogs id and a MusicBrainz id. The library already holds two
+  artists of that name: A, from a Discogs import, holds the Discogs id; B,
+  from a MusicBrainz import, holds the MusicBrainz id. The import fails with
+  the conflict, and the import page offers five answers:
+
+  | Answer | The credit names |
+  |---|---|
+  | Same artist | A and B, merged into one (§2.3) |
+  | It's A | A; the credit's MusicBrainz id is ignored |
+  | It's B | B; the credit's Discogs id is ignored |
+  | Neither | a new artist carrying neither id |
+  | Change the pressing or match | whatever the new match credits (§3.5) |
+
+  bae never picks for her: either catalog's id could be the wrong one, and a
+  wrong guess credits the album to another artist on every device. Her answer
+  is stored with the candidate like any pane control (§3.6), and the
+  candidate is ready again.
 - **Identifying a library release again.** A release already in the library
   can be identified again from its own files; its disc ID comes from its stored
   tracks. The person then names its pressing, whose records replace the old
@@ -664,17 +712,23 @@ rewrites a stored file.
 
 A release is *local*, or *uploaded* so other devices can play it.
 
-Ana's CD rip is local after import: its files are her own, at their path on her
-laptop, and other devices don't see the release. Ana moves it to the cloud.
-coven uploads each file from where it sits, and with the last one marks the
-release uploaded; from then on, the release, its tracks, files and cover reach
-every device. Ana's files stay where they are, untouched.
+Ana imports her CD rip to her laptop only. The release is local: its files are
+her own, at their path on her laptop. Its rows sync like any release's, so
+Ben's phone shows the album, its tracks and its cover, but can't play it. Ana
+moves it to the cloud. bae attaches each file to its `release_files` row, and
+coven uploads it from where it sits; from then on every device can play it.
+Ana's files stay where they are, untouched.
 
-- **Every import lands local first.** A cloud import (§3.7) records its upload
-  with its rows and becomes uploaded when the upload lands.
-- **An album and its artists follow their releases.** An album reaches other
-  devices while it has an uploaded release; an artist while an uploaded
-  release's album, track or work credits it.
+A local release's audio stays on the importing device. Its paths sit in a
+device-local table, not in the synced rows, because attaching a file to a
+synced row queues its upload in the same write
+([coven §17.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#172-attaching-a-file)),
+and uploading is the person's choice. The rows sync anyway, so every device
+knows what the household owns, and a rating or playlist entry pointing at a
+local release's track points at a row every device can read
+([coven §15.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#153-references-stay-readable)).
+
+- **A cloud import** (§3.7) attaches its files in the same write as its rows.
 - **Uploads queue.** Files go up three at a time by default, a setting from
   one to eight. The queue can be paused; a paused upload keeps its place.
   Cancelling an upload in progress keeps the release local, and takes back
@@ -781,7 +835,18 @@ A household shares one library, its files and its metadata. Ana's CD rip,
 once uploaded, is everyone's to play.
 
 Each person is a coven member with their own devices. Admins add and remove
-people, and each person adds and removes their own devices.
+people. Each person adds their own devices, and removes their own; an admin can
+remove any person's device too (§5.6).
+
+**The library's name.** A library has one name, its coven store's name, and an
+admin can rename it. Ana renames Household to Home; every device shows Home
+once it syncs the rename. Renaming is an admin entry in coven, so only admins
+can do it: the name is the household's, not one person's.
+
+The name lives only in the store. Restore codes and the iCloud Keychain entries
+that hold them carry no name: a code is kept for years, and a name inside it
+would go stale with the first rename. An invite carries the current name,
+since it expires within a day. So no device ever shows a stale or second name.
 
 ### 5.2 Everyone edits the library
 
@@ -799,22 +864,39 @@ household rows in the store. bae makes no other circles.
 
 Each person's own data:
 
-| Data | Where |
-|---|---|
-| Ratings, of albums and of a release's tracks | always household |
-| History | private or household: one setting per person |
-| Playlists | each one private or household |
+| Table | One row per | Where |
+|---|---|---|
+| `ratings` | person and album, or person and track | always household |
+| `history` | play | private or household: one setting per person |
+| `playlists` | playlist | each one private or household |
+| `playlist_entries` | place in a playlist | where its playlist is |
 
-There are no separate favorites: the highest rating is the favorite.
-
-Changing the history setting moves the person's history rows; changing a
-playlist's setting moves that playlist. A move between the store and a circle
-is an ordinary write in coven
-([§15.4](https://github.com/bae-fm/coven/blob/main/spec/coven.md#154-moving-rows)).
+There are no separate favorites: the highest rating is the favorite. A track's
+rating belongs to one release's track, so the tracks of two copies of a
+pressing (§2.7) are rated apart.
 
 Ben keeps his history private. Carol's devices never see what he played. He
 makes a playlist for a party and shares it: it moves from his circle to the
-store, and everyone sees it.
+store, with its entries, and everyone sees it. A move between the store and a
+circle is an ordinary write in coven
+([§15.4](https://github.com/bae-fm/coven/blob/main/spec/coven.md#154-moving-rows)).
+
+**History.** Ben plays track 3 of Ana's album for two minutes: one `history`
+row records Ben, the track, the release, when the play started, and how much
+of it he heard. He skips track 4 after ten seconds: nothing is recorded. A play
+counts once 30 seconds of the track, or half of it, whichever comes first, has
+played; a 40-second interlude counts after 20. A skip isn't a listen.
+
+Each play is its own row, with a fresh id. A play count kept in one cell would
+lose plays: two devices adding to it at once merge cell by cell, and the later
+write wins
+([coven §8](https://github.com/bae-fm/coven/blob/main/spec/coven.md#8-merging)).
+
+**Changing the history setting** applies to new plays only. Each play keeps the
+audience it was recorded in. Ben switches his history to household on Friday;
+what he played before Friday stays in his circle. Moving old plays would
+publish what he played in private, and switching back couldn't take from the
+household what its devices have already read.
 
 ### 5.4 Profiles
 
@@ -826,16 +908,23 @@ table, in the store, holding each person's name and avatar.
   ([coven §13.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#133-losing-everything)).
 - **Ratings, history and playlists point at the person**, not the member.
 - **The joining person's own device writes their `people` row** as part of
-  joining, with the name they typed, so every member has a profile. A
-  re-invited person keeps their row, since their `MemberId` is the same.
+  joining, with the name they typed, so every member has a profile. Someone
+  re-invited after losing every device keeps their row, since their
+  `MemberId` is the same.
+- **A removed person invited again is a new member.** coven gives them a fresh
+  `MemberId`, and they start with an empty new profile. Their old `people`
+  row, ratings and household playlists stay under the old identity, read-only:
+  they are owner rows (§5.5), and the old identity has no device left to
+  change them.
 - **An avatar is a file on the `people` row**, bae's own (app-provided),
   downloaded as soon as the row arrives.
 - **The app joins `members()`**, who is in, with `people`, how to show them.
 
 ### 5.5 "Ana rated this"
 
-Rows credited to a person are owner tables: ratings, household history,
-household playlists, and the person's `people` row. Only their author's devices
+Rows credited to a person are in owner tables: `ratings`, `history`,
+`playlists`, `playlist_entries`, and the person's `people` row. Only their
+author's devices
 can change them
 ([coven §9.6](https://github.com/bae-fm/coven/blob/main/spec/coven.md#96-owner-tables)),
 so "Ana rated this" is authentic.
@@ -849,8 +938,9 @@ editable by every member.
 |---|---|---|
 | Add a person | an admin, by invite ([coven §13.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#132-adding-a-person-invites)) | the new person's device writes their `people` row as it joins |
 | Add a device | the person, from the new device, with their restore code ([coven §13.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#131-a-persons-new-device-the-restore-code)) | nothing beyond coven |
-| Remove a device | the person | nothing beyond coven |
+| Remove a device | the person, for their own; an admin, for anyone's | nothing beyond coven |
 | Remove a person | an admin | their circle goes, with its rows |
+| Rename the library | an admin | every device shows the new name (§5.1) |
 
 Dan joins. Ana invites him; his phone scans the invite, he types "Dan", and his
 phone writes his `people` row while it joins. Everyone's devices show Dan by
@@ -860,8 +950,24 @@ Removing a person deletes their circle and its rows: their private history and
 private playlists. Their household ratings, history and playlists stay,
 credited to them.
 
-A new device gets its restore code by scanning a QR code on another of the
-person's devices, from iCloud Keychain on Apple devices, or by typing it in.
+**Adding a device.** Carol's new tablet joins with her restore code alone; no
+other device approves it. The code holds Carol's keys, so it already proves the
+tablet is hers
+([coven §13.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#131-a-persons-new-device-the-restore-code)),
+and an approval would strand a person whose other devices are all lost. The
+tablet gets the code one of three ways:
+
+- **scanning** the QR code another of her devices shows;
+- **iCloud Keychain**, on Apple devices: bae lists the restore codes coven saved
+  there, each showing its provider and account, and Carol picks one;
+- **typing** it in.
+
+A code carries no name (§5.1), so the restoring tablet shows the provider and
+account until it has loaded the library, then the library's current name.
+
+**Removing a device.** Ben's old phone is lost. He removes it from his laptop.
+Had he lost every device, Ana, an admin, could remove it for him. Removing
+this library from a device is the device leaving on its own; §6.4 covers it.
 
 ---
 
@@ -880,14 +986,15 @@ declares it (§6.3), and what a person sees when sync stops (§6.4).
 | Import and scan state (§3.1–§3.6) | People (§5.4) |
 | Fetched catalog data (§3.4) | Ratings, history and playlists (§5.3) |
 | Settings (Appendix C) | |
+| A local release's audio and its paths (§4.2) | |
 
 Each reason is the same: the data is one device's, and another device would be
 wrong to follow it. Ana's queue is what she is listening to, not Ben. A scan is
 of one machine's disk. A fetched catalog release can be fetched by any device
 that wants it. A transfer limit fits one machine's link.
 
-A local release stays on its device (§4.2); only an uploaded release, and the
-album and artists it needs, reach other devices.
+A local release's rows sync like any release's; only its audio, and the paths
+it sits at, stay on the importing device until the person uploads it (§4.2).
 
 ### 6.2 Cloud homes
 
@@ -895,11 +1002,19 @@ A library's *cloud home* is where coven stores it: an S3-compatible bucket,
 Google Drive, Dropbox, OneDrive, or iCloud on Apple devices. A library can
 also have none and stay on one device. The baeium edition offers S3 only.
 
-Setting up a cloud home chooses opaque or browsable storage (§4.5). For S3,
-the person enters a bucket, region, endpoint, optional key prefix, and an
-access key. For the account providers, they sign in. coven's
+Setting up a cloud home chooses opaque or browsable storage (§4.5). For the
+account providers, the person signs in. coven's
 [Part VI](https://github.com/bae-fm/coven/blob/main/spec/coven.md#part-vi-storage)
 says what each provider needs.
+
+**S3 setup.** Dan, on the baeium edition, sets up a library on a Cloudflare R2
+bucket. The form asks for the bucket, region, endpoint and access key, and
+nothing else. coven knows R2 by its endpoint's host and fills in how to talk to
+it
+([coven E.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#e3-s3-settings-and-profiles)).
+An Advanced section shows those detected settings and the profile they came
+from, and holds the optional key prefix; a person opens it only for a service
+coven doesn't know. When coven refuses a setup, bae says why in plain words.
 
 A device can hold several libraries, each its own coven store under
 `~/.bae/libraries/<library id>/`, and remembers which it last opened.
@@ -912,10 +1027,16 @@ with:
 - **its row identity**: a *shared key*, an id computed from the fact the row
   states (§2.6), or an *independent* id minted fresh for each row: releases,
   tracks, files, audio formats and segments, track credits and works, role
-  credits, and covers;
-- **the files it carries**: `release_files` the person's own, read on first
-  use; `covers` and `artist_images` bae's own, fetched as soon as their rows
-  arrive.
+  credits, covers, plays and playlists;
+- **its audience**: every library table is in the store; `history` and
+  `playlists` name theirs per row, and `playlist_entries` take their
+  playlist's (§5.3,
+  [coven §15.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#151-declaring-audiences));
+- **whether it is an owner table**: `people`, `ratings`, `history`,
+  `playlists` and `playlist_entries` are (§5.5);
+- **the files it carries**: `release_files` the person's own, attached when
+  the release is uploaded and read on first use; `covers`, `artist_images` and
+  the avatars on `people` bae's own, fetched as soon as their rows arrive.
 
 Appendix B lists every declaration. A test holds the declared set to exactly
 the tables that carry an `_updated_at` column, so a device-local table can't
@@ -930,23 +1051,53 @@ survives, and of two edits to one column the later wins
 Sync runs in the background. A library opens and plays from its own copy
 whether or not the cloud is reachable.
 
+**The status line.** Settings shows one line for sync: "Synced", or "Waiting: 3
+items". Tapping it lists each thing coven is waiting on, one of its pending
+records
+([coven §19.1](https://github.com/bae-fm/coven/blob/main/spec/coven.md#191-what-the-app-sees)),
+in plain words, with an action wherever the person can act. Ben's laptop shows
+"Waiting: 2 items": Dropbox wants him to sign in again, and a file of his
+vinyl rip moved before it uploaded. The list offers *Sign in* for the first and
+*Reattach* for the second. A write coven can retry offers *Retry*; a wait the
+person can't help, such as for another device to come online, offers nothing.
+
 - **Launching offline.** A failed connect at start-up opens the library
-  unconnected and records the failure for the banner. *Reconnect* connects
-  again, or runs the next cycle now when already connected.
-- **A blocked operation** — a write, a circle operation, or a cleanup coven
-  can't finish — is listed with its reason, and the person can retry it.
+  unconnected, and the status line says so. *Reconnect* connects again, or
+  runs the next cycle now when already connected.
 - **A newer schema.** Data written by a newer app needs an update;
   reconnecting can't fix it.
 - **Pausing** stops uploads and keeps their place.
 - **Covers after opening.** A device fetches the covers it doesn't hold yet;
   the progress shows as a banner and can be cancelled.
 
-The library's encryption key lives in the system keyring. A keyring that is
-locked right now — a locked session or a sleeping display — is told apart from
-a broken one: the host asks again after unlock instead of reporting the library
-unusable. A device can forget the key, which locks the library until it is
-unlocked again, and can remove a library entirely: its directory and every
-secret it holds, leaving the cloud copy untouched.
+**Resetting a device.** Opening can fail because the database is damaged, or
+because this installation is another copy of the device, such as Carol's phone
+restored from a backup
+([coven §19.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#193-another-copy-of-the-same-device)).
+bae then offers to reset the device: load the library from storage again under
+a fresh device id. Before it does, a warning says that edits on this device
+that haven't synced will be discarded. The person was told before choosing, so
+nothing is shown after; bae doesn't present coven's reset notice.
+
+**Lost values.** When two devices edit one cell and one edit is replaced
+unseen, coven records a lost value
+([coven §8.2](https://github.com/bae-fm/coven/blob/main/spec/coven.md#82-lost-values)).
+bae shows none and dismisses none. coven keeps each one, and any file it names,
+until an app dismisses it, so nothing is gone while bae doesn't show them.
+
+**The keyring.** The library's encryption key lives in the system keyring. A
+keyring that is locked right now, by a locked session or a sleeping display,
+is told apart from a broken one: the host asks again after unlock instead of
+reporting the library unusable. A device can forget the key, which locks the
+library until it is unlocked again.
+
+**Removing a library from a device.** Dan stops using his old laptop. Removing
+Household from it first removes the laptop from the store's members, then
+deletes its directory and every secret it holds; the cloud copy stays. Leaving
+is an admin entry, so it needs storage. Offline, removal says so and waits
+rather than deleting the local copy and leaving a device listed that will
+never come back. A library with no cloud home has no members to leave, and is
+deleted at once.
 
 ---
 ## 7. Playback
@@ -1184,11 +1335,10 @@ library is registered there by id.
 |---|---|
 | `create_library` | registers a new library and gives this device its identity; with no name given, one is generated |
 | `restore_from_code` | opens a library on a new device from a restore code (§5.6) |
-| `prepare_device_pairing_join`, `join_prepared_device_pairing_cancellable` | joins this device to a library another device admits |
 | `Config::discover_libraries` | lists registered libraries, including any that can't be opened, with why |
 | `app::bootstrap` | opens a library and starts its services: the store, sync, playback, and on desktops import and identification |
 | `AppServices::close` | stops playback, saving where it was, then identification and import, then closes the store |
-| `remove_local_library` | deletes a closed library from this device (§6.4) |
+| `remove_local_library` | leaves the store, then deletes the library from this device (§6.4) |
 
 `bootstrap` returns `AppServices`, the running library. Every later call goes
 through it. A store is opened once per process; closing waits for every worker
@@ -1236,8 +1386,9 @@ its position, the queue — are live subscriptions.
 
 Through `AppServices`: move releases to the cloud and back, pin and unpin,
 cancel a transition, export and save; set up a cloud home, reconnect, pause,
-retry a blocked operation; list members, start a device pairing, remove a
-member; make a restore code.
+read the pending list and act on its records, reset the device; list people
+and their devices, invite a person, remove a person or a device, rename the
+library; make a restore code, and list those saved in iCloud Keychain.
 
 ### 9.6 Settings
 
@@ -1289,8 +1440,8 @@ to compile in the bridge until it is carried across.
   mid-call cancels the Rust work it started.
 - **Subscriptions** take a callback object the app implements, and return a
   `LiveSubscription`; cancelling or dropping it stops the delivery.
-- **Callbacks the app provides**: UI events, the artwork reader, device-join
-  progress, and on Apple devices the iCloud driver.
+- **Callbacks the app provides**: UI events, the artwork reader, and on Apple
+  devices the iCloud driver.
 
 ### 10.3 Generated bindings
 
@@ -1414,13 +1565,28 @@ All sync.
 | `audio_formats` | track's format, pregap, loudness and peak |
 | `audio_format_segments` | span of a file a track reads: pregap or main, samples and bytes |
 
-### A.2 Playback
+A local release's file paths stay on the importing device, in a device-local
+table beside these, until its files are attached on upload (§4.2).
+
+### A.2 People
+
+All sync (§5).
+
+| Table | One row per |
+|---|---|
+| `people` | person: name and avatar, keyed by their `MemberId` |
+| `ratings` | rating by a person of an album or of a track |
+| `history` | play: person, track, release, when it started, how much was played |
+| `playlists` | playlist: whose it is, and its audience |
+| `playlist_entries` | place in a playlist, and the track there |
+
+### A.3 Playback
 
 | Table | Holds |
 |---|---|
 | `playback_state` | the one row of what this device was playing (§7.8) |
 
-### A.3 Watched folders and scans
+### A.4 Watched folders and scans
 
 | Table | Holds |
 |---|---|
@@ -1435,7 +1601,7 @@ All sync.
 | `scan_cue_sheet`, `scan_cue_track`, `scan_cue_index`, `scan_sheet_audio_file` | parsed CUE sheets and the audio each `FILE` line resolved to |
 | `candidate_selection`, `candidate_selection_revision` | the import list's selection, for one session |
 
-### A.4 Import candidates
+### A.5 Import candidates
 
 Keyed by the candidate's content hash.
 
@@ -1451,7 +1617,7 @@ Keyed by the candidate's content hash.
 | `import_candidate_session` | where the pane was, and its last failure |
 | `import_candidate_failure`, `import_candidate_artist_identity_conflict` | why the last import failed |
 
-### A.5 Identification
+### A.6 Identification
 
 | Table | Holds |
 |---|---|
@@ -1460,7 +1626,7 @@ Keyed by the candidate's content hash.
 | `import_candidate_verdict` | what a run concluded: found, not found, manual only, failed or error; the ledger it showed; a medium conflict |
 | `import_candidate_match` and its `_barcode`, `_cover_copy`, `_link`, `_album_link`, `_medium` tables | every release a run returned, with which lookup found it |
 
-### A.6 Catalog releases
+### A.7 Catalog releases
 
 Device-local: any device can fetch a release. A new fetch replaces every row
 under it.
@@ -1480,31 +1646,37 @@ under it.
 ## Appendix B. Synced tables
 
 From `bae_core::sync::synced_tables`. *Shared key* rows take an id computed
-from their fact (§2.6); *independent* rows a fresh id. *Follows* names the
-foreign key a row reaches other devices through: it syncs while the release,
-artist or album at the end of that chain does (§4.2).
+from their fact (§2.6); *independent* rows a fresh id. Every synced table's
+rows reach every device that can read their audience: a local release's rows
+too (§4.2). *Audience* is the store unless the table names one (§5.3); *owner*
+tables are changed only by their author's devices (§5.5).
 
-| Table | Identity | Follows | File |
-|---|---|---|---|
-| `artists` | shared key | its credits | |
-| `artist_merges` | shared key | `id` | |
-| `albums` | shared key | its uploaded releases | |
-| `album_artists` | shared key | `album_id` | |
-| `releases` | independent | uploaded (`remote`) | |
-| `release_records` | shared key | `release_id` | |
-| `tracks` | independent | `release_id` | |
-| `track_artists` | independent | `track_id` | |
-| `works` | shared key | its credits | |
-| `work_artists` | shared key | `artist_id` | |
-| `work_parts` | shared key | `child_work_id` | |
-| `track_works` | independent | `track_id` | |
-| `release_artist_roles` | independent | `release_id` | |
-| `track_artist_roles` | independent | `track_id` | |
-| `release_files` | independent | `release_id` | the person's own; read on first use; never repointed |
-| `audio_formats` | independent | `track_id` | |
-| `audio_format_segments` | independent | `audio_format_id` | |
-| `covers` | independent | `id` | bae's own; fetched with the row |
-| `artist_images` | shared key | `id` | bae's own; fetched with the row |
+| Table | Identity | Audience | Owner | File |
+|---|---|---|---|---|
+| `artists` | shared key | store | | |
+| `artist_merges` | shared key | store | | |
+| `albums` | shared key | store | | |
+| `album_artists` | shared key | store | | |
+| `releases` | independent | store | | |
+| `release_records` | shared key | store | | |
+| `tracks` | independent | store | | |
+| `track_artists` | independent | store | | |
+| `works` | shared key | store | | |
+| `work_artists` | shared key | store | | |
+| `work_parts` | shared key | store | | |
+| `track_works` | independent | store | | |
+| `release_artist_roles` | independent | store | | |
+| `track_artist_roles` | independent | store | | |
+| `release_files` | independent | store | | the person's own; attached on upload; read on first use; never repointed |
+| `audio_formats` | independent | store | | |
+| `audio_format_segments` | independent | store | | |
+| `covers` | independent | store | | bae's own; fetched with the row |
+| `artist_images` | shared key | store | | bae's own; fetched with the row |
+| `people` | the person's `MemberId` | store | yes | the avatar: bae's own; fetched with the row |
+| `ratings` | shared key: the person, and the album or track | store | yes | |
+| `history` | independent, one per play | per row: the person's circle or the store, by their setting | yes | |
+| `playlists` | independent | per row: the person's circle or the store | yes | |
+| `playlist_entries` | shared key: the playlist and a position id | its playlist's | yes | |
 
 ---
 
@@ -1601,14 +1773,13 @@ The `Bridge*` types live in `bae-bridge/src/types/`, by area:
 | File | Types for |
 |---|---|
 | `library_playback.rs` | albums, releases, tracks, files, audio formats, covers and galleries, records, catalogs, cloud providers, libraries |
-| `configuration/library.rs` | search results, artists, composers and works, the storage table, the queue, sync status and blocked operations |
+| `configuration/library.rs` | search results, artists, composers and works, the storage table, the queue, sync status and pending records |
 | `configuration/services.rs` | settings, the MCP and Subsonic servers, receivers, cloud-home setup |
-| `configuration/settings.rs` | sorting, restore codes, members and pairing, save presets, errors |
+| `configuration/settings.rs` | sorting, restore codes, people and devices, save presets, errors |
 | `playback_values.rs` | the playing track, position, side-pause prompt, media controls, preview |
 | `events_and_transfers.rs` | UI events, uploads, downloads, exports and saves |
 | `editing.rs` | release detail and edits, artist credits, the mapping table, edit validation |
 | `pressing.rs` | pressing facts: area, media, labels, status, packaging, Discogs details |
-| `device_pairing.rs` | join progress on both devices |
 | `storage_inspector.rs` | the storage inspector's files and transfers |
 | `live_results.rs` | windows and sections of live lists |
 | `import/candidate.rs`, `import/grouping.rs` | watched folders, candidate files, CUE binding, import steps, grouped folders |
@@ -1637,7 +1808,6 @@ A `BridgeError` is `Cancelled` (show nothing), `NotFound` (a library), or
 | `Import`, `ImportData` | reads the detail; the source couldn't be read |
 | `CandidateImportInProgress`, `CandidateBeingIdentified`, `CandidateAlreadyImported` | waits, or nothing is needed |
 | `MetadataTrackCount` | picks another release: it lists another number of tracks |
-| `AlreadyInLibrary` | sees the album it is already in |
 | `GroupingBlocked` | combines again, separates, or waits for a download |
 | `Export`, `Save` | reads the detail |
 | `CloudSetup` | changes what the setup names |
@@ -1645,7 +1815,7 @@ A `BridgeError` is `Cancelled` (show nothing), `NotFound` (a library), or
 | `Credentials` | fixes the cloud settings |
 | `Network` | retries |
 | `Keyring`, `KeyringLocked` | fixes the keyring, or unlocks and is asked again |
-| `Membership`, `DeviceJoin` | retries the membership step, with the advice the end carries |
+| `Membership` | retries the membership step, with the advice it carries |
 | `AirPlayUnsupported` | uses another receiver |
 
 ### G.2 Why a found release isn't picked
