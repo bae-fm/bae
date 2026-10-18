@@ -1023,7 +1023,8 @@ tablet gets the code one of three ways:
 
 - **scanning** the QR code another of her devices shows;
 - **iCloud Keychain**, on Apple devices: bae lists the restore codes coven saved
-  there, and Carol picks one;
+  there for libraries not already on this device, and Carol picks one; a
+  library the device already holds is opened, not restored;
 - **typing** it in.
 
 A code carries no name (§5.1), so bae shows a code by where its library is
@@ -1106,7 +1107,11 @@ sees its tokens.
 
 A device can hold several libraries, each its own coven store, and remembers
 which it last opened. coven keeps each store under `~/.bae/stores/`; bae keeps
-a library's settings in `~/.bae/libraries/<library id>/`.
+a library's settings in `~/.bae/libraries/<library id>/`. One library whose
+storage settings can't be read never hides the others: the list carries each
+library with its settings or why they can't be read, shows that reason in
+place of the account, and offers no Open for it. Launch and switching
+libraries pass over it.
 
 ### 6.3 How bae declares its tables
 
@@ -1131,7 +1136,9 @@ with:
 Appendix B lists every declaration. A test holds the declarations to exactly
 that list, each table with its identity, audience, owner flag and files, so a
 device-local table such as `local_release_files` or `local_history` can't start
-syncing by accident.
+syncing by accident. Another holds every table the schema creates to one
+of two lists, declared or device-local, so a new table stays on one device only
+when that was decided.
 
 Two devices' edits merge cell by cell: an edit to a column the other left alone
 survives, and of two edits to one column the later wins
@@ -1150,13 +1157,37 @@ in plain words, with an action wherever the person can act. The details coven
 recorded sit behind a disclosure, to copy. This list replaces any banner of
 blocked work: there is one place to look.
 
+Each record names what it is about in plain words. A file this device is
+uploading is named by its file name and album, read from the upload queue it
+is in; any other subject, such as an operation or the connection, by what it
+is. In the upload list itself a file's row already names it, so its record
+there says only why it waits.
+
 Ben's laptop shows "Waiting: 2 items": Dropbox wants him to sign in again, and
 a file of his vinyl rip moved before it uploaded. The list offers *Sign In* for
-the first. For the second it offers to reattach the file: put it back where it
-was imported from, then retry the upload. Other records offer *Retry*,
-*Reconnect*, *Resume Uploads*, *Update App* or *Reset Device*, or ask for an
-administrator's access to storage. A wait the person can't help, such as for
-another device to come online, offers nothing.
+the first: core signs in with the access the library's folder needs, then
+connects that location again under this device's name. For the second it
+offers to reattach the file: put it back where it was imported from, then
+retry the upload. Other records offer *Retry*, *Reconnect*, *Resume Uploads*,
+*Update App* or *Restore With Code*, or ask for an administrator's access to
+storage. A wait the person can't help, such as for another device to come
+online, offers nothing.
+
+- **A removed device.** When this device, or its person, was removed from the
+  library, its record says so in its own error line, "This device was removed
+  from the library.", and offers only the record's details. Resetting would
+  register the device again under keys that no longer count, asking storage to
+  take back a device the library removed.
+- **Replaced keys.** When another of the person's devices replaced their keys,
+  this device can no longer send. Its record offers *Restore With Code*: bae
+  closes the library and asks for the person's current restore code, warning
+  that restoring loads the library from storage again and discards edits on
+  this device that haven't synced. Core checks first that the code restores
+  this library; another library's code changes nothing. Then it discards this
+  device's copy and restores the library from the code under a new device id.
+  A restore that fails after the discard leaves the library off this device
+  and says so; restoring again with the same code finishes it. Going back
+  opens the library again as it was.
 
 "Synced" means coven finished a pass and nothing is pending. Until the pending
 list has been read, or after a pass failed, the line says it is checking
@@ -1171,12 +1202,13 @@ rather than claim the library is synced.
 - **Covers after opening.** A device fetches the covers it doesn't hold yet;
   the progress shows as a banner and can be cancelled.
 
-**Resetting a device.** Opening can fail because the database is damaged, or
-because this installation is another copy of the device, such as Carol's phone
-restored from a backup
-([coven §19.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#193-another-copy-of-the-same-device)).
-bae then offers to reset the device: load the library from storage again under
-a fresh device id. Before it does, a warning says that edits on this device
+**Resetting a device.** Opening can fail because the database is damaged, and
+sync can find that this installation is another copy of the device, such as
+Carol's phone restored from a backup
+([coven §19.3](https://github.com/bae-fm/coven/blob/main/spec/coven.md#193-another-copy-of-the-same-device)),
+which coven reports as the sync status's failure. There, and only there, bae
+offers to reset the device: load the library from storage again under a fresh
+device id. Before it does, a warning says that edits on this device
 that haven't synced will be discarded. The person was told before choosing, so
 nothing is shown after; bae doesn't present coven's reset notice.
 
@@ -1201,12 +1233,26 @@ never come back. A library with no cloud home has no members to leave, and is
 deleted at once.
 
 - **Unsent edits.** Dan's laptop still holds edits it hasn't sent. Before
-  removing, bae warns that those edits will be lost. If Dan goes ahead, the
-  laptop leaves without sending them. Refusing instead would tie his removal
-  to uploads that may be stuck; the warning lets him decide.
-- **Settings left behind.** If leaving succeeds but deleting bae's settings
-  for the library fails, the library is already gone from the store. A retry
-  deletes only what is left on the device; it never tries to leave again.
+  removing, bae asks coven what this device hasn't sent, and the confirmation
+  counts it: the edits, and the files that haven't finished uploading, then
+  that removing the library discards them. The library keeps running while
+  bae asks, so *Cancel* changes nothing; for a library that isn't open, bae
+  opens its store just long enough to count. If Dan confirms, the laptop
+  leaves without sending them. Refusing instead would tie his removal to
+  uploads that may be stuck; the counts let him decide.
+- **A removal that stops partway.** bae and coven can't commit together, so
+  bae writes a record of the removal in its own directory before coven
+  deletes the store, and deletes the record last. A removal that stopped is
+  found from its record, never from bae files that coven's store list lacks:
+  a library hidden from that list, by unreadable settings or a reset cut off
+  partway, still exists. At launch bae shows a recorded removal whose store
+  coven no longer lists, with *Retry*, and opens no library while it shows.
+  *Retry* deletes only what is left on this device; it never tries to leave
+  again. A record whose store coven still lists stopped before the delete: it
+  is cleared, and bae says the library is still on this device, with nothing
+  to retry. Removals, finishing them and looking for them each hold one
+  removal lock, an OS file lock that excludes other processes too, so a
+  lookup never sees a removal still waiting on coven.
 
 ---
 ## 7. Playback
@@ -1444,13 +1490,16 @@ library is registered there by id.
 |---|---|
 | `create_library` | creates a new library's store and gives this device its identity; `create_library_default` generates the name |
 | `restore_from_code`, `restore_from_keychain` | opens a library on a new device from a restore code, typed or scanned, or saved in iCloud Keychain (§5.6) |
-| `saved_restore_codes` | lists the restore codes coven saved in iCloud Keychain |
+| `saved_restore_codes` | lists the restore codes coven saved in iCloud Keychain for libraries not already on this device |
+| `restore_replacing_device` | after another of the person's devices replaced their keys, checks the code restores this library, discards this device's copy and restores it under a new device id (§6.4) |
 | `join_with_invite` | joins a library from an invite and writes the person's profile (§5.6) |
 | `reset_device` | loads a library again under a fresh device id, after the warning (§6.4) |
 | `Config::discover_libraries` | lists registered libraries, including any that can't be opened, with why |
 | `app::bootstrap` | opens a library and starts its services: the store, sync, playback, and on desktops import and identification |
 | `AppServices::close` | stops playback, saving where it was, then identification and import, then closes the store |
-| `AppServices::remove_library` | stops the library's services, leaves the store, then deletes the library from this device (§6.4) |
+| `unsent_before_removal` | counts what removing a library would discard: the edits and files this device hasn't sent, for the open library or, opening its store briefly, one that isn't open (§6.4) |
+| `AppServices::remove_library` | stops the library's services, records the removal, leaves the store discarding what this device hasn't sent, then deletes the library from this device and the record last (§6.4) |
+| `UnfinishedRemoval::find`, `finish_removals` | report recorded removals that stopped partway, and finish them (§6.4) |
 
 Creating, restoring and joining each return coven's open handle, and bae
 starts the library on that same handle rather than opening it again.
