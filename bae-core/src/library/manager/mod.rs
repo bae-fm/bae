@@ -111,7 +111,7 @@ mod sync_status;
 use error_category::{
     blob_category, cloud_home_category, cloud_setup_category, cloud_unlock_category, sync_category,
 };
-pub(crate) use error_category::{bootstrap_category, creation_category};
+pub(crate) use error_category::{bootstrap_category, creation_category, deletion_category};
 mod track;
 pub(crate) use track::queue_catalog_request;
 
@@ -199,8 +199,6 @@ pub enum LibraryError {
     /// generic settings line.
     #[error("{0}")]
     Validation(String),
-    #[error(transparent)]
-    StoreDeletion(#[from] coven::StoreDeletionError),
     #[error("{operation}; cleanup also failed: {cleanup}")]
     Cleanup {
         operation: Box<LibraryError>,
@@ -307,7 +305,6 @@ impl LibraryError {
             LibraryError::Save(_) => C::Save,
             LibraryError::Blob { error, .. } => blob_category(error),
             LibraryError::Cleanup { operation, .. } => operation.category(),
-            LibraryError::StoreDeletion(_) => C::Config,
             LibraryError::Io(_)
             | LibraryError::TrackMapping(_)
             | LibraryError::ReleaseEditLoad(_)

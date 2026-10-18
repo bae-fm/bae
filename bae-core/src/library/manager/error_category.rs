@@ -82,6 +82,16 @@ pub(crate) fn creation_category(error: &coven::StoreCreationError) -> C {
     }
 }
 
+pub(crate) fn deletion_category(error: &coven::StoreDeletionError) -> C {
+    use coven::StoreDeletionError as E;
+    match error {
+        E::Sync(error) => sync_category(error),
+        E::Key(error) => key_category(error),
+        E::Lock(_) | E::Unsent(_) => C::Config,
+        E::File(_) => C::Internal,
+    }
+}
+
 pub(crate) fn bootstrap_category(error: &coven::BootstrapError) -> C {
     use coven::BootstrapError as E;
     match error {

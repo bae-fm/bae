@@ -21,12 +21,18 @@ impl LibraryManager {
     }
 
     /// The caller stops its playback and import services before removal.
-    /// Coven leaves the store first; a failure returns without deleting it.
-    pub async fn remove_library(&self, unsent: coven::IfUnsent) -> Result<(), LibraryError> {
+    /// This ends the manager's workers before leaving. An offline refusal preserves
+    /// the store; retry removal on this manager, or reopen it to resume normal use.
+    pub async fn remove_library(
+        &self,
+        unsent: coven::IfUnsent,
+    ) -> Result<(), crate::library::LibraryRemovalError> {
         let id = self.database.store_id();
-        self.database.delete_store(unsent).await?;
         self.tasks.close().await;
-        crate::library::local_lifecycle::remove_preferences(&self.app_dir, id).await
+        self.database.delete_store(unsent).await?;
+        crate::library::RemovedLibrary::new(id)
+            .finish(&self.app_dir)
+            .await
     }
 
     pub async fn forget_encryption_key(&self) -> Result<(), LibraryError> {

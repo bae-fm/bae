@@ -85,9 +85,10 @@ async fn offline_removal_keeps_the_store_preferences_and_active_pointer() {
     let id = handle.store_id();
     std::fs::write(app_dir.active_library_pointer(), id.to_string()).unwrap();
     storage.set_online(false);
-    remove_local_library(&app_dir, &handle, coven::IfUnsent::Discard)
+    let error = remove_local_library(&app_dir, &handle, coven::IfUnsent::Discard)
         .await
         .expect_err("leaving needs reachable storage");
+    assert_eq!(error.category(), crate::ui::UiErrorCategory::Network);
     assert_eq!(handle.store_name().await.unwrap(), "Library");
     assert!(app_dir
         .registered_library(&id.to_string())
@@ -101,5 +102,27 @@ async fn offline_removal_keeps_the_store_preferences_and_active_pointer() {
     remove_local_library(&app_dir, &handle, coven::IfUnsent::Discard)
         .await
         .unwrap();
+    assert!(!app_dir.active_library_pointer().exists());
+}
+
+#[tokio::test]
+async fn preferences_failure_reports_that_the_store_was_already_removed() {
+    let (_temp, app_dir, handle, _storage) = library().await;
+    std::fs::create_dir(app_dir.active_library_pointer()).unwrap();
+    let error = remove_local_library(&app_dir, &handle, coven::IfUnsent::Refuse)
+        .await
+        .unwrap_err();
+    assert!(app_dir.store_layout().stores().await.unwrap().is_empty());
+    assert!(error.to_string().contains("store was removed"), "{error}");
+    let super::LibraryRemovalError::Preferences { library, .. } = error else {
+        panic!("only preferences remain to be removed");
+    };
+    std::fs::remove_dir(app_dir.active_library_pointer()).unwrap();
+    std::fs::write(
+        app_dir.active_library_pointer(),
+        handle.store_id().to_string(),
+    )
+    .unwrap();
+    library.finish(&app_dir).await.unwrap();
     assert!(!app_dir.active_library_pointer().exists());
 }
