@@ -784,21 +784,11 @@ extension AppDelegate {
                     self.releaseLibrarySession(open)
                     self.screen = .loading
                 }
-                let reset = try host.prepareDeviceReset(
+                let reset = try await host.resetDevice(
                     libraryId: libraryId,
                     deviceName: deviceName
                 )
-                switch try await reset.confirm() {
-                case .opened(let library):
-                    self.openOpenedLibrary(library, warning: nil)
-                case .published(let library, let warning),
-                    .profileRequired(let library, let warning):
-                    self.openOpenedLibrary(library, warning: warning)
-                case .savedCodeRemoved, .declined:
-                    preconditionFailure(
-                        "a device reset neither reads a saved code nor asks to join"
-                    )
-                }
+                self.openOpenedLibrary(reset.library, warning: reset.warning)
             }
             catch {
                 baeAppLogger.error(

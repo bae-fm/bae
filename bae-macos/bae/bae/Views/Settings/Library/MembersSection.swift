@@ -102,7 +102,7 @@ struct MembersSection: View {
         ) { _ in
             Button("OK", role: .cancel) {}
         } message: { instruction in
-            Text(signOutText(instruction))
+            Text(instruction.text)
         }
         if store.selfIsAdmin, !store.requests.isEmpty {
             Section("Waiting to join") {
@@ -136,16 +136,6 @@ struct MembersSection: View {
         case .device(let device): String(localized: "Remove \(device.name)?")
         case nil: ""
         }
-    }
-
-    private func signOutText(_ instruction: BridgeProviderSignOut) -> String {
-        let line = localizedCoreString(
-            bridgeProviderSignOutKey(instruction: instruction)
-        )
-        if case .removeAppAccess(let provider) = instruction {
-            return "\(provider.displayName): \(line)"
-        }
-        return line
     }
 
     private func setRole(_ member: BridgeMember, _ role: BridgeMemberRole) {
@@ -249,7 +239,7 @@ private struct DeviceRow: View {
                 .foregroundStyle(.secondary)
             Text(device.name)
                 .themeText(.body)
-            Text(device.stateLabel)
+            Text(device.stateLabel(thisDevice: String(localized: "This Mac")))
                 .themeText(.detail)
                 .foregroundStyle(.secondary)
             Spacer()
@@ -290,28 +280,6 @@ private struct JoinRequestRow: View {
             Button("Approve", action: onApprove)
                 .buttonStyle(PrimaryButtonStyle())
                 .disabled(busy)
-        }
-    }
-}
-
-extension BridgeMemberRole {
-    fileprivate var label: String {
-        switch self {
-        case .admin: String(localized: "Admin")
-        case .member: String(localized: "Member")
-        }
-    }
-}
-
-extension BridgeDevice {
-    /// "This Mac" for this device; otherwise its state when it no longer has
-    /// access.
-    fileprivate var stateLabel: String {
-        if isSelf { return String(localized: "This Mac") }
-        return switch state {
-        case .active: ""
-        case .removed: String(localized: "Removed")
-        case .replaced: String(localized: "Replaced")
         }
     }
 }

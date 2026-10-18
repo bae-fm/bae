@@ -9,7 +9,7 @@ import SwiftUI
 struct WelcomeView: View {
     /// A created, restored or joined library's open store, with the error a
     /// partly finished restore or join reported.
-    let onLibraryReady: (OpenedLibrary, BridgeError?) -> Void
+    let onLibraryReady: @MainActor (OpenedLibrary, BridgeError?) -> Void
     /// Open one of this Mac's libraries by id.
     let onOpenLibrary: (String) -> Void
     /// A failed library open, shown as the chooser's inline callout. Only the
@@ -26,11 +26,15 @@ struct WelcomeView: View {
         case join
     }
 
+    @Environment(LibrarySetup.self)
+    private var setup
+
     @State
     private var mode: Mode
 
     init(
-        onLibraryReady: @escaping (OpenedLibrary, BridgeError?) -> Void,
+        onLibraryReady:
+            @escaping @MainActor (OpenedLibrary, BridgeError?) -> Void,
         onOpenLibrary: @escaping (String) -> Void,
         loadError: DisplayError? = nil,
         initialMode: Mode = .choose,
@@ -57,17 +61,23 @@ struct WelcomeView: View {
             )
         case .restore(let saved):
             BootstrapCodeView(
-                entry: .restore(saved),
-                onLibraryReady: onLibraryReady,
+                form: codeForm(.restore(saved)),
                 onBack: { mode = .choose }
             )
         case .join:
             BootstrapCodeView(
-                entry: .join,
-                onLibraryReady: onLibraryReady,
+                form: codeForm(.join),
                 onBack: { mode = .choose }
             )
         }
+    }
+
+    /// The code screen keeps the first form it is handed for as long as it
+    /// shows; switching flows gives it a fresh one.
+    private func codeForm(
+        _ entry: BootstrapCodeForm.Entry
+    ) -> BootstrapCodeForm {
+        setup.bootstrapForm(entry: entry, onLibraryReady: onLibraryReady)
     }
 }
 

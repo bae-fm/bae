@@ -1,23 +1,23 @@
-import BaeKit
 import Foundation
 
-/// Operations the welcome flow runs before a library is open: listing this
-/// Mac's libraries and the restore codes coven saved in iCloud Keychain,
-/// creating a library, and starting a restore or join. One injectable seam, so
-/// previews never read or write real application data.
-final class LibrarySetup: Sendable, Observable {
-    let listLibraries: @Sendable () async throws -> [BridgeLibrary]
+/// Operations that run before a library is open: listing this device's
+/// libraries and the restore codes coven saved in iCloud Keychain, creating a
+/// library, and starting a restore or join. One injectable seam, so previews
+/// never read or write real application data.
+public final class LibrarySetup: Sendable, Observable {
+    public let listLibraries: @Sendable () async throws -> [BridgeLibrary]
     /// Create a library named by core's default generator, returning its open
     /// store.
-    let createLibrary: @Sendable () async throws -> OpenedLibrary
+    public let createLibrary: @Sendable () async throws -> OpenedLibrary
     /// Restore codes coven saved in iCloud Keychain. Throws when the keychain
-    /// refuses the lookup — locked, or the display asleep — which the welcome
-    /// screen must not read as "no restore codes".
-    let savedRestoreCodes: @Sendable () async throws -> [BridgeSavedRestoreCode]
+    /// refuses the lookup — locked, or the display asleep — which a screen
+    /// listing them must not read as "no restore codes".
+    public let savedRestoreCodes:
+        @Sendable () async throws -> [BridgeSavedRestoreCode]
     /// One restore or join attempt.
-    let makeBootstrap: @MainActor @Sendable () -> LibraryBootstrap
+    private let makeBootstrap: @MainActor @Sendable () -> LibraryBootstrap
 
-    init(
+    public init(
         listLibraries: @escaping @Sendable () async throws -> [BridgeLibrary],
         createLibrary: @escaping @Sendable () async throws -> OpenedLibrary,
         savedRestoreCodes:
@@ -31,7 +31,10 @@ final class LibrarySetup: Sendable, Observable {
     }
 
     /// The production wiring over the process's host.
-    static func live(host: BridgeHost, deviceName: String) -> LibrarySetup {
+    public static func live(
+        host: BridgeHost,
+        deviceName: String
+    ) -> LibrarySetup {
         LibrarySetup(
             listLibraries: { try await host.listLibraries() },
             createLibrary: { try await host.createLibrary(name: nil) },
@@ -42,10 +45,26 @@ final class LibrarySetup: Sendable, Observable {
         )
     }
 
+    /// A restore or join screen's state, starting attempts through this seam.
+    @MainActor
+    public func bootstrapForm(
+        entry: BootstrapCodeForm.Entry,
+        onLibraryReady:
+            @escaping @MainActor (OpenedLibrary, BridgeError?) -> Void
+    ) -> BootstrapCodeForm {
+        BootstrapCodeForm(
+            entry: entry,
+            makeBootstrap: makeBootstrap,
+            onLibraryReady: onLibraryReady
+        )
+    }
+
     #if DEBUG
         /// Serves `libraries` and no saved codes; every other operation throws.
         /// A restore or join started from a preview fails at once.
-        static func stub(libraries: [BridgeLibrary] = []) -> LibrarySetup {
+        public static func stub(
+            libraries: [BridgeLibrary] = []
+        ) -> LibrarySetup {
             LibrarySetup(
                 listLibraries: { libraries },
                 createLibrary: { throw StubError.notImplemented },
@@ -64,7 +83,7 @@ final class LibrarySetup: Sendable, Observable {
                                     .path
                             )
                         ),
-                        deviceName: "Preview Mac"
+                        deviceName: "Preview Device"
                     )
                 }
             )

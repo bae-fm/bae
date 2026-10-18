@@ -242,7 +242,7 @@ extension WelcomeChooseView {
             let saved = try await setup.savedRestoreCodes()
             try Task.checkCancellation()
             savedCodes = .loaded(
-                saved.map { SavedRestoreEntry(code: $0, info: $0.info()) }
+                saved.map { SavedRestoreEntry(code: $0) }
             )
         }
         catch is CancellationError {
@@ -281,12 +281,6 @@ extension WelcomeChooseView {
             }
         }
     }
-}
-
-/// A saved restore code with the details read off it once.
-struct SavedRestoreEntry {
-    let code: BridgeSavedRestoreCode
-    let info: BridgeSavedRestoreCodeInfo
 }
 
 /// A welcome-screen lookup's state; a failure is kept apart from an empty

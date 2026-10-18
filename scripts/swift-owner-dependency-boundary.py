@@ -88,6 +88,14 @@ ALLOWED_OUTPUTS = {
         "public static func stub",
     ),
     (
+        "BaeKit/Sources/BaeKit/Services/LibrarySetup.swift",
+        "public static func live",
+    ),
+    (
+        "BaeKit/Sources/BaeKit/Services/LibrarySetup.swift",
+        "public static func stub",
+    ),
+    (
         "BaeKit/Sources/BaeKit/Services/MembershipStore.swift",
         "public static func stub",
     ),

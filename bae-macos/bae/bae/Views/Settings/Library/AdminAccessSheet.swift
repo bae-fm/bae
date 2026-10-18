@@ -4,14 +4,6 @@ import os.log
 
 private let logger = Logger.bae("AdminAccessSheet")
 
-/// What a storage admin's credentials are for, from a pending record.
-enum AdminAccessRequest {
-    /// Retry an operation that needs storage admin rights.
-    case retry(operation: Int64)
-    /// Delete a removed member's storage access key.
-    case deleteAccessKey(operation: Int64, accessKeyId: String)
-}
-
 /// Credentials of a storage admin, held for this one operation and never
 /// stored: pasted keys or a token, or a sign-in this Mac's tools provide.
 struct AdminAccessSheet: View {

@@ -13,64 +13,25 @@ private enum WizardStep: Equatable {
     case configure(BridgeCloudProvider)
 }
 
-// MARK: - Provider Row Data
-
-private struct ProviderOption: Identifiable {
-    let id: BridgeCloudProvider
-    // A `String`, since `LocalizedStringKey` isn't `Sendable`.
-    let name: String
-    let description: String
-    let icon: String
-}
-
-/// Name, blurb and icon for every provider bae can sync to.
-private let providerDisplay: [BridgeCloudProvider: ProviderOption] = [
-    .cloudKit: ProviderOption(
-        id: .cloudKit,
-        name: String(localized: "iCloud"),
-        description: String(localized: "Sync via your iCloud account"),
-        icon: "icloud"
-    ),
-    .dropbox: ProviderOption(
-        id: .dropbox,
-        name: String(localized: "Dropbox"),
-        description: String(localized: "Sync via Dropbox"),
-        icon: "externaldrive"
-    ),
-    .oneDrive: ProviderOption(
-        id: .oneDrive,
-        name: String(localized: "OneDrive"),
-        description: String(localized: "Sync via Microsoft OneDrive"),
-        icon: "externaldrive"
-    ),
-    .s3: ProviderOption(
-        id: .s3,
-        name: String(localized: "S3-compatible"),
-        description: String(
-            localized: "Any S3-compatible storage (AWS, Backblaze, Minio, ...)"
-        ),
-        icon: "externaldrive.connected.to.line.below"
-    ),
-]
+// MARK: - Provider Row
 
 /// The providers this build offers, in the bridge's display order.
-private let providerOptions: [ProviderOption] = availableCloudProviders()
-    .compactMap { providerDisplay[$0] }
+private let providerOptions: [BridgeCloudProvider] = availableCloudProviders()
 
 /// A provider in the wizard's list: its icon, name and blurb.
 private struct ProviderRow: View {
-    let option: ProviderOption
+    let provider: BridgeCloudProvider
 
     var body: some View {
         HStack(spacing: ThemeSpace.group) {
-            Image(systemName: option.icon)
+            Image(systemName: provider.setupSymbol)
                 .frame(width: 24)
                 .foregroundStyle(.secondary)
 
             VStack(alignment: .leading, spacing: ThemeSpace.line) {
-                Text(option.name)
+                Text(provider.displayName)
                     .themeText(.rowTitle)
-                Text(option.description)
+                Text(provider.setupSummary)
                     .themeText(.detail)
                     .foregroundStyle(.secondary)
             }
@@ -96,6 +57,12 @@ struct SyncSetupWizard: View {
 
     @Environment(ConfigStore.self)
     private var configStore
+    @Environment(Sync.self)
+    private var sync
+    #if BAE_OAUTH_PROVIDERS
+        @Environment(CloudSyncSetup.self)
+        private var cloudSyncSetup
+    #endif
 
     @State
     private var step: WizardStep = .selectProvider
@@ -161,13 +128,13 @@ struct SyncSetupWizard: View {
     private var providerList: some View {
         ScrollView {
             VStack(spacing: ThemeSpace.hairline) {
-                ForEach(providerOptions) { option in
+                ForEach(providerOptions, id: \.self) { provider in
                     Button {
                         withAnimation(.easeInOut(duration: 0.15)) {
-                            step = .configure(option.id)
+                            step = .configure(provider)
                         }
                     } label: {
-                        ProviderRow(option: option)
+                        ProviderRow(provider: provider)
                     }
                     .buttonStyle(.plain)
                 }
@@ -183,16 +150,25 @@ struct SyncSetupWizard: View {
     private func configureStep(for provider: BridgeCloudProvider) -> some View {
         switch provider {
         case .s3:
-            S3SetupForm(onConnected: connected)
+            S3SetupForm(
+                detectSettings: sync.detectS3Settings,
+                onConnected: connected
+            )
         case .dropbox:
             #if BAE_OAUTH_PROVIDERS
-                OAuthFolderSetup(provider: .dropbox, onConnected: connected)
+                OAuthFolderSetup(
+                    browser: cloudSyncSetup.folderBrowser(.dropbox),
+                    onConnected: connected
+                )
             #else
                 EmptyView()
             #endif
         case .oneDrive:
             #if BAE_OAUTH_PROVIDERS
-                OAuthFolderSetup(provider: .oneDrive, onConnected: connected)
+                OAuthFolderSetup(
+                    browser: cloudSyncSetup.folderBrowser(.oneDrive),
+                    onConnected: connected
+                )
             #else
                 EmptyView()
             #endif

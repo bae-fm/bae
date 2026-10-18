@@ -16,6 +16,20 @@ public final class SyncStatusStore {
         snapshot?.error.flatMap { DisplayError($0) }
     }
     public var canReconnect: Bool { snapshot?.connected == false }
+    /// The one line sync shows: "Synced", "Waiting: 3 items", or that the
+    /// library isn't connected.
+    public var statusText: String {
+        guard let key = bridgeSyncIndicatorKey(indicator: indicator) else {
+            return String(localized: "Not connected")
+        }
+        if case .waiting(let items) = indicator {
+            return String.localizedStringWithFormat(
+                localizedCoreString(key),
+                Int(items)
+            )
+        }
+        return localizedCoreString(key)
+    }
     public func apply(_ snapshot: BridgeSyncStatusSnapshot) {
         self.snapshot = snapshot
     }

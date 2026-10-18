@@ -1,24 +1,23 @@
-import BaeKit
 import Observation
 import os.log
 
 private let logger = Logger.bae("LibraryRemovals")
 
-/// Removing libraries from this Mac, and the one removal that left the store
-/// but couldn't delete this Mac's preferences for it. Process-wide, so a
-/// removal started in Settings and one started from the welcome screen finish
-/// in the same place.
+/// Removing libraries from this device, and the one removal that left the
+/// store but couldn't delete this device's preferences for it. Process-wide,
+/// so a removal started in Settings and one started where libraries are listed
+/// finish in the same place.
 @MainActor
 @Observable
-final class LibraryRemovals {
-    /// The library whose removal is running from the welcome screen.
-    private(set) var removingLibraryId: String?
+public final class LibraryRemovals {
+    /// The library whose removal is running from where libraries are listed.
+    public private(set) var removingLibraryId: String?
     /// A removal whose preferences remain, with why; its retry keeps what it
     /// needs to finish.
-    private(set) var unfinished: BridgeRemovalRetry?
+    public private(set) var unfinished: BridgeRemovalRetry?
     /// The last removal failure, or why `unfinished` stopped.
-    private(set) var error: DisplayError?
-    private(set) var isRetrying = false
+    public private(set) var error: DisplayError?
+    public private(set) var isRetrying = false
 
     @ObservationIgnored
     private let removeClosed:
@@ -27,7 +26,7 @@ final class LibraryRemovals {
     @ObservationIgnored
     private var task: Task<Void, Never>?
 
-    init(
+    public init(
         removeClosed:
             @escaping @Sendable (String) async throws -> BridgeLibraryRemoval
     ) {
@@ -35,7 +34,7 @@ final class LibraryRemovals {
     }
 
     /// The production wiring over the process's host.
-    static func live(host: BridgeHost) -> LibraryRemovals {
+    public static func live(host: BridgeHost) -> LibraryRemovals {
         LibraryRemovals { libraryId in
             try await removeClosedLibrary(libraryId, host: host)
         }
@@ -73,7 +72,7 @@ final class LibraryRemovals {
     }
 
     /// Remove a library that isn't open, then report the list changed.
-    func remove(
+    public func remove(
         closedLibrary libraryId: String,
         onFinished: @escaping () -> Void
     ) {
@@ -99,7 +98,7 @@ final class LibraryRemovals {
     }
 
     /// Note how a removal ended: its preferences may remain to be deleted.
-    func record(_ removal: BridgeLibraryRemoval) {
+    public func record(_ removal: BridgeLibraryRemoval) {
         switch removal {
         case .removed:
             unfinished = nil
@@ -112,7 +111,7 @@ final class LibraryRemovals {
     }
 
     /// Delete the preferences an unfinished removal left.
-    func retryUnfinished() {
+    public func retryUnfinished() {
         guard let retry = unfinished else {
             preconditionFailure("Retry shows only for an unfinished removal")
         }

@@ -1,4 +1,3 @@
-import BaeKit
 import SwiftUI
 import os.log
 
@@ -8,7 +7,7 @@ private let logger = Logger.bae("HistorySharingSection")
 /// applies to new plays; earlier plays keep the audience they were recorded
 /// in. A person without a profile yet — a join that couldn't write it —
 /// creates one here first.
-struct HistorySharingSection: View {
+public struct HistorySharingSection: View {
     @Environment(MembershipStore.self)
     private var store
     @Environment(Sync.self)
@@ -21,7 +20,9 @@ struct HistorySharingSection: View {
     @State
     private var error: DisplayError?
 
-    var body: some View {
+    public init() {}
+
+    public var body: some View {
         Section("Listening history") {
             if let profile = store.selfProfile {
                 Picker(

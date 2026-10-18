@@ -48,6 +48,24 @@
             #endif
         }
 
+        /// The folder choice for a provider, signing in and listing through
+        /// these calls.
+        @MainActor
+        func folderBrowser(
+            _ provider: StorageFolderBrowser.Provider
+        ) -> StorageFolderBrowser {
+            StorageFolderBrowser(
+                provider: provider,
+                operations: StorageFolderBrowser.Operations(
+                    authenticate: authenticate,
+                    dropboxSharedFolders: dropboxSharedFolders,
+                    oneDriveRoot: oneDriveRoot,
+                    oneDriveFolders: oneDriveFolders,
+                    createOneDriveFolder: createOneDriveFolder
+                )
+            )
+        }
+
         #if DEBUG
             /// Previews: every operation throws.
             init() {

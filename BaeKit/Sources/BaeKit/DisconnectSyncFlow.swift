@@ -7,11 +7,10 @@ private let logger = Logger.bae("DisconnectSyncFlow")
 /// Confirmation-and-execution model for disconnecting the cloud provider from
 /// this device, shared by the macOS and iOS settings screens. Built with
 /// injected closures so each platform supplies its live bridge call, its
-/// localized message text (the base sentence differs — iOS notes that
-/// reconnecting needs another device because it has no provider-setup flow,
-/// macOS omits that because it does), and its error-string templates (tests and
-/// the shared package can't resolve an app catalog's localized strings, so the
-/// app resolving them owns them). The at-risk sentence is owned the same way:
+/// localized message text (the base sentence names the device), and its
+/// error-string templates (tests and the shared package can't resolve an app
+/// catalog's localized strings, so the app resolving them owns them). The
+/// at-risk sentence is owned the same way:
 /// bae-core supplies the count, the app pluralizes it for its locale. The
 /// disconnect suspends through the bridge while bae-core stops the sync loop
 /// on its owned runtime; coven removes the credentials it kept.

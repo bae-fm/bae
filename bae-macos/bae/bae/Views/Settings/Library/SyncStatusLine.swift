@@ -35,7 +35,7 @@ struct SyncStatusLine: View {
             PendingRecordsView(records: status.pending, perform: perform)
         } label: {
             HStack {
-                Text(statusText)
+                Text(status.statusText)
                 Spacer()
                 if !status.syncReady {
                     Button("Reconnect") { reconnect() }
@@ -53,20 +53,6 @@ struct SyncStatusLine: View {
         if let error = status.error {
             ErrorDetailDisclosure(error: error)
         }
-    }
-
-    private var statusText: String {
-        guard let key = bridgeSyncIndicatorKey(indicator: status.indicator)
-        else {
-            return String(localized: "Not connected")
-        }
-        if case .waiting(let items) = status.indicator {
-            return String.localizedStringWithFormat(
-                localizedCoreString(key),
-                Int(items)
-            )
-        }
-        return localizedCoreString(key)
     }
 
     private func reconnect() {
@@ -109,70 +95,20 @@ struct SyncStatusLine: View {
     /// Sign in to the provider again and reconnect this library's location with
     /// the new sign-in. An S3 library takes a new access key instead.
     private func signIn(_ provider: BridgeCloudProvider) async throws {
-        switch location {
-        case .s3:
+        switch StorageReauthorization(location: location) {
+        case .s3Key:
             sheet = .s3Key
-        case .dropbox(let folder):
+        case .oauth(let access):
             #if BAE_OAUTH_PROVIDERS
-                let access: BridgeDropboxAccess =
-                    switch folder {
-                    case .appFolder: .appFolder
-                    case .sharedFolder: .fullDropbox
-                    }
-                try await cloudSyncSetup.authenticate(.dropbox(access: access))
+                try await cloudSyncSetup.authenticate(access)
                 _ = try await cloudSyncSetup.connect(location)
             #else
-                preconditionFailure("\(provider) sign-in needs the OAuth build")
+                preconditionFailure(
+                    "\(provider) sign-in for \(access) needs the OAuth build"
+                )
             #endif
-        case .oneDrive:
-            #if BAE_OAUTH_PROVIDERS
-                try await cloudSyncSetup.authenticate(.oneDrive)
-                _ = try await cloudSyncSetup.connect(location)
-            #else
-                preconditionFailure("\(provider) sign-in needs the OAuth build")
-            #endif
-        case .cloudKit:
-            // iCloud signs in through System Settings; reconnecting picks the
-            // account up.
+        case .systemAccount:
             try await sync.reconnectSync()
-        }
-    }
-}
-
-/// A pending record's action that asks for more before it runs.
-enum PendingActionSheet: Identifiable {
-    case adminAccess(AdminAccessRequest)
-    case s3Key
-    case restoreFile(BridgePendingRecord)
-    case review(BridgePendingRecord)
-
-    /// The sheet a record's action asks for, or nil when it runs at once.
-    init?(_ record: BridgePendingRecord) {
-        switch record.action {
-        case .restoreFile:
-            self = .restoreFile(record)
-        case .provideAdminAccess(let id):
-            self = .adminAccess(.retry(operation: id))
-        case .deleteAccessKey(let operation, let accessKeyId):
-            self = .adminAccess(
-                .deleteAccessKey(operation: operation, accessKeyId: accessKeyId)
-            )
-        case .review:
-            self = .review(record)
-        case .wait, .updateApp, .signIn, .reconnect, .resumeUploads,
-            .retryOperation, .resetDevice:
-            return nil
-        }
-    }
-
-    var id: String {
-        switch self {
-        case .adminAccess(.retry(let operation)): "admin-\(operation)"
-        case .adminAccess(.deleteAccessKey(let operation, _)):
-            "delete-key-\(operation)"
-        case .s3Key: "s3-key"
-        case .restoreFile(let record): "restore-file-\(record.hashValue)"
-        case .review(let record): "review-\(record.hashValue)"
         }
     }
 }
@@ -350,26 +286,9 @@ private struct S3KeySheet: View {
     }
 
     private func connect() {
-        guard
-            case .s3(
-                let bucket,
-                let region,
-                let endpoint,
-                let profile,
-                let prefix
-            ) =
-                location
-        else {
-            preconditionFailure("an S3 key is asked only for an S3 library")
-        }
-        let config = BridgeSaveSyncConfig(
-            bucket: bucket,
-            region: region,
-            endpoint: endpoint,
-            keyPrefix: prefix.isEmpty ? nil : prefix,
+        let config = location.replacingS3Key(
             accessKey: accessKey,
-            secretKey: secretKey,
-            profile: profile
+            secretKey: secretKey
         )
         error = nil
         task = Task {
