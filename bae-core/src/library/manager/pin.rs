@@ -36,7 +36,7 @@ impl LibraryManager {
         let manager = self.clone();
         let release = release.to_string();
         let (progress_tx, mut progress_rx) = tokio::sync::mpsc::unbounded_channel();
-        let task = self.runtime_handle.spawn(async move {
+        let task = self.run_file_operation("pin release", move |closing| async move {
             // Progress reads belong to the operation: if one fails, finish
             // rolling back its pins before reporting the failure.
             let result = async {
@@ -46,6 +46,7 @@ impl LibraryManager {
                 loop {
                     let (next, finished) = tokio::select! {
                         _ = cancel.cancelled() => return Err(LibraryError::Storage("pinning release was cancelled".into())),
+                        _ = closing.cancelled() => return Err(LibraryError::Storage("pinning release was cancelled because the library is closing".into())),
                         result = &mut pin => {
                             result.map_err(|error| LibraryError::blob(format!("pin release {release}"), error))?;
                             (manager.database.pin_progress(files.clone()).await?, true)
@@ -73,12 +74,21 @@ impl LibraryManager {
             }
             Ok(())
         });
-        while let Some(progress) = progress_rx.recv().await {
-            on_progress(progress);
-        }
-        let result = task
-            .await
-            .map_err(|error| LibraryError::Storage(format!("pin worker failed: {error}")))?;
+        tokio::pin!(task);
+        let result = loop {
+            tokio::select! {
+                result = &mut task => {
+                    while let Ok(progress) = progress_rx.try_recv() {
+                        on_progress(progress);
+                    }
+                    break result;
+                },
+                progress = progress_rx.recv() => match progress {
+                    Some(progress) => on_progress(progress),
+                    None => break task.await,
+                },
+            }
+        };
         cancel_on_drop.disarm();
         result
     }

@@ -237,7 +237,7 @@ async fn a_missing_upload_source_is_pending_and_cannot_be_cancelled() {
     let (manager, temp, release, file_id) = queued_upload_fixture("queued").await;
     let snapshot = manager.outbox_snapshot().await.unwrap();
     assert_eq!(snapshot.total.queued, 1);
-    assert_eq!(snapshot.upload_groups[0].files[0].source_bytes_total, 1000);
+    assert_eq!(snapshot.upload_groups[0].files[0].upload.file.plaintext_size(), 1000);
     assert_eq!(snapshot.upload_groups[0].files[0].label, crate::library::UploadFileLabel::Filename("a.flac".into()));
     std::fs::remove_file(temp.path().join("queued/a.flac")).unwrap();
     assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 0);
@@ -316,10 +316,10 @@ async fn outbox_snapshot_identifies_the_cover_blob() {
         .find(|file| file.label == crate::library::UploadFileLabel::Cover)
         .expect("the cover is a typed upload row");
     assert_eq!(
-        cover_upload.file_id,
-        format!("{}:{}", crate::sync::COVERS_NAMESPACE, manager.database.file_ref("covers", &release.id).await.unwrap().id())
+        cover_upload.upload.file,
+        manager.database.file_ref("covers", &release.id).await.unwrap()
     );
-    assert_eq!(cover_upload.source_bytes_total, cover_bytes.len() as u64);
+    assert_eq!(cover_upload.upload.file.plaintext_size(), cover_bytes.len() as u64);
 }
 
 /// A successful make-Remote command must publish the canonical durable queue
@@ -605,4 +605,86 @@ async fn transfer_concurrency_settings_apply_to_the_open_store() {
         5,
         "a rejected value changes nothing"
     );
+}
+
+#[tokio::test]
+async fn attachment_commits_before_its_offline_copy_runs_in_downloads() {
+    let (manager, temp) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
+    manager.set_downloads_paused(true);
+    let release = insert_local_release_with_files(
+        &manager,
+        &temp.path().join("pin-after-attachment"),
+        "Album",
+        &[("audio.flac", b"audio")],
+    )
+    .await;
+    manager.coven_make_remote(&release.id, true).await.unwrap();
+    assert!(release_files(&manager, &release.id)
+        .await
+        .iter()
+        .all(|file| file.attached));
+    let queue = manager.download_queue();
+    assert_eq!(queue.ops.len(), 1);
+    assert_eq!(queue.ops[0].release_id, release.id);
+    assert!(matches!(
+        queue.ops[0].state,
+        crate::library::DownloadState::Queued
+    ));
+    manager.set_downloads_paused(false);
+    let mut changes = manager.subscribe_download_queue();
+    tokio::time::timeout(
+        std::time::Duration::from_secs(5),
+        changes.wait_for(|queue| queue.ops.is_empty()),
+    )
+    .await
+    .unwrap()
+    .unwrap();
+    assert!(
+        manager
+            .find_release_storage_summary(&release.id)
+            .await
+            .unwrap()
+            .unwrap()
+            .pinned
+    );
+}
+
+#[tokio::test]
+async fn close_waits_for_a_file_operations_rollback_and_refuses_new_work() {
+    let (manager, _home) = setup_test_manager().await;
+    let (entered, reached) = tokio::sync::oneshot::channel();
+    let (release, released) = tokio::sync::oneshot::channel();
+    let database = manager.database.clone();
+    let (admitted, admission) = tokio::sync::oneshot::channel();
+    let working = manager.clone();
+    let operation = tokio::spawn(async move {
+        working
+            .run_file_operation("rollback test", move |closing| async move {
+                admitted.send(()).unwrap();
+                closing.cancelled().await;
+                entered.send(()).unwrap();
+                released.await.unwrap();
+                database.store_name().await?;
+                Ok(())
+            })
+            .await
+    });
+    admission.await.unwrap();
+    let closing = manager.clone();
+    let mut close = tokio::spawn(async move { closing.close().await });
+    reached.await.unwrap();
+    assert!(
+        tokio::time::timeout(std::time::Duration::from_millis(50), &mut close)
+            .await
+            .is_err(),
+        "close must wait for rollback before closing the database"
+    );
+    assert!(manager
+        .run_file_operation("late operation", |_| async { Ok(()) })
+        .await
+        .is_err());
+    release.send(()).unwrap();
+    operation.await.unwrap().unwrap();
+    close.await.unwrap().unwrap();
 }

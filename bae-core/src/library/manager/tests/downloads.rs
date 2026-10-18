@@ -44,7 +44,6 @@ async fn download_queue_enqueue_dedups_and_cancels_while_paused() {
 #[tokio::test]
 async fn download_queue_skips_already_pinned() {
     let (manager, temp_dir) = setup_test_manager().await;
-    manager.set_downloads_paused(true);
 
     // A genuinely pinned release: made Remote with pin, so its blob lands in
     // coven's offline cache.
@@ -70,6 +69,7 @@ async fn download_queue_skips_already_pinned() {
         "the offline-cached blob makes it read as pinned"
     );
 
+    manager.set_downloads_paused(true);
     manager.enqueue_pins(vec![release_id.clone()]).await;
     assert!(manager.download_queue().ops.is_empty());
 }

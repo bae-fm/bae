@@ -249,11 +249,9 @@ impl Database {
     /// What coven's durable cloud queue is holding, joined to the bae context the
     /// Storage Manager renders it with. Backs the processing snapshot.
     ///
-    /// The two halves come from the two owners: coven reports every queued upload
-    /// and make-Remote transition (oldest first, surviving restarts), and bae
-    /// reads display context from each upload's declared blob-bearing table.
-    /// Missing context is an invalid queue snapshot and is surfaced to the
-    /// subscriber.
+    /// Coven reports every queued upload, surviving restarts, and bae reads
+    /// display context from each upload's declared file table. An upload outliving
+    /// its deleted row remains visible without the row's former label.
     pub async fn outbox_queue(&self) -> Result<DbOutboxQueue, DbError> {
         let (snapshot, _, names) = self.outbox_queue_parts().await?;
         Self::outbox_queue_from_context(snapshot, names)
@@ -278,8 +276,8 @@ impl Database {
         Ok((snapshot, request, names))
     }
 
-    /// Subscribe to coven's durable uploads and make-Remote intents as one
-    /// committed stream. Each value is labelled by the display rows
+    /// Subscribe to coven's durable uploads as one committed stream.
+    /// Each value is labelled by the display rows
     /// `subscribe_outbox_display` follows and
     /// joined by `outbox_queue_from_context`.
     pub fn subscribe_cloud_outbox(&self) -> coven::LiveQuery<coven::UploadQueue> {
@@ -344,7 +342,7 @@ impl Database {
                         Some(release.clone()),
                         crate::library::UploadFileLabel::Filename(name.clone()),
                     ),
-                    None => (None, crate::library::UploadFileLabel::Unwinding),
+                    None => (None, crate::library::UploadFileLabel::DeletedReleaseFile),
                 },
                 "covers" => (Some(id.to_string()), crate::library::UploadFileLabel::Cover),
                 "artist_images" => (None, crate::library::UploadFileLabel::ArtistImage),

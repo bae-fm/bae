@@ -48,8 +48,7 @@ async fn setup_with_cloud(tmp: &TempDir) -> (Database, LibraryManager, Arc<Memor
 }
 
 /// Insert an artist + album + a Local release, write its originals under
-/// `source_dir`, register the `DbFile` rows, and register each as a coven
-/// user-provided external ref (the in-place files of a Local release). No uploads
+/// `source_dir`, register the `DbFile` rows and bae's device-local paths. No uploads
 /// queued — the test drives the transition itself. Returns (release_id, files).
 async fn create_local_release(
     mgr: &LibraryManager,
@@ -193,6 +192,22 @@ async fn test_multiple_releases_independent_completion() {
         0
     );
 
+    let mut downloads = mgr.subscribe_download_queue();
+    let settled = tokio::time::timeout(
+        std::time::Duration::from_secs(10),
+        downloads.wait_for(|queue| {
+            queue
+                .ops
+                .iter()
+                .all(|op| matches!(op.state, bae_core::library::DownloadState::Failed { .. }))
+        }),
+    )
+    .await
+    .expect("both offline copies finish")
+    .unwrap();
+    assert!(settled.ops.is_empty(), "offline copy failed: {settled:?}");
+    drop(settled);
+
     assert_eq!(
         storage(&mgr, &release_a).await,
         (ReleaseStorageState::Remote, true)
@@ -204,11 +219,11 @@ async fn test_multiple_releases_independent_completion() {
 }
 
 // ---------------------------------------------------------------------------
-// make-Remote requires a live upload pipeline.
+// make-Remote requires configured cloud storage.
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn test_manage_refused_when_sync_not_running() {
+async fn test_manage_refused_without_cloud_storage() {
     let tmp = TempDir::new().unwrap();
     // No cloud home connected, so the sync loop is NOT running.
     let (db, mgr, _cloud) = setup_manager(&tmp).await;
@@ -228,8 +243,7 @@ async fn test_manage_refused_when_sync_not_running() {
     )
     .await;
 
-    // The manager's make-Remote gate refuses up front when the pipeline is down —
-    // nothing would ever drain the queue to flip the release Remote.
+    // No configured destination: refuse before attaching any files.
     let result = mgr
         .make_releases_remote(std::slice::from_ref(&release_id))
         .await
@@ -270,7 +284,7 @@ async fn attached_release_is_remote_before_its_uploads_finish() {
 
     mgr.coven_make_remote(&release_id, false).await.unwrap();
 
-    // Still Local until the uploads finish.
+    // Attachment is committed before uploads finish.
     assert_eq!(
         storage(&mgr, &release_id).await,
         (ReleaseStorageState::Remote, false)
@@ -279,16 +293,14 @@ async fn attached_release_is_remote_before_its_uploads_finish() {
     let count = mgr.drain_uploads_expecting_work().await.unwrap();
     assert_eq!(count, files.len());
 
-    // The drain flipped the gate: Remote, cloud-only (not pinned).
+    // Upload completion leaves attachment and pin state unchanged.
     assert_eq!(
         storage(&mgr, &release_id).await,
         (ReleaseStorageState::Remote, false)
     );
 }
 
-/// bae's storage summary reflects a FAILED make-Remote: coven never flips the
-/// gate, so the summary stays Local and the upload stays pending (retriable) in
-/// the count the UI reads. The upload-retry semantics are coven's.
+/// Upload failure leaves the release attached and its files queued for retry.
 #[tokio::test]
 async fn upload_failure_keeps_attachment_and_pending_work() {
     let tmp = TempDir::new().unwrap();
@@ -321,11 +333,10 @@ async fn upload_failure_keeps_attachment_and_pending_work() {
     );
 }
 
-/// The upload drain refuses a truncated source while sealing its spool. The
-/// durable queue retains the failed work for retry, the Local gate stays closed,
-/// and the user's source files remain untouched.
+/// Attachment refuses an original changed since import. Nothing is queued,
+/// and the source files remain untouched.
 #[tokio::test]
-async fn truncated_source_keeps_root_local_and_failed_work_queued() {
+async fn truncated_source_refuses_attachment_without_queuing_work() {
     let tmp = TempDir::new().unwrap();
     let (db, mgr, _cloud) = setup_with_cloud(&tmp).await;
     let source_dir = tmp.path().join("originals");
@@ -357,13 +368,13 @@ async fn truncated_source_keeps_root_local_and_failed_work_queued() {
 }
 
 // ---------------------------------------------------------------------------
-// make-Local from Remote: bae's summary reads Local and each file's external
-// ref resolves to the new path. The cloud objects the release stops naming are
+// make-Local from Remote: bae's summary reads Local and each file's device-local
+// path names its new copy. The cloud objects the release stops naming are
 // coven's to retire through accepted reclaim.
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn make_local_updates_summary_and_external_refs() {
+async fn make_local_updates_summary_and_original_paths() {
     let tmp = TempDir::new().unwrap();
     let (db, mgr, _cloud) = setup_with_cloud(&tmp).await;
     let source_dir = tmp.path().join("originals");
@@ -384,7 +395,7 @@ async fn make_local_updates_summary_and_external_refs() {
     .await
     .unwrap();
 
-    // Release is Local, and each file's external ref resolves to the new path.
+    // Release is Local, and each file's original path names its new copy.
     assert_eq!(
         storage(&mgr, &release_id).await,
         (ReleaseStorageState::Local, false)
@@ -394,15 +405,14 @@ async fn make_local_updates_summary_and_external_refs() {
         assert_eq!(
             path,
             new_path.join(name),
-            "external ref points at the new path"
+            "device-local path names the new copy"
         );
     }
 }
 
 /// A failed make-Local (a missing cloud blob 404s on the cache-miss read) leaves
 /// bae's state consistent: the manager surfaces the error and the summary stays
-/// Remote. The read-404 and make-Local rollback are coven's; this asserts the
-/// bae seam + summary after the failure.
+/// Remote. Coven reports the missing file; bae rolls back the local copies.
 #[tokio::test]
 async fn make_local_missing_blob_fails_leaving_summary_remote() {
     let tmp = TempDir::new().unwrap();

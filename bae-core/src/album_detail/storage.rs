@@ -15,7 +15,7 @@ pub struct ReleaseStorageSummary {
     pub artist_names: String,
     pub media: Vec<crate::pressing::MediaCount>,
     /// The release's storage state — Local (local) or Remote (cloud) —
-    /// derived from the shared `releases.remote` fact. Orthogonal to `pinned`.
+    /// derived from its files' attachment state. Orthogonal to `pinned`.
     pub storage_state: ReleaseStorageState,
     /// Whether coven keeps this release's blobs pinned (kept offline) on this
     /// device — the orthogonal coven-cache property. Meaningful only when

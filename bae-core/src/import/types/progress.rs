@@ -1,15 +1,14 @@
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use super::Catalog;
 
-/// Where an import puts its release. Every import lands local first; a
-/// `Remote` one then uploads in the background.
+/// Whether an import attaches its files for background upload. Every release's
+/// rows sync; a local import keeps its file paths only on this device.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ImportDestination {
     /// Files stay in place on this device; never uploaded.
     Local,
-    /// Uploaded to the cloud home; `releases.remote` flips true once the upload
-    /// lands.
+    /// Attach files in the import transaction and upload them in the background.
     Remote {
         /// Whether coven keeps the uploaded bytes pinned rather than evictable.
         pin: bool,

@@ -11,11 +11,8 @@ pub enum UploadFileLabel {
     Cover,
     ArtistImage,
     Avatar,
-    /// A file whose row went with its release. The entry is on its way out of
-    /// the cloud, and there is nothing left to name it with — nor anything to
-    /// name: what the person is watching is the release leaving, which the
-    /// group says.
-    Unwinding,
+    /// A committed upload whose release-file row was deleted.
+    DeletedReleaseFile,
 }
 
 impl UploadFileLabel {
@@ -31,7 +28,7 @@ impl UploadFileLabel {
                 UploadFileLabel::ArtistImage | UploadFileLabel::Avatar => 1,
                 UploadFileLabel::Filename(_) => 2,
                 // Nameless, so there is nothing to sort it among the names by.
-                UploadFileLabel::Unwinding => 3,
+                UploadFileLabel::DeletedReleaseFile => 3,
             }
         }
         rank(self)
@@ -115,15 +112,19 @@ impl UploadProgress {
 
 #[derive(Debug, Clone)]
 pub struct UploadFileOp {
-    pub file_id: String,
+    /// Keep coven's file identity, row key, and progress together.
+    pub upload: coven::QueuedUpload,
     pub label: UploadFileLabel,
-    pub source_bytes_total: u64,
     pub throughput_bps: u64,
-    pub state: UploadState,
 }
 impl UploadFileOp {
+    /// The release-file row this upload belongs beside. Artwork has no such row.
+    pub fn release_file_key(&self) -> Option<&coven::RowKey> {
+        (self.upload.file.table() == "release_files").then(|| self.upload.file.key())
+    }
+
     pub fn bar(&self) -> Option<UploadBar> {
-        match self.state {
+        match self.upload.phase {
             UploadState::Waiting => None,
             UploadState::Uploading {
                 bytes_confirmed,
@@ -153,7 +154,7 @@ pub struct ReleaseUploadProgress {
 pub struct OutboxSnapshot {
     pub revision: u64,
     pub upload_groups: Vec<UploadReleaseGroup>,
-    /// Artist images and files whose release was removed while an upload ended.
+    /// Images without a release, and uploads whose release rows were deleted.
     pub other_files: Vec<UploadFileOp>,
     pub total: UploadProgress,
     pub pause_state: OutboxPauseState,
@@ -198,13 +199,11 @@ impl OutboxSnapshot {
                 rates.get(&file.id()).copied().unwrap_or(0)
             };
             let op = UploadFileOp {
-                file_id: format!("{}:{}", file.namespace(), file.id()),
+                upload: entry.upload,
                 label: entry.label,
-                source_bytes_total: file.plaintext_size(),
                 throughput_bps,
-                state: entry.upload.phase,
             };
-            snapshot.total.add(op.state);
+            snapshot.total.add(op.upload.phase);
             snapshot.throughput_bps = snapshot
                 .throughput_bps
                 .checked_add(throughput_bps)
@@ -220,7 +219,7 @@ impl OutboxSnapshot {
                     snapshot.upload_groups.len() - 1
                 });
                 let group = &mut snapshot.upload_groups[index];
-                group.progress.add(op.state);
+                group.progress.add(op.upload.phase);
                 group.throughput_bps = group
                     .throughput_bps
                     .checked_add(throughput_bps)

@@ -1,15 +1,7 @@
 #![cfg(feature = "test-utils")]
-//! Integration tests for the bae-layer behavior that rides coven's owned-blob
-//! transitions: the make-Remote outbox-snapshot visibility, the host-provided
-//! cover blob through coven's local store, the pin/unpin guards and successes
-//! (the `TransferProgress` events through coven's cache), the
-//! missing-external-source read error `read_release_file_bytes` surfaces, and
-//! live storage values after transition completions. coven's own suite owns the
-//! transition semantics themselves.
-//!
-//! coven owns the transitions; tests drive them through the manager's coven
-//! seams (`coven_make_remote` + the upload drain via `drain_uploads_expecting_work`,
-//! `coven_make_local`) over coven connected to `MemoryStorage`.
+//! File attachment, uploads, pins, and local copies through the library manager.
+//! Coven uses MemoryStorage for cloud reads and writes; bae owns the release
+//! transitions, their progress, and their subscribed storage values.
 
 use bae_test_support as support;
 use support::tracing_init;
@@ -54,9 +46,8 @@ async fn setup_with_cloud(tmp: &TempDir) -> LibraryManager {
     manager
 }
 
-/// Insert a Local release: an album + release with `remote = false`, its originals
-/// written under `source_dir`, one `DbFile` per file, and each file registered as
-/// a coven user-provided external ref (the in-place files of a Local release).
+/// Insert a Local release: its originals under `source_dir`, one `DbFile` per
+/// file, and each original path in bae's device-local table.
 async fn create_local_release(
     mgr: &LibraryManager,
     source_dir: &Path,
@@ -193,7 +184,7 @@ async fn expect_storage_state(
 // The make-Remote enqueue is visible in the outbox snapshot before the drain
 // ---------------------------------------------------------------------------
 
-/// A Cloud import lands Local-and-uploading: the make-Remote uploads are
+/// A Cloud import attaches its files and queues their uploads. The uploads are
 /// enqueued through coven, and the Storage Manager / import-progress UI reads
 /// them from `outbox_snapshot`. Assert they are visible the instant make-Remote
 /// returns — before any byte drains — so the upload shows up immediately rather
@@ -433,12 +424,10 @@ async fn test_unpin_remote_drops_from_pinned_cache() {
 }
 
 // ---------------------------------------------------------------------------
-// read_release_file_bytes surfaces coven's external-source read failure as an error
+// read_release_file_bytes surfaces a missing original as an error
 // ---------------------------------------------------------------------------
 
-/// A Local release whose external source file has vanished maps to a read error
-/// (coven's `ExternalMissing`), not empty bytes or a crash — the "files missing"
-/// state the UI surfaces.
+/// Reading a Local release whose original file vanished returns an error.
 #[tokio::test]
 async fn test_missing_external_source_maps_to_error() {
     tracing_init();
@@ -455,7 +444,7 @@ async fn test_missing_external_source_maps_to_error() {
         .next()
         .unwrap();
 
-    // The user moved/deleted their file out from under the external ref.
+    // The user moved or deleted their original file.
     tokio::fs::remove_file(source_dir.join("a.flac"))
         .await
         .unwrap();

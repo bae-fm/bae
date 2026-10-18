@@ -200,9 +200,9 @@ async fn provider_bytes_and_file_bytes_stay_distinct() {
     let active = snapshot.upload_groups[0]
         .files
         .iter()
-        .find(|file| matches!(file.state, UploadState::Uploading { .. }))
+        .find(|file| matches!(file.upload.phase, UploadState::Uploading { .. }))
         .unwrap();
-    assert_eq!(active.source_bytes_total, 1000);
+    assert_eq!(active.upload.file.plaintext_size(), 1000);
     assert_eq!(
         active.bar(),
         Some(UploadBar {
@@ -286,7 +286,21 @@ async fn completed_files_leave_no_empty_release_groups_or_stale_rates() {
 
 #[tokio::test]
 async fn display_names_join_by_table_and_row_while_rates_use_object_identity() {
-    let (handle, _directory, files) = queued_files().await;
+    let (handle, _directory, _initial_files) = queued_files().await;
+    handle
+        .write_with_files(
+            |batch| {
+                batch.put_file("release_files", "first", vec![8; 101]);
+                Ok(())
+            },
+            |sql| {
+                sql.execute("UPDATE release_files SET size = 101 WHERE id = 'first'", [])?;
+                Ok(())
+            },
+        )
+        .await
+        .unwrap();
+    let files = handle.uploads().await.unwrap().files;
     let context = crate::db::OutboxDisplayContext {
         file_names: HashMap::from([
             ("first".into(), ("release".into(), "First.flac".into())),
@@ -307,9 +321,9 @@ async fn display_names_join_by_table_and_row_while_rates_use_object_identity() {
         .iter()
         .find(|group| group.release_id == "release")
         .unwrap();
-    assert_eq!(release.files.len(), 2);
+    assert_eq!(release.files.len(), 3);
     assert_eq!(
-        release.files[1].label,
+        release.files[2].label,
         UploadFileLabel::Filename("Renamed.flac".into())
     );
     let cover = snapshot
@@ -318,6 +332,41 @@ async fn display_names_join_by_table_and_row_while_rates_use_object_identity() {
         .find(|group| group.release_id == "first")
         .unwrap();
     assert_eq!(cover.files[0].label, UploadFileLabel::Cover);
-    assert_ne!(cover.files[0].file_id, release.files[0].file_id);
+    assert_ne!(
+        cover.files[0].upload.file.id(),
+        release.files[0].upload.file.id()
+    );
+    let rows = crate::library::storage_inspector::storage_inspector_release_files(
+        "release",
+        vec![
+            ("first".into(), "First.flac"),
+            ("second".into(), "Renamed.flac"),
+        ],
+        snapshot
+            .upload_groups
+            .into_iter()
+            .map(|group| {
+                (
+                    group.release_id,
+                    group
+                        .files
+                        .into_iter()
+                        .map(|upload| (upload.release_file_key().cloned(), upload))
+                        .collect(),
+                )
+            })
+            .collect(),
+    );
+    let crate::library::storage_inspector::StorageInspectorFile::ReleaseFile { uploads, .. } =
+        &rows[0]
+    else {
+        panic!("the release file retains its place")
+    };
+    assert_eq!(
+        uploads.len(),
+        2,
+        "both committed uploads join their release-file row"
+    );
+    assert_ne!(uploads[0].upload.file.id(), uploads[1].upload.file.id());
     handle.close().await.unwrap();
 }

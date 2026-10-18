@@ -129,9 +129,7 @@ pub enum ImportListOrder {
 /// present and settled: the common case is empty.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UploadStanding {
-    /// Something is happening to this release's files right now — preparing,
-    /// transferring, publishing, unwinding a cancel, or retrying after a
-    /// failure. One bucket, because the row draws one arrow for all of them.
+    /// Coven is uploading one of this release's files.
     Working,
     /// Admitted to the cloud queue with nothing happening yet.
     Queued,

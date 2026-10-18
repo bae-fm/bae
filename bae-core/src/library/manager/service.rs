@@ -11,13 +11,18 @@ async fn report_background_task_exit(task_name: &'static str, task: tokio::task:
 pub(super) struct BackgroundTasks {
     tracker: tokio_util::task::TaskTracker,
     closing: tokio_util::sync::CancellationToken,
+    closed: Arc<std::sync::Mutex<bool>>,
 }
 
 impl BackgroundTasks {
     /// End every task and wait for each to be gone, with whatever it held.
     pub(super) async fn close(&self) {
-        self.closing.cancel();
-        self.tracker.close();
+        {
+            let mut closed = self.closed.lock().unwrap();
+            *closed = true;
+            self.closing.cancel();
+            self.tracker.close();
+        }
         self.tracker.wait().await;
     }
 }
@@ -164,6 +169,14 @@ impl LibraryManager {
     where
         F: Future<Output = ()> + Send + 'static,
     {
+        let closed = self.tasks.closed.lock().unwrap();
+        if *closed {
+            tracing::warn!(
+                task = task_name,
+                "cannot start a task after the library closes"
+            );
+            return;
+        }
         let closing = self.tasks.closing.clone();
         let task = self.runtime_handle.spawn(async move {
             tokio::select! {
@@ -175,6 +188,38 @@ impl LibraryManager {
             report_background_task_exit(task_name, task),
             &self.runtime_handle,
         );
+    }
+
+    /// A file operation owns its rollback even when its caller disappears.
+    pub(super) async fn run_file_operation<T, F, Fut>(
+        &self,
+        name: &'static str,
+        operation: F,
+    ) -> Result<T, LibraryError>
+    where
+        T: Send + 'static,
+        F: FnOnce(crate::library::CancellationToken) -> Fut,
+        Fut: Future<Output = Result<T, LibraryError>> + Send + 'static,
+    {
+        let task = {
+            let closed = self.tasks.closed.lock().unwrap();
+            if *closed {
+                return Err(LibraryError::Storage("the library is closing".into()));
+            }
+            let work = operation(self.tasks.closing.clone());
+            self.tasks.tracker.spawn_on(
+                async move {
+                    let result = work.await;
+                    if let Err(error) = &result {
+                        tracing::error!(operation = name, %error, "file operation failed");
+                    }
+                    result
+                },
+                &self.runtime_handle,
+            )
+        };
+        task.await
+            .map_err(|error| LibraryError::Storage(format!("{name} task failed: {error}")))?
     }
 
     /// Close the library: stop the sync loop, end every background task the

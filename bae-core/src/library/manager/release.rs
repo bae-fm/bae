@@ -34,8 +34,7 @@ impl LibraryManager {
         Ok(())
     }
 
-    /// Test-only: seed a file row and its user-owned bytes through Coven's
-    /// production preparation and registration path.
+    /// Test-only: seed a file row and register its device-local original path.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn add_external_file_for_test(
         &self,
@@ -695,9 +694,8 @@ impl LibraryManager {
     }
 
     /// Delete a release and its data. The rows go in one transaction, taking the
-    /// album with them if this was its last release, and that transaction
-    /// declares the release's blobs deleted so coven reclaims their on-device
-    /// copies with the commit.
+    /// album with them if this was its last release. Coven owns retention of
+    /// files still referenced by committed uploads or shared history.
     pub async fn delete_release(&self, release_id: &str) -> Result<(), LibraryError> {
         self.database
             .find_release_by_id(release_id)
@@ -716,11 +714,8 @@ impl LibraryManager {
             .collect();
 
         let deletion = self.database.plan_release_deletion(release_id).await?;
-        // The delete records the unwind itself, in the transaction that removes
-        // the rows: coven marks the transition cancelling and the drain takes
-        // any object already in the cloud back out. Cancelling here first would
-        // only make the delete wait for a provider it does not need — deleting
-        // is local work, and the unwind waits visibly like any other transfer.
+        // Deletion is a local transaction. It does not cancel committed uploads;
+        // those remain visible in the queue after their display rows disappear.
         self.database.delete_release_with_cleanup(deletion).await?;
         self.emit_outbox_changed().await;
 
@@ -804,9 +799,8 @@ async fn project_file_metadata(
         if !file.content_type.is_audio() {
             continue;
         }
-        // The file's bytes must be the user's own file in place (a Local
-        // user-provided blob coven holds an external ref for); a Remote release
-        // has no on-disk original to re-read tags from.
+        // Read tags from this device's original, either a local path or an
+        // attached source. Coven's cached copies expose no filesystem path.
         let path = database
             .external_blob(&file.id)
             .await?

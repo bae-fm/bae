@@ -94,7 +94,7 @@ impl ReleaseName {
     }
 }
 
-/// The two states a release's audio can be in — the shared `releases.remote` fact.
+/// Whether the release's audio files have been attached to coven for upload.
 ///
 /// This is ORTHOGONAL to pinned-ness. Whether coven keeps a remote release's blobs
 /// pinned or evictable is a separate per-device cache property, carried alongside
@@ -102,10 +102,9 @@ impl ReleaseName {
 /// the bytes live" with "is a copy kept offline."
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReleaseStorageState {
-    /// A local file the user owns, played in place. Stays Local throughout an
-    /// upload — `remote` flips only once every blob is in the cloud.
+    /// Unattached files, playable from their originals on the importing device.
     Local,
-    /// A cloud blob, with coven's cache transparently in front of it.
+    /// Attached files, read through coven while uploads and caching proceed.
     Remote,
 }
 
@@ -141,8 +140,7 @@ pub enum ReleaseStorageAction {
 /// work truthfully queued until a cycle can drain it; it does not remove the
 /// action. Pin / Unpin / MakeLocal also gate on the connected cloud home alone.
 ///
-/// The in-flight-uploads gate — acting mid-upload would race the observer that
-/// completes the remote transition — lives in the UI instead, which suppresses
+/// The in-flight-uploads gate lives in the UI, which suppresses
 /// these actions when the outbox snapshot has work for the release. That stays
 /// fresh on every queue mutation, where a core-side `has_pending_uploads` flag
 /// would bake a stale value into each cached `ReleaseDetail`.
@@ -413,8 +411,8 @@ mod tests {
         }
     }
 
-    /// The loop is only a MakeRemote condition: a Remote release's actions move
-    /// bytes through the connected manager's storage and need no drain loop.
+    /// A Remote release's actions move bytes through the connected manager's
+    /// storage and need no drain loop.
     #[test]
     fn remote_actions_do_not_need_a_running_loop() {
         assert_eq!(

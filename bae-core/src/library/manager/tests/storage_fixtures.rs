@@ -27,9 +27,8 @@ async fn connect_test_cloud_with_sync_loop(manager: &TestManager) -> Arc<MemoryS
     manager.storage.clone()
 }
 
-/// A release mid-make-Remote: its uploads are enqueued in coven's durable queue
-/// but not drained, so the gate has not flipped and the release still reads
-/// Local. This is the state the Uploading filter and the outbox snapshot render.
+/// An attached release whose files are queued in coven and have not uploaded.
+/// The Uploading filter and outbox snapshot render this committed queue.
 /// The manager must already be connected via [`connect_test_cloud`].
 #[cfg(feature = "test-utils")]
 async fn insert_release_with_queued_uploads(
@@ -116,6 +115,9 @@ async fn make_remote_release_with_files(
 ) -> String {
     let release = insert_local_release_with_files(manager, dir, album_title, files).await;
     manager.coven_make_remote(&release.id, pin).await.unwrap();
+    if pin {
+        wait_for_offline_copy_request(manager, &release.id).await;
+    }
     let uploaded = manager.drain_uploads_expecting_work().await.unwrap();
     assert_eq!(uploaded, files.len(), "each release blob uploaded");
     release.id
@@ -140,6 +142,9 @@ async fn make_remote_release_under_sync_loop(
     )
     .await;
     manager.coven_make_remote(&release.id, pin).await.unwrap();
+    if pin {
+        wait_for_offline_copy_request(manager, &release.id).await;
+    }
     wait_for_landed_make_remote(manager, &release.id).await;
     release.id
 }
@@ -165,6 +170,7 @@ async fn insert_partially_uploaded_make_remote_release(
     .await;
 
     manager.coven_make_remote(&release.id, true).await.unwrap();
+    wait_for_offline_copy_request(manager, &release.id).await;
     assert_eq!(queued_upload_count(manager).await, 2);
 
     std::fs::remove_file(source_dir.join("b.flac")).unwrap();
@@ -317,4 +323,25 @@ async fn blob_pinned(manager: &LibraryManager, namespace: &str, row_id: &str) ->
         .copied()
         .flatten()
         .expect("the blob-bearing row exists")
+}
+
+#[cfg(feature = "test-utils")]
+async fn wait_for_offline_copy_request(manager: &LibraryManager, release: &str) {
+    let mut values = manager.subscribe_download_queue();
+    let queue = tokio::time::timeout(
+        std::time::Duration::from_secs(10),
+        values.wait_for(|queue| {
+            queue.ops.iter().all(|op| {
+                op.release_id != release
+                    || matches!(op.state, crate::library::DownloadState::Failed { .. })
+            })
+        }),
+    )
+    .await
+    .expect("offline copy request finishes")
+    .unwrap();
+    assert!(
+        !queue.ops.iter().any(|op| op.release_id == release),
+        "offline copy failed: {queue:?}"
+    );
 }

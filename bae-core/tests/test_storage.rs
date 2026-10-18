@@ -113,7 +113,7 @@ async fn test_local_import() {
         .unwrap()
         .iter()
         .all(|file| !file.attached));
-    // A local release's files are external refs at their own location.
+    // A local release's original paths live in bae's device-local table.
     let files = library_manager
         .get_files_for_release(&release_id)
         .await
@@ -122,7 +122,7 @@ async fn test_local_import() {
         .file_local_path(&files[0].id)
         .await
         .expect("query")
-        .expect("local import should register an in-place external ref");
+        .expect("local import should register its original path");
     assert!(
         local_path.starts_with(&album_dir),
         "Local import should keep files in place under {album_dir:?}, got {local_path:?}"
@@ -278,12 +278,12 @@ async fn run_import_with_cover_test() {
         .file_local_path(&local_files[0].id)
         .await
         .expect("query")
-        .expect("local import should register an in-place external ref");
+        .expect("local import should register its original path");
     assert!(
         local_path.starts_with(&album_dir),
         "Import without cloud home should keep files in place under {album_dir:?}, got {local_path:?}"
     );
-    info!("Release has in-place external refs");
+    info!("Release has device-local original paths");
 
     let releases = library_manager
         .get_releases_for_album(&release.album_id)

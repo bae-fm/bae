@@ -1,5 +1,5 @@
 /// Create a Remote, pinned, exportable release: a Local release with
-/// known-byte source files on disk (coven external refs) and a
+/// known-byte source files on disk (device-local paths) and a
 /// `source_folder_name`, made Remote with pin so its blobs stay readable from
 /// the offline cache. Returns its id. The manager must already be connected via
 /// [`connect_test_cloud`].
@@ -13,6 +13,7 @@ async fn make_exportable_release(
     let (release, _) =
         insert_export_release_rows(manager, source_dir, folder_name, files).await;
     manager.coven_make_remote(&release.id, true).await.unwrap();
+    wait_for_offline_copy_request(manager, &release.id).await;
     // The sync loop this fixture's tests connect drains the queue itself, so
     // wait for the make-Remote to finish rather than counting a drain pass this
     // test does not own.
@@ -271,11 +272,9 @@ async fn export_rejects_parent_component_source_folder_name() {
     .await;
 }
 
-/// make-Local hands coven a map of blob id → local destination, built by joining
-/// each file's stored `original_filename` onto the folder the user picked. coven
-/// writes wherever that map points, so a `../` in a row another device wrote would
-/// materialize the release's bytes outside the chosen folder. The join refuses it,
-/// and refuses the whole release: no destination in the map may escape the target.
+/// make-Local reads through coven and writes each file under the chosen folder.
+/// A synced filename must not redirect any destination outside that folder.
+/// One invalid destination refuses the release before any files are copied.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn make_local_dest_rejects_a_traversing_original_filename() {
@@ -394,7 +393,7 @@ async fn export_write_error_marks_failed_and_retries() {
 async fn export_mid_failure_leaves_no_partial_output_at_final_path() {
     let (manager, temp_dir) = setup_test_manager().await;
 
-    // A Local release whose two source files live on disk as coven external refs
+    // A Local release whose two source files live on disk as device-local paths
     // (UserProvided reads straight from the user's own file). Keeping it Local —
     // never made Remote — means the export reads these files directly, so removing
     // one forces a read error on a later file mid-export.

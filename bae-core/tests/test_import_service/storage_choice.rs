@@ -5,8 +5,6 @@ async fn an_import_goes_where_the_stored_choice_says_as_it_starts() {
     support::tracing_init();
     let f = ImportFixture::new().await;
     f.connect_cloud().await;
-
-
     let collection = f.temp_path().join("Collection");
     let mut keys = Vec::new();
     for title in ["Album One", "Album Two"] {
@@ -43,11 +41,44 @@ async fn an_import_goes_where_the_stored_choice_says_as_it_starts() {
 
     f.library_manager.set_import_to_cloud(true).await.unwrap();
     f.library_manager.set_import_pinned(true).await.unwrap();
+    f.library_manager.set_downloads_paused(true);
     let outcome = import_outcome(&f, &keys[0]).await;
     let bae_core::import::ImportProgress::RemoteUploadQueued { id, .. } = outcome else {
         panic!("the cloud choice queues the release's upload: {outcome:?}");
     };
-    let storage = f.library_manager.find_release_storage_summary(&id).await.unwrap().unwrap();
+    assert!(
+        f.library_manager
+            .download_queue()
+            .ops
+            .iter()
+            .any(|op| op.release_id == id),
+        "the committed import queues its selected offline copy"
+    );
+    f.library_manager.set_downloads_paused(false);
+    let mut downloads = f.library_manager.subscribe_download_queue();
+    let settled = tokio::time::timeout(
+        std::time::Duration::from_secs(10),
+        downloads.wait_for(|queue| {
+            queue.ops.iter().all(|op| {
+                op.release_id != id
+                    || matches!(op.state, bae_core::library::DownloadState::Failed { .. })
+            })
+        }),
+    )
+    .await
+    .expect("the selected offline copy finishes")
+    .unwrap();
+    assert!(
+        !settled.ops.iter().any(|op| op.release_id == id),
+        "offline copy failed: {settled:?}"
+    );
+    drop(settled);
+    let storage = f
+        .library_manager
+        .find_release_storage_summary(&id)
+        .await
+        .unwrap()
+        .unwrap();
     assert!(storage.pinned, "the import keeps the selected offline pin");
 
     f.library_manager.set_import_to_cloud(false).await.unwrap();

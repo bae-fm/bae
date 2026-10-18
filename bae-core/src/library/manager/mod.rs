@@ -159,21 +159,6 @@ pub enum LibraryError {
     Encryption(#[from] coven::CryptoError),
     #[error("Storage error: {0}")]
     Storage(String),
-    /// coven refused or failed a make-Remote of the release, or its cancel.
-    #[error("{operation} release {release_id} remote: {error}")]
-    MakeRemote {
-        operation: MakeRemoteOperation,
-        release_id: String,
-        #[source]
-        error: Box<crate::db::DbError>,
-    },
-    /// coven refused or failed a make-Local of the release.
-    #[error("make release {release_id} local: {error}")]
-    MakeLocal {
-        release_id: String,
-        #[source]
-        error: Box<LibraryError>,
-    },
     /// Reading, pinning, or unpinning a blob's bytes through coven failed.
     #[error("{operation}: {error}")]
     Blob {
@@ -221,22 +206,6 @@ pub enum LibraryError {
         operation: Box<LibraryError>,
         cleanup: Box<LibraryError>,
     },
-}
-
-/// Which half of a make-Remote failed: starting it or cancelling it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum MakeRemoteOperation {
-    Make,
-    Cancel,
-}
-
-impl std::fmt::Display for MakeRemoteOperation {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(match self {
-            Self::Make => "make",
-            Self::Cancel => "cancel make",
-        })
-    }
 }
 
 impl LibraryError {
@@ -336,8 +305,6 @@ impl LibraryError {
             LibraryError::ArtistIdentityConflict(_) => C::Import,
             LibraryError::Export(_) => C::Export,
             LibraryError::Save(_) => C::Save,
-            LibraryError::MakeRemote { .. } => C::Database,
-            LibraryError::MakeLocal { error, .. } => error.category(),
             LibraryError::Blob { error, .. } => blob_category(error),
             LibraryError::Cleanup { operation, .. } => operation.category(),
             LibraryError::StoreDeletion(_) => C::Config,
@@ -716,8 +683,7 @@ pub struct LibraryManager {
     /// order, as the ids deleted: the player drops them from its queue.
     track_deletions: Arc<std::sync::Mutex<Vec<tokio::sync::mpsc::UnboundedSender<Vec<String>>>>>,
     /// The cloud-sync responsibility: the outbox projection over the live
-    /// upload state, provider connection, membership, and the coven
-    /// make-Remote/make-Local primitives.
+    /// upload state, provider connection, and membership.
     sync: SyncController,
     /// The sync banner's state and the stream the front-ends read it from.
     sync_status: SyncStatusState,

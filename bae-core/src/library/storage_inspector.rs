@@ -1,13 +1,11 @@
-//! The release's files with their current upload attached by blob identity.
-
-use std::collections::HashMap;
+//! The release's files with their queued uploads joined by release-file row key.
 
 /// Preserve the original file and transfer records across the projection.
 /// The bridge instantiates these with its wire records, without duplicating
 /// the joining logic or round-tripping their display fields through core.
 #[derive(Debug, PartialEq)]
 pub enum StorageInspectorFile<File, Upload> {
-    ReleaseFile { file: File, upload: Option<Upload> },
+    ReleaseFile { file: File, uploads: Vec<Upload> },
     Upload { upload: Upload },
 }
 
@@ -17,6 +15,9 @@ pub enum StorageInspectorTransfer<Download, Output, Upload> {
     Output { operation: Output, paused: bool },
     Upload { group: Upload, paused: bool },
 }
+
+/// Queued uploads and their release-file row keys; artwork has no release-file key.
+pub type InspectorUploads<Upload> = Vec<(Option<coven::RowKey>, Upload)>;
 
 fn selected_release<T>(release_id: &str, records: Vec<(String, T)>) -> Option<T> {
     let mut selected = records.into_iter().filter(|(id, _)| id == release_id);
@@ -59,7 +60,7 @@ pub fn storage_inspector_transfers<Download, Output, Upload>(
 pub fn storage_inspector_release_files<File, Upload>(
     release_id: &str,
     files: Vec<(String, File)>,
-    upload_groups: Vec<(String, Vec<(String, Upload)>)>,
+    upload_groups: Vec<(String, InspectorUploads<Upload>)>,
 ) -> Vec<StorageInspectorFile<File, Upload>> {
     let uploads = selected_release(release_id, upload_groups).unwrap_or_default();
     storage_inspector_files(files, uploads)
@@ -67,33 +68,27 @@ pub fn storage_inspector_release_files<File, Upload>(
 
 /// Release files retain their order and identity when transfers start or end.
 /// Uploads outside the imported file set (including generated artwork and
-/// objects being removed) remain visible after the release files.
+/// uploads whose rows were deleted) remain visible after the release files.
 fn storage_inspector_files<File, Upload>(
     files: Vec<(String, File)>,
-    uploads: Vec<(String, Upload)>,
+    mut uploads: InspectorUploads<Upload>,
 ) -> Vec<StorageInspectorFile<File, Upload>> {
-    let mut upload_order = Vec::with_capacity(uploads.len());
-    let mut by_id = HashMap::with_capacity(uploads.len());
-    for (id, upload) in uploads {
-        upload_order.push(id.clone());
-        assert!(
-            by_id.insert(id, upload).is_none(),
-            "duplicate upload identity"
-        );
-    }
     let mut rows = Vec::with_capacity(files.len());
     for (id, file) in files {
-        // release_files is write-once and its blob id is its primary key.
-        let upload_id = format!("{}:{id}", crate::sync::RELEASE_FILES_NAMESPACE);
+        let row = coven::RowKey::from(id.as_str());
+        // Replacing an attachment may leave several committed uploads for one
+        // row. Keep every operation, in queue order, beside that row.
+        let (matching, remaining): (Vec<_>, Vec<_>) = uploads
+            .into_iter()
+            .partition(|(key, _)| key.as_ref() == Some(&row));
+        uploads = remaining;
         rows.push(StorageInspectorFile::ReleaseFile {
             file,
-            upload: by_id.remove(&upload_id),
+            uploads: matching.into_iter().map(|(_, upload)| upload).collect(),
         });
     }
-    for id in upload_order {
-        if let Some(upload) = by_id.remove(&id) {
-            rows.push(StorageInspectorFile::Upload { upload });
-        }
+    for (_, upload) in uploads {
+        rows.push(StorageInspectorFile::Upload { upload });
     }
     rows
 }
@@ -103,27 +98,24 @@ mod tests {
     use super::*;
 
     #[test]
-    fn joins_by_namespaced_identity_and_preserves_untransferred_files() {
+    fn joins_release_rows_and_keeps_images_separate() {
         let rows = storage_inspector_files(
             vec![
                 ("audio".into(), "track.flac"),
                 ("notes".into(), "notes.txt"),
             ],
-            vec![
-                ("covers:audio".into(), "cover"),
-                ("release_files:audio".into(), "progress"),
-            ],
+            vec![(None, "cover"), (Some("audio".into()), "progress")],
         );
         assert_eq!(
             rows,
             vec![
                 StorageInspectorFile::ReleaseFile {
                     file: "track.flac",
-                    upload: Some("progress")
+                    uploads: vec!["progress"]
                 },
                 StorageInspectorFile::ReleaseFile {
                     file: "notes.txt",
-                    upload: None
+                    uploads: vec![]
                 },
                 StorageInspectorFile::Upload { upload: "cover" },
             ]
@@ -141,11 +133,11 @@ mod tests {
             vec![
                 StorageInspectorFile::ReleaseFile {
                     file: "b.flac",
-                    upload: None
+                    uploads: vec![]
                 },
                 StorageInspectorFile::ReleaseFile {
                     file: "a.flac",
-                    upload: None
+                    uploads: vec![]
                 },
             ]
         );
@@ -155,18 +147,13 @@ mod tests {
     fn uploads_survive_an_empty_file_set_in_queue_order() {
         let rows = storage_inspector_files::<(), _>(
             vec![],
-            vec![
-                ("covers:c".into(), "cover"),
-                ("release_files:a".into(), "unwinding"),
-            ],
+            vec![(None, "cover"), (Some("a".into()), "queued")],
         );
         assert_eq!(
             rows,
             vec![
                 StorageInspectorFile::Upload { upload: "cover" },
-                StorageInspectorFile::Upload {
-                    upload: "unwinding"
-                },
+                StorageInspectorFile::Upload { upload: "queued" },
             ]
         );
     }

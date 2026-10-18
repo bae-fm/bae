@@ -41,9 +41,8 @@ pub(crate) async fn resolve_release_identity(
     // is read against the discs these tracks are; a release with a track
     // nothing measured is read whole, as a MusicBrainz pick of it is.
     let track_lengths_ms = crate::library::stored_track_lengths(&tracks).unwrap_or_default();
-    // On-disk paths come from coven's external refs (a Local release's files are
-    // the user's own, in place). A remote file has no external ref and is skipped,
-    // so a cloud-only release yields no paths and thus no disc ID.
+    // Original paths come from bae's local files or coven's attached originals.
+    // A cloud-only release has no originals here, so yields no paths or disc ID.
     let mut documents = Vec::new();
     let mut cue_paths = Vec::new();
     let mut audio_files = Vec::new();
@@ -158,8 +157,8 @@ pub(crate) async fn resolve_release_artwork_paths(
         }
     };
 
-    // In-folder artwork (cover.jpg and the like), resolved to the user's own file
-    // through coven's external ref — Local releases only.
+    // In-folder artwork (cover.jpg and the like), resolved to this device's
+    // original file whether or not it has been attached for upload.
     for file in &files {
         if !file.content_type.is_image() {
             continue;
@@ -375,9 +374,6 @@ mod tests {
             created_at: Utc::now(),
         };
         database.insert_artist(&artist).await.unwrap();
-
-        // Unique id per test so keyring entries don't collide in the shared
-        // process-global mock store (see `install_test_keyring`).
 
         let config = Config::with_defaults(database.store_id(), library_root.join("preferences"));
         let config_handle = Arc::new(ConfigHandle::new(config));

@@ -11,26 +11,22 @@ impl LibraryManager {
     ) -> Result<u64, LibraryError> {
         let manager = self.clone();
         let release_id = release_id.to_string();
-        // Finish attachment and pinning even if the caller leaves; committed uploads cannot be recalled.
-        let task = self.runtime_handle.spawn(async move {
+        let guard = self.admit_transfer_values(
+            std::slice::from_ref(&release_id),
+            ReleaseStorageAction::MakeRemote,
+        )?;
+        // A committed attachment survives a dismissed view. Its optional offline
+        // copy has its own Downloads outcome and retry, never a second attachment.
+        self.run_file_operation("attach release", move |_closing| async move {
             manager.database.attach_release_files(&release_id).await?;
+            let revision = manager.emit_outbox_changed().await;
+            drop(guard);
             if pin {
-                let result = manager.pin_release_blobs_with_progress(&release_id, |_| {}).await;
-                if let Err(error) = result {
-                    manager.emit_outbox_changed().await;
-                    return Err(LibraryError::Storage(format!(
-                        "release {release_id} was attached for upload, but pinning failed: {error}; retry pinning the release"
-                    )));
-                }
+                manager.enqueue_attached_release_pin(release_id);
             }
-            Ok(manager.emit_outbox_changed().await)
-        });
-        match task.await {
-            Ok(result) => result,
-            Err(error) => Err(LibraryError::Storage(format!(
-                "attaching release files failed: {error}"
-            ))),
-        }
+            Ok(revision)
+        })
+        .await
     }
 
     /// Copy and verify the files before atomically returning the release to local paths.
@@ -46,24 +42,27 @@ impl LibraryManager {
         let manager = self.clone();
         let release_id = release_id.to_string();
         let root = PathBuf::from(new_path);
-        let task = self.runtime_handle.spawn(async move {
-            manager
-                .copy_release_to_local(&release_id, root, destinations, &operation)
-                .await
-        });
-        let result = match task.await {
-            Ok(result) => result,
-            Err(error) => Err(LibraryError::Storage(format!(
-                "making release local failed: {error}"
-            ))),
-        };
+        let result = self
+            .run_file_operation("make release local", move |closing| async move {
+                let copy =
+                    manager.copy_release_to_local(&release_id, root, destinations, &operation);
+                tokio::pin!(copy);
+                tokio::select! {
+                    result = &mut copy => result,
+                    _ = closing.cancelled() => {
+                        operation.cancel();
+                        copy.await
+                    }
+                }
+            })
+            .await;
         cancel_on_drop.disarm();
         result
     }
 
     /// Each release file's destination. Covers remain attached and shared.
     ///
-    /// `original_filename` is a synced column another device wrote, and coven writes
+    /// `original_filename` is a synced column another device wrote, and copying writes
     /// wherever this map points, so each fragment is validated before it is joined
     /// onto the user's folder: a release carrying one bad name copies out no files
     /// at all, rather than one of them landing outside the folder the user chose.
@@ -95,6 +94,16 @@ impl LibraryManager {
     // user can pause/cancel/retry. The queue is transient — empty after a restart,
     // and any release that wasn't fully pinned stays cloud-only, since a pin flips
     // a release to pinned only once every file lands.
+
+    /// Attachment has committed; retrying this queue item only keeps its bytes offline.
+    pub(super) fn enqueue_attached_release_pin(&self, release_id: String) {
+        self.downloads.enqueue_all([crate::library::DownloadOp {
+            release_id,
+            created_at: chrono::DateTime::<chrono::Utc>::from(self.clock.now()).timestamp_millis(),
+            payload: (),
+            state: crate::library::DownloadState::Queued,
+        }]);
+    }
 
     /// Enqueue releases to pin for offline. Skips ids already in the queue (in any
     /// state), missing from the library, local, or already pinned. The entry
@@ -270,10 +279,6 @@ impl LibraryManager {
             );
             let admission = async {
                 let file_count = transfer.start().await?;
-                let _value_guard = self.admit_transfer_values(
-                    std::slice::from_ref(release_id),
-                    ReleaseStorageAction::MakeRemote,
-                )?;
                 let revision = self.coven_make_remote(release_id, pin).await?;
                 Ok::<_, LibraryError>((revision, file_count))
             }

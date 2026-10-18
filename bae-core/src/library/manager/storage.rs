@@ -5,11 +5,9 @@
 use super::*;
 
 impl LibraryManager {
-    /// The on-disk path of a release file that sits at the user's own path — the
-    /// external ref of a coven **user-provided Local** blob. `Ok(None)` for a Remote
-    /// file (its bytes are in coven's cache, keyed by id, with no stable bae path)
-    /// or an unknown one; DB errors propagate, so a caller can tell "no in-place
-    /// file" from "library broken".
+    /// The original path registered on this device, whether the file is local
+    /// or attached for upload. `Ok(None)` means there is no original here or no
+    /// such row; coven's cached copies expose no path. Database errors propagate.
     ///
     /// For the callers that need the user's actual file — the DiscID re-read of the
     /// rip's artifacts — rather than coven's locality-aware byte read.
