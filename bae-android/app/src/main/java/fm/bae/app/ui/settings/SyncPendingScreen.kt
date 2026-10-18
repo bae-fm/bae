@@ -54,6 +54,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeAdminAccess
 import uniffi.bae_bridge.BridgeCloudProvider
+import uniffi.bae_bridge.BridgeOperationKind
 import uniffi.bae_bridge.BridgePendingAction
 import uniffi.bae_bridge.BridgePendingReason
 import uniffi.bae_bridge.BridgePendingReasonKind
@@ -62,6 +63,7 @@ import uniffi.bae_bridge.BridgePendingRecords
 import uniffi.bae_bridge.BridgePendingSubject
 import uniffi.bae_bridge.bridgePendingActionKey
 import uniffi.bae_bridge.bridgePendingReasonKey
+import uniffi.bae_bridge.bridgePendingSubjectKey
 
 private val logger = BaeLogger("bae.SyncPendingScreen")
 
@@ -290,7 +292,28 @@ private fun PendingList(
     }
 }
 
-/** One record: why it waits, what its causes were, its action, and its details on request. */
+/** What a pending record is about: a file by its name and album, anything else by what it is. */
+internal fun pendingSubjectText(
+    context: Context,
+    subject: BridgePendingSubject,
+): String {
+    val key = bridgePendingSubjectKey(subject)
+    return when (subject) {
+        is BridgePendingSubject.ReleaseFile -> {
+            context.coreString(key, mapOf("file" to subject.fileName, "album" to subject.albumTitle))
+        }
+
+        is BridgePendingSubject.Cover -> {
+            context.coreString(key, mapOf("album" to subject.albumTitle))
+        }
+
+        else -> {
+            context.coreString(key)
+        }
+    }
+}
+
+/** One record: what it is about, why it waits, what its causes were, its action, and its details on request. */
 @Composable
 private fun PendingRow(
     record: BridgePendingRecord,
@@ -299,6 +322,7 @@ private fun PendingRow(
     val context = LocalContext.current
     var showDetails by remember(record) { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.inline)) {
+        Text(text = pendingSubjectText(context, record.subject), style = ThemeText.strong.style)
         Text(text = context.coreString(bridgePendingReasonKey(record.reason.kind)))
         record.reason.causes.forEach { cause ->
             Text(
@@ -366,7 +390,7 @@ private fun PendingListPreview() {
                         action = BridgePendingAction.SignIn(BridgeCloudProvider.DROPBOX),
                     ),
                     BridgePendingRecord(
-                        subject = BridgePendingSubject.Operation(id = 7L, kind = "Write"),
+                        subject = BridgePendingSubject.Operation(BridgeOperationKind.INVITE),
                         reason = BridgePendingReason(BridgePendingReasonKind.FAILED, "Failed(Storage)", emptyList()),
                         action = BridgePendingAction.RetryOperation(id = 7L),
                     ),

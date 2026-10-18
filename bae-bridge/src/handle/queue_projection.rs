@@ -23,7 +23,7 @@ impl crate::types::BridgeUploadFileOp {
             throughput_bps,
         } = file;
         Self {
-            pending: pending.map(crate::BridgePendingRecord::from_core),
+            pending: pending.map(crate::types::BridgePendingWait::from_core),
             file_id: upload.file.id().to_string(),
             release_file_key,
             label: crate::types::BridgeUploadFileLabel::from_core(label),

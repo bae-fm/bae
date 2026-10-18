@@ -40,13 +40,8 @@ impl SyncStatusState {
         self.apply(|state| state.status = status);
     }
 
-    pub(super) fn set_pending(&self, pending: coven::CovenResult<Vec<coven::PendingRecord>>) {
-        self.apply(|state| {
-            state.pending = Some(pending.map_err(|error| {
-                tracing::warn!(%error, "could not read pending sync records");
-                UiError::internal(error)
-            }));
-        });
+    pub(super) fn set_pending(&self, pending: Result<Vec<super::PendingItem>, UiError>) {
+        self.apply(|state| state.pending = Some(pending));
     }
 
     pub(super) fn set_error(&self, error: Option<UiError>) {
@@ -217,10 +212,12 @@ mod tests {
             status: coven::SyncStatus::Synced {
                 finished_at: std::time::UNIX_EPOCH,
             },
-            pending: Some(Ok(vec![coven::PendingRecord {
-                subject: coven::PendingSubject::Connection,
-                reason: coven::PendingReason::NoStorage,
-            }])),
+            pending: Some(Ok(vec![super::super::PendingItem::before_open(
+                coven::PendingRecord {
+                    subject: coven::PendingSubject::Connection,
+                    reason: coven::PendingReason::NoStorage,
+                },
+            )])),
             error: None,
         };
         assert_eq!(snapshot.indicator(), SyncIndicator::Waiting { items: 1 });

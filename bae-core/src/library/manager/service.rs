@@ -424,9 +424,20 @@ impl LibraryManager {
         })?;
         let mut pending = self.database.subscribe_pending();
         let state = self.sync_status.clone();
+        let lm = self.clone();
         self.spawn_supervised_task("pending sync records", async move {
             loop {
-                state.set_pending(pending.next().await);
+                let items = match pending.next().await {
+                    Ok(records) => lm.pending_items(records).await.map_err(|error| {
+                        warn!(%error, "could not name pending sync records");
+                        crate::ui::UiError::diagnostic(error.category(), error)
+                    }),
+                    Err(error) => {
+                        warn!(%error, "could not read pending sync records");
+                        Err(crate::ui::UiError::internal(error))
+                    }
+                };
+                state.set_pending(items);
             }
         })
     }

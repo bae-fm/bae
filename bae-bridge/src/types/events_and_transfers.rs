@@ -337,7 +337,7 @@ pub struct BridgeOutputSnapshot {
 /// flattened; `bar` is present only while the file is moving bytes.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeUploadFileOp {
-    pub pending: Option<crate::BridgePendingRecord>,
+    pub pending: Option<crate::types::BridgePendingWait>,
     pub file_id: String,
     pub release_file_key: Option<std::sync::Arc<BridgeRowKey>>,
     pub label: BridgeUploadFileLabel,

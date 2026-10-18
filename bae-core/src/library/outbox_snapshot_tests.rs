@@ -405,7 +405,12 @@ async fn pending_reasons_belong_to_the_exact_uploading_device_and_file() {
         &HashMap::new(),
     )
     .with_pending(vec![wrong_device, record.clone()]);
-    assert_eq!(snapshot.upload_groups[0].files[0].pending, Some(record));
+    let pending = snapshot.upload_groups[0].files[0]
+        .pending
+        .as_ref()
+        .expect("the file's own record reaches it");
+    assert_eq!(pending.reason, record.reason);
+    assert_eq!(pending.action, crate::library::PendingAction::ResumeUploads);
     handle.close().await.unwrap();
 }
 

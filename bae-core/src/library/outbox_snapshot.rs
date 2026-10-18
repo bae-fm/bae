@@ -114,7 +114,7 @@ impl UploadProgress {
 pub struct UploadFileOp {
     /// Keep coven's file identity, row key, and progress together.
     pub upload: coven::QueuedUpload,
-    pub pending: Option<coven::PendingRecord>,
+    pub pending: Option<crate::library::PendingWait>,
     pub label: UploadFileLabel,
     pub throughput_bps: u64,
 }
@@ -186,7 +186,9 @@ impl OutboxSnapshot {
         let records: HashMap<_, _> = records
             .into_iter()
             .filter_map(|record| match record.subject {
-                coven::PendingSubject::File { device, file } => Some(((device, file), record)),
+                coven::PendingSubject::File { device, file } => {
+                    Some(((device, file), crate::library::PendingWait::of(&record)))
+                }
                 _ => None,
             })
             .collect();

@@ -76,7 +76,11 @@ impl BridgeBootstrapStatus {
             coven::BootstrapStatus::Pending(records) => Self::Pending {
                 records: records
                     .into_iter()
-                    .map(BridgePendingRecord::from_core)
+                    .map(|record| {
+                        BridgePendingRecord::from_core(bae_core::library::PendingItem::before_open(
+                            record,
+                        ))
+                    })
                     .collect(),
             },
         }

@@ -326,6 +326,64 @@ fn produced_keys() -> Vec<String> {
             failure,
         }));
     }
+    {
+        use BridgeOperationKind as O;
+        use BridgePendingSubject as S;
+        let operations = [
+            O::CreateStore,
+            O::RenameStore,
+            O::AddDevice,
+            O::SetRole,
+            O::SetAccess,
+            O::RemoveMember,
+            O::RemoveDevice,
+            O::RenameCircle,
+            O::RemoveCircleMember,
+            O::RetainSequence,
+            O::RetainFiles,
+            O::WriteSnapshot,
+            O::SchemaChange,
+            O::Reset,
+            O::ReloadFromSnapshot,
+            O::RequiredReload,
+            O::RotateKey,
+            O::CreateCircle,
+            O::AddCircleMember,
+            O::DeleteCircle,
+            O::Invite,
+            O::RevokeAccess,
+            O::DeleteAccessKey,
+            O::ReplaceAccessKey,
+            O::ReplaceMemberKeys,
+        ];
+        let subjects = [
+            S::ReleaseFile {
+                file_name: "01 Track.flac".into(),
+                album_title: "Album Title".into(),
+            },
+            S::Cover {
+                album_title: "Album Title".into(),
+            },
+            S::ArtistImage,
+            S::Avatar,
+            S::DeletedReleaseFile,
+            S::File,
+            S::LocalChanges,
+            S::LibraryChanges,
+            S::KeyCopy,
+            S::Snapshot,
+            S::Retention,
+            S::LibraryData,
+            S::CircleData,
+            S::JoinRequest,
+            S::Connection,
+        ]
+        .into_iter()
+        .chain(operations.map(|kind| S::Operation { kind }));
+        for subject in subjects {
+            keys.push(bridge_pending_subject_key(&subject));
+        }
+    }
     for reason in [
         BridgePendingReasonKind::Missing,
         BridgePendingReasonKind::Waits,

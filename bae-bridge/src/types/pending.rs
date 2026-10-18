@@ -8,12 +8,12 @@ pub enum BridgePendingRecords {
 }
 impl BridgePendingRecords {
     pub(crate) fn from_core(
-        value: Option<Result<Vec<coven::PendingRecord>, bae_core::ui::UiError>>,
+        value: Option<Result<Vec<bae_core::library::PendingItem>, bae_core::ui::UiError>>,
     ) -> Self {
         match value {
             None => Self::Loading,
-            Some(Ok(records)) => Self::Ready {
-                records: records
+            Some(Ok(items)) => Self::Ready {
+                records: items
                     .into_iter()
                     .map(BridgePendingRecord::from_core)
                     .collect(),
@@ -25,68 +25,150 @@ impl BridgePendingRecords {
     }
 }
 
+/// One thing coven is waiting on: what it is about, why, and what the person
+/// can do about it.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgePendingRecord {
     pub subject: BridgePendingSubject,
     pub reason: BridgePendingReason,
     pub action: BridgePendingAction,
 }
-#[derive(Debug, Clone, uniffi::Enum)]
-pub enum BridgePendingSubject {
-    Write { identity: String },
-    Slot { identity: String },
-    KeyCopy { identity: String },
-    Snapshot { identity: String },
-    File { device_id: u64, file_id: String },
-    Operation { id: i64, kind: String },
-    Retention { path: String },
-    Audience { identity: String },
-    JoinRequest { invite_id: String },
-    Connection,
-}
 impl BridgePendingRecord {
-    pub(crate) fn from_core(record: coven::PendingRecord) -> Self {
-        let action = BridgePendingAction::from_core(bae_core::library::pending_action(&record));
-        let reason = BridgePendingReason::from_core(record.reason);
-        use coven::PendingSubject as S;
-        let subject = match record.subject {
-            S::Write(id) => BridgePendingSubject::Write {
-                identity: format!("{id:?}"),
-            },
-            S::Slot(id) => BridgePendingSubject::Slot {
-                identity: format!("{id:?}"),
-            },
-            subject @ S::KeyCopy { .. } => BridgePendingSubject::KeyCopy {
-                identity: format!("{subject:?}"),
-            },
-            S::Snapshot(id) => BridgePendingSubject::Snapshot {
-                identity: format!("{id:?}"),
-            },
-            S::File { device, file } => BridgePendingSubject::File {
-                device_id: device.0,
-                file_id: file.to_string(),
-            },
-            S::Operation { id, kind } => BridgePendingSubject::Operation {
-                id: id.0,
-                kind: format!("{kind:?}"),
-            },
-            S::Retention { path } => BridgePendingSubject::Retention {
-                path: path.as_str().to_string(),
-            },
-            S::Audience(id) => BridgePendingSubject::Audience {
-                identity: format!("{id:?}"),
-            },
-            S::JoinRequest(id) => BridgePendingSubject::JoinRequest {
-                invite_id: id.to_string(),
-            },
-            S::Connection => BridgePendingSubject::Connection,
-        };
+    pub(crate) fn from_core(item: bae_core::library::PendingItem) -> Self {
+        let BridgePendingWait { reason, action } = BridgePendingWait::from_core(item.wait);
         Self {
-            subject,
+            subject: BridgePendingSubject::from_core(item.subject),
             reason,
             action,
         }
     }
+}
+
+/// Why a file in the upload queue waits, and what the person can do about it.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgePendingWait {
+    pub reason: BridgePendingReason,
+    pub action: BridgePendingAction,
+}
+impl BridgePendingWait {
+    pub(crate) fn from_core(wait: bae_core::library::PendingWait) -> Self {
+        Self {
+            reason: BridgePendingReason::from_core(wait.reason),
+            action: BridgePendingAction::from_core(wait.action),
+        }
+    }
+}
+
+/// What a pending record is about, named as core named it. Mirrors
+/// `PendingSubjectName`.
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgePendingSubject {
+    ReleaseFile {
+        file_name: String,
+        album_title: String,
+    },
+    Cover {
+        album_title: String,
+    },
+    ArtistImage,
+    Avatar,
+    DeletedReleaseFile,
+    File,
+    LocalChanges,
+    LibraryChanges,
+    KeyCopy,
+    Snapshot,
+    Retention,
+    LibraryData,
+    CircleData,
+    JoinRequest,
+    Connection,
+    Operation {
+        kind: BridgeOperationKind,
+    },
+}
+mirror_enum! {
+    BridgePendingSubject = bae_core::library::PendingSubjectName,
+    from_core: pub(crate) fn,
+    variants: {
+        ReleaseFile { file_name, album_title },
+        Cover { album_title },
+        ArtistImage,
+        Avatar,
+        DeletedReleaseFile,
+        File,
+        LocalChanges,
+        LibraryChanges,
+        KeyCopy,
+        Snapshot,
+        Retention,
+        LibraryData,
+        CircleData,
+        JoinRequest,
+        Connection,
+        Operation(kind: (BridgeOperationKind)),
+    },
+}
+
+/// One of coven's operations on the library. Mirrors `coven::OperationKind`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeOperationKind {
+    CreateStore,
+    RenameStore,
+    AddDevice,
+    SetRole,
+    SetAccess,
+    RemoveMember,
+    RemoveDevice,
+    RenameCircle,
+    RemoveCircleMember,
+    RetainSequence,
+    RetainFiles,
+    WriteSnapshot,
+    SchemaChange,
+    Reset,
+    ReloadFromSnapshot,
+    RequiredReload,
+    RotateKey,
+    CreateCircle,
+    AddCircleMember,
+    DeleteCircle,
+    Invite,
+    RevokeAccess,
+    DeleteAccessKey,
+    ReplaceAccessKey,
+    ReplaceMemberKeys,
+}
+mirror_enum! {
+    BridgeOperationKind = coven::OperationKind,
+    from_core: pub(crate) fn,
+    variants: {
+        CreateStore,
+        RenameStore,
+        AddDevice,
+        SetRole,
+        SetAccess,
+        RemoveMember,
+        RemoveDevice,
+        RenameCircle,
+        RemoveCircleMember,
+        RetainSequence,
+        RetainFiles,
+        WriteSnapshot,
+        SchemaChange,
+        Reset,
+        ReloadFromSnapshot,
+        RequiredReload,
+        RotateKey,
+        CreateCircle,
+        AddCircleMember,
+        DeleteCircle,
+        Invite,
+        RevokeAccess,
+        DeleteAccessKey,
+        ReplaceAccessKey,
+        ReplaceMemberKeys,
+    },
 }
 
 /// A localized reason kind with the original diagnostics and nested cleanup causes.
@@ -121,7 +203,7 @@ pub enum BridgePendingReasonKind {
     MemberKeysReplaced,
 }
 impl BridgePendingReason {
-    fn from_core(reason: coven::PendingReason) -> Self {
+    pub(crate) fn from_core(reason: coven::PendingReason) -> Self {
         let detail = format!("{reason:?}");
         use coven::PendingReason as R;
         use BridgePendingReasonKind as K;
@@ -261,4 +343,57 @@ pub fn bridge_pending_action_key(action: &BridgePendingAction) -> Option<String>
         }
         .to_string(),
     )
+}
+
+/// The subject's catalog key. `ReleaseFile` takes `file` and `album`, and
+/// `Cover` takes `album`; the UI fills them from the subject's fields.
+#[uniffi::export]
+pub fn bridge_pending_subject_key(subject: &BridgePendingSubject) -> String {
+    use BridgeOperationKind as O;
+    use BridgePendingSubject as S;
+    match subject {
+        S::ReleaseFile { .. } => "core.pending.subject.release_file",
+        S::Cover { .. } => "core.pending.subject.cover",
+        S::ArtistImage => "core.pending.subject.artist_image",
+        S::Avatar => "core.pending.subject.avatar",
+        S::DeletedReleaseFile => "core.pending.subject.deleted_release_file",
+        S::File => "core.pending.subject.file",
+        S::LocalChanges => "core.pending.subject.local_changes",
+        S::LibraryChanges => "core.pending.subject.library_changes",
+        S::KeyCopy => "core.pending.subject.key_copy",
+        S::Snapshot => "core.pending.subject.snapshot",
+        S::Retention => "core.pending.subject.retention",
+        S::LibraryData => "core.pending.subject.library_data",
+        S::CircleData => "core.pending.subject.circle_data",
+        S::JoinRequest => "core.pending.subject.join_request",
+        S::Connection => "core.pending.subject.connection",
+        S::Operation { kind } => match kind {
+            O::CreateStore => "core.pending.operation.create_store",
+            O::RenameStore => "core.pending.operation.rename_store",
+            O::AddDevice => "core.pending.operation.add_device",
+            O::SetRole => "core.pending.operation.set_role",
+            O::SetAccess => "core.pending.operation.set_access",
+            O::RemoveMember => "core.pending.operation.remove_member",
+            O::RemoveDevice => "core.pending.operation.remove_device",
+            O::RenameCircle => "core.pending.operation.rename_circle",
+            O::RemoveCircleMember => "core.pending.operation.remove_circle_member",
+            O::RetainSequence => "core.pending.operation.retain_sequence",
+            O::RetainFiles => "core.pending.operation.retain_files",
+            O::WriteSnapshot => "core.pending.operation.write_snapshot",
+            O::SchemaChange => "core.pending.operation.schema_change",
+            O::Reset => "core.pending.operation.reset",
+            O::ReloadFromSnapshot => "core.pending.operation.reload_from_snapshot",
+            O::RequiredReload => "core.pending.operation.required_reload",
+            O::RotateKey => "core.pending.operation.rotate_key",
+            O::CreateCircle => "core.pending.operation.create_circle",
+            O::AddCircleMember => "core.pending.operation.add_circle_member",
+            O::DeleteCircle => "core.pending.operation.delete_circle",
+            O::Invite => "core.pending.operation.invite",
+            O::RevokeAccess => "core.pending.operation.revoke_access",
+            O::DeleteAccessKey => "core.pending.operation.delete_access_key",
+            O::ReplaceAccessKey => "core.pending.operation.replace_access_key",
+            O::ReplaceMemberKeys => "core.pending.operation.replace_member_keys",
+        },
+    }
+    .to_string()
 }

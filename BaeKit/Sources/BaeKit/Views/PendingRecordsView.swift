@@ -3,9 +3,9 @@ import os.log
 
 private let logger = Logger.bae("PendingRecordsView")
 
-/// What coven is waiting on, one row per pending record: the reason in plain
-/// words with its diagnostic behind a disclosure, and the record's action
-/// wherever the person can act. Without `perform` the list only informs, as
+/// What coven is waiting on, one row per pending record: what it is about and
+/// the reason, in plain words, with its diagnostic behind a disclosure, and
+/// the record's action wherever the person can act. Without `perform` the list only informs, as
 /// while a library is still being restored.
 public struct PendingRecordsView: View {
     public let records: BridgePendingRecords
@@ -53,6 +53,8 @@ private struct PendingRecordRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
+            Text(record.subject.localizedLine)
+                .themeText(.strong)
             ErrorDetailDisclosure(
                 error: DisplayError(
                     line: localizedCoreString(

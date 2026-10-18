@@ -58,7 +58,7 @@ struct SyncStatusStoreTests {
     @Test("a pending record makes the line wait and reaches the list")
     func pendingRecordMakesTheLineWait() throws {
         let record = BridgePendingRecord(
-            subject: .operation(id: 7, kind: "Write"),
+            subject: .operation(kind: .invite),
             reason: BridgePendingReason(
                 kind: .failed,
                 detail: "Failed(write refused)",

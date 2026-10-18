@@ -166,8 +166,7 @@
         // MARK: - Cloud outbox
 
         /// A file coven can't upload until its source is back where it was.
-        static let unavailableFilePending = BridgePendingRecord(
-            subject: .file(deviceId: 1, fileId: "release_files:f-5"),
+        static let unavailableFilePending = BridgePendingWait(
             reason: BridgePendingReason(
                 kind: .fileUnavailable,
                 detail:

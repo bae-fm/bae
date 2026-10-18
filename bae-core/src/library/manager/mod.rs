@@ -106,6 +106,7 @@ mod release_edit;
 mod save;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use save::SaveWindow;
+mod pending_item;
 mod storage;
 mod sync;
 mod sync_status;
@@ -118,6 +119,7 @@ pub(crate) use track::queue_catalog_request;
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use discogs::discogs_validation_from_result;
+pub use pending_item::{PendingItem, PendingSubjectName, PendingWait};
 use sync_status::SyncStatusState;
 pub use sync_status::{pending_action, PendingAction};
 
@@ -344,7 +346,7 @@ impl From<crate::import::ImportError> for LibraryError {
 #[derive(Debug, Clone)]
 pub struct SyncStatusSnapshot {
     pub status: coven::SyncStatus,
-    pub pending: Option<Result<Vec<coven::PendingRecord>, crate::ui::UiError>>,
+    pub pending: Option<Result<Vec<PendingItem>, crate::ui::UiError>>,
     pub error: Option<crate::ui::UiError>,
 }
 

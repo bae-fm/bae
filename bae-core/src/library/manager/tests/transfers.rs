@@ -742,3 +742,25 @@ async fn a_release_says_whether_this_device_can_play_it() {
         "got {reason:?}"
     );
 }
+
+/// A file this device is uploading is named on the pending list by its file
+/// name and its album, not by coven's ids.
+#[tokio::test]
+async fn a_waiting_upload_is_named_by_its_file_and_album() {
+    let (manager, temp, _release, _file_id) = queued_upload_fixture("named").await;
+    // The upload can't read a source that moved, so it waits on the file.
+    std::fs::remove_file(temp.path().join("named/a.flac")).unwrap();
+    assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 0);
+
+    let records = manager.pending().await.unwrap();
+    let items = manager.pending_items(records).await.unwrap();
+    assert!(
+        items.iter().any(|item| item.subject
+            == crate::library::PendingSubjectName::ReleaseFile {
+                file_name: "a.flac".into(),
+                album_title: "Test Album".into(),
+            }),
+        "the waiting upload is named by its file and album: {:?}",
+        items.iter().map(|item| &item.subject).collect::<Vec<_>>()
+    );
+}
