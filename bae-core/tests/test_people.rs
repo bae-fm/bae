@@ -103,8 +103,13 @@ fn joining_creates_a_separate_profile_and_cannot_edit_another_person() {
             let guest_dir = tempfile::tempdir().unwrap();
             let owner_installation = coven::TestCoven::new();
             let guest_installation = coven::TestCoven::new();
-            let storage = Arc::new(coven::MemoryStorage::builder().build().unwrap());
             let clock: coven::ClockRef = Arc::new(coven::SystemClock);
+            let storage = Arc::new(
+                coven::MemoryStorage::builder()
+                    .clock(clock.clone())
+                    .build()
+                    .unwrap(),
+            );
             let owner = bae_core::library::create_library(
                 owner_installation
                     .builder(coven::StoreLayout::new(owner_dir.path().into()))

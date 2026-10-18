@@ -166,7 +166,12 @@ fn bootstrap_of_locked_library_leaves_active_pointer() {
     let home = Home::new();
     let first = home.create("Library A");
     home.open(first).close();
-    let storage = std::sync::Arc::new(coven::MemoryStorage::builder().build().unwrap());
+    let storage = std::sync::Arc::new(
+        coven::MemoryStorage::builder()
+            .clock(std::sync::Arc::new(coven::SystemClock))
+            .build()
+            .unwrap(),
+    );
     let runtime = bae_test_support::multi_thread_runtime();
     let id = runtime.block_on(async {
         let handle = bae_core::library::create_library(

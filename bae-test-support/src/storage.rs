@@ -12,7 +12,12 @@ pub async fn storage_library(
     providers: Providers,
 ) -> (LibraryManager, Database, Arc<MemoryStorage>) {
     let installation = coven::TestCoven::new();
-    let storage = Arc::new(MemoryStorage::builder().build().unwrap());
+    let storage = Arc::new(
+        MemoryStorage::builder()
+            .clock(Arc::new(coven::SystemClock))
+            .build()
+            .unwrap(),
+    );
     let handle = installation
         .builder(coven::StoreLayout::new(directory.into()))
         .synced_tables(bae_core::sync::synced_tables())

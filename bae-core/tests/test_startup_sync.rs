@@ -51,7 +51,7 @@ fn local_startup_returns_while_storage_is_pending_and_reports_its_failure() {
     let layout = coven::StoreLayout::new(home.path().join(".bae"));
     let installation = coven::TestCoven::new();
     let clock = Arc::new(StorageClock {
-        time: coven::FixedClock::new(std::time::UNIX_EPOCH),
+        time: coven::FixedClock::new(coven::SystemClock.now()),
         sleeping: tokio::sync::Notify::new(),
     });
     let storage = Arc::new(
