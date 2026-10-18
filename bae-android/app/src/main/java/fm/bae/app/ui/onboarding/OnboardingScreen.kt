@@ -2,25 +2,30 @@ package fm.bae.app.ui.onboarding
 
 import android.Manifest
 import android.content.pm.PackageManager
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.StringRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -31,223 +36,168 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import fm.bae.app.BaeApp
 import fm.bae.app.BaeLogger
-import fm.bae.app.OAuthLinker
 import fm.bae.app.R
+import fm.bae.app.coreString
 import fm.bae.app.ui.BaeAppChrome
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
+import fm.bae.app.ui.cloudProviderLabel
 import fm.bae.app.ui.components.ErrorText
+import fm.bae.app.ui.components.LabeledValueRow
+import fm.bae.app.ui.components.PersonNameField
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.QRScannerScreen
-import kotlinx.coroutines.launch
-import uniffi.bae_bridge.BridgeJoiningDeviceJoinProgress
-import uniffi.bae_bridge.BridgeLibrary
+import fm.bae.app.ui.components.S3KeyFields
+import uniffi.bae_bridge.BridgeBootstrapResult
+import uniffi.bae_bridge.BridgeBootstrapStatus
+import uniffi.bae_bridge.BridgeCloudProvider
+import uniffi.bae_bridge.BridgeCodeMetadata
+import uniffi.bae_bridge.BridgeS3Credentials
+import uniffi.bae_bridge.bridgePendingReasonKey
 
 private const val TAG = "bae.OnboardingScreen"
 private val logger = BaeLogger(TAG)
 
-private class OnboardingIdleCallbacks(
-    val onScanQR: () -> Unit,
-    val onShowPasteDialog: () -> Unit,
-    val onPasteInputChange: (String) -> Unit,
-    val onConnect: (String) -> Unit,
-    val onDismissPaste: () -> Unit,
-    val onJoinLibrary: () -> Unit,
+private val actionWidth = 220.dp
+
+private class OnboardingStartCallbacks(
+    val onScan: () -> Unit,
+    val onShowCodeDialog: () -> Unit,
+    val onCodeInputChange: (String) -> Unit,
+    val onEnterCode: (String) -> Unit,
+    val onDismissCodeDialog: () -> Unit,
 )
 
-/** Returns a callback that opens the scanner for a [ScanTarget], asking for camera permission first when needed. */
-@Composable
-private fun rememberScanRequest(
-    setError: (ScanTarget, String?) -> Unit,
-    onOpen: (ScanTarget) -> Unit,
-): (ScanTarget) -> Unit {
-    val context = LocalContext.current
-    // The target a pending camera-permission request is for.
-    var pendingScanTarget by remember { mutableStateOf<ScanTarget?>(null) }
-    val permissionLauncher =
-        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-            val target = pendingScanTarget
-            pendingScanTarget = null
-            if (target != null) {
-                if (granted) {
-                    onOpen(target)
-                } else {
-                    setError(target, context.getString(R.string.onboarding_camera_permission_required))
-                }
-            } else {
-                logger.warning("camera permission result arrived with no pending scan target")
-            }
-        }
-    val hasCameraPermission =
-        ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
-            PackageManager.PERMISSION_GRANTED
-    return { target ->
-        setError(target, null)
-        if (hasCameraPermission) {
-            onOpen(target)
-        } else {
-            pendingScanTarget = target
-            permissionLauncher.launch(Manifest.permission.CAMERA)
-        }
-    }
-}
-
-@Composable
-private fun OnboardingScanner(
-    target: ScanTarget,
-    onScanned: (String) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val instructions =
-        when (target) {
-            ScanTarget.ANY_SETUP_CODE -> null
-            ScanTarget.PAIRING_CODE -> stringResource(R.string.onboarding_join_pairing_instructions)
-        }
-    QRScannerScreen(
-        onScanned = onScanned,
-        onDismiss = onDismiss,
-        instructions = instructions,
-    )
-}
-
-@Composable
-private fun rememberCodeRouter(
-    launcher: LinkLauncher,
-    joinLauncher: JoinLauncher,
-    oauthLinking: OAuthLinker?,
-    oauthLinkingError: String?,
-    setShowJoin: (Boolean) -> Unit,
-): OnboardingCodeRouter =
-    remember(launcher, joinLauncher, oauthLinking, oauthLinkingError) {
-        OnboardingCodeRouter(
-            launcher,
-            joinLauncher,
-            oauthLinking,
-            oauthLinkingError,
-            setShowJoin,
-        )
-    }
-
+/**
+ * First run on a device: a restore code from one of the person's devices, or
+ * an invite to someone's library, scanned or typed, restores or joins here.
+ */
 @Composable
 fun OnboardingScreen(
-    oauthLinking: OAuthLinker?,
-    oauthLinkingError: String?,
-    onLinked: (BridgeLibrary) -> Unit,
+    oauthProvidersError: String?,
+    onBootstrapped: (BridgeBootstrapResult) -> Unit,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    // The process-lifetime host built at app launch; restore, join, and cloud
-    // sign-in run over it.
+    // The process-lifetime host built at app launch; restore and join run over it.
     val host = (context.applicationContext as BaeApp).host
-    val launcher = remember { LinkLauncher(scope, context, host, onLinked) }
-    val joinLauncher = remember { JoinLauncher(scope, context, host, onLinked) }
-    var showJoin by remember { mutableStateOf(false) }
-    LaunchedEffect(joinLauncher) { showJoin = joinLauncher.resumePending(oauthLinking, oauthLinkingError) }
-    // Non-null while the scanner is open, identifying which code it captures.
-    var scanTarget by remember { mutableStateOf<ScanTarget?>(null) }
-    val codeRouter =
-        rememberCodeRouter(launcher, joinLauncher, oauthLinking, oauthLinkingError) { showJoin = it }
+    val flow = remember { OnboardingFlow(scope, context, host, oauthProvidersError, onBootstrapped) }
+    var scanning by remember { mutableStateOf(false) }
+    val requestScan = rememberScanRequest(onDenied = { flow.error = it }, onOpen = { scanning = true })
 
-    val onRequestScan =
-        rememberScanRequest(
-            setError = codeRouter::setScanError,
-            onOpen = { scanTarget = it },
-        )
+    when (val step = flow.step) {
+        OnboardingStep.Start -> {
+            if (scanning) {
+                QRScannerScreen(
+                    onScanned = { code ->
+                        scanning = false
+                        flow.enter(code)
+                    },
+                    onDismiss = { scanning = false },
+                )
+            } else {
+                OnboardingStart(flow = flow, onScan = requestScan)
+            }
+        }
 
-    when {
-        scanTarget != null -> {
-            OnboardingScanner(
-                target = scanTarget!!,
-                onScanned = { code ->
-                    scanTarget = null
-                    codeRouter.route(code)
-                },
-                onDismiss = { scanTarget = null },
+        is OnboardingStep.Restore -> {
+            BackHandler { flow.back() }
+            RestoreForm(
+                step = step,
+                error = flow.error,
+                onRestore = { flow.restore(step, it) },
+                onBack = flow::back,
             )
         }
 
-        launcher.isLinking -> {
-            OnboardingProgress(linking = true) { launcher.cancel() }
-        }
-
-        joinLauncher.isJoining -> {
-            OnboardingProgress(
-                linking = false,
-                joiningFingerprint = joinLauncher.joiningFingerprint,
-                joinProgress = joinLauncher.joinProgress,
-            ) { joinLauncher.abandonAndReset { showJoin = false } }
-        }
-
-        showJoin -> {
-            JoinLibraryScreen(
-                joinLauncher = joinLauncher,
-                oauthLinking = oauthLinking,
-                oauthLinkingError = oauthLinkingError,
-                onRequestScan = { onRequestScan(ScanTarget.PAIRING_CODE) },
-                onBack = {
-                    joinLauncher.abandonAndReset { showJoin = false }
-                },
+        is OnboardingStep.Invite -> {
+            BackHandler { flow.back() }
+            InviteForm(
+                step = step,
+                error = flow.error,
+                onJoin = { flow.join(step, it) },
+                onBack = flow::back,
             )
         }
 
-        else -> {
-            OnboardingIdleScreen(
-                launcher = launcher,
-                oauthLinking = oauthLinking,
-                oauthLinkingError = oauthLinkingError,
-                onRequestScan = { onRequestScan(ScanTarget.ANY_SETUP_CODE) },
-                onJoinLibrary = { showJoin = true },
-            )
+        is OnboardingStep.Running -> {
+            BackHandler { flow.cancel() }
+            OnboardingProgress(step = step, onCancel = flow::cancel)
         }
     }
 }
 
+/** Returns a callback that opens the scanner, asking for camera permission first when needed. */
 @Composable
-private fun OnboardingIdleScreen(
-    launcher: LinkLauncher,
-    oauthLinking: OAuthLinker?,
-    oauthLinkingError: String?,
-    onRequestScan: () -> Unit,
-    onJoinLibrary: () -> Unit,
+private fun rememberScanRequest(
+    onDenied: (String) -> Unit,
+    onOpen: () -> Unit,
+): () -> Unit {
+    val context = LocalContext.current
+    val permissionLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) {
+                onOpen()
+            } else {
+                logger.info("camera permission denied; the code can still be typed")
+                onDenied(context.getString(R.string.onboarding_camera_permission_required))
+            }
+        }
+    return {
+        val granted =
+            ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
+                PackageManager.PERMISSION_GRANTED
+        if (granted) onOpen() else permissionLauncher.launch(Manifest.permission.CAMERA)
+    }
+}
+
+@Composable
+private fun OnboardingStart(
+    flow: OnboardingFlow,
+    onScan: () -> Unit,
 ) {
-    var showPasteDialog by remember { mutableStateOf(false) }
-    var pasteInput by remember { mutableStateOf("") }
-    OnboardingIdleContent(
-        error = launcher.error,
-        showPasteDialog = showPasteDialog,
-        pasteInput = pasteInput,
+    var showCodeDialog by remember { mutableStateOf(false) }
+    var codeInput by remember { mutableStateOf("") }
+    OnboardingStartContent(
+        error = flow.error,
+        showCodeDialog = showCodeDialog,
+        codeInput = codeInput,
         callbacks =
-            OnboardingIdleCallbacks(
-                onScanQR = onRequestScan,
-                onShowPasteDialog = {
-                    launcher.error = null
-                    pasteInput = ""
-                    showPasteDialog = true
+            OnboardingStartCallbacks(
+                onScan = {
+                    flow.error = null
+                    onScan()
                 },
-                onPasteInputChange = { pasteInput = it },
-                onConnect = { code ->
-                    showPasteDialog = false
-                    launcher.link(code, oauthLinking, oauthLinkingError)
+                onShowCodeDialog = {
+                    flow.error = null
+                    codeInput = ""
+                    showCodeDialog = true
                 },
-                onDismissPaste = { showPasteDialog = false },
-                onJoinLibrary = onJoinLibrary,
+                onCodeInputChange = { codeInput = it },
+                onEnterCode = { code ->
+                    showCodeDialog = false
+                    flow.enter(code)
+                },
+                onDismissCodeDialog = { showCodeDialog = false },
             ),
     )
 }
 
 @Composable
-private fun OnboardingIdleContent(
+private fun OnboardingStartContent(
     error: String?,
-    showPasteDialog: Boolean,
-    pasteInput: String,
-    callbacks: OnboardingIdleCallbacks,
+    showCodeDialog: Boolean,
+    codeInput: String,
+    callbacks: OnboardingStartCallbacks,
 ) {
     OnboardingContainer {
         Spacer(modifier = Modifier.weight(1f))
@@ -266,17 +216,12 @@ private fun OnboardingIdleContent(
             textAlign = TextAlign.Center,
         )
         Spacer(modifier = Modifier.height(ThemeSpace.page))
-        val buttonWidth = Modifier.width(200.dp)
-        PrimaryButton(onClick = callbacks.onJoinLibrary, modifier = buttonWidth) {
-            Text(stringResource(R.string.onboarding_join_library))
+        PrimaryButton(onClick = callbacks.onScan, modifier = Modifier.width(actionWidth)) {
+            Text(stringResource(R.string.onboarding_scan_code))
         }
         Spacer(modifier = Modifier.height(ThemeSpace.related))
-        OutlinedButton(onClick = callbacks.onScanQR, modifier = buttonWidth) {
-            Text(stringResource(R.string.pairing_scan_code))
-        }
-        Spacer(modifier = Modifier.height(ThemeSpace.related))
-        OutlinedButton(onClick = callbacks.onShowPasteDialog, modifier = buttonWidth) {
-            Text(stringResource(R.string.onboarding_paste_code))
+        OutlinedButton(onClick = callbacks.onShowCodeDialog, modifier = Modifier.width(actionWidth)) {
+            Text(stringResource(R.string.onboarding_enter_code))
         }
         if (error != null) {
             Spacer(modifier = Modifier.height(ThemeSpace.related))
@@ -284,95 +229,151 @@ private fun OnboardingIdleContent(
         }
         Spacer(modifier = Modifier.weight(1f))
     }
-    if (showPasteDialog) {
+    if (showCodeDialog) {
         PasteCodeDialog(
             text =
                 PasteDialogText(
-                    title = stringResource(R.string.onboarding_paste_code),
-                    instructions = stringResource(R.string.onboarding_paste_code_instructions),
-                    placeholder = stringResource(R.string.onboarding_restore_code_placeholder),
-                    confirmLabel = stringResource(R.string.onboarding_connect),
+                    title = stringResource(R.string.onboarding_enter_code),
+                    instructions = stringResource(R.string.onboarding_enter_code_instructions),
+                    placeholder = stringResource(R.string.onboarding_code_placeholder),
+                    confirmLabel = stringResource(R.string.continue_action),
                 ),
-            pasteInput = pasteInput,
-            onInputChange = callbacks.onPasteInputChange,
-            onConfirm = callbacks.onConnect,
-            onDismiss = callbacks.onDismissPaste,
+            pasteInput = codeInput,
+            onInputChange = callbacks.onCodeInputChange,
+            onConfirm = callbacks.onEnterCode,
+            onDismiss = callbacks.onDismissCodeDialog,
         )
     }
 }
 
 /**
- * The waiting screen for a running attempt: connecting to restore this device's
- * own library when [linking], or joining an existing library otherwise.
+ * The person's own restore code, read: S3 asks for the bucket's access key;
+ * the account providers sign in as the restore runs.
  */
 @Composable
-internal fun OnboardingProgress(
-    linking: Boolean,
-    joiningFingerprint: String? = null,
-    joinProgress: BridgeJoiningDeviceJoinProgress? = null,
-    onCancel: () -> Unit,
+private fun RestoreForm(
+    step: OnboardingStep.Restore,
+    error: String?,
+    onRestore: (BridgeS3Credentials?) -> Unit,
+    onBack: () -> Unit,
 ) {
-    if (linking) {
-        ProgressScreen(
-            R.string.onboarding_connecting_title,
-            R.string.onboarding_connecting_body,
-            null,
-            onCancel,
-        )
-    } else {
-        OnboardingContainer {
-            if (joinProgress != null) {
-                JoiningDeviceProgress(joinProgress)
-            } else {
-                CircularProgressIndicator()
-                Spacer(modifier = Modifier.height(ThemeSpace.section))
-                Text(
-                    text = stringResource(R.string.onboarding_joining_title),
-                    style = ThemeText.heading.style,
-                    textAlign = TextAlign.Center,
+    var accessKeyId by remember { mutableStateOf("") }
+    var secretAccessKey by remember { mutableStateOf("") }
+    val needsKey = step.metadata.provider == BridgeCloudProvider.S3
+    OnboardingForm(title = stringResource(R.string.onboarding_restore_title), error = error, onBack = onBack) {
+        LabeledValueRow(stringResource(R.string.settings_provider), cloudProviderLabel(step.metadata.provider))
+        if (needsKey) {
+            Text(
+                text = stringResource(R.string.onboarding_s3_key_explanation),
+                style = ThemeText.detail.style,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            S3KeyFields(
+                accessKeyId = accessKeyId,
+                secretAccessKey = secretAccessKey,
+                onAccessKeyIdChange = { accessKeyId = it.trim() },
+                onSecretAccessKeyChange = { secretAccessKey = it.trim() },
+            )
+        }
+        PrimaryButton(
+            onClick = {
+                onRestore(
+                    if (needsKey) BridgeS3Credentials(accessKeyId, secretAccessKey) else null,
                 )
-            }
-            joiningFingerprint?.let {
-                Spacer(modifier = Modifier.height(ThemeSpace.group))
-                Text(
-                    text = stringResource(R.string.onboarding_join_fingerprint, it),
-                    style = ThemeText.mono.style,
-                    textAlign = TextAlign.Center,
-                )
-            }
-            Spacer(modifier = Modifier.height(ThemeSpace.section))
-            OutlinedButton(onClick = onCancel) { Text(stringResource(R.string.cancel)) }
+            },
+            enabled = !needsKey || (accessKeyId.isNotEmpty() && secretAccessKey.isNotEmpty()),
+            modifier = Modifier.width(actionWidth),
+        ) {
+            Text(stringResource(R.string.onboarding_restore_action))
+        }
+    }
+}
+
+/** An invite, read: the library it names, and the name the person joins under. */
+@Composable
+private fun InviteForm(
+    step: OnboardingStep.Invite,
+    error: String?,
+    onJoin: (String) -> Unit,
+    onBack: () -> Unit,
+) {
+    var personName by remember { mutableStateOf("") }
+    OnboardingForm(
+        title = stringResource(R.string.onboarding_join_title_named, step.libraryName),
+        error = error,
+        onBack = onBack,
+    ) {
+        LabeledValueRow(stringResource(R.string.settings_provider), cloudProviderLabel(step.metadata.provider))
+        PersonNameField(personName) { personName = it }
+        PrimaryButton(
+            onClick = { onJoin(personName.trim()) },
+            enabled = personName.isNotBlank(),
+            modifier = Modifier.width(actionWidth),
+        ) {
+            Text(stringResource(R.string.onboarding_join_action))
         }
     }
 }
 
 @Composable
-private fun ProgressScreen(
-    @StringRes titleRes: Int,
-    @StringRes bodyRes: Int,
-    joiningFingerprint: String?,
+private fun OnboardingForm(
+    title: String,
+    error: String?,
+    onBack: () -> Unit,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(ThemeSpace.page).verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(ThemeSpace.group),
+    ) {
+        Text(text = title, style = ThemeText.title.style, textAlign = TextAlign.Center)
+        content()
+        error?.let { ErrorText(it) }
+        TextButton(onClick = onBack) { Text(stringResource(R.string.back)) }
+    }
+}
+
+/** A restore or join running: what it waits on now, and Cancel. */
+@Composable
+internal fun OnboardingProgress(
+    step: OnboardingStep.Running,
     onCancel: () -> Unit,
 ) {
+    val context = LocalContext.current
+    val title =
+        when (val from = step.from) {
+            is OnboardingStep.Invite -> stringResource(R.string.onboarding_joining_library, from.libraryName)
+            is OnboardingStep.Restore -> stringResource(R.string.onboarding_restoring_title)
+        }
     OnboardingContainer {
         CircularProgressIndicator()
         Spacer(modifier = Modifier.height(ThemeSpace.section))
-        Text(
-            text = stringResource(titleRes),
-            style = ThemeText.heading.style,
-            textAlign = TextAlign.Center,
-        )
+        Text(text = title, style = ThemeText.heading.style, textAlign = TextAlign.Center)
         Spacer(modifier = Modifier.height(ThemeSpace.related))
-        Text(
-            text = stringResource(bodyRes),
-            style = ThemeText.body.style,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
-        joiningFingerprint?.let {
-            Spacer(modifier = Modifier.height(ThemeSpace.group))
+        val lines =
+            when (val status = step.status) {
+                null, BridgeBootstrapStatus.Connecting -> {
+                    listOf(stringResource(R.string.onboarding_status_connecting))
+                }
+
+                BridgeBootstrapStatus.WaitingForApproval -> {
+                    listOf(stringResource(R.string.onboarding_status_waiting_for_approval))
+                }
+
+                BridgeBootstrapStatus.Loading -> {
+                    listOf(stringResource(R.string.onboarding_status_loading))
+                }
+
+                is BridgeBootstrapStatus.Pending -> {
+                    status.records.map { context.coreString(bridgePendingReasonKey(it.reason.kind)) }
+                }
+            }
+        lines.forEach { line ->
             Text(
-                text = stringResource(R.string.onboarding_join_fingerprint, it),
-                style = ThemeText.mono.style,
+                text = line,
+                style = ThemeText.body.style,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
             )
         }
@@ -395,18 +396,17 @@ private fun OnboardingContainer(content: @Composable ColumnScope.() -> Unit) {
 @Composable
 internal fun WelcomeScene() {
     BaeAppChrome {
-        OnboardingIdleContent(
+        OnboardingStartContent(
             error = null,
-            showPasteDialog = false,
-            pasteInput = "",
+            showCodeDialog = false,
+            codeInput = "",
             callbacks =
-                OnboardingIdleCallbacks(
-                    onScanQR = {},
-                    onShowPasteDialog = {},
-                    onPasteInputChange = {},
-                    onConnect = {},
-                    onDismissPaste = {},
-                    onJoinLibrary = {},
+                OnboardingStartCallbacks(
+                    onScan = {},
+                    onShowCodeDialog = {},
+                    onCodeInputChange = {},
+                    onEnterCode = {},
+                    onDismissCodeDialog = {},
                 ),
         )
     }
@@ -420,16 +420,26 @@ private fun WelcomeScenePreview() {
 
 @Preview(showBackground = true)
 @Composable
-private fun OnboardingProgressLinkingPreview() {
+private fun OnboardingProgressWaitingPreview() {
     BaeTheme {
-        OnboardingProgress(linking = true, onCancel = {})
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun OnboardingProgressJoiningPreview() {
-    BaeTheme {
-        OnboardingProgress(linking = false, onCancel = {})
+        OnboardingProgress(
+            step =
+                OnboardingStep.Running(
+                    from =
+                        OnboardingStep.Invite(
+                            code = "invite-code",
+                            metadata =
+                                BridgeCodeMetadata(
+                                    libraryId = "library-1",
+                                    memberId = "member-1",
+                                    provider = BridgeCloudProvider.DROPBOX,
+                                    oauthAccess = null,
+                                ),
+                            libraryName = "Household",
+                        ),
+                    status = BridgeBootstrapStatus.WaitingForApproval,
+                ),
+            onCancel = {},
+        )
     }
 }

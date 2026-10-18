@@ -173,49 +173,28 @@
     <!-- %1$s = the device fingerprint -->
     <string name="members_remove_confirm_body">Device %1$s will lose access to this library and the library key will be rotated.</string>
     <string name="members_pairing_scan_instructions">Scan this code on the device joining your library.</string>
-    <string name="pairing_starting">Starting pairing…</string>
-    <string name="pairing_scan_code">Scan</string>
     <string name="members_pairing_confirm">Check that this matches the fingerprint shown on the new device before approving.</string>
     <string name="members_pairing_approve">Approve</string>
     <string name="members_pairing_failed">Couldn\'t approve this device.</string>
     <string name="members_pairing_waiting">Waiting for the device…</string>
 
     <!-- Onboarding -->
-    <string name="onboarding_tagline">Join a library from one of your other devices to get started</string>
+    <string name="onboarding_tagline">Restore your library with a code from one of your devices, or join one with an invite.</string>
     <string name="onboarding_icon_description">bae icon</string>
-    <string name="onboarding_join_library">Join a library</string>
-    <string name="onboarding_paste_code">Paste recovery code</string>
     <string name="onboarding_camera_permission_required">Camera permission is required to scan QR codes</string>
-    <string name="onboarding_paste_code_instructions">Paste this library\'s recovery code (from bae → Settings → Recovery code on another device).</string>
-    <string name="onboarding_restore_code_placeholder">Paste your recovery code</string>
-    <string name="onboarding_connect">Connect</string>
-    <string name="onboarding_connecting_title">Connecting to your library</string>
-    <string name="onboarding_connecting_body">bae is restoring the library on this device.</string>
     <string name="onboarding_oauth_unconfigured">This library needs cloud sign-in, which isn\'t configured on this build.</string>
 
-    <!-- Onboarding: join a library -->
-    <string name="onboarding_join_title">Join a library</string>
     <string name="pairing_authorizing">Signing in…</string>
-    <string name="pairing_waiting_for_approval">Waiting for approval…</string>
-    <!-- Cloud provider names for the join provider picker -->
+    <!-- Cloud provider names -->
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-compatible</string>
     <string name="cloud_provider_icloud">iCloud</string>
-    <string name="onboarding_join_pairing_instructions">Scan the pairing code shown on a device already in your library.</string>
-    <string name="pairing_code">Pairing code</string>
-    <!-- %1$s = this device's fingerprint -->
-    <string name="onboarding_join_fingerprint">Fingerprint: %1$s</string>
     <string name="pairing_copy_code">Copy code</string>
-    <string name="pairing_code_placeholder">Paste pairing code</string>
-    <string name="pairing_library">Library</string>
-    <string name="pairing_provider">Provider</string>
-    <string name="pairing_code_invalid">This pairing code is not valid.</string>
     <string name="onboarding_join_action">Join</string>
-    <string name="onboarding_joining_title">Joining your library</string>
 
     <!-- QR scanner -->
-    <string name="qr_scanner_instructions">Show this library\'s recovery QR from bae → Settings → Recovery code on another device</string>
+    <string name="qr_scanner_instructions">Scan a restore code shown in bae on one of your devices, or an invite.</string>
 
     <!-- Downloads -->
     <string name="downloads">Downloads</string>
@@ -283,4 +262,26 @@
     <string name="reset_device_confirm">Reset</string>
     <string name="profile_required_title">Enter your name to finish joining this library.</string>
     <string name="save">Save</string>
+    <string name="onboarding_scan_code">Scan a code</string>
+    <string name="onboarding_enter_code">Enter a code</string>
+    <string name="onboarding_enter_code_instructions">Enter a restore code from one of your devices, or an invite to a library.</string>
+    <string name="onboarding_code_placeholder">Restore code or invite</string>
+    <string name="continue_action">Continue</string>
+    <string name="onboarding_code_invalid">This isn’t a restore code or an invite.</string>
+    <string name="onboarding_restore_title">Restore your library</string>
+    <string name="onboarding_s3_key_explanation">This library is stored in an S3-compatible bucket. Enter the access key you use for it.</string>
+    <string name="s3_access_key_id">Access key ID</string>
+    <string name="s3_secret_access_key">Secret access key</string>
+    <string name="onboarding_restore_action">Restore</string>
+    <!-- %1$s = the library's name, from the invite -->
+    <string name="onboarding_join_title_named">Join %1$s</string>
+    <string name="onboarding_person_name">Your name</string>
+    <string name="name_shown_to_everyone">Everyone in the library sees this name.</string>
+    <string name="onboarding_restoring_title">Restoring your library</string>
+    <!-- %1$s = the library's name, from the invite -->
+    <string name="onboarding_joining_library">Joining %1$s</string>
+    <string name="onboarding_status_connecting">Connecting…</string>
+    <string name="onboarding_status_waiting_for_approval">Waiting for an admin of the library to approve this device…</string>
+    <string name="onboarding_status_loading">Loading the library…</string>
+    <string name="onboarding_invite_declined">The invite was declined or has expired.</string>
 </resources>
