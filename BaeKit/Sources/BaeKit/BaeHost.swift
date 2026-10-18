@@ -11,8 +11,16 @@ public enum BaeHost {
         diagnostics: BridgeDiagnostics,
         appDir: BridgeAppDir
     ) -> BridgeHost {
+        make { try BridgeHost(diagnostics: diagnostics, appDir: appDir) }
+    }
+
+    /// Build the host with `construct`, such as a debug app's host whose
+    /// keychain stays in memory for its UI tests; it fails as `make` does.
+    public static func make(
+        _ construct: () throws -> BridgeHost
+    ) -> BridgeHost {
         do {
-            return try BridgeHost(diagnostics: diagnostics, appDir: appDir)
+            return try construct()
         }
         catch {
             preconditionFailure(

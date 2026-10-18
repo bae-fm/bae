@@ -61,7 +61,8 @@ impl BridgeHost {
                 .handle()
                 .clone(),
             move || async move {
-                bae_core::library::saved_restore_codes()
+                self.keychain
+                    .saved_restore_codes()
                     .await
                     .map(|codes| {
                         codes

@@ -71,6 +71,9 @@ cloudkit = []
 # on, and desktop implies it.
 cast = ["dep:bae-cast"]
 desktop = ["cast", "dep:bae-desktop"]
+# An in-memory keychain a debug app can start its host with, so UI tests never
+# touch the login keychain. Debug macOS builds turn it on.
+test-keyring = ["bae-core/test-utils"]
 
 [lints]
 workspace = true

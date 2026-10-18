@@ -19,6 +19,9 @@ if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
     echo "  conditions are derived from the same set so the generated bindings"
     echo "  and the app's #if guards never disagree. For a baeium (S3-only)"
     echo "  build: BAE_BRIDGE_FEATURES=desktop $0"
+    echo ""
+    echo "  A debug build adds 'test-keyring', the in-memory keychain UI tests"
+    echo "  start the app with."
     exit 0
 fi
 
@@ -37,6 +40,14 @@ fi
 
 # The bridge's cargo features, from which the Swift #if conditions are derived.
 BAE_BRIDGE_FEATURES="${BAE_BRIDGE_FEATURES:-oauth-providers,cloudkit,desktop}"
+# UI tests launch the debug app with an in-memory keychain, so they never touch
+# the login keychain; a release build has no such keychain.
+if [[ "$CARGO_PROFILE" == "debug" ]]; then
+    case ",$BAE_BRIDGE_FEATURES," in
+        *,test-keyring,*) ;;
+        *) BAE_BRIDGE_FEATURES="$BAE_BRIDGE_FEATURES,test-keyring" ;;
+    esac
+fi
 export BAE_BRIDGE_FEATURES
 
 # Each Rust feature's Swift compilation condition.
@@ -46,6 +57,9 @@ case ",$BAE_BRIDGE_FEATURES," in
 esac
 case ",$BAE_BRIDGE_FEATURES," in
     *,cloudkit,*) SWIFT_CONDITIONS="$SWIFT_CONDITIONS BAE_CLOUDKIT" ;;
+esac
+case ",$BAE_BRIDGE_FEATURES," in
+    *,test-keyring,*) SWIFT_CONDITIONS="$SWIFT_CONDITIONS BAE_TEST_KEYRING" ;;
 esac
 SWIFT_CONDITIONS="$(echo "$SWIFT_CONDITIONS" | xargs)"
 

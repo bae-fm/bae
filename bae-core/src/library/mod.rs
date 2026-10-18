@@ -117,9 +117,44 @@ impl CreateLibraryError {
     }
 }
 
-/// Configure coven with the declarations owned by bae.
-pub fn store_builder(app_dir: &AppDir) -> coven::CovenBuilder {
-    configure_store(coven::Coven::builder(app_dir.store_layout()))
+/// Where this process keeps coven's keys, credentials and saved restore
+/// codes: the OS keychain, or for UI and bridge tests an in-memory keychain of
+/// their own, so a test never reads or writes the person's login keychain.
+#[derive(Clone)]
+pub enum Keychain {
+    System,
+    #[cfg(any(test, feature = "test-utils"))]
+    InMemory(std::sync::Arc<coven::TestCoven>),
+}
+
+impl Keychain {
+    /// An empty in-memory keychain, kept for this process only.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn in_memory() -> Self {
+        Self::InMemory(std::sync::Arc::new(coven::TestCoven::new()))
+    }
+
+    /// Configure coven with the declarations owned by bae, keeping keys in
+    /// this keychain.
+    pub fn store_builder(&self, app_dir: &AppDir) -> coven::CovenBuilder {
+        let layout = app_dir.store_layout();
+        configure_store(match self {
+            Self::System => coven::Coven::builder(layout),
+            #[cfg(any(test, feature = "test-utils"))]
+            Self::InMemory(installation) => installation.builder(layout),
+        })
+    }
+
+    /// The restore codes saved in this keychain (iCloud Keychain on Apple).
+    pub async fn saved_restore_codes(
+        &self,
+    ) -> Result<Vec<coven::SavedRestoreCode>, coven::BootstrapError> {
+        match self {
+            Self::System => coven::saved_restore_codes().await,
+            #[cfg(any(test, feature = "test-utils"))]
+            Self::InMemory(installation) => installation.saved_restore_codes().await,
+        }
+    }
 }
 
 pub(crate) fn configure_store(builder: coven::CovenBuilder) -> coven::CovenBuilder {
@@ -140,7 +175,7 @@ pub async fn create_library_default(
     app_dir: &AppDir,
 ) -> Result<coven::CovenHandle, CreateLibraryError> {
     create_library(
-        store_builder(app_dir),
+        Keychain::System.store_builder(app_dir),
         crate::library_name::generate_library_name(),
     )
     .await
@@ -242,8 +277,6 @@ pub async fn reset_device(
         .await
         .map_err(restore_error)
 }
-
-pub use coven::saved_restore_codes;
 
 fn restore_error(error: coven::BootstrapError) -> RestoreFromCodeError {
     match error {

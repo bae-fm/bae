@@ -8,6 +8,7 @@ const HOST_LOCK: &str = "host registrations lock";
 pub struct BridgeHost {
     diagnostics: Arc<BridgeDiagnostics>,
     app_dir: bae_core::config::AppDir,
+    keychain: bae_core::library::Keychain,
     runtime: Option<tokio::runtime::Runtime>,
     oauth_clients: Mutex<coven::OAuthClients>,
     #[cfg(any(target_os = "ios", target_os = "android"))]
@@ -39,7 +40,9 @@ impl BridgeHost {
     }
 
     fn builder(&self) -> coven::CovenBuilder {
-        let builder = bae_core::library::store_builder(&self.app_dir)
+        let builder = self
+            .keychain
+            .store_builder(&self.app_dir)
             .oauth_clients(self.oauth_clients.lock().expect(HOST_LOCK).clone());
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
         {
@@ -53,14 +56,11 @@ impl BridgeHost {
             }
         }
     }
-}
 
-#[uniffi::export(async_runtime = "tokio", cancellable)]
-impl BridgeHost {
-    #[uniffi::constructor]
-    pub fn new(
+    fn start(
         diagnostics: Arc<BridgeDiagnostics>,
         app_dir: Arc<BridgeAppDir>,
+        keychain: bae_core::library::Keychain,
     ) -> Result<Arc<Self>, BridgeError> {
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .worker_threads(2)
@@ -71,6 +71,7 @@ impl BridgeHost {
         Ok(Arc::new(Self {
             diagnostics,
             app_dir: app_dir.core().clone(),
+            keychain,
             runtime: Some(runtime),
             oauth_clients: Mutex::new(coven::OAuthClients::new(
                 None,
@@ -81,6 +82,36 @@ impl BridgeHost {
             #[cfg(any(target_os = "ios", target_os = "android"))]
             presenter: Mutex::new(None),
         }))
+    }
+}
+
+/// A host whose keys and credentials stay in an in-memory keychain for this
+/// process: a debug app's UI tests start it so they never touch the login
+/// keychain.
+#[cfg(any(test, feature = "test-keyring"))]
+#[uniffi::export]
+impl BridgeHost {
+    #[uniffi::constructor]
+    pub fn with_test_keyring(
+        diagnostics: Arc<BridgeDiagnostics>,
+        app_dir: Arc<BridgeAppDir>,
+    ) -> Result<Arc<Self>, BridgeError> {
+        Self::start(
+            diagnostics,
+            app_dir,
+            bae_core::library::Keychain::in_memory(),
+        )
+    }
+}
+
+#[uniffi::export(async_runtime = "tokio", cancellable)]
+impl BridgeHost {
+    #[uniffi::constructor]
+    pub fn new(
+        diagnostics: Arc<BridgeDiagnostics>,
+        app_dir: Arc<BridgeAppDir>,
+    ) -> Result<Arc<Self>, BridgeError> {
+        Self::start(diagnostics, app_dir, bae_core::library::Keychain::System)
     }
 
     pub async fn flush_diagnostics(self: Arc<Self>) -> Result<(), BridgeError> {
@@ -221,28 +252,20 @@ mod tests {
     #[test]
     fn an_opened_store_keeps_its_original_custody() {
         let root = tempfile::tempdir().unwrap();
-        let host = BridgeHost::new(
+        let host = BridgeHost::with_test_keyring(
             BridgeDiagnostics::noop(),
             BridgeAppDir::new(root.path().to_str().unwrap().into()),
         )
         .unwrap();
-        let installation = coven::TestCoven::new();
-        let handle = host
-            .runtime
-            .as_ref()
-            .unwrap()
-            .block_on(bae_core::library::create_library(
-                installation.builder(coven::StoreLayout::new(root.path().join(".bae"))),
-                bae_core::library_name::LibraryName::parse("Session Library").unwrap(),
-            ))
+        let caller = tokio::runtime::Runtime::new().unwrap();
+        let opened = caller
+            .block_on(host.clone().create_library(Some("Session Library".into())))
             .unwrap();
-        let opened = crate::OpenedLibrary::new(handle, host.clone());
         let app = opened.open(50, false).unwrap();
         let id = opened.library_id();
         drop(opened);
         drop(host);
         assert_eq!(app.get_config().library_id, id);
-        let caller = tokio::runtime::Runtime::new().unwrap();
         assert_eq!(
             caller.block_on(app.clone().library_name()).unwrap(),
             "Session Library"
