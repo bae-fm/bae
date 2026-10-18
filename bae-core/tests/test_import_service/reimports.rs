@@ -125,7 +125,7 @@ async fn repeated_imports_keep_independent_copies() {
     }
 }
 
-/// A Remote import records its make-Remote in the write that creates the
+/// A Remote import records its upload in the write that creates the
 /// release, so it needs no cloud connection: with none connected the import
 /// commits, its uploads wait in the outbox, and the release is on its way to
 /// the cloud rather than rolled back.

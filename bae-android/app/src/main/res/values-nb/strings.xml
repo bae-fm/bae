@@ -107,7 +107,7 @@
     <string name="settings_endpoint">Endepunkt</string>
     <string name="settings_disconnect">Koble fra</string>
     <string name="settings_disconnect_confirm_title">Koble fra synkroniseringen?</string>
-    <string name="settings_disconnect_body">Dette stopper synkroniseringen og fjerner oppsettet for skyleverandøren.</string>
+    <string name="settings_disconnect_body">Denne enheten slutter å synkronisere og fjerner påloggingsinformasjonen for lagringen. Logg på igjen for å fortsette synkroniseringen.</string>
     <string name="settings_disconnect_failed">Frakoblingen mislyktes: %1$s</string>
     <string name="settings_disconnect_warning_check_failed">Kunne ikke sjekke utgivelser som bare finnes i skyen: %1$s</string>
     <string name="settings_pause_uploads">Sett opplastinger på pause</string>

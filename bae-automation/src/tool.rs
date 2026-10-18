@@ -141,7 +141,7 @@ impl AutomationTool {
         AutomationToolDescriptor {
             tool: AutomationTool::ReleaseStorageAction,
             name: "release_storage_action",
-            description: "Run a release storage transition: move to cloud (optionally pinned), pin, unpin, make local, or cancel the one in flight",
+            description: "Run a release storage transition: upload (optionally pinned), pin, unpin, detach audio, or cancel the one in flight",
             schema: Some(schema_object::<ReleaseStorageActionInput>),
         },
         AutomationToolDescriptor {

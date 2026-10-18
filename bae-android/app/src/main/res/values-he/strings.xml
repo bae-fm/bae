@@ -103,7 +103,7 @@
     <string name="settings_endpoint">נקודת קצה</string>
     <string name="settings_disconnect">התנתק</string>
     <string name="settings_disconnect_confirm_title">לנתק את הסנכרון?</string>
-    <string name="settings_disconnect_body">פעולה זו תפסיק את הסנכרון ותסיר את הגדרת ספק הענן.</string>
+    <string name="settings_disconnect_body">המכשיר הזה מפסיק לסנכרן ומסיר את פרטי ההתחברות שלו לאחסון. התחברו שוב כדי להמשיך לסנכרן.</string>
     <string name="settings_disconnect_failed">ההתנתקות נכשלה: %1$s</string>
     <string name="settings_disconnect_warning_check_failed">לא ניתן לבדוק מהדורות בענן בלבד: %1$s</string>
     <string name="settings_pause_uploads">השהיית העלאות</string>

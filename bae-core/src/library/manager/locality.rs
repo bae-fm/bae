@@ -4,16 +4,12 @@ use super::*;
 
 impl LibraryManager {
     /// Attach every local file in one write, then keep the requested offline copies.
-    pub async fn coven_make_remote(
-        &self,
-        release_id: &str,
-        pin: bool,
-    ) -> Result<u64, LibraryError> {
+    pub async fn upload_release(&self, release_id: &str, pin: bool) -> Result<u64, LibraryError> {
         let manager = self.clone();
         let release_id = release_id.to_string();
         let guard = self.admit_transfer_values(
             std::slice::from_ref(&release_id),
-            ReleaseStorageAction::MakeRemote,
+            ReleaseStorageAction::Upload,
         )?;
         // A committed attachment survives a dismissed view. Its optional offline
         // copy has its own Downloads outcome and retry, never a second attachment.
@@ -30,13 +26,15 @@ impl LibraryManager {
     }
 
     /// Copy and verify the files before atomically returning the release to local paths.
-    pub async fn coven_make_local(
+    pub async fn detach_release_audio_into(
         &self,
         release_id: &str,
         new_path: &str,
         cancel: &crate::library::CancellationToken,
     ) -> Result<(), LibraryError> {
-        let destinations = self.make_local_dest(release_id, new_path).await?;
+        let destinations = self
+            .detached_audio_destinations(release_id, new_path)
+            .await?;
         let operation = cancel.child_token();
         let cancel_on_drop = operation.clone().drop_guard();
         let manager = self.clone();
@@ -66,7 +64,7 @@ impl LibraryManager {
     /// wherever this map points, so each fragment is validated before it is joined
     /// onto the user's folder: a release carrying one bad name copies out no files
     /// at all, rather than one of them landing outside the folder the user chose.
-    pub(super) async fn make_local_dest(
+    pub(super) async fn detached_audio_destinations(
         &self,
         release_id: &str,
         new_path: &str,
@@ -245,13 +243,13 @@ impl LibraryManager {
     /// evictable cache. Once the upload lands, a remote release no longer
     /// refers to the user's source path; the source file itself remains
     /// untouched.
-    pub async fn make_releases_remote(
+    pub async fn upload_releases(
         &self,
         release_ids: &[String],
-    ) -> Result<MakeReleasesRemoteOutcome, LibraryError> {
+    ) -> Result<UploadReleasesOutcome, LibraryError> {
         if release_ids.is_empty() {
             return Err(LibraryError::Validation(
-                "move-to-cloud batch has no releases".to_string(),
+                "upload batch has no releases".to_string(),
             ));
         }
 
@@ -275,11 +273,11 @@ impl LibraryManager {
             let transfer = crate::storage::transfer::ReleaseTransfer::new(
                 self.clone(),
                 release_id.clone(),
-                ReleaseStorageAction::MakeRemote,
+                ReleaseStorageAction::Upload,
             );
             let admission = async {
                 let file_count = transfer.start().await?;
-                let revision = self.coven_make_remote(release_id, pin).await?;
+                let revision = self.upload_release(release_id, pin).await?;
                 Ok::<_, LibraryError>((revision, file_count))
             }
             .await;
@@ -297,24 +295,24 @@ impl LibraryManager {
             }
         }
 
-        let receipt = last_revision.map(|outbox_revision| MakeRemoteReceipt {
+        let receipt = last_revision.map(|outbox_revision| UploadReceipt {
             outbox_revision,
             release_ids: admitted_release_ids,
         });
         if failures.is_empty() {
-            return Ok(MakeReleasesRemoteOutcome::Complete {
+            return Ok(UploadReleasesOutcome::Complete {
                 receipt: receipt.expect("a non-empty successful command has a receipt"),
             });
         }
-        Ok(MakeReleasesRemoteOutcome::Partial {
+        Ok(UploadReleasesOutcome::Partial {
             receipt,
-            failure: MakeRemoteBatchFailure::from_errors(failures),
+            failure: UploadBatchFailure::from_errors(failures),
         })
     }
 
     /// Make an attached release Local: verify every file at `new_path` before
     /// one write clears its attachments and records this device's paths.
-    pub async fn make_release_local(
+    pub async fn detach_release_audio(
         &self,
         release_id: &str,
         new_path: &str,
@@ -324,14 +322,14 @@ impl LibraryManager {
         // exactly as long as the transfer runs.
         let cancel = crate::library::CancellationToken::new();
         let transfer_service = crate::storage::transfer::TransferService::new(self.clone());
-        let rx = transfer_service.make_release_local(
+        let rx = transfer_service.detach_release_audio(
             release_id.to_string(),
             new_path.to_string(),
             cancel.clone(),
         );
         self.drive_transfer(
             release_id,
-            ReleaseStorageAction::MakeLocal,
+            ReleaseStorageAction::DetachAudio,
             rx,
             Some(cancel),
         )
@@ -344,17 +342,17 @@ impl LibraryManager {
     /// A no-op if nothing is in progress.
     ///
     /// The transitions this process registered say what they are: a
-    /// make-Local transfer is stopped by its token, which the registry fires;
+    /// audio detachment transfer is stopped by its token, which the registry fires;
     /// a pin is stopped through the download queue, which also holds the pins
     /// not yet started. Cancelling an upload detaches every audio file and
     /// restores its original path in the same write.
     pub async fn cancel_release_transition(&self, release_id: &str) -> Result<(), LibraryError> {
         match self.transitions.cancel(release_id) {
-            Some(ReleaseStorageAction::MakeLocal) => return Ok(()),
+            Some(ReleaseStorageAction::DetachAudio) => return Ok(()),
             Some(ReleaseStorageAction::Pin) => {
                 self.cancel_download(release_id);
             }
-            Some(ReleaseStorageAction::MakeRemote | ReleaseStorageAction::Unpin) | None => {}
+            Some(ReleaseStorageAction::Upload | ReleaseStorageAction::Unpin) | None => {}
         }
         if self.downloads.contains(release_id) {
             self.cancel_download(release_id);
@@ -425,12 +423,12 @@ impl LibraryManager {
     }
 }
 
-impl MakeRemoteBatchFailure {
+impl UploadBatchFailure {
     fn from_errors(failures: Vec<(String, LibraryError)>) -> Self {
         let mut failures = failures.into_iter();
         let (first_release_id, first_error) = failures
             .next()
-            .expect("a partial make-Remote outcome has at least one failure");
+            .expect("a partial upload outcome has at least one failure");
         let first_category = first_error.category();
         let mut same_category = true;
         let mut release_ids = vec![first_release_id.clone()];

@@ -2,7 +2,7 @@
 async fn insert_pinnable_release(manager: &TestManager) -> String {
     connect_test_cloud(manager).await;
     let source = manager.get_config().library_path().join("pin-source");
-    let release = make_remote_release(manager, &source, "Test Album", false).await;
+    let release = uploaded_release(manager, &source, "Test Album", false).await;
     let file = release_files(manager, &release).await.remove(0);
     manager
         .evict_blob_for_test(&manager.release_file_row_blob_ref(&file.id).await.unwrap())
@@ -48,7 +48,7 @@ async fn download_queue_skips_already_pinned() {
     // A genuinely pinned release: made Remote with pin, so its blob lands in
     // coven's offline cache.
     connect_test_cloud(&manager).await;
-    let release_id = make_remote_release(
+    let release_id = uploaded_release(
         &manager,
         &temp_dir.path().join("pinned"),
         "Test Album",

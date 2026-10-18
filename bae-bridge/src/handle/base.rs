@@ -168,14 +168,14 @@ forward! { async this => {
     /// storage choice says.
     fn upload_releases(release_ids: Vec<String>) -> BridgeUploadReleasesOutcome {
         this.services
-            .make_releases_remote(&release_ids)
+            .upload_releases(&release_ids)
             .await
             .map(BridgeUploadReleasesOutcome::from_core)
             .map_err(BridgeError::from)
     }
 
     fn detach_release_audio(release_id: String, new_path: String) -> () {
-        Ok(this.services.make_release_local(&release_id, &new_path).await?)
+        Ok(this.services.detach_release_audio(&release_id, &new_path).await?)
     }
 
     fn delete_release(release_id: String) -> () {

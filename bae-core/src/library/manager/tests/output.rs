@@ -12,12 +12,12 @@ async fn make_exportable_release(
 ) -> String {
     let (release, _) =
         insert_export_release_rows(manager, source_dir, folder_name, files).await;
-    manager.coven_make_remote(&release.id, true).await.unwrap();
+    manager.upload_release(&release.id, true).await.unwrap();
     wait_for_offline_copy_request(manager, &release.id).await;
     // The sync loop this fixture's tests connect drains the queue itself, so
-    // wait for the make-Remote to finish rather than counting a drain pass this
+    // wait for the upload to finish rather than counting a drain pass this
     // test does not own.
-    wait_for_landed_make_remote(manager, &release.id).await;
+    wait_for_landed_upload(manager, &release.id).await;
     release.id
 }
 
@@ -33,7 +33,7 @@ async fn wait_for_settled_uploads(manager: &LibraryManager, release_id: &str) {
         }
         tokio::time::sleep(std::time::Duration::from_millis(10)).await;
     }
-    panic!("release {release_id} never finished its make-Remote");
+    panic!("release {release_id} never finished its upload");
 }
 
 #[cfg(feature = "test-utils")]
@@ -76,7 +76,7 @@ async fn insert_export_release_rows(
 /// then overwritten with `poison` — the shape a row pulled from another device can
 /// have. bae's own row-write refuses these values, but coven applies a pulled
 /// changeset straight into SQLite, so the guard that matters is the one at the
-/// join: the export copy-out and make-Local both validate the fragment before they
+/// join: the export copy-out and audio detachment both validate the fragment before they
 /// join it onto the user's folder.
 #[cfg(feature = "test-utils")]
 async fn insert_local_export_release_with_poisoned_fragment(
@@ -272,14 +272,14 @@ async fn export_rejects_parent_component_source_folder_name() {
     .await;
 }
 
-/// make-Local reads through coven and writes each file under the chosen folder.
+/// audio detachment reads through coven and writes each file under the chosen folder.
 /// A synced filename must not redirect any destination outside that folder.
 /// One invalid destination refuses the release before any files are copied.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
-async fn make_local_dest_rejects_a_traversing_original_filename() {
+async fn detached_audio_destinations_reject_a_traversing_original_filename() {
     let (manager, temp_dir) = setup_test_manager().await;
-    let target = temp_dir.path().join("make-local-out");
+    let target = temp_dir.path().join("detached-audio-out");
     let release_id = insert_local_export_release_with_poisoned_fragment(
         &manager,
         &temp_dir.path().join("source"),
@@ -289,7 +289,7 @@ async fn make_local_dest_rejects_a_traversing_original_filename() {
     .await;
 
     let error = manager
-        .make_local_dest(&release_id, target.to_str().unwrap())
+        .detached_audio_destinations(&release_id, target.to_str().unwrap())
         .await
         .expect_err("a traversing original_filename must not produce a destination");
     assert!(

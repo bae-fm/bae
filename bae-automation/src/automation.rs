@@ -338,30 +338,25 @@ impl Automation {
     ) -> Result<AutomationStorageActionOutcome, AutomationError> {
         let summary = self.release_storage_summary(&release_id).await?;
         match action {
-            AutomationStorageAction::MoveToCloud => {
-                require_action(
-                    &summary,
-                    AutomationReleaseStorageAction::MakeRemote,
-                    "move to cloud",
-                )?;
+            AutomationStorageAction::Upload => {
+                require_action(&summary, AutomationReleaseStorageAction::Upload, "upload")?;
                 let outcome = self
                     .services
-                    .make_releases_remote(std::slice::from_ref(&release_id))
+                    .upload_releases(std::slice::from_ref(&release_id))
                     .await?;
                 let outbox_revision = match outcome {
-                    bae_core::library::MakeReleasesRemoteOutcome::Complete { receipt } => {
+                    bae_core::library::UploadReleasesOutcome::Complete { receipt } => {
                         receipt.outbox_revision
                     }
-                    bae_core::library::MakeReleasesRemoteOutcome::Partial {
+                    bae_core::library::UploadReleasesOutcome::Partial {
                         receipt: None,
                         failure,
                     } => return Err(failure.error.into()),
-                    bae_core::library::MakeReleasesRemoteOutcome::Partial {
-                        receipt: Some(_),
-                        ..
+                    bae_core::library::UploadReleasesOutcome::Partial {
+                        receipt: Some(_), ..
                     } => unreachable!("one release cannot be both admitted and refused"),
                 };
-                Ok(AutomationStorageActionOutcome::CloudUploadQueued {
+                Ok(AutomationStorageActionOutcome::UploadQueued {
                     release_id,
                     outbox_revision,
                 })
@@ -379,16 +374,16 @@ impl Automation {
                 self.services.unpin_release(&release_id).await?;
                 Ok(AutomationStorageActionOutcome::Unpinned { release_id })
             }
-            AutomationStorageAction::MakeLocal { destination_dir } => {
+            AutomationStorageAction::DetachAudio { destination_dir } => {
                 require_action(
                     &summary,
-                    AutomationReleaseStorageAction::MakeLocal,
-                    "make local",
+                    AutomationReleaseStorageAction::DetachAudio,
+                    "detach audio",
                 )?;
                 self.services
-                    .make_release_local(&release_id, &destination_dir)
+                    .detach_release_audio(&release_id, &destination_dir)
                     .await?;
-                Ok(AutomationStorageActionOutcome::MadeLocal { release_id })
+                Ok(AutomationStorageActionOutcome::AudioDetached { release_id })
             }
             AutomationStorageAction::Cancel => {
                 self.services.cancel_release_transition(&release_id).await?;

@@ -516,7 +516,7 @@ impl LibraryManager {
 
     /// Insert all of an import's data in one transaction, so the release exists
     /// complete or not at all. A Remote import (`destination`) records its
-    /// make-Remote in the same write and gets back the outbox revision that
+    /// upload in the same write and gets back the outbox revision that
     /// shows its uploads queued.
     ///
     /// The pictures of the artists the import creates are staged from a read

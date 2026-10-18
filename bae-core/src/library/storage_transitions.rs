@@ -2,7 +2,7 @@
 //! storage rows read them from.
 //!
 //! A release is in at most one transition at a time: an upload being
-//! admitted, a pin or unpin the download worker drives, or a make-Local
+//! admitted, a pin or unpin the download worker drives, or an audio detachment
 //! transfer this process copies file by file. Whichever it is, it is
 //! registered here as one entry that says what it is and, where the
 //! transfer can be stopped from here, how — so cancelling dispatches on what

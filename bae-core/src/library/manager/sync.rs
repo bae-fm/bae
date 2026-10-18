@@ -169,15 +169,15 @@ impl LibraryManager {
         Ok(count)
     }
 
-    /// Build, start, and attach a sync manager. Used once at startup for a
-    /// returning user with a configured cloud home: coven resolves the at-rest
-    /// cipher from the master-key custody itself, keyed off whatever this
-    /// device's keyring already holds.
+    /// Start coven's sync loop with the store keys this session unlocked. Its
+    /// first pass connects, and a pass that can't reach storage backs off and
+    /// retries like any other; starting fails only when the session lacks a
+    /// store key or custody can't be read.
     pub async fn attach_and_start_sync(&self) -> Result<(), LibraryError> {
         self.sync.attach_and_start_sync().await
     }
 
-    /// Start the returning-user attachment without withholding local library
+    /// Start sync for a returning user without withholding local library
     /// services. [`Self::start`] must already have installed the status and
     /// outbox subscriptions so the connection's first events have consumers.
     /// The task runs on the runtime retained by the app and is supervised like
@@ -189,15 +189,14 @@ impl LibraryManager {
         })
     }
 
-    /// Attach the sync manager at startup, tolerating a connect failure.
+    /// Start sync at startup, tolerating a failure.
     ///
-    /// A returning user who launches offline must still open their library — local
-    /// browse and pinned playback need no network, and the connect can be retried on
-    /// the next launch (idempotently). coven's connect leaves the handle home-less on
-    /// failure, so nothing is half-attached: the failure is recorded as the
-    /// sync-status error, in its own category as a later cycle's failure is, so
-    /// the status line says why and offers Reconnect, and `has_cloud_home` /
-    /// `is_sync_ready` report not connected.
+    /// A returning user who launches offline still opens their library — local
+    /// browse and pinned playback need no network: the loop starts, the status
+    /// line reads offline, and the loop retries on its own. A start that fails
+    /// outright, such as a keychain locked for the session, starts no loop and
+    /// is recorded as the sync-status error in its own category, so the status
+    /// line says why and offers Reconnect.
     pub async fn attach_and_start_sync_at_startup(&self) {
         let started = std::time::Instant::now();
         tracing::info!("startup sync attachment started");
@@ -216,16 +215,14 @@ impl LibraryManager {
     /// endpoint, a bad object the cloud side no longer serves — clears without
     /// relaunching the app or re-entering the provider settings.
     ///
-    /// Two failures land here and each needs a different move. A startup connect
-    /// that failed left no connection at all, and only a fresh connect builds
-    /// one; a connected loop whose cycle failed is already backing off, and a
-    /// wake runs its next cycle now instead of up to five minutes from now.
-    /// `is_sync_ready` is what separates them: it is true only for an installed
-    /// connection with a live loop behind it.
+    /// Two failures land here and each needs a different move. A start that
+    /// failed left no loop running, and only starting it again builds one; a
+    /// running loop whose pass failed is backing off, and a wake runs its next
+    /// pass now instead of when its backoff ends. `is_sync_ready` is what
+    /// separates them: it is true only while a loop is running.
     ///
-    /// A connect that fails becomes this retry's recorded sync-status error, so
-    /// every surface that already renders a sync failure shows why the retry
-    /// didn't take; it is cleared the moment a retry is under way. A library
+    /// A start that fails becomes this retry's recorded sync-status error, so
+    /// the status line shows why the retry didn't take; it is cleared the moment a retry is under way. A library
     /// with no provider is not failing sync, it has none, so that refusal goes
     /// back to the caller alone rather than posing as a sync failure.
     pub async fn reconnect_sync(&self) -> Result<(), LibraryError> {

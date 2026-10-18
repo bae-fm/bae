@@ -107,7 +107,7 @@
     <string name="settings_endpoint">Végpont</string>
     <string name="settings_disconnect">Leválasztás</string>
     <string name="settings_disconnect_confirm_title">Leválasztod a szinkronizálást?</string>
-    <string name="settings_disconnect_body">Ezzel leáll a szinkronizálás, és törlődik a felhőszolgáltató beállítása.</string>
+    <string name="settings_disconnect_body">Ez az eszköz leállítja a szinkronizálást, és eltávolítja a tárhely hitelesítő adatait. A folytatáshoz jelentkezz be újra.</string>
     <string name="settings_disconnect_failed">A leválasztás nem sikerült: %1$s</string>
     <string name="settings_disconnect_warning_check_failed">Nem sikerült ellenőrizni a csak a felhőben tárolt kiadásokat: %1$s</string>
     <string name="settings_pause_uploads">Feltöltések szüneteltetése</string>

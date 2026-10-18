@@ -137,7 +137,7 @@
     <string name="settings_endpoint">Endpoint</string>
     <string name="settings_disconnect">Disconnect</string>
     <string name="settings_disconnect_confirm_title">Disconnect sync?</string>
-    <string name="settings_disconnect_body">This will stop syncing and remove the cloud provider configuration.</string>
+    <string name="settings_disconnect_body">This device stops syncing and removes its storage credentials. Sign in again to resume syncing.</string>
     <string name="settings_disconnect_failed">Failed to disconnect: %1$s</string>
     <string name="settings_disconnect_warning_check_failed">Couldn\'t check for cloud-only releases: %1$s</string>
     <string name="settings_pause_uploads">Pause uploads</string>

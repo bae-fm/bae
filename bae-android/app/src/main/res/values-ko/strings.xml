@@ -103,7 +103,7 @@
     <string name="settings_endpoint">엔드포인트</string>
     <string name="settings_disconnect">연결 해제</string>
     <string name="settings_disconnect_confirm_title">동기화를 연결 해제할까요?</string>
-    <string name="settings_disconnect_body">동기화를 중지하고 클라우드 제공자 설정을 제거합니다.</string>
+    <string name="settings_disconnect_body">이 기기는 동기화를 중지하고 스토리지 자격 증명을 제거합니다. 동기화를 다시 시작하려면 다시 로그인하세요.</string>
     <string name="settings_disconnect_failed">연결을 해제할 수 없음: %1$s</string>
     <string name="settings_disconnect_warning_check_failed">클라우드 전용 릴리스를 확인할 수 없음: %1$s</string>
     <string name="settings_pause_uploads">업로드 일시정지</string>

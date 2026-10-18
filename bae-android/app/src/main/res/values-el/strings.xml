@@ -107,7 +107,7 @@
     <string name="settings_endpoint">Τερματικό σημείο</string>
     <string name="settings_disconnect">Αποσύνδεση</string>
     <string name="settings_disconnect_confirm_title">Αποσύνδεση συγχρονισμού;</string>
-    <string name="settings_disconnect_body">Αυτό θα σταματήσει τον συγχρονισμό και θα αφαιρέσει τη διαμόρφωση του παρόχου cloud.</string>
+    <string name="settings_disconnect_body">Αυτή η συσκευή σταματά τον συγχρονισμό και αφαιρεί τα διαπιστευτήρια αποθήκευσής της. Συνδεθείτε ξανά για να συνεχιστεί ο συγχρονισμός.</string>
     <string name="settings_disconnect_failed">Η αποσύνδεση απέτυχε: %1$s</string>
     <string name="settings_disconnect_warning_check_failed">Δεν ήταν δυνατός ο έλεγχος για κυκλοφορίες που υπάρχουν μόνο στο cloud: %1$s</string>
     <string name="settings_pause_uploads">Παύση μεταφορτώσεων</string>

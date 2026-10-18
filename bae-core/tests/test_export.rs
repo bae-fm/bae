@@ -74,7 +74,7 @@ async fn import_then_strand_in_cloud(f: &ExportFixture, album_dir: &Path) -> (St
     assert_eq!(files.len(), 1);
     let original_bytes = fs::read(album_dir.join(&files[0].original_filename)).unwrap();
 
-    f.mgr.coven_make_remote(&release_id, false).await.unwrap();
+    f.mgr.upload_release(&release_id, false).await.unwrap();
     let uploaded = f.mgr.drain_uploads_expecting_work().await.unwrap();
     assert_eq!(uploaded, files.len(), "each release blob uploaded");
 

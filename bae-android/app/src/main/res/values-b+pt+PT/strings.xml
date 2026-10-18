@@ -107,7 +107,7 @@
     <string name="settings_endpoint">Ponto final</string>
     <string name="settings_disconnect">Desligar</string>
     <string name="settings_disconnect_confirm_title">Desligar a sincronização?</string>
-    <string name="settings_disconnect_body">Isto vai parar a sincronização e remover a configuração do fornecedor de nuvem.</string>
+    <string name="settings_disconnect_body">Este dispositivo deixa de sincronizar e remove as credenciais de armazenamento. Inicie sessão novamente para retomar a sincronização.</string>
     <string name="settings_disconnect_failed">Não foi possível desligar: %1$s</string>
     <string name="settings_disconnect_warning_check_failed">Não foi possível verificar as edições guardadas apenas na nuvem: %1$s</string>
     <string name="settings_pause_uploads">Suspender envios</string>

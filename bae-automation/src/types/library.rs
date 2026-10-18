@@ -66,19 +66,19 @@ impl From<ReleaseStorageState> for AutomationReleaseStorageState {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AutomationReleaseStorageAction {
-    MakeRemote,
+    Upload,
     Pin,
     Unpin,
-    MakeLocal,
+    DetachAudio,
 }
 
 impl From<ReleaseStorageAction> for AutomationReleaseStorageAction {
     fn from(action: ReleaseStorageAction) -> Self {
         match action {
-            ReleaseStorageAction::MakeRemote => Self::MakeRemote,
+            ReleaseStorageAction::Upload => Self::Upload,
             ReleaseStorageAction::Pin => Self::Pin,
             ReleaseStorageAction::Unpin => Self::Unpin,
-            ReleaseStorageAction::MakeLocal => Self::MakeLocal,
+            ReleaseStorageAction::DetachAudio => Self::DetachAudio,
         }
     }
 }

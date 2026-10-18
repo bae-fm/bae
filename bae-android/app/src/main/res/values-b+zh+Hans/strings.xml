@@ -103,7 +103,7 @@
     <string name="settings_endpoint">端点</string>
     <string name="settings_disconnect">断开连接</string>
     <string name="settings_disconnect_confirm_title">断开同步？</string>
-    <string name="settings_disconnect_body">这将停止同步并移除云服务提供商配置。</string>
+    <string name="settings_disconnect_body">此设备将停止同步并移除其存储凭据。重新登录即可恢复同步。</string>
     <string name="settings_disconnect_failed">断开连接失败：%1$s</string>
     <string name="settings_disconnect_warning_check_failed">无法检查仅云端版本：%1$s</string>
     <string name="settings_pause_uploads">暂停上传</string>

@@ -97,7 +97,7 @@ final class StorageActionRunner {
     }
 
     /// Run `action` against every release in `releaseIds`. Moving to cloud
-    /// defers to the confirm sheet; making local asks for a destination folder
+    /// defers to the confirm sheet; detaching audio asks for a destination folder
     /// once and moves each release into it; pin enqueues the whole batch on the
     /// download queue; unpin runs directly.
     func run(_ action: BridgeReleaseStorageAction, releaseIds: [String]) {
@@ -105,7 +105,7 @@ final class StorageActionRunner {
         case .upload:
             pendingMoveToCloud = releaseIds
         case .detachAudio:
-            makeLocal(releaseIds: releaseIds)
+            detachAudio(releaseIds: releaseIds)
         case .pin:
             // Pinning routes through the in-memory download queue, which
             // serializes the batch and reports progress via the Downloads pane
@@ -158,7 +158,7 @@ final class StorageActionRunner {
 
     /// Prompt for the folder a local release's files move into. Returns
     /// the chosen directory path, or nil when the user cancels the panel.
-    static func promptMakeLocalDestination() -> String? {
+    static func promptDetachAudioDestination() -> String? {
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
@@ -170,8 +170,8 @@ final class StorageActionRunner {
         return url.path(percentEncoded: false)
     }
 
-    private func makeLocal(releaseIds: [String]) {
-        guard let newPath = Self.promptMakeLocalDestination() else {
+    private func detachAudio(releaseIds: [String]) {
+        guard let newPath = Self.promptDetachAudioDestination() else {
             return
         }
         runEach(releaseIds) {

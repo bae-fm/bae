@@ -103,7 +103,7 @@
     <string name="settings_endpoint">Punkt końcowy</string>
     <string name="settings_disconnect">Rozłącz</string>
     <string name="settings_disconnect_confirm_title">Rozłączyć synchronizację?</string>
-    <string name="settings_disconnect_body">Spowoduje to zatrzymanie synchronizacji i usunięcie konfiguracji dostawcy chmury.</string>
+    <string name="settings_disconnect_body">To urządzenie przestanie synchronizować i usunie swoje dane logowania do magazynu. Zaloguj się ponownie, aby wznowić synchronizację.</string>
     <string name="settings_disconnect_failed">Nie udało się rozłączyć: %1$s</string>
     <string name="settings_disconnect_warning_check_failed">Nie udało się sprawdzić wydań tylko w chmurze: %1$s</string>
     <string name="settings_pause_uploads">Wstrzymaj przesyłanie</string>

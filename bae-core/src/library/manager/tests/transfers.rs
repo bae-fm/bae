@@ -27,7 +27,7 @@ async fn remote_read_with_sync_disconnected_reports_sync_disconnected() {
     use crate::ui::PlaybackErrorReason;
     let (manager, dir) = setup_test_manager().await;
     connect_test_cloud(&manager).await;
-    let release_id = make_remote_release_with_files(
+    let release_id = uploaded_release_with_files(
         &manager,
         dir.path(),
         "Album Title",
@@ -54,7 +54,7 @@ async fn pending_upload_with_missing_source_reports_the_missing_original() {
     use crate::ui::PlaybackErrorReason;
     let (manager, temp_dir) = setup_test_manager().await;
     connect_test_cloud(&manager).await;
-    let release = insert_partially_uploaded_make_remote_release(&manager, temp_dir.path()).await;
+    let release = insert_partially_uploaded_release(&manager, temp_dir.path()).await;
 
     let files = release_files(&manager, &release.id).await;
     let file = files
@@ -129,7 +129,7 @@ async fn surfaces_local_release_with_no_local_files() {
 
 
 /// The Uploading filter is coven's upload queue, not a bae column: only the
-/// release whose make-Remote is still enqueued appears under it.
+/// release whose upload is still enqueued appears under it.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn storage_page_uploading_filter_matches_the_upload_queue() {
@@ -173,11 +173,11 @@ async fn storage_page_uploading_filter_matches_the_upload_queue() {
 async fn cancel_release_transition_fires_a_registered_transfer_token() {
     let (manager, _temp_dir) = setup_test_manager().await;
 
-    // A registered make-Local token is fired by the unified cancel.
+    // A registered audio detachment token is fired by the unified cancel.
     let token = crate::library::CancellationToken::new();
     let _registration = manager.transitions.track(
         REL_X,
-        ReleaseStorageAction::MakeLocal,
+        ReleaseStorageAction::DetachAudio,
         Some(token.clone()),
     );
     manager.cancel_release_transition(REL_X).await.unwrap();
@@ -196,18 +196,18 @@ async fn cancelling_a_completed_upload_preserves_the_attachment() {
     assert_eq!(std::fs::read(temp.path().join("completed/a.flac")).unwrap().len(), 1000);
 }
 
-// Needs the test-utils mock cloud home with its sync loop: make-Local is only
-// offered a release whose make-Remote has been accepted, so the transition has
+// Needs the test-utils mock cloud home with its sync loop: audio detachment is only
+// offered a release whose upload has been accepted, so the transition has
 // to run all the way through a cycle and retire its intent first.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn unmanage_cancelled_before_copy_leaves_release_remote() {
     let (manager, temp_dir) = setup_test_manager().await;
     connect_test_cloud_with_sync_loop(&manager).await;
-    // Really Remote, through the real transition: make-Local resolves the
+    // Really Remote, through the real transition: audio detachment resolves the
     // release's current locality from coven, which a fabricated `remote` column
     // with no cloud objects behind it cannot answer.
-    let release_id = make_remote_release_under_sync_loop(
+    let release_id = upload_release_under_sync_loop(
         &manager,
         &temp_dir.path().join("r1"),
         "Album One",
@@ -221,9 +221,9 @@ async fn unmanage_cancelled_before_copy_leaves_release_remote() {
     token.cancel();
     let dest = temp_dir.path().join("out");
     manager
-        .coven_make_local(&release_id, dest.to_str().unwrap(), &token)
+        .detach_release_audio_into(&release_id, dest.to_str().unwrap(), &token)
         .await
-        .expect_err("a cancelled make-Local must not report completion");
+        .expect_err("a cancelled audio detachment must not report completion");
 
     assert!(release_files(&manager, &release_id).await.iter().all(|file| file.attached),
         "cancellation preserves every attachment");
@@ -302,7 +302,7 @@ async fn outbox_snapshot_identifies_the_cover_blob() {
         .store_library_image_blob(&cover, cover_bytes)
         .await
         .unwrap();
-    manager.coven_make_remote(&release.id, false).await.unwrap();
+    manager.upload_release(&release.id, false).await.unwrap();
 
     let snapshot = manager.outbox_snapshot().await.unwrap();
     let group = snapshot
@@ -322,13 +322,13 @@ async fn outbox_snapshot_identifies_the_cover_blob() {
     assert_eq!(cover_upload.upload.file.plaintext_size(), cover_bytes.len() as u64);
 }
 
-/// A successful make-Remote command must publish the canonical durable queue
+/// A successful upload command must publish the canonical durable queue
 /// snapshot before it returns. The foreground transfer and Import status both
 /// finish immediately after this call; without this ordering the UI briefly
 /// falls back to Local/Imported while the live query catches up.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
-async fn make_remote_publishes_its_durable_queue_before_returning() {
+async fn upload_publishes_its_durable_queue_before_returning() {
     let (manager, temp_dir) = setup_test_manager().await;
     // A caller-driven connection: no sync loop drains the queue behind the test.
     connect_test_cloud(&manager).await;
@@ -350,11 +350,11 @@ async fn make_remote_publishes_its_durable_queue_before_returning() {
     assert!(values.borrow_and_update().is_none());
 
     let outcome = manager
-        .make_releases_remote(
+        .upload_releases(
             &[release.id.clone(), second_release.id.clone()])
         .await
         .unwrap();
-    let MakeReleasesRemoteOutcome::Complete { receipt } = outcome else {
+    let UploadReleasesOutcome::Complete { receipt } = outcome else {
         panic!("both releases must be admitted");
     };
     assert_eq!(
@@ -365,7 +365,7 @@ async fn make_remote_publishes_its_durable_queue_before_returning() {
     let snapshot = values
         .borrow_and_update()
         .clone()
-        .expect("make-Remote publishes an outbox value")
+        .expect("upload publishes an outbox value")
         .expect("the durable queue projects");
     assert_eq!(snapshot.revision, receipt.outbox_revision);
     assert!(snapshot
@@ -407,12 +407,12 @@ async fn an_active_target_does_not_block_sibling_cloud_admissions() {
     let _active_command = manager
         .admit_transfer_values(
             std::slice::from_ref(&active_release.id),
-            ReleaseStorageAction::MakeRemote,
+            ReleaseStorageAction::Upload,
         )
         .expect("hold the target in another foreground command");
 
     let outcome = manager
-        .make_releases_remote(
+        .upload_releases(
             &[
                 first_new_release.id.clone(),
                 active_release.id.clone(),
@@ -420,7 +420,7 @@ async fn an_active_target_does_not_block_sibling_cloud_admissions() {
             ])
         .await
         .expect("the batch returns every release's admission outcome");
-    let MakeReleasesRemoteOutcome::Partial {
+    let UploadReleasesOutcome::Partial {
         receipt: Some(receipt),
         failure,
     } = outcome
@@ -444,7 +444,7 @@ async fn an_active_target_does_not_block_sibling_cloud_admissions() {
 
 #[cfg(feature = "test-utils")]
 #[tokio::test]
-async fn a_move_to_cloud_batch_refuses_duplicate_release_ids_without_admission() {
+async fn an_upload_batch_refuses_duplicate_release_ids_without_admission() {
     let (manager, temp_dir) = setup_test_manager().await;
     connect_test_cloud(&manager).await;
     let release = insert_local_release_with_files(
@@ -456,7 +456,7 @@ async fn a_move_to_cloud_batch_refuses_duplicate_release_ids_without_admission()
     .await;
 
     manager
-        .make_releases_remote(&[release.id.clone(), release.id.clone()])
+        .upload_releases(&[release.id.clone(), release.id.clone()])
         .await
         .expect_err("a duplicate target refuses the whole batch");
 
@@ -619,7 +619,7 @@ async fn attachment_commits_before_its_offline_copy_runs_in_downloads() {
         &[("audio.flac", b"audio")],
     )
     .await;
-    manager.coven_make_remote(&release.id, true).await.unwrap();
+    manager.upload_release(&release.id, true).await.unwrap();
     assert!(release_files(&manager, &release.id)
         .await
         .iter()

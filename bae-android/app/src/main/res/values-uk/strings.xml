@@ -103,7 +103,7 @@
     <string name="settings_endpoint">Кінцева точка</string>
     <string name="settings_disconnect">Відключити</string>
     <string name="settings_disconnect_confirm_title">Відключити синхронізацію?</string>
-    <string name="settings_disconnect_body">Це зупинить синхронізацію та вилучить налаштування хмарного постачальника.</string>
+    <string name="settings_disconnect_body">Цей пристрій припиняє синхронізацію та вилучає свої облікові дані сховища. Увійдіть знову, щоб продовжити синхронізацію.</string>
     <string name="settings_disconnect_failed">Не вдалося відключити: %1$s</string>
     <string name="settings_disconnect_warning_check_failed">Не вдалося перевірити релізи, що зберігаються лише в хмарі: %1$s</string>
     <string name="settings_pause_uploads">Призупинити вивантаження</string>

@@ -207,10 +207,10 @@ telemetry_value_enum! {
 
 telemetry_value_enum! {
     impl ReleaseStorageAction {
-        ReleaseStorageAction::MakeRemote => "make_remote",
+        ReleaseStorageAction::Upload => "upload",
         ReleaseStorageAction::Pin => "pin",
         ReleaseStorageAction::Unpin => "unpin",
-        ReleaseStorageAction::MakeLocal => "make_local",
+        ReleaseStorageAction::DetachAudio => "detach_audio",
     }
 }
 
@@ -391,7 +391,7 @@ telemetry_events! {
         provider: CloudProvider,
     },
 
-    /// A release storage transition (pin/unpin/make-remote/make-local) completed.
+    /// A release storage transition (pin/unpin/upload/detach-audio) completed.
     StorageTransferCompleted, "storage_transfer_completed", Info {
         action: ReleaseStorageAction,
         release_id: LocalId,
@@ -552,12 +552,12 @@ mod tests {
     #[test]
     fn storage_transfer_records_action_via_foreign_impl() {
         let event = TelemetryEvent::StorageTransferCompleted {
-            action: ReleaseStorageAction::MakeRemote,
+            action: ReleaseStorageAction::Upload,
             release_id: LocalId("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e".to_string()),
             file_count: 12,
         };
         let fields = event.fields();
-        assert_eq!(fields["action"], serde_json::json!("make_remote"));
+        assert_eq!(fields["action"], serde_json::json!("upload"));
         assert_eq!(
             fields["release_id"],
             serde_json::json!("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e")

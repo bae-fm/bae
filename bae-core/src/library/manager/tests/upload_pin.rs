@@ -2,7 +2,7 @@
 /// choice says at the moment it moves, with nothing passed beside the releases.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
-async fn make_remote_pins_as_the_stored_choice_says() {
+async fn upload_pins_as_the_stored_choice_says() {
     let (manager, temp_dir) = setup_test_manager().await;
     connect_test_cloud(&manager).await;
     let kept = insert_local_release_with_files(
@@ -22,12 +22,12 @@ async fn make_remote_pins_as_the_stored_choice_says() {
 
     manager.set_import_pinned(true).await.unwrap();
     manager
-        .make_releases_remote(std::slice::from_ref(&kept.id))
+        .upload_releases(std::slice::from_ref(&kept.id))
         .await
         .unwrap();
     manager.set_import_pinned(false).await.unwrap();
     manager
-        .make_releases_remote(std::slice::from_ref(&evictable.id))
+        .upload_releases(std::slice::from_ref(&evictable.id))
         .await
         .unwrap();
 

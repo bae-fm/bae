@@ -474,7 +474,7 @@ extension AlbumDetailView {
 
     private func makeReleaseLocal(releaseId: String) {
         guard
-            let newPath = StorageActionRunner.promptMakeLocalDestination()
+            let newPath = StorageActionRunner.promptDetachAudioDestination()
         else {
             return
         }

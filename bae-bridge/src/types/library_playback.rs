@@ -244,8 +244,8 @@ impl BridgeReleaseStorageAction {
     pub fn from_core(value: bae_core::album_detail::ReleaseStorageAction) -> Self {
         use bae_core::album_detail::ReleaseStorageAction as A;
         match value {
-            A::MakeRemote => Self::Upload,
-            A::MakeLocal => Self::DetachAudio,
+            A::Upload => Self::Upload,
+            A::DetachAudio => Self::DetachAudio,
             A::Pin => Self::Pin,
             A::Unpin => Self::Unpin,
         }
@@ -253,8 +253,8 @@ impl BridgeReleaseStorageAction {
     pub(super) fn into_core(self) -> bae_core::album_detail::ReleaseStorageAction {
         use bae_core::album_detail::ReleaseStorageAction as A;
         match self {
-            Self::Upload => A::MakeRemote,
-            Self::DetachAudio => A::MakeLocal,
+            Self::Upload => A::Upload,
+            Self::DetachAudio => A::DetachAudio,
             Self::Pin => A::Pin,
             Self::Unpin => A::Unpin,
         }

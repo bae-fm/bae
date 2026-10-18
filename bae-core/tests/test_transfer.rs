@@ -118,7 +118,7 @@ async fn create_remote_release(
     files: &[(&str, &[u8])],
 ) -> String {
     let (_album_id, release_id, named) = create_local_release(mgr, source_dir, files).await;
-    mgr.coven_make_remote(&release_id, false).await.unwrap();
+    mgr.upload_release(&release_id, false).await.unwrap();
     let count = mgr.drain_uploads_expecting_work().await.unwrap();
     assert_eq!(count, named.len(), "all files uploaded");
     assert_eq!(
@@ -181,16 +181,16 @@ async fn expect_storage_state(
 }
 
 // ---------------------------------------------------------------------------
-// The make-Remote enqueue is visible in the outbox snapshot before the drain
+// The upload enqueue is visible in the outbox snapshot before the drain
 // ---------------------------------------------------------------------------
 
 /// A Cloud import attaches its files and queues their uploads. The uploads are
 /// enqueued through coven, and the Storage Manager / import-progress UI reads
-/// them from `outbox_snapshot`. Assert they are visible the instant make-Remote
+/// them from `outbox_snapshot`. Assert they are visible the instant upload
 /// returns — before any byte drains — so the upload shows up immediately rather
 /// than only after it finishes.
 #[tokio::test]
-async fn make_remote_uploads_are_visible_in_snapshot_before_drain() {
+async fn uploads_are_visible_in_snapshot_before_drain() {
     tracing_init();
     let tmp = TempDir::new().unwrap();
     let mgr = setup_with_cloud(&tmp).await;
@@ -202,14 +202,14 @@ async fn make_remote_uploads_are_visible_in_snapshot_before_drain() {
     )
     .await;
 
-    // Enqueue make-Remote through the real coven path; do NOT drain.
-    mgr.coven_make_remote(&release_id, false).await.unwrap();
+    // Enqueue upload through the real coven path; do NOT drain.
+    mgr.upload_release(&release_id, false).await.unwrap();
 
     let snap = mgr.outbox_snapshot().await.unwrap();
     assert_eq!(
         snap.total.queued,
         named.len() as u32,
-        "every file is queued in the snapshot immediately after make-Remote"
+        "every file is queued in the snapshot immediately after upload"
     );
     let group = snap
         .upload_groups
@@ -229,7 +229,7 @@ async fn durable_outbox_subscription_emits_enqueue_without_a_sync_cycle() {
     let (_album_id, release_id, _) =
         create_local_release(&mgr, &source, &[("track.flac", b"audio")]).await;
 
-    mgr.coven_make_remote(&release_id, false).await.unwrap();
+    mgr.upload_release(&release_id, false).await.unwrap();
 
     loop {
         tokio::time::timeout(std::time::Duration::from_secs(5), values.changed())
@@ -460,7 +460,7 @@ async fn test_missing_external_source_maps_to_error() {
 // Transition completions deliver new storage values
 // ---------------------------------------------------------------------------
 
-/// A drained make-Remote and make-Local both change the subscribed Storage
+/// A drained upload and audio detachment both change the subscribed Storage
 /// Manager value without a separate library event or another read from the UI.
 #[tokio::test]
 async fn transition_completions_deliver_storage_values() {
@@ -489,12 +489,12 @@ async fn transition_completions_deliver_storage_values() {
     );
     expect_storage_state(&values, &release_id, ReleaseStorageState::Local).await;
 
-    mgr.coven_make_remote(&release_id, false).await.unwrap();
+    mgr.upload_release(&release_id, false).await.unwrap();
     mgr.drain_uploads_expecting_work().await.unwrap();
     expect_storage_state(&values, &release_id, ReleaseStorageState::Remote).await;
 
     let dest = tmp.path().join("brought-back");
-    mgr.coven_make_local(
+    mgr.detach_release_audio_into(
         &release_id,
         dest.to_str().unwrap(),
         &CancellationToken::new(),

@@ -44,7 +44,7 @@ async fn check_release_detachment(uploaded: bool) {
         .file_ref("covers", &release.id)
         .await
         .unwrap();
-    manager.coven_make_remote(&release.id, false).await.unwrap();
+    manager.upload_release(&release.id, false).await.unwrap();
     let files = release_files(manager, &release.id).await;
     assert_eq!(files.len(), 2);
     assert!(files.iter().all(|file| file.attached));
@@ -85,7 +85,7 @@ async fn check_release_detachment(uploaded: bool) {
         devices.pause().await;
         manager.database.unlock_store_key().await.unwrap();
         manager
-            .make_release_local(&release.id, destination.path().to_str().unwrap())
+            .detach_release_audio(&release.id, destination.path().to_str().unwrap())
             .await
             .unwrap();
     } else {
@@ -179,7 +179,7 @@ async fn cancelling_upload_with_a_queued_offline_copy_detaches_audio() {
         &[("track.flac", b"audio")],
     )
     .await;
-    manager.coven_make_remote(&release.id, true).await.unwrap();
+    manager.upload_release(&release.id, true).await.unwrap();
     assert_eq!(manager.download_queue().ops.len(), 1);
     manager
         .cancel_release_transition(&release.id)

@@ -103,7 +103,7 @@
     <string name="settings_endpoint">Endpoint</string>
     <string name="settings_disconnect">Desconectar</string>
     <string name="settings_disconnect_confirm_title">¿Desconectar la sincronización?</string>
-    <string name="settings_disconnect_body">Esto detendrá la sincronización y quitará la configuración del proveedor de nube.</string>
+    <string name="settings_disconnect_body">Este dispositivo deja de sincronizar y elimina sus credenciales del almacenamiento. Vuelve a iniciar sesión para reanudar la sincronización.</string>
     <string name="settings_disconnect_failed">No se pudo desconectar: %1$s</string>
     <string name="settings_disconnect_warning_check_failed">No se pudo comprobar si hay ediciones solo en la nube: %1$s</string>
     <string name="settings_pause_uploads">Pausar subidas</string>

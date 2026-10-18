@@ -93,18 +93,18 @@ async fn storage_page_sorts_album_title_descending() {
 
 /// Each storage-page row carries the state-appropriate `storage_actions`
 /// the Storage Manager row context menu renders — pinned offers unpin +
-/// make-Local, cloud-only offers pin + make-Local, local offers make-Remote.
+/// audio detachment, cloud-only offers pin + audio detachment, local offers upload.
 /// With a cloud home present every remote/local transition is open.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn storage_page_rows_carry_state_appropriate_actions() {
-    use crate::album_detail::ReleaseStorageAction::{MakeLocal, MakeRemote, Pin, Unpin};
+    use crate::album_detail::ReleaseStorageAction::{DetachAudio, Upload, Pin, Unpin};
 
     let (manager, temp_dir) = setup_test_manager().await;
     connect_test_cloud_with_sync_loop(&manager).await;
 
     // Pinned: made Remote with pin, so its blob lands in coven's offline cache.
-    let pinned = make_remote_release_under_sync_loop(
+    let pinned = upload_release_under_sync_loop(
         &manager,
         &temp_dir.path().join("pinned"),
         "Pinned Album",
@@ -112,7 +112,7 @@ async fn storage_page_rows_carry_state_appropriate_actions() {
     )
     .await;
     // Cloud-only: made Remote without pin, so its blob is evictable, not pinned.
-    let cloud_only = make_remote_release_under_sync_loop(
+    let cloud_only = upload_release_under_sync_loop(
         &manager,
         &temp_dir.path().join("cloud"),
         "Cloud Album",
@@ -134,9 +134,9 @@ async fn storage_page_rows_carry_state_appropriate_actions() {
         .map(|r| (r.release.id.clone(), r.release.storage_actions.clone()))
         .collect();
 
-    assert_eq!(actions[&pinned], vec![Unpin, MakeLocal]);
-    assert_eq!(actions[&cloud_only], vec![Pin, MakeLocal]);
-    assert_eq!(actions[&local.id], vec![MakeRemote]);
+    assert_eq!(actions[&pinned], vec![Unpin, DetachAudio]);
+    assert_eq!(actions[&cloud_only], vec![Pin, DetachAudio]);
+    assert_eq!(actions[&local.id], vec![Upload]);
 }
 
 /// Each release of an album carries its own pin state. The detail resolves the
@@ -161,11 +161,11 @@ async fn album_detail_releases_carry_their_own_pin_state() {
             &[("track.flac", b"track-bytes")],
         )
         .await;
-        manager.coven_make_remote(&release.id, pin).await.unwrap();
+        manager.upload_release(&release.id, pin).await.unwrap();
         if pin {
             wait_for_offline_copy_request(&manager, &release.id).await;
         }
-        wait_for_landed_make_remote(&manager, &release.id).await;
+        wait_for_landed_upload(&manager, &release.id).await;
         pressings.push((release.id, pin));
     }
 
@@ -208,7 +208,7 @@ async fn storage_page_rows_have_no_actions_without_cloud_home() {
 async fn storage_page_local_filter_matches_local_path() {
     let (manager, temp_dir) = setup_test_manager().await;
     connect_test_cloud(&manager).await;
-    let remote_id = make_remote_release(&manager, &temp_dir.path().join("remote"), "Remote Album", false).await;
+    let remote_id = uploaded_release(&manager, &temp_dir.path().join("remote"), "Remote Album", false).await;
     let local_release = insert_local_release_with_files(&manager, &temp_dir.path().join("local"), "Local Album", &[("track.flac", b"local")]).await;
 
     let local = storage_page(&manager, crate::db::StorageFilter::Local, 0, 10).await;
@@ -239,7 +239,7 @@ async fn storage_count_matches_filtered_page_total() {
         if i == 1 {
             inserted_local = Some(release.id);
         } else {
-            manager.coven_make_remote(&release.id, false).await.unwrap();
+            manager.upload_release(&release.id, false).await.unwrap();
             manager.drain_uploads_expecting_work().await.unwrap();
         }
     }
@@ -292,7 +292,7 @@ async fn storage_total_size_matches_page_total_size_sum() {
     connect_test_cloud(&manager).await;
 
     insert_local_release_with_files(&manager, &temp_dir.path().join("local"), "Local Album", &[("a.flac", &vec![0u8; 1_000])]).await;
-    make_remote_release_with_files(&manager, &temp_dir.path().join("remote"), "Remote Album", &[("a.flac", &[0u8; 100])], false).await;
+    uploaded_release_with_files(&manager, &temp_dir.path().join("remote"), "Remote Album", &[("a.flac", &[0u8; 100])], false).await;
     insert_release_with_queued_uploads(&manager, &temp_dir.path().join("uploading"), "Uploading Album", &[("a.flac", &vec![0u8; 10_000])]).await;
 
     for filter in [
@@ -360,14 +360,14 @@ async fn unpin_release_releases_audio_and_keeps_cover_evictable() {
     .await;
     store_test_cover(&manager, &release.id, b"cover-bytes").await;
 
-    manager.coven_make_remote(&release.id, true).await.unwrap();
+    manager.upload_release(&release.id, true).await.unwrap();
     wait_for_offline_copy_request(&manager, &release.id).await;
     let uploaded = manager.drain_uploads_expecting_work().await.unwrap();
     assert_eq!(uploaded, 2, "the file and the cover both upload");
     let file_id = release_files(&manager, &release.id).await[0].id.clone();
     assert!(
         blob_pinned(&manager, crate::sync::RELEASE_FILES_NAMESPACE, &file_id).await,
-        "make-Remote with pin leaves the release file pinned"
+        "upload with pin leaves the release file pinned"
     );
     assert!(
         !blob_pinned(&manager, crate::sync::COVERS_NAMESPACE, &release.id).await,
@@ -403,11 +403,11 @@ async fn pin_release_counts_audio_and_keeps_cover_evictable() {
     .await;
     store_test_cover(&manager, &release.id, cover_bytes).await;
 
-    manager.coven_make_remote(&release.id, false).await.unwrap();
+    manager.upload_release(&release.id, false).await.unwrap();
     manager.drain_uploads_expecting_work().await.unwrap();
     assert!(
         !blob_pinned(&manager, crate::sync::COVERS_NAMESPACE, &release.id).await,
-        "make-Remote without pin leaves the cover evictable"
+        "upload without pin leaves the cover evictable"
     );
 
     let expected_total = file_bytes.len() as u64;
@@ -456,7 +456,7 @@ async fn a_pin_reaches_the_storage_view_without_a_sync_cycle() {
         &[("track.flac", b"track-bytes")],
     )
     .await;
-    manager.coven_make_remote(&release.id, false).await.unwrap();
+    manager.upload_release(&release.id, false).await.unwrap();
     manager.drain_uploads_expecting_work().await.unwrap();
 
     let services = crate::library::AppServices::for_test(manager.clone())
@@ -519,7 +519,7 @@ async fn a_pin_the_provider_refuses_is_a_cloud_setup_failure() {
         &[("track.flac", b"track-bytes")],
     )
     .await;
-    manager.coven_make_remote(&release.id, false).await.unwrap();
+    manager.upload_release(&release.id, false).await.unwrap();
     manager.drain_uploads_expecting_work().await.unwrap();
     let file_id = release_files(&manager, &release.id).await[0].id.clone();
     manager
@@ -563,7 +563,7 @@ async fn a_pin_the_cloud_cannot_serve_is_a_network_failure() {
         &[("track.flac", b"track-bytes")],
     )
     .await;
-    manager.coven_make_remote(&release.id, false).await.unwrap();
+    manager.upload_release(&release.id, false).await.unwrap();
     manager.drain_uploads_expecting_work().await.unwrap();
     let file_id = release_files(&manager, &release.id).await[0].id.clone();
     manager
@@ -585,7 +585,7 @@ async fn a_pin_the_cloud_cannot_serve_is_a_network_failure() {
 async fn making_a_release_remote_without_storage_requires_configuration() {
     let (manager, _temp_dir, _album, release) = manager_with_release().await;
     let transfer = crate::storage::transfer::ReleaseTransfer::new(
-        manager.library.clone(), release.id, ReleaseStorageAction::MakeRemote);
+        manager.library.clone(), release.id, ReleaseStorageAction::Upload);
     let error = transfer.start().await.expect_err("storage must be configured");
     assert_eq!(error.category(), crate::ui::UiErrorCategory::Config, "{error}");
 }
@@ -731,7 +731,7 @@ async fn upload_is_offered_only_where_this_device_holds_the_originals() {
 
     assert_eq!(
         offered(here.id.clone()).await,
-        vec![ReleaseStorageAction::MakeRemote]
+        vec![ReleaseStorageAction::Upload]
     );
     assert_eq!(offered(elsewhere.id.clone()).await, Vec::new());
     std::fs::remove_file(originals.join("track.flac")).unwrap();

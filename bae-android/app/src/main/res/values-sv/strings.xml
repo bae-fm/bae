@@ -107,7 +107,7 @@
     <string name="settings_endpoint">Slutpunkt</string>
     <string name="settings_disconnect">Koppla från</string>
     <string name="settings_disconnect_confirm_title">Koppla från synkroniseringen?</string>
-    <string name="settings_disconnect_body">Detta stoppar synkroniseringen och tar bort molnleverantörens konfiguration.</string>
+    <string name="settings_disconnect_body">Den här enheten slutar synkronisera och tar bort sina inloggningsuppgifter för lagringen. Logga in igen för att återuppta synkroniseringen.</string>
     <string name="settings_disconnect_failed">Frånkopplingen misslyckades: %1$s</string>
     <string name="settings_disconnect_warning_check_failed">Kunde inte kontrollera utgåvor som bara finns i molnet: %1$s</string>
     <string name="settings_pause_uploads">Pausa uppladdningar</string>

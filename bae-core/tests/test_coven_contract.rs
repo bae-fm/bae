@@ -119,7 +119,7 @@ async fn upload_cancellation_detaches_the_file_and_restores_its_original() {
         .add_external_file_for_test(&file, &source)
         .await
         .unwrap();
-    manager.coven_make_remote(&release.id, false).await.unwrap();
+    manager.upload_release(&release.id, false).await.unwrap();
     manager
         .cancel_release_transition(&release.id)
         .await

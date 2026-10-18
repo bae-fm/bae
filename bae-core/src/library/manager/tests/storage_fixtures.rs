@@ -1,6 +1,6 @@
 // Fixtures for the cloud-backed release states the storage, transfer and
 // download tests assert over: connecting a manager to an in-memory cloud home,
-// putting a release through make-Remote at each stage it can be caught in, and
+// putting a release through upload at each stage it can be caught in, and
 // reading back what coven kept on this device.
 //
 // `include!`d into `manager::tests` beside the tests that use them.
@@ -38,7 +38,7 @@ async fn insert_release_with_queued_uploads(
     files: &[(&str, &[u8])],
 ) -> DbRelease {
     let release = insert_local_release_with_files(manager, dir, album_title, files).await;
-    manager.coven_make_remote(&release.id, false).await.unwrap();
+    manager.upload_release(&release.id, false).await.unwrap();
     assert_eq!(
         manager
             .database
@@ -89,13 +89,13 @@ async fn wait_for_published_blob(manager: &LibraryManager, table: &str, row_id: 
 /// Returns its id. The manager
 /// must already be connected via [`connect_test_cloud`].
 #[cfg(feature = "test-utils")]
-async fn make_remote_release(
+async fn uploaded_release(
     manager: &LibraryManager,
     dir: &std::path::Path,
     album_title: &str,
     pin: bool,
 ) -> String {
-    make_remote_release_with_files(
+    uploaded_release_with_files(
         manager,
         dir,
         album_title,
@@ -106,7 +106,7 @@ async fn make_remote_release(
 }
 
 #[cfg(feature = "test-utils")]
-async fn make_remote_release_with_files(
+async fn uploaded_release_with_files(
     manager: &LibraryManager,
     dir: &std::path::Path,
     album_title: &str,
@@ -114,7 +114,7 @@ async fn make_remote_release_with_files(
     pin: bool,
 ) -> String {
     let release = insert_local_release_with_files(manager, dir, album_title, files).await;
-    manager.coven_make_remote(&release.id, pin).await.unwrap();
+    manager.upload_release(&release.id, pin).await.unwrap();
     if pin {
         wait_for_offline_copy_request(manager, &release.id).await;
     }
@@ -123,12 +123,12 @@ async fn make_remote_release_with_files(
     release.id
 }
 
-/// [`make_remote_release`] for a test connected with
+/// [`uploaded_release`] for a test connected with
 /// [`connect_test_cloud_with_sync_loop`]: the loop drains the queue, so this
-/// waits for the make-Remote to finish rather than counting a drain pass this
+/// waits for the upload to finish rather than counting a drain pass this
 /// test does not own.
 #[cfg(feature = "test-utils")]
-async fn make_remote_release_under_sync_loop(
+async fn upload_release_under_sync_loop(
     manager: &LibraryManager,
     dir: &std::path::Path,
     album_title: &str,
@@ -141,22 +141,22 @@ async fn make_remote_release_under_sync_loop(
         &[("track.flac", b"track-bytes")],
     )
     .await;
-    manager.coven_make_remote(&release.id, pin).await.unwrap();
+    manager.upload_release(&release.id, pin).await.unwrap();
     if pin {
         wait_for_offline_copy_request(manager, &release.id).await;
     }
-    wait_for_landed_make_remote(manager, &release.id).await;
+    wait_for_landed_upload(manager, &release.id).await;
     release.id
 }
 
 #[cfg(feature = "test-utils")]
-async fn wait_for_landed_make_remote(manager: &LibraryManager, release_id: &str) {
+async fn wait_for_landed_upload(manager: &LibraryManager, release_id: &str) {
     wait_for_settled_uploads(manager, release_id).await;
     assert!(release_files(manager, release_id).await.iter().all(|file| file.attached));
 }
 
 #[cfg(feature = "test-utils")]
-async fn insert_partially_uploaded_make_remote_release(
+async fn insert_partially_uploaded_release(
     manager: &LibraryManager,
     temp_dir: &std::path::Path,
 ) -> DbRelease {
@@ -169,7 +169,7 @@ async fn insert_partially_uploaded_make_remote_release(
     )
     .await;
 
-    manager.coven_make_remote(&release.id, true).await.unwrap();
+    manager.upload_release(&release.id, true).await.unwrap();
     wait_for_offline_copy_request(manager, &release.id).await;
     assert_eq!(queued_upload_count(manager).await, 2);
 
@@ -292,7 +292,7 @@ async fn playback_error_reason_for_file(
 
 /// Store a cover on `release_id` the way the importer does — the `covers` row
 /// and its blob in one coven batch — so the release carries the cover blob that
-/// coven's `make_remote` pins along with its files.
+/// an upload pins along with its files.
 #[cfg(feature = "test-utils")]
 async fn store_test_cover(manager: &LibraryManager, release_id: &str, bytes: &[u8]) {
     let cover = DbLibraryImage::cover(

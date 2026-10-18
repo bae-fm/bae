@@ -107,7 +107,7 @@
     <string name="settings_endpoint">Slutpunkt</string>
     <string name="settings_disconnect">Afbryd forbindelsen</string>
     <string name="settings_disconnect_confirm_title">Afbryd synkroniseringen?</string>
-    <string name="settings_disconnect_body">Dette stopper synkroniseringen og fjerner skyudbyderens konfiguration.</string>
+    <string name="settings_disconnect_body">Denne enhed stopper synkroniseringen og fjerner sine loginoplysninger til lageret. Log ind igen for at genoptage synkroniseringen.</string>
     <string name="settings_disconnect_failed">Forbindelsen kunne ikke afbrydes: %1$s</string>
     <string name="settings_disconnect_warning_check_failed">Kunne ikke kontrollere udgivelser, der kun findes i skyen: %1$s</string>
     <string name="settings_pause_uploads">Sæt uploads på pause</string>

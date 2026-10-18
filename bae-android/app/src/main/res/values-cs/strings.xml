@@ -103,7 +103,7 @@
     <string name="settings_endpoint">Koncový bod</string>
     <string name="settings_disconnect">Odpojit</string>
     <string name="settings_disconnect_confirm_title">Odpojit synchronizaci?</string>
-    <string name="settings_disconnect_body">Tím se zastaví synchronizace a odebere se konfigurace poskytovatele cloudu.</string>
+    <string name="settings_disconnect_body">Toto zařízení přestane synchronizovat a odstraní své přihlašovací údaje k úložišti. Pro obnovení synchronizace se znovu přihlaste.</string>
     <string name="settings_disconnect_failed">Nepodařilo se odpojit: %1$s</string>
     <string name="settings_disconnect_warning_check_failed">Nelze zjistit vydání pouze v cloudu: %1$s</string>
     <string name="settings_pause_uploads">Pozastavit nahrávání</string>

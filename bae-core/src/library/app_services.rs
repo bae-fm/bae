@@ -385,8 +385,8 @@ impl AppServices {
     delegate_async!(manager, change_cover => change_cover(release_id: &str, selection: crate::library::CoverSelection) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, set_album_primary_release => set_album_primary_release(album_id: &str, primary_release_id: &str) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, unpin_release => unpin_release(release_id: &str) -> Result<(), crate::library::LibraryError>);
-    delegate_async!(manager, make_releases_remote => make_releases_remote(release_ids: &[String]) -> Result<crate::library::MakeReleasesRemoteOutcome, crate::library::LibraryError>);
-    delegate_async!(manager, make_release_local => make_release_local(release_id: &str, new_path: &str) -> Result<(), crate::library::LibraryError>);
+    delegate_async!(manager, upload_releases => upload_releases(release_ids: &[String]) -> Result<crate::library::UploadReleasesOutcome, crate::library::LibraryError>);
+    delegate_async!(manager, detach_release_audio => detach_release_audio(release_id: &str, new_path: &str) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, delete_release => delete_release(release_id: &str) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, save_s3_config => save_s3_config(data: crate::sync::S3ConfigData, device_name: &str) -> Result<coven::StorageSetup, crate::library::LibraryError>);
     delegate_async!(manager, cloud_only_release_count => cloud_only_release_count() -> Result<u64, crate::library::LibraryError>);

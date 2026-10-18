@@ -758,19 +758,21 @@ pub struct ReleaseIdInput {
     pub release_id: String,
 }
 
-/// Which storage transition to run, named as the Storage Manager names them.
+/// Which storage transition to run, named as the bridge and a release's
+/// reported transitions name them.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationStorageAction {
-    /// Local → Cloud, kept offline on this device as the stored import storage
-    /// choice says.
-    MoveToCloud,
+    /// Upload a local release's audio from this device's originals, kept
+    /// offline on this device as the stored import storage choice says.
+    Upload,
     /// Keep a cloud release offline on this device.
     Pin,
     /// Stop keeping a cloud release offline. Its bytes stay in the cloud.
     Unpin,
-    /// Cloud → Local, into `destination_dir`.
-    MakeLocal { destination_dir: String },
+    /// Copy an uploaded release's audio into `destination_dir` and play it
+    /// from there, detached from its rows.
+    DetachAudio { destination_dir: String },
     /// Cancel whichever transition is in flight; nothing running is no error.
     Cancel,
 }
@@ -787,7 +789,7 @@ pub struct ReleaseStorageActionInput {
 pub enum AutomationStorageActionOutcome {
     /// The uploads are queued at `outbox_revision`; poll the release to see
     /// them land.
-    CloudUploadQueued {
+    UploadQueued {
         release_id: String,
         outbox_revision: u64,
     },
@@ -798,8 +800,8 @@ pub enum AutomationStorageActionOutcome {
     Unpinned {
         release_id: String,
     },
-    /// Done before returning: the files are at their new path.
-    MadeLocal {
+    /// Done before returning: the audio plays from its new path.
+    AudioDetached {
         release_id: String,
     },
     /// Whatever was in flight was told to stop, if anything was.

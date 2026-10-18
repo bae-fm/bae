@@ -4,7 +4,7 @@
 //! `release_files.original_filename` and `releases.source_folder_name` are synced
 //! columns: another device wrote them, and this device joins them onto a
 //! directory the user chose — the export copy-out (`<target>/<source_folder>/
-//! <original_filename>`) and make-Local (`<new_path>/<original_filename>`). coven
+//! <original_filename>`) and audio detachment (`<new_path>/<original_filename>`). coven
 //! writes wherever the host's destination map points, so a fragment that escapes
 //! that directory is an arbitrary local write on every device that pulls the row.
 //!

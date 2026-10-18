@@ -139,7 +139,7 @@ async fn create_remote_cloud_only_release(
         captured.push((file.id.clone(), file.original_filename.clone(), plaintext));
     }
 
-    mgr.coven_make_remote(&release_id, false).await.unwrap();
+    mgr.upload_release(&release_id, false).await.unwrap();
     mgr.drain_uploads_expecting_work().await.unwrap();
     assert_eq!(db.queued_upload_count_for_test().await.unwrap(), 0);
     assert_eq!(
@@ -163,8 +163,8 @@ async fn test_multiple_releases_independent_completion() {
         create_local_release(&mgr, &tmp.path().join("a"), &[("track.flac", b"aaa")]).await;
     let (release_b, _b) =
         create_local_release(&mgr, &tmp.path().join("b"), &[("track.flac", b"bbb")]).await;
-    mgr.coven_make_remote(&release_a, true).await.unwrap();
-    mgr.coven_make_remote(&release_b, true).await.unwrap();
+    mgr.upload_release(&release_a, true).await.unwrap();
+    mgr.upload_release(&release_b, true).await.unwrap();
 
     assert_eq!(
         mgr.count_pending_uploads_for_release(&release_a)
@@ -219,7 +219,7 @@ async fn test_multiple_releases_independent_completion() {
 }
 
 // ---------------------------------------------------------------------------
-// make-Remote requires configured cloud storage.
+// upload requires configured cloud storage.
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
@@ -245,15 +245,15 @@ async fn test_manage_refused_without_cloud_storage() {
 
     // No configured destination: refuse before attaching any files.
     let result = mgr
-        .make_releases_remote(std::slice::from_ref(&release_id))
+        .upload_releases(std::slice::from_ref(&release_id))
         .await
         .expect("the batch reports a per-release refusal");
-    let bae_core::library::MakeReleasesRemoteOutcome::Partial {
+    let bae_core::library::UploadReleasesOutcome::Partial {
         receipt: None,
         failure,
     } = result
     else {
-        panic!("make-Remote must refuse the release without a receipt");
+        panic!("upload must refuse the release without a receipt");
     };
     assert_eq!(failure.release_ids, vec![release_id.clone()]);
     assert!(
@@ -282,7 +282,7 @@ async fn attached_release_is_remote_before_its_uploads_finish() {
     )
     .await;
 
-    mgr.coven_make_remote(&release_id, false).await.unwrap();
+    mgr.upload_release(&release_id, false).await.unwrap();
 
     // Attachment is committed before uploads finish.
     assert_eq!(
@@ -313,7 +313,7 @@ async fn upload_failure_keeps_attachment_and_pending_work() {
     )
     .await;
 
-    mgr.coven_make_remote(&release_id, false).await.unwrap();
+    mgr.upload_release(&release_id, false).await.unwrap();
 
     // The connect bootstrap already wrote through the home; arm the failure only
     // now, so the upload drain fails every blob.
@@ -353,7 +353,7 @@ async fn truncated_source_refuses_attachment_without_queuing_work() {
         .unwrap();
 
     let error = mgr
-        .coven_make_remote(&release_id, false)
+        .upload_release(&release_id, false)
         .await
         .expect_err("a source changed since import");
     assert!(!error.to_string().is_empty());
@@ -368,13 +368,13 @@ async fn truncated_source_refuses_attachment_without_queuing_work() {
 }
 
 // ---------------------------------------------------------------------------
-// make-Local from Remote: bae's summary reads Local and each file's device-local
+// audio detachment from Remote: bae's summary reads Local and each file's device-local
 // path names its new copy. The cloud objects the release stops naming are
 // coven's to retire through accepted reclaim.
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn make_local_updates_summary_and_original_paths() {
+async fn detaching_audio_updates_summary_and_original_paths() {
     let tmp = TempDir::new().unwrap();
     let (db, mgr, _cloud) = setup_with_cloud(&tmp).await;
     let source_dir = tmp.path().join("originals");
@@ -387,7 +387,7 @@ async fn make_local_updates_summary_and_original_paths() {
     .await;
 
     let new_path = tmp.path().join("exported");
-    mgr.coven_make_local(
+    mgr.detach_release_audio_into(
         &release_id,
         new_path.to_str().unwrap(),
         &CancellationToken::new(),
@@ -410,11 +410,11 @@ async fn make_local_updates_summary_and_original_paths() {
     }
 }
 
-/// A failed make-Local (a missing cloud blob 404s on the cache-miss read) leaves
+/// A failed audio detachment (a missing cloud blob 404s on the cache-miss read) leaves
 /// bae's state consistent: the manager surfaces the error and the summary stays
 /// Remote. Coven reports the missing file; bae rolls back the local copies.
 #[tokio::test]
-async fn make_local_missing_blob_fails_leaving_summary_remote() {
+async fn detaching_audio_with_a_missing_blob_fails_leaving_summary_remote() {
     let tmp = TempDir::new().unwrap();
     let (db, mgr, cloud) = setup_with_cloud(&tmp).await;
     let source_dir = tmp.path().join("originals");
@@ -432,7 +432,7 @@ async fn make_local_missing_blob_fails_leaving_summary_remote() {
 
     let new_path = tmp.path().join("exported");
     let result = mgr
-        .coven_make_local(
+        .detach_release_audio_into(
             &release_id,
             new_path.to_str().unwrap(),
             &CancellationToken::new(),
@@ -510,7 +510,7 @@ async fn storage_subscription_delivers_actions_on_cloud_home_transition() {
     assert!(
         after
             .storage_actions
-            .contains(&ReleaseStorageAction::MakeRemote),
-        "cloud home present → make-Remote available"
+            .contains(&ReleaseStorageAction::Upload),
+        "cloud home present → upload available"
     );
 }

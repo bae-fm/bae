@@ -41,7 +41,7 @@ pub async fn read_release_file_bytes(
     Ok(bytes)
 }
 
-/// Progress updates emitted during a pin, unpin, or make-Local operation. A
+/// Progress updates emitted during a pin, unpin, or audio detachment operation. A
 /// failure carries the typed error, so the caller reports why it failed —
 /// the cloud out of reach, its credentials, or this device's own store.
 #[derive(Debug)]
@@ -59,7 +59,7 @@ pub enum TransferProgress {
     },
 }
 
-/// Pin, unpin, and make-Local service for releases.
+/// Pin, unpin, and audio detachment service for releases.
 pub struct TransferService {
     library_manager: LibraryManager,
 }
@@ -135,7 +135,7 @@ impl TransferService {
     /// Make a Remote release Local: copy its files to `new_path` and drop the
     /// cloud copies (coven owns the durability-first ordering). Returns a receiver
     /// for progress updates.
-    pub fn make_release_local(
+    pub fn detach_release_audio(
         &self,
         release_id: String,
         new_path: String,
@@ -147,13 +147,13 @@ impl TransferService {
             ReleaseTransfer::new(
                 self.library_manager.clone(),
                 release_id,
-                ReleaseStorageAction::MakeLocal,
+                ReleaseStorageAction::DetachAudio,
             ),
             move |_tx| async move {
                 // The copy operation owns every created file and directory;
                 // it removes them if verification or the final write fails.
                 library_manager
-                    .coven_make_local(&localized_release_id, &new_path, &cancel)
+                    .detach_release_audio_into(&localized_release_id, &new_path, &cancel)
                     .await?;
                 Ok(())
             },
@@ -172,8 +172,8 @@ impl TransferService {
 /// which release is in a transition at all and how to cancel it; this owns what
 /// one transfer checks, logs, and reports.
 ///
-/// A pin, unpin, or make-Local is handed to [`spawn_transfer`], which drives it
-/// on its own task and reports on a progress channel. A make-Remote has no
+/// A pin, unpin, or audio detachment is handed to [`spawn_transfer`], which drives it
+/// on its own task and reports on a progress channel. A upload has no
 /// channel of its own — coven's outbox reports it — so its caller drives it and
 /// calls [`Self::start`], [`Self::complete`], and [`Self::fail`] directly.
 pub(crate) struct ReleaseTransfer {
@@ -204,7 +204,7 @@ impl ReleaseTransfer {
             .ok_or_else(|| {
                 LibraryError::TrackMapping(format!("Release not found: {}", self.release_id))
             })?;
-        if matches!(self.action, ReleaseStorageAction::MakeRemote)
+        if matches!(self.action, ReleaseStorageAction::Upload)
             && !self.library_manager.is_sync_configured().await?
         {
             return Err(coven::SyncError::NoStorage.into());
@@ -311,7 +311,7 @@ where
 fn action_expects_remote(action: ReleaseStorageAction) -> bool {
     matches!(
         action,
-        ReleaseStorageAction::Pin | ReleaseStorageAction::Unpin | ReleaseStorageAction::MakeLocal
+        ReleaseStorageAction::Pin | ReleaseStorageAction::Unpin | ReleaseStorageAction::DetachAudio
     )
 }
 
@@ -319,8 +319,8 @@ fn wrong_state_error(action: ReleaseStorageAction) -> &'static str {
     match action {
         ReleaseStorageAction::Pin => "Cannot pin a local release",
         ReleaseStorageAction::Unpin => "Cannot unpin a local release",
-        ReleaseStorageAction::MakeRemote => "Release is already remote",
-        ReleaseStorageAction::MakeLocal => "Release is already local",
+        ReleaseStorageAction::Upload => "Release is already remote",
+        ReleaseStorageAction::DetachAudio => "Release is already local",
     }
 }
 
@@ -440,14 +440,14 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn a_failed_move_to_cloud_batch_ships_storage_transfer_failed() {
+    async fn a_failed_upload_batch_ships_storage_transfer_failed() {
         let (manager, diagnostics, transport, _home) = manager_with_recording_transport().await;
 
         let outcome = manager
-            .make_releases_remote(&["missing-release".to_string()])
+            .upload_releases(&["missing-release".to_string()])
             .await
             .expect("a per-release refusal is returned as a batch outcome");
-        let crate::library::MakeReleasesRemoteOutcome::Partial {
+        let crate::library::UploadReleasesOutcome::Partial {
             receipt: None,
             failure,
         } = outcome
@@ -461,7 +461,7 @@ mod tests {
             .iter()
             .find(|event| event.name == "storage_transfer_failed")
             .expect("a failed batch ships storage_transfer_failed");
-        assert_eq!(failed.fields["action"], serde_json::json!("make_remote"));
+        assert_eq!(failed.fields["action"], serde_json::json!("upload"));
         assert_eq!(
             failed.fields["release_id"],
             serde_json::json!("missing-release")

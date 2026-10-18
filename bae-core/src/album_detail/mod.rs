@@ -121,30 +121,30 @@ pub fn storage_state(remote: bool) -> ReleaseStorageState {
 }
 
 /// A storage transition the user can trigger from the release "Storage…" sheet.
-/// `MakeRemote` / `MakeLocal` move between the two storage states; `Pin` / `Unpin`
+/// `Upload` / `DetachAudio` move between the two storage states; `Pin` / `Unpin`
 /// toggle the orthogonal cache pin on a remote release. The core computes which are
 /// available; the UI renders them and never re-derives availability.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReleaseStorageAction {
     /// Local -> Remote (upload to the cloud home).
-    MakeRemote,
+    Upload,
     /// Keep a remote release offline: fetch its blobs into coven's pinned cache.
     Pin,
     /// Stop keeping a remote release offline: drop its blobs from the pinned
     /// cache (still in the cloud).
     Unpin,
     /// Remote -> Local (move the files back out to a user folder).
-    MakeLocal,
+    DetachAudio,
 }
 
 /// Remote requires a cloud home, so without one there are no transitions at all.
 ///
-/// `MakeRemote` uploads from this device's originals, so it is offered only
+/// `Upload` uploads from this device's originals, so it is offered only
 /// where the release plays from them: not for a release another device
 /// imported, nor one whose originals are gone or changed since import. It
 /// admits work to coven's durable outbox; a stopped loop leaves that work
 /// truthfully queued until a cycle can drain it, and does not remove the
-/// action. Pin / Unpin / MakeLocal gate on the connected cloud home alone.
+/// action. Pin / Unpin / DetachAudio gate on the connected cloud home alone.
 ///
 /// The in-flight-uploads gate lives in the UI, which suppresses
 /// these actions when the outbox snapshot has work for the release. That stays
@@ -162,11 +162,11 @@ pub fn available_storage_actions(
     }
     match state {
         ReleaseStorageState::Local if playability == ReleasePlayability::Playable => {
-            vec![MakeRemote]
+            vec![Upload]
         }
         ReleaseStorageState::Local => Vec::new(),
-        ReleaseStorageState::Remote if pinned => vec![Unpin, MakeLocal],
-        ReleaseStorageState::Remote => vec![Pin, MakeLocal],
+        ReleaseStorageState::Remote if pinned => vec![Unpin, DetachAudio],
+        ReleaseStorageState::Remote => vec![Pin, DetachAudio],
     }
 }
 
@@ -206,7 +206,7 @@ pub enum ReleaseDownloadStatus {
 /// would re-answer a question [`available_storage_actions`] has already answered,
 /// and would disagree with it the moment its gate changes. `Unpin` is not
 /// consulted for the same reason in reverse: it appears exactly when `pinned`, so
-/// `pinned` already says it. `MakeLocal` / `MakeRemote` are desktop transitions
+/// `pinned` already says it. `DetachAudio` / `Upload` are desktop transitions
 /// this control has nothing to do with.
 pub fn release_download_status(
     pinned: bool,
@@ -396,15 +396,15 @@ mod tests {
     }
 
     #[test]
-    fn local_with_cloud_offers_make_remote() {
+    fn local_with_cloud_offers_upload() {
         // `pinned` is irrelevant for a local release.
         assert_eq!(
             available_storage_actions(Local, Playable, false, true),
-            vec![MakeRemote]
+            vec![Upload]
         );
         assert_eq!(
             available_storage_actions(Local, Playable, true, true),
-            vec![MakeRemote]
+            vec![Upload]
         );
     }
 
@@ -425,12 +425,12 @@ mod tests {
     /// The durable outbox remains the truthful queued state while the loop is
     /// stopped and until the loop drains it.
     #[test]
-    fn local_without_a_running_loop_still_offers_make_remote() {
+    fn local_without_a_running_loop_still_offers_upload() {
         for pinned in [false, true] {
             assert_eq!(
                 available_storage_actions(Local, Playable, pinned, true),
-                vec![MakeRemote],
-                "MakeRemote queues durably even with the sync loop stopped (pinned={pinned})"
+                vec![Upload],
+                "Upload queues durably even with the sync loop stopped (pinned={pinned})"
             );
         }
     }
@@ -441,27 +441,27 @@ mod tests {
     fn remote_actions_do_not_need_a_running_loop() {
         assert_eq!(
             available_storage_actions(Remote, Playable, true, true),
-            vec![Unpin, MakeLocal]
+            vec![Unpin, DetachAudio]
         );
         assert_eq!(
             available_storage_actions(Remote, Playable, false, true),
-            vec![Pin, MakeLocal]
+            vec![Pin, DetachAudio]
         );
     }
 
     #[test]
-    fn remote_pinned_offers_unpin_and_make_local() {
+    fn remote_pinned_offers_unpin_and_detach_audio() {
         assert_eq!(
             available_storage_actions(Remote, Playable, true, true),
-            vec![Unpin, MakeLocal]
+            vec![Unpin, DetachAudio]
         );
     }
 
     #[test]
-    fn remote_unpinned_offers_pin_and_make_local() {
+    fn remote_unpinned_offers_pin_and_detach_audio() {
         assert_eq!(
             available_storage_actions(Remote, Playable, false, true),
-            vec![Pin, MakeLocal]
+            vec![Pin, DetachAudio]
         );
     }
 
@@ -515,7 +515,7 @@ mod tests {
                 assert_eq!(
                     release_download_status(
                         pinned,
-                        &[Unpin, MakeLocal],
+                        &[Unpin, DetachAudio],
                         &[download(
                             "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e",
                             state.clone()
@@ -535,7 +535,7 @@ mod tests {
         assert_eq!(
             release_download_status(
                 true,
-                &[Unpin, MakeLocal],
+                &[Unpin, DetachAudio],
                 &[],
                 "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e"
             ),
@@ -549,7 +549,7 @@ mod tests {
         assert_eq!(
             release_download_status(
                 false,
-                &[Pin, MakeLocal],
+                &[Pin, DetachAudio],
                 &[],
                 "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e"
             ),
@@ -568,7 +568,7 @@ mod tests {
         assert_eq!(
             release_download_status(
                 false,
-                &[MakeRemote],
+                &[Upload],
                 &[],
                 "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e"
             ),
@@ -582,7 +582,7 @@ mod tests {
         assert_eq!(
             release_download_status(
                 false,
-                &[Pin, MakeLocal],
+                &[Pin, DetachAudio],
                 &[download(
                     "e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b",
                     crate::library::DownloadState::Queued

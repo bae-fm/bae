@@ -1,4 +1,4 @@
-//! Copies owned by a make-local operation are removed unless its write commits.
+//! Copies owned by an audio detachment are removed unless its write commits.
 use super::*;
 use sha2::{Digest, Sha256};
 use std::io::{Read, Write};

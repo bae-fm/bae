@@ -103,7 +103,7 @@
     <string name="settings_endpoint">エンドポイント</string>
     <string name="settings_disconnect">切断</string>
     <string name="settings_disconnect_confirm_title">同期を切断しますか？</string>
-    <string name="settings_disconnect_body">同期を停止し、クラウドプロバイダの設定を削除します。</string>
+    <string name="settings_disconnect_body">このデバイスは同期を停止し、ストレージの認証情報を削除します。同期を再開するには、もう一度サインインしてください。</string>
     <string name="settings_disconnect_failed">切断に失敗しました: %1$s</string>
     <string name="settings_disconnect_warning_check_failed">クラウドのみのリリースを確認できませんでした: %1$s</string>
     <string name="settings_pause_uploads">アップロードを一時停止</string>

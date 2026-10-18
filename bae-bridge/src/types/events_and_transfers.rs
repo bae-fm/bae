@@ -81,19 +81,19 @@ pub enum BridgeUploadReleasesOutcome {
 }
 
 mirror_struct! {
-    BridgeUploadReceipt = bae_core::library::MakeRemoteReceipt,
+    BridgeUploadReceipt = bae_core::library::UploadReceipt,
     from_core: fn,
     fields: { outbox_revision, release_ids },
 }
 
 mirror_struct! {
-    BridgeUploadBatchFailure = bae_core::library::MakeRemoteBatchFailure,
+    BridgeUploadBatchFailure = bae_core::library::UploadBatchFailure,
     from_core: fn,
     fields: { release_ids, error: (BridgeError) },
 }
 
 mirror_enum! {
-    BridgeUploadReleasesOutcome = bae_core::library::MakeReleasesRemoteOutcome,
+    BridgeUploadReleasesOutcome = bae_core::library::UploadReleasesOutcome,
     from_core: pub(crate) fn,
     variants: {
         Complete { receipt: (BridgeUploadReceipt) },

@@ -217,7 +217,7 @@ async fn delete_release_removes_its_cover_image() {
     // the delete runs against a cover that names a real cloud object.
     let release1 = ReleaseRef::of(
         &manager,
-        make_remote_release_under_sync_loop(
+        upload_release_under_sync_loop(
             &manager,
             &temp_dir.path().join("r1"),
             "Album One",
@@ -272,7 +272,7 @@ async fn delete_album_removes_release_covers() {
     connect_test_cloud_with_sync_loop(&manager).await;
     let release = ReleaseRef::of(
         &manager,
-        make_remote_release_under_sync_loop(
+        upload_release_under_sync_loop(
             &manager,
             &temp_dir.path().join("r1"),
             "Album One",

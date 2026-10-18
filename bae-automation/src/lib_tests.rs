@@ -186,11 +186,11 @@ fn release_storage_state_and_actions_serialize_snake_case() {
         pinned: true,
         storage_actions: vec![
             ReleaseStorageAction::Unpin,
-            ReleaseStorageAction::MakeLocal,
-            ReleaseStorageAction::MakeRemote,
+            ReleaseStorageAction::DetachAudio,
+            ReleaseStorageAction::Upload,
             ReleaseStorageAction::Pin,
         ],
-        transfer_action: Some(ReleaseStorageAction::MakeLocal),
+        transfer_action: Some(ReleaseStorageAction::DetachAudio),
         file_count: 2,
         total_size: 100,
         cover: None,
@@ -200,10 +200,10 @@ fn release_storage_state_and_actions_serialize_snake_case() {
     assert_eq!(json["storage_state"], "remote");
     assert_eq!(
         json["storage_actions"],
-        serde_json::json!(["unpin", "make_local", "make_remote", "pin"]),
+        serde_json::json!(["unpin", "detach_audio", "upload", "pin"]),
     );
     // The in-flight transition the desktop shows.
-    assert_eq!(json["transfer_action"], "make_local");
+    assert_eq!(json["transfer_action"], "detach_audio");
 }
 
 #[test]
@@ -668,23 +668,24 @@ mod release_storage_action {
         from_value::<ReleaseStorageActionInput>(args).expect("the tool's own input shape")
     }
 
-    /// Every action arrives under its Storage Manager name with what it needs.
+    /// Every action arrives under the name the bridge gives it, with what it
+    /// needs.
     #[test]
     fn each_action_parses_from_its_wire_shape() {
         let moved = parse(serde_json::json!({
             "release_id": "release-1",
-            "action": { "kind": "move_to_cloud" },
+            "action": { "kind": "upload" },
         }));
         assert_eq!(moved.release_id, "release-1");
-        assert!(matches!(moved.action, AutomationStorageAction::MoveToCloud));
+        assert!(matches!(moved.action, AutomationStorageAction::Upload));
 
         assert!(matches!(
             parse(serde_json::json!({
                 "release_id": "release-1",
-                "action": { "kind": "make_local", "destination_dir": "/music/out" },
+                "action": { "kind": "detach_audio", "destination_dir": "/music/out" },
             }))
             .action,
-            AutomationStorageAction::MakeLocal { destination_dir } if destination_dir == "/music/out"
+            AutomationStorageAction::DetachAudio { destination_dir } if destination_dir == "/music/out"
         ));
 
         for (kind, expected) in [
@@ -704,12 +705,37 @@ mod release_storage_action {
         }
     }
 
-    /// Making local needs a folder; there is no default for it.
+    /// The names a release reports among its transitions, and lists when one
+    /// is refused, are the names the tool accepts.
+    #[test]
+    fn reported_transition_names_are_the_accepted_names() {
+        use AutomationReleaseStorageAction as A;
+        for action in [A::Upload, A::Pin, A::Unpin, A::DetachAudio] {
+            let reported = serde_json::to_value(action).unwrap();
+            let name = reported.as_str().expect("a transition reports as a name");
+            parse(serde_json::json!({
+                "release_id": "release-1",
+                "action": { "kind": name, "destination_dir": "/music/out" },
+            }));
+            let refusal = require_action(&summary(vec![action]), A::Unpin, "unpin")
+                .err()
+                .filter(|_| action != A::Unpin);
+            if let Some(refusal) = refusal {
+                assert!(
+                    refusal.message().ends_with(&format!("available: {name}")),
+                    "the refusal lists {name} as reported: {}",
+                    refusal.message()
+                );
+            }
+        }
+    }
+
+    /// Detaching audio needs a folder; there is no default for it.
     #[test]
     fn an_action_missing_what_it_needs_is_refused() {
         let error = from_value::<ReleaseStorageActionInput>(serde_json::json!({
             "release_id": "release-1",
-            "action": { "kind": "make_local" },
+            "action": { "kind": "detach_audio" },
         }))
         .expect_err("an action without its required field is not an action");
         assert_eq!(error.kind(), "validation");
@@ -720,7 +746,7 @@ mod release_storage_action {
     fn only_the_transitions_core_offers_are_run() {
         let pinnable = summary(vec![
             AutomationReleaseStorageAction::Pin,
-            AutomationReleaseStorageAction::MakeLocal,
+            AutomationReleaseStorageAction::DetachAudio,
         ]);
 
         require_action(&pinnable, AutomationReleaseStorageAction::Pin, "pin")
@@ -730,7 +756,7 @@ mod release_storage_action {
             .expect_err("core does not offer the unpin");
         assert_eq!(error.kind(), "validation");
         assert!(
-            error.message().contains("pin, make_local"),
+            error.message().contains("pin, detach_audio"),
             "the refusal names what the release does offer: {}",
             error.message()
         );
@@ -741,8 +767,8 @@ mod release_storage_action {
     fn a_release_with_no_transitions_says_why() {
         let error = require_action(
             &summary(Vec::new()),
-            AutomationReleaseStorageAction::MakeRemote,
-            "move to cloud",
+            AutomationReleaseStorageAction::Upload,
+            "upload",
         )
         .expect_err("a library with no cloud home cannot move anything to it");
         assert!(
@@ -752,15 +778,15 @@ mod release_storage_action {
         );
     }
 
-    /// A move to the cloud reports the revision its uploads were queued at.
+    /// An upload reports the revision its uploads were queued at.
     #[test]
     fn the_outcome_carries_what_the_transition_produced() {
-        let json = serde_json::to_value(AutomationStorageActionOutcome::CloudUploadQueued {
+        let json = serde_json::to_value(AutomationStorageActionOutcome::UploadQueued {
             release_id: "release-1".to_string(),
             outbox_revision: 42,
         })
         .unwrap();
-        assert_eq!(json["kind"], "cloud_upload_queued");
+        assert_eq!(json["kind"], "upload_queued");
         assert_eq!(json["release_id"], "release-1");
         assert_eq!(json["outbox_revision"], 42);
 

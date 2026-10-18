@@ -131,10 +131,10 @@ pub(super) fn require_action(
 /// The request name a caller uses for a transition.
 fn storage_action_name(action: &AutomationReleaseStorageAction) -> &'static str {
     match action {
-        AutomationReleaseStorageAction::MakeRemote => "move_to_cloud",
+        AutomationReleaseStorageAction::Upload => "upload",
         AutomationReleaseStorageAction::Pin => "pin",
         AutomationReleaseStorageAction::Unpin => "unpin",
-        AutomationReleaseStorageAction::MakeLocal => "make_local",
+        AutomationReleaseStorageAction::DetachAudio => "detach_audio",
     }
 }
 

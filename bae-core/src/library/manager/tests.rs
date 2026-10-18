@@ -205,7 +205,7 @@ include!("tests/storage_sorting.rs");
 include!("tests/transfers.rs");
 mod detachment;
 include!("tests/transfer_order.rs");
-include!("tests/make_remote_pin.rs");
+include!("tests/upload_pin.rs");
 include!("tests/downloads.rs");
 include!("tests/output.rs");
 include!("tests/identity.rs");

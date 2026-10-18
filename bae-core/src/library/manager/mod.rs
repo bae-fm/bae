@@ -251,25 +251,25 @@ impl From<crate::import::ArtistIdentityConflict> for LibraryError {
 }
 
 #[derive(Debug)]
-pub struct MakeRemoteReceipt {
+pub struct UploadReceipt {
     pub outbox_revision: u64,
     pub release_ids: Vec<String>,
 }
 
 #[derive(Debug)]
-pub struct MakeRemoteBatchFailure {
+pub struct UploadBatchFailure {
     pub release_ids: Vec<String>,
     pub error: crate::ui::UiError,
 }
 
 #[derive(Debug)]
-pub enum MakeReleasesRemoteOutcome {
+pub enum UploadReleasesOutcome {
     Complete {
-        receipt: MakeRemoteReceipt,
+        receipt: UploadReceipt,
     },
     Partial {
-        receipt: Option<MakeRemoteReceipt>,
-        failure: MakeRemoteBatchFailure,
+        receipt: Option<UploadReceipt>,
+        failure: UploadBatchFailure,
     },
 }
 
@@ -655,8 +655,8 @@ fn verb(action: ReleaseStorageAction) -> &'static str {
     match action {
         ReleaseStorageAction::Pin => "Pin",
         ReleaseStorageAction::Unpin => "Unpin",
-        ReleaseStorageAction::MakeRemote => "Move to Cloud",
-        ReleaseStorageAction::MakeLocal => "Make Local",
+        ReleaseStorageAction::Upload => "Upload",
+        ReleaseStorageAction::DetachAudio => "Detach Audio",
     }
 }
 

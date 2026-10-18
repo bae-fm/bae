@@ -62,7 +62,7 @@ fn transitioning_release_ids_preserve_upload_group_order() {
 
 #[cfg(feature = "test-utils")]
 #[tokio::test]
-async fn make_remote_keeps_the_cover_and_every_file_in_the_queue() {
+async fn upload_keeps_the_cover_and_every_file_in_the_queue() {
     let (manager, temp_dir) = setup_test_manager().await;
     connect_test_cloud(&manager).await;
     let mut album = create_test_album();
@@ -115,7 +115,7 @@ async fn make_remote_keeps_the_cover_and_every_file_in_the_queue() {
         .unwrap();
     let files = release_files(&manager, &release.id).await;
 
-    manager.coven_make_remote(&release.id, false).await.unwrap();
+    manager.upload_release(&release.id, false).await.unwrap();
 
     assert_eq!(
         manager

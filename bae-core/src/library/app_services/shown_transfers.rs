@@ -69,10 +69,7 @@ mod tests {
         shown.show(vec!["release-shown".to_string()]);
 
         tx.send_modify(|transfers| {
-            transfers.insert(
-                "release-other".to_string(),
-                ReleaseStorageAction::MakeRemote,
-            );
+            transfers.insert("release-other".to_string(), ReleaseStorageAction::Upload);
         });
         // Asked once: the map's change is already there to be read, so a wait
         // that would end on it ends on this poll.
@@ -89,10 +86,7 @@ mod tests {
         );
 
         tx.send_modify(|transfers| {
-            transfers.insert(
-                "release-shown".to_string(),
-                ReleaseStorageAction::MakeRemote,
-            );
+            transfers.insert("release-shown".to_string(), ReleaseStorageAction::Upload);
         });
         tokio::time::timeout(std::time::Duration::from_secs(1), shown.changed())
             .await
