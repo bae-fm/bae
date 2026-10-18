@@ -8,7 +8,7 @@ pub use client::{
     LibrarySearchProjection, ReleaseDetailProjection, StorageBrowseProjection,
     StorageBrowseRequest, WorkDetailProjection,
 };
-pub use client::{ArtistWriteError, Database, ImportReplacementOutcome, ReleaseDeletion};
+pub use client::{ArtistWriteError, Database, ReleaseDeletion};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use client::{
     CandidateListGrouping, CandidateStateListRow, FinishedScan, GroupingChanges, ImportQueueRows,

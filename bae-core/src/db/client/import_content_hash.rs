@@ -1,9 +1,8 @@
 use super::*;
 
 impl Database {
-    /// Release ids whose stored `content_hash` equals `hash`. Normally zero or
-    /// one (the import overwrite path keeps the hash unique), but returns all
-    /// matches so a re-import sweeps any pre-existing duplicates.
+    /// Every independent release carrying this folder hash.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn release_ids_for_content_hash(&self, hash: &str) -> Result<Vec<String>, DbError> {
         let hash = hash.to_string();
         self.read(move |sql| {

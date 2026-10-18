@@ -55,35 +55,37 @@ extension ImportView {
         runtime: BridgeCandidateRuntimeSnapshot?
     ) -> some View {
         switch candidate.importStatus {
-        case .complete(let releaseId, let albumId):
+        case .complete(let releases):
             let releaseEditor = releaseEditor
             let mappingActions = mappingActions(for: candidate)
-            ImportedReleasePane(
-                candidate: candidate,
-                releaseId: releaseId,
-                albumId: albumId,
-                seedReleaseEdit: releaseEditor.seedReleaseEdit,
-                saveReleaseEdit: releaseEditor
-                    .updateReleaseMetadataUserEdit,
-                resetReleaseEdit: releaseEditor
-                    .resetReleaseEditToSource,
-                changeCover: releaseEditor.changeCover,
-                fetchRemoteCovers: {
-                    try await releaseEditor.fetchRemoteCovers(
-                        .release(releaseId: $0)
-                    )
-                },
-                onViewInLibrary: { uiStore.navigateToAlbum($0) },
-                onOpenImages: mappingActions.openImages,
-                onOpenDocument: mappingActions.openDocument,
-                onPlayTrack: { trackId in
-                    playback.playRelease(
-                        releaseId,
-                        trackId,
-                        false
-                    )
-                }
-            )
+            ImportedFolderPane(releases: releases) { release in
+                ImportedReleasePane(
+                    candidate: candidate,
+                    releaseId: release.releaseId,
+                    albumId: release.albumId,
+                    seedReleaseEdit: releaseEditor.seedReleaseEdit,
+                    saveReleaseEdit: releaseEditor
+                        .updateReleaseMetadataUserEdit,
+                    resetReleaseEdit: releaseEditor
+                        .resetReleaseEditToSource,
+                    changeCover: releaseEditor.changeCover,
+                    fetchRemoteCovers: {
+                        try await releaseEditor.fetchRemoteCovers(
+                            .release(releaseId: $0)
+                        )
+                    },
+                    onViewInLibrary: { uiStore.navigateToAlbum($0) },
+                    onOpenImages: mappingActions.openImages,
+                    onOpenDocument: mappingActions.openDocument,
+                    onPlayTrack: { trackId in
+                        playback.playRelease(
+                            release.releaseId,
+                            trackId,
+                            false
+                        )
+                    }
+                )
+            }
         case .importing(let standing):
             let mappingActions = mappingActions(for: candidate)
             ImportingCandidatePane(

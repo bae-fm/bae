@@ -46,4 +46,4 @@ Izdanje se upisuje s referencom na korisnikove datoteke na mjestu. Ako je korisn
 
 ## Prepoznavanje ripova
 
-Svako izdanje bilježi hash sadržaja preko strukture svoje uvezene mape (relativni putovi i veličine, neovisno o lokaciji). Ponovna skeniranja koriste ga za označavanje mapa koje su već u biblioteci, a ponovni uvozi istog ripa pronalaze i zamjenjuju svoje prethodno izdanje umjesto dupliciranja.
+Svaki uvoz stvara izdanje s novim nasumičnim ID-om i vlastitim redovima pjesama i datoteka. `releases.content_hash` pohranjuje nejedinstveni SHA-256 sortiranih relativnih putanja, veličina i vremena izmjene. Podudaranje samo upućuje na moguću kopiju; nikada ne odbija uvoz niti zamjenjuje izdanje. Kartica dovršenih uvoza prikazuje sva podudarna izdanja mape i ne nudi ponovni uvoz.

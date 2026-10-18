@@ -499,10 +499,12 @@
                 trackCount: 5
             ),
             metadataSummary: nil,
-            importStatus: .complete(
-                releaseId: "preview-release",
-                albumId: "preview-album"
-            )
+            importStatus: .complete(releases: [
+                BridgeImportedRelease(
+                    releaseId: "preview-release",
+                    albumId: "preview-album"
+                )
+            ])
         )
 
         /// A Done row whose release was read from a catalog.
@@ -532,15 +534,17 @@
                 candidateKey: candidate.key,
                 displayPath: candidate.displayName,
                 live: triageLive([.revealFolder]),
-                release: BridgeImportedReleaseSummary(
-                    releaseId: "preview-release",
-                    albumId: "preview-album",
-                    title: title,
-                    artist: artist,
-                    year: year,
-                    cover: nil,
-                    records: records
-                ),
+                releases: [
+                    BridgeImportedReleaseSummary(
+                        releaseId: "preview-release",
+                        albumId: "preview-album",
+                        title: title,
+                        artist: artist,
+                        year: year,
+                        cover: nil,
+                        records: records
+                    )
+                ],
                 selected: false
             )
         }

@@ -46,4 +46,4 @@ El lanzamiento queda referenciando los archivos del usuario en su lugar. Si el u
 
 ## Reconocer copias
 
-Cada lanzamiento registra un hash de contenido sobre la estructura de su carpeta importada (rutas relativas y tamaños, independiente de ubicación). Los nuevos análisis lo usan para marcar carpetas que ya están en la biblioteca, y las reimportaciones de la misma copia encuentran y reemplazan su lanzamiento anterior en vez de duplicarlo.
+Cada importación crea un lanzamiento con un ID aleatorio nuevo y sus propias filas de pistas y archivos. `releases.content_hash` guarda un SHA-256 no único de las rutas relativas ordenadas, tamaños y fechas de modificación. Una coincidencia solo avisa de una posible copia; nunca impide importar ni reemplaza un lanzamiento. La pestaña de completados muestra todos los lanzamientos coincidentes de la carpeta y no ofrece volver a importar.

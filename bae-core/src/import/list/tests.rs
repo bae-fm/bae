@@ -211,10 +211,10 @@ fn imported(rows: &mut ImportQueueRows, display_path: &str, release_id: &str, im
     let hash = format!("hash-{display_path}");
     rows.imported.insert(
         hash.clone(),
-        ImportedRelease {
+        vec![ImportedRelease {
             release_id: release_id.to_string(),
             album_id: format!("album-{release_id}"),
-        },
+        }],
     );
     rows.imported_at.insert(hash, imported_at);
 }

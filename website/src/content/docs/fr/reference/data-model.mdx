@@ -10,7 +10,7 @@ Le catalogue de bae est du SQLite ordinaire, déclaré à [coven](https://coven.
 Le cœur synchronisé du schéma :
 
 - **`artists`**, **`albums`**, **`works`** : la couche de groupement. Un album agrège ses sorties et pointe vers une sortie principale ; les œuvres forment un graphe parent/enfant pour la structure classique.
-- **`releases`** : l'entité centrale, une ligne par frappage. Contient les faits de frappage (étiquette, numéro de catalogue, code-barres, pays, format, année), la provenance des métadonnées optionnelles, un hachage du contenu du dossier importé, et le volume de l'album mesuré. Aucune provenance signifie que les métadonnées ont été saisies directement ; la provenance externe nomme la sortie source exacte, tandis que Tags des fichiers enregistre une source locale d'instantané.
+- **`releases`** : l'entité centrale, une ligne par copie importée. Contient les faits de frappage (étiquette, numéro de catalogue, code-barres, pays, format, année), la provenance des métadonnées optionnelles, un hachage du contenu du dossier importé, et le volume de l'album mesuré. Aucune provenance signifie que les métadonnées ont été saisies directement ; la provenance externe nomme la sortie source exacte, tandis que Tags des fichiers enregistre une source locale d'instantané.
 - **`release_identities`**: les identités externes exactes de ce qu'une version *est*. Aucune ligne ne signifie aucune identité externe. Chaque ligne nomme une version et un groupe de versions MusicBrainz ou Discogs, et une version peut contenir des identités dans les deux sources à la fois. Ceci est distinct de la provenance : l'identité peut changer sans prétendre que les métadonnées éditables actuelles ont été réinitialisées à partir de cette source.
 - **`tracks`** avec **`track_artists`**, plus **`release_artist_roles`** et **`track_artist_roles`** : listes de pistes et crédits, chaque crédit étant marqué avec sa source.
 - **`track_works`**, **`work_parts`**, **`work_artists`** : enregistrements liés aux œuvres qu’ils interprètent.
@@ -39,4 +39,4 @@ Sur un emplacement opaque, les blobs sont envoyés sous des clés de contenu san
 
 ## Identité d’un rip
 
-`releases.content_hash` est un SHA-256 sur la structure de fichiers du dossier importé (chemins relatifs et tailles), indépendant de l’endroit où le dossier se trouve sur disque. C’est ainsi que bae reconnaît un rip déjà importé quand il réapparaît dans un dossier surveillé, et que les réimportations trouvent la sortie qu’elles doivent remplacer.
+Chaque import crée une sortie avec un nouvel identifiant aléatoire et ses propres lignes de pistes et de fichiers. `releases.content_hash` stocke un SHA-256 non unique des chemins relatifs triés, tailles et dates de modification. Une correspondance signale seulement une copie possible ; elle ne refuse jamais un import et ne remplace aucune sortie. L’onglet des imports terminés affiche toutes les sorties correspondant au dossier, sans action de réimportation.

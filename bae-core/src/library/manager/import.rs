@@ -534,7 +534,6 @@ impl LibraryManager {
         library_image: Option<(&DbLibraryImage, &[u8])>,
         prepared_artist_images: &[crate::import::PreparedArtistImage],
         primary_release_id: Option<(&str, &str)>,
-        replacement_plans: &[ImportReplacementPlan],
         destination: crate::import::ImportDestination,
     ) -> Result<Option<u64>, LibraryError> {
         let expected = self
@@ -555,10 +554,6 @@ impl LibraryManager {
         // The home's storage mode decides the blob layout, and the manager owns
         // config.
         let storage = self.config_handle.config().cloud_home.storage;
-        let replacement_deletes: Vec<_> = replacement_plans
-            .iter()
-            .map(|plan| plan.deletion.clone())
-            .collect();
         self.database
             .finalize_import_atomic(
                 guard,
@@ -574,24 +569,18 @@ impl LibraryManager {
                 },
                 primary_release_id,
                 storage,
-                &replacement_deletes,
                 destination,
             )
             .await?;
         let remote = matches!(destination, crate::import::ImportDestination::Remote { .. });
         // A Remote import returns this revision, which already shows its
         // uploads queued.
-        let outbox_revision = if remote || !replacement_plans.is_empty() {
+        let outbox_revision = if remote {
             Some(self.emit_outbox_changed().await)
         } else {
             None
         };
-        for plan in replacement_plans {
-            if !plan.track_ids.is_empty() {
-                self.tracks_deleted(plan.track_ids.clone());
-            }
-        }
-        Ok(outbox_revision.filter(|_| remote))
+        Ok(outbox_revision)
     }
 
     /// Every stored candidate row, keyed by content hash, for the sweep to

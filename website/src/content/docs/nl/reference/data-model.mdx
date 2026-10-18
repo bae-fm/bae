@@ -10,7 +10,7 @@ De catalogus van bae is gewone SQLite, tabel voor tabel gedeclareerd aan [coven]
 Het gesynchroniseerde hart van het schema:
 
 - **`artists`**, **`albums`**, **`works`**: de groepeerlaag. Een album verzamelt zijn releases en wijst naar een primaire; werken vormen een ouder/kind-graaf voor klassieke structuur.
-- **`releases`**: de centrale entiteit, één rij per persing, bevat de persingsgegevens (label, catalogusnummer, barcode, land, formaat, jaar), optionele herkomst van de metagegevens, een hash van de inhoud van de geïmporteerde map en de gemeten albumluidheid. Geen herkomst betekent dat de metagegevens rechtstreeks zijn ingevoerd; externe herkomst geeft de exacte bronrelease aan, terwijl Bestandstags een lokale snapshotbron registreert.
+- **`releases`**: de centrale entiteit, één rij per geïmporteerde kopie, bevat de persingsgegevens (label, catalogusnummer, barcode, land, formaat, jaar), optionele herkomst van de metagegevens, een hash van de inhoud van de geïmporteerde map en de gemeten albumluidheid. Geen herkomst betekent dat de metagegevens rechtstreeks zijn ingevoerd; externe herkomst geeft de exacte bronrelease aan, terwijl Bestandstags een lokale snapshotbron registreert.
 - **`release_identities`**: exacte externe identiteiten voor wat een release *is*. Geen rijen betekenen geen externe identiteit. Elke rij noemt een MusicBrainz of Discogs release en release groep, en een release kan identiteiten in beide bronnen tegelijkertijd bevatten. Dit is gescheiden van herkomst: identiteit kan veranderen zonder te beweren dat de huidige bewerkbare metadata van die bron is gereset.
 - **`tracks`** met **`track_artists`**, plus **`release_artist_roles`** en **`track_artist_roles`**: tracklijsten en credits, elke credit met zijn bron getagd.
 - **`track_works`**, **`work_parts`**, **`work_artists`**: opnamen gekoppeld aan de werken die ze uitvoeren.
@@ -39,4 +39,4 @@ Op een opaque home uploaden blobs onder betekenisloze contentsleutels. Op een br
 
 ## Identiteit van een rip
 
-`releases.content_hash` is een SHA-256 over de bestandsstructuur van de geimporteerde map (relatieve paden en groottes), onafhankelijk van waar de map op schijf staat. Zo herkent bae een al geimporteerde rip wanneer die opnieuw in een bewaakte map verschijnt, en zo vinden re-imports de release die ze moeten vervangen.
+Elke import maakt een release met een nieuwe willekeurige ID en eigen rijen voor nummers en bestanden. `releases.content_hash` bewaart een niet-unieke SHA-256 van de gesorteerde relatieve paden, groottes en wijzigingstijden. Een overeenkomst geeft alleen een aanwijzing voor een mogelijke kopie; ze weigert geen import en vervangt geen release. Het tabblad voor voltooide imports toont alle overeenkomende releases van de map en biedt geen herimport aan.

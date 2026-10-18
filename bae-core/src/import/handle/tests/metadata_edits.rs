@@ -571,7 +571,7 @@ async fn a_claimed_candidate_refuses_every_preparation_mutation() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn an_imported_candidate_refuses_metadata_edits() {
+async fn editing_a_candidate_preserves_its_imported_copy() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
     handle
         .set_candidate_album_artists(
@@ -580,12 +580,6 @@ async fn an_imported_candidate_refuses_metadata_edits() {
         )
         .await
         .unwrap();
-    let pane_before = pane(&handle, &key).await;
-    let first_track = track_rows(&pane_before.mapping)[0].clone();
-    let cover = pane_before
-        .cover
-        .expect("the fixture has a selected cover")
-        .selection;
     let mut events = handle.every_event();
     let import_id = handle
         .start_import(&key)
@@ -594,37 +588,22 @@ async fn an_imported_candidate_refuses_metadata_edits() {
     let (release_id, _) = await_import_outcome(&mut events, &import_id)
         .await
         .unwrap_or_else(|error| panic!("import failed: {error}"));
-    let candidate_before = handle
-        .library_manager
-        .load_import_candidate_preparation(&hash)
-        .await
-        .unwrap()
-        .expect("the imported candidate preparation remains stored");
     let release_before = handle
         .library_manager
         .release_edit_seed(&release_id)
         .await
         .unwrap();
 
-    assert_every_mutation_refused(
-        &handle,
+    handle.set_candidate_edit_field(
         &key,
-        "Edited after import",
-        first_track,
-        cover,
-        |error| matches!(error, crate::import::ImportError::CandidateAlreadyImported),
-    )
-    .await;
-
-    assert_eq!(
-        handle
-            .library_manager
-            .load_import_candidate_preparation(&hash)
-            .await
-            .unwrap()
-            .expect("the imported candidate preparation remains stored"),
-        candidate_before
-    );
+        crate::import::DraftFieldEdit::Text {
+            field: crate::import::CandidateEditField::AlbumTitle,
+            value: "Edited candidate".into(),
+        },
+    ).await.unwrap();
+    let candidate_before = handle.library_manager.load_import_candidate_preparation(&hash)
+        .await.unwrap().unwrap();
+    assert_eq!(candidate_before.draft.album_title, "Edited candidate");
     assert_eq!(
         handle
             .library_manager

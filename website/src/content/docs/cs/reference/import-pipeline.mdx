@@ -46,4 +46,4 @@ Vydání se uloží s odkazy na uživatelovy soubory na místě. Pokud uživatel
 
 ## Rozpoznávání ripů
 
-Každé vydání zaznamená hash obsahu přes strukturu importované složky (relativní cesty a velikosti, nezávislé na umístění). Opakované skeny ho používají k označení složek, které už v knihovně jsou, a reimporty stejného ripu najdou a nahradí své předchozí vydání místo vytvoření duplicity.
+Každý import vytvoří vydání s novým náhodným ID a vlastními řádky skladeb a souborů. `releases.content_hash` ukládá neunikátní SHA-256 seřazených relativních cest, velikostí a časů změny. Shoda pouze upozorní na možnou kopii; import nikdy neodmítne ani nenahradí vydání. Karta dokončených importů uvádí všechna odpovídající vydání složky a nenabízí opakovaný import.

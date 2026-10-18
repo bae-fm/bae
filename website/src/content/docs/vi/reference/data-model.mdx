@@ -10,7 +10,7 @@ Catalog của bae là SQLite bình thường, được khai báo cho [coven](htt
 Trái tim đồng bộ của schema:
 
 - **`artists`**, **`albums`**, **`works`**: lớp nhóm. Một album gom các bản phát hành của nó và trỏ tới bản chính; works tạo đồ thị cha/con cho cấu trúc nhạc cổ điển.
-- ** `releases` **: thực thể trung tâm, một hàng mỗi lần nhấn. Chuyển thực tế nhấn (nhãn, số danh mục, mã vạch, quốc gia, định dạng, năm), nguồn siêu dữ liệu tùy chọn, hàm băm nội dung của thư mục nhập, và âm lượng album đo. Không có nguồn có nghĩa là siêu dữ liệu đã được nhập trực tiếp; nguồn bên ngoài có tên chính xác của bản phát hành nguồn, trong khi Thẻ của tệp ghi lại nguồn ảnh chụp cục bộ.
+- ** `releases` **: thực thể trung tâm, một hàng cho mỗi bản sao được nhập. Chuyển thực tế nhấn (nhãn, số danh mục, mã vạch, quốc gia, định dạng, năm), nguồn siêu dữ liệu tùy chọn, hàm băm nội dung của thư mục nhập, và âm lượng album đo. Không có nguồn có nghĩa là siêu dữ liệu đã được nhập trực tiếp; nguồn bên ngoài có tên chính xác của bản phát hành nguồn, trong khi Thẻ của tệp ghi lại nguồn ảnh chụp cục bộ.
 - ** `release_identities` **: danh tính chính xác bên ngoài cho một bản phát hành * là *. Không hàng có nghĩa là không có danh tính bên ngoài. Mỗi hàng có tên một bản phát hành và nhóm phát hành MusicBrainz hoặc Discogs, và một bản phát hành có thể có danh tính ở cả hai nguồn cùng một lúc. Điều này tách biệt với nguồn gốc: danh tính có thể thay đổi mà không yêu cầu rằng siêu dữ liệu có thể chỉnh sửa hiện tại đã được đặt lại từ nguồn đó.
 - **`tracks`** với **`track_artists`**, cộng **`release_artist_roles`** và **`track_artist_roles`**: danh sách track và ghi công, mỗi ghi công gắn với nguồn của nó.
 - **`track_works`**, **`work_parts`**, **`work_artists`**: bản thu liên kết tới tác phẩm mà chúng trình diễn.
@@ -39,4 +39,4 @@ Trên nhà mờ đục, blob tải lên dưới khóa nội dung vô nghĩa. Tr�
 
 ## Danh tính của một bản rip
 
-`releases.content_hash` là SHA-256 trên cấu trúc tệp của thư mục đã nhập (đường dẫn tương đối và kích thước), độc lập với vị trí thư mục nằm trên đĩa. Đó là cách bae nhận ra một bản rip đã nhập khi nó xuất hiện lại trong thư mục được theo dõi, và cách lượt nhập lại tìm bản phát hành chúng nên thay thế.
+Mỗi lần nhập tạo một bản phát hành có ID ngẫu nhiên mới và các hàng bản nhạc, tệp riêng. `releases.content_hash` lưu SHA-256 không duy nhất của các đường dẫn tương đối đã sắp xếp, kích thước và thời điểm sửa đổi. Giá trị trùng chỉ gợi ý rằng có thể đã có bản sao; không bao giờ chặn nhập hoặc thay thế bản phát hành. Thẻ đã hoàn tất liệt kê mọi bản phát hành khớp với thư mục và không có thao tác nhập lại.

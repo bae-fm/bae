@@ -46,4 +46,4 @@ La sortie arrive en référençant les fichiers de l’utilisateur en place. Si 
 
 ## Reconnaître les rips
 
-Chaque sortie enregistre un hash de contenu sur la structure de son dossier importé (chemins relatifs et tailles, indépendant de l’emplacement). Les nouvelles analyses l’utilisent pour marquer les dossiers déjà dans la bibliothèque, et les réimportations du même rip trouvent et remplacent leur sortie précédente au lieu de la dupliquer.
+Chaque import crée une sortie avec un nouvel identifiant aléatoire et ses propres lignes de pistes et de fichiers. `releases.content_hash` stocke un SHA-256 non unique des chemins relatifs triés, tailles et dates de modification. Une correspondance signale seulement une copie possible ; elle ne refuse jamais un import et ne remplace aucune sortie. L’onglet des imports terminés affiche toutes les sorties correspondant au dossier, sans action de réimportation.

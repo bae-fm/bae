@@ -644,12 +644,18 @@ pub enum AutomationImportStatus {
         step: Option<AutomationImportStep>,
     },
     Complete {
-        release_id: String,
-        album_id: String,
+        releases: Vec<AutomationImportedRelease>,
     },
     Error {
         error: String,
     },
+}
+
+/// One independent library copy matching a folder hash.
+#[derive(Debug, Clone, Serialize)]
+pub struct AutomationImportedRelease {
+    pub release_id: String,
+    pub album_id: String,
 }
 
 /// Mirrors bae-core's `import::ImportStep`.

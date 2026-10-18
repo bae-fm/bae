@@ -46,4 +46,4 @@ La release arriva riferendo i file dell'utente sul posto. Se l'utente ha scelto 
 
 ## Riconoscere i rip
 
-Ogni release registra un hash del contenuto sulla struttura della cartella importata (percorsi relativi e dimensioni, indipendente dalla posizione). Le nuove scansioni lo usano per marcare cartelle già nella libreria, e le reimportazioni dello stesso rip trovano e sostituiscono la release precedente invece di duplicarla.
+Ogni importazione crea una versione con un nuovo ID casuale e righe proprie per tracce e file. `releases.content_hash` memorizza uno SHA-256 non univoco dei percorsi relativi ordinati, delle dimensioni e delle date di modifica. Una corrispondenza segnala soltanto una possibile copia; non rifiuta mai un’importazione né sostituisce una versione. La scheda delle importazioni completate elenca tutte le versioni corrispondenti alla cartella e non offre una nuova importazione.

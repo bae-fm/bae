@@ -65,7 +65,6 @@ impl ImportService {
         parsed: crate::import::ParsedAlbum,
         records: Vec<crate::import::ReleaseRecord>,
         user_edit: Option<crate::import::ReleaseUserEdit>,
-        replacement_release_ids: &[String],
         prepared_artist_images: Vec<crate::import::PreparedArtistImage>,
     ) -> Result<PreparedMetadata, crate::import::ImportError> {
         let library_manager = &self.library_manager;
@@ -99,7 +98,7 @@ impl ImportService {
         let album_title = db_album.title.clone();
 
         let existing_album_id = library_manager
-            .find_existing_album_for_import_excluding(&records, replacement_release_ids)
+            .find_existing_album_for_import(&records)
             .await?;
         match &existing_album_id {
             Some(album_id) => {

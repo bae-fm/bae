@@ -46,9 +46,6 @@ impl CandidateStanding {
         if self.claimed {
             return Err(super::ImportError::CandidateImportInProgress);
         }
-        if self.imported {
-            return Err(super::ImportError::CandidateAlreadyImported);
-        }
         Ok(())
     }
 }

@@ -113,7 +113,7 @@ struct ImportStandingRowTests {
         return try await drawn(
             ImportedRowView(
                 row: row,
-                uploadObservation: nil,
+                uploadObservations: [:],
                 onReveal: {}
             )
         )

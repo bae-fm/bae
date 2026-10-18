@@ -756,9 +756,7 @@ extension ImportCandidateListContent {
     private func importedRow(_ row: BridgeImportedRow) -> some View {
         ImportedRowView(
             row: row,
-            uploadObservation: outboxStore.persistedUploadObservation(
-                forRelease: row.release.releaseId
-            ),
+            uploadObservations: outboxStore.persistedUploadObservations,
             onReveal: { onReveal(row.candidateKey) }
         )
         .tag(row.candidateKey)

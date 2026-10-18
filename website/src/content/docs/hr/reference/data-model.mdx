@@ -10,7 +10,7 @@ Katalog bae običan je SQLite, prijavljen [coven](https://coven.bae.fm)-u tablic
 Sinkronizirano srce sheme:
 
 - **`artists`**, **`albums`**, **`works`**: sloj grupiranja. Album okuplja svoja izdanja i pokazuje na primarno; djela tvore roditelj/dijete graf za klasičnu strukturu.
-- **`releases`**: središnji entitet, jedan redak po tiskanju. Nosi činjenice o tiskanju (oznaka, broj kataloga, crtični kod, zemlja, format, godina), opcijski izvor metapodataka, hash sadržaja uvezene mape i izmjerenu glasnoću albuma. Bez podrijetla znači da su metapodaci uneseni izravno; vanjsko podrijetlo naziva točno izvorno izdanje, dok Oznake datoteka bilježi lokalni izvor snimke.
+- **`releases`**: središnji entitet, jedan redak po uvezenoj kopiji. Nosi činjenice o tiskanju (oznaka, broj kataloga, crtični kod, zemlja, format, godina), opcijski izvor metapodataka, hash sadržaja uvezene mape i izmjerenu glasnoću albuma. Bez podrijetla znači da su metapodaci uneseni izravno; vanjsko podrijetlo naziva točno izvorno izdanje, dok Oznake datoteka bilježi lokalni izvor snimke.
 - **`release_identities`**: točni vanjski identiteti za ono što izdanje *je*. Bez redaka znači da nema vanjskog identiteta. Svaki redak naziva izdanje MusicBrainz ili Discogs i grupu izdanja, a izdanje može sadržavati identitete u oba izvora odjednom. Ovo je odvojeno od podrijetla: identitet se može promijeniti bez tvrdnje da su trenutni metapodaci koji se mogu uređivati resetirani iz tog izvora.
 - **`tracks`** s **`track_artists`**, plus **`release_artist_roles`** i **`track_artist_roles`**: popisi pjesama i zasluge, svaka zasluga označena svojim izvorom.
 - **`track_works`**, **`work_parts`**, **`work_artists`**: snimke povezane s djelima koja izvode.
@@ -39,4 +39,4 @@ Na neprozirnom mjestu binarni objekti prenose se pod besmislenim ključevima sad
 
 ## Identitet ripa
 
-`releases.content_hash` je SHA-256 preko strukture datoteka uvezene mape (relativni putovi i veličine), neovisan o tome gdje se mapa nalazi na disku. Tako bae prepoznaje već uvezeni rip kad se ponovno pojavi u nadziranoj mapi i tako ponovni uvozi pronalaze izdanje koje trebaju zamijeniti.
+Svaki uvoz stvara izdanje s novim nasumičnim ID-om i vlastitim redovima pjesama i datoteka. `releases.content_hash` pohranjuje nejedinstveni SHA-256 sortiranih relativnih putanja, veličina i vremena izmjene. Podudaranje samo upućuje na moguću kopiju; nikada ne odbija uvoz niti zamjenjuje izdanje. Kartica dovršenih uvoza prikazuje sva podudarna izdanja mape i ne nudi ponovni uvoz.

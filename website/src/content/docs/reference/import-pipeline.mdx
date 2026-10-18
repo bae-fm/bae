@@ -56,4 +56,4 @@ The release lands referencing the user's files in place. If the user chose cloud
 
 ## Recognizing rips
 
-Each release records a content hash over its imported folder's structure (relative paths and sizes, location-independent). Re-scans use it to mark folders already in the library, and re-imports of the same rip find and replace their prior release instead of duplicating it.
+Every import creates a release with a fresh random ID and its own track and file rows. `releases.content_hash` stores a nonunique SHA-256 of the sorted relative paths, sizes, and modification times. A matching hash only supplies a duplicate hint; it never refuses or replaces an import. Done lists every matching release for the folder and offers no re-import action.

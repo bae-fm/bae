@@ -46,4 +46,4 @@ Wydanie trafia do biblioteki, wskazując pliki użytkownika na miejscu. Jeśli u
 
 ## Rozpoznawanie ripów
 
-Każde wydanie zapisuje hash treści struktury importowanego folderu (ścieżki względne i rozmiary, niezależne od lokalizacji). Ponowne skany używają go, aby oznaczyć foldery już obecne w bibliotece, a ponowne importy tego samego ripu znajdują i zastępują wcześniejsze wydanie zamiast je duplikować.
+Każdy import tworzy wydanie z nowym losowym identyfikatorem i własnymi wierszami utworów oraz plików. `releases.content_hash` przechowuje nieunikatowy SHA-256 posortowanych ścieżek względnych, rozmiarów i czasów modyfikacji. Zgodność tylko sugeruje możliwą kopię; nigdy nie blokuje importu ani nie zastępuje wydania. Karta ukończonych importów pokazuje wszystkie wydania pasujące do folderu i nie oferuje ponownego importu.

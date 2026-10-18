@@ -804,9 +804,9 @@ async fn a_done_row_follows_the_library_release_it_became() {
         ..bae_core::import::ImportListView::default()
     });
     let imported = next_imported_row(&done, &album_key, |_| true).await;
-    assert_eq!(imported.release.release_id, release_id);
-    assert_eq!(imported.release.title, "Album");
-    assert_eq!(imported.release.artist.as_deref(), Some("Artist"));
+    assert_eq!(imported.releases[0].release_id, release_id);
+    assert_eq!(imported.releases[0].title, "Album");
+    assert_eq!(imported.releases[0].artist.as_deref(), Some("Artist"));
 
     let mut form = f
         .library_manager
@@ -821,11 +821,11 @@ async fn a_done_row_follows_the_library_release_it_became() {
         .unwrap();
 
     let edited = next_imported_row(&done, &album_key, |row| {
-        row.release.title != "Album"
+        row.releases[0].title != "Album"
     })
     .await;
-    assert_eq!(edited.release.title, "Album (Edited)");
-    assert_eq!(edited.release.artist.as_deref(), Some("Artist"));
+    assert_eq!(edited.releases[0].title, "Album (Edited)");
+    assert_eq!(edited.releases[0].artist.as_deref(), Some("Artist"));
 }
 
 /// The next Done row for `key` that `accept` admits, read off one open list

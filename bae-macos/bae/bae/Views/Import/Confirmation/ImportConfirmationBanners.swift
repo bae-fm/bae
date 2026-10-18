@@ -74,8 +74,6 @@ struct ImportConfirmationBanners: View {
     @ViewBuilder
     private var importFailureBanner: some View {
         switch failure {
-        case .alreadyInLibrary(let albumId, let albumTitle):
-            alreadyInLibrary(albumId: albumId, albumTitle: albumTitle)
         case .artistIdentityConflict(let conflict, let error):
             if let displayed = DisplayError(error) {
                 artistIdentityConflict(conflict, error: displayed)
@@ -98,30 +96,6 @@ struct ImportConfirmationBanners: View {
             ErrorDetailDisclosure(error: displayed)
                 .notice(.danger)
         }
-    }
-
-    private func alreadyInLibrary(
-        albumId: String,
-        albumTitle: String
-    ) -> some View {
-        HStack(spacing: ThemeSpace.related) {
-            glyph(.warning)
-            Text(
-                verbatim: coreString(
-                    "ui.import.already_in_library_as",
-                    albumTitle
-                )
-            )
-            .themeText(.body)
-            .foregroundStyle(StatusTone.warning.color)
-            Spacer()
-            Button("View in Library") { onViewInLibrary(albumId) }
-                .controlSize(.small)
-            Button("Retry") { onRetry() }
-                .controlSize(.small)
-                .disabled(!canEdit)
-        }
-        .notice(.warning)
     }
 
     private func persistedFailure(_ error: DisplayError) -> some View {

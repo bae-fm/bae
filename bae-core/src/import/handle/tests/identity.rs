@@ -461,19 +461,12 @@ async fn album_for_import(
 }
 
 #[tokio::test]
-async fn test_exact_release_duplicate_rejected() {
-    let (manager, _tmp, _album, _release) =
+async fn test_same_pressing_finds_existing_album() {
+    let (manager, _tmp, album, _release) =
         album_with("Album Title", &[mb_identity("mb-rg-456", "mb-rel-123")]).await;
 
-    // Same MB release ID → rejected as duplicate.
     let incoming = vec![mb_identity("mb-rg-789", "mb-rel-123")];
-    let result = manager.find_existing_album_for_import(&incoming).await;
-
-    let err = result.expect_err("duplicate import should be rejected");
-    assert!(
-        matches!(&err, crate::import::ImportError::AlreadyInLibrary { album_title, .. } if album_title == "Album Title"),
-        "Expected duplicate error naming the album, got: {err}",
-    );
+    assert_eq!(album_for_import(&manager, &incoming).await, Some(album.id));
 
     // Discogs side mirrors the same logic.
     let album2 = make_album("Other Album");
@@ -483,7 +476,7 @@ async fn test_exact_release_duplicate_rejected() {
 
     let incoming2 = vec![discogs_identity("d-master-456", "d-rel-123")];
     let result2 = manager.find_existing_album_for_import(&incoming2).await;
-    assert!(result2.is_err());
+    assert_eq!(result2.unwrap(), Some(album2.id));
 }
 
 #[tokio::test]

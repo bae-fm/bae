@@ -1,5 +1,5 @@
 /// A second import over a library that already holds a release: the sequential
-/// case, and the refusal that leaves the prior release untouched.
+/// case, and repeated copies of the same pressing.
 /// 5. Two sequential imports both succeed and produce separate albums.
 #[tokio::test]
 async fn two_sequential_imports() {
@@ -19,10 +19,6 @@ async fn two_sequential_imports() {
         let _ = title;
         let album_dir = f.temp_path().join(format!("album{}", i + 1));
         fs::create_dir_all(&album_dir).unwrap();
-        // Distinct filename per album so the two imports carry different content
-        // hashes. The content hash is the relative path + size of each file, and
-        // a folder whose content is already imported is refused, so reusing one
-        // name would make the second import fail as a re-import.
         let track_name = format!("01 Track {}.flac", i + 1);
         generate_album_files(&album_dir, &[track_name.as_str()]);
 
@@ -70,153 +66,63 @@ async fn two_sequential_imports() {
     assert_eq!(album2.title, "Second Album");
 }
 
-/// A folder that is already in the library is not imported again: the second
-/// `ImportCommand` is refused before anything runs, and the prior release —
-/// its files, its blob reference — is left exactly as it was. Changing an
-/// imported release is the library editor's job, not a re-import's.
+/// Repeated imports own distinct release, track and file rows, even when the
+/// folder and its pressing are unchanged.
 #[tokio::test]
-async fn an_imported_folder_is_refused_a_second_import() {
-    support::tracing_init();
-    let f = ImportFixture::new().await;
-
-    let album_dir = f.temp_path().join("already-imported");
-    fs::create_dir_all(&album_dir).unwrap();
-    generate_tagged_album_files(
-        &album_dir,
-        "Album Title",
-        "Artist Name",
-        None,
-        &[TaggedTrack {
-            filename: "01 Track Title.flac",
-            title: "Track Title",
-            track_number: 1,
-        }],
-    );
-
-    let (prior_release_id, _) = import_folder(
-        &f,
-        &album_dir,
-        None,
-        ImportDestination::Local,
-        support::DraftSource::FileTags,
-    )
-    .await
-    .expect("initial import succeeds");
-    assert_release_has_external_ref(&f, &prior_release_id).await;
-    let content_hash =
-        f.db.find_release_by_id(&prior_release_id)
-            .await
-            .unwrap()
-            .expect("prior release exists")
-            .content_hash
-            .clone()
-            .unwrap();
-
-    // Whatever the second attempt asks for — a different destination, a cover
-    // that could never download — it is refused as already imported before
-    // any of that is tried.
-    for (cover, destination) in [
-        (None, ImportDestination::Local),
-        (
-            Some(CoverSelection::Remote(
-                bae_core::import::cover_art::RemoteImageSet::original("http://127.0.0.1:9/cover.jpg".to_string()),
-                Catalog::MusicBrainz,
-            )),
-            ImportDestination::Local,
-        ),
-    ] {
-        let error = import_folder(
-            &f,
-            &album_dir,
-            cover,
-            destination,
-            support::DraftSource::FileTags,
-        )
-        .await
-        .expect_err("an imported folder is refused a second import");
-        assert!(
-            error.contains("already been imported"),
-            "unexpected error: {error}"
-        );
-    }
-
-    assert_release_has_external_ref(&f, &prior_release_id).await;
-    assert_eq!(
-        f.db.release_ids_for_content_hash(&content_hash)
-            .await
-            .unwrap(),
-        vec![prior_release_id],
-        "the prior release still carries the content hash, alone"
-    );
-}
-
-/// The same refusal for a release that lives in the cloud: the prior release
-/// stays exactly as it was, since nothing replaced it.
-#[tokio::test]
-async fn a_remote_imported_folder_is_refused_a_second_import() {
+async fn repeated_imports_keep_independent_copies() {
     support::tracing_init();
     let f = ImportFixture::new().await;
     f.connect_cloud().await;
-
-    let album_dir = f.temp_path().join("already-imported-remote");
+    let album_dir = f.temp_path().join("repeated-import");
     fs::create_dir_all(&album_dir).unwrap();
-    generate_tagged_album_files(
-        &album_dir,
-        "Album Title",
-        "Artist Name",
-        None,
-        &[TaggedTrack {
-            filename: "01 Track Title.flac",
-            title: "Track Title",
-            track_number: 1,
-        }],
+    generate_album_files(&album_dir, &["01 Track.flac"]);
+    let pressing = seed_discogs_test_release(
+        f.library_manager.providers(),
+        discogs_release("Album Title", &["Track"]),
     );
-
-    let (prior_release_id, _) = import_folder(
-        &f,
-        &album_dir,
-        None,
-        ImportDestination::Remote { pin: false },
-        support::DraftSource::FileTags,
-    )
-    .await
-    .expect("initial remote import queues upload");
-    let upload_count = f
-        .library_manager
-        .drain_uploads_expecting_work()
-        .await
-        .unwrap();
-    assert_eq!(
-        upload_count, 1,
-        "initial remote import should upload one file"
-    );
-    let prior_release =
-        f.db.find_release_by_id(&prior_release_id)
-            .await
-            .unwrap()
-            .expect("prior release exists after upload");
-    assert!(prior_release.remote, "prior release should be remote");
-
-    let error = import_folder(
-        &f,
-        &album_dir,
-        None,
+    let mut copies = Vec::new();
+    for destination in [
         ImportDestination::Local,
-        support::DraftSource::FileTags,
-    )
-    .await
-    .expect_err("an imported folder is refused a second import");
-    assert!(
-        error.contains("already been imported"),
-        "unexpected error: {error}"
-    );
-    assert!(
-        f.db.find_release_by_id(&prior_release_id)
-            .await
-            .unwrap()
-            .is_some(),
-        "the remote release stays"
-    );
+        ImportDestination::Local,
+        ImportDestination::Remote { pin: false },
+        ImportDestination::Remote { pin: false },
+    ] {
+        let (id, _) = import_folder(
+            &f, &album_dir, None, destination,
+            support::discogs_release(pressing.clone()),
+        ).await.expect("each import creates another copy");
+        let release = f.db.find_release_by_id(&id).await.unwrap().unwrap();
+        let tracks = f.db.get_tracks_for_release(&id).await.unwrap();
+        let files = f.db.get_files_for_release(&id).await.unwrap();
+        assert_eq!(tracks.len(), 1);
+        assert_eq!(files.len(), 1);
+        for (prior, prior_tracks, prior_files) in &copies {
+            let prior: &bae_core::db::DbRelease = prior;
+            let prior_tracks: &Vec<bae_core::db::DbTrack> = prior_tracks;
+            let prior_files: &Vec<bae_core::db::DbFile> = prior_files;
+            assert_ne!(release.id, prior.id);
+            assert_eq!(release.album_id, prior.album_id);
+            assert_eq!(release.content_hash, prior.content_hash);
+            assert_ne!(tracks[0].id, prior_tracks[0].id);
+            assert_ne!(files[0].id, prior_files[0].id);
+            assert_eq!(f.db.get_tracks_for_release(&prior.id).await.unwrap(), *prior_tracks);
+            assert_eq!(f.db.get_files_for_release(&prior.id).await.unwrap(), *prior_files);
+        }
+        if matches!(destination, ImportDestination::Remote { .. }) {
+            assert_eq!(f.library_manager.drain_uploads_expecting_work().await.unwrap(), 1);
+            assert!(f.db.find_release_by_id(&id).await.unwrap().unwrap().remote);
+        } else {
+            assert_release_has_external_ref(&f, &id).await;
+        }
+        copies.push((release, tracks, files));
+    }
+    let hash = copies[0].0.content_hash.as_ref().unwrap();
+    assert_eq!(f.db.release_ids_for_content_hash(hash).await.unwrap().len(), 4);
+    assert!(f.db.is_content_hash_imported(hash).await.unwrap());
+    for (release, _, files) in &copies {
+        let bytes = f.library_manager.materialize_release_blob_for_test(&files[0].id).await;
+        assert!(bytes.is_ok(), "copy {} remains readable: {bytes:?}", release.id);
+    }
 }
 
 /// A Remote import records its make-Remote in the write that creates the

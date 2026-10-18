@@ -62,9 +62,7 @@ async fn an_import_that_cannot_open_a_source_writes_nothing_and_a_retry_lands_it
         .unwrap()
         .failure
         .expect("the failed import is recorded on its candidate");
-    let crate::import::ImportFailureReason::Error { detail } = &failure.reason else {
-        panic!("an unreadable file is a diagnostic failure: {:?}", failure.reason);
-    };
+    let detail = &failure.reason.detail;
     assert!(
         detail.contains(&*blocked_name.to_string_lossy()),
         "the failure names the file that would not open: {detail}"
@@ -79,12 +77,11 @@ async fn an_import_that_cannot_open_a_source_writes_nothing_and_a_retry_lands_it
         "a failed import writes no album"
     );
     assert!(
-        test.service
+        !test.service
             .library_manager
-            .import_replacement_plans_for_content_hash(&candidate.content_hash)
+            .is_content_hash_imported(&candidate.content_hash)
             .await
-            .unwrap()
-            .is_empty(),
+            .unwrap(),
         "a failed import writes no release of its files"
     );
 

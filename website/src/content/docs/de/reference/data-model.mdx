@@ -10,7 +10,7 @@ Der Katalog von bae ist gewöhnliches SQLite, Tabelle für Tabelle bei [coven](h
 Das synchronisierte Herz des Schemas:
 
 - **`artists`**, **`albums`**, **`works`**: die Gruppierungsschicht. Ein Album sammelt seine Releases und zeigt auf ein primäres; Werke bilden einen Eltern-Kind-Graphen für klassische Struktur.
-- **`releases`**: die zentrale Einheit, eine Zeile pro Pressung, enthält die Pressungsdaten (Label, Katalognummer, Barcode, Land, Format, Jahr), optionale Metadaten-Herkunft, einen Inhalts-Hash des importierten Ordners und die gemessene Album-Lautstärke. Keine Herkunft bedeutet, dass die Metadaten direkt eingegeben wurden; externe Herkunft bezeichnet die exakte Quellen-Veröffentlichung, während Datei-Tags eine lokale Snapshot-Quelle aufzeichnet.
+- **`releases`**: die zentrale Einheit, eine Zeile pro importierter Kopie, enthält die Pressungsdaten (Label, Katalognummer, Barcode, Land, Format, Jahr), optionale Metadaten-Herkunft, einen Inhalts-Hash des importierten Ordners und die gemessene Album-Lautstärke. Keine Herkunft bedeutet, dass die Metadaten direkt eingegeben wurden; externe Herkunft bezeichnet die exakte Quellen-Veröffentlichung, während Datei-Tags eine lokale Snapshot-Quelle aufzeichnet.
 - **`release_identities`**: Exakte externe Identitäten für das, was ein Release *ist*. Keine Zeilen bedeuten keine externe Identität. Jede Zeile nennt ein MusicBrainz- oder Discogs-Release und eine Release-Gruppe, und ein Release kann Identitäten in beiden Quellen gleichzeitig enthalten. Dies ist getrennt von der Provenienz: Die Identität kann sich ändern, ohne dass behauptet wird, dass die aktuellen editierbaren Metadaten von dieser Quelle zurückgesetzt wurden.
 - **`tracks`** mit **`track_artists`**, plus **`release_artist_roles`** und **`track_artist_roles`**: Tracklisten und Mitwirkende, jede Mitwirkung mit ihrer Quelle markiert.
 - **`track_works`**, **`work_parts`**, **`work_artists`**: Aufnahmen, die mit den Werken verknüpft sind, die sie aufführen.
@@ -39,4 +39,4 @@ In einem undurchsichtigen Zuhause werden Blobs unter bedeutungslosen Inhaltsschl
 
 ## Identität eines Rips
 
-`releases.content_hash` ist ein SHA-256 über die Dateistruktur des importierten Ordners (relative Pfade und Größen), unabhängig davon, wo der Ordner auf der Festplatte liegt. So erkennt bae einen bereits importierten Rip, wenn er erneut in einem überwachten Ordner auftaucht, und so finden Re-Importe das Release, das sie ersetzen sollen.
+Jeder Import erstellt eine Veröffentlichung mit einer neuen zufälligen ID und eigenen Titel- und Dateizeilen. `releases.content_hash` speichert einen nicht eindeutigen SHA-256 der sortierten relativen Pfade, Größen und Änderungszeiten. Eine Übereinstimmung gibt nur einen Hinweis auf eine mögliche Kopie; sie verhindert keinen Import und ersetzt keine Veröffentlichung. Der Tab für abgeschlossene Importe zeigt alle passenden Veröffentlichungen des Ordners und bietet keinen erneuten Import an.

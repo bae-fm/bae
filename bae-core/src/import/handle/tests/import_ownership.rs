@@ -19,7 +19,7 @@ async fn release_count(handle: &ImportServiceHandle) -> usize {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn repeated_imports_of_one_candidate_make_one_release() {
+async fn concurrent_imports_keep_one_owner_and_later_imports_make_new_copies() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
     handle
         .set_candidate_album_artists(
@@ -48,18 +48,14 @@ async fn repeated_imports_of_one_candidate_make_one_release() {
         .await
         .unwrap_or_else(|error| panic!("import failed: {error}"));
 
-    let after = handle.start_import(&key).await;
-    let selected = handle.import_selected(&key).await;
-    let releases = release_count(&handle).await;
+    for selected in [false, true] {
+        let id = if selected {
+            handle.import_selected(&key).await
+        } else {
+            handle.start_import(&key).await
+        }.expect("a later import creates its own copy");
+        await_import_outcome(&mut events, &id).await.unwrap();
+    }
+    assert_eq!(release_count(&handle).await, 3);
     shut_down(handle).await;
-
-    assert!(matches!(
-        after,
-        Err(crate::import::ImportError::CandidateAlreadyImported)
-    ));
-    assert!(matches!(
-        selected,
-        Err(crate::import::ImportError::CandidateAlreadyImported)
-    ));
-    assert_eq!(releases, 1);
 }

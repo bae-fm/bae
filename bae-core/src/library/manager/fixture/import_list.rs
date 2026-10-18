@@ -214,7 +214,7 @@ impl LibraryManager {
                         &content_hash,
                         candidate.file_edit_revision,
                         &crate::import::ImportFailure {
-                            reason: crate::import::ImportFailureReason::Error {
+                            reason: crate::import::ImportFailureReason {
                                 detail: FIXTURE_IMPORT_FAILURE.to_string(),
                             },
                             failed_at: self.clock.now(),

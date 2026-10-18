@@ -46,4 +46,4 @@ O lançamento entra referenciando os arquivos do usuário no lugar. Se o usuári
 
 ## Reconhecendo rips
 
-Cada lançamento registra um hash de conteúdo sobre a estrutura da pasta importada (caminhos relativos e tamanhos, independente de localização). Reescaneamentos o usam para marcar pastas já na biblioteca, e reimportações do mesmo rip encontram e substituem o lançamento anterior em vez de duplicá-lo.
+Cada importação cria um lançamento com um novo ID aleatório e suas próprias linhas de faixas e arquivos. `releases.content_hash` armazena um SHA-256 não exclusivo dos caminhos relativos ordenados, tamanhos e datas de modificação. Uma correspondência apenas indica uma possível cópia; nunca impede a importação nem substitui um lançamento. A aba de importações concluídas lista todos os lançamentos correspondentes à pasta e não oferece reimportação.

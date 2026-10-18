@@ -46,4 +46,4 @@ Release user ની files ને in place reference કરીને lands થા
 
 ## Rips ઓળખવા
 
-દરેક release તેના imported folder ની structure (relative paths અને sizes, location-independent) ઉપર content hash record કરે છે. Re-scans તે વાપરી folders ને already in library તરીકે mark કરે છે, અને એ જ rip ના re-imports duplicate કરતાં prior release શોધી replace કરે છે.
+દરેક આયાત નવા રેન્ડમ ઓળખકર્તા અને પોતાના ટ્રૅક તથા ફાઇલની હરોળો સાથે રિલીઝ બનાવે છે. `releases.content_hash` ક્રમબદ્ધ સાપેક્ષ પાથ, કદ અને ફેરફારના સમયનો SHA-256 સંગ્રહે છે; તે અનન્ય નથી. હેશ મળે તો માત્ર સંભવિત નકલનો સંકેત મળે છે; આયાત અટકતી નથી અને જૂની રિલીઝ બદલાતી નથી. પૂર્ણ થયેલ આયાતના ટૅબમાં ફોલ્ડરની બધી મળતી રિલીઝ દેખાય છે, ફરી આયાત કરવાની ક્રિયા નથી.

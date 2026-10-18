@@ -124,7 +124,12 @@ async fn selected_folders_from_different_roots_import_as_one_release() {
         ]
     );
     assert!(pane(&handle, &key).await.is_added);
-    assert!(handle.separate_candidate(&key).await.is_err());
+    handle.separate_candidate(&key).await.unwrap();
+    assert_eq!(
+        handle.library_manager.release_edit_seed(&release_id).await.unwrap(),
+        imported,
+        "separating source folders preserves the imported copy"
+    );
     assert!(original_paths.iter().all(|path| path.is_file()));
     shut_down(handle).await;
 }

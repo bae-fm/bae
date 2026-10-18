@@ -10,7 +10,7 @@ bae'in kataloğu sıradan SQLite'tır; [coven](https://coven.bae.fm)'e tablo tab
 Şemanın eşzamanlanan kalbi:
 
 - **`artists`**, **`albums`**, **`works`**: gruplama katmanı. Albüm sürümlerini toplar ve bir primary sürümü gösterir; works klasik yapı için parent/child grafiği oluşturur.
-- **`releases`**: merkezi varlık, baskı başına bir satır. Baskı gerçeklerini (etiket, katalog numarası, çizgi kodu, ülke, biçim, yıl), seçenek meta veri kaynağı, ithal edilen dizin içeriğinin hash değeri ve ölçülmüş albüm ses seviyesini taşır. Kaynak yok demek meta verilerin doğrudan girildiği anlamına gelir; dış kaynak kesin kaynak çıkış adını verirken Dosya etiketleri yerel bir snapshot kaynağı kaydeder.
+- **`releases`**: merkezi varlık, içe aktarılan her kopya için bir satır. Baskı gerçeklerini (etiket, katalog numarası, çizgi kodu, ülke, biçim, yıl), seçenek meta veri kaynağı, ithal edilen dizin içeriğinin hash değeri ve ölçülmüş albüm ses seviyesini taşır. Kaynak yok demek meta verilerin doğrudan girildiği anlamına gelir; dış kaynak kesin kaynak çıkış adını verirken Dosya etiketleri yerel bir snapshot kaynağı kaydeder.
 - **`release_identities`**: bir sürümün *olduğu* için kesin dış kimlikler. Satır yoksa dış kimlik yok demektir. Her satır bir MusicBrainz veya Discogs sürüm ve sürüm grubunun adını verir, ve bir sürüm her iki kaynakta da aynı anda kimliklere sahip olabilir. Bu, kaynaktan ayrıdır: kimlik, mevcut düzenleyici meta verisinin o kaynaktan geri konulduğunu iddia etmeden değişebilir.
 - **`tracks`** ile **`track_artists`**, ayrıca **`release_artist_roles`** ve **`track_artist_roles`**: parça listeleri ve krediler; her kredi kaynağıyla etiketlenir.
 - **`track_works`**, **`work_parts`**, **`work_artists`**: icra ettikleri eserlere bağlı kayıtlar.
@@ -39,4 +39,4 @@ Opaque evde blob'lar anlamsız içerik anahtarları altında yüklenir. Browsabl
 
 ## Bir rip'in kimliği
 
-`releases.content_hash`, içe aktarılan klasörün dosya yapısı (göreli yollar ve boyutlar) üzerinden, klasörün diskte nerede olduğundan bağımsız bir SHA-256'dır. bae'in izlenen klasörde yeniden görünen zaten içe aktarılmış bir rip'i tanıma yolu budur; yeniden içe aktarmaların değiştirmesi gereken sürümü bulma yolu da budur.
+Her içe aktarma, yeni rastgele kimliği ve kendi parça ve dosya satırları olan bir sürüm oluşturur. `releases.content_hash`, sıralanmış göreli yolların, boyutların ve değişiklik zamanlarının benzersiz olmayan SHA-256 değerini saklar. Eşleşme yalnızca olası bir kopyayı belirtir; içe aktarmayı engellemez ve sürümün yerine geçmez. Tamamlanan içe aktarmalar sekmesi, klasörle eşleşen tüm sürümleri gösterir ve yeniden içe aktarma işlemi sunmaz.

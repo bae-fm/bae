@@ -166,11 +166,6 @@ impl ImportServiceHandle {
         {
             let _commit = self.folder_state_commit.lock("check a release to separate").await;
             self.ensure_combination_idle(key)?;
-            if let Some(detail) = self.library_manager.load_import_candidate(key).await? {
-                if detail.is_added {
-                    return Err(ImportError::CandidateAlreadyImported);
-                }
-            }
         }
         match self.library_manager.load_grouping(key).await? {
             Some(crate::db::GroupingFacts::Anchored { folder, .. }) => {

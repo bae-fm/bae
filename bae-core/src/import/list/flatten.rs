@@ -431,7 +431,7 @@ pub(super) fn place_row(
         .get(content_hash)
         .filter(|state| state.edit_revision == row.file_edit_revision);
     let verdict = state.and_then(|state| state.verdict.as_ref());
-    let imported = rows.imported.get(content_hash);
+    let imported = rows.imported.get(content_hash).map(Vec::as_slice).unwrap_or_default();
     let import_status = import_status_of(
         imported,
         row.error(),
@@ -448,7 +448,7 @@ pub(super) fn place_row(
     let metadata_provenance = state.and_then(|state| state.metadata_provenance.clone());
     let release_link = state.and_then(|state| state.release_link.clone());
     let draft_valid = state.is_some_and(|state| state.metadata_draft_valid);
-    let placement = place(skipped, imported.is_some(), import_status.as_ref());
+    let placement = place(skipped, !imported.is_empty(), import_status.as_ref());
     let actionable = row.error().is_none();
     let action_basis = CandidateActionBasis::of(
         actionable,
@@ -500,14 +500,13 @@ fn done_order(
     triage_row: &TriageRow,
     upload_standing: &BTreeMap<String, UploadStanding>,
 ) -> DoneOrder {
-    let release_id = match &triage_row.import_status {
-        Some(TriageImportStatus::Complete { release }) => Some(release.release_id.as_str()),
-        _ => None,
+    let Some(TriageImportStatus::Complete { releases }) = &triage_row.import_status else {
+        unreachable!("a Done row carries its imported releases");
     };
     DoneOrder {
-        upload_rank: UploadStanding::rank(
-            release_id.and_then(|id| upload_standing.get(id).copied()),
-        ),
+        upload_rank: releases.iter()
+            .map(|release| UploadStanding::rank(upload_standing.get(&release.release_id).copied()))
+            .min().expect("a Done row has at least one release"),
         imported_at: row
             .content_hash
             .as_deref()
@@ -644,7 +643,7 @@ fn shown_text<'a>(
             .map(Cow::Borrowed)
             .collect());
     }
-    let Some(TriageImportStatus::Complete { release }) = &triage_row.import_status else {
+    let Some(TriageImportStatus::Complete { releases }) = &triage_row.import_status else {
         return Err(LibraryError::Internal(format!(
             "candidate {} is placed Done with no imported release",
             triage_row.candidate_key
@@ -656,13 +655,17 @@ fn shown_text<'a>(
                 .to_string(),
         )
     })?;
-    let text = texts.get(&release.release_id).ok_or_else(|| {
-        LibraryError::Internal(format!(
-            "candidate {} is placed Done on release {}, which has no album",
-            triage_row.candidate_key, release.release_id
-        ))
-    })?;
-    Ok(text.shown_text())
+    let mut shown = Vec::new();
+    for release in releases {
+        let text = texts.get(&release.release_id).ok_or_else(|| {
+            LibraryError::Internal(format!(
+                "candidate {} is placed Done on release {}, which has no album",
+                triage_row.candidate_key, release.release_id
+            ))
+        })?;
+        shown.extend(text.shown_text());
+    }
+    Ok(shown)
 }
 
 /// The whole queue's tab counts, Pending's covers and group keys, and what

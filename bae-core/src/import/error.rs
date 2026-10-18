@@ -138,16 +138,6 @@ pub enum ImportError {
         error: std::sync::Arc<crate::playback::PlaybackError>,
     },
 
-    /// Per-pressing duplicate rejection: an Exact identity already in the
-    /// library, as this album. A failure records the album by id; its title
-    /// here is the one read when the import was refused.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    #[error("release is already in the library as album {album_id} (\"{album_title}\")")]
-    AlreadyInLibrary {
-        album_id: String,
-        album_title: String,
-    },
-
     /// Candidate preparation is immutable from the moment import owns it.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     #[error("This release is being imported and can no longer be edited")]
@@ -177,19 +167,13 @@ pub enum ImportError {
         reason: crate::import::grouping::GroupingBlock,
     },
 
-    /// A completed import is edited through the persisted release editor, not
-    /// through the candidate preparation it was created from.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    #[error("This release has already been imported; edit it in the library")]
-    CandidateAlreadyImported,
-
     /// The user-edit overlay is invalid (reuses the editor's typed error).
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     #[error(transparent)]
     Edit(#[from] crate::import::EditValidationError),
 
     /// A library/DB operation failed (insert_import, finalize_import_atomic,
-    /// the artist credits it resolves, replacement plans, coven_make_remote).
+    /// the artist credits it resolves, coven_make_remote).
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     #[error(transparent)]
     Db(#[from] crate::library::LibraryError),
@@ -274,7 +258,6 @@ impl ImportError {
             Self::ImportWriting => C::Import,
             Self::CandidateImportInProgress => C::CandidateImportInProgress,
             Self::CandidateBeingIdentified => C::CandidateBeingIdentified,
-            Self::CandidateAlreadyImported => C::CandidateAlreadyImported,
             Self::MetadataTrackCount {
                 folder_tracks,
                 release_tracks,
@@ -282,7 +265,6 @@ impl ImportError {
                 folder_tracks: *folder_tracks,
                 release_tracks: *release_tracks,
             },
-            Self::AlreadyInLibrary { .. } => C::AlreadyInLibrary,
             Self::SourceData { .. } | Self::CoverArt { .. } => C::ImportData,
             Self::MusicBrainz(error) => match error {
                 MusicBrainzError::Other(_) => C::ImportData,

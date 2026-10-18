@@ -10,7 +10,7 @@ El catálogo de bae es SQLite ordinario, declarado a [coven](https://coven.bae.f
 El corazon sincronizado del esquema:
 
 - **`artists`**, **`albums`**, **`works`**: la capa de agrupación. Un álbum agrega sus lanzamientos y apunta a uno principal; las obras forman un grafo padre/hijo para estructura clásica.
-- **`releases`**: la entidad central, una fila por prensado. Lleva los hechos de prensado (etiqueta, número de catálogo, código de barras, país, formato, año), la procedencia de metadatos opcionales, un hash de contenido de la carpeta importada, y el volumen medido del álbum. Sin procedencia significa que los metadatos se ingresaron directamente; la procedencia externa nombra el lanzamiento de la fuente exacta, mientras que Etiquetas de archivo registra una fuente de instantánea local.
+- **`releases`**: la entidad central, una fila por copia importada. Lleva los hechos de prensado (etiqueta, número de catálogo, código de barras, país, formato, año), la procedencia de metadatos opcionales, un hash de contenido de la carpeta importada, y el volumen medido del álbum. Sin procedencia significa que los metadatos se ingresaron directamente; la procedencia externa nombra el lanzamiento de la fuente exacta, mientras que Etiquetas de archivo registra una fuente de instantánea local.
 - **`release_identities`**: identidades externas exactas de lo que *es* una versión. Sin filas significa que no hay identidad externa. Cada fila nombra una versión y un grupo de versiones MusicBrainz o Discogs, y una versión puede contener identidades en ambas fuentes a la vez. Esto es independiente de la procedencia: la identidad puede cambiar sin afirmar que los metadatos editables actuales se restablecieron desde esa fuente.
 - **`tracks`** con **`track_artists`**, más **`release_artist_roles`** y **`track_artist_roles`**: listas de pistas y créditos, cada crédito etiquetado con su fuente.
 - **`track_works`**, **`work_parts`**, **`work_artists`**: grabaciones vinculadas a las obras que interpretan.
@@ -39,4 +39,4 @@ En un hogar opaco, los blobs se suben bajo claves de contenido sin significado. 
 
 ## Identidad de una copia
 
-`releases.content_hash` es un SHA-256 sobre la estructura de archivos de la carpeta importada (rutas relativas y tamaños), independiente de donde esté la carpeta en disco. Así reconoce bae una copia ya importada cuando aparece otra vez en una carpeta vigilada, y así las reimportaciones encuentran el lanzamiento que deben reemplazar.
+Cada importación crea un lanzamiento con un ID aleatorio nuevo y sus propias filas de pistas y archivos. `releases.content_hash` guarda un SHA-256 no único de las rutas relativas ordenadas, tamaños y fechas de modificación. Una coincidencia solo avisa de una posible copia; nunca impide importar ni reemplaza un lanzamiento. La pestaña de completados muestra todos los lanzamientos coincidentes de la carpeta y no ofrece volver a importar.

@@ -46,4 +46,4 @@ De release landt met verwijzingen naar de bestanden van de gebruiker op hun plek
 
 ## Rips herkennen
 
-Elke release registreert een contenthash over de structuur van zijn geimporteerde map (relatieve paden en groottes, onafhankelijk van locatie). Re-scans gebruiken die om mappen te markeren die al in de bibliotheek staan, en re-imports van dezelfde rip vinden en vervangen hun eerdere release in plaats van hem te dupliceren.
+Elke import maakt een release met een nieuwe willekeurige ID en eigen rijen voor nummers en bestanden. `releases.content_hash` bewaart een niet-unieke SHA-256 van de gesorteerde relatieve paden, groottes en wijzigingstijden. Een overeenkomst geeft alleen een aanwijzing voor een mogelijke kopie; ze weigert geen import en vervangt geen release. Het tabblad voor voltooide imports toont alle overeenkomende releases van de map en biedt geen herimport aan.

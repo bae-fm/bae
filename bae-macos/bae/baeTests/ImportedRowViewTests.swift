@@ -5,10 +5,7 @@ import Testing
 
 @testable import bae
 
-/// What a Done row draws: the library release the candidate became, as core
-/// read it from the library. Which release that is, and that an edit to it
-/// reaches the row, is core's and core tests it; these are about what the row
-/// draws from it.
+/// A Done row renders every library copy core associates with the folder.
 @Suite("Done row rendering")
 struct ImportedRowViewTests {
     @MainActor
@@ -30,10 +27,25 @@ struct ImportedRowViewTests {
         #expect(!lines.carrying(PreviewData.folderCandidates[0].displayName))
     }
 
+    @MainActor
+    @Test("a Done row draws every matching copy and the duplicate hint")
+    func aDoneRowDrawsEveryCopy() async throws {
+        var row = PreviewData.importedRowIdentified
+        var copy = row.releases[0]
+        copy.releaseId = "second-copy"
+        copy.title = "Second Album"
+        row.releases.append(copy)
+
+        let lines = try await renderedLines(row)
+        #expect(lines.carrying(row.releases[0].title))
+        #expect(lines.carrying(copy.title))
+        #expect(lines.carrying(coreString("ui.import.probably_in_library")))
+    }
+
     @Test("a release with no year names its artist alone")
     func aReleaseWithNoYearNamesItsArtistAlone() {
         let summary = ImportReleaseSummary(
-            release: PreviewData.importedRowFromTags.release
+            release: PreviewData.importedRowFromTags.releases[0]
         )
         #expect(summary.title == "Album Title")
         #expect(summary.artist == "Artist Name")
@@ -41,7 +53,7 @@ struct ImportedRowViewTests {
 
     @Test("a release with no title stands a placeholder in for it")
     func aReleaseWithNoTitleStandsAPlaceholderIn() {
-        var release = PreviewData.importedRowFromTags.release
+        var release = PreviewData.importedRowFromTags.releases[0]
         release.title = ""
         release.artist = nil
         let summary = ImportReleaseSummary(release: release)
@@ -56,7 +68,7 @@ struct ImportedRowViewTests {
     func theArrowMarksAReleaseACatalogDescribes() async throws {
         let described = PreviewData.importedRowIdentified
         var undescribed = described
-        undescribed.release.records = []
+        undescribed.releases[0].records = []
         #expect(try await pixels(of: described) != pixels(of: undescribed))
         #expect(
             try await fittingSize(of: described)
@@ -65,7 +77,7 @@ struct ImportedRowViewTests {
         )
     }
 
-    private static let rowSize = NSSize(width: 340, height: 80)
+    private static let rowSize = NSSize(width: 340, height: 180)
 
     /// `row` hosted for the length of `body`.
     @MainActor
@@ -74,7 +86,7 @@ struct ImportedRowViewTests {
         _ body: (NSView) async throws -> Value
     ) async throws -> Value {
         try await SnapshotTestSupport.withHostedWindow(
-            ImportedRowView(row: row, uploadObservation: nil, onReveal: {})
+            ImportedRowView(row: row, uploadObservations: [:], onReveal: {})
                 .environment(ImageStore.stub())
                 .preferredColorScheme(.light)
                 .background(.white)

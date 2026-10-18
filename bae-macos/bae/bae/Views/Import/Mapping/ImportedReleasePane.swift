@@ -34,49 +34,47 @@ struct ImportedReleasePane: View {
     private var uiStore
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: ThemeSpace.section) {
-                CandidateFolderLine(
-                    tab: candidate.tab,
-                    folderName: candidate.displayName,
-                    folderPaths: candidate.sourceFolderPaths,
-                    onNavigateToPlacement: {}
+        VStack(alignment: .leading, spacing: ThemeSpace.section) {
+            CandidateFolderLine(
+                tab: candidate.tab,
+                folderName: candidate.displayName,
+                folderPaths: candidate.sourceFolderPaths,
+                onNavigateToPlacement: {}
+            )
+            if let session {
+                actionBar(session)
+                ReleaseMetadataEditorContent(
+                    session: session,
+                    onEditCover: { presentCoverPicker(session) },
+                    onPlayTrack: onPlayTrack
                 )
-                if let session {
-                    actionBar(session)
-                    ReleaseMetadataEditorContent(
-                        session: session,
-                        onEditCover: { presentCoverPicker(session) },
-                        onPlayTrack: onPlayTrack
-                    )
-                    if !candidate.mapping.images.isEmpty {
-                        imagesSection
-                    }
-                    if !candidate.mapping.files.isEmpty {
-                        filesSection
-                    }
+                if !candidate.mapping.images.isEmpty {
+                    imagesSection
                 }
-                else if let loadError {
-                    LoadFailureView(error: loadError) {
-                        Task { await load() }
-                    }
+                if !candidate.mapping.files.isEmpty {
+                    filesSection
+                }
+            }
+            else if let loadError {
+                LoadFailureView(error: loadError) {
+                    Task { await load() }
+                }
+                .frame(
+                    maxWidth: .infinity,
+                    minHeight: Self.placeholderHeight
+                )
+            }
+            else {
+                ProgressView("Loading")
                     .frame(
                         maxWidth: .infinity,
                         minHeight: Self.placeholderHeight
                     )
-                }
-                else {
-                    ProgressView("Loading")
-                        .frame(
-                            maxWidth: .infinity,
-                            minHeight: Self.placeholderHeight
-                        )
-                }
             }
-            .padding(.horizontal, ThemeSpace.section)
-            .padding(.top, ThemeSpace.section)
-            .padding(.bottom, ThemeSpace.page)
         }
+        .padding(.horizontal, ThemeSpace.section)
+        .padding(.top, ThemeSpace.section)
+        .padding(.bottom, ThemeSpace.page)
         .task(id: releaseId) { await load() }
         .onDisappear {
             session?.cancelTasks()

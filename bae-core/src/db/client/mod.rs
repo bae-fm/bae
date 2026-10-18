@@ -25,8 +25,6 @@ use std::path::Path;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use std::str::FromStr;
 use std::sync::Arc;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-use std::sync::Mutex;
 use tracing::warn;
 
 mod album;
@@ -111,7 +109,6 @@ mod query;
 mod read;
 mod write;
 
-pub use query::ImportReplacementOutcome;
 use query::*;
 use read::*;
 use release_projection::{

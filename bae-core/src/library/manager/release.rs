@@ -71,59 +71,30 @@ impl LibraryManager {
         Ok(self.database.get_tracks_for_release(release_id).await?)
     }
 
-    /// The existing album a new import should attach to, from a two-pass dedup
-    /// against the release records:
-    ///
-    /// 1. **Per-pressing rejection.** A release in the library carrying a record
-    ///    that matches one of the new release's `(catalog, key)` pairs means this
-    ///    is a duplicate import. Surface that album's title so the user sees what
-    ///    they already have.
-    /// 2. **Cross-catalog merge.** A release carrying a record matching one of
-    ///    the new release's `(catalog, album key)` pairs gives up its `album_id`,
-    ///    so the new release attaches to the same album. Records pair across
-    ///    catalogs, so an MB-rooted import that carried a cross-linked Discogs
-    ///    record is reachable from a later Discogs-rooted import of the same
-    ///    master.
-    ///
-    /// Empty `records` skips both lookups — file metadata and direct-entry imports
-    /// always get a fresh album.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn find_existing_album_for_import(
         &self,
         records: &[crate::import::ReleaseRecord],
     ) -> Result<Option<String>, crate::import::ImportError> {
-        self.find_existing_album_for_import_excluding(records, &[])
-            .await
-    }
-
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub(crate) async fn find_existing_album_for_import_excluding(
-        &self,
-        records: &[crate::import::ReleaseRecord],
-        excluded_release_ids: &[String],
-    ) -> Result<Option<String>, crate::import::ImportError> {
         if records.is_empty() {
             return Ok(None);
         }
 
-        // Per-pressing rejection: a record matching one already in the
-        // library.
+        // Another copy of the same pressing belongs to the existing album,
+        // including a pressing with no catalog album key.
         if let Some(existing) = self
             .database
-            .find_album_by_record_key_excluding(records, excluded_release_ids)
+            .find_album_by_record_key(records)
             .await
             .map_err(|e| crate::import::ImportError::Db(LibraryError::Database(e)))?
         {
-            return Err(crate::import::ImportError::AlreadyInLibrary {
-                album_id: existing.id,
-                album_title: existing.title,
-            });
+            return Ok(Some(existing.id));
         }
 
         // Cross-catalog merge: a record's group matching a row already there.
         let album_id = self
             .database
-            .find_album_by_record_group_excluding(records, excluded_release_ids)
+            .find_album_by_record_group_excluding(records, &[])
             .await
             .map_err(|e| crate::import::ImportError::Db(LibraryError::Database(e)))?;
 
@@ -758,40 +729,6 @@ impl LibraryManager {
         }
 
         Ok(())
-    }
-
-    /// Test-only: remove every release whose stored content hash equals `hash`, one
-    /// [`delete_release`](Self::delete_release) per match. A re-import does NOT use
-    /// this destructive path — it prepares replacement plans and commits the
-    /// prior-release delete inside the finalize transaction.
-    #[cfg(all(test, not(any(target_os = "ios", target_os = "android"))))]
-    pub async fn delete_releases_with_content_hash(&self, hash: &str) -> Result<(), LibraryError> {
-        for release_id in self.database.release_ids_for_content_hash(hash).await? {
-            self.delete_release(&release_id).await?;
-        }
-        Ok(())
-    }
-
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub(crate) async fn import_replacement_plans_for_content_hash(
-        &self,
-        hash: &str,
-    ) -> Result<Vec<ImportReplacementPlan>, LibraryError> {
-        let mut plans = Vec::new();
-        for release_id in self.database.release_ids_for_content_hash(hash).await? {
-            let track_ids: Vec<String> = self
-                .get_tracks_for_release(&release_id)
-                .await?
-                .into_iter()
-                .map(|t| t.id)
-                .collect();
-            let deletion = self.database.plan_release_deletion(&release_id).await?;
-            plans.push(ImportReplacementPlan {
-                deletion,
-                track_ids,
-            });
-        }
-        Ok(plans)
     }
 }
 

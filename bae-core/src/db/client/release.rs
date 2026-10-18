@@ -436,11 +436,10 @@ impl Database {
         // keys each blob by its hashed id, `Browsable` lays it out at a readable
         // `cloud_path` computed inside this transaction, ready when the gate flips.
         storage: crate::config::HomeStorage,
-        replacement_deletes: &[ReleaseDeletion],
         // A release that goes Remote from the start has its uploads and
         // intent recorded in this same write.
         destination: crate::import::ImportDestination,
-    ) -> Result<Vec<ImportReplacementOutcome>, ArtistWriteError> {
+    ) -> Result<(), ArtistWriteError> {
         let album = album.cloned();
         let release = release.clone();
         let tracks: Vec<DbTrack> = tracks_to_files
@@ -482,25 +481,14 @@ impl Database {
             .collect();
         let primary_release_id = primary_release_id.map(|(a, r)| (a.to_string(), r.to_string()));
         let records = rows.records.to_vec();
-        let replacement_deletes = replacement_deletes.to_vec();
-        let replaced_blobs: Vec<coven::BlobRef> = replacement_deletes
-            .iter()
-            .flat_map(ReleaseDeletion::blob_deletes)
-            .collect();
-
         let now_dt = self.inner.clock.now();
         let now = now_dt.to_rfc3339();
-        let replacement_outcomes = Arc::new(Mutex::new(Vec::new()));
-        let replacement_outcomes_for_write = Arc::clone(&replacement_outcomes);
         self.inner
             .handle
             .write_with_blobs(
                 move |w| {
                     for (namespace, id, bytes) in image_blobs {
                         w.put_blob(namespace, id, bytes);
-                    }
-                    for blob in replaced_blobs {
-                        w.delete_blob(blob);
                     }
                     Ok(())
                 },
@@ -511,29 +499,6 @@ impl Database {
                     // Every synced row this transaction inserts shares one HLC stamp
                     // for `_updated_at`; wall-clock `now` stays for `created_at`.
                     let reg = sql.stamp();
-
-                    for replacement in &replacement_deletes {
-                        replacement.apply_on(tx)?;
-                        tx.execute(
-                            "DELETE FROM releases WHERE id = ?",
-                            params![replacement.release_id()],
-                        )?;
-
-                        let album_emptied = vacate_album_on(
-                            tx,
-                            replacement.album_id(),
-                            replacement.release_id(),
-                            &reg,
-                        )?;
-                        replacement_outcomes_for_write
-                            .lock()
-                            .expect("replacement outcomes mutex not poisoned")
-                            .push(ImportReplacementOutcome {
-                                release_id: replacement.release_id().to_string(),
-                                album_id: replacement.album_id().to_string(),
-                                album_emptied,
-                            });
-                    }
 
                     // Every credit is decided here, against the library as it
                     // stands inside this transaction, so an artist another
@@ -722,11 +687,8 @@ impl Database {
                 },
             )
             .await
-            .map_err(Self::artist_write_error)?;
-        Ok(Arc::try_unwrap(replacement_outcomes)
-            .expect("replacement outcomes captured only by finalize_import_atomic")
-            .into_inner()
-            .expect("replacement outcomes mutex not poisoned"))
+            .map(|_| ())
+            .map_err(Self::artist_write_error)
     }
 
     /// Delete a release row in the write that declares its blobs deleted (see

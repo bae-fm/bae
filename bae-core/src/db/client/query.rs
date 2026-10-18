@@ -149,14 +149,6 @@ pub(super) fn artist_image_cloud_path_for_storage(
         .then(|| resolve_artist_cloud_path(artist_id, blob_id, content_type))
 }
 
-#[derive(Clone, Debug)]
-pub struct ImportReplacementOutcome {
-    pub release_id: String,
-    pub album_id: String,
-    /// The replaced release was its album's last.
-    pub album_emptied: bool,
-}
-
 /// After `removed_release_id` has left `album_id` inside the current
 /// transaction: NULL a `primary_release_id` that pointed at the removed release
 /// (the user's cover-release choice is gone with it, and read paths fall back to

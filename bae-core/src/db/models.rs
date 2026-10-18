@@ -255,6 +255,7 @@ impl LibraryStatus {
 /// audio and metadata, and several releases of one album coexist in the library.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbRelease {
+    /// A fresh random id for this imported copy, independent of its folder hash.
     pub id: String,
     pub album_id: String,
     /// Human-readable release name (e.g., "2016 Remaster", "180g Vinyl"). `None`
@@ -274,14 +275,12 @@ pub struct DbRelease {
     /// files; a remote release's bytes live in coven's blob cache.
     pub remote: bool,
     /// Name of the source folder this release was imported from (just the final
-    /// path component, not the full path). Used to detect likely duplicates when
-    /// the user re-scans the same folder.
+    /// path component, not the full path).
     pub source_folder_name: Option<String>,
-    /// SHA-256 over the imported folder's categorized file structure (sorted
-    /// relative paths + sizes) — a location-independent content fingerprint.
-    /// `None` for releases not created by a folder import. Metadata edits and
-    /// re-identify preserve it (the files didn't change). Used to recognize an
-    /// already-imported folder and to pick the overwrite target on re-import.
+    /// SHA-256 over sorted relative paths, sizes and modification times.
+    /// Non-unique: every copy keeps its own release id. A matching hash supplies
+    /// the import view's duplicate hint and Done placement. Metadata edits and
+    /// re-identification preserve it; releases without a folder import have none.
     pub content_hash: Option<String>,
     /// Album-level integrated loudness (EBU R128) in LUFS, measured at import
     /// over all tracks combined. `None` = not measured. Playback derives a gain

@@ -156,11 +156,9 @@ impl ImportServiceHandle {
                 .await;
             match &started {
                 Ok(_) => {}
-                // Another import owns the candidate or already made it a
-                // release; that import reports how it went.
+                // Another import owns the candidate and reports how it went.
                 Err(
-                    crate::import::ImportError::CandidateImportInProgress
-                    | crate::import::ImportError::CandidateAlreadyImported,
+                    crate::import::ImportError::CandidateImportInProgress,
                 ) => {}
                 Err(error) => this.record_failed_start(&candidate_key, error).await,
             }

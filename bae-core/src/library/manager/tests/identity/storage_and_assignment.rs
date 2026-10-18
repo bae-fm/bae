@@ -630,7 +630,7 @@ async fn album_records_merge_albums_but_never_match_pressings() {
     );
     assert!(manager
         .database
-        .find_album_by_record_key_excluding(&records, &[])
+        .find_album_by_record_key(&records)
         .await
         .unwrap()
         .is_none());
@@ -643,7 +643,7 @@ async fn album_records_merge_albums_but_never_match_pressings() {
     );
     assert!(manager
         .database
-        .find_album_by_record_key_excluding(std::slice::from_ref(&pressing), &[])
+        .find_album_by_record_key(std::slice::from_ref(&pressing))
         .await
         .unwrap()
         .is_none());
@@ -706,7 +706,7 @@ async fn album_records_merge_albums_but_never_match_pressings() {
     assert_eq!(
         manager
             .database
-            .find_album_by_record_key_excluding(&[pressing], &[])
+            .find_album_by_record_key(&[pressing])
             .await
             .unwrap()
             .unwrap()
@@ -715,7 +715,7 @@ async fn album_records_merge_albums_but_never_match_pressings() {
     );
     assert!(manager
         .database
-        .find_album_by_record_key_excluding(&records, &[])
+        .find_album_by_record_key(&records)
         .await
         .unwrap()
         .is_none());
@@ -768,7 +768,7 @@ async fn ungrouped_pressings_do_not_invent_album_matches() {
     assert_eq!(
         manager
             .database
-            .find_album_by_record_key_excluding(&records, &[])
+            .find_album_by_record_key(&records)
             .await
             .unwrap()
             .unwrap()

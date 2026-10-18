@@ -180,9 +180,7 @@ struct CloudImportQueuePresentationTests {
         let store = OutboxStore(snapshot: snapshot)
 
         guard
-            case .active = store.persistedUploadObservation(
-                forRelease: "release-a"
-            )
+            case .active = store.persistedUploadObservations["release-a"]
         else {
             Issue.record("the restored import reads the durable release upload")
             return

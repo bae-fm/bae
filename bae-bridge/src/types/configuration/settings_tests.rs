@@ -114,23 +114,12 @@ fn expected_local_and_draft_failures_keep_their_presentation() {
             },
         ),
         (
-            ImportError::AlreadyInLibrary {
-                album_id: "album-1".into(),
-                album_title: "Album Title".into(),
-            },
-            BridgeErrorCategory::AlreadyInLibrary,
-        ),
-        (
             ImportError::CandidateImportInProgress,
             BridgeErrorCategory::CandidateImportInProgress,
         ),
         (
             ImportError::CandidateBeingIdentified,
             BridgeErrorCategory::CandidateBeingIdentified,
-        ),
-        (
-            ImportError::CandidateAlreadyImported,
-            BridgeErrorCategory::CandidateAlreadyImported,
         ),
         (
             ImportError::Config {

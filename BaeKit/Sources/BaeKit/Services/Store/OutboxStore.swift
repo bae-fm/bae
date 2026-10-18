@@ -176,16 +176,11 @@ public class OutboxStore {
         }
     }
 
-    /// An imported release's cloud transition. The outbox is the authority on
-    /// it: it holds the release while there is work, and drops it when there
-    /// is none — so absence is the imported row resting.
-    public func persistedUploadObservation(forRelease releaseId: String)
-        -> UploadObservation?
-    {
-        snapshot.perRelease[releaseId]
-            .map {
-                UploadObservation.active($0.progress)
-            }
+    /// Imported releases' cloud transitions. The outbox holds each release
+    /// while there is work and drops it when there is none, so absence means
+    /// the imported row is resting.
+    public var persistedUploadObservations: [String: UploadObservation] {
+        snapshot.perRelease.mapValues { UploadObservation.active($0.progress) }
     }
 
     /// Whether any cloud writes are still queued or in flight — uploads that

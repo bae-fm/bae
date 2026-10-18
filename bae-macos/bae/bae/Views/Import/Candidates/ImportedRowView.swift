@@ -1,21 +1,44 @@
 import BaeKit
 import SwiftUI
 
-/// One Done row: the library release the candidate became, as the library
-/// has it now, and what is running for its candidate.
+/// A Done folder and every library copy carrying its content hash.
 struct ImportedRowView: View {
     let row: BridgeImportedRow
-    /// The release's cloud upload state, from the list owner.
-    let uploadObservation: UploadObservation?
+    let uploadObservations: [String: UploadObservation]
     let onReveal: () -> Void
 
-    /// Where an import of the candidate stands; `nil` when none owns it.
-    private var importStanding: BridgeImportStanding? { row.live.import }
+    var body: some View {
+        VStack(alignment: .leading, spacing: ThemeSpace.related) {
+            Text(verbatim: coreString("ui.import.probably_in_library"))
+                .themeText(.detail)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, ImportListHierarchyLayout.rowEdgePadding)
+            ForEach(row.releases, id: \.releaseId) { release in
+                ImportedReleaseRowView(
+                    release: release,
+                    candidateKey: row.candidateKey,
+                    importStanding: row.live.import,
+                    uploadObservation: uploadObservations[release.releaseId]
+                )
+            }
+        }
+        .contextMenu {
+            Button("Reveal in Finder", action: onReveal)
+        }
+    }
+}
+
+private struct ImportedReleaseRowView: View {
+    let release: BridgeImportedReleaseSummary
+    let candidateKey: String
+    let importStanding: BridgeImportStanding?
+
+    let uploadObservation: UploadObservation?
 
     var body: some View {
         HStack(alignment: .center, spacing: ThemeSpace.related) {
             ImageView(
-                imageRef: row.release.cover,
+                imageRef: release.cover,
                 pointSize: TriageRowView.coverPointSize
             )
             .frame(
@@ -30,23 +53,20 @@ struct ImportedRowView: View {
         .padding(.vertical, ThemeSpace.compact)
         .padding(.horizontal, ImportListHierarchyLayout.rowEdgePadding)
         .contentShape(Rectangle())
-        .contextMenu {
-            Button("Reveal in Finder", action: onReveal)
-        }
     }
 
     private var meta: some View {
         VStack(alignment: .leading, spacing: 0) {
             ImportReleaseSummaryView(
-                summary: ImportReleaseSummary(release: row.release),
+                summary: ImportReleaseSummary(release: release),
                 style: .sidebar
             ) {
-                RecordArrow(readFromRecord: row.release.readFromRecord)
+                RecordArrow(readFromRecord: release.readFromRecord)
             }
             switch importStanding {
             case .running, .writing:
                 // Subscribes to progress here because it changes every second.
-                ImportProgressLine(key: row.candidateKey)
+                ImportProgressLine(key: candidateKey)
                     .themeText(.detail)
             case .queued:
                 EmptyView()
@@ -91,12 +111,12 @@ struct ImportedRowView: View {
         VStack(alignment: .leading, spacing: 0) {
             ImportedRowView(
                 row: PreviewData.importedRowIdentified,
-                uploadObservation: nil,
+                uploadObservations: [:],
                 onReveal: {}
             )
             ImportedRowView(
                 row: PreviewData.importedRowFromTags,
-                uploadObservation: nil,
+                uploadObservations: [:],
                 onReveal: {}
             )
         }

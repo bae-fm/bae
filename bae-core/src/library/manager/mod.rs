@@ -545,12 +545,6 @@ mod sync_indicator_tests {
     }
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(crate) struct ImportReplacementPlan {
-    pub(crate) deletion: crate::db::ReleaseDeletion,
-    pub(crate) track_ids: Vec<String>,
-}
-
 /// All DB data needed to play or serve a track: the internal aggregate behind
 /// `resolve_track_audio`, also carried inside `SaveTrackPlan` for the export
 /// decoder. Callers that only need resolved playback data use

@@ -15,18 +15,6 @@ fn scanned_flac() -> crate::import::folder_scanner::ScannedAudio {
     }
 }
 
-async fn prepare_release_file(
-    row: DbFile,
-    path: &std::path::Path,
-) -> crate::import::service::PreparedImportFile {
-    let size = usize::try_from(row.file_size).expect("fixture file size fits memory");
-    std::fs::write(path, vec![0x5a; size]).expect("write external file fixture");
-    let blob = coven::prepare_external_blob(path, |_| {})
-        .await
-        .expect("prepare external file fixture");
-    crate::import::service::PreparedImportFile { row, blob }
-}
-
 /// A named artist with no external ids and no sort name.
 fn test_artist(id: &str, name: &str, now: chrono::DateTime<chrono::Utc>) -> DbArtist {
     DbArtist {
@@ -98,40 +86,6 @@ fn test_track(
     }
 }
 
-/// `track`'s audio: a 1 KiB FLAC written under `tmp` and prepared as an
-/// external blob, with the standalone track file that points at it.
-async fn standalone_track_file(
-    tmp: &tempfile::TempDir,
-    track: DbTrack,
-    file_id: &str,
-    filename: &str,
-    now: chrono::DateTime<chrono::Utc>,
-) -> (
-    Vec<crate::import::TrackFile>,
-    crate::import::service::PreparedImportFile,
-) {
-    let file_path = tmp.path().join(filename);
-    let row = DbFile::new(
-        &track.release_id,
-        filename,
-        1024,
-        ContentType::Flac,
-        file_id.to_string(),
-        now,
-    );
-    let file = prepare_release_file(row, &file_path).await;
-    (
-        vec![crate::import::TrackFile {
-            db_track: track,
-            audio: crate::import::TrackAudio::Standalone {
-                file_path,
-                source_audio: scanned_flac(),
-            },
-        }],
-        file,
-    )
-}
-
 /// What a finalize varies between these tests. Everything else it takes — the
 /// unchecked test-setup guard and opaque home storage — is the same in all of
 /// them.
@@ -145,7 +99,6 @@ struct Commit<'a> {
     artist_images: crate::db::NewArtistImages<'a>,
     /// `(album_id, release_id)`
     primary_release_id: Option<(&'a str, &'a str)>,
-    replacement_deletes: &'a [ReleaseDeletion],
 }
 
 /// Finalize `release` past the guard, which these tests have already satisfied
@@ -154,7 +107,7 @@ async fn commit_import(
     db: &Database,
     release: &DbRelease,
     commit: Commit<'_>,
-) -> Vec<ImportReplacementOutcome> {
+) {
     db.finalize_import_atomic(
         crate::db::ImportCommitGuard::UncheckedTestSetup,
         commit.album,
@@ -166,7 +119,6 @@ async fn commit_import(
         commit.artist_images,
         commit.primary_release_id,
         crate::config::HomeStorage::Opaque,
-        commit.replacement_deletes,
         crate::import::ImportDestination::Local,
     )
     .await
@@ -243,7 +195,6 @@ async fn finalize_refuses_metadata_that_changed_after_queue_admission() {
             crate::db::NewArtistImages::default(),
             None,
             crate::config::HomeStorage::Opaque,
-            &[],
             crate::import::ImportDestination::Local,
         )
         .await
@@ -255,66 +206,6 @@ async fn finalize_refuses_metadata_that_changed_after_queue_admission() {
         .await
         .unwrap()
         .is_none());
-}
-
-/// Shared arrange for the two reimport-replacement tests. Seeds `album-old` with
-/// `existing_release_ids` and its `primary_release_id` at `replaced_release_id`,
-/// then finalizes a reimport whose new release `rel-new` lands in the fresh
-/// `album-new`, carrying a `ReleaseDeletion` for `replaced_release_id`.
-/// Returns the finalize outcomes, so each test asserts the album's fate itself.
-async fn finalize_reimport_replacing_release(
-    db: &Database,
-    tmp: &tempfile::TempDir,
-    now: chrono::DateTime<chrono::Utc>,
-    existing_release_ids: &[&str],
-    replaced_release_id: &str,
-) -> Vec<ImportReplacementOutcome> {
-    let artist = test_artist(ARTIST_A, "Artist Name A", now);
-    db.insert_artist(&artist).await.unwrap();
-
-    let album_old = test_album(ALBUM_OLD, "Album Title Old", &artist.id, now);
-    db.insert_album(&album_old).await.unwrap();
-    for id in existing_release_ids {
-        db.insert_release(&DbRelease::new_test(&album_old.id, id))
-            .await
-            .unwrap();
-    }
-    db.set_album_primary_release(&album_old.id, replaced_release_id)
-        .await
-        .unwrap();
-
-    let album_new = test_album(ALBUM_NEW, "Album Title New", &artist.id, now);
-    let release_new = DbRelease::new_test(&album_new.id, REL_NEW);
-    let (track_files, file) = standalone_track_file(
-        tmp,
-        test_track(TRACK_NEW, &release_new.id, "Track Title New", now),
-        FILE_NEW,
-        "Track Title New.flac",
-        now,
-    )
-    .await;
-
-    let replacement = db.plan_release_deletion(replaced_release_id).await.unwrap();
-    let picked = [artist.id.clone()];
-    commit_import(
-        db,
-        &release_new,
-        Commit {
-            album: Some(&album_new),
-            track_files: &track_files,
-            rows: crate::db::ImportRows {
-                artists: crate::db::ArtistCredits {
-                    credits: std::slice::from_ref(&artist),
-                    picked: &picked,
-                },
-                ..Default::default()
-            },
-            files: vec![file],
-            replacement_deletes: &[replacement],
-            ..Default::default()
-        },
-    )
-    .await
 }
 
 async fn seeded_db() -> (Database, tempfile::TempDir) {
@@ -494,59 +385,5 @@ async fn finalize_import_persists_composer_work_and_role_rows() {
         .await
     .unwrap();
     assert_eq!(track_role_count, 1);
-}
-
-/// Reimport replacing one of several releases in an album: the prior release
-/// leaves, the album survives, and a `primary_release_id` pointing at the
-/// departed release goes NULL — read paths fall back to the first release left.
-#[tokio::test]
-async fn finalize_replacement_in_surviving_album_clears_dangling_primary() {
-    let (db, tmp) = super::temp_db().await;
-    let now = chrono::DateTime::parse_from_rfc3339("2026-01-01T00:00:00Z")
-        .unwrap()
-        .with_timezone(&chrono::Utc);
-
-    // album-old holds rel-one (primary) and rel-two; the reimport replaces
-    // rel-one, so the album survives on rel-two.
-    let outcomes =
-        finalize_reimport_replacing_release(&db, &tmp, now, &[REL_ONE, REL_TWO], REL_ONE).await;
-
-    assert_eq!(outcomes.len(), 1);
-    assert_eq!(outcomes[0].album_id, ALBUM_OLD);
-    assert_eq!(outcomes[0].release_id, REL_ONE);
-    assert!(!outcomes[0].album_emptied);
-
-    let surviving = db
-        .find_album_by_id(ALBUM_OLD)
-        .await
-        .unwrap()
-        .expect("album survives while rel-two remains");
-    assert_eq!(surviving.primary_release_id, None);
-    assert!(db.find_release_by_id(REL_ONE).await.unwrap().is_none());
-    assert!(db.find_release_by_id(REL_TWO).await.unwrap().is_some());
-}
-
-/// Reimport replacing an album's sole release, landing in a new album: the prior
-/// album empties and stays (another device may be adding a release to it), and
-/// the outcome reports that it emptied.
-#[tokio::test]
-async fn finalize_replacement_of_last_release_empties_prior_album() {
-    let (db, tmp) = super::temp_db().await;
-    let now = chrono::DateTime::parse_from_rfc3339("2026-01-01T00:00:00Z")
-        .unwrap()
-        .with_timezone(&chrono::Utc);
-
-    // album-old holds only rel-old; replacing it empties it.
-    let outcomes = finalize_reimport_replacing_release(&db, &tmp, now, &[REL_OLD], REL_OLD).await;
-
-    assert_eq!(outcomes.len(), 1);
-    assert_eq!(outcomes[0].album_id, ALBUM_OLD);
-    assert!(outcomes[0].album_emptied);
-
-    assert!(db.find_album_by_id(ALBUM_OLD).await.unwrap().is_some());
-    assert!(db.get_releases_for_album(ALBUM_OLD).await.unwrap().is_empty());
-    assert!(db.find_release_by_id(REL_OLD).await.unwrap().is_none());
-    assert!(db.find_album_by_id(ALBUM_NEW).await.unwrap().is_some());
-    assert!(db.find_release_by_id(REL_NEW).await.unwrap().is_some());
 }
 

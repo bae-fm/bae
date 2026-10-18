@@ -249,10 +249,8 @@ fn produced_keys() -> Vec<String> {
             folder_tracks: 12,
             release_tracks: 10,
         },
-        BridgeErrorCategory::AlreadyInLibrary,
         BridgeErrorCategory::CandidateImportInProgress,
         BridgeErrorCategory::CandidateBeingIdentified,
-        BridgeErrorCategory::CandidateAlreadyImported,
         BridgeErrorCategory::Export,
         BridgeErrorCategory::Save,
         BridgeErrorCategory::CloudSetup {

@@ -106,35 +106,6 @@ async fn test_delete_release_with_multiple_releases_preserves_album() {
     assert_eq!(releases[0].id, release2.id);
 }
 
-#[tokio::test]
-async fn delete_releases_with_content_hash_removes_only_matching() {
-    let (manager, _temp_dir) = setup_test_manager().await;
-    let album = create_test_album();
-    let mut matching1 = create_test_release(&album.id);
-    matching1.content_hash = Some("hash-shared".to_string());
-    let mut matching2 = create_test_release(&album.id);
-    matching2.content_hash = Some("hash-shared".to_string());
-    let mut other = create_test_release(&album.id);
-    other.content_hash = Some("hash-other".to_string());
-
-    manager.database.insert_album(&album).await.unwrap();
-    insert_release(&manager, &matching1).await;
-    insert_release(&manager, &matching2).await;
-    insert_release(&manager, &other).await;
-
-    manager
-        .delete_releases_with_content_hash("hash-shared")
-        .await
-        .unwrap();
-
-    // Both releases carrying the re-imported folder's hash are gone; the
-    // unrelated release survives. This is the overwrite the import worker
-    // performs before inserting a re-import of the same folder tree.
-    let remaining = album_releases(&manager, &album.id).await;
-    assert_eq!(remaining.len(), 1);
-    assert_eq!(remaining[0].id, other.id);
-}
-
 #[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn delete_release_cancels_in_flight_make_remote() {

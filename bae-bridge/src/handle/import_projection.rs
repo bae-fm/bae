@@ -134,9 +134,11 @@ impl crate::types::BridgeCandidateRuntimeChange {
 impl crate::types::BridgeTriageImportStatus {
     pub(super) fn from_core(status: bae_core::import::triage::TriageImportStatus) -> Self {
         match status {
-            bae_core::import::triage::TriageImportStatus::Complete { release } => Self::Complete {
-                release_id: release.release_id,
-                album_id: release.album_id,
+            bae_core::import::triage::TriageImportStatus::Complete { releases } => Self::Complete {
+                releases: releases
+                    .into_iter()
+                    .map(crate::types::BridgeImportedRelease::from_core)
+                    .collect(),
             },
             bae_core::import::triage::TriageImportStatus::Error { failure } => Self::Error {
                 error: crate::types::BridgeError::from_core(failure.ui_error()),
@@ -154,9 +156,11 @@ impl crate::types::BridgeCandidateImportStatus {
             bae_core::import::CandidateImportStatus::Importing { standing } => Self::Importing {
                 standing: crate::types::BridgeImportStanding::from_core(standing),
             },
-            bae_core::import::CandidateImportStatus::Complete { release } => Self::Complete {
-                release_id: release.release_id,
-                album_id: release.album_id,
+            bae_core::import::CandidateImportStatus::Complete { releases } => Self::Complete {
+                releases: releases
+                    .into_iter()
+                    .map(crate::types::BridgeImportedRelease::from_core)
+                    .collect(),
             },
             bae_core::import::CandidateImportStatus::Error { failure } => Self::Error {
                 error: crate::types::BridgeError::from_core(failure.ui_error()),
@@ -218,6 +222,12 @@ impl crate::types::BridgeTriageRow {
 }
 
 mirror_struct! {
+    crate::types::BridgeImportedRelease = bae_core::import::ImportedRelease,
+    from_core: fn,
+    fields: { release_id, album_id },
+}
+
+mirror_struct! {
     crate::types::BridgeImportedReleaseSummary = bae_core::import::ImportedReleaseSummary,
     from_core: fn,
     fields: {
@@ -243,14 +253,17 @@ impl crate::types::BridgeImportedRow {
             // What the row's commands are decided from, which `live` already
             // decided.
             action_basis: _,
-            release,
+            releases,
             selected,
         } = row;
         Self {
             candidate_key,
             display_path,
             live: crate::types::BridgeCandidateLiveState::from_core(live),
-            release: crate::types::BridgeImportedReleaseSummary::from_core(release),
+            releases: releases
+                .into_iter()
+                .map(crate::types::BridgeImportedReleaseSummary::from_core)
+                .collect(),
             selected,
         }
     }
@@ -787,32 +800,20 @@ impl crate::types::BridgeImportFailure {
             artist_identity_conflict,
         } = failure;
         let error = crate::types::BridgeError::from_core(reason.ui_error());
-        match (reason, artist_identity_conflict) {
-            (
-                bae_core::import::ImportFailureReason::AlreadyInLibrary {
-                    album_id,
-                    album_title,
+        match artist_identity_conflict {
+            Some(conflict) => Self::ArtistIdentityConflict {
+                conflict: crate::types::BridgeArtistIdentityConflict {
+                    incoming_artist_name: conflict.incoming_artist_name,
+                    discogs_artist: crate::types::BridgeExistingArtist::from_core(
+                        conflict.discogs_artist,
+                    ),
+                    musicbrainz_artist: crate::types::BridgeExistingArtist::from_core(
+                        conflict.musicbrainz_artist,
+                    ),
                 },
-                _,
-            ) => Self::AlreadyInLibrary {
-                album_id,
-                album_title,
+                error,
             },
-            (bae_core::import::ImportFailureReason::Error { .. }, Some(conflict)) => {
-                Self::ArtistIdentityConflict {
-                    conflict: crate::types::BridgeArtistIdentityConflict {
-                        incoming_artist_name: conflict.incoming_artist_name,
-                        discogs_artist: crate::types::BridgeExistingArtist::from_core(
-                            conflict.discogs_artist,
-                        ),
-                        musicbrainz_artist: crate::types::BridgeExistingArtist::from_core(
-                            conflict.musicbrainz_artist,
-                        ),
-                    },
-                    error,
-                }
-            }
-            (bae_core::import::ImportFailureReason::Error { .. }, None) => Self::Other { error },
+            None => Self::Other { error },
         }
     }
 }

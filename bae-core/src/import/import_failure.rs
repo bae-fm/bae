@@ -15,37 +15,23 @@ pub struct ImportFailure {
     pub artist_identity_conflict: Option<crate::import::ArtistIdentityConflict>,
 }
 
-/// Why an import failed, kept as what it is rather than as rendered text, so
-/// every surface words it in the person's language when it shows it.
+/// The diagnostic detail of an import failure. Surfaces pair it with their
+/// localized import-failure message.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ImportFailureReason {
-    /// An exact identity of the release is already in the library, as this
-    /// album. The failure is stored by the album's id; the title is the album's
-    /// title as of the read, so a rename shows.
-    AlreadyInLibrary { album_id: String, album_title: String },
-    /// Any other failure, as its diagnostic text: untranslated detail beside a
-    /// surface's generic line, never a sentence of its own.
-    Error { detail: String },
+pub struct ImportFailureReason {
+    pub detail: String,
 }
 
 impl ImportFailureReason {
-    /// This failure as a surface states it: its class, which the surface words
-    /// in the person's language, and any diagnostic detail.
     pub fn ui_error(&self) -> crate::ui::UiError {
-        match self {
-            Self::AlreadyInLibrary { .. } => crate::ui::UiError::diagnostic(
-                crate::ui::UiErrorCategory::AlreadyInLibrary,
-                "",
-            ),
-            Self::Error { detail } => crate::ui::UiError::import(detail),
-        }
+        crate::ui::UiError::import(&self.detail)
     }
 }
 
 #[cfg(test)]
 impl ImportFailureReason {
     pub(crate) fn error(detail: impl Into<String>) -> Self {
-        Self::Error {
+        Self {
             detail: detail.into(),
         }
     }
@@ -55,7 +41,7 @@ impl ImportFailureReason {
 impl ImportFailure {
     pub(crate) fn error_only(error: impl Into<String>, failed_at: DateTime<Utc>) -> Self {
         Self {
-            reason: ImportFailureReason::Error {
+            reason: ImportFailureReason {
                 detail: error.into(),
             },
             failed_at,

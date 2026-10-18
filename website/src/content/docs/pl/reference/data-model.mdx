@@ -10,7 +10,7 @@ Katalog bae to zwykłe SQLite, deklarowane do [coven](https://coven.bae.fm) tabe
 Synchronizowane serce schematu:
 
 - **`artists`**, **`albums`**, **`works`**: warstwa grupowania. Album agreguje swoje wydania i wskazuje podstawowe; dzieła tworzą graf rodzic/dziecko dla struktury klasycznej.
-- **`releases`**: jednostka centralna, jeden wiersz na każde naciśnięcie. Przenosi fakty naciskania (etykieta, numer katalogowy, kod kreskowy, kraj, format, rok), opcjonalne pochodzenie metadanych, hash zawartości importowanego folderu i zmierzoną głośność albumu. Brak pochodzenia oznacza, że metadane zostały wprowadzone bezpośrednio; pochodzenie zewnętrzne określa dokładne wydanie źródłowe, podczas gdy Tagi plików rejestruje lokalne źródło migawki.
+- **`releases`**: jednostka centralna, jeden wiersz na każdą zaimportowaną kopię. Przenosi fakty naciskania (etykieta, numer katalogowy, kod kreskowy, kraj, format, rok), opcjonalne pochodzenie metadanych, hash zawartości importowanego folderu i zmierzoną głośność albumu. Brak pochodzenia oznacza, że metadane zostały wprowadzone bezpośrednio; pochodzenie zewnętrzne określa dokładne wydanie źródłowe, podczas gdy Tagi plików rejestruje lokalne źródło migawki.
 - **`release_identities`**: dokładne tożsamości zewnętrzne tego, czym wydanie *jest*. Brak wierszy oznacza brak tożsamości zewnętrznej. Każdy wiersz nazywa wydanie MusicBrainz lub Discogs i grupę wydań, a wydanie może zawierać tożsamości w obu źródłach jednocześnie. Jest to odrębne od pochodzenia: tożsamość może się zmienić bez twierdzenia, że bieżące edytowalne metadane zostały zresetowane z tego źródła.
 - **`tracks`** z **`track_artists`**, plus **`release_artist_roles`** i **`track_artist_roles`**: listy utworów i przypisania, każde przypisanie oznaczone źródłem.
 - **`track_works`**, **`work_parts`**, **`work_artists`**: nagrania połączone z dziełami, które wykonują.
@@ -39,4 +39,4 @@ W nieprzezroczystym domu bloby są wysyłane pod nic nieznaczącymi kluczami tre
 
 ## Tożsamość ripu
 
-`releases.content_hash` to SHA-256 złożony ze struktury plików importowanego folderu (ścieżki względne i rozmiary), niezależny od miejsca folderu na dysku. Tak bae rozpoznaje już zaimportowany rip, gdy ponownie pojawia się w obserwowanym folderze, i tak ponowne importy znajdują wydanie, które powinny zastąpić.
+Każdy import tworzy wydanie z nowym losowym identyfikatorem i własnymi wierszami utworów oraz plików. `releases.content_hash` przechowuje nieunikatowy SHA-256 posortowanych ścieżek względnych, rozmiarów i czasów modyfikacji. Zgodność tylko sugeruje możliwą kopię; nigdy nie blokuje importu ani nie zastępuje wydania. Karta ukończonych importów pokazuje wszystkie wydania pasujące do folderu i nie oferuje ponownego importu.

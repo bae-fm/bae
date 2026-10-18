@@ -173,19 +173,6 @@ impl ImportService {
         error: &crate::import::ImportError,
         failed_at: chrono::DateTime<chrono::Utc>,
     ) -> crate::import::ImportFailure {
-        let reason = match error {
-            #[cfg(not(any(target_os = "ios", target_os = "android")))]
-            crate::import::ImportError::AlreadyInLibrary {
-                album_id,
-                album_title,
-            } => crate::import::ImportFailureReason::AlreadyInLibrary {
-                album_id: album_id.clone(),
-                album_title: album_title.clone(),
-            },
-            error => crate::import::ImportFailureReason::Error {
-                detail: error.to_string(),
-            },
-        };
         let artist_identity_conflict = match error {
             crate::import::ImportError::Db(
                 crate::library::LibraryError::ArtistIdentityConflict(conflict),
@@ -193,7 +180,7 @@ impl ImportService {
             _ => None,
         };
         crate::import::ImportFailure {
-            reason,
+            reason: crate::import::ImportFailureReason { detail: error.to_string() },
             failed_at,
             artist_identity_conflict,
         }
@@ -322,17 +309,6 @@ impl ImportService {
             .into());
         }
 
-        // Overwrites a prior import of the same files (below), then gets stamped
-        // onto the new release row.
-        let content_hash = categorized.content_hash();
-        let replacement_plans = library_manager
-            .import_replacement_plans_for_content_hash(&content_hash)
-            .await?;
-        let replacement_release_ids: Vec<String> = replacement_plans
-            .iter()
-            .map(|plan| plan.deletion.release_id().to_string())
-            .collect();
-
         let records = match &release_link {
             Some(link) => {
                 linked_records(library_manager, link, metadata_provenance.as_ref()).await?
@@ -400,13 +376,12 @@ impl ImportService {
                 parsed,
                 records,
                 user_edit,
-                &replacement_release_ids,
                 std::mem::take(&mut prepared_assets.artist_images),
             )
             .await?;
 
         prepared.db_release.source_folder_name = Some(source_name);
-        prepared.db_release.content_hash = Some(content_hash);
+        prepared.db_release.content_hash = Some(categorized.content_hash());
 
         prepared.selected_cover = selected_cover.clone();
 
@@ -507,7 +482,6 @@ impl ImportService {
                 discovered: &discovered_files,
                 tracks: &tracks_to_files,
             },
-            &replacement_plans,
         )
         .await?;
 
@@ -538,7 +512,6 @@ impl ImportService {
         destination: ImportDestination,
         prepared: &mut PreparedMetadata,
         files: ImportFiles<'_>,
-        replacement_plans: &[crate::library::manager::ImportReplacementPlan],
     ) -> Result<(), ImportStop> {
         let library_manager = &self.library_manager;
         let ImportFiles {
@@ -864,7 +837,6 @@ impl ImportService {
                 library_image,
                 prepared_artist_images,
                 cover_rel_id,
-                replacement_plans,
                 destination,
             )
             .await?;

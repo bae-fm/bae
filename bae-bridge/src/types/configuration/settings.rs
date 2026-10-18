@@ -232,15 +232,12 @@ pub enum BridgeErrorCategory {
     CandidateImportInProgress,
     /// A bulk import reached a row identification is still answering.
     CandidateBeingIdentified,
-    CandidateAlreadyImported,
     /// The release read for the candidate lists another number of tracks than
     /// its folder holds; the line takes both counts.
     MetadataTrackCount {
         folder_tracks: u32,
         release_tracks: u32,
     },
-    /// An exact identity of the candidate's release is already in the library.
-    AlreadyInLibrary,
     Export,
     Save,
     CloudSetup {
@@ -392,11 +389,7 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
         BridgeErrorCategory::CandidateBeingIdentified => {
             "core.import.error.candidate_being_identified"
         }
-        BridgeErrorCategory::CandidateAlreadyImported => {
-            "core.import.error.candidate_already_imported"
-        }
         BridgeErrorCategory::MetadataTrackCount { .. } => "core.import.error.metadata_track_count",
-        BridgeErrorCategory::AlreadyInLibrary => "core.import.error.already_in_library",
         BridgeErrorCategory::Export => "core.error.category.export",
         BridgeErrorCategory::Save => "core.error.category.save",
         BridgeErrorCategory::CloudSetup { failure } => match failure {
@@ -570,9 +563,7 @@ mirror_enum! {
         ImportData,
         CandidateImportInProgress,
         CandidateBeingIdentified,
-        CandidateAlreadyImported,
         MetadataTrackCount { folder_tracks, release_tracks },
-        AlreadyInLibrary,
         GroupingBlocked(reason: (BridgeGroupingBlock)),
         Export,
         Save,

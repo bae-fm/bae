@@ -335,7 +335,7 @@ async fn fixture_candidates_carry_what_their_states_name() {
     assert_eq!(
         row("Failed Folder").import_status,
         Some(crate::import::TriageImportStatus::Error {
-            failure: crate::import::ImportFailureReason::Error {
+            failure: crate::import::ImportFailureReason {
                 detail: crate::library::FIXTURE_IMPORT_FAILURE.to_string()
             }
         })

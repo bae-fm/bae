@@ -46,4 +46,4 @@ Das Release landet mit Verweisen auf die Dateien des Benutzers an Ort und Stelle
 
 ## Rips erkennen
 
-Jedes Release erfasst einen Inhalts-Hash über die Struktur seines importierten Ordners (relative Pfade und Größen, unabhängig vom Ort). Re-Scans nutzen ihn, um Ordner zu markieren, die bereits in der Mediathek sind, und Re-Importe desselben Rips finden und ersetzen ihr vorheriges Release, statt es zu duplizieren.
+Jeder Import erstellt eine Veröffentlichung mit einer neuen zufälligen ID und eigenen Titel- und Dateizeilen. `releases.content_hash` speichert einen nicht eindeutigen SHA-256 der sortierten relativen Pfade, Größen und Änderungszeiten. Eine Übereinstimmung gibt nur einen Hinweis auf eine mögliche Kopie; sie verhindert keinen Import und ersetzt keine Veröffentlichung. Der Tab für abgeschlossene Importe zeigt alle passenden Veröffentlichungen des Ordners und bietet keinen erneuten Import an.

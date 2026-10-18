@@ -127,27 +127,25 @@ pub struct BridgeImportInFlight {
     pub step: BridgeImportStep,
 }
 
-/// Where a candidate's import stands: running, or how the last one ended.
+/// A running import, the folder's library copies, or its stored failure.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeCandidateImportStatus {
     Importing {
         standing: BridgeImportStanding,
     },
     Complete {
-        release_id: String,
-        album_id: String,
+        releases: Vec<BridgeImportedRelease>,
     },
     Error {
         error: BridgeError,
     },
 }
 
-/// How a candidate's last import ended.
+/// The library copies matching a folder, or its stored import failure.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeTriageImportStatus {
     Complete {
-        release_id: String,
-        album_id: String,
+        releases: Vec<BridgeImportedRelease>,
     },
     Error {
         error: BridgeError,
@@ -706,12 +704,19 @@ pub struct BridgeImportedRow {
     /// What is running for the candidate right now: an import that just
     /// wrote the release can still own it for a moment.
     pub live: BridgeCandidateLiveState,
-    pub release: BridgeImportedReleaseSummary,
+    pub releases: Vec<BridgeImportedReleaseSummary>,
     /// Whether the person has selected the row.
     pub selected: bool,
 }
 
-/// The library release a Done row became.
+/// A library copy matching a candidate's folder hash.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeImportedRelease {
+    pub release_id: String,
+    pub album_id: String,
+}
+
+/// One of the library releases a Done folder matches.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeImportedReleaseSummary {
     pub release_id: String,

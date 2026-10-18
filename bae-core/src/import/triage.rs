@@ -105,13 +105,13 @@ pub fn stated_folder_check(
 /// failed is to open it. It stays in Pending either way — see
 /// [`TriagePlacement::Failed`] — but as a row that says what went wrong.
 pub fn import_status_of(
-    imported: Option<&ImportedRelease>,
+    imported: &[ImportedRelease],
     blocked: Option<&crate::import::GroupingBlock>,
     failure: Option<&crate::import::ImportFailureReason>,
 ) -> Option<TriageImportStatus> {
-    if let Some(release) = imported {
+    if !imported.is_empty() {
         return Some(TriageImportStatus::Complete {
-            release: release.clone(),
+            releases: imported.to_vec(),
         });
     }
     if let Some(reason) = blocked {

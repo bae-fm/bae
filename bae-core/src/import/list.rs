@@ -534,8 +534,8 @@ pub struct ImportCandidateDetailProjection {
     /// Who wrote the draft, which decides whether a valid one is the answer.
     pub metadata_author: crate::import::MetadataAuthor,
     pub metadata_revision: u64,
-    /// The library release this candidate's bytes were imported as.
-    pub imported_release: Option<ImportedRelease>,
+    /// Every library copy carrying this candidate's folder hash.
+    pub imported_releases: Vec<ImportedRelease>,
     /// The linked release as its stored release describes it. `None` with no
     /// link.
     pub release: Option<ImportSearchReleaseDetail>,
@@ -595,7 +595,7 @@ impl ImportCandidateDetailProjection {
             release_link,
             metadata_author,
             metadata_revision,
-            imported_release,
+            imported_releases,
             release,
             records,
             picked_library_status,
@@ -614,7 +614,7 @@ impl ImportCandidateDetailProjection {
             .map(crate::import::file_evidence)
             .unwrap_or_default();
         let import_status = import_status_of(
-            imported_release.as_ref(),
+            &imported_releases,
             source_error.as_ref(),
             failure.as_ref().map(|failure| &failure.reason),
         );
@@ -735,7 +735,7 @@ pub enum CandidateImportStatus {
         standing: super::ImportStanding,
     },
     Complete {
-        release: super::ImportedRelease,
+        releases: Vec<super::ImportedRelease>,
     },
     Error {
         failure: super::ImportFailureReason,
@@ -750,7 +750,7 @@ pub enum CandidateImportStatus {
 impl CandidateImportStatus {
     fn of(stored: TriageImportStatus) -> Self {
         match stored {
-            TriageImportStatus::Complete { release } => Self::Complete { release },
+            TriageImportStatus::Complete { releases } => Self::Complete { releases },
             TriageImportStatus::Error { failure } => Self::Error { failure },
             TriageImportStatus::Blocked { reason } => Self::Blocked { reason },
         }

@@ -34,15 +34,12 @@ impl Database {
 
     /// Look up an album by record rows. Returns the first album that
     /// has a release with a record matching any of `records` on
-    /// `(catalog, key)`, ignoring rows that belong to `exclude_release_ids`.
+    /// `(catalog, key)`.
     ///
-    /// Used for the per-pressing rejection step of import dedup: a duplicate is
-    /// a release whose record points at a specific pressing already in the
-    /// library.
-    pub async fn find_album_by_record_key_excluding(
+    /// Another import of the same pressing joins this album as its own copy.
+    pub async fn find_album_by_record_key(
         &self,
         records: &[crate::import::ReleaseRecord],
-        exclude_release_ids: &[String],
     ) -> Result<Option<DbAlbum>, DbError> {
         let pressing_pairs: Vec<(String, String)> = records
             .iter()
@@ -52,7 +49,6 @@ impl Database {
         if pressing_pairs.is_empty() {
             return Ok(None);
         }
-        let exclude_release_ids = exclude_release_ids.to_vec();
 
         self.read(move |sql| {
             find_album_by_record_pairs(
@@ -67,7 +63,7 @@ impl Database {
                 "#,
                 "CASE WHEN rr.kind = 'pressing' THEN rr.key END",
                 &pressing_pairs,
-                &exclude_release_ids,
+                &[],
                 row_to_album,
             )
         })
@@ -77,8 +73,7 @@ impl Database {
     /// Look up an album by explicit album identities or known pressing parents.
     /// Returns the first album matching `(catalog, album key)`, ignoring rows
     /// that belong to `exclude_release_ids`.
-    /// Used for the cross-catalog merge step of import dedup (excluding the
-    /// releases a re-import replaces) and by `set_records` (excluding the
+    /// Used to attach an import to its album and by `set_records` (excluding the
     /// release whose about-to-be-replaced records must not match against
     /// themselves).
     pub async fn find_album_by_record_group_excluding(

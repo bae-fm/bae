@@ -94,9 +94,9 @@ pub struct ImportQueueRows {
     /// Every skipped candidate as the list addresses it: the watched folder
     /// covering it, and its path below that.
     pub skipped: HashSet<(String, String)>,
-    /// The library release each imported content hash became.
-    pub imported: HashMap<String, ImportedRelease>,
-    /// When each imported content hash's release was written, in Unix epoch
+    /// Every library release carrying each imported folder hash, oldest first.
+    pub imported: HashMap<String, Vec<ImportedRelease>>,
+    /// When each folder hash's latest release was written, in Unix epoch
     /// milliseconds; orders rows within a Done section.
     pub imported_at: HashMap<String, i64>,
     /// Why the last import attempt failed, by content hash, so a failed
@@ -193,11 +193,11 @@ pub(super) fn load_import_queue_on(
         .map(|path| listed_below(&roots, path))
         .collect::<Result<_, _>>()?;
 
-    let mut imported: HashMap<String, ImportedRelease> = HashMap::new();
+    let mut imported: HashMap<String, Vec<ImportedRelease>> = HashMap::new();
     let mut imported_at: HashMap<String, i64> = HashMap::new();
     for (content_hash, release, created_at) in sql.query(
         "SELECT content_hash, id, album_id, created_at \
-         FROM releases WHERE content_hash IS NOT NULL",
+         FROM releases WHERE content_hash IS NOT NULL ORDER BY created_at, id",
         [],
         |row| {
             Ok((
@@ -210,11 +210,7 @@ pub(super) fn load_import_queue_on(
             ))
         },
     )? {
-        if imported.insert(content_hash.clone(), release).is_some() {
-            return Err(DbError::Message(format!(
-                "content hash {content_hash} names more than one imported release"
-            )));
-        }
+        imported.entry(content_hash.clone()).or_default().push(release);
         imported_at.insert(content_hash, created_at.timestamp_millis());
     }
 
@@ -230,12 +226,12 @@ pub(super) fn load_import_queue_on(
 
     let failures: HashMap<String, crate::import::ImportFailureReason> = {
         use super::import_state::failure_rows::{
-            failure_reason_from_row, FAILURE_ALBUM_JOIN, FAILURE_REASON_COLUMNS,
+            failure_reason_from_row, FAILURE_REASON_COLUMNS,
         };
         sql.query(
             &format!(
                 "SELECT failure.content_hash AS content_hash, {FAILURE_REASON_COLUMNS} \
-                 FROM import_candidate_failure failure {FAILURE_ALBUM_JOIN}"
+                 FROM import_candidate_failure failure"
             ),
             [],
             |row| Ok((row.get::<_, String>("content_hash")?, failure_reason_from_row(row)?)),

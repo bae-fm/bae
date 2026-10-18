@@ -134,7 +134,7 @@ async fn import_list_done_row_reads_the_library_release() {
         db.subscribe_import_list(list_request(crate::import::TriageTab::Done, [(0, 50)]));
     let initial = imported_rows(&live.next().await.into_result().unwrap());
     assert_eq!(initial.len(), 1);
-    let release = &initial[0].release;
+    let release = &initial[0].releases[0];
     assert_eq!(release.release_id, RELEASE_ID);
     assert_eq!(release.album_id, ALBUM_ID);
     assert_eq!(release.title, "Album Title");
@@ -160,7 +160,7 @@ async fn import_list_done_row_reads_the_library_release() {
             .unwrap(),
     );
     assert_eq!(
-        covered[0].release.cover,
+        covered[0].releases[0].cover,
         Some(crate::album_detail::ImageRef {
             id: RELEASE_ID.to_string(),
             version: cover_blob.to_string(),
@@ -186,8 +186,7 @@ async fn import_list_done_row_reads_the_library_release() {
             .unwrap(),
     );
     assert_eq!(
-        recorded[0]
-            .release
+        recorded[0].releases[0]
             .records
             .iter()
             .map(|record| record.catalog())
@@ -444,4 +443,95 @@ async fn import_candidate_moves_between_candidates_on_one_subscription() {
 
     requests.set(None).unwrap();
     assert!(live.next().await.into_result().unwrap().is_none());
+}
+
+#[tokio::test]
+async fn done_lists_every_copy_of_a_folder() {
+    let (db, _temp) = live_db().await;
+    let root = &crate::import::watched_folder::host_root("/music");
+    let item = scan_candidate(root, "release");
+    let crate::import::folder_scanner::ScanItem::Valid(candidate) = &item else {
+        unreachable!("the fixture builds a valid candidate");
+    };
+    db.add_watched_import_folder(root).await.unwrap();
+    let generation = db
+        .begin_folder_scan(root, crate::import::VolumeKind::Local)
+        .await
+        .unwrap();
+    db.save_folder_scan_item(root, generation, &item)
+        .await
+        .unwrap();
+    db.finish_folder_scan(root, generation, None).await.unwrap();
+    let mut copy = db.find_release_by_id(RELEASE_ID).await.unwrap().unwrap();
+    copy.content_hash = Some(candidate.files.content_hash());
+    exec(
+        &db,
+        "UPDATE releases SET content_hash = ?1 WHERE id = ?2",
+        &[copy.content_hash.as_deref().unwrap(), RELEASE_ID],
+    )
+    .await;
+    copy.id = bae_test_support::test_uuid("second-imported-copy");
+    let mut other_album = db.find_album_by_id(ALBUM_ID).await.unwrap().unwrap();
+    other_album.id = bae_test_support::test_uuid("second-copy-album");
+    other_album.title = "Second Album".to_string();
+    other_album.primary_release_id = None;
+    db.insert_album(&other_album).await.unwrap();
+    copy.album_id = other_album.id;
+    db.insert_release(&copy).await.unwrap();
+
+    let projection = db
+        .load_import_list(list_request(crate::import::TriageTab::Done, [(0, 50)]))
+        .await
+        .expect("every release with the folder hash is listed");
+    assert_eq!(projection.summary.counts.done, 1, "Done counts folders");
+    let rows = imported_rows(&projection);
+    assert_eq!(rows.len(), 1);
+    let mut ids: Vec<_> = rows[0]
+        .releases
+        .iter()
+        .map(|release| release.release_id.clone())
+        .collect();
+    ids.sort();
+    let mut expected = vec![RELEASE_ID.to_string(), copy.id.clone()];
+    expected.sort();
+    assert_eq!(ids, expected);
+
+    let detail = db
+        .load_import_candidate(&candidate.key())
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(
+        detail.is_added,
+        "the matching hash supplies the duplicate hint"
+    );
+    assert_eq!(detail.imported_releases.len(), 2);
+
+    let detail = detail.resolve(&crate::import::TriageRuntimeFacts::default());
+    assert_eq!(
+        detail.placement,
+        crate::import::CandidatePanePlacement::Done
+    );
+    assert!(!detail
+        .live
+        .actions
+        .contains(&crate::import::CandidateAction::Import));
+
+    for title in ["Album Title", "Second Album"] {
+        let mut request = list_request(crate::import::TriageTab::Done, [(0, 50)]);
+        request.view.filter_text = title.to_string();
+        let filtered = db.load_import_list(request).await.unwrap();
+        assert_eq!(filtered.total_count, 1, "search finds either copy");
+        assert_eq!(imported_rows(&filtered)[0].releases.len(), 2);
+    }
+
+    exec(&db, "DELETE FROM releases WHERE id = ?1", &[RELEASE_ID]).await;
+    let surviving = db
+        .load_import_list(list_request(crate::import::TriageTab::Done, [(0, 50)]))
+        .await
+        .unwrap();
+    assert_eq!(surviving.summary.counts.done, 1);
+    let surviving = imported_rows(&surviving);
+    assert_eq!(surviving[0].releases.len(), 1);
+    assert_eq!(surviving[0].releases[0].release_id, copy.id);
 }

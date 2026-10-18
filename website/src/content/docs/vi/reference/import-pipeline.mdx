@@ -46,4 +46,4 @@ Bản phát hành được tạo với tham chiếu tới tệp của người d
 
 ## Nhận ra bản rip
 
-Mỗi bản phát hành ghi một hash nội dung trên cấu trúc thư mục đã nhập (đường dẫn tương đối và kích thước, độc lập vị trí). Lượt quét lại dùng nó để đánh dấu thư mục đã có trong thư viện, và lượt nhập lại của cùng bản rip tìm rồi thay thế bản phát hành trước đó thay vì tạo bản trùng.
+Mỗi lần nhập tạo một bản phát hành có ID ngẫu nhiên mới và các hàng bản nhạc, tệp riêng. `releases.content_hash` lưu SHA-256 không duy nhất của các đường dẫn tương đối đã sắp xếp, kích thước và thời điểm sửa đổi. Giá trị trùng chỉ gợi ý rằng có thể đã có bản sao; không bao giờ chặn nhập hoặc thay thế bản phát hành. Thẻ đã hoàn tất liệt kê mọi bản phát hành khớp với thư mục và không có thao tác nhập lại.

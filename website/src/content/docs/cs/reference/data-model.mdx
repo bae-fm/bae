@@ -10,7 +10,7 @@ Katalog bae je běžné SQLite, deklarované pro [coven](https://coven.bae.fm) t
 Synchronizované jádro schématu:
 
 - **`artists`**, **`albums`**, **`works`**: seskupovací vrstva. Album sdružuje svá vydání a ukazuje na primární; díla tvoří graf rodič/potomek pro klasickou strukturu.
-- **`releases`**: centrální entita, jeden řádek pro každé lisování. Nese informace o lisování (název, katalogové číslo, čárový kód, země, formát, rok), volitelná metadata o původu, hash obsahu importované složky a naměřenou hlasitost alba. Žádná provenience znamená, že metadata byla zadána přímo; externí provenience jmenuje přesné vydání zdroje, zatímco Značky souborů zaznamenává místní zdroj snapshotu.
+- **`releases`**: centrální entita, jeden řádek pro každou importovanou kopii. Nese informace o lisování (název, katalogové číslo, čárový kód, země, formát, rok), volitelná metadata o původu, hash obsahu importované složky a naměřenou hlasitost alba. Žádná provenience znamená, že metadata byla zadána přímo; externí provenience jmenuje přesné vydání zdroje, zatímco Značky souborů zaznamenává místní zdroj snapshotu.
 - **`release_identities`**: přesná externí identita toho, čím vydání *je*. Žádné řádky znamenají žádnou externí identitu. Každý řádek pojmenovává vydání a skupinu vydání MusicBrainz nebo Discogs a vydání může obsahovat identity v obou zdrojích současně. Toto je odděleno od provenience: identita se může změnit bez tvrzení, že aktuální editovatelná metadata byla z tohoto zdroje resetována.
 - **`tracks`** s **`track_artists`**, plus **`release_artist_roles`** a **`track_artist_roles`**: seznamy stop a kredity, každý kredit označený svým zdrojem.
 - **`track_works`**, **`work_parts`**, **`work_artists`**: nahrávky propojené s díly, která provádějí.
@@ -39,4 +39,4 @@ V neprůhledném domově se bloby nahrávají pod bezvýznamnými klíči obsahu
 
 ## Identita ripu
 
-`releases.content_hash` je SHA-256 přes strukturu souborů importované složky (relativní cesty a velikosti), nezávisle na tom, kde složka leží na disku. Díky němu bae rozpozná už importovaný rip, když se znovu objeví ve sledované složce, a reimporty najdou vydání, které mají nahradit.
+Každý import vytvoří vydání s novým náhodným ID a vlastními řádky skladeb a souborů. `releases.content_hash` ukládá neunikátní SHA-256 seřazených relativních cest, velikostí a časů změny. Shoda pouze upozorní na možnou kopii; import nikdy neodmítne ani nenahradí vydání. Karta dokončených importů uvádí všechna odpovídající vydání složky a nenabízí opakovaný import.

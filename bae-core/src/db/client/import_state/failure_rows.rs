@@ -3,37 +3,11 @@
 use super::*;
 use crate::import::{ArtistIdentityConflict, ExistingArtist, ImportFailure, ImportFailureReason};
 
-/// The columns [`failure_reason_from_row`] reads, for a query over
-/// `import_candidate_failure failure` joined to `albums existing` on the
-/// album the failure names.
-pub(crate) const FAILURE_REASON_COLUMNS: &str = "failure.kind AS failure_kind, \
-     failure.existing_album_id AS failure_album_id, \
-     existing.title AS failure_album_title, \
-     failure.error AS failure_error";
+/// The diagnostic column read by both the list and the candidate pane.
+pub(crate) const FAILURE_REASON_COLUMNS: &str = "failure.error AS failure_error";
 
-/// The join that reads the title of the album a failure names, as of now.
-pub(crate) const FAILURE_ALBUM_JOIN: &str =
-    "LEFT JOIN albums existing ON existing.id = failure.existing_album_id";
-
-/// Why a stored import failed, with the named album's current title.
-pub(crate) fn failure_reason_from_row(
-    row: &Row<'_>,
-) -> coven::rusqlite::Result<ImportFailureReason> {
-    let kind: String = row.get("failure_kind")?;
-    match kind.as_str() {
-        "already_in_library" => Ok(ImportFailureReason::AlreadyInLibrary {
-            album_id: row.get("failure_album_id")?,
-            album_title: row.get("failure_album_title")?,
-        }),
-        "error" => Ok(ImportFailureReason::Error {
-            detail: row.get("failure_error")?,
-        }),
-        other => Err(coven::rusqlite::Error::FromSqlConversionFailure(
-            0,
-            coven::rusqlite::types::Type::Text,
-            format!("unknown import failure kind {other:?}").into(),
-        )),
-    }
+pub(crate) fn failure_reason_from_row(row: &Row<'_>) -> coven::rusqlite::Result<ImportFailureReason> {
+    Ok(ImportFailureReason { detail: row.get("failure_error")? })
 }
 
 fn existing_artist_from_row(
@@ -70,7 +44,6 @@ pub(super) fn load_failure_on(
                 musicbrainz.musicbrainz_artist_id AS musicbrainz_musicbrainz_id, \
                 musicbrainz.discogs_artist_id AS musicbrainz_discogs_id \
          FROM import_candidate_failure failure \
-         {FAILURE_ALBUM_JOIN} \
          LEFT JOIN import_candidate_artist_identity_conflict conflict \
              ON conflict.content_hash = failure.content_hash \
          LEFT JOIN artists discogs ON discogs.id = conflict.discogs_library_artist_id \
@@ -144,21 +117,14 @@ impl Database {
                     "candidate file decisions changed from revision {edit_revision}"
                 )));
             }
-            let (kind, existing_album_id, error) = match &failure.reason {
-                ImportFailureReason::AlreadyInLibrary { album_id, .. } => {
-                    ("already_in_library", Some(album_id.as_str()), None)
-                }
-                ImportFailureReason::Error { detail } => ("error", None, Some(detail.as_str())),
-            };
             let failed_at = failure.failed_at.to_rfc3339();
             sql.execute(
                 "INSERT INTO import_candidate_failure \
-                     (content_hash, kind, existing_album_id, error, failed_at) \
-                 VALUES (?, ?, ?, ?, ?) \
+                     (content_hash, error, failed_at) \
+                 VALUES (?, ?, ?) \
                  ON CONFLICT (content_hash) DO UPDATE SET \
-                     kind = excluded.kind, existing_album_id = excluded.existing_album_id, \
                      error = excluded.error, failed_at = excluded.failed_at",
-                params![content_hash, kind, existing_album_id, error, failed_at],
+                params![content_hash, failure.reason.detail, failed_at],
             )?;
             sql.execute(
                 "DELETE FROM import_candidate_artist_identity_conflict WHERE content_hash = ?",

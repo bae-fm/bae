@@ -315,8 +315,7 @@ impl TriageRow {
     }
 }
 
-/// A Done row: the library release the candidate became, as the library has it
-/// now rather than as the candidate's draft said.
+/// A Done folder and every release carrying its hash, read from the library.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImportedRow {
     /// The candidate's folder path — the key every other import call takes.
@@ -325,12 +324,12 @@ pub struct ImportedRow {
     /// What the row's commands are decided from; an import that just wrote the
     /// release can still own the candidate for a moment.
     pub action_basis: CandidateActionBasis,
-    pub release: ImportedReleaseSummary,
+    pub releases: Vec<ImportedReleaseSummary>,
     /// Whether the person has selected the row.
     pub selected: bool,
 }
 
-/// The library release a Done row became.
+/// One library copy matching a Done folder.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImportedReleaseSummary {
     pub release_id: String,
@@ -402,10 +401,10 @@ impl TriageTabCounts {
     }
 }
 
-/// How a candidate's last import ended.
+/// The library copies matching a folder, or its stored import failure.
 #[derive(Debug, Clone, PartialEq)]
 pub enum TriageImportStatus {
-    Complete { release: ImportedRelease },
+    Complete { releases: Vec<ImportedRelease> },
     /// The last import failed, and why.
     Error {
         failure: crate::import::ImportFailureReason,
