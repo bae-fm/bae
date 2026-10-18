@@ -5,17 +5,15 @@ import Testing
 @testable import bae
 
 /// Covers the `AppSessionHolder` transitions that don't require a live library.
-/// Opening a library goes through the bridge's `initApp` and the host's
-/// `discoverLibraries` and produces a real `AppService`, so `start`, `openLibrary`,
-/// `retryUnlock`, `onLinked`, and `forgetActiveLibrary` — and the derived
-/// getters once a library is open — need a real opened core and aren't
+/// Opening a library goes through the bridge's `initApp` and produces a real
+/// `AppService`, so opening, resetting and removing a library — and the
+/// derived getters once one is open — need a real opened core and aren't
 /// unit-tested here.
 @MainActor
 @Suite("AppSessionHolder")
 struct AppSessionHolderTests {
     /// A holder wired to a no-op telemetry sink and a host with nothing
-    /// registered, over a throwaway directory — these transitions never emit or
-    /// open a library, so both are enough.
+    /// registered, over a throwaway directory.
     private func makeHolder() -> AppSessionHolder {
         let appDir = BridgeAppDir(
             home: FileManager.default.temporaryDirectory
@@ -25,19 +23,27 @@ struct AppSessionHolderTests {
         let diagnostics = configureDiagnostics(config: .disabled)
         return AppSessionHolder(
             diagnostics: diagnostics,
-            host: BaeHost.make(diagnostics: diagnostics, appDir: appDir)
+            host: BaeHost.make(diagnostics: diagnostics, appDir: appDir),
+            deviceName: "Test Device"
         )
     }
 
-    private func makeLibrary(id: String, isActive: Bool = false) -> BridgeLibrary {
+    private func makeLibrary(id: String) -> BridgeLibrary {
         BridgeLibrary(
             id: id,
             name: "Library \(id)",
             path: "/tmp/\(id)",
-            cloudProvider: nil,
-            isActive: isActive,
-            error: nil
+            storage: nil,
+            isActive: false
         )
+    }
+
+    private func waitUntil(_ condition: @MainActor () -> Bool) async {
+        for _ in 0..<10_000 {
+            if condition() { return }
+            await Task.yield()
+        }
+        Issue.record("condition never became true")
     }
 
     @Test("a fresh holder starts on the loading screen with no open library")
@@ -59,15 +65,26 @@ struct AppSessionHolderTests {
         #expect(!holder.isActive(makeLibrary(id: "lib-1")))
     }
 
-    @Test("cancelling the unlock gate with no open library falls to onboarding")
-    func cancelUnlockWithoutServiceGoesToOnboarding() {
+    @Test("a device with no libraries onboards")
+    func noLibrariesOnboards() async {
         let holder = makeHolder()
 
-        holder.cancelUnlock()
+        holder.start()
+        await waitUntil {
+            if case .onboarding = holder.screen { return true }
+            return false
+        }
+        #expect(holder.libraries.isEmpty)
+    }
 
-        guard case .onboarding = holder.screen else {
-            Issue.record("cancelUnlock with no open service should show onboarding")
-            return
+    @Test("leaving the reset warning with no open library lists libraries again")
+    func cancelResetWithoutServiceStartsOver() async {
+        let holder = makeHolder()
+
+        holder.cancelDeviceReset()
+        await waitUntil {
+            if case .onboarding = holder.screen { return true }
+            return false
         }
     }
 }

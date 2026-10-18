@@ -1,5 +1,6 @@
 import BaeKit
 import SwiftUI
+import UIKit
 import os.log
 
 private let appEdition: AppEdition = {
@@ -12,26 +13,18 @@ private let appEdition: AppEdition = {
 
 @main
 struct BaeApp: App {
-    // The host's OAuth client config and any error loading it. Present only in a
-    // full build; a baeium (S3-only) build compiles out the OAuth flow entirely, so
-    // there is nothing to load and no property to carry.
-    #if BAE_OAUTH_PROVIDERS
-    private let oauthLinking: OAuthLinking?
-    private let oauthLinkingError: String?
-    #endif
     private let startupError: String?
     /// The process-lifetime telemetry sink, built first at launch and held for
     /// the whole app run. `initKeyring` and the host require it.
     private let diagnostics: BridgeDiagnostics
     /// The process-lifetime host registrations, built right after the telemetry
-    /// sink. Every library open, restore, join, and OAuth sign-in requires it.
+    /// sink. Every library open, restore, join, and provider sign-in requires it.
     private let host: BridgeHost
+    /// The name this device registers under when it joins or sets up a
+    /// library, which other devices show for it.
+    private let deviceName: String
 
     init() {
-        #if BAE_OAUTH_PROVIDERS
-        var loadedOAuthLinking: OAuthLinking?
-        var oauthError: String?
-        #endif
         // bae's directory lives under the Application Support container: iOS
         // app processes have no home directory of their own to put it under.
         let dataDirectory = Self.dataDirectory()
@@ -45,6 +38,7 @@ struct BaeApp: App {
         self.diagnostics = diagnostics
         let host = BaeHost.make(diagnostics: diagnostics, appDir: appDir)
         self.host = host
+        deviceName = UIDevice.current.name
         var launchError: String?
         do {
             BaeCrashReporting.configure(edition: appEdition)
@@ -55,56 +49,28 @@ struct BaeApp: App {
             )
             // No `setCaCertDir` on iOS — the TLS stack uses Apple's trust roots.
             try initKeyring(diagnostics: diagnostics)
-            // Hand Rust the CloudKit driver once. It can't build the driver itself
-            // (it needs the platform CloudKit APIs); installing it is idempotent and
-            // harmless for libraries that sync elsewhere, so it belongs here at the
-            // composition root rather than at each library open.
-            #if BAE_CLOUDKIT
-            host.setCloudkitDriver(driver: CloudKitService.bae())
+            #if BAE_OAUTH_PROVIDERS
+            // The build's Dropbox and OneDrive applications and the system
+            // sign-in sheet, before anything can restore, join or sign in.
+            // Without a bundled config, provider sign-in stays unavailable.
+            try OAuthLinking.load()?.register(host: host)
             #endif
         }
         catch {
             launchError = error.displayLine
         }
-
-        #if BAE_OAUTH_PROVIDERS
-        if launchError == nil {
-            // Register the host's OAuth client creds (if a creds file is bundled) so
-            // coven can build authorization URLs and refresh provider tokens during
-            // sync. Absent file → cloud providers that need OAuth stay unavailable.
-            do {
-                loadedOAuthLinking = try OAuthLinking.load()
-                try loadedOAuthLinking?.register(host: host)
-            }
-            catch {
-                oauthError = error.displayLine
-            }
-        }
-        oauthLinking = loadedOAuthLinking
-        oauthLinkingError = oauthError
-        #endif
         startupError = launchError
     }
 
     var body: some Scene {
         WindowGroup {
-            #if BAE_OAUTH_PROVIDERS
-            ContentView(
-                oauthLinking: oauthLinking,
-                oauthLinkingError: oauthLinkingError,
-                startupError: startupError,
-                diagnostics: diagnostics,
-                host: host
-            )
-            .appAppearance()
-            #else
             ContentView(
                 startupError: startupError,
                 diagnostics: diagnostics,
-                host: host
+                host: host,
+                deviceName: deviceName
             )
             .appAppearance()
-            #endif
         }
     }
 

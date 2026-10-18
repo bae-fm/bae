@@ -112,14 +112,27 @@ struct AlbumDetailView: View {
         releaseId: String,
         detail: ReleaseDetail
     ) -> some View {
-        ScrollView {
+        // This device imports nothing, so a local release's audio is on the
+        // device that imported it: its rows show here, but nothing plays
+        // until that device uploads it.
+        let audioHere = detail.summary.storageState == .remote
+        return ScrollView {
             VStack(alignment: .leading, spacing: ThemeSpace.group) {
                 AlbumDetailHeader(
                     display: display,
                     releaseId: releaseId,
                     detail: detail,
-                    showGallery: $showGallery
+                    showGallery: $showGallery,
+                    canPlay: audioHere
                 )
+                if !audioHere {
+                    Label(
+                        "This release's audio is on the device that imported it. It plays here once it's uploaded from there.",
+                        systemImage: "icloud.slash"
+                    )
+                    .themeText(.detail)
+                    .foregroundStyle(.secondary)
+                }
                 ReleaseDownloadSection(releaseId: releaseId, detail: detail)
                 if let summary = releasePickerSummary,
                     summary.releaseIds.count > 1
@@ -135,6 +148,7 @@ struct AlbumDetailView: View {
                     onPlayNext: { trackId in queue.addNext([trackId]) },
                     onAddToQueue: { trackId in queue.addToQueue([trackId]) }
                 )
+                .disabled(!audioHere)
             }
             .padding(ThemeSpace.edge)
         }

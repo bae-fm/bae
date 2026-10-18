@@ -3,13 +3,14 @@ import SwiftUI
 
 /// The album-detail header: cover (tap to open the gallery), title/artist/year
 /// and compact metadata, and the play / shuffle / queue buttons for the shown
-/// release.
+/// release, disabled while its audio isn't on this device.
 struct AlbumDetailHeader: View {
     let display: AlbumDetailDisplay
     let releaseId: String
     let detail: ReleaseDetail
     @Binding
     var showGallery: Bool
+    let canPlay: Bool
 
     @Environment(Playback.self)
     private var playback
@@ -21,8 +22,11 @@ struct AlbumDetailHeader: View {
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.group) {
             metadata
-            playButtons
-            queueButtons
+            Group {
+                playButtons
+                queueButtons
+            }
+            .disabled(!canPlay)
         }
     }
 
@@ -129,7 +133,8 @@ private struct AlbumActionRow<Content: View>: View {
         display: .album(PreviewData.albumSummary),
         releaseId: "rel-a-1",
         detail: PreviewData.releaseDetail,
-        showGallery: .constant(false)
+        showGallery: .constant(false),
+        canPlay: true
     )
     .previewStores()
 }

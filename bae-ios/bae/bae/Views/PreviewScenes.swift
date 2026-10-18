@@ -11,12 +11,13 @@ enum PreviewScenes {
     /// The first-run onboarding entry screen over the app's dark background.
     static func welcome() -> some View {
         OnboardingEntryScreen(
-            error: nil,
+            savedRestoreCodes: { [] },
             onJoin: {},
-            onScanRecovery: {},
-            onPasteRecovery: {}
+            onRestore: {},
+            onRestoreSaved: { _ in }
         )
         .background(Theme.background)
+        .environment(PreviewData.removals())
     }
 
     /// The album grid backed by the fixture albums, over a seeded store and the

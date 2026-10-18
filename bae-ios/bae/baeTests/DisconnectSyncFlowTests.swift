@@ -5,10 +5,9 @@ import Testing
 @testable import bae
 
 /// Covers `DisconnectSyncFlow`'s confirmation and execution logic with stubbed
-/// bridge/keychain closures — no live core. The load-bearing invariants are the
+/// bridge closures — no live core. The load-bearing invariants are the
 /// warning-append composition, that the confirmation opens even when the
-/// at-risk check fails, and that the restore code is deleted only after a
-/// successful disconnect.
+/// at-risk check fails, and that a failed disconnect says so inline.
 @MainActor
 @Suite("DisconnectSyncFlow")
 struct DisconnectSyncFlowTests {
@@ -19,7 +18,6 @@ struct DisconnectSyncFlowTests {
         private let lock = NSLock()
         private var _warningCalls = 0
         private var _disconnectCalls = 0
-        private var _deleteCalls = 0
 
         func recordWarning() -> Int {
             lock.withLock {
@@ -28,10 +26,8 @@ struct DisconnectSyncFlowTests {
             }
         }
         func recordDisconnect() { lock.withLock { _disconnectCalls += 1 } }
-        func recordDelete() { lock.withLock { _deleteCalls += 1 } }
 
         var disconnectCalls: Int { lock.withLock { _disconnectCalls } }
-        var deleteCalls: Int { lock.withLock { _deleteCalls } }
     }
 
     private func makeFlow(
@@ -39,28 +35,22 @@ struct DisconnectSyncFlowTests {
             0
         },
         atRiskMessage: @escaping (UInt64) -> String = { "\($0) at risk." },
-        disconnect: @escaping @Sendable () async throws -> Void = {},
-        deleteRestoreCode: @escaping () throws -> Void = {},
+        disconnect: @escaping @MainActor () async throws -> Void = {},
         baseMessage: @escaping () -> String = { "Disconnect." },
         warningCheckFailedMessage: @escaping (String) -> String = {
             "check failed: \($0)"
         },
         disconnectFailedMessage: @escaping (String) -> String = {
             "disconnect failed: \($0)"
-        },
-        restoreCodeDeleteFailedMessage: @escaping (String) -> String = {
-            "restore code delete failed: \($0)"
         }
     ) -> DisconnectSyncFlow {
         DisconnectSyncFlow(
             cloudOnlyReleaseCount: cloudOnlyReleaseCount,
             atRiskMessage: atRiskMessage,
             disconnect: disconnect,
-            deleteRestoreCode: deleteRestoreCode,
             baseMessage: baseMessage,
             warningCheckFailedMessage: warningCheckFailedMessage,
-            disconnectFailedMessage: disconnectFailedMessage,
-            restoreCodeDeleteFailedMessage: restoreCodeDeleteFailedMessage
+            disconnectFailedMessage: disconnectFailedMessage
         )
     }
 
@@ -110,55 +100,29 @@ struct DisconnectSyncFlowTests {
         #expect(flow.error != nil)
     }
 
-    @Test("a successful disconnect deletes the restore code exactly once")
-    func confirmSuccessDeletesRestoreCode() async {
+    @Test("a successful disconnect runs once and shows no error")
+    func confirmSuccessRunsOnce() async {
         let recorder = Recorder()
-        let flow = makeFlow(
-            disconnect: { recorder.recordDisconnect() },
-            deleteRestoreCode: { recorder.recordDelete() }
-        )
+        let flow = makeFlow(disconnect: { recorder.recordDisconnect() })
 
         await flow.confirm()
 
         #expect(recorder.disconnectCalls == 1)
-        #expect(recorder.deleteCalls == 1)
         #expect(flow.error == nil)
     }
 
-    @Test("a keychain that refuses the delete says so, not \"disconnect failed\"")
-    func confirmSurfacesRestoreCodeDeleteFailure() async {
+    @Test("a failed disconnect shows its error inline")
+    func confirmFailureShowsError() async {
         let recorder = Recorder()
-        let flow = makeFlow(
-            disconnect: { recorder.recordDisconnect() },
-            deleteRestoreCode: {
-                recorder.recordDelete()
-                throw StubError.notImplemented
-            }
-        )
+        let flow = makeFlow(disconnect: {
+            recorder.recordDisconnect()
+            throw StubError.notImplemented
+        })
 
         await flow.confirm()
 
         #expect(recorder.disconnectCalls == 1)
-        #expect(recorder.deleteCalls == 1)
-        #expect(flow.error?.hasPrefix("restore code delete failed: ") == true)
-    }
-
-    @Test("a failed disconnect leaves the restore code in place")
-    func confirmFailureKeepsRestoreCode() async {
-        let recorder = Recorder()
-        let flow = makeFlow(
-            disconnect: {
-                recorder.recordDisconnect()
-                throw StubError.notImplemented
-            },
-            deleteRestoreCode: { recorder.recordDelete() }
-        )
-
-        await flow.confirm()
-
-        #expect(recorder.disconnectCalls == 1)
-        #expect(recorder.deleteCalls == 0)
-        #expect(flow.error != nil)
+        #expect(flow.error?.hasPrefix("disconnect failed: ") == true)
     }
 
     @Test("a superseding prompt cancels the prior warning query")

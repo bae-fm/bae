@@ -4,200 +4,273 @@ import os.log
 
 private let logger = Logger.bae("MembersView")
 
-/// The library's member devices; an owner can add a device or remove one,
-/// which rotates the library key.
+/// The library's people and their devices. Admins invite people, approve or
+/// decline their join requests, change roles and remove people; each person
+/// removes their own devices, and an admin can remove anyone's.
 struct MembersView: View {
+    @Environment(MembershipStore.self)
+    private var store
     @Environment(Sync.self)
     private var sync
 
     @State
-    private var membership: BridgeMembership?
+    private var showInvite = false
     @State
-    private var loadError: String?
+    private var removal: Removal?
+    /// What the person still has to do in the provider after removing a
+    /// device.
     @State
-    private var actionError: String?
+    private var signOut: BridgeProviderSignOut?
     @State
-    private var loadTask: Task<Void, Never>?
+    private var task: Task<Void, Never>?
     @State
-    private var removeTask: Task<Void, Never>?
-    @State
-    private var removeConfirm: BridgeMember?
-    @State
-    private var showApprove = false
+    private var actionError: DisplayError?
+
+    private enum Removal {
+        case person(BridgeMember, name: String)
+        case device(BridgeDevice)
+    }
 
     var body: some View {
         List {
-            Section("Devices") {
-                switch membership {
-                case nil:
-                    if let loadError {
-                        VStack(alignment: .leading, spacing: ThemeSpace.related) {
-                            ErrorText(loadError)
-                            Button("Retry") { load() }
-                        }
-                    }
-                    else {
-                        ProgressView()
-                            .frame(maxWidth: .infinity)
-                    }
-                case .some(let membership):
-                    ForEach(membership.members, id: \.pubkey) { member in
-                        MemberRow(
+            if let members = store.members {
+                ForEach(members, id: \.id) { person in
+                    if let member = person.membership {
+                        PersonSection(
+                            name: person.profile?.name,
                             member: member,
-                            onRemove: { removeConfirm = member }
+                            canChangeRole: store.selfIsAdmin,
+                            busy: task != nil,
+                            onSetRole: { setRole(member, $0) },
+                            onRemove: {
+                                removal = .person(
+                                    member,
+                                    name: person.profile?.name
+                                        ?? String(localized: "This person")
+                                )
+                            },
+                            onRemoveDevice: { removal = .device($0) }
                         )
                     }
                 }
             }
-
-            if let actionError {
+            else if store.error == nil {
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+            }
+            if store.error != nil || actionError != nil {
                 Section {
-                    ErrorText(actionError)
+                    ErrorDetailDisclosure(error: store.error)
+                    ErrorDetailDisclosure(error: actionError)
                 }
             }
-
-            if membership?.selfIsOwner == true {
-                Section {
-                    Button("Add a device\u{2026}") {
-                        actionError = nil
-                        showApprove = true
+            if store.selfIsAdmin {
+                if !store.requests.isEmpty {
+                    Section("Waiting to join") {
+                        ForEach(store.requests, id: \.info.invite) { pending in
+                            JoinRequestRow(
+                                info: pending.info,
+                                busy: task != nil,
+                                onApprove: {
+                                    run {
+                                        try await sync.approveJoinRequest(
+                                            pending.request
+                                        )
+                                    }
+                                },
+                                onDecline: {
+                                    run {
+                                        try await sync.declineJoinRequest(
+                                            pending.request
+                                        )
+                                    }
+                                }
+                            )
+                        }
                     }
                 }
+                Section {
+                    Button("Invite a Person\u{2026}") { showInvite = true }
+                }
             }
         }
-        .navigationTitle("Members")
+        .navigationTitle("People")
         .navigationBarTitleDisplayMode(.inline)
-        .task { load() }
-        .onDisappear {
-            loadTask?.cancel()
-            removeTask?.cancel()
-        }
-        .sheet(isPresented: $showApprove) {
-            ApproveDeviceView(
-                sync: sync,
-                onDismiss: { showApprove = false },
-                onApproved: { load() }
-            )
+        .onDisappear { task?.cancel() }
+        .sheet(isPresented: $showInvite) {
+            InvitePersonView(onDismiss: { showInvite = false })
         }
         .confirmationDialog(
-            "Remove this device?",
+            removalTitle,
             isPresented: Binding(
-                get: { removeConfirm != nil },
-                set: { if !$0 { removeConfirm = nil } }
+                get: { removal != nil },
+                set: { if !$0 { removal = nil } }
             ),
-            titleVisibility: .visible
-        ) {
-            Button("Remove", role: .destructive) {
-                if let member = removeConfirm {
-                    remove(member)
-                }
-                removeConfirm = nil
-            }
+            titleVisibility: .visible,
+            presenting: removal
+        ) { selected in
+            Button("Remove", role: .destructive) { remove(selected) }
             Button("Cancel", role: .cancel) {}
-        } message: {
-            Text(
-                "It will lose access and the library key will be rotated. Devices still in the library re-key automatically."
-            )
-        }
-    }
-
-    // MARK: - Actions
-
-    private func load() {
-        loadError = nil
-        loadTask?.cancel()
-        loadTask = Task { @MainActor in
-            do {
-                membership = try await sync.getMembers()
-            }
-            catch is CancellationError {
-                logger.debug("member list load cancelled")
-            }
-            catch {
-                logger.error(
-                    "Failed to load members: \(error.localizedDescription)"
+        } message: { selected in
+            switch selected {
+            case .person:
+                Text(
+                    "They lose access to the library. Their private history and private playlists are deleted; what they shared stays."
                 )
-                // Keep a loaded list visible; show the inline error only when
-                // there is none.
-                if membership == nil {
-                    loadError = error.displayLine
-                }
-                else {
-                    actionError = error.displayLine
-                }
+            case .device:
+                Text("The device loses access to the library.")
             }
+        }
+        .alert(
+            "Device removed",
+            isPresented: Binding(
+                get: { signOut != nil },
+                set: { if !$0 { signOut = nil } }
+            ),
+            presenting: signOut
+        ) { _ in
+            Button("OK", role: .cancel) {}
+        } message: { instruction in
+            Text(instruction.text)
         }
     }
 
-    private func remove(_ member: BridgeMember) {
+    private var removalTitle: String {
+        switch removal {
+        case .person(_, let name): String(localized: "Remove \(name)?")
+        case .device(let device): String(localized: "Remove \(device.name)?")
+        case nil: ""
+        }
+    }
+
+    private func setRole(_ member: BridgeMember, _ role: BridgeMemberRole) {
+        run { try await sync.setMemberRole(member.id, role) }
+    }
+
+    private func remove(_ removal: Removal) {
+        switch removal {
+        case .person(let member, _):
+            run { try await sync.removeMember(member.id) }
+        case .device(let device):
+            run { signOut = try await sync.removeDevice(device.id) }
+        }
+    }
+
+    private func run(_ operation: @escaping () async throws -> Void) {
         actionError = nil
-        removeTask?.cancel()
-        removeTask = Task { @MainActor in
-            do {
-                try await sync.removeMember(member.pubkey)
-                load()
-            }
+        task = Task {
+            defer { task = nil }
+            do { try await operation() }
             catch is CancellationError {
-                logger.debug("member removal cancelled")
+                logger.debug("membership change cancelled")
             }
             catch {
                 logger.error(
-                    "Failed to remove member: \(error.localizedDescription)"
+                    "membership change failed: \(error.localizedDescription)"
                 )
-                actionError = error.displayLine
+                actionError = DisplayError(error)
             }
         }
     }
 }
 
-/// One device row: key fingerprint, role, a "This device" marker, and Remove
-/// when the member can be removed.
-private struct MemberRow: View {
+/// One member: name, role, the "You" marker, and each of their devices, each
+/// removable by swiping when this person may remove it.
+private struct PersonSection: View {
+    let name: String?
     let member: BridgeMember
+    let canChangeRole: Bool
+    let busy: Bool
+    let onSetRole: (BridgeMemberRole) -> Void
     let onRemove: () -> Void
+    let onRemoveDevice: (BridgeDevice) -> Void
 
     var body: some View {
-        HStack(spacing: ThemeSpace.related) {
-            VStack(alignment: .leading, spacing: ThemeSpace.line) {
-                Text(member.fingerprint)
-                    .themeText(.mono)
-                // Hidden, not removed, so every row has the same height.
-                Text("This device")
+        Section {
+            HStack(spacing: ThemeSpace.related) {
+                Text(name ?? String(localized: "No profile yet"))
+                    .themeText(.rowTitle)
+                    .foregroundStyle(name == nil ? .secondary : .primary)
+                // Hidden rather than removed so every row has the same layout.
+                Text("You")
                     .themeText(.detail)
                     .foregroundStyle(.secondary)
                     .opacity(member.isSelf ? 1 : 0)
+                Spacer()
+                Menu {
+                    Button("Make Admin") { onSetRole(.admin) }
+                        .disabled(member.role == .admin)
+                    Button("Make Member") { onSetRole(.member) }
+                        .disabled(member.role == .member)
+                } label: {
+                    StatusChip(verbatim: member.role.label)
+                }
+                .disabled(!canChangeRole || busy)
             }
-            Spacer()
-            RoleChip(role: member.role)
-            // Hidden, not removed, so every row keeps the same layout.
-            Button(role: .destructive) {
-                onRemove()
-            } label: {
-                Image(systemName: "trash")
-                    .themeIcon(.medium)
+            .swipeActions {
+                if member.canRemove {
+                    Button("Remove", role: .destructive, action: onRemove)
+                        .disabled(busy)
+                }
             }
-            .buttonStyle(.borderless)
-            .opacity(member.canRemove ? 1 : 0)
-            .allowsHitTesting(member.canRemove)
+            ForEach(member.devices, id: \.id) { device in
+                DeviceRow(device: device)
+                    .swipeActions {
+                        if member.canRemoveDevices, device.state == .active,
+                            !device.isSelf
+                        {
+                            Button("Remove", role: .destructive) {
+                                onRemoveDevice(device)
+                            }
+                            .disabled(busy)
+                        }
+                    }
+            }
         }
     }
 }
 
-private struct RoleChip: View {
-    let role: BridgeMemberRole
+private struct DeviceRow: View {
+    let device: BridgeDevice
 
     var body: some View {
-        StatusChip(label)
+        HStack(spacing: ThemeSpace.related) {
+            Image(systemName: "laptopcomputer.and.iphone")
+                .themeIcon(.small)
+                .foregroundStyle(.secondary)
+            Text(device.name)
+                .themeText(.body)
+            Spacer()
+            Text(device.stateLabel(thisDevice: String(localized: "This device")))
+                .themeText(.detail)
+                .foregroundStyle(.secondary)
+        }
+        .padding(.leading, ThemeSpace.group)
     }
+}
 
-    private var label: LocalizedStringKey {
-        switch role {
-        case .owner:
-            "Owner"
-        case .member:
-            "Member"
-        case .follower:
-            "Follower"
+/// A join request an admin approves or declines: the requesting device and the
+/// provider account it signed in with.
+private struct JoinRequestRow: View {
+    let info: BridgeJoinRequestInfo
+    let busy: Bool
+    let onApprove: () -> Void
+    let onDecline: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: ThemeSpace.related) {
+            Text(info.deviceName)
+                .themeText(.rowTitle)
+            Text(info.providerAccountEmail ?? "")
+                .themeText(.detail)
+                .foregroundStyle(.secondary)
+            HStack(spacing: ThemeSpace.related) {
+                Button("Decline", role: .destructive, action: onDecline)
+                    .buttonStyle(.bordered)
+                Button("Approve", action: onApprove)
+                    .buttonStyle(PrimaryButtonStyle())
+            }
+            .disabled(busy)
         }
     }
 }

@@ -4,12 +4,12 @@ import os.log
 
 private let logger = Logger.bae("Settings")
 
-/// Appearance, library, sync, playback, and casting settings.
+/// Appearance, library, sync, people, playback, and casting settings.
 struct SettingsView: View {
     @Environment(ConfigStore.self)
     private var configStore
-    @Environment(SyncStatusStore.self)
-    private var syncStatusStore
+    @Environment(OutboxStore.self)
+    private var outboxStore
     @Environment(AppSessionHolder.self)
     private var holder
     @Environment(Sync.self)
@@ -24,9 +24,9 @@ struct SettingsView: View {
     private var persistPlayback = true
 
     @State
-    private var confirmLeave = false
+    private var confirmRemove = false
     @State
-    private var showRecoveryCode = false
+    private var showRestoreCode = false
 
     var body: some View {
         NavigationStack {
@@ -35,59 +35,39 @@ struct SettingsView: View {
                     AppearanceControls()
                 }
                 if holder.hasMultipleLibraries {
-                    Section("Library") {
-                        ForEach(holder.libraries, id: \.id) { library in
-                            Button {
-                                holder.openLibrary(library)
-                            } label: {
-                                HStack {
-                                    VStack(alignment: .leading, spacing: ThemeSpace.line) {
-                                        Text(library.name)
-                                        // A library whose config won't load
-                                        // stays listed with its error.
-                                        if let error = library.error {
-                                            ErrorText(error)
-                                                .lineLimit(2)
-                                        }
-                                    }
-                                    Spacer()
-                                    // Hidden, not removed, so switching
-                                    // libraries doesn't re-measure rows.
-                                    Image(systemName: "checkmark")
-                                        .foregroundStyle(Theme.accent)
-                                        .opacity(holder.isActive(library) ? 1 : 0)
-                                        .allowsHitTesting(false)
-                                }
-                                .contentShape(Rectangle())
-                            }
-                            .foregroundStyle(.primary)
-                            .disabled(
-                                holder.isActive(library) || library.error != nil
-                            )
+                    LibrarySwitcherSection()
+                }
+                LibraryNameSection()
+
+                if let location = configStore.storage {
+                    SyncSection(location: location)
+                }
+                else {
+                    Section("Sync") {
+                        NavigationLink("Set Up Sync") {
+                            StorageSetupScreen()
                         }
                     }
                 }
 
-                Section {
-                    LabeledContent(
-                        "Cloud sync",
-                        value: configStore.config.sync != nil
-                            ? String(localized: "On")
-                            : String(localized: "Local only")
-                    )
-                    if let syncConfig = configStore.config.sync {
-                        SyncConnectedControls(
-                            config: syncConfig,
-                            sync: sync,
-                            libraryId: configStore.config.libraryId
+                if configStore.hasCloudHome {
+                    Section {
+                        NavigationLink("People") {
+                            MembersView()
+                        }
+                    } footer: {
+                        Text(
+                            "The people who share this library and their devices."
                         )
                     }
-                } header: {
-                    Text("Sync")
-                } footer: {
-                    if configStore.config.sync != nil {
+                    HistorySharingSection()
+                    Section {
+                        Button("Show restore code\u{2026}") {
+                            showRestoreCode = true
+                        }
+                    } footer: {
                         Text(
-                            "While paused, changes wait on this device and upload when you resume."
+                            "Your restore code adds your other devices to this library. Anyone with it and access to your storage can open the library. Keep it secret."
                         )
                     }
                 }
@@ -118,43 +98,15 @@ struct SettingsView: View {
 
                 CastingSettingsSections()
 
-                // Members and the recovery code need a live sync session, not
-                // only a configured provider.
-                if syncStatusStore.syncReady {
-                    Section {
-                        NavigationLink {
-                            MembersView()
-                        } label: {
-                            Text("Members")
-                        }
-                    } footer: {
-                        Text(
-                            "Devices that share this library. Approve a new device, or remove one."
-                        )
-                    }
-
-                    Section {
-                        Button("Show recovery code\u{2026}") {
-                            showRecoveryCode = true
-                        }
-                    } footer: {
-                        Text(
-                            "Your recovery code restores this library on a new device when you have no other device available to approve it. Anyone with it has full access. Keep it secret."
-                        )
-                    }
-                }
-
                 Section {
                     Button(role: .destructive) {
-                        confirmLeave = true
+                        confirmRemove = true
                     } label: {
                         Text("Remove this library from this device")
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 } footer: {
-                    Text(
-                        "Removes this library and its downloaded files from this device. Your library in the cloud is untouched. You can re-pair this device later."
-                    )
+                    Text(removeFooter)
                 }
 
                 Section("About") {
@@ -172,21 +124,21 @@ struct SettingsView: View {
             }
             .confirmationDialog(
                 "Remove this library from this device?",
-                isPresented: $confirmLeave,
+                isPresented: $confirmRemove,
                 titleVisibility: .visible
             ) {
                 Button("Remove", role: .destructive) {
                     dismiss()
-                    holder.forgetActiveLibrary()
+                    holder.removeActiveLibrary()
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("Your library in the cloud is untouched.")
+                Text(removeMessage)
             }
-            .sheet(isPresented: $showRecoveryCode) {
-                RecoveryCodeView(
+            .sheet(isPresented: $showRestoreCode) {
+                RestoreCodeView(
                     generate: sync.generateRestoreCode,
-                    onDismiss: { showRecoveryCode = false }
+                    onDismiss: { showRestoreCode = false }
                 )
             }
             .alert(
@@ -203,6 +155,139 @@ struct SettingsView: View {
                 }
             }
             .onAppear { holder.reportScreen(.settings) }
+        }
+    }
+
+    /// The remove section's footer, which depends on whether the library
+    /// syncs.
+    private var removeFooter: String {
+        if configStore.hasCloudHome {
+            return String(
+                localized:
+                    "Removes this device from the library's members, then deletes the library and its downloaded files from this device. Your library in the cloud is untouched. Removing needs a connection to your storage."
+            )
+        }
+        return String(
+            localized:
+                "This library isn't synced. Removing it permanently deletes its catalog from this device."
+        )
+    }
+
+    /// The confirmation's body: a synced library's cloud copy survives, and
+    /// queued cloud writes are lost.
+    private var removeMessage: String {
+        guard configStore.hasCloudHome else { return removeFooter }
+        let base = String(
+            localized:
+                "This device leaves the library, then its copy is deleted. Your library in the cloud is untouched."
+        )
+        guard outboxStore.hasPendingCloudWork else { return base }
+        return base + " "
+            + String(
+                localized:
+                    "Some changes haven't finished uploading and will be lost."
+            )
+    }
+}
+
+/// The libraries on this device, the open one checked; tapping another opens
+/// it.
+private struct LibrarySwitcherSection: View {
+    @Environment(AppSessionHolder.self)
+    private var holder
+
+    var body: some View {
+        Section("Library") {
+            ForEach(holder.libraries, id: \.id) { library in
+                Button {
+                    holder.openLibrary(id: library.id)
+                } label: {
+                    HStack {
+                        VStack(alignment: .leading, spacing: ThemeSpace.line) {
+                            Text(library.name)
+                            // Every row keeps the detail line so rows share
+                            // one height.
+                            Text(library.storage?.displayName ?? "")
+                                .themeText(.detail)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        // Hidden, not removed, so switching libraries doesn't
+                        // re-measure rows.
+                        Image(systemName: "checkmark")
+                            .foregroundStyle(Theme.accent)
+                            .opacity(holder.isActive(library) ? 1 : 0)
+                            .allowsHitTesting(false)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .foregroundStyle(.primary)
+                .disabled(holder.isActive(library))
+            }
+        }
+    }
+}
+
+/// The library's name, which the household shares; admins rename it.
+private struct LibraryNameSection: View {
+    @Environment(ConfigStore.self)
+    private var configStore
+    @Environment(MembershipStore.self)
+    private var membership
+    @Environment(Sync.self)
+    private var sync
+
+    @State
+    private var renaming = false
+    @State
+    private var newName = ""
+    @State
+    private var task: Task<Void, Never>?
+    @State
+    private var error: DisplayError?
+
+    var body: some View {
+        Section {
+            LabeledContent("Name", value: configStore.libraryName)
+            if membership.selfIsAdmin {
+                Button("Rename Library\u{2026}") {
+                    newName = configStore.libraryName
+                    renaming = true
+                }
+                .disabled(task != nil)
+            }
+            if let error {
+                ErrorDetailDisclosure(error: error)
+            }
+        }
+        .alert("Rename Library", isPresented: $renaming) {
+            TextField("Name", text: $newName)
+            Button("Cancel", role: .cancel) {}
+            Button("Rename") { rename() }
+                .disabled(
+                    newName.trimmingCharacters(in: .whitespaces).isEmpty
+                )
+        } message: {
+            Text("Every device in the library shows the new name.")
+        }
+        .onDisappear { task?.cancel() }
+    }
+
+    private func rename() {
+        let name = newName.trimmingCharacters(in: .whitespaces)
+        error = nil
+        task = Task {
+            defer { task = nil }
+            do { try await sync.renameLibrary(name) }
+            catch is CancellationError {
+                logger.debug("library rename cancelled")
+            }
+            catch {
+                logger.error(
+                    "Failed to rename the library: \(error.localizedDescription)"
+                )
+                self.error = DisplayError(error)
+            }
         }
     }
 }
@@ -291,142 +376,6 @@ private struct CastingSettingsSections: View {
             catch {
                 configStore.showError(error)
             }
-        }
-    }
-}
-
-/// The Sync section's controls for a connected provider; its own view so its
-/// init can seed `DisconnectSyncFlow`.
-private struct SyncConnectedControls: View {
-    let config: BridgeSyncConfig
-
-    @Environment(SyncStatusStore.self)
-    private var syncStatusStore
-    @Environment(OutboxStore.self)
-    private var outboxStore
-
-    @State
-    private var flow: DisconnectSyncFlow
-
-    private let sync: Sync
-
-    init(config: BridgeSyncConfig, sync: Sync, libraryId: String) {
-        self.config = config
-        self.sync = sync
-        _flow = State(
-            initialValue: DisconnectSyncFlow(
-                cloudOnlyReleaseCount: sync.cloudOnlyReleaseCount,
-                atRiskMessage: { count in
-                    String.localizedStringWithFormat(
-                        NSLocalizedString(
-                            "core.sync.cloud_only_releases",
-                            tableName: "Core",
-                            bundle: .main,
-                            comment: ""
-                        ),
-                        count
-                    )
-                },
-                disconnect: sync.disconnectCloudProvider,
-                deleteRestoreCode: {
-                    try KeychainService.deleteRestoreCode(libraryId: libraryId)
-                },
-                baseMessage: {
-                    String(
-                        localized:
-                            "This will stop syncing and remove the cloud provider configuration."
-                    )
-                        + " "
-                        + String(
-                            localized:
-                                "To sync this library again, pair this device from another device."
-                        )
-                },
-                warningCheckFailedMessage: {
-                    String(
-                        localized:
-                            "Couldn't check for cloud-only releases: \($0)"
-                    )
-                },
-                disconnectFailedMessage: {
-                    String(localized: "Failed to disconnect: \($0)")
-                },
-                restoreCodeDeleteFailedMessage: {
-                    String(
-                        localized:
-                            "Disconnected, but couldn't remove the restore code: \($0)"
-                    )
-                }
-            )
-        )
-    }
-
-    var body: some View {
-        @Bindable
-        var flow = flow
-        Group {
-            CloudProviderConnectedSection(
-                config: config,
-                onDisconnect: { flow.promptDisconnect() }
-            )
-
-            if let syncError = syncStatusStore.error {
-                SyncFailureNotice(
-                    error: syncError,
-                    canReconnect: syncStatusStore.canReconnect,
-                    onReconnect: reconnect
-                )
-                // Reconnect takes only its own taps, not the whole list row's.
-                .buttonStyle(.borderless)
-            }
-            else {
-                LabeledContent(
-                    "Status",
-                    value: SyncIndicatorLabel.text(syncStatusStore.indicator)
-                )
-            }
-
-            BlockedSyncOperationRows(retry: sync.retryBlockedSyncOperation)
-
-            Toggle(
-                "Pause uploads",
-                isOn: Binding(
-                    get: { outboxStore.snapshot.pauseRequested },
-                    set: { paused in
-                        Task { try await sync.setSyncPaused(paused) }
-                    }
-                )
-            )
-
-            if let error = flow.error {
-                ErrorText(error)
-            }
-        }
-        .confirmationDialog(
-            "Disconnect sync?",
-            isPresented: $flow.showConfirm,
-            titleVisibility: .visible
-        ) {
-            Button("Disconnect", role: .destructive) {
-                Task { await flow.confirm() }
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text(flow.message)
-        }
-        .onDisappear { flow.cancelWarningTask() }
-    }
-
-    /// Retry the configured provider, connecting if a failed launch left no
-    /// connection; a failed retry keeps the notice up with the new reason.
-    private func reconnect() async {
-        do {
-            try await sync.reconnectSync()
-        }
-        catch {
-            logger.error(
-                "Sync reconnect failed: \(error.localizedDescription)"
-            )
         }
     }
 }

@@ -2,15 +2,9 @@ import BaeKit
 import SwiftUI
 import UIKit
 
-/// App root: opens an existing library, asks for its key, or onboards.
+/// App root: opens an existing library, onboards, or offers a device reset.
 struct ContentView: View {
-    // The host's OAuth client config for onboarding; absent in baeium builds.
-    #if BAE_OAUTH_PROVIDERS
-    let oauthLinking: OAuthLinking?
-    let oauthLinkingError: String?
-    #endif
     let startupError: String?
-    let host: BridgeHost
 
     @State
     private var holder: AppSessionHolder
@@ -19,37 +13,22 @@ struct ContentView: View {
     @Environment(\.scenePhase)
     private var scenePhase
 
-    #if BAE_OAUTH_PROVIDERS
-    @MainActor
-    init(
-        oauthLinking: OAuthLinking?,
-        oauthLinkingError: String?,
-        startupError: String?,
-        diagnostics: BridgeDiagnostics,
-        host: BridgeHost
-    ) {
-        self.oauthLinking = oauthLinking
-        self.oauthLinkingError = oauthLinkingError
-        self.startupError = startupError
-        self.host = host
-        _holder = State(
-            initialValue: AppSessionHolder(diagnostics: diagnostics, host: host)
-        )
-    }
-    #else
     @MainActor
     init(
         startupError: String?,
         diagnostics: BridgeDiagnostics,
-        host: BridgeHost
+        host: BridgeHost,
+        deviceName: String
     ) {
         self.startupError = startupError
-        self.host = host
         _holder = State(
-            initialValue: AppSessionHolder(diagnostics: diagnostics, host: host)
+            initialValue: AppSessionHolder(
+                diagnostics: diagnostics,
+                host: host,
+                deviceName: deviceName
+            )
         )
     }
-    #endif
 
     var body: some View {
         Group {
@@ -57,66 +36,10 @@ struct ContentView: View {
                 errorView(startupError)
             }
             else {
-                switch holder.screen {
-                case .loading:
-                    ProgressView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-                case .onboarding:
-                    #if BAE_OAUTH_PROVIDERS
-                    OnboardingView(
-                        host: host,
-                        oauthLinking: oauthLinking,
-                        oauthLinkingError: oauthLinkingError,
-                        onLinked: holder.onLinked
-                    )
-                    #else
-                    OnboardingView(host: host, onLinked: holder.onLinked)
-                    #endif
-
-                case .unlock(let lockedLibrary):
-                    UnlockView(
-                        libraryName: lockedLibrary.library.name,
-                        onUnlock: holder.unlock,
-                        onCancel: holder.cancelUnlock
-                    )
-
-                case .library(let service):
-                    service.installEnvironment(
-                        VStack(spacing: 0) {
-                            ArtworkLoadingBanner()
-                            LibraryView()
-                        }
-                        .environment(holder)
-                    )
-
-                case .keychainLocked:
-                    // The open retries on scene activation; the button covers
-                    // any other change that unlocked the keychain.
-                    VStack(spacing: ThemeSpace.edge) {
-                        Image(systemName: "lock.fill")
-                            .themeIcon(.hero)
-                            .foregroundStyle(.secondary)
-                        Text("Library Locked")
-                            .themeText(.title)
-                        Text(BridgeErrorCategory.keyringLocked.localizedLine)
-                            .themeText(.body)
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center)
-                        Button("Try again") {
-                            holder.retryOpenIfKeychainWasLocked(
-                                trigger: "the retry button"
-                            )
-                        }
-                        .buttonStyle(PrimaryButtonStyle())
-                    }
-                    .padding()
-
-                case .failed(let message):
-                    errorView(message)
-                }
+                screen
             }
         }
+        .environment(holder.removals)
         .background(Theme.background)
         .task {
             guard startupError == nil else {
@@ -151,6 +74,62 @@ struct ContentView: View {
                     }
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private var screen: some View {
+        switch holder.screen {
+        case .loading:
+            ProgressView()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+        case .onboarding:
+            OnboardingView(
+                setup: holder.setup,
+                onLibraryReady: holder.openOpenedLibrary
+            )
+
+        case .resetRequired(let libraryId, let error):
+            DeviceResetScreen(
+                error: error,
+                onReset: { holder.resetDevice(libraryId: libraryId) },
+                onCancel: holder.cancelDeviceReset
+            )
+
+        case .library(let service):
+            service.installEnvironment(
+                VStack(spacing: 0) {
+                    ArtworkLoadingBanner()
+                    LibraryView()
+                }
+                .environment(holder)
+            )
+
+        case .keychainLocked:
+            // The open retries on scene activation; the button covers any
+            // other change that unlocked the keychain.
+            VStack(spacing: ThemeSpace.edge) {
+                Image(systemName: "lock.fill")
+                    .themeIcon(.hero)
+                    .foregroundStyle(.secondary)
+                Text("Library Locked")
+                    .themeText(.title)
+                Text(BridgeErrorCategory.keyringLocked.localizedLine)
+                    .themeText(.body)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                Button("Try again") {
+                    holder.retryOpenIfKeychainWasLocked(
+                        trigger: "the retry button"
+                    )
+                }
+                .buttonStyle(PrimaryButtonStyle())
+            }
+            .padding()
+
+        case .failed(let message):
+            errorView(message)
         }
     }
 

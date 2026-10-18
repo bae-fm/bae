@@ -2,11 +2,11 @@ import BaeKit
 import SwiftUI
 import os.log
 
-private let logger = Logger.bae("RecoveryCode")
+private let logger = Logger.bae("RestoreCode")
 
-/// Generates and shows the library's recovery code, which grants full access
-/// to the library; closing the sheet cancels generation.
-struct RecoveryCodeView: View {
+/// Generates and shows this person's restore code, which adds their other
+/// devices to the library; closing the sheet cancels generation.
+struct RestoreCodeView: View {
     let generate: @Sendable () async throws -> String
     let onDismiss: () -> Void
 
@@ -19,7 +19,7 @@ struct RecoveryCodeView: View {
             content
                 .padding()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .navigationTitle("Recovery code")
+                .navigationTitle("Restore code")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .confirmationAction) {
@@ -45,12 +45,12 @@ struct RecoveryCodeView: View {
 
                 CodeShareBlock(
                     code: code,
-                    contentDescription: "Recovery code",
+                    contentDescription: "Restore code",
                     qrSize: 220
                 )
 
                 Text(
-                    "Anyone with this code has full access to your library. Keep it secret. Use it only to restore on a new device when you have no other device available."
+                    "Scan or type this code on your new device to add it to the library. Anyone with it and access to your storage can open the library. Keep it secret."
                 )
                 .themeText(.detail)
                 .foregroundStyle(.secondary)
@@ -78,11 +78,11 @@ struct RecoveryCodeView: View {
             result = .success(code)
         }
         catch is CancellationError {
-            logger.debug("recovery code generation cancelled")
+            logger.debug("restore code generation cancelled")
         }
         catch {
             logger.error(
-                "Failed to generate recovery code: \(error.localizedDescription)"
+                "Failed to generate restore code: \(error.localizedDescription)"
             )
             // A failure with no line is a cancellation from core, which leaves
             // the spinner up like the arm above.
@@ -94,8 +94,8 @@ struct RecoveryCodeView: View {
 
 #if DEBUG
 #Preview {
-    RecoveryCodeView(
-        generate: { "PREVIEW-RECOVERY-CODE" },
+    RestoreCodeView(
+        generate: { "PREVIEW-RESTORE-CODE" },
         onDismiss: {}
     )
 }

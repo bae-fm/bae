@@ -250,25 +250,40 @@ extension LibraryView {
 
 }
 
+/// Sync's state at a glance for a library with a cloud home: a spinner while a
+/// cycle runs, otherwise a symbol for core's indicator, read aloud as the
+/// status line Settings shows.
 private struct LibrarySyncToolbarStatus: View {
     @Environment(SyncStatusStore.self)
     private var syncStatusStore
+    @Environment(ConfigStore.self)
+    private var configStore
 
     var body: some View {
         Group {
-            // A spinner while a cycle runs, otherwise core's indicator word.
-            if syncStatusStore.syncing {
+            if syncStatusStore.syncing
+                || syncStatusStore.indicator == .loading
+            {
                 ProgressView()
                     .controlSize(.small)
-                    .accessibilityLabel(Text("syncing\u{2026}"))
             }
             else {
-                Text(SyncIndicatorLabel.text(syncStatusStore.indicator))
-                    .themeText(.detail)
+                Image(systemName: symbol)
                     .foregroundStyle(.secondary)
             }
         }
-        .frame(width: 56, height: 20, alignment: .trailing)
+        .accessibilityElement()
+        .accessibilityLabel(Text(syncStatusStore.statusText))
+        .opacity(configStore.hasCloudHome ? 1 : 0)
+        .accessibilityHidden(!configStore.hasCloudHome)
+    }
+
+    private var symbol: String {
+        switch syncStatusStore.indicator {
+        case .synced, .loading: "checkmark.icloud"
+        case .waiting: "arrow.clockwise.icloud"
+        case .unconnected: "icloud.slash"
+        }
     }
 }
 
@@ -327,6 +342,7 @@ private struct LibraryBanner: View {
     @Environment(Sync.self)
     private var sync
 
+    // Group, so with nothing to show nothing takes the padding.
     var body: some View {
         Group {
             if let error = configStore.lastError {
@@ -344,9 +360,9 @@ private struct LibraryBanner: View {
                 .notice(.danger)
             }
             // Disconnecting leaves the recorded sync error behind, so show it
-            // only while a provider is configured.
+            // only while the library has a cloud home.
             else if let error = syncStatusStore.error,
-                configStore.config.sync != nil
+                configStore.hasCloudHome
             {
                 SyncFailureNotice(
                     error: error,
@@ -354,13 +370,14 @@ private struct LibraryBanner: View {
                     onReconnect: reconnect
                 )
             }
+            LibraryRemovalNotice()
         }
         .padding(.horizontal, ThemeSpace.edge)
         .padding(.vertical, ThemeSpace.related)
     }
 
-    /// Retry the configured provider, connecting if a failed launch left no
-    /// connection; a failed retry keeps the notice up with the new reason.
+    /// Connect again after a failed launch, or run the next cycle now; a
+    /// failed retry keeps the notice up with the new reason.
     private func reconnect() async {
         do {
             try await sync.reconnectSync()

@@ -3,34 +3,18 @@
 import AuthenticationServices
 import BaeKit
 import Foundation
+import UIKit
 import os.log
 
 private let logger = Logger.bae("OAuthLinking")
 
 enum OAuthLinkingError: Error, LocalizedError {
-    case notConfigured
-    case badAuthUrl
-    case noCode
-    case noState
     case unreadableConfig(String)
     case malformedConfig(String)
     case incompleteProviderConfig(String)
-    case emptyConfig
-    case noPresentationAnchor
 
     var errorDescription: String? {
         switch self {
-        case .notConfigured:
-            String(
-                localized:
-                    "Cloud sign-in isn't configured on this build (no oauth-creds.json)."
-            )
-        case .badAuthUrl:
-            String(localized: "The provider returned an invalid authorization URL.")
-        case .noCode:
-            String(localized: "Authorization finished without a code.")
-        case .noState:
-            String(localized: "Authorization finished without a state.")
         case .unreadableConfig(let message):
             String(localized: "Couldn't read oauth-creds.json: \(message)")
         case .malformedConfig(let message):
@@ -40,46 +24,37 @@ enum OAuthLinkingError: Error, LocalizedError {
                 localized:
                     "oauth-creds.json is missing client_id or redirect_uri for \(provider)."
             )
-        case .emptyConfig:
-            String(
-                localized: "oauth-creds.json does not contain any provider credentials."
-            )
-        case .noPresentationAnchor:
-            String(localized: "Couldn't present cloud sign-in from the current window.")
         }
     }
 }
 
-/// Per-device OAuth client config for providers that need it (Dropbox,
-/// OneDrive). Loaded from a gitignored `oauth-creds.json` in the app
-/// bundle — bae and coven ship no credentials; you register your own OAuth
-/// app's client id and the redirect URI from its console (an installed-app
-/// client, so the redirect is a custom scheme, not a localhost loopback). When
-/// the file is absent, OAuth linking is unavailable and onboarding says so.
+/// This build's OAuth applications for Dropbox and OneDrive, loaded from a
+/// gitignored `oauth-creds.json` in the app bundle — bae and coven ship no
+/// credentials; you register your own apps (an installed-app client, so each
+/// redirect is a custom scheme) and put their ids and redirects here. When the
+/// file is absent, provider sign-in is unavailable and coven says so when it is
+/// asked for.
 ///
-/// File shape:
+/// File shape, both providers required:
 /// ```json
 /// {
-///   "dropbox": {
-///     "client_id": "<app-key>",
-///     "redirect_uri": "bae://oauth"
-///   }
+///   "dropbox": { "client_id": "<app-key>", "redirect_uri": "bae-dropbox:/oauth" },
+///   "onedrive": { "client_id": "<client-id>", "redirect_uri": "bae-onedrive:/oauth" }
 /// }
 /// ```
 struct OAuthLinking {
-    struct ProviderConfig {
-        let clientId: String
-        let clientSecret: String?
-        let redirectUri: String
-    }
+    let clients: BridgeOAuthClients
+    let redirects: BridgeOAuthRedirects
 
-    let providers: [String: ProviderConfig]
-
-    /// Load the bundled creds. Returns nil when no `oauth-creds.json` is
-    /// bundled, in which case OAuth linking stays unavailable.
+    /// Load the bundled config, or nil when none is bundled.
     static func load() throws -> OAuthLinking? {
-        guard let url = Bundle.main.url(forResource: "oauth-creds", withExtension: "json") else {
-            logger.debug("oauth-creds.json not bundled; OAuth linking unavailable")
+        guard
+            let url = Bundle.main.url(
+                forResource: "oauth-creds",
+                withExtension: "json"
+            )
+        else {
+            logger.debug("oauth-creds.json not bundled; provider sign-in unavailable")
             return nil
         }
         let data: Data
@@ -92,9 +67,8 @@ struct OAuthLinking {
         return try parse(data)
     }
 
-    /// Decode the raw `oauth-creds.json` bytes into per-provider client config.
-    /// Split out from `load()` so the JSON shape rules (missing/empty/malformed)
-    /// are exercised without a file bundled into `Bundle.main`.
+    /// Decode the raw `oauth-creds.json` bytes. Split out from `load()` so the
+    /// shape rules are exercised without a file bundled into `Bundle.main`.
     static func parse(_ data: Data) throws -> OAuthLinking {
         let decoded: Any
         do {
@@ -108,119 +82,136 @@ struct OAuthLinking {
                 "Expected a JSON object whose values are provider credential objects."
             )
         }
-
-        var providers: [String: ProviderConfig] = [:]
-        for (provider, fields) in raw {
-            guard let clientId = fields["client_id"],
+        func app(_ provider: String) throws -> (id: String, redirect: String) {
+            guard let fields = raw[provider],
+                let clientId = fields["client_id"],
                 let redirectUri = fields["redirect_uri"]
             else {
                 throw OAuthLinkingError.incompleteProviderConfig(provider)
             }
-            providers[provider] = ProviderConfig(
-                clientId: clientId,
-                clientSecret: fields["client_secret"],
-                redirectUri: redirectUri
+            return (clientId, redirectUri)
+        }
+        let dropbox = try app("dropbox")
+        let oneDrive = try app("onedrive")
+        return OAuthLinking(
+            // Google admin sign-in is a desktop admin source.
+            clients: BridgeOAuthClients(
+                dropboxAppKey: dropbox.id,
+                onedriveClientId: oneDrive.id,
+                googleAdminClientId: nil
+            ),
+            redirects: BridgeOAuthRedirects(
+                dropbox: dropbox.redirect,
+                onedrive: oneDrive.redirect
+            )
+        )
+    }
+
+    /// Register the applications and the system sign-in sheet with the host,
+    /// once at launch, before any restore, join or sign-in runs.
+    func register(host: BridgeHost) {
+        host.setOauthClients(clients: clients)
+        host.setOauthPresenter(
+            redirects: redirects,
+            callback: WebAuthPresenter()
+        )
+    }
+}
+
+/// Why the system sign-in sheet couldn't produce a redirect. Diagnostics only:
+/// coven reports the failure with its own line.
+enum WebAuthFailure: Error {
+    case unreadableAuthorizationURL
+    case noRedirectScheme
+    case noKeyWindow
+    case sessionDidNotStart
+    case noRedirect
+}
+
+/// Presents coven's provider sign-in in `ASWebAuthenticationSession` and hands
+/// back the complete redirect. coven builds the authorization URL and checks
+/// the redirect; this only shows the page over the app's key window. When
+/// coven stops waiting, the Swift task is cancelled and the sheet dismissed.
+final class WebAuthPresenter: OAuthPresenterCallback, Sendable {
+    func present(authorizationUrl: String) async throws -> String {
+        do {
+            guard let url = URL(string: authorizationUrl) else {
+                throw WebAuthFailure.unreadableAuthorizationURL
+            }
+            let scheme = try Self.callbackScheme(of: url)
+            let anchor = try await MainActor.run { try Self.keyWindow() }
+            return try await WebAuthSession(anchor: anchor)
+                .run(url: url, callbackScheme: scheme)
+                .absoluteString
+        }
+        catch is CancellationError {
+            throw BridgeOAuthPresentationError.Cancelled
+        }
+        catch ASWebAuthenticationSessionError.canceledLogin {
+            throw BridgeOAuthPresentationError.Cancelled
+        }
+        catch {
+            logger.error("Provider sign-in failed: \(error.localizedDescription)")
+            throw BridgeOAuthPresentationError.Failed(
+                detail: String(describing: error)
             )
         }
-        guard !providers.isEmpty else {
-            throw OAuthLinkingError.emptyConfig
-        }
-        return OAuthLinking(providers: providers)
     }
 
-    /// Register the client ids with the bridge so coven can build authorization
-    /// URLs and refresh tokens during sync. Call once at launch; registering
-    /// again replaces the previous set.
-    func register(host: BridgeHost) throws {
-        var credsForBridge: [String: [String: String]] = [:]
-        for (provider, config) in providers {
-            var entry = ["client_id": config.clientId]
-            if let clientSecret = config.clientSecret {
-                entry["client_secret"] = clientSecret
-            }
-            credsForBridge[provider] = entry
-        }
-        let json = try JSONSerialization.data(withJSONObject: credsForBridge)
-        guard let jsonString = String(bytes: json, encoding: .utf8) else {
-            preconditionFailure("JSONSerialization produced non-UTF-8 data")
-        }
-        try host.setOauthClientCreds(credsJson: jsonString)
-    }
-
-    /// Run the OAuth flow for `provider` and return the token JSON to hand to
-    /// `restoreFromCode`. Opens the system auth session; throws on cancel/fail.
-    @MainActor
-    func authorize(
-        host: BridgeHost,
-        provider: BridgeCloudProvider,
-        presentationAnchor: ASPresentationAnchor
-    ) async throws -> String {
-        guard let key = Self.providerKey(provider),
-            let config = providers[key]
+    /// The custom scheme the provider redirects to, read off the
+    /// `redirect_uri` the authorization request carries (RFC 6749 §4.1.1), so
+    /// the session waits for the one redirect this sign-in registered.
+    static func callbackScheme(of authorizationURL: URL) throws -> String {
+        guard
+            let redirect = URLComponents(
+                url: authorizationURL,
+                resolvingAgainstBaseURL: false
+            )?
+            .queryItems?
+            .first(where: { $0.name == "redirect_uri" })?
+            .value,
+            let scheme = URL(string: redirect)?.scheme
         else {
-            throw OAuthLinkingError.notConfigured
+            throw WebAuthFailure.noRedirectScheme
         }
-        let request = try host.oauthBegin(
-            provider: provider,
-            redirectUri: config.redirectUri
-        )
-        guard let authUrl = URL(string: request.authUrl) else {
-            throw OAuthLinkingError.badAuthUrl
-        }
-        // The callback scheme is the redirect URI up to the first colon.
-        let callbackScheme = String(config.redirectUri.prefix { $0 != ":" })
-        let callback = try await WebAuthCoordinator(
-            presentationAnchor: presentationAnchor
-        )
-        .authorize(
-            url: authUrl,
-            callbackScheme: callbackScheme
-        )
-        return try host.oauthComplete(
-            provider: provider,
-            code: callback.code,
-            state: callback.state,
-            requestId: request.requestId,
-            redirectUri: config.redirectUri
-        )
+        return scheme
     }
 
-    /// coven keys OAuth client creds by provider name.
-    private static func providerKey(_ provider: BridgeCloudProvider) -> String? {
-        switch provider {
-        case .dropbox: "dropbox"
-        case .oneDrive: "onedrive"
-        case .s3, .cloudKit: nil
+    @MainActor
+    private static func keyWindow() throws -> ASPresentationAnchor {
+        let window = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+            .first(where: \.isKeyWindow)
+        guard let window else {
+            throw WebAuthFailure.noKeyWindow
         }
+        return window
     }
 }
 
 /// Drives one `ASWebAuthenticationSession` to completion. The session holds its
-/// presentation-context provider weakly and is itself easy to let deallocate
-/// mid-flow, so the coordinator pins itself (and the session) alive from
-/// `start()` until the callback fires, then releases — no leak, exactly one
-/// continuation resume.
+/// presentation-context provider weakly and is easy to let deallocate mid-flow,
+/// so this pins itself and the session alive from `start()` until the callback
+/// fires — exactly one continuation resume.
 @MainActor
-final class WebAuthCoordinator: NSObject, ASWebAuthenticationPresentationContextProviding {
-    struct Callback {
-        let code: String
-        let state: String
-    }
-
+final class WebAuthSession: NSObject,
+    ASWebAuthenticationPresentationContextProviding
+{
     private struct ActiveSession {
         let session: ASWebAuthenticationSession
-        /// Keeps the presentation provider alive until the session callback runs.
-        let coordinator: WebAuthCoordinator
+        /// Keeps the presentation provider alive until the callback runs.
+        let owner: WebAuthSession
     }
 
-    private let presentationAnchor: ASPresentationAnchor
-    private var activeSession: ActiveSession?
+    private let anchor: ASPresentationAnchor
+    private var active: ActiveSession?
 
-    init(presentationAnchor: ASPresentationAnchor) {
-        self.presentationAnchor = presentationAnchor
+    init(anchor: ASPresentationAnchor) {
+        self.anchor = anchor
     }
 
-    func authorize(url: URL, callbackScheme: String) async throws -> Callback {
+    func run(url: URL, callbackScheme: String) async throws -> URL {
         try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
                 guard !Task.isCancelled else {
@@ -231,64 +222,38 @@ final class WebAuthCoordinator: NSObject, ASWebAuthenticationPresentationContext
                     url: url,
                     callbackURLScheme: callbackScheme
                 ) { [weak self] callbackURL, error in
-                    defer {
-                        self?.activeSession = nil
-                    }
+                    defer { self?.active = nil }
                     if let error {
                         continuation.resume(throwing: error)
                         return
                     }
-                    continuation.resume(with: Result { try Self.parseCallback(callbackURL) })
+                    guard let callbackURL else {
+                        continuation.resume(throwing: WebAuthFailure.noRedirect)
+                        return
+                    }
+                    continuation.resume(returning: callbackURL)
                 }
                 session.presentationContextProvider = self
                 session.prefersEphemeralWebBrowserSession = false
-                self.activeSession = ActiveSession(session: session, coordinator: self)
+                active = ActiveSession(session: session, owner: self)
                 if !session.start() {
-                    self.activeSession = nil
-                    continuation.resume(throwing: OAuthLinkingError.badAuthUrl)
+                    active = nil
+                    continuation.resume(
+                        throwing: WebAuthFailure.sessionDidNotStart
+                    )
                 }
             }
         } onCancel: {
             Task { @MainActor [weak self] in
-                self?.activeSession?.session.cancel()
+                self?.active?.session.cancel()
             }
         }
     }
 
-    /// Extract the authorization `code` and `state` from the redirect the
-    /// provider sends back. Split out from the session callback so the required
-    /// query params are validated without driving a live `ASWebAuthenticationSession`.
-    nonisolated static func parseCallback(_ callbackURL: URL?) throws -> Callback {
-        guard let callbackURL,
-            let queryItems = URLComponents(
-                url: callbackURL,
-                resolvingAgainstBaseURL: false
-            )?
-            .queryItems
-        else {
-            throw OAuthLinkingError.noCode
-        }
-        guard
-            let code =
-                queryItems
-                .first(where: { $0.name == "code" })?
-                .value
-        else {
-            throw OAuthLinkingError.noCode
-        }
-        guard
-            let state =
-                queryItems
-                .first(where: { $0.name == "state" })?
-                .value
-        else {
-            throw OAuthLinkingError.noState
-        }
-        return Callback(code: code, state: state)
-    }
-
-    func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
-        presentationAnchor
+    nonisolated func presentationAnchor(
+        for session: ASWebAuthenticationSession
+    ) -> ASPresentationAnchor {
+        MainActor.assumeIsolated { anchor }
     }
 }
 

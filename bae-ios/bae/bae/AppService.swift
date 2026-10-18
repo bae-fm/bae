@@ -5,29 +5,38 @@ import SwiftUI
 /// iOS `AppService`: the shared `BaeKit.AppService` base with the iOS wiring.
 /// The desktop import/export/preview layer the macOS subclass carries has no
 /// iOS counterpart; what it does add is the system service browser that stands
-/// in for the network browsing bae is not allowed to do here. The rest is the
-/// platform's `init` (no `mediaControlService`/`uiStore` to inject) and `wireUp`
-/// (audio-session remote commands instead of the preview session).
-/// Named to shadow the base so `@Environment(AppService.self)` reads resolve to
-/// it.
+/// in for the network browsing bae is not allowed to do here, and in the full
+/// edition the provider sign-in and folder choice. The rest is the platform's
+/// `init` (no `uiStore` to inject) and `wireUp` (audio-session remote commands
+/// instead of the preview session). Named to shadow the base so
+/// `@Environment(AppService.self)` reads resolve to it.
 @MainActor
 final class AppService: BaeKit.AppService, @unchecked Sendable {
     /// The system Bonjour browser that feeds core's device list on iOS, where
     /// bae may not browse the network itself.
     private let renderers: RendererBrowser
+    #if BAE_OAUTH_PROVIDERS
+    private let cloudSyncSetup: CloudSyncSetup
+    #endif
 
     init(
         appHandle: AppHandle,
         diagnostics: BridgeDiagnostics,
         config: BridgeConfig,
-        seed: LibrarySessionSeed
+        seed: LibrarySessionSeed,
+        deviceName: String
     ) {
         let components = AppServiceComponents(
             playbackStore: PlaybackStore(),
-            configStore: ConfigStore(config: Config(bridge: config)),
+            configStore: ConfigStore(
+                config: Config(bridge: config),
+                libraryName: seed.name,
+                storage: seed.storage
+            ),
             syncStatusStore: SyncStatusStore(),
+            membershipStore: MembershipStore(handle: appHandle),
             artworkLoadingStore: ArtworkLoadingStore {
-                appHandle.cancelEagerCacheFill()
+                try await appHandle.cancelEagerCacheFill()
             },
             libraryStore: LibraryStore(),
             downloadStore: DownloadStore(snapshot: seed.downloads),
@@ -38,11 +47,17 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             queue: Queue(handle: appHandle),
             mediaPaths: MediaPaths(handle: appHandle),
             imageStore: ImageStore(handle: appHandle),
-            sync: Sync(handle: appHandle),
+            sync: Sync(handle: appHandle, deviceName: deviceName),
             downloads: Downloads(handle: appHandle),
             cast: Cast(handle: appHandle)
         )
         renderers = RendererBrowser(handle: appHandle)
+        #if BAE_OAUTH_PROVIDERS
+        cloudSyncSetup = CloudSyncSetup(
+            handle: appHandle,
+            deviceName: deviceName
+        )
+        #endif
         super
             .init(
                 appHandle: appHandle,
@@ -67,5 +82,8 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
     func installEnvironment<Content: View>(_ content: Content) -> some View {
         installSharedEnvironment(content)
             .environment(renderers)
+            #if BAE_OAUTH_PROVIDERS
+        .environment(cloudSyncSetup)
+            #endif
     }
 }

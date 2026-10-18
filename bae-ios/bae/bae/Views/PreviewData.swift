@@ -16,7 +16,6 @@ enum PreviewData {
             config: Config(
                 bridge: BridgeConfig(
                     libraryId: "lib-preview",
-                    libraryName: "Preview Library",
                     libraryPath: "/preview",
                     pauseBetweenSides: false,
                     sidePauseCountdown: .off,
@@ -55,11 +54,18 @@ enum PreviewData {
                         bindAddress: "127.0.0.1"
                     ),
                     discogsTokenStatus: .notConfigured,
-                    discogsUsable: false,
-                    sync: nil
+                    discogsUsable: false
                 )
-            )
+            ),
+            libraryName: "Preview Library",
+            storage: nil
         )
+    }
+
+    /// Removals whose every attempt fails, for previews.
+    @MainActor
+    static func removals() -> LibraryRemovals {
+        LibraryRemovals { _ in throw StubError.notImplemented }
     }
 
     // MARK: - Albums
@@ -121,7 +127,7 @@ enum PreviewData {
             pressingSummary: bridgePressingSummary(facts: facts),
             mediaTerms: bridgeMediaTerms(media: facts.media),
             pressingDetails: bridgePressingDetails(facts: facts),
-            storageState: .local,
+            storageState: .remote,
             pinned: false,
             storageActions: [],
             transferAction: nil,
@@ -360,6 +366,9 @@ extension View {
         let resolvedLibraryStore = libraryStore ?? PreviewData.libraryStore()
         return environment(PreviewData.configStore())
             .environment(SyncStatusStore())
+            .environment(MembershipStore.stub(people: [], selfIsAdmin: false))
+            .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
+            .environment(PreviewData.removals())
             .environment(resolvedLibraryStore)
             .environment(playbackStore ?? PreviewData.playbackStore())
             .environment(downloadStore ?? PreviewData.downloadStore())

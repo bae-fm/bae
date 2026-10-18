@@ -1,99 +1,82 @@
 #if BAE_OAUTH_PROVIDERS
 
+import BaeKit
 import Foundation
 import Testing
 
 @testable import bae
 
-/// Covers the pure halves of the OAuth linking flow: parsing the bundled
-/// `oauth-creds.json` and validating the provider's redirect callback. The
-/// live flow (`load` reading `Bundle.main`, `authorize` driving an
-/// `ASWebAuthenticationSession`, `register` calling the bridge) isn't
-/// unit-tested — those cross a system service or the FFI boundary.
+/// Covers the pure halves of provider sign-in: parsing the bundled
+/// `oauth-creds.json` into the applications and redirects the host registers,
+/// and reading the redirect scheme the sign-in sheet waits for. The live sheet
+/// (`ASWebAuthenticationSession`) and the bridge registration cross a system
+/// service or the FFI boundary and aren't unit-tested.
 @Suite("OAuthLinking.parse")
 struct OAuthLinkingParseTests {
     private func data(_ json: String) -> Data {
         Data(json.utf8)
     }
 
-    @Test("a well-formed provider config is parsed")
-    func parsesWellFormedConfig() throws {
+    @Test("both providers' applications and redirects are read")
+    func parsesBothProviders() throws {
         let linking = try OAuthLinking.parse(
             data(
                 """
                 {
                   "dropbox": {
-                    "client_id": "client-123",
-                    "redirect_uri": "com.example.app:/oauth2redirect"
+                    "client_id": "dropbox-key",
+                    "redirect_uri": "bae-dropbox:/oauth"
+                  },
+                  "onedrive": {
+                    "client_id": "onedrive-id",
+                    "redirect_uri": "bae-onedrive:/oauth"
                   }
                 }
                 """
             )
         )
 
-        #expect(linking.providers.count == 1)
-        let config = try #require(linking.providers["dropbox"])
-        #expect(config.clientId == "client-123")
-        #expect(config.redirectUri == "com.example.app:/oauth2redirect")
-        #expect(config.clientSecret == nil)
+        #expect(linking.clients.dropboxAppKey == "dropbox-key")
+        #expect(linking.clients.onedriveClientId == "onedrive-id")
+        #expect(linking.clients.googleAdminClientId == nil)
+        #expect(linking.redirects.dropbox == "bae-dropbox:/oauth")
+        #expect(linking.redirects.onedrive == "bae-onedrive:/oauth")
     }
 
-    @Test("an optional client secret is carried through")
-    func parsesClientSecret() throws {
-        let linking = try OAuthLinking.parse(
-            data(
-                """
-                {
-                  "dropbox": {
-                    "client_id": "client-123",
-                    "client_secret": "secret-456",
-                    "redirect_uri": "com.example.app:/oauth2redirect"
-                  }
-                }
-                """
-            )
-        )
-
-        let config = try #require(linking.providers["dropbox"])
-        #expect(config.clientSecret == "secret-456")
-    }
-
-    @Test("a provider missing client_id is rejected as incomplete")
-    func rejectsMissingClientId() {
+    @Test("a missing provider is named as incomplete")
+    func rejectsMissingProvider() {
         let error = #expect(throws: OAuthLinkingError.self) {
             try OAuthLinking.parse(
-                data(#"{ "dropbox": { "redirect_uri": "com.example.app:/cb" } }"#)
+                data(
+                    #"{ "dropbox": { "client_id": "k", "redirect_uri": "s:/cb" } }"#
+                )
             )
         }
         guard case .incompleteProviderConfig(let provider)? = error else {
-            Issue.record("Expected .incompleteProviderConfig, got \(String(describing: error))")
+            Issue.record(
+                "Expected .incompleteProviderConfig, got \(String(describing: error))"
+            )
+            return
+        }
+        #expect(provider == "onedrive")
+    }
+
+    @Test("a provider missing its redirect is named as incomplete")
+    func rejectsMissingRedirect() {
+        let error = #expect(throws: OAuthLinkingError.self) {
+            try OAuthLinking.parse(
+                data(
+                    #"{ "dropbox": { "client_id": "k" }, "onedrive": { "client_id": "o", "redirect_uri": "s:/cb" } }"#
+                )
+            )
+        }
+        guard case .incompleteProviderConfig(let provider)? = error else {
+            Issue.record(
+                "Expected .incompleteProviderConfig, got \(String(describing: error))"
+            )
             return
         }
         #expect(provider == "dropbox")
-    }
-
-    @Test("a provider missing redirect_uri is rejected as incomplete")
-    func rejectsMissingRedirectUri() {
-        let error = #expect(throws: OAuthLinkingError.self) {
-            try OAuthLinking.parse(
-                data(#"{ "dropbox": { "client_id": "client-123" } }"#)
-            )
-        }
-        guard case .incompleteProviderConfig? = error else {
-            Issue.record("Expected .incompleteProviderConfig, got \(String(describing: error))")
-            return
-        }
-    }
-
-    @Test("an empty object has no providers and is rejected")
-    func rejectsEmptyConfig() {
-        let error = #expect(throws: OAuthLinkingError.self) {
-            try OAuthLinking.parse(data("{}"))
-        }
-        guard case .emptyConfig? = error else {
-            Issue.record("Expected .emptyConfig, got \(String(describing: error))")
-            return
-        }
     }
 
     @Test("a non-object shape is rejected as malformed")
@@ -119,50 +102,26 @@ struct OAuthLinkingParseTests {
     }
 }
 
-@Suite("WebAuthCoordinator.parseCallback")
-struct WebAuthCallbackTests {
-    @Test("a redirect with code and state yields both")
-    func parsesCodeAndState() throws {
+@Suite("WebAuthPresenter.callbackScheme")
+struct WebAuthCallbackSchemeTests {
+    @Test("the scheme comes from the request's redirect_uri")
+    func readsRedirectScheme() throws {
         let url = try #require(
-            URL(string: "com.example.app:/oauth2redirect?code=the-code&state=the-state")
+            URL(
+                string:
+                    "https://www.dropbox.com/oauth2/authorize?response_type=code&redirect_uri=bae-dropbox%3A%2Foauth&state=s"
+            )
         )
-        let callback = try WebAuthCoordinator.parseCallback(url)
-        #expect(callback.code == "the-code")
-        #expect(callback.state == "the-state")
+        #expect(try WebAuthPresenter.callbackScheme(of: url) == "bae-dropbox")
     }
 
-    @Test("a redirect without a code is rejected")
-    func rejectsMissingCode() {
-        let url = URL(string: "com.example.app:/oauth2redirect?state=the-state")
-        let error = #expect(throws: OAuthLinkingError.self) {
-            try WebAuthCoordinator.parseCallback(url)
-        }
-        guard case .noCode? = error else {
-            Issue.record("Expected .noCode, got \(String(describing: error))")
-            return
-        }
-    }
-
-    @Test("a redirect with a code but no state is rejected")
-    func rejectsMissingState() {
-        let url = URL(string: "com.example.app:/oauth2redirect?code=the-code")
-        let error = #expect(throws: OAuthLinkingError.self) {
-            try WebAuthCoordinator.parseCallback(url)
-        }
-        guard case .noState? = error else {
-            Issue.record("Expected .noState, got \(String(describing: error))")
-            return
-        }
-    }
-
-    @Test("a nil callback URL is rejected")
-    func rejectsNilUrl() {
-        let error = #expect(throws: OAuthLinkingError.self) {
-            try WebAuthCoordinator.parseCallback(nil)
-        }
-        guard case .noCode? = error else {
-            Issue.record("Expected .noCode, got \(String(describing: error))")
-            return
+    @Test("a request without a redirect_uri is refused")
+    func rejectsMissingRedirect() throws {
+        let url = try #require(
+            URL(string: "https://www.dropbox.com/oauth2/authorize?state=s")
+        )
+        #expect(throws: WebAuthFailure.self) {
+            try WebAuthPresenter.callbackScheme(of: url)
         }
     }
 }
