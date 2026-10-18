@@ -6,14 +6,14 @@ impl Automation {
         Self { services }
     }
 
-    pub fn config_get(&self) -> AutomationConfig {
+    pub async fn config_get(&self) -> Result<AutomationConfig, AutomationError> {
         let config = self.services.get_config();
-        AutomationConfig {
-            library_id: config.store_id.clone(),
-            library_name: config.store_name.clone(),
+        Ok(AutomationConfig {
+            library_id: config.store_id.to_string(),
+            library_name: self.services.library_name().await?,
             library_path: config.library_path().to_string_lossy().to_string(),
             mcp: config.prefs.mcp.into(),
-        }
+        })
     }
 
     pub async fn watched_folders(&self) -> Result<Vec<AutomationWatchedFolder>, AutomationError> {
@@ -471,7 +471,7 @@ impl Automation {
         match tool {
             AutomationTool::ConfigGet => {
                 expect_no_args(args, tool.name())?;
-                to_value(self.config_get())
+                to_value(self.config_get().await?)
             }
             AutomationTool::WatchedFoldersList => {
                 expect_no_args(args, tool.name())?;

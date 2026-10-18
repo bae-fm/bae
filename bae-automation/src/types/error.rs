@@ -76,9 +76,10 @@ impl From<LibraryError> for AutomationError {
             LibraryError::TrackMapping(e) => Self::Import(e),
             LibraryError::Encryption(e) => Self::Unavailable(e.to_string()),
             LibraryError::Storage(e) => Self::Unavailable(e),
-            error @ (LibraryError::MakeRemote { .. }
-            | LibraryError::MakeLocal { .. }
-            | LibraryError::Blob { .. }) => Self::Unavailable(error.to_string()),
+            error @ LibraryError::Blob { .. } => Self::Unavailable(error.to_string()),
+            error @ LibraryError::Cleanup { .. } => {
+                bae_core::ui::UiError::diagnostic(error.category(), error).into()
+            }
             LibraryError::Playback(e) => Self::Unavailable(e),
             LibraryError::ReleaseEditLoad(e) => Self::Internal(e.to_string()),
             LibraryError::Internal(e) => Self::Internal(e),
@@ -89,13 +90,7 @@ impl From<LibraryError> for AutomationError {
             LibraryError::CloudUnlock(e) => Self::Unavailable(e.to_string()),
             LibraryError::Sync(e) => Self::Unavailable(e.to_string()),
             LibraryError::RetryBlockedOperation(e) => Self::Unavailable(e.to_string()),
-            LibraryError::DevicePairingStart(e) => Self::Unavailable(e.to_string()),
-            LibraryError::DevicePairingApproval(e) => Self::Unavailable(e.to_string()),
-            LibraryError::DevicePairingTransport(e) => Self::Unavailable(e.to_string()),
-            error @ LibraryError::DeviceJoinAbandoned => Self::Unavailable(error.to_string()),
             LibraryError::Validation(e) => Self::Validation(e),
-            LibraryError::MasterKey(e) => Self::Unavailable(e.to_string()),
-            LibraryError::Identity(e) => Self::Unavailable(e.to_string()),
         }
     }
 }

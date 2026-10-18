@@ -62,22 +62,7 @@ impl Fixture {
 
 pub(super) async fn automation_over() -> Fixture {
     let tmp = tempfile::TempDir::new().expect("a temp library dir");
-    let library_dir = coven::StoreDir::new(tmp.path());
-    let manager = LibraryManager::open(
-        bae_core::config::AppDir::under_home(tmp.path()),
-        bae_test_support::test_config(&library_dir),
-        std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-        bae_core::diagnostics::Diagnostics::noop(),
-        tokio::runtime::Handle::current(),
-        None,
-        coven::OAuthClients::empty(),
-        bae_core::import::cover_art::RemoteImageCache::for_test(
-            bae_core::util::http::Http::for_test(),
-        ),
-        bae_core::providers::Providers::offline(),
-    )
-    .expect("the library opens");
+    let (manager, _) = bae_test_support::open_test_library(tmp.path()).await;
     let services = AppServices::for_test(manager.clone())
         .await
         .expect("the services start");
