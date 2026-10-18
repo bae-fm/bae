@@ -38,6 +38,7 @@ import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.Eyebrow
+import fm.bae.app.ui.storageLocationLabel
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeLibrary
@@ -90,7 +91,15 @@ private fun LibrarySwitcher(
                     .clickable(enabled = !isActive) { onSwitchLibrary(library) },
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(text = library.name, modifier = Modifier.weight(1f))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = library.name)
+                // Every row keeps the detail line so rows share one height.
+                Text(
+                    text = library.storage?.let { storageLocationLabel(it) } ?: "",
+                    style = ThemeText.detail.style,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             // Always present but alpha-toggled so switching the active row
             // never re-measures the row heights.
             Icon(

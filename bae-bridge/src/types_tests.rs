@@ -102,6 +102,39 @@ mod conversion_roundtrip {
         );
     }
 
+    /// A restore row shows which account a Dropbox or OneDrive library is in,
+    /// so the label crosses to the app and back unchanged.
+    #[test]
+    fn a_provider_account_crosses_the_bridge_both_ways() {
+        let locations = [
+            coven::StorageConfig::Dropbox {
+                location: coven::DropboxLocation::SharedFolder {
+                    namespace_id: "namespace-1".into(),
+                },
+                account_label: Some("person@example.com".into()),
+            },
+            coven::StorageConfig::OneDrive {
+                drive_id: "drive-1".into(),
+                folder_id: "folder-1".into(),
+                account_label: Some("person@example.org".into()),
+            },
+            coven::StorageConfig::Dropbox {
+                location: coven::DropboxLocation::AppFolder,
+                account_label: None,
+            },
+        ];
+        for location in locations {
+            let crossed = BridgeStorageLocation::from_core(location.clone())
+                .into_core()
+                .unwrap();
+            assert!(crossed.same_location(&location));
+            assert_eq!(
+                BridgeStorageLocation::from_core(crossed),
+                BridgeStorageLocation::from_core(location),
+            );
+        }
+    }
+
     #[test]
     fn config_exposes_identify_automatically() {
         use bae_core::config::Config;

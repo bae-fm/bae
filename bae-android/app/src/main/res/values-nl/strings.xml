@@ -279,4 +279,7 @@
     <string name="settings_history_explanation">Wie ziet wat je afspeelt. Een wijziging geldt voor afspelingen vanaf nu; eerdere afspelingen houden wie ze kon zien.</string>
     <string name="release_not_uploaded">Nog niet geüpload. Hij is hier af te spelen zodra het apparaat dat hem importeerde hem uploadt.</string>
     <string name="downloads_concurrency_label">Gelijktijdige downloads</string>
+    <string name="settings_stored_in">Opgeslagen in</string>
+    <string name="storage_location_account">%1$s: %2$s</string>
+    <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
 </resources>

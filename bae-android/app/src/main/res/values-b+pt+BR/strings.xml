@@ -280,4 +280,7 @@
     <string name="settings_history_explanation">Quem vê o que você ouve. Uma mudança vale para as reproduções daqui em diante; as anteriores mantêm quem podia vê-las.</string>
     <string name="release_not_uploaded">Ainda não enviado. Toca aqui depois de ser enviado pelo dispositivo que o importou.</string>
     <string name="downloads_concurrency_label">Downloads simultâneos</string>
+    <string name="settings_stored_in">Armazenado em</string>
+    <string name="storage_location_account">%1$s: %2$s</string>
+    <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
 </resources>

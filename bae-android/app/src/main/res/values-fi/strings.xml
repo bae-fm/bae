@@ -277,4 +277,7 @@
     <string name="settings_history_household">Kotitalous</string>
     <string name="settings_history_explanation">Kuka näkee, mitä soitat. Muutos koskee soittoja tästä eteenpäin; aiemmat soitot näkyvät edelleen niille, jotka ne näkivät.</string>
     <string name="release_not_uploaded">Ei vielä lähetetty. Sitä voi soittaa täällä, kun sen tuonut laite on lähettänyt sen.</string>
+    <string name="settings_stored_in">Tallennettu</string>
+    <string name="storage_location_account">%1$s: %2$s</string>
+    <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
 </resources>

@@ -63,10 +63,43 @@ extension BridgeStorageLocation {
     public var locationSummary: String {
         switch self {
         case .s3(let bucket, _, _, _, _): bucket
-        case .dropbox(.appFolder): String(localized: "App folder")
-        case .dropbox(.sharedFolder(let namespaceId)): namespaceId
-        case .oneDrive(_, let folderId): folderId
+        case .dropbox(.appFolder, _): String(localized: "App folder")
+        case .dropbox(.sharedFolder(let namespaceId), _): namespaceId
+        case .oneDrive(_, let folderId, _): folderId
         case .cloudKit(let container, _, _): container
+        }
+    }
+
+    /// The provider with the account or bucket a library is in, as restore
+    /// rows and library rows show it: "Dropbox: ana@example.com", "S3-compatible:
+    /// bucket (endpoint)", "iCloud". The endpoint is the one the person entered;
+    /// Amazon S3 has none, so its region names the place instead. A Dropbox or
+    /// OneDrive location coven hasn't set up has no account yet.
+    public var accountLine: String {
+        switch self {
+        case .dropbox(_, let account?), .oneDrive(_, _, let account?):
+            String(
+                localized: "\(displayName): \(account)",
+                comment:
+                    "A storage provider and the account a library is in, such as Dropbox: ana@example.com"
+            )
+        case .s3(let bucket, let region, let endpoint, _, _):
+            String(
+                localized: "\(displayName): \(bucket) (\(endpoint ?? region))",
+                comment:
+                    "An S3 library's provider, bucket, and endpoint (or region, for Amazon S3)"
+            )
+        case .dropbox, .oneDrive, .cloudKit:
+            displayName
+        }
+    }
+
+    /// The signed-in account a Dropbox or OneDrive library is in, once coven
+    /// has set it up; S3 and iCloud have none.
+    public var accountLabel: String? {
+        switch self {
+        case .dropbox(_, let account), .oneDrive(_, _, let account): account
+        case .s3, .cloudKit: nil
         }
     }
 }

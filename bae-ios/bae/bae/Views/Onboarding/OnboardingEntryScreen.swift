@@ -113,7 +113,8 @@ struct OnboardingEntryScreen: View {
 }
 
 /// One row per restore code coven saved in iCloud Keychain. A code carries no
-/// name, so each row shows the provider and where the library is stored.
+/// name, so each row shows the provider and the account or bucket the library
+/// is in.
 private struct SavedRestoreCodesList: View {
     let entries: [SavedRestoreEntry]
     let disabled: Bool
@@ -130,15 +131,10 @@ private struct SavedRestoreCodesList: View {
             .foregroundStyle(.secondary)
             ForEach(entries, id: \.info.libraryId) { entry in
                 HStack(spacing: ThemeSpace.related) {
-                    VStack(alignment: .leading, spacing: ThemeSpace.line) {
-                        Text(entry.info.location.displayName)
-                            .themeText(.rowTitle)
-                        Text(entry.info.location.locationSummary)
-                            .themeText(.detail)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                    }
+                    Text(entry.info.location.accountLine)
+                        .themeText(.rowTitle)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
                     Spacer()
                     Button("Restore") { onRestore(entry) }
                         .buttonStyle(.bordered)

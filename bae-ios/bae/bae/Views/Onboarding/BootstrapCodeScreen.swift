@@ -105,12 +105,8 @@ struct BootstrapCodeScreen: View {
         if let saved = form.saved {
             Section {
                 LabeledContent(
-                    "Provider",
-                    value: saved.info.location.displayName
-                )
-                LabeledContent(
                     "Stored in",
-                    value: saved.info.location.locationSummary
+                    value: saved.info.location.accountLine
                 )
             } header: {
                 Text("Saved restore code")
@@ -163,11 +159,11 @@ private struct AttemptDetailsSection: View {
             case .restoreSaved:
                 EmptyView()
             case .restore(_, let metadata):
-                LabeledContent("Provider", value: metadata.provider.displayName)
+                LabeledContent("Stored in", value: metadata.location.accountLine)
                 signInNote(metadata)
             case .join(_, let metadata, let libraryName):
                 LabeledContent("Library", value: libraryName)
-                LabeledContent("Provider", value: metadata.provider.displayName)
+                LabeledContent("Stored in", value: metadata.location.accountLine)
                 signInNote(metadata)
                 TextField("Your name", text: $form.personName)
                     .textContentType(.name)

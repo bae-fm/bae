@@ -115,7 +115,10 @@ private fun SyncStatus(
     )
 }
 
-/** The cloud home's provider and, for S3, the bucket it names; an account provider's folder has no name to show. */
+/**
+ * The cloud home's provider and, for S3, the bucket it names; Dropbox and
+ * OneDrive show the signed-in account, since their folder has no name to show.
+ */
 @Composable
 private fun CloudHomeRows(location: BridgeStorageLocation) {
     LabeledValueRow(stringResource(R.string.settings_provider), cloudProviderLabel(storageProvider(location)))
@@ -129,7 +132,15 @@ private fun CloudHomeRows(location: BridgeStorageLocation) {
             }
         }
 
-        is BridgeStorageLocation.Dropbox, is BridgeStorageLocation.OneDrive, is BridgeStorageLocation.CloudKit -> {
+        is BridgeStorageLocation.Dropbox -> {
+            location.accountLabel?.let { LabeledValueRow(stringResource(R.string.settings_account), it) }
+        }
+
+        is BridgeStorageLocation.OneDrive -> {
+            location.accountLabel?.let { LabeledValueRow(stringResource(R.string.settings_account), it) }
+        }
+
+        is BridgeStorageLocation.CloudKit -> {
             Unit
         }
     }

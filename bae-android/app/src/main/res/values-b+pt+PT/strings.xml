@@ -277,4 +277,7 @@
     <string name="settings_history_household">Casa</string>
     <string name="settings_history_explanation">Quem vê o que ouve. Uma alteração aplica-se às reproduções a partir de agora; as anteriores mantêm quem as podia ver.</string>
     <string name="release_not_uploaded">Ainda não enviado. Reproduz aqui depois de ser enviado a partir do dispositivo que o importou.</string>
+    <string name="settings_stored_in">Guardado em</string>
+    <string name="storage_location_account">%1$s: %2$s</string>
+    <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
 </resources>

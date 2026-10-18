@@ -12,6 +12,7 @@ import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeBootstrapStatus
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeCodeMetadata
+import uniffi.bae_bridge.BridgeStorageLocation
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
@@ -27,6 +28,12 @@ class OnboardingProgressTest {
                     libraryId = "library-1",
                     memberId = "member-1",
                     provider = BridgeCloudProvider.ONE_DRIVE,
+                    location =
+                        BridgeStorageLocation.OneDrive(
+                            driveId = "drive-1",
+                            folderId = "folder-1",
+                            accountLabel = "person@example.com",
+                        ),
                     oauthAccess = null,
                 ),
             libraryName = "Household",

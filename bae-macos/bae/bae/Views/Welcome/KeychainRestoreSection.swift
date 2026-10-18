@@ -3,7 +3,7 @@ import SwiftUI
 
 /// One row per restore code coven saved in iCloud Keychain whose library isn't
 /// on this Mac yet. A code carries no name, so each row shows the provider and
-/// where the library is stored.
+/// the account or bucket the library is in.
 struct KeychainRestoreSection: View {
     let entries: [SavedRestoreEntry]
     let disabled: Bool
@@ -20,15 +20,10 @@ struct KeychainRestoreSection: View {
             )
             ForEach(entries, id: \.info.libraryId) { entry in
                 HStack(spacing: ThemeSpace.related) {
-                    VStack(alignment: .leading, spacing: ThemeSpace.line) {
-                        Text(entry.info.location.displayName)
-                            .themeText(.rowTitle)
-                        Text(entry.info.location.locationSummary)
-                            .themeText(.detail)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                    }
+                    Text(entry.info.location.accountLine)
+                        .themeText(.rowTitle)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
                     Spacer()
                     Button("Restore") { onRestore(entry) }
                         .buttonStyle(.bordered)

@@ -277,4 +277,7 @@
     <string name="settings_history_household">Husstanden</string>
     <string name="settings_history_explanation">Hvem der kan se, hvad du afspiller. En ændring gælder afspilninger fra nu af; tidligere afspilninger beholder, hvem der kunne se dem.</string>
     <string name="release_not_uploaded">Ikke uploadet endnu. Den kan afspilles her, når den er uploadet fra den enhed, der importerede den.</string>
+    <string name="settings_stored_in">Gemt i</string>
+    <string name="storage_location_account">%1$s: %2$s</string>
+    <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
 </resources>

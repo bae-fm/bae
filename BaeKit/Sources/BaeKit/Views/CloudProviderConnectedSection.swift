@@ -27,6 +27,9 @@ public struct CloudProviderConnectedSection: View {
                 LabeledContent("Key Prefix", value: prefix)
             }
         case .dropbox, .oneDrive:
+            if let account = location.accountLabel {
+                LabeledContent("Account", value: account)
+            }
             LabeledContent("Folder", value: location.locationSummary)
         case .cloudKit(let container, _, _):
             LabeledContent("Container", value: container)

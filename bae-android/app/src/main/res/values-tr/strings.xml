@@ -279,4 +279,7 @@
     <string name="settings_history_explanation">Çaldıklarınızı kimin gördüğü. Değişiklik bundan sonraki çalmalara uygulanır; önceki çalmaları görebilenler aynı kalır.</string>
     <string name="release_not_uploaded">Henüz yüklenmedi. Onu içe aktaran cihazdan yüklendiğinde burada çalınabilir.</string>
     <string name="downloads_concurrency_label">Eş zamanlı indirmeler</string>
+    <string name="settings_stored_in">Depolandığı yer</string>
+    <string name="storage_location_account">%1$s: %2$s</string>
+    <string name="storage_location_bucket">%1$s: %2$s (%3$s)</string>
 </resources>

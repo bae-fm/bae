@@ -13,10 +13,15 @@ pub enum BridgeStorageLocation {
     },
     Dropbox {
         location: BridgeDropboxLocation,
+        /// The signed-in account's email; display only, none before setup.
+        account_label: Option<String>,
     },
     OneDrive {
         drive_id: String,
         folder_id: String,
+        /// The signed-in account's mail or principal name; display only, none
+        /// before setup.
+        account_label: Option<String>,
     },
     CloudKit {
         container: String,
@@ -43,17 +48,19 @@ impl BridgeStorageLocation {
             },
             coven::StorageConfig::Dropbox {
                 location,
-                account_label: _,
+                account_label,
             } => Self::Dropbox {
                 location: BridgeDropboxLocation::from_core(location),
+                account_label,
             },
             coven::StorageConfig::OneDrive {
                 drive_id,
                 folder_id,
-                account_label: _,
+                account_label,
             } => Self::OneDrive {
                 drive_id,
                 folder_id,
+                account_label,
             },
             coven::StorageConfig::CloudKit {
                 container,
@@ -85,17 +92,21 @@ impl BridgeStorageLocation {
                 profile: profile.map(BridgeS3Profile::into_core),
                 prefix,
             },
-            Self::Dropbox { location } => coven::StorageConfig::Dropbox {
+            Self::Dropbox {
+                location,
+                account_label,
+            } => coven::StorageConfig::Dropbox {
                 location: location.into_core(),
-                account_label: None,
+                account_label,
             },
             Self::OneDrive {
                 drive_id,
                 folder_id,
+                account_label,
             } => coven::StorageConfig::OneDrive {
                 drive_id,
                 folder_id,
-                account_label: None,
+                account_label,
             },
             Self::CloudKit {
                 container,

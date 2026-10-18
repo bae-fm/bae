@@ -58,9 +58,9 @@ public enum StorageReauthorization {
         switch location {
         case .s3:
             self = .s3Key
-        case .dropbox(.appFolder):
+        case .dropbox(.appFolder, _):
             self = .oauth(.dropbox(access: .appFolder))
-        case .dropbox(.sharedFolder):
+        case .dropbox(.sharedFolder, _):
             self = .oauth(.dropbox(access: .fullDropbox))
         case .oneDrive:
             self = .oauth(.oneDrive)

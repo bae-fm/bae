@@ -54,6 +54,8 @@ pub struct BridgeCodeMetadata {
     pub library_id: String,
     pub member_id: String,
     pub provider: BridgeCloudProvider,
+    /// Where the code's library is stored, with the account it was made for.
+    pub location: BridgeStorageLocation,
     pub oauth_access: Option<BridgeOAuthAccess>,
 }
 impl BridgeCodeMetadata {
@@ -62,6 +64,7 @@ impl BridgeCodeMetadata {
             library_id: value.store_id.to_string(),
             member_id: value.member.to_string(),
             provider: BridgeCloudProvider::from_core(&value.cloud_provider),
+            location: BridgeStorageLocation::from_core(value.location),
             oauth_access: value.oauth_access.map(BridgeOAuthAccess::from_core),
         }
     }

@@ -50,18 +50,20 @@ import fm.bae.app.ui.BaeAppChrome
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
-import fm.bae.app.ui.cloudProviderLabel
 import fm.bae.app.ui.components.ErrorText
 import fm.bae.app.ui.components.LabeledValueRow
 import fm.bae.app.ui.components.PersonNameField
 import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.QRScannerScreen
 import fm.bae.app.ui.components.S3KeyFields
+import fm.bae.app.ui.storageLocationLabel
 import uniffi.bae_bridge.BridgeBootstrapResult
 import uniffi.bae_bridge.BridgeBootstrapStatus
 import uniffi.bae_bridge.BridgeCloudProvider
 import uniffi.bae_bridge.BridgeCodeMetadata
+import uniffi.bae_bridge.BridgeDropboxLocation
 import uniffi.bae_bridge.BridgeS3Credentials
+import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.bridgePendingReasonKey
 
 private const val TAG = "bae.OnboardingScreen"
@@ -261,7 +263,7 @@ private fun RestoreForm(
     var secretAccessKey by remember { mutableStateOf("") }
     val needsKey = step.metadata.provider == BridgeCloudProvider.S3
     OnboardingForm(title = stringResource(R.string.onboarding_restore_title), error = error, onBack = onBack) {
-        LabeledValueRow(stringResource(R.string.settings_provider), cloudProviderLabel(step.metadata.provider))
+        LabeledValueRow(stringResource(R.string.settings_stored_in), storageLocationLabel(step.metadata.location))
         if (needsKey) {
             Text(
                 text = stringResource(R.string.onboarding_s3_key_explanation),
@@ -303,7 +305,7 @@ private fun InviteForm(
         error = error,
         onBack = onBack,
     ) {
-        LabeledValueRow(stringResource(R.string.settings_provider), cloudProviderLabel(step.metadata.provider))
+        LabeledValueRow(stringResource(R.string.settings_stored_in), storageLocationLabel(step.metadata.location))
         PersonNameField(personName) { personName = it }
         PrimaryButton(
             onClick = { onJoin(personName.trim()) },
@@ -433,6 +435,11 @@ private fun OnboardingProgressWaitingPreview() {
                                     libraryId = "library-1",
                                     memberId = "member-1",
                                     provider = BridgeCloudProvider.DROPBOX,
+                                    location =
+                                        BridgeStorageLocation.Dropbox(
+                                            location = BridgeDropboxLocation.SharedFolder(namespaceId = "namespace-1"),
+                                            accountLabel = "person@example.com",
+                                        ),
                                     oauthAccess = null,
                                 ),
                             libraryName = "Household",

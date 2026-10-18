@@ -29,8 +29,8 @@ struct LocalLibrariesSection: View {
     }
 }
 
-/// One library row: its name, its provider when it has a cloud home, Open and
-/// Remove.
+/// One library row: its name, its provider and account when it has a cloud
+/// home, Open and Remove.
 private struct LibraryRow: View {
     let library: BridgeLibrary
     let disabled: Bool
@@ -45,7 +45,7 @@ private struct LibraryRow: View {
                 Text(library.name)
                     .themeText(.rowTitle)
                 // Every row keeps the detail line so rows share one height.
-                Text(library.storage?.displayName ?? "")
+                Text(library.storage?.accountLine ?? "")
                     .themeText(.detail)
                     .foregroundStyle(.secondary)
             }
