@@ -114,6 +114,7 @@ impl UploadProgress {
 pub struct UploadFileOp {
     /// Keep coven's file identity, row key, and progress together.
     pub upload: coven::QueuedUpload,
+    pub pending: Option<coven::PendingRecord>,
     pub label: UploadFileLabel,
     pub throughput_bps: u64,
 }
@@ -181,6 +182,27 @@ impl Default for OutboxSnapshot {
     }
 }
 impl OutboxSnapshot {
+    pub(crate) fn with_pending(mut self, records: Vec<coven::PendingRecord>) -> Self {
+        let records: HashMap<_, _> = records
+            .into_iter()
+            .filter_map(|record| match record.subject {
+                coven::PendingSubject::File { device, file } => Some(((device, file), record)),
+                _ => None,
+            })
+            .collect();
+        for file in self
+            .upload_groups
+            .iter_mut()
+            .flat_map(|group| &mut group.files)
+            .chain(&mut self.other_files)
+        {
+            file.pending = records
+                .get(&(file.upload.file.uploader(), file.upload.file.id()))
+                .cloned();
+        }
+        self
+    }
+
     pub(crate) fn from_queue(queue: DbOutboxQueue, rates: &HashMap<coven::FileId, u64>) -> Self {
         let mut snapshot = Self {
             pause_state: if queue.paused {
@@ -200,6 +222,7 @@ impl OutboxSnapshot {
             };
             let op = UploadFileOp {
                 upload: entry.upload,
+                pending: None,
                 label: entry.label,
                 throughput_bps,
             };

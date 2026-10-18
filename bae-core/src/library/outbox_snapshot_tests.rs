@@ -370,3 +370,40 @@ async fn display_names_join_by_table_and_row_while_rates_use_object_identity() {
     assert_ne!(uploads[0].upload.file.id(), uploads[1].upload.file.id());
     handle.close().await.unwrap();
 }
+
+#[tokio::test]
+async fn pending_reasons_belong_to_the_exact_uploading_device_and_file() {
+    let (handle, _directory, files) = queued_files().await;
+    let upload = files
+        .into_iter()
+        .find(|file| file.file.table() == "release_files")
+        .unwrap();
+    let record = coven::PendingRecord {
+        subject: coven::PendingSubject::File {
+            device: upload.file.uploader(),
+            file: upload.file.id(),
+        },
+        reason: coven::PendingReason::Paused,
+    };
+    let wrong_device = coven::PendingRecord {
+        subject: coven::PendingSubject::File {
+            device: coven::DeviceId(upload.file.uploader().0 ^ 1),
+            file: upload.file.id(),
+        },
+        reason: coven::PendingReason::NoStorage,
+    };
+    let snapshot = OutboxSnapshot::from_queue(
+        DbOutboxQueue {
+            paused: true,
+            uploads: vec![labelled(
+                upload,
+                Some("release"),
+                UploadFileLabel::Filename("Track.flac".into()),
+            )],
+        },
+        &HashMap::new(),
+    )
+    .with_pending(vec![wrong_device, record.clone()]);
+    assert_eq!(snapshot.upload_groups[0].files[0].pending, Some(record));
+    handle.close().await.unwrap();
+}

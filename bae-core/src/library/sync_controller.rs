@@ -116,7 +116,7 @@ impl SyncController {
         let mut snapshot =
             OutboxSnapshot::from_queue(queue, &projection.throughput.rates(self.clock.elapsed()));
         snapshot.revision = projection.revision;
-        Ok(snapshot)
+        Ok(snapshot.with_pending(self.database.pending().await?))
     }
 
     /// Keep the outbox stream current: coven's durable queue as its live query
@@ -129,12 +129,20 @@ impl SyncController {
         mut subscription: coven::LiveQuery<coven::UploadQueue>,
     ) {
         let mut display = self.database.subscribe_outbox_display(Default::default());
+        let mut pending = self.database.subscribe_pending();
         self.outbox.lock().await.display_requests = Some(display.requests());
         // Keep this marker until the durable query delivers: cancellation of
         // next() retains its run, which may have begun before a direct read.
         let mut reads_before = self.outbox_reads.load(Ordering::Acquire);
         loop {
             tokio::select! {
+                records = pending.next() => {
+                    let mut projection=self.outbox.lock().await;
+                    match records {
+                        Ok(_) => self.publish_if_labelled(&mut projection).await,
+                        Err(error) => { self.publish(&mut projection,Err(error.to_string())).await; }
+                    }
+                }
                 delivered = subscription.next() => {
                     self.durable_delivered(reads_before, delivered).await;
                     reads_before = self.outbox_reads.load(Ordering::Acquire);
@@ -156,7 +164,7 @@ impl SyncController {
             Ok(snapshot) => snapshot,
             Err(error) => {
                 warn!(%error, "Failed to read the durable cloud outbox");
-                self.publish(&mut projection, Err(error.to_string()));
+                self.publish(&mut projection, Err(error.to_string())).await;
                 return;
             }
         };
@@ -174,11 +182,11 @@ impl SyncController {
                     .throughput
                     .observe(&snapshot, self.clock.elapsed());
                 projection.hold_durable(snapshot, request);
-                self.publish_if_labelled(&mut projection);
+                self.publish_if_labelled(&mut projection).await;
             }
             Err(error) => {
                 warn!(%error, "Failed to identify durable outbox display rows");
-                self.publish(&mut projection, Err(error.to_string()));
+                self.publish(&mut projection, Err(error.to_string())).await;
             }
         }
     }
@@ -192,18 +200,18 @@ impl SyncController {
         match names {
             Ok(names) => {
                 projection.names = Some((request, names));
-                self.publish_if_labelled(&mut projection);
+                self.publish_if_labelled(&mut projection).await;
             }
             Err(error) => {
                 warn!(%error, "Failed to read durable outbox display rows");
-                self.publish(&mut projection, Err(error.to_string()));
+                self.publish(&mut projection, Err(error.to_string())).await;
             }
         }
     }
 
     /// Join the held durable snapshot to its display names and publish, once
     /// the display query has answered for the request that snapshot needs.
-    fn publish_if_labelled(&self, projection: &mut OutboxProjection) {
+    async fn publish_if_labelled(&self, projection: &mut OutboxProjection) {
         let (Some((snapshot, request)), Some((named, names))) =
             (&projection.durable, &projection.names)
         else {
@@ -219,11 +227,11 @@ impl SyncController {
                     queue,
                     &projection.throughput.rates(self.clock.elapsed()),
                 );
-                self.publish(projection, Ok(snapshot));
+                self.publish(projection, Ok(snapshot)).await;
             }
             Err(error) => {
                 error!(%error, "Failed to label the durable cloud outbox");
-                self.publish(projection, Err(error.to_string()));
+                self.publish(projection, Err(error.to_string())).await;
             }
         }
     }
@@ -246,23 +254,23 @@ impl SyncController {
                             queue,
                             &projection.throughput.rates(self.clock.elapsed()),
                         );
-                        self.publish(projection, Ok(snapshot))
+                        self.publish(projection, Ok(snapshot)).await
                     }
                     Err(error) => {
                         error!(%error, "Failed to label the durable cloud outbox");
-                        self.publish(projection, Err(error.to_string()))
+                        self.publish(projection, Err(error.to_string())).await
                     }
                 }
             }
             Err(error) => {
                 warn!(%error, "Failed to read the durable cloud outbox");
-                self.publish(projection, Err(error.to_string()))
+                self.publish(projection, Err(error.to_string())).await
             }
         }
     }
 
     /// Number and send one outbox value.
-    fn publish(
+    async fn publish(
         &self,
         projection: &mut OutboxProjection,
         value: Result<OutboxSnapshot, String>,
@@ -272,10 +280,17 @@ impl SyncController {
             .checked_add(1)
             .expect("outbox projection revision overflow");
         let revision = projection.revision;
-        let value = value.map(|mut snapshot| {
-            snapshot.revision = revision;
-            snapshot
-        });
+        let value = match value {
+            Ok(mut snapshot) => {
+                snapshot.revision = revision;
+                self.database
+                    .pending()
+                    .await
+                    .map(|records| snapshot.with_pending(records))
+                    .map_err(|error| error.to_string())
+            }
+            Err(error) => Err(error),
+        };
         self.outbox_values.send_replace(Some(value));
         revision
     }
