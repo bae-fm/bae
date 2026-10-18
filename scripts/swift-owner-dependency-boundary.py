@@ -18,8 +18,6 @@ CAPABILITY_TYPES = {
     "Cast",
     "CastStore",
     "CancellableTaskSlot",
-    "CloudKitDriver",
-    "CloudKitService",
     "CloudSyncSetup",
     "ConfigStore",
     "CurrentValueSubject",
@@ -33,11 +31,13 @@ CAPABILITY_TYPES = {
     "Importer",
     "ImportStore",
     "Library",
+    "LibraryBootstrap",
     "LibraryBrowseSession",
     "LibrarySetup",
     "LibraryStore",
     "MediaControlService",
     "MediaPaths",
+    "MembershipStore",
     "OutboxStore",
     "OutputStore",
     "Outputs",
@@ -58,10 +58,6 @@ CAPABILITY_TYPES = {
 }
 
 ALLOWED_OUTPUTS = {
-    (
-        "BaeKit/Sources/AppleHost/CloudKitService.swift",
-        "public static func bae",
-    ),
     (
         "BaeKit/Sources/BaeKit/BaeDiagnostics.swift",
         "public static func configure",
@@ -89,6 +85,10 @@ ALLOWED_OUTPUTS = {
     ),
     (
         "BaeKit/Sources/BaeKit/Services/PreviewAudio.swift",
+        "public static func stub",
+    ),
+    (
+        "BaeKit/Sources/BaeKit/Services/MembershipStore.swift",
         "public static func stub",
     ),
     ("BaeKit/Sources/BaeKit/Services/Queue.swift", "public static func stub"),
@@ -229,7 +229,6 @@ final class Owner {
 def swift_files(root: Path) -> list[Path]:
     source_roots = (
         root / "BaeKit" / "Sources" / "BaeKit",
-        root / "BaeKit" / "Sources" / "AppleHost",
         root / "bae-ios" / "bae" / "bae",
         root / "bae-macos" / "bae" / "bae",
     )

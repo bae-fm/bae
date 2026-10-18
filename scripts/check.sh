@@ -263,13 +263,11 @@ check "xcodebuild test (baeTests)" \
 check "swift-format lint" _swift_format_lint bae-macos/bae/bae
 # BaeKit is linted once for both apps.
 check "swift-format lint (BaeKit)" _swift_format_lint BaeKit/Sources/BaeKit
-check "swift-format lint (Apple host)" \
-  _swift_format_lint BaeKit/Sources/AppleHost
 
 check "swiftlint" swiftlint lint --strict --config .swiftlint.yml bae-macos/bae/bae
 check "swiftlint (BaeKit)" \
   swiftlint lint --strict --config .swiftlint.yml \
-    BaeKit/Sources/BaeKit BaeKit/Sources/AppleHost
+    BaeKit/Sources/BaeKit
 
 check "periphery" bash -c '
   cd bae-macos/bae && periphery scan --strict --skip-build \

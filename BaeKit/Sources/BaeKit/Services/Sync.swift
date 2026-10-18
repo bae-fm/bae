@@ -2,15 +2,16 @@ import Foundation
 
 public final class Sync: Sendable, Observable {
     public let disconnectCloudProvider: @Sendable () async throws -> Void
+    /// Connect an S3 bucket as this library's cloud home, registering this
+    /// device under its name.
     public let saveSyncConfig:
-        @Sendable (BridgeSaveSyncConfig, String) async throws ->
-            BridgeStorageSetup
+        @Sendable (BridgeSaveSyncConfig) async throws -> BridgeStorageSetup
     public let generateRestoreCode: @Sendable () async throws -> String
-    public let getMembers: @Sendable () async throws -> BridgeMembership
-    public let people: @Sendable () async throws -> [BridgePerson]
     public let removeMember: @Sendable (String) async throws -> Void
     public let removeDevice:
         @Sendable (UInt64) async throws -> BridgeProviderSignOut
+    public let setMemberRole:
+        @Sendable (String, BridgeMemberRole) async throws -> Void
     public let invitePerson:
         @Sendable (BridgeMemberRole, BridgeInviteAccess) async throws ->
             BridgeInvite
@@ -47,15 +48,9 @@ public final class Sync: Sendable, Observable {
             throw StubError.notImplemented
         },
         saveSyncConfig:
-            @escaping @Sendable (BridgeSaveSyncConfig, String) async throws ->
-            BridgeStorageSetup = { _, _ in throw StubError.notImplemented },
+            @escaping @Sendable (BridgeSaveSyncConfig) async throws ->
+            BridgeStorageSetup = { _ in throw StubError.notImplemented },
         generateRestoreCode: @escaping @Sendable () async throws -> String = {
-            throw StubError.notImplemented
-        },
-        getMembers: @escaping @Sendable () async throws -> BridgeMembership = {
-            throw StubError.notImplemented
-        },
-        people: @escaping @Sendable () async throws -> [BridgePerson] = {
             throw StubError.notImplemented
         },
         removeMember: @escaping @Sendable (String) async throws -> Void = { _ in
@@ -64,6 +59,9 @@ public final class Sync: Sendable, Observable {
         removeDevice:
             @escaping @Sendable (UInt64) async throws -> BridgeProviderSignOut =
             { _ in throw StubError.notImplemented },
+        setMemberRole:
+            @escaping @Sendable (String, BridgeMemberRole) async throws -> Void =
+            { _, _ in throw StubError.notImplemented },
         invitePerson:
             @escaping @Sendable (BridgeMemberRole, BridgeInviteAccess)
             async throws -> BridgeInvite = { _, _ in
@@ -139,10 +137,9 @@ public final class Sync: Sendable, Observable {
         self.disconnectCloudProvider = disconnectCloudProvider
         self.saveSyncConfig = saveSyncConfig
         self.generateRestoreCode = generateRestoreCode
-        self.getMembers = getMembers
-        self.people = people
         self.removeMember = removeMember
         self.removeDevice = removeDevice
+        self.setMemberRole = setMemberRole
         self.invitePerson = invitePerson
         self.approveJoinRequest = approveJoinRequest
         self.declineJoinRequest = declineJoinRequest
@@ -165,19 +162,26 @@ public final class Sync: Sendable, Observable {
         self.triggerSync = triggerSync
     }
 
-    public convenience init(handle: any AppHandleProtocol) {
+    public convenience init(
+        handle: any AppHandleProtocol,
+        deviceName: String
+    ) {
         self.init(
             disconnectCloudProvider: {
                 try await handle.disconnectCloudProvider()
             },
             saveSyncConfig: {
-                try await handle.saveSyncConfig(configData: $0, deviceName: $1)
+                try await handle.saveSyncConfig(
+                    configData: $0,
+                    deviceName: deviceName
+                )
             },
             generateRestoreCode: { try await handle.generateRestoreCode() },
-            getMembers: { try await handle.getMembers() },
-            people: { try await handle.people() },
             removeMember: { try await handle.removeMember(member: $0) },
             removeDevice: { try await handle.removeDevice(device: $0) },
+            setMemberRole: {
+                try await handle.setMemberRole(member: $0, role: $1)
+            },
             invitePerson: {
                 try await handle.invitePerson(role: $0, access: $1)
             },

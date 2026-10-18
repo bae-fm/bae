@@ -1,12 +1,19 @@
 import SwiftUI
+import os.log
 
+private let logger = Logger.bae("PendingRecordsView")
+
+/// What coven is waiting on, one row per pending record: the reason in plain
+/// words with its diagnostic behind a disclosure, and the record's action
+/// wherever the person can act. Without `perform` the list only informs, as
+/// while a library is still being restored.
 public struct PendingRecordsView: View {
     public let records: BridgePendingRecords
-    public let perform: (BridgePendingRecord) async throws -> Void
+    public let perform: ((BridgePendingRecord) async throws -> Void)?
 
     public init(
         records: BridgePendingRecords,
-        perform: @escaping (BridgePendingRecord) async throws -> Void
+        perform: ((BridgePendingRecord) async throws -> Void)?
     ) {
         self.records = records
         self.perform = perform
@@ -14,11 +21,11 @@ public struct PendingRecordsView: View {
 
     public var body: some View {
         switch records {
-        case .loading: ProgressView()
+        case .loading:
+            ProgressView()
+                .controlSize(.small)
         case .failed(let error):
-            if let displayed = DisplayError(error) {
-                ErrorDetailDisclosure(error: displayed)
-            }
+            ErrorDetailDisclosure(error: DisplayError(error))
         case .ready(let records):
             ForEach(records, id: \.self) { record in
                 PendingRecordRow(record: record, perform: perform)
@@ -29,11 +36,20 @@ public struct PendingRecordsView: View {
 
 private struct PendingRecordRow: View {
     let record: BridgePendingRecord
-    let perform: (BridgePendingRecord) async throws -> Void
+    let perform: ((BridgePendingRecord) async throws -> Void)?
+
     @State
-    private var working = false
+    private var task: Task<Void, Never>?
     @State
     private var error: DisplayError?
+
+    /// The action's label, when the person can act on this record here.
+    private var actionTitle: String? {
+        guard perform != nil,
+            let key = bridgePendingActionKey(action: record.action)
+        else { return nil }
+        return localizedCoreString(key)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.related) {
@@ -47,19 +63,31 @@ private struct PendingRecordRow: View {
                 tone: .neutral,
                 showIcon: false
             )
-            if let key = bridgePendingActionKey(action: record.action) {
-                Button(localizedCoreString(key)) {
-                    working = true
-                    error = nil
-                    Task {
-                        do { try await perform(record) }
-                        catch { self.error = DisplayError(error) }
-                        working = false
-                    }
-                }
-                .disabled(working)
+            // Hidden rather than removed so every row keeps its height.
+            Button(actionTitle ?? "") { run() }
+                .disabled(actionTitle == nil || task != nil)
+                .opacity(actionTitle == nil ? 0 : 1)
+                .allowsHitTesting(actionTitle != nil)
+                .accessibilityHidden(actionTitle == nil)
+            ErrorDetailDisclosure(error: error)
+                .opacity(error == nil ? 0 : 1)
+                .accessibilityHidden(error == nil)
+        }
+        .onDisappear { task?.cancel() }
+    }
+
+    private func run() {
+        guard let perform else {
+            preconditionFailure("an action shows only with a perform closure")
+        }
+        error = nil
+        task = Task {
+            defer { task = nil }
+            do { try await perform(record) }
+            catch is CancellationError {
+                logger.debug("pending action cancelled as its row closed")
             }
-            if let error { ErrorDetailDisclosure(error: error) }
+            catch { self.error = DisplayError(error) }
         }
     }
 }

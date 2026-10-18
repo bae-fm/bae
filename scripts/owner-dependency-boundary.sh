@@ -62,7 +62,6 @@ capability_types=(
   CandidateDriver
   CandidateRuntime
   CastController
-  CloudKitDriver
   ConfigHandle
   CoverUrlProvider
   CovenHandle

@@ -1,7 +1,6 @@
 /// Builds the process-lifetime `BridgeHost` the app holds for its whole run:
-/// the object that carries bae's directory, the OAuth client registration, the
-/// CloudKit driver, the in-flight OAuth sign-in, and the runtime restore, join,
-/// and sign-in run on.
+/// the object that carries bae's directory, the OAuth applications, and the
+/// runtime that create, restore, join and sign-in run on.
 public enum BaeHost {
     /// Build the host around the telemetry sink and bae's directory. Call once
     /// at startup, right after `BaeDiagnostics.configure`. Its one failure is

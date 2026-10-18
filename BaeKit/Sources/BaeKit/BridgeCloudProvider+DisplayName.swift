@@ -58,19 +58,15 @@ public func localizedCloudProviderName(provider: BridgeCloudProvider?) -> String
 }
 
 extension BridgeStorageLocation {
-    public var locationText: String {
+    /// The one value that tells this location apart from another on the same
+    /// provider, shown under the provider's name in compact rows.
+    public var locationSummary: String {
         switch self {
-        case .s3(let bucket, let region, let endpoint, _, let prefix):
-            return "\(endpoint ?? "s3://\(region)")/\(bucket)/\(prefix)"
-        case .dropbox(let location):
-            switch location {
-            case .appFolder: return "/Apps/bae"
-            case .sharedFolder(let namespaceId): return namespaceId
-            }
-        case .oneDrive(let driveId, let folderId):
-            return "\(driveId)/\(folderId)"
-        case .cloudKit(let container, let owner, let zone):
-            return "\(container)/\(owner)/\(zone)"
+        case .s3(let bucket, _, _, _, _): bucket
+        case .dropbox(.appFolder): String(localized: "App folder")
+        case .dropbox(.sharedFolder(let namespaceId)): namespaceId
+        case .oneDrive(_, let folderId): folderId
+        case .cloudKit(let container, _, _): container
         }
     }
 }

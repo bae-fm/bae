@@ -10,6 +10,7 @@ import SwiftUI
 public struct AppServiceComponents {
     fileprivate let playbackStore: PlaybackStore
     fileprivate let configStore: ConfigStore
+    fileprivate let membershipStore: MembershipStore
     fileprivate let syncStatusStore: SyncStatusStore
     fileprivate let artworkLoadingStore: ArtworkLoadingStore
     fileprivate let libraryStore: LibraryStore
@@ -29,6 +30,7 @@ public struct AppServiceComponents {
         playbackStore: PlaybackStore,
         configStore: ConfigStore,
         syncStatusStore: SyncStatusStore,
+        membershipStore: MembershipStore,
         artworkLoadingStore: ArtworkLoadingStore,
         libraryStore: LibraryStore,
         downloadStore: DownloadStore,
@@ -46,6 +48,7 @@ public struct AppServiceComponents {
         self.playbackStore = playbackStore
         self.configStore = configStore
         self.syncStatusStore = syncStatusStore
+        self.membershipStore = membershipStore
         self.artworkLoadingStore = artworkLoadingStore
         self.libraryStore = libraryStore
         self.downloadStore = downloadStore
@@ -120,6 +123,7 @@ open class AppService: @unchecked Sendable, Observable {
     /// (carries the sync-pause flag).
     private let outboxStore: OutboxStore
 
+    private let membershipStore: MembershipStore
     private let commonSubscriptions: CommonSubscriptions
     private let libraryProjectionStore: LibraryProjectionStore
     private lazy var libraryListsStore = LibraryListsStore(
@@ -160,6 +164,7 @@ open class AppService: @unchecked Sendable, Observable {
         components: AppServiceComponents
     ) {
         self.appHandle = appHandle
+        membershipStore = components.membershipStore
         self.mediaControlService = mediaControlService
         self.diagnostics = diagnostics
         playbackStore = components.playbackStore
@@ -323,6 +328,7 @@ open class AppService: @unchecked Sendable, Observable {
     }
 
     public func startCommonSubscriptions() {
+        membershipStore.start()
         commonSubscriptions.start(
             applyPlayback: { [weak self] values in
                 guard let self else { return }
@@ -372,6 +378,7 @@ extension AppService {
             .environment(playbackStore)
             .environment(configStore)
             .environment(syncStatusStore)
+            .environment(membershipStore)
             .environment(artworkLoadingStore)
             .environment(libraryStore)
             .environment(libraryProjectionStore)

@@ -235,7 +235,7 @@ public enum UploadObservation: Equatable {
         case .awaiting:
             return QueueSummary.countLabel("core.queue.queued", 1)
         case .active(let progress):
-            guard let phase = progress.primaryActivityText else {
+            guard let phase = progress.activityText else {
                 preconditionFailure(
                     "an active cloud upload has no projected activity"
                 )

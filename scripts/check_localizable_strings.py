@@ -32,9 +32,8 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 # The app target and the BaeKit package target. BaeKit's Text/String(localized:)
 # calls resolve against the main bundle at runtime, so its strings are app-
-# catalog obligations like the app's own. (The AppleHost sources are listed
-# straight into the app target by project.yml, so they ride in "bae".) Other
-# packages (Sparkle, Sentry) keep their own tables and stay out of the union.
+# catalog obligations like the app's own. Other packages (Sparkle, Sentry) keep
+# their own tables and stay out of the union.
 STRINGSDATA_TARGETS = ("bae", "BaeKit")
 
 PLATFORMS = {
