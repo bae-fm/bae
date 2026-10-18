@@ -1,18 +1,22 @@
-//! Removing a library from this device: coven deletes the store, then bae
-//! deletes its own files for it (the library's directory of preferences and
-//! caches, and the active-library pointer when it names the library). The two
-//! can't commit together, so a removal that stops between them leaves bae's
-//! files for a store coven no longer holds. Those are read back from disk as an
-//! [`UnfinishedRemoval`], never remembered by the process that started the
-//! removal, and the person finishes it with [`finish_removals`].
+//! Removing a library from this device. bae first records the removal in its
+//! own app directory; coven then deletes the store; bae clears the
+//! active-library pointer if it names the library, deletes the library's
+//! directory of preferences and caches, and deletes the record last. bae and
+//! coven can't commit together, so the record is what says a removal started:
+//! a removal that stops partway is found from its record, never from bae
+//! files that coven's store list lacks, and finished with
+//! [`finish_removals`]. Every step succeeds when already done.
 
-use crate::config::{AppDir, Config, ConfigError};
+use crate::config::{AppDir, ConfigError};
 use crate::library::LibraryError;
-use std::collections::BTreeSet;
-use tracing::debug;
+use std::collections::{BTreeSet, HashSet};
+use tracing::{debug, warn};
 
 #[derive(Debug, thiserror::Error)]
 pub enum LibraryRemovalError {
+    /// Recording the removal failed, so nothing was removed.
+    #[error("couldn't record the removal, so nothing was removed: {0}")]
+    Record(#[source] LibraryError),
     /// This device holds writes and files it hasn't uploaded, so nothing was
     /// removed. Removing with `IfUnsent::Discard` loses them.
     #[error("{} writes and {} files wait to upload", .0.writes, .0.files)]
@@ -20,9 +24,9 @@ pub enum LibraryRemovalError {
     /// coven didn't delete the store; bae's files for it are untouched.
     #[error(transparent)]
     Store(coven::StoreDeletionError),
-    /// coven deleted the store, but deleting bae's files for it failed. The
-    /// removal stays an [`UnfinishedRemoval`] until [`finish_removals`]
-    /// deletes them.
+    /// coven deleted the store, but deleting bae's files for it or its record
+    /// failed. The record keeps it an [`UnfinishedRemoval`] until
+    /// [`finish_removals`] completes it.
     #[error("the store was removed, but deleting this device's files for it failed: {0}")]
     Unfinished(#[source] LibraryError),
 }
@@ -41,28 +45,72 @@ impl LibraryRemovalError {
         match self {
             Self::Unsent(_) => crate::ui::UiErrorCategory::Config,
             Self::Store(error) => super::manager::deletion_category(error),
-            Self::Unfinished(source) => source.category(),
+            Self::Record(source) | Self::Unfinished(source) => source.category(),
         }
     }
 }
 
-/// Libraries coven no longer holds whose files bae still keeps on this device:
-/// a library directory, or the active-library pointer naming one. Only a
-/// removal that stopped after coven deleted the store leaves them.
-#[derive(Debug, thiserror::Error)]
-#[error(
-    "this device still has files for removed libraries: {}",
-    .libraries.iter().map(ToString::to_string).collect::<Vec<_>>().join(", ")
-)]
+/// Removals recorded on this device that never finished, as their records
+/// and coven's store list show them.
+#[derive(Debug)]
 pub struct UnfinishedRemoval {
-    libraries: Vec<coven::StoreId>,
+    /// coven deleted these stores; bae's files for them may remain, and
+    /// [`finish_removals`] deletes them.
+    files_remain: Vec<coven::StoreId>,
+    /// These removals stopped before coven deleted the store: the libraries
+    /// are still on this device, and their records are already cleared.
+    not_removed: Vec<coven::StoreId>,
+}
+
+impl std::fmt::Display for UnfinishedRemoval {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let ids = |ids: &[coven::StoreId]| {
+            ids.iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>()
+                .join(", ")
+        };
+        let mut parts = Vec::new();
+        if !self.files_remain.is_empty() {
+            parts.push(format!(
+                "this device still has files for removed libraries: {}",
+                ids(&self.files_remain)
+            ));
+        }
+        if !self.not_removed.is_empty() {
+            parts.push(format!(
+                "removing these libraries stopped before they were deleted, so they are still on this device: {}",
+                ids(&self.not_removed)
+            ));
+        }
+        f.write_str(&parts.join("; "))
+    }
 }
 
 impl UnfinishedRemoval {
-    /// The unfinished removal on this device, if any.
+    /// The recorded removals that never finished. A record whose store coven
+    /// still lists is a removal that stopped before the delete: it is cleared
+    /// here and reported, and the library can be removed again.
     pub async fn find(app_dir: &AppDir) -> Result<Option<Self>, LibraryError> {
-        let libraries = unfinished_libraries(app_dir).await?;
-        Ok((!libraries.is_empty()).then_some(Self { libraries }))
+        let records = removal_records(app_dir).await?;
+        if records.is_empty() {
+            return Ok(None);
+        }
+        let listed = listed_stores(app_dir).await?;
+        let (not_removed, files_remain): (Vec<_>, Vec<_>) =
+            records.into_iter().partition(|id| listed.contains(id));
+        for &id in &not_removed {
+            delete_record(app_dir, id).await?;
+        }
+        Ok(Some(Self {
+            files_remain,
+            not_removed,
+        }))
+    }
+
+    /// Whether [`finish_removals`] has files left to delete.
+    pub fn files_remain(&self) -> bool {
+        !self.files_remain.is_empty()
     }
 
     pub fn category(&self) -> crate::ui::UiErrorCategory {
@@ -70,11 +118,20 @@ impl UnfinishedRemoval {
     }
 }
 
-/// Delete bae's files for every library coven no longer holds. Each step
-/// succeeds on a file already gone, so retrying after any failure is safe.
+/// Complete every recorded removal: for a store coven no longer lists, delete
+/// bae's files for it, then its record; for one coven still lists, only the
+/// record, since the delete never happened.
 pub async fn finish_removals(app_dir: &AppDir) -> Result<(), LibraryError> {
-    for library in unfinished_libraries(app_dir).await? {
-        delete_library_files(app_dir, library).await?;
+    let records = removal_records(app_dir).await?;
+    if records.is_empty() {
+        return Ok(());
+    }
+    let listed = listed_stores(app_dir).await?;
+    for id in records {
+        if !listed.contains(&id) {
+            delete_library_files(app_dir, id).await?;
+        }
+        delete_record(app_dir, id).await?;
     }
     Ok(())
 }
@@ -87,43 +144,81 @@ pub async fn remove_local_library(
     handle: &coven::CovenHandle,
     unsent: coven::IfUnsent,
 ) -> Result<(), LibraryRemovalError> {
-    let store_id = handle.store_id();
-    handle.delete_store(unsent).await?;
-    after_store_deleted(app_dir, store_id).await
+    remove_recorded(app_dir, handle.store_id(), handle.delete_store(unsent)).await
 }
 
-/// The second half of a removal, once coven deleted `store_id`'s store.
-pub(crate) async fn after_store_deleted(
+/// Record the removal of `store_id`, run `delete_store`, then delete bae's
+/// files and the record. A refused delete clears the record again.
+pub(crate) async fn remove_recorded(
     app_dir: &AppDir,
     store_id: coven::StoreId,
+    delete_store: impl std::future::Future<Output = Result<(), coven::StoreDeletionError>>,
 ) -> Result<(), LibraryRemovalError> {
+    write_record(app_dir, store_id)
+        .await
+        .map_err(LibraryRemovalError::Record)?;
+    if let Err(error) = delete_store.await {
+        if let Err(record) = delete_record(app_dir, store_id).await {
+            warn!(%store_id, %record, "the removal record outlives coven's refusal; finding unfinished removals reports it");
+        }
+        return Err(error.into());
+    }
     delete_library_files(app_dir, store_id)
+        .await
+        .map_err(LibraryRemovalError::Unfinished)?;
+    delete_record(app_dir, store_id)
         .await
         .map_err(LibraryRemovalError::Unfinished)
 }
 
-/// Every library bae keeps files for, less the stores coven holds.
-async fn unfinished_libraries(app_dir: &AppDir) -> Result<Vec<coven::StoreId>, LibraryError> {
-    let stores = app_dir
+async fn listed_stores(app_dir: &AppDir) -> Result<HashSet<coven::StoreId>, LibraryError> {
+    Ok(app_dir
         .store_layout()
         .stores()
         .await
-        .map_err(ConfigError::from)?;
-    let mut libraries = library_directories(app_dir).await?;
-    if let Some(active) = Config::active_library_id(app_dir)? {
-        libraries.insert(parse_library_id(&active).expect("the pointer read parses its id"));
-    }
-    for store in stores {
-        libraries.remove(&store.id);
-    }
-    Ok(libraries.into_iter().collect())
+        .map_err(ConfigError::from)?
+        .into_iter()
+        .map(|store| store.id)
+        .collect())
 }
 
-/// The ids naming directories under the libraries directory. Anything else
-/// there (a file, a name that isn't a library id) isn't bae's per-library
-/// state and is passed over.
-async fn library_directories(app_dir: &AppDir) -> Result<BTreeSet<coven::StoreId>, LibraryError> {
-    let root = app_dir.libraries();
+/// Write the record, synced along with the directories naming it.
+async fn write_record(app_dir: &AppDir, store_id: coven::StoreId) -> Result<(), LibraryError> {
+    let records = app_dir.removal_records();
+    tokio::task::spawn_blocking(move || {
+        std::fs::create_dir_all(&records).map_err(|error| io_at(&records, error))?;
+        #[cfg(unix)]
+        {
+            let parent = records
+                .parent()
+                .expect("the records directory has a parent");
+            std::fs::File::open(parent)
+                .and_then(|directory| directory.sync_all())
+                .map_err(|error| io_at(parent, error))?;
+        }
+        let id = store_id.to_string();
+        coven::write_atomic(&records.join(&id), id.as_bytes()).map_err(ConfigError::from)?;
+        Ok(())
+    })
+    .await
+    .map_err(unfinished_work)?
+}
+
+async fn delete_record(app_dir: &AppDir, store_id: coven::StoreId) -> Result<(), LibraryError> {
+    let record = app_dir.removal_records().join(store_id.to_string());
+    tokio::task::spawn_blocking(move || match std::fs::remove_file(&record) {
+        Ok(()) => Ok(()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(io_at(&record, error)),
+    })
+    .await
+    .map_err(unfinished_work)?
+}
+
+/// The ids of the recorded removals. Anything else in the records directory
+/// (a temporary file an interrupted write left) is passed over.
+async fn removal_records(app_dir: &AppDir) -> Result<BTreeSet<coven::StoreId>, LibraryError> {
+    let root = app_dir.removal_records();
     tokio::task::spawn_blocking(move || {
         let entries = match std::fs::read_dir(&root) {
             Ok(entries) => entries,
@@ -132,36 +227,35 @@ async fn library_directories(app_dir: &AppDir) -> Result<BTreeSet<coven::StoreId
             }
             Err(error) => return Err(io_at(&root, error)),
         };
-        let mut libraries = BTreeSet::new();
+        let mut records = BTreeSet::new();
         for entry in entries {
             let entry = entry.map_err(|error| io_at(&root, error))?;
             let path = entry.path();
-            let is_dir = entry
+            let is_file = entry
                 .file_type()
                 .map_err(|error| io_at(&path, error))?
-                .is_dir();
+                .is_file();
             match entry.file_name().to_str().and_then(parse_library_id) {
-                Some(id) if is_dir => {
-                    libraries.insert(id);
+                Some(id) if is_file => {
+                    records.insert(id);
                 }
-                _ => debug!(path = %path.display(), "not a library directory"),
+                _ => debug!(path = %path.display(), "not a removal record"),
             }
         }
-        Ok(libraries)
+        Ok(records)
     })
     .await
     .map_err(unfinished_work)?
 }
 
-/// A library id exactly as bae names its directory: a canonical UUID.
+/// A library id exactly as bae writes it: a canonical UUID.
 fn parse_library_id(name: &str) -> Option<coven::StoreId> {
     let id = uuid::Uuid::parse_str(name).ok()?;
     (id.to_string() == name).then_some(coven::StoreId(id))
 }
 
 /// Clear the pointer if it names `store_id`, then delete the library's
-/// directory. A failure partway leaves the directory, so the removal stays
-/// listed until a retry finishes it.
+/// directory.
 async fn delete_library_files(
     app_dir: &AppDir,
     store_id: coven::StoreId,

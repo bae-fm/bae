@@ -18,6 +18,8 @@ public final class LibraryRemovals {
     /// until the person removes the library anyway or keeps it.
     public private(set) var unsent: UnsentRemoval?
     /// A removal that left the store but not this device's files for it.
+    /// A removal that stopped before the store was deleted shows only its
+    /// `error`: the library is still here, with nothing to finish.
     public private(set) var unfinished: BridgeUnfinishedRemoval?
     /// The last removal failure, or why `unfinished` stopped.
     public private(set) var error: DisplayError?
@@ -221,8 +223,8 @@ public final class LibraryRemovals {
     }
 
     private func show(_ removal: BridgeUnfinishedRemoval) {
-        logger.error("A removed library's files remain: \(removal.error)")
-        unfinished = removal
+        logger.error("A library removal didn't finish: \(removal.error)")
+        unfinished = removal.filesRemain ? removal : nil
         error = DisplayError(removal.error)
     }
 

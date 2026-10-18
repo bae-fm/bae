@@ -47,15 +47,6 @@ impl Home {
         self.app_dir.registered_library(&id.to_string())
     }
 
-    /// The directory holding the active-library pointer.
-    fn app_root(&self) -> std::path::PathBuf {
-        self.app_dir
-            .active_library_pointer()
-            .parent()
-            .unwrap()
-            .to_owned()
-    }
-
     fn point_at(&self, id: coven::StoreId) {
         std::fs::write(self.app_dir.active_library_pointer(), id.to_string()).unwrap();
     }
@@ -64,12 +55,37 @@ impl Home {
         Config::active_library_id(&self.app_dir).unwrap()
     }
 
-    /// What the person is shown when the app next lists its libraries.
-    async fn unfinished(&self) -> Option<String> {
+    /// What the person is shown when the app next lists its libraries, and
+    /// whether it has files to finish deleting.
+    async fn unfinished(&self) -> Option<(String, bool)> {
         UnfinishedRemoval::find(&self.app_dir)
             .await
             .unwrap()
-            .map(|removal| removal.to_string())
+            .map(|removal| (removal.to_string(), removal.files_remain()))
+    }
+
+    fn record(&self, id: coven::StoreId) -> std::path::PathBuf {
+        self.app_dir.removal_records().join(id.to_string())
+    }
+
+    /// Run a removal and stop it, as the app quitting would, once `delete`
+    /// (standing in for coven's delete) has run: everything before it is done,
+    /// nothing after it.
+    async fn stop_removal_after(
+        &self,
+        id: coven::StoreId,
+        delete: impl std::future::Future<Output = Result<(), coven::StoreDeletionError>>,
+    ) {
+        let reached = tokio::sync::Notify::new();
+        let removal = super::local_lifecycle::remove_recorded(&self.app_dir, id, async {
+            delete.await?;
+            reached.notify_one();
+            std::future::pending().await
+        });
+        tokio::select! {
+            result = removal => panic!("the removal was to stop partway: {result:?}"),
+            () = reached.notified() => {}
+        }
     }
 
     async fn stores(&self) -> usize {
@@ -153,6 +169,7 @@ async fn offline_removal_keeps_the_store_preferences_and_active_pointer() {
         .join(crate::config::PREFERENCES_FILENAME)
         .exists());
     assert_eq!(home.pointer(), Some(id.to_string()));
+    assert!(!home.record(id).exists());
     assert_eq!(home.unfinished().await, None);
     home.storage.set_online(true);
     remove_local_library(&home.app_dir, &handle, coven::IfUnsent::Discard)
@@ -163,17 +180,84 @@ async fn offline_removal_keeps_the_store_preferences_and_active_pointer() {
     assert_eq!(home.unfinished().await, None);
 }
 
-/// The pointer can't be cleared: the removal says the store is gone, the
-/// pointer and directory stay listed as unfinished, and a retry deletes both
-/// once the cause is fixed.
-#[cfg(unix)]
+#[tokio::test]
+async fn a_removal_that_cannot_be_recorded_removes_nothing() {
+    let home = Home::new();
+    let handle = home.library("Library").await;
+    let id = handle.store_id();
+    home.point_at(id);
+    std::fs::write(home.app_dir.removal_records(), b"").unwrap();
+    let error = remove_local_library(&home.app_dir, &handle, coven::IfUnsent::Refuse)
+        .await
+        .unwrap_err();
+    assert!(matches!(error, LibraryRemovalError::Record(_)), "{error}");
+    assert_eq!(handle.store_name().await.unwrap(), "Library");
+    assert_eq!(home.pointer(), Some(id.to_string()));
+    assert!(home.directory(id).exists());
+}
+
+/// The app stops after recording the removal, before coven deletes the store:
+/// the library is still here, the person is told the removal didn't finish,
+/// and the record is cleared so it's reported once.
+#[tokio::test]
+async fn a_removal_stopped_before_the_delete_reports_the_library_still_here() {
+    let home = Home::new();
+    let handle = home.library("Library").await;
+    let id = handle.store_id();
+    home.point_at(id);
+    home.stop_removal_after(id, async { Ok(()) }).await;
+    assert!(home.record(id).exists());
+
+    let (shown, files_remain) = home.unfinished().await.unwrap();
+    assert!(shown.contains("still on this device"), "{shown}");
+    assert!(shown.contains(&id.to_string()), "{shown}");
+    assert!(!files_remain);
+    assert!(!home.record(id).exists());
+    assert_eq!(home.unfinished().await, None);
+    finish_removals(&home.app_dir).await.unwrap();
+    assert_eq!(home.stores().await, 1);
+    assert_eq!(home.pointer(), Some(id.to_string()));
+    assert!(home.directory(id).exists());
+
+    remove_local_library(&home.app_dir, &handle, coven::IfUnsent::Refuse)
+        .await
+        .unwrap();
+    assert_eq!(home.stores().await, 0);
+    assert!(!home.directory(id).exists());
+}
+
+/// The app stops right after coven deletes the store: the record finds the
+/// removal again, and finishing it deletes bae's files and then the record.
+#[tokio::test]
+async fn a_removal_stopped_after_the_store_was_deleted_is_found_again() {
+    let home = Home::new();
+    let handle = home.library("Library").await;
+    let id = handle.store_id();
+    home.point_at(id);
+    home.stop_removal_after(id, handle.delete_store(coven::IfUnsent::Refuse))
+        .await;
+    drop(handle);
+
+    let (shown, files_remain) = home.unfinished().await.unwrap();
+    assert!(shown.contains(&id.to_string()), "{shown}");
+    assert!(files_remain);
+    assert!(home.record(id).exists());
+    finish_removals(&home.app_dir).await.unwrap();
+    assert_eq!(home.pointer(), None);
+    assert!(!home.directory(id).exists());
+    assert!(!home.record(id).exists());
+    assert_eq!(home.unfinished().await, None);
+    finish_removals(&home.app_dir).await.unwrap();
+}
+
+/// The pointer can't be read: the store is gone, the record keeps the removal
+/// listed, and a retry finishes it once the cause is fixed.
 #[tokio::test]
 async fn a_pointer_that_cannot_be_cleared_leaves_the_removal_to_retry() {
     let home = Home::new();
     let handle = home.library("Library").await;
     let id = handle.store_id();
-    home.point_at(id);
-    set_writable(&home.app_root(), false);
+    std::fs::create_dir(home.app_dir.active_library_pointer()).unwrap();
     let error = remove_local_library(&home.app_dir, &handle, coven::IfUnsent::Refuse)
         .await
         .unwrap_err();
@@ -184,21 +268,22 @@ async fn a_pointer_that_cannot_be_cleared_leaves_the_removal_to_retry() {
     assert!(error.to_string().contains("store was removed"), "{error}");
     assert_eq!(error.category(), crate::ui::UiErrorCategory::Internal);
     assert_eq!(home.stores().await, 0);
-    assert_eq!(home.pointer(), Some(id.to_string()));
     assert!(home.directory(id).exists());
-    assert!(home.unfinished().await.unwrap().contains(&id.to_string()));
+    assert!(home.record(id).exists());
+    assert!(home.unfinished().await.unwrap().1);
 
     assert!(finish_removals(&home.app_dir).await.is_err());
-    set_writable(&home.app_root(), true);
+    std::fs::remove_dir(home.app_dir.active_library_pointer()).unwrap();
+    home.point_at(id);
     finish_removals(&home.app_dir).await.unwrap();
     assert_eq!(home.pointer(), None);
     assert!(!home.directory(id).exists());
+    assert!(!home.record(id).exists());
     assert_eq!(home.unfinished().await, None);
-    finish_removals(&home.app_dir).await.unwrap();
 }
 
-/// The directory can't be deleted: the pointer is already cleared, the
-/// directory stays listed as unfinished, and a retry deletes it.
+/// The directory can't be deleted: the pointer is already cleared, the record
+/// keeps the removal listed, and a retry deletes the directory and record.
 #[cfg(unix)]
 #[tokio::test]
 async fn a_directory_that_cannot_be_deleted_leaves_the_removal_to_retry() {
@@ -223,73 +308,41 @@ async fn a_directory_that_cannot_be_deleted_leaves_the_removal_to_retry() {
     assert_eq!(home.stores().await, 0);
     assert_eq!(home.pointer(), None);
     assert!(home.directory(id).exists());
-    assert!(home.unfinished().await.unwrap().contains(&id.to_string()));
+    assert!(home.unfinished().await.unwrap().1);
 
     set_writable(&home.app_dir.libraries(), true);
     finish_removals(&home.app_dir).await.unwrap();
     assert!(!home.directory(id).exists());
+    assert!(!home.record(id).exists());
     assert_eq!(home.unfinished().await, None);
 }
 
-/// The app stops right after coven deletes the store: when it starts again
-/// the removal is read from disk, and finishing it deletes bae's files.
+/// bae files for a store coven doesn't list, with no removal record (a store
+/// hidden from the list, or files left some other way), are never reported
+/// or deleted by removal code.
 #[tokio::test]
-async fn a_removal_stopped_after_the_store_was_deleted_is_found_again() {
-    let home = Home::new();
-    let handle = home.library("Library").await;
-    let id = handle.store_id();
-    home.point_at(id);
-    handle.delete_store(coven::IfUnsent::Refuse).await.unwrap();
-    drop(handle);
-
-    assert!(home.unfinished().await.unwrap().contains(&id.to_string()));
-    finish_removals(&home.app_dir).await.unwrap();
-    assert_eq!(home.pointer(), None);
-    assert!(!home.directory(id).exists());
-    assert_eq!(home.unfinished().await, None);
-}
-
-/// A pointer naming a store coven no longer holds is listed as unfinished
-/// even with no directory left, and never marks a library active.
-#[tokio::test]
-async fn a_pointer_left_without_its_store_is_listed_and_cleared() {
-    let home = Home::new();
-    let handle = home.library("Library").await;
-    let id = handle.store_id();
-    home.point_at(id);
-    handle.delete_store(coven::IfUnsent::Refuse).await.unwrap();
-    std::fs::remove_dir_all(home.directory(id)).unwrap();
-
-    assert!(Config::discover_libraries(&home.app_dir)
-        .await
-        .unwrap()
-        .is_empty());
-    assert!(home.unfinished().await.unwrap().contains(&id.to_string()));
-    finish_removals(&home.app_dir).await.unwrap();
-    assert_eq!(home.pointer(), None);
-    assert_eq!(home.unfinished().await, None);
-}
-
-/// Finishing removals never touches a library coven still holds, nor
-/// anything under the libraries directory that isn't a library's.
-#[tokio::test]
-async fn finishing_removals_leaves_libraries_on_this_device_alone() {
+async fn files_without_a_removal_record_are_left_alone() {
     let home = Home::new();
     let kept = home.library("Kept").await;
+    let hidden = coven::StoreId(uuid::Uuid::new_v4());
+    Config::with_defaults(hidden, home.directory(hidden))
+        .save_preferences()
+        .unwrap();
+    home.point_at(hidden);
     let removed = home.library("Removed").await;
-    home.point_at(kept.store_id());
-    removed.delete_store(coven::IfUnsent::Refuse).await.unwrap();
-    std::fs::write(home.app_dir.libraries().join(".DS_Store"), b"").unwrap();
-    std::fs::create_dir(home.app_dir.libraries().join("not-a-library")).unwrap();
+    home.stop_removal_after(
+        removed.store_id(),
+        removed.delete_store(coven::IfUnsent::Refuse),
+    )
+    .await;
 
-    let unfinished = home.unfinished().await.unwrap();
-    assert!(unfinished.contains(&removed.store_id().to_string()));
-    assert!(!unfinished.contains(&kept.store_id().to_string()));
+    let (shown, _) = home.unfinished().await.unwrap();
+    assert!(shown.contains(&removed.store_id().to_string()), "{shown}");
+    assert!(!shown.contains(&hidden.to_string()), "{shown}");
     finish_removals(&home.app_dir).await.unwrap();
     assert!(!home.directory(removed.store_id()).exists());
+    assert!(home.directory(hidden).exists());
+    assert_eq!(home.pointer(), Some(hidden.to_string()));
     assert!(home.directory(kept.store_id()).exists());
-    assert_eq!(home.pointer(), Some(kept.store_id().to_string()));
-    assert!(home.app_dir.libraries().join(".DS_Store").exists());
-    assert!(home.app_dir.libraries().join("not-a-library").exists());
     assert_eq!(home.unfinished().await, None);
 }

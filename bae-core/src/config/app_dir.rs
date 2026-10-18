@@ -41,6 +41,12 @@ impl AppDir {
         self.path.join("active-library")
     }
 
+    /// The directory of removal records: one file per library whose removal
+    /// from this device has started and not finished, named by its id.
+    pub(crate) fn removal_records(&self) -> PathBuf {
+        self.path.join("removals")
+    }
+
     /// coven owns store directories under the app directory.
     pub(crate) fn store_layout(&self) -> coven::StoreLayout {
         coven::StoreLayout::new(self.path.clone())

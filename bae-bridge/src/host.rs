@@ -144,8 +144,8 @@ impl BridgeHost {
         .await
     }
 
-    /// A removal that left its store but not this device's files for it, read
-    /// from disk so it outlives the process that started it.
+    /// A recorded removal that never finished, read from its record so it
+    /// outlives the process that started it.
     pub async fn unfinished_removal(
         self: Arc<Self>,
     ) -> Result<Option<crate::BridgeUnfinishedRemoval>, BridgeError> {
@@ -159,15 +159,18 @@ impl BridgeHost {
                 Ok(bae_core::library::UnfinishedRemoval::find(&self.app_dir)
                     .await?
                     .map(|removal| {
-                        crate::BridgeUnfinishedRemoval::new(removal.category(), &removal)
+                        crate::BridgeUnfinishedRemoval::new(
+                            removal.category(),
+                            &removal,
+                            removal.files_remain(),
+                        )
                     }))
             },
         )
         .await
     }
 
-    /// Delete this device's files for every library whose store is gone.
-    /// Safe to retry after any failure.
+    /// Complete every recorded removal. Safe to retry after any failure.
     pub async fn finish_removals(self: Arc<Self>) -> Result<(), BridgeError> {
         crate::operation_runtime::run_to_completion(
             self.runtime

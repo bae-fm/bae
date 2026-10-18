@@ -21,21 +21,26 @@ pub enum BridgeLibraryRemoval {
     },
 }
 
-/// A removal that left its store but not this device's files for it, with
-/// why. `BridgeHost::finish_removals` deletes them; until then
-/// `BridgeHost::unfinished_removal` reports it, across restarts.
+/// A recorded removal that never finished, with why. When `files_remain`,
+/// the store is gone and `BridgeHost::finish_removals` deletes this device's
+/// files for it; until then `BridgeHost::unfinished_removal` reports it,
+/// across restarts. Otherwise the removal stopped before the store was
+/// deleted: the library is still here and can be removed again.
 #[derive(Clone, uniffi::Record)]
 pub struct BridgeUnfinishedRemoval {
     pub error: BridgeError,
+    pub files_remain: bool,
 }
 
 impl BridgeUnfinishedRemoval {
     pub(crate) fn new(
         category: bae_core::ui::UiErrorCategory,
         why: &dyn std::fmt::Display,
+        files_remain: bool,
     ) -> Self {
         Self {
             error: BridgeError::diagnostic(crate::BridgeErrorCategory::from_core(category), why),
+            files_remain,
         }
     }
 }
@@ -66,9 +71,9 @@ impl AppHandle {
                         files: work.files,
                     }),
                     Err(error @ E::Unfinished(_)) => Ok(BridgeLibraryRemoval::Unfinished {
-                        removal: BridgeUnfinishedRemoval::new(error.category(), &error),
+                        removal: BridgeUnfinishedRemoval::new(error.category(), &error, true),
                     }),
-                    Err(error @ E::Store(_)) => Err(BridgeError::diagnostic(
+                    Err(error @ (E::Record(_) | E::Store(_))) => Err(BridgeError::diagnostic(
                         crate::BridgeErrorCategory::from_core(error.category()),
                         &error,
                     )),

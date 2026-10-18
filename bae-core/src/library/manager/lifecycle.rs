@@ -29,8 +29,12 @@ impl LibraryManager {
     ) -> Result<(), crate::library::LibraryRemovalError> {
         let id = self.database.store_id();
         self.tasks.close().await;
-        self.database.delete_store(unsent).await?;
-        crate::library::local_lifecycle::after_store_deleted(&self.app_dir, id).await
+        crate::library::local_lifecycle::remove_recorded(
+            &self.app_dir,
+            id,
+            self.database.delete_store(unsent),
+        )
+        .await
     }
 
     pub async fn forget_encryption_key(&self) -> Result<(), LibraryError> {

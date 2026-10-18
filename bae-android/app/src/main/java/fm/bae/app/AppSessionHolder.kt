@@ -165,8 +165,10 @@ object AppSessionHolder {
 
     /**
      * Publish a fresh listing and open the first library, or onboard when the
-     * device has none. A removal an earlier run left unfinished shows first,
-     * as [AppScreen.RemovalIncomplete]. A failed listing surfaces as
+     * device has none. A removal an earlier run left with files to delete
+     * shows first, as [AppScreen.RemovalIncomplete]; one that stopped before
+     * the store was deleted shows on the library that opens. A failed listing
+     * surfaces as
      * [AppScreen.Failed] rather than an empty device, so the person isn't
      * invited to restore a duplicate library on top of one that already
      * exists.
@@ -177,13 +179,17 @@ object AppSessionHolder {
     ) {
         onScreen(AppScreen.Loading)
         val host = (context.applicationContext as BaeApp).host
+        var notice: String? = null
         val remaining =
             try {
                 val unfinished = host.unfinishedRemoval()
                 if (unfinished != null) {
-                    logger.error("a removed library's files remain", unfinished.error)
-                    onScreen(AppScreen.RemovalIncomplete(errorMessage(context, unfinished.error)))
-                    return
+                    logger.error("a library removal didn't finish", unfinished.error)
+                    if (unfinished.filesRemain) {
+                        onScreen(AppScreen.RemovalIncomplete(errorMessage(context, unfinished.error)))
+                        return
+                    }
+                    notice = errorMessage(context, unfinished.error)
                 }
                 listLibraries(host)
             } catch (e: CancellationException) {
@@ -197,7 +203,11 @@ object AppSessionHolder {
         if (next == null) {
             onScreen(AppScreen.Onboarding)
         } else {
-            openLibrary(context, next.id, onScreen)
+            val stopped = notice
+            openLibrary(context, next.id) { screen ->
+                if (stopped != null && screen is AppScreen.LibraryOpen) screen.session.configStore.showError(stopped)
+                onScreen(screen)
+            }
         }
     }
 

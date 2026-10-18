@@ -88,7 +88,8 @@ private actor UnfinishedRemovalBridge {
     func find() -> BridgeUnfinishedRemoval? {
         remaining
             ? BridgeUnfinishedRemoval(
-                error: .Diagnostic(category: .config, detail: "files remain")
+                error: .Diagnostic(category: .config, detail: "files remain"),
+                filesRemain: true
             )
             : nil
     }
@@ -135,6 +136,26 @@ struct LibraryRemovalsUnfinishedTests {
         #expect(removals.unfinished == nil)
         #expect(removals.error == nil)
         #expect(await bridge.finishes == 2)
+    }
+
+    @Test("a removal that stopped before the delete shows without Retry")
+    func stoppedBeforeTheDelete() async {
+        let removals = LibraryRemovals(
+            removeClosed: { _, _ in .removed },
+            findUnfinished: {
+                BridgeUnfinishedRemoval(
+                    error: .Diagnostic(category: .config, detail: "still here"),
+                    filesRemain: false
+                )
+            },
+            finishUnfinished: {
+                Issue.record("nothing to finish")
+            }
+        )
+
+        await removals.loadUnfinished()
+        #expect(removals.unfinished == nil)
+        #expect(removals.error != nil)
     }
 
     @Test("nothing shows when no removal was left unfinished")
