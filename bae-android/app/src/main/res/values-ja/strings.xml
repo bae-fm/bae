@@ -275,4 +275,5 @@
     <string name="settings_history_private">自分のみ</string>
     <string name="settings_history_household">家族</string>
     <string name="settings_history_explanation">あなたの再生内容を見られる人です。変更はこれからの再生に適用され、以前の再生は元の公開範囲のままです。</string>
+    <string name="release_not_uploaded">まだアップロードされていません。インポートしたデバイスからアップロードされると、ここで再生できます。</string>
 </resources>

@@ -51,16 +51,29 @@ import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeReleaseDownloadStatus
+import uniffi.bae_bridge.BridgeReleaseStorageState
 import uniffi.bae_bridge.bridgeReleaseDownloadStatus
 
 private val logger = BaeLogger("bae.ReleaseDownloadControl")
 
-/** The shown release's download control; nothing when core offers none for the release. */
+/**
+ * The shown release's download control; nothing when core offers none for the
+ * release. A release whose audio isn't uploaded says so instead: its files are
+ * on the device that imported it, and it plays here once uploaded.
+ */
 @Composable
 internal fun ReleaseDownloadControl(
     session: OpenLibrary,
     release: BridgeRelease,
 ) {
+    if (release.storageState == BridgeReleaseStorageState.LOCAL) {
+        Text(
+            text = stringResource(R.string.release_not_uploaded),
+            style = ThemeText.detail.style,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        return
+    }
     val snapshot by session.downloadStore.snapshot.collectAsState()
     val status =
         bridgeReleaseDownloadStatus(

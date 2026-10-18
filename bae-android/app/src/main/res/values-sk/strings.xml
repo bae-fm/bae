@@ -280,4 +280,5 @@
     <string name="settings_history_private">Len ja</string>
     <string name="settings_history_household">Domácnosť</string>
     <string name="settings_history_explanation">Kto vidí, čo prehrávaš. Zmena platí pre prehrávania odteraz; skoršie prehrávania si ponechajú, kto ich mohol vidieť.</string>
+    <string name="release_not_uploaded">Zatiaľ neodoslané. Prehrávať sa tu bude dať, keď ho odošle zariadenie, ktoré ho importovalo.</string>
 </resources>

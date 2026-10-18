@@ -275,4 +275,5 @@
     <string name="settings_history_private">仅自己</string>
     <string name="settings_history_household">家人</string>
     <string name="settings_history_explanation">谁能看到你播放的内容。更改只对今后的播放生效；之前的播放仍保持原来的可见范围。</string>
+    <string name="release_not_uploaded">尚未上传。从导入它的设备上传后，即可在这里播放。</string>
 </resources>

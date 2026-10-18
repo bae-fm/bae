@@ -330,4 +330,5 @@
     <string name="settings_history_private">Only me</string>
     <string name="settings_history_household">Household</string>
     <string name="settings_history_explanation">Who sees what you play. A change applies to plays from now on; earlier plays keep who could see them.</string>
+    <string name="release_not_uploaded">Not uploaded yet. It plays here once it’s uploaded from the device that imported it.</string>
 </resources>

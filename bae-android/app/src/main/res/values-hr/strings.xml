@@ -279,4 +279,5 @@
     <string name="settings_history_private">Samo ja</string>
     <string name="settings_history_household">Kućanstvo</string>
     <string name="settings_history_explanation">Tko vidi što puštate. Promjena vrijedi za reprodukcije od sada; ranije reprodukcije zadržavaju tko ih je mogao vidjeti.</string>
+    <string name="release_not_uploaded">Još nije učitano. Ovdje će se moći reproducirati kad ga učita uređaj koji ga je uvezao.</string>
 </resources>

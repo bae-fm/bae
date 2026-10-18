@@ -279,4 +279,5 @@
     <string name="settings_history_private">רק אני</string>
     <string name="settings_history_household">בני הבית</string>
     <string name="settings_history_explanation">מי רואה מה אתם מנגנים. שינוי חל על השמעות מעכשיו והלאה; השמעות קודמות נשארות גלויות למי שראה אותן.</string>
+    <string name="release_not_uploaded">עדיין לא הועלה. אפשר יהיה לנגן אותו כאן אחרי שיועלה מהמכשיר שייבא אותו.</string>
 </resources>
