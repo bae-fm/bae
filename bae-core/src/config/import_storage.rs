@@ -1,5 +1,5 @@
-//! Where an import puts a release: `preferences.yaml`'s `import_storage`
-//! mapping.
+//! Where an import puts a release: `preferences.toml`'s `import_storage`
+//! table.
 
 use serde::{Deserialize, Serialize};
 

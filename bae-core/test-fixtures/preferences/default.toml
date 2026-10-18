@@ -1,0 +1,59 @@
+discogs = "NotConfigured"
+replay_gain_mode = "Off"
+default_track_save_preset = "flac"
+default_release_save_preset = "flac"
+pause_between_sides = true
+side_pause_countdown = "Off"
+max_concurrent_uploads = 3
+max_concurrent_downloads = 3
+show_remaining_time = false
+library_full_width = false
+verify_decode_on_import = true
+cast_enabled = false
+cast_transcode_format = "Mp3"
+
+[[save_presets]]
+id = "flac"
+name = "FLAC"
+filename_tokens = ["TrackNumber", "Title"]
+pregap_placement = "AppendToPreviousExceptHtoa"
+applies_to_track = true
+applies_to_release = true
+embed_cover = true
+
+[save_presets.codec.Flac]
+bit_depth = "Source"
+
+[[save_presets]]
+id = "mp3"
+name = "MP3"
+filename_tokens = ["TrackNumber", "Title"]
+pregap_placement = "AppendToPreviousExceptHtoa"
+applies_to_track = true
+applies_to_release = true
+embed_cover = true
+
+[save_presets.codec.Mp3]
+bitrate_kbps = 320
+
+[import_storage]
+cloud = true
+pinned = true
+
+[identification]
+automatic = true
+import_when_identified = false
+
+[identification.catalogs]
+musicbrainz = true
+discogs = true
+
+[mcp]
+enabled = false
+port = 47777
+
+[subsonic]
+enabled = false
+port = 4533
+username = ""
+bind_address = "127.0.0.1"

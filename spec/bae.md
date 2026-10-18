@@ -1682,9 +1682,15 @@ tables are changed only by their author's devices (§5.5).
 
 ## Appendix C. Settings
 
-Each library's settings are `preferences.yaml` in its directory, beside
+Each library's settings are `preferences.toml` in its directory, beside
 coven's `config.yaml`. They are device-local. Every key is written; a file
 missing one fails to load, and only a missing file means every default.
+Unknown keys are ignored. The file can be edited by hand; enum values use
+their Rust spelling, such as `replay_gain_mode = "Album"`. TOML has no null
+value, so `discogs = "NotConfigured"` means no stored key; the other values
+are `"Unvalidated"`, `"Valid"`, and `"Rejected"`.
+The [default preferences file](../bae-core/test-fixtures/preferences/default.toml)
+shows the complete TOML layout.
 
 | Setting | Default | What it decides |
 |---|---|---|

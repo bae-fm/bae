@@ -1,4 +1,4 @@
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::num::{NonZeroU32, NonZeroUsize};
 use std::path::PathBuf;
 use tracing::{debug, info, warn};
@@ -105,7 +105,7 @@ pub enum DiscogsValidation {
 ///
 /// The gain is derived at playback from the stored loudness measurements and a
 /// constant target; this only selects which measurement (track vs album) drives
-/// it. Defaults to `Off`. Set by editing `preferences.yaml`; there is no UI
+/// it. Defaults to `Off`. Set by editing `preferences.toml`; there is no UI
 /// picker yet.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ReplayGainMode {
@@ -162,6 +162,7 @@ impl SidePauseCountdown {
 /// Whether a usable Discogs API key is configured. Folds the no-key case and
 /// the validation state into the four states a UI shows, so each binding
 /// doesn't re-derive the precedence.
+#[derive(Serialize, Deserialize)]
 pub enum DiscogsTokenStatus {
     NotConfigured,
     Valid,
@@ -265,7 +266,7 @@ impl Config {
     /// The running config for a store coven just restored or joined. coven
     /// wrote that store's `config.yaml` itself; bae has recorded no preferences
     /// for it yet, so they start at their defaults, as they do on any library
-    /// whose `preferences.yaml` has not been written.
+    /// whose `preferences.toml` has not been written.
     pub fn from_coven(c: coven::Config, library_path: PathBuf) -> Self {
         Self {
             inner: c,
@@ -289,16 +290,30 @@ pub enum ConfigError {
     Store(#[from] coven::ConfigError),
 }
 
-/// Deserialize an `Option<T>` whose key must be present, even when its value is
-/// `null`. A plain `Option<T>` reads a missing key as `None`; this fails the load
-/// instead, so a config file that omits the key is loud rather than silently
-/// defaulted. An explicit `null` still reads as `None`.
-fn deserialize_some<'de, T, D>(deserializer: D) -> Result<Option<T>, D::Error>
+/// TOML has no null value. Spell the no-key state explicitly so every
+/// preference remains present in the file, including an unset Discogs key.
+fn serialize_discogs<S>(value: &Option<DiscogsValidation>, serializer: S) -> Result<S::Ok, S::Error>
 where
-    T: Deserialize<'de>,
+    S: Serializer,
+{
+    match value {
+        Some(validation) => validation.serialize(serializer),
+        None => DiscogsTokenStatus::NotConfigured.serialize(serializer),
+    }
+}
+
+/// Require the key even when no Discogs token is configured; a missing key
+/// must fail the load instead of implicitly selecting `None`.
+fn deserialize_discogs<'de, D>(deserializer: D) -> Result<Option<DiscogsValidation>, D::Error>
+where
     D: Deserializer<'de>,
 {
-    Option::deserialize(deserializer)
+    Ok(match DiscogsTokenStatus::deserialize(deserializer)? {
+        DiscogsTokenStatus::NotConfigured => None,
+        DiscogsTokenStatus::Unvalidated => Some(DiscogsValidation::Unvalidated),
+        DiscogsTokenStatus::Valid => Some(DiscogsValidation::Valid),
+        DiscogsTokenStatus::Rejected => Some(DiscogsValidation::Rejected),
+    })
 }
 
 /// The file in a library directory that holds bae's [`Preferences`], next to
@@ -307,24 +322,27 @@ where
 /// Two files because two owners: coven writes `config.yaml` (store identity,
 /// device id, snapshot policy, cloud home) on create, restore, and join, and
 /// reads it back as the mark of a finished join; bae writes only this one.
-/// A library directory whose `preferences.yaml` has not been written yet — a
+/// A library directory whose `preferences.toml` has not been written yet — a
 /// new, restored, or joined library before any setting changes — has every
 /// preference at its default.
-pub const PREFERENCES_FILENAME: &str = "preferences.yaml";
+pub const PREFERENCES_FILENAME: &str = "preferences.toml";
 
-/// bae's own per-library settings: `preferences.yaml`, in field order.
+/// bae's own per-library settings: `preferences.toml`.
 /// Device-local, like the rest of the library directory; nothing here syncs.
 ///
 /// No field carries a `serde` default — serialization always emits every key,
 /// so a file missing a key fails the load rather than silently taking an
 /// implicit value. Only a missing file means defaults (see
 /// [`PREFERENCES_FILENAME`]).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Preferences {
     /// The stored Discogs key's validation state, or `None` when no key is
     /// configured. `Some` doubles as the hint that a key is in the keyring, so
     /// settings render without a keyring read.
-    #[serde(deserialize_with = "deserialize_some")]
+    #[serde(
+        serialize_with = "serialize_discogs",
+        deserialize_with = "deserialize_discogs"
+    )]
     pub discogs: Option<DiscogsValidation>,
     /// How loudness normalization is applied at playback. Defaults to `Off`.
     pub replay_gain_mode: ReplayGainMode,
@@ -441,7 +459,7 @@ pub struct Config {
     /// Runtime location of this library. It is host context rather than synced
     /// configuration, so it stays outside `coven::Config` and off the wire.
     library_path: PathBuf,
-    /// bae's own settings, exactly as `preferences.yaml` carries them.
+    /// bae's own settings, exactly as `preferences.toml` carries them.
     pub prefs: Preferences,
 }
 
@@ -466,7 +484,7 @@ impl Config {
     }
 
     /// Open the library registered as `library_id`: coven's `config.yaml` and
-    /// bae's `preferences.yaml` from its directory.
+    /// bae's `preferences.toml` from its directory.
     pub fn load_registered_library(
         app_dir: &AppDir,
         library_id: &str,
@@ -503,7 +521,7 @@ impl Config {
         self.write_store_config().map_err(WriteError::into_inner)
     }
 
-    /// Write bae's preferences to the library's `preferences.yaml`.
+    /// Write bae's preferences to the library's `preferences.toml`.
     pub fn save_preferences(&self) -> Result<(), ConfigError> {
         self.write_preferences().map_err(WriteError::into_inner)
     }
@@ -525,7 +543,7 @@ impl Config {
     fn write_preferences(&self) -> Result<(), WriteError<ConfigError>> {
         std::fs::create_dir_all(&self.library_path)
             .map_err(|e| WriteError::BeforeCommit(ConfigError::from(e)))?;
-        let serialized = serde_yaml::to_string(&self.prefs)
+        let serialized = toml::to_string_pretty(&self.prefs)
             .map_err(|e| WriteError::BeforeCommit(ConfigError::Serialization(e.to_string())))?;
         write_atomic(
             &self.library_path.join(PREFERENCES_FILENAME),
@@ -636,7 +654,7 @@ pub fn rename_inactive_library(
 }
 
 /// Read bae's preferences from a library directory. A directory with no
-/// `preferences.yaml` is one bae has recorded no preference in yet, so every
+/// `preferences.toml` is one bae has recorded no preference in yet, so every
 /// preference is at its default.
 fn read_preferences(library_dir: &std::path::Path) -> Result<Preferences, ConfigError> {
     let path = library_dir.join(PREFERENCES_FILENAME);
@@ -647,7 +665,7 @@ fn read_preferences(library_dir: &std::path::Path) -> Result<Preferences, Config
         );
         return Ok(Preferences::default());
     };
-    serde_yaml::from_str(&content)
+    toml::from_str(&content)
         .map_err(|e| ConfigError::Serialization(format!("{}: {e}", path.display())))
 }
 

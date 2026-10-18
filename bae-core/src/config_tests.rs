@@ -13,37 +13,8 @@ fn make_test_config(library_id: &str, library_path: PathBuf) -> Config {
     )
 }
 
-/// Default preferences as a `serde_yaml::Value` mapping, for tests that edit
-/// one key of the file.
-fn default_preferences_value() -> serde_yaml::Value {
-    serde_yaml::to_value(Preferences::default()).unwrap()
-}
-
-/// Write `value` as a library directory's `preferences.yaml` and read it back
-/// the way opening the library does.
-fn read_preferences_value(value: &serde_yaml::Value) -> Result<Preferences, ConfigError> {
-    let tmp = TempDir::new().unwrap();
-    std::fs::write(
-        tmp.path().join(PREFERENCES_FILENAME),
-        serde_yaml::to_string(value).unwrap(),
-    )
-    .unwrap();
-    read_preferences(tmp.path())
-}
-
-/// Read default preferences with one top-level key removed.
-fn read_preferences_without(key: &str) -> Result<Preferences, ConfigError> {
-    let mut value = default_preferences_value();
-    value
-        .as_mapping_mut()
-        .unwrap()
-        .remove(serde_yaml::Value::String(key.to_string()))
-        .unwrap_or_else(|| panic!("{key} not in serialized preferences"));
-    read_preferences_value(&value)
-}
-
 #[test]
-fn export_settings_survive_yaml_roundtrip() {
+fn export_settings_survive_toml_roundtrip() {
     let tmp = TempDir::new().unwrap();
     let mut config = make_test_config("lib", tmp.path().to_path_buf());
     // Filename tokens are per-preset now; a preset's edited pattern survives.
@@ -109,7 +80,7 @@ fn stored_concurrency_widens_to_the_builder_bound() {
 }
 
 #[test]
-fn transfer_concurrency_survives_yaml_roundtrip() {
+fn transfer_concurrency_survives_toml_roundtrip() {
     let tmp = TempDir::new().unwrap();
     let mut config = make_test_config("lib", tmp.path().to_path_buf());
     config.prefs.max_concurrent_uploads = NonZeroU32::new(7).unwrap();
@@ -191,37 +162,6 @@ fn identify_automatically_roundtrips() {
     }
 }
 
-/// The typed read is strict about the keys it needs, not about the keys it
-/// finds: a file carrying something extra — a key edited in by hand — still
-/// loads.
-#[test]
-fn preferences_carrying_an_unrecognized_key_load() {
-    let mut value = default_preferences_value();
-    value.as_mapping_mut().unwrap().insert(
-        serde_yaml::Value::String("unrecognized_setting".to_string()),
-        serde_yaml::Value::String("value".to_string()),
-    );
-
-    let loaded = read_preferences_value(&value).expect("an unknown key is ignored");
-
-    assert!(loaded.identification.automatic);
-}
-
-/// A hand-edited `0` is refused at load rather than reaching coven — the
-/// `NonZeroU32` field makes the deadlocking value unrepresentable.
-#[test]
-fn a_zero_concurrency_fails_to_load() {
-    let mut value = default_preferences_value();
-    value.as_mapping_mut().unwrap().insert(
-        serde_yaml::Value::String("max_concurrent_uploads".to_string()),
-        serde_yaml::Value::Number(0.into()),
-    );
-    assert!(
-        read_preferences_value(&value).is_err(),
-        "a zero concurrency must not load"
-    );
-}
-
 #[test]
 fn subsonic_config_rejects_port_zero() {
     let config = SubsonicConfig {
@@ -286,114 +226,10 @@ fn subsonic_config_allows_disabled_without_username() {
     );
 }
 
-/// Every key the file writes is serialized unconditionally, so a missing key
-/// fails rather than taking an implicit default.
-#[test]
-fn preferences_require_every_field() {
-    for key in [
-        "discogs",
-        "replay_gain_mode",
-        "save_presets",
-        "default_track_save_preset",
-        "default_release_save_preset",
-        "pause_between_sides",
-        "side_pause_countdown",
-        "max_concurrent_uploads",
-        "max_concurrent_downloads",
-        "show_remaining_time",
-        "library_full_width",
-        "verify_decode_on_import",
-        "import_storage",
-        "identification",
-        "cast_enabled",
-        "cast_transcode_format",
-        "mcp",
-        "subsonic",
-    ] {
-        assert!(
-            read_preferences_without(key).is_err(),
-            "preferences should fail without {key}"
-        );
-    }
-}
-
-/// The file is the contract. This pins the whole `preferences.yaml` a
-/// library writes at its defaults: every key, its order, its nesting, and its
-/// value. A rename, a dropped key, or a value that stopped being emitted shows
-/// up here.
-#[test]
-fn preferences_yaml_pins_the_on_disk_file() {
-    let tmp = TempDir::new().unwrap();
-    let config = make_test_config("abc-123", tmp.path().to_path_buf());
-    config.save_preferences().unwrap();
-    let written = std::fs::read_to_string(tmp.path().join(PREFERENCES_FILENAME)).unwrap();
-
-    assert_eq!(
-        written,
-        r#"discogs: null
-replay_gain_mode: Off
-save_presets:
-- id: flac
-  name: FLAC
-  codec: !Flac
-    bit_depth: Source
-  filename_tokens:
-  - TrackNumber
-  - Title
-  pregap_placement: AppendToPreviousExceptHtoa
-  applies_to_track: true
-  applies_to_release: true
-  embed_cover: true
-- id: mp3
-  name: MP3
-  codec: !Mp3
-    bitrate_kbps: 320
-  filename_tokens:
-  - TrackNumber
-  - Title
-  pregap_placement: AppendToPreviousExceptHtoa
-  applies_to_track: true
-  applies_to_release: true
-  embed_cover: true
-default_track_save_preset: flac
-default_release_save_preset: flac
-pause_between_sides: true
-side_pause_countdown: Off
-max_concurrent_uploads: 3
-max_concurrent_downloads: 3
-show_remaining_time: false
-library_full_width: false
-verify_decode_on_import: true
-import_storage:
-  cloud: true
-  pinned: true
-identification:
-  automatic: true
-  import_when_identified: false
-  catalogs:
-    musicbrainz: true
-    discogs: true
-cast_enabled: false
-cast_transcode_format: Mp3
-mcp:
-  enabled: false
-  port: 47777
-subsonic:
-  enabled: false
-  port: 4533
-  username: ''
-  bind_address: 127.0.0.1
-"#
-    );
-    // And it reads back, save presets' codec tags included.
-    let read_back = read_preferences(tmp.path()).unwrap();
-    assert_eq!(read_back.save_presets, config.prefs.save_presets);
-}
-
 /// Casting reaches the local network, so it is opt-in: a fresh library has
-/// it off, and the choice survives a write/read of preferences.yaml.
+/// it off, and the choice survives a write/read of preferences.toml.
 #[test]
-fn cast_is_off_by_default_and_survives_yaml_roundtrip() {
+fn cast_is_off_by_default_and_survives_toml_roundtrip() {
     let tmp = TempDir::new().unwrap();
     let mut config = make_test_config("lib-cast", tmp.path().to_path_buf());
     assert!(!config.prefs.cast_enabled, "casting is opt-in");
@@ -405,9 +241,9 @@ fn cast_is_off_by_default_and_survives_yaml_roundtrip() {
 }
 
 /// What a device is sent when a track must be converted is MP3 until the
-/// person picks WAV, and the pick survives a write/read of preferences.yaml.
+/// person picks WAV, and the pick survives a write/read of preferences.toml.
 #[test]
-fn cast_transcode_format_is_mp3_by_default_and_survives_yaml_roundtrip() {
+fn cast_transcode_format_is_mp3_by_default_and_survives_toml_roundtrip() {
     let tmp = TempDir::new().unwrap();
     let mut config = make_test_config("lib-cast-format", tmp.path().to_path_buf());
     assert_eq!(config.prefs.cast_transcode_format, CastTranscodeFormat::Mp3);
@@ -468,7 +304,7 @@ fn a_broken_library_does_not_hide_a_working_one() {
     assert!(libraries[1].error.is_some());
 }
 
-/// The YAML mapping names its fields, but nothing reads them by name: the
+/// The TOML table names its fields, but nothing reads them by name: the
 /// accessors are total over the catalogs bae asks, so each has an answer and a
 /// new one cannot be silently forgotten.
 #[test]
@@ -588,7 +424,7 @@ fn discogs_token_status_derives_from_option() {
 }
 
 /// A library bae created and changed a preference in opens with both: coven's
-/// config from `config.yaml` and bae's preferences from `preferences.yaml`.
+/// config from `config.yaml` and bae's preferences from `preferences.toml`.
 #[test]
 fn a_saved_library_loads_back() {
     let tmp = TempDir::new().unwrap();
@@ -917,10 +753,10 @@ async fn changing_a_preference_leaves_coven_config_readable_by_coven() {
     );
 }
 
-/// Every countdown choice a person can pick is written to `preferences.yaml`
+/// Every countdown choice a person can pick is written to `preferences.toml`
 /// and read back unchanged.
 #[tokio::test]
-async fn side_pause_countdown_round_trips_through_preferences_yaml() {
+async fn side_pause_countdown_round_trips_through_preferences_toml() {
     for countdown in [
         SidePauseCountdown::Off,
         SidePauseCountdown::Seconds5,
@@ -970,3 +806,6 @@ fn side_pause_countdown_duration_is_the_offered_length() {
         Some(Duration::from_secs(60))
     );
 }
+
+#[path = "config/preferences_tests.rs"]
+mod preferences;

@@ -77,7 +77,7 @@ impl ConfigHandle {
             .await
     }
 
-    /// Edit bae's preferences, persist them to `preferences.yaml`, and publish
+    /// Edit bae's preferences, persist them to `preferences.toml`, and publish
     /// the new state to subscribers. The write path for every bae setting.
     pub async fn update_preferences(
         self: &std::sync::Arc<Self>,

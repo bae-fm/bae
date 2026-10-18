@@ -1,4 +1,4 @@
-//! How identification runs, as `preferences.yaml`'s `identification` mapping
+//! How identification runs, as `preferences.toml`'s `identification` table
 //! carries it: whether it starts on its own, what a run it started on its own
 //! goes on to do, and which catalogs it asks.
 
@@ -41,7 +41,7 @@ impl Default for IdentificationPreferences {
 /// [`Catalog::LOOKUP`](crate::import::Catalog::LOOKUP) member, all on by
 /// default.
 ///
-/// The YAML mapping needs a name per catalog, so the fields are named — but
+/// The TOML table needs a name per catalog, so the fields are named — but
 /// nothing reads them by name: [`Self::enabled`] and [`Self::set`] are total
 /// over the asked catalogs, so adding one fails the build here rather than
 /// silently defaulting. Neither is the main one; a catalog switched off is not
