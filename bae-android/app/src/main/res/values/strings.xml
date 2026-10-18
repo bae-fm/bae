@@ -123,14 +123,8 @@
     <string name="settings_playback">Playback</string>
     <string name="settings_about">About</string>
     <string name="settings_version">Version</string>
-    <string name="settings_devices">Devices</string>
-    <string name="settings_manage_devices">Manage devices</string>
-    <string name="settings_recovery_code">Recovery code</string>
-    <string name="settings_recovery_code_explanation">A secret code that can restore this library onto a new device when you can\'t approve it from an existing one. Keep it private.</string>
-    <string name="settings_reveal_recovery_code">Reveal recovery code</string>
-    <string name="settings_recovery_code_secret_warning">Anyone with this code has full access to your library. Keep it private.</string>
-    <string name="settings_recovery_code_failed">Couldn\'t generate a recovery code.</string>
-    <string name="settings_copy_recovery_code">Copy code</string>
+    <string name="restore_code_secret_warning">Anyone with this code has full access to your library. Keep it private.</string>
+    <string name="copy_code">Copy code</string>
     <string name="settings_remove_library">Remove this library from this device</string>
     <string name="settings_remove_library_explanation">Removes this library from this device: this device leaves the library, then its copy and downloaded files are deleted. The library in its cloud home is untouched.</string>
     <string name="settings_remove_library_confirm_title">Remove this library from this device?</string>
@@ -181,7 +175,6 @@
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-compatible</string>
     <string name="cloud_provider_icloud">iCloud</string>
-    <string name="pairing_copy_code">Copy code</string>
     <string name="onboarding_join_action">Join</string>
 
     <!-- QR scanner -->
@@ -310,4 +303,8 @@
     <string name="storage_onedrive_use_folder">Use this folder</string>
     <string name="storage_setup_done">This library’s cloud home is set up. Keep your restore code: your other devices join with it.</string>
     <string name="done">Done</string>
+    <string name="settings_restore_code">Restore code</string>
+    <string name="settings_restore_code_explanation">Scan or type this code on a new device to add it to this library as you.</string>
+    <string name="settings_show_restore_code">Show restore code</string>
+    <string name="settings_people">People</string>
 </resources>

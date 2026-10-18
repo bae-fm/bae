@@ -93,14 +93,8 @@
     <string name="settings_playback">Afspilning</string>
     <string name="settings_about">Om</string>
     <string name="settings_version">Version</string>
-    <string name="settings_devices">Enheder</string>
-    <string name="settings_manage_devices">Administrer enheder</string>
-    <string name="settings_recovery_code">Gendannelseskode</string>
-    <string name="settings_recovery_code_explanation">En hemmelig kode, der kan gendanne dette bibliotek på en ny enhed, når du ikke kan godkende den fra en eksisterende. Hold den privat.</string>
-    <string name="settings_reveal_recovery_code">Vis gendannelseskoden</string>
-    <string name="settings_recovery_code_secret_warning">Alle med denne kode har fuld adgang til dit bibliotek. Hold den privat.</string>
-    <string name="settings_recovery_code_failed">Der kunne ikke genereres en gendannelseskode.</string>
-    <string name="settings_copy_recovery_code">Kopier koden</string>
+    <string name="restore_code_secret_warning">Alle med denne kode har fuld adgang til dit bibliotek. Hold den privat.</string>
+    <string name="copy_code">Kopier koden</string>
     <string name="settings_remove_library">Fjern dette bibliotek fra denne enhed</string>
     <string name="settings_remove_library_explanation">Fjerner dette bibliotek fra denne enhed: enheden forlader biblioteket, og derefter slettes dens kopi og downloadede filer. Biblioteket på skyplaceringen er urørt.</string>
     <string name="settings_remove_library_confirm_title">Vil du fjerne dette bibliotek fra denne enhed?</string>
@@ -144,7 +138,6 @@
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-kompatibel</string>
     <string name="cloud_provider_icloud">iCloud</string>
-    <string name="pairing_copy_code">Kopier koden</string>
     <string name="onboarding_join_action">Deltag</string>
     <string name="qr_scanner_instructions">Scan en gendannelseskode, der vises i bae på en af dine enheder, eller en invitation.</string>
     <string name="downloads">Overførsler</string>
@@ -259,4 +252,8 @@
     <string name="storage_onedrive_use_folder">Brug denne mappe</string>
     <string name="storage_setup_done">Bibliotekets skyplacering er sat op. Gem din gendannelseskode: dine andre enheder tilmelder sig med den.</string>
     <string name="done">Færdig</string>
+    <string name="settings_restore_code">Gendannelseskode</string>
+    <string name="settings_restore_code_explanation">Scan eller indtast denne kode på en ny enhed for at føje den til dette bibliotek som din.</string>
+    <string name="settings_show_restore_code">Vis gendannelseskode</string>
+    <string name="settings_people">Personer</string>
 </resources>

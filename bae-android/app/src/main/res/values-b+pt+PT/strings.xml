@@ -93,14 +93,8 @@
     <string name="settings_playback">Reprodução</string>
     <string name="settings_about">Acerca</string>
     <string name="settings_version">Versão</string>
-    <string name="settings_devices">Dispositivos</string>
-    <string name="settings_manage_devices">Gerir dispositivos</string>
-    <string name="settings_recovery_code">Código de recuperação</string>
-    <string name="settings_recovery_code_explanation">Um código secreto que consegue restaurar esta biblioteca num dispositivo novo quando não a pode aprovar a partir de um já existente. Guarde-o em privado.</string>
-    <string name="settings_reveal_recovery_code">Revelar código de recuperação</string>
-    <string name="settings_recovery_code_secret_warning">Quem tiver este código tem acesso total à sua biblioteca. Guarde-o em privado.</string>
-    <string name="settings_recovery_code_failed">Não foi possível gerar um código de recuperação.</string>
-    <string name="settings_copy_recovery_code">Copiar código</string>
+    <string name="restore_code_secret_warning">Quem tiver este código tem acesso total à sua biblioteca. Guarde-o em privado.</string>
+    <string name="copy_code">Copiar código</string>
     <string name="settings_remove_library">Remover esta biblioteca deste dispositivo</string>
     <string name="settings_remove_library_explanation">Remove esta biblioteca deste dispositivo: o dispositivo sai da biblioteca e depois a respetiva cópia e os ficheiros transferidos são eliminados. A biblioteca no local na nuvem fica intacta.</string>
     <string name="settings_remove_library_confirm_title">Remover esta biblioteca deste dispositivo?</string>
@@ -144,7 +138,6 @@
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">Compatível com S3</string>
     <string name="cloud_provider_icloud">iCloud</string>
-    <string name="pairing_copy_code">Copiar código</string>
     <string name="onboarding_join_action">Aderir</string>
     <string name="qr_scanner_instructions">Leia um código de restauro apresentado no bae num dos seus dispositivos ou um convite.</string>
     <string name="downloads">Transferências</string>
@@ -259,4 +252,8 @@
     <string name="storage_onedrive_use_folder">Usar esta pasta</string>
     <string name="storage_setup_done">O local na nuvem desta biblioteca está configurado. Guarde o seu código de restauro: os seus outros dispositivos aderem com ele.</string>
     <string name="done">Concluído</string>
+    <string name="settings_restore_code">Código de restauro</string>
+    <string name="settings_restore_code_explanation">Leia ou introduza este código num novo dispositivo para o adicionar a esta biblioteca como sendo seu.</string>
+    <string name="settings_show_restore_code">Mostrar código de restauro</string>
+    <string name="settings_people">Pessoas</string>
 </resources>

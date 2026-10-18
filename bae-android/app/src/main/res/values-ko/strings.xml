@@ -89,14 +89,8 @@
     <string name="settings_playback">재생</string>
     <string name="settings_about">정보</string>
     <string name="settings_version">버전</string>
-    <string name="settings_devices">기기</string>
-    <string name="settings_manage_devices">기기 관리</string>
-    <string name="settings_recovery_code">복구 코드</string>
-    <string name="settings_recovery_code_explanation">기존 기기에서 승인할 수 없을 때 이 라이브러리를 새 기기에 복원할 수 있는 비밀 코드입니다. 비공개로 보관하세요.</string>
-    <string name="settings_reveal_recovery_code">복구 코드 표시</string>
-    <string name="settings_recovery_code_secret_warning">이 코드를 가진 사람은 누구나 라이브러리에 완전히 접근할 수 있습니다. 비공개로 보관하세요.</string>
-    <string name="settings_recovery_code_failed">복구 코드를 생성할 수 없습니다.</string>
-    <string name="settings_copy_recovery_code">코드 복사</string>
+    <string name="restore_code_secret_warning">이 코드를 가진 사람은 누구나 라이브러리에 완전히 접근할 수 있습니다. 비공개로 보관하세요.</string>
+    <string name="copy_code">코드 복사</string>
     <string name="settings_remove_library">이 기기에서 이 라이브러리 제거</string>
     <string name="settings_remove_library_explanation">이 기기에서 라이브러리를 제거합니다. 기기가 라이브러리에서 나간 다음 복사본과 다운로드한 파일이 삭제됩니다. 클라우드 저장 위치의 라이브러리는 그대로입니다.</string>
     <string name="settings_remove_library_confirm_title">이 기기에서 이 라이브러리를 제거할까요?</string>
@@ -140,7 +134,6 @@
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-compatible</string>
     <string name="cloud_provider_icloud">iCloud</string>
-    <string name="pairing_copy_code">코드 복사</string>
     <string name="onboarding_join_action">참여</string>
     <string name="qr_scanner_instructions">내 기기의 bae에 표시된 복원 코드나 초대를 스캔하세요.</string>
     <!-- Downloads -->
@@ -258,4 +251,8 @@
     <string name="storage_onedrive_use_folder">이 폴더 사용</string>
     <string name="storage_setup_done">이 라이브러리의 클라우드 저장 위치가 설정되었습니다. 복원 코드를 보관하세요. 다른 기기는 이 코드로 참여합니다.</string>
     <string name="done">완료</string>
+    <string name="settings_restore_code">복원 코드</string>
+    <string name="settings_restore_code_explanation">새 기기에서 이 코드를 스캔하거나 입력하면 내 기기로 이 라이브러리에 추가됩니다.</string>
+    <string name="settings_show_restore_code">복원 코드 보기</string>
+    <string name="settings_people">사람</string>
 </resources>

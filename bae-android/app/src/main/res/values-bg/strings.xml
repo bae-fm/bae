@@ -89,14 +89,8 @@
     <string name="settings_playback">Възпроизвеждане</string>
     <string name="settings_about">Относно</string>
     <string name="settings_version">Версия</string>
-    <string name="settings_devices">Устройства</string>
-    <string name="settings_manage_devices">Управление на устройства</string>
-    <string name="settings_recovery_code">Код за възстановяване</string>
-    <string name="settings_recovery_code_explanation">Таен код, с който можете да възстановите тази библиотека на ново устройство, когато не можете да го одобрите от съществуващо. Пазете го поверителен.</string>
-    <string name="settings_reveal_recovery_code">Показване на кода за възстановяване</string>
-    <string name="settings_recovery_code_secret_warning">Всеки с този код има пълен достъп до библиотеката ви. Пазете го поверителен.</string>
-    <string name="settings_recovery_code_failed">Не можа да бъде генериран код за възстановяване.</string>
-    <string name="settings_copy_recovery_code">Копиране на кода</string>
+    <string name="restore_code_secret_warning">Всеки с този код има пълен достъп до библиотеката ви. Пазете го поверителен.</string>
+    <string name="copy_code">Копиране на кода</string>
     <string name="settings_remove_library">Премахване на тази библиотека от това устройство</string>
     <string name="settings_remove_library_explanation">Премахва тази библиотека от това устройство: устройството напуска библиотеката, след което копието му и изтеглените файлове се изтриват. Библиотеката в облачното хранилище остава непокътната.</string>
     <string name="settings_remove_library_confirm_title">Премахване на тази библиотека от това устройство?</string>
@@ -140,7 +134,6 @@
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-compatible</string>
     <string name="cloud_provider_icloud">iCloud</string>
-    <string name="pairing_copy_code">Копиране на кода</string>
     <string name="onboarding_join_action">Присъединяване</string>
     <string name="qr_scanner_instructions">Сканирайте код за възстановяване, показан в bae на някое от устройствата ви, или покана.</string>
     <!-- Downloads -->
@@ -260,4 +253,8 @@
     <string name="storage_onedrive_use_folder">Използване на тази папка</string>
     <string name="storage_setup_done">Облачното хранилище на тази библиотека е настроено. Запазете кода си за възстановяване: другите ви устройства се присъединяват с него.</string>
     <string name="done">Готово</string>
+    <string name="settings_restore_code">Код за възстановяване</string>
+    <string name="settings_restore_code_explanation">Сканирайте или въведете този код на ново устройство, за да го добавите към тази библиотека като ваше.</string>
+    <string name="settings_show_restore_code">Показване на кода за възстановяване</string>
+    <string name="settings_people">Хора</string>
 </resources>

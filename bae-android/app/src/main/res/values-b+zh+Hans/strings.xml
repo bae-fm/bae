@@ -89,14 +89,8 @@
     <string name="settings_playback">播放</string>
     <string name="settings_about">关于</string>
     <string name="settings_version">版本</string>
-    <string name="settings_devices">设备</string>
-    <string name="settings_manage_devices">管理设备</string>
-    <string name="settings_recovery_code">恢复代码</string>
-    <string name="settings_recovery_code_explanation">当你无法从现有设备批准时，可用这个秘密代码将此曲库恢复到新设备。请妥善保密。</string>
-    <string name="settings_reveal_recovery_code">显示恢复代码</string>
-    <string name="settings_recovery_code_secret_warning">任何拥有此代码的人都能完全访问你的曲库。请妥善保密。</string>
-    <string name="settings_recovery_code_failed">无法生成恢复代码。</string>
-    <string name="settings_copy_recovery_code">复制代码</string>
+    <string name="restore_code_secret_warning">任何拥有此代码的人都能完全访问你的曲库。请妥善保密。</string>
+    <string name="copy_code">复制代码</string>
     <string name="settings_remove_library">从此设备移除此库</string>
     <string name="settings_remove_library_explanation">从此设备移除此库：此设备先退出库，然后删除它的副本和已下载的文件。云端存储中的库不受影响。</string>
     <string name="settings_remove_library_confirm_title">从此设备移除此库？</string>
@@ -140,7 +134,6 @@
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-compatible</string>
     <string name="cloud_provider_icloud">iCloud</string>
-    <string name="pairing_copy_code">复制代码</string>
     <string name="onboarding_join_action">加入</string>
     <string name="qr_scanner_instructions">扫描你其他设备上 bae 显示的恢复码，或一个邀请。</string>
     <!-- Downloads -->
@@ -258,4 +251,8 @@
     <string name="storage_onedrive_use_folder">使用此文件夹</string>
     <string name="storage_setup_done">此库的云端存储已设置。请保存你的恢复码：你的其他设备将用它加入。</string>
     <string name="done">完成</string>
+    <string name="settings_restore_code">恢复码</string>
+    <string name="settings_restore_code_explanation">在新设备上扫描或输入此代码，即可以你的身份将其加入此库。</string>
+    <string name="settings_show_restore_code">显示恢复码</string>
+    <string name="settings_people">成员</string>
 </resources>

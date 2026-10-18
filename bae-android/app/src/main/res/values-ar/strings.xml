@@ -89,14 +89,8 @@
     <string name="settings_playback">التشغيل</string>
     <string name="settings_about">حول</string>
     <string name="settings_version">الإصدار</string>
-    <string name="settings_devices">الأجهزة</string>
-    <string name="settings_manage_devices">إدارة الأجهزة</string>
-    <string name="settings_recovery_code">رمز الاسترداد</string>
-    <string name="settings_recovery_code_explanation">رمز سري يمكنه استعادة هذه المكتبة على جهاز جديد عندما لا يمكنك الموافقة عليه من جهاز موجود. أبقه خاصًا.</string>
-    <string name="settings_reveal_recovery_code">إظهار رمز الاسترداد</string>
-    <string name="settings_recovery_code_secret_warning">أي شخص لديه هذا الرمز يملك وصولًا كاملًا إلى مكتبتك. أبقه خاصًا.</string>
-    <string name="settings_recovery_code_failed">تعذر إنشاء رمز استرداد.</string>
-    <string name="settings_copy_recovery_code">نسخ الرمز</string>
+    <string name="restore_code_secret_warning">أي شخص لديه هذا الرمز يملك وصولًا كاملًا إلى مكتبتك. أبقه خاصًا.</string>
+    <string name="copy_code">نسخ الرمز</string>
     <string name="settings_remove_library">إزالة هذه المكتبة من هذا الجهاز</string>
     <string name="settings_remove_library_explanation">يزيل هذه المكتبة من هذا الجهاز: يغادر الجهاز المكتبة، ثم تُحذف نسخته والملفات التي نزّلها. لا تتأثر المكتبة في مكانها في السحابة.</string>
     <string name="settings_remove_library_confirm_title">إزالة هذه المكتبة من هذا الجهاز؟</string>
@@ -140,7 +134,6 @@
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-compatible</string>
     <string name="cloud_provider_icloud">iCloud</string>
-    <string name="pairing_copy_code">نسخ الرمز</string>
     <string name="onboarding_join_action">انضمام</string>
     <string name="qr_scanner_instructions">امسح رمز استعادة معروضًا في bae على أحد أجهزتك، أو دعوة.</string>
     <!-- Downloads -->
@@ -268,4 +261,8 @@
     <string name="storage_onedrive_use_folder">استخدام هذا المجلد</string>
     <string name="storage_setup_done">تم إعداد مكان هذه المكتبة في السحابة. احتفظ برمز الاستعادة: تنضم به أجهزتك الأخرى.</string>
     <string name="done">تم</string>
+    <string name="settings_restore_code">رمز الاستعادة</string>
+    <string name="settings_restore_code_explanation">امسح هذا الرمز أو اكتبه على جهاز جديد لإضافته إلى هذه المكتبة باسمك.</string>
+    <string name="settings_show_restore_code">عرض رمز الاستعادة</string>
+    <string name="settings_people">الأشخاص</string>
 </resources>

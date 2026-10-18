@@ -89,14 +89,8 @@
     <string name="settings_playback">Відтворення</string>
     <string name="settings_about">Про застосунок</string>
     <string name="settings_version">Версія</string>
-    <string name="settings_devices">Пристрої</string>
-    <string name="settings_manage_devices">Керувати пристроями</string>
-    <string name="settings_recovery_code">Код відновлення</string>
-    <string name="settings_recovery_code_explanation">Секретний код, який може відновити цю бібліотеку на новому пристрої, коли ви не можете схвалити його з наявного. Тримайте його в таємниці.</string>
-    <string name="settings_reveal_recovery_code">Показати код відновлення</string>
-    <string name="settings_recovery_code_secret_warning">Будь-хто з цим кодом має повний доступ до вашої бібліотеки. Тримайте його в таємниці.</string>
-    <string name="settings_recovery_code_failed">Не вдалося створити код відновлення.</string>
-    <string name="settings_copy_recovery_code">Копіювати код</string>
+    <string name="restore_code_secret_warning">Будь-хто з цим кодом має повний доступ до вашої бібліотеки. Тримайте його в таємниці.</string>
+    <string name="copy_code">Копіювати код</string>
     <string name="settings_remove_library">Вилучити цю бібліотеку з цього пристрою</string>
     <string name="settings_remove_library_explanation">Вилучає цю бібліотеку з цього пристрою: пристрій виходить із бібліотеки, а потім його копію та завантажені файли видаляють. Бібліотека в хмарі залишається незмінною.</string>
     <string name="settings_remove_library_confirm_title">Вилучити цю бібліотеку з цього пристрою?</string>
@@ -140,7 +134,6 @@
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-compatible</string>
     <string name="cloud_provider_icloud">iCloud</string>
-    <string name="pairing_copy_code">Копіювати код</string>
     <string name="onboarding_join_action">Приєднатися</string>
     <string name="qr_scanner_instructions">Відскануйте код відновлення, який bae показує на одному з ваших пристроїв, або запрошення.</string>
     <!-- Downloads -->
@@ -264,4 +257,8 @@
     <string name="storage_onedrive_use_folder">Використати цю папку</string>
     <string name="storage_setup_done">Місце в хмарі для цієї бібліотеки налаштовано. Збережіть свій код відновлення: ваші інші пристрої приєднуються з ним.</string>
     <string name="done">Готово</string>
+    <string name="settings_restore_code">Код відновлення</string>
+    <string name="settings_restore_code_explanation">Відскануйте або введіть цей код на новому пристрої, щоб додати його до цієї бібліотеки як свій.</string>
+    <string name="settings_show_restore_code">Показати код відновлення</string>
+    <string name="settings_people">Люди</string>
 </resources>

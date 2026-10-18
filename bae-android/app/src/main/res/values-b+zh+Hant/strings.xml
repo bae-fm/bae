@@ -89,14 +89,8 @@
     <string name="settings_playback">播放</string>
     <string name="settings_about">關於</string>
     <string name="settings_version">版本</string>
-    <string name="settings_devices">裝置</string>
-    <string name="settings_manage_devices">管理裝置</string>
-    <string name="settings_recovery_code">復原碼</string>
-    <string name="settings_recovery_code_explanation">當你無法從現有裝置核准時，可用來在新裝置還原此資料庫的秘密代碼。請妥善保密。</string>
-    <string name="settings_reveal_recovery_code">顯示復原碼</string>
-    <string name="settings_recovery_code_secret_warning">任何持有此代碼的人都能完整存取你的資料庫。請妥善保密。</string>
-    <string name="settings_recovery_code_failed">無法產生復原碼。</string>
-    <string name="settings_copy_recovery_code">複製代碼</string>
+    <string name="restore_code_secret_warning">任何持有此代碼的人都能完整存取你的資料庫。請妥善保密。</string>
+    <string name="copy_code">複製代碼</string>
     <string name="settings_remove_library">從此裝置移除此資料庫</string>
     <string name="settings_remove_library_explanation">從此裝置移除此資料庫：此裝置先退出資料庫，然後刪除它的副本和已下載的檔案。雲端儲存位置中的資料庫不受影響。</string>
     <string name="settings_remove_library_confirm_title">要從此裝置移除此資料庫嗎？</string>
@@ -140,7 +134,6 @@
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-compatible</string>
     <string name="cloud_provider_icloud">iCloud</string>
-    <string name="pairing_copy_code">複製代碼</string>
     <string name="onboarding_join_action">加入</string>
     <string name="qr_scanner_instructions">掃描你其他裝置上 bae 顯示的還原碼，或一個邀請。</string>
     <!-- Downloads -->
@@ -258,4 +251,8 @@
     <string name="storage_onedrive_use_folder">使用此資料夾</string>
     <string name="storage_setup_done">此資料庫的雲端儲存位置已設定。請保存你的還原碼：你的其他裝置將用它加入。</string>
     <string name="done">完成</string>
+    <string name="settings_restore_code">還原碼</string>
+    <string name="settings_restore_code_explanation">在新裝置上掃描或輸入此代碼，即可以你的身分將其加入此資料庫。</string>
+    <string name="settings_show_restore_code">顯示還原碼</string>
+    <string name="settings_people">成員</string>
 </resources>

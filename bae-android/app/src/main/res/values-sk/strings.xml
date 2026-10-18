@@ -95,14 +95,8 @@
     <string name="settings_playback">Prehrávanie</string>
     <string name="settings_about">O aplikácii</string>
     <string name="settings_version">Verzia</string>
-    <string name="settings_devices">Zariadenia</string>
-    <string name="settings_manage_devices">Spravovať zariadenia</string>
-    <string name="settings_recovery_code">Obnovovací kód</string>
-    <string name="settings_recovery_code_explanation">Tajný kód, ktorý dokáže obnoviť túto knižnicu na novom zariadení, keď to nemôžeš schváliť z existujúceho. Nechaj si ho pre seba.</string>
-    <string name="settings_reveal_recovery_code">Zobraziť obnovovací kód</string>
-    <string name="settings_recovery_code_secret_warning">Ktokoľvek s týmto kódom má plný prístup k tvojej knižnici. Nechaj si ho pre seba.</string>
-    <string name="settings_recovery_code_failed">Nepodarilo sa vygenerovať obnovovací kód.</string>
-    <string name="settings_copy_recovery_code">Kopírovať kód</string>
+    <string name="restore_code_secret_warning">Ktokoľvek s týmto kódom má plný prístup k tvojej knižnici. Nechaj si ho pre seba.</string>
+    <string name="copy_code">Kopírovať kód</string>
     <string name="settings_remove_library">Odstrániť túto knižnicu z tohto zariadenia</string>
     <string name="settings_remove_library_explanation">Odstráni túto knižnicu z tohto zariadenia: zariadenie knižnicu opustí a potom sa odstráni jeho kópia a stiahnuté súbory. Knižnica v cloudovom úložisku zostane nedotknutá.</string>
     <string name="settings_remove_library_confirm_title">Odstrániť túto knižnicu z tohto zariadenia?</string>
@@ -146,7 +140,6 @@
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">Kompatibilné s S3</string>
     <string name="cloud_provider_icloud">iCloud</string>
-    <string name="pairing_copy_code">Kopírovať kód</string>
     <string name="onboarding_join_action">Pripojiť sa</string>
     <string name="qr_scanner_instructions">Naskenuj kód na obnovenie, ktorý bae zobrazuje na niektorom z tvojich zariadení, alebo pozvánku.</string>
     <string name="downloads">Stiahnuté</string>
@@ -263,4 +256,8 @@
     <string name="storage_onedrive_use_folder">Použiť tento priečinok</string>
     <string name="storage_setup_done">Cloudové úložisko tejto knižnice je nastavené. Uschovaj si kód na obnovenie: tvoje ďalšie zariadenia sa ním pripoja.</string>
     <string name="done">Hotovo</string>
+    <string name="settings_restore_code">Kód na obnovenie</string>
+    <string name="settings_restore_code_explanation">Naskenuj alebo zadaj tento kód v novom zariadení a pridaj ho do tejto knižnice ako svoje.</string>
+    <string name="settings_show_restore_code">Zobraziť kód na obnovenie</string>
+    <string name="settings_people">Ľudia</string>
 </resources>

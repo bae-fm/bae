@@ -93,14 +93,8 @@
     <string name="settings_playback">Lejátszás</string>
     <string name="settings_about">Névjegy</string>
     <string name="settings_version">Verzió</string>
-    <string name="settings_devices">Eszközök</string>
-    <string name="settings_manage_devices">Eszközök kezelése</string>
-    <string name="settings_recovery_code">Helyreállítási kód</string>
-    <string name="settings_recovery_code_explanation">Titkos kód, amellyel új eszközre állíthatod vissza ezt a könyvtárat, ha egy meglévőről nem tudod jóváhagyni. Tartsd magadnál.</string>
-    <string name="settings_reveal_recovery_code">Helyreállítási kód felfedése</string>
-    <string name="settings_recovery_code_secret_warning">Aki ismeri ezt a kódot, teljes hozzáférést kap a könyvtáradhoz. Tartsd magadnál.</string>
-    <string name="settings_recovery_code_failed">Nem sikerült helyreállítási kódot előállítani.</string>
-    <string name="settings_copy_recovery_code">Kód másolása</string>
+    <string name="restore_code_secret_warning">Aki ismeri ezt a kódot, teljes hozzáférést kap a könyvtáradhoz. Tartsd magadnál.</string>
+    <string name="copy_code">Kód másolása</string>
     <string name="settings_remove_library">Könyvtár eltávolítása erről az eszközről</string>
     <string name="settings_remove_library_explanation">Eltávolítja ezt a könyvtárat erről az eszközről: az eszköz kilép a könyvtárból, majd törlődik a másolata és a letöltött fájlok. A felhőbeli tárhelyen lévő könyvtár érintetlen marad.</string>
     <string name="settings_remove_library_confirm_title">Eltávolítod ezt a könyvtárat erről az eszközről?</string>
@@ -144,7 +138,6 @@
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-kompatibilis</string>
     <string name="cloud_provider_icloud">iCloud</string>
-    <string name="pairing_copy_code">Kód másolása</string>
     <string name="onboarding_join_action">Csatlakozás</string>
     <string name="qr_scanner_instructions">Olvasd be a bae által az egyik eszközödön mutatott visszaállítási kódot, vagy egy meghívót.</string>
     <string name="downloads">Letöltések</string>
@@ -259,4 +252,8 @@
     <string name="storage_onedrive_use_folder">Ennek a mappának a használata</string>
     <string name="storage_setup_done">A könyvtár felhőbeli tárhelye be van állítva. Őrizd meg a visszaállítási kódodat: a többi eszközöd ezzel csatlakozik.</string>
     <string name="done">Kész</string>
+    <string name="settings_restore_code">Visszaállítási kód</string>
+    <string name="settings_restore_code_explanation">Olvasd be vagy írd be ezt a kódot egy új eszközön, hogy a sajátodként add hozzá ehhez a könyvtárhoz.</string>
+    <string name="settings_show_restore_code">Visszaállítási kód megjelenítése</string>
+    <string name="settings_people">Személyek</string>
 </resources>

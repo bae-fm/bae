@@ -93,14 +93,8 @@
     <string name="settings_playback">Avspilling</string>
     <string name="settings_about">Om</string>
     <string name="settings_version">Versjon</string>
-    <string name="settings_devices">Enheter</string>
-    <string name="settings_manage_devices">Administrer enheter</string>
-    <string name="settings_recovery_code">Gjenopprettingskode</string>
-    <string name="settings_recovery_code_explanation">En hemmelig kode som kan gjenopprette dette biblioteket på en ny enhet når du ikke kan godkjenne den fra en eksisterende. Hold den privat.</string>
-    <string name="settings_reveal_recovery_code">Vis gjenopprettingskoden</string>
-    <string name="settings_recovery_code_secret_warning">Alle som har denne koden, får full tilgang til biblioteket ditt. Hold den privat.</string>
-    <string name="settings_recovery_code_failed">Kunne ikke generere en gjenopprettingskode.</string>
-    <string name="settings_copy_recovery_code">Kopier koden</string>
+    <string name="restore_code_secret_warning">Alle som har denne koden, får full tilgang til biblioteket ditt. Hold den privat.</string>
+    <string name="copy_code">Kopier koden</string>
     <string name="settings_remove_library">Fjern dette biblioteket fra denne enheten</string>
     <string name="settings_remove_library_explanation">Fjerner dette biblioteket fra denne enheten: enheten forlater biblioteket, og deretter slettes kopien og de nedlastede filene. Biblioteket på skyplasseringen er urørt.</string>
     <string name="settings_remove_library_confirm_title">Fjerne dette biblioteket fra denne enheten?</string>
@@ -144,7 +138,6 @@
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-kompatibel</string>
     <string name="cloud_provider_icloud">iCloud</string>
-    <string name="pairing_copy_code">Kopier koden</string>
     <string name="onboarding_join_action">Bli med</string>
     <string name="qr_scanner_instructions">Skann en gjenopprettingskode som bae viser på en av enhetene dine, eller en invitasjon.</string>
     <string name="downloads">Nedlastinger</string>
@@ -259,4 +252,8 @@
     <string name="storage_onedrive_use_folder">Bruk denne mappen</string>
     <string name="storage_setup_done">Bibliotekets skyplassering er konfigurert. Ta vare på gjenopprettingskoden din: de andre enhetene dine blir med ved hjelp av den.</string>
     <string name="done">Ferdig</string>
+    <string name="settings_restore_code">Gjenopprettingskode</string>
+    <string name="settings_restore_code_explanation">Skann eller skriv inn denne koden på en ny enhet for å legge den til i dette biblioteket som din.</string>
+    <string name="settings_show_restore_code">Vis gjenopprettingskode</string>
+    <string name="settings_people">Personer</string>
 </resources>

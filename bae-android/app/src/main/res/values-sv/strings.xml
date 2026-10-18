@@ -93,14 +93,8 @@
     <string name="settings_playback">Uppspelning</string>
     <string name="settings_about">Om</string>
     <string name="settings_version">Version</string>
-    <string name="settings_devices">Enheter</string>
-    <string name="settings_manage_devices">Hantera enheter</string>
-    <string name="settings_recovery_code">Återställningskod</string>
-    <string name="settings_recovery_code_explanation">En hemlig kod som kan återställa det här biblioteket på en ny enhet när du inte kan godkänna den från en befintlig. Håll den privat.</string>
-    <string name="settings_reveal_recovery_code">Visa återställningskoden</string>
-    <string name="settings_recovery_code_secret_warning">Alla som har den här koden får full åtkomst till ditt bibliotek. Håll den privat.</string>
-    <string name="settings_recovery_code_failed">Kunde inte skapa någon återställningskod.</string>
-    <string name="settings_copy_recovery_code">Kopiera koden</string>
+    <string name="restore_code_secret_warning">Alla som har den här koden får full åtkomst till ditt bibliotek. Håll den privat.</string>
+    <string name="copy_code">Kopiera koden</string>
     <string name="settings_remove_library">Ta bort det här biblioteket från den här enheten</string>
     <string name="settings_remove_library_explanation">Tar bort det här biblioteket från den här enheten: enheten lämnar biblioteket, sedan raderas dess kopia och nedladdade filer. Biblioteket på molnplatsen är orört.</string>
     <string name="settings_remove_library_confirm_title">Ta bort det här biblioteket från den här enheten?</string>
@@ -144,7 +138,6 @@
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-kompatibel</string>
     <string name="cloud_provider_icloud">iCloud</string>
-    <string name="pairing_copy_code">Kopiera koden</string>
     <string name="onboarding_join_action">Anslut dig</string>
     <string name="qr_scanner_instructions">Skanna en återställningskod som bae visar på en av dina enheter, eller en inbjudan.</string>
     <string name="downloads">Hämtningar</string>
@@ -259,4 +252,8 @@
     <string name="storage_onedrive_use_folder">Använd den här mappen</string>
     <string name="storage_setup_done">Bibliotekets molnplats är konfigurerad. Spara din återställningskod: dina andra enheter går med med den.</string>
     <string name="done">Klar</string>
+    <string name="settings_restore_code">Återställningskod</string>
+    <string name="settings_restore_code_explanation">Skanna eller skriv in den här koden på en ny enhet för att lägga till den i biblioteket som din.</string>
+    <string name="settings_show_restore_code">Visa återställningskod</string>
+    <string name="settings_people">Personer</string>
 </resources>

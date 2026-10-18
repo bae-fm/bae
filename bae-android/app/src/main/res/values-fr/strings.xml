@@ -89,14 +89,8 @@
     <string name="settings_playback">Lecture</string>
     <string name="settings_about">À propos</string>
     <string name="settings_version">Version</string>
-    <string name="settings_devices">Appareils</string>
-    <string name="settings_manage_devices">Gérer les appareils</string>
-    <string name="settings_recovery_code">Code de récupération</string>
-    <string name="settings_recovery_code_explanation">Un code secret qui permet de restaurer cette bibliothèque sur un nouvel appareil lorsque vous ne pouvez pas l’approuver depuis un appareil existant. Gardez-le privé.</string>
-    <string name="settings_reveal_recovery_code">Afficher le code de récupération</string>
-    <string name="settings_recovery_code_secret_warning">Toute personne possédant ce code a un accès complet à votre bibliothèque. Gardez-le privé.</string>
-    <string name="settings_recovery_code_failed">Impossible de générer un code de récupération.</string>
-    <string name="settings_copy_recovery_code">Copier le code</string>
+    <string name="restore_code_secret_warning">Toute personne possédant ce code a un accès complet à votre bibliothèque. Gardez-le privé.</string>
+    <string name="copy_code">Copier le code</string>
     <string name="settings_remove_library">Supprimer cette bibliothèque de cet appareil</string>
     <string name="settings_remove_library_explanation">Retire cette bibliothèque de cet appareil : l’appareil quitte la bibliothèque, puis sa copie et les fichiers téléchargés sont supprimés. La bibliothèque dans son emplacement cloud n’est pas touchée.</string>
     <string name="settings_remove_library_confirm_title">Supprimer cette bibliothèque de cet appareil ?</string>
@@ -140,7 +134,6 @@
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-compatible</string>
     <string name="cloud_provider_icloud">iCloud</string>
-    <string name="pairing_copy_code">Copier le code</string>
     <string name="onboarding_join_action">Rejoindre</string>
     <string name="qr_scanner_instructions">Scannez un code de restauration affiché dans bae sur l’un de vos appareils, ou une invitation.</string>
     <!-- Downloads -->
@@ -261,4 +254,8 @@
     <string name="storage_onedrive_use_folder">Utiliser ce dossier</string>
     <string name="storage_setup_done">L’emplacement cloud de cette bibliothèque est configuré. Conservez votre code de restauration : vos autres appareils la rejoignent avec lui.</string>
     <string name="done">Terminé</string>
+    <string name="settings_restore_code">Code de restauration</string>
+    <string name="settings_restore_code_explanation">Scannez ou saisissez ce code sur un nouvel appareil pour l’ajouter à cette bibliothèque en votre nom.</string>
+    <string name="settings_show_restore_code">Afficher le code de restauration</string>
+    <string name="settings_people">Personnes</string>
 </resources>

@@ -89,14 +89,8 @@
     <string name="settings_playback">Afspelen</string>
     <string name="settings_about">Over</string>
     <string name="settings_version">Versie</string>
-    <string name="settings_devices">Apparaten</string>
-    <string name="settings_manage_devices">Apparaten beheren</string>
-    <string name="settings_recovery_code">Herstelcode</string>
-    <string name="settings_recovery_code_explanation">Een geheime code waarmee je deze bibliotheek op een nieuw apparaat kunt herstellen wanneer je dit niet vanaf een bestaand apparaat kunt goedkeuren. Houd deze privé.</string>
-    <string name="settings_reveal_recovery_code">Herstelcode tonen</string>
-    <string name="settings_recovery_code_secret_warning">Iedereen met deze code heeft volledige toegang tot je bibliotheek. Houd deze privé.</string>
-    <string name="settings_recovery_code_failed">Kan geen herstelcode genereren.</string>
-    <string name="settings_copy_recovery_code">Code kopiëren</string>
+    <string name="restore_code_secret_warning">Iedereen met deze code heeft volledige toegang tot je bibliotheek. Houd deze privé.</string>
+    <string name="copy_code">Code kopiëren</string>
     <string name="settings_remove_library">Verwijder deze bibliotheek van dit apparaat</string>
     <string name="settings_remove_library_explanation">Verwijdert deze bibliotheek van dit apparaat: het apparaat verlaat de bibliotheek, daarna worden de kopie en de gedownloade bestanden verwijderd. De bibliotheek op de cloudlocatie blijft ongewijzigd.</string>
     <string name="settings_remove_library_confirm_title">Deze bibliotheek van dit apparaat verwijderen?</string>
@@ -140,7 +134,6 @@
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-compatible</string>
     <string name="cloud_provider_icloud">iCloud</string>
-    <string name="pairing_copy_code">Code kopiëren</string>
     <string name="onboarding_join_action">Deelnemen</string>
     <string name="qr_scanner_instructions">Scan een herstelcode die bae op een van je apparaten toont, of een uitnodiging.</string>
     <!-- Downloads -->
@@ -260,4 +253,8 @@
     <string name="storage_onedrive_use_folder">Deze map gebruiken</string>
     <string name="storage_setup_done">De cloudlocatie van deze bibliotheek is ingesteld. Bewaar je herstelcode: je andere apparaten nemen ermee deel.</string>
     <string name="done">Klaar</string>
+    <string name="settings_restore_code">Herstelcode</string>
+    <string name="settings_restore_code_explanation">Scan of typ deze code op een nieuw apparaat om het als jouw apparaat aan deze bibliotheek toe te voegen.</string>
+    <string name="settings_show_restore_code">Herstelcode tonen</string>
+    <string name="settings_people">Personen</string>
 </resources>

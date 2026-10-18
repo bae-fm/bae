@@ -89,14 +89,8 @@
     <string name="settings_playback">Wiedergabe</string>
     <string name="settings_about">Über</string>
     <string name="settings_version">Version</string>
-    <string name="settings_devices">Geräte</string>
-    <string name="settings_manage_devices">Geräte verwalten</string>
-    <string name="settings_recovery_code">Wiederherstellungscode</string>
-    <string name="settings_recovery_code_explanation">Ein geheimer Code, mit dem diese Mediathek auf einem neuen Gerät wiederhergestellt werden kann, wenn du sie nicht von einem vorhandenen Gerät genehmigen kannst. Halte ihn geheim.</string>
-    <string name="settings_reveal_recovery_code">Wiederherstellungscode anzeigen</string>
-    <string name="settings_recovery_code_secret_warning">Jeder mit diesem Code hat vollen Zugriff auf deine Mediathek. Halte ihn geheim.</string>
-    <string name="settings_recovery_code_failed">Wiederherstellungscode konnte nicht erstellt werden.</string>
-    <string name="settings_copy_recovery_code">Code kopieren</string>
+    <string name="restore_code_secret_warning">Jeder mit diesem Code hat vollen Zugriff auf deine Mediathek. Halte ihn geheim.</string>
+    <string name="copy_code">Code kopieren</string>
     <string name="settings_remove_library">Diese Bibliothek von diesem Gerät entfernen</string>
     <string name="settings_remove_library_explanation">Entfernt diese Bibliothek von diesem Gerät: Das Gerät verlässt die Bibliothek, dann werden seine Kopie und die geladenen Dateien gelöscht. Die Bibliothek am Cloud-Speicherort bleibt unberührt.</string>
     <string name="settings_remove_library_confirm_title">Diese Bibliothek von diesem Gerät entfernen?</string>
@@ -140,7 +134,6 @@
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-compatible</string>
     <string name="cloud_provider_icloud">iCloud</string>
-    <string name="pairing_copy_code">Code kopieren</string>
     <string name="onboarding_join_action">Beitreten</string>
     <string name="qr_scanner_instructions">Scanne einen Wiederherstellungscode, den bae auf einem deiner Geräte zeigt, oder eine Einladung.</string>
     <!-- Downloads -->
@@ -260,4 +253,8 @@
     <string name="storage_onedrive_use_folder">Diesen Ordner verwenden</string>
     <string name="storage_setup_done">Der Cloud-Speicherort dieser Bibliothek ist eingerichtet. Bewahre deinen Wiederherstellungscode auf: Deine anderen Geräte treten damit bei.</string>
     <string name="done">Fertig</string>
+    <string name="settings_restore_code">Wiederherstellungscode</string>
+    <string name="settings_restore_code_explanation">Scanne diesen Code auf einem neuen Gerät oder gib ihn dort ein, um es als dein Gerät zu dieser Bibliothek hinzuzufügen.</string>
+    <string name="settings_show_restore_code">Wiederherstellungscode zeigen</string>
+    <string name="settings_people">Personen</string>
 </resources>

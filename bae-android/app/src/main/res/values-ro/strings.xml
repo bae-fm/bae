@@ -94,14 +94,8 @@
     <string name="settings_playback">Redare</string>
     <string name="settings_about">Despre</string>
     <string name="settings_version">Versiune</string>
-    <string name="settings_devices">Dispozitive</string>
-    <string name="settings_manage_devices">Gestionează dispozitivele</string>
-    <string name="settings_recovery_code">Cod de recuperare</string>
-    <string name="settings_recovery_code_explanation">Un cod secret care poate restaura această bibliotecă pe un dispozitiv nou când nu o poți aproba de pe unul existent. Păstrează-l privat.</string>
-    <string name="settings_reveal_recovery_code">Arată codul de recuperare</string>
-    <string name="settings_recovery_code_secret_warning">Oricine are acest cod are acces complet la biblioteca ta. Păstrează-l privat.</string>
-    <string name="settings_recovery_code_failed">Nu s-a putut genera un cod de recuperare.</string>
-    <string name="settings_copy_recovery_code">Copiază codul</string>
+    <string name="restore_code_secret_warning">Oricine are acest cod are acces complet la biblioteca ta. Păstrează-l privat.</string>
+    <string name="copy_code">Copiază codul</string>
     <string name="settings_remove_library">Elimină această bibliotecă de pe acest dispozitiv</string>
     <string name="settings_remove_library_explanation">Elimină această bibliotecă de pe acest dispozitiv: dispozitivul părăsește biblioteca, apoi copia lui și fișierele descărcate sunt șterse. Biblioteca din spațiul ei în cloud rămâne neatinsă.</string>
     <string name="settings_remove_library_confirm_title">Elimini această bibliotecă de pe acest dispozitiv?</string>
@@ -145,7 +139,6 @@
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">Compatibil cu S3</string>
     <string name="cloud_provider_icloud">iCloud</string>
-    <string name="pairing_copy_code">Copiază codul</string>
     <string name="onboarding_join_action">Alătură-te</string>
     <string name="qr_scanner_instructions">Scanează un cod de restaurare afișat în bae pe unul dintre dispozitivele tale sau o invitație.</string>
     <string name="downloads">Descărcări</string>
@@ -261,4 +254,8 @@
     <string name="storage_onedrive_use_folder">Folosește acest dosar</string>
     <string name="storage_setup_done">Spațiul în cloud al acestei biblioteci este configurat. Păstrează codul de restaurare: celelalte dispozitive ale tale se alătură cu el.</string>
     <string name="done">Gata</string>
+    <string name="settings_restore_code">Cod de restaurare</string>
+    <string name="settings_restore_code_explanation">Scanează sau tastează acest cod pe un dispozitiv nou pentru a-l adăuga la această bibliotecă ca fiind al tău.</string>
+    <string name="settings_show_restore_code">Afișează codul de restaurare</string>
+    <string name="settings_people">Persoane</string>
 </resources>

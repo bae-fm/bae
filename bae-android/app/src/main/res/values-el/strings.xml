@@ -93,14 +93,8 @@
     <string name="settings_playback">Αναπαραγωγή</string>
     <string name="settings_about">Σχετικά</string>
     <string name="settings_version">Έκδοση</string>
-    <string name="settings_devices">Συσκευές</string>
-    <string name="settings_manage_devices">Διαχείριση συσκευών</string>
-    <string name="settings_recovery_code">Κωδικός ανάκτησης</string>
-    <string name="settings_recovery_code_explanation">Ένας μυστικός κωδικός που μπορεί να επαναφέρει αυτή τη βιβλιοθήκη σε νέα συσκευή όταν δεν μπορείτε να την εγκρίνετε από κάποια υπάρχουσα. Κρατήστε τον ιδιωτικό.</string>
-    <string name="settings_reveal_recovery_code">Αποκάλυψη κωδικού ανάκτησης</string>
-    <string name="settings_recovery_code_secret_warning">Όποιος έχει αυτόν τον κωδικό αποκτά πλήρη πρόσβαση στη βιβλιοθήκη σας. Κρατήστε τον ιδιωτικό.</string>
-    <string name="settings_recovery_code_failed">Δεν ήταν δυνατή η δημιουργία κωδικού ανάκτησης.</string>
-    <string name="settings_copy_recovery_code">Αντιγραφή κωδικού</string>
+    <string name="restore_code_secret_warning">Όποιος έχει αυτόν τον κωδικό αποκτά πλήρη πρόσβαση στη βιβλιοθήκη σας. Κρατήστε τον ιδιωτικό.</string>
+    <string name="copy_code">Αντιγραφή κωδικού</string>
     <string name="settings_remove_library">Αφαίρεση αυτής της βιβλιοθήκης από αυτή τη συσκευή</string>
     <string name="settings_remove_library_explanation">Αφαιρεί αυτή τη βιβλιοθήκη από αυτή τη συσκευή: η συσκευή αποχωρεί από τη βιβλιοθήκη και μετά διαγράφονται το αντίγραφό της και τα ληφθέντα αρχεία. Η βιβλιοθήκη στον χώρο της στο cloud παραμένει ανέπαφη.</string>
     <string name="settings_remove_library_confirm_title">Αφαίρεση αυτής της βιβλιοθήκης από αυτή τη συσκευή;</string>
@@ -144,7 +138,6 @@
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">Συμβατό με S3</string>
     <string name="cloud_provider_icloud">iCloud</string>
-    <string name="pairing_copy_code">Αντιγραφή κωδικού</string>
     <string name="onboarding_join_action">Σύνδεση</string>
     <string name="qr_scanner_instructions">Σαρώστε έναν κωδικό επαναφοράς που εμφανίζει το bae σε μία από τις συσκευές σας ή μια πρόσκληση.</string>
     <string name="downloads">Λήψεις</string>
@@ -259,4 +252,8 @@
     <string name="storage_onedrive_use_folder">Χρήση αυτού του φακέλου</string>
     <string name="storage_setup_done">Ο χώρος στο cloud αυτής της βιβλιοθήκης ρυθμίστηκε. Κρατήστε τον κωδικό επαναφοράς σας: οι άλλες συσκευές σας μπαίνουν με αυτόν.</string>
     <string name="done">Τέλος</string>
+    <string name="settings_restore_code">Κωδικός επαναφοράς</string>
+    <string name="settings_restore_code_explanation">Σαρώστε ή πληκτρολογήστε αυτόν τον κωδικό σε μια νέα συσκευή για να την προσθέσετε σε αυτή τη βιβλιοθήκη ως δική σας.</string>
+    <string name="settings_show_restore_code">Εμφάνιση κωδικού επαναφοράς</string>
+    <string name="settings_people">Άτομα</string>
 </resources>

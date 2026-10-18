@@ -93,14 +93,8 @@
     <string name="settings_playback">Toisto</string>
     <string name="settings_about">Tietoja</string>
     <string name="settings_version">Versio</string>
-    <string name="settings_devices">Laitteet</string>
-    <string name="settings_manage_devices">Hallitse laitteita</string>
-    <string name="settings_recovery_code">Palautuskoodi</string>
-    <string name="settings_recovery_code_explanation">Salainen koodi, joka voi palauttaa tämän kirjaston uudelle laitteelle, kun et voi hyväksyä sitä olemassa olevalta. Pidä se yksityisenä.</string>
-    <string name="settings_reveal_recovery_code">Näytä palautuskoodi</string>
-    <string name="settings_recovery_code_secret_warning">Kuka tahansa, jolla on tämä koodi, pääsee kirjastoosi täysin. Pidä se yksityisenä.</string>
-    <string name="settings_recovery_code_failed">Palautuskoodia ei voitu luoda.</string>
-    <string name="settings_copy_recovery_code">Kopioi koodi</string>
+    <string name="restore_code_secret_warning">Kuka tahansa, jolla on tämä koodi, pääsee kirjastoosi täysin. Pidä se yksityisenä.</string>
+    <string name="copy_code">Kopioi koodi</string>
     <string name="settings_remove_library">Poista tämä kirjasto tältä laitteelta</string>
     <string name="settings_remove_library_explanation">Poistaa tämän kirjaston tästä laitteesta: laite eroaa kirjastosta, minkä jälkeen sen kopio ja ladatut tiedostot poistetaan. Pilvisijainnissa oleva kirjasto säilyy koskemattomana.</string>
     <string name="settings_remove_library_confirm_title">Poistetaanko tämä kirjasto tältä laitteelta?</string>
@@ -144,7 +138,6 @@
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-yhteensopiva</string>
     <string name="cloud_provider_icloud">iCloud</string>
-    <string name="pairing_copy_code">Kopioi koodi</string>
     <string name="onboarding_join_action">Liity</string>
     <string name="qr_scanner_instructions">Skannaa palautuskoodi, jonka bae näyttää jossakin laitteessasi, tai kutsu.</string>
     <string name="downloads">Lataukset</string>
@@ -259,4 +252,8 @@
     <string name="storage_onedrive_use_folder">Käytä tätä kansiota</string>
     <string name="storage_setup_done">Tämän kirjaston pilvisijainti on määritetty. Säilytä palautuskoodisi: muut laitteesi liittyvät sillä.</string>
     <string name="done">Valmis</string>
+    <string name="settings_restore_code">Palautuskoodi</string>
+    <string name="settings_restore_code_explanation">Skannaa tai syötä tämä koodi uudessa laitteessa, niin se lisätään tähän kirjastoon sinun laitteenasi.</string>
+    <string name="settings_show_restore_code">Näytä palautuskoodi</string>
+    <string name="settings_people">Ihmiset</string>
 </resources>

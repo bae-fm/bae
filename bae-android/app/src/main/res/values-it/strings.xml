@@ -89,14 +89,8 @@
     <string name="settings_playback">Riproduzione</string>
     <string name="settings_about">Informazioni</string>
     <string name="settings_version">Versione</string>
-    <string name="settings_devices">Dispositivi</string>
-    <string name="settings_manage_devices">Gestisci dispositivi</string>
-    <string name="settings_recovery_code">Codice di recupero</string>
-    <string name="settings_recovery_code_explanation">Un codice segreto che può ripristinare questa libreria su un nuovo dispositivo quando non puoi approvarlo da uno esistente. Tienilo privato.</string>
-    <string name="settings_reveal_recovery_code">Mostra codice di recupero</string>
-    <string name="settings_recovery_code_secret_warning">Chiunque abbia questo codice ha accesso completo alla tua libreria. Tienilo privato.</string>
-    <string name="settings_recovery_code_failed">Impossibile generare un codice di recupero.</string>
-    <string name="settings_copy_recovery_code">Copia codice</string>
+    <string name="restore_code_secret_warning">Chiunque abbia questo codice ha accesso completo alla tua libreria. Tienilo privato.</string>
+    <string name="copy_code">Copia codice</string>
     <string name="settings_remove_library">Rimuovi questa libreria da questo dispositivo</string>
     <string name="settings_remove_library_explanation">Rimuove questa libreria da questo dispositivo: il dispositivo lascia la libreria, poi la sua copia e i file scaricati vengono eliminati. La libreria nel suo spazio cloud rimane intatta.</string>
     <string name="settings_remove_library_confirm_title">Rimuovere questa libreria da questo dispositivo?</string>
@@ -140,7 +134,6 @@
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-compatible</string>
     <string name="cloud_provider_icloud">iCloud</string>
-    <string name="pairing_copy_code">Copia codice</string>
     <string name="onboarding_join_action">Unisciti</string>
     <string name="qr_scanner_instructions">Scansiona un codice di ripristino mostrato da bae su uno dei tuoi dispositivi, oppure un invito.</string>
     <!-- Downloads -->
@@ -261,4 +254,8 @@
     <string name="storage_onedrive_use_folder">Usa questa cartella</string>
     <string name="storage_setup_done">Lo spazio cloud di questa libreria è configurato. Conserva il tuo codice di ripristino: i tuoi altri dispositivi entrano con quello.</string>
     <string name="done">Fine</string>
+    <string name="settings_restore_code">Codice di ripristino</string>
+    <string name="settings_restore_code_explanation">Scansiona o digita questo codice su un nuovo dispositivo per aggiungerlo a questa libreria come tuo.</string>
+    <string name="settings_show_restore_code">Mostra codice di ripristino</string>
+    <string name="settings_people">Persone</string>
 </resources>

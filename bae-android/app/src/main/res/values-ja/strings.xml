@@ -89,14 +89,8 @@
     <string name="settings_playback">再生</string>
     <string name="settings_about">情報</string>
     <string name="settings_version">バージョン</string>
-    <string name="settings_devices">デバイス</string>
-    <string name="settings_manage_devices">デバイスを管理</string>
-    <string name="settings_recovery_code">リカバリーコード</string>
-    <string name="settings_recovery_code_explanation">既存のデバイスから承認できないときに、このライブラリを新しいデバイスへ復元できる秘密のコードです。非公開にしてください。</string>
-    <string name="settings_reveal_recovery_code">リカバリーコードを表示</string>
-    <string name="settings_recovery_code_secret_warning">このコードを持つ人は誰でもライブラリへ完全にアクセスできます。非公開にしてください。</string>
-    <string name="settings_recovery_code_failed">リカバリーコードを生成できませんでした。</string>
-    <string name="settings_copy_recovery_code">コードをコピー</string>
+    <string name="restore_code_secret_warning">このコードを持つ人は誰でもライブラリへ完全にアクセスできます。非公開にしてください。</string>
+    <string name="copy_code">コードをコピー</string>
     <string name="settings_remove_library">このライブラリをこのデバイスから削除</string>
     <string name="settings_remove_library_explanation">このデバイスからライブラリを削除します。デバイスがライブラリから退出したあと、そのコピーとダウンロード済みファイルが削除されます。クラウドの保存先にあるライブラリはそのまま残ります。</string>
     <string name="settings_remove_library_confirm_title">このライブラリをこのデバイスから削除しますか？</string>
@@ -140,7 +134,6 @@
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-compatible</string>
     <string name="cloud_provider_icloud">iCloud</string>
-    <string name="pairing_copy_code">コードをコピー</string>
     <string name="onboarding_join_action">参加</string>
     <string name="qr_scanner_instructions">お使いのデバイスの bae に表示された復元コード、または招待をスキャンしてください。</string>
     <!-- Downloads -->
@@ -258,4 +251,8 @@
     <string name="storage_onedrive_use_folder">このフォルダを使用</string>
     <string name="storage_setup_done">このライブラリのクラウドの保存先を設定しました。復元コードを保管してください。ほかのデバイスはこのコードで参加します。</string>
     <string name="done">完了</string>
+    <string name="settings_restore_code">復元コード</string>
+    <string name="settings_restore_code_explanation">新しいデバイスでこのコードをスキャンまたは入力すると、そのデバイスがあなたのものとしてこのライブラリに追加されます。</string>
+    <string name="settings_show_restore_code">復元コードを表示</string>
+    <string name="settings_people">メンバー</string>
 </resources>

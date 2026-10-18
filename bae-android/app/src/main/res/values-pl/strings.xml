@@ -89,14 +89,8 @@
     <string name="settings_playback">Odtwarzanie</string>
     <string name="settings_about">O aplikacji</string>
     <string name="settings_version">Wersja</string>
-    <string name="settings_devices">Urządzenia</string>
-    <string name="settings_manage_devices">Zarządzaj urządzeniami</string>
-    <string name="settings_recovery_code">Kod odzyskiwania</string>
-    <string name="settings_recovery_code_explanation">Tajny kod, który może przywrócić tę bibliotekę na nowym urządzeniu, gdy nie możesz zatwierdzić go z istniejącego urządzenia. Zachowaj go dla siebie.</string>
-    <string name="settings_reveal_recovery_code">Pokaż kod odzyskiwania</string>
-    <string name="settings_recovery_code_secret_warning">Każdy, kto ma ten kod, ma pełny dostęp do Twojej biblioteki. Zachowaj go dla siebie.</string>
-    <string name="settings_recovery_code_failed">Nie udało się wygenerować kodu odzyskiwania.</string>
-    <string name="settings_copy_recovery_code">Kopiuj kod</string>
+    <string name="restore_code_secret_warning">Każdy, kto ma ten kod, ma pełny dostęp do Twojej biblioteki. Zachowaj go dla siebie.</string>
+    <string name="copy_code">Kopiuj kod</string>
     <string name="settings_remove_library">Usuń tę bibliotekę z tego urządzenia</string>
     <string name="settings_remove_library_explanation">Usuwa tę bibliotekę z tego urządzenia: urządzenie opuszcza bibliotekę, a potem jego kopia i pobrane pliki są usuwane. Biblioteka w miejscu w chmurze pozostaje nienaruszona.</string>
     <string name="settings_remove_library_confirm_title">Usunąć tę bibliotekę z tego urządzenia?</string>
@@ -140,7 +134,6 @@
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-compatible</string>
     <string name="cloud_provider_icloud">iCloud</string>
-    <string name="pairing_copy_code">Kopiuj kod</string>
     <string name="onboarding_join_action">Dołącz</string>
     <string name="qr_scanner_instructions">Zeskanuj kod przywracania wyświetlony w bae na jednym z twoich urządzeń albo zaproszenie.</string>
     <!-- Downloads -->
@@ -264,4 +257,8 @@
     <string name="storage_onedrive_use_folder">Użyj tego folderu</string>
     <string name="storage_setup_done">Miejsce w chmurze dla tej biblioteki zostało skonfigurowane. Zachowaj kod przywracania: twoje inne urządzenia dołączają za jego pomocą.</string>
     <string name="done">Gotowe</string>
+    <string name="settings_restore_code">Kod przywracania</string>
+    <string name="settings_restore_code_explanation">Zeskanuj lub wpisz ten kod na nowym urządzeniu, aby dodać je do tej biblioteki jako swoje.</string>
+    <string name="settings_show_restore_code">Pokaż kod przywracania</string>
+    <string name="settings_people">Osoby</string>
 </resources>
