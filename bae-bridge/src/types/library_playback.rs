@@ -115,7 +115,7 @@ impl BridgeMetadataRef {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, uniffi::Enum)]
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeCloudProvider {
     S3,
     Dropbox,
@@ -123,39 +123,14 @@ pub enum BridgeCloudProvider {
     CloudKit,
 }
 
-/// How a cloud home stores its objects, chosen when connecting the home.
-/// `Opaque` encrypts every object at rest under the library key and uses
-/// obfuscated, content-addressed keys; `Browsable` stores objects in the clear
-/// at readable paths. This is not access control — the provider's own
-/// credentials gate the bucket either way; it is only about whether what's
-/// stored is legible to someone who already has bucket access.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeHomeStorage {
-    Opaque,
-    Browsable,
-}
-
-/// A library known to bae on this device. A library is created here or restored
-/// onto this device from another of the owner's devices; every device holds the
-/// same single-owner library with full read/write, stored at `path`. `is_active`
-/// marks the currently-opened library so the sidebar can highlight it.
+/// A coven store registered on this device, with its current committed name.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeLibrary {
     pub id: String,
     pub name: String,
     pub path: String,
-    /// The library's cloud provider, or `None` when it syncs nowhere
-    /// (local-only). The UI renders the name: brand names pass through, the
-    /// generic cases resolve a catalog key.
-    pub cloud_provider: Option<BridgeCloudProvider>,
+    pub storage: Option<super::BridgeStorageLocation>,
     pub is_active: bool,
-    /// Why this library cannot be opened, or `None` when it is fine.
-    ///
-    /// A library whose config.yaml will not parse is still listed — it used to
-    /// vanish from the picker instead, which lost it. The UI shows the row as
-    /// unavailable with this as the reason, and refuses to open it. Its `name` is
-    /// the directory id, because the name is exactly what could not be read.
-    pub error: Option<String>,
 }
 
 #[derive(Debug, Clone, uniffi::Enum)]
@@ -212,10 +187,9 @@ pub struct BridgeAlbum {
     pub cover: Option<BridgeImageRef>,
 }
 
-/// A release's storage state — Local (a local file the user owns) or Remote
-/// (a cloud blob). Mirrors `bae_core::album_detail::ReleaseStorageState`. Whether
-/// a remote release is kept offline is the ORTHOGONAL `pinned` bool on
-/// `BridgeReleaseSummary`/`BridgeRelease`, never folded into this enum.
+/// Local audio uses this device's paths; Remote audio is attached to its synced
+/// rows and queued for upload. Pinning is independent of that attachment and
+/// is carried on `BridgeReleaseSummary` and `BridgeRelease`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeReleaseStorageState {
     Local,
@@ -232,17 +206,31 @@ mirror_enum! {
 /// Mirrors `bae_core::album_detail::ReleaseStorageAction`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeReleaseStorageAction {
-    MakeRemote,
+    Upload,
     Pin,
     Unpin,
-    MakeLocal,
+    DetachAudio,
 }
 
-mirror_enum! {
-    BridgeReleaseStorageAction = bae_core::album_detail::ReleaseStorageAction,
-    from_core: pub fn,
-    into_core: pub(super) fn,
-    variants: { MakeRemote, Pin, Unpin, MakeLocal },
+impl BridgeReleaseStorageAction {
+    pub fn from_core(value: bae_core::album_detail::ReleaseStorageAction) -> Self {
+        use bae_core::album_detail::ReleaseStorageAction as A;
+        match value {
+            A::MakeRemote => Self::Upload,
+            A::MakeLocal => Self::DetachAudio,
+            A::Pin => Self::Pin,
+            A::Unpin => Self::Unpin,
+        }
+    }
+    pub(super) fn into_core(self) -> bae_core::album_detail::ReleaseStorageAction {
+        use bae_core::album_detail::ReleaseStorageAction as A;
+        match self {
+            Self::Upload => A::MakeRemote,
+            Self::DetachAudio => A::MakeLocal,
+            Self::Pin => A::Pin,
+            Self::Unpin => A::Unpin,
+        }
+    }
 }
 
 impl BridgeReleaseStorageAction {
@@ -250,8 +238,8 @@ impl BridgeReleaseStorageAction {
         match self {
             Self::Pin => "core.transfer.action.pin",
             Self::Unpin => "core.transfer.action.unpin",
-            Self::MakeRemote => "core.transfer.action.make_remote",
-            Self::MakeLocal => "core.transfer.action.make_local",
+            Self::Upload => "core.transfer.action.upload",
+            Self::DetachAudio => "core.transfer.action.detach_audio",
         }
     }
 }

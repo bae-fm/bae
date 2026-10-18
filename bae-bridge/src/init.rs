@@ -85,8 +85,8 @@ impl BridgeDiagnostics {
         library_id: String,
         position_update_interval_ms: u32,
         restore_playback: bool,
-        cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
-        oauth_clients: coven::OAuthClients,
+        builder: coven::CovenBuilder,
+        host: Arc<crate::BridgeHost>,
     ) -> Result<Arc<AppHandle>, BridgeError> {
         self.opened(bootstrap(
             app_dir,
@@ -94,9 +94,8 @@ impl BridgeDiagnostics {
             position_update_interval_ms,
             restore_playback,
             self.inner.clone(),
-            cloudkit_ops,
-            oauth_clients,
-            AppHandle::start,
+            builder,
+            move |services, runtime| AppHandle::start_for_host(services, runtime, host),
         ))
     }
 
@@ -110,8 +109,8 @@ impl BridgeDiagnostics {
         library_id: String,
         position_update_interval_ms: u32,
         restore_playback: bool,
-        cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
-        oauth_clients: coven::OAuthClients,
+        builder: coven::CovenBuilder,
+        host: Arc<crate::BridgeHost>,
     ) -> Result<Arc<AppHandle>, BridgeError> {
         self.opened(bae_core::app::bootstrap_on_fixture(
             fixture,
@@ -120,9 +119,26 @@ impl BridgeDiagnostics {
             position_update_interval_ms,
             restore_playback,
             self.inner.clone(),
-            cloudkit_ops,
-            oauth_clients,
-            AppHandle::start,
+            builder,
+            move |services, runtime| AppHandle::start_for_host(services, runtime, host),
+        ))
+    }
+
+    pub(crate) fn open_prepared(
+        &self,
+        app_dir: bae_core::config::AppDir,
+        handle: coven::CovenHandle,
+        host: Arc<crate::BridgeHost>,
+        position_update_interval_ms: u32,
+        restore_playback: bool,
+    ) -> Result<Arc<AppHandle>, BridgeError> {
+        self.opened(bae_core::app::bootstrap_prepared(
+            app_dir,
+            handle,
+            position_update_interval_ms,
+            restore_playback,
+            self.inner.clone(),
+            move |services, runtime| AppHandle::start_for_host(services, runtime, host),
         ))
     }
 
@@ -177,7 +193,7 @@ pub fn configure_diagnostics(config: BridgeDiagnosticsConfig) -> Arc<BridgeDiagn
     configure_logging();
     install_panic_logging();
     let clock = Arc::new(coven::SystemClock);
-    let ids = Arc::new(coven::UuidProvider);
+    let ids = Arc::new(coven::UuidIds);
     let inner = match Diagnostics::configure(config.into_core(), clock, ids) {
         Ok(diagnostics) => diagnostics,
         Err(error) => {
@@ -219,7 +235,9 @@ fn app_start_failure_kind(error: &BootstrapError) -> AppStartFailureKind {
     match error {
         BootstrapError::LibraryNotFound(_) => AppStartFailureKind::LibraryNotFound,
         BootstrapError::Config(_) => AppStartFailureKind::Config,
-        BootstrapError::Database(_) => AppStartFailureKind::Database,
+        BootstrapError::Database(_) | BootstrapError::DeviceResetRequired(_) => {
+            AppStartFailureKind::Database
+        }
         BootstrapError::Internal(_) => AppStartFailureKind::Internal,
         BootstrapError::KeyringUnavailable => AppStartFailureKind::KeyringUnavailable,
     }
@@ -290,6 +308,9 @@ fn bootstrap_error_to_bridge(e: BootstrapError) -> BridgeError {
         },
         BootstrapError::Config(msg) => BridgeError::config(msg),
         BootstrapError::Database(msg) => BridgeError::database(msg),
+        BootstrapError::DeviceResetRequired(msg) => {
+            BridgeError::diagnostic(crate::BridgeErrorCategory::DeviceResetRequired, msg)
+        }
         BootstrapError::Internal(msg) => BridgeError::internal(msg),
         // Its own category, not `Keyring`: that one reads as "the keyring
         // broke", and this one is "it is locked this second, try again after

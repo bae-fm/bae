@@ -827,11 +827,13 @@ dependencies = [
 name = "bae-bridge"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "bae-cast",
  "bae-core",
  "bae-desktop",
  "bae-loc",
  "bae-mirror",
+ "bae-test-support",
  "coven",
  "jni",
  "libsqlite3-sys",

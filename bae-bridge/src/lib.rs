@@ -9,12 +9,11 @@ extern crate bae_mirror;
 mod android_tls;
 mod app_dir;
 mod bridge_utils;
-#[cfg(feature = "cloudkit")]
-mod cloudkit;
 mod handle;
 mod host;
 mod init;
 mod live_subscription;
+mod oauth;
 mod operation_runtime;
 mod setup;
 #[cfg(feature = "desktop")]
@@ -24,12 +23,11 @@ mod types;
 mod utils;
 
 pub use app_dir::*;
-#[cfg(feature = "cloudkit")]
-pub use cloudkit::*;
 pub use handle::*;
 pub use host::*;
 pub use init::*;
 pub use live_subscription::*;
+pub use oauth::*;
 pub use setup::*;
 pub use types::*;
 #[cfg(feature = "desktop")]

@@ -2,25 +2,20 @@ use bae_core::library::AppServices;
 use bae_core::playback::QueueEntryId;
 use tracing::info;
 
-#[cfg(feature = "oauth-providers")]
-use crate::types::BridgeCloudProvider;
 #[cfg(feature = "desktop")]
 use crate::types::BridgeDiscogsSaveOutcome;
-#[cfg(any(feature = "cloudkit", feature = "oauth-providers"))]
-use crate::types::BridgeHomeStorage;
 use crate::types::{
     BridgeAlbum, BridgeAlbumDetail, BridgeAlbumSearchResult, BridgeArtistDetail,
     BridgeArtistSearchResult, BridgeArtistSortCriterion, BridgeArtistSummary, BridgeCatalog,
-    BridgeCloudHomeKeyState, BridgeComposerDetail, BridgeComposerSortCriterion,
-    BridgeComposerSummary, BridgeComposerWorkGroup, BridgeConfig, BridgeCoverSelection,
-    BridgeError, BridgeFile, BridgeGalleryItem, BridgeGallerySource,
-    BridgeMakeReleasesRemoteOutcome, BridgePairingDevice, BridgePlaybackValues,
-    BridgePreviewTarget, BridgeQueueSnapshot, BridgeRelease, BridgeReleaseRoleSummary,
-    BridgeReleaseSummary, BridgeRepeatMode, BridgeSaveSyncConfig, BridgeSearchResults,
-    BridgeSortCriterion, BridgeStorageFilter, BridgeStorageRow, BridgeStorageSort,
+    BridgeComposerDetail, BridgeComposerSortCriterion, BridgeComposerSummary,
+    BridgeComposerWorkGroup, BridgeConfig, BridgeCoverSelection, BridgeError, BridgeFile,
+    BridgeGalleryItem, BridgeGallerySource, BridgePlaybackValues, BridgePreviewTarget,
+    BridgeQueueSnapshot, BridgeRelease, BridgeReleaseRoleSummary, BridgeReleaseSummary,
+    BridgeRepeatMode, BridgeSaveSyncConfig, BridgeSearchResults, BridgeSortCriterion,
+    BridgeStorageFilter, BridgeStorageRow, BridgeStorageSort, BridgeStoreKeyState,
     BridgeSyncStatusSnapshot, BridgeTrack, BridgeTrackGroup, BridgeTrackRoleSummary,
-    BridgeTrackSearchResult, BridgeWorkDetail, BridgeWorkReleaseSummary, BridgeWorkSummary,
-    BridgeWorkTrackSummary,
+    BridgeTrackSearchResult, BridgeUploadReleasesOutcome, BridgeWorkDetail,
+    BridgeWorkReleaseSummary, BridgeWorkSummary, BridgeWorkTrackSummary,
 };
 #[cfg(feature = "desktop")]
 use crate::types::{BridgeMcpServerStatus, BridgeSubsonicServerStatus};
@@ -33,6 +28,8 @@ pub struct AppHandle {
     #[cfg(feature = "cast")]
     cast: std::sync::Arc<bae_cast::CastController>,
     runtime: tokio::runtime::Handle,
+    /// Retains the runtime that prepared coven and its session custody.
+    _host: Option<std::sync::Arc<crate::BridgeHost>>,
     /// Last so every retained service is dropped while its tasks can still run.
     owned_runtime: OwnedRuntime,
 }
@@ -99,7 +96,6 @@ mod cloud_operations;
 mod collection_subscription;
 mod configuration;
 mod detail;
-mod device_pairing;
 mod library_search;
 #[cfg(feature = "desktop")]
 pub use collection_subscription::{
@@ -107,7 +103,6 @@ pub use collection_subscription::{
     BridgeAlbumBrowseWindow, BridgeArtistBrowseSnapshot, BridgeArtistBrowseWindow,
     BridgeComposerBrowseSnapshot, BridgeComposerBrowseWindow, ComposerBrowseSubscription,
 };
-pub use device_pairing::BridgeDevicePairingSession;
 pub use library_search::{BridgeLibrarySearchSnapshot, LibrarySearchSubscription};
 #[cfg(any(feature = "cast", not(any(target_os = "ios", target_os = "android"))))]
 mod desktop;
@@ -198,7 +193,18 @@ impl AppHandle {
             cast,
             runtime: runtime.handle().clone(),
             owned_runtime: OwnedRuntime(std::sync::Mutex::new(Some(runtime))),
+            _host: None,
         })
+    }
+
+    pub(crate) fn start_for_host(
+        services: AppServices,
+        runtime: tokio::runtime::Runtime,
+        host: std::sync::Arc<crate::BridgeHost>,
+    ) -> Result<Self, bae_core::app::BootstrapError> {
+        let mut app = Self::start(services, runtime)?;
+        app._host = Some(host);
+        Ok(app)
     }
 
     async fn run_exported<T, Build, Fut>(
@@ -220,9 +226,8 @@ impl AppHandle {
     /// Close the library so nothing of this process holds its files: stop the
     /// desktop services, playback, identification and import, close the
     /// store, then shut the app runtime down, waiting for every task on it to
-    /// end. The caller may then remove the library through
-    /// `BridgeHost::remove_local_library`, which refuses while anything still
-    /// holds the store.
+    /// end. Removing a library instead uses `AppHandle::remove_library` on
+    /// the open handle so it can leave the store before deleting local data.
     ///
     /// Blocks until done, so it is called off the UI thread and never from the
     /// app runtime. Every later call on this handle fails.
@@ -231,13 +236,13 @@ impl AppHandle {
             .close(async {
                 #[cfg(feature = "desktop")]
                 self.desktop.shutdown().await;
-                self.services.close().await;
+                self.services.close().await
             })
             .ok_or_else(|| {
                 BridgeError::from(bae_core::library::LibraryError::Internal(
                     "the library is already closed".to_string(),
                 ))
-            })?;
+            })??;
         info!("Closed library");
         Ok(())
     }
@@ -246,3 +251,15 @@ impl AppHandle {
 #[cfg(test)]
 #[path = "handle_tests.rs"]
 mod tests;
+
+mod personal;
+
+pub use personal::*;
+
+mod membership;
+pub use membership::*;
+
+mod removal;
+pub use removal::*;
+
+mod admin;

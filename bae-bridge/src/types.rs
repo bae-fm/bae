@@ -3,34 +3,35 @@ mod configuration;
 mod conversion;
 #[cfg(feature = "desktop")]
 mod cover;
-mod device_pairing;
 mod editing;
 mod events_and_transfers;
 #[cfg(feature = "desktop")]
 mod import;
 mod library_playback;
 mod live_results;
+mod pending;
 mod playback_values;
 mod pressing;
+mod storage;
+mod storage_failure;
 mod storage_inspector;
 
 pub use configuration::*;
 #[cfg(feature = "desktop")]
 pub use cover::*;
-pub use device_pairing::*;
 pub use editing::*;
 pub use events_and_transfers::*;
 #[cfg(feature = "desktop")]
 pub use import::*;
 pub use library_playback::*;
 pub use live_results::*;
+pub use pending::*;
 pub use playback_values::*;
 pub use pressing::*;
+pub use storage::*;
+pub use storage_failure::*;
 pub use storage_inspector::*;
 
-#[cfg(test)]
-#[path = "types/device_pairing_progress_tests.rs"]
-mod device_pairing_progress_tests;
 #[cfg(test)]
 #[path = "types/eager_cache_fill_tests.rs"]
 mod eager_cache_fill_tests;
@@ -44,3 +45,17 @@ mod tests;
 #[cfg(test)]
 #[path = "types/record_tests.rs"]
 mod record_tests;
+
+mod personal;
+pub use personal::*;
+
+mod membership;
+pub use membership::*;
+
+mod bootstrap;
+pub use bootstrap::*;
+
+mod s3_detection;
+pub use s3_detection::*;
+mod admin;
+pub use admin::*;

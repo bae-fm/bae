@@ -4,8 +4,7 @@ use crate::types::{
     BridgeCastTranscodeFormat, BridgeCatalog, BridgeConfig, BridgeDiscogsTokenStatus,
     BridgeImportStorage, BridgeLookupCatalogSetting, BridgeMcpConfig, BridgeSaveBitDepth,
     BridgeSaveCodec, BridgeSaveFilenameToken, BridgeSavePregapPlacement, BridgeSavePreset,
-    BridgeSidePauseCountdown, BridgeSourceAvailability, BridgeSubsonicConfig, BridgeSyncConfig,
-    BridgeSyncProvider,
+    BridgeSidePauseCountdown, BridgeSourceAvailability, BridgeSubsonicConfig,
 };
 
 mirror_enum! {
@@ -15,19 +14,16 @@ mirror_enum! {
 }
 
 impl BridgeLookupCatalogSetting {
-    /// One catalog's switch, read out of the whole list: whether it can be
-    /// moved is a fact about the others too, since the last catalog still being
-    /// asked cannot be switched off.
-    pub(crate) fn from_core(
-        catalogs: &[bae_core::import::CatalogAvailability],
-        entry: bae_core::import::CatalogAvailability,
-    ) -> Self {
-        let bae_core::import::CatalogAvailability { catalog, state } = entry;
-        BridgeLookupCatalogSetting {
+    pub(crate) fn from_core(entry: bae_core::config::LookupCatalogSetting) -> Self {
+        let bae_core::config::LookupCatalogSetting {
+            availability,
+            can_change,
+        } = entry;
+        let bae_core::import::CatalogAvailability { catalog, state } = availability;
+        Self {
             catalog: BridgeCatalog::from_core(catalog),
             availability: BridgeSourceAvailability::from_core(state),
-            can_change: state != bae_core::import::SourceAvailability::NotConfigured
-                && !bae_core::import::is_the_only_asked_source(catalogs, catalog),
+            can_change,
         }
     }
 }
@@ -184,23 +180,14 @@ impl BridgeSavePreset {
 }
 
 impl BridgeConfig {
-    /// `sync` is `Some` whenever a provider is set in YAML — it does not mean the
-    /// sync loop is running. That is runtime state, and lives in the sync-status
-    /// snapshot, not on `BridgeConfig`.
-    ///
-    /// bae's own settings are exhaustively destructured so a new one fails the
-    /// build here. The coven `inner` sub-config `Config` embeds is an external
-    /// crate's type — exempt from the destructure — so its fields (`store_id`,
-    /// `cloud_home`, …) stay dotted reads through `inner`.
     pub(crate) fn from_core(config: &bae_core::config::Config) -> Self {
         let discogs_status = config.discogs_token_status();
-        let cloud_account_display = config.cloud_account_display();
-        let catalogs = config.metadata_sources();
+        let catalogs = config.lookup_catalog_settings();
         let lookup_catalogs = catalogs
-            .iter()
-            .map(|entry| BridgeLookupCatalogSetting::from_core(&catalogs, *entry))
+            .into_iter()
+            .map(BridgeLookupCatalogSetting::from_core)
             .collect();
-        let bae_core::config::Config { inner, prefs, .. } = config;
+        let prefs = &config.prefs;
         let bae_core::config::Preferences {
             // Read via the derived `discogs_token_status()` above.
             discogs: _,
@@ -243,8 +230,7 @@ impl BridgeConfig {
         } = subsonic;
 
         BridgeConfig {
-            library_id: inner.store_id.clone(),
-            library_name: inner.store_name.clone(),
+            library_id: config.store_id.to_string(),
             library_path: config.library_path().to_string_lossy().to_string(),
             pause_between_sides: *pause_between_sides,
             side_pause_countdown: BridgeSidePauseCountdown::from_core(*side_pause_countdown),
@@ -290,36 +276,6 @@ impl BridgeConfig {
                     BridgeDiscogsTokenStatus::Rejected
                 }
             },
-            sync: inner
-                .cloud_home
-                .provider
-                .as_ref()
-                .map(|provider| BridgeSyncConfig {
-                    provider: BridgeSyncProvider::from_core(provider, &inner.cloud_home),
-                    cloud_account_display,
-                }),
-        }
-    }
-}
-
-impl BridgeSyncProvider {
-    /// Carries only the fields the given provider uses. `CloudHomeConfig` is
-    /// coven's (external crate) type, so its fields stay dotted reads.
-    fn from_core(
-        provider: &bae_core::config::CloudProvider,
-        cloud_home: &bae_core::config::CloudHomeConfig,
-    ) -> Self {
-        use bae_core::config::CloudProvider;
-        match provider {
-            CloudProvider::S3 => BridgeSyncProvider::S3 {
-                bucket: cloud_home.s3_bucket.clone(),
-                region: cloud_home.s3_region.clone(),
-                endpoint: cloud_home.s3_endpoint.clone(),
-            },
-            CloudProvider::Dropbox => BridgeSyncProvider::Dropbox,
-            CloudProvider::OneDrive => BridgeSyncProvider::OneDrive,
-            CloudProvider::CloudKit => BridgeSyncProvider::CloudKit,
-            unsupported => panic!("unsupported cloud provider: {unsupported:?}"),
         }
     }
 }

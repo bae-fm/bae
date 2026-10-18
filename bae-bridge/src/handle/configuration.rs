@@ -11,10 +11,10 @@ impl AppHandle {
 // async call the host awaits off its own thread; the write itself runs on a
 // blocking thread in core.
 forward! { async this => {
-    fn rename_library(library_id: String, name: String) -> () {
+    fn rename_library(name: String) -> () {
         let name = bae_core::library_name::LibraryName::parse(&name)
             .map_err(|error| BridgeError::config(error.to_string()))?;
-        this.services.rename_library(&library_id, &name).await?;
+        this.services.rename_library(&name).await?;
         Ok(())
     }
 
@@ -97,8 +97,8 @@ forward! { async this => {
 } }
 
 forward! { sync this => {
-    fn cloud_home_key_state() -> Result<BridgeCloudHomeKeyState, BridgeError> {
-        Ok(this.services.cloud_home_key_state()?.into())
+    fn store_key_state() -> Result<BridgeStoreKeyState, BridgeError> {
+        Ok(this.services.store_key_state()?.into())
     }
 } }
 
@@ -108,9 +108,9 @@ forward! { async this => {
         Ok(())
     }
 
-    fn unlock_cloud_home(serialized_master_key: String) -> () {
+    fn unlock_store_key() -> () {
         this.services
-            .unlock_cloud_home(&serialized_master_key)
+            .unlock_store_key()
             .await?;
         Ok(())
     }

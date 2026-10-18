@@ -33,20 +33,24 @@ where
 /// Run an operation whose explicit domain cancellation must finish even if the
 /// foreign caller disappears. Dropping this outer future detaches the owned
 /// runtime task; the operation itself remains responsible for reaching its
-/// durable terminal state.
-pub(crate) async fn run_to_completion<T, Build, Fut>(
+/// durable terminal state. Retain the runtime owner through result delivery,
+/// including when the operation consumes its last reference to that owner.
+pub(crate) async fn run_to_completion<T, Owner, Build, Fut>(
     runtime: Handle,
+    owner: Owner,
     operation: &'static str,
     build: Build,
 ) -> Result<T, BridgeError>
 where
     T: Send + 'static,
+    Owner: Send + 'static,
     Build: FnOnce() -> Fut + Send + 'static,
     Fut: Future<Output = Result<T, BridgeError>> + Send + 'static,
 {
     let (result_tx, result_rx) = tokio::sync::oneshot::channel();
     let operation_runtime = runtime.clone();
     drop(spawn(runtime, move || async move {
+        let _owner = owner;
         let result = spawn(operation_runtime, build)
             .await
             .map_err(join_error)
@@ -185,6 +189,7 @@ mod tests {
 
         let caller = tokio::spawn(run_to_completion(
             handle,
+            (),
             "test persistent operation",
             move || async move {
                 started_tx.send(()).expect("test receives task start");

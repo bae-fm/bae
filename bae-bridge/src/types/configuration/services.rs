@@ -3,7 +3,6 @@ use super::super::*;
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeConfig {
     pub library_id: String,
-    pub library_name: String,
     pub library_path: String,
     pub pause_between_sides: bool,
     /// Whether a side or disc pause ends on its own after a countdown, and how
@@ -62,11 +61,6 @@ pub struct BridgeConfig {
     /// is_usable`; the UI reads this flag rather than re-deriving it from the
     /// status.
     pub discogs_usable: bool,
-    /// The configured cloud provider, present whenever YAML carries one — so
-    /// the settings tab can render the previous selection even when sync is
-    /// broken. Does not imply sync is working: runtime status lives in
-    /// `BridgeSyncStatusSnapshot`, not config.
-    pub sync: Option<BridgeSyncConfig>,
 }
 
 /// How long a side or disc pause waits before the next side starts on its
@@ -144,18 +138,16 @@ pub struct BridgeLookupCatalogSetting {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeCloudHomeKeyState {
-    NotRequired,
+pub enum BridgeStoreKeyState {
     Available,
     Locked,
 }
 
-impl From<coven::CloudHomeKeyState> for BridgeCloudHomeKeyState {
-    fn from(value: coven::CloudHomeKeyState) -> Self {
+impl From<coven::StoreKeyState> for BridgeStoreKeyState {
+    fn from(value: coven::StoreKeyState) -> Self {
         match value {
-            coven::CloudHomeKeyState::NotRequired => Self::NotRequired,
-            coven::CloudHomeKeyState::Available => Self::Available,
-            coven::CloudHomeKeyState::Locked => Self::Locked,
+            coven::StoreKeyState::Available => Self::Available,
+            coven::StoreKeyState::Locked => Self::Locked,
         }
     }
 }
@@ -327,32 +319,8 @@ mirror_struct! {
     },
 }
 
-/// Cloud sync settings for a connected provider. `provider` carries the
-/// provider-specific fields; the rest are shared across providers. Whether
-/// sync is actually running is `BridgeSyncStatusSnapshot.sync_ready`, kept
-/// orthogonal.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeSyncConfig {
-    pub provider: BridgeSyncProvider,
-    /// Display name for the connected account (e.g. "s3://bucket", "iCloud").
-    pub cloud_account_display: Option<String>,
-}
-
-/// The connected cloud provider with its provider-specific display fields.
-/// Providers without extra fields (OAuth, CloudKit) are fieldless variants.
-#[derive(Debug, Clone, uniffi::Enum)]
-pub enum BridgeSyncProvider {
-    S3 {
-        bucket: Option<String>,
-        region: Option<String>,
-        endpoint: Option<String>,
-    },
-    Dropbox,
-    OneDrive,
-    CloudKit,
-}
-
-#[derive(Debug, Clone, uniffi::Record)]
+/// Fields entered for an S3 store; provider credentials remain in coven custody.
+#[derive(Clone, uniffi::Record)]
 pub struct BridgeSaveSyncConfig {
     pub bucket: String,
     pub region: String,
@@ -360,6 +328,5 @@ pub struct BridgeSaveSyncConfig {
     pub key_prefix: Option<String>,
     pub access_key: String,
     pub secret_key: String,
-    /// Whether the home is opaque (encrypted) or browsable (stored in the clear).
-    pub storage: BridgeHomeStorage,
+    pub profile: Option<BridgeS3Profile>,
 }
