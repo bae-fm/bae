@@ -230,8 +230,8 @@ async fn unmanage_cancelled_before_copy_leaves_release_remote() {
     assert!(!dest.exists());
 }
 
-/// Source failures belong in coven's pending list; the queue retains the
-/// committed file and cancellation must not claim to remove it.
+/// A missing original cannot become a playable local release; cancellation
+/// fails before changing any attachment or local path.
 #[tokio::test]
 async fn a_missing_upload_source_is_pending_and_cannot_be_cancelled() {
     let (manager, temp, release, file_id) = queued_upload_fixture("queued").await;
@@ -242,19 +242,19 @@ async fn a_missing_upload_source_is_pending_and_cannot_be_cancelled() {
     std::fs::remove_file(temp.path().join("queued/a.flac")).unwrap();
     assert_eq!(manager.drain_uploads_expecting_work().await.unwrap(), 0);
     assert!(!manager.pending().await.unwrap().is_empty());
-    manager.cancel_release_upload(&release.id).await.expect_err("committed upload cannot be cancelled");
+    manager.cancel_release_upload(&release.id).await.expect_err("the missing original prevents restoring local playback");
     assert!(manager.database.find_file_by_id(&file_id).await.unwrap().unwrap().attached);
     assert_eq!(manager.outbox_snapshot().await.unwrap().total.queued, 1);
 }
 
 #[tokio::test]
-async fn cancelling_all_committed_uploads_refuses_without_detaching_any() {
+async fn cancelling_all_release_uploads_restores_their_originals() {
     let (manager, temp, first, _) = queued_upload_fixture("first").await;
     let second = insert_release_with_queued_uploads(&manager, &temp.path().join("second"), "Album", &[("b.flac", b"audio")]).await;
-    manager.cancel_all_release_uploads().await.expect_err("committed uploads cannot be recalled");
+    manager.cancel_all_release_uploads().await.unwrap();
     assert_eq!(manager.outbox_snapshot().await.unwrap().total.queued, 2);
     for release in [first, second] {
-        assert!(release_files(&manager, &release.id).await.iter().all(|file| file.attached));
+        assert!(release_files(&manager, &release.id).await.iter().all(|file| !file.attached));
     }
 }
 

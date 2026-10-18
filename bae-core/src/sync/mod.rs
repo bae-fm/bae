@@ -87,8 +87,7 @@ pub fn synced_tables() -> Vec<SyncedTable> {
                 Provenance::UserProvided,
                 CacheFill::CacheLazy,
             )
-            .with_size_column("file_size")
-            .write_once(),
+            .with_size_column("file_size"),
         ),
         SyncedTable::new("audio_formats", RowIdentity::IndependentUuid),
         SyncedTable::new("audio_format_segments", RowIdentity::IndependentUuid),
@@ -229,7 +228,7 @@ mod tests {
                     Provenance::UserProvided,
                     CacheFill::CacheLazy,
                     "id",
-                    true,
+                    false,
                 )),
                 "covers" => Some((
                     COVERS_NAMESPACE,

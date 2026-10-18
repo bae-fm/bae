@@ -67,7 +67,7 @@ fn creation_retains_its_keyring_failure_through_cleanup() {
 }
 
 #[tokio::test]
-async fn upload_cancellation_refuses_after_attachment_without_changing_the_release() {
+async fn upload_cancellation_detaches_the_file_and_restores_its_original() {
     let directory = tempfile::tempdir().unwrap();
     let installation = coven::TestCoven::new();
     let handle = installation
@@ -121,15 +121,19 @@ async fn upload_cancellation_refuses_after_attachment_without_changing_the_relea
         .unwrap();
     manager.coven_make_remote(&release.id, false).await.unwrap();
     manager
-        .cancel_release_upload(&release.id)
+        .cancel_release_transition(&release.id)
         .await
-        .expect_err("a committed attachment cannot be cancelled");
+        .unwrap();
     assert_eq!(handle.uploads().await.unwrap().files.len(), 1);
     assert!(manager
         .get_files_for_release(&release.id)
         .await
         .unwrap()
         .iter()
-        .all(|file| file.attached));
+        .all(|file| !file.attached));
+    assert_eq!(
+        manager.file_local_path(&file.id).await.unwrap(),
+        Some(source)
+    );
     handle.close().await.unwrap();
 }

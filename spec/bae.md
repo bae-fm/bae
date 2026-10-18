@@ -1667,7 +1667,7 @@ tables are changed only by their author's devices (§5.5).
 | `track_works` | independent | store | | |
 | `release_artist_roles` | independent | store | | |
 | `track_artist_roles` | independent | store | | |
-| `release_files` | independent | store | | the person's own; attached on upload; read on first use; never repointed |
+| `release_files` | independent | store | | the person's own; attached on upload; read on first use; detached to return to local paths |
 | `audio_formats` | independent | store | | |
 | `audio_format_segments` | independent | store | | |
 | `covers` | independent | store | | bae's own; fetched with the row |

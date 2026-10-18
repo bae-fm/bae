@@ -55,28 +55,29 @@ impl LibraryManager {
         }
     }
 
-    /// A committed attachment is part of shared history. Coven retains its
-    /// upload even if a later write clears or deletes the row.
+    /// Detach the release's audio and restore its original paths atomically.
+    /// Coven retains uploads needed by shared history; the current rows become local.
     pub async fn cancel_release_upload(&self, release_id: &str) -> Result<(), LibraryError> {
-        if self
-            .database
-            .has_pending_uploads_for_release(release_id)
-            .await?
-        {
-            return Err(LibraryError::Validation(format!(
-                "release {release_id} has committed uploads that cannot be cancelled; uploads can be paused"
-            )));
-        }
-        Ok(())
+        self.cancel_release_uploads(vec![release_id.to_string()])
+            .await
     }
 
     pub async fn cancel_all_release_uploads(&self) -> Result<(), LibraryError> {
-        if !self.database.uploads().await?.files.is_empty() {
-            return Err(LibraryError::Validation(
-                "committed uploads cannot be cancelled; uploads can be paused".into(),
-            ));
-        }
-        Ok(())
+        let releases = self.database.uploading_releases().await?;
+        self.cancel_release_uploads(releases).await
+    }
+
+    async fn cancel_release_uploads(&self, releases: Vec<String>) -> Result<(), LibraryError> {
+        let manager = self.clone();
+        self.run_file_operation("cancel release uploads", move |_closing| async move {
+            let detached = manager.database.cancel_release_uploads(releases).await?;
+            for release in detached {
+                manager.cancel_download(&release);
+            }
+            manager.emit_outbox_changed().await;
+            Ok(())
+        })
+        .await
     }
 
     /// Resume seeded uploads for one drain, then restore the fixture's pause

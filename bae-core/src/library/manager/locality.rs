@@ -346,20 +346,18 @@ impl LibraryManager {
     /// The transitions this process registered say what they are: a
     /// make-Local transfer is stopped by its token, which the registry fires;
     /// a pin is stopped through the download queue, which also holds the pins
-    /// not yet started. Committed uploads cannot be cancelled through coven's
-    /// API; a pending upload therefore returns that refusal to the caller.
+    /// not yet started. Cancelling an upload detaches every audio file and
+    /// restores its original path in the same write.
     pub async fn cancel_release_transition(&self, release_id: &str) -> Result<(), LibraryError> {
         match self.transitions.cancel(release_id) {
             Some(ReleaseStorageAction::MakeLocal) => return Ok(()),
             Some(ReleaseStorageAction::Pin) => {
                 self.cancel_download(release_id);
-                return Ok(());
             }
             Some(ReleaseStorageAction::MakeRemote | ReleaseStorageAction::Unpin) | None => {}
         }
         if self.downloads.contains(release_id) {
             self.cancel_download(release_id);
-            return Ok(());
         }
         if self
             .database

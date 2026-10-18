@@ -56,19 +56,87 @@ impl Database {
         files: Vec<(String, coven::FileRef, coven::UserFile)>,
     ) -> Result<(), DbError> {
         let release_id = release_id.to_string();
-        self.call_sql(move |sql| {
-            validate_file_set(&sql, &release_id, files.iter().map(|(id, _, _)| id.as_str()))?;
-            for (id, reference, source) in files {
-                sql.validate_file_ref(&reference)?;
-                sql.clear_user_file("release_files", id.as_str())?;
-                let path = source.path.to_str().ok_or_else(|| DbError::Message("local path is not UTF-8".into()))?;
-                sql.execute("INSERT INTO local_release_files (file_id,path,modified_at) VALUES (?1,?2,?3) \
-                    ON CONFLICT(file_id) DO UPDATE SET path=excluded.path,modified_at=excluded.modified_at",
-                    params![id, path, DateTime::<Utc>::from(source.modified_at).to_rfc3339()])?;
-            }
-            Ok(())
-        }).await
+        self.call_sql(move |sql| detach_release_files_on(&sql, &release_id, files))
+            .await
     }
+
+    /// Restore originals for releases with a currently attached file still queued.
+    /// Every release is checked before the single write detaches any of them.
+    pub(crate) async fn cancel_release_uploads(
+        &self,
+        releases: Vec<String>,
+    ) -> Result<Vec<String>, DbError> {
+        let uploads = self.uploads().await?;
+        let mut prepared = Vec::new();
+        for release in releases {
+            let files = self.get_files_for_release(&release).await?;
+            let mut references = Vec::new();
+            for file in &files {
+                if file.attached {
+                    references.push((
+                        file.id.clone(),
+                        self.file_ref("release_files", &file.id).await?,
+                    ));
+                }
+            }
+            if !references
+                .iter()
+                .any(|(_, reference)| uploads.files.iter().any(|upload| upload.file == *reference))
+            {
+                tracing::debug!(release, "no current audio upload to cancel");
+                continue;
+            }
+            if references.len() != files.len() {
+                return Err(DbError::Message(format!(
+                    "release {release} is not wholly attached"
+                )));
+            }
+            let mut originals = Vec::with_capacity(files.len());
+            for (id, reference) in references {
+                let source = self
+                    .external_blob(&id)
+                    .await?
+                    .ok_or_else(|| DbError::FileNotUploaded(id.clone()))?;
+                validate_original(&source).await?;
+                originals.push((id, reference, source));
+            }
+            prepared.push((release, originals));
+        }
+        if prepared.is_empty() {
+            return Ok(Vec::new());
+        }
+        self.call_sql(move |sql| {
+            let mut detached = Vec::with_capacity(prepared.len());
+            for (release, files) in prepared {
+                detach_release_files_on(&sql, &release, files)?;
+                detached.push(release);
+            }
+            Ok(detached)
+        })
+        .await
+    }
+}
+
+fn detach_release_files_on(
+    sql: &SqlContext<'_, '_>,
+    release: &str,
+    files: Vec<(String, coven::FileRef, coven::UserFile)>,
+) -> Result<(), DbError> {
+    validate_file_set(sql, release, files.iter().map(|(id, _, _)| id.as_str()))?;
+    for (id, reference, source) in files {
+        sql.validate_file_ref(&reference)?;
+        sql.clear_user_file("release_files", id.as_str())?;
+        let path = source
+            .path
+            .to_str()
+            .ok_or_else(|| DbError::Message("local path is not UTF-8".into()))?;
+        sql.execute(
+            "INSERT INTO local_release_files (file_id,path,modified_at) VALUES (?1,?2,?3) \
+             ON CONFLICT(file_id) DO UPDATE SET path=excluded.path,modified_at=excluded.modified_at",
+            params![id, path, DateTime::<Utc>::from(source.modified_at).to_rfc3339()],
+        )?;
+    }
+    Ok(())
 }
 
 async fn validate_original(source: &coven::UserFile) -> Result<(), DbError> {
