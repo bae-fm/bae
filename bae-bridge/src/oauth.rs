@@ -1,5 +1,3 @@
-use crate::types::BridgeCloudProvider;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeDropboxAccess {
     AppFolder,
@@ -8,7 +6,6 @@ pub enum BridgeDropboxAccess {
 mirror_enum! {
     BridgeDropboxAccess = coven::DropboxAccess,
     from_core: fn,
-    into_core: fn,
     variants: { AppFolder, FullDropbox },
 }
 
@@ -20,7 +17,6 @@ pub enum BridgeOAuthAccess {
 mirror_enum! {
     BridgeOAuthAccess = coven::OAuthAccess,
     from_core: pub(crate) fn,
-    into_core: pub(crate) fn,
     variants: { Dropbox(access: (BridgeDropboxAccess)), OneDrive },
 }
 
@@ -107,11 +103,6 @@ pub struct BridgeOAuthClients {
     pub dropbox_app_key: Option<String>,
     pub onedrive_client_id: Option<String>,
     pub google_admin_client_id: Option<String>,
-}
-
-#[uniffi::export]
-pub fn oauth_access_provider(access: BridgeOAuthAccess) -> BridgeCloudProvider {
-    BridgeCloudProvider::from_core(&access.into_core().provider())
 }
 
 #[cfg(test)]
