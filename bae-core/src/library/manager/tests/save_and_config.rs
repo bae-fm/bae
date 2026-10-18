@@ -214,6 +214,34 @@ async fn removal_releases_custody_and_preferences() {
     assert!(!manager.app_dir.active_library_pointer().exists());
 }
 
+/// Edits this device hasn't sent stop a removal with their counts and leave
+/// the library in place; removing anyway discards them.
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn removal_reports_unsent_work_until_the_person_discards_it() {
+    let (manager, _temp) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
+    let files = TempDir::new().unwrap();
+    insert_release_with_queued_uploads(&manager, files.path(), "Album Title", &[("01.flac", b"audio")])
+        .await;
+    let id = manager.database.store_id().to_string();
+
+    let error = manager
+        .remove_library(coven::IfUnsent::Refuse)
+        .await
+        .expect_err("unsent work stops the removal");
+    let crate::library::LibraryRemovalError::Unsent(work) = error else {
+        panic!("expected the unsent work, got {error}");
+    };
+    assert!(work.writes > 0, "{work:?}");
+    assert_eq!(work.files, 1);
+    assert_eq!(manager.app_dir.store_layout().stores().await.unwrap().len(), 1);
+
+    manager.remove_library(coven::IfUnsent::Discard).await.unwrap();
+    assert!(manager.app_dir.store_layout().stores().await.unwrap().is_empty());
+    assert!(!manager.app_dir.registered_library(&id).exists());
+}
+
 #[tokio::test]
 async fn mcp_config_rejects_port_zero_and_persists_valid_config() {
     let (manager, _temp_dir) = setup_test_manager().await;

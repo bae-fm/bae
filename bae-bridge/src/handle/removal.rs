@@ -9,6 +9,13 @@ pub enum BridgeIfUnsent {
 #[derive(Clone, uniffi::Enum)]
 pub enum BridgeLibraryRemoval {
     Removed,
+    /// This device holds changes it hasn't sent, so nothing was removed:
+    /// `writes` edits and `files` attached files waiting to upload. Removing
+    /// with `BridgeIfUnsent::Discard` loses them.
+    Unsent {
+        writes: u64,
+        files: u64,
+    },
     PreferencesRemain {
         retry: Arc<BridgeRemovalRetry>,
         error: BridgeError,
@@ -72,13 +79,20 @@ impl AppHandle {
                 };
                 match self.services.remove_library(unsent).await {
                     Ok(()) => Ok(BridgeLibraryRemoval::Removed),
+                    Err(bae_core::library::LibraryRemovalError::Unsent(work)) => {
+                        Ok(BridgeLibraryRemoval::Unsent {
+                            writes: work.writes,
+                            files: work.files,
+                        })
+                    }
                     Err(error) => {
                         let diagnostic = BridgeError::diagnostic(
                             crate::BridgeErrorCategory::from_core(error.category()),
                             &error,
                         );
                         match error {
-                            bae_core::library::LibraryRemovalError::Store(_) => Err(diagnostic),
+                            bae_core::library::LibraryRemovalError::Unsent(_)
+                            | bae_core::library::LibraryRemovalError::Store(_) => Err(diagnostic),
                             bae_core::library::LibraryRemovalError::Preferences {
                                 library, ..
                             } => Ok(BridgeLibraryRemoval::PreferencesRemain {

@@ -74,6 +74,31 @@ class OpenLibraryDisposeTest {
     }
 
     @Test
+    fun removalRefusedForUnsentChangesKeepsTheHandleUntilTheyAreDiscarded() {
+        val (session, handle) = openLibrary(unsent = true)
+
+        val refused = runBlocking { session.removeFromDevice() }
+
+        assertEquals(BridgeLibraryRemoval.Unsent(writes = 3u, files = 1u), refused)
+        assertEquals(listOf("removeLibrary REFUSE"), handle.calls)
+
+        val removal = runBlocking { session.discardUnsentAndRemove() }
+
+        assertEquals(BridgeLibraryRemoval.Removed, removal)
+        assertEquals(listOf("removeLibrary REFUSE", "removeLibrary DISCARD", "close"), handle.calls)
+    }
+
+    @Test
+    fun keepingALibraryWithUnsentChangesClosesTheHandle() {
+        val (session, handle) = openLibrary(unsent = true)
+
+        runBlocking { session.removeFromDevice() }
+        session.keepLibrary()
+
+        assertEquals(listOf("removeLibrary REFUSE", "close"), handle.calls)
+    }
+
+    @Test
     fun aFailedRemovalStillClosesTheHandle() {
         val (session, handle) = openLibrary(failRemoval = true)
 
@@ -87,9 +112,10 @@ class OpenLibraryDisposeTest {
     private fun openLibrary(
         failShutdown: Boolean = false,
         failRemoval: Boolean = false,
+        unsent: Boolean = false,
     ): Pair<OpenLibrary, RecordingHandle> {
         val context = RuntimeEnvironment.getApplication()
-        val handle = RecordingHandle(failShutdown, failRemoval)
+        val handle = RecordingHandle(failShutdown, failRemoval, unsent)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
         val session =
             OpenLibrary(
@@ -129,6 +155,7 @@ class OpenLibraryDisposeTest {
     private class RecordingHandle(
         private val failShutdown: Boolean,
         private val failRemoval: Boolean,
+        private val hasUnsentChanges: Boolean,
     ) : AppHandle(NoHandle) {
         val calls = mutableListOf<String>()
 
@@ -147,6 +174,9 @@ class OpenLibraryDisposeTest {
             calls.add("removeLibrary $unsent")
             if (failRemoval) {
                 throw BridgeException.Diagnostic(BridgeErrorCategory.Network, "offline")
+            }
+            if (hasUnsentChanges && unsent == BridgeIfUnsent.REFUSE) {
+                return BridgeLibraryRemoval.Unsent(writes = 3u, files = 1u)
             }
             return BridgeLibraryRemoval.Removed
         }

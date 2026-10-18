@@ -272,17 +272,36 @@ class OpenLibrary internal constructor(
 
     /**
      * Stop this session and remove its library from the device: core leaves the
-     * store before deleting the local copy. The handle is closed whatever the
-     * outcome; a removal that failed leaves the library on the device to be
-     * opened again, and one whose preferences remain carries its own retry.
+     * store before deleting the local copy. A removal refused for this device's
+     * unsent changes keeps the handle open while the person decides:
+     * [discardUnsentAndRemove] or [keepLibrary]. Otherwise the handle is closed
+     * whatever the outcome; a removal that failed leaves the library on the
+     * device to be opened again, and one whose preferences remain carries its
+     * own retry.
      */
     suspend fun removeFromDevice(): BridgeLibraryRemoval {
         stopSessionServices()
-        try {
-            return appHandle.removeLibrary(BridgeIfUnsent.REFUSE)
-        } finally {
-            appHandle.close()
-        }
+        return remove(BridgeIfUnsent.REFUSE)
+    }
+
+    /** Remove the library a refused removal stopped, discarding this device's unsent changes. */
+    suspend fun discardUnsentAndRemove(): BridgeLibraryRemoval = remove(BridgeIfUnsent.DISCARD)
+
+    /** Close a session whose removal the person called off, so its library can open again. */
+    fun keepLibrary() {
+        appHandle.close()
+    }
+
+    private suspend fun remove(unsent: BridgeIfUnsent): BridgeLibraryRemoval {
+        val removal =
+            try {
+                appHandle.removeLibrary(unsent)
+            } catch (e: Throwable) {
+                appHandle.close()
+                throw e
+            }
+        if (removal !is BridgeLibraryRemoval.Unsent) appHandle.close()
+        return removal
     }
 
     private fun stopSessionServices() {

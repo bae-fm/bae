@@ -99,6 +99,9 @@
     <string name="settings_remove_library_explanation">Tar bort det här biblioteket från den här enheten: enheten lämnar biblioteket, sedan raderas dess kopia och nedladdade filer. Biblioteket på molnplatsen är orört.</string>
     <string name="settings_remove_library_confirm_title">Ta bort det här biblioteket från den här enheten?</string>
     <string name="settings_remove_library_confirm_body">Enheten lämnar först biblioteket, vilket kräver anslutning. Biblioteket på molnplatsen är orört.</string>
+    <string name="unsent_edits_title">Ändringar som inte har skickats går förlorade</string>
+    <string name="unsent_edits_body">Om biblioteket tas bort från den här enheten går de förlorade.</string>
+    <string name="unsent_edits_remove">Ta bort ändå</string>
     <string name="settings_remove">Ta bort</string>
     <string name="settings_provider">Leverantör</string>
     <string name="settings_account">Konto</string>

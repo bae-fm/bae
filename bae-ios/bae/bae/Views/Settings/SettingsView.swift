@@ -8,8 +8,6 @@ private let logger = Logger.bae("Settings")
 struct SettingsView: View {
     @Environment(ConfigStore.self)
     private var configStore
-    @Environment(OutboxStore.self)
-    private var outboxStore
     @Environment(AppSessionHolder.self)
     private var holder
     @Environment(Sync.self)
@@ -173,20 +171,15 @@ struct SettingsView: View {
         )
     }
 
-    /// The confirmation's body: a synced library's cloud copy survives, and
-    /// queued cloud writes are lost.
+    /// The confirmation's body: a synced library's cloud copy survives.
+    /// Changes this device hasn't sent are counted when the removal stops for
+    /// them.
     private var removeMessage: String {
         guard configStore.hasCloudHome else { return removeFooter }
-        let base = String(
+        return String(
             localized:
                 "This device leaves the library, then its copy is deleted. Your library in the cloud is untouched."
         )
-        guard outboxStore.hasPendingCloudWork else { return base }
-        return base + " "
-            + String(
-                localized:
-                    "Some changes haven't finished uploading and will be lost."
-            )
     }
 }
 

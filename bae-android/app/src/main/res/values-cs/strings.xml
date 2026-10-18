@@ -95,6 +95,9 @@
     <string name="settings_remove_library_explanation">Odebere tuto knihovnu z tohoto zařízení: zařízení knihovnu opustí a pak se smaže jeho kopie a stažené soubory. Knihovna v cloudovém úložišti zůstane nedotčena.</string>
     <string name="settings_remove_library_confirm_title">Odebrat tuto knihovnu z tohoto zařízení?</string>
     <string name="settings_remove_library_confirm_body">Zařízení nejprve knihovnu opustí, k čemuž je potřeba připojení. Knihovna v cloudovém úložišti zůstane nedotčena.</string>
+    <string name="unsent_edits_title">Neodeslané změny budou ztraceny</string>
+    <string name="unsent_edits_body">Odebráním knihovny z tohoto zařízení se zahodí.</string>
+    <string name="unsent_edits_remove">Přesto odebrat</string>
     <string name="settings_remove">Odebrat</string>
     <string name="settings_provider">Poskytovatel</string>
     <string name="settings_account">Účet</string>

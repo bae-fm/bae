@@ -95,6 +95,9 @@
     <string name="settings_remove_library_explanation">Uklanja ovu fonoteku s ovog uređaja: uređaj napušta fonoteku, a zatim se brišu njegova kopija i preuzete datoteke. Fonoteka u pohrani u oblaku ostaje netaknuta.</string>
     <string name="settings_remove_library_confirm_title">Ukloniti ovu fonoteku s ovog uređaja?</string>
     <string name="settings_remove_library_confirm_body">Ovaj uređaj najprije napušta fonoteku, za što je potrebna veza. Fonoteka u pohrani u oblaku ostaje netaknuta.</string>
+    <string name="unsent_edits_title">Neposlane promjene bit će izgubljene</string>
+    <string name="unsent_edits_body">Uklanjanjem fonoteke s ovog uređaja one se odbacuju.</string>
+    <string name="unsent_edits_remove">Svejedno ukloni</string>
     <string name="settings_remove">Ukloni</string>
     <string name="settings_provider">Pružatelj usluge</string>
     <string name="settings_account">Račun</string>

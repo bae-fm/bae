@@ -25,8 +25,12 @@ impl RemovedLibrary {
 
 #[derive(Debug, thiserror::Error)]
 pub enum LibraryRemovalError {
+    /// This device holds writes and files it hasn't uploaded, so nothing was
+    /// removed. Removing with `IfUnsent::Discard` loses them.
+    #[error("{} writes and {} files wait to upload", .0.writes, .0.files)]
+    Unsent(coven::UnsentWork),
     #[error(transparent)]
-    Store(#[from] coven::StoreDeletionError),
+    Store(coven::StoreDeletionError),
     #[error("the store was removed, but deleting its preferences failed: {source}")]
     Preferences {
         library: RemovedLibrary,
@@ -35,9 +39,19 @@ pub enum LibraryRemovalError {
     },
 }
 
+impl From<coven::StoreDeletionError> for LibraryRemovalError {
+    fn from(error: coven::StoreDeletionError) -> Self {
+        match error {
+            coven::StoreDeletionError::Unsent(work) => Self::Unsent(work),
+            error => Self::Store(error),
+        }
+    }
+}
+
 impl LibraryRemovalError {
     pub fn category(&self) -> crate::ui::UiErrorCategory {
         match self {
+            Self::Unsent(_) => crate::ui::UiErrorCategory::Config,
             Self::Store(error) => super::manager::deletion_category(error),
             Self::Preferences { source, .. } => source.category(),
         }

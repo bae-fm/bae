@@ -183,13 +183,6 @@ public class OutboxStore {
         snapshot.perRelease.mapValues { UploadObservation.active($0.progress) }
     }
 
-    /// Whether any cloud writes are still queued or in flight — uploads that
-    /// haven't reached the cloud home. Drives the extra data-loss warning on the
-    /// remove-library confirmation.
-    public var hasPendingCloudWork: Bool {
-        !snapshot.uploadGroups.isEmpty || !snapshot.otherFiles.isEmpty
-    }
-
     /// The idle queue used before the required initial snapshot arrives and by
     /// previews/tests. A failed initial read fails library opening instead of
     /// presenting this value as authoritative queue state.

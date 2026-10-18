@@ -95,6 +95,9 @@
     <string name="settings_remove_library_explanation">يزيل هذه المكتبة من هذا الجهاز: يغادر الجهاز المكتبة، ثم تُحذف نسخته والملفات التي نزّلها. لا تتأثر المكتبة في مكانها في السحابة.</string>
     <string name="settings_remove_library_confirm_title">إزالة هذه المكتبة من هذا الجهاز؟</string>
     <string name="settings_remove_library_confirm_body">يغادر هذا الجهاز المكتبة أولًا، وهذا يتطلب اتصالًا. لا تتأثر المكتبة في مكانها في السحابة.</string>
+    <string name="unsent_edits_title">ستُفقد التغييرات غير المرسلة</string>
+    <string name="unsent_edits_body">تؤدي إزالة المكتبة من هذا الجهاز إلى تجاهلها.</string>
+    <string name="unsent_edits_remove">إزالة على أي حال</string>
     <string name="settings_remove">إزالة</string>
     <string name="settings_provider">المزوّد</string>
     <string name="settings_account">الحساب</string>

@@ -40,6 +40,12 @@ struct ContentView: View {
             }
         }
         .environment(holder.removals)
+        .unsentRemovalAlert(
+            holder.removals,
+            consequence: String(
+                localized: "Removing the library from this device discards them."
+            )
+        )
         .background(Theme.background)
         .task {
             guard startupError == nil else {

@@ -232,50 +232,6 @@ final class AppSessionHolder {
         )
     }
 
-    /// Remove the open library from this device: it leaves the store's
-    /// members, then its local copy is deleted, and the next library opens. A
-    /// refused removal opens it again with why.
-    func removeActiveLibrary() {
-        guard let service = appService else {
-            preconditionFailure("Remove shows only while a library is open")
-        }
-        let libraryId = service.libraryId
-        let removals = removals
-        opener.cancel()
-        screen = .loading
-        lifecycleSlot.replace {
-            do {
-                let removal = try await service.removeLibrary(unsent: .discard)
-                self.appService = nil
-                removals.record(removal)
-                self.start()
-            }
-            catch {
-                logger.error(
-                    "Failed to remove library: \(error.localizedDescription)"
-                )
-                // Removal stopped the library's services before leaving the
-                // store failed; close what is left and open it again.
-                do {
-                    try await DetachedWork.run { try service.closeLibrary() }
-                }
-                catch let closeError {
-                    logger.error(
-                        "Failed to close the library after its removal failed: \(closeError.localizedDescription)"
-                    )
-                }
-                self.appService = nil
-                self.openLibrary(
-                    id: libraryId,
-                    notice: DisplayError(error)?
-                        .addingContext(
-                            String(localized: "Couldn't remove library")
-                        )
-                )
-            }
-        }
-    }
-
     /// Re-attempt an open the keychain refused. A no-op in every other state,
     /// so the scene-activation caller does not have to know what is on screen.
     /// Logged with its trigger: this is event-driven, not a poll.
@@ -370,5 +326,78 @@ extension AppSessionHolder {
                 self.openLibrary(id: libraryId, notice: DisplayError(error))
             }
         }
+    }
+}
+
+// MARK: - Removing the open library
+
+extension AppSessionHolder {
+    /// Remove the open library from this device: it leaves the store's
+    /// members, then its local copy is deleted, and the next library opens.
+    /// Changes this device hasn't sent stop it until the person removes it
+    /// anyway or keeps it; a kept or refused removal opens it again.
+    func removeActiveLibrary() {
+        guard let service = appService else {
+            preconditionFailure("Remove shows only while a library is open")
+        }
+        opener.cancel()
+        screen = .loading
+        removeActiveLibrary(service, unsent: .refuse)
+    }
+
+    private func removeActiveLibrary(
+        _ service: AppService,
+        unsent: BridgeIfUnsent
+    ) {
+        let removals = removals
+        lifecycleSlot.replace {
+            do {
+                let removal = try await service.removeLibrary(unsent: unsent)
+                if case .unsent(let writes, let files) = removal {
+                    removals.ask(
+                        UnsentEdits(writes: writes, files: files),
+                        discard: {
+                            self.removeActiveLibrary(service, unsent: .discard)
+                        },
+                        keep: {
+                            self.lifecycleSlot.replace {
+                                await self.reopen(service, notice: nil)
+                            }
+                        }
+                    )
+                    return
+                }
+                self.appService = nil
+                removals.record(removal)
+                self.start()
+            }
+            catch {
+                logger.error(
+                    "Failed to remove library: \(error.localizedDescription)"
+                )
+                await self.reopen(
+                    service,
+                    notice: DisplayError(error)?
+                        .addingContext(
+                            String(localized: "Couldn't remove library")
+                        )
+                )
+            }
+        }
+    }
+
+    /// Removal stopped the library's services before leaving the store; close
+    /// what is left and open it again, showing why it stayed.
+    private func reopen(_ service: AppService, notice: DisplayError?) async {
+        do {
+            try await DetachedWork.run { try service.closeLibrary() }
+        }
+        catch let closeError {
+            logger.error(
+                "Failed to close the library after its removal stopped: \(closeError.localizedDescription)"
+            )
+        }
+        appService = nil
+        openLibrary(id: service.libraryId, notice: notice)
     }
 }

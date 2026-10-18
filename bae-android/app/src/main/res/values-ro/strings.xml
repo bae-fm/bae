@@ -100,6 +100,9 @@
     <string name="settings_remove_library_explanation">Elimină această bibliotecă de pe acest dispozitiv: dispozitivul părăsește biblioteca, apoi copia lui și fișierele descărcate sunt șterse. Biblioteca din spațiul ei în cloud rămâne neatinsă.</string>
     <string name="settings_remove_library_confirm_title">Elimini această bibliotecă de pe acest dispozitiv?</string>
     <string name="settings_remove_library_confirm_body">Mai întâi acest dispozitiv părăsește biblioteca, ceea ce necesită conexiune. Biblioteca din spațiul ei în cloud rămâne neatinsă.</string>
+    <string name="unsent_edits_title">Modificările netrimise se vor pierde</string>
+    <string name="unsent_edits_body">Eliminarea bibliotecii de pe acest dispozitiv le elimină.</string>
+    <string name="unsent_edits_remove">Elimină oricum</string>
     <string name="settings_remove">Elimină</string>
     <string name="settings_provider">Furnizor</string>
     <string name="settings_account">Cont</string>

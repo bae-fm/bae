@@ -34,6 +34,10 @@ const DIRECT_KEYS: &[&str] = &[
     "core.sync.reset_device.confirm",
     // The warning before restoring over this device's copy with a code.
     "core.sync.restore_device.warning",
+    // A removal refused for unsent changes: the UI words each count through
+    // these.
+    "core.library.removal.unsent_writes",
+    "core.library.removal.unsent_files",
     // Album total playing time: the UI switches on `BridgeDurationUnits` and
     // composes the hours and minutes words through the join pattern.
     "core.duration.hours",

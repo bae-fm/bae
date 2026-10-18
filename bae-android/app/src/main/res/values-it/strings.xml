@@ -95,6 +95,9 @@
     <string name="settings_remove_library_explanation">Rimuove questa libreria da questo dispositivo: il dispositivo lascia la libreria, poi la sua copia e i file scaricati vengono eliminati. La libreria nel suo spazio cloud rimane intatta.</string>
     <string name="settings_remove_library_confirm_title">Rimuovere questa libreria da questo dispositivo?</string>
     <string name="settings_remove_library_confirm_body">Il dispositivo lascia prima la libreria, operazione che richiede una connessione. La libreria nel suo spazio cloud rimane intatta.</string>
+    <string name="unsent_edits_title">Le modifiche non inviate andranno perse</string>
+    <string name="unsent_edits_body">Rimuovendo la libreria da questo dispositivo verranno eliminate.</string>
+    <string name="unsent_edits_remove">Rimuovi comunque</string>
     <string name="settings_remove">Rimuovi</string>
     <string name="settings_provider">Provider</string>
     <string name="settings_account">Account</string>

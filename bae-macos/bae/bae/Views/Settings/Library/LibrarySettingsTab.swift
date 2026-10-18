@@ -19,8 +19,6 @@ struct LibrarySettingsTab: View {
     var sync
     @Environment(ConfigStore.self)
     var configStore
-    @Environment(OutboxStore.self)
-    var outboxStore
 
     @State
     private var showSyncSetup = false
@@ -105,8 +103,7 @@ struct LibrarySettingsTab: View {
         } message: {
             Text(
                 LibraryRemovalConfirmation.message(
-                    hasCloudHome: configStore.hasCloudHome,
-                    hasPendingCloudWork: outboxStore.hasPendingCloudWork
+                    hasCloudHome: configStore.hasCloudHome
                 )
             )
         }

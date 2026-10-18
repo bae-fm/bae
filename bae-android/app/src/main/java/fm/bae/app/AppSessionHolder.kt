@@ -103,6 +103,17 @@ sealed interface AppScreen {
         val message: String,
     ) : AppScreen
 
+    /**
+     * Removing the open library stopped because this device has changes it
+     * hasn't sent; nothing was removed. The person removes it anyway, losing
+     * them, or keeps it.
+     */
+    data class UnsentEdits(
+        val session: OpenLibrary,
+        val writes: ULong,
+        val files: ULong,
+    ) : AppScreen
+
     /** The library left its store, but its preferences on this device remain. */
     data class RemovalIncomplete(
         val retry: BridgeRemovalRetry,
@@ -355,9 +366,39 @@ object AppSessionHolder {
         val session = checkNotNull(current) { "removing a library needs one open" }
         onScreen(AppScreen.Loading)
         current = null
+        finishRemoval(context, session, onScreen) { session.removeFromDevice() }
+    }
+
+    /** Remove the library [screen] stopped for, losing this device's unsent changes. */
+    suspend fun discardUnsentAndRemove(
+        context: Context,
+        screen: AppScreen.UnsentEdits,
+        onScreen: (AppScreen) -> Unit,
+    ) {
+        onScreen(AppScreen.Loading)
+        finishRemoval(context, screen.session, onScreen) { screen.session.discardUnsentAndRemove() }
+    }
+
+    /** Keep the library [screen] stopped removing, and open it again. */
+    suspend fun keepLibrary(
+        context: Context,
+        screen: AppScreen.UnsentEdits,
+        onScreen: (AppScreen) -> Unit,
+    ) {
+        onScreen(AppScreen.Loading)
+        screen.session.keepLibrary()
+        openLibrary(context, screen.session.libraryId, onScreen)
+    }
+
+    private suspend fun finishRemoval(
+        context: Context,
+        session: OpenLibrary,
+        onScreen: (AppScreen) -> Unit,
+        remove: suspend () -> BridgeLibraryRemoval,
+    ) {
         val removal =
             try {
-                session.removeFromDevice()
+                remove()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: BridgeException) {
@@ -377,6 +418,10 @@ object AppSessionHolder {
             is BridgeLibraryRemoval.PreferencesRemain -> {
                 logger.error("library ${session.libraryId} left its store but its preferences remain", removal.error)
                 onScreen(AppScreen.RemovalIncomplete(removal.retry, errorMessage(context, removal.error)))
+            }
+
+            is BridgeLibraryRemoval.Unsent -> {
+                onScreen(AppScreen.UnsentEdits(session, removal.writes, removal.files))
             }
         }
     }

@@ -95,6 +95,9 @@
     <string name="settings_remove_library_explanation">Премахва тази библиотека от това устройство: устройството напуска библиотеката, след което копието му и изтеглените файлове се изтриват. Библиотеката в облачното хранилище остава непокътната.</string>
     <string name="settings_remove_library_confirm_title">Премахване на тази библиотека от това устройство?</string>
     <string name="settings_remove_library_confirm_body">Първо устройството напуска библиотеката, за което е нужна връзка. Библиотеката в облачното хранилище остава непокътната.</string>
+    <string name="unsent_edits_title">Неизпратените промени ще бъдат загубени</string>
+    <string name="unsent_edits_body">Премахването на библиотеката от това устройство ги отхвърля.</string>
+    <string name="unsent_edits_remove">Премахване въпреки това</string>
     <string name="settings_remove">Премахване</string>
     <string name="settings_provider">Доставчик</string>
     <string name="settings_account">Акаунт</string>

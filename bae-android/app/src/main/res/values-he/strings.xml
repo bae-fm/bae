@@ -95,6 +95,9 @@
     <string name="settings_remove_library_explanation">מסיר את הספרייה הזו מהמכשיר הזה: המכשיר עוזב את הספרייה, ואז העותק שלו והקבצים שהורדו נמחקים. הספרייה במיקום שלה בענן לא תיפגע.</string>
     <string name="settings_remove_library_confirm_title">להסיר ספרייה זו מהמכשיר הזה?</string>
     <string name="settings_remove_library_confirm_body">המכשיר הזה עוזב קודם את הספרייה, ולשם כך נדרש חיבור. הספרייה במיקום שלה בענן לא תיפגע.</string>
+    <string name="unsent_edits_title">שינויים שלא נשלחו יאבדו</string>
+    <string name="unsent_edits_body">הסרת הספרייה מהמכשיר הזה תמחק אותם.</string>
+    <string name="unsent_edits_remove">להסיר בכל זאת</string>
     <string name="settings_remove">הסר</string>
     <string name="settings_provider">ספק</string>
     <string name="settings_account">חשבון</string>

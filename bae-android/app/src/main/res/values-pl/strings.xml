@@ -95,6 +95,9 @@
     <string name="settings_remove_library_explanation">Usuwa tę bibliotekę z tego urządzenia: urządzenie opuszcza bibliotekę, a potem jego kopia i pobrane pliki są usuwane. Biblioteka w miejscu w chmurze pozostaje nienaruszona.</string>
     <string name="settings_remove_library_confirm_title">Usunąć tę bibliotekę z tego urządzenia?</string>
     <string name="settings_remove_library_confirm_body">Najpierw to urządzenie opuszcza bibliotekę, co wymaga połączenia. Biblioteka w miejscu w chmurze pozostaje nienaruszona.</string>
+    <string name="unsent_edits_title">Niewysłane zmiany zostaną utracone</string>
+    <string name="unsent_edits_body">Usunięcie biblioteki z tego urządzenia spowoduje ich odrzucenie.</string>
+    <string name="unsent_edits_remove">Usuń mimo to</string>
     <string name="settings_remove">Usuń</string>
     <string name="settings_provider">Dostawca</string>
     <string name="settings_account">Konto</string>

@@ -99,6 +99,9 @@
     <string name="settings_remove_library_explanation">Fjerner dette biblioteket fra denne enheten: enheten forlater biblioteket, og deretter slettes kopien og de nedlastede filene. Biblioteket på skyplasseringen er urørt.</string>
     <string name="settings_remove_library_confirm_title">Fjerne dette biblioteket fra denne enheten?</string>
     <string name="settings_remove_library_confirm_body">Enheten forlater først biblioteket, og det krever tilkobling. Biblioteket på skyplasseringen er urørt.</string>
+    <string name="unsent_edits_title">Endringer som ikke er sendt, går tapt</string>
+    <string name="unsent_edits_body">Hvis du fjerner biblioteket fra denne enheten, forkastes de.</string>
+    <string name="unsent_edits_remove">Fjern likevel</string>
     <string name="settings_remove">Fjern</string>
     <string name="settings_provider">Leverandør</string>
     <string name="settings_account">Konto</string>

@@ -95,6 +95,9 @@
     <string name="settings_remove_library_explanation">Вилучає цю бібліотеку з цього пристрою: пристрій виходить із бібліотеки, а потім його копію та завантажені файли видаляють. Бібліотека в хмарі залишається незмінною.</string>
     <string name="settings_remove_library_confirm_title">Вилучити цю бібліотеку з цього пристрою?</string>
     <string name="settings_remove_library_confirm_body">Спершу пристрій виходить із бібліотеки, для чого потрібне з’єднання. Бібліотека в хмарі залишається незмінною.</string>
+    <string name="unsent_edits_title">Ненадіслані зміни буде втрачено</string>
+    <string name="unsent_edits_body">Вилучення бібліотеки з цього пристрою відкине їх.</string>
+    <string name="unsent_edits_remove">Усе одно вилучити</string>
     <string name="settings_remove">Видалити</string>
     <string name="settings_provider">Постачальник</string>
     <string name="settings_account">Обліковий запис</string>

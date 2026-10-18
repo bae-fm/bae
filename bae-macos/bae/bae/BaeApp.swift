@@ -259,6 +259,7 @@ extension BaeApp {
             }
             .appAppearance()
             .navigationTitle(appDelegate.hasShell ? windowTitle : "bae")
+            .modifier(UnsentRemovalQuestion(appDelegate: appDelegate))
             .onAppear {
                 #if !DEBUG
                     appDelegate.applicationServices?.updaterController.updater
@@ -374,6 +375,27 @@ extension BaeApp {
                     height: NoLibraryPlaceholder.height
                 )
             }
+        }
+    }
+}
+
+/// The question a library's removal asks when this Mac has changes it hasn't
+/// sent, over whichever screen the primary window shows.
+private struct UnsentRemovalQuestion: ViewModifier {
+    let appDelegate: AppDelegate
+
+    func body(content: Content) -> some View {
+        if let removals = appDelegate.applicationServices?.libraryRemovals {
+            content.unsentRemovalAlert(
+                removals,
+                consequence: String(
+                    localized:
+                        "Removing the library from this Mac discards them."
+                )
+            )
+        }
+        else {
+            content
         }
     }
 }
@@ -877,7 +899,9 @@ extension AppDelegate {
 
 extension AppDelegate {
     /// Remove the open library from this Mac: it leaves the store's members,
-    /// then its local copy is deleted. A refused removal opens it again.
+    /// then its local copy is deleted. Changes this Mac hasn't sent stop it
+    /// until the person removes it anyway or keeps it; a kept or refused
+    /// removal opens it again.
     func forgetActiveLibrary() {
         guard let service = appService else {
             baeAppLogger.warning(
@@ -885,13 +909,33 @@ extension AppDelegate {
             )
             return
         }
-        let libraryId = service.libraryId
-        let removals = requiredApplicationServices.libraryRemovals
         prepareForLibraryShutdown()
         screen = .loading
+        removeActiveLibrary(service, unsent: .refuse)
+    }
+
+    private func removeActiveLibrary(
+        _ service: AppService,
+        unsent: BridgeIfUnsent
+    ) {
+        let removals = requiredApplicationServices.libraryRemovals
         forgetSlot.replace {
             do {
-                let removal = try await service.removeLibrary(unsent: .discard)
+                let removal = try await service.removeLibrary(unsent: unsent)
+                if case .unsent(let writes, let files) = removal {
+                    removals.ask(
+                        UnsentEdits(writes: writes, files: files),
+                        discard: {
+                            self.removeActiveLibrary(service, unsent: .discard)
+                        },
+                        keep: {
+                            self.forgetSlot.replace {
+                                await self.reopen(service, error: nil)
+                            }
+                        }
+                    )
+                    return
+                }
                 self.releaseLibrarySession(service)
                 removals.record(removal)
                 self.reloadLibraries()
@@ -900,21 +944,31 @@ extension AppDelegate {
                 baeAppLogger.error(
                     "Failed to remove library: \(error.localizedDescription)"
                 )
-                // Removal stopped the library's services before leaving the
-                // store failed; close what is left and open it again.
-                do {
-                    try await DetachedWork.run { try service.closeLibrary() }
-                }
-                catch let closeError {
-                    baeAppLogger.error(
-                        "Failed to close the library after its removal failed: \(closeError.localizedDescription)"
-                    )
-                }
-                self.releaseLibrarySession(service)
-                self.openLocalLibrary(id: libraryId)
-                self.loadError = DisplayError(error)?
-                    .addingContext(String(localized: "Couldn't remove library"))
+                await self.reopen(
+                    service,
+                    error: DisplayError(error)?
+                        .addingContext(
+                            String(localized: "Couldn't remove library")
+                        )
+                )
             }
         }
+    }
+
+    /// Removal stopped the library's services before leaving the store; close
+    /// what is left and open it again, showing why it stayed.
+    private func reopen(_ service: AppService, error: DisplayError?) async {
+        let libraryId = service.libraryId
+        do {
+            try await DetachedWork.run { try service.closeLibrary() }
+        }
+        catch let closeError {
+            baeAppLogger.error(
+                "Failed to close the library after its removal stopped: \(closeError.localizedDescription)"
+            )
+        }
+        releaseLibrarySession(service)
+        openLocalLibrary(id: libraryId)
+        loadError = error
     }
 }
