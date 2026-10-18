@@ -424,7 +424,7 @@ async fn track_ready_with_stale_generation_is_ignored() {
         },
     );
 
-    service.resolve_track_ready("t".to_string(), stale);
+    service.resolve_track_ready("t".to_string(), stale).await;
     assert!(
         progress_rx.try_recv().is_err(),
         "a stale-generation TrackReady must not emit"
@@ -437,7 +437,7 @@ async fn track_ready_with_stale_generation_is_ignored() {
         "the phase must stay Loading after a stale signal"
     );
 
-    service.resolve_track_ready("t".to_string(), live);
+    service.resolve_track_ready("t".to_string(), live).await;
     assert!(
         matches!(
             progress_rx.try_recv(),
@@ -479,7 +479,7 @@ async fn pause_during_load_emits_paused_and_supersedes_track_ready() {
         "pause during a load emits Paused(Manual)"
     );
 
-    service.resolve_track_ready("t".to_string(), generation);
+    service.resolve_track_ready("t".to_string(), generation).await;
     assert!(
         progress_rx.try_recv().is_err(),
         "the collapsed load's TrackReady must not emit a second state"

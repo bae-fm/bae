@@ -2033,3 +2033,24 @@ CREATE TABLE playlist_entries (
     position INTEGER NOT NULL CHECK (position >= 0),
     PRIMARY KEY (playlist_id, position_id)
 ) STRICT;
+
+CREATE TABLE history (
+    id TEXT PRIMARY KEY NOT NULL,
+    person_id TEXT NOT NULL REFERENCES people(id) ON DELETE CASCADE,
+    track_id TEXT NOT NULL REFERENCES tracks(id) ON DELETE CASCADE,
+    release_id TEXT NOT NULL REFERENCES releases(id) ON DELETE CASCADE,
+    started_at TEXT NOT NULL,
+    played_ms INTEGER NOT NULL CHECK (played_ms > 0),
+    audience TEXT NOT NULL
+) STRICT;
+CREATE INDEX history_started_at ON history(started_at);
+
+-- Before storage establishes a person, listening stays private on this device.
+-- Creating the profile transfers these plays to its private circle atomically.
+CREATE TABLE local_history (
+    id TEXT PRIMARY KEY NOT NULL,
+    track_id TEXT NOT NULL REFERENCES tracks(id) ON DELETE CASCADE,
+    release_id TEXT NOT NULL REFERENCES releases(id) ON DELETE CASCADE,
+    started_at TEXT NOT NULL,
+    played_ms INTEGER NOT NULL CHECK (played_ms > 0)
+) STRICT;

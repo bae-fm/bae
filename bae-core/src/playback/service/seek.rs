@@ -23,6 +23,7 @@ impl PlaybackService {
         // While playing remotely, the device owns the timeline: seek it, refresh
         // the position display, and skip the whole local decoder-rebuild path.
         if self.renderer.is_remote() {
+            self.reset_remote_listening_position(position);
             self.renderer.seek_remote(position);
             if let PlaybackSlot::Active(cur) = &mut self.slot {
                 cur.position = position;
@@ -67,6 +68,8 @@ impl PlaybackService {
         // On AirPlay, decode is local so the rebuild below re-fills the sink at the
         // new position; FLUSH the receiver's stale buffer now and re-anchor once
         // the rebuilt stream is installed.
+        self.audible_completion = None;
+        self.discard_buffered_listening();
         self.renderer.flush_airplay();
 
         // Time the rebuild: from here to the rebuilt stream being installed.
@@ -103,6 +106,8 @@ impl PlaybackService {
             &prepared,
         )));
         self.sync_audio_state();
+        self.capture_listening_position();
+        self.persist_listening().await;
         self.emit_state();
 
         let decode = prepared.decode_params(position.frames(prepared.sample_rate), true);

@@ -408,6 +408,7 @@ impl PlaybackService {
             return;
         };
         let track_id = cur.prepared.track_id.clone();
+        let was_playing = matches!(cur.phase, TrackPhase::Playing);
 
         // Feed the shared progress channel so every UI and the position store
         // update exactly as they do for local playback. The device plays the
@@ -427,6 +428,17 @@ impl PlaybackService {
             );
         }
 
+        if matches!(status.player_state, RendererPlayerState::Playing) {
+            self.set_remote_phase(TrackPhase::Playing);
+            if !self.begin_listening().await {
+                self.stop().await;
+                return;
+            }
+        }
+        if let Some(position) = status.position.map(StreamPosition::from_duration) {
+            self.observe_remote_listening(position, was_playing);
+            self.persist_listening().await;
+        }
         match status.player_state {
             RendererPlayerState::Finished => {
                 // The device reached end-of-track: advance the shared queue
@@ -435,6 +447,7 @@ impl PlaybackService {
                 if let PlaybackSlot::Active(cur) = &mut self.slot {
                     cur.phase = TrackPhase::Completed;
                 }
+                self.finish_listening().await;
                 self.handle_auto_advance(track_id).await;
             }
             RendererPlayerState::Playing => self.set_remote_phase(TrackPhase::Playing),
@@ -472,6 +485,9 @@ impl PlaybackService {
         // Tear the previous remote track's slot down (stub decoder, empty
         // segments — nothing to release).
         self.discard_current_track();
+        if !matches!(start, TrackStart::Position(_)) {
+            self.finish_listening().await;
+        }
 
         self.slot = PlaybackSlot::Loading(LoadingTrack::Unprepared {
             track_id: track_id.to_string(),
@@ -535,6 +551,11 @@ impl PlaybackService {
             target.into_track_phase(),
             start_position,
         );
+        if !self.begin_listening().await {
+            self.stop().await;
+            return;
+        }
+        self.reset_remote_listening_position(start_position);
         self.emit_state();
         self.persist_playback_state().await;
     }
@@ -587,6 +608,12 @@ impl PlaybackService {
     /// session down), restore the saved local output, and resume local playback
     /// paused at the last position.
     pub(super) async fn end_airplay_and_resume_local(&mut self) {
+        if !self.renderer.is_airplay() {
+            return;
+        }
+        let current = self.current_track_position();
+        self.retire_current_track();
+        self.discard_buffered_listening();
         let saved_output = match std::mem::replace(&mut self.renderer, Renderer::Local) {
             Renderer::AirPlay(r) => r.saved_output,
             other => {
@@ -594,12 +621,6 @@ impl PlaybackService {
                 return;
             }
         };
-        // Decode is local, so the live position is the one the drain's ticks keep
-        // current in the slot (latency-adjusted) — read it now, before teardown
-        // drops the slot, so local resumes where playback actually is, not the
-        // switch-time point.
-        let current = self.current_track_position();
-
         // Dropping the current output (the AirPlay stream) tears the receiver
         // session down; then restore the local sink.
         self.teardown_local_playback();
@@ -628,6 +649,7 @@ impl PlaybackService {
     /// by `stop` (which then emits Stopped) and the remote switch (which then
     /// installs the remote track).
     pub(super) fn teardown_local_playback(&mut self) {
+        self.discard_buffered_listening();
         self.stop_preview_for_main_playback();
         self.discard_current_track();
         self.clear_next_track_state();

@@ -50,6 +50,11 @@ impl PlaybackService {
         if let PlaybackSlot::Active(current) =
             std::mem::replace(&mut self.slot, PlaybackSlot::Stopped)
         {
+            self.audible_completion = None;
+            self.sync_audio_state();
+            self.discard_buffered_listening();
+            self.renderer.flush_airplay();
+            self.capture_listening_position();
             current
                 .decoder
                 .cancel_token
@@ -489,6 +494,8 @@ impl PlaybackService {
         if let Some(latency) = self.renderer.airplay_latency() {
             position = position.saturating_sub(latency);
         }
+        self.observe_listening_position(fmt.clone(), position);
+        self.persist_listening().await;
         if let PlaybackSlot::Active(cur) = &mut self.slot {
             if cur.prepared.track_id == fmt.track_id {
                 cur.position = position;
@@ -524,45 +531,6 @@ impl PlaybackService {
         }
     }
 
-    pub(super) fn handle_completion_event(
-        &mut self,
-        fmt: Arc<TrackFmt>,
-        error_count: u32,
-        samples_decoded: u64,
-    ) {
-        info!(
-            "Track completed: {} ({} decode errors, {} samples)",
-            fmt.track_id, error_count, samples_decoded
-        );
-        self.record_telemetry(TelemetryEvent::TrackCompleted {
-            track_id: LocalId(fmt.track_id.clone()),
-            decode_errors: error_count as u64,
-        });
-        emit_progress(
-            &self.progress_tx,
-            PlaybackProgress::TrackCompleted {
-                track_id: fmt.track_id.clone(),
-            },
-        );
-        emit_progress(
-            &self.progress_tx,
-            PlaybackProgress::DecodeStats {
-                track_id: fmt.track_id.clone(),
-                error_count,
-                samples_decoded,
-            },
-        );
-        // The track drained: mark the phase Completed. The persistent output stays
-        // live because AutoAdvance and the side-pause decision still read the
-        // source; the audio callback already flipped the atomic to Stopped (which
-        // `sync_audio_state` below confirms), so it emits nothing further until
-        // the source is replaced.
-        if let PlaybackSlot::Active(cur) = &mut self.slot {
-            cur.phase = TrackPhase::Completed;
-        }
-        self.sync_audio_state();
-    }
-
     pub(super) async fn handle_audio_event(&mut self, event: AudioEvent) {
         // Position/Completion/TrackCrossing carry their own logging (or none);
         // every other kind goes to the diagnostic log both players share.
@@ -577,7 +545,8 @@ impl PlaybackService {
                 self.handle_position_event(fmt, position).await
             }
             AudioEvent::Completion((fmt, error_count, samples_decoded)) => {
-                self.handle_completion_event(fmt, error_count, samples_decoded);
+                self.handle_completion_event(fmt, error_count, samples_decoded)
+                    .await;
             }
             AudioEvent::TrackCrossing(crossing) => self.handle_track_crossed(crossing).await,
             AudioEvent::Starved {
@@ -746,6 +715,9 @@ impl PlaybackService {
                             audio_output,
                             output: None,
                             slot: PlaybackSlot::Stopped,
+                            listening: None,
+                            buffered_listening: Vec::new(),
+                            audible_completion: None,
                             load_generation_counter: 0,
                             preloaded_next: None,
                             volume: OutputVolume::new(),
@@ -802,13 +774,18 @@ impl PlaybackService {
                 (_, sides) = self.staged_sides.next() => {
                     self.handle_staged_crossing_sides(sides).await;
                 }
-                _ = audio_event_tick.tick(), if self.output.is_some() => {
+                _ = audio_event_tick.tick(), if self.output.is_some() || !self.buffered_listening.is_empty() || self.audible_completion.is_some() => {
                     self.drain_current_audio_events().await;
+                    self.persist_listening().await;
+                    self.publish_audible_completion();
                 }
                 deadline = countdown.elapsed(), if countdown.is_armed() => {
                     self.side_pause_countdown_elapsed(deadline).await;
                 }
                 Some(command) = self.command_rx.recv() => {
+            // Apply a boundary the callback already crossed before a command can
+            // replace its source and discard the finishing track's last samples.
+            self.drain_current_audio_events().await;
             // One event per user-intent command, at the point the loop picks it
             // up. Internal/system commands, queries, and continuous inputs map to
             // `None` and ship nothing.
@@ -946,6 +923,8 @@ impl PlaybackService {
                 }
                 PlaybackCommand::Pause => {
                     self.pause();
+                    self.capture_listening_position();
+                    self.persist_listening().await;
                 }
                 PlaybackCommand::Resume => {
                     self.resume().await;
@@ -966,7 +945,7 @@ impl PlaybackService {
                     track_id,
                     generation,
                 } => {
-                    self.resolve_track_ready(track_id, generation);
+                    self.resolve_track_ready(track_id, generation).await;
                 }
                 PlaybackCommand::HaltOnError => {
                     self.halt_on_error().await;
@@ -1155,6 +1134,11 @@ impl PlaybackService {
                     let _ = reply.send(self.playback_queue.projection());
                 }
                 PlaybackCommand::Shutdown(reply) => {
+                    if matches!(&self.slot, PlaybackSlot::Active(cur) if matches!(cur.phase, TrackPhase::Playing)) {
+                        self.pause();
+                    }
+                    self.capture_listening_position();
+                    self.finish_listening().await;
                     self.persist_playback_state().await;
                     let _ = reply.send(());
                     break;

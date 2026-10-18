@@ -112,6 +112,9 @@ pub fn synced_tables() -> Vec<SyncedTable> {
             .with_id_column("blob_id")
             .with_size_column("file_size"),
         ),
+        SyncedTable::new("history", RowIdentity::IndependentUuid)
+            .owner_only()
+            .audience_column("audience"),
         SyncedTable::new("ratings", RowIdentity::SharedKey).owner_only(),
         SyncedTable::new("playlists", RowIdentity::IndependentUuid)
             .owner_only()
@@ -167,12 +170,37 @@ mod tests {
                 "covers",
                 "artist_images",
                 "people",
+                "history",
                 "ratings",
                 "playlists",
                 "playlist_entries",
             ])
         );
         for table in &tables {
+            let shared = matches!(
+                table.name(),
+                "artists"
+                    | "artist_merges"
+                    | "albums"
+                    | "album_artists"
+                    | "release_records"
+                    | "works"
+                    | "work_artists"
+                    | "work_parts"
+                    | "covers"
+                    | "artist_images"
+                    | "people"
+                    | "ratings"
+                    | "playlist_entries"
+            );
+            assert_eq!(
+                table.identity(),
+                if shared {
+                    &RowIdentity::SharedKey
+                } else {
+                    &RowIdentity::IndependentUuid
+                }
+            );
             let keys: &[&str] = if table.name() == "playlist_entries" {
                 &["playlist_id", "position_id"]
             } else {
@@ -181,7 +209,7 @@ mod tests {
             assert_eq!(table.get_key_columns(), keys);
             assert_eq!(
                 table.get_audience_column(),
-                (table.name() == "playlists").then_some("audience")
+                matches!(table.name(), "playlists" | "history").then_some("audience")
             );
             assert_eq!(
                 table.get_audience_from(),
@@ -191,7 +219,7 @@ mod tests {
                 table.is_owner_only(),
                 matches!(
                     table.name(),
-                    "people" | "ratings" | "playlists" | "playlist_entries"
+                    "people" | "ratings" | "history" | "playlists" | "playlist_entries"
                 )
             );
             let expected = match table.name() {

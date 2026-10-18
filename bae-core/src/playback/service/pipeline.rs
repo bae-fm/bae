@@ -88,6 +88,9 @@ impl PlaybackService {
         // then is it known which files it shares (a CUE album's tracks all play
         // from one file, whose buffer and fill task must survive the switch).
         self.retire_current_track();
+        if !matches!(start, TrackStart::Position(_)) {
+            self.finish_listening().await;
+        }
         self.retire_preloaded_track();
 
         // First Loading emission: bare, before the metadata lookup.
@@ -205,10 +208,10 @@ impl PlaybackService {
     }
 
     pub(super) async fn stop(&mut self) {
-        // Stop means stop, on whichever renderer: while playing remotely, end the
-        // device session (pause is what keeps it warm) and return to local before
-        // the teardown lands the slot in Stopped. A caller that already dropped to
-        // local (`fail_remote`, `end_remote_and_resume_local`) skips this.
+        // Silence and sample the outgoing source before dropping it. Keep the
+        // renderer here until history has applied its audible-position offset.
+        self.teardown_local_playback();
+        self.finish_listening().await;
         let was_playing_on_device = self
             .renderer
             .return_to_local_for_stop(&mut self.audio_output);
@@ -218,11 +221,6 @@ impl PlaybackService {
                 PlaybackProgress::RemoteStatusChanged { device: None },
             );
         }
-        // Tear the local pipeline down: preview, current decoder, preload, the
-        // persistent output (its source cancelled first so a ring-parked decoder
-        // unparks), and every cached file buffer. Shared with the remote switch,
-        // which reuses the same teardown before installing the remote track.
-        self.teardown_local_playback();
         self.sync_audio_state();
         self.emit_state();
         // With the slot Stopped this clears the durable row — on every stop path

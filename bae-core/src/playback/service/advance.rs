@@ -514,6 +514,8 @@ impl PlaybackService {
     /// Reads only the `TrackCrossing` payload — both track ids and the finishing
     /// stats come from the event, not from a shared cell.
     pub(super) async fn handle_track_crossed(&mut self, crossing: TrackCrossing) {
+        self.finish_listening_audio(crossing.finished_fmt.clone(), crossing.samples_decoded);
+        self.finish_listening().await;
         // A gaplessly-advanced track never reaches the completion path, so this is
         // the completion log + stats for every track except an album's last.
         info!(
@@ -588,6 +590,10 @@ impl PlaybackService {
         self.mark_current_foreground();
 
         self.advance_to_preloaded();
+        if !self.begin_listening().await {
+            self.stop().await;
+            return;
+        }
 
         self.sync_audio_state();
         self.emit_state();
@@ -708,6 +714,8 @@ impl PlaybackService {
             self.telemetry_track_started(&track_id, transition);
         }
 
+        self.retire_current_track();
+        self.finish_listening().await;
         let sample_rate = next_prepared.sample_rate;
         let channels = next_prepared.channels;
 
@@ -748,7 +756,6 @@ impl PlaybackService {
         // its buffers now that the incoming track's files are known — files they
         // share stay cached and alive. The incoming decoder's own token
         // (`cancel_token`) is untouched by that teardown.
-        self.retire_current_track();
         self.file_buffers.release_retired(&next_prepared.file_ids());
 
         self.install_active_track(
@@ -757,9 +764,18 @@ impl PlaybackService {
                 handle: decoder_handle,
                 cancel_token,
             },
-            target.into_track_phase(),
+            TrackPhase::Paused(PausePhase::Manual),
             StreamPosition::START,
         );
+        if let PlaybackSlot::Active(cur) = &mut self.slot {
+            cur.phase = target.into_track_phase();
+        }
+        self.renderer.reanchor_airplay();
+        if !self.begin_listening().await {
+            self.stop().await;
+            return;
+        }
+        self.sync_audio_state();
         self.emit_state();
         self.show_paused_load_position();
 

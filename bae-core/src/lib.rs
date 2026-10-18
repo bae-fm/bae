@@ -30,6 +30,7 @@ pub mod diagnostics;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod discogs;
 pub mod dlna;
+pub mod history;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod identify;
 pub mod import;

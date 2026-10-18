@@ -54,11 +54,17 @@ impl Database {
             .await?
             .ok_or(ProfileError::NotRegistered)?;
         if let Some(profile) = self.profile(member).await? {
-            return if profile.name == name {
-                Ok(profile)
-            } else {
-                Err(ProfileError::AlreadyExists)
-            };
+            if profile.name != name {
+                return Err(ProfileError::AlreadyExists);
+            }
+            let _registration = self.inner.history_registration.lock().await;
+            let existing = profile.clone();
+            self.call(move |sql| {
+                history::adopt_local_history(sql, &existing)?;
+                Ok(())
+            })
+            .await?;
+            return Ok(profile);
         }
         let circle_name = format!("bae-person:{member}");
         let circles = self.inner.handle.circles();
@@ -97,10 +103,14 @@ impl Database {
             history_sharing: Sharing::Private,
             avatar_id: None,
         };
+        // History can keep recording locally while circle creation awaits storage.
+        // Serialize only the transfer into the profile with in-flight history writes.
+        let _registration = self.inner.history_registration.lock().await;
         let row = profile.clone();
         self.call(move |sql| {
             sql.execute("INSERT INTO people (id, name, private_circle, history_sharing) VALUES (?1, ?2, ?3, ?4)",
                 params![row.id.to_string(), row.name, row.private_circle.to_string(), row.history_sharing.as_str()])?;
+            history::adopt_local_history(sql, &row)?;
             Ok(())
         }).await?;
         Ok(profile)

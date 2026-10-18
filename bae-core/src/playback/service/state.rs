@@ -139,7 +139,11 @@ impl PlaybackService {
     /// generation, advance the phase to that load's target (Playing/Paused) and
     /// emit. A stale generation (a superseded load, or a pause/preview that
     /// collapsed the Loading phase) is dropped.
-    pub(super) fn resolve_track_ready(&mut self, track_id: String, generation: LoadGeneration) {
+    pub(super) async fn resolve_track_ready(
+        &mut self,
+        track_id: String,
+        generation: LoadGeneration,
+    ) {
         let resolved = match &mut self.slot {
             PlaybackSlot::Active(cur) => match &cur.phase {
                 TrackPhase::Loading {
@@ -157,6 +161,11 @@ impl PlaybackService {
             _ => false,
         };
         if resolved {
+            self.renderer.reanchor_airplay();
+            if !self.begin_listening().await {
+                self.stop().await;
+                return;
+            }
             // This load reached Playing: if it's the one we timed, ship the
             // time-to-first-audio and clear the measurement.
             if self
@@ -471,6 +480,7 @@ impl PlaybackService {
             self.sync_audio_state();
             self.emit_state();
         }
+        self.discard_buffered_listening();
         self.renderer.flush_airplay();
     }
 
@@ -485,7 +495,22 @@ impl PlaybackService {
             return;
         }
 
-        // While playing remotely, the device holds playback: resume it too.
+        // Pausing at a drained track flushed its receiver tail. Resume advances
+        // that completed track instead of restarting an exhausted decoder.
+        if let Some(completion) = self.audible_completion.take() {
+            let track_id = completion.fmt.track_id.clone();
+            self.publish_completion(completion.fmt, completion.errors, completion.samples);
+            self.handle_auto_advance(track_id).await;
+            return;
+        }
+        // Capture the listener before allowing the renderer to consume more audio.
+        if let PlaybackSlot::Active(cur) = &mut self.slot {
+            cur.phase = TrackPhase::Playing;
+        }
+        if !self.begin_listening().await {
+            self.stop().await;
+            return;
+        }
         self.renderer.play_remote();
         // On AirPlay, re-anchor the pacing after the FLUSH so the resumed stream
         // starts fresh rather than bursting to catch a clock that ran during the

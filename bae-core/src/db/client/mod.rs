@@ -79,6 +79,7 @@ desktop_only! {
     mod album_link_rows;
 }
 mod collections;
+mod history;
 mod people;
 mod playback;
 pub(crate) use blobs::{OutboxDisplayContext, OutboxDisplayRequest};
@@ -132,6 +133,7 @@ struct DatabaseInner {
     /// Wall clock for `created_at` and status timestamps bound into write SQL.
     clock: ClockRef,
     profile_creation: tokio::sync::Mutex<()>,
+    history_registration: tokio::sync::Mutex<()>,
 }
 
 /// Database client over coven's owned connection. Writes to synced tables are
@@ -238,6 +240,7 @@ impl Database {
                 handle,
                 clock,
                 profile_creation: tokio::sync::Mutex::new(()),
+                history_registration: tokio::sync::Mutex::new(()),
             }),
         }
     }

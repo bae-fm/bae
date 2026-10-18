@@ -65,7 +65,10 @@ use tracing::{debug, error, info, trace, warn};
 
 mod advance;
 mod api;
+mod completion;
+use completion::AudibleCompletion;
 mod file_buffers;
+mod history;
 mod library_follow;
 mod output;
 mod pipeline;
@@ -226,6 +229,9 @@ struct PreparedAudioSegment {
 #[derive(Clone)]
 struct PlaybackPreparedTrack {
     track_id: String,
+    release_id: String,
+    /// The measured body length, absent when only the display's placeholder is known.
+    duration: Option<std::time::Duration>,
     segments: Vec<PreparedAudioSegment>,
     /// In Hz.
     sample_rate: u32,
@@ -333,6 +339,10 @@ fn finalize_playback_track(
 
     PlaybackPreparedTrack {
         track_id,
+        release_id: resolved.release_id.clone(),
+        duration: resolved
+            .duration_ms
+            .map(|ms| std::time::Duration::from_millis(ms as u64)),
         segments,
         sample_rate: resolved.sample_rate,
         channels: resolved.channels,
@@ -390,6 +400,9 @@ pub struct PlaybackService {
     /// The one authority for the current track and its phase, owning its
     /// decoder; `sync_audio_state` writes the `AudioState` atomic from it.
     slot: PlaybackSlot,
+    listening: Option<history::Listening>,
+    buffered_listening: Vec<history::BufferedListening>,
+    audible_completion: Option<AudibleCompletion>,
     /// Numbers each decoder load so a `TrackReady` from an abandoned load can be
     /// told from the live one.
     load_generation_counter: u64,

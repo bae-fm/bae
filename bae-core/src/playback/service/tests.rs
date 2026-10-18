@@ -214,6 +214,9 @@ fn playback_service_over(
         audio_output: Box::new(TestAudioOutput::new()),
         output: None,
         slot: PlaybackSlot::Stopped,
+        listening: None,
+        buffered_listening: Vec::new(),
+        audible_completion: None,
         load_generation_counter: 0,
         preloaded_next: None,
         volume: OutputVolume::new(),
@@ -300,6 +303,8 @@ fn test_prepared_track_with_file(
 ) -> PlaybackPreparedTrack {
     PlaybackPreparedTrack {
         track_id: track_id.to_string(),
+        release_id: "release-id".to_string(),
+        duration: Some(std::time::Duration::from_secs(1)),
         segments: vec![PreparedAudioSegment {
             role: DbAudioSegmentRole::Main,
             file_id: file_id.to_string(),
@@ -374,3 +379,5 @@ include!("tests/queue_and_diagnostics.rs");
 include!("tests/remote_output.rs");
 include!("tests/remote_serving.rs");
 include!("tests/side_pause_countdown.rs");
+
+include!("tests/history.rs");
