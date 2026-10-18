@@ -6,7 +6,11 @@ struct SyncStatusStoreTests {
     @MainActor
     @Test("config values cannot overwrite readiness transitions")
     func configValuesDoNotPublishReadiness() {
-        let config = ConfigStore(config: Config(bridge: bridgeConfig()))
+        let config = ConfigStore(
+            config: Config(bridge: bridgeConfig()),
+            libraryName: "Test Library",
+            storage: nil
+        )
         let sync = SyncStatusStore()
 
         sync.apply(status(syncReady: true))
@@ -31,12 +35,10 @@ struct SyncStatusStoreTests {
         sync.apply(
             BridgeSyncStatusSnapshot(
                 error: .Diagnostic(category: .internal, detail: fault),
-                canReconnect: true,
-                blocked: [],
-                lastSyncTime: nil,
-                syncing: false,
-                syncReady: false,
-                indicator: .error
+                connected: false,
+                running: false,
+                pending: .loading,
+                indicator: .unconnected
             )
         )
 
@@ -49,38 +51,40 @@ struct SyncStatusStoreTests {
         )
     }
 
-    /// A cycle that completed but left an operation waiting on a person is not
-    /// "Synced" — core decides that and says so on the snapshot, so no surface
-    /// re-derives it — and the operation reaches the settings row that offers
-    /// to retry it.
+    /// A connected library with something coven waits on is not "Synced" —
+    /// core decides that and says so on the snapshot, so no surface re-derives
+    /// it — and the record reaches the list that offers its action.
     @MainActor
-    @Test("a blocked operation reads as the error state and reaches the UI")
-    func blockedOperationReadsAsError() throws {
+    @Test("a pending record makes the line wait and reaches the list")
+    func pendingRecordMakesTheLineWait() throws {
+        let record = BridgePendingRecord(
+            subject: .operation(id: 7, kind: "Write"),
+            reason: BridgePendingReason(
+                kind: .failed,
+                detail: "Failed(write refused)",
+                causes: []
+            ),
+            action: .retryOperation(id: 7)
+        )
         let sync = SyncStatusStore()
 
         sync.apply(
             BridgeSyncStatusSnapshot(
                 error: nil,
-                canReconnect: false,
-                blocked: [
-                    BridgeBlockedSyncOperation(
-                        id: "write:write-1",
-                        kind: .write,
-                        description: "releases/release-3",
-                        error: "blob release_files/file-7 is missing"
-                    )
-                ],
-                lastSyncTime: 1_700_000_000_000,
-                syncing: false,
-                syncReady: true,
-                indicator: .error
+                connected: true,
+                running: false,
+                pending: .ready(records: [record]),
+                indicator: .waiting(items: 1)
             )
         )
 
-        #expect(sync.indicator == .error)
-        let operation = try #require(sync.blocked.first)
-        #expect(operation.id == "write:write-1")
-        #expect(operation.error == "blob release_files/file-7 is missing")
+        #expect(sync.indicator == .waiting(items: 1))
+        guard case .ready(let records) = sync.pending else {
+            Issue.record("the read records reach the list")
+            return
+        }
+        let first = try #require(records.first)
+        #expect(first.action == .retryOperation(id: 7))
     }
 
     @MainActor
@@ -101,38 +105,32 @@ struct SyncStatusStoreTests {
                     category: .syncUpdateRequired,
                     detail: "schema 17 required"
                 ),
-                canReconnect: false,
-                blocked: [],
-                lastSyncTime: nil,
-                syncing: false,
-                syncReady: true,
-                indicator: .error
+                connected: true,
+                running: false,
+                pending: .ready(records: []),
+                indicator: .synced
             )
         )
         #expect(
             try #require(sync.error).line
                 == BridgeErrorCategory.syncUpdateRequired.localizedLine
         )
-        #expect(sync.indicator == .error)
         #expect(!sync.canReconnect)
     }
 
     private func status(syncReady: Bool) -> BridgeSyncStatusSnapshot {
         BridgeSyncStatusSnapshot(
             error: nil,
-            canReconnect: false,
-            blocked: [],
-            lastSyncTime: nil,
-            syncing: false,
-            syncReady: syncReady,
-            indicator: syncReady ? .synced(lastSyncTime: nil) : .idle
+            connected: syncReady,
+            running: false,
+            pending: syncReady ? .ready(records: []) : .loading,
+            indicator: syncReady ? .synced : .unconnected
         )
     }
 
     private func bridgeConfig() -> BridgeConfig {
         BridgeConfig(
             libraryId: "test-library",
-            libraryName: "Test Library",
             libraryPath: "/test",
             pauseBetweenSides: false,
             sidePauseCountdown: .off,
@@ -171,8 +169,7 @@ struct SyncStatusStoreTests {
                 bindAddress: "127.0.0.1"
             ),
             discogsTokenStatus: .notConfigured,
-            discogsUsable: false,
-            sync: nil
+            discogsUsable: false
         )
     }
 }

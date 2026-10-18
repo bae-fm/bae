@@ -6,8 +6,8 @@ import Testing
 @MainActor
 @Suite("Storage inspector")
 struct StorageInspectorTests {
-    @Test("file metadata and upload progress occupy the same row")
-    func filesCarryTheirOwnUpload() throws {
+    @Test("uploads that name no release file are listed on their own rows")
+    func uploadsWithoutAReleaseFileHaveTheirOwnRows() throws {
         let file = BridgeFile(
             id: "rel-row-1-audio",
             originalFilename: "disc/track.flac",
@@ -28,17 +28,11 @@ struct StorageInspectorTests {
             outbox: PreviewData.outboxSnapshot()
         )
         let row = try #require(rows.first)
-        #expect(rows.count == PreviewData.uploadFileOps.count)
+        #expect(rows.count == 1 + PreviewData.uploadFileOps.count)
         #expect(row.name == file.originalFilename)
         #expect(row.file?.audioFormat == file.audioFormat)
-        #expect(row.upload?.state == .uploading)
-        #expect(row.upload?.bar?.bytesDone == 12_400_000)
-        #expect(
-            row.throughputText
-                == QueueSummary.throughputText(bytesPerSecond: 2_200_000)
-        )
-        #expect(row.sizeText == file.fileSizeText)
-        #expect(rows.contains { $0.upload?.label == .cover })
+        #expect(row.operations.isEmpty)
+        #expect(rows.contains { $0.operations.first?.label == .cover })
 
         let finished = bridgeStorageInspectorFiles(
             releaseId: "rel-row-1",
@@ -47,7 +41,7 @@ struct StorageInspectorTests {
         )
         #expect(finished.count == 1)
         #expect(finished.first?.identity == row.identity)
-        #expect(finished.first?.upload == nil)
+        #expect(finished.first?.operations.isEmpty == true)
         #expect(finished.first?.name == file.originalFilename)
     }
 
@@ -61,17 +55,18 @@ struct StorageInspectorTests {
         #expect(rows.isEmpty)
     }
 
-    @Test("retry errors are visible on the file row")
-    func fileRetryErrorIsVisible() throws {
+    @Test("what an upload waits on reaches its row")
+    func pendingUploadCarriesItsRecord() throws {
         let rows = bridgeStorageInspectorFiles(
             releaseId: "rel-row-3",
             files: [],
             outbox: PreviewData.outboxSnapshot(
-                uploadGroups: [PreviewData.uploadGroupSourceUnavailable]
+                uploadGroups: [PreviewData.uploadGroupPending]
             )
         )
         let row = try #require(rows.first)
-        #expect(row.progressText == "The source file is unavailable.")
+        let operation = try #require(row.operations.first)
+        #expect(operation.pending?.reason.kind == .fileUnavailable)
     }
 
     @Test("each visible transfer queue carries its pause state")

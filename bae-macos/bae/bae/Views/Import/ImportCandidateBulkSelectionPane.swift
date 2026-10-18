@@ -28,7 +28,7 @@ struct ImportCandidateBulkSelectionPane: View {
                             selection.summary
                         ),
                         isRunning: selection.isRunning,
-                        showsStorageChoices: configStore.config.hasCloudHome,
+                        showsStorageChoices: configStore.hasCloudHome,
                         storageCloud: $storageCloud,
                         storagePinned: $storagePinned,
                         onPerform: onPerform

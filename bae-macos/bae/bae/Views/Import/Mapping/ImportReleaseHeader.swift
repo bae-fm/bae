@@ -213,7 +213,7 @@ struct ImportReleaseHeader: View {
                     .themeText(.detail)
                     .foregroundStyle(Theme.warning)
                 }
-                if configStore.config.hasCloudHome {
+                if configStore.hasCloudHome {
                     HStack(spacing: ThemeSpace.related) {
                         ImportCheckboxToggle(
                             "Cloud",

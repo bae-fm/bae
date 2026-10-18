@@ -13,19 +13,22 @@
         static func welcome() -> some View {
             WelcomeWindowChrome {
                 WelcomeView(
-                    onLibraryReady: { _ in },
+                    onLibraryReady: { _, _ in },
+                    onOpenLibrary: { _ in },
                     canDeleteActiveLibrary: true
                 )
             }
             .environment(PreviewData.welcomeSetup())
+            .environment(PreviewData.welcomeRemovals())
         }
 
         /// The restore-from-cloud flow, entered directly, in the welcome chrome.
         static func welcomeRestore() -> some View {
             WelcomeWindowChrome {
                 WelcomeView(
-                    onLibraryReady: { _ in },
-                    initialMode: .restore,
+                    onLibraryReady: { _, _ in },
+                    onOpenLibrary: { _ in },
+                    initialMode: .restore(nil),
                     canDeleteActiveLibrary: true
                 )
             }

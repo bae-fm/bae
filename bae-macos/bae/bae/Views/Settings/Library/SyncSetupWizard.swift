@@ -87,46 +87,18 @@ private struct ProviderRow: View {
     }
 }
 
-// MARK: - SyncSetupWizard (pure leaf)
+// MARK: - SyncSetupWizard
 
+/// Sets up the library's cloud home: pick a provider, then its short form or
+/// sign-in and folder choice. Success records the location coven connected.
 struct SyncSetupWizard: View {
-    let onConnectS3: (BridgeSaveSyncConfig) async throws -> Void
-    #if BAE_OAUTH_PROVIDERS
-        /// Awaits the OAuth browser sign-in; cancelling stops the listener.
-        let onConnectOAuth:
-            (_ provider: BridgeCloudProvider, _ storage: BridgeHomeStorage)
-                async throws -> Void
-        let onConnectCloudKit:
-            (_ storage: BridgeHomeStorage) async throws -> Void
-    #endif
     let onDone: () -> Void
+
+    @Environment(ConfigStore.self)
+    private var configStore
 
     @State
     private var step: WizardStep = .selectProvider
-    @State
-    private var error: DisplayError?
-    @State
-    private var isWorking = false
-    @State
-    private var connectTask: Task<Void, Never>?
-
-    // How the home stores its objects; defaults to encrypted.
-    @State
-    private var storage: BridgeHomeStorage = .opaque
-
-    // S3 fields
-    @State
-    private var bucket = ""
-    @State
-    private var region = ""
-    @State
-    private var endpoint = ""
-    @State
-    private var keyPrefix = ""
-    @State
-    private var accessKey = ""
-    @State
-    private var secretKey = ""
 
     var body: some View {
         VStack(spacing: 0) {
@@ -144,8 +116,7 @@ struct SyncSetupWizard: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(width: 460, height: 520)
-        .onDisappear { connectTask?.cancel() }
+        .frame(width: 460, height: 560)
     }
 
     // MARK: - Header
@@ -156,7 +127,6 @@ struct SyncSetupWizard: View {
                 Button {
                     withAnimation(.easeInOut(duration: 0.15)) {
                         step = .selectProvider
-                        error = nil
                     }
                 } label: {
                     Image(systemName: "chevron.left")
@@ -195,7 +165,6 @@ struct SyncSetupWizard: View {
                     Button {
                         withAnimation(.easeInOut(duration: 0.15)) {
                             step = .configure(option.id)
-                            error = nil
                         }
                     } label: {
                         ProviderRow(option: option)
@@ -209,32 +178,90 @@ struct SyncSetupWizard: View {
 
     // MARK: - Configure Step
 
-    /// The fields scroll; the error and the connect button stay below them.
+    /// A provider compiled out of this build can't be selected.
     @ViewBuilder
     private func configureStep(for provider: BridgeCloudProvider) -> some View {
+        switch provider {
+        case .s3:
+            S3SetupForm(onConnected: connected)
+        case .dropbox:
+            #if BAE_OAUTH_PROVIDERS
+                OAuthFolderSetup(provider: .dropbox, onConnected: connected)
+            #else
+                EmptyView()
+            #endif
+        case .oneDrive:
+            #if BAE_OAUTH_PROVIDERS
+                OAuthFolderSetup(provider: .oneDrive, onConnected: connected)
+            #else
+                EmptyView()
+            #endif
+        case .cloudKit:
+            #if BAE_CLOUDKIT
+                CloudKitSetup(onConnected: connected)
+            #else
+                EmptyView()
+            #endif
+        }
+    }
+
+    private func connected(_ setup: BridgeStorageSetup) {
+        configStore.applyStorage(setup.location)
+        onDone()
+    }
+}
+
+#if BAE_CLOUDKIT
+    /// Uses the Apple Account this Mac is signed in to.
+    private struct CloudKitSetup: View {
+        let onConnected: (BridgeStorageSetup) -> Void
+
+        @Environment(CloudSyncSetup.self)
+        private var cloudSyncSetup
+
+        var body: some View {
+            SetupStep(
+                actionTitle: "Use iCloud",
+                ready: true,
+                operation: { try await cloudSyncSetup.useCloudKit() },
+                onConnected: onConnected,
+                fields: {
+                    Section {
+                        Text(
+                            "Uses iCloud for sync. Requires iCloud to be enabled in System Settings."
+                        )
+                        .themeText(.body)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+            )
+        }
+    }
+#endif
+
+/// A setup step's fields above its one action: the error and the button stay
+/// below the fields while they scroll.
+struct SetupStep<Fields: View>: View {
+    let actionTitle: LocalizedStringKey
+    let ready: Bool
+    let operation: () async throws -> BridgeStorageSetup
+    let onConnected: (BridgeStorageSetup) -> Void
+    @ViewBuilder
+    let fields: Fields
+
+    @State
+    private var task: Task<Void, Never>?
+    @State
+    private var error: DisplayError?
+
+    var body: some View {
         VStack(spacing: 0) {
             Form {
-                storageSection
-
-                // A provider compiled out of this build can't be selected.
-                switch provider {
-                case .s3:
-                    s3Fields
-                case .dropbox, .oneDrive:
-                    #if BAE_OAUTH_PROVIDERS
-                        oauthExplanation(provider: provider)
-                    #else
-                        EmptyView()
-                    #endif
-                case .cloudKit:
-                    #if BAE_CLOUDKIT
-                        cloudKitExplanation
-                    #else
-                        EmptyView()
-                    #endif
-                }
+                fields
             }
             .formStyle(.grouped)
+            .disabled(task != nil)
 
             if let error {
                 ErrorDetailDisclosure(error: error)
@@ -242,218 +269,40 @@ struct SyncSetupWizard: View {
                     .padding(.bottom, ThemeSpace.related)
             }
 
-            connectRow(for: provider)
-                .padding(.horizontal)
-                .padding(.bottom, ThemeSpace.section)
-        }
-    }
-
-    // MARK: - Connect Row
-
-    /// The configure step's one action.
-    private func connectRow(for provider: BridgeCloudProvider) -> some View {
-        HStack(spacing: ThemeSpace.related) {
-            if isWorking {
-                ProgressView()
-                    .controlSize(.small)
+            HStack(spacing: ThemeSpace.related) {
+                if task != nil {
+                    ProgressView()
+                        .controlSize(.small)
+                }
+                Spacer()
+                Button(task != nil ? "Connecting..." : actionTitle) {
+                    connect()
+                }
+                .buttonStyle(PrimaryButtonStyle())
+                .keyboardShortcut(.defaultAction)
+                .disabled(task != nil || !ready)
             }
-            Spacer()
-            Button(connectTitle(for: provider)) {
-                connect(provider: provider)
-            }
-            .buttonStyle(PrimaryButtonStyle())
-            .keyboardShortcut(.defaultAction)
-            .disabled(isWorking || !connectReady(for: provider))
+            .padding(.horizontal)
+            .padding(.bottom, ThemeSpace.section)
         }
+        .onDisappear { task?.cancel() }
     }
 
-    private func connectTitle(
-        for provider: BridgeCloudProvider
-    ) -> LocalizedStringKey {
-        if isWorking {
-            return "Connecting..."
-        }
-        switch provider {
-        case .s3:
-            return "Connect"
-        case .dropbox, .oneDrive:
-            return "Connect \(provider.displayName)"
-        case .cloudKit:
-            return "Use iCloud"
-        }
-    }
-
-    /// Only S3 takes credentials here; the other flows collect theirs later.
-    private func connectReady(for provider: BridgeCloudProvider) -> Bool {
-        switch provider {
-        case .s3:
-            !bucket.isEmpty && !region.isEmpty && !accessKey.isEmpty
-                && !secretKey.isEmpty
-        case .dropbox, .oneDrive, .cloudKit:
-            true
-        }
-    }
-
-    // MARK: - Storage mode
-
-    /// Opaque or browsable storage, shown for every provider.
-    private var storageSection: some View {
-        Section("Storage") {
-            Picker("Storage", selection: $storage) {
-                Text("Opaque: end-to-end encrypted")
-                    .tag(BridgeHomeStorage.opaque)
-                Text("Browsable: stored unencrypted")
-                    .tag(BridgeHomeStorage.browsable)
-            }
-            .pickerStyle(.inline)
-            .labelsHidden()
-
-            Text(
-                storage == .opaque
-                    ? "Every object is encrypted before upload. Anyone with access to the storage sees only ciphertext under opaque keys."
-                    : "Objects are stored in the clear at readable paths, so anyone with access to the storage can read your files by name. Sharing is unavailable for a browsable library."
-            )
-            .themeText(.detail)
-            .foregroundStyle(.secondary)
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-    }
-
-    // MARK: - S3
-
-    private var s3Fields: some View {
-        Group {
-            Section {
-                TextField("Bucket", text: $bucket)
-                TextField("Region", text: $region)
-                TextField("Endpoint", text: $endpoint)
-                    .textContentType(.URL)
-                TextField("Key Prefix", text: $keyPrefix)
-            }
-
-            Section {
-                SecureField("Access Key", text: $accessKey)
-                SecureField("Secret Key", text: $secretKey)
-            }
-        }
-    }
-
-    // MARK: - OAuth
-
-    #if BAE_OAUTH_PROVIDERS
-        private func oauthExplanation(
-            provider: BridgeCloudProvider
-        ) -> some View {
-            Section {
-                Text(
-                    "Opens your browser to authorize bae with \(provider.displayName)."
-                )
-                .themeText(.body)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-        }
-    #endif
-
-    // MARK: - iCloud
-
-    #if BAE_CLOUDKIT
-        private var cloudKitExplanation: some View {
-            Section {
-                Text(
-                    "Uses iCloud for sync. Requires iCloud to be enabled in System Settings."
-                )
-                .themeText(.body)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-        }
-    #endif
-
-}
-
-// MARK: - Actions
-
-extension SyncSetupWizard {
-    /// Route the connect row's press to the flow the selected provider uses.
-    fileprivate func connect(provider: BridgeCloudProvider) {
-        switch provider {
-        case .s3:
-            connectS3()
-        case .dropbox, .oneDrive:
-            #if BAE_OAUTH_PROVIDERS
-                connectOAuth(provider: provider)
-            #else
-                break
-            #endif
-        case .cloudKit:
-            #if BAE_CLOUDKIT
-                connectCloudKit()
-            #else
-                break
-            #endif
-        }
-    }
-
-    fileprivate func connectS3() {
-        let data = BridgeSaveSyncConfig(
-            bucket: bucket,
-            region: region,
-            endpoint: endpoint.isEmpty ? nil : endpoint,
-            keyPrefix: keyPrefix.isEmpty ? nil : keyPrefix,
-            accessKey: accessKey,
-            secretKey: secretKey,
-            storage: storage,
-        )
-        runConnect { try await onConnectS3(data) }
-    }
-
-    #if BAE_OAUTH_PROVIDERS
-        fileprivate func connectOAuth(provider: BridgeCloudProvider) {
-            runConnect { try await onConnectOAuth(provider, storage) }
-        }
-    #endif
-
-    #if BAE_CLOUDKIT
-        fileprivate func connectCloudKit() {
-            runConnect { try await onConnectCloudKit(storage) }
-        }
-    #endif
-
-    /// Runs one connect attempt, replacing any in flight: success closes the
-    /// wizard and a failure shows its error.
-    fileprivate func runConnect(_ operation: @escaping () async throws -> Void)
-    {
-        connectTask?.cancel()
-        isWorking = true
+    private func connect() {
         error = nil
-
-        connectTask = Task {
+        task = Task {
+            defer { task = nil }
             do {
-                try await operation()
-                onDone()
+                onConnected(try await operation())
             }
             catch is CancellationError {
                 logger.debug("Connect attempt cancelled")
-                isWorking = false
             }
             catch {
                 logger.error("Connect failed: \(error.localizedDescription)")
-                isWorking = false
-                self.error = connectFailure(error)
+                self.error = DisplayError(error)
             }
         }
-    }
-
-    /// The failure to show for a connect error, or nil for a cancellation;
-    /// a `CloudKitError` carries its sentence in `msg`.
-    fileprivate func connectFailure(_ error: Error) -> DisplayError? {
-        #if BAE_CLOUDKIT
-            if case CloudKitError.Storage(let msg) = error {
-                return DisplayError(line: msg)
-            }
-        #endif
-        return DisplayError(error)
     }
 }
 
@@ -461,18 +310,11 @@ extension SyncSetupWizard {
     // MARK: - Previews
 
     #Preview("Provider Selection") {
-        #if BAE_OAUTH_PROVIDERS
-            SyncSetupWizard(
-                onConnectS3: { _ in },
-                onConnectOAuth: { _, _ in },
-                onConnectCloudKit: { _ in },
-                onDone: {}
-            )
-        #else
-            SyncSetupWizard(
-                onConnectS3: { _ in },
-                onDone: {}
-            )
-        #endif
+        SyncSetupWizard(onDone: {})
+            .environment(PreviewData.configStore())
+            .environment(PreviewData.previewSync())
+            #if BAE_OAUTH_PROVIDERS
+                .environment(CloudSyncSetup())
+            #endif
     }
 #endif

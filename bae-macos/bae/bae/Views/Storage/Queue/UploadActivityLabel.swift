@@ -23,7 +23,7 @@ struct UploadActivityLabel: View {
     }
 
     private var text: String {
-        guard let text = progress.primaryActivityText else {
+        guard let text = progress.activityText else {
             preconditionFailure(
                 "an active cloud upload has no projected activity label"
             )
@@ -35,23 +35,15 @@ struct UploadActivityLabel: View {
 extension BridgeUploadActivity {
     fileprivate var systemImage: String {
         switch self {
-        case .cancelling: "xmark.circle"
-        case .publishing: "arrow.triangle.2.circlepath"
         case .uploading: "arrow.up.circle.fill"
-        case .preparing: "seal"
-        case .retrying: "exclamationmark.triangle.fill"
-        case .prepared: "checkmark.circle"
         case .queued: "clock"
-        case .uploaded: "icloud"
         }
     }
 
     fileprivate var tone: StatusTone {
         switch self {
-        case .uploading, .preparing: .activity
-        case .retrying: .danger
-        case .publishing, .uploaded: .info
-        case .cancelling, .prepared, .queued: .neutral
+        case .uploading: .activity
+        case .queued: .neutral
         }
     }
 }

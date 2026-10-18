@@ -5,7 +5,7 @@ import Testing
 @testable import bae
 
 /// `CodeShareSheet` takes its `result` as a `@Binding` because the presenter
-/// generates the pairing code off-main *after* the sheet is already up: the
+/// generates the restore code off-main *after* the sheet is already up: the
 /// sheet must re-render when that write lands rather than show the loading
 /// snapshot it opened with. This drives the real sheet through a state-backed
 /// binding, flipping `nil` (loading) → `.success(code)` while it stays mounted,

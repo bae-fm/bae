@@ -1,97 +1,72 @@
 import BaeKit
 import SwiftUI
 
-/// First-run and add-a-library entry point. A thin switcher over the three
-/// flows — choose / restore / join — each its own view with its own state.
-/// Because the switch branches are distinct view types, SwiftUI gives each
-/// flow fresh `@State` every time it appears, so nothing leaks between flows.
+/// First-run and add-a-library entry point. A thin switcher over the flows —
+/// choose, and restore or join by code — each its own view with its own
+/// state. Because the switch branches are distinct view types, SwiftUI gives
+/// each flow fresh `@State` every time it appears, so nothing leaks between
+/// flows.
 struct WelcomeView: View {
-    let onLibraryReady: (BridgeLibrary) -> Void
+    /// A created, restored or joined library's open store, with the error a
+    /// partly finished restore or join reported.
+    let onLibraryReady: (OpenedLibrary, BridgeError?) -> Void
+    /// Open one of this Mac's libraries by id.
+    let onOpenLibrary: (String) -> Void
     /// A failed library open, shown as the chooser's inline callout. Only the
-    /// first-run bootstrap carries it; the deep-link initializer (restore-from-
-    /// code) lands on a flow with its own error line, so it stays nil there.
+    /// first-run bootstrap carries it; a flow a menu item opens directly shows
+    /// its own errors.
     let loadError: DisplayError?
     let canDeleteActiveLibrary: Bool
 
-    @Environment(LibrarySetup.self)
-    private var setup
-
     enum Mode {
         case choose
-        case restore
-        case join(BridgePendingDevicePairingJoin?)
+        /// Restore by a typed or scanned code, or from a code coven saved in
+        /// iCloud Keychain.
+        case restore(BridgeSavedRestoreCode?)
+        case join
     }
 
     @State
     private var mode: Mode
-    @State
-    private var pendingLoadError: DisplayError?
 
-    /// Default initializer used by first-run flow. Lands on `.choose`.
     init(
-        onLibraryReady: @escaping (BridgeLibrary) -> Void,
+        onLibraryReady: @escaping (OpenedLibrary, BridgeError?) -> Void,
+        onOpenLibrary: @escaping (String) -> Void,
         loadError: DisplayError? = nil,
+        initialMode: Mode = .choose,
         canDeleteActiveLibrary: Bool
     ) {
         self.onLibraryReady = onLibraryReady
+        self.onOpenLibrary = onOpenLibrary
         self.loadError = loadError
         self.canDeleteActiveLibrary = canDeleteActiveLibrary
-        self._mode = State(initialValue: .choose)
-        self._pendingLoadError = State(initialValue: nil)
-    }
-
-    /// Initializer used by the sidebar's "+ Add..." menu when the user
-    /// has already picked a specific flow (Restore from code). Skips the
-    /// chooser and lands directly on the requested mode.
-    init(
-        onLibraryReady: @escaping (BridgeLibrary) -> Void,
-        initialMode: Mode,
-        canDeleteActiveLibrary: Bool
-    ) {
-        self.onLibraryReady = onLibraryReady
-        self.loadError = nil
-        self.canDeleteActiveLibrary = canDeleteActiveLibrary
-        self._mode = State(initialValue: initialMode)
-        self._pendingLoadError = State(initialValue: nil)
+        _mode = State(initialValue: initialMode)
     }
 
     var body: some View {
-        Group {
-            switch mode {
-            case .choose:
-                WelcomeChooseView(
-                    loadError: pendingLoadError ?? loadError,
-                    canDeleteActiveLibrary: canDeleteActiveLibrary,
-                    onLibraryReady: onLibraryReady,
-                    onJoin: { mode = .join(nil) },
-                    onRestore: { mode = .restore },
-                )
-            case .restore:
-                RestoreFromCloudView(
-                    onLibraryReady: onLibraryReady,
-                    onBack: { mode = .choose },
-                )
-            case .join(let pending):
-                JoinLibraryView(
-                    onLibraryReady: onLibraryReady,
-                    onBack: { mode = .choose },
-                    pending: pending
-                )
-            }
-        }
-        .task {
-            guard case .choose = mode else { return }
-            let pendingDevicePairingJoin = setup.pendingDevicePairingJoin
-            do {
-                if let pending = try await DetachedWork.run({
-                    try pendingDevicePairingJoin()
-                }) {
-                    mode = .join(pending)
-                }
-            }
-            catch {
-                pendingLoadError = DisplayError(error)
-            }
+        switch mode {
+        case .choose:
+            WelcomeChooseView(
+                loadError: loadError,
+                canDeleteActiveLibrary: canDeleteActiveLibrary,
+                onLibraryReady: onLibraryReady,
+                onOpenLibrary: onOpenLibrary,
+                onRestoreSaved: { mode = .restore($0) },
+                onJoin: { mode = .join },
+                onRestore: { mode = .restore(nil) }
+            )
+        case .restore(let saved):
+            BootstrapCodeView(
+                entry: .restore(saved),
+                onLibraryReady: onLibraryReady,
+                onBack: { mode = .choose }
+            )
+        case .join:
+            BootstrapCodeView(
+                entry: .join,
+                onLibraryReady: onLibraryReady,
+                onBack: { mode = .choose }
+            )
         }
     }
 }
@@ -99,9 +74,9 @@ struct WelcomeView: View {
 #if DEBUG
     // MARK: - Previews
 
-    /// The three flows the switcher lands on, each in the welcome window's
-    /// chrome with the populated `LibrarySetup` so no flow touches the real
-    /// library directory or keychain.
+    /// The flows the switcher lands on, each in the welcome window's chrome
+    /// with the populated `LibrarySetup` so no flow touches the real library
+    /// directory or keychain.
     #Preview("Choose") {
         PreviewScenes.welcome()
     }
@@ -113,8 +88,9 @@ struct WelcomeView: View {
     #Preview("Join") {
         WelcomeWindowChrome {
             WelcomeView(
-                onLibraryReady: { _ in },
-                initialMode: .join(nil),
+                onLibraryReady: { _, _ in },
+                onOpenLibrary: { _ in },
+                initialMode: .join,
                 canDeleteActiveLibrary: true
             )
         }

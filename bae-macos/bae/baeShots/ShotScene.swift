@@ -247,7 +247,7 @@ struct ShotScene {
                     downloadSnapshot: PreviewData.emptyDownloadSnapshot,
                     outputSnapshot: PreviewData.emptyOutputSnapshot,
                     outboxSnapshot: PreviewData.outboxSnapshot(
-                        uploadGroups: [PreviewData.uploadGroupDone]
+                        uploadGroups: [PreviewData.uploadGroupQueued]
                     )
                 )
             )

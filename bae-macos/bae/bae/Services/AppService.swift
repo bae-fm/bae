@@ -69,13 +69,19 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         diagnostics: BridgeDiagnostics,
         uiStore: UiStore,
         config: BridgeConfig,
-        seed: LibrarySessionSeed
+        seed: LibrarySessionSeed,
+        deviceName: String
     ) {
         let playbackStore = PlaybackStore()
-        let configStore = ConfigStore(config: Config(bridge: config))
+        let configStore = ConfigStore(
+            config: Config(bridge: config),
+            libraryName: seed.name,
+            storage: seed.storage
+        )
         let syncStatusStore = SyncStatusStore()
+        let membershipStore = MembershipStore(handle: appHandle)
         let artworkLoadingStore = ArtworkLoadingStore {
-            appHandle.cancelEagerCacheFill()
+            try await appHandle.cancelEagerCacheFill()
         }
         let libraryStore = LibraryStore()
         let downloadStore = DownloadStore(snapshot: seed.downloads)
@@ -86,7 +92,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         let queue = Queue(handle: appHandle)
         let mediaPaths = MediaPaths(handle: appHandle)
         let imageStore = ImageStore(handle: appHandle)
-        let sync = Sync(handle: appHandle)
+        let sync = Sync(handle: appHandle, deviceName: deviceName)
         let downloads = Downloads(handle: appHandle)
         let cast = Cast(handle: appHandle)
         let importStore = ImportStore()
@@ -110,7 +116,10 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         subsonic = SubsonicServer(handle: appHandle)
         export = TrackSave(handle: appHandle)
         #if BAE_OAUTH_PROVIDERS
-            cloudSyncSetup = CloudSyncSetup(handle: appHandle)
+            cloudSyncSetup = CloudSyncSetup(
+                handle: appHandle,
+                deviceName: deviceName
+            )
         #endif
         libraryBrowseSession = LibraryBrowseSession(
             library: library,
@@ -135,12 +144,14 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             libraryStore: libraryStore,
             uiStore: uiStore,
             library: library,
-            playback: playback
+            playback: playback,
+            membershipStore: membershipStore
         )
         let components = AppServiceComponents(
             playbackStore: playbackStore,
             configStore: configStore,
             syncStatusStore: syncStatusStore,
+            membershipStore: membershipStore,
             artworkLoadingStore: artworkLoadingStore,
             libraryStore: libraryStore,
             downloadStore: downloadStore,

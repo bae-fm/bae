@@ -94,7 +94,7 @@ struct ReleaseStorageSheet: View {
             release: PreviewData.storageRelease(
                 storageState: .remote,
                 pinned: false,
-                storageActions: [.pin, .makeLocal]
+                storageActions: [.pin, .detachAudio]
             ),
             onAction: { _ in },
             onExport: {},

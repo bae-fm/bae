@@ -13,7 +13,7 @@ final class ReleaseEditor: Observable {
         ) async throws -> Void
     private let moveReleasesToCloudAction:
         @Sendable (_ releaseIds: [String]) async throws ->
-            BridgeMakeReleasesRemoteOutcome
+            BridgeUploadReleasesOutcome
     private let outboxStore: OutboxStore
     let makeReleaseLocal:
         @Sendable (_ releaseId: String, _ newPath: String) async throws -> Void
@@ -40,7 +40,7 @@ final class ReleaseEditor: Observable {
             async throws -> Void = { _, _ in },
         moveReleasesToCloud:
             @escaping @Sendable ([String]) async throws ->
-            BridgeMakeReleasesRemoteOutcome =
+            BridgeUploadReleasesOutcome =
             { _ in throw StubError.notImplemented },
         outboxStore: OutboxStore,
         makeReleaseLocal:
@@ -99,11 +99,11 @@ final class ReleaseEditor: Observable {
                 )
             },
             moveReleasesToCloud: {
-                try await handle.makeReleasesRemote(releaseIds: $0)
+                try await handle.uploadReleases(releaseIds: $0)
             },
             outboxStore: outboxStore,
             makeReleaseLocal: {
-                try await handle.makeReleaseLocal(releaseId: $0, newPath: $1)
+                try await handle.detachReleaseAudio(releaseId: $0, newPath: $1)
             },
             deleteRelease: { try await handle.deleteRelease(releaseId: $0) },
             setPrimaryRelease: {
@@ -142,7 +142,7 @@ final class ReleaseEditor: Observable {
         let command = outboxStore.beginCloudUploads(
             forReleases: releaseIds
         )
-        let outcome: BridgeMakeReleasesRemoteOutcome
+        let outcome: BridgeUploadReleasesOutcome
         do {
             outcome = try await moveReleasesToCloudAction(releaseIds)
         }

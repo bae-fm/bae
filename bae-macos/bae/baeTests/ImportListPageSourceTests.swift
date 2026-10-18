@@ -195,7 +195,7 @@ struct ImportListPageSourceTests {
             ),
             selectionRevision: 0,
             requestRevision: requestRevision,
-            cause: .requestChanged
+            cause: .request
         )
     }
 }

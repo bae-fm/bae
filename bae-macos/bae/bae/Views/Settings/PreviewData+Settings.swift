@@ -3,11 +3,10 @@
     import Foundation
 
     // Preview fixtures for the settings flows — the save-format presets and
-    // their filename tokens, plus the Library membership chain (this device as
-    // owner plus one removable member), a `Sync` whose reads serve those
-    // fixtures, and connected/erroring config stores. Generic
-    // placeholder identities throughout; the pubkeys and fingerprints are
-    // arbitrary hex.
+    // their filename tokens, plus the Library people (this device's person as
+    // admin plus one removable member), a `Sync` whose reads serve preview
+    // values, and a connected config store. Generic placeholder identities
+    // throughout.
     extension PreviewData {
         // MARK: - Formats
 
@@ -43,103 +42,91 @@
 
         // MARK: - Membership
 
-        static let members: [BridgeMember] = [
-            BridgeMember(
-                pubkey:
-                    "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff",
-                role: .owner,
-                isSelf: true,
-                fingerprint: "00112233",
-                canRemove: false,
+        static let previewStorage = BridgeStorageLocation.s3(
+            bucket: "preview-bucket",
+            region: "us-east-1",
+            endpoint: nil,
+            profile: nil,
+            prefix: ""
+        )
+
+        /// This device's person, an admin, and one other member with a
+        /// removable device. Ids are arbitrary UUIDs.
+        static let members: [BridgePerson] = [
+            BridgePerson(
+                id: "4a1f2c3d-0000-4000-8000-000000000001",
+                profile: BridgePersonProfile(
+                    id: "4a1f2c3d-0000-4000-8000-000000000001",
+                    name: "Person A",
+                    privateCircle: "circle-a",
+                    historySharing: .private,
+                    avatarId: nil
+                ),
+                membership: BridgeMember(
+                    id: "4a1f2c3d-0000-4000-8000-000000000001",
+                    keys: BridgeMemberPublicKeys(
+                        signing: Data(),
+                        sealing: Data()
+                    ),
+                    role: .admin,
+                    devices: [
+                        BridgeDevice(
+                            id: 1,
+                            name: "Person A's Mac",
+                            state: .active,
+                            isSelf: true
+                        )
+                    ],
+                    isSelf: true,
+                    canRemove: false,
+                    canRemoveDevices: true
+                )
             ),
-            BridgeMember(
-                pubkey:
-                    "ffeeddccbbaa99887766554433221100ffeeddccbbaa99887766554433221100",
-                role: .member,
-                isSelf: false,
-                fingerprint: "ffeeddcc",
-                canRemove: true,
+            BridgePerson(
+                id: "4a1f2c3d-0000-4000-8000-000000000002",
+                profile: BridgePersonProfile(
+                    id: "4a1f2c3d-0000-4000-8000-000000000002",
+                    name: "Person B",
+                    privateCircle: "circle-b",
+                    historySharing: .household,
+                    avatarId: nil
+                ),
+                membership: BridgeMember(
+                    id: "4a1f2c3d-0000-4000-8000-000000000002",
+                    keys: BridgeMemberPublicKeys(
+                        signing: Data(),
+                        sealing: Data()
+                    ),
+                    role: .member,
+                    devices: [
+                        BridgeDevice(
+                            id: 2,
+                            name: "Person B's Phone",
+                            state: .active,
+                            isSelf: false
+                        )
+                    ],
+                    isSelf: false,
+                    canRemove: true,
+                    canRemoveDevices: true
+                )
             ),
         ]
 
-        static let membership = BridgeMembership(
-            members: members,
-            selfIsOwner: true,
-        )
-
-        /// A `Sync` whose reads serve the membership fixtures above, so the
-        /// members and library-settings previews never touch a real membership
-        /// chain or cloud storage.
+        /// A `Sync` whose reads serve preview values, so the library-settings
+        /// previews never touch cloud storage.
         static func previewSync() -> Sync {
             Sync(
-                generateRestoreCode: { "recovery-code-preview" },
-                getMembers: { membership },
-                cloudOnlyReleaseCount: { 0 },
+                generateRestoreCode: { "restore-code-preview" },
+                cloudOnlyReleaseCount: { 0 }
             )
         }
 
-        // MARK: - Connected / erroring config
-
-        static let previewSyncConfig = BridgeSyncConfig(
-            provider: .s3(
-                bucket: "preview-bucket",
-                region: "us-east-1",
-                endpoint: nil,
-            ),
-            cloudAccountDisplay: "s3://preview-bucket",
-        )
-
-        /// A `ConfigStore` reporting a live sync connection (a provider is
-        /// configured and the loop is up), so the Library settings preview shows
-        /// the connected controls, the devices list, and the recovery section.
+        /// A `ConfigStore` whose library has a cloud home, so the Library
+        /// settings preview shows the connected controls and the people.
         @MainActor
         static func connectedConfigStore() -> ConfigStore {
-            ConfigStore(config: Config(bridge: connectedBridgeConfig))
+            makeConfigStore(libraryFullWidth: false, storage: previewStorage)
         }
-
-        private static let connectedBridgeConfig = BridgeConfig(
-            libraryId: "lib-preview",
-            libraryName: "Preview Library",
-            libraryPath: "/preview",
-            pauseBetweenSides: false,
-            sidePauseCountdown: .off,
-            maxConcurrentUploads: 3,
-            maxConcurrentDownloads: 3,
-            identifyAutomatically: true,
-            importWhenIdentified: false,
-            importStorage: BridgeImportStorage(
-                cloud: true,
-                pinned: true
-            ),
-            lookupCatalogs: [
-                BridgeLookupCatalogSetting(
-                    catalog: .musicBrainz,
-                    availability: .on,
-                    canChange: true
-                ),
-                BridgeLookupCatalogSetting(
-                    catalog: .discogs,
-                    availability: .on,
-                    canChange: true
-                ),
-            ],
-            showRemainingTime: false,
-            libraryFullWidth: false,
-            savePresets: savePresets,
-            defaultTrackSavePreset: "flac",
-            defaultReleaseSavePreset: "flac",
-            castEnabled: false,
-            castTranscodeFormat: .mp3,
-            mcp: BridgeMcpConfig(enabled: false, port: 47777),
-            subsonic: BridgeSubsonicConfig(
-                enabled: false,
-                port: 4533,
-                username: "",
-                bindAddress: "127.0.0.1",
-            ),
-            discogsTokenStatus: .notConfigured,
-            discogsUsable: false,
-            sync: previewSyncConfig,
-        )
     }
 #endif

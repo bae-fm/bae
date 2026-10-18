@@ -165,94 +165,94 @@
 
         // MARK: - Cloud outbox
 
-        /// Every durable and transient upload-file phase.
+        /// A file coven can't upload until its source is back where it was.
+        static let unavailableFilePending = BridgePendingRecord(
+            subject: .file(deviceId: 1, fileId: "release_files:f-5"),
+            reason: BridgePendingReason(
+                kind: .fileUnavailable,
+                detail:
+                    "FileUnavailable(\"/Volumes/Music/Album Title/05 Track Title.flac\")",
+                causes: []
+            ),
+            action: .restoreFile
+        )
+
+        /// Waiting and uploading files, a bar on each one moving bytes, and one
+        /// waiting on its missing source.
         static let uploadFileOps: [BridgeUploadFileOp] = [
             BridgeUploadFileOp(
+                pending: nil,
                 fileId: "covers:rel-row-1",
+                releaseFileKey: nil,
                 label: .cover,
                 bar: nil,
-                sourceBytesTotal: 24_000_000,
                 throughputBps: 0,
-                state: .uploaded,
-                lastError: nil
+                state: .waiting
             ),
             BridgeUploadFileOp(
+                pending: nil,
                 fileId: "release_files:f-2",
+                releaseFileKey: nil,
                 label: .filename(name: "02 Track Title.flac"),
                 bar: BridgeUploadBar(
-                    phase: .preparing,
                     bytesDone: 10_000_000,
                     bytesTotal: 31_000_000
                 ),
-                sourceBytesTotal: 31_000_000,
                 throughputBps: 1_000_000,
-                state: .preparing,
-                lastError: nil
+                state: .uploading
             ),
             BridgeUploadFileOp(
+                pending: nil,
                 fileId: "release_files:f-3",
+                releaseFileKey: nil,
                 label: .filename(name: "03 Track Title.flac"),
                 bar: nil,
-                sourceBytesTotal: 28_000_000,
                 throughputBps: 0,
-                state: .prepared,
-                lastError: nil
+                state: .waiting
             ),
             BridgeUploadFileOp(
+                pending: nil,
                 fileId: "release_files:rel-row-1-audio",
+                releaseFileKey: nil,
                 label: .filename(name: "04 Track Title.flac"),
                 bar: BridgeUploadBar(
-                    phase: .uploading,
                     bytesDone: 12_400_000,
                     bytesTotal: 26_100_000
                 ),
-                sourceBytesTotal: 26_000_000,
                 throughputBps: 2_200_000,
-                state: .uploading,
-                lastError: nil
+                state: .uploading
             ),
             BridgeUploadFileOp(
+                pending: unavailableFilePending,
                 fileId: "release_files:f-5",
+                releaseFileKey: nil,
                 label: .filename(name: "05 Track Title.flac"),
                 bar: nil,
-                sourceBytesTotal: 22_000_000,
                 throughputBps: 0,
-                state: .retrying,
-                lastError: "Upload timed out; will retry."
+                state: .waiting
             ),
             BridgeUploadFileOp(
+                pending: nil,
                 fileId: "release_files:f-6",
+                releaseFileKey: nil,
                 label: .filename(name: "06 Track Title.flac"),
                 bar: nil,
-                sourceBytesTotal: 18_000_000,
                 throughputBps: 0,
-                state: .queued,
-                lastError: nil
+                state: .waiting
             ),
         ]
 
         static func uploadProgress(
-            activity: BridgeUploadActivity?,
-            sourceUnavailablePaths: [String] = []
+            activity: BridgeUploadActivity?
         ) -> BridgeUploadProgress {
             BridgeUploadProgress(
-                queued: 1,
-                preparing: 1,
-                prepared: 1,
-                uploading: 1,
-                retrying: 1,
-                uploaded: 1,
-                publishing: 0,
-                cancelling: 0,
+                queued: 4,
+                uploading: 2,
                 bar: BridgeUploadBar(
-                    phase: .preparing,
-                    bytesDone: 93_000_000,
-                    bytesTotal: 149_000_000
+                    bytesDone: 22_400_000,
+                    bytesTotal: 57_100_000
                 ),
-                activity: activity,
-                canCancel: true,
-                issue: sourceUnavailablePaths.isEmpty
-                    ? nil : .sourceUnavailable(paths: sourceUnavailablePaths)
+                activity: activity
             )
         }
 
@@ -263,76 +263,55 @@
             throughputBps: 3_200_000
         )
 
-        /// A second group whose blobs landed and whose release is publishing.
-        static let uploadGroupDone = BridgeUploadReleaseGroup(
+        /// A second group whose one file waits its turn.
+        static let uploadGroupQueued = BridgeUploadReleaseGroup(
             releaseId: "rel-row-2",
             files: [
                 BridgeUploadFileOp(
+                    pending: nil,
                     fileId: "release_files:rel-row-2-audio",
+                    releaseFileKey: nil,
                     label: .filename(name: "01 Track Title.flac"),
                     bar: nil,
-                    sourceBytesTotal: 18_000_000,
                     throughputBps: 0,
-                    state: .uploaded,
-                    lastError: nil
+                    state: .waiting
                 )
             ],
             progress: BridgeUploadProgress(
-                queued: 0,
-                preparing: 0,
-                prepared: 0,
+                queued: 1,
                 uploading: 0,
-                retrying: 0,
-                uploaded: 1,
-                publishing: 1,
-                cancelling: 0,
-                bar: BridgeUploadBar(
-                    phase: .uploading,
-                    bytesDone: 18_100_000,
-                    bytesTotal: 18_100_000
-                ),
-                activity: .publishing,
-                canCancel: false,
-                issue: nil
+                bar: nil,
+                activity: .queued
             ),
             throughputBps: 0
         )
 
-        static let uploadGroupSourceUnavailable = BridgeUploadReleaseGroup(
+        /// A group whose only file is waiting on its missing source.
+        static let uploadGroupPending = BridgeUploadReleaseGroup(
             releaseId: "rel-row-3",
             files: [
                 BridgeUploadFileOp(
+                    pending: unavailableFilePending,
                     fileId: "release_files:rel-row-3-audio",
+                    releaseFileKey: nil,
                     label: .filename(name: "01 Track Title.flac"),
                     bar: nil,
-                    sourceBytesTotal: 24_000_000,
                     throughputBps: 0,
-                    state: .retrying,
-                    lastError: "The source file is unavailable."
+                    state: .waiting
                 )
             ],
             progress: BridgeUploadProgress(
-                queued: 0,
-                preparing: 0,
-                prepared: 0,
+                queued: 1,
                 uploading: 0,
-                retrying: 1,
-                uploaded: 0,
-                publishing: 0,
-                cancelling: 0,
                 bar: nil,
-                activity: .retrying,
-                canCancel: true,
-                issue: .sourceUnavailable(paths: [
-                    "/Volumes/Music/Album Title C/01 Track Title.flac"
-                ])
+                activity: .queued
             ),
             throughputBps: 0
         )
 
         static func outboxSnapshot(
             uploadGroups: [BridgeUploadReleaseGroup] = [
-                uploadGroup, uploadGroupDone,
+                uploadGroup, uploadGroupQueued,
             ],
             pauseState: BridgeOutboxPauseState = .running
         ) -> BridgeOutboxSnapshot {
@@ -350,29 +329,20 @@
             return BridgeOutboxSnapshot(
                 revision: 1,
                 uploadGroups: uploadGroups,
+                otherFiles: [],
                 perRelease: perRelease,
                 total: BridgeUploadProgress(
-                    queued: 1,
-                    preparing: 1,
-                    prepared: 1,
-                    uploading: 1,
-                    retrying: 1,
-                    uploaded: 2,
-                    publishing: 1,
-                    cancelling: 0,
+                    queued: 5,
+                    uploading: 2,
                     bar: BridgeUploadBar(
-                        phase: .preparing,
-                        bytesDone: 111_000_000,
-                        bytesTotal: 167_000_000
+                        bytesDone: 22_400_000,
+                        bytesTotal: 75_200_000
                     ),
-                    activity: .uploading,
-                    canCancel: false,
-                    issue: nil
+                    activity: .uploading
                 ),
                 summaryParts: [
-                    BridgeCountLabel(key: "core.queue.uploading", count: 1),
-                    BridgeCountLabel(key: "core.outbox.retrying", count: 1),
-                    BridgeCountLabel(key: "core.queue.queued", count: 1),
+                    BridgeCountLabel(key: "core.queue.uploading", count: 2),
+                    BridgeCountLabel(key: "core.queue.queued", count: 5),
                 ],
                 pauseState: pauseState,
                 throughputBps: 6_800_000,

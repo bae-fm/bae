@@ -33,15 +33,11 @@ struct LibraryMenuEntry: Equatable {
     let id: String
     let name: String
     let isActive: Bool
-    /// False for a library whose config could not be read: it is listed, so it
-    /// isn't lost, but it cannot be opened.
-    let canOpen: Bool
 
     init(_ library: BridgeLibrary) {
         id = library.id
         name = library.name
         isActive = library.isActive
-        canOpen = library.error == nil
     }
 }
 
@@ -55,9 +51,12 @@ struct LibraryMenuState: Equatable {
     let pausesBetweenSides: Bool
     /// Whether the library has any album to shuffle.
     let canShuffle: Bool
+    /// Whether this device's person is an admin, who alone can rename.
+    let canRename: Bool
 
     @MainActor
     init(reading target: MainAppMenuTarget) {
+        canRename = target.membershipStore.selfIsAdmin
         browserMode = target.uiStore.libraryBrowserMode
         fullWidth = target.configStore.config.libraryFullWidth
         hasNowPlayingTrack =

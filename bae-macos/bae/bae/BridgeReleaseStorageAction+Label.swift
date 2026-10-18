@@ -7,8 +7,8 @@ extension BridgeReleaseStorageAction {
     /// sites read the same wording.
     var label: String {
         switch self {
-        case .makeRemote: String(localized: "Move to Cloud")
-        case .makeLocal: String(localized: "Make Local…")
+        case .upload: String(localized: "Move to Cloud")
+        case .detachAudio: String(localized: "Make Local…")
         case .pin: String(localized: "Pin")
         case .unpin: String(localized: "Unpin")
         }
@@ -17,8 +17,8 @@ extension BridgeReleaseStorageAction {
     /// SF Symbol name paired with `label`.
     var systemImage: String {
         switch self {
-        case .makeRemote: "arrow.down.to.line"
-        case .makeLocal: "arrow.up.forward.square"
+        case .upload: "arrow.down.to.line"
+        case .detachAudio: "arrow.up.forward.square"
         case .pin: "pin"
         case .unpin: "pin.slash"
         }

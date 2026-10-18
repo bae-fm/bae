@@ -71,13 +71,13 @@
             castEnabled: Bool = false,
             discogsUsable: Bool = true,
             musicBrainz: BridgeSourceAvailability = .on,
-            discogs: BridgeSourceAvailability? = nil
+            discogs: BridgeSourceAvailability? = nil,
+            storage: BridgeStorageLocation? = nil
         ) -> ConfigStore {
             ConfigStore(
                 config: Config(
                     bridge: BridgeConfig(
                         libraryId: "lib-preview",
-                        libraryName: "Preview Library",
                         libraryPath: "/preview",
                         pauseBetweenSides: pauseBetweenSides,
                         sidePauseCountdown: .off,
@@ -110,10 +110,11 @@
                         ),
                         discogsTokenStatus: discogsUsable
                             ? .valid : .notConfigured,
-                        discogsUsable: discogsUsable,
-                        sync: nil
+                        discogsUsable: discogsUsable
                     )
-                )
+                ),
+                libraryName: "Preview Library",
+                storage: storage
             )
         }
 

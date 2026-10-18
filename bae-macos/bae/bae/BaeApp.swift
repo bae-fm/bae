@@ -49,10 +49,6 @@ enum AppRuntime: Equatable {
     }
 
     #if DEBUG
-        static func usesTestKeyring(environment: [String: String]) -> Bool {
-            environment["BAE_UI_TESTING"] == "1"
-        }
-
         static func createsLibraryForUITesting(
             environment: [String: String]
         ) -> Bool {
@@ -94,14 +90,21 @@ private let appRuntime = AppRuntime(environment: baeAppProcessEnvironment)
 private func discoverInitialLibraries(
     host: BridgeHost,
     environment: [String: String]
-) throws -> [BridgeLibrary] {
-    var libraries = try host.discoverLibraries()
+) async throws -> [BridgeLibrary] {
+    var libraries = try await host.listLibraries()
     #if DEBUG
         if libraries.isEmpty,
             AppRuntime.createsLibraryForUITesting(environment: environment)
         {
-            _ = try host.createLibrary(name: nil)
-            libraries = try host.discoverLibraries()
+            // Opened and closed so the fixture can be written into it when the
+            // launch opens it by id.
+            let created = try await host.createLibrary(name: nil)
+            let app = try created.open(
+                positionUpdateIntervalMs: 200,
+                restorePlayback: false
+            )
+            try app.closeLibrary()
+            libraries = try await host.listLibraries()
         }
     #endif
     return libraries
@@ -119,9 +122,19 @@ private func baeAppDir(environment: [String: String]) -> BridgeAppDir {
 enum AppScreen {
     case loading
     case welcome
-    case unlock(libraryName: String)
+    /// Opening found a damaged database or another copy of this device; the
+    /// person can reset the device for this library.
+    case resetRequired(libraryId: String)
     case keychainLocked(libraryId: String)
     case library
+}
+
+/// This Mac's name as the person sees it, which other devices show for it.
+private func currentDeviceName() -> String {
+    guard let name = Host.current().localizedName else {
+        preconditionFailure("this Mac has no computer name")
+    }
+    return name
 }
 
 /// The installed application's process-wide services, built together so an
@@ -131,7 +144,10 @@ final class ApplicationServices {
     let diagnostics: BridgeDiagnostics
     let host: BridgeHost
     let mediaControlService: MediaControlService
+    /// The name this Mac registers under when it joins or sets up a library.
+    let deviceName: String
     let librarySetup: LibrarySetup
+    let libraryRemovals: LibraryRemovals
     let updaterController: SPUStandardUpdaterController
     let checkForUpdatesViewModel: CheckForUpdatesViewModel
     let firstResponderActions = FirstResponderActions()
@@ -144,7 +160,9 @@ final class ApplicationServices {
         )
         host = BaeHost.make(diagnostics: diagnostics, appDir: appDir)
         mediaControlService = MediaControlService()
-        librarySetup = LibrarySetup.live(host: host)
+        deviceName = currentDeviceName()
+        librarySetup = LibrarySetup.live(host: host, deviceName: deviceName)
+        libraryRemovals = LibraryRemovals.live(host: host)
         #if DEBUG
             let updaterController = SPUStandardUpdaterController(
                 startingUpdater: false,
@@ -188,20 +206,23 @@ struct BaeApp: App {
         Group {
             if let mode = appDelegate.welcomeInitialMode {
                 WelcomeView(
-                    onLibraryReady: { lib in appDelegate.openLibrary(lib) },
+                    onLibraryReady: appDelegate.openOpenedLibrary,
+                    onOpenLibrary: appDelegate.openLocalLibrary(id:),
                     initialMode: mode,
                     canDeleteActiveLibrary: !appDelegate.hasShell
                 )
             }
             else {
                 WelcomeView(
-                    onLibraryReady: { lib in appDelegate.openLibrary(lib) },
+                    onLibraryReady: appDelegate.openOpenedLibrary,
+                    onOpenLibrary: appDelegate.openLocalLibrary(id:),
                     loadError: loadError,
                     canDeleteActiveLibrary: !appDelegate.hasShell
                 )
             }
         }
         .environment(applicationServices.librarySetup)
+        .environment(applicationServices.libraryRemovals)
     }
 
     /// Main-window content once the first library has opened.
@@ -212,14 +233,8 @@ struct BaeApp: App {
             ProgressView("Switching libraries...")
         case .welcome:
             ProgressView()
-        case .unlock(let libraryName):
-            UnlockView(
-                libraryName: libraryName,
-                onUnlock: appDelegate.unlock,
-                // Cancelling a switch-to-locked-library returns to the
-                // library that's still open.
-                onCancel: { appDelegate.screen = .library }
-            )
+        case .resetRequired(let libraryId):
+            deviceResetView(libraryId: libraryId)
         case .keychainLocked:
             KeychainLockedView(onRetry: appDelegate.retryKeychainOpen)
         case .library:
@@ -227,7 +242,15 @@ struct BaeApp: App {
         }
     }
 
-    /// The welcome, rename and lock modals the File menu presents.
+    private func deviceResetView(libraryId: String) -> some View {
+        DeviceResetView(
+            error: appDelegate.loadError,
+            onReset: { appDelegate.resetDevice(libraryId: libraryId) },
+            onCancel: appDelegate.cancelDeviceReset
+        )
+    }
+
+    /// The welcome and rename modals the File menu presents.
     private func libraryModals<Content: View>(
         _ content: Content
     ) -> some View {
@@ -258,31 +281,6 @@ struct BaeApp: App {
                     }
                 )
             }
-            .alert(
-                "Lock library?",
-                isPresented: Binding(
-                    get: { appDelegate.confirmLockLibrary },
-                    set: { appDelegate.confirmLockLibrary = $0 }
-                )
-            ) {
-                Button("Lock", role: .destructive) {
-                    appDelegate.lockActiveLibrary()
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text(lockConfirmMessage)
-            }
-    }
-
-    /// The lock confirmation's body, naming the library.
-    private var lockConfirmMessage: String {
-        let name =
-            appDelegate.appService?.libraryName
-            ?? String(localized: "This library")
-        return String(
-            localized:
-                "\(name)'s encryption key will be removed from the keychain. This session keeps working; you'll need to re-enter the key on next launch."
-        )
     }
 
     /// Content shown before any library has opened.
@@ -295,14 +293,8 @@ struct BaeApp: App {
             Spacer()
         case .welcome:
             welcomeView(loadError: appDelegate.loadError)
-        case .unlock(let libraryName):
-            UnlockView(
-                libraryName: libraryName,
-                onUnlock: appDelegate.unlock,
-                // No shell yet (first launch, or opening from the welcome
-                // chooser): cancelling returns to the welcome.
-                onCancel: { appDelegate.screen = .welcome }
-            )
+        case .resetRequired(let libraryId):
+            deviceResetView(libraryId: libraryId)
         case .keychainLocked:
             KeychainLockedView(onRetry: appDelegate.retryKeychainOpen)
         case .library:
@@ -460,7 +452,12 @@ extension BaeApp {
                 appService.installEnvironment(
                     SettingsView(
                         checkForUpdatesViewModel: checkForUpdatesViewModel,
-                        onForgetLibrary: { appDelegate.forgetActiveLibrary() }
+                        onForgetLibrary: { appDelegate.forgetActiveLibrary() },
+                        onResetDevice: {
+                            appDelegate.presentDeviceReset(
+                                libraryId: appService.libraryId
+                            )
+                        }
                     )
                     .errorAlert(appDelegate.uiStore)
                     .onAppear { appService.reportScreen(.settings) }
@@ -523,8 +520,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var libraries: [BridgeLibrary] = []
     /// The Rename Library sheet's state while it is open.
     var renameLibrarySheet: RenameLibrarySheetState?
-    /// Drives the Lock Library confirmation alert.
-    var confirmLockLibrary: Bool = false
     /// The shared open sequence; each open ends in an `Outcome` this delegate
     /// applies.
     @ObservationIgnored
@@ -578,11 +573,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }()
     /// In-flight library-list reload, cancelled when a newer one supersedes it.
     private let reloadSlot = CancellableTaskSlot()
-    /// In-flight rename / lock, cancelled on library close.
+    /// In-flight rename, cancelled on library close.
     private let renameSlot = CancellableTaskSlot()
-    private let lockSlot = CancellableTaskSlot()
     /// In-flight forget, cancelled on library close.
     private let forgetSlot = CancellableTaskSlot()
+    /// In-flight device reset.
+    private let resetSlot = CancellableTaskSlot()
     /// The one graceful shutdown that Close and Quit share.
     @ObservationIgnored
     private let shutdownCoordinator =
@@ -635,13 +631,6 @@ extension AppDelegate {
         )
     }
 
-    func presentLockLibraryConfirmation() {
-        guard appService != nil else {
-            preconditionFailure("Lock Library is disabled without a library")
-        }
-        confirmLockLibrary = true
-    }
-
     func syncNow() {
         guard let appService else {
             preconditionFailure("Sync Now is disabled without a library")
@@ -666,25 +655,29 @@ extension AppDelegate {
     /// Discover this Mac's libraries and land on a screen, auto-opening one
     /// only when `canOpenLibraries`.
     func loadInitialState(canOpenLibraries: Bool) {
-        do {
-            let libraries = try discoverInitialLibraries(
-                host: requiredApplicationServices.host,
-                environment: baeAppProcessEnvironment
-            )
-            self.libraries = libraries
-            // Auto-open only a library whose config loaded.
-            guard canOpenLibraries,
-                let openable = libraries.first(where: { $0.error == nil })
-            else {
+        let host = requiredApplicationServices.host
+        Task {
+            do {
+                libraries = try await discoverInitialLibraries(
+                    host: host,
+                    environment: baeAppProcessEnvironment
+                )
+            }
+            catch {
+                // The welcome screen shows `loadError`.
+                baeAppLogger.error(
+                    "Failed to list libraries: \(error.localizedDescription)"
+                )
+                loadError = DisplayError(error)
                 screen = .welcome
                 return
             }
-            openLibrary(openable)
-        }
-        catch {
-            // The welcome screen shows `loadError`.
-            loadError = DisplayError(error)
-            screen = .welcome
+            // Core lists the active library first.
+            guard canOpenLibraries, let library = libraries.first else {
+                screen = .welcome
+                return
+            }
+            openLibrary(library)
         }
     }
 
@@ -696,34 +689,125 @@ extension AppDelegate {
         loadError = nil
         screen = .loading
         opener.open(libraryId: libraryId) { [weak self] outcome in
-            guard let self else { return }
-            switch outcome {
-            case .opened(let service):
-                self.landOpenedService(service)
-            case .needsUnlock(let config):
-                self.screen = .unlock(libraryName: config.libraryName)
-            case .keychainLocked:
-                self.deferOpenForLockedKeychain(libraryId: libraryId)
-            case .superseded:
-                // The newer open or close owns the screen.
-                baeAppLogger.debug(
-                    "Library open superseded before it could land; skipping"
+            self?.applyOpenOutcome(outcome, libraryId: libraryId, warning: nil)
+        }
+    }
+
+    /// Open the store a create, restore, join or device reset returned,
+    /// showing the error a partly finished restore or join reported once the
+    /// library is up.
+    func openOpenedLibrary(_ library: OpenedLibrary, warning: BridgeError?) {
+        loadError = nil
+        screen = .loading
+        let libraryId = library.libraryId()
+        opener.open(
+            makeHandle: {
+                try library.open(
+                    positionUpdateIntervalMs: 200,
+                    // The "Restore on launch" preference.
+                    restorePlayback: UserDefaults.standard.bool(
+                        forKey: "persistPlayback"
+                    )
                 )
-            case .failed(let error):
-                self.loadError = DisplayError(error)
+            },
+            onOutcome: { [weak self] outcome in
+                self?
+                    .applyOpenOutcome(
+                        outcome,
+                        libraryId: libraryId,
+                        warning: warning
+                    )
+            }
+        )
+    }
+
+    private func applyOpenOutcome(
+        _ outcome: LibrarySessionOpener<AppHandle, AppService>.Outcome,
+        libraryId: String,
+        warning: BridgeError?
+    ) {
+        switch outcome {
+        case .opened(let service):
+            landOpenedService(service)
+            if let warning {
+                uiStore.showError(warning)
+            }
+        case .keychainLocked:
+            deferOpenForLockedKeychain(libraryId: libraryId)
+        case .superseded:
+            // The newer open or close owns the screen.
+            baeAppLogger.debug(
+                "Library open superseded before it could land; skipping"
+            )
+        case .failed(let error):
+            loadError = DisplayError(error)
+            if case BridgeError.Diagnostic(.deviceResetRequired, _) = error {
+                screen = .resetRequired(libraryId: libraryId)
+            }
+            else if !hasShell {
                 // A failed bootstrap open returns to the welcome.
-                if !self.hasShell {
-                    self.screen = .welcome
-                }
+                screen = .welcome
             }
         }
     }
 
-    func unlock(serializedCloudKey: String) async throws {
-        let service = try await opener.unlock(
-            serializedCloudKey: serializedCloudKey
-        )
-        landOpenedService(service)
+    /// Show the device-reset warning for a library, from Settings' pending
+    /// list.
+    func presentDeviceReset(libraryId: String) {
+        loadError = nil
+        screen = .resetRequired(libraryId: libraryId)
+    }
+
+    /// Leave the reset warning without resetting.
+    func cancelDeviceReset() {
+        loadError = nil
+        screen = hasShell ? .library : .welcome
+    }
+
+    /// Reset this device for a library: close it if it is open, then load it
+    /// from storage again under a fresh device id. The person saw the warning
+    /// before choosing, so nothing is shown after.
+    func resetDevice(libraryId: String) {
+        let host = requiredApplicationServices.host
+        let deviceName = requiredApplicationServices.deviceName
+        let open = appService.flatMap { $0.libraryId == libraryId ? $0 : nil }
+        if open != nil {
+            prepareForLibraryShutdown()
+        }
+        loadError = nil
+        screen = .loading
+        resetSlot.replace {
+            do {
+                if let open {
+                    try await open.shutdown()
+                    try await DetachedWork.run { try open.closeLibrary() }
+                    self.releaseLibrarySession(open)
+                    self.screen = .loading
+                }
+                let reset = try host.prepareDeviceReset(
+                    libraryId: libraryId,
+                    deviceName: deviceName
+                )
+                switch try await reset.confirm() {
+                case .opened(let library):
+                    self.openOpenedLibrary(library, warning: nil)
+                case .published(let library, let warning),
+                    .profileRequired(let library, let warning):
+                    self.openOpenedLibrary(library, warning: warning)
+                case .savedCodeRemoved, .declined:
+                    preconditionFailure(
+                        "a device reset neither reads a saved code nor asks to join"
+                    )
+                }
+            }
+            catch {
+                baeAppLogger.error(
+                    "Device reset failed: \(error.localizedDescription)"
+                )
+                self.loadError = DisplayError(error)
+                self.screen = .resetRequired(libraryId: libraryId)
+            }
+        }
     }
 
     private func landOpenedService(_ service: AppService) {
@@ -748,7 +832,8 @@ extension AppDelegate {
             diagnostics: requiredApplicationServices.diagnostics,
             uiStore: uiStore,
             config: config,
-            seed: seed
+            seed: seed,
+            deviceName: requiredApplicationServices.deviceName
         )
         service.wireUp()
         return service
@@ -803,7 +888,6 @@ extension AppDelegate {
         // An open still in flight must not replace this session.
         opener.cancel()
         renameSlot.cancel()
-        lockSlot.cancel()
         forgetSlot.cancel()
     }
 
@@ -814,7 +898,6 @@ extension AppDelegate {
         uiStore = UiStore()
         welcomeInitialMode = nil
         renameLibrarySheet = nil
-        confirmLockLibrary = false
         loadError = nil
         screen = .welcome
         hasShell = false
@@ -824,8 +907,8 @@ extension AppDelegate {
     func reloadLibraries() {
         let host = requiredApplicationServices.host
         reloadSlot.replace(
-            "discoverLibraries",
-            work: { try host.discoverLibraries() },
+            "listLibraries",
+            work: { try await host.listLibraries() },
             onSuccess: { self.libraries = $0 },
             onError: {
                 baeAppLogger.error(
@@ -838,7 +921,7 @@ extension AppDelegate {
     /// Open the library `offset` places from the active one, wrapping and
     /// skipping broken ones.
     func switchLibrary(byOffset offset: Int) {
-        let openable = libraries.filter { $0.error == nil }
+        let openable = libraries
         guard openable.count > 1,
             let activeIdx = openable.firstIndex(where: \.isActive)
         else {
@@ -856,7 +939,7 @@ extension AppDelegate {
         renameSlot.replace(
             "rename of \(libraryId)",
             work: {
-                try await appService.renameLibrary(libraryId, to: trimmed)
+                try await appService.renameLibrary(to: trimmed)
             },
             onSuccess: {
                 self.renameLibrarySheet = nil
@@ -866,30 +949,15 @@ extension AppDelegate {
                 baeAppLogger.error(
                     "Failed to rename \(libraryId): \($0.localizedDescription)"
                 )
-                self.renameLibrarySheet?.error = $0.localizedDescription
-            }
-        )
-    }
-
-    /// Remove the active library's key from the keychain.
-    func lockActiveLibrary() {
-        guard let appService else { return }
-        lockSlot.replace(
-            "lock",
-            work: { try await appService.lockActiveLibrary() },
-            onSuccess: {},
-            onError: {
-                baeAppLogger.error(
-                    "Failed to lock library: \($0.localizedDescription)"
-                )
-                self.loadError = DisplayError($0)
+                self.renameLibrarySheet?.error = $0.displayLine
             }
         )
     }
 }
 
 extension AppDelegate {
-    /// Close the active library, then remove it from this device.
+    /// Remove the open library from this Mac: it leaves the store's members,
+    /// then its local copy is deleted. A refused removal opens it again.
     func forgetActiveLibrary() {
         guard let service = appService else {
             baeAppLogger.warning(
@@ -898,45 +966,35 @@ extension AppDelegate {
             return
         }
         let libraryId = service.libraryId
-        forgetSlot.replace(
-            "close for removal",
-            work: { try service.closeLibrary() },
-            onSuccess: {
-                self.prepareForLibraryShutdown()
+        let removals = requiredApplicationServices.libraryRemovals
+        prepareForLibraryShutdown()
+        screen = .loading
+        forgetSlot.replace {
+            do {
+                let removal = try await service.removeLibrary(unsent: .discard)
                 self.releaseLibrarySession(service)
-                self.removeClosedLibrary(libraryId)
-            },
-            onError: {
-                baeAppLogger.error(
-                    "Failed to close the library for removal: \($0.localizedDescription)"
-                )
-                guard let displayed = DisplayError($0) else { return }
-                self.uiStore.showError(
-                    displayed.addingContext(
-                        String(localized: "Couldn't remove library")
-                    )
-                )
-            }
-        )
-    }
-
-    /// Remove a closed library once nothing holds its store.
-    private func removeClosedLibrary(_ libraryId: String) {
-        let host = requiredApplicationServices.host
-        forgetSlot.replace(
-            "remove \(libraryId)",
-            work: { try host.removeLocalLibrary(libraryId: libraryId) },
-            onSuccess: { self.reloadLibraries() },
-            onError: {
-                baeAppLogger.error(
-                    "Failed to remove library: \($0.localizedDescription)"
-                )
-                self.loadError = DisplayError($0)?
-                    .addingContext(
-                        String(localized: "Couldn't remove library")
-                    )
+                removals.record(removal)
                 self.reloadLibraries()
             }
-        )
+            catch {
+                baeAppLogger.error(
+                    "Failed to remove library: \(error.localizedDescription)"
+                )
+                // Removal stopped the library's services before leaving the
+                // store failed; close what is left and open it again.
+                do {
+                    try await DetachedWork.run { try service.closeLibrary() }
+                }
+                catch let closeError {
+                    baeAppLogger.error(
+                        "Failed to close the library after its removal failed: \(closeError.localizedDescription)"
+                    )
+                }
+                self.releaseLibrarySession(service)
+                self.openLocalLibrary(id: libraryId)
+                self.loadError = DisplayError(error)?
+                    .addingContext(String(localized: "Couldn't remove library"))
+            }
+        }
     }
 }

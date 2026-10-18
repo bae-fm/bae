@@ -40,10 +40,6 @@ targets:
         excludes:
           - bae_bridge.swift
           - Info.plist
-      - path: ../../BaeKit/Sources/AppleHost/CloudKitService.swift
-      - path: ../../BaeKit/Sources/AppleHost/CloudKitService+Account.swift
-      - path: ../../BaeKit/Sources/AppleHost/CloudKitRecordReplacement.swift
-      - path: ../../BaeKit/Sources/AppleHost/CloudKitFailure.swift
     info:
       path: bae/Info.plist
       properties:
@@ -62,8 +58,8 @@ targets:
         BaeGitCommit: $(BAE_GIT_COMMIT)
         BaeCovenRev: $(BAE_COVEN_REV)
         BaeSentryDsn: $(BAE_SENTRY_DSN)
-        NSCameraUsageDescription: bae uses the camera to scan codes when pairing or recovering a library.
-        NSLocalNetworkUsageDescription: bae pairs devices and finds speakers and TVs on your local network.
+        NSCameraUsageDescription: bae uses the camera to scan restore codes and invitations.
+        NSLocalNetworkUsageDescription: bae finds speakers and TVs on your local network.
         CFBundleDocumentTypes:
           - CFBundleTypeName: Folder
             LSItemContentTypes:

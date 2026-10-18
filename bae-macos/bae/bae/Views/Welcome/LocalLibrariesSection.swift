@@ -1,15 +1,13 @@
 import BaeKit
 import SwiftUI
 
-/// Libraries on this device, each with Open (or Show in Finder when it won't
-/// load) and Delete.
+/// Libraries on this device, each with Open and Remove.
 struct LocalLibrariesSection: View {
     let libraries: [BridgeLibrary]
     let disabled: Bool
     let canDeleteActiveLibrary: Bool
     let removingLibraryId: String?
     let onOpen: (BridgeLibrary) -> Void
-    let onShowInFinder: (BridgeLibrary) -> Void
     let onRemove: (BridgeLibrary) -> Void
 
     var body: some View {
@@ -23,7 +21,6 @@ struct LocalLibrariesSection: View {
                         && !canDeleteActiveLibrary,
                     isRemoving: removingLibraryId == library.id,
                     onOpen: onOpen,
-                    onShowInFinder: onShowInFinder,
                     onRemove: onRemove,
                 )
             }
@@ -32,48 +29,31 @@ struct LocalLibrariesSection: View {
     }
 }
 
-/// One library row; a library that won't load adds a warning glyph and tint.
+/// One library row: its name, its provider when it has a cloud home, Open and
+/// Remove.
 private struct LibraryRow: View {
     let library: BridgeLibrary
     let disabled: Bool
     let deleteDisabled: Bool
     let isRemoving: Bool
     let onOpen: (BridgeLibrary) -> Void
-    let onShowInFinder: (BridgeLibrary) -> Void
     let onRemove: (BridgeLibrary) -> Void
 
     var body: some View {
         HStack(spacing: ThemeSpace.group) {
-            if library.error != nil {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(Theme.warning)
-            }
             VStack(alignment: .leading, spacing: ThemeSpace.line) {
                 Text(library.name)
                     .themeText(.rowTitle)
-                if let error = library.error {
-                    Text("Can't open: \(error)")
-                        .themeText(.detail)
-                        .foregroundStyle(Theme.warning)
-                        .lineLimit(2)
-                }
-                else if let provider = library.cloudProvider {
-                    Text(provider.displayName)
-                        .themeText(.detail)
-                        .foregroundStyle(.secondary)
-                }
+                // Every row keeps the detail line so rows share one height.
+                Text(library.storage?.displayName ?? "")
+                    .themeText(.detail)
+                    .foregroundStyle(.secondary)
             }
             Spacer(minLength: ThemeSpace.group)
-            if library.error != nil {
-                Button("Show in Finder") { onShowInFinder(library) }
-                    .buttonStyle(.bordered)
-            }
-            else {
-                Button("Open") { onOpen(library) }
-                    .buttonStyle(.bordered)
-            }
+            Button("Open") { onOpen(library) }
+                .buttonStyle(.bordered)
             ZStack {
-                Button("Delete", systemImage: "trash", role: .destructive) {
+                Button("Remove", systemImage: "trash", role: .destructive) {
                     onRemove(library)
                 }
                 .buttonStyle(.bordered)
@@ -88,10 +68,7 @@ private struct LibraryRow: View {
         .padding(.horizontal, ThemeSpace.edge)
         .padding(.vertical, ThemeSpace.related)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            (library.error != nil ? Theme.warning : Color.secondary)
-                .opacity(ThemeOpacity.tint)
-        )
+        .background(Color.secondary.opacity(ThemeOpacity.tint))
         .clipShape(RoundedRectangle(cornerRadius: ThemeRadius.control))
         .disabled(disabled)
     }
@@ -105,7 +82,6 @@ private struct LibraryRow: View {
             canDeleteActiveLibrary: true,
             removingLibraryId: nil,
             onOpen: { _ in },
-            onShowInFinder: { _ in },
             onRemove: { _ in },
         )
         .padding()

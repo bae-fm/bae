@@ -172,7 +172,6 @@ private func makeAppService(handle: FakeAppHandle = FakeAppHandle())
         uiStore: UiStore(),
         config: BridgeConfig(
             libraryId: "lib-test",
-            libraryName: "Test Library",
             libraryPath: "/tmp/test",
             pauseBetweenSides: false,
             sidePauseCountdown: .off,
@@ -211,10 +210,10 @@ private func makeAppService(handle: FakeAppHandle = FakeAppHandle())
                 bindAddress: "127.0.0.1"
             ),
             discogsTokenStatus: .notConfigured,
-            discogsUsable: false,
-            sync: nil
+            discogsUsable: false
         ),
-        seed: emptySeed
+        seed: emptySeed,
+        deviceName: "Test Mac"
     )
 }
 
@@ -222,6 +221,8 @@ private func makeAppService(handle: FakeAppHandle = FakeAppHandle())
 @MainActor
 private var emptySeed: LibrarySessionSeed {
     LibrarySessionSeed(
+        name: "Test Library",
+        storage: nil,
         outbox: OutboxStore.emptySnapshot,
         downloads: BridgeDownloadSnapshot(
             downloads: [],
@@ -296,6 +297,30 @@ private final class FakeAppHandle: AppHandle, @unchecked Sendable {
 
     override func subscribeCastDevices(
         callback _: any CastDevicesCallback
+    ) -> LiveSubscription {
+        NoopLiveSubscription()
+    }
+
+    override func subscribeLibraryName(
+        callback _: any LibraryNameCallback
+    ) -> LiveSubscription {
+        NoopLiveSubscription()
+    }
+
+    override func subscribeMembers(
+        callback _: any MembershipCallback
+    ) -> LiveSubscription {
+        NoopLiveSubscription()
+    }
+
+    override func subscribeProfiles(
+        callback _: any ProfilesCallback
+    ) -> LiveSubscription {
+        NoopLiveSubscription()
+    }
+
+    override func subscribeJoinRequests(
+        callback _: any JoinRequestsCallback
     ) -> LiveSubscription {
         NoopLiveSubscription()
     }

@@ -431,7 +431,7 @@ struct InternReleaseSummaryTests {
         let store = LibraryStore()
 
         let summary = store.internReleaseSummary(
-            makeBridgeRelease(transferAction: .makeRemote)
+            makeBridgeRelease(transferAction: .upload)
         )
 
         #expect(summary.transfer != nil)

@@ -27,13 +27,12 @@ extension BridgeStorageInspectorTransfer {
     }
 
     /// What the section's Cancel All abandons: the whole queue, not only the
-    /// selected release.
-    var cancelAllHelp: LocalizedStringKey {
+    /// selected release. Uploads have no queue-wide cancel.
+    var cancelAllHelp: LocalizedStringKey? {
         switch self {
         case .download: "Cancel every download, not only this release's"
         case .output: "Cancel every export, not only this release's"
-        case .upload:
-            "Stop every upload that can still be stopped, not only this release's"
+        case .upload: nil
         }
     }
 

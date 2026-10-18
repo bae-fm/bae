@@ -138,7 +138,7 @@ struct StorageStatusBand: View {
         previewStorageBand(
             storageState: .local,
             pinned: false,
-            storageActions: [.makeRemote]
+            storageActions: [.upload]
         )
         .preferredColorScheme(.dark)
     }
@@ -148,7 +148,7 @@ struct StorageStatusBand: View {
         previewStorageBand(
             storageState: .remote,
             pinned: false,
-            storageActions: [.pin, .makeLocal]
+            storageActions: [.pin, .detachAudio]
         )
         .preferredColorScheme(.dark)
     }
@@ -158,7 +158,7 @@ struct StorageStatusBand: View {
         previewStorageBand(
             storageState: .remote,
             pinned: true,
-            storageActions: [.unpin, .makeLocal]
+            storageActions: [.unpin, .detachAudio]
         )
         .preferredColorScheme(.dark)
     }

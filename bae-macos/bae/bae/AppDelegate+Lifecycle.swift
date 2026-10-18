@@ -66,28 +66,11 @@ extension AppDelegate {
             loadError = DisplayError(error)
             keyringReady = false
         }
-        // Hand Rust the CloudKit driver once. It can't build the driver
-        // itself (it needs the platform CloudKit APIs); installing it is
-        // idempotent and harmless for libraries that sync elsewhere, so it
-        // belongs here at the composition root rather than at each open.
-        #if BAE_CLOUDKIT
-            requiredApplicationServices.host.setCloudkitDriver(
-                driver: CloudKitService.bae()
-            )
-        #endif
         startWatchingForKeychainUnlock()
         loadInitialState(canOpenLibraries: keyringReady)
     }
 
     private func initializeKeyring() throws {
-        #if DEBUG
-            if AppRuntime.usesTestKeyring(
-                environment: baeAppProcessEnvironment
-            ) {
-                initTestKeyring()
-                return
-            }
-        #endif
         try initKeyring(diagnostics: requiredApplicationServices.diagnostics)
     }
 

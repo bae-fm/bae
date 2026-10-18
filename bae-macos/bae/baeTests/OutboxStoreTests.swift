@@ -6,8 +6,8 @@ import Testing
 private func cloudUploadReceipt(
     _ releaseIds: [String],
     revision: UInt64 = 2
-) -> BridgeMakeRemoteReceipt {
-    BridgeMakeRemoteReceipt(
+) -> BridgeUploadReceipt {
+    BridgeUploadReceipt(
         outboxRevision: revision,
         releaseIds: releaseIds
     )
@@ -41,13 +41,13 @@ struct OutboxStoreHasPendingCloudWorkTests {
                     releaseId: "release-a",
                     files: [
                         BridgeUploadFileOp(
+                            pending: nil,
                             fileId: "file-1",
+                            releaseFileKey: nil,
                             label: .filename(name: "01 Track Title.flac"),
                             bar: nil,
-                            sourceBytesTotal: 1000,
                             throughputBps: 0,
-                            state: .queued,
-                            lastError: nil
+                            state: .waiting
                         )
                     ],
                     progress: OutboxStore.emptySnapshot.total,
@@ -77,12 +77,11 @@ struct OutboxStoreHasPendingCloudWorkTests {
 @Suite("StorageStatusBand cloud-transition actions")
 @MainActor
 struct StorageStatusBandCloudTransitionTests {
-    @Test("only an unwindable durable transition can be cancelled")
-    func cancellationAvailabilityFollowsTheProjectedPhase() {
+    @Test("only an upload coven has admitted can be cancelled")
+    func cancellationFollowsTheAdmittedUpload() {
         var active = OutboxStore.emptySnapshot.total
         active.queued = 1
         active.activity = .queued
-        active.canCancel = true
         #expect(
             StorageUploadObservation.active(
                 progress: active,
@@ -90,42 +89,15 @@ struct StorageStatusBandCloudTransitionTests {
             )
             .canCancel
         )
-
-        var cancelling = active
-        cancelling.queued = 0
-        cancelling.cancelling = 1
-        cancelling.activity = .cancelling
-        cancelling.canCancel = false
-        #expect(
-            StorageUploadObservation.active(
-                progress: cancelling,
-                throughputBps: 0
-            )
-            .canCancel == false
-        )
-
-        var publishing = active
-        publishing.queued = 0
-        publishing.publishing = 1
-        publishing.activity = .publishing
-        publishing.canCancel = false
-        #expect(
-            StorageUploadObservation.active(
-                progress: publishing,
-                throughputBps: 0
-            )
-            .canCancel == false
-        )
-
         #expect(StorageUploadObservation.queueing.canCancel == false)
         #expect(StorageUploadObservation.awaiting.canCancel == false)
     }
 
-    @Test("publication still suppresses storage actions")
-    func publicationSuppressesStorageActions() {
+    @Test("an upload in progress suppresses storage actions")
+    func uploadSuppressesStorageActions() {
         var progress = OutboxStore.emptySnapshot.total
-        progress.publishing = 1
-        progress.activity = .publishing
+        progress.queued = 1
+        progress.activity = .queued
 
         #expect(
             StorageStatusBand.showsTransferActions(
@@ -152,11 +124,7 @@ struct CloudImportQueuePresentationTests {
     func activeStorageRowCarriesRateAndProgress() {
         var progress = OutboxStore.emptySnapshot.total
         progress.uploading = 1
-        progress.bar = BridgeUploadBar(
-            phase: .uploading,
-            bytesDone: 32,
-            bytesTotal: 100
-        )
+        progress.bar = BridgeUploadBar(bytesDone: 32, bytesTotal: 100)
         progress.activity = .uploading
         let observation = StorageUploadObservation.active(
             progress: progress,
@@ -187,15 +155,11 @@ struct CloudImportQueuePresentationTests {
         }
     }
 
-    @Test("an active upload line includes its exact phase and provider bytes")
-    func activeUploadIncludesPhaseAndBytes() {
+    @Test("an active upload line includes its activity and encrypted bytes")
+    func activeUploadIncludesActivityAndBytes() {
         var progress = OutboxStore.emptySnapshot.total
         progress.uploading = 1
-        progress.bar = BridgeUploadBar(
-            phase: .uploading,
-            bytesDone: 600,
-            bytesTotal: 1016
-        )
+        progress.bar = BridgeUploadBar(bytesDone: 600, bytesTotal: 1016)
         progress.activity = .uploading
 
         let line = UploadObservation.active(progress).statusText
@@ -209,70 +173,15 @@ struct CloudImportQueuePresentationTests {
         #expect(line.contains(total))
     }
 
-    @Test("the byte label counts the phase the bar fills with, not the badge")
-    func byteLabelFollowsTheBarsOwnPhase() {
+    @Test("a waiting upload is presented as queued")
+    func waitingUploadIsQueued() {
         var progress = OutboxStore.emptySnapshot.total
-        progress.queued = 1
-        progress.uploading = 1
-        // A file is uploading, but another is still unprepared, so core counts
-        // the queue's source bytes; the badge still leads with the upload.
-        let bar = BridgeUploadBar(
-            phase: .preparing,
-            bytesDone: 1_000,
-            bytesTotal: 1_100
-        )
-        progress.bar = bar
-        progress.activity = .uploading
-
-        let line = UploadObservation.active(progress).statusText
-
-        #expect(
-            line.contains(QueueSummary.countLabel("core.queue.uploading", 1))
-        )
-        #expect(line.contains(bar.text))
-        #expect(
-            bar.text
-                != BridgeUploadBar(
-                    phase: .uploading,
-                    bytesDone: 1_000,
-                    bytesTotal: 1_100
-                )
-                .text
-        )
-    }
-
-    @Test("a failed attempt is presented as retrying")
-    func failedAttemptIsRetrying() {
-        var progress = OutboxStore.emptySnapshot.total
-        progress.retrying = 1
-        progress.activity = .retrying
+        progress.queued = 2
+        progress.activity = .queued
 
         #expect(
             progress.activityText
-                == QueueSummary.countLabel("core.outbox.retrying", 1)
-        )
-    }
-
-    @Test("a missing source is primary while the retry count remains available")
-    func missingSourceIsActionable() {
-        var progress = OutboxStore.emptySnapshot.total
-        progress.retrying = 1
-        progress.activity = .retrying
-        progress.issue = .sourceUnavailable(paths: [
-            "/Volumes/Library/Album/01 Track.flac"
-        ])
-
-        #expect(
-            progress.primaryActivityText
-                == QueueSummary.message("core.outbox.source_unavailable")
-        )
-        #expect(
-            progress.activityText
-                == QueueSummary.countLabel("core.outbox.retrying", 1)
-        )
-        #expect(
-            progress.sourceUnavailablePaths
-                == ["/Volumes/Library/Album/01 Track.flac"]
+                == QueueSummary.countLabel("core.queue.queued", 2)
         )
     }
 
@@ -287,11 +196,7 @@ struct CloudImportQueuePresentationTests {
     @Test("the import row keeps a progress bar through the cloud transition")
     func cloudTransitionProgressBar() {
         var progress = OutboxStore.emptySnapshot.total
-        progress.bar = BridgeUploadBar(
-            phase: .uploading,
-            bytesDone: 500,
-            bytesTotal: 2_000
-        )
+        progress.bar = BridgeUploadBar(bytesDone: 500, bytesTotal: 2_000)
 
         #expect(UploadObservation.awaiting.progressBar == .indeterminate)
         #expect(
@@ -563,7 +468,7 @@ struct ReleaseEditorCloudBatchTests {
             moveReleasesToCloud: { _ in
                 .partial(
                     receipt: cloudUploadReceipt(["release-a"]),
-                    failure: BridgeMakeRemoteBatchFailure(
+                    failure: BridgeUploadBatchFailure(
                         releaseIds: ["release-b"],
                         error: refusal
                     )

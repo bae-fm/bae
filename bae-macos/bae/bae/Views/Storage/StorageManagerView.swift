@@ -399,7 +399,7 @@ struct StorageManagerView: View {
             downloadSnapshot: PreviewData.emptyDownloadSnapshot,
             outputSnapshot: PreviewData.emptyOutputSnapshot,
             outboxSnapshot: PreviewData.outboxSnapshot(
-                uploadGroups: [PreviewData.uploadGroupDone]
+                uploadGroups: [PreviewData.uploadGroupQueued]
             )
         )
         StorageManagerView(
@@ -423,9 +423,9 @@ struct StorageManagerView: View {
         .frame(width: PreviewWindow.width, height: PreviewWindow.height)
     }
 
-    /// An upload retrying because its source file is missing, with the reason
+    /// An upload waiting because its source file is missing, with the reason
     /// in the inspector.
-    #Preview("A retrying upload — inspector open") {
+    #Preview("A waiting upload — inspector open") {
         let fixture = StorageManagerPreviewFixture(
             rows: Array(PreviewData.storageRows.prefix(3)),
             selectedReleaseId: "rel-row-3",
@@ -433,7 +433,7 @@ struct StorageManagerView: View {
             downloadSnapshot: PreviewData.emptyDownloadSnapshot,
             outputSnapshot: PreviewData.emptyOutputSnapshot,
             outboxSnapshot: PreviewData.outboxSnapshot(
-                uploadGroups: [PreviewData.uploadGroupSourceUnavailable]
+                uploadGroups: [PreviewData.uploadGroupPending]
             )
         )
         StorageManagerView(

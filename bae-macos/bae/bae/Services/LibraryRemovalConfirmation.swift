@@ -2,9 +2,10 @@ import BaeKit
 import Foundation
 
 enum LibraryRemovalConfirmation {
-    /// A synced library's cloud copy survives; queued cloud writes are lost. A
-    /// never-synced library's catalog is gone, while indexed audio files stay
-    /// in the user's folders. Pending work is irrelevant without a cloud home.
+    /// A synced library's cloud copy survives, and this Mac leaves its members
+    /// first, which needs storage; queued cloud writes are lost. A never-synced
+    /// library's catalog is gone, while indexed audio files stay in the user's
+    /// folders. Pending work is irrelevant without a cloud home.
     static func message(
         hasCloudHome: Bool,
         hasPendingCloudWork: Bool
@@ -17,7 +18,7 @@ enum LibraryRemovalConfirmation {
         }
         let base = String(
             localized:
-                "Your library in the cloud is untouched. You can restore it from the welcome screen later."
+                "This Mac leaves the library, then its copy is deleted. Removing needs a connection to your storage; your library in the cloud is untouched."
         )
         guard hasPendingCloudWork else { return base }
         let extra = String(
@@ -29,7 +30,7 @@ enum LibraryRemovalConfirmation {
 
     static func message(for library: BridgeLibrary) -> String {
         message(
-            hasCloudHome: library.cloudProvider != nil,
+            hasCloudHome: library.storage != nil,
             hasPendingCloudWork: false
         )
     }

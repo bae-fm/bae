@@ -48,11 +48,16 @@ struct StorageTransferControls: View {
                     setPaused(!paused, for: item)
                 }
                 .controlSize(.small)
+                // Uploads have no queue-wide cancel; each release cancels its
+                // own. Hidden rather than removed so every header lines up.
                 Button("Cancel All", role: .destructive) {
                     cancelAll(item)
                 }
                 .controlSize(.small)
-                .help(item.cancelAllHelp)
+                .help(item.cancelAllHelp.map { Text($0) } ?? Text(verbatim: ""))
+                .opacity(item.cancelAllHelp == nil ? 0 : 1)
+                .allowsHitTesting(item.cancelAllHelp != nil)
+                .accessibilityHidden(item.cancelAllHelp == nil)
             }
             .foregroundStyle(.secondary)
             .padding(.horizontal)
@@ -102,10 +107,7 @@ struct StorageTransferControls: View {
         case .output:
             outputs.cancelAllOutputs()
         case .upload:
-            Task {
-                do { try await sync.cancelAllReleaseUploads() }
-                catch { uiStore.showError(error) }
-            }
+            preconditionFailure("uploads have no queue-wide cancel")
         }
     }
 

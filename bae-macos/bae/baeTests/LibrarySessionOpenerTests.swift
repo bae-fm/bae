@@ -7,7 +7,7 @@ import Testing
 /// `initApp` the opener can't otherwise run in a test) and a `makeService`
 /// factory that must not run on any of these paths. The happy `.opened` path
 /// needs a real `AppService` over a live core, so it isn't unit-tested here; the
-/// gate, supersede, and teardown decisions that precede it are.
+/// keychain, supersede, and teardown decisions that precede it are.
 @MainActor
 @Suite("LibrarySessionOpener")
 struct LibrarySessionOpenerTests {
@@ -15,16 +15,13 @@ struct LibrarySessionOpenerTests {
 
     @Test("a keychain that refused is not a failure the user has to act on")
     func refusedKeychainIsItsOwnOutcome() async {
-        let handle = FakeHandle(
-            config: makeConfig(),
-            keyState: .available,
-            keyStateError: BridgeError.Diagnostic(
-                category: .keyringLocked,
-                detail: "the OS keychain refused the read"
-            )
-        )
         let opener = TestOpener(
-            makeHandle: { _ in handle },
+            makeHandle: { _ in
+                throw BridgeError.Diagnostic(
+                    category: .keyringLocked,
+                    detail: "the OS keychain refused the read"
+                )
+            },
             makeService: { _, _, _ in
                 Issue.record("makeService must not run for a refused keychain")
                 fatalError("unreachable")
@@ -43,20 +40,17 @@ struct LibrarySessionOpenerTests {
         }
     }
 
-    @Test("every other key-state failure is still a failure")
-    func otherKeyStateFailuresStillFail() async {
-        let handle = FakeHandle(
-            config: makeConfig(),
-            keyState: .available,
-            keyStateError: BridgeError.Diagnostic(
-                category: .keyring,
-                detail: "the keyring is broken"
-            )
-        )
+    @Test("every other open failure is still a failure")
+    func otherOpenFailuresStillFail() async {
         let opener = TestOpener(
-            makeHandle: { _ in handle },
+            makeHandle: { _ in
+                throw BridgeError.Diagnostic(
+                    category: .keyring,
+                    detail: "the keyring is broken"
+                )
+            },
             makeService: { _, _, _ in
-                Issue.record("makeService must not run for a failed read")
+                Issue.record("makeService must not run for a failed open")
                 fatalError("unreachable")
             }
         )
@@ -73,90 +67,18 @@ struct LibrarySessionOpenerTests {
         }
     }
 
-    @Test("a locked target stays retained for unlock")
-    func lockedTargetNeedsUnlock() async {
-        let handle = FakeHandle(
-            config: makeConfig(),
-            keyState: .locked
-        )
-        let opener = TestOpener(
-            makeHandle: { _ in handle },
-            makeService: { _, _, _ in
-                Issue.record("makeService must not run for a locked target")
-                fatalError("unreachable")
-            }
-        )
-
-        let waiter = OutcomeWaiter()
-        opener.open(libraryId: "lib-1") { waiter.record($0) }
-        let outcome = await waiter.value()
-
-        guard case .needsUnlock(let config) = outcome else {
-            Issue.record(
-                "locked target should yield .needsUnlock, got \(outcome)"
-            )
-            return
-        }
-        #expect(config.libraryId == "lib-test")
-        #expect(!handle.didShutdown)
-    }
-
-    @Test("unlock acts on the retained handle and a wrong key can be retried")
-    func unlockUsesRetainedHandle() async {
-        struct WrongKey: Error {}
-        let handle = FakeHandle(
-            config: makeConfig(),
-            keyState: .locked,
-            unlockResults: [.failure(WrongKey()), .success(())],
-            outbox: .failure(WrongKey())
-        )
-        let makeHandleCount = Counter()
-        let opener = TestOpener(
-            makeHandle: { _ in
-                makeHandleCount.increment()
-                return handle
-            },
-            makeService: { _, _, _ in
-                Issue.record("outbox failure must precede service creation")
-                fatalError("unreachable")
-            }
-        )
-
-        let open = OutcomeWaiter()
-        opener.open(libraryId: "lib-1") { open.record($0) }
-        guard case .needsUnlock = await open.value() else {
-            Issue.record("locked target did not request unlock")
-            return
-        }
-
-        await #expect(throws: WrongKey.self) {
-            _ = try await opener.unlock(serializedCloudKey: "wrong")
-        }
-        await #expect(throws: WrongKey.self) {
-            _ = try await opener.unlock(serializedCloudKey: "correct")
-        }
-        #expect(makeHandleCount.value == 1)
-        #expect(handle.unlockKeys == ["wrong", "correct"])
-        #expect(handle.didShutdown)
-    }
-
     @Test("a superseding open cancels the first, which reports .superseded")
     func supersedingOpenCancelsFirst() async {
+        struct OpenError: Error {}
         // The first open parks in its injected `initApp` until released, so the
         // second open reliably supersedes it before it can land.
         let gate = DispatchSemaphore(value: 0)
-        let parked = FakeHandle(
-            config: makeConfig(),
-            keyState: .notRequired
-        )
-        let locked = FakeHandle(
-            config: makeConfig(),
-            keyState: .locked
-        )
+        let parked = FakeHandle(config: makeConfig())
         let opener = TestOpener(
             makeHandle: { libraryId in
-                if libraryId == "parked" { gate.wait() }
-                return libraryId == "parked" ? parked : locked
+                guard libraryId == "parked" else { throw OpenError() }
+                gate.wait()
+                return parked
             },
             makeService: { _, _, _ in
                 Issue.record("makeService must not run in the supersede test")
@@ -167,13 +89,13 @@ struct LibrarySessionOpenerTests {
         let first = OutcomeWaiter()
         let second = OutcomeWaiter()
         opener.open(libraryId: "parked") { first.record($0) }
-        opener.open(libraryId: "locked") { second.record($0) }
+        opener.open(libraryId: "failing") { second.record($0) }
 
         // The second open runs to completion while the first is parked.
         let secondOutcome = await second.value()
-        guard case .needsUnlock = secondOutcome else {
+        guard case .failed = secondOutcome else {
             Issue.record(
-                "second open should yield .needsUnlock, got \(secondOutcome)"
+                "second open should yield .failed, got \(secondOutcome)"
             )
             return
         }
@@ -186,7 +108,6 @@ struct LibrarySessionOpenerTests {
             Issue.record("first open should be superseded, got \(firstOutcome)")
             return
         }
-        #expect(!parked.didShutdown)
     }
 
     @Test("a failed outbox seed shuts the handle down and reports .failed")
@@ -194,7 +115,6 @@ struct LibrarySessionOpenerTests {
         struct SeedError: Error {}
         let handle = FakeHandle(
             config: makeConfig(),
-            keyState: .notRequired,
             outbox: .failure(SeedError())
         )
         let opener = TestOpener(
@@ -221,6 +141,64 @@ struct LibrarySessionOpenerTests {
         #expect(handle.didShutdown)
     }
 
+    @Test("a failed name read shuts the handle down and reports .failed")
+    func nameSeedFailureShutsDown() async {
+        struct NameError: Error {}
+        let handle = FakeHandle(
+            config: makeConfig(),
+            name: .failure(NameError())
+        )
+        let opener = TestOpener(
+            makeHandle: { _ in handle },
+            makeService: { _, _, _ in
+                Issue.record("makeService must not run when the name fails")
+                fatalError("unreachable")
+            }
+        )
+
+        let waiter = OutcomeWaiter()
+        opener.open(libraryId: "lib-4") { waiter.record($0) }
+        let outcome = await waiter.value()
+
+        guard case .failed(let error) = outcome else {
+            Issue.record(
+                "a failed name read should yield .failed, got \(outcome)"
+            )
+            return
+        }
+        #expect(error is NameError)
+        #expect(handle.didShutdown)
+    }
+
+    @Test("a bootstrapped store opens its own handle, not one by id")
+    func retainedHandleSkipsTheFactory() async {
+        struct SeedError: Error {}
+        let retained = FakeHandle(
+            config: makeConfig(),
+            outbox: .failure(SeedError())
+        )
+        let opener = TestOpener(
+            makeHandle: { _ in
+                Issue.record("a bootstrapped store must not reopen by id")
+                fatalError("unreachable")
+            },
+            makeService: { _, _, _ in
+                Issue.record("makeService must not run when the seed fails")
+                fatalError("unreachable")
+            }
+        )
+
+        let waiter = OutcomeWaiter()
+        opener.open(
+            makeHandle: { retained },
+            onOutcome: { waiter.record($0) }
+        )
+        guard case .failed = await waiter.value() else {
+            Issue.record("the retained handle's failed seed should fail")
+            return
+        }
+        #expect(retained.didShutdown)
+    }
 }
 
 // MARK: - Fixtures
@@ -229,7 +207,6 @@ extension LibrarySessionOpenerTests {
     private func makeConfig() -> BridgeConfig {
         BridgeConfig(
             libraryId: "lib-test",
-            libraryName: "Test Library",
             libraryPath: "/tmp/test",
             pauseBetweenSides: false,
             sidePauseCountdown: .off,
@@ -268,8 +245,7 @@ extension LibrarySessionOpenerTests {
                 bindAddress: "127.0.0.1"
             ),
             discogsTokenStatus: .notConfigured,
-            discogsUsable: false,
-            sync: nil
+            discogsUsable: false
         )
     }
 
@@ -302,58 +278,30 @@ extension LibrarySessionOpenerTests {
 
 /// A hand-built `LibrarySessionHandle` for the opener tests: it answers the
 /// reads the opener makes off a real `AppHandle` and records whether it was shut
-/// down, so a test can assert the outbox-failure teardown ran (or, on the other
-/// paths, didn't).
+/// down, so a test can assert the seed-failure teardown ran.
 private final class FakeHandle: LibrarySessionHandle, @unchecked Sendable {
     let config: BridgeConfig
+    let name: Result<String, any Error>
     let outbox: Result<BridgeOutboxSnapshot, any Error>
-    let syncReadyValue: Bool
     private let shutdownFlag = Flag()
-    private let state = NSLock()
-    private var keyState: BridgeCloudHomeKeyState
-    /// Set when the read should refuse rather than answer — a locked OS
-    /// keychain throws instead of returning a state, and that difference is the
-    /// whole point of the `.keychainLocked` outcome.
-    private let keyStateError: (any Error)?
-    private var unlockResults: [Result<Void, any Error>]
-    private var recordedUnlockKeys: [String] = []
 
     init(
         config: BridgeConfig,
-        keyState: BridgeCloudHomeKeyState,
-        keyStateError: (any Error)? = nil,
-        unlockResults: [Result<Void, any Error>] = [],
+        name: Result<String, any Error> = .success("Test Library"),
         outbox: Result<BridgeOutboxSnapshot, any Error> = .success(
             OutboxStore.emptySnapshot
-        ),
-        syncReady: Bool = false
+        )
     ) {
         self.config = config
-        self.keyState = keyState
-        self.keyStateError = keyStateError
-        self.unlockResults = unlockResults
+        self.name = name
         self.outbox = outbox
-        syncReadyValue = syncReady
     }
 
     var didShutdown: Bool { shutdownFlag.isSet }
-    var unlockKeys: [String] {
-        state.withLock { recordedUnlockKeys }
-    }
 
     func getConfig() -> BridgeConfig { config }
-    func cloudHomeKeyState() throws -> BridgeCloudHomeKeyState {
-        if let keyStateError { throw keyStateError }
-        return state.withLock { keyState }
-    }
-    func unlockCloudHome(serializedCloudKey: String) async throws {
-        let result = state.withLock {
-            recordedUnlockKeys.append(serializedCloudKey)
-            return unlockResults.removeFirst()
-        }
-        try result.get()
-        state.withLock { keyState = .available }
-    }
+    func libraryName() async throws -> String { try name.get() }
+    func storageLocation() async throws -> BridgeStorageLocation? { nil }
     func getOutboxSnapshot() async throws -> BridgeOutboxSnapshot {
         try outbox.get()
     }
@@ -373,19 +321,7 @@ private final class FakeHandle: LibrarySessionHandle, @unchecked Sendable {
             paused: false
         )
     }
-    func isSyncReady() -> Bool { syncReadyValue }
-    func shutdown() async { shutdownFlag.set() }
-}
-
-private final class Counter: @unchecked Sendable {
-    private let lock = NSLock()
-    private var count = 0
-
-    func increment() {
-        lock.withLock { count += 1 }
-    }
-
-    var value: Int { lock.withLock { count } }
+    func shutdown() async throws { shutdownFlag.set() }
 }
 
 /// A one-way flag settable from any thread — the opener awaits `shutdown()` off

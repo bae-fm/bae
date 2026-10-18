@@ -365,9 +365,9 @@ extension AlbumDetailView {
             pinRelease(releaseId: releaseId)
         case .unpin:
             unpinRelease(releaseId: releaseId)
-        case .makeRemote:
+        case .upload:
             presentMoveToCloudConfirmSheet(releaseId: releaseId)
-        case .makeLocal:
+        case .detachAudio:
             makeReleaseLocal(releaseId: releaseId)
         }
     }

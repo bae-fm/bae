@@ -1,6 +1,8 @@
 import BaeKit
 import SwiftUI
 
+/// One file in the storage inspector: a release file with the uploads coven
+/// holds for it, or an upload that belongs to no release file.
 struct StorageInspectorFileRow: View {
     let row: BridgeStorageInspectorFile
 
@@ -10,40 +12,28 @@ struct StorageInspectorFileRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: ThemeSpace.inline) {
             HStack(spacing: ThemeSpace.related) {
-                Image(systemName: row.uploadSymbol)
+                Image(systemName: row.symbol)
                     .themeIcon(.medium)
-                    .foregroundStyle(row.uploadTone.color)
+                    .foregroundStyle(.secondary)
                     .frame(width: ThemeIcon.medium.size)
-                    .help(row.uploadStatus)
-                    .accessibilityLabel(row.uploadStatus)
                 Text(row.name)
                     .lineLimit(1)
                     .truncationMode(.middle)
                     .help(row.name)
                 Spacer(minLength: ThemeSpace.related)
-                Text(row.sizeText)
+                Text(row.file?.fileSizeText ?? "")
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
             }
-            HStack(spacing: ThemeSpace.related) {
-                Text(row.file?.audioFormat?.text ?? "")
-                    .lineLimit(1)
-                Spacer(minLength: 0)
-                if !row.progressText.isEmpty {
-                    StatusChip(verbatim: row.progressText, tone: row.uploadTone)
-                        .help(row.progressText)
-                }
-                Text(row.throughputText)
-                    .monospacedDigit()
-                    .fixedSize()
-            }
-            .themeText(.detail)
-            .foregroundStyle(.secondary)
-            .padding(.leading, Self.detailIndent)
-            ProgressTrackBar(progress: row.upload?.bar?.fraction ?? 0)
-                .opacity(row.upload?.bar == nil ? 0 : 1)
-                .accessibilityHidden(row.upload?.bar == nil)
+            Text(row.file?.audioFormat?.text ?? "")
+                .themeText(.detail)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
                 .padding(.leading, Self.detailIndent)
+            ForEach(row.operations, id: \.fileId) { operation in
+                UploadOperationLine(operation: operation)
+                    .padding(.leading, Self.detailIndent)
+            }
         }
         .padding(.vertical, ThemeSpace.line)
         .accessibilityElement(children: .contain)
@@ -51,11 +41,76 @@ struct StorageInspectorFileRow: View {
     }
 }
 
+/// One upload's state, its rate while bytes move, and its progress bar. A
+/// pending upload shows why coven is waiting instead of its state.
+private struct UploadOperationLine: View {
+    let operation: BridgeUploadFileOp
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: ThemeSpace.inline) {
+            HStack(spacing: ThemeSpace.related) {
+                StatusChip(
+                    verbatim: status,
+                    tone: tone,
+                    symbol: symbol
+                )
+                .help(status)
+                Text(operation.bar?.text ?? "")
+                    .monospacedDigit()
+                Spacer(minLength: 0)
+                Text(throughputText)
+                    .monospacedDigit()
+                    .fixedSize()
+            }
+            .themeText(.detail)
+            .foregroundStyle(.secondary)
+            ProgressTrackBar(progress: operation.bar?.fraction ?? 0)
+                .opacity(operation.bar == nil ? 0 : 1)
+                .accessibilityHidden(operation.bar == nil)
+        }
+    }
+
+    private var status: String {
+        if let pending = operation.pending {
+            return localizedCoreString(
+                bridgePendingReasonKey(reason: pending.reason.kind)
+            )
+        }
+        return switch operation.state {
+        case .waiting: QueueSummary.countLabel("core.queue.queued", 1)
+        case .uploading: QueueSummary.countLabel("core.queue.uploading", 1)
+        }
+    }
+
+    private var symbol: String {
+        if operation.pending != nil { return "exclamationmark.triangle.fill" }
+        return switch operation.state {
+        case .waiting: "clock"
+        case .uploading: "arrow.up.circle.fill"
+        }
+    }
+
+    private var tone: StatusTone {
+        if operation.pending != nil { return .warning }
+        return switch operation.state {
+        case .waiting: .neutral
+        case .uploading: .activity
+        }
+    }
+
+    private var throughputText: String {
+        guard operation.throughputBps > 0 else { return "" }
+        return QueueSummary.throughputText(
+            bytesPerSecond: operation.throughputBps
+        )
+    }
+}
+
 extension BridgeStorageInspectorFile {
     var identity: String {
         switch self {
         case .releaseFile(let file, _): "file:\(file.id)"
-        case .upload(let upload): "upload:\(upload.fileId)"
+        case .upload(let operation): "upload:\(operation.fileId)"
         }
     }
 
@@ -66,81 +121,37 @@ extension BridgeStorageInspectorFile {
         }
     }
 
-    var upload: BridgeUploadFileOp? {
+    var operations: [BridgeUploadFileOp] {
         switch self {
-        case .releaseFile(_, let upload): upload
-        case .upload(let upload): upload
+        case .releaseFile(_, let operations): operations
+        case .upload(let operation): [operation]
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .releaseFile: "doc"
+        case .upload(let operation):
+            switch operation.label {
+            case .filename: "doc"
+            case .cover: "photo"
+            case .artistImage: "person.crop.square"
+            case .avatar: "person.crop.circle"
+            case .deletedReleaseFile: "trash"
+            }
         }
     }
 
     var name: String {
         switch self {
-        case .releaseFile(let file, _): file.originalFilename
-        case .upload(let upload):
-            switch upload.label {
-            case .filename(let name): name
-            case .cover: QueueSummary.message("core.import.role.cover")
-            case .artistImage:
-                QueueSummary.message("core.outbox.file.artist_image")
-            case .unwinding: QueueSummary.message("core.outbox.file.unwinding")
+        case .releaseFile(let file, _): return file.originalFilename
+        case .upload(let operation):
+            if case .filename(let name) = operation.label { return name }
+            guard let key = bridgeUploadFileLabelKey(label: operation.label)
+            else {
+                preconditionFailure("only a file name has no catalog label")
             }
+            return localizedCoreString(key)
         }
-    }
-
-    var sizeText: String {
-        switch self {
-        case .releaseFile(let file, _): file.fileSizeText
-        case .upload(let upload):
-            Int64(upload.sourceBytesTotal).formatted(.byteCount(style: .file))
-        }
-    }
-
-    var uploadSymbol: String {
-        switch upload?.state {
-        case .queued: "clock"
-        case .preparing: "seal"
-        case .prepared: "checkmark.circle"
-        case .uploading: "arrow.up.circle.fill"
-        case .retrying: "exclamationmark.triangle.fill"
-        case .uploaded: "icloud"
-        case nil: "doc"
-        }
-    }
-
-    var uploadTone: StatusTone {
-        switch upload?.state {
-        case .preparing, .uploading: .activity
-        case .retrying: .danger
-        case .uploaded: .info
-        case .queued, .prepared, nil: .neutral
-        }
-    }
-
-    var uploadStatus: String {
-        switch upload?.state {
-        case .queued: String(localized: "Queued")
-        case .preparing: QueueSummary.countLabel("core.outbox.preparing", 1)
-        case .prepared: QueueSummary.countLabel("core.outbox.prepared", 1)
-        case .uploading: QueueSummary.countLabel("core.queue.uploading", 1)
-        case .retrying: QueueSummary.countLabel("core.outbox.retrying", 1)
-        case .uploaded: QueueSummary.countLabel("core.outbox.uploaded", 1)
-        case nil: name
-        }
-    }
-
-    var throughputText: String {
-        guard let upload, upload.throughputBps > 0 else { return "" }
-        return QueueSummary.throughputText(bytesPerSecond: upload.throughputBps)
-    }
-
-    var progressText: String {
-        guard let upload else { return "" }
-        if upload.state == .retrying {
-            guard let error = upload.lastError else {
-                preconditionFailure("a retrying upload file has no error")
-            }
-            return error
-        }
-        return upload.bar?.text ?? ""
     }
 }

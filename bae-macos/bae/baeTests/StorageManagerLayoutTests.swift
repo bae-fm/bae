@@ -9,8 +9,8 @@ import XCTest
 final class StorageManagerLayoutTests: XCTestCase {
     func testQueueMessagesResolveFromBaeKitCatalog() {
         XCTAssertEqual(
-            QueueSummary.message("core.outbox.publishing"),
-            "%lld publishing"
+            QueueSummary.message("core.queue.uploading"),
+            "%lld uploading"
         )
     }
 
@@ -213,9 +213,9 @@ final class StorageManagerLayoutTests: XCTestCase {
                     .last { $0.documentView is NSTableView }
             )
             let files = try XCTUnwrap(fileList.documentView as? NSTableView)
-            // Two contents files, one of which also uploads, and the remaining
-            // five uploads (including generated artwork) each occupy one row.
-            XCTAssertEqual(files.numberOfRows, 7)
+            // Two contents files, and the six uploads the fixture ties to no
+            // release file (including generated artwork), each on its own row.
+            XCTAssertEqual(files.numberOfRows, 8)
             XCTAssertFalse(
                 descendants.compactMap { $0 as? NSSegmentedControl }
                     .contains { $0.segmentCount == 2 }

@@ -4,57 +4,47 @@ import os.log
 
 private let logger = Logger.bae("WelcomeChooseView")
 
-/// The first screen: open a library on this device, restore one from the
-/// keychain, or create, join, or restore from the cloud.
+/// The first screen: open a library on this device, restore one from a code
+/// saved in iCloud Keychain, or create, join, or restore by code.
 struct WelcomeChooseView: View {
     /// A failed library open, shown as a callout under the subtitle.
     let loadError: DisplayError?
     let canDeleteActiveLibrary: Bool
-    let onLibraryReady: (BridgeLibrary) -> Void
+    let onLibraryReady: (OpenedLibrary, BridgeError?) -> Void
+    let onOpenLibrary: (String) -> Void
+    let onRestoreSaved: (BridgeSavedRestoreCode) -> Void
     let onJoin: () -> Void
     let onRestore: () -> Void
 
     @Environment(LibrarySetup.self)
     private var setup
+    @Environment(LibraryRemovals.self)
+    private var removals
 
     @State
     private var isCreating = false
     @State
+    private var createTask: Task<Void, Never>?
+    @State
     private var error: DisplayError?
-
     @State
     private var libraryPendingRemoval: BridgeLibrary?
-    @State
-    private var removingLibraryId: String?
-
-    /// The in-flight keychain restore, cancelled by a newer one or on
-    /// disappear.
-    @State
-    private var restoreTask: Task<Void, Never>?
-    @State
-    private var isRestoring = false
-    @State
-    private var isAuthorizing = false
-    @State
-    private var oauthTokenJson: String?
 
     /// Libraries on this device, discovered on appear.
     @State
     private var localLibraries: SectionLoad<[BridgeLibrary]> = .loading
 
-    /// Restore codes found in the keychain.
+    /// Restore codes coven saved in iCloud Keychain.
     @State
-    private var keychainEntries:
-        SectionLoad<[(code: String, info: BridgeRestoreCodeInfo)]> = .loading
+    private var savedCodes: SectionLoad<[SavedRestoreEntry]> = .loading
 
     private var discoveredLibraries: [BridgeLibrary] {
         localLibraries.value ?? []
     }
 
-    /// Keychain restore codes whose library isn't already on this device.
-    private var restorableEntries: [(code: String, info: BridgeRestoreCodeInfo)]
-    {
-        (keychainEntries.value ?? [])
+    /// Saved restore codes whose library isn't already on this device.
+    private var restorableEntries: [SavedRestoreEntry] {
+        (savedCodes.value ?? [])
             .filter { entry in
                 !discoveredLibraries.contains { $0.id == entry.info.libraryId }
             }
@@ -64,7 +54,11 @@ struct WelcomeChooseView: View {
     /// nothing; a loading or failed lookup doesn't mean there are no libraries.
     private var isFirstRun: Bool {
         localLibraries.value?.isEmpty == true
-            && keychainEntries.value?.isEmpty == true
+            && savedCodes.value?.isEmpty == true
+    }
+
+    private var isBusy: Bool {
+        isCreating || removals.removingLibraryId != nil || removals.isRetrying
     }
 
     var body: some View {
@@ -80,13 +74,9 @@ struct WelcomeChooseView: View {
             }
             .scrollBounceBehavior(.basedOnSize)
         }
-        .task {
-            await loadLocalLibraries()
-        }
-        .task {
-            await checkKeychainForRestoreCodes()
-        }
-        .onDisappear { restoreTask?.cancel() }
+        .task { await loadLocalLibraries() }
+        .task { await loadSavedRestoreCodes() }
+        .onDisappear { createTask?.cancel() }
         .alert(
             "Remove this library from this Mac?",
             isPresented: Binding(
@@ -95,8 +85,10 @@ struct WelcomeChooseView: View {
             ),
             presenting: libraryPendingRemoval
         ) { library in
-            Button("Delete", role: .destructive) {
-                removeLocalLibrary(library)
+            Button("Remove", role: .destructive) {
+                removals.remove(closedLibrary: library.id) {
+                    Task { await loadLocalLibraries() }
+                }
             }
             Button("Cancel", role: .cancel) {}
         } message: { library in
@@ -119,6 +111,9 @@ struct WelcomeChooseView: View {
                     guidance: "Choose another library or restore from cloud."
                 )
             }
+            if let removalError = removals.error {
+                RemovalErrorCallout(error: removalError, removals: removals)
+            }
             if let failure = localLibraries.failure {
                 WelcomeLoadErrorCallout(
                     title: "Couldn't list the libraries on this Mac",
@@ -128,16 +123,14 @@ struct WelcomeChooseView: View {
             else if !discoveredLibraries.isEmpty {
                 LocalLibrariesSection(
                     libraries: discoveredLibraries,
-                    disabled: isCreating || isRestoring
-                        || removingLibraryId != nil,
+                    disabled: isBusy,
                     canDeleteActiveLibrary: canDeleteActiveLibrary,
-                    removingLibraryId: removingLibraryId,
-                    onOpen: onLibraryReady,
-                    onShowInFinder: { setup.revealInFinder($0.path) },
-                    onRemove: { libraryPendingRemoval = $0 },
+                    removingLibraryId: removals.removingLibraryId,
+                    onOpen: { onOpenLibrary($0.id) },
+                    onRemove: { libraryPendingRemoval = $0 }
                 )
             }
-            if let failure = keychainEntries.failure {
+            if let failure = savedCodes.failure {
                 WelcomeLoadErrorCallout(
                     title: "Couldn't read restore codes from your keychain",
                     error: failure
@@ -146,22 +139,8 @@ struct WelcomeChooseView: View {
             else if !restorableEntries.isEmpty {
                 KeychainRestoreSection(
                     entries: restorableEntries,
-                    isRestoring: isRestoring,
-                    isAuthorizing: isAuthorizing,
-                    oauthConnected: oauthTokenJson != nil,
-                    onRestore: { entry in doRestoreFromCode(code: entry.code) },
-                    onConnect: { info in
-                        #if BAE_OAUTH_PROVIDERS
-                            doOAuthAuthorize(provider: info.cloudProvider)
-                        #endif
-                    },
-                    onCancelAuth: {
-                        #if BAE_OAUTH_PROVIDERS
-                            setup.oauthCancel()
-                        #endif
-                        isAuthorizing = false
-                    },
-                    onDelete: deleteKeychainEntry,
+                    disabled: isBusy,
+                    onRestore: { onRestoreSaved($0.code) }
                 )
             }
             if isFirstRun {
@@ -199,16 +178,16 @@ struct WelcomeChooseView: View {
             Button(action: doCreate) { createButtonLabel }
                 .buttonStyle(PrimaryButtonStyle())
                 .frame(width: Self.firstRunButtonWidth)
-                .disabled(isCreating || isRestoring)
+                .disabled(isBusy)
                 .keyboardShortcut(.defaultAction)
             Button("Join a library", action: onJoin)
                 .buttonStyle(.bordered)
                 .frame(width: Self.firstRunButtonWidth)
-                .disabled(isCreating || isRestoring)
+                .disabled(isBusy)
             Button("Restore from cloud", action: onRestore)
                 .buttonStyle(.bordered)
                 .frame(width: Self.firstRunButtonWidth)
-                .disabled(isCreating || isRestoring)
+                .disabled(isBusy)
         }
     }
 
@@ -220,76 +199,29 @@ struct WelcomeChooseView: View {
                 .frame(maxWidth: WelcomeLayout.columnWidth)
             HStack(spacing: ThemeSpace.group) {
                 Button(action: doCreate) { createButtonLabel }
-                    .disabled(isCreating || isRestoring)
+                    .disabled(isBusy)
                 Button("Join a library", action: onJoin)
-                    .disabled(isCreating || isRestoring)
+                    .disabled(isBusy)
                 Button("Restore from cloud", action: onRestore)
-                    .disabled(isCreating || isRestoring)
+                    .disabled(isBusy)
             }
             .buttonStyle(.bordered)
             .controlSize(.small)
         }
     }
-
 }
 
 // MARK: - Actions
 
 extension WelcomeChooseView {
-    /// Removes a keychain restore code after the section's confirmation.
-    private func deleteKeychainEntry(code: String) {
-        guard let entries = keychainEntries.value,
-            let entry = entries.first(where: { $0.code == code })
-        else {
-            return
-        }
-        do {
-            try setup.deleteRestoreCode(entry.info.libraryId)
-        }
-        catch {
-            // Keep the row: the code is still in the keychain.
-            logger.error(
-                "Failed to delete keychain restore code: \(error.localizedDescription)"
-            )
-            self.error = DisplayError(error)
-            return
-        }
-        keychainEntries = .loaded(entries.filter { $0.code != code })
-    }
-
-    private func removeLocalLibrary(_ library: BridgeLibrary) {
-        removingLibraryId = library.id
-        error = nil
-        let remove = setup.removeLocalLibrary
-        Task.detached {
-            do {
-                try remove(library.id)
-                await MainActor.run {
-                    localLibraries = .loaded(
-                        discoveredLibraries.filter { $0.id != library.id }
-                    )
-                    removingLibraryId = nil
-                }
-            }
-            catch {
-                await MainActor.run {
-                    removingLibraryId = nil
-                    self.error = DisplayError(error)
-                }
-            }
-        }
-    }
-
     private func loadLocalLibraries() async {
         do {
-            let discover = setup.discoverLibraries
-            let discovered = try await DetachedWork.run {
-                try discover()
-            }
+            let discovered = try await setup.listLibraries()
             try Task.checkCancellation()
             localLibraries = .loaded(discovered)
         }
         catch is CancellationError {
+            logger.debug("Local library discovery cancelled")
         }
         catch {
             // A failure, not an empty list, so it doesn't read as first run.
@@ -305,119 +237,56 @@ extension WelcomeChooseView {
         }
     }
 
-    private func checkKeychainForRestoreCodes() async {
+    private func loadSavedRestoreCodes() async {
         do {
-            let fetch = setup.fetchRestoreCodes
-            let decode = setup.decodeRestoreCode
-            let decoded = try await DetachedWork.run {
-                let stored = try fetch()
-                var decoded: [(code: String, info: BridgeRestoreCodeInfo)] =
-                    []
-                for entry in stored {
-                    do {
-                        let info = try decode(entry.code)
-                        decoded.append((code: entry.code, info: info))
-                    }
-                    catch {
-                        logger.warning(
-                            "Skipping unreadable keychain restore entry: \(error.localizedDescription)"
-                        )
-                    }
-                }
-                return decoded
-            }
+            let saved = try await setup.savedRestoreCodes()
             try Task.checkCancellation()
-            keychainEntries = .loaded(decoded)
+            savedCodes = .loaded(
+                saved.map { SavedRestoreEntry(code: $0, info: $0.info()) }
+            )
         }
         catch is CancellationError {
+            logger.debug("Saved restore code lookup cancelled")
         }
         catch {
             // A refused lookup (such as a locked keychain) isn't the same as
             // no restore codes. No line means core reported a cancellation.
             guard let failure = DisplayError(error) else {
-                logger.debug("Keychain restore lookup cancelled")
+                logger.debug("Saved restore code lookup cancelled")
                 return
             }
             logger.error(
-                "Keychain restore lookup failed: \(error.localizedDescription)"
+                "Saved restore code lookup failed: \(error.localizedDescription)"
             )
-            keychainEntries = .failed(failure)
+            savedCodes = .failed(failure)
         }
     }
 
     private func doCreate() {
+        createTask?.cancel()
         isCreating = true
         error = nil
         let create = setup.createLibrary
-        Task.detached {
+        createTask = Task {
+            defer { isCreating = false }
             do {
-                let info = try create()
-                await MainActor.run {
-                    isCreating = false
-                    onLibraryReady(info)
-                }
+                let library = try await create()
+                onLibraryReady(library, nil)
             }
             catch {
-                await MainActor.run {
-                    isCreating = false
-                    self.error = DisplayError(error)
-                }
-            }
-        }
-    }
-
-    /// Restores a keychain entry's library from its code and any OAuth token.
-    private func doRestoreFromCode(code: String) {
-        let token = oauthTokenJson
-        let restore = setup.restoreFromCode
-        restoreTask?.cancel()
-        isRestoring = true
-        error = nil
-        restoreTask = Task {
-            do {
-                let restored = try await DetachedWork.run {
-                    try restore(code, token)
-                }
-                try Task.checkCancellation()
-                isRestoring = false
-                onLibraryReady(restored)
-            }
-            catch is CancellationError {
-                // The newer restore owns `isRestoring` now.
-                logger.debug("Restore superseded by a newer restore; skipping")
-            }
-            catch {
-                isRestoring = false
+                logger.error(
+                    "Library creation failed: \(error.localizedDescription)"
+                )
                 self.error = DisplayError(error)
             }
         }
     }
+}
 
-    #if BAE_OAUTH_PROVIDERS
-        private func doOAuthAuthorize(provider: BridgeCloudProvider) {
-            isAuthorizing = true
-            error = nil
-            let authorize = setup.oauthAuthorize
-            Task.detached {
-                do {
-                    let tokenJson = try authorize(provider)
-                    await MainActor.run {
-                        guard isAuthorizing else {
-                            return
-                        }
-                        isAuthorizing = false
-                        oauthTokenJson = tokenJson
-                    }
-                }
-                catch {
-                    await MainActor.run {
-                        isAuthorizing = false
-                        self.error = DisplayError(error)
-                    }
-                }
-            }
-        }
-    #endif
+/// A saved restore code with the details read off it once.
+struct SavedRestoreEntry {
+    let code: BridgeSavedRestoreCode
+    let info: BridgeSavedRestoreCodeInfo
 }
 
 /// A welcome-screen lookup's state; a failure is kept apart from an empty
@@ -474,31 +343,65 @@ private struct WelcomeLoadErrorCallout: View {
     }
 }
 
+/// A removal that failed, or left this Mac's preferences for a library it
+/// already left, with Retry for the latter.
+private struct RemovalErrorCallout: View {
+    let error: DisplayError
+    let removals: LibraryRemovals
+
+    var body: some View {
+        HStack(alignment: .top, spacing: ThemeSpace.related) {
+            if let symbol = StatusTone.danger.symbol {
+                Image(systemName: symbol)
+                    .foregroundStyle(StatusTone.danger.color)
+            }
+            VStack(alignment: .leading, spacing: ThemeSpace.inline) {
+                Text("Couldn't remove the library")
+                    .themeText(.heading)
+                ErrorDetailDisclosure(error: error, showIcon: false)
+                if removals.unfinished != nil {
+                    Button("Retry") { removals.retryUnfinished() }
+                        .disabled(removals.isRetrying)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .notice(.danger)
+        .frame(maxWidth: WelcomeLayout.columnWidth, alignment: .leading)
+    }
+}
+
 #if DEBUG
     #Preview("First run") {
         WelcomeWindowChrome {
             WelcomeChooseView(
                 loadError: nil,
                 canDeleteActiveLibrary: true,
-                onLibraryReady: { _ in },
+                onLibraryReady: { _, _ in },
+                onOpenLibrary: { _ in },
+                onRestoreSaved: { _ in },
                 onJoin: {},
-                onRestore: {},
+                onRestore: {}
             )
         }
         .environment(LibrarySetup.stub())
+        .environment(PreviewData.welcomeRemovals())
     }
 
-    #Preview("Libraries and restore codes") {
+    #Preview("Libraries") {
         WelcomeWindowChrome {
             WelcomeChooseView(
                 loadError: nil,
                 canDeleteActiveLibrary: true,
-                onLibraryReady: { _ in },
+                onLibraryReady: { _, _ in },
+                onOpenLibrary: { _ in },
+                onRestoreSaved: { _ in },
                 onJoin: {},
-                onRestore: {},
+                onRestore: {}
             )
         }
         .environment(PreviewData.welcomeSetup())
+        .environment(PreviewData.welcomeRemovals())
     }
 
     #Preview("Library failed to open") {
@@ -506,11 +409,14 @@ private struct WelcomeLoadErrorCallout: View {
             WelcomeChooseView(
                 loadError: PreviewData.displayErrorWithDetail,
                 canDeleteActiveLibrary: true,
-                onLibraryReady: { _ in },
+                onLibraryReady: { _, _ in },
+                onOpenLibrary: { _ in },
+                onRestoreSaved: { _ in },
                 onJoin: {},
-                onRestore: {},
+                onRestore: {}
             )
         }
         .environment(PreviewData.welcomeSetup())
+        .environment(PreviewData.welcomeRemovals())
     }
 #endif

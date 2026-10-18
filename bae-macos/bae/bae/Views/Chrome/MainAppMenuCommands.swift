@@ -16,6 +16,7 @@ final class MainAppMenuTarget {
     let uiStore: UiStore
     let library: Library
     let playback: Playback
+    let membershipStore: MembershipStore
 
     init(
         playbackStore: PlaybackStore,
@@ -23,7 +24,8 @@ final class MainAppMenuTarget {
         libraryStore: LibraryStore,
         uiStore: UiStore,
         library: Library,
-        playback: Playback
+        playback: Playback,
+        membershipStore: MembershipStore
     ) {
         self.playbackStore = playbackStore
         self.configStore = configStore
@@ -31,6 +33,7 @@ final class MainAppMenuTarget {
         self.uiStore = uiStore
         self.library = library
         self.playback = playback
+        self.membershipStore = membershipStore
     }
 }
 
@@ -98,18 +101,13 @@ struct OpenLibrarySubmenu: View {
                 let button = Button {
                     onOpen(lib.id)
                 } label: {
-                    if !lib.canOpen {
-                        // Listed, so it isn't lost — but it cannot be opened.
-                        Label(lib.name, systemImage: "exclamationmark.triangle")
-                    }
-                    else if lib.isActive {
+                    if lib.isActive {
                         Label(lib.name, systemImage: "checkmark")
                     }
                     else {
                         Text(lib.name)
                     }
                 }
-                .disabled(!lib.canOpen)
                 if idx < Self.shortcutKeys.count {
                     button.keyboardShortcut(
                         Self.shortcutKeys[idx],
@@ -290,9 +288,9 @@ struct MainAppMenuCommands: Commands {
         CommandGroup(after: .newItem) {
             Button("New Library...") { app.presentWelcome(mode: nil) }
                 .keyboardShortcut("n", modifiers: [.command, .option])
-            Button("Join a Library...") { app.presentWelcome(mode: .join(nil)) }
+            Button("Join a Library...") { app.presentWelcome(mode: .join) }
             Button("Restore from Code...") {
-                app.presentWelcome(mode: .restore)
+                app.presentWelcome(mode: .restore(nil))
             }
             Menu("Open Library") {
                 OpenLibrarySubmenu(libraries: state.libraries) {
@@ -312,11 +310,7 @@ struct MainAppMenuCommands: Commands {
         }
         CommandGroup(before: .saveItem) {
             Button("Rename Library...") { app.presentRenameLibrary() }
-                .disabled(target == nil)
-            Button("Lock Library...") {
-                app.presentLockLibraryConfirmation()
-            }
-            .disabled(target == nil)
+                .disabled(library?.canRename != true)
             Button("Sync Now") { app.syncNow() }
                 .disabled(target == nil)
             Button("Reveal Library in Finder") { app.revealLibraryInFinder() }

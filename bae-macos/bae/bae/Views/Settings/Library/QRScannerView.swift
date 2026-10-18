@@ -169,14 +169,14 @@ private final class CameraCapture: @unchecked Sendable {
 
 /// A sheet hosting `QRScannerView` over a screen whose paste field stays the
 /// fallback.
-struct PairingScannerSheet: View {
+struct CodeScannerSheet: View {
     let onScan: (String) -> Void
     let onDismiss: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("Pairing code")
+                Text("Scan a code")
                     .themeText(.heading)
                 Spacer()
                 Button("Cancel") { onDismiss() }

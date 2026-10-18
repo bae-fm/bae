@@ -7,19 +7,15 @@ private let logger = Logger.bae("LibrarySettings")
 struct LibrarySettingsTab: View {
     /// Removes the active library from this device.
     let onForgetLibrary: () -> Void
+    /// Shows the device-reset warning for the active library.
+    let onResetDevice: () -> Void
+    /// Asks Sparkle for a newer version of the app.
+    let onCheckForUpdates: () -> Void
 
     @Environment(Sync.self)
     var sync
-    #if BAE_OAUTH_PROVIDERS
-        @Environment(CloudSyncSetup.self)
-        var cloudSyncSetup
-    #endif
     @Environment(ConfigStore.self)
     var configStore
-    @Environment(SyncStatusStore.self)
-    var syncStatusStore
-    @Environment(UiStore.self)
-    var uiStore
     @Environment(OutboxStore.self)
     var outboxStore
 
@@ -28,13 +24,10 @@ struct LibrarySettingsTab: View {
     @State
     private var showForgetConfirm = false
 
-    private var isConnected: Bool {
-        syncStatusStore.syncReady
-    }
-
     var body: some View {
         Form {
             Section {
+                LabeledContent("Name", value: configStore.libraryName)
                 LabeledContent("Path") {
                     HStack {
                         Text(configStore.config.libraryPath)
@@ -55,19 +48,18 @@ struct LibrarySettingsTab: View {
             }
 
             Section("Sync") {
-                // The banner only shows with a configured provider, since the
-                // recorded sync error outlives a disconnect.
-                if let syncConfig = configStore.config.sync {
-                    SyncErrorBanner(
-                        onReconnect: reconnectSync,
-                        onRetryBlocked: sync.retryBlockedSyncOperation
-                    )
-
+                if let location = configStore.storage {
                     ConnectedProviderControls(
-                        config: syncConfig,
+                        location: location,
                         sync: sync,
-                        libraryId: configStore.config.libraryId
+                        configStore: configStore
                     )
+                    SyncStatusLine(
+                        location: location,
+                        onResetDevice: onResetDevice,
+                        onCheckForUpdates: onCheckForUpdates
+                    )
+                    UploadPauseToggle()
                 }
                 else {
                     Button("Set up sync...") {
@@ -76,9 +68,10 @@ struct LibrarySettingsTab: View {
                 }
             }
 
-            if isConnected {
+            if configStore.hasCloudHome {
                 MembersSection()
-                RecoveryCodeSection(generate: sync.generateRestoreCode)
+                HistorySharingSection()
+                RestoreCodeSection(generate: sync.generateRestoreCode)
             }
 
             Section("Remove") {
@@ -95,7 +88,7 @@ struct LibrarySettingsTab: View {
         }
         .formStyle(.grouped)
         .sheet(isPresented: $showSyncSetup) {
-            syncSetupWizard
+            SyncSetupWizard(onDone: { showSyncSetup = false })
         }
         .alert(
             "Remove this library from this Mac?",
@@ -108,77 +101,19 @@ struct LibrarySettingsTab: View {
         } message: {
             Text(
                 LibraryRemovalConfirmation.message(
-                    hasCloudHome: configStore.config.hasCloudHome,
+                    hasCloudHome: configStore.hasCloudHome,
                     hasPendingCloudWork: outboxStore.hasPendingCloudWork
                 )
             )
         }
     }
 
-    @ViewBuilder
-    private var syncSetupWizard: some View {
-        #if BAE_OAUTH_PROVIDERS
-            SyncSetupWizard(
-                onConnectS3: connectS3,
-                onConnectOAuth: connectOAuth,
-                onConnectCloudKit: connectCloudKit,
-                onDone: dismissSyncSetup
-            )
-        #else
-            SyncSetupWizard(
-                onConnectS3: connectS3,
-                onDone: dismissSyncSetup
-            )
-        #endif
-    }
-
-    /// Retries the configured provider; a failure shows up in `SyncErrorBanner`
-    /// through the sync status.
-    private func reconnectSync() async {
-        do {
-            try await sync.reconnectSync()
-        }
-        catch {
-            logger.error(
-                "Sync reconnect failed: \(error.localizedDescription)"
-            )
-        }
-    }
-
-    private func connectS3(_ config: BridgeSaveSyncConfig) async throws {
-        try await sync.saveSyncConfig(config)
-        storeRestoreCode()
-    }
-
-    #if BAE_OAUTH_PROVIDERS
-        private func connectOAuth(
-            _ provider: BridgeCloudProvider,
-            _ storage: BridgeHomeStorage
-        ) async throws {
-            try await cloudSyncSetup.connectOAuth(
-                provider: provider,
-                storage: storage
-            )
-            storeRestoreCode()
-        }
-
-        private func connectCloudKit(_ storage: BridgeHomeStorage) async throws
-        {
-            try await cloudSyncSetup.connectCloudKit(storage: storage)
-            storeRestoreCode()
-        }
-    #endif
-
-    private func dismissSyncSetup() {
-        showSyncSetup = false
-    }
-
     /// The remove section's footer, which depends on whether the library syncs.
     private var removeFooter: String {
-        if configStore.config.hasCloudHome {
+        if configStore.hasCloudHome {
             return String(
                 localized:
-                    "Removes this library and its downloaded files from this Mac. Your library in the cloud is untouched. You can restore it here later."
+                    "Removes this Mac from the library's members, then deletes the library and its downloaded files from this Mac. Your library in the cloud is untouched. Removing needs a connection to your storage."
             )
         }
         return String(
@@ -186,24 +121,21 @@ struct LibrarySettingsTab: View {
                 "This library isn't synced. Removing it permanently deletes its catalog: albums, metadata edits, and play history. Audio files in your folders aren't deleted."
         )
     }
-
-    private func storeRestoreCode() {
-        sync.storeRestoreCodeInKeychain(
-            libraryId: configStore.config.libraryId,
-            onError: { [uiStore] in uiStore.showError($0) }
-        )
-    }
 }
 
 /// The connected provider's details and disconnect flow.
 private struct ConnectedProviderControls: View {
-    let config: BridgeSyncConfig
+    let location: BridgeStorageLocation
 
     @State
     private var flow: DisconnectSyncFlow
 
-    init(config: BridgeSyncConfig, sync: Sync, libraryId: String) {
-        self.config = config
+    init(
+        location: BridgeStorageLocation,
+        sync: Sync,
+        configStore: ConfigStore
+    ) {
+        self.location = location
         _flow = State(
             initialValue: DisconnectSyncFlow(
                 cloudOnlyReleaseCount: sync.cloudOnlyReleaseCount,
@@ -218,14 +150,14 @@ private struct ConnectedProviderControls: View {
                         count
                     )
                 },
-                disconnect: sync.disconnectCloudProvider,
-                deleteRestoreCode: {
-                    try KeychainService.deleteRestoreCode(libraryId: libraryId)
+                disconnect: { [sync, configStore] in
+                    try await sync.disconnectCloudProvider()
+                    configStore.applyStorage(try await sync.storageLocation())
                 },
                 baseMessage: {
                     String(
                         localized:
-                            "This will stop syncing and remove the cloud provider configuration."
+                            "This Mac stops syncing and removes its storage credentials. Sign in again to resume syncing."
                     )
                 },
                 warningCheckFailedMessage: {
@@ -236,12 +168,6 @@ private struct ConnectedProviderControls: View {
                 },
                 disconnectFailedMessage: {
                     String(localized: "Failed to disconnect: \($0)")
-                },
-                restoreCodeDeleteFailedMessage: {
-                    String(
-                        localized:
-                            "Disconnected, but couldn't remove the restore code: \($0)"
-                    )
                 }
             )
         )
@@ -252,7 +178,7 @@ private struct ConnectedProviderControls: View {
         var flow = flow
         Group {
             CloudProviderConnectedSection(
-                config: config,
+                location: location,
                 onDisconnect: { flow.promptDisconnect() }
             )
 
@@ -272,8 +198,39 @@ private struct ConnectedProviderControls: View {
     }
 }
 
-/// The "Recovery" section: the recovery code, shown only on request.
-private struct RecoveryCodeSection: View {
+/// Pausing keeps every queued upload in its place; metadata keeps syncing.
+private struct UploadPauseToggle: View {
+    @Environment(OutboxStore.self)
+    private var outboxStore
+    @Environment(Sync.self)
+    private var sync
+    @Environment(UiStore.self)
+    private var uiStore
+
+    var body: some View {
+        Toggle(
+            "Pause uploads",
+            isOn: Binding(
+                get: { outboxStore.snapshot.pauseRequested },
+                set: { paused in
+                    Task {
+                        do { try await sync.setSyncPaused(paused) }
+                        catch {
+                            logger.error(
+                                "Failed to set upload pause: \(error.localizedDescription)"
+                            )
+                            uiStore.showError(error)
+                        }
+                    }
+                }
+            )
+        )
+    }
+}
+
+/// The "Restore code" section: the code that adds this person's other
+/// devices, shown only on request.
+private struct RestoreCodeSection: View {
     let generate: @Sendable () async throws -> String
 
     @State
@@ -282,13 +239,13 @@ private struct RecoveryCodeSection: View {
     private var result: Result<String, Error>?
 
     var body: some View {
-        Section("Recovery") {
+        Section("Restore code") {
             Text(
-                "Your recovery code restores this library on a new device when you have no other device available to approve it. Anyone with it has full access. Keep it secret."
+                "Your restore code adds your other devices to this library. Anyone with it and access to your storage can open the library. Keep it secret."
             )
             .themeText(.detail)
             .foregroundStyle(.secondary)
-            Button("Show recovery code...") {
+            Button("Show restore code...") {
                 result = nil
                 show = true
             }
@@ -308,11 +265,11 @@ private struct RecoveryCodeSection: View {
             result = .success(code)
         }
         catch is CancellationError {
-            logger.debug("recovery code generation cancelled")
+            logger.debug("restore code generation cancelled")
         }
         catch {
             logger.error(
-                "Failed to generate recovery code: \(error.localizedDescription)"
+                "Failed to generate restore code: \(error.localizedDescription)"
             )
             // No line means core reported a cancellation; keep the spinner.
             guard DisplayError(error) != nil else { return }
@@ -326,37 +283,38 @@ private struct RecoveryCodeSection: View {
 
     @MainActor
     private func librarySettingsTabPreview(
-        configStore: ConfigStore,
-        syncReady: Bool = false
+        configStore: ConfigStore
     ) -> some View {
-        LibrarySettingsTab(onForgetLibrary: {})
-            .frame(width: 500, height: 640)
-            .environment(PreviewData.previewSync())
-            #if BAE_OAUTH_PROVIDERS
-                .environment(
-                    CloudSyncSetup(
-                        connectOAuth: { _, _ in },
-                        connectCloudKit: { _ in }
-                    )
-                )
-            #endif
-            .environment(configStore)
-            .environment(
-                SyncStatusStore(
-                    snapshot: BridgeSyncStatusSnapshot(
-                        error: nil,
-                        canReconnect: false,
-                        blocked: [],
-                        lastSyncTime: nil,
-                        syncing: false,
-                        syncReady: syncReady,
-                        indicator: syncReady
-                            ? .synced(lastSyncTime: nil) : .idle
-                    )
+        LibrarySettingsTab(
+            onForgetLibrary: {},
+            onResetDevice: {},
+            onCheckForUpdates: {}
+        )
+        .frame(width: 500, height: 640)
+        .environment(PreviewData.previewSync())
+        #if BAE_OAUTH_PROVIDERS
+            .environment(CloudSyncSetup())
+        #endif
+        .environment(configStore)
+        .environment(
+            SyncStatusStore(
+                snapshot: BridgeSyncStatusSnapshot(
+                    error: nil,
+                    connected: true,
+                    running: false,
+                    pending: .ready(records: []),
+                    indicator: .synced
                 )
             )
-            .environment(UiStore())
-            .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
+        )
+        .environment(
+            MembershipStore.stub(
+                people: PreviewData.members,
+                selfIsAdmin: true
+            )
+        )
+        .environment(UiStore())
+        .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
     }
 
     #Preview("Not connected") {
@@ -365,8 +323,7 @@ private struct RecoveryCodeSection: View {
 
     #Preview("Connected") {
         librarySettingsTabPreview(
-            configStore: PreviewData.connectedConfigStore(),
-            syncReady: true
+            configStore: PreviewData.connectedConfigStore()
         )
     }
 #endif

@@ -1,190 +1,73 @@
 import BaeKit
 import Foundation
 
-/// A started join the view can await and abort: `join` blocks its worker until
-/// the library is ready; `cancel` aborts the bridge-side work so a superseded
-/// or abandoned join stops instead of completing against a stale library.
-struct JoinOperation: Sendable {
-    let fingerprint: String
-    let join:
-        @Sendable (JoiningDeviceJoinProgressCallback) throws -> BridgeLibrary
-    let cancel: @Sendable () throws -> Void
-}
-
-// The bridge's free functions, bound at file scope where their names are
-// unambiguous — inside `LibrarySetup` the field names shadow them.
-private let bridgeDecodeRestoreCode = decodeRestoreCode(code:)
-private let bridgeDecodeDevicePairingOffer = decodeDevicePairingOffer(code:)
-
-/// Pre-library operations the welcome flow drives: on-device discovery,
-/// create, restore, join, the keychain restore codes, and provider OAuth.
-/// Wraps the bridge's free functions, the `BridgeHost` operations, and
-/// `KeychainService` behind one injectable seam so previews never read or
-/// write real application data.
-/// The code decoders ride along because previews hand out fixture codes only
-/// this seam can "decode"; `availableCloudProviders` stays a free function — it
-/// touches no state.
+/// Operations the welcome flow runs before a library is open: listing this
+/// Mac's libraries and the restore codes coven saved in iCloud Keychain,
+/// creating a library, and starting a restore or join. One injectable seam, so
+/// previews never read or write real application data.
 final class LibrarySetup: Sendable, Observable {
-    let discoverLibraries: @Sendable () throws -> [BridgeLibrary]
-    let removeLocalLibrary: @Sendable (_ libraryId: String) throws -> Void
-    /// Create a library named by core's default generator.
-    let createLibrary: @Sendable () throws -> BridgeLibrary
-    let decodeRestoreCode:
-        @Sendable (_ code: String) throws -> BridgeRestoreCodeInfo
-    let decodeDevicePairingOffer:
-        @Sendable (_ code: String) throws -> BridgeDevicePairingOffer
-    let pendingDevicePairingJoin:
-        @Sendable () throws -> BridgePendingDevicePairingJoin?
-    let abandonPendingDevicePairingJoin: @Sendable () throws -> Void
-    let restoreFromCode:
-        @Sendable (_ code: String, _ oauthTokenJson: String?) throws ->
-            BridgeLibrary
-    let joinDevicePairing:
-        @Sendable (_ code: String, _ oauthTokenJson: String?) async throws ->
-            JoinOperation
-    /// Restore codes any of the user's devices stored in the iCloud keychain.
-    /// Throws when the keychain refuses the lookup — locked, or the display
-    /// asleep — which the welcome screen must not read as "no restore codes".
-    let fetchRestoreCodes:
-        @Sendable () throws -> [(libraryId: String, code: String)]
-    /// Drops a library's restore code from the iCloud keychain. Throws when the
-    /// keychain refuses, so a row is never removed on the strength of a delete
-    /// that did not happen.
-    let deleteRestoreCode: @Sendable (_ libraryId: String) throws -> Void
-    let oauthAuthorize:
-        @Sendable (_ provider: BridgeCloudProvider) throws -> String
-    let oauthCancel: @Sendable () -> Void
-    /// Reveal a library's folder in Finder — the broken-library row's "Show in
-    /// Finder" action. Injected so previews get the no-op default instead of
-    /// opening a real Finder window when the row's button is clicked.
-    let revealInFinder: @Sendable (_ path: String) -> Void
+    let listLibraries: @Sendable () async throws -> [BridgeLibrary]
+    /// Create a library named by core's default generator, returning its open
+    /// store.
+    let createLibrary: @Sendable () async throws -> OpenedLibrary
+    /// Restore codes coven saved in iCloud Keychain. Throws when the keychain
+    /// refuses the lookup — locked, or the display asleep — which the welcome
+    /// screen must not read as "no restore codes".
+    let savedRestoreCodes: @Sendable () async throws -> [BridgeSavedRestoreCode]
+    /// One restore or join attempt.
+    let makeBootstrap: @MainActor @Sendable () -> LibraryBootstrap
 
     init(
-        discoverLibraries: @escaping @Sendable () throws -> [BridgeLibrary] =
-            { [] },
-        removeLocalLibrary: @escaping @Sendable (String) throws -> Void = {
-            _ in throw StubError.notImplemented
-        },
-        createLibrary: @escaping @Sendable () throws -> BridgeLibrary = {
-            throw StubError.notImplemented
-        },
-        decodeRestoreCode:
-            @escaping @Sendable (String) throws -> BridgeRestoreCodeInfo = {
-                _ in throw StubError.notImplemented
-            },
-        decodeDevicePairingOffer:
-            @escaping @Sendable (String) throws -> BridgeDevicePairingOffer = {
-                _ in throw StubError.notImplemented
-            },
-        pendingDevicePairingJoin:
-            @escaping @Sendable () throws -> BridgePendingDevicePairingJoin? = {
-                nil
-            },
-        abandonPendingDevicePairingJoin:
-            @escaping @Sendable () throws -> Void = {},
-        restoreFromCode:
-            @escaping @Sendable (String, String?) throws -> BridgeLibrary = {
-                _,
-                _ in throw StubError.notImplemented
-            },
-        joinDevicePairing:
-            @escaping @Sendable (String, String?) async throws -> JoinOperation =
-            {
-                _,
-                _ in throw StubError.notImplemented
-            },
-        fetchRestoreCodes:
-            @escaping @Sendable () throws -> [(
-                libraryId: String, code: String
-            )] = { [] },
-        deleteRestoreCode: @escaping @Sendable (String) throws -> Void = {
-            _ in
-        },
-        oauthAuthorize:
-            @escaping @Sendable (BridgeCloudProvider) throws -> String = {
-                _ in throw StubError.notImplemented
-            },
-        oauthCancel: @escaping @Sendable () -> Void = {},
-        revealInFinder: @escaping @Sendable (String) -> Void = { _ in }
+        listLibraries: @escaping @Sendable () async throws -> [BridgeLibrary],
+        createLibrary: @escaping @Sendable () async throws -> OpenedLibrary,
+        savedRestoreCodes:
+            @escaping @Sendable () async throws -> [BridgeSavedRestoreCode],
+        makeBootstrap: @escaping @MainActor @Sendable () -> LibraryBootstrap
     ) {
-        self.discoverLibraries = discoverLibraries
-        self.removeLocalLibrary = removeLocalLibrary
+        self.listLibraries = listLibraries
         self.createLibrary = createLibrary
-        self.decodeRestoreCode = decodeRestoreCode
-        self.decodeDevicePairingOffer = decodeDevicePairingOffer
-        self.pendingDevicePairingJoin = pendingDevicePairingJoin
-        self.abandonPendingDevicePairingJoin =
-            abandonPendingDevicePairingJoin
-        self.restoreFromCode = restoreFromCode
-        self.joinDevicePairing = joinDevicePairing
-        self.fetchRestoreCodes = fetchRestoreCodes
-        self.deleteRestoreCode = deleteRestoreCode
-        self.oauthAuthorize = oauthAuthorize
-        self.oauthCancel = oauthCancel
-        self.revealInFinder = revealInFinder
+        self.savedRestoreCodes = savedRestoreCodes
+        self.makeBootstrap = makeBootstrap
     }
 
-    /// The production wiring: the bridge's free functions, the host's
-    /// operations, and the keychain. The OAuth operations exist only in builds
-    /// whose bridge compiles the OAuth providers (the S3-only build omits them
-    /// entirely); elsewhere they are the same not-implemented stubs the
-    /// initializer defaults to, and the `BAE_OAUTH_PROVIDERS`-gated UI never
-    /// calls them.
-    static func live(host: BridgeHost) -> LibrarySetup {
-        #if BAE_OAUTH_PROVIDERS
-            let oauthAuthorize:
-                @Sendable (BridgeCloudProvider) throws -> String = {
-                    try host.oauthAuthorize(provider: $0)
-                }
-            let oauthCancel: @Sendable () -> Void = { host.oauthCancel() }
-        #else
-            let oauthAuthorize:
-                @Sendable (BridgeCloudProvider) throws -> String = { _ in
-                    throw StubError.notImplemented
-                }
-            let oauthCancel: @Sendable () -> Void = {}
-        #endif
-        return LibrarySetup(
-            discoverLibraries: { try host.discoverLibraries() },
-            removeLocalLibrary: { try host.removeLocalLibrary(libraryId: $0) },
-            createLibrary: { try host.createLibrary(name: nil) },
-            decodeRestoreCode: bridgeDecodeRestoreCode,
-            decodeDevicePairingOffer: bridgeDecodeDevicePairingOffer,
-            pendingDevicePairingJoin: { try host.pendingDevicePairingJoin() },
-            abandonPendingDevicePairingJoin: {
-                try host.abandonPendingDevicePairingJoin()
-            },
-            restoreFromCode: { code, oauthTokenJson in
-                try host.restoreFromCode(
-                    code: code,
-                    oauthTokenJson: oauthTokenJson
-                )
-            },
-            joinDevicePairing: { code, oauthTokenJson in
-                let operation = try await host.joinDevicePairingOperation(
-                    pairingCode: code,
-                    oauthTokenJson: oauthTokenJson
-                )
-                return JoinOperation(
-                    fingerprint: operation.fingerprint(),
-                    join: { progress in
-                        try operation.join(progress: progress)
-                    },
-                    cancel: { try operation.cancel() }
-                )
-            },
-            fetchRestoreCodes: KeychainService.fetchAllRestoreCodes,
-            deleteRestoreCode: KeychainService.deleteRestoreCode(libraryId:),
-            oauthAuthorize: oauthAuthorize,
-            oauthCancel: oauthCancel,
-            revealInFinder: { SystemActions.revealInFinder(path: $0) }
+    /// The production wiring over the process's host.
+    static func live(host: BridgeHost, deviceName: String) -> LibrarySetup {
+        LibrarySetup(
+            listLibraries: { try await host.listLibraries() },
+            createLibrary: { try await host.createLibrary(name: nil) },
+            savedRestoreCodes: { try await host.savedRestoreCodes() },
+            makeBootstrap: {
+                LibraryBootstrap(host: host, deviceName: deviceName)
+            }
         )
     }
 
     #if DEBUG
-        // periphery:ignore
-        static func stub() -> LibrarySetup {
-            LibrarySetup()
+        /// Serves `libraries` and no saved codes; every other operation throws.
+        /// A restore or join started from a preview fails at once.
+        static func stub(libraries: [BridgeLibrary] = []) -> LibrarySetup {
+            LibrarySetup(
+                listLibraries: { libraries },
+                createLibrary: { throw StubError.notImplemented },
+                savedRestoreCodes: { [] },
+                makeBootstrap: {
+                    LibraryBootstrap(
+                        host: BaeHost.make(
+                            diagnostics: configureDiagnostics(
+                                config: .disabled
+                            ),
+                            appDir: BridgeAppDir(
+                                home: FileManager.default.temporaryDirectory
+                                    .appendingPathComponent(
+                                        "bae-preview-\(UUID().uuidString)"
+                                    )
+                                    .path
+                            )
+                        ),
+                        deviceName: "Preview Mac"
+                    )
+                }
+            )
         }
     #endif
 }

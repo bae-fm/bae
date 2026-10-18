@@ -63,6 +63,7 @@ final class SettingsNavigation {
 struct SettingsView: View {
     let checkForUpdatesViewModel: CheckForUpdatesViewModel
     let onForgetLibrary: () -> Void
+    let onResetDevice: () -> Void
 
     @Environment(SettingsNavigation.self)
     private var navigation
@@ -96,7 +97,13 @@ struct SettingsView: View {
         case .appearance:
             AppearanceSettingsTab()
         case .library:
-            LibrarySettingsTab(onForgetLibrary: onForgetLibrary)
+            LibrarySettingsTab(
+                onForgetLibrary: onForgetLibrary,
+                onResetDevice: onResetDevice,
+                onCheckForUpdates: {
+                    checkForUpdatesViewModel.checkForUpdates()
+                }
+            )
         case .playback:
             PlaybackSettingsTab()
         case .importing:

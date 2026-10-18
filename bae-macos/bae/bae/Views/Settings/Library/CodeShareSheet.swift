@@ -1,8 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// Shows the library's recovery code; `result` is nil while the presenter
-/// loads it.
+/// Shows this person's restore code for the library; `result` is nil while
+/// the presenter loads it.
 struct CodeShareSheet: View {
     @Binding
     var result: Result<String, Error>?
@@ -11,7 +11,7 @@ struct CodeShareSheet: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("Recovery code")
+                Text("Restore code")
                     .themeText(.heading)
                 Spacer()
                 Button("Done") { onDismiss() }
@@ -35,7 +35,7 @@ struct CodeShareSheet: View {
                     CodeDisplay(code: code, qrSize: 200)
 
                     Text(
-                        "Anyone with this code has full access to your library. Keep it secret. Use it only to restore on a new device when you have no other device available."
+                        "Scan or type this code on your new device to add it to the library. Anyone with it and access to your storage can open the library. Keep it secret."
                     )
                     .themeText(.detail)
                     .foregroundStyle(.secondary)
@@ -78,7 +78,7 @@ struct CodeShareSheet: View {
     }
 
     #Preview("Code") {
-        CodeShareSheetPreview(result: .success("recovery-code-preview-abcdef"))
+        CodeShareSheetPreview(result: .success("restore-code-preview-abcdef"))
     }
 
     #Preview("Failed") {
@@ -89,7 +89,7 @@ struct CodeShareSheet: View {
                     code: 1,
                     userInfo: [
                         NSLocalizedDescriptionKey:
-                            "Couldn't generate a recovery code."
+                            "Couldn't generate a restore code."
                     ],
                 )
             )
