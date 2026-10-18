@@ -21,8 +21,12 @@ struct SettingsView: View {
     @AppStorage("persistPlayback")
     private var persistPlayback = true
 
+    /// What removal would lose while the person is asked to confirm it.
     @State
-    private var confirmRemove = false
+    private var removalUnsent: BridgeUnsentWork?
+    /// Why what removal would lose couldn't be read.
+    @State
+    private var removalError: DisplayError?
     @State
     private var showRestoreCode = false
 
@@ -98,10 +102,13 @@ struct SettingsView: View {
 
                 Section {
                     Button(role: .destructive) {
-                        confirmRemove = true
+                        askToRemove()
                     } label: {
                         Text("Remove this library from this device")
                             .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    if let removalError {
+                        ErrorDetailDisclosure(error: removalError)
                     }
                 } footer: {
                     Text(removeFooter)
@@ -122,16 +129,28 @@ struct SettingsView: View {
             }
             .confirmationDialog(
                 "Remove this library from this device?",
-                isPresented: $confirmRemove,
-                titleVisibility: .visible
-            ) {
+                isPresented: Binding(
+                    get: { removalUnsent != nil },
+                    set: { if !$0 { removalUnsent = nil } }
+                ),
+                titleVisibility: .visible,
+                presenting: removalUnsent
+            ) { _ in
                 Button("Remove", role: .destructive) {
                     dismiss()
                     holder.removeActiveLibrary()
                 }
                 Button("Cancel", role: .cancel) {}
-            } message: {
-                Text(removeMessage)
+            } message: { unsent in
+                Text(
+                    unsent.confirmation(
+                        consequence: String(
+                            localized:
+                                "Removing the library from this device discards them."
+                        ),
+                        message: removeMessage
+                    )
+                )
             }
             .sheet(isPresented: $showRestoreCode) {
                 RestoreCodeView(
@@ -171,9 +190,26 @@ struct SettingsView: View {
         )
     }
 
+    /// Read what removal would lose, then ask. The library keeps running.
+    private func askToRemove() {
+        guard let service = holder.appService else {
+            preconditionFailure("Settings shows only while a library is open")
+        }
+        removalError = nil
+        Task {
+            do {
+                removalUnsent = try await service.unsentBeforeRemoval()
+            }
+            catch {
+                logger.error(
+                    "Couldn't read what removing the library loses: \(error.localizedDescription)"
+                )
+                removalError = DisplayError(error)
+            }
+        }
+    }
+
     /// The confirmation's body: a synced library's cloud copy survives.
-    /// Changes this device hasn't sent are counted when the removal stops for
-    /// them.
     private var removeMessage: String {
         guard configStore.hasCloudHome else { return removeFooter }
         return String(

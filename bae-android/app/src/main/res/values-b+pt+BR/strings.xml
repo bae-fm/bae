@@ -95,9 +95,7 @@
     <string name="settings_remove_library_explanation">Remove esta biblioteca deste dispositivo: o dispositivo sai da biblioteca e depois a cópia dele e os arquivos baixados são excluídos. A biblioteca no local na nuvem não é afetada.</string>
     <string name="settings_remove_library_confirm_title">Remover esta biblioteca deste dispositivo?</string>
     <string name="settings_remove_library_confirm_body">Primeiro este dispositivo sai da biblioteca, o que exige conexão. A biblioteca no local na nuvem não é afetada.</string>
-    <string name="unsent_edits_title">As alterações não enviadas serão perdidas</string>
     <string name="unsent_edits_body">Remover a biblioteca deste dispositivo as descarta.</string>
-    <string name="unsent_edits_remove">Remover mesmo assim</string>
     <string name="settings_remove">Remover</string>
     <string name="settings_provider">Provedor</string>
     <string name="settings_account">Conta</string>

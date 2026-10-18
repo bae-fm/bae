@@ -207,18 +207,18 @@ async fn removal_releases_custody_and_preferences() {
     manager.ensure_mcp_token().await.unwrap();
     manager.set_mcp_config(crate::config::McpConfig::disabled_default()).await.unwrap();
     manager.get_config().save_active_library(&manager.app_dir).unwrap();
-    manager.remove_library(coven::IfUnsent::Refuse).await.unwrap();
+    manager.remove_library().await.unwrap();
     assert!(manager.get_mcp_token().await.is_err());
     assert!(!manager.app_dir.registered_library(&id).exists());
     assert!(manager.app_dir.store_layout().stores().await.unwrap().is_empty());
     assert!(!manager.app_dir.active_library_pointer().exists());
 }
 
-/// Edits this device hasn't sent stop a removal with their counts and leave
-/// the library in place; removing anyway discards them.
+/// What removal would lose is read without removing anything; the removal
+/// then discards it.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
-async fn removal_reports_unsent_work_until_the_person_discards_it() {
+async fn removal_discards_the_unsent_work_it_reports() {
     let (manager, _temp) = setup_test_manager().await;
     connect_test_cloud(&manager).await;
     let files = TempDir::new().unwrap();
@@ -226,20 +226,23 @@ async fn removal_reports_unsent_work_until_the_person_discards_it() {
         .await;
     let id = manager.database.store_id().to_string();
 
-    let error = manager
-        .remove_library(coven::IfUnsent::Refuse)
-        .await
-        .expect_err("unsent work stops the removal");
-    let crate::library::LibraryRemovalError::Unsent(work) = error else {
-        panic!("expected the unsent work, got {error}");
-    };
+    let work = manager.unsent_before_removal().await.unwrap();
     assert!(work.writes > 0, "{work:?}");
     assert_eq!(work.files, 1);
     assert_eq!(manager.app_dir.store_layout().stores().await.unwrap().len(), 1);
 
-    manager.remove_library(coven::IfUnsent::Discard).await.unwrap();
+    manager.remove_library().await.unwrap();
     assert!(manager.app_dir.store_layout().stores().await.unwrap().is_empty());
     assert!(!manager.app_dir.registered_library(&id).exists());
+}
+
+/// A library with no storage set up has nowhere it uploads to, so nothing
+/// counts as unsent; removing it deletes its whole catalog.
+#[tokio::test]
+async fn a_library_without_storage_reports_nothing_unsent() {
+    let (manager, _temp) = setup_test_manager().await;
+    let work = manager.unsent_before_removal().await.unwrap();
+    assert!(work.is_empty(), "{work:?}");
 }
 
 #[tokio::test]

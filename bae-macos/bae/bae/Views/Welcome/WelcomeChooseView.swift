@@ -27,8 +27,10 @@ struct WelcomeChooseView: View {
     private var createTask: Task<Void, Never>?
     @State
     private var error: DisplayError?
+    /// The library the person is asked to remove, with what removing it
+    /// would lose.
     @State
-    private var libraryPendingRemoval: BridgeLibrary?
+    private var pendingRemoval: PendingRemoval?
 
     /// Libraries on this device, discovered on appear.
     @State
@@ -76,19 +78,40 @@ struct WelcomeChooseView: View {
         .alert(
             "Remove this library from this Mac?",
             isPresented: Binding(
-                get: { libraryPendingRemoval != nil },
-                set: { if !$0 { libraryPendingRemoval = nil } }
+                get: { pendingRemoval != nil },
+                set: { if !$0 { pendingRemoval = nil } }
             ),
-            presenting: libraryPendingRemoval
-        ) { library in
+            presenting: pendingRemoval
+        ) { pending in
             Button("Remove", role: .destructive) {
-                removals.remove(closedLibrary: library.id) {
+                removals.remove(closedLibrary: pending.library.id) {
                     Task { await loadLocalLibraries() }
                 }
             }
             Button("Cancel", role: .cancel) {}
-        } message: { library in
-            Text(LibraryRemovalConfirmation.message(for: library))
+        } message: { pending in
+            Text(
+                pending.unsent.confirmation(
+                    consequence: LibraryRemovalConfirmation.consequence,
+                    message: LibraryRemovalConfirmation.message(
+                        for: pending.library
+                    )
+                )
+            )
+        }
+    }
+
+    /// Read what removing `library` would lose, then ask. A failure shows as
+    /// the removal's error.
+    private func askToRemove(_ library: BridgeLibrary) {
+        Task {
+            if let unsent = await removals.unsentWork(closedLibrary: library.id)
+            {
+                pendingRemoval = PendingRemoval(
+                    library: library,
+                    unsent: unsent
+                )
+            }
         }
     }
 
@@ -123,7 +146,7 @@ struct WelcomeChooseView: View {
                     canDeleteActiveLibrary: canDeleteActiveLibrary,
                     removingLibraryId: removals.removingLibraryId,
                     onOpen: { onOpenLibrary($0.id) },
-                    onRemove: { libraryPendingRemoval = $0 }
+                    onRemove: { askToRemove($0) }
                 )
             }
             if let failure = savedCodes.failure {
@@ -331,6 +354,12 @@ private struct WelcomeLoadErrorCallout: View {
         .notice(.danger)
         .frame(maxWidth: WelcomeLayout.columnWidth, alignment: .leading)
     }
+}
+
+/// A library the person is asked to remove, with what removing it loses.
+private struct PendingRemoval {
+    let library: BridgeLibrary
+    let unsent: BridgeUnsentWork
 }
 
 /// A removal that failed, or left this Mac's files for a library it already

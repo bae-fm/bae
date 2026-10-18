@@ -95,9 +95,7 @@
     <string name="settings_remove_library_explanation">Entfernt diese Bibliothek von diesem Gerät: Das Gerät verlässt die Bibliothek, dann werden seine Kopie und die geladenen Dateien gelöscht. Die Bibliothek am Cloud-Speicherort bleibt unberührt.</string>
     <string name="settings_remove_library_confirm_title">Diese Bibliothek von diesem Gerät entfernen?</string>
     <string name="settings_remove_library_confirm_body">Dieses Gerät verlässt zuerst die Bibliothek, dafür ist eine Verbindung nötig. Die Bibliothek am Cloud-Speicherort bleibt unberührt.</string>
-    <string name="unsent_edits_title">Nicht gesendete Änderungen gehen verloren</string>
     <string name="unsent_edits_body">Wenn du die Bibliothek von diesem Gerät entfernst, werden sie verworfen.</string>
-    <string name="unsent_edits_remove">Trotzdem entfernen</string>
     <string name="settings_remove">Entfernen</string>
     <string name="settings_provider">Anbieter</string>
     <string name="settings_account">Konto</string>

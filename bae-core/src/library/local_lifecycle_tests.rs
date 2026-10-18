@@ -107,9 +107,7 @@ async fn removing_an_inactive_library_preserves_the_active_pointer() {
     let removed = home.library("Removed").await;
     home.point_at(active.store_id());
     let id = removed.store_id();
-    remove_local_library(&home.app_dir, &removed, coven::IfUnsent::Refuse)
-        .await
-        .unwrap();
+    remove_local_library(&home.app_dir, &removed).await.unwrap();
     assert_eq!(home.stores().await, 1);
     assert!(!home.directory(id).exists());
     assert_eq!(home.pointer(), Some(active.store_id().to_string()));
@@ -123,9 +121,7 @@ async fn removing_the_active_library_clears_its_pointer() {
     let handle = home.library("Library").await;
     let id = handle.store_id();
     home.point_at(id);
-    remove_local_library(&home.app_dir, &handle, coven::IfUnsent::Refuse)
-        .await
-        .unwrap();
+    remove_local_library(&home.app_dir, &handle).await.unwrap();
     assert_eq!(home.stores().await, 0);
     assert!(!home.directory(id).exists());
     assert_eq!(home.pointer(), None);
@@ -158,7 +154,7 @@ async fn offline_removal_keeps_the_store_preferences_and_active_pointer() {
     let id = handle.store_id();
     home.point_at(id);
     home.storage.set_online(false);
-    let error = remove_local_library(&home.app_dir, &handle, coven::IfUnsent::Discard)
+    let error = remove_local_library(&home.app_dir, &handle)
         .await
         .expect_err("leaving needs reachable storage");
     assert!(matches!(error, LibraryRemovalError::Store(_)), "{error}");
@@ -172,9 +168,7 @@ async fn offline_removal_keeps_the_store_preferences_and_active_pointer() {
     assert!(!home.record(id).exists());
     assert_eq!(home.unfinished().await, None);
     home.storage.set_online(true);
-    remove_local_library(&home.app_dir, &handle, coven::IfUnsent::Discard)
-        .await
-        .unwrap();
+    remove_local_library(&home.app_dir, &handle).await.unwrap();
     assert_eq!(home.pointer(), None);
     assert!(!home.directory(id).exists());
     assert_eq!(home.unfinished().await, None);
@@ -187,7 +181,7 @@ async fn a_removal_that_cannot_be_recorded_removes_nothing() {
     let id = handle.store_id();
     home.point_at(id);
     std::fs::write(home.app_dir.removal_records(), b"").unwrap();
-    let error = remove_local_library(&home.app_dir, &handle, coven::IfUnsent::Refuse)
+    let error = remove_local_library(&home.app_dir, &handle)
         .await
         .unwrap_err();
     assert!(matches!(error, LibraryRemovalError::Record(_)), "{error}");
@@ -219,9 +213,7 @@ async fn a_removal_stopped_before_the_delete_reports_the_library_still_here() {
     assert_eq!(home.pointer(), Some(id.to_string()));
     assert!(home.directory(id).exists());
 
-    remove_local_library(&home.app_dir, &handle, coven::IfUnsent::Refuse)
-        .await
-        .unwrap();
+    remove_local_library(&home.app_dir, &handle).await.unwrap();
     assert_eq!(home.stores().await, 0);
     assert!(!home.directory(id).exists());
 }
@@ -258,7 +250,7 @@ async fn a_pointer_that_cannot_be_cleared_leaves_the_removal_to_retry() {
     let handle = home.library("Library").await;
     let id = handle.store_id();
     std::fs::create_dir(home.app_dir.active_library_pointer()).unwrap();
-    let error = remove_local_library(&home.app_dir, &handle, coven::IfUnsent::Refuse)
+    let error = remove_local_library(&home.app_dir, &handle)
         .await
         .unwrap_err();
     assert!(
@@ -292,7 +284,7 @@ async fn a_directory_that_cannot_be_deleted_leaves_the_removal_to_retry() {
     let id = handle.store_id();
     home.point_at(id);
     set_writable(&home.app_dir.libraries(), false);
-    let error = remove_local_library(&home.app_dir, &handle, coven::IfUnsent::Refuse)
+    let error = remove_local_library(&home.app_dir, &handle)
         .await
         .unwrap_err();
     assert!(
@@ -387,4 +379,26 @@ async fn a_lookup_during_a_removal_waits_for_it() {
     assert_eq!(home.stores().await, 0);
     assert!(!home.record(id).exists());
     assert!(!home.directory(id).exists());
+}
+
+/// What removing a library that isn't open would lose is read by opening its
+/// store briefly; the store is closed again, so it opens normally afterwards.
+#[tokio::test]
+async fn unsent_work_of_a_closed_library_leaves_it_closed() {
+    let home = Home::new();
+    let handle = home.library("Library").await;
+    let id = handle.store_id();
+    handle.close().await.unwrap();
+    drop(handle);
+
+    let work =
+        super::unsent_before_removal(home.installation.builder(home.app_dir.store_layout()), id)
+            .await
+            .unwrap();
+    assert!(work.is_empty(), "{work:?}");
+    let reopened = super::configure_store(home.installation.builder(home.app_dir.store_layout()))
+        .open(id)
+        .await
+        .unwrap();
+    assert_eq!(reopened.store_name().await.unwrap(), "Library");
 }

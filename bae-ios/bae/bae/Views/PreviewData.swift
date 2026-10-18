@@ -66,7 +66,8 @@ enum PreviewData {
     @MainActor
     static func removals() -> LibraryRemovals {
         LibraryRemovals(
-            removeClosed: { _, _ in throw StubError.notImplemented },
+            unsentOfClosed: { _ in throw StubError.notImplemented },
+            removeClosed: { _ in throw StubError.notImplemented },
             findUnfinished: { nil },
             finishUnfinished: {}
         )

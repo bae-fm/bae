@@ -38,7 +38,8 @@ pub use library_status::{
 };
 pub use live_read::{LiveRead, LiveReadError};
 pub use local_lifecycle::{
-    finish_removals, remove_local_library, LibraryRemovalError, UnfinishedRemoval,
+    finish_removals, remove_local_library, unsent_before_removal, LibraryRemovalError,
+    UnfinishedRemoval,
 };
 pub use manager::*;
 pub use outbox_snapshot::{

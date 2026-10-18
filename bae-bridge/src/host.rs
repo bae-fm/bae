@@ -170,6 +170,29 @@ impl BridgeHost {
         .await
     }
 
+    /// What removing the library `library_id`, which isn't open, would lose,
+    /// for the person to confirm first.
+    pub async fn unsent_before_removal(
+        self: Arc<Self>,
+        library_id: String,
+    ) -> Result<crate::BridgeUnsentWork, BridgeError> {
+        let store = coven::StoreId(library_id.parse().map_err(BridgeError::config)?);
+        let builder = self.builder();
+        crate::operation_runtime::run(
+            self.runtime
+                .as_ref()
+                .expect("host runtime exists until drop")
+                .handle()
+                .clone(),
+            move || async move {
+                Ok(crate::BridgeUnsentWork::from_core(
+                    bae_core::library::unsent_before_removal(builder, store).await?,
+                ))
+            },
+        )
+        .await
+    }
+
     /// Complete every recorded removal. Safe to retry after any failure.
     pub async fn finish_removals(self: Arc<Self>) -> Result<(), BridgeError> {
         crate::operation_runtime::run_to_completion(

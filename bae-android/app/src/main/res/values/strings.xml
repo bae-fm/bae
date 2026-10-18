@@ -129,9 +129,7 @@
     <string name="settings_remove_library_explanation">Removes this library from this device: this device leaves the library, then its copy and downloaded files are deleted. The library in its cloud home is untouched.</string>
     <string name="settings_remove_library_confirm_title">Remove this library from this device?</string>
     <string name="settings_remove_library_confirm_body">This device leaves the library first, which needs a connection. The library in its cloud home is untouched.</string>
-    <string name="unsent_edits_title">Unsent changes will be lost</string>
     <string name="unsent_edits_body">Removing the library from this device discards them.</string>
-    <string name="unsent_edits_remove">Remove anyway</string>
     <string name="settings_remove">Remove</string>
     <string name="settings_provider">Provider</string>
     <string name="settings_account">Account</string>

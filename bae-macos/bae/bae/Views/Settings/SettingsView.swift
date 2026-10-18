@@ -1,3 +1,4 @@
+import BaeKit
 import SwiftUI
 
 /// The panes, in the order the sidebar lists them (`allCases`): what the app
@@ -62,6 +63,7 @@ final class SettingsNavigation {
 /// stays reachable in every language however many there come to be.
 struct SettingsView: View {
     let checkForUpdatesViewModel: CheckForUpdatesViewModel
+    let unsentBeforeRemoval: () async throws -> BridgeUnsentWork
     let onForgetLibrary: () -> Void
     let onResetDevice: () -> Void
     let onRestoreFromCode: () -> Void
@@ -99,6 +101,7 @@ struct SettingsView: View {
             AppearanceSettingsTab()
         case .library:
             LibrarySettingsTab(
+                unsentBeforeRemoval: unsentBeforeRemoval,
                 onForgetLibrary: onForgetLibrary,
                 onResetDevice: onResetDevice,
                 onRestoreFromCode: onRestoreFromCode,

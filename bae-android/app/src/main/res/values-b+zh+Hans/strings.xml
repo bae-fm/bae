@@ -95,9 +95,7 @@
     <string name="settings_remove_library_explanation">从此设备移除此库：此设备先退出库，然后删除它的副本和已下载的文件。云端存储中的库不受影响。</string>
     <string name="settings_remove_library_confirm_title">从此设备移除此库？</string>
     <string name="settings_remove_library_confirm_body">此设备会先退出库，这需要联网。云端存储中的库不受影响。</string>
-    <string name="unsent_edits_title">未发送的更改将丢失</string>
     <string name="unsent_edits_body">从此设备移除该库会丢弃这些更改。</string>
-    <string name="unsent_edits_remove">仍然移除</string>
     <string name="settings_remove">移除</string>
     <string name="settings_provider">提供商</string>
     <string name="settings_account">账户</string>

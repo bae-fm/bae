@@ -99,9 +99,7 @@
     <string name="settings_remove_library_explanation">Eltávolítja ezt a könyvtárat erről az eszközről: az eszköz kilép a könyvtárból, majd törlődik a másolata és a letöltött fájlok. A felhőbeli tárhelyen lévő könyvtár érintetlen marad.</string>
     <string name="settings_remove_library_confirm_title">Eltávolítod ezt a könyvtárat erről az eszközről?</string>
     <string name="settings_remove_library_confirm_body">Az eszköz előbb kilép a könyvtárból, ehhez kapcsolat kell. A felhőbeli tárhelyen lévő könyvtár érintetlen marad.</string>
-    <string name="unsent_edits_title">Az el nem küldött módosítások elvesznek</string>
     <string name="unsent_edits_body">Ha eltávolítod a könyvtárat erről az eszközről, elvesznek.</string>
-    <string name="unsent_edits_remove">Eltávolítás mégis</string>
     <string name="settings_remove">Eltávolítás</string>
     <string name="settings_provider">Szolgáltató</string>
     <string name="settings_account">Fiók</string>

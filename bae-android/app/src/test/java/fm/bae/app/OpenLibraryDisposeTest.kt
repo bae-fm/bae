@@ -26,7 +26,6 @@ import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.BridgeDiagnostics
 import uniffi.bae_bridge.BridgeErrorCategory
 import uniffi.bae_bridge.BridgeException
-import uniffi.bae_bridge.BridgeIfUnsent
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeLibraryRemoval
 import uniffi.bae_bridge.NoHandle
@@ -64,38 +63,13 @@ class OpenLibraryDisposeTest {
     }
 
     @Test
-    fun removalRefusesUnsentWorkThenClosesWithoutShuttingDown() {
+    fun removalDiscardsUnsentWorkThenClosesWithoutShuttingDown() {
         val (session, handle) = openLibrary()
 
         val removal = runBlocking { session.removeFromDevice() }
 
         assertEquals(BridgeLibraryRemoval.Removed, removal)
-        assertEquals(listOf("removeLibrary REFUSE", "close"), handle.calls)
-    }
-
-    @Test
-    fun removalRefusedForUnsentChangesKeepsTheHandleUntilTheyAreDiscarded() {
-        val (session, handle) = openLibrary(unsent = true)
-
-        val refused = runBlocking { session.removeFromDevice() }
-
-        assertEquals(BridgeLibraryRemoval.Unsent(writes = 3u, files = 1u), refused)
-        assertEquals(listOf("removeLibrary REFUSE"), handle.calls)
-
-        val removal = runBlocking { session.discardUnsentAndRemove() }
-
-        assertEquals(BridgeLibraryRemoval.Removed, removal)
-        assertEquals(listOf("removeLibrary REFUSE", "removeLibrary DISCARD", "close"), handle.calls)
-    }
-
-    @Test
-    fun keepingALibraryWithUnsentChangesClosesTheHandle() {
-        val (session, handle) = openLibrary(unsent = true)
-
-        runBlocking { session.removeFromDevice() }
-        session.keepLibrary()
-
-        assertEquals(listOf("removeLibrary REFUSE", "close"), handle.calls)
+        assertEquals(listOf("removeLibrary", "close"), handle.calls)
     }
 
     @Test
@@ -106,16 +80,15 @@ class OpenLibraryDisposeTest {
             runBlocking { session.removeFromDevice() }
         }
 
-        assertEquals(listOf("removeLibrary REFUSE", "close"), handle.calls)
+        assertEquals(listOf("removeLibrary", "close"), handle.calls)
     }
 
     private fun openLibrary(
         failShutdown: Boolean = false,
         failRemoval: Boolean = false,
-        unsent: Boolean = false,
     ): Pair<OpenLibrary, RecordingHandle> {
         val context = RuntimeEnvironment.getApplication()
-        val handle = RecordingHandle(failShutdown, failRemoval, unsent)
+        val handle = RecordingHandle(failShutdown, failRemoval)
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
         val session =
             OpenLibrary(
@@ -155,7 +128,6 @@ class OpenLibraryDisposeTest {
     private class RecordingHandle(
         private val failShutdown: Boolean,
         private val failRemoval: Boolean,
-        private val hasUnsentChanges: Boolean,
     ) : AppHandle(NoHandle) {
         val calls = mutableListOf<String>()
 
@@ -170,13 +142,10 @@ class OpenLibraryDisposeTest {
             calls.add("close")
         }
 
-        override suspend fun removeLibrary(unsent: BridgeIfUnsent): BridgeLibraryRemoval {
-            calls.add("removeLibrary $unsent")
+        override suspend fun removeLibrary(): BridgeLibraryRemoval {
+            calls.add("removeLibrary")
             if (failRemoval) {
                 throw BridgeException.Diagnostic(BridgeErrorCategory.Network, "offline")
-            }
-            if (hasUnsentChanges && unsent == BridgeIfUnsent.REFUSE) {
-                return BridgeLibraryRemoval.Unsent(writes = 3u, files = 1u)
             }
             return BridgeLibraryRemoval.Removed
         }

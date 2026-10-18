@@ -20,19 +20,23 @@ impl LibraryManager {
         self.database.subscribe_store_name()
     }
 
+    /// What removing this library from this device would lose, for the
+    /// person to confirm before [`Self::remove_library`].
+    pub async fn unsent_before_removal(&self) -> Result<coven::UnsentWork, LibraryError> {
+        Ok(self.database.unsent_before_removal().await?)
+    }
+
     /// The caller stops its playback and import services before removal.
-    /// This ends the manager's workers before leaving. An offline refusal preserves
-    /// the store; retry removal on this manager, or reopen it to resume normal use.
-    pub async fn remove_library(
-        &self,
-        unsent: coven::IfUnsent,
-    ) -> Result<(), crate::library::LibraryRemovalError> {
+    /// This ends the manager's workers before leaving, and discards what this
+    /// device hasn't uploaded. An offline refusal preserves the store; retry
+    /// removal on this manager, or reopen it to resume normal use.
+    pub async fn remove_library(&self) -> Result<(), crate::library::LibraryRemovalError> {
         let id = self.database.store_id();
         self.tasks.close().await;
         crate::library::local_lifecycle::remove_recorded(
             &self.app_dir,
             id,
-            self.database.delete_store(unsent),
+            self.database.delete_store(),
         )
         .await
     }

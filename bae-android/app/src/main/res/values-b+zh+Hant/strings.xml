@@ -95,9 +95,7 @@
     <string name="settings_remove_library_explanation">從此裝置移除此資料庫：此裝置先退出資料庫，然後刪除它的副本和已下載的檔案。雲端儲存位置中的資料庫不受影響。</string>
     <string name="settings_remove_library_confirm_title">要從此裝置移除此資料庫嗎？</string>
     <string name="settings_remove_library_confirm_body">此裝置會先退出資料庫，這需要連線。雲端儲存位置中的資料庫不受影響。</string>
-    <string name="unsent_edits_title">未傳送的變更將會遺失</string>
     <string name="unsent_edits_body">從此裝置移除該資料庫會捨棄這些變更。</string>
-    <string name="unsent_edits_remove">仍要移除</string>
     <string name="settings_remove">移除</string>
     <string name="settings_provider">提供者</string>
     <string name="settings_account">帳號</string>

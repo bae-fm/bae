@@ -259,7 +259,6 @@ extension BaeApp {
             }
             .appAppearance()
             .navigationTitle(appDelegate.hasShell ? windowTitle : "bae")
-            .modifier(UnsentRemovalQuestion(appDelegate: appDelegate))
             .onAppear {
                 #if !DEBUG
                     appDelegate.applicationServices?.updaterController.updater
@@ -346,6 +345,9 @@ extension BaeApp {
                 appService.installEnvironment(
                     SettingsView(
                         checkForUpdatesViewModel: checkForUpdatesViewModel,
+                        unsentBeforeRemoval: {
+                            try await appService.unsentBeforeRemoval()
+                        },
                         onForgetLibrary: { appDelegate.forgetActiveLibrary() },
                         onResetDevice: {
                             appDelegate.presentDeviceReset(
@@ -375,27 +377,6 @@ extension BaeApp {
                     height: NoLibraryPlaceholder.height
                 )
             }
-        }
-    }
-}
-
-/// The question a library's removal asks when this Mac has changes it hasn't
-/// sent, over whichever screen the primary window shows.
-private struct UnsentRemovalQuestion: ViewModifier {
-    let appDelegate: AppDelegate
-
-    func body(content: Content) -> some View {
-        if let removals = appDelegate.applicationServices?.libraryRemovals {
-            content.unsentRemovalAlert(
-                removals,
-                consequence: String(
-                    localized:
-                        "Removing the library from this Mac discards them."
-                )
-            )
-        }
-        else {
-            content
         }
     }
 }
@@ -902,10 +883,10 @@ extension AppDelegate {
 }
 
 extension AppDelegate {
-    /// Remove the open library from this Mac: it leaves the store's members,
-    /// then its local copy is deleted. Changes this Mac hasn't sent stop it
-    /// until the person removes it anyway or keeps it; a kept or refused
-    /// removal opens it again.
+    /// Remove the open library from this Mac, once the person confirmed what
+    /// it loses: it leaves the store's members, then its local copy is
+    /// deleted, discarding what this Mac hasn't sent. A failed removal opens
+    /// the library again.
     func forgetActiveLibrary() {
         guard let service = appService else {
             baeAppLogger.warning(
@@ -915,31 +896,10 @@ extension AppDelegate {
         }
         prepareForLibraryShutdown()
         screen = .loading
-        removeActiveLibrary(service, unsent: .refuse)
-    }
-
-    private func removeActiveLibrary(
-        _ service: AppService,
-        unsent: BridgeIfUnsent
-    ) {
         let removals = requiredApplicationServices.libraryRemovals
         forgetSlot.replace {
             do {
-                let removal = try await service.removeLibrary(unsent: unsent)
-                if case .unsent(let writes, let files) = removal {
-                    removals.ask(
-                        UnsentEdits(writes: writes, files: files),
-                        discard: {
-                            self.removeActiveLibrary(service, unsent: .discard)
-                        },
-                        keep: {
-                            self.forgetSlot.replace {
-                                await self.reopen(service, error: nil)
-                            }
-                        }
-                    )
-                    return
-                }
+                let removal = try await service.removeLibrary()
                 self.releaseLibrarySession(service)
                 removals.record(removal)
                 self.reloadLibraries()

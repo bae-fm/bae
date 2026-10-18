@@ -95,9 +95,7 @@
     <string name="settings_remove_library_explanation">Retire cette bibliothèque de cet appareil : l’appareil quitte la bibliothèque, puis sa copie et les fichiers téléchargés sont supprimés. La bibliothèque dans son emplacement cloud n’est pas touchée.</string>
     <string name="settings_remove_library_confirm_title">Supprimer cette bibliothèque de cet appareil ?</string>
     <string name="settings_remove_library_confirm_body">Cet appareil quitte d’abord la bibliothèque, ce qui nécessite une connexion. La bibliothèque dans son emplacement cloud n’est pas touchée.</string>
-    <string name="unsent_edits_title">Les modifications non envoyées seront perdues</string>
     <string name="unsent_edits_body">Supprimer la bibliothèque de cet appareil les efface.</string>
-    <string name="unsent_edits_remove">Supprimer quand même</string>
     <string name="settings_remove">Supprimer</string>
     <string name="settings_provider">Fournisseur</string>
     <string name="settings_account">Compte</string>

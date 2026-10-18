@@ -1,20 +1,25 @@
 use super::*;
 
-#[derive(Clone, Copy, uniffi::Enum)]
-pub enum BridgeIfUnsent {
-    Refuse,
-    Discard,
+/// What removing a library from this device loses: `writes` edits and
+/// `files` attached files still waiting to upload to its storage.
+#[derive(Clone, Copy, uniffi::Record)]
+pub struct BridgeUnsentWork {
+    pub writes: u64,
+    pub files: u64,
 }
+
+impl BridgeUnsentWork {
+    pub(crate) fn from_core(work: coven::UnsentWork) -> Self {
+        Self {
+            writes: work.writes,
+            files: work.files,
+        }
+    }
+}
+
 #[derive(Clone, uniffi::Enum)]
 pub enum BridgeLibraryRemoval {
     Removed,
-    /// This device holds changes it hasn't sent, so nothing was removed:
-    /// `writes` edits and `files` attached files waiting to upload. Removing
-    /// with `BridgeIfUnsent::Discard` loses them.
-    Unsent {
-        writes: u64,
-        files: u64,
-    },
     /// The library left its store, but this device's files for it remain.
     Unfinished {
         removal: BridgeUnfinishedRemoval,
@@ -47,10 +52,23 @@ impl BridgeUnfinishedRemoval {
 
 #[uniffi::export(async_runtime = "tokio", cancellable)]
 impl AppHandle {
-    /// Stop services and leave the store before deleting its local files.
+    /// What removing this library would lose, for the person to confirm
+    /// first. Nothing about the library changes.
+    pub async fn unsent_before_removal(
+        self: std::sync::Arc<Self>,
+    ) -> Result<BridgeUnsentWork, BridgeError> {
+        self.run_exported(|this| async move {
+            Ok(BridgeUnsentWork::from_core(
+                this.services.unsent_before_removal().await?,
+            ))
+        })
+        .await
+    }
+
+    /// Stop services and leave the store before deleting its local files,
+    /// discarding what this device hasn't uploaded.
     pub async fn remove_library(
         self: std::sync::Arc<Self>,
-        unsent: BridgeIfUnsent,
     ) -> Result<BridgeLibraryRemoval, BridgeError> {
         crate::operation_runtime::run_to_completion(
             self.runtime.clone(),
@@ -59,17 +77,9 @@ impl AppHandle {
             move || async move {
                 #[cfg(feature = "desktop")]
                 self.desktop.shutdown().await;
-                let unsent = match unsent {
-                    BridgeIfUnsent::Refuse => coven::IfUnsent::Refuse,
-                    BridgeIfUnsent::Discard => coven::IfUnsent::Discard,
-                };
                 use bae_core::library::LibraryRemovalError as E;
-                match self.services.remove_library(unsent).await {
+                match self.services.remove_library().await {
                     Ok(()) => Ok(BridgeLibraryRemoval::Removed),
-                    Err(E::Unsent(work)) => Ok(BridgeLibraryRemoval::Unsent {
-                        writes: work.writes,
-                        files: work.files,
-                    }),
                     Err(error @ E::Unfinished(_)) => Ok(BridgeLibraryRemoval::Unfinished {
                         removal: BridgeUnfinishedRemoval::new(error.category(), &error, true),
                     }),
@@ -113,9 +123,7 @@ mod tests {
         let libraries = bae_core::config::AppDir::under_home(root.path()).libraries();
         std::fs::set_permissions(&libraries, std::fs::Permissions::from_mode(0o555)).unwrap();
         let caller = tokio::runtime::Runtime::new().unwrap();
-        let result = caller
-            .block_on(app.clone().remove_library(BridgeIfUnsent::Discard))
-            .unwrap();
+        let result = caller.block_on(app.clone().remove_library()).unwrap();
         let BridgeLibraryRemoval::Unfinished { removal } = result else {
             panic!("the directory left behind must be reported");
         };

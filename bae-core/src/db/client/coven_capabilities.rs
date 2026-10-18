@@ -17,11 +17,29 @@ impl Database {
         self.inner.handle.rename_store(name).await
     }
 
-    pub(crate) async fn delete_store(
+    /// Delete the store, discarding what this device hasn't uploaded; the
+    /// person confirmed that loss from [`Self::unsent_before_removal`].
+    pub(crate) async fn delete_store(&self) -> Result<(), coven::StoreDeletionError> {
+        self.inner
+            .handle
+            .delete_store(coven::IfUnsent::Discard)
+            .await
+    }
+
+    /// What deleting the store from this device loses: the writes and files
+    /// still waiting to upload to its storage. A store with no storage set up
+    /// has nowhere it uploads to and loses its whole catalog instead, so
+    /// nothing counts as unsent.
+    pub(crate) async fn unsent_before_removal(
         &self,
-        unsent: coven::IfUnsent,
-    ) -> Result<(), coven::StoreDeletionError> {
-        self.inner.handle.delete_store(unsent).await
+    ) -> Result<coven::UnsentWork, coven::SyncError> {
+        if self.inner.handle.storage_config().await?.is_none() {
+            return Ok(coven::UnsentWork {
+                writes: 0,
+                files: 0,
+            });
+        }
+        Ok(self.inner.handle.unsent_work().await?)
     }
 
     pub(crate) async fn storage_config(

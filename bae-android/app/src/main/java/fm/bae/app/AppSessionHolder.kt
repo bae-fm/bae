@@ -103,17 +103,6 @@ sealed interface AppScreen {
     ) : AppScreen
 
     /**
-     * Removing the open library stopped because this device has changes it
-     * hasn't sent; nothing was removed. The person removes it anyway, losing
-     * them, or keeps it.
-     */
-    data class UnsentEdits(
-        val session: OpenLibrary,
-        val writes: ULong,
-        val files: ULong,
-    ) : AppScreen
-
-    /**
      * A library left its store, but this device's files for it remain, from
      * this run or an earlier one; finishing deletes them.
      */
@@ -375,9 +364,10 @@ object AppSessionHolder {
     }
 
     /**
-     * Remove the open library from this device. Core leaves the store first;
-     * offline, that fails and the library stays, reopened with the failure
-     * shown. Then the next library opens, or onboarding when none remain.
+     * Remove the open library from this device, once the person confirmed
+     * what it loses. Core leaves the store first; offline, that fails and the
+     * library stays, reopened with the failure shown. Then the next library
+     * opens, or onboarding when none remain.
      */
     suspend fun removeActiveLibrary(
         context: Context,
@@ -386,39 +376,9 @@ object AppSessionHolder {
         val session = checkNotNull(current) { "removing a library needs one open" }
         onScreen(AppScreen.Loading)
         current = null
-        finishRemoval(context, session, onScreen) { session.removeFromDevice() }
-    }
-
-    /** Remove the library [screen] stopped for, losing this device's unsent changes. */
-    suspend fun discardUnsentAndRemove(
-        context: Context,
-        screen: AppScreen.UnsentEdits,
-        onScreen: (AppScreen) -> Unit,
-    ) {
-        onScreen(AppScreen.Loading)
-        finishRemoval(context, screen.session, onScreen) { screen.session.discardUnsentAndRemove() }
-    }
-
-    /** Keep the library [screen] stopped removing, and open it again. */
-    suspend fun keepLibrary(
-        context: Context,
-        screen: AppScreen.UnsentEdits,
-        onScreen: (AppScreen) -> Unit,
-    ) {
-        onScreen(AppScreen.Loading)
-        screen.session.keepLibrary()
-        openLibrary(context, screen.session.libraryId, onScreen)
-    }
-
-    private suspend fun finishRemoval(
-        context: Context,
-        session: OpenLibrary,
-        onScreen: (AppScreen) -> Unit,
-        remove: suspend () -> BridgeLibraryRemoval,
-    ) {
         val removal =
             try {
-                remove()
+                session.removeFromDevice()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: BridgeException) {
@@ -438,10 +398,6 @@ object AppSessionHolder {
             is BridgeLibraryRemoval.Unfinished -> {
                 logger.error("library ${session.libraryId} left its store but its files remain", removal.removal.error)
                 onScreen(AppScreen.RemovalIncomplete(errorMessage(context, removal.removal.error)))
-            }
-
-            is BridgeLibraryRemoval.Unsent -> {
-                onScreen(AppScreen.UnsentEdits(session, removal.writes, removal.files))
             }
         }
     }

@@ -1,17 +1,6 @@
 import Foundation
 
-/// The changes this device hasn't sent, which stop a library's removal until
-/// the person discards them: edits waiting to upload and files that haven't
-/// finished uploading.
-public struct UnsentEdits: Equatable, Sendable {
-    public let writes: UInt64
-    public let files: UInt64
-
-    public init(writes: UInt64, files: UInt64) {
-        self.writes = writes
-        self.files = files
-    }
-
+extension BridgeUnsentWork {
     /// One sentence for each kind of change waiting, in the person's language.
     public var lines: [String] {
         [
@@ -25,5 +14,14 @@ public struct UnsentEdits: Equatable, Sendable {
                 Int(count)
             )
         }
+    }
+
+    /// A removal confirmation's text: what removing would lose, then
+    /// `consequence` saying removing loses it, then `message`. Only `message`
+    /// when nothing waits to upload.
+    public func confirmation(consequence: String, message: String) -> String {
+        let lost = lines
+        return (lost.isEmpty ? [message] : lost + [consequence, message])
+            .joined(separator: " ")
     }
 }

@@ -101,9 +101,7 @@
     <string name="settings_remove_library_explanation">Odstráni túto knižnicu z tohto zariadenia: zariadenie knižnicu opustí a potom sa odstráni jeho kópia a stiahnuté súbory. Knižnica v cloudovom úložisku zostane nedotknutá.</string>
     <string name="settings_remove_library_confirm_title">Odstrániť túto knižnicu z tohto zariadenia?</string>
     <string name="settings_remove_library_confirm_body">Zariadenie najprv knižnicu opustí, na čo je potrebné pripojenie. Knižnica v cloudovom úložisku zostane nedotknutá.</string>
-    <string name="unsent_edits_title">Neodoslané zmeny sa stratia</string>
     <string name="unsent_edits_body">Odstránením knižnice z tohto zariadenia sa zahodia.</string>
-    <string name="unsent_edits_remove">Napriek tomu odstrániť</string>
     <string name="settings_remove">Odstrániť</string>
     <string name="settings_provider">Poskytovateľ</string>
     <string name="settings_account">Účet</string>

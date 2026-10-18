@@ -99,9 +99,7 @@
     <string name="settings_remove_library_explanation">Poistaa tämän kirjaston tästä laitteesta: laite eroaa kirjastosta, minkä jälkeen sen kopio ja ladatut tiedostot poistetaan. Pilvisijainnissa oleva kirjasto säilyy koskemattomana.</string>
     <string name="settings_remove_library_confirm_title">Poistetaanko tämä kirjasto tältä laitteelta?</string>
     <string name="settings_remove_library_confirm_body">Laite eroaa ensin kirjastosta, mihin tarvitaan yhteys. Pilvisijainnissa oleva kirjasto säilyy koskemattomana.</string>
-    <string name="unsent_edits_title">Lähettämättömät muutokset menetetään</string>
     <string name="unsent_edits_body">Kirjaston poistaminen tältä laitteelta hylkää ne.</string>
-    <string name="unsent_edits_remove">Poista silti</string>
     <string name="settings_remove">Poista</string>
     <string name="settings_provider">Palveluntarjoaja</string>
     <string name="settings_account">Tili</string>

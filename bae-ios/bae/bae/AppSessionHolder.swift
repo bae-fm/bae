@@ -332,41 +332,20 @@ extension AppSessionHolder {
 // MARK: - Removing the open library
 
 extension AppSessionHolder {
-    /// Remove the open library from this device: it leaves the store's
-    /// members, then its local copy is deleted, and the next library opens.
-    /// Changes this device hasn't sent stop it until the person removes it
-    /// anyway or keeps it; a kept or refused removal opens it again.
+    /// Remove the open library from this device, once the person confirmed
+    /// what it loses: it leaves the store's members, then its local copy is
+    /// deleted, discarding what this device hasn't sent, and the next library
+    /// opens. A failed removal opens the library again.
     func removeActiveLibrary() {
         guard let service = appService else {
             preconditionFailure("Remove shows only while a library is open")
         }
         opener.cancel()
         screen = .loading
-        removeActiveLibrary(service, unsent: .refuse)
-    }
-
-    private func removeActiveLibrary(
-        _ service: AppService,
-        unsent: BridgeIfUnsent
-    ) {
         let removals = removals
         lifecycleSlot.replace {
             do {
-                let removal = try await service.removeLibrary(unsent: unsent)
-                if case .unsent(let writes, let files) = removal {
-                    removals.ask(
-                        UnsentEdits(writes: writes, files: files),
-                        discard: {
-                            self.removeActiveLibrary(service, unsent: .discard)
-                        },
-                        keep: {
-                            self.lifecycleSlot.replace {
-                                await self.reopen(service, notice: nil)
-                            }
-                        }
-                    )
-                    return
-                }
+                let removal = try await service.removeLibrary()
                 self.appService = nil
                 removals.record(removal)
                 self.start()

@@ -126,40 +126,6 @@ internal fun ProfileRequiredScreen(
     }
 }
 
-/**
- * Removing the open library stopped for this device's unsent changes: how many
- * would be lost, then removing anyway or keeping the library.
- */
-@Composable
-internal fun UnsentEditsScreen(
-    writes: ULong,
-    files: ULong,
-    onRemove: () -> Unit,
-    onKeep: () -> Unit,
-) {
-    val context = LocalContext.current
-    LifecycleMessage(stringResource(R.string.unsent_edits_title)) {
-        if (writes > 0u) {
-            UnsentLine(context.coreString("core.library.removal.unsent_writes", mapOf("count" to writes.toLong())))
-        }
-        if (files > 0u) {
-            UnsentLine(context.coreString("core.library.removal.unsent_files", mapOf("count" to files.toLong())))
-        }
-        UnsentLine(stringResource(R.string.unsent_edits_body))
-        PrimaryButton(onClick = onRemove) { Text(stringResource(R.string.unsent_edits_remove)) }
-        TextButton(onClick = onKeep) { Text(stringResource(R.string.cancel)) }
-    }
-}
-
-@Composable
-private fun UnsentLine(text: String) {
-    Text(
-        text = text,
-        style = ThemeText.body.style,
-        textAlign = TextAlign.Center,
-    )
-}
-
 /** A library left its store, but deleting this device's files for it failed; finishing is retried here. */
 @Composable
 internal fun RemovalIncompleteScreen(
@@ -188,14 +154,6 @@ private fun LifecycleMessage(
             textAlign = TextAlign.Center,
         )
         content()
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun UnsentEditsScreenPreview() {
-    BaeTheme {
-        UnsentEditsScreen(writes = 3u, files = 2u, onRemove = {}, onKeep = {})
     }
 }
 

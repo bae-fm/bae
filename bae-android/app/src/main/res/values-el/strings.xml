@@ -99,9 +99,7 @@
     <string name="settings_remove_library_explanation">Αφαιρεί αυτή τη βιβλιοθήκη από αυτή τη συσκευή: η συσκευή αποχωρεί από τη βιβλιοθήκη και μετά διαγράφονται το αντίγραφό της και τα ληφθέντα αρχεία. Η βιβλιοθήκη στον χώρο της στο cloud παραμένει ανέπαφη.</string>
     <string name="settings_remove_library_confirm_title">Αφαίρεση αυτής της βιβλιοθήκης από αυτή τη συσκευή;</string>
     <string name="settings_remove_library_confirm_body">Η συσκευή αποχωρεί πρώτα από τη βιβλιοθήκη, κάτι που απαιτεί σύνδεση. Η βιβλιοθήκη στον χώρο της στο cloud παραμένει ανέπαφη.</string>
-    <string name="unsent_edits_title">Οι αλλαγές που δεν έχουν σταλεί θα χαθούν</string>
     <string name="unsent_edits_body">Η αφαίρεση της βιβλιοθήκης από αυτή τη συσκευή τις απορρίπτει.</string>
-    <string name="unsent_edits_remove">Αφαίρεση ούτως ή άλλως</string>
     <string name="settings_remove">Αφαίρεση</string>
     <string name="settings_provider">Πάροχος</string>
     <string name="settings_account">Λογαριασμός</string>

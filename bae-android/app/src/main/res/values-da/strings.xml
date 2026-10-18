@@ -99,9 +99,7 @@
     <string name="settings_remove_library_explanation">Fjerner dette bibliotek fra denne enhed: enheden forlader biblioteket, og derefter slettes dens kopi og downloadede filer. Biblioteket på skyplaceringen er urørt.</string>
     <string name="settings_remove_library_confirm_title">Vil du fjerne dette bibliotek fra denne enhed?</string>
     <string name="settings_remove_library_confirm_body">Enheden forlader først biblioteket, hvilket kræver forbindelse. Biblioteket på skyplaceringen er urørt.</string>
-    <string name="unsent_edits_title">Ændringer, der ikke er sendt, går tabt</string>
     <string name="unsent_edits_body">Hvis biblioteket fjernes fra denne enhed, kasseres de.</string>
-    <string name="unsent_edits_remove">Fjern alligevel</string>
     <string name="settings_remove">Fjern</string>
     <string name="settings_provider">Udbyder</string>
     <string name="settings_account">Konto</string>

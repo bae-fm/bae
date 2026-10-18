@@ -156,10 +156,6 @@ private fun AppScreenRouter(
             )
         }
 
-        is AppScreen.UnsentEdits -> {
-            UnsentEditsRoute(screen = current, onScreen = onScreen)
-        }
-
         is AppScreen.RemovalIncomplete -> {
             RemovalIncompleteScreen(
                 message = current.message,
@@ -171,25 +167,6 @@ private fun AppScreenRouter(
             FailedScreen(message = current.message)
         }
     }
-}
-
-/**
- * A removal stopped for changes this device hasn't sent: the person removes
- * the library anyway, discarding them, or keeps it.
- */
-@Composable
-private fun UnsentEditsRoute(
-    screen: AppScreen.UnsentEdits,
-    onScreen: (AppScreen) -> Unit,
-) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    UnsentEditsScreen(
-        writes = screen.writes,
-        files = screen.files,
-        onRemove = { scope.launch { AppSessionHolder.discardUnsentAndRemove(context, screen, onScreen) } },
-        onKeep = { scope.launch { AppSessionHolder.keepLibrary(context, screen, onScreen) } },
-    )
 }
 
 /**

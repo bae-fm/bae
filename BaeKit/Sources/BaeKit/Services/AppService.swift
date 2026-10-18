@@ -242,10 +242,16 @@ open class AppService: @unchecked Sendable, Observable {
         try await sync.renameLibrary(name)
     }
 
-    public func removeLibrary(unsent: BridgeIfUnsent) async throws
-        -> BridgeLibraryRemoval
-    {
-        try await appHandle.removeLibrary(unsent: unsent)
+    /// What removing this library would lose, for the person to confirm
+    /// first. The library keeps running.
+    public func unsentBeforeRemoval() async throws -> BridgeUnsentWork {
+        try await appHandle.unsentBeforeRemoval()
+    }
+
+    /// Remove this library from this device, discarding what it hasn't
+    /// uploaded.
+    public func removeLibrary() async throws -> BridgeLibraryRemoval {
+        try await appHandle.removeLibrary()
     }
 
     #if os(iOS)

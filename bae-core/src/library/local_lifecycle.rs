@@ -19,13 +19,9 @@ pub enum LibraryRemovalError {
     /// Recording the removal failed, so nothing was removed.
     #[error("couldn't record the removal, so nothing was removed: {0}")]
     Record(#[source] LibraryError),
-    /// This device holds writes and files it hasn't uploaded, so nothing was
-    /// removed. Removing with `IfUnsent::Discard` loses them.
-    #[error("{} writes and {} files wait to upload", .0.writes, .0.files)]
-    Unsent(coven::UnsentWork),
     /// coven didn't delete the store; bae's files for it are untouched.
     #[error(transparent)]
-    Store(coven::StoreDeletionError),
+    Store(#[from] coven::StoreDeletionError),
     /// coven deleted the store, but deleting bae's files for it or its record
     /// failed. The record keeps it an [`UnfinishedRemoval`] until
     /// [`finish_removals`] completes it.
@@ -33,19 +29,9 @@ pub enum LibraryRemovalError {
     Unfinished(#[source] LibraryError),
 }
 
-impl From<coven::StoreDeletionError> for LibraryRemovalError {
-    fn from(error: coven::StoreDeletionError) -> Self {
-        match error {
-            coven::StoreDeletionError::Unsent(work) => Self::Unsent(work),
-            error => Self::Store(error),
-        }
-    }
-}
-
 impl LibraryRemovalError {
     pub fn category(&self) -> crate::ui::UiErrorCategory {
         match self {
-            Self::Unsent(_) => crate::ui::UiErrorCategory::Config,
             Self::Store(error) => super::manager::deletion_category(error),
             Self::Record(source) | Self::Unfinished(source) => source.category(),
         }
@@ -140,15 +126,39 @@ pub async fn finish_removals(app_dir: &AppDir) -> Result<(), LibraryError> {
     Ok(())
 }
 
-/// Leave the store before removing this installation. Offline failures leave
-/// the store and bae's files intact; the caller retries the same request.
-/// The caller must stop its playback and import services first.
+/// Leave the store before removing this installation, discarding what this
+/// device hasn't uploaded. Offline failures leave the store and bae's files
+/// intact; the caller retries the same request. The caller must stop its
+/// playback and import services first.
 pub async fn remove_local_library(
     app_dir: &AppDir,
     handle: &coven::CovenHandle,
-    unsent: coven::IfUnsent,
 ) -> Result<(), LibraryRemovalError> {
-    remove_recorded(app_dir, handle.store_id(), handle.delete_store(unsent)).await
+    remove_recorded(
+        app_dir,
+        handle.store_id(),
+        handle.delete_store(coven::IfUnsent::Discard),
+    )
+    .await
+}
+
+/// What removing a library that isn't open would lose, read by opening its
+/// store just long enough to count, as
+/// [`crate::library::LibraryManager::unsent_before_removal`] does for an open
+/// one.
+pub async fn unsent_before_removal(
+    builder: coven::CovenBuilder,
+    store: coven::StoreId,
+) -> Result<coven::UnsentWork, LibraryError> {
+    let handle = super::configure_store(builder).open(store).await?;
+    let unsent =
+        crate::db::Database::from_handle(handle.clone(), std::sync::Arc::new(coven::SystemClock))
+            .unsent_before_removal()
+            .await;
+    let closed = handle.close().await;
+    let unsent = unsent?;
+    closed?;
+    Ok(unsent)
 }
 
 /// Record the removal of `store_id`, run `delete_store`, then delete bae's

@@ -5,6 +5,8 @@ import os.log
 private let logger = Logger.bae("LibrarySettings")
 
 struct LibrarySettingsTab: View {
+    /// What removing the active library would lose, read before asking.
+    let unsentBeforeRemoval: () async throws -> BridgeUnsentWork
     /// Removes the active library from this device.
     let onForgetLibrary: () -> Void
     /// Shows the device-reset warning for the active library.
@@ -22,8 +24,12 @@ struct LibrarySettingsTab: View {
 
     @State
     private var showSyncSetup = false
+    /// What removal would lose while the person is asked to confirm it.
     @State
-    private var showForgetConfirm = false
+    private var removalUnsent: BridgeUnsentWork?
+    /// Why what removal would lose couldn't be read.
+    @State
+    private var removalError: DisplayError?
 
     var body: some View {
         Form {
@@ -84,7 +90,10 @@ struct LibrarySettingsTab: View {
                     "Remove this library from this Mac...",
                     role: .destructive
                 ) {
-                    showForgetConfirm = true
+                    askToRemove()
+                }
+                if let removalError {
+                    ErrorDetailDisclosure(error: removalError)
                 }
             }
         }
@@ -94,18 +103,41 @@ struct LibrarySettingsTab: View {
         }
         .alert(
             "Remove this library from this Mac?",
-            isPresented: $showForgetConfirm
-        ) {
+            isPresented: Binding(
+                get: { removalUnsent != nil },
+                set: { if !$0 { removalUnsent = nil } }
+            ),
+            presenting: removalUnsent
+        ) { _ in
             Button("Remove", role: .destructive) {
                 onForgetLibrary()
             }
             Button("Cancel", role: .cancel) {}
-        } message: {
+        } message: { unsent in
             Text(
-                LibraryRemovalConfirmation.message(
-                    hasCloudHome: configStore.hasCloudHome
+                unsent.confirmation(
+                    consequence: LibraryRemovalConfirmation.consequence,
+                    message: LibraryRemovalConfirmation.message(
+                        hasCloudHome: configStore.hasCloudHome
+                    )
                 )
             )
+        }
+    }
+
+    /// Read what removal would lose, then ask. The library keeps running.
+    private func askToRemove() {
+        removalError = nil
+        Task {
+            do {
+                removalUnsent = try await unsentBeforeRemoval()
+            }
+            catch {
+                logger.error(
+                    "Couldn't read what removing the library loses: \(error.localizedDescription)"
+                )
+                removalError = DisplayError(error)
+            }
         }
     }
 
@@ -287,6 +319,7 @@ private struct RestoreCodeSection: View {
         configStore: ConfigStore
     ) -> some View {
         LibrarySettingsTab(
+            unsentBeforeRemoval: { BridgeUnsentWork(writes: 0, files: 0) },
             onForgetLibrary: {},
             onResetDevice: {},
             onRestoreFromCode: {},

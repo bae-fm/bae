@@ -95,9 +95,7 @@
     <string name="settings_remove_library_explanation">このデバイスからライブラリを削除します。デバイスがライブラリから退出したあと、そのコピーとダウンロード済みファイルが削除されます。クラウドの保存先にあるライブラリはそのまま残ります。</string>
     <string name="settings_remove_library_confirm_title">このライブラリをこのデバイスから削除しますか？</string>
     <string name="settings_remove_library_confirm_body">まずこのデバイスがライブラリから退出します。これには接続が必要です。クラウドの保存先にあるライブラリはそのまま残ります。</string>
-    <string name="unsent_edits_title">未送信の変更は失われます</string>
     <string name="unsent_edits_body">このデバイスからライブラリを削除すると、これらは破棄されます。</string>
-    <string name="unsent_edits_remove">それでも削除</string>
     <string name="settings_remove">削除</string>
     <string name="settings_provider">プロバイダ</string>
     <string name="settings_account">アカウント</string>

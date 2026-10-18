@@ -95,9 +95,7 @@
     <string name="settings_remove_library_explanation">이 기기에서 라이브러리를 제거합니다. 기기가 라이브러리에서 나간 다음 복사본과 다운로드한 파일이 삭제됩니다. 클라우드 저장 위치의 라이브러리는 그대로입니다.</string>
     <string name="settings_remove_library_confirm_title">이 기기에서 이 라이브러리를 제거할까요?</string>
     <string name="settings_remove_library_confirm_body">먼저 이 기기가 라이브러리에서 나가며, 이때 연결이 필요합니다. 클라우드 저장 위치의 라이브러리는 그대로입니다.</string>
-    <string name="unsent_edits_title">전송되지 않은 변경 사항이 손실됩니다</string>
     <string name="unsent_edits_body">이 기기에서 라이브러리를 제거하면 이 변경 사항은 삭제됩니다.</string>
-    <string name="unsent_edits_remove">그래도 제거</string>
     <string name="settings_remove">제거</string>
     <string name="settings_provider">제공자</string>
     <string name="settings_account">계정</string>

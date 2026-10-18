@@ -95,9 +95,7 @@
     <string name="settings_remove_library_explanation">Verwijdert deze bibliotheek van dit apparaat: het apparaat verlaat de bibliotheek, daarna worden de kopie en de gedownloade bestanden verwijderd. De bibliotheek op de cloudlocatie blijft ongewijzigd.</string>
     <string name="settings_remove_library_confirm_title">Deze bibliotheek van dit apparaat verwijderen?</string>
     <string name="settings_remove_library_confirm_body">Dit apparaat verlaat eerst de bibliotheek, waarvoor een verbinding nodig is. De bibliotheek op de cloudlocatie blijft ongewijzigd.</string>
-    <string name="unsent_edits_title">Niet-verzonden wijzigingen gaan verloren</string>
     <string name="unsent_edits_body">Als je de bibliotheek van dit apparaat verwijdert, worden ze weggegooid.</string>
-    <string name="unsent_edits_remove">Toch verwijderen</string>
     <string name="settings_remove">Verwijderen</string>
     <string name="settings_provider">Provider</string>
     <string name="settings_account">Account</string>

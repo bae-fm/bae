@@ -39,9 +39,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
+import fm.bae.app.LocaleErrorLines
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.coreString
 import fm.bae.app.localizedLine
+import fm.bae.app.performBridgeAction
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.SessionActions
@@ -63,6 +66,7 @@ import uniffi.bae_bridge.BridgePerson
 import uniffi.bae_bridge.BridgeScreen
 import uniffi.bae_bridge.BridgeStorageLocation
 import uniffi.bae_bridge.BridgeTelemetryEvent
+import uniffi.bae_bridge.BridgeUnsentWork
 
 private val logger = BaeLogger("bae.SettingsScreen")
 
@@ -182,7 +186,7 @@ internal fun SettingsScreen(
                 onShowRestoreCode = { showRestoreCode = true },
             )
         }
-        SettingsClosingSections(onRemove = actions.removeLibrary)
+        SettingsClosingSections(session = session, onRemove = actions.removeLibrary)
     }
 
     if (showRestoreCode) {
@@ -203,21 +207,42 @@ private fun SettingsPlaybackSections(
     SettingsCastSection(session = session, config = config, ioDispatcher = ioDispatcher)
 }
 
-/** Removing the library from this device, once confirmed, and what is installed. */
+/**
+ * Removing the library from this device, once confirmed, and what is
+ * installed. What removal would lose is read first, while the library keeps
+ * running; cancelling leaves it as it was.
+ */
 @Composable
-private fun SettingsClosingSections(onRemove: () -> Unit) {
-    var confirmRemove by remember { mutableStateOf(false) }
+private fun SettingsClosingSections(
+    session: OpenLibrary,
+    onRemove: () -> Unit,
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var unsent by remember { mutableStateOf<BridgeUnsentWork?>(null) }
     SectionDivider()
-    SettingsRemoveSection(onRequestRemove = { confirmRemove = true })
+    SettingsRemoveSection(onRequestRemove = {
+        scope.launch {
+            performBridgeAction(
+                logger = logger,
+                operation = "read what removing the library loses",
+                errors = LocaleErrorLines(context),
+                showError = { session.configStore.showError(it) },
+            ) {
+                unsent = session.appHandle.unsentBeforeRemoval()
+            }
+        }
+    })
     SectionDivider()
     SettingsAboutSection()
-    if (confirmRemove) {
+    unsent?.let { work ->
         RemoveLibraryConfirmDialog(
+            unsent = work,
             onConfirm = {
-                confirmRemove = false
+                unsent = null
                 onRemove()
             },
-            onDismiss = { confirmRemove = false },
+            onDismiss = { unsent = null },
         )
     }
 }
@@ -227,15 +252,29 @@ private fun SectionDivider() {
     HorizontalDivider(modifier = Modifier.padding(horizontal = ThemeSpace.edge))
 }
 
+/** The confirmation's text: what removing would lose, that removing loses it, then what removing does. */
 @Composable
 private fun RemoveLibraryConfirmDialog(
+    unsent: BridgeUnsentWork,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val context = LocalContext.current
+    val lost =
+        listOfNotNull(
+            unsent.writes.takeIf { it > 0u }?.let {
+                context.coreString("core.library.removal.unsent_writes", mapOf("count" to it.toLong()))
+            },
+            unsent.files.takeIf { it > 0u }?.let {
+                context.coreString("core.library.removal.unsent_files", mapOf("count" to it.toLong()))
+            },
+        )
+    val consequence = if (lost.isEmpty()) emptyList() else listOf(stringResource(R.string.unsent_edits_body))
+    val body = (lost + consequence + stringResource(R.string.settings_remove_library_confirm_body)).joinToString(" ")
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.settings_remove_library_confirm_title)) },
-        text = { Text(stringResource(R.string.settings_remove_library_confirm_body)) },
+        text = { Text(body) },
         confirmButton = {
             TextButton(onClick = onConfirm) {
                 Text(stringResource(R.string.settings_remove))

@@ -3,36 +3,48 @@ import Testing
 
 @testable import bae
 
-/// The removals a closed library's removal asks the bridge for, answering a
-/// refused removal as this device's unsent changes would.
-private actor UnsentChangesBridge {
-    private(set) var requests: [BridgeIfUnsent] = []
+/// What a closed library's removal asks the bridge for, in order.
+private actor ClosedLibraryBridge {
+    private(set) var calls: [String] = []
 
-    func remove(_ unsent: BridgeIfUnsent) -> BridgeLibraryRemoval {
-        requests.append(unsent)
-        switch unsent {
-        case .refuse: return .unsent(writes: 3, files: 1)
-        case .discard: return .removed
-        }
+    func unsent(_ libraryId: String) -> BridgeUnsentWork {
+        calls.append("unsent \(libraryId)")
+        return BridgeUnsentWork(writes: 3, files: 1)
+    }
+
+    func remove(_ libraryId: String) -> BridgeLibraryRemoval {
+        calls.append("remove \(libraryId)")
+        return .removed
     }
 }
 
 @MainActor
-@Suite("LibraryRemovals unsent changes")
-struct LibraryRemovalsUnsentChangesTests {
-    /// Let the removal's task deliver the refusal to the main actor.
-    private func question(_ removals: LibraryRemovals) async -> UnsentRemoval? {
-        for _ in 0..<1_000 where removals.unsent == nil {
-            await Task.yield()
-        }
-        return removals.unsent
+@Suite("LibraryRemovals closed libraries")
+struct LibraryRemovalsClosedLibraryTests {
+    @Test("what removal loses is read without removing anything")
+    func readingLosesNothing() async {
+        let bridge = ClosedLibraryBridge()
+        let removals = LibraryRemovals(
+            unsentOfClosed: { await bridge.unsent($0) },
+            removeClosed: { await bridge.remove($0) },
+            findUnfinished: { nil },
+            finishUnfinished: {}
+        )
+
+        let unsent = await removals.unsentWork(closedLibrary: "library-1")
+
+        #expect(unsent?.writes == 3)
+        #expect(unsent?.files == 1)
+        #expect(await bridge.calls == ["unsent library-1"])
+        #expect(removals.error == nil)
     }
 
-    @Test("a refused removal asks, and removing anyway discards the changes")
-    func removingAnywayDiscards() async {
-        let bridge = UnsentChangesBridge()
+    @Test("a confirmed removal removes once")
+    func confirmedRemovalRemoves() async {
+        let bridge = ClosedLibraryBridge()
         let removals = LibraryRemovals(
-            removeClosed: { _, unsent in await bridge.remove(unsent) },
+            unsentOfClosed: { await bridge.unsent($0) },
+            removeClosed: { await bridge.remove($0) },
             findUnfinished: { nil },
             finishUnfinished: {}
         )
@@ -41,36 +53,47 @@ struct LibraryRemovalsUnsentChangesTests {
             removals.remove(closedLibrary: "library-1") {
                 finished.resume()
             }
-            Task {
-                let asked = await question(removals)
-                #expect(asked?.edits == UnsentEdits(writes: 3, files: 1))
-                removals.discardUnsent()
-            }
         }
 
-        #expect(await bridge.requests == [.refuse, .discard])
-        #expect(removals.unsent == nil)
+        #expect(await bridge.calls == ["remove library-1"])
         #expect(removals.error == nil)
+        #expect(removals.removingLibraryId == nil)
     }
 
-    @Test("keeping the library removes nothing more")
-    func keepingRemovesNothing() async {
-        let bridge = UnsentChangesBridge()
+    @Test("a count that can't be read shows why and asks nothing")
+    func unreadableCountShowsError() async {
         let removals = LibraryRemovals(
-            removeClosed: { _, unsent in await bridge.remove(unsent) },
+            unsentOfClosed: { _ in
+                throw BridgeError.Diagnostic(category: .database, detail: "x")
+            },
+            removeClosed: { _ in
+                Issue.record("nothing is removed")
+                return .removed
+            },
             findUnfinished: { nil },
             finishUnfinished: {}
         )
 
-        removals.remove(closedLibrary: "library-1") {
-            Issue.record("a kept library's list doesn't change")
-        }
-        #expect(await question(removals) != nil)
-        removals.keepUnsent()
+        #expect(await removals.unsentWork(closedLibrary: "library-1") == nil)
+        #expect(removals.error != nil)
+    }
+}
 
-        #expect(await bridge.requests == [.refuse])
-        #expect(removals.unsent == nil)
-        #expect(removals.removingLibraryId == nil)
+@Suite("BridgeUnsentWork confirmation")
+struct BridgeUnsentWorkConfirmationTests {
+    @Test("nothing waiting leaves only the message")
+    func nothingWaiting() {
+        let text = BridgeUnsentWork(writes: 0, files: 0)
+            .confirmation(consequence: "Lost.", message: "Message.")
+        #expect(text == "Message.")
+    }
+
+    @Test("waiting changes come first, then the consequence")
+    func changesWaiting() {
+        let text = BridgeUnsentWork(writes: 2, files: 0)
+            .confirmation(consequence: "Lost.", message: "Message.")
+        #expect(text.hasSuffix("Lost. Message."))
+        #expect(text != "Lost. Message.")
     }
 }
 
@@ -117,7 +140,8 @@ struct LibraryRemovalsUnfinishedTests {
     func retryFinishesAnEarlierRemoval() async {
         let bridge = UnfinishedRemovalBridge(failures: 1)
         let removals = LibraryRemovals(
-            removeClosed: { _, _ in .removed },
+            unsentOfClosed: { _ in BridgeUnsentWork(writes: 0, files: 0) },
+            removeClosed: { _ in .removed },
             findUnfinished: { await bridge.find() },
             finishUnfinished: { try await bridge.finish() }
         )
@@ -141,7 +165,8 @@ struct LibraryRemovalsUnfinishedTests {
     @Test("a removal that stopped before the delete shows without Retry")
     func stoppedBeforeTheDelete() async {
         let removals = LibraryRemovals(
-            removeClosed: { _, _ in .removed },
+            unsentOfClosed: { _ in BridgeUnsentWork(writes: 0, files: 0) },
+            removeClosed: { _ in .removed },
             findUnfinished: {
                 BridgeUnfinishedRemoval(
                     error: .Diagnostic(category: .config, detail: "still here"),
@@ -161,7 +186,8 @@ struct LibraryRemovalsUnfinishedTests {
     @Test("nothing shows when no removal was left unfinished")
     func nothingLeft() async {
         let removals = LibraryRemovals(
-            removeClosed: { _, _ in .removed },
+            unsentOfClosed: { _ in BridgeUnsentWork(writes: 0, files: 0) },
+            removeClosed: { _ in .removed },
             findUnfinished: { nil },
             finishUnfinished: {
                 Issue.record("nothing to finish")

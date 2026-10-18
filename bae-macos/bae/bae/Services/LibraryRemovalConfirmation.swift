@@ -2,10 +2,14 @@ import BaeKit
 import Foundation
 
 enum LibraryRemovalConfirmation {
+    /// What follows the counts of changes this Mac hasn't sent.
+    static var consequence: String {
+        String(localized: "Removing the library from this Mac discards them.")
+    }
+
     /// A synced library's cloud copy survives, and this Mac leaves its members
-    /// first, which needs storage; changes it hasn't sent are counted when the
-    /// removal stops for them. A never-synced library's catalog is gone, while
-    /// indexed audio files stay in the user's folders.
+    /// first, which needs storage. A never-synced library's catalog is gone,
+    /// while indexed audio files stay in the user's folders.
     static func message(hasCloudHome: Bool) -> String {
         guard hasCloudHome else {
             return String(

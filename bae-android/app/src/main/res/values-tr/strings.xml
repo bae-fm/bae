@@ -95,9 +95,7 @@
     <string name="settings_remove_library_explanation">Bu kitaplığı bu cihazdan kaldırır: cihaz önce kitaplıktan ayrılır, ardından kopyası ve indirilen dosyalar silinir. Bulut konumundaki kitaplığa dokunulmaz.</string>
     <string name="settings_remove_library_confirm_title">Bu kitaplık bu cihazdan kaldırılsın mı?</string>
     <string name="settings_remove_library_confirm_body">Bu cihaz önce kitaplıktan ayrılır; bunun için bağlantı gerekir. Bulut konumundaki kitaplığa dokunulmaz.</string>
-    <string name="unsent_edits_title">Gönderilmemiş değişiklikler kaybolacak</string>
     <string name="unsent_edits_body">Kitaplığı bu cihazdan kaldırmak bunları siler.</string>
-    <string name="unsent_edits_remove">Yine de kaldır</string>
     <string name="settings_remove">Kaldır</string>
     <string name="settings_provider">Sağlayıcı</string>
     <string name="settings_account">Hesap</string>
