@@ -107,7 +107,7 @@ public class OutboxStore {
     /// finished, no transition remains.
     public func finishCloudUploads(
         for command: CloudUploadCommand,
-        receipt: BridgeMakeRemoteReceipt?
+        receipt: BridgeUploadReceipt?
     ) {
         let admittedReleaseIds: Set<String>
         switch receipt {
@@ -187,7 +187,7 @@ public class OutboxStore {
     /// haven't reached the cloud home. Drives the extra data-loss warning on the
     /// remove-library confirmation.
     public var hasPendingCloudWork: Bool {
-        !snapshot.uploadGroups.isEmpty
+        !snapshot.uploadGroups.isEmpty || !snapshot.otherFiles.isEmpty
     }
 
     /// The idle queue used before the required initial snapshot arrives and by
@@ -197,20 +197,13 @@ public class OutboxStore {
         BridgeOutboxSnapshot(
             revision: 0,
             uploadGroups: [],
+            otherFiles: [],
             perRelease: [:],
             total: BridgeUploadProgress(
                 queued: 0,
-                preparing: 0,
-                prepared: 0,
                 uploading: 0,
-                retrying: 0,
-                uploaded: 0,
-                publishing: 0,
-                cancelling: 0,
                 bar: nil,
                 activity: nil,
-                canCancel: false,
-                issue: nil,
             ),
             summaryParts: [],
             pauseState: .running,
@@ -279,15 +272,14 @@ public enum StorageUploadObservation: Equatable {
     case awaiting
     case active(progress: BridgeUploadProgress, throughputBps: UInt64)
 
-    /// Cancellation only targets work coven has durably admitted. The command
-    /// handoff has nothing to cancel yet. Core owns whether an admitted phase
-    /// can still be unwound.
+    /// Cancellation targets work coven has durably admitted; the command
+    /// handoff has nothing to cancel yet.
     public var canCancel: Bool {
         switch self {
         case .queueing, .awaiting:
             false
-        case .active(let progress, _):
-            progress.canCancel
+        case .active:
+            true
         }
     }
 
@@ -303,7 +295,7 @@ public enum StorageUploadObservation: Equatable {
         switch self {
         case .queueing:
             return NSLocalizedString(
-                bridgeTransferActionKey(action: .makeRemote),
+                bridgeTransferActionKey(action: .upload),
                 tableName: "Core",
                 bundle: .module,
                 comment: ""
@@ -335,7 +327,7 @@ public enum StorageUploadObservation: Equatable {
         }
     }
 
-    /// The release's current preparation or provider-write rate. A zero reading
+    /// The release's current upload rate. A zero reading
     /// stays absent instead of presenting a stalled speed.
     public var throughputText: String? {
         guard case .active(_, let throughputBps) = self,

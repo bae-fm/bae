@@ -202,7 +202,7 @@ open class AppService: @unchecked Sendable, Observable {
     }
 
     public var libraryId: String { configStore.config.libraryId }
-    public var libraryName: String { configStore.config.libraryName }
+    public var libraryName: String { configStore.libraryName }
     public var libraryPath: String { configStore.config.libraryPath }
 
     public var playbackPositionPublisher:
@@ -217,8 +217,8 @@ open class AppService: @unchecked Sendable, Observable {
 
     /// Close the library so nothing of this process holds its store: stops
     /// sync, ends every background task, and shuts the core's runtime down.
-    /// Blocks until done, so it runs off the main actor. The caller releases
-    /// this service next and may then remove the library through the host.
+    /// Blocks until it finishes, so it runs off the main actor. Removing a
+    /// library instead calls `removeLibrary` while this service owns the store.
     public nonisolated func closeLibrary() throws {
         try appHandle.closeLibrary()
     }
@@ -232,24 +232,15 @@ open class AppService: @unchecked Sendable, Observable {
     }
 
     public nonisolated func renameLibrary(
-        _ libraryId: String,
         to name: String
     ) async throws {
-        try await sync.renameLibrary(libraryId, name)
+        try await sync.renameLibrary(name)
     }
 
-    public nonisolated func lockActiveLibrary() async throws {
-        try await sync.lockActiveLibrary()
-    }
-
-    public func storeRestoreCodeInKeychain(
-        libraryId: String,
-        onError: @escaping @Sendable (DisplayError) -> Void
-    ) {
-        sync.storeRestoreCodeInKeychain(
-            libraryId: libraryId,
-            onError: onError
-        )
+    public func removeLibrary(unsent: BridgeIfUnsent) async throws
+        -> BridgeLibraryRemoval
+    {
+        try await appHandle.removeLibrary(unsent: unsent)
     }
 
     #if os(iOS)

@@ -4,20 +4,11 @@ import Foundation
 
 public struct Config: Equatable {
     public let libraryId: String
-    public let libraryName: String
     public let libraryPath: String
     public let discogsTokenStatus: BridgeDiscogsTokenStatus
     /// Whether Discogs can be used as a metadata source. Core decides the policy
     /// (a stored key that isn't rejected); the UI reads this, not the status.
     public let discogsUsable: Bool
-    /// The configured cloud provider, present whenever YAML carries one.
-    /// "Configured" — not "live". Flows that only need a provider configured
-    /// (cloud import enqueues a cloud_outbox row and uploads on the next
-    /// sync cycle) gate on `sync != nil`. Flows that need sync live this
-    /// instant (device pairing, restore-code generation) gate on
-    /// `SyncStatusStore.syncReady` — that's runtime status, kept off this
-    /// persisted-config mirror.
-    public let sync: BridgeSyncConfig?
     public let pauseBetweenSides: Bool
     /// Whether a side or disc pause ends on its own after a countdown, and how
     /// long. Settings show it only while `pauseBetweenSides` is on.
@@ -67,15 +58,11 @@ public struct Config: Equatable {
     public let mcp: BridgeMcpConfig
     public let subsonic: BridgeSubsonicConfig
 
-    public var hasCloudHome: Bool { sync != nil }
-
     public init(bridge: BridgeConfig) {
         libraryId = bridge.libraryId
-        libraryName = bridge.libraryName
         libraryPath = bridge.libraryPath
         discogsTokenStatus = bridge.discogsTokenStatus
         discogsUsable = bridge.discogsUsable
-        sync = bridge.sync
         pauseBetweenSides = bridge.pauseBetweenSides
         sidePauseCountdown = bridge.sidePauseCountdown
         maxConcurrentUploads = bridge.maxConcurrentUploads

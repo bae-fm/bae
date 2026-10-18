@@ -3,278 +3,156 @@ import OSLog
 
 private let logger = Logger.bae("LibrarySessionOpener")
 
-/// The slice of an open `AppHandle` the session opener drives: read the config
-/// and Coven-owned cloud-key state, unlock that same handle, seed the stores,
-/// check sync readiness, and tear the core down on a failed open. `AppHandle`
-/// satisfies it directly; the narrow shape is the seam a unit test fakes.
 public protocol LibrarySessionHandle: AnyObject, Sendable {
     func getConfig() -> BridgeConfig
-    func cloudHomeKeyState() throws -> BridgeCloudHomeKeyState
-    func unlockCloudHome(serializedCloudKey: String) async throws
+    func libraryName() async throws -> String
+    func storageLocation() async throws -> BridgeStorageLocation?
     func getOutboxSnapshot() async throws -> BridgeOutboxSnapshot
     func getDownloadSnapshot() async throws -> BridgeDownloadSnapshot
     #if os(macOS)
         func getOutputSnapshot() async throws -> BridgeOutputSnapshot
     #endif
-    func isSyncReady() -> Bool
     func shutdown() async throws
 }
 
-/// What an opened library's transfer stores start from, read from core before
-/// the service is built so the first frame shows core's values.
+extension AppHandle: LibrarySessionHandle {}
+
 public struct LibrarySessionSeed: Sendable {
+    public let name: String
+    public let storage: BridgeStorageLocation?
     public let outbox: BridgeOutboxSnapshot
     public let downloads: BridgeDownloadSnapshot
     #if os(macOS)
         public let outputs: BridgeOutputSnapshot
-    #endif
-
-    #if os(macOS)
         public init(
+            name: String,
+            storage: BridgeStorageLocation?,
             outbox: BridgeOutboxSnapshot,
             downloads: BridgeDownloadSnapshot,
             outputs: BridgeOutputSnapshot
         ) {
+            self.name = name
+            self.storage = storage
             self.outbox = outbox
             self.downloads = downloads
             self.outputs = outputs
         }
     #else
         public init(
+            name: String,
+            storage: BridgeStorageLocation?,
             outbox: BridgeOutboxSnapshot,
             downloads: BridgeDownloadSnapshot
         ) {
+            self.name = name
+            self.storage = storage
             self.outbox = outbox
             self.downloads = downloads
         }
     #endif
 
-    /// Read every seed from `handle`.
     static func read(from handle: some LibrarySessionHandle) async throws
-        -> LibrarySessionSeed
+        -> Self
     {
+        let name = try await handle.libraryName()
+        let storage = try await handle.storageLocation()
         let outbox = try await handle.getOutboxSnapshot()
         let downloads = try await handle.getDownloadSnapshot()
         #if os(macOS)
             let outputs = try await handle.getOutputSnapshot()
-            return LibrarySessionSeed(
+            return Self(
+                name: name,
+                storage: storage,
                 outbox: outbox,
                 downloads: downloads,
                 outputs: outputs
             )
         #else
-            return LibrarySessionSeed(outbox: outbox, downloads: downloads)
+            return Self(
+                name: name,
+                storage: storage,
+                outbox: outbox,
+                downloads: downloads
+            )
         #endif
     }
 }
 
-extension AppHandle: LibrarySessionHandle {
-    public func unlockCloudHome(serializedCloudKey: String) async throws {
-        try await unlockCloudHome(serializedMasterKey: serializedCloudKey)
-    }
-}
-
-/// Opens a local library into a wired `AppService`, superseding any open still
-/// in flight. This is the platform-shared half of the launch / switch / unlock
-/// flow that macOS's `AppDelegate` and iOS's `AppSessionHolder` used to keep in
-/// lockstep by hand: run the off-main `initApp`, bail if a newer open superseded
-/// this one, gate on the stored encryption key, seed the transfer stores (tearing
-/// the core down if a read fails), build and wire the service, and store the
-/// restore code once sync is ready.
-///
-/// Each platform keeps its own shell (an `NSApplicationDelegate` vs an
-/// `@Observable` holder) and maps the `Outcome` onto its own screen model. A
-/// locked handle remains owned here so entering a key completes the already
-/// open Coven owner instead of constructing a second owner around the same
-/// library.
+/// Owns opening and seeding a session. Bootstrap callers supply their retained
+/// handle; existing local libraries use the injected factory.
 @MainActor
 public final class LibrarySessionOpener<
     Handle: LibrarySessionHandle,
     Service: AppService
 > {
-    /// The result of one open, mapped by the caller onto its screen model.
-    /// `.superseded` means a newer open cancelled this one; the newer open owns
-    /// the screen, so the caller does nothing — a locked target left the current
-    /// session running, and cancelling returns to it.
     public enum Outcome {
         case opened(Service)
-        case needsUnlock(BridgeConfig)
-        /// The OS keychain refused the read while the session was locked or the
-        /// display asleep. The library is fine and its key is present — this
-        /// device just cannot read it this second, and the same open succeeds
-        /// once the machine is unlocked. Distinct from `.needsUnlock`, which
-        /// means the key is genuinely absent and only a typed-in hex key
-        /// recovers it, and from `.failed`, which the user has to act on.
         case keychainLocked
         case superseded
         case failed(Error)
     }
 
-    /// Builds the core off the main actor. Injected so the opener doesn't call
-    /// the global `initApp` directly and a test can substitute a fake handle.
     private let makeHandle: @Sendable (String) throws -> Handle
-
-    /// Builds and wires the platform `AppService` around the opened handle,
-    /// config, and seeded transfer stores.
     private let makeService:
         @MainActor (Handle, BridgeConfig, LibrarySessionSeed) -> Service
-
-    /// The open still in flight, cancelled by the next `open` (or an explicit
-    /// `cancel`) so its now-stale result never lands on the caller's screen.
     private let slot = CancellableTaskSlot()
-
-    private struct LockedSession {
-        let id: UUID
-        let handle: Handle
-        let config: BridgeConfig
-    }
-
-    /// The one locked core awaiting its key. A switch or cancel releases it;
-    /// an unlock failure retains it so the user can correct the key and retry.
-    private var lockedSession: LockedSession?
 
     public init(
         makeHandle: @escaping @Sendable (String) throws -> Handle,
         makeService:
-            @escaping @MainActor (
-                Handle, BridgeConfig, LibrarySessionSeed
-            ) -> Service
+            @escaping @MainActor (Handle, BridgeConfig, LibrarySessionSeed) ->
+            Service
     ) {
         self.makeHandle = makeHandle
         self.makeService = makeService
     }
 
-    /// Open `libraryId`, superseding any open still in flight, and deliver the
-    /// outcome on the main actor. The prior open is cancelled first, so a fast
-    /// library switch can't land a stale library after the newer one.
     public func open(
         libraryId: String,
         onOutcome: @escaping @MainActor (Outcome) -> Void
     ) {
-        lockedSession = nil
+        let factory = makeHandle
+        open(makeHandle: { try factory(libraryId) }, onOutcome: onOutcome)
+    }
+
+    public func open(
+        makeHandle: @escaping @Sendable () throws -> Handle,
+        onOutcome: @escaping @MainActor (Outcome) -> Void
+    ) {
         slot.replace {
-            let outcome = await self.run(libraryId: libraryId)
-            onOutcome(outcome)
-        }
-    }
-
-    /// Unlock the retained core and finish opening it. The handle that reported
-    /// `.locked` performs the operation; no global key write or second
-    /// `initApp` participates.
-    public func unlock(serializedCloudKey: String) async throws -> Service {
-        guard let locked = lockedSession else {
-            throw CancellationError()
-        }
-        try await locked.handle.unlockCloudHome(
-            serializedCloudKey: serializedCloudKey
-        )
-        try Task.checkCancellation()
-        guard lockedSession?.id == locked.id else {
-            throw CancellationError()
-        }
-        lockedSession = nil
-        return try await finish(
-            handle: locked.handle,
-            config: locked.config
-        )
-    }
-
-    /// Cancel any open still in flight without starting a new one — used when
-    /// the caller tears its session down (close) so a parked `initApp` can't
-    /// resume past its cancellation check and land a library after the close.
-    public func cancel() {
-        slot.cancel()
-        lockedSession = nil
-    }
-
-    private func run(libraryId: String) async -> Outcome {
-        let makeHandle = self.makeHandle
-        logger.info("open: building core for library \(libraryId)")
-        do {
-            let handle = try await DetachedWork.run {
-                try makeHandle(libraryId)
-            }
-            logger.info("open: core built")
-            // A newer open may have superseded this one while `initApp` ran
-            // (cancelling this task). Bail before producing any outcome the
-            // caller would act on; `handle` drops here, freeing the core.
-            try Task.checkCancellation()
-            let config = handle.getConfig()
-            if try handle.cloudHomeKeyState() == .locked {
-                lockedSession = LockedSession(
-                    id: UUID(),
-                    handle: handle,
-                    config: config
-                )
-                return .needsUnlock(config)
-            }
-            return .opened(try await finish(handle: handle, config: config))
-        }
-        catch is CancellationError {
-            return .superseded
-        }
-        catch {
-            // Core types a keychain that refused right now apart from every
-            // other failure so a host can wait for the unlock instead of
-            // telling the user their library is broken. Either step can raise
-            // it — `initApp` reads the key state during bootstrap, and the
-            // read below repeats it — so the classification sits here, over
-            // both.
-            if Self.isKeychainLocked(error) {
-                logger.info(
-                    "open: the OS keychain is locked; the library is intact and this open can be retried after unlock"
-                )
-                return .keychainLocked
-            }
-            return .failed(error)
-        }
-    }
-
-    /// Whether a failure is the OS keychain refusing right now, which core
-    /// reports as its own category rather than a message this would have to
-    /// match on.
-    private static func isKeychainLocked(_ error: Error) -> Bool {
-        guard case BridgeError.Diagnostic(let category, _) = error else {
-            return false
-        }
-        return category == .keyringLocked
-    }
-
-    private func finish(
-        handle: Handle,
-        config: BridgeConfig
-    ) async throws -> Service {
-        let seed: LibrarySessionSeed
-        logger.info("open: seeding transfer stores")
-        do {
-            seed = try await LibrarySessionSeed.read(from: handle)
-            logger.info("open: transfer stores seeded")
-        }
-        catch {
-            logger.error("Failed to seed transfer stores: \(error)")
             do {
-                try await handle.shutdown()
+                let handle = try await DetachedWork.run(makeHandle)
+                do {
+                    try Task.checkCancellation()
+                    let seed = try await LibrarySessionSeed.read(from: handle)
+                    try Task.checkCancellation()
+                    onOutcome(
+                        .opened(
+                            self.makeService(handle, handle.getConfig(), seed)
+                        )
+                    )
+                }
+                catch {
+                    logger.error("Failed to seed library: \(error)")
+                    try await handle.shutdown()
+                    throw error
+                }
+            }
+            catch is CancellationError {
+                onOutcome(.superseded)
             }
             catch {
-                logger.error(
-                    "Failed to shut down after seeding failed: \(error)"
-                )
-                throw error
-            }
-            throw error
-        }
-        let service = makeService(handle, config, seed)
-        logger.info("open: service built and wired")
-        if handle.isSyncReady() {
-            service.storeRestoreCodeInKeychain(
-                libraryId: config.libraryId,
-                onError: { [weak service] failure in
-                    Task { @MainActor in
-                        service?.showError(failure)
-                    }
+                if case BridgeError.Diagnostic(let category, _) = error,
+                    category == .keyringLocked
+                {
+                    onOutcome(.keychainLocked)
                 }
-            )
+                else {
+                    onOutcome(.failed(error))
+                }
+            }
         }
-        return service
     }
+
+    public func cancel() { slot.cancel() }
 }

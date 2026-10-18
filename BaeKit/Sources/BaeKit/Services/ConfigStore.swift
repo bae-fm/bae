@@ -5,6 +5,15 @@ import SwiftUI
 @Observable
 public class ConfigStore {
     public var config: Config
+    public private(set) var libraryName: String
+    public private(set) var storage: BridgeStorageLocation?
+
+    public var hasCloudHome: Bool { storage != nil }
+
+    public func applyLibraryName(_ name: String) { libraryName = name }
+    public func applyStorage(_ location: BridgeStorageLocation?) {
+        storage = location
+    }
 
     #if os(iOS)
         /// Latest surfaced error from core's `error` event, or nil when
@@ -41,7 +50,13 @@ public class ConfigStore {
         }
     #endif
 
-    public init(config: Config) {
+    public init(
+        config: Config,
+        libraryName: String,
+        storage: BridgeStorageLocation?
+    ) {
+        self.libraryName = libraryName
+        self.storage = storage
         self.config = config
     }
 

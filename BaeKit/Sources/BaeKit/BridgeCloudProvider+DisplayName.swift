@@ -19,8 +19,8 @@ extension BridgeCloudProvider {
     }
 }
 
-extension BridgeSyncProvider {
-    /// The connected provider's display name. `BridgeSyncProvider` carries the
+extension BridgeStorageLocation {
+    /// The connected provider's display name. `BridgeStorageLocation` carries the
     /// connection details; the name is just its provider, so this maps to the
     /// `BridgeCloudProvider` case and reuses its `displayName`.
     public var displayName: String {
@@ -55,4 +55,22 @@ public func localizedCloudProviderName(provider: BridgeCloudProvider?) -> String
         bundle: .module,
         comment: ""
     )
+}
+
+extension BridgeStorageLocation {
+    public var locationText: String {
+        switch self {
+        case .s3(let bucket, let region, let endpoint, _, let prefix):
+            return "\(endpoint ?? "s3://\(region)")/\(bucket)/\(prefix)"
+        case .dropbox(let location):
+            switch location {
+            case .appFolder: return "/Apps/bae"
+            case .sharedFolder(let namespaceId): return namespaceId
+            }
+        case .oneDrive(let driveId, let folderId):
+            return "\(driveId)/\(folderId)"
+        case .cloudKit(let container, let owner, let zone):
+            return "\(container)/\(owner)/\(zone)"
+        }
+    }
 }

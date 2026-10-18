@@ -32,13 +32,18 @@ private final class ArtworkLoadingValueSink: EagerCacheFillStatusCallback,
     @unchecked Sendable
 {
     private let apply: @MainActor @Sendable (BridgeEagerCacheFillStatus) -> Void
+    private let fail: @MainActor @Sendable (any Error) -> Void
 
     init(
         apply:
-            @escaping @MainActor @Sendable (BridgeEagerCacheFillStatus) -> Void
+            @escaping @MainActor @Sendable (BridgeEagerCacheFillStatus) -> Void,
+        fail: @escaping @MainActor @Sendable (any Error) -> Void
     ) {
         self.apply = apply
+        self.fail = fail
     }
+
+    func onError(error: BridgeError) { Task { @MainActor in fail(error) } }
 
     func onValue(value: BridgeEagerCacheFillStatus) {
         Task { @MainActor in apply(value) }
@@ -185,7 +190,55 @@ final class CommonSubscriptions {
         onError: @escaping @MainActor @Sendable (any Error) -> Void
     ) {
         precondition(subscriptions.isEmpty)
-        subscriptions = [
+        subscriptions =
+            libraryStatusSubscriptions(onError: onError) + [
+                appHandle.subscribePlaybackValues(
+                    callback: PlaybackValuesSink(
+                        apply: applyPlayback,
+                        fail: onError
+                    )
+                ),
+                appHandle.subscribeQueue(
+                    callback: QueueValueSink(
+                        apply: applyQueue,
+                        fail: onError
+                    )
+                ),
+                appHandle.subscribeOutbox(
+                    callback: OutboxValueSink(
+                        apply: { [outboxStore] value in
+                            outboxStore.applySnapshot(value)
+                        },
+                        fail: onError
+                    )
+                ),
+                appHandle.subscribeDownloads(
+                    callback: DownloadValueSink(
+                        apply: { [downloadStore] value in
+                            downloadStore.applySnapshot(value)
+                        },
+                        fail: onError
+                    )
+                ),
+                appHandle.subscribeCastDevices(
+                    callback: CastDevicesValueSink { [castStore] devices in
+                        castStore.devices = devices
+                    }
+                ),
+            ]
+    }
+    private func libraryStatusSubscriptions(
+        onError: @escaping @MainActor @Sendable (any Error) -> Void
+    ) -> [LiveSubscription] {
+        [
+            appHandle.subscribeLibraryName(
+                callback: LibraryNameSink(
+                    apply: { [configStore] name in
+                        configStore.applyLibraryName(name)
+                    },
+                    fail: onError
+                )
+            ),
             appHandle.subscribeConfig(
                 callback: ConfigValueSink { [configStore] config in
                     configStore.applyConfigSnapshot(config)
@@ -197,44 +250,30 @@ final class CommonSubscriptions {
                 }
             ),
             appHandle.subscribeEagerCacheFillStatus(
-                callback: ArtworkLoadingValueSink {
-                    [artworkLoadingStore] value in
-                    artworkLoadingStore.apply(value)
-                }
-            ),
-            appHandle.subscribePlaybackValues(
-                callback: PlaybackValuesSink(
-                    apply: applyPlayback,
-                    fail: onError
-                )
-            ),
-            appHandle.subscribeQueue(
-                callback: QueueValueSink(
-                    apply: applyQueue,
-                    fail: onError
-                )
-            ),
-            appHandle.subscribeOutbox(
-                callback: OutboxValueSink(
-                    apply: { [outboxStore] value in
-                        outboxStore.applySnapshot(value)
+                callback: ArtworkLoadingValueSink(
+                    apply: { [artworkLoadingStore] value in
+                        artworkLoadingStore.apply(value)
                     },
-                    fail: onError
+                    fail: { [artworkLoadingStore] error in
+                        artworkLoadingStore.fail(error)
+                    }
                 )
-            ),
-            appHandle.subscribeDownloads(
-                callback: DownloadValueSink(
-                    apply: { [downloadStore] value in
-                        downloadStore.applySnapshot(value)
-                    },
-                    fail: onError
-                )
-            ),
-            appHandle.subscribeCastDevices(
-                callback: CastDevicesValueSink { [castStore] devices in
-                    castStore.devices = devices
-                }
             ),
         ]
     }
+
+}
+
+private final class LibraryNameSink: LibraryNameCallback, Sendable {
+    private let apply: @MainActor @Sendable (String) -> Void
+    private let fail: @MainActor @Sendable (any Error) -> Void
+    init(
+        apply: @escaping @MainActor @Sendable (String) -> Void,
+        fail: @escaping @MainActor @Sendable (any Error) -> Void
+    ) {
+        self.apply = apply
+        self.fail = fail
+    }
+    func onValue(value: String) { Task { @MainActor in apply(value) } }
+    func onError(error: BridgeError) { Task { @MainActor in fail(error) } }
 }
