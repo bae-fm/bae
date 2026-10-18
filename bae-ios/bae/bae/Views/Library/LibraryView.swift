@@ -1,9 +1,6 @@
 import BaeKit
 import Combine
 import SwiftUI
-import os.log
-
-private let logger = Logger.bae("LibraryView")
 
 enum LibraryBrowserMode {
     case albums
