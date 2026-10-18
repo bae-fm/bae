@@ -613,8 +613,27 @@ mod tests {
         );
     }
 
-    /// The messages a subscriber behind `filter` keeps, in emission order.
-    fn kept_lines(filter: tracing_subscriber::EnvFilter) -> Vec<String> {
+    /// Emits one line for each target and level the filter tests probe.
+    ///
+    /// A macro, not a function, so each test that expands it owns its
+    /// callsites. tracing caches a callsite's interest process-wide, computed
+    /// from the subscribers alive when the callsite is first hit. Each filter
+    /// test runs on its own thread behind its own subscriber; a callsite two of
+    /// them share can be first hit by both at once, and the interest one
+    /// computes from its own subscriber alone then overwrites the other's, so
+    /// the other test's events are dropped or kept by the wrong filter.
+    macro_rules! emit_probe_lines {
+        () => {{
+            tracing::debug!(target: "bae_core::import", "first-party debug");
+            tracing::debug!(target: "coven_database::live_query", "coven debug");
+            tracing::debug!(target: "sqlite3_parser::lexer", "dependency debug");
+            tracing::info!(target: "sqlite3_parser::lexer", "dependency info");
+        }};
+    }
+
+    /// The messages a subscriber behind `filter` keeps of those `emit` logs,
+    /// in emission order.
+    fn kept_lines(filter: tracing_subscriber::EnvFilter, emit: impl FnOnce()) -> Vec<String> {
         use tracing_subscriber::prelude::*;
         let kept = Arc::new(std::sync::Mutex::new(Vec::new()));
         let writer = {
@@ -628,12 +647,7 @@ mod tests {
                 .with_writer(writer)
                 .with_filter(filter),
         );
-        tracing::subscriber::with_default(subscriber, || {
-            tracing::debug!(target: "bae_core::import", "first-party debug");
-            tracing::debug!(target: "coven_database::live_query", "coven debug");
-            tracing::debug!(target: "sqlite3_parser::lexer", "dependency debug");
-            tracing::info!(target: "sqlite3_parser::lexer", "dependency info");
-        });
+        tracing::subscriber::with_default(subscriber, emit);
         let kept = kept.lock().expect("kept lines mutex poisoned");
         String::from_utf8(kept.clone())
             .expect("log lines are UTF-8")
@@ -667,7 +681,10 @@ mod tests {
     /// never a dependency's debug.
     #[test]
     fn a_debug_sink_keeps_dependencies_at_info() {
-        let kept = kept_lines(sink_filter(None, LevelFilter::DEBUG));
+        let kept = kept_lines(
+            sink_filter(None, LevelFilter::DEBUG),
+            || emit_probe_lines!(),
+        );
 
         assert_eq!(
             kept,
@@ -682,10 +699,10 @@ mod tests {
     /// `RUST_LOG` replaces the defaults whole.
     #[test]
     fn rust_log_overrides_the_default_levels() {
-        let kept = kept_lines(sink_filter(
-            Some("sqlite3_parser=debug"),
-            LevelFilter::DEBUG,
-        ));
+        let kept = kept_lines(
+            sink_filter(Some("sqlite3_parser=debug"), LevelFilter::DEBUG),
+            || emit_probe_lines!(),
+        );
 
         assert_eq!(
             kept,
