@@ -82,7 +82,6 @@
     <string name="gallery_load_failed">A képet nem sikerült betölteni</string>
     <string name="settings_library">Könyvtár</string>
     <string name="settings_sync">Szinkronizálás</string>
-    <string name="settings_cloud_sync_on">Felhőszinkronizálás bekapcsolva</string>
     <string name="settings_local_only">Csak helyi</string>
     <string name="settings_sync_unconnected">Leválasztva</string>
     <string name="settings_reconnect">Újrakapcsolódás</string>
@@ -115,7 +114,6 @@
     <string name="settings_disconnect">Leválasztás</string>
     <string name="settings_disconnect_confirm_title">Leválasztod a szinkronizálást?</string>
     <string name="settings_disconnect_body">Ezzel leáll a szinkronizálás, és törlődik a felhőszolgáltató beállítása.</string>
-    <string name="settings_disconnect_reconnect_hint">Ha újra szinkronizálnád ezt a könyvtárat, párosítsd ezt az eszközt egy másikról.</string>
     <string name="settings_disconnect_failed">A leválasztás nem sikerült: %1$s</string>
     <string name="settings_disconnect_warning_check_failed">Nem sikerült ellenőrizni a csak a felhőben tárolt kiadásokat: %1$s</string>
     <string name="settings_pause_uploads">Feltöltések szüneteltetése</string>
@@ -140,8 +138,8 @@
     <string name="onboarding_tagline">Állítsd vissza a könyvtárad az egyik eszközöd kódjával, vagy csatlakozz egyhez meghívóval.</string>
     <string name="onboarding_icon_description">bae ikon</string>
     <string name="onboarding_camera_permission_required">A QR-kódok beolvasásához kameraengedély szükséges</string>
-    <string name="onboarding_oauth_unconfigured">Ehhez a könyvtárhoz felhős bejelentkezés kell, ami ebben a buildben nincs beállítva.</string>
-    <string name="pairing_authorizing">Bejelentkezés…</string>
+    <string name="oauth_unconfigured">Ehhez a könyvtárhoz felhős bejelentkezés kell, ami ebben a buildben nincs beállítva.</string>
+    <string name="signing_in">Bejelentkezés…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-kompatibilis</string>
@@ -238,4 +236,27 @@
     <string name="delete_key_body">Az eltávolított eszköz által használt %1$s hozzáférési kulcsot még törölni kell. Töröld itt rendszergazdai hozzáféréssel, vagy erősítsd meg, hogy a szolgáltató konzoljában törölted.</string>
     <string name="delete_key_with_admin">Törlés itt</string>
     <string name="delete_key_done">Töröltem</string>
+    <string name="storage_setup_title">Felhőbeli tárhely beállítása</string>
+    <string name="settings_set_up_cloud_home_explanation">Ez a könyvtár csak ezen az eszközön van. Egy felhőbeli tárhellyel a többi eszközöd és a háztartásod is használhatja.</string>
+    <string name="storage_setup_choose">Hol tárolódjon ez a könyvtár?</string>
+    <string name="storage_s3_endpoint_hint">Amazon S3 esetén hagyd üresen.</string>
+    <string name="storage_s3_advanced">Speciális</string>
+    <string name="storage_s3_key_prefix">Kulcselőtag</string>
+    <string name="storage_s3_profile">Szolgáltatásprofil</string>
+    <string name="storage_s3_profile_detect">Felismerés a végpont alapján</string>
+    <string name="storage_s3_check">Tároló ellenőrzése</string>
+    <string name="storage_versioning_disabled">A verziókezelés ki van kapcsolva.</string>
+    <string name="storage_versioning_enabled">A verziókezelés be van kapcsolva.</string>
+    <string name="storage_versioning_suspended">A verziókezelés fel van függesztve.</string>
+    <string name="storage_versioning_unavailable">Ez a szolgáltatás nem kínál verziókezelést.</string>
+    <string name="storage_set_up">Beállítás</string>
+    <string name="storage_dropbox_choose">Válassz megosztott mappát</string>
+    <string name="storage_dropbox_none">Ezzel a Dropbox-fiókkal nincs megosztva mappa. Ossz meg egy mappát a Dropboxban, majd frissíts.</string>
+    <string name="storage_refresh">Frissítés</string>
+    <string name="storage_onedrive_new_folder">Új mappa</string>
+    <string name="storage_onedrive_folder_name">Mappa neve</string>
+    <string name="storage_onedrive_create">Létrehozás</string>
+    <string name="storage_onedrive_use_folder">Ennek a mappának a használata</string>
+    <string name="storage_setup_done">A könyvtár felhőbeli tárhelye be van állítva. Őrizd meg a visszaállítási kódodat: a többi eszközöd ezzel csatlakozik.</string>
+    <string name="done">Kész</string>
 </resources>

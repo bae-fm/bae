@@ -78,7 +78,6 @@
     <string name="gallery_load_failed">Kan afbeelding niet laden</string>
     <string name="settings_library">Bibliotheek</string>
     <string name="settings_sync">Synchronisatie</string>
-    <string name="settings_cloud_sync_on">Cloudsynchronisatie aan</string>
     <string name="settings_local_only">Alleen lokaal</string>
     <string name="settings_sync_unconnected">Verbinding verbroken</string>
     <string name="settings_reconnect">Opnieuw verbinden</string>
@@ -111,7 +110,6 @@
     <string name="settings_disconnect">Verbinding verbreken</string>
     <string name="settings_disconnect_confirm_title">Synchronisatie ontkoppelen?</string>
     <string name="settings_disconnect_body">Hiermee wordt de synchronisatie gestopt en de configuratie van de cloudprovider verwijderd.</string>
-    <string name="settings_disconnect_reconnect_hint">Koppel dit apparaat vanaf een ander apparaat om deze bibliotheek weer te synchroniseren.</string>
     <string name="settings_disconnect_failed">Verbinding verbreken mislukt: %1$s</string>
     <string name="settings_disconnect_warning_check_failed">Kan niet controleren op releases die alleen in de cloud staan: %1$s</string>
     <string name="settings_pause_uploads">Uploads pauzeren</string>
@@ -136,8 +134,8 @@
     <string name="onboarding_tagline">Herstel je bibliotheek met een code van een van je apparaten, of neem deel aan een bibliotheek met een uitnodiging.</string>
     <string name="onboarding_icon_description">bae-pictogram</string>
     <string name="onboarding_camera_permission_required">Cameratoestemming is vereist om QR-codes te scannen</string>
-    <string name="onboarding_oauth_unconfigured">Deze bibliotheek heeft cloudaanmelding nodig, die niet is geconfigureerd in deze build.</string>
-    <string name="pairing_authorizing">Aanmelden…</string>
+    <string name="oauth_unconfigured">Deze bibliotheek heeft cloudaanmelding nodig, die niet is geconfigureerd in deze build.</string>
+    <string name="signing_in">Aanmelden…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-compatible</string>
@@ -239,4 +237,27 @@
     <string name="delete_key_body">De toegangssleutel %1$s, gebruikt door een verwijderd apparaat, moet nog worden verwijderd. Verwijder hem hier met beheerderstoegang, of bevestig dat je hem in de console van de provider hebt verwijderd.</string>
     <string name="delete_key_with_admin">Hier verwijderen</string>
     <string name="delete_key_done">Ik heb hem verwijderd</string>
+    <string name="storage_setup_title">Een cloudlocatie instellen</string>
+    <string name="settings_set_up_cloud_home_explanation">Deze bibliotheek staat alleen op dit apparaat. Met een cloudlocatie kunnen je andere apparaten en je huishouden hem gebruiken.</string>
+    <string name="storage_setup_choose">Waar moet deze bibliotheek worden opgeslagen?</string>
+    <string name="storage_s3_endpoint_hint">Laat leeg voor Amazon S3.</string>
+    <string name="storage_s3_advanced">Geavanceerd</string>
+    <string name="storage_s3_key_prefix">Sleutelvoorvoegsel</string>
+    <string name="storage_s3_profile">Serviceprofiel</string>
+    <string name="storage_s3_profile_detect">Herkennen aan het eindpunt</string>
+    <string name="storage_s3_check">Bucket controleren</string>
+    <string name="storage_versioning_disabled">Versiebeheer staat uit.</string>
+    <string name="storage_versioning_enabled">Versiebeheer staat aan.</string>
+    <string name="storage_versioning_suspended">Versiebeheer is opgeschort.</string>
+    <string name="storage_versioning_unavailable">Deze dienst biedt geen versiebeheer.</string>
+    <string name="storage_set_up">Instellen</string>
+    <string name="storage_dropbox_choose">Kies een gedeelde map</string>
+    <string name="storage_dropbox_none">Er zijn geen mappen gedeeld met dit Dropbox-account. Deel een map in Dropbox en vernieuw daarna.</string>
+    <string name="storage_refresh">Vernieuwen</string>
+    <string name="storage_onedrive_new_folder">Nieuwe map</string>
+    <string name="storage_onedrive_folder_name">Mapnaam</string>
+    <string name="storage_onedrive_create">Maken</string>
+    <string name="storage_onedrive_use_folder">Deze map gebruiken</string>
+    <string name="storage_setup_done">De cloudlocatie van deze bibliotheek is ingesteld. Bewaar je herstelcode: je andere apparaten nemen ermee deel.</string>
+    <string name="done">Klaar</string>
 </resources>

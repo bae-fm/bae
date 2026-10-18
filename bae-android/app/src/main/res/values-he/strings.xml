@@ -78,7 +78,6 @@
     <string name="gallery_load_failed">לא ניתן לטעון את התמונה.</string>
     <string name="settings_library">ספרייה</string>
     <string name="settings_sync">סנכרון</string>
-    <string name="settings_cloud_sync_on">סנכרון ענן מופעל</string>
     <string name="settings_local_only">מקומי בלבד</string>
     <string name="settings_sync_unconnected">מנותק</string>
     <string name="settings_reconnect">התחבר מחדש</string>
@@ -111,7 +110,6 @@
     <string name="settings_disconnect">התנתק</string>
     <string name="settings_disconnect_confirm_title">לנתק את הסנכרון?</string>
     <string name="settings_disconnect_body">פעולה זו תפסיק את הסנכרון ותסיר את הגדרת ספק הענן.</string>
-    <string name="settings_disconnect_reconnect_hint">כדי לסנכרן את הספרייה הזו שוב, צמד את המכשיר הזה ממכשיר אחר.</string>
     <string name="settings_disconnect_failed">ההתנתקות נכשלה: %1$s</string>
     <string name="settings_disconnect_warning_check_failed">לא ניתן לבדוק מהדורות בענן בלבד: %1$s</string>
     <string name="settings_pause_uploads">השהיית העלאות</string>
@@ -136,8 +134,8 @@
     <string name="onboarding_tagline">שחזרו את הספרייה שלכם עם קוד מאחד המכשירים שלכם, או הצטרפו לספרייה עם הזמנה.</string>
     <string name="onboarding_icon_description">סמל bae</string>
     <string name="onboarding_camera_permission_required">נדרשת הרשאת מצלמה כדי לסרוק קודי QR</string>
-    <string name="onboarding_oauth_unconfigured">ספרייה זו דורשת כניסה לענן, שאינה מוגדרת בגרסה זו.</string>
-    <string name="pairing_authorizing">מתחבר…</string>
+    <string name="oauth_unconfigured">ספרייה זו דורשת כניסה לענן, שאינה מוגדרת בגרסה זו.</string>
+    <string name="signing_in">מתחבר…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-compatible</string>
@@ -241,4 +239,27 @@
     <string name="delete_key_body">עדיין צריך למחוק את מפתח הגישה %1$s, שבו השתמש מכשיר שהוסר. מחקו אותו כאן עם גישת מנהל, או אשרו שמחקתם אותו במסוף של הספק.</string>
     <string name="delete_key_with_admin">מחיקה כאן</string>
     <string name="delete_key_done">מחקתי אותו</string>
+    <string name="storage_setup_title">הגדרת מיקום בענן</string>
+    <string name="settings_set_up_cloud_home_explanation">הספרייה הזו מאוחסנת רק במכשיר הזה. מיקום בענן מאפשר למכשירים האחרים שלכם ולבני הבית להשתמש בה.</string>
+    <string name="storage_setup_choose">היכן לאחסן את הספרייה הזו?</string>
+    <string name="storage_s3_endpoint_hint">השאירו ריק עבור Amazon S3.</string>
+    <string name="storage_s3_advanced">מתקדם</string>
+    <string name="storage_s3_key_prefix">קידומת מפתחות</string>
+    <string name="storage_s3_profile">פרופיל שירות</string>
+    <string name="storage_s3_profile_detect">זיהוי לפי נקודת הקצה</string>
+    <string name="storage_s3_check">בדיקת הדלי</string>
+    <string name="storage_versioning_disabled">ניהול גרסאות כבוי.</string>
+    <string name="storage_versioning_enabled">ניהול גרסאות פועל.</string>
+    <string name="storage_versioning_suspended">ניהול גרסאות מושהה.</string>
+    <string name="storage_versioning_unavailable">השירות הזה אינו מציע ניהול גרסאות.</string>
+    <string name="storage_set_up">הגדרה</string>
+    <string name="storage_dropbox_choose">בחרו תיקייה משותפת</string>
+    <string name="storage_dropbox_none">אין תיקיות שמשותפות עם חשבון ה-Dropbox הזה. שתפו תיקייה ב-Dropbox ואז רעננו.</string>
+    <string name="storage_refresh">רענון</string>
+    <string name="storage_onedrive_new_folder">תיקייה חדשה</string>
+    <string name="storage_onedrive_folder_name">שם התיקייה</string>
+    <string name="storage_onedrive_create">יצירה</string>
+    <string name="storage_onedrive_use_folder">שימוש בתיקייה הזו</string>
+    <string name="storage_setup_done">המיקום בענן של הספרייה הזו הוגדר. שמרו את קוד השחזור שלכם: המכשירים האחרים שלכם מצטרפים איתו.</string>
+    <string name="done">סיום</string>
 </resources>

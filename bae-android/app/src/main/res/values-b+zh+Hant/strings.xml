@@ -78,7 +78,6 @@
     <string name="gallery_load_failed">無法載入影像</string>
     <string name="settings_library">資料庫</string>
     <string name="settings_sync">同步</string>
-    <string name="settings_cloud_sync_on">你的雲 同步</string>
     <string name="settings_local_only">僅本機</string>
     <string name="settings_sync_unconnected">已中斷連接</string>
     <string name="settings_reconnect">重新連接</string>
@@ -111,7 +110,6 @@
     <string name="settings_disconnect">中斷連線</string>
     <string name="settings_disconnect_confirm_title">要中斷同步嗎？</string>
     <string name="settings_disconnect_body">這會停止同步並移除雲端提供者設定。</string>
-    <string name="settings_disconnect_reconnect_hint">若要再次同步此庫，請從另一部裝置配對此裝置。</string>
     <string name="settings_disconnect_failed">中斷連線失敗：%1$s</string>
     <string name="settings_disconnect_warning_check_failed">無法檢查僅在雲端的發行：%1$s</string>
     <string name="settings_pause_uploads">暫停上傳</string>
@@ -136,8 +134,8 @@
     <string name="onboarding_tagline">用你其他裝置上的代碼還原你的資料庫，或透過邀請加入一個資料庫。</string>
     <string name="onboarding_icon_description">bae 圖示</string>
     <string name="onboarding_camera_permission_required">需要相機權限才能掃描 QR 碼</string>
-    <string name="onboarding_oauth_unconfigured">此資料庫需要雲端登入，但此建置尚未設定。</string>
-    <string name="pairing_authorizing">正在登入…</string>
+    <string name="oauth_unconfigured">此資料庫需要雲端登入，但此建置尚未設定。</string>
+    <string name="signing_in">正在登入…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-compatible</string>
@@ -237,4 +235,27 @@
     <string name="delete_key_body">已移除裝置使用的存取金鑰 %1$s 仍需刪除。可在此使用管理員存取權限刪除，或確認你已在提供者的主控台中刪除。</string>
     <string name="delete_key_with_admin">在此刪除</string>
     <string name="delete_key_done">我已刪除</string>
+    <string name="storage_setup_title">設定雲端儲存位置</string>
+    <string name="settings_set_up_cloud_home_explanation">此資料庫只儲存在這台裝置上。設定雲端儲存位置後，你的其他裝置和家人也能使用它。</string>
+    <string name="storage_setup_choose">此資料庫要儲存在哪裡？</string>
+    <string name="storage_s3_endpoint_hint">使用 Amazon S3 時請留空。</string>
+    <string name="storage_s3_advanced">進階</string>
+    <string name="storage_s3_key_prefix">鍵前綴</string>
+    <string name="storage_s3_profile">服務設定檔</string>
+    <string name="storage_s3_profile_detect">依端點偵測</string>
+    <string name="storage_s3_check">檢查儲存貯體</string>
+    <string name="storage_versioning_disabled">版本控制已關閉。</string>
+    <string name="storage_versioning_enabled">版本控制已開啟。</string>
+    <string name="storage_versioning_suspended">版本控制已暫停。</string>
+    <string name="storage_versioning_unavailable">此服務不提供版本控制。</string>
+    <string name="storage_set_up">設定</string>
+    <string name="storage_dropbox_choose">選擇一個共用資料夾</string>
+    <string name="storage_dropbox_none">沒有與此 Dropbox 帳號共用的資料夾。請在 Dropbox 中共用一個資料夾，然後重新整理。</string>
+    <string name="storage_refresh">重新整理</string>
+    <string name="storage_onedrive_new_folder">新增資料夾</string>
+    <string name="storage_onedrive_folder_name">資料夾名稱</string>
+    <string name="storage_onedrive_create">建立</string>
+    <string name="storage_onedrive_use_folder">使用此資料夾</string>
+    <string name="storage_setup_done">此資料庫的雲端儲存位置已設定。請保存你的還原碼：你的其他裝置將用它加入。</string>
+    <string name="done">完成</string>
 </resources>

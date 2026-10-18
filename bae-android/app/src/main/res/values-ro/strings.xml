@@ -83,7 +83,6 @@
     <string name="gallery_load_failed">Imaginea nu a putut fi încărcată</string>
     <string name="settings_library">Bibliotecă</string>
     <string name="settings_sync">Sincronizare</string>
-    <string name="settings_cloud_sync_on">Sincronizare cloud activă</string>
     <string name="settings_local_only">Doar local</string>
     <string name="settings_sync_unconnected">Deconectat</string>
     <string name="settings_reconnect">Reconectează</string>
@@ -116,7 +115,6 @@
     <string name="settings_disconnect">Deconectează</string>
     <string name="settings_disconnect_confirm_title">Deconectezi sincronizarea?</string>
     <string name="settings_disconnect_body">Aceasta va opri sincronizarea și va elimina configurația furnizorului de cloud.</string>
-    <string name="settings_disconnect_reconnect_hint">Pentru a sincroniza din nou această bibliotecă, asociază acest dispozitiv de pe un altul.</string>
     <string name="settings_disconnect_failed">Deconectarea a eșuat: %1$s</string>
     <string name="settings_disconnect_warning_check_failed">Nu s-au putut verifica edițiile stocate doar în cloud: %1$s</string>
     <string name="settings_pause_uploads">Suspendă încărcările</string>
@@ -141,8 +139,8 @@
     <string name="onboarding_tagline">Restaurează-ți biblioteca cu un cod de pe unul dintre dispozitivele tale sau alătură-te uneia printr-o invitație.</string>
     <string name="onboarding_icon_description">pictograma bae</string>
     <string name="onboarding_camera_permission_required">Este necesară permisiunea camerei pentru a scana coduri QR</string>
-    <string name="onboarding_oauth_unconfigured">Această bibliotecă necesită conectare la cloud, care nu este configurată în această versiune.</string>
-    <string name="pairing_authorizing">Se conectează…</string>
+    <string name="oauth_unconfigured">Această bibliotecă necesită conectare la cloud, care nu este configurată în această versiune.</string>
+    <string name="signing_in">Se conectează…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">Compatibil cu S3</string>
@@ -240,4 +238,27 @@
     <string name="delete_key_body">Cheia de acces %1$s, folosită de un dispozitiv eliminat, trebuie încă ștearsă. Șterge-o aici cu acces de administrator sau confirmă că ai șters-o în consola furnizorului.</string>
     <string name="delete_key_with_admin">Șterge-o aici</string>
     <string name="delete_key_done">Am șters-o</string>
+    <string name="storage_setup_title">Configurează un spațiu în cloud</string>
+    <string name="settings_set_up_cloud_home_explanation">Această bibliotecă este stocată doar pe acest dispozitiv. Un spațiu în cloud le permite celorlalte dispozitive ale tale și gospodăriei să o folosească.</string>
+    <string name="storage_setup_choose">Unde să fie stocată această bibliotecă?</string>
+    <string name="storage_s3_endpoint_hint">Lasă gol pentru Amazon S3.</string>
+    <string name="storage_s3_advanced">Avansat</string>
+    <string name="storage_s3_key_prefix">Prefix chei</string>
+    <string name="storage_s3_profile">Profilul serviciului</string>
+    <string name="storage_s3_profile_detect">Detectează după endpoint</string>
+    <string name="storage_s3_check">Verifică bucketul</string>
+    <string name="storage_versioning_disabled">Gestionarea versiunilor este dezactivată.</string>
+    <string name="storage_versioning_enabled">Gestionarea versiunilor este activată.</string>
+    <string name="storage_versioning_suspended">Gestionarea versiunilor este suspendată.</string>
+    <string name="storage_versioning_unavailable">Acest serviciu nu oferă gestionarea versiunilor.</string>
+    <string name="storage_set_up">Configurează</string>
+    <string name="storage_dropbox_choose">Alege un dosar partajat</string>
+    <string name="storage_dropbox_none">Niciun dosar nu este partajat cu acest cont Dropbox. Partajează un dosar în Dropbox, apoi reîmprospătează.</string>
+    <string name="storage_refresh">Reîmprospătează</string>
+    <string name="storage_onedrive_new_folder">Dosar nou</string>
+    <string name="storage_onedrive_folder_name">Numele dosarului</string>
+    <string name="storage_onedrive_create">Creează</string>
+    <string name="storage_onedrive_use_folder">Folosește acest dosar</string>
+    <string name="storage_setup_done">Spațiul în cloud al acestei biblioteci este configurat. Păstrează codul de restaurare: celelalte dispozitive ale tale se alătură cu el.</string>
+    <string name="done">Gata</string>
 </resources>

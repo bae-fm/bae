@@ -78,7 +78,6 @@
     <string name="gallery_load_failed">Impossibile caricare l\'immagine</string>
     <string name="settings_library">Libreria</string>
     <string name="settings_sync">Sincronizzazione</string>
-    <string name="settings_cloud_sync_on">Sincronizzazione cloud attiva</string>
     <string name="settings_local_only">Solo locale</string>
     <string name="settings_sync_unconnected">Disconnesso</string>
     <string name="settings_reconnect">Riconnetti</string>
@@ -111,7 +110,6 @@
     <string name="settings_disconnect">Disconnetti</string>
     <string name="settings_disconnect_confirm_title">Disconnettere la sincronizzazione?</string>
     <string name="settings_disconnect_body">Questo interromperà la sincronizzazione e rimuoverà la configurazione del provider cloud.</string>
-    <string name="settings_disconnect_reconnect_hint">Per sincronizzare di nuovo questa libreria, abbina questo dispositivo da un altro dispositivo.</string>
     <string name="settings_disconnect_failed">Disconnessione non riuscita: %1$s</string>
     <string name="settings_disconnect_warning_check_failed">Impossibile controllare le pubblicazioni solo cloud: %1$s</string>
     <string name="settings_pause_uploads">Sospendi i caricamenti</string>
@@ -136,8 +134,8 @@
     <string name="onboarding_tagline">Ripristina la tua libreria con un codice da uno dei tuoi dispositivi, oppure unisciti a una con un invito.</string>
     <string name="onboarding_icon_description">icona bae</string>
     <string name="onboarding_camera_permission_required">È necessario il permesso della fotocamera per scansionare codici QR</string>
-    <string name="onboarding_oauth_unconfigured">Questa libreria richiede l\'accesso cloud, che non è configurato in questa build.</string>
-    <string name="pairing_authorizing">Accesso…</string>
+    <string name="oauth_unconfigured">Questa libreria richiede l\'accesso cloud, che non è configurato in questa build.</string>
+    <string name="signing_in">Accesso…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-compatible</string>
@@ -240,4 +238,27 @@
     <string name="delete_key_body">La chiave di accesso %1$s, usata da un dispositivo rimosso, deve ancora essere eliminata. Eliminala qui con l’accesso amministratore, oppure conferma di averla eliminata nella console del provider.</string>
     <string name="delete_key_with_admin">Eliminala qui</string>
     <string name="delete_key_done">L’ho eliminata</string>
+    <string name="storage_setup_title">Configura uno spazio cloud</string>
+    <string name="settings_set_up_cloud_home_explanation">Questa libreria è archiviata solo su questo dispositivo. Uno spazio cloud permette ai tuoi altri dispositivi e alla tua famiglia di usarla.</string>
+    <string name="storage_setup_choose">Dove vuoi archiviare questa libreria?</string>
+    <string name="storage_s3_endpoint_hint">Lascia vuoto per Amazon S3.</string>
+    <string name="storage_s3_advanced">Avanzate</string>
+    <string name="storage_s3_key_prefix">Prefisso delle chiavi</string>
+    <string name="storage_s3_profile">Profilo del servizio</string>
+    <string name="storage_s3_profile_detect">Rileva dall’endpoint</string>
+    <string name="storage_s3_check">Verifica bucket</string>
+    <string name="storage_versioning_disabled">Il controllo delle versioni è disattivato.</string>
+    <string name="storage_versioning_enabled">Il controllo delle versioni è attivo.</string>
+    <string name="storage_versioning_suspended">Il controllo delle versioni è sospeso.</string>
+    <string name="storage_versioning_unavailable">Questo servizio non offre il controllo delle versioni.</string>
+    <string name="storage_set_up">Configura</string>
+    <string name="storage_dropbox_choose">Scegli una cartella condivisa</string>
+    <string name="storage_dropbox_none">Nessuna cartella è condivisa con questo account Dropbox. Condividi una cartella in Dropbox, poi aggiorna.</string>
+    <string name="storage_refresh">Aggiorna</string>
+    <string name="storage_onedrive_new_folder">Nuova cartella</string>
+    <string name="storage_onedrive_folder_name">Nome della cartella</string>
+    <string name="storage_onedrive_create">Crea</string>
+    <string name="storage_onedrive_use_folder">Usa questa cartella</string>
+    <string name="storage_setup_done">Lo spazio cloud di questa libreria è configurato. Conserva il tuo codice di ripristino: i tuoi altri dispositivi entrano con quello.</string>
+    <string name="done">Fine</string>
 </resources>

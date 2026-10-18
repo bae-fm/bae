@@ -78,7 +78,6 @@
     <string name="gallery_load_failed">Nelze načíst obrázek</string>
     <string name="settings_library">Knihovna</string>
     <string name="settings_sync">Synchronizace</string>
-    <string name="settings_cloud_sync_on">Synchronizace s cloudem zapnuta</string>
     <string name="settings_local_only">Pouze místně</string>
     <string name="settings_sync_unconnected">Odpojeno</string>
     <string name="settings_reconnect">Znovu připojit</string>
@@ -111,7 +110,6 @@
     <string name="settings_disconnect">Odpojit</string>
     <string name="settings_disconnect_confirm_title">Odpojit synchronizaci?</string>
     <string name="settings_disconnect_body">Tím se zastaví synchronizace a odebere se konfigurace poskytovatele cloudu.</string>
-    <string name="settings_disconnect_reconnect_hint">Chcete-li tuto knihovnu znovu synchronizovat, spárujte toto zařízení z jiného zařízení.</string>
     <string name="settings_disconnect_failed">Nepodařilo se odpojit: %1$s</string>
     <string name="settings_disconnect_warning_check_failed">Nelze zjistit vydání pouze v cloudu: %1$s</string>
     <string name="settings_pause_uploads">Pozastavit nahrávání</string>
@@ -136,8 +134,8 @@
     <string name="onboarding_tagline">Obnovte svou knihovnu kódem z některého ze svých zařízení, nebo se připojte k jiné pomocí pozvánky.</string>
     <string name="onboarding_icon_description">ikona bae</string>
     <string name="onboarding_camera_permission_required">Pro skenování QR kódů je vyžadováno oprávnění ke kameře</string>
-    <string name="onboarding_oauth_unconfigured">Tato knihovna vyžaduje přihlášení k cloudu, které není v tomto sestavení nakonfigurováno.</string>
-    <string name="pairing_authorizing">Přihlašuje se…</string>
+    <string name="oauth_unconfigured">Tato knihovna vyžaduje přihlášení k cloudu, které není v tomto sestavení nakonfigurováno.</string>
+    <string name="signing_in">Přihlašuje se…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-compatible</string>
@@ -243,4 +241,27 @@
     <string name="delete_key_body">Přístupový klíč %1$s, který používalo odebrané zařízení, je ještě potřeba smazat. Smažte ho zde s přístupem správce, nebo potvrďte, že jste ho smazali v konzoli poskytovatele.</string>
     <string name="delete_key_with_admin">Smazat zde</string>
     <string name="delete_key_done">Klíč je smazaný</string>
+    <string name="storage_setup_title">Nastavit cloudové úložiště</string>
+    <string name="settings_set_up_cloud_home_explanation">Tato knihovna je uložena jen v tomto zařízení. Cloudové úložiště umožní používat ji i vašim dalším zařízením a domácnosti.</string>
+    <string name="storage_setup_choose">Kde má být tato knihovna uložena?</string>
+    <string name="storage_s3_endpoint_hint">Pro Amazon S3 nechte prázdné.</string>
+    <string name="storage_s3_advanced">Pokročilé</string>
+    <string name="storage_s3_key_prefix">Předpona klíčů</string>
+    <string name="storage_s3_profile">Profil služby</string>
+    <string name="storage_s3_profile_detect">Rozpoznat podle koncového bodu</string>
+    <string name="storage_s3_check">Zkontrolovat bucket</string>
+    <string name="storage_versioning_disabled">Verzování je vypnuté.</string>
+    <string name="storage_versioning_enabled">Verzování je zapnuté.</string>
+    <string name="storage_versioning_suspended">Verzování je pozastavené.</string>
+    <string name="storage_versioning_unavailable">Tato služba verzování nenabízí.</string>
+    <string name="storage_set_up">Nastavit</string>
+    <string name="storage_dropbox_choose">Vyberte sdílenou složku</string>
+    <string name="storage_dropbox_none">S tímto účtem Dropbox nejsou sdíleny žádné složky. Nasdílejte složku v Dropboxu a pak obnovte.</string>
+    <string name="storage_refresh">Obnovit</string>
+    <string name="storage_onedrive_new_folder">Nová složka</string>
+    <string name="storage_onedrive_folder_name">Název složky</string>
+    <string name="storage_onedrive_create">Vytvořit</string>
+    <string name="storage_onedrive_use_folder">Použít tuto složku</string>
+    <string name="storage_setup_done">Cloudové úložiště této knihovny je nastavené. Uschovejte si kód pro obnovení: vaše další zařízení se s ním připojí.</string>
+    <string name="done">Hotovo</string>
 </resources>

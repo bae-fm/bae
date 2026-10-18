@@ -82,7 +82,6 @@
     <string name="gallery_load_failed">Δεν ήταν δυνατή η φόρτωση της εικόνας</string>
     <string name="settings_library">Βιβλιοθήκη</string>
     <string name="settings_sync">Συγχρονισμός</string>
-    <string name="settings_cloud_sync_on">Ο συγχρονισμός cloud είναι ενεργός</string>
     <string name="settings_local_only">Μόνο τοπικά</string>
     <string name="settings_sync_unconnected">Αποσυνδεδεμένο</string>
     <string name="settings_reconnect">Επανασύνδεση</string>
@@ -115,7 +114,6 @@
     <string name="settings_disconnect">Αποσύνδεση</string>
     <string name="settings_disconnect_confirm_title">Αποσύνδεση συγχρονισμού;</string>
     <string name="settings_disconnect_body">Αυτό θα σταματήσει τον συγχρονισμό και θα αφαιρέσει τη διαμόρφωση του παρόχου cloud.</string>
-    <string name="settings_disconnect_reconnect_hint">Για να συγχρονίσετε ξανά αυτή τη βιβλιοθήκη, συζεύξτε αυτή τη συσκευή από μια άλλη.</string>
     <string name="settings_disconnect_failed">Η αποσύνδεση απέτυχε: %1$s</string>
     <string name="settings_disconnect_warning_check_failed">Δεν ήταν δυνατός ο έλεγχος για κυκλοφορίες που υπάρχουν μόνο στο cloud: %1$s</string>
     <string name="settings_pause_uploads">Παύση μεταφορτώσεων</string>
@@ -140,8 +138,8 @@
     <string name="onboarding_tagline">Επαναφέρετε τη βιβλιοθήκη σας με κωδικό από μία από τις συσκευές σας ή μπείτε σε μία με πρόσκληση.</string>
     <string name="onboarding_icon_description">εικονίδιο bae</string>
     <string name="onboarding_camera_permission_required">Απαιτείται άδεια κάμερας για τη σάρωση κωδικών QR</string>
-    <string name="onboarding_oauth_unconfigured">Αυτή η βιβλιοθήκη χρειάζεται σύνδεση cloud, η οποία δεν έχει διαμορφωθεί σε αυτή την έκδοση.</string>
-    <string name="pairing_authorizing">Σύνδεση…</string>
+    <string name="oauth_unconfigured">Αυτή η βιβλιοθήκη χρειάζεται σύνδεση cloud, η οποία δεν έχει διαμορφωθεί σε αυτή την έκδοση.</string>
+    <string name="signing_in">Σύνδεση…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">Συμβατό με S3</string>
@@ -238,4 +236,27 @@
     <string name="delete_key_body">Το κλειδί πρόσβασης %1$s, που χρησιμοποιούσε μια συσκευή που αφαιρέθηκε, πρέπει ακόμη να διαγραφεί. Διαγράψτε το εδώ με πρόσβαση διαχειριστή ή επιβεβαιώστε ότι το διαγράψατε στην κονσόλα του παρόχου.</string>
     <string name="delete_key_with_admin">Διαγραφή εδώ</string>
     <string name="delete_key_done">Το διέγραψα</string>
+    <string name="storage_setup_title">Ρύθμιση χώρου στο cloud</string>
+    <string name="settings_set_up_cloud_home_explanation">Αυτή η βιβλιοθήκη είναι αποθηκευμένη μόνο σε αυτή τη συσκευή. Ένας χώρος στο cloud επιτρέπει στις άλλες συσκευές σας και στο νοικοκυριό σας να τη χρησιμοποιούν.</string>
+    <string name="storage_setup_choose">Πού να αποθηκευτεί αυτή η βιβλιοθήκη;</string>
+    <string name="storage_s3_endpoint_hint">Αφήστε το κενό για το Amazon S3.</string>
+    <string name="storage_s3_advanced">Για προχωρημένους</string>
+    <string name="storage_s3_key_prefix">Πρόθεμα κλειδιών</string>
+    <string name="storage_s3_profile">Προφίλ υπηρεσίας</string>
+    <string name="storage_s3_profile_detect">Εντοπισμός από το τελικό σημείο</string>
+    <string name="storage_s3_check">Έλεγχος bucket</string>
+    <string name="storage_versioning_disabled">Η διατήρηση εκδόσεων είναι απενεργοποιημένη.</string>
+    <string name="storage_versioning_enabled">Η διατήρηση εκδόσεων είναι ενεργοποιημένη.</string>
+    <string name="storage_versioning_suspended">Η διατήρηση εκδόσεων έχει ανασταλεί.</string>
+    <string name="storage_versioning_unavailable">Αυτή η υπηρεσία δεν προσφέρει διατήρηση εκδόσεων.</string>
+    <string name="storage_set_up">Ρύθμιση</string>
+    <string name="storage_dropbox_choose">Επιλέξτε έναν κοινόχρηστο φάκελο</string>
+    <string name="storage_dropbox_none">Δεν υπάρχουν φάκελοι κοινόχρηστοι με αυτόν τον λογαριασμό Dropbox. Μοιραστείτε έναν φάκελο στο Dropbox και ανανεώστε.</string>
+    <string name="storage_refresh">Ανανέωση</string>
+    <string name="storage_onedrive_new_folder">Νέος φάκελος</string>
+    <string name="storage_onedrive_folder_name">Όνομα φακέλου</string>
+    <string name="storage_onedrive_create">Δημιουργία</string>
+    <string name="storage_onedrive_use_folder">Χρήση αυτού του φακέλου</string>
+    <string name="storage_setup_done">Ο χώρος στο cloud αυτής της βιβλιοθήκης ρυθμίστηκε. Κρατήστε τον κωδικό επαναφοράς σας: οι άλλες συσκευές σας μπαίνουν με αυτόν.</string>
+    <string name="done">Τέλος</string>
 </resources>

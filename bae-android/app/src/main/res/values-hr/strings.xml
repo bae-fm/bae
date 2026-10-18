@@ -78,7 +78,6 @@
     <string name="gallery_load_failed">Nije moguće učitati sliku</string>
     <string name="settings_library">Fonoteka</string>
     <string name="settings_sync">Sinkronizacija</string>
-    <string name="settings_cloud_sync_on">Sinkronizacija s oblakom uključena</string>
     <string name="settings_local_only">Samo lokalno</string>
     <string name="settings_sync_unconnected">Veza prekinuta</string>
     <string name="settings_reconnect">Ponovno poveži</string>
@@ -111,7 +110,6 @@
     <string name="settings_disconnect">Prekini vezu</string>
     <string name="settings_disconnect_confirm_title">Prekinuti sinkronizaciju?</string>
     <string name="settings_disconnect_body">Ovime će se zaustaviti sinkronizacija i ukloniti konfiguracija pružatelja usluge u oblaku.</string>
-    <string name="settings_disconnect_reconnect_hint">Da biste ponovno sinkronizirali ovu biblioteku, uparite ovaj uređaj s drugog uređaja.</string>
     <string name="settings_disconnect_failed">Prekid veze nije uspio: %1$s</string>
     <string name="settings_disconnect_warning_check_failed">Nije moguće provjeriti izdanja samo u oblaku: %1$s</string>
     <string name="settings_pause_uploads">Pauziraj prijenose</string>
@@ -136,8 +134,8 @@
     <string name="onboarding_tagline">Vratite svoju fonoteku kodom s jednog od svojih uređaja ili se pridružite fonoteci pozivnicom.</string>
     <string name="onboarding_icon_description">ikona bae</string>
     <string name="onboarding_camera_permission_required">Za skeniranje QR kodova potrebna je dozvola za kameru</string>
-    <string name="onboarding_oauth_unconfigured">Ova fonoteka zahtijeva prijavu u oblak, koja nije konfigurirana u ovoj verziji.</string>
-    <string name="pairing_authorizing">Prijava…</string>
+    <string name="oauth_unconfigured">Ova fonoteka zahtijeva prijavu u oblak, koja nije konfigurirana u ovoj verziji.</string>
+    <string name="signing_in">Prijava…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-compatible</string>
@@ -241,4 +239,27 @@
     <string name="delete_key_body">Pristupni ključ %1$s, koji je koristio uklonjeni uređaj, još treba izbrisati. Izbrišite ga ovdje administratorskim pristupom ili potvrdite da ste ga izbrisali u konzoli pružatelja.</string>
     <string name="delete_key_with_admin">Izbriši ga ovdje</string>
     <string name="delete_key_done">Ključ je izbrisan</string>
+    <string name="storage_setup_title">Postavi pohranu u oblaku</string>
+    <string name="settings_set_up_cloud_home_explanation">Ova je fonoteka pohranjena samo na ovom uređaju. Pohrana u oblaku omogućuje vašim drugim uređajima i kućanstvu da je koriste.</string>
+    <string name="storage_setup_choose">Gdje pohraniti ovu fonoteku?</string>
+    <string name="storage_s3_endpoint_hint">Ostavite prazno za Amazon S3.</string>
+    <string name="storage_s3_advanced">Napredno</string>
+    <string name="storage_s3_key_prefix">Prefiks ključeva</string>
+    <string name="storage_s3_profile">Profil usluge</string>
+    <string name="storage_s3_profile_detect">Prepoznaj prema krajnjoj točki</string>
+    <string name="storage_s3_check">Provjeri bucket</string>
+    <string name="storage_versioning_disabled">Verzioniranje je isključeno.</string>
+    <string name="storage_versioning_enabled">Verzioniranje je uključeno.</string>
+    <string name="storage_versioning_suspended">Verzioniranje je obustavljeno.</string>
+    <string name="storage_versioning_unavailable">Ova usluga ne nudi verzioniranje.</string>
+    <string name="storage_set_up">Postavi</string>
+    <string name="storage_dropbox_choose">Odaberite dijeljenu mapu</string>
+    <string name="storage_dropbox_none">S ovim računom Dropbox nije dijeljena nijedna mapa. Podijelite mapu u Dropboxu, a zatim osvježite.</string>
+    <string name="storage_refresh">Osvježi</string>
+    <string name="storage_onedrive_new_folder">Nova mapa</string>
+    <string name="storage_onedrive_folder_name">Naziv mape</string>
+    <string name="storage_onedrive_create">Stvori</string>
+    <string name="storage_onedrive_use_folder">Koristi ovu mapu</string>
+    <string name="storage_setup_done">Pohrana u oblaku za ovu fonoteku je postavljena. Sačuvajte svoj kod za vraćanje: vaši se drugi uređaji pridružuju njime.</string>
+    <string name="done">Gotovo</string>
 </resources>

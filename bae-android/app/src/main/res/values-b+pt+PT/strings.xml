@@ -82,7 +82,6 @@
     <string name="gallery_load_failed">Não foi possível carregar a imagem</string>
     <string name="settings_library">Biblioteca</string>
     <string name="settings_sync">Sincronização</string>
-    <string name="settings_cloud_sync_on">Sincronização na nuvem ligada</string>
     <string name="settings_local_only">Apenas local</string>
     <string name="settings_sync_unconnected">Desligado</string>
     <string name="settings_reconnect">Voltar a ligar</string>
@@ -115,7 +114,6 @@
     <string name="settings_disconnect">Desligar</string>
     <string name="settings_disconnect_confirm_title">Desligar a sincronização?</string>
     <string name="settings_disconnect_body">Isto vai parar a sincronização e remover a configuração do fornecedor de nuvem.</string>
-    <string name="settings_disconnect_reconnect_hint">Para voltar a sincronizar esta biblioteca, emparelhe este dispositivo a partir de outro.</string>
     <string name="settings_disconnect_failed">Não foi possível desligar: %1$s</string>
     <string name="settings_disconnect_warning_check_failed">Não foi possível verificar as edições guardadas apenas na nuvem: %1$s</string>
     <string name="settings_pause_uploads">Suspender envios</string>
@@ -140,8 +138,8 @@
     <string name="onboarding_tagline">Restaure a sua biblioteca com um código de um dos seus dispositivos ou adira a uma com um convite.</string>
     <string name="onboarding_icon_description">ícone do bae</string>
     <string name="onboarding_camera_permission_required">É necessária permissão de câmara para digitalizar códigos QR</string>
-    <string name="onboarding_oauth_unconfigured">Esta biblioteca precisa de início de sessão na nuvem, que não está configurado nesta versão.</string>
-    <string name="pairing_authorizing">A iniciar sessão…</string>
+    <string name="oauth_unconfigured">Esta biblioteca precisa de início de sessão na nuvem, que não está configurado nesta versão.</string>
+    <string name="signing_in">A iniciar sessão…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">Compatível com S3</string>
@@ -238,4 +236,27 @@
     <string name="delete_key_body">A chave de acesso %1$s, usada por um dispositivo removido, ainda tem de ser eliminada. Elimine-a aqui com acesso de administrador ou confirme que a eliminou na consola do fornecedor.</string>
     <string name="delete_key_with_admin">Eliminar aqui</string>
     <string name="delete_key_done">Já eliminei</string>
+    <string name="storage_setup_title">Configurar um local na nuvem</string>
+    <string name="settings_set_up_cloud_home_explanation">Esta biblioteca está guardada apenas neste dispositivo. Um local na nuvem permite que os seus outros dispositivos e a sua casa a usem.</string>
+    <string name="storage_setup_choose">Onde deve ficar guardada esta biblioteca?</string>
+    <string name="storage_s3_endpoint_hint">Deixe vazio para o Amazon S3.</string>
+    <string name="storage_s3_advanced">Avançado</string>
+    <string name="storage_s3_key_prefix">Prefixo das chaves</string>
+    <string name="storage_s3_profile">Perfil do serviço</string>
+    <string name="storage_s3_profile_detect">Detetar pelo endpoint</string>
+    <string name="storage_s3_check">Verificar bucket</string>
+    <string name="storage_versioning_disabled">O controlo de versões está desativado.</string>
+    <string name="storage_versioning_enabled">O controlo de versões está ativado.</string>
+    <string name="storage_versioning_suspended">O controlo de versões está suspenso.</string>
+    <string name="storage_versioning_unavailable">Este serviço não oferece controlo de versões.</string>
+    <string name="storage_set_up">Configurar</string>
+    <string name="storage_dropbox_choose">Escolha uma pasta partilhada</string>
+    <string name="storage_dropbox_none">Nenhuma pasta está partilhada com esta conta do Dropbox. Partilhe uma pasta no Dropbox e atualize.</string>
+    <string name="storage_refresh">Atualizar</string>
+    <string name="storage_onedrive_new_folder">Nova pasta</string>
+    <string name="storage_onedrive_folder_name">Nome da pasta</string>
+    <string name="storage_onedrive_create">Criar</string>
+    <string name="storage_onedrive_use_folder">Usar esta pasta</string>
+    <string name="storage_setup_done">O local na nuvem desta biblioteca está configurado. Guarde o seu código de restauro: os seus outros dispositivos aderem com ele.</string>
+    <string name="done">Concluído</string>
 </resources>

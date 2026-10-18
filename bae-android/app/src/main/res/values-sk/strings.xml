@@ -84,7 +84,6 @@
     <string name="gallery_load_failed">Obrázok sa nepodarilo načítať</string>
     <string name="settings_library">Knižnica</string>
     <string name="settings_sync">Synchronizácia</string>
-    <string name="settings_cloud_sync_on">Synchronizácia s cloudom zapnutá</string>
     <string name="settings_local_only">Len lokálne</string>
     <string name="settings_sync_unconnected">Odpojené</string>
     <string name="settings_reconnect">Znova pripojiť</string>
@@ -117,7 +116,6 @@
     <string name="settings_disconnect">Odpojiť</string>
     <string name="settings_disconnect_confirm_title">Odpojiť synchronizáciu?</string>
     <string name="settings_disconnect_body">Týmto sa zastaví synchronizácia a odstráni sa konfigurácia poskytovateľa cloudu.</string>
-    <string name="settings_disconnect_reconnect_hint">Ak chceš túto knižnicu znova synchronizovať, spáruj toto zariadenie z iného zariadenia.</string>
     <string name="settings_disconnect_failed">Odpojenie zlyhalo: %1$s</string>
     <string name="settings_disconnect_warning_check_failed">Nepodarilo sa overiť vydania uložené len v cloude: %1$s</string>
     <string name="settings_pause_uploads">Pozastaviť odosielanie</string>
@@ -142,8 +140,8 @@
     <string name="onboarding_tagline">Obnov svoju knižnicu kódom z niektorého zo svojich zariadení alebo sa pripoj k inej pomocou pozvánky.</string>
     <string name="onboarding_icon_description">ikona bae</string>
     <string name="onboarding_camera_permission_required">Na skenovanie QR kódov je potrebné povolenie kamery</string>
-    <string name="onboarding_oauth_unconfigured">Táto knižnica vyžaduje cloudové prihlásenie, ktoré v tomto zostavení nie je nastavené.</string>
-    <string name="pairing_authorizing">Prihlasuje sa…</string>
+    <string name="oauth_unconfigured">Táto knižnica vyžaduje cloudové prihlásenie, ktoré v tomto zostavení nie je nastavené.</string>
+    <string name="signing_in">Prihlasuje sa…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">Kompatibilné s S3</string>
@@ -242,4 +240,27 @@
     <string name="delete_key_body">Prístupový kľúč %1$s, ktorý používalo odstránené zariadenie, je ešte potrebné odstrániť. Odstráň ho tu s prístupom správcu alebo potvrď, že bol odstránený v konzole poskytovateľa.</string>
     <string name="delete_key_with_admin">Odstrániť tu</string>
     <string name="delete_key_done">Kľúč je odstránený</string>
+    <string name="storage_setup_title">Nastaviť cloudové úložisko</string>
+    <string name="settings_set_up_cloud_home_explanation">Táto knižnica je uložená len v tomto zariadení. Cloudové úložisko umožní používať ju aj tvojim ďalším zariadeniam a domácnosti.</string>
+    <string name="storage_setup_choose">Kde má byť táto knižnica uložená?</string>
+    <string name="storage_s3_endpoint_hint">Pre Amazon S3 nechaj prázdne.</string>
+    <string name="storage_s3_advanced">Rozšírené</string>
+    <string name="storage_s3_key_prefix">Predpona kľúčov</string>
+    <string name="storage_s3_profile">Profil služby</string>
+    <string name="storage_s3_profile_detect">Rozpoznať podľa koncového bodu</string>
+    <string name="storage_s3_check">Skontrolovať bucket</string>
+    <string name="storage_versioning_disabled">Verzovanie je vypnuté.</string>
+    <string name="storage_versioning_enabled">Verzovanie je zapnuté.</string>
+    <string name="storage_versioning_suspended">Verzovanie je pozastavené.</string>
+    <string name="storage_versioning_unavailable">Táto služba neponúka verzovanie.</string>
+    <string name="storage_set_up">Nastaviť</string>
+    <string name="storage_dropbox_choose">Vyber zdieľaný priečinok</string>
+    <string name="storage_dropbox_none">S týmto účtom Dropbox nie sú zdieľané žiadne priečinky. Zdieľaj priečinok v Dropboxe a potom obnov.</string>
+    <string name="storage_refresh">Obnoviť</string>
+    <string name="storage_onedrive_new_folder">Nový priečinok</string>
+    <string name="storage_onedrive_folder_name">Názov priečinka</string>
+    <string name="storage_onedrive_create">Vytvoriť</string>
+    <string name="storage_onedrive_use_folder">Použiť tento priečinok</string>
+    <string name="storage_setup_done">Cloudové úložisko tejto knižnice je nastavené. Uschovaj si kód na obnovenie: tvoje ďalšie zariadenia sa ním pripoja.</string>
+    <string name="done">Hotovo</string>
 </resources>

@@ -78,7 +78,6 @@
     <string name="gallery_load_failed">이미지를 불러올 수 없습니다</string>
     <string name="settings_library">라이브러리</string>
     <string name="settings_sync">동기화</string>
-    <string name="settings_cloud_sync_on">클라우드 동기화 켜짐</string>
     <string name="settings_local_only">로컬 전용</string>
     <string name="settings_sync_unconnected">연결 끊김</string>
     <string name="settings_reconnect">다시 연결</string>
@@ -111,7 +110,6 @@
     <string name="settings_disconnect">연결 해제</string>
     <string name="settings_disconnect_confirm_title">동기화를 연결 해제할까요?</string>
     <string name="settings_disconnect_body">동기화를 중지하고 클라우드 제공자 설정을 제거합니다.</string>
-    <string name="settings_disconnect_reconnect_hint">이 라이브러리를 다시 동기화하려면 다른 기기에서 이 기기를 페어링하세요.</string>
     <string name="settings_disconnect_failed">연결을 해제할 수 없음: %1$s</string>
     <string name="settings_disconnect_warning_check_failed">클라우드 전용 릴리스를 확인할 수 없음: %1$s</string>
     <string name="settings_pause_uploads">업로드 일시정지</string>
@@ -136,8 +134,8 @@
     <string name="onboarding_tagline">내 기기의 코드로 라이브러리를 복원하거나 초대로 라이브러리에 참여하세요.</string>
     <string name="onboarding_icon_description">bae 아이콘</string>
     <string name="onboarding_camera_permission_required">QR 코드를 스캔하려면 카메라 권한이 필요합니다</string>
-    <string name="onboarding_oauth_unconfigured">이 라이브러리는 클라우드 로그인이 필요하지만 이 빌드에는 설정되어 있지 않습니다.</string>
-    <string name="pairing_authorizing">로그인 중…</string>
+    <string name="oauth_unconfigured">이 라이브러리는 클라우드 로그인이 필요하지만 이 빌드에는 설정되어 있지 않습니다.</string>
+    <string name="signing_in">로그인 중…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-compatible</string>
@@ -237,4 +235,27 @@
     <string name="delete_key_body">제거된 기기가 사용하던 액세스 키 %1$s를 아직 삭제해야 합니다. 여기에서 관리자 권한으로 삭제하거나 제공업체 콘솔에서 삭제했음을 확인하세요.</string>
     <string name="delete_key_with_admin">여기에서 삭제</string>
     <string name="delete_key_done">삭제했습니다</string>
+    <string name="storage_setup_title">클라우드 저장 위치 설정</string>
+    <string name="settings_set_up_cloud_home_explanation">이 라이브러리는 이 기기에만 저장되어 있습니다. 클라우드 저장 위치를 설정하면 다른 기기와 가족도 사용할 수 있습니다.</string>
+    <string name="storage_setup_choose">이 라이브러리를 어디에 저장할까요?</string>
+    <string name="storage_s3_endpoint_hint">Amazon S3는 비워 두세요.</string>
+    <string name="storage_s3_advanced">고급</string>
+    <string name="storage_s3_key_prefix">키 접두사</string>
+    <string name="storage_s3_profile">서비스 프로필</string>
+    <string name="storage_s3_profile_detect">엔드포인트로 감지</string>
+    <string name="storage_s3_check">버킷 확인</string>
+    <string name="storage_versioning_disabled">버전 관리가 꺼져 있습니다.</string>
+    <string name="storage_versioning_enabled">버전 관리가 켜져 있습니다.</string>
+    <string name="storage_versioning_suspended">버전 관리가 일시 중지되었습니다.</string>
+    <string name="storage_versioning_unavailable">이 서비스는 버전 관리를 제공하지 않습니다.</string>
+    <string name="storage_set_up">설정</string>
+    <string name="storage_dropbox_choose">공유 폴더 선택</string>
+    <string name="storage_dropbox_none">이 Dropbox 계정과 공유된 폴더가 없습니다. Dropbox에서 폴더를 공유한 다음 새로 고치세요.</string>
+    <string name="storage_refresh">새로 고침</string>
+    <string name="storage_onedrive_new_folder">새 폴더</string>
+    <string name="storage_onedrive_folder_name">폴더 이름</string>
+    <string name="storage_onedrive_create">만들기</string>
+    <string name="storage_onedrive_use_folder">이 폴더 사용</string>
+    <string name="storage_setup_done">이 라이브러리의 클라우드 저장 위치가 설정되었습니다. 복원 코드를 보관하세요. 다른 기기는 이 코드로 참여합니다.</string>
+    <string name="done">완료</string>
 </resources>

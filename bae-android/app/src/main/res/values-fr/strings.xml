@@ -78,7 +78,6 @@
     <string name="gallery_load_failed">Impossible de charger l\'image</string>
     <string name="settings_library">Bibliothèque</string>
     <string name="settings_sync">Synchronisation</string>
-    <string name="settings_cloud_sync_on">Synchronisation cloud activée</string>
     <string name="settings_local_only">Local uniquement</string>
     <string name="settings_sync_unconnected">Déconnecté</string>
     <string name="settings_reconnect">Reconnecter</string>
@@ -111,7 +110,6 @@
     <string name="settings_disconnect">Déconnecter</string>
     <string name="settings_disconnect_confirm_title">Déconnecter la synchronisation ?</string>
     <string name="settings_disconnect_body">Cela arrêtera la synchronisation et supprimera la configuration du fournisseur cloud.</string>
-    <string name="settings_disconnect_reconnect_hint">Pour synchroniser à nouveau cette bibliothèque, associez cet appareil depuis un autre appareil.</string>
     <string name="settings_disconnect_failed">Échec de la déconnexion : %1$s</string>
     <string name="settings_disconnect_warning_check_failed">Impossible de vérifier les éditions dans le cloud uniquement : %1$s</string>
     <string name="settings_pause_uploads">Suspendre les envois</string>
@@ -136,8 +134,8 @@
     <string name="onboarding_tagline">Restaurez votre bibliothèque avec un code de l’un de vos appareils, ou rejoignez-en une avec une invitation.</string>
     <string name="onboarding_icon_description">icône bae</string>
     <string name="onboarding_camera_permission_required">L\'autorisation de la caméra est requise pour scanner des codes QR</string>
-    <string name="onboarding_oauth_unconfigured">Cette bibliothèque nécessite une connexion au cloud, qui n\'est pas configurée sur cette version.</string>
-    <string name="pairing_authorizing">Connexion…</string>
+    <string name="oauth_unconfigured">Cette bibliothèque nécessite une connexion au cloud, qui n\'est pas configurée sur cette version.</string>
+    <string name="signing_in">Connexion…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-compatible</string>
@@ -240,4 +238,27 @@
     <string name="delete_key_body">La clé d’accès %1$s, utilisée par un appareil retiré, doit encore être supprimée. Supprimez-la ici avec un accès administrateur, ou confirmez que vous l’avez supprimée dans la console du fournisseur.</string>
     <string name="delete_key_with_admin">La supprimer ici</string>
     <string name="delete_key_done">Je l’ai supprimée</string>
+    <string name="storage_setup_title">Configurer un emplacement cloud</string>
+    <string name="settings_set_up_cloud_home_explanation">Cette bibliothèque n’est stockée que sur cet appareil. Un emplacement cloud permet à vos autres appareils et à votre foyer de l’utiliser.</string>
+    <string name="storage_setup_choose">Où stocker cette bibliothèque ?</string>
+    <string name="storage_s3_endpoint_hint">Laissez vide pour Amazon S3.</string>
+    <string name="storage_s3_advanced">Avancé</string>
+    <string name="storage_s3_key_prefix">Préfixe des clés</string>
+    <string name="storage_s3_profile">Profil du service</string>
+    <string name="storage_s3_profile_detect">Détecter d’après le point de terminaison</string>
+    <string name="storage_s3_check">Vérifier le bucket</string>
+    <string name="storage_versioning_disabled">La gestion des versions est désactivée.</string>
+    <string name="storage_versioning_enabled">La gestion des versions est activée.</string>
+    <string name="storage_versioning_suspended">La gestion des versions est suspendue.</string>
+    <string name="storage_versioning_unavailable">Ce service ne propose pas de gestion des versions.</string>
+    <string name="storage_set_up">Configurer</string>
+    <string name="storage_dropbox_choose">Choisissez un dossier partagé</string>
+    <string name="storage_dropbox_none">Aucun dossier n’est partagé avec ce compte Dropbox. Partagez un dossier dans Dropbox, puis actualisez.</string>
+    <string name="storage_refresh">Actualiser</string>
+    <string name="storage_onedrive_new_folder">Nouveau dossier</string>
+    <string name="storage_onedrive_folder_name">Nom du dossier</string>
+    <string name="storage_onedrive_create">Créer</string>
+    <string name="storage_onedrive_use_folder">Utiliser ce dossier</string>
+    <string name="storage_setup_done">L’emplacement cloud de cette bibliothèque est configuré. Conservez votre code de restauration : vos autres appareils la rejoignent avec lui.</string>
+    <string name="done">Terminé</string>
 </resources>

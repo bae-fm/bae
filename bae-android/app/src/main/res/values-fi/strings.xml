@@ -82,7 +82,6 @@
     <string name="gallery_load_failed">Kuvaa ei voitu ladata</string>
     <string name="settings_library">Kirjasto</string>
     <string name="settings_sync">Synkronointi</string>
-    <string name="settings_cloud_sync_on">Pilvisynkronointi päällä</string>
     <string name="settings_local_only">Vain paikallisesti</string>
     <string name="settings_sync_unconnected">Yhteys katkaistu</string>
     <string name="settings_reconnect">Yhdistä uudelleen</string>
@@ -115,7 +114,6 @@
     <string name="settings_disconnect">Katkaise yhteys</string>
     <string name="settings_disconnect_confirm_title">Katkaistaanko synkronoinnin yhteys?</string>
     <string name="settings_disconnect_body">Tämä lopettaa synkronoinnin ja poistaa pilvipalveluntarjoajan määritykset.</string>
-    <string name="settings_disconnect_reconnect_hint">Jos haluat synkronoida tämän kirjaston uudelleen, muodosta pariliitos toiselta laitteelta.</string>
     <string name="settings_disconnect_failed">Yhteyden katkaisu epäonnistui: %1$s</string>
     <string name="settings_disconnect_warning_check_failed">Vain pilvessä olevia julkaisuja ei voitu tarkistaa: %1$s</string>
     <string name="settings_pause_uploads">Keskeytä lähetykset</string>
@@ -140,8 +138,8 @@
     <string name="onboarding_tagline">Palauta kirjastosi koodilla jostakin laitteestasi tai liity kirjastoon kutsulla.</string>
     <string name="onboarding_icon_description">baen kuvake</string>
     <string name="onboarding_camera_permission_required">QR-koodien skannaaminen edellyttää kameran käyttöoikeutta</string>
-    <string name="onboarding_oauth_unconfigured">Tämä kirjasto vaatii pilvikirjautumisen, jota ei ole määritetty tässä versiossa.</string>
-    <string name="pairing_authorizing">Kirjaudutaan sisään…</string>
+    <string name="oauth_unconfigured">Tämä kirjasto vaatii pilvikirjautumisen, jota ei ole määritetty tässä versiossa.</string>
+    <string name="signing_in">Kirjaudutaan sisään…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-yhteensopiva</string>
@@ -238,4 +236,27 @@
     <string name="delete_key_body">Poistetun laitteen käyttämä käyttöavain %1$s on vielä poistettava. Poista se tässä järjestelmänvalvojan oikeuksilla tai vahvista, että poistit sen palveluntarjoajan konsolissa.</string>
     <string name="delete_key_with_admin">Poista tässä</string>
     <string name="delete_key_done">Poistin sen</string>
+    <string name="storage_setup_title">Määritä pilvisijainti</string>
+    <string name="settings_set_up_cloud_home_explanation">Tämä kirjasto on vain tässä laitteessa. Pilvisijainnin avulla muut laitteesi ja kotitaloutesi voivat käyttää sitä.</string>
+    <string name="storage_setup_choose">Mihin tämä kirjasto tallennetaan?</string>
+    <string name="storage_s3_endpoint_hint">Jätä tyhjäksi, jos käytät Amazon S3:a.</string>
+    <string name="storage_s3_advanced">Lisäasetukset</string>
+    <string name="storage_s3_key_prefix">Avainten etuliite</string>
+    <string name="storage_s3_profile">Palveluprofiili</string>
+    <string name="storage_s3_profile_detect">Tunnista päätepisteestä</string>
+    <string name="storage_s3_check">Tarkista säilö</string>
+    <string name="storage_versioning_disabled">Versiointi on pois päältä.</string>
+    <string name="storage_versioning_enabled">Versiointi on päällä.</string>
+    <string name="storage_versioning_suspended">Versiointi on keskeytetty.</string>
+    <string name="storage_versioning_unavailable">Tämä palvelu ei tarjoa versiointia.</string>
+    <string name="storage_set_up">Määritä</string>
+    <string name="storage_dropbox_choose">Valitse jaettu kansio</string>
+    <string name="storage_dropbox_none">Tämän Dropbox-tilin kanssa ei ole jaettu kansioita. Jaa kansio Dropboxissa ja päivitä sitten.</string>
+    <string name="storage_refresh">Päivitä</string>
+    <string name="storage_onedrive_new_folder">Uusi kansio</string>
+    <string name="storage_onedrive_folder_name">Kansion nimi</string>
+    <string name="storage_onedrive_create">Luo</string>
+    <string name="storage_onedrive_use_folder">Käytä tätä kansiota</string>
+    <string name="storage_setup_done">Tämän kirjaston pilvisijainti on määritetty. Säilytä palautuskoodisi: muut laitteesi liittyvät sillä.</string>
+    <string name="done">Valmis</string>
 </resources>

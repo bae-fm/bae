@@ -78,7 +78,6 @@
     <string name="gallery_load_failed">Изображението не може да бъде заредено</string>
     <string name="settings_library">Библиотека</string>
     <string name="settings_sync">Синхронизиране</string>
-    <string name="settings_cloud_sync_on">Облачната синхронизация е включена</string>
     <string name="settings_local_only">Само локално</string>
     <string name="settings_sync_unconnected">Връзката е прекъсната</string>
     <string name="settings_reconnect">Свържи отново</string>
@@ -111,7 +110,6 @@
     <string name="settings_disconnect">Прекъсване на връзката</string>
     <string name="settings_disconnect_confirm_title">Прекъсване на синхронизирането?</string>
     <string name="settings_disconnect_body">Това ще спре синхронизирането и ще премахне конфигурацията на облачния доставчик.</string>
-    <string name="settings_disconnect_reconnect_hint">За да синхронизирате отново тази библиотека, сдвоете това устройство от друго устройство.</string>
     <string name="settings_disconnect_failed">Прекъсването на връзката не бе успешно: %1$s</string>
     <string name="settings_disconnect_warning_check_failed">Не може да се провери за издания само в облака: %1$s</string>
     <string name="settings_pause_uploads">Пауза на качванията</string>
@@ -136,8 +134,8 @@
     <string name="onboarding_tagline">Възстановете библиотеката си с код от някое от устройствата си или се присъединете към библиотека с покана.</string>
     <string name="onboarding_icon_description">икона на bae</string>
     <string name="onboarding_camera_permission_required">Необходимо е разрешение за камерата, за да сканирате QR кодове</string>
-    <string name="onboarding_oauth_unconfigured">Тази библиотека изисква влизане в облака, което не е конфигурирано в тази версия.</string>
-    <string name="pairing_authorizing">Влизане…</string>
+    <string name="oauth_unconfigured">Тази библиотека изисква влизане в облака, което не е конфигурирано в тази версия.</string>
+    <string name="signing_in">Влизане…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-compatible</string>
@@ -239,4 +237,27 @@
     <string name="delete_key_body">Ключът за достъп %1$s, използван от премахнато устройство, все още трябва да бъде изтрит. Изтрийте го тук с администраторски достъп или потвърдете, че сте го изтрили в конзолата на доставчика.</string>
     <string name="delete_key_with_admin">Изтриване тук</string>
     <string name="delete_key_done">Изтрих го</string>
+    <string name="storage_setup_title">Настройване на облачно хранилище</string>
+    <string name="settings_set_up_cloud_home_explanation">Тази библиотека се съхранява само на това устройство. Облачното хранилище позволява на другите ви устройства и на домакинството ви да я използват.</string>
+    <string name="storage_setup_choose">Къде да се съхранява тази библиотека?</string>
+    <string name="storage_s3_endpoint_hint">Оставете празно за Amazon S3.</string>
+    <string name="storage_s3_advanced">Разширени</string>
+    <string name="storage_s3_key_prefix">Префикс на ключовете</string>
+    <string name="storage_s3_profile">Профил на услугата</string>
+    <string name="storage_s3_profile_detect">Разпознаване по крайната точка</string>
+    <string name="storage_s3_check">Проверка на bucket</string>
+    <string name="storage_versioning_disabled">Версиите са изключени.</string>
+    <string name="storage_versioning_enabled">Версиите са включени.</string>
+    <string name="storage_versioning_suspended">Версиите са спрени временно.</string>
+    <string name="storage_versioning_unavailable">Тази услуга не предлага версии.</string>
+    <string name="storage_set_up">Настройване</string>
+    <string name="storage_dropbox_choose">Изберете споделена папка</string>
+    <string name="storage_dropbox_none">Няма папки, споделени с този акаунт в Dropbox. Споделете папка в Dropbox и опреснете.</string>
+    <string name="storage_refresh">Опресняване</string>
+    <string name="storage_onedrive_new_folder">Нова папка</string>
+    <string name="storage_onedrive_folder_name">Име на папката</string>
+    <string name="storage_onedrive_create">Създаване</string>
+    <string name="storage_onedrive_use_folder">Използване на тази папка</string>
+    <string name="storage_setup_done">Облачното хранилище на тази библиотека е настроено. Запазете кода си за възстановяване: другите ви устройства се присъединяват с него.</string>
+    <string name="done">Готово</string>
 </resources>

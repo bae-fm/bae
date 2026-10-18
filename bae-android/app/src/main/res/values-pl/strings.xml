@@ -78,7 +78,6 @@
     <string name="gallery_load_failed">Nie udało się wczytać obrazu</string>
     <string name="settings_library">Biblioteka</string>
     <string name="settings_sync">Synchronizacja</string>
-    <string name="settings_cloud_sync_on">Synchronizacja z chmurą włączona</string>
     <string name="settings_local_only">Tylko lokalnie</string>
     <string name="settings_sync_unconnected">Rozłączono</string>
     <string name="settings_reconnect">Połącz ponownie</string>
@@ -111,7 +110,6 @@
     <string name="settings_disconnect">Rozłącz</string>
     <string name="settings_disconnect_confirm_title">Rozłączyć synchronizację?</string>
     <string name="settings_disconnect_body">Spowoduje to zatrzymanie synchronizacji i usunięcie konfiguracji dostawcy chmury.</string>
-    <string name="settings_disconnect_reconnect_hint">Aby ponownie zsynchronizować tę bibliotekę, sparuj to urządzenie z innego urządzenia.</string>
     <string name="settings_disconnect_failed">Nie udało się rozłączyć: %1$s</string>
     <string name="settings_disconnect_warning_check_failed">Nie udało się sprawdzić wydań tylko w chmurze: %1$s</string>
     <string name="settings_pause_uploads">Wstrzymaj przesyłanie</string>
@@ -136,8 +134,8 @@
     <string name="onboarding_tagline">Przywróć swoją bibliotekę kodem z jednego ze swoich urządzeń albo dołącz do biblioteki z zaproszenia.</string>
     <string name="onboarding_icon_description">ikona bae</string>
     <string name="onboarding_camera_permission_required">Do skanowania kodów QR wymagane jest pozwolenie na dostęp do aparatu</string>
-    <string name="onboarding_oauth_unconfigured">Ta biblioteka wymaga logowania do chmury, które nie jest skonfigurowane w tej wersji.</string>
-    <string name="pairing_authorizing">Logowanie…</string>
+    <string name="oauth_unconfigured">Ta biblioteka wymaga logowania do chmury, które nie jest skonfigurowane w tej wersji.</string>
+    <string name="signing_in">Logowanie…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-compatible</string>
@@ -243,4 +241,27 @@
     <string name="delete_key_body">Klucz dostępu %1$s, używany przez usunięte urządzenie, nadal trzeba usunąć. Usuń go tutaj z dostępem administratora albo potwierdź, że usunięto go w konsoli dostawcy.</string>
     <string name="delete_key_with_admin">Usuń tutaj</string>
     <string name="delete_key_done">Usunięto go</string>
+    <string name="storage_setup_title">Skonfiguruj miejsce w chmurze</string>
+    <string name="settings_set_up_cloud_home_explanation">Ta biblioteka jest przechowywana tylko na tym urządzeniu. Miejsce w chmurze pozwoli korzystać z niej twoim innym urządzeniom i domownikom.</string>
+    <string name="storage_setup_choose">Gdzie przechowywać tę bibliotekę?</string>
+    <string name="storage_s3_endpoint_hint">Pozostaw puste dla Amazon S3.</string>
+    <string name="storage_s3_advanced">Zaawansowane</string>
+    <string name="storage_s3_key_prefix">Prefiks kluczy</string>
+    <string name="storage_s3_profile">Profil usługi</string>
+    <string name="storage_s3_profile_detect">Wykryj na podstawie punktu końcowego</string>
+    <string name="storage_s3_check">Sprawdź zasobnik</string>
+    <string name="storage_versioning_disabled">Wersjonowanie jest wyłączone.</string>
+    <string name="storage_versioning_enabled">Wersjonowanie jest włączone.</string>
+    <string name="storage_versioning_suspended">Wersjonowanie jest wstrzymane.</string>
+    <string name="storage_versioning_unavailable">Ta usługa nie oferuje wersjonowania.</string>
+    <string name="storage_set_up">Skonfiguruj</string>
+    <string name="storage_dropbox_choose">Wybierz udostępniony folder</string>
+    <string name="storage_dropbox_none">Z tym kontem Dropbox nie udostępniono żadnych folderów. Udostępnij folder w Dropboxie, a potem odśwież.</string>
+    <string name="storage_refresh">Odśwież</string>
+    <string name="storage_onedrive_new_folder">Nowy folder</string>
+    <string name="storage_onedrive_folder_name">Nazwa folderu</string>
+    <string name="storage_onedrive_create">Utwórz</string>
+    <string name="storage_onedrive_use_folder">Użyj tego folderu</string>
+    <string name="storage_setup_done">Miejsce w chmurze dla tej biblioteki zostało skonfigurowane. Zachowaj kod przywracania: twoje inne urządzenia dołączają za jego pomocą.</string>
+    <string name="done">Gotowe</string>
 </resources>

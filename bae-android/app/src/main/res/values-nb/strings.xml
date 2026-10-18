@@ -82,7 +82,6 @@
     <string name="gallery_load_failed">Bildet kunne ikke lastes inn</string>
     <string name="settings_library">Bibliotek</string>
     <string name="settings_sync">Synkronisering</string>
-    <string name="settings_cloud_sync_on">Skysynkronisering er på</string>
     <string name="settings_local_only">Bare lokalt</string>
     <string name="settings_sync_unconnected">Frakoblet</string>
     <string name="settings_reconnect">Koble til på nytt</string>
@@ -115,7 +114,6 @@
     <string name="settings_disconnect">Koble fra</string>
     <string name="settings_disconnect_confirm_title">Koble fra synkroniseringen?</string>
     <string name="settings_disconnect_body">Dette stopper synkroniseringen og fjerner oppsettet for skyleverandøren.</string>
-    <string name="settings_disconnect_reconnect_hint">For å synkronisere dette biblioteket igjen må du pare denne enheten fra en annen enhet.</string>
     <string name="settings_disconnect_failed">Frakoblingen mislyktes: %1$s</string>
     <string name="settings_disconnect_warning_check_failed">Kunne ikke sjekke utgivelser som bare finnes i skyen: %1$s</string>
     <string name="settings_pause_uploads">Sett opplastinger på pause</string>
@@ -140,8 +138,8 @@
     <string name="onboarding_tagline">Gjenopprett biblioteket ditt med en kode fra en av enhetene dine, eller bli med i et med en invitasjon.</string>
     <string name="onboarding_icon_description">bae-symbol</string>
     <string name="onboarding_camera_permission_required">Kameratillatelse kreves for å skanne QR-koder</string>
-    <string name="onboarding_oauth_unconfigured">Dette biblioteket krever skypålogging, som ikke er satt opp i denne versjonen.</string>
-    <string name="pairing_authorizing">Logger på…</string>
+    <string name="oauth_unconfigured">Dette biblioteket krever skypålogging, som ikke er satt opp i denne versjonen.</string>
+    <string name="signing_in">Logger på…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-kompatibel</string>
@@ -238,4 +236,27 @@
     <string name="delete_key_body">Tilgangsnøkkelen %1$s, som en fjernet enhet brukte, må fortsatt slettes. Slett den her med administratortilgang, eller bekreft at du har slettet den i leverandørens konsoll.</string>
     <string name="delete_key_with_admin">Slett den her</string>
     <string name="delete_key_done">Jeg har slettet den</string>
+    <string name="storage_setup_title">Konfigurer en skyplassering</string>
+    <string name="settings_set_up_cloud_home_explanation">Dette biblioteket ligger bare på denne enheten. En skyplassering lar de andre enhetene dine og husstanden din bruke det.</string>
+    <string name="storage_setup_choose">Hvor skal dette biblioteket lagres?</string>
+    <string name="storage_s3_endpoint_hint">La stå tomt for Amazon S3.</string>
+    <string name="storage_s3_advanced">Avansert</string>
+    <string name="storage_s3_key_prefix">Nøkkelprefiks</string>
+    <string name="storage_s3_profile">Tjenesteprofil</string>
+    <string name="storage_s3_profile_detect">Finn ut fra endepunktet</string>
+    <string name="storage_s3_check">Kontroller bøtten</string>
+    <string name="storage_versioning_disabled">Versjonering er av.</string>
+    <string name="storage_versioning_enabled">Versjonering er på.</string>
+    <string name="storage_versioning_suspended">Versjonering er satt på pause.</string>
+    <string name="storage_versioning_unavailable">Denne tjenesten tilbyr ikke versjonering.</string>
+    <string name="storage_set_up">Konfigurer</string>
+    <string name="storage_dropbox_choose">Velg en delt mappe</string>
+    <string name="storage_dropbox_none">Ingen mapper er delt med denne Dropbox-kontoen. Del en mappe i Dropbox, og oppdater deretter.</string>
+    <string name="storage_refresh">Oppdater</string>
+    <string name="storage_onedrive_new_folder">Ny mappe</string>
+    <string name="storage_onedrive_folder_name">Mappenavn</string>
+    <string name="storage_onedrive_create">Opprett</string>
+    <string name="storage_onedrive_use_folder">Bruk denne mappen</string>
+    <string name="storage_setup_done">Bibliotekets skyplassering er konfigurert. Ta vare på gjenopprettingskoden din: de andre enhetene dine blir med ved hjelp av den.</string>
+    <string name="done">Ferdig</string>
 </resources>

@@ -78,7 +78,6 @@
     <string name="gallery_load_failed">Не вдалося завантажити зображення</string>
     <string name="settings_library">Бібліотека</string>
     <string name="settings_sync">Синхронізація</string>
-    <string name="settings_cloud_sync_on">Хмарну синхронізацію ввімкнено</string>
     <string name="settings_local_only">Лише локально</string>
     <string name="settings_sync_unconnected">Відключено</string>
     <string name="settings_reconnect">Підключити знову</string>
@@ -111,7 +110,6 @@
     <string name="settings_disconnect">Відключити</string>
     <string name="settings_disconnect_confirm_title">Відключити синхронізацію?</string>
     <string name="settings_disconnect_body">Це зупинить синхронізацію та вилучить налаштування хмарного постачальника.</string>
-    <string name="settings_disconnect_reconnect_hint">Щоб знову синхронізувати цю бібліотеку, з’єднайте цей пристрій з іншого пристрою.</string>
     <string name="settings_disconnect_failed">Не вдалося відключити: %1$s</string>
     <string name="settings_disconnect_warning_check_failed">Не вдалося перевірити релізи, що зберігаються лише в хмарі: %1$s</string>
     <string name="settings_pause_uploads">Призупинити вивантаження</string>
@@ -136,8 +134,8 @@
     <string name="onboarding_tagline">Відновіть свою бібліотеку кодом з одного зі своїх пристроїв або приєднайтеся до бібліотеки за запрошенням.</string>
     <string name="onboarding_icon_description">значок bae</string>
     <string name="onboarding_camera_permission_required">Для сканування QR-кодів потрібен дозвіл на доступ до камери</string>
-    <string name="onboarding_oauth_unconfigured">Для цієї бібліотеки потрібен хмарний вхід, який не налаштовано в цій збірці.</string>
-    <string name="pairing_authorizing">Вхід…</string>
+    <string name="oauth_unconfigured">Для цієї бібліотеки потрібен хмарний вхід, який не налаштовано в цій збірці.</string>
+    <string name="signing_in">Вхід…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-compatible</string>
@@ -243,4 +241,27 @@
     <string name="delete_key_body">Ключ доступу %1$s, який використовував вилучений пристрій, ще потрібно видалити. Видаліть його тут із доступом адміністратора або підтвердьте, що видалили його в консолі постачальника.</string>
     <string name="delete_key_with_admin">Видалити тут</string>
     <string name="delete_key_done">Ключ видалено</string>
+    <string name="storage_setup_title">Налаштувати місце в хмарі</string>
+    <string name="settings_set_up_cloud_home_explanation">Ця бібліотека зберігається лише на цьому пристрої. Місце в хмарі дасть змогу користуватися нею вашим іншим пристроям і домівці.</string>
+    <string name="storage_setup_choose">Де зберігати цю бібліотеку?</string>
+    <string name="storage_s3_endpoint_hint">Залиште порожнім для Amazon S3.</string>
+    <string name="storage_s3_advanced">Додатково</string>
+    <string name="storage_s3_key_prefix">Префікс ключів</string>
+    <string name="storage_s3_profile">Профіль служби</string>
+    <string name="storage_s3_profile_detect">Визначити за кінцевою точкою</string>
+    <string name="storage_s3_check">Перевірити бакет</string>
+    <string name="storage_versioning_disabled">Керування версіями вимкнено.</string>
+    <string name="storage_versioning_enabled">Керування версіями ввімкнено.</string>
+    <string name="storage_versioning_suspended">Керування версіями призупинено.</string>
+    <string name="storage_versioning_unavailable">Ця служба не підтримує керування версіями.</string>
+    <string name="storage_set_up">Налаштувати</string>
+    <string name="storage_dropbox_choose">Виберіть спільну папку</string>
+    <string name="storage_dropbox_none">З цим обліковим записом Dropbox не поширено жодної папки. Поширте папку в Dropbox, а потім оновіть.</string>
+    <string name="storage_refresh">Оновити</string>
+    <string name="storage_onedrive_new_folder">Нова папка</string>
+    <string name="storage_onedrive_folder_name">Назва папки</string>
+    <string name="storage_onedrive_create">Створити</string>
+    <string name="storage_onedrive_use_folder">Використати цю папку</string>
+    <string name="storage_setup_done">Місце в хмарі для цієї бібліотеки налаштовано. Збережіть свій код відновлення: ваші інші пристрої приєднуються з ним.</string>
+    <string name="done">Готово</string>
 </resources>

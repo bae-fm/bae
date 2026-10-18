@@ -82,7 +82,6 @@
     <string name="gallery_load_failed">Bilden kunde inte läsas in</string>
     <string name="settings_library">Bibliotek</string>
     <string name="settings_sync">Synkronisering</string>
-    <string name="settings_cloud_sync_on">Molnsynkronisering på</string>
     <string name="settings_local_only">Endast lokalt</string>
     <string name="settings_sync_unconnected">Frånkopplad</string>
     <string name="settings_reconnect">Anslut igen</string>
@@ -115,7 +114,6 @@
     <string name="settings_disconnect">Koppla från</string>
     <string name="settings_disconnect_confirm_title">Koppla från synkroniseringen?</string>
     <string name="settings_disconnect_body">Detta stoppar synkroniseringen och tar bort molnleverantörens konfiguration.</string>
-    <string name="settings_disconnect_reconnect_hint">För att synkronisera det här biblioteket igen, parkoppla den här enheten från en annan enhet.</string>
     <string name="settings_disconnect_failed">Frånkopplingen misslyckades: %1$s</string>
     <string name="settings_disconnect_warning_check_failed">Kunde inte kontrollera utgåvor som bara finns i molnet: %1$s</string>
     <string name="settings_pause_uploads">Pausa uppladdningar</string>
@@ -140,8 +138,8 @@
     <string name="onboarding_tagline">Återställ ditt bibliotek med en kod från en av dina enheter, eller gå med i ett med en inbjudan.</string>
     <string name="onboarding_icon_description">bae-symbol</string>
     <string name="onboarding_camera_permission_required">Kamerabehörighet krävs för att skanna QR-koder</string>
-    <string name="onboarding_oauth_unconfigured">Det här biblioteket kräver molninloggning, som inte är konfigurerad i den här versionen.</string>
-    <string name="pairing_authorizing">Loggar in…</string>
+    <string name="oauth_unconfigured">Det här biblioteket kräver molninloggning, som inte är konfigurerad i den här versionen.</string>
+    <string name="signing_in">Loggar in…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-kompatibel</string>
@@ -238,4 +236,27 @@
     <string name="delete_key_body">Åtkomstnyckeln %1$s, som en borttagen enhet använde, behöver fortfarande raderas. Radera den här med administratörsåtkomst, eller bekräfta att du har raderat den i leverantörens konsol.</string>
     <string name="delete_key_with_admin">Radera den här</string>
     <string name="delete_key_done">Jag har raderat den</string>
+    <string name="storage_setup_title">Konfigurera en molnplats</string>
+    <string name="settings_set_up_cloud_home_explanation">Det här biblioteket finns bara på den här enheten. Med en molnplats kan dina andra enheter och ditt hushåll använda det.</string>
+    <string name="storage_setup_choose">Var ska det här biblioteket lagras?</string>
+    <string name="storage_s3_endpoint_hint">Lämna tomt för Amazon S3.</string>
+    <string name="storage_s3_advanced">Avancerat</string>
+    <string name="storage_s3_key_prefix">Nyckelprefix</string>
+    <string name="storage_s3_profile">Tjänstprofil</string>
+    <string name="storage_s3_profile_detect">Identifiera från slutpunkten</string>
+    <string name="storage_s3_check">Kontrollera bucket</string>
+    <string name="storage_versioning_disabled">Versionshantering är av.</string>
+    <string name="storage_versioning_enabled">Versionshantering är på.</string>
+    <string name="storage_versioning_suspended">Versionshantering är pausad.</string>
+    <string name="storage_versioning_unavailable">Den här tjänsten erbjuder inte versionshantering.</string>
+    <string name="storage_set_up">Konfigurera</string>
+    <string name="storage_dropbox_choose">Välj en delad mapp</string>
+    <string name="storage_dropbox_none">Inga mappar delas med det här Dropbox-kontot. Dela en mapp i Dropbox och uppdatera sedan.</string>
+    <string name="storage_refresh">Uppdatera</string>
+    <string name="storage_onedrive_new_folder">Ny mapp</string>
+    <string name="storage_onedrive_folder_name">Mappnamn</string>
+    <string name="storage_onedrive_create">Skapa</string>
+    <string name="storage_onedrive_use_folder">Använd den här mappen</string>
+    <string name="storage_setup_done">Bibliotekets molnplats är konfigurerad. Spara din återställningskod: dina andra enheter går med med den.</string>
+    <string name="done">Klar</string>
 </resources>

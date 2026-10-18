@@ -78,7 +78,6 @@
     <string name="gallery_load_failed">تعذّر تحميل الصورة</string>
     <string name="settings_library">المكتبة</string>
     <string name="settings_sync">المزامنة</string>
-    <string name="settings_cloud_sync_on">المزامنة السحابية مفعّلة</string>
     <string name="settings_local_only">محلي فقط</string>
     <string name="settings_sync_unconnected">غير متصل</string>
     <string name="settings_reconnect">إعادة الاتصال</string>
@@ -111,7 +110,6 @@
     <string name="settings_disconnect">قطع الاتصال</string>
     <string name="settings_disconnect_confirm_title">قطع اتصال المزامنة؟</string>
     <string name="settings_disconnect_body">سيؤدي هذا إلى إيقاف المزامنة وإزالة إعدادات مزوّد السحابة.</string>
-    <string name="settings_disconnect_reconnect_hint">لمزامنة هذه المكتبة مرة أخرى، اقرن هذا الجهاز من جهاز آخر.</string>
     <string name="settings_disconnect_failed">فشل قطع الاتصال: %1$s</string>
     <string name="settings_disconnect_warning_check_failed">تعذّر التحقق من الإصدارات السحابية فقط: %1$s</string>
     <string name="settings_pause_uploads">إيقاف الرفع مؤقتًا</string>
@@ -136,8 +134,8 @@
     <string name="onboarding_tagline">استعد مكتبتك برمز من أحد أجهزتك، أو انضم إلى مكتبة بدعوة.</string>
     <string name="onboarding_icon_description">أيقونة bae</string>
     <string name="onboarding_camera_permission_required">إذن الكاميرا مطلوب لمسح رموز QR</string>
-    <string name="onboarding_oauth_unconfigured">تحتاج هذه المكتبة إلى تسجيل دخول سحابي، وهو غير مُعدّ في هذه النسخة.</string>
-    <string name="pairing_authorizing">جارٍ تسجيل الدخول…</string>
+    <string name="oauth_unconfigured">تحتاج هذه المكتبة إلى تسجيل دخول سحابي، وهو غير مُعدّ في هذه النسخة.</string>
+    <string name="signing_in">جارٍ تسجيل الدخول…</string>
     <string name="cloud_provider_dropbox">Dropbox</string>
     <string name="cloud_provider_onedrive">OneDrive</string>
     <string name="cloud_provider_s3">S3-compatible</string>
@@ -247,4 +245,27 @@
     <string name="delete_key_body">لا يزال مفتاح الوصول %1$s، الذي استخدمه جهاز أُزيل، بحاجة إلى الحذف. احذفه هنا باستخدام وصول المسؤول، أو أكّد أنك حذفته في وحدة تحكم المزوّد.</string>
     <string name="delete_key_with_admin">حذفه هنا</string>
     <string name="delete_key_done">لقد حذفته</string>
+    <string name="storage_setup_title">إعداد مكان في السحابة</string>
+    <string name="settings_set_up_cloud_home_explanation">هذه المكتبة مخزّنة على هذا الجهاز فقط. يتيح المكان في السحابة لأجهزتك الأخرى ولأهل بيتك استخدامها.</string>
+    <string name="storage_setup_choose">أين تريد تخزين هذه المكتبة؟</string>
+    <string name="storage_s3_endpoint_hint">اتركه فارغًا لـ Amazon S3.</string>
+    <string name="storage_s3_advanced">خيارات متقدمة</string>
+    <string name="storage_s3_key_prefix">بادئة المفاتيح</string>
+    <string name="storage_s3_profile">ملف تعريف الخدمة</string>
+    <string name="storage_s3_profile_detect">اكتشاف من نقطة النهاية</string>
+    <string name="storage_s3_check">فحص الحاوية</string>
+    <string name="storage_versioning_disabled">إدارة الإصدارات متوقفة.</string>
+    <string name="storage_versioning_enabled">إدارة الإصدارات مفعّلة.</string>
+    <string name="storage_versioning_suspended">إدارة الإصدارات معلّقة.</string>
+    <string name="storage_versioning_unavailable">لا تقدّم هذه الخدمة إدارة الإصدارات.</string>
+    <string name="storage_set_up">إعداد</string>
+    <string name="storage_dropbox_choose">اختر مجلدًا مشتركًا</string>
+    <string name="storage_dropbox_none">لا توجد مجلدات مشتركة مع حساب Dropbox هذا. شارك مجلدًا في Dropbox، ثم حدّث.</string>
+    <string name="storage_refresh">تحديث</string>
+    <string name="storage_onedrive_new_folder">مجلد جديد</string>
+    <string name="storage_onedrive_folder_name">اسم المجلد</string>
+    <string name="storage_onedrive_create">إنشاء</string>
+    <string name="storage_onedrive_use_folder">استخدام هذا المجلد</string>
+    <string name="storage_setup_done">تم إعداد مكان هذه المكتبة في السحابة. احتفظ برمز الاستعادة: تنضم به أجهزتك الأخرى.</string>
+    <string name="done">تم</string>
 </resources>
