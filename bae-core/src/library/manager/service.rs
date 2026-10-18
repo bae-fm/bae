@@ -1,5 +1,17 @@
 use super::*;
 
+/// Either open an existing store or retain a handle returned by creation or restore.
+pub enum LibraryOpening {
+    Registered(coven::CovenBuilder),
+    Open(coven::CovenHandle),
+}
+
+impl From<coven::CovenBuilder> for LibraryOpening {
+    fn from(builder: coven::CovenBuilder) -> Self {
+        Self::Registered(builder)
+    }
+}
+
 async fn report_background_task_exit(task_name: &'static str, task: tokio::task::JoinHandle<()>) {
     if let Err(error) = task.await {
         tracing::error!(task = task_name, %error, "background task failed");
@@ -38,7 +50,7 @@ impl LibraryManager {
         ids: IdSourceRef,
         diagnostics: Diagnostics,
         runtime_handle: tokio::runtime::Handle,
-        builder: coven::CovenBuilder,
+        opening: impl Into<LibraryOpening>,
         remote_images: crate::import::cover_art::RemoteImageCache,
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
         providers: crate::providers::Providers,
@@ -51,12 +63,23 @@ impl LibraryManager {
             )
         };
         let store_id = config_handle.config().store_id;
-        let handle = crate::library::configure_store(builder)
-            .clock(clock.clone())
-            .max_concurrent_uploads(max_uploads)
-            .max_concurrent_downloads(max_downloads)
-            .open(store_id)
-            .await?;
+        let handle = match opening.into() {
+            LibraryOpening::Registered(builder) => {
+                crate::library::configure_store(builder)
+                    .clock(clock.clone())
+                    .max_concurrent_uploads(max_uploads)
+                    .max_concurrent_downloads(max_downloads)
+                    .open(store_id)
+                    .await?
+            }
+            LibraryOpening::Open(handle) => {
+                handle.set_transfer_limits(coven::TransferLimits {
+                    uploads: max_uploads,
+                    downloads: max_downloads,
+                });
+                handle
+            }
+        };
         Ok(Self::assemble(
             Database::from_handle(handle, clock.clone()),
             app_dir,

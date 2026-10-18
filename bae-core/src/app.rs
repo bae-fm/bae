@@ -121,7 +121,34 @@ where
         position_update_interval_ms,
         restore_playback,
         diagnostics,
-        builder,
+        builder.into(),
+        compose,
+    )
+}
+
+/// Start services on the live store returned by creation, restore, or device reset.
+/// The caller retains the runtime on which that store was prepared.
+pub fn bootstrap_prepared<T, F>(
+    app_dir: crate::config::AppDir,
+    handle: coven::CovenHandle,
+    position_update_interval_ms: u32,
+    restore_playback: bool,
+    diagnostics: Diagnostics,
+    compose: F,
+) -> Result<T, BootstrapError>
+where
+    T: Send + 'static,
+    F: FnOnce(AppServices, tokio::runtime::Runtime) -> Result<T, BootstrapError> + Send + 'static,
+{
+    let id = handle.store_id().to_string();
+    bootstrap_opening(
+        Opening::Stored,
+        app_dir,
+        id,
+        position_update_interval_ms,
+        restore_playback,
+        diagnostics,
+        crate::library::manager::LibraryOpening::Open(handle),
         compose,
     )
 }
@@ -155,7 +182,7 @@ where
         position_update_interval_ms,
         restore_playback,
         diagnostics,
-        builder,
+        builder.into(),
         compose,
     )
 }
@@ -182,7 +209,7 @@ fn bootstrap_opening<T, F>(
     restore_playback: bool,
     diagnostics: Diagnostics,
 
-    builder: coven::CovenBuilder,
+    builder: crate::library::manager::LibraryOpening,
     compose: F,
 ) -> Result<T, BootstrapError>
 where
@@ -232,7 +259,7 @@ fn bootstrap_inner<T, F>(
     restore_playback: bool,
     diagnostics: Diagnostics,
 
-    builder: coven::CovenBuilder,
+    builder: crate::library::manager::LibraryOpening,
     compose: F,
 ) -> Result<T, BootstrapError>
 where

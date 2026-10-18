@@ -48,6 +48,7 @@ use coven::ClockRef;
 use coven::IdSourceRef;
 
 mod service;
+pub use service::LibraryOpening;
 mod storage_operations;
 use storage_operations::*;
 
