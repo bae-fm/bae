@@ -1,5 +1,6 @@
 use super::*;
 use crate::db::DbOutboxUpload;
+use std::time::Duration;
 
 /// File references are issued by coven; the tests supply its public progress values.
 async fn queued_files() -> (
@@ -405,5 +406,144 @@ async fn pending_reasons_belong_to_the_exact_uploading_device_and_file() {
     )
     .with_pending(vec![wrong_device, record.clone()]);
     assert_eq!(snapshot.upload_groups[0].files[0].pending, Some(record));
+    handle.close().await.unwrap();
+}
+
+/// Uploading release files with these confirmed and total provider bytes and
+/// these rates, as one release's queue.
+async fn uploading(
+    progress: &[(u64, u64, u64)],
+) -> (coven::CovenHandle, tempfile::TempDir, OutboxSnapshot) {
+    let (handle, directory, files) = queued_files().await;
+    let mut rates = HashMap::new();
+    let uploads = files
+        .into_iter()
+        .filter(|file| file.file.table() == "release_files")
+        .zip(progress)
+        .map(|(mut file, &(confirmed, total, rate))| {
+            file.phase = UploadState::Uploading {
+                bytes_confirmed: confirmed,
+                bytes_total: total,
+            };
+            rates.insert(file.file.id(), rate);
+            labelled(
+                file,
+                Some("release"),
+                UploadFileLabel::Filename("Track.flac".into()),
+            )
+        })
+        .collect();
+    let snapshot = OutboxSnapshot::from_queue(
+        DbOutboxQueue {
+            paused: false,
+            uploads,
+        },
+        &rates,
+    );
+    (handle, directory, snapshot)
+}
+
+#[tokio::test]
+async fn eta_never_reports_zero_while_provider_bytes_remain() {
+    let (handle, _directory, snapshot) = uploading(&[(115, 116, 10)]).await;
+    assert_eq!(snapshot.eta_seconds, Some(1));
+    handle.close().await.unwrap();
+    let (handle, _directory, snapshot) = uploading(&[(105, 116, 10)]).await;
+    assert_eq!(snapshot.eta_seconds, Some(2));
+    handle.close().await.unwrap();
+}
+
+#[tokio::test]
+async fn queue_eta_counts_every_uploading_files_remaining_bytes() {
+    let (handle, _directory, snapshot) = uploading(&[(16, 116, 20), (216, 1016, 30)]).await;
+    assert_eq!(snapshot.total.upload_bytes_done, 232);
+    assert_eq!(snapshot.total.upload_bytes_total, 1132);
+    // 900 bytes left at 50 B/s.
+    assert_eq!(snapshot.eta_seconds, Some(18));
+    handle.close().await.unwrap();
+}
+
+#[tokio::test]
+async fn queue_eta_is_hidden_while_a_file_waits_for_its_provider_size() {
+    let (handle, _directory, files) = queued_files().await;
+    let mut rates = HashMap::new();
+    let uploads = files
+        .into_iter()
+        .filter(|file| file.file.table() == "release_files")
+        .enumerate()
+        .map(|(index, mut file)| {
+            if index == 0 {
+                file.phase = UploadState::Uploading {
+                    bytes_confirmed: 16,
+                    bytes_total: 116,
+                };
+                rates.insert(file.file.id(), 20);
+            }
+            labelled(
+                file,
+                Some("release"),
+                UploadFileLabel::Filename("Track.flac".into()),
+            )
+        })
+        .collect();
+    let snapshot = OutboxSnapshot::from_queue(
+        DbOutboxQueue {
+            paused: false,
+            uploads,
+        },
+        &rates,
+    );
+    assert_eq!(snapshot.throughput_bps, 20);
+    assert_eq!(
+        snapshot.eta_seconds, None,
+        "a waiting file's provider bytes are not known yet"
+    );
+    handle.close().await.unwrap();
+}
+
+/// The rate tracker follows the queue it observes: a file that left the
+/// queue, or stopped uploading, has no rate, and pausing the queue drops
+/// every measurement so resuming starts fresh.
+#[tokio::test]
+async fn observed_rates_follow_the_queue_and_pausing_starts_fresh() {
+    let (handle, _directory, files) = queued_files().await;
+    let mut audio = files
+        .into_iter()
+        .filter(|file| file.file.table() == "release_files")
+        .collect::<Vec<_>>();
+    let at = |confirmed| UploadState::Uploading {
+        bytes_confirmed: confirmed,
+        bytes_total: 1016,
+    };
+    let queue = |files: &[coven::QueuedUpload], paused| coven::UploadQueue {
+        paused,
+        files: files.to_vec(),
+    };
+    let (first, second) = (audio[0].file.id(), audio[1].file.id());
+    let mut tracker = crate::library::upload_throughput::UploadThroughput::default();
+    audio[0].phase = at(0);
+    audio[1].phase = at(0);
+    tracker.observe(&queue(&audio, false), Duration::ZERO);
+    audio[0].phase = at(100);
+    audio[1].phase = at(200);
+    tracker.observe(&queue(&audio, false), Duration::from_secs(1));
+    let rates = tracker.rates(Duration::from_secs(1));
+    assert_eq!((rates[&first], rates[&second]), (100, 200));
+
+    audio[1].phase = UploadState::Waiting;
+    tracker.observe(&queue(&audio[..1], false), Duration::from_secs(2));
+    let rates = tracker.rates(Duration::from_secs(2));
+    assert_eq!(rates.len(), 1, "the file that left the queue has no rate");
+    assert!(rates.contains_key(&first));
+
+    tracker.observe(&queue(&audio[..1], true), Duration::from_secs(3));
+    assert!(tracker.rates(Duration::from_secs(3)).is_empty());
+    audio[0].phase = at(400);
+    tracker.observe(&queue(&audio[..1], false), Duration::from_secs(4));
+    assert_eq!(
+        tracker.rates(Duration::from_secs(4))[&first],
+        0,
+        "bytes confirmed before the pause are not counted after it"
+    );
     handle.close().await.unwrap();
 }

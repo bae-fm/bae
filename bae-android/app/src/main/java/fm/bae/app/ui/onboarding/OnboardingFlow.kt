@@ -63,6 +63,20 @@ internal sealed interface OnboardingStep {
 }
 
 /**
+ * What a code read asks of the person: the person's own restore code restores,
+ * with any S3 key that came beside it; an invite joins the library it names.
+ */
+internal fun codeReadStep(
+    code: String,
+    info: BridgeCodeInfo,
+    s3Credentials: BridgeS3Credentials?,
+): OnboardingStep.CodeRead =
+    when (info) {
+        is BridgeCodeInfo.Restore -> OnboardingStep.Restore(code, info.metadata, s3Credentials)
+        is BridgeCodeInfo.Invite -> OnboardingStep.Invite(code, info.metadata, info.libraryName)
+    }
+
+/**
  * Onboarding's one flow: a code, scanned or typed, is either the person's own
  * restore code or an invite, and this device restores or joins with it. What
  * either produced goes to [onBootstrapped]; an invite declined or expired
@@ -108,11 +122,7 @@ internal class OnboardingFlow(
             return
         }
         error = null
-        step =
-            when (info) {
-                is BridgeCodeInfo.Restore -> OnboardingStep.Restore(scanned.code, info.metadata, scanned.s3Credentials)
-                is BridgeCodeInfo.Invite -> OnboardingStep.Invite(scanned.code, info.metadata, info.libraryName)
-            }
+        step = codeReadStep(scanned.code, info, scanned.s3Credentials)
     }
 
     /** Back to the start from a code waiting on the person. */

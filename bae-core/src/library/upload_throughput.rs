@@ -89,19 +89,5 @@ impl UploadThroughput {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn restarting_or_retrying_does_not_count_old_confirmed_bytes_as_new() {
-        let id = FileId(uuid::Uuid::from_u128(1));
-        let mut tracker = UploadThroughput::default();
-        tracker.record(id, 400, 1000, Duration::ZERO);
-        tracker.record(id, 600, 1000, Duration::from_secs(2));
-        assert_eq!(tracker.rates(Duration::from_secs(2))[&id], 100);
-        tracker.record(id, 100, 1000, Duration::from_secs(3));
-        assert_eq!(tracker.rates(Duration::from_secs(3))[&id], 0);
-        tracker.record(id, 300, 1000, Duration::from_secs(5));
-        assert_eq!(tracker.rates(Duration::from_secs(5))[&id], 100);
-        assert_eq!(tracker.rates(Duration::from_secs(16))[&id], 0);
-    }
-}
+#[path = "upload_throughput_tests.rs"]
+mod tests;
