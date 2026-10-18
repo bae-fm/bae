@@ -107,13 +107,13 @@ pub(crate) use save::SaveWindow;
 mod storage;
 mod sync;
 mod sync_status;
+pub(crate) use error_category::bootstrap_category;
 #[cfg(test)]
 use error_category::cloud_setup_failure_category;
 use error_category::{
     blob_category, cloud_home_category, cloud_setup_category, cloud_unlock_category,
     make_local_category, make_remote_category, sync_category,
 };
-pub(crate) use error_category::{bootstrap_category, key_category};
 mod track;
 pub(crate) use track::queue_catalog_request;
 
@@ -211,14 +211,6 @@ pub enum LibraryError {
     /// often because it is no longer blocked, so there is nothing to retry.
     #[error("Retry blocked operation error: {0}")]
     RetryBlockedOperation(#[source] Box<coven::RetryBlockedOperationError>),
-    #[error("Device pairing start error: {0}")]
-    DevicePairingStart(#[from] coven::StartDevicePairingError),
-    #[error("Device pairing approval error: {0}")]
-    DevicePairingApproval(#[source] Box<coven::ApproveDevicePairingError>),
-    #[error("Device pairing transport error: {0}")]
-    DevicePairingTransport(#[from] coven::DevicePairingTransportError),
-    #[error("The device join was ended by its joining device")]
-    DeviceJoinAbandoned,
     /// A bae-level input validation failed (an empty library name). bae's own
     /// validation, not coven's — the detail is log-only, so the user sees the
     /// generic settings line.
@@ -261,12 +253,6 @@ impl LibraryError {
 impl From<coven::RetryBlockedOperationError> for LibraryError {
     fn from(error: coven::RetryBlockedOperationError) -> Self {
         Self::RetryBlockedOperation(Box::new(error))
-    }
-}
-
-impl From<coven::ApproveDevicePairingError> for LibraryError {
-    fn from(error: coven::ApproveDevicePairingError) -> Self {
-        Self::DevicePairingApproval(Box::new(error))
     }
 }
 
@@ -346,10 +332,6 @@ impl LibraryError {
                 coven::RetryBlockedOperationError::Circle(_) => C::Membership,
                 coven::RetryBlockedOperationError::Reclaim(error) => sync_category(error),
             },
-            LibraryError::DevicePairingStart(_)
-            | LibraryError::DevicePairingApproval(_)
-            | LibraryError::DevicePairingTransport(_) => C::Membership,
-            LibraryError::DeviceJoinAbandoned => C::Membership,
             LibraryError::Import(_) | LibraryError::Edit(_) => C::Import,
             LibraryError::ArtistIdentityConflict(_) => C::Import,
             LibraryError::Export(_) => C::Export,

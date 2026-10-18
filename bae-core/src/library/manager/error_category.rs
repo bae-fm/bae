@@ -85,7 +85,7 @@ pub(super) fn sync_category(error: &coven::SyncError) -> crate::ui::UiErrorCateg
 /// Classify a keyring failure: a keychain that refused this second is waited
 /// out, a missing device identity is its own state, anything else is a broken
 /// keyring.
-pub(crate) fn key_category(error: &coven::KeyError) -> crate::ui::UiErrorCategory {
+fn key_category(error: &coven::KeyError) -> crate::ui::UiErrorCategory {
     use crate::ui::UiErrorCategory as C;
     match error {
         coven::KeyError::KeychainTemporarilyUnavailable => C::KeyringLocked,

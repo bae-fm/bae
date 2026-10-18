@@ -1,6 +1,29 @@
 use super::*;
 
 impl Database {
+    /// Admit the second device used by the cross-device database tests.
+    #[cfg(test)]
+    pub(crate) async fn approve_device_pairing(
+        &self,
+        host: &coven::DevicePairingHost,
+        request: &coven::DevicePairingRequest,
+        on_progress: &(dyn Fn(coven::AdmittingDeviceJoinProgress) + Send + Sync),
+        cancel: tokio::sync::watch::Receiver<bool>,
+    ) -> Result<coven::DeviceJoinDriveOutcome, coven::ApproveDevicePairingError> {
+        self.inner
+            .handle
+            .approve_device_pairing(
+                host,
+                request,
+                coven::MemberRole::Member,
+                coven::DeviceJoinApprovalPolicy::AutoApproveSelfIssued,
+                None,
+                on_progress,
+                cancel,
+            )
+            .await
+    }
+
     /// Every row of every table bae can read, rendered, by table name: what
     /// a test compares to show an operation left the store as it found it.
     /// Coven's own tables are closed to bae's connections and are left out;

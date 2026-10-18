@@ -148,12 +148,6 @@ impl LibraryManager {
         self.sync.get_members().await
     }
 
-    pub async fn start_device_pairing(
-        &self,
-    ) -> Result<crate::library::DevicePairingSession, LibraryError> {
-        self.sync.start_device_pairing().await
-    }
-
     /// Remove a device from the library and rotate the library key so the removed
     /// device can no longer read new data. Records the rotated key's fingerprint
     /// in this device's config.

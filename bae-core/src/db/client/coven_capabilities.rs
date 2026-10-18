@@ -303,40 +303,6 @@ impl Database {
         self.inner.handle.get_members().await
     }
 
-    pub(crate) async fn start_device_pairing(
-        &self,
-    ) -> Result<coven::DevicePairingHost, coven::StartDevicePairingError> {
-        self.inner.handle.start_device_pairing().await
-    }
-
-    pub(crate) async fn approve_device_pairing(
-        &self,
-        host: &coven::DevicePairingHost,
-        request: &coven::DevicePairingRequest,
-        on_progress: &(dyn Fn(coven::AdmittingDeviceJoinProgress) + Send + Sync),
-        cancel: tokio::sync::watch::Receiver<bool>,
-    ) -> Result<coven::DeviceJoinDriveOutcome, coven::ApproveDevicePairingError> {
-        self.inner
-            .handle
-            .approve_device_pairing(
-                host,
-                request,
-                coven::MemberRole::Member,
-                coven::DeviceJoinApprovalPolicy::AutoApproveSelfIssued,
-                None,
-                on_progress,
-                cancel,
-            )
-            .await
-    }
-
-    pub(crate) async fn cancel_device_pairing(
-        &self,
-        host: &coven::DevicePairingHost,
-    ) -> Result<(), coven::ApproveDevicePairingError> {
-        self.inner.handle.cancel_device_pairing(host).await
-    }
-
     pub(crate) async fn remove_member(&self, public_key_hex: &str) -> Result<(), coven::SyncError> {
         self.inner.handle.remove_member(public_key_hex).await
     }

@@ -382,16 +382,6 @@ impl SyncController {
         Ok(crate::sync::membership::Membership::from_members(members))
     }
 
-    pub(crate) async fn start_device_pairing(
-        &self,
-    ) -> Result<crate::library::DevicePairingSession, LibraryError> {
-        let host = self.database.start_device_pairing().await?;
-        Ok(crate::library::DevicePairingSession::new(
-            self.database.clone(),
-            host,
-        ))
-    }
-
     /// Remove a device from the library and rotate the library key so the removed
     /// device can no longer read new data.
     pub(crate) async fn remove_member(&self, public_key_hex: &str) -> Result<(), LibraryError> {
