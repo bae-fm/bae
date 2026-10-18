@@ -292,6 +292,7 @@ private struct JoinRequestRow: View {
         .formStyle(.grouped)
         .frame(width: 500, height: 360)
         .environment(PreviewData.previewSync())
+        .environment(PreviewData.configStore())
         .environment(
             MembershipStore.stub(
                 people: PreviewData.members,
