@@ -9,35 +9,35 @@ Uma biblioteca, todos os dispositivos, e a única conta envolvida é uma que voc
 
 ## O local na nuvem
 
-O local na nuvem de uma biblioteca é uma localização no seu armazenamento: uma pasta no seu Dropbox ou OneDrive, seu iCloud, ou qualquer bucket compatível com S3 (AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, ...). Ele guarda tudo que a biblioteca sincroniza: as mudanças do catálogo, arte e o áudio dos lançamentos que você deixa bae gerenciar.
+O local na nuvem de uma biblioteca é uma localização no seu armazenamento: uma pasta no seu Dropbox ou OneDrive, seu iCloud, ou qualquer bucket compatível com S3 (AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, ...). Ele guarda tudo que a biblioteca sincroniza: as mudanças da biblioteca, a arte e o áudio dos lançamentos que você move para a nuvem.
 
-Configure em Ajustes, em Sincronização:
+Configure em Ajustes, Biblioteca, com **Configurar sincronização...**:
 
-1. Escolha um provedor. Nuvens de consumidor entram pela própria página de login do provedor; nada da sua conta é armazenado além dos tokens que ela emite. iCloud usa seu Apple ID como está. S3 recebe bucket, região, endpoint e chaves, conferidos antes de serem salvos.
-2. Escolha como o local armazena objetos (veja abaixo).
-3. bae começa a sincronizar.
+1. Escolha um provedor.
+   - **Dropbox** e **OneDrive** entram pelo seu navegador e depois perguntam em qual pasta a biblioteca vive. No Dropbox é uma pasta compartilhada, para que você possa convidar sua casa; se ainda não tiver nenhuma, compartilhe uma no Dropbox e escolha **Procurar novamente**. No OneDrive é qualquer pasta, e você pode criar uma nova ali. O login fica com coven; bae nunca vê os tokens.
+   - **iCloud** usa a Apple Account em que o dispositivo está conectado.
+   - **S3** pede bucket, região, endpoint e chave de acesso, e nada mais. **Avançado** guarda um prefixo de chave opcional e o perfil do serviço, automático por padrão; para um serviço que bae não reconhece, **Detectar ajustes** testa o bucket com sua chave e mostra o que encontrou. Se a configuração for recusada, bae diz por quê.
+2. bae começa a sincronizar.
 
 Uma biblioteca sem local na nuvem é completa por si. Somente local é um modo, não uma limitação, e desconectar o local na nuvem retorna a ele.
 
-## Opaco ou navegável
+## Sempre criptografado
 
-Na configuração você escolhe o que o provedor consegue ver, e a escolha é permanente para aquele local:
-
-- **Opaco** (o padrão): todo objeto é criptografado no seu dispositivo antes do upload e armazenado com nomes sem significado. O provedor, ou qualquer pessoa que entre no bucket, vê texto cifrado. Este é o modo descrito pela página de [criptografia](/pt-br/reference/encryption), e o único modo que permite adicionar outros dispositivos e membros.
-- **Navegável**: objetos são armazenados em claro com nomes de arquivo reais, em pastas nomeadas por artista e álbum. Você pode abrir o bucket com qualquer ferramenta e copiar ou reproduzir seus arquivos diretamente. Nada é criptografado, então o controle de acesso do próprio bucket é a única proteção, e o local não pode ser compartilhado.
+Todo local na nuvem guarda a mesma coisa: objetos criptografados com nomes aleatórios. Toda mudança, imagem e arquivo de áudio é criptografado no seu dispositivo antes do upload. Seus álbuns não são uma pasta que alguém possa navegar no seu Dropbox, e o provedor não vê nenhum nome de álbum, artista ou arquivo. Veja [Criptografia](/pt-br/reference/encryption).
 
 ## O que sincroniza
 
-- O catálogo: álbuns, lançamentos, faixas, créditos, obras, identidades, edições. Todo dispositivo recebe tudo.
-- Arte: capas e imagens de artistas, buscadas de antemão para que grades renderizem em todos os lugares.
-- Áudio: só para lançamentos que você escolheu gerenciar na nuvem. Lançamentos não gerenciados permanecem puramente locais, entradas de catálogo incluídas em outros dispositivos, mas bytes só onde você os importou.
+- A biblioteca: álbuns, lançamentos, faixas, créditos, obras e artistas. Todo dispositivo recebe tudo, inclusive lançamentos cujo áudio fica no dispositivo que os importou.
+- Pessoas: o nome e o avatar de cada pessoa, avaliações, histórico de reprodução e playlists. Seu histórico e cada uma das suas playlists podem ser privados ou compartilhados com a casa.
+- Arte: capas, imagens de artistas e avatares, buscados de antemão para que grades renderizem em todos os lugares.
+- Áudio: só para lançamentos que você moveu para a nuvem. Um lançamento local aparece em todo dispositivo, mas só toca no dispositivo que o importou, até você movê-lo para a nuvem. Veja [Armazenamento e offline](/pt-br/guide/storage).
 
 Estado por dispositivo não sincroniza: posição de reprodução, volume, fila e ajustes do dispositivo ficam no dispositivo.
 
 ## Quando sincroniza
 
-A sincronização roda por conta própria: depois de mudanças, em um temporizador e sob demanda com **Sync Now**. Edições chegam a outros dispositivos como mudanças pequenas, segundos depois em condições normais. Dois dispositivos editando ao mesmo tempo ganham onde não colidem: bae mescla edições concorrentes campo por campo, e um lançamento excluído permanece excluído mesmo se foi editado em outro lugar no mesmo momento. Nada pede que você resolva um conflito.
+A sincronização roda por conta própria: depois de mudanças, em um temporizador e sob demanda com **Sincronizar agora**. Edições chegam a outros dispositivos segundos depois em condições normais. Dois dispositivos editando ao mesmo tempo ganham onde não colidem: bae mescla edições concorrentes campo por campo, a edição posterior vence um campo que os dois mudaram, e um lançamento excluído permanece excluído mesmo se foi editado em outro lugar no mesmo momento. Nada pede que você resolva um conflito.
 
 ## Quando falha
 
-Falhas de sincronização não interrompem a biblioteca; você continua navegando, reproduzindo e importando localmente enquanto bae tenta novamente com espera progressiva. A linha de status mostra sincronização e horário da última sincronização; uma falha mostra um banner com o erro, e uploads podem ser pausados, repetidos e inspecionados no [Gerenciador de armazenamento](/pt-br/guide/storage#the-storage-manager). Se o login do local na nuvem expirar, bae pede para você reconectar.
+Falhas de sincronização não interrompem a biblioteca; você continua navegando, reproduzindo e importando localmente enquanto bae tenta novamente. Ajustes, Biblioteca mostra uma única linha para a sincronização: **Sincronizado**, ou quantos itens estão aguardando, como **Itens em espera: 3**. Abra-a para ver cada item em palavras simples, com a ação que você pode tomar: **Entrar** quando o provedor quer que você entre de novo, devolver ao lugar um arquivo que foi movido antes do upload, **Tentar novamente**, **Reconectar**, **Retomar envios** ou **Atualizar aplicativo**. Uma espera em que você não pode ajudar, como outro dispositivo voltar a ficar online, não oferece nada. Esta lista é o único lugar para olhar; uploads também podem ser pausados e inspecionados no [Gerenciador de armazenamento](/pt-br/guide/storage#o-gerenciador-de-armazenamento).

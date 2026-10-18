@@ -9,35 +9,35 @@ Eine Mediathek, jedes Gerät, und das einzige beteiligte Konto ist eines, das du
 
 ## Das Cloud-Zuhause
 
-Das Cloud-Zuhause einer Mediathek ist ein Ort in deinem Speicher: ein Ordner in Dropbox oder OneDrive, dein iCloud oder ein beliebiger S3-kompatibler Bucket (AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, ...). Es enthält alles, was die Mediathek synchronisiert: Katalogänderungen, Artwork und das Audio von Releases, die du bae verwalten lässt.
+Das Cloud-Zuhause einer Mediathek ist ein Ort in deinem Speicher: ein Ordner in deinem Dropbox oder OneDrive, dein iCloud oder ein beliebiger S3-kompatibler Bucket (AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, ...). Es enthält alles, was die Mediathek synchronisiert: die Änderungen an der Mediathek, Artwork und das Audio von Releases, die du in die Cloud verschiebst.
 
-Richte es in den Einstellungen unter Synchronisierung ein:
+Richte es in Einstellungen, Bibliothek mit **Sync einrichten …** ein:
 
-1. Wähle einen Anbieter. Verbraucher-Clouds melden sich über die eigene Anmeldeseite des Anbieters an; von deinem Konto wird außer den ausgegebenen Tokens nichts gespeichert. iCloud verwendet deine Apple-ID direkt. S3 nimmt Bucket, Region, Endpoint und Schlüssel, die vor dem Speichern geprüft werden.
-2. Wähle, wie das Zuhause Objekte speichert (siehe unten).
-3. bae beginnt zu synchronisieren.
+1. Wähle einen Anbieter.
+   - **Dropbox** und **OneDrive** melden sich über deinen Browser an und fragen dann, in welchem Ordner die Mediathek liegt. Bei Dropbox ist das ein geteilter Ordner, damit du deinen Haushalt dazu einladen kannst; hast du noch keinen, teile einen in Dropbox und wähle **Erneut suchen**. Bei OneDrive ist es ein beliebiger Ordner, und du kannst dort einen neuen anlegen. Die Anmeldung hält coven; bae sieht ihre Tokens nie.
+   - **iCloud** verwendet den Apple Account, mit dem das Gerät angemeldet ist.
+   - **S3** fragt nach Bucket, Region, Endpoint und Zugriffsschlüssel, sonst nichts. **Erweitert** enthält ein optionales Schlüsselpräfix und das Dienstprofil, standardmäßig automatisch; für einen Dienst, den bae nicht erkennt, testet **Einstellungen erkennen** den Bucket mit deinem Schlüssel und zeigt, was es gefunden hat. Wird die Einrichtung abgelehnt, sagt bae, warum.
+2. bae beginnt zu synchronisieren.
 
 Eine Mediathek ohne Cloud-Zuhause ist für sich vollständig. Nur lokal ist ein Modus, keine Einschränkung, und das Trennen des Cloud-Zuhauses kehrt dorthin zurück.
 
-## Undurchsichtig oder durchsuchbar
+## Immer verschlüsselt
 
-Bei der Einrichtung wählst du, was der Anbieter sehen darf, und die Wahl ist für dieses Zuhause dauerhaft:
-
-- **Undurchsichtig** (Standard): Jedes Objekt wird vor dem Upload auf deinem Gerät verschlüsselt und unter bedeutungslosen Namen gespeichert. Der Anbieter oder jemand, der Zugriff auf den Bucket erhält, sieht Geheimtext. Dies ist der Modus, den die Seite [Verschlüsselung](/de/reference/encryption) beschreibt, und der einzige Modus, der das Hinzufügen anderer Geräte und Mitglieder unterstützt.
-- **Durchsuchbar**: Objekte werden unverschlüsselt mit echten Dateinamen gespeichert, in Ordnern, die nach Künstler und Album benannt sind. Du kannst den Bucket mit jedem Werkzeug öffnen und deine Dateien direkt kopieren oder abspielen. Nichts ist verschlüsselt, daher ist die eigene Zugriffskontrolle des Buckets der einzige Schutz, und das Zuhause kann nicht geteilt werden.
+Jedes Cloud-Zuhause enthält dasselbe: verschlüsselte Objekte unter zufälligen Namen. Jede Änderung, jedes Bild und jede Audiodatei wird auf deinem Gerät vor dem Upload verschlüsselt. Deine Alben sind kein Ordner, den jemand in deinem Dropbox durchsuchen kann, und der Anbieter sieht keinen Album-, Künstler- oder Dateinamen. Siehe [Verschlüsselung](/de/reference/encryption).
 
 ## Was synchronisiert wird
 
-- Der Katalog: Alben, Releases, Tracks, Mitwirkende, Werke, Identitäten, Änderungen. Jedes Gerät erhält alles davon.
-- Artwork: Cover und Künstlerbilder, früh geladen, damit Raster überall gerendert werden.
-- Audio: nur für Releases, die du in der Cloud verwalten lässt. Nicht verwaltete Releases bleiben rein lokal; Katalogeinträge sind auf anderen Geräten enthalten, aber Bytes nur dort, wo du sie importiert hast.
+- Die Mediathek: Alben, Releases, Tracks, Mitwirkende, Werke und Künstler. Jedes Gerät erhält alles davon, auch Releases, deren Audio auf dem Gerät bleibt, das sie importiert hat.
+- Personen: Name und Avatar jeder Person, Bewertungen, Wiedergabeverlauf und Playlists. Dein Verlauf und jede deiner Playlists können privat bleiben oder mit dem Haushalt geteilt werden.
+- Artwork: Cover, Künstlerbilder und Avatare, früh geladen, damit Raster überall gerendert werden.
+- Audio: nur für Releases, die du in die Cloud verschoben hast. Ein lokales Release erscheint auf jedem Gerät, spielt aber nur auf dem Gerät, das es importiert hat, bis du es in die Cloud verschiebst. Siehe [Speicher und offline](/de/guide/storage).
 
 Gerätebezogener Zustand synchronisiert nicht: Wiedergabeposition, Lautstärke, Warteschlange und Geräteeinstellungen bleiben auf dem Gerät.
 
 ## Wann synchronisiert wird
 
-Synchronisierung läuft von selbst: nach Änderungen, nach einem Timer und bei Bedarf mit **Jetzt synchronisieren**. Änderungen landen unter normalen Bedingungen Sekunden später als kleine Änderungen auf anderen Geräten. Wenn zwei Geräte gleichzeitig bearbeiten, gewinnen beide dort, wo sie nicht kollidieren: bae führt gleichzeitige Änderungen Feld für Feld zusammen, und ein gelöschtes Release bleibt gelöscht, auch wenn es im selben Moment anderswo bearbeitet wurde. Du wirst nie aufgefordert, einen Konflikt aufzulösen.
+Synchronisierung läuft von selbst: nach Änderungen, nach einem Timer und bei Bedarf mit **Jetzt synchronisieren**. Änderungen landen unter normalen Bedingungen Sekunden später auf anderen Geräten. Wenn zwei Geräte gleichzeitig bearbeiten, gewinnen beide dort, wo sie nicht kollidieren: bae führt gleichzeitige Änderungen Feld für Feld zusammen, die spätere Änderung gewinnt ein Feld, das beide geändert haben, und ein gelöschtes Release bleibt gelöscht, auch wenn es im selben Moment anderswo bearbeitet wurde. Du wirst nie aufgefordert, einen Konflikt aufzulösen.
 
 ## Wenn es fehlschlägt
 
-Synchronisierungsfehler unterbrechen die Mediathek nicht; du kannst lokal weiter durchsuchen, abspielen und importieren, während bae mit Wartezeit erneut versucht. Die Statuszeile zeigt Synchronisierung und letzte Synchronisierungszeit; ein Fehler zeigt ein Banner mit dem Fehler, und Uploads können im [Speichermanager](/de/guide/storage#der-speichermanager) pausiert, erneut versucht und geprüft werden. Wenn die Anmeldung des Cloud-Zuhauses abläuft, fordert bae dich zum erneuten Verbinden auf.
+Synchronisierungsfehler unterbrechen die Mediathek nicht; du kannst lokal weiter durchsuchen, abspielen und importieren, während bae es erneut versucht. Einstellungen, Bibliothek zeigt eine Zeile für die Synchronisierung: **Synchronisiert** oder wie viele Elemente warten, etwa **Wartende Elemente: 3**. Öffne sie, um jedes Element in klaren Worten zu sehen, mit der Aktion, die du ausführen kannst: **Anmelden**, wenn der Anbieter eine erneute Anmeldung verlangt, eine Datei zurücklegen, die vor ihrem Upload verschoben wurde, **Erneut versuchen**, **Erneut verbinden**, **Uploads fortsetzen** oder **App aktualisieren**. Ein Warten, bei dem du nicht helfen kannst, etwa darauf, dass ein anderes Gerät online kommt, bietet nichts an. Diese Liste ist der eine Ort zum Nachsehen; Uploads lassen sich außerdem im [Speichermanager](/de/guide/storage#der-speichermanager) pausieren und prüfen.

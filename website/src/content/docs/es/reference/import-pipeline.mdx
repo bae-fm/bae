@@ -42,7 +42,7 @@ Confirmar una importación ejecuta, en orden:
 3. **Selección de portada**: el arte elegido (remoto, imagen de carpeta o incrustado) se vuelve a renderizar como miniatura de visualización; el original se conserva entre los archivos del lanzamiento si vino de la carpeta.
 4. **Escritura atómica**: el lanzamiento, pistas, créditos, identidades, formatos, segmentos, archivos y portada se confirman en una transacción. No existe un estado medio importado.
 
-El lanzamiento queda referenciando los archivos del usuario en su lugar. Si el usuario eligió administración en la nube, la subida ocurre después de la confirmación como una transición de almacenamiento, y los bytes originales de los archivos siguen siendo la fuente de verdad en todo momento; nada de lo que el usuario le dio a bae se elimina o altera.
+El lanzamiento queda referenciando los archivos del usuario en su lugar. En una importación a la nube, coven lee y calcula el hash de cada archivo antes de la escritura, y la misma escritura adjunta cada archivo a su fila y pone su subida en cola. Una importación local registra en cambio la ruta, el tamaño y la fecha de modificación de cada archivo en este dispositivo; sus bytes solo se leen si el lanzamiento se mueve después a la nube. En ambos casos los bytes originales de los archivos siguen siendo la fuente de verdad en todo momento; nada de lo que el usuario le dio a bae se elimina o altera.
 
 ## Reconocer copias
 

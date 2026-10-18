@@ -12,8 +12,8 @@ Die Desktop-Apps (macOS, Windows) sind das vollständige Werkzeug: Sie erstellen
 Öffne bae auf deinem Desktop. Wenn sich auf dem Rechner keine Mediathek befindet, bietet der Begrüßungsbildschirm drei Auswahlmöglichkeiten:
 
 - **Neue Mediathek erstellen**, wenn dies dein erstes Gerät ist.
-- **Einer Mediathek beitreten**, wenn ein anderes Gerät bereits eine hat und dessen Besitzer dich bestätigt. Siehe [Geräte und Mitglieder](/de/guide/devices).
-- **Aus Cloud wiederherstellen**, wenn dies deine eigene Mediathek ist und du ihren Wiederherstellungscode hast. Siehe [Geräte und Mitglieder](/de/guide/devices#wiederherstellungscodes).
+- **Bibliothek beitreten**, wenn dich jemand zu seiner Mediathek eingeladen hat. Siehe [Geräte und Mitglieder](/de/guide/devices#eine-person-einladen).
+- **Aus der Cloud wiederherstellen**, wenn dies deine eigene Mediathek ist und du ihren Wiederherstellungscode hast. Siehe [Geräte und Mitglieder](/de/guide/devices#wiederherstellungscodes).
 
 Erstelle eine. Eine Mediathek beginnt lokal: Alles liegt auf diesem Rechner, nichts braucht ein Konto, und keine Cloud ist beteiligt, bis du eine verbindest.
 
@@ -35,10 +35,10 @@ Zurück im Bereich **Mediathek** steht das Album im Raster. Klicke darauf, drüc
 
 Wenn du die Mediathek auf mehr als einem Gerät haben willst, verbinde ein Cloud-Zuhause: dein eigenes Dropbox, OneDrive, iCloud oder einen beliebigen S3-kompatiblen Bucket. Alles, was bae dort ablegt, wird vor dem Upload verschlüsselt; der Anbieter speichert es, kann es aber nicht lesen.
 
-- [Synchronisierung](/de/guide/sync): Verbinde ein Cloud-Zuhause und wähle, was es speichert.
-- [Geräte und Mitglieder](/de/guide/devices): Füge dein Telefon oder einen anderen Desktop hinzu.
+- [Synchronisierung](/de/guide/sync): Verbinde ein Cloud-Zuhause und sieh, was synchronisiert wird.
+- [Geräte und Mitglieder](/de/guide/devices): Füge dein Telefon oder einen anderen Desktop hinzu oder lade jemanden ein.
 - [Speicher und offline](/de/guide/storage): Behalte Musik auf dem Gerät oder streame sie aus deiner Cloud und pinne, was du offline brauchst.
 
 ## Wo Dinge liegen
 
-Jede Mediathek speichert ihre Datenbank und Einstellungen auf dem Desktop unter `~/.bae/libraries/`. Deine Audiodateien bleiben dort, von wo du sie importiert hast, außer du weist bae an, sie in deiner Cloud zu verwalten. Schlüssel und Zugangsdaten liegen im Schlüsselbund des Betriebssystems, nicht in Dateien.
+Jede Mediathek speichert auf dem Desktop ihre Datenbank unter `~/.bae/stores/` und ihre Einstellungen unter `~/.bae/libraries/`. Deine Audiodateien bleiben dort, von wo du sie importiert hast; ein Release in die Cloud zu verschieben lädt eine verschlüsselte Kopie hoch und lässt deine Dateien, wo sie sind. Schlüssel und Zugangsdaten liegen im Schlüsselbund des Betriebssystems, nicht in Dateien.

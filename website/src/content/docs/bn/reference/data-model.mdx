@@ -3,7 +3,7 @@ title: ডেটা মডেল
 description: স্কিমা, কী সিঙ্ক হয়, এবং কী ডিভাইসে থাকে
 ---
 
-bae-এর তালিকা সাধারণ SQLite, [coven](https://coven.bae.fm)-কে টেবিল ধরে জানানো হয়: সিঙ্ক হওয়া টেবিল conflict clock বহন করে এবং প্রতিটি ডিভাইসে যায়; না-জানানো টেবিল কখনও ডিভাইস ছাড়ে না। এই ভাগটাই ডেটা মডেলের মূল সিদ্ধান্ত, তাই পৃষ্ঠাটি সেটিকে কেন্দ্র করে সাজানো।
+bae-এর তালিকা সাধারণ SQLite, [coven](https://coven.bae.fm)-কে টেবিল ধরে জানানো হয়: সিঙ্ক হওয়া টেবিল এমন প্রতিটি ডিভাইসে যায় যা সেগুলো পড়তে পারে; না-জানানো টেবিল কখনও ডিভাইস ছাড়ে না। এই ভাগটাই ডেটা মডেলের মূল সিদ্ধান্ত, তাই পৃষ্ঠাটি সেটিকে কেন্দ্র করে সাজানো।
 
 ## তালিকার graph
 
@@ -16,26 +16,29 @@ bae-এর তালিকা সাধারণ SQLite, [coven](https://coven.b
 - **`track_works`**, **`work_parts`**, **`work_artists`**: recording যে work perform করে তার সঙ্গে linked।
 - **`audio_formats`** ও **`audio_format_segments`**: প্লেব্যাক-বিবরণ। প্রতি ট্র্যাক: codec, sample rate, bit depth, channel, measured loudness ও peak, এবং pregap length। Segment একটি ট্র্যাককে তার উৎস ফাইলের ordered byte ও sample window-তে map করে; এই কারণেই CUE rip-এর track, pregap সহ, এক বড় file বা একাধিক file-এর region জুড়ে থাকতে পারে।
 - **`release_files`**, **`covers`**, **`artist_images`**: blob-বহনকারী টেবিল। সারি হলো তালিকার entry; bytes coven-এর blob layer-এ থাকে (নিচে দেখুন)।
+- **`people`**, **`ratings`**, **`history`**, **`playlists`**, **`playlist_entries`**: প্রত্যেক মানুষের প্রোফাইল এবং তিনি নিজের জন্য যা record করেন। এগুলো owner টেবিল: শুধু লেখকের ডিভাইস এগুলো বদলাতে পারে। `history` ও `playlists`-এর প্রতিটি সারি হয় পরিবারের ভাগ করা store-এ, নয়তো মানুষটির ব্যক্তিগত circle-এ থাকে।
 
-## সিঙ্ক হওয়া, gate-সহ, স্থানীয়
+## সিঙ্ক হওয়া ও স্থানীয়
 
-উপরের সব সিঙ্ক হয়, কিন্তু নিঃশর্ত নয়। `releases` তার `remote` column-এ gated root হিসেবে declared: একটি release row এবং তার পুরো subtree (track, file, credit, format, cover) শুধু `remote` true থাকলে সিঙ্ক হয়, অর্থাৎ রিলিজ মেঘে-পরিচালিত থাকলে। রিলিজ পরিচালিত করলে subtree published হয়; অ-পরিচালিত রিলিজ ইম্পোর্টকারী ডিভাইসেই পুরো থাকে, যদিও তার স্কিমা সিঙ্ক হওয়া। Ancestor table (`artists`, `albums`, `works`) শুধু তখন সিঙ্ক হয় যখন কোনো সিঙ্ক হওয়া রিলিজ এখনও সেগুলো reference করে, তাই কোনো ডিভাইস কখনও নিচে কিছু নেই এমন artist পায় না।
+উপরের প্রতিটি টেবিল নিঃশর্তভাবে সিঙ্ক হয়: একটি স্থানীয় রিলিজের সারি অন্য যেকোনো রিলিজের মতোই প্রতিটি ডিভাইসে পৌঁছায়, তাই প্রতিটি ডিভাইস জানে পরিবারের কী আছে, আর স্থানীয় রিলিজের কোনো ট্র্যাক নির্দেশ করা রেটিং বা প্লেলিস্ট entry এমন সারি নির্দেশ করে যা প্রতিটি ডিভাইস পড়তে পারে। শুধু রিলিজের অডিও, এবং তা যে path-এ আছে, ইম্পোর্টকারী ডিভাইসে থাকে। প্রতিটি টেবিল তার সারি-পরিচয়, পাঠক-পরিসর, owner টেবিল কি না এবং যে ফাইল বহন করে তা সহ জানানো হয়; একটি test জানানোগুলোকে ঠিক এই তালিকায় ধরে রাখে।
 
 সম্পূর্ণ স্থানীয় টেবিল, coven-এ কখনও declared নয়:
 
 - **`playback_state`**: current track, position, queue, volume, shuffle ও repeat। Playback একটি device fact।
-- **`imports`**: ইম্পোর্টের কাজ tracking।
+- **স্ক্যান ও ইম্পোর্ট টেবিল**: নজরে রাখা ফোল্ডার, স্ক্যান, ইম্পোর্ট প্রার্থী ও তাদের খসড়া।
 - **`source_release`** ও তার অধীনের টেবিলগুলো: bae যে প্রতিটি MusicBrainz ও Discogs release fetch করেছে তা থেকে extract করা তথ্য — album ও pressing-এর তথ্য, credits ও works সহ পুরো tracklist, cover-এর বিকল্প, আর অন্য catalog তাকে কী নামে চেনে — স্থানীয় release-এর বদলে প্রদানকারীর release দ্বারা keyed। raw JSON রাখা হয় না; যেকোনো ডিভাইস release আবার fetch করতে পারে।
+- **`local_release_files`**: এই ডিভাইসে একটি স্থানীয় রিলিজের ফাইল path ও পরিবর্তনের সময়।
+- **`local_history`**: এই ডিভাইসের মানুষের প্রোফাইল তৈরির আগের প্লে, প্রোফাইল তৈরি হলে যা তাঁর ব্যক্তিগত circle-এ সরানো হয়।
 
-প্রতিটি সিঙ্ক হওয়া table `_updated_at` hybrid-logical-clock column বহন করে, যেটি coven-এর field-by-field merge concurrent edit order করতে ব্যবহার করে; একটি test নিশ্চিত করে synced set এবং clock-carrying set ঠিক এক।
+দুই ডিভাইসের সম্পাদনা ঘর ধরে মেলানো হয়, যে ঘর দুটিই বদলেছে সেখানে পরের সম্পাদনা জেতে। coven মেলানোর হিসাব নিজের টেবিলে রাখে, তাই bae-এর টেবিলে clock column থাকে না।
 
 ## Blob
 
-অডিও ও ছবি coven-এর blob layer দিয়ে যায়, তিন namespace-এ, প্রতিটির নিজের device cache budget আছে: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB)।
+অডিও ও ছবি coven-এর ফাইল layer দিয়ে যায়, প্রতিটি ধরনের নিজের ডিভাইস ক্যাশে বরাদ্দ সহ: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB), এবং `people`-এর অবতার (64 MiB)।
 
-রিলিজ-ফাইল ব্যবহারকারীর দেওয়া এবং দরকার হলে ক্যাশে আসে: অ-পরিচালিত রিলিজের জন্য blob হলো original path-এ user file-এর external reference; পরিচালিত হলে uploaded object প্রথম read-এ cache-এ fetched হয়। Cover ও artist image host-provided এবং eagerly cached: bae bytes তৈরি করে (cover সর্বোচ্চ 600px চওড়া JPEG thumbnail হিসেবে re-rendered), আর প্রতিটি ডিভাইস pull করলে সেগুলো fetch করে যাতে grid local-এ render হয়।
+রিলিজ-ফাইল ব্যবহারকারীর এবং দরকার হলে ক্যাশে আসে: স্থানীয় রিলিজের ফাইল হলো ব্যবহারকারীর নিজের ফাইল তার মূল path-এ, `local_release_files`-এ record করা; রিলিজ মেঘে সরালে একটি write-এ প্রতিটি ফাইল তার `release_files` সারির সঙ্গে যুক্ত হয়, আর অন্য ডিভাইস প্রথম read-এ সেটি ক্যাশে আনে। কভার, শিল্পীর ছবি ও অবতার bae-এর এবং আগেভাগে ক্যাশে হয়: bae বাইট তৈরি করে (কভার সর্বোচ্চ 600px চওড়া JPEG thumbnail হিসেবে আবার আঁকা হয়), আর প্রতিটি ডিভাইস তাদের সারি পৌঁছানো মাত্র সেগুলো আনে যাতে গ্রিড স্থানীয়ভাবে আঁকা যায়।
 
-Opaque ঘরে blob অর্থহীন content key-র নিচে upload হয়। Browsable ঘরে প্রতিটি blob row readable cloud path record করে (audio-র জন্য `{artist}/{album}/{filename}`, cover-এর জন্য `{album}/{release}/cover.{ext}`), upload-এর সময় একবার computed, তাই পরে rename হলে object নড়ে না।
+প্রতিটি ফাইল এলোমেলো নামের নিচে encrypted হয়ে আপলোড হয়, এমন path-এ যা তার সারির সঙ্গে যুক্ত হওয়ার সময় নির্দিষ্ট হয়, তাই পরে নাম বদলালে object নড়ে না।
 
 ## একটি rip-এর পরিচয়
 

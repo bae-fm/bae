@@ -1,43 +1,55 @@
 ---
 title: Aygıtlar ve üyeler
-description: Telefonunuzu ekleyin, bir aygıtı onaylayın, kitaplığınızı kurtarın
+description: Kendi aygıtlarınızı ekleyin, kişileri davet edin ve aygıtları kaldırın
 ---
 
-bae hesabı yoktur. Bir aygıtın kimliği, kendisi için ürettiği ve işletim sisteminin anahtarlığında tuttuğu bir anahtar çiftidir; kitaplık aygıtları anahtarlarıyla tanır. Bir aygıt eklemek, mevcut bir aygıtın yeni aygıt için kriptografik olarak kefil olması demektir; arada kimse yoktur.
+bae hesabı yoktur. Bir kitaplıktaki her kişinin, tüm aygıtlarının paylaştığı ve işletim sisteminin anahtarlığında tuttuğu kendi anahtarları vardır; kitaplık kişileri bu anahtarlarla tanır. Kimin dahil olduğuna dair her değişiklik imzalanır ve bulut evinde tutulur; arada kimse yoktur.
 
 İki ayrı durum için iki ayrı kapı vardır:
 
-- **Joining**: yeni bir aygıt, kitaplığa zaten sahip olan bir aygıt tarafından onaylanır. Telefonunuzu veya başka birinin aygıtını eklemek için bunu kullanın.
-- **Restoring**: size ait yeni veya yeniden kurulmuş bir aygıt, kurtarma kodu kullanarak kitaplığı doğrudan bulut evinden kurtarır. Onaylayan gerekmez.
+- **Geri yükleme**: size ait yeni veya yeniden kurulmuş bir aygıt geri yükleme kodunuzla katılır. Başka hiçbir aygıt onu onaylamaz: kod anahtarlarınızı içerir, yani aygıtın sizin olduğunu zaten kanıtlar.
+- **Katılma**: başka bir kişi, isteğini onaylayan bir yöneticinin davetiyle katılır.
 
-## Aygıt ekleme
+## Kendi aygıtınızı ekleme
 
-Kitaplığın zaten bulunduğu bir cihazın sahibi Ayarlar, Cihazlar ve **Cihaz ekle** öğesini açar. bae bir eşleştirme kodunu QR olarak gösterir ve yerel ağda dinlemeye başlar.
+Yeni aygıtta **Buluttan geri yükle**'yi seçin ve geri yükleme kodunuzu üç yoldan biriyle verin:
 
-Yeni cihazda **Bir kütüphaneye katılın** seçeneğini seçin ve bu kodu tarayın. İstendiğinde depolama sağlayıcısında oturum açın. Her iki cihaz da yeni cihazın parmak izini gösteriyor; bunları karşılaştırın ve ardından mevcut cihazda onaylayın. Yeni cihaz, mühürlü erişimini aynı yerel bağlantı üzerinden alır, kitaplığı indirir ve senkronizasyona başlar. Hiçbir kod geri dönmez.
+- Diğer aygıtlarınızdan birinin Ayarlar, Kitaplık içinde **Geri yükleme kodunu göster...** altında gösterdiği QR kodu **tarayın**.
+- Apple aygıtlarında iCloud Anahtar Zinciri'nden **seçin**: bae diğer aygıtlarınızın oraya kaydettiği geri yükleme kodlarını listeler.
+- **Yapıştırın** veya yazın.
 
-Eşleştirme kodu ne kitaplık anahtarını ne de kalıcı depolama kimlik bilgilerini içerir ve kesintiye uğrayan veya reddedilen bir eşleştirme hiçbir şey sağlamaz. Ayrıntılar [Kimlik ve üyelik](/tr/reference/membership)'da.
+İstendiğinde depolama sağlayıcısında oturum açın. S3'te aygıtın erişim anahtarınıza da ihtiyacı vardır: QR kod onu kodun yanında taşır, bu yüzden taramak yeterlidir; yazılan kod ise anahtarı ister. Ardından yeni aygıt kitaplığı indirir ve eşzamanlamaya başlar.
+
+Kitaplığı yükleyene kadar aygıt, kitaplığın adı yerine nerede saklandığını gösterir: Dropbox ve OneDrive için hesabın e-postası, S3 için bucket ve endpoint ya da iCloud. Yüklendikten sonra kitaplığın güncel adını gösterir.
+
+## Bir kişiyi davet etme
+
+Bir yönetici Ayarlar, Kitaplık, **Bir kişiyi davet et...**'i açar, bir rol seçer ve kişinin hesap e-postasını girer; S3'te bunun yerine o kişi için oluşturulmuş bir erişim anahtarı. bae kitaplığın klasörünü o hesapla paylaşır ve bir daveti QR kod olarak gösterir.
+
+Kişi kendi aygıtında **Bir kitaplığa katıl**'ı seçer, daveti tarar veya yapıştırır, adını yazar ve kendi hesabında oturum açar. İstek yöneticinin aygıtında **Katılmayı bekleyenler** altında görünür ve yönetici onaylar ya da reddeder. Onaylandığında yeni aygıt kitaplığı indirir ve her aygıt yeni kişiyi adıyla gösterir. Davet bir gün içinde sona erer ve isteğini yalnızca daveti oluşturan aygıt onaylayabilir. Ayrıntılar [Kimlik ve üyelik](/tr/reference/membership)'te.
 
 ## Üyeler ve roller
 
-Settings, Devices her üyeyi listeler: parmak izi, rol ve hangisinin bu aygıt olduğu. Kurucu aygıt bir **owner**'dır; onun onayladığı aygıtlar **members** olarak katılır. İkisi de kitaplığı okur ve yazar; yalnızca owners aygıt onaylar ve kaldırır.
+Ayarlar, Kitaplık her kişiyi ve aygıtlarını, hangisinin bu aygıt olduğunu listeler. Kitaplığı buluta bağlayan kişi onun ilk **yöneticisi**dir; yönetici diğerlerini **yönetici** veya **üye** olarak davet eder ve bir kişinin rolünü değiştirebilir. Herkes kitaplığı okur ve düzenler. Yalnızca yöneticiler kişileri davet eder, kaldırır ve kitaplığı yeniden adlandırır.
 
 ## Aygıt kaldırma
 
-Owners herhangi bir member'ı kaldırabilir. Kaldırma yalnızca kapıyı kapatmaz: kitaplığın şifreleme anahtarı döndürülür ve kaldırılan aygıt yeni anahtarı asla almaz. Daha önce kopyaladığını elinde tutar; veriyi geri göndermek mümkün değildir, ancak kitaplığın o noktadan sonra yazdığı her şey onun için okunamaz olur.
+Herkes kendi aygıtlarını kaldırabilir ve bir yönetici herkesinkini kaldırabilir; böylece bütün aygıtlarını kaybeden biri çaresiz kalmaz. Bundan sonra kaldırılan aygıtın gönderdiği hiçbir şey sayılmaz. bae sağlayıcıda yapılması gerekeni de gösterir, örneğin o aygıtın hesabınızdaki oturumunu kapatmak: Dropbox, OneDrive ve iCloud bir hesabın tek bir aygıtını kendi başlarına kesemez.
 
-## Kurtarma kodları
+Bir kişiyi kaldırmak, ki bunu yalnızca yönetici yapabilir, onun aygıtlarını ve özel tuttuklarını da kaldırır. Hanehalkıyla paylaştığı puanlar, geçmiş ve çalma listeleri ona atfedilmiş olarak kalır. Kitaplığın anahtarları değiştirilir, bu yüzden sonradan yazılan hiçbir şey onun için okunabilir değildir. Daha önce kopyaladığını elinde tutar: veriyi geri göndermek mümkün değildir.
 
-Kurtarma kodu, kendi kitaplığınız için taşıyıcı sırdır: bulut evi koordinatları ve şifreleme anahtarı tek bir dizgededir. Settings içindeki **Show recovery code** bunu gösterir; parola yöneticisi gibi güvenli bir yerde saklayın. Yeni bir aygıtta, kodla **Restore from cloud** kitaplığı yeniden kurar; onaylayan gerekmez.
+## Geri yükleme kodları
 
-Apple platformlarında kod otomatik olarak iCloud Keychain içinde de tutulur, bu yüzden Apple ID'nizle giriş yapmış yeni bir Mac veya iPhone tek dokunuşla geri yükleyebilir.
+Geri yükleme kodu, bir kitaplık için anahtarlarınızı ve kitaplığın nerede saklandığını tek bir dizgede tutar. Depolama parolası, oturum veya kitaplık adı içermez. Ayarlar, Kitaplık içindeki **Geri yükleme kodunu göster...** onu gösterir; parola yöneticisi gibi güvenli bir yerde saklayın.
 
-Kodu elinde tutan kişi kitaplığı elinde tutar; ona anahtar gibi davranın.
+Apple platformlarında kod otomatik olarak iCloud Anahtar Zinciri'nde de tutulur, böylece Apple Hesabınızla oturum açmış yeni bir Mac veya iPhone onu bir listeden seçebilir.
+
+Kodu ve depolamanıza erişimi olan herkes kitaplığı sizin yerinize açabilir; bu yüzden gizli tutun.
 
 ## Kilitleme
 
-**Lock Library**, şifreleme anahtarını aygıtın anahtarlığından kaldırır. Kitaplık diskte kalır, ancak biri anahtarı yeniden girene kadar okunamaz; bae kabul etmeden önce bunu kayıtlı bir parmak izine göre denetler. Evden çıkan bir dizüstü bilgisayar için kullanın.
+Kitaplığın şifreleme anahtarı işletim sisteminin anahtarlığında yaşar. Anahtarlık kilitliyken, örneğin oturumunuz kilitliyken, bae kitaplığı kilitli gösterir ve anahtarlık açılır açılmaz onu açar; **Tekrar dene** elle yeniden dener.
 
 ## Telefonda
 
-iOS ve Android tam olarak bu yolla katılır ve geri yükler; başlangıç akışları budur. Bir telefon ayrıca kitaplık kopyasını kaldırabilir (Settings, remove from this device); bu yerel dosyaları siler ve bulutta hiçbir şeye dokunmaz.
+iOS ve Android tam olarak bu yolla katılır ve geri yükler; başlangıç akışları budur. Bir telefon kitaplığı kendinden de kaldırabilir: önce kendini kitaplığın üyelerinden çıkarır, bunun için depolamanıza bağlantı gerekir, sonra yerel kopyasını siler. Buluttaki kitaplık kalır.

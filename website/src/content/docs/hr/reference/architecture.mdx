@@ -16,22 +16,21 @@ Uz aplikacije: `bae-mcp` (MCP poslužitelj) i `bae-automation`.
 
 ## Jedna biblioteka na disku
 
-Biblioteka živi na `~/.bae/libraries/<library-id>/` (podatkovni direktorij platforme na mobilnim uređajima):
+Biblioteka živi u dva direktorija (podatkovni direktoriji platforme na mobilnim uređajima): covenovo spremište i, uz njega, vlastite postavke bae.
 
 ```
-~/.bae/libraries/<id>/
-  library.db        # SQLite: katalog, zasluge, specifikacije reprodukcije
-  config.yaml       # coven: identitet knjižnice, oblačni dom; nikad se ne sinkronizira
-  preferences.toml  # postavke za bae; nikad se ne sinkroniziraju
-  storage/
-    local/          # binarni objekti koje ovaj uređaj posjeduje (omoti, slike izvođača)
-    cache/          # izbacive kopije binarnih objekata iz oblaka
-    pinned/         # kopije prikvačene za izvanmrežno, nikad izbačene
+~/.bae/stores/<id>/       # covenovo spremište, otvara se samo kroz coven
+  store.db                # SQLite: katalog, zasluge, specifikacije reprodukcije, covenovo knjigovodstvo
+  files/                  # covenove kopije vlastitih datoteka bae (omoti, slike izvođača, avatari)
+  cache/                  # predmemorirane i prikvačene kopije prenesenih datoteka
+~/.bae/libraries/<id>/    # vlastiti direktorij bae; nikad se ne sinkronizira
+  preferences.toml        # postavke za bae
+  cache/                  # grafika dohvaćena iz kataloga
 ```
 
-Baza podataka otvara se samo kroz coven, koji svoje knjigovodstvene tablice (pokazivači sinkronizacije, odlazni sandučić, stanje binarnih objekata) polaže uz shemu bae i pokreće migracije bae. Zvučne datoteke uvezene kao neupravljane uopće nisu pod `~/.bae`: baza podataka poziva se na njih na putovima gdje su uvezene.
+Baza podataka otvara se samo kroz coven, koji svoje knjigovodstvene tablice (zapisi spajanja, red prijenosa, stanje datoteka) drži uz shemu bae i pokreće migraciju bae. Zvučne datoteke lokalnog izdanja uopće nisu pod `~/.bae`: baza podataka poziva se na njih na putovima gdje su uvezene.
 
-Tajne nikad ne žive u tim datotekama. Identitetski ključevi, ključ šifriranja biblioteke, vjerodajnice oblaka i API tokeni žive u privjesku ključeva OS-a (Keychain na Apple platformama, sinkroniziran preko iCloud Keychaina; ekvivalenti platforme drugdje).
+Tajne nikad ne žive u tim datotekama. Ključevi članova, ključevi biblioteke, prijave u oblak i API tokeni žive u privjesku ključeva OS-a (Keychain na Apple platformama, ekvivalenti platforme drugdje); na Apple platformama kod za vraćanje sprema se i u iCloud privjesak ključeva.
 
 ## Izdanja
 

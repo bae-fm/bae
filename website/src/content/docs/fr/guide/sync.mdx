@@ -9,35 +9,35 @@ Une bibliothèque, chaque appareil, et le seul compte impliqué est un compte qu
 
 ## L’emplacement cloud
 
-L’emplacement cloud d’une bibliothèque est un emplacement unique dans votre stockage : un dossier dans votre Dropbox ou OneDrive, votre iCloud, ou tout bucket compatible S3 (AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, ...). Il contient tout ce que la bibliothèque synchronise : les changements du catalogue, les illustrations et l’audio des sorties que vous laissez bae gérer.
+L’emplacement cloud d’une bibliothèque est un emplacement unique dans votre stockage : un dossier dans votre Dropbox ou OneDrive, votre iCloud, ou tout bucket compatible S3 (AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, ...). Il contient tout ce que la bibliothèque synchronise : les changements de la bibliothèque, les illustrations et l’audio des sorties que vous déplacez vers le cloud.
 
-Configurez-le dans Réglages, sous Synchronisation :
+Configurez-le dans Réglages, Bibliothèque, avec **Configurer la synchronisation…** :
 
-1. Choisissez un fournisseur. Les clouds grand public se connectent avec la propre page de connexion du fournisseur ; rien concernant votre compte n’est stocké au-delà des jetons qu’il émet. iCloud utilise votre Apple ID tel quel. S3 demande bucket, région, endpoint et clés, vérifiés avant leur enregistrement.
-2. Choisissez comment l’emplacement stocke les objets (voir ci-dessous).
-3. bae commence la synchronisation.
+1. Choisissez un fournisseur.
+   - **Dropbox** et **OneDrive** se connectent dans votre navigateur, puis demandent dans quel dossier vit la bibliothèque. Sur Dropbox, c’est un dossier partagé, pour que vous puissiez y inviter votre foyer ; si vous n’en avez pas encore, partagez-en un dans Dropbox et choisissez **Chercher à nouveau**. Sur OneDrive, c’est n’importe quel dossier, et vous pouvez en créer un nouveau. La connexion est conservée par coven ; bae ne voit jamais ses jetons.
+   - **iCloud** utilise l’Apple Account auquel l’appareil est connecté.
+   - **S3** demande le bucket, la région, l’endpoint et la clé d’accès, rien d’autre. **Avancé** contient un préfixe de clé facultatif et le profil du service, automatique par défaut ; pour un service que bae ne reconnaît pas, **Détecter les réglages** teste le bucket avec votre clé et affiche ce qu’il a trouvé. Si la configuration est refusée, bae dit pourquoi.
+2. bae commence la synchronisation.
 
 Une bibliothèque sans emplacement cloud est complète par elle-même. Le local seul est un mode, pas une limitation, et déconnecter l’emplacement cloud y revient.
 
-## Opaque ou navigable
+## Toujours chiffré
 
-Lors de la configuration, vous choisissez ce que le fournisseur peut voir, et le choix est permanent pour cet emplacement :
-
-- **Opaque** (par défaut) : chaque objet est chiffré sur votre appareil avant l’envoi et stocké sous des noms sans signification. Le fournisseur, ou toute personne qui entre dans le bucket, voit du texte chiffré. C’est le mode décrit par la page [chiffrement](/fr/reference/encryption), et le seul qui prend en charge l’ajout d’autres appareils et membres.
-- **Navigable** : les objets sont stockés en clair avec de vrais noms de fichiers, dans des dossiers nommés par artiste et album. Vous pouvez ouvrir le bucket avec n’importe quel outil et copier ou lire vos fichiers directement. Rien n’est chiffré, donc le contrôle d’accès du bucket est la seule protection, et l’emplacement ne peut pas être partagé.
+Chaque emplacement cloud contient la même chose : des objets chiffrés sous des noms aléatoires. Chaque changement, image et fichier audio est chiffré sur votre appareil avant l’envoi. Vos albums ne sont pas un dossier que n’importe qui peut parcourir dans votre Dropbox, et le fournisseur ne voit aucun nom d’album, d’artiste ou de fichier. Consultez [Chiffrement](/fr/reference/encryption).
 
 ## Ce qui se synchronise
 
-- Le catalogue : albums, sorties, pistes, crédits, œuvres, identités, modifications. Chaque appareil reçoit tout.
-- Illustrations : pochettes et images d’artistes, récupérées d’avance pour que les grilles s’affichent partout.
-- Audio : uniquement pour les sorties que vous avez choisi de gérer dans le cloud. Les sorties non gérées restent purement locales, avec leurs entrées de catalogue incluses sur les autres appareils mais les octets seulement là où vous les avez importées.
+- La bibliothèque : albums, sorties, pistes, crédits, œuvres et artistes. Chaque appareil reçoit tout, y compris les sorties dont l’audio reste sur l’appareil qui les a importées.
+- Les personnes : le nom et l’avatar de chaque personne, ses notes, son historique d’écoute et ses listes de lecture. Votre historique et chacune de vos listes peuvent rester privés ou être partagés avec le foyer.
+- Illustrations : pochettes, images d’artistes et avatars, récupérés d’avance pour que les grilles s’affichent partout.
+- Audio : uniquement pour les sorties que vous avez déplacées vers le cloud. Une sortie locale apparaît sur chaque appareil, mais ne se lit que sur l’appareil qui l’a importée, jusqu’à ce que vous la déplaciez vers le cloud. Consultez [Stockage et hors ligne](/fr/guide/storage).
 
 L’état propre à l’appareil ne se synchronise pas : position de lecture, volume, file d’attente et réglages de l’appareil restent sur l’appareil.
 
 ## Quand la synchronisation se lance
 
-La synchronisation s’exécute d’elle-même : après des changements, selon un minuteur et à la demande avec **Sync Now**. Les modifications arrivent sur les autres appareils sous forme de petits changements, quelques secondes plus tard dans des conditions normales. Deux appareils qui modifient en même temps gagnent tous les deux là où ils ne se heurtent pas : bae fusionne les modifications concurrentes champ par champ, et une sortie supprimée reste supprimée même si elle a été modifiée ailleurs au même moment. Rien ne vous demande jamais de résoudre un conflit.
+La synchronisation s’exécute d’elle-même : après des changements, selon un minuteur et à la demande avec **Synchroniser maintenant**. Les modifications arrivent sur les autres appareils quelques secondes plus tard dans des conditions normales. Deux appareils qui modifient en même temps gagnent tous les deux là où ils ne se heurtent pas : bae fusionne les modifications concurrentes champ par champ, la modification la plus tardive l’emporte sur un champ que les deux ont changé, et une sortie supprimée reste supprimée même si elle a été modifiée ailleurs au même moment. Rien ne vous demande jamais de résoudre un conflit.
 
 ## En cas d’échec
 
-Les échecs de synchronisation n’interrompent pas la bibliothèque ; vous continuez à parcourir, lire et importer localement pendant que bae réessaie avec attente progressive. La ligne d’état affiche la synchronisation et l’heure de dernière synchronisation ; un échec affiche une bannière avec l’erreur, et les envois peuvent être mis en pause, réessayés et inspectés dans le [Storage Manager](/fr/guide/storage#the-storage-manager). Si la connexion de l’emplacement cloud expire, bae vous demande de vous reconnecter.
+Les échecs de synchronisation n’interrompent pas la bibliothèque ; vous continuez à parcourir, lire et importer localement pendant que bae réessaie. Réglages, Bibliothèque affiche une seule ligne pour la synchronisation : **Synchronisé**, ou le nombre d’éléments en attente, comme **Éléments en attente : 3**. Ouvrez-la pour voir chaque élément en termes simples, avec l’action possible : **Se connecter** quand le fournisseur veut que vous vous reconnectiez, remettre en place un fichier déplacé avant son envoi, **Réessayer**, **Reconnecter**, **Reprendre les envois** ou **Mettre à jour l’application**. Une attente à laquelle vous ne pouvez rien, comme celle d’un autre appareil qui doit revenir en ligne, ne propose rien. Cette liste est le seul endroit à consulter ; les envois peuvent aussi être mis en pause et inspectés dans le [Storage Manager](/fr/guide/storage#le-storage-manager).

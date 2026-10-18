@@ -3,7 +3,7 @@ title: 데이터 모델
 description: schema, 동기화되는 것, 기기에 남는 것
 ---
 
-bae의 카탈로그는 일반 SQLite이며, [coven](https://coven.bae.fm)에 table별로 선언됩니다. 동기화되는 table은 conflict clock을 가지고 모든 기기로 이동합니다. 선언되지 않은 table은 기기를 떠나지 않습니다. 이 분리는 데이터 모델에서 가장 load-bearing한 결정이므로, 이 페이지는 그 기준으로 구성되어 있습니다.
+bae의 카탈로그는 일반 SQLite이며, [coven](https://coven.bae.fm)에 table별로 선언됩니다. 동기화되는 table은 그것을 읽을 수 있는 모든 기기로 이동합니다. 선언되지 않은 table은 기기를 떠나지 않습니다. 이 분리는 데이터 모델에서 가장 load-bearing한 결정이므로, 이 페이지는 그 기준으로 구성되어 있습니다.
 
 ## 카탈로그 그래프
 
@@ -16,26 +16,29 @@ schema에서 동기화되는 중심부는 다음과 같습니다.
 - **`track_works`**, **`work_parts`**, **`work_artists`**: 녹음을 그들이 연주하는 작품에 연결합니다.
 - **`audio_formats`**와 **`audio_format_segments`**: 재생 spec입니다. 트랙별 codec, sample rate, bit depth, channels, 측정 loudness와 peak, pregap length가 있습니다. Segment는 트랙을 소스 파일의 정렬된 byte 및 sample window에 매핑합니다. 그래서 CUE 리핑의 트랙이 pregap을 포함해 하나의 큰 파일 여러 영역이나 여러 파일에 걸칠 수 있습니다.
 - **`release_files`**, **`covers`**, **`artist_images`**: blob을 가진 table입니다. row는 카탈로그 항목이고, 바이트는 coven의 blob 계층에 있습니다(아래 참고).
+- **`people`**, **`ratings`**, **`history`**, **`playlists`**, **`playlist_entries`**: 각 사람의 프로필과 그 사람이 자신을 위해 기록하는 것입니다. 이들은 소유자 table이며, 작성자의 기기만 바꿀 수 있습니다. `history`와 `playlists`의 각 row는 가족의 공유 스토어나 그 사람의 비공개 서클 중 한 곳에 있습니다.
 
-## 동기화, 조건, 로컬
+## 동기화와 로컬
 
-위 항목은 모두 동기화되지만 무조건은 아닙니다. `releases`는 `remote` column을 기준으로 gated root로 선언됩니다. release row와 그 전체 subtree(tracks, files, credits, formats, cover)는 `remote`가 true일 때, 즉 릴리스가 cloud-managed일 때만 동기화됩니다. 릴리스를 managed로 바꾸면 subtree가 게시됩니다. 관리되지 않는 릴리스는 schema가 동기화 대상이어도 가져온 기기에만 온전히 남습니다. ancestor table(`artists`, `albums`, `works`)은 어떤 synced release가 아직 참조하는 동안만 동기화되므로, 기기는 아래에 아무것도 없는 artist를 받지 않습니다.
+위의 모든 table은 무조건 동기화됩니다. 로컬 릴리스의 row도 다른 릴리스처럼 모든 기기에 닿으므로 모든 기기가 가족이 가진 것을 알 수 있고, 로컬 릴리스의 트랙을 가리키는 평점이나 재생 목록 항목은 모든 기기가 읽을 수 있는 row를 가리킵니다. 가져온 기기에 남는 것은 릴리스의 오디오와 그 경로뿐입니다. 각 table은 row 식별 방식, 대상 범위, 소유자 table 여부, 담는 파일과 함께 선언되며, 테스트가 선언을 정확히 이 목록에 맞춥니다.
 
 완전히 local인 table은 coven에 선언되지 않습니다.
 
 - **`playback_state`**: 현재 트랙, 위치, 대기열, 볼륨, 셔플과 반복입니다. 재생은 기기의 사실입니다.
-- **`imports`**: 가져오기 작업 추적입니다.
+- **스캔과 가져오기 table**: 감시 폴더, 스캔, 가져오기 후보와 그 초안입니다.
 - **`source_release`** 및 그 아래 테이블: bae가 가져온 각 MusicBrainz 및 Discogs 릴리스에서 추출한 것 — 앨범과 프레싱 정보, 크레디트와 작품을 포함한 전체 트랙리스트, 커버 후보, 다른 카탈로그에서 부르는 이름 — 으로, 로컬 릴리스가 아닌 공급자 릴리스에 의해 키가 지정됩니다. raw JSON은 보관하지 않으며, 어느 기기든 릴리스를 다시 가져올 수 있습니다.
+- **`local_release_files`**: 이 기기에 있는 로컬 릴리스의 파일 경로와 수정 시각입니다.
+- **`local_history`**: 이 기기의 사람이 프로필을 갖기 전의 재생 기록으로, 프로필이 만들어지면 그 사람의 비공개 서클로 옮겨집니다.
 
-모든 synced table은 `_updated_at` hybrid-logical-clock column을 가집니다. coven이 동시 편집을 필드별로 병합할 때 이 register로 순서를 정합니다. 테스트는 synced set과 clock-carrying set이 정확히 같은지 확인합니다.
+두 기기의 편집은 셀 단위로 병합되며, 둘 다 바꾼 셀은 나중 편집이 이깁니다. coven은 병합 기록을 자체 table에 두므로 bae의 table에는 clock column이 없습니다.
 
 ## Blob
 
-오디오와 이미지는 coven의 blob 계층을 통하며, 세 namespace는 각자 기기 캐시 예산을 가집니다. `release_files`(20 GiB), `covers`(512 MiB), `artist_images`(256 MiB)입니다.
+오디오와 이미지는 coven의 파일 계층을 통하며, 종류마다 기기 캐시 예산이 따로 있습니다. `release_files`(20 GiB), `covers`(512 MiB), `artist_images`(256 MiB), 그리고 `people`의 아바타(64 MiB)입니다.
 
-릴리스 파일은 사용자가 제공하고 요청 시 캐시됩니다. 관리되지 않는 릴리스에서 blob은 사용자 파일의 원래 경로를 가리키는 외부 참조입니다. 관리되는 릴리스에서는 첫 읽기 때 캐시에 가져오는 업로드 객체입니다. 커버와 아티스트 이미지는 호스트가 제공하며 미리 캐시됩니다. bae가 바이트를 만들고(커버는 최대 너비 600px의 JPEG 썸네일로 다시 렌더링), 가져올 때 모든 기기가 가져와 그리드를 로컬에서 렌더링합니다.
+릴리스 파일은 사용자의 것이며 요청 시 캐시됩니다. 로컬 릴리스의 파일은 원래 경로에 있는 사용자 파일로, `local_release_files`에 기록됩니다. 릴리스를 클라우드로 옮기면 한 번의 write로 각 파일이 해당 `release_files` row에 첨부되고, 다른 기기는 첫 읽기 때 캐시로 가져옵니다. 커버, 아티스트 이미지, 아바타는 bae의 것이며 미리 캐시됩니다. bae가 바이트를 만들고(커버는 최대 너비 600px의 JPEG 썸네일로 다시 렌더링), 모든 기기가 row가 도착하는 즉시 가져와 그리드를 로컬에서 렌더링합니다.
 
-불투명 홈에서는 blob이 의미 없는 content key 아래 업로드됩니다. 탐색 가능한 홈에서는 각 blob 행가 읽을 수 있는 클라우드 경로를 기록합니다. 오디오는 `{artist}/{album}/{filename}`, 커버는 `{album}/{release}/cover.{ext}`입니다. 업로드 때 한 번 계산하므로 나중에 이름을 바꿔도 객체는 이동하지 않습니다.
+모든 파일은 row에 첨부될 때 고정되는 경로에 무작위 이름으로 암호화되어 업로드되므로, 나중에 이름을 바꿔도 객체는 이동하지 않습니다.
 
 ## 리핑본의 신원
 

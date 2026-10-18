@@ -16,22 +16,21 @@ bae 是一个 Rust 核心外加四个原生应用。定义产品的一切，即�
 
 ## 磁盘上的一个资料库
 
-资料库位于 `~/.bae/libraries/<library-id>/`（移动端上是平台数据目录）：
+资料库位于两个目录中（移动端上是平台数据目录）：coven 的存储库，以及旁边 bae 自己的设置。
 
 ```
-~/.bae/libraries/<id>/
-  library.db        # SQLite: catalog, credits, playback specs
-  config.yaml       # coven：资料库身份、云端主目录；从不同步
-  preferences.toml  # bae 的设置；从不同步
-  storage/
-    local/          # blobs this device owns (covers, artist images)
-    cache/          # evictable copies of cloud blobs
-    pinned/         # pinned-for-offline copies, never evicted
+~/.bae/stores/<id>/       # coven 的存储库，只通过 coven 打开
+  store.db                # SQLite：目录、署名、播放规格、coven 的记账
+  files/                  # coven 保存的 bae 自有文件副本（封面、艺人图像、头像）
+  cache/                  # 已上传文件的缓存副本和固定副本
+~/.bae/libraries/<id>/    # bae 自己的目录；从不同步
+  preferences.toml        # bae 的设置
+  cache/                  # 从目录服务获取的图像
 ```
 
-数据库只通过 coven 打开，coven 会在 bae 的 schema 旁边叠加自己的记账表（sync cursors、outbox、blob state），并运行 bae 的 migrations。以非托管方式导入的音频文件完全不在 `~/.bae` 下：数据库在导入路径处引用它们。
+数据库只通过 coven 打开，coven 会在 bae 的 schema 旁边保留自己的记账表（合并记录、上传队列、文件状态），并运行 bae 的迁移。本地发行的音频文件完全不在 `~/.bae` 下：数据库在导入路径处引用它们。
 
-秘密永远不在这些文件中。身份密钥、资料库加密密钥、云端凭据和 API token 位于 OS keyring 中（Apple 平台上是 Keychain，并通过 iCloud Keychain 同步；其他平台使用对应机制）。
+秘密永远不在这些文件中。成员密钥、资料库的密钥、云端登录信息和 API token 位于 OS keyring 中（Apple 平台上是 Keychain，其他平台使用对应机制）；在 Apple 平台上，恢复码还会保存在 iCloud 钥匙串中。
 
 ## 版本
 

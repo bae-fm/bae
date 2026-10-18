@@ -16,22 +16,21 @@ Apps સાથે: `bae-mcp` (MCP server) અને `bae-automation`.
 
 ## Disk પર એક library
 
-Library `~/.bae/libraries/<library-id>/` પર રહે છે (mobile પર platform data directory):
+લાઇબ્રેરી બે directories માં રહે છે (mobile પર platform data directories): coven નો store, અને તેની બાજુમાં bae ની પોતાની settings.
 
 ```
-~/.bae/libraries/<id>/
-  library.db        # SQLite: catalog, credits, playback specs
-  config.yaml       # coven: લાઇબ્રેરીની ઓળખ, ક્લાઉડ હોમ; ક્યારેય સિંક થતું નથી
-  preferences.toml  # bae ની સેટિંગ્સ; ક્યારેય સિંક થતી નથી
-  storage/
-    local/          # blobs this device owns (covers, artist images)
-    cache/          # evictable copies of cloud blobs
-    pinned/         # pinned-for-offline copies, never evicted
+~/.bae/stores/<id>/       # coven નો store, ફક્ત coven મારફતે ખોલાય છે
+  store.db                # SQLite: catalog, credits, playback specs, coven નો હિસાબ
+  files/                  # bae ની પોતાની files ની coven નકલો (covers, કલાકારની છબીઓ, avatars)
+  cache/                  # upload થયેલી files ની cache અને pinned નકલો
+~/.bae/libraries/<id>/    # bae નું પોતાનું; ક્યારેય sync થતું નથી
+  preferences.toml        # bae ની settings
+  cache/                  # catalogs માંથી લાવેલું artwork
 ```
 
-Database ફક્ત coven મારફતે open થાય છે, જે પોતાની bookkeeping tables (sync cursors, outbox, blob state) ને bae ના schema ની બાજુમાં layers કરે છે અને bae ના migrations ચલાવે છે. Unmanaged import થયેલી audio files `~/.bae` નીચે ક્યારેય નથી: database તેમને import થયેલા paths પર reference કરે છે.
+Database ફક્ત coven મારફતે ખૂલે છે, જે bae ના schema ની બાજુમાં પોતાનાં હિસાબી tables (ભેગા કરવાના records, upload કતાર, file સ્થિતિ) રાખે છે અને bae નું migration ચલાવે છે. સ્થાનિક release ની audio files `~/.bae` નીચે બિલકુલ નથી: database તેમને જ્યાંથી import થઈ હતી તે paths પર જ દર્શાવે છે.
 
-Secrets ક્યારેય આ files માં રહેતા નથી. Identity keys, library encryption key, cloud credentials, અને API tokens OS keyring માં રહે છે (Apple platforms પર Keychain, iCloud Keychain મારફતે synced; બીજે platform equivalents).
+ગુપ્ત બાબતો આ files માં ક્યારેય રહેતી નથી. સભ્ય કી, લાઇબ્રેરીની કી, cloud સાઇન-ઇન અને API tokens OS keyring માં રહે છે (Apple પ્લેટફોર્મ પર Keychain, બીજે પ્લેટફોર્મ સમકક્ષ); Apple પ્લેટફોર્મ પર restore code iCloud Keychain માં પણ સચવાય છે.
 
 ## Editions
 

@@ -16,22 +16,21 @@ bae ਚਾਰ ਸਥਾਨਕ apps ਪਹਿਨਿਆ ਇੱਕ Rust core ਹੈ
 
 ## ਡਿਸਕ ਉੱਤੇ ਇੱਕ ਸੰਗ੍ਰਹਿ
 
-ਸੰਗ੍ਰਹਿ `~/.bae/libraries/<library-id>/` ਉੱਤੇ ਰਹਿੰਦਾ ਹੈ (ਮੋਬਾਈਲ ਉੱਤੇ platform data directory):
+ਸੰਗ੍ਰਹਿ ਦੋ ਡਾਇਰੈਕਟਰੀਆਂ ਵਿੱਚ ਰਹਿੰਦਾ ਹੈ (ਮੋਬਾਈਲ ਉੱਤੇ platform data directories): coven ਦਾ store, ਅਤੇ ਉਸਦੇ ਨਾਲ bae ਦੀਆਂ ਆਪਣੀਆਂ ਸੈਟਿੰਗਾਂ।
 
 ```
-~/.bae/libraries/<id>/
-  library.db        # SQLite: catalog, credits, playback specs
-  config.yaml       # coven: ਲਾਇਬ੍ਰੇਰੀ ਦੀ ਪਛਾਣ, ਕਲਾਊਡ ਹੋਮ; ਕਦੇ ਸਿੰਕ ਨਹੀਂ ਹੁੰਦਾ
-  preferences.toml  # bae ਦੀਆਂ ਸੈਟਿੰਗਾਂ; ਕਦੇ ਸਿੰਕ ਨਹੀਂ ਹੁੰਦੀਆਂ
-  storage/
-    local/          # blobs this device owns (covers, artist images)
-    cache/          # evictable copies of cloud blobs
-    pinned/         # pinned-for-offline copies, never evicted
+~/.bae/stores/<id>/       # coven ਦਾ store, ਸਿਰਫ਼ coven ਰਾਹੀਂ ਖੁੱਲ੍ਹਦਾ ਹੈ
+  store.db                # SQLite: catalog, credits, playback specs, coven ਦਾ ਹਿਸਾਬ
+  files/                  # bae ਦੀਆਂ ਆਪਣੀਆਂ ਫਾਈਲਾਂ ਦੀਆਂ coven ਨਕਲਾਂ (ਕਵਰ, ਕਲਾਕਾਰ ਤਸਵੀਰਾਂ, avatars)
+  cache/                  # ਚੜ੍ਹਾਈਆਂ ਫਾਈਲਾਂ ਦੀਆਂ ਅਸਥਾਈ ਅਤੇ pinned ਨਕਲਾਂ
+~/.bae/libraries/<id>/    # bae ਦਾ ਆਪਣਾ; ਕਦੇ ਸਮਕਾਲੀ ਨਹੀਂ ਹੁੰਦਾ
+  preferences.toml        # bae ਸੈਟਿੰਗਾਂ
+  cache/                  # ਸੂਚੀਆਂ ਤੋਂ ਲਿਆਂਦੀ ਕਲਾਕ੍ਰਿਤੀ
 ```
 
-ਡਾਟਾਬੇਸ ਸਿਰਫ਼ coven ਰਾਹੀਂ ਖੁਲ੍ਹਦਾ ਹੈ, ਜੋ ਆਪਣੇ ਹਿਸਾਬੀ ਟੇਬਲਾਂ (ਸਮਕਾਲੀਕਰਨ ਸੂਚਕ, ਬਾਹਰ-ਡੱਬਾ, ਬਲੌਬ ਹਾਲਤ) ਨੂੰ bae ਦੇ ਸਕੀਮਾ ਨਾਲ ਲਗਾ ਕੇ ਪਰਤ ਬਣਾਉਂਦਾ ਹੈ ਅਤੇ bae ਦੇ migrations ਚਲਾਉਂਦਾ ਹੈ। ਨਾ-ਸੰਭਾਲੀਆਂ ਆਯਾਤ ਕੀਤੀਆਂ ਸ਼ਬਦ ਫਾਈਲਾਂ `~/.bae` ਹੇਠਾਂ ਕਦੇ ਨਹੀਂ ਹੁੰਦੀਆਂ: ਡਾਟਾਬੇਸ ਉਨ੍ਹਾਂ ਮਾਰਗ ਨੂੰ reference ਕਰਦਾ ਹੈ ਜਿੱਥੇ ਉਹ ਆਯਾਤ ਕੀਤੀਆਂ ਗਈਆਂ।
+ਡਾਟਾਬੇਸ ਸਿਰਫ਼ coven ਰਾਹੀਂ ਖੁੱਲ੍ਹਦਾ ਹੈ, ਜੋ bae ਦੇ schema ਦੇ ਨਾਲ ਆਪਣੀਆਂ ਹਿਸਾਬ ਸਾਰਣੀਆਂ (ਮਿਲਾਉਣ ਦੇ ਰਿਕਾਰਡ, ਚੜ੍ਹਾਉਣ ਦੀ ਕਤਾਰ, ਫਾਈਲ ਹਾਲਤ) ਰੱਖਦਾ ਹੈ ਅਤੇ bae ਦਾ migration ਚਲਾਉਂਦਾ ਹੈ। ਸਥਾਨਕ ਰਿਲੀਜ਼ ਦੀਆਂ ਸ਼ਬਦ ਫਾਈਲਾਂ `~/.bae` ਹੇਠ ਬਿਲਕੁਲ ਨਹੀਂ ਹਨ: ਡਾਟਾਬੇਸ ਉਨ੍ਹਾਂ ਨੂੰ ਉਨ੍ਹਾਂ ਮਾਰਗਾਂ ਉੱਤੇ ਹੀ ਦਰਸਾਉਂਦਾ ਹੈ ਜਿੱਥੋਂ ਉਹ ਆਯਾਤ ਹੋਈਆਂ।
 
-ਰਾਜ਼ ਕਦੇ ਇਨ੍ਹਾਂ ਫਾਈਲਾਂ ਵਿੱਚ ਨਹੀਂ ਰਹਿੰਦੇ। ਪਛਾਣ ਕੁੰਜੀਆਂ, ਸੰਗ੍ਰਹਿ encryption ਕੁੰਜੀ, ਕਲਾਉਡ ਯੋਗਤਾਵਾਂ, ਅਤੇ API ਟੋਕਨ OS keyring ਵਿੱਚ ਰਹਿੰਦੇ ਹਨ (Apple platforms ਉੱਤੇ Keychain, iCloud Keychain ਰਾਹੀਂ ਸਮਕਾਲੀਕਰਿਤ; ਹੋਰ ਥਾਵਾਂ ਉੱਤੇ platform equivalents)।
+ਰਾਜ਼ ਇਨ੍ਹਾਂ ਫਾਈਲਾਂ ਵਿੱਚ ਕਦੇ ਨਹੀਂ ਰਹਿੰਦੇ। ਮੈਂਬਰ ਕੁੰਜੀਆਂ, ਸੰਗ੍ਰਹਿ ਦੀਆਂ ਕੁੰਜੀਆਂ, ਕਲਾਉਡ ਸਾਈਨ-ਇਨ ਅਤੇ API ਟੋਕਨ OS ਕੀਰਿੰਗ ਵਿੱਚ ਰਹਿੰਦੇ ਹਨ (Apple ਪਲੇਟਫਾਰਮਾਂ ਉੱਤੇ Keychain, ਹੋਰ ਥਾਂ ਪਲੇਟਫਾਰਮ ਦੇ ਬਰਾਬਰ); Apple ਪਲੇਟਫਾਰਮਾਂ ਉੱਤੇ restore code iCloud Keychain ਵਿੱਚ ਵੀ ਸਾਂਭਿਆ ਜਾਂਦਾ ਹੈ।
 
 ## ਸੰਸਕਰਣ
 

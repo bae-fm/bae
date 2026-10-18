@@ -7,34 +7,36 @@ A sincronização de bae é a sincronização de [coven](https://coven.bae.fm): 
 
 ## Captura
 
-coven possui a conexão SQLite, então toda escrita que bae grava passa por ele. A extensão de sessão do SQLite registra exatamente o que mudou em cada transação; as mudanças em tabelas sincronizadas viram um **changeset**, selado com a chave da biblioteca e assinado com a chave de identidade do dispositivo. Sem diff, sem flags de sujo: captura é uma propriedade da conexão, e uma escrita não pode ser perdida.
+coven possui a conexão SQLite, então toda escrita que bae grava passa por ele. Quando uma transação que muda tabelas sincronizadas é gravada, coven registra cada mudança de linha, com as colunas que ela tocou, na mesma transação, então uma mudança gravada nunca se perde, mesmo que o app feche um instante depois. Sem diff, sem flags de sujo: captura é uma propriedade da conexão, e uma escrita não pode ser perdida. A mudança espera no dispositivo e só é criptografada e assinada quando é enviada, então escrever não precisa de chave nem de rede.
 
-## Fluxos
+## A sequência
 
-Cada dispositivo anexa seus changesets ao próprio fluxo no local na nuvem, numerados sequencialmente. Dispositivos nunca escrevem nos fluxos uns dos outros, então não há conflitos de escrita no armazenamento, e cada dispositivo acompanha um cursor por fluxo de par. Um ciclo de sincronização envia a caixa de saída local, depois puxa o fluxo de cada par a partir do cursor, verificando a assinatura de cada changeset e a associação do autor antes de aplicá-lo.
+Todo o histórico de uma biblioteca no local na nuvem é uma sequência numerada de objetos. Cada um contém o lote de mudanças de um dispositivo, uma entrada de administração, uma chave selada para um membro ou um anúncio de snapshot. Todo dispositivo os aplica em ordem e nunca pula nenhum, então todos os dispositivos concordam sobre o que aconteceu e quando. Um dispositivo só adiciona o próximo objeto depois de aplicar todos os anteriores.
 
-O ciclo roda depois de mudanças locais, em um temporizador ocioso com espera progressiva (até cinco minutos entre sondagens) e imediatamente em **Sync Now**. Falhas esperam e tentam novamente; o loop relata o resultado de cada ciclo à interface como status, texto de erro e número de linhas aplicadas.
+Uma passada de sincronização lê adiante a partir do último objeto que o dispositivo aplicou até faltar um, confere a assinatura de cada um e o aplica, envia as mudanças pendentes deste dispositivo como um objeto novo e depois faz o trabalho que o estado novo pede: compartilhar ou deixar de compartilhar acesso, tirar snapshots, apagar histórico antigo. Uma passada em uma biblioteca quieta custa duas requisições, seja qual for o tamanho dela.
+
+As passadas rodam depois de mudanças locais, em um temporizador ocioso e imediatamente em **Sincronizar agora**. Falhas tentam de novo seguindo um único cronograma de espera, e tudo que não consegue avançar diz o que está esperando, o que bae mostra na sua linha de status de sincronização.
 
 ## Mesclagem
 
 Dois dispositivos editando a mesma biblioteca enquanto separados é o caso normal, não a exceção. Quando suas mudanças se encontram:
 
 - Edições em **linhas diferentes ou colunas diferentes** se aplicam. Editar o ano de um lançamento no laptop e seu selo no desktop produz ambos.
-- Edições na **mesma coluna da mesma linha** são ordenadas pelo relógio lógico híbrido `_updated_at` da linha: a edição posterior vence, de modo determinístico e igual em todo dispositivo.
-- **Exclusões vencem** sobre edições concorrentes: um lançamento excluído em um dispositivo permanece excluído mesmo se outro dispositivo o editou no mesmo intervalo.
+- Edições na **mesma coluna da mesma linha** são ordenadas por carimbo de tempo: a edição posterior vence, de modo determinístico e igual em todo dispositivo.
+- **Exclusões vencem** sobre edições concorrentes: uma edição feita em uma linha que foi excluída depois perde, não importa quando chegue, então um lançamento excluído em um dispositivo permanece excluído mesmo se outro dispositivo o editou no mesmo intervalo.
 
-Não há interface de conflito porque não há estado não resolvido: todo dispositivo converge para o mesmo resultado a partir de qualquer ordem de aplicação.
+coven guarda cada valor substituído como *valor perdido*; bae não mostra nenhum e não descarta nenhum, então não há interface de conflito. Todo dispositivo converge para o mesmo resultado a partir de qualquer ordem de chegada.
 
-## Bootstrap
+## Snapshots
 
-Um dispositivo que entra ou restaura não reproduz o histórico desde o começo. Ele baixa um **snapshot**, uma imagem SQLite completa publicada periodicamente no local na nuvem, depois aplica só os changesets que cada fluxo acumulou depois dele. Metadados do snapshot registram a versão do esquema e os cursores por fluxo que ele incorpora.
+Um dispositivo que entra ou restaura não reproduz o histórico desde o começo. Os dispositivos tiram **snapshots**, o estado completo da biblioteca em um ponto da sequência, e quando a biblioteca e cada círculo privado têm um, o histórico anterior é apagado. Um dispositivo novo carrega o snapshot mais recente e depois aplica só o que veio depois dele. Um dispositivo que ficou ausente por mais tempo do que o histórico guardado faz o mesmo, e mantém suas edições não enviadas.
 
 ## Versões de esquema
 
-O esquema de bae migra por uma escada numerada, e o degrau mais alto da escada é carimbado em todo changeset que o dispositivo escreve. Um dispositivo que puxa um changeset de um esquema mais novo que o seu estaciona esse fluxo, sem aplicar nada depois dele, até o app atualizar; nada se perde e nada é aplicado errado. O próprio arquivo de banco de dados se recusa a abrir em um binário mais antigo que seu esquema.
+O esquema de bae é uma única migração, e toda mudança que um dispositivo envia registra a versão do esquema com que foi feita. Um dispositivo que chega a uma mudança de um esquema mais novo que o seu para ali, sem aplicar nada depois dela, até o app atualizar; nada se perde e nada é aplicado errado.
 
 Acima da versão de esquema fica a **era de compatibilidade**: a revisão fixada de coven embutida em cada binário. Dois builds sincronizam só dentro de uma era; uma quebra de formato de fio de coven é uma nova era e um aumento de versão major em todos os apps. Antes de 1.0, todo build é era zero e formatos mudam sem migração.
 
 ## O que o provedor vê
 
-Em um local opaco, o provedor armazena changesets cifrados, blobs cifrados e registros de associação assinados; consegue contar objetos e observar tamanhos e tempos, e não lê nada disso. Todo objeto que um dispositivo puxa é verificado, por assinatura e associação, antes de qualquer coisa tocar o banco de dados: o armazenamento é uma caixa de correio passiva e não confiável. Veja [Criptografia](/pt-br/reference/encryption) e [Identidade e associação](/pt-br/reference/membership).
+O provedor armazena mudanças, snapshots, registros de associação e arquivos criptografados; consegue contar objetos, observar tamanhos e tempos e ver qual conta escreve cada objeto, e não lê nada do conteúdo. Todo objeto que um dispositivo puxa é verificado, por assinatura e associação, antes de qualquer coisa tocar o banco de dados: o armazenamento é uma caixa de correio passiva e não confiável. Veja [Criptografia](/pt-br/reference/encryption) e [Identidade e associação](/pt-br/reference/membership).

@@ -1,36 +1,35 @@
 ---
 title: Cloud-Speicher
-description: Anbieter, Authentifizierung und die Form des Cloud-Zuhauses
+description: Anbieter, Anmeldung und die Form des Cloud-Zuhauses
 ---
 
-Das Cloud-Zuhause ist ein Ort in Speicher, den der Benutzer bereits besitzt. Jeder Anbieter wird über dieselbe Speicherschnittstelle in [coven](https://coven.bae.fm) gesteuert; was sich je Anbieter unterscheidet, sind Authentifizierung und wie einem zweiten Gerät Zugriff gewährt wird.
+Das Cloud-Zuhause ist ein Ort in Speicher, den der Benutzer bereits besitzt. Jeder Anbieter wird über dieselbe Speicherschnittstelle in [coven](https://coven.bae.fm) gesteuert; was sich je Anbieter unterscheidet, sind Anmeldung, Einrichtung und wie andere Personen und Geräte ihn erreichen.
 
 ## Anbieter
 
-| Anbieter | Auth | Zugriff für ein neues Gerät |
-|---|---|---|
-| S3-kompatibel | Access key + secret | Anmeldedaten werden während der Kopplung an das zugelassene Gerät versiegelt |
-| Dropbox | OAuth (PKCE) | Das Konto des neuen Geräts wurde genehmigt, dann wird der Ordner freigegeben |
-| OneDrive | OAuth (PKCE) | Das Konto des neuen Geräts wurde genehmigt, dann wird der Ordner freigegeben |
-| iCloud (CloudKit) | Apple-ID, keine Anmeldung | CloudKit-Freigabe während der Kopplung akzeptiert |
+| Anbieter | Anmeldung | Dein eigenes neues Gerät | Eine Person, die du einlädst |
+|---|---|---|---|
+| S3-kompatibel | Access key + secret | Wiederherstellungscode plus dein Zugriffsschlüssel, der im QR-Code daneben mitkommt | Ein für sie erstellter Zugriffsschlüssel |
+| Dropbox | OAuth, von coven gehalten | Wiederherstellungscode, dann Anmeldung bei deinem Dropbox | Der geteilte Ordner der Mediathek wird für ihr Konto freigegeben |
+| OneDrive | OAuth, von coven gehalten | Wiederherstellungscode, dann Anmeldung bei deinem OneDrive | Der Ordner der Mediathek wird für ihr Konto freigegeben |
+| iCloud (CloudKit) | Apple Account, keine Anmeldung | Wiederherstellungscode, auch aus dem iCloud-Schlüsselbund angeboten | Die CloudKit-Zone der Mediathek wird für ihren Apple Account freigegeben |
 
-S3-kompatibel umfasst AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO und alles andere, das die API spricht; Bucket, Region, Endpoint und Schlüsselpräfix sind konfigurierbar, und der Bucket wird geprüft, bevor die Konfiguration gespeichert wird, damit ein Tippfehler bei der Einrichtung fehlschlägt, nicht bei der ersten Synchronisierung. Die OAuth-Anbieter existieren nur in der vollständigen **bae**-Edition; **baeium**-Builds kompilieren sie heraus.
+S3-kompatibel umfasst AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO und alles andere, das die API spricht. Das Einrichtungsformular fragt nur nach Bucket, Region, Endpoint und Zugriffsschlüssel; coven erkennt bekannte Dienste am Host des Endpoints und ergänzt, wie mit ihnen zu sprechen ist. **Erweitert** enthält das optionale Schlüsselpräfix und eine Wahl des Dienstprofils, standardmäßig automatisch. Für einen Dienst, den coven nicht kennt, prüft **Einstellungen erkennen** den Bucket mit dem Schlüssel und zeigt, was es gefunden hat. Die Einrichtung prüft den Anbieter, bevor etwas gespeichert wird, damit ein Tippfehler bei der Einrichtung fehlschlägt, nicht bei der ersten Synchronisierung, und bae nennt covens Grund in klaren Worten. Dropbox, OneDrive und iCloud existieren nur in der vollständigen **bae**-Edition; **baeium**-Builds kompilieren sie heraus.
 
-## OAuth
+## Anmeldung und Ordner
 
-Die Anmeldung ist ein Authorization-Code-Ablauf mit PKCE als Public Client. Auf dem Desktop landet die Umleitung auf einem Loopback-Server, der für den einen Callback an einen lokalen Port gebunden ist; auf Mobilgeräten fängt die App stattdessen eine Umleitung mit eigenem Schema ab. bae fordert den engsten Scope an, den der Anbieter für die Aufgabe anbietet. Tokens werden im OS-Schlüsselbund gespeichert, mit dem Refresh Grant des Anbieters erneuert, und ein abgelehnter Refresh erscheint als Aufforderung zum erneuten Verbinden statt als stille Wiederholungsschleife.
+coven führt die Anmeldung bei Dropbox und OneDrive selbst durch, daher läuft kein Token durch bae. Auf dem Desktop öffnet der Browser die Seite des Anbieters, und ein lokaler Listener empfängt die eine Umleitung; auf Mobilgeräten übernimmt das die Anmeldeansicht der Plattform. coven hält die Tokens im OS-Schlüsselbund und erneuert ein Token einmal, wenn der Anbieter es ablehnt; eine fehlgeschlagene Erneuerung erscheint im Synchronisierungsstatus als Aktion **Anmelden** statt als stille Wiederholungsschleife.
 
-CloudKit braucht gar keinen Ablauf: Der CloudKit-Treiber der Plattform, in der App implementiert und an den Kern übergeben, arbeitet als die angemeldete Apple-ID.
+Nach der Anmeldung wählt der Benutzer, wo die Mediathek liegt. Bei Dropbox ist das ein geteilter Ordner, da eine Haushalts-Mediathek mit den Konten der anderen Personen geteilt wird; bae nutzt dafür vollen Dropbox-Zugriff, keinen App-Ordner. Gibt es noch keinen geteilten Ordner, sagt bae, dass einer in Dropbox geteilt und erneut gesucht werden soll. Bei OneDrive ist es ein beliebiger Ordner, von oben durchsucht, und dort kann ein neuer angelegt werden.
+
+CloudKit braucht gar keinen Ablauf: coven steuert es auf Apple-Plattformen als der angemeldete Apple Account.
 
 ## Das Layout des Zuhauses
 
-Im Zuhause legt coven Änderungsstromsätze pro Gerät, Snapshot-Generationen, Mitgliedschaftsdatensätze und Blob-Namensräume an. bae steuert drei Blob-Namensräume bei: `release_files`, `covers` und `artist_images`.
+Im Zuhause beginnt jeder Objektpfad mit der Store-ID der Mediathek: covens nummerierte Abfolge von Änderungen, seine Snapshots, Beitrittsanfragen und gespeicherte Dateien. Mehrere Mediatheken können sich einen Dropbox- oder OneDrive-Ordner teilen, ohne die Objekte der anderen zu berühren.
 
-Wie Objekte benannt werden, hängt vom Speichermodus des Zuhauses ab, der bei der Erstellung festgelegt wird:
-
-- **Undurchsichtig**: Objekte werden verschlüsselt und unter inhaltsabgeleiteten Schlüsseln gespeichert, die nichts verraten. Dies ist der Modus, der der Kryptografie vollständig vertraut; siehe [Verschlüsselung](/de/reference/encryption).
-- **Durchsuchbar**: Objekte sind Klartext an lesbaren Pfaden, die pro Blob beim Upload erfasst werden: `release_files/{artist}/{album}/{filename}`, `covers/{album}/{release}/cover.{ext}`, `artist_images/{artist}/artist.{ext}`. Der Bucket ist zugleich ein nutzbarer Dateibaum; der Tausch ist: keine Verschlüsselung und keine Mitgliedschaft, daher können durchsuchbare Zuhause nicht mit anderen Personen geteilt werden.
+Jedes Objekt wird verschlüsselt und unter einem zufälligen Namen gespeichert; einen Klartextmodus gibt es nicht. Die Dateien von bae gehören zu Zeilen dreier synchronisierter Tabellen, `release_files`, `covers` und `artist_images`, dazu der Avatar in jeder `people`-Zeile. Der Pfad einer Datei wird festgelegt, wenn sie an ihre Zeile angehängt wird, sodass das Umbenennen eines Albums sie nie verschiebt. Siehe [Verschlüsselung](/de/reference/encryption).
 
 ## Verhalten in echten Netzwerken
 
-Lesevorgänge für die Wiedergabe verwenden Bereiche: Der Player streamt die Byte-Fenster, die er braucht, statt ganzer Dateien. Uploads oberhalb einer Größenschwelle werden mehrteilig, wo der Anbieter es unterstützt. Ratenlimits und vorübergehende Anbieterfehler werden mit exponentieller Wartezeit erneut versucht, unter Beachtung von Retry-After, wenn vorhanden; abgelaufene OAuth-Tokens werden an Ort und Stelle erneuert. Der Synchronisierungs-Postausgang überlebt Neustarts: Ein Upload, der durch das Beenden der App unterbrochen wurde, wird fortgesetzt, statt neu zu beginnen.
+Lesevorgänge für die Wiedergabe verwenden Bereiche: Der Player holt die verschlüsselten Chunks, die er braucht, statt ganzer Dateien, und holt voraus, während eine Datei der Reihe nach spielt. Ratenlimits und vorübergehende Anbieterfehler werden nach einem gemeinsamen Wartezeitplan erneut versucht, unter Beachtung von Retry-After, wenn vorhanden. Die Upload-Warteschlange überlebt Neustarts: Ein Upload, der durch das Beenden der App unterbrochen wurde, wird fortgesetzt, statt neu zu beginnen, und pausierte Uploads bleiben pausiert.

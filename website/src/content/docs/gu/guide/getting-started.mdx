@@ -12,8 +12,8 @@ Desktop apps (macOS, Windows) સંપૂર્ણ tool છે: તે librarie
 તમારા desktop પર bae ખોલો. Machine પર કોઈ library ન હોય ત્યારે welcome screen ત્રણ પસંદગીઓ આપે છે:
 
 - **Create a new library**, જો આ તમારું પહેલું device છે.
-- **Join a library**, જો બીજા device પાસે પહેલેથી એક છે અને તેનો owner તમને approve કરશે. [Devices અને members](/gu/guide/devices) જુઓ.
-- **Restore from cloud**, જો આ તમારી પોતાની library છે અને તમારી પાસે તેનો recovery code છે. [Devices અને members](/gu/guide/devices#recovery-codes) જુઓ.
+- **Join a library**, જો કોઈએ તમને તેમની લાઇબ્રેરીમાં આમંત્રણ આપ્યું હોય. [ઉપકરણો અને સભ્યો](/gu/guide/devices#વ્યક્તિને-આમંત્રણ-આપવું) જુઓ.
+- **Restore from cloud**, જો આ તમારી પોતાની લાઇબ્રેરી છે અને તમારી પાસે તેનો restore code છે. [ઉપકરણો અને સભ્યો](/gu/guide/devices#રિસ્ટોર-કોડ) જુઓ.
 
 એક બનાવો. Library local થી શરૂ થાય છે: બધું આ machine પર રહે છે, account ની જરૂર નથી, અને તમે connect ન કરો ત્યાં સુધી cloud સામેલ નથી.
 
@@ -35,10 +35,10 @@ Desktop apps (macOS, Windows) સંપૂર્ણ tool છે: તે librarie
 
 જ્યારે લાઇબ્રેરી એકથી વધુ device પર જોઈએ, ત્યારે cloud home connect કરો: તમારી પોતાની Dropbox, OneDrive, iCloud, અથવા કોઈ પણ S3-compatible bucket. bae ત્યાં મૂકે તે બધું upload પહેલાં encrypted હોય છે; provider તેને store કરે છે પરંતુ વાંચી શકતો નથી.
 
-- [Sync](/gu/guide/sync): cloud home connect કરો અને તે શું store કરે તે પસંદ કરો.
-- [Devices અને members](/gu/guide/devices): તમારો phone અથવા બીજું desktop ઉમેરો.
+- [Sync](/gu/guide/sync): cloud home જોડો અને શું sync થાય છે તે જુઓ.
+- [ઉપકરણો અને સભ્યો](/gu/guide/devices): તમારો ફોન અથવા બીજું desktop ઉમેરો, અથવા કોઈને આમંત્રણ આપો.
 - [Storage અને offline](/gu/guide/storage): music device પર રાખો, અથવા તમારા cloud માંથી stream કરો અને offline માટે જે જોઈએ તે pin કરો.
 
 ## વસ્તુઓ ક્યાં રહે છે
 
-દરેક library desktop પર `~/.bae/libraries/` નીચે પોતાનો database અને settings રાખે છે. તમારું audio જ્યાંથી import કર્યું છે ત્યાં જ રહે છે, જ્યાં સુધી તમે bae ને તેને તમારા cloud માં manage કરવા ન કહો. Keys અને credentials operating system ના keyring માં રહે છે, files માં નહીં.
+desktop પર દરેક લાઇબ્રેરી પોતાનો database `~/.bae/stores/` નીચે અને settings `~/.bae/libraries/` નીચે રાખે છે. તમારું audio જ્યાંથી import કર્યું ત્યાં જ રહે છે; કોઈ release ને cloud માં ખસેડવાથી encrypted નકલ upload થાય છે અને તમારી files જ્યાં છે ત્યાં જ રહે છે. કી અને ઓળખપત્રો files માં નહીં, ઓપરેટિંગ સિસ્ટમના keyring માં રહે છે.

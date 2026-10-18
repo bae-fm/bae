@@ -16,22 +16,21 @@ Neben den Apps: `bae-mcp` (der MCP-Server) und `bae-automation`.
 
 ## Eine Mediathek auf der Festplatte
 
-Eine Mediathek lebt unter `~/.bae/libraries/<library-id>/` (auf Mobilgeräten ein Plattform-Datenverzeichnis):
+Eine Mediathek lebt in zwei Verzeichnissen (auf Mobilgeräten in Plattform-Datenverzeichnissen): covens Store und daneben die eigenen Einstellungen von bae.
 
 ```
-~/.bae/libraries/<id>/
-  library.db        # SQLite: catalog, credits, playback specs
-  config.yaml       # coven: Bibliotheksidentität, Cloud-Home; wird nie synchronisiert
-  preferences.toml  # Einstellungen von bae; werden nie synchronisiert
-  storage/
-    local/          # blobs this device owns (covers, artist images)
-    cache/          # evictable copies of cloud blobs
-    pinned/         # pinned-for-offline copies, never evicted
+~/.bae/stores/<id>/       # covens Store, nur über coven geöffnet
+  store.db                # SQLite: Katalog, Mitwirkende, Wiedergabedaten, covens Buchhaltung
+  files/                  # covens Kopien der eigenen Dateien von bae (Cover, Künstlerbilder, Avatare)
+  cache/                  # gecachte und angeheftete Kopien hochgeladener Dateien
+~/.bae/libraries/<id>/    # gehört bae; wird nie synchronisiert
+  preferences.toml        # Einstellungen von bae
+  cache/                  # aus den Katalogen geladenes Artwork
 ```
 
-Die Datenbank wird nur über coven geöffnet, das seine eigenen Buchhaltungstabellen (Synchronisierungscursor, Postausgang, Blob-Status) neben das Schema von bae legt und die Migrationen von bae ausführt. Nicht verwaltet importierte Audiodateien liegen gar nicht unter `~/.bae`: Die Datenbank verweist auf sie an den Pfaden, von denen sie importiert wurden.
+Die Datenbank wird nur über coven geöffnet, das seine eigenen Buchhaltungstabellen (Zusammenführungsdatensätze, Upload-Warteschlange, Dateistatus) neben das Schema von bae legt und die Migration von bae ausführt. Die Audiodateien eines lokalen Releases liegen gar nicht unter `~/.bae`: Die Datenbank verweist auf sie an den Pfaden, von denen sie importiert wurden.
 
-Geheimnisse leben nie in diesen Dateien. Identitätsschlüssel, der Verschlüsselungsschlüssel der Mediathek, Cloud-Zugangsdaten und API-Tokens liegen im OS-Schlüsselbund (Keychain auf Apple-Plattformen, synchronisiert über iCloud-Schlüsselbund; anderswo die Plattformentsprechungen).
+Geheimnisse leben nie in diesen Dateien. Mitgliedsschlüssel, die Schlüssel der Mediathek, Cloud-Anmeldungen und API-Tokens liegen im OS-Schlüsselbund (Keychain auf Apple-Plattformen, anderswo die Plattformentsprechungen); auf Apple-Plattformen wird außerdem der Wiederherstellungscode im iCloud-Schlüsselbund gespeichert.
 
 ## Editionen
 

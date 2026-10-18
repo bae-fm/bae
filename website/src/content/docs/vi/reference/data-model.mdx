@@ -3,7 +3,7 @@ title: Mô hình dữ liệu
 description: Schema, những gì đồng bộ và những gì ở lại trên thiết bị
 ---
 
-Catalog của bae là SQLite bình thường, được khai báo cho [coven](https://coven.bae.fm) từng bảng một: bảng đồng bộ mang đồng hồ xung đột và đi tới mọi thiết bị; bảng không khai báo không bao giờ rời thiết bị. Phần tách này là quyết định chịu tải nhất của mô hình dữ liệu, nên trang này được tổ chức quanh nó.
+Catalog của bae là SQLite bình thường, được khai báo cho [coven](https://coven.bae.fm) từng bảng một: bảng đồng bộ đi tới mọi thiết bị đọc được chúng; bảng không khai báo không bao giờ rời thiết bị. Phần tách này là quyết định chịu tải nhất của mô hình dữ liệu, nên trang này được tổ chức quanh nó.
 
 ## Đồ thị catalog
 
@@ -16,26 +16,29 @@ Trái tim đồng bộ của schema:
 - **`track_works`**, **`work_parts`**, **`work_artists`**: bản thu liên kết tới tác phẩm mà chúng trình diễn.
 - **`audio_formats`** và **`audio_format_segments`**: đặc tả phát lại. Theo từng track: codec, sample rate, độ sâu bit, kênh, độ lớn âm thanh và peak đã đo, và độ dài pregap. Segment ánh xạ một track lên các cửa sổ byte và sample có thứ tự của tệp nguồn, đây là cách track của bản rip CUE, gồm cả pregap, có thể trải qua các vùng của một tệp lớn, hoặc nhiều tệp.
 - **`release_files`**, **`covers`**, **`artist_images`**: bảng mang blob. Hàng là mục catalog; byte nằm trong lớp blob của coven (xem bên dưới).
+- **`people`**, **`ratings`**, **`history`**, **`playlists`**, **`playlist_entries`**: hồ sơ của mỗi người và những gì họ ghi lại cho chính mình. Đây là các bảng chủ sở hữu: chỉ thiết bị của tác giả mới đổi được chúng. Mỗi hàng `history` và `playlists` nằm hoặc trong store chung của gia đình, hoặc trong vòng riêng của người đó.
 
-## Đồng bộ, có cổng, cục bộ
+## Đồng bộ và cục bộ
 
-Tất cả các bảng trên đồng bộ, nhưng không vô điều kiện. `releases` được khai báo là root có cổng trên cột `remote`: một hàng release và toàn bộ cây con của nó (tracks, files, credits, formats, cover) chỉ đồng bộ khi `remote` là true, tức là khi bản phát hành được quản lý trên đám mây. Chuyển một bản phát hành sang được quản lý sẽ công bố cây con; bản phát hành không quản lý hoàn toàn ở lại trên thiết bị đã nhập, dù schema của nó là schema đồng bộ. Các bảng tổ tiên (`artists`, `albums`, `works`) chỉ đồng bộ khi vẫn còn bản phát hành đã đồng bộ tham chiếu tới chúng, nên một thiết bị không bao giờ nhận một nghệ sĩ không có gì bên dưới.
+Mọi bảng ở trên đều đồng bộ, vô điều kiện: các hàng của một bản phát hành cục bộ tới mọi thiết bị như của bất kỳ bản phát hành nào khác, nên mọi thiết bị đều biết gia đình sở hữu gì, và một đánh giá hay mục danh sách phát trỏ tới track của một bản phát hành cục bộ là trỏ tới một hàng mọi thiết bị đều đọc được. Chỉ âm thanh của bản phát hành, và các đường dẫn nơi nó nằm, ở lại trên thiết bị đã nhập. Mỗi bảng được khai báo kèm định danh hàng, đối tượng đọc, việc có phải bảng chủ sở hữu hay không và các tệp nó mang; một test giữ các khai báo đúng theo danh sách đó.
 
 Các bảng hoàn toàn cục bộ, không bao giờ khai báo cho coven:
 
 - **`playback_state`**: track hiện tại, vị trí, hàng đợi, âm lượng, phát ngẫu nhiên và lặp lại. Phát lại là sự kiện của thiết bị.
-- **`imports`**: theo dõi thao tác nhập.
+- **Các bảng quét và nhập**: thư mục được theo dõi, lượt quét, ứng viên nhập và bản nháp của chúng.
 - **`source_release`** và các bảng bên dưới: những gì bae trích xuất từ mỗi bản phát hành MusicBrainz và Discogs đã tải về — thông tin album và bản ép, danh sách bài hát đầy đủ kèm người tham gia và tác phẩm, các lựa chọn bìa, và tên các danh mục khác gọi nó — khóa theo bản phát hành của nhà cung cấp thay vì bản phát hành cục bộ. JSON thô không được giữ lại; mọi thiết bị đều có thể tải lại bản phát hành.
+- **`local_release_files`**: đường dẫn tệp và thời điểm sửa đổi của một bản phát hành cục bộ trên thiết bị này.
+- **`local_history`**: các lượt phát từ trước khi người dùng của thiết bị này có hồ sơ, được chuyển vào vòng riêng của họ khi hồ sơ được tạo.
 
-Mọi bảng đồng bộ mang cột `_updated_at` hybrid-logical-clock, thanh ghi mà merge theo từng trường của coven dùng để sắp thứ tự chỉnh sửa đồng thời; một test bảo đảm tập bảng đồng bộ và tập bảng mang đồng hồ là bằng nhau chính xác.
+Chỉnh sửa của hai thiết bị được gộp theo từng ô, chỉnh sửa muộn hơn thắng ở ô cả hai cùng sửa. coven giữ sổ sách gộp trong các bảng riêng của nó, nên bảng của bae không mang cột đồng hồ.
 
 ## Blob
 
-Âm thanh và ảnh đi qua lớp blob của coven trong ba namespace, mỗi namespace có hạn mức bộ nhớ đệm thiết bị riêng: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB).
+Âm thanh và ảnh đi qua lớp tệp của coven, mỗi loại có hạn mức bộ nhớ đệm thiết bị riêng: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB), và ảnh đại diện trên `people` (64 MiB).
 
-Tệp bản phát hành do người dùng cung cấp và được lưu đệm lười: với bản phát hành không quản lý, blob là tham chiếu ngoài tới tệp của người dùng tại đường dẫn gốc; với bản được quản lý, nó là đối tượng đã tải lên được lấy vào bộ nhớ đệm ở lần đọc đầu. Bìa và ảnh nghệ sĩ do host cung cấp và được lưu đệm sớm: bae tạo byte (bìa được render lại thành thumbnail JPEG rộng tối đa 600px), và mọi thiết bị lấy chúng khi pull để lưới hiển thị cục bộ.
+Tệp bản phát hành thuộc về người dùng và được lưu đệm lười: tệp của một bản phát hành cục bộ là tệp của người dùng tại đường dẫn gốc, được ghi trong `local_release_files`; chuyển bản phát hành lên đám mây sẽ gắn mọi tệp vào hàng `release_files` của nó trong một lần ghi, và thiết bị khác lấy nó vào bộ nhớ đệm ở lần đọc đầu. Bìa, ảnh nghệ sĩ và ảnh đại diện thuộc về bae và được lưu đệm sớm: bae tạo byte (bìa được render lại thành thumbnail JPEG rộng tối đa 600px), và mọi thiết bị lấy chúng ngay khi các hàng của chúng tới để lưới hiển thị cục bộ.
 
-Trên nhà mờ đục, blob tải lên dưới khóa nội dung vô nghĩa. Trên nhà duyệt được, mỗi hàng blob ghi một đường dẫn đám mây đọc được (`{artist}/{album}/{filename}` cho âm thanh, `{album}/{release}/cover.{ext}` cho bìa), được tính một lần lúc tải lên nên lần đổi tên sau này không di chuyển đối tượng.
+Mỗi tệp được tải lên đã mã hóa dưới tên ngẫu nhiên, tại một đường dẫn cố định khi nó được gắn vào hàng của mình, nên lần đổi tên sau này không di chuyển đối tượng.
 
 ## Danh tính của một bản rip
 

@@ -1,28 +1,34 @@
 ---
 title: Encryption
-description: Library key શું છે, ક્યાં રહે છે, અને provider પાસે કયું ciphertext હોય છે
+description: કઈ કી છે, તે ક્યાં રહે છે, અને પ્રદાતા શું જોઈ શકે છે
 ---
 
-Opaque cloud home માં bae મૂકે તે બધું device છોડે તે પહેલાં encrypted થાય છે. bae પોતાનું cryptography implement કરતું નથી: આખી scheme [coven](https://coven.bae.fm) ની છે, અને આ page વર્ણવે છે કે bae તેને કેવી રીતે વાપરે છે. Browsable homes આ બધામાંથી opt out કરે છે; નીચેનું તેમને લાગુ પડતું નથી.
+bae cloud home માં જે મૂકે તે બધું ઉપકરણ છોડે તે પહેલાં encrypt થાય છે; encryption વગરનો કોઈ mode નથી. bae પોતાનું cryptography implement કરતું નથી: આખી યોજના [coven](https://coven.bae.fm) ની છે, અને આ page વર્ણવે છે કે bae તેને કેવી રીતે વાપરે છે.
 
-## Library key
+## કી
 
-Opaque library પાસે એક root secret હોય છે: home બનાવતી વખતે minted random 256-bit key. તે OS keyring માં રહે છે, file માં ક્યારેય નહીં; Apple platforms પર keyring entry iCloud Keychain મારફતે sync થાય છે. bae નું config ફક્ત key નો fingerprint store કરે છે, unlock સમયે secret રાખ્યા વગર wrong key ને right key થી અલગ પાડવા પૂરતું.
+| કી | શું કરે છે |
+|---|---|
+| store key | લાઇબ્રેરી અને તેના સભ્યપદ records encrypt કરે છે |
+| દરેક વ્યક્તિની circle key | વ્યક્તિ જે ખાનગી રાખે તે encrypt કરે છે: તેનો ખાનગી સાંભળવાનો ઇતિહાસ અને playlists |
+| દરેક file ની key | એક file encrypt કરે છે, અને ફક્ત તેની હરોળના encrypted ફેરફારોની અંદર જ જાય છે |
+| વ્યક્તિની સહી key pair | તેના ઉપકરણો મોકલે તે દરેક ફેરફાર પર સહી કરે છે |
+| વ્યક્તિની sealing key pair | તે વ્યક્તિ માટે seal કરેલી કી ખોલે છે |
 
-કી બે રીતે ઉપકરણો વચ્ચે મુસાફરી કરે છે, બંને રીતે [ઓળખ અને સભ્યપદ](/gu/reference/membership) માં વર્ણવેલ છે: ઉપકરણ જોડી કરતી વખતે માન્ય ઉપકરણની સાર્વજનિક કી પર સીલ કરવામાં આવે છે અને પુનઃપ્રાપ્તિ કોડની અંદર લઈ જવામાં આવે છે.
+store key રેન્ડમ હોય છે, લાઇબ્રેરીને cloud home મળે ત્યારે બને છે. વ્યક્તિની key pairs તેના બધા ઉપકરણો વહેંચે છે. ખાનગી કી અને લાઇબ્રેરીની કી OS keyring માં રહે છે, ક્યારેય file કે database માં નહીં. તે ઉપકરણ સુધી બે રીતે પહોંચે છે, બંને [ઓળખ અને સભ્યપદ](/gu/reference/membership) માં વર્ણવેલી: restore code વ્યક્તિની પોતાની key pairs લઈ જાય છે, અને આમંત્રણ મંજૂર કરનાર admin store keys ને નવી વ્યક્તિની sealing key માટે seal કરે છે.
 
-## Generations
+## ફેરબદલ
 
-Library key ખરેખર numbered generations ની keyring છે. Member દૂર કરવાથી નવી generation append થાય છે જે removed member ને ક્યારેય મળતી નથી: પછીથી લખાયેલું બધું new generation વાપરે છે અને તેમને unreadable છે, જ્યારે surviving members દરેક generation રાખે છે અને આખો history વાંચી શકે છે. દરેક sealed object clear માં record કરે છે કે કઈ generation તેને opens કરે છે.
+કી ક્યારેય તેની જગ્યાએ બદલાતી નથી; નવી ઉમેરાય છે. કોઈ વ્યક્તિ દૂર થયા પછી, બાકી રહેલા સભ્યનું ઉપકરણ ત્યાં વધુ ડેટા લખતાં પહેલાં નવી store key ઉમેરે છે, અને તે જે દરેક circle માં હતી તેના માટે નવી key: પછી લખાયેલું બધું તેના માટે વાંચી ન શકાય તેવું હોય છે, જ્યારે બાકીના સભ્યો દરેક જૂની key રાખે છે અને આખો ઇતિહાસ વાંચી શકે છે. એક ઉપકરણ દૂર કરવાથી કશું ફરતું નથી, કારણ કે વ્યક્તિના બીજા ઉપકરણો તેની કી વહેંચે છે; દૂર કર્યા પછી તે ઉપકરણ જે મોકલે તે ગણાતું નથી.
 
 ## શું sealed થાય છે
 
-Home માં દરેક object: changesets, snapshots, audio blobs, artwork, membership records, control objects. Objects XChaCha20-Poly1305 થી 64 KB chunks માં sealed છે, દરેક chunk authenticated, અને પોતાના context સાથે bound: sealed object ફક્ત જે object તરીકે લખાયું હતું તે તરીકે, આ library માટે, આ key પર decrypt થાય છે. Chunking કારણે streaming કામ કરે છે, player fetch કરે તે byte ranges જ decrypt કરી શકે છે.
+Home નો દરેક object: ફેરફારો, snapshots, સભ્યપદ records અને files. વિષયવસ્તુ XChaCha20-Poly1305 થી encrypt થાય છે, દરેક ફેરફાર Ed25519 થી સહી થાય છે, અને કી લોકો માટે X25519 sealed boxes થી seal થાય છે. Files 64 KiB chunks માં encrypt થાય છે, દરેક chunk અલગથી પ્રમાણિત અને પોતાની જગ્યા સાથે બંધાયેલો, તેથી કોઈ chunk ને પકડાયા વગર બદલી, અદલાબદલી કે ફરી ગોઠવી શકાતો નથી. Chunking ને કારણે જ streaming ચાલે છે: player બરાબર જે chunks લાવે તે જ decrypt કરી શકે છે.
 
 ## Provider શું જોઈ શકે
 
-Object count, object sizes, upload timing, અને access patterns. Names નહીં, metadata નહીં, audio નહીં, artwork નહીં, membership નહીં. Server-side recovery નથી: user દરેક device અને key ની દરેક copy ગુમાવે તો library નું ciphertext સદાકાળ ગુમાવ્યું, અને design એમ જ છે.
+Objects ની સંખ્યા, objects નાં કદ, upload નો સમય, કયું ખાતું દરેક object લખે છે, અને કયા ઉપકરણે દરેક file અને snapshot upload કર્યો, કારણ કે તેમના paths માં ઉપકરણનું નામ હોય છે. નામ નહીં, metadata નહીં, audio નહીં, artwork નહીં. Files રેન્ડમ નામો હેઠળ રહે છે, ક્યારેય તેમની વિષયવસ્તુના hash હેઠળ નહીં. Server-side recovery નથી: દરેક વ્યક્તિ દરેક ઉપકરણ અને દરેક restore code ગુમાવે તો લાઇબ્રેરી ખોવાઈ જાય છે; આ જ design નો હેતુ છે.
 
-## Unlock અને lock
+## Keyring ની ભૂમિકા
 
-Library ખોલવાથી keyring માંથી key read થાય છે. જો library key અપેક્ષા રાખે છે અને keyring પાસે નથી, તો bae library ને locked માને છે: તે ખોલતા પહેલાં key માગે છે, તેને keyring માં પાછી save કરતાં પહેલાં stored fingerprint સામે validate કરે છે. Library lock કરવાથી keyring માંથી key ઇરાદાપૂર્વક દૂર થાય છે; ફરી દાખલ ન થાય ત્યાં સુધી cloud home માં કશું read અથવા write થઈ શકતું નથી.
+લાઇબ્રેરી ખોલતી વખતે OS keyring માંથી તેની કી વંચાય છે. અત્યારે લૉક થયેલું keyring, લૉક સત્ર કે ઊંઘતી સ્ક્રીનને કારણે, બગડેલા keyring થી અલગ ઓળખાય છે: bae લાઇબ્રેરીને લૉક બતાવે છે અને અનલૉક પછી ફરી પ્રયાસ કરે છે, લાઇબ્રેરી બિનઉપયોગી છે એમ કહેવાને બદલે. કોઈ ઉપકરણ key ભૂલી પણ શકે છે, જેથી તે ઉપકરણ પર લાઇબ્રેરી ફરી અનલૉક ન થાય ત્યાં સુધી લૉક રહે છે.

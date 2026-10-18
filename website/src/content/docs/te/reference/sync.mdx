@@ -7,34 +7,36 @@ bae సమకాలీకరణ అనేది [coven](https://coven.bae.fm) �
 
 ## Capture
 
-coven SQLite connection ను owns చేస్తుంది, కాబట్టి bae commit చేసే ప్రతి write దాని గుండా వెళ్తుంది. SQLite session extension ప్రతి transaction లో ఏమి మారిందో ఖచ్చితంగా record చేస్తుంది; synced పట్టికలు changes **changeset** అవుతాయి, లైబ్రరీ కీ తో sealed, పరికరం identity కీ తో signed. Diffing లేదు, dirty flags లేవు: capture connection యొక్క property, write miss కావడం సాధ్యం కాదు.
+coven SQLite connection కు యజమాని కాబట్టి, bae commit చేసే ప్రతి రాతా దాని ద్వారానే వెళ్తుంది. సమకాలీకరించబడే పట్టికలను మార్చే transaction commit అయినప్పుడు, coven అదే transaction లో ప్రతి వరుస మార్పునూ, అది తాకిన columns తో సహా, నమోదు చేస్తుంది; కాబట్టి commit అయిన మార్పు ఎప్పుడూ పోదు, యాప్ మరుక్షణం crash అయినా. diffing లేదు, dirty flags లేవు: capture connection లక్షణం, ఏ రాతా తప్పిపోదు. మార్పు పరికరంలో వేచి ఉండి పంపేటప్పుడు మాత్రమే గుప్తీకరించబడి సంతకం చేయబడుతుంది, కాబట్టి రాయడానికి కీ లేదా network అవసరం లేదు.
 
-## Streams
+## వరుస
 
-ప్రతి పరికరం క్లౌడ్ home లో తన సొంత stream కు changesets append చేస్తుంది, sequential numbering తో. Devices ఒకదానిది మరొకటి streams కు రాయవు, కాబట్టి నిల్వ లో write conflicts ఉండవు, ప్రతి పరికరం peer stream కు cursor ట్రాక్ చేస్తుంది. Sync cycle స్థానిక outbox ను push చేసి, తర్వాత ప్రతి peer stream ను తన cursor నుంచి ముందుకు pull చేస్తుంది, apply చేసే ముందు ప్రతి changeset signature మరియు author membership verify చేస్తుంది.
+మేఘ నిల్వ ఇంట్లో గ్రంథాలయపు మొత్తం చరిత్ర objects యొక్క ఒక సంఖ్యాక్రమ వరుస. ప్రతి దానిలో ఒక పరికరపు మార్పుల సమూహం, ఒక admin entry, ఒక సభ్యుడి కోసం ముద్రించిన కీ, లేదా snapshot ప్రకటన ఉంటుంది. ప్రతి పరికరం వాటిని క్రమంగా అమలు చేస్తుంది, దేన్నీ దాటవేయదు; కాబట్టి ఏమి, ఎప్పుడు జరిగిందో అన్ని పరికరాలూ అంగీకరిస్తాయి. పరికరం ముందున్నవన్నీ అమలు చేసిన తర్వాతే తదుపరి object ను జోడిస్తుంది.
 
-Cycle స్థానిక changes తర్వాత, backoff ఉన్న idle timer పై (polls మధ్య ఐదు నిమిషాల వరకు), మరియు **Sync Now** పై వెంటనే నడుస్తుంది. Failures back off మరియు retry అవుతాయి; loop ప్రతి cycle outcome ను UI కు status, error text, applied వరుసలు సంఖ్యగా reports చేస్తుంది.
+ఒక సమకాలీకరణ రౌండ్ పరికరం చివరిగా అమలు చేసిన object తర్వాత నుంచి లేనిది కనిపించే వరకు చదివి, ప్రతి దాని సంతకాన్ని తనిఖీ చేసి అమలు చేస్తుంది, ఈ పరికరపు వరుసలోని మార్పులను ఒక కొత్త object గా పంపుతుంది, తర్వాత కొత్త స్థితి కోరే పని చేస్తుంది: ప్రాప్యతను పంచుకోవడం లేదా తీసేయడం, snapshots తీయడం, పాత చరిత్రను తొలగించడం. నిశ్శబ్ద గ్రంథాలయంపై ఒక రౌండ్ దాని పరిమాణం ఏదైనా రెండు అభ్యర్థనలు మాత్రమే తీసుకుంటుంది.
+
+రౌండ్లు స్థానిక మార్పుల తర్వాత, idle timer మీద, **Sync Now** మీద వెంటనే నడుస్తాయి. వైఫల్యాలు ఒకే backoff ప్రణాళికతో మళ్లీ ప్రయత్నిస్తాయి; ముందుకు వెళ్లలేనిది తాను దేని కోసం వేచి ఉందో చెబుతుంది, దాన్ని bae తన సమకాలీకరణ స్థితి వరుసలో చూపిస్తుంది.
 
 ## Merge
 
 రెండు పరికరాలు ఒకే లైబ్రరీని వేరువేరుగా edit చేయడం సాధారణ case, exception కాదు. వాటి changes కలిసినప్పుడు:
 
 - **వేరు వరుసలు లేదా వేరు columns** పై edits రెండూ apply అవుతాయి. Laptop లో విడుదల year edit చేసి desktop లో label edit చేస్తే రెండూ ఉంటాయి.
-- **అదే వరుస లో అదే column** పై edits వరుస `_updated_at` hybrid logical clock ద్వారా ordered అవుతాయి: later edit wins, deterministic గా ప్రతి పరికరం లో ఒకేలా.
-- **Deletes win** concurrent edits మీద: ఒక పరికరం లో deleted విడుదల అదే interval లో మరో పరికరం edit చేసినా deleted గానే ఉంటుంది.
+- **అదే వరుసలోని అదే column** పై సవరణలు timestamp ద్వారా క్రమపరచబడతాయి: తర్వాతి సవరణ గెలుస్తుంది, నిర్ధారితంగా మరియు ప్రతి పరికరంలో ఒకేలా.
+- ఏకకాల సవరణలపై **తొలగింపు గెలుస్తుంది**: తర్వాత తొలగించబడిన వరుసకు చేసిన సవరణ ఎప్పుడు వచ్చినా ఓడిపోతుంది; కాబట్టి ఒక పరికరంలో తొలగించిన విడుదల, అదే వ్యవధిలో మరో పరికరం సవరించినా తొలగించినట్లే ఉంటుంది.
 
-Conflict UI లేదు, ఎందుకంటే unresolved state లేదు: ఏ application order నుంచైనా ప్రతి పరికరం ఒకే result కు converge అవుతుంది.
+coven ప్రతి అధిగమించబడిన విలువనూ *పోయిన విలువ* గా ఉంచుతుంది; bae వాటిలో దేన్నీ చూపదు, తొలగించదు, కాబట్టి ఘర్షణ UI లేదు. వచ్చే క్రమం ఏదైనా, ప్రతి పరికరం అదే ఫలితానికి చేరుతుంది.
 
-## Bootstrap
+## స్నాప్‌షాట్‌లు
 
-చేరుతున్న లేదా restore అవుతున్న పరికరం history ను మొదటి నుంచి replay చేయదు. అది క్లౌడ్ home కు periodically published అయ్యే పూర్తి SQLite image అయిన **snapshot** డౌన్‌లోడ్ చేస్తుంది, తర్వాత ప్రతి stream దాని తర్వాత కూడబెట్టిన changesets మాత్రమే apply చేస్తుంది. Snapshot మెటాడేటా schema version మరియు అది embodied చేసే per-stream cursors record చేస్తుంది.
+చేరే లేదా పునరుద్ధరించే పరికరం చరిత్రను మొదటి నుంచి replay చేయదు. పరికరాలు **snapshots** తీస్తాయి, అంటే వరుసలోని ఒక బిందువు వద్ద గ్రంథాలయపు పూర్తి స్థితి; గ్రంథాలయానికీ ప్రతి వ్యక్తిగత circle కూ ఒకటి లభించిన తర్వాత దానికి ముందున్న చరిత్ర తొలగించబడుతుంది. కొత్త పరికరం తాజా snapshot ను లోడ్ చేసి, దాని తర్వాత వచ్చినది మాత్రమే అమలు చేస్తుంది. ఉంచిన చరిత్ర కంటే ఎక్కువ కాలం దూరంగా ఉన్న పరికరం కూడా ఇదే చేస్తుంది, తన పంపని సవరణలను ఉంచుకుంటుంది.
 
 ## Schema versions
 
-bae schema numbered ladder ద్వారా migrate అవుతుంది, పరికరం రాసే ప్రతి changeset పై ladder top rung stamped ఉంటుంది. తనకన్నా newer schema నుంచి changeset pull చేసే పరికరం ఆ stream ను parks చేస్తుంది, app update అయ్యే వరకు దాని తర్వాత ఏదీ apply చేయదు; ఏదీ పోదు, తప్పుగా apply కాదు. Database ఫైల్ తన schema కన్నా పాత binary కింద open అవ్వడానికి నిరాకరిస్తుంది.
+bae schema ఒకే migration, పరికరం పంపే ప్రతి మార్పూ అది సృష్టించబడిన schema వెర్షన్‌ను నమోదు చేస్తుంది. తనకంటే కొత్త schema మార్పుకు చేరే పరికరం అక్కడే ఆగుతుంది, యాప్ నవీకరించబడే వరకు దాని తర్వాత ఏదీ అమలు చేయదు; ఏదీ పోదు, ఏదీ తప్పుగా అమలు కాదు.
 
 Schema version కంటే coarser **compatibility era**: ప్రతి binary లో baked pinned coven revision. రెండు builds ఒక era లోనే సమకాలీకరణ అవుతాయి; coven wire-ఆకృతి break కొత్త era మరియు ప్రతి app లో major version bump. Pre-1.0 లో ప్రతి build era zero, ఆకృతులు migration లేకుండా మారుతాయి.
 
 ## Provider ఏమి చూస్తుంది
 
-Opaque home పై provider ciphertext changesets, ciphertext blobs, signed membership records నిల్వ చేస్తుంది; objects లెక్కించగలదు, sizes మరియు timing గమనించగలదు, వాటిలో ఏదీ చదవదు. Device pull చేసే ప్రతి object డేటాబేస్ ను తాకే ముందు signature మరియు membership తో verify అవుతుంది: నిల్వ dumb, untrusted mailbox. [గుప్తీకరణ](/te/reference/encryption) మరియు [గుర్తింపు మరియు సభ్యత్వం](/te/reference/membership) చూడండి.
+నిల్వ సేవ గుప్తీకరించిన మార్పులు, snapshots, సభ్యత్వ రికార్డులు, దస్త్రాలను ఉంచుతుంది; objects ను లెక్కించగలదు, పరిమాణం మరియు సమయం గమనించగలదు, ఏ ఖాతా ప్రతి object ను రాస్తుందో చూడగలదు, కానీ విషయం నుంచి ఏదీ చదవలేదు. పరికరం తెచ్చే ప్రతి object డేటాబేస్‌ను తాకే ముందు సంతకం మరియు సభ్యత్వం రెండింటితో తనిఖీ చేయబడుతుంది: నిల్వ ఒక నిష్క్రియ, నమ్మలేని తపాలా పెట్టె. [గుప్తీకరణ](/te/reference/encryption) మరియు [గుర్తింపు మరియు సభ్యత్వం](/te/reference/membership) చూడండి.

@@ -9,35 +9,35 @@ Una biblioteca, cada dispositivo, y la única cuenta implicada es una que ya tie
 
 ## El hogar en la nube
 
-El hogar en la nube de una biblioteca es una ubicación en tu almacenamiento: una carpeta en tu Dropbox u OneDrive, tu iCloud, o cualquier bucket compatible con S3 (AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, ...). Contiene todo lo que sincroniza la biblioteca: cambios del catálogo, imágenes y el audio de los lanzamientos que permites que bae administre.
+El hogar en la nube de una biblioteca es una ubicación en tu almacenamiento: una carpeta en tu Dropbox u OneDrive, tu iCloud, o cualquier bucket compatible con S3 (AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, ...). Contiene todo lo que sincroniza la biblioteca: los cambios de la biblioteca, las imágenes y el audio de los lanzamientos que mueves a la nube.
 
-Configúralo en Settings, bajo Sync:
+Configúralo en Configuración, Biblioteca, con **Configurar sincronización...**:
 
-1. Elige un proveedor. Las nubes de consumo inician sesión con la propia página de acceso del proveedor; no se almacena nada de tu cuenta aparte de los tokens que emite. iCloud usa tu Apple ID tal cuál. S3 toma bucket, región, endpoint y claves, comprobadas antes de guardarse.
-2. Elige como almacena objetos el hogar (ver abajo).
-3. bae empieza a sincronizar.
+1. Elige un proveedor.
+   - **Dropbox** y **OneDrive** inician sesión en tu navegador y luego preguntan en qué carpeta vive la biblioteca. En Dropbox es una carpeta compartida, para que puedas invitar a tu hogar; si todavía no tienes ninguna, comparte una en Dropbox y elige **Buscar de nuevo**. En OneDrive es cualquier carpeta, y puedes crear una nueva ahí. El inicio de sesión lo guarda coven; bae nunca ve sus tokens.
+   - **iCloud** usa la Apple Account con la que el dispositivo tiene sesión iniciada.
+   - **S3** pide el bucket, la región, el endpoint y la clave de acceso, y nada más. **Avanzado** contiene un prefijo de clave opcional y el perfil del servicio, automático por defecto; para un servicio que bae no reconoce, **Detectar ajustes** prueba el bucket con tu clave y muestra lo que encontró. Si la configuración se rechaza, bae dice por qué.
+2. bae empieza a sincronizar.
 
 Una biblioteca sin hogar en la nube está completa por sí sola. Solo local es un modo, no una limitacion, y desconectar el hogar en la nube vuelve a el.
 
-## Opaco o explorable
+## Siempre cifrado
 
-En la configuración eliges que puede ver el proveedor, y la elección es permanente para ese hogar:
-
-- **Opaco** (el predeterminado): cada objeto se cifra en tu dispositivo antes de subirse y se almacena bajo nombres sin significado. El proveedor, o cualquiera que entre al bucket, ve texto cifrado. Este es el modo que describe la página de [cifrado](/es/reference/encryption), y el único modo que admite agregar otros dispositivos y miembros.
-- **Explorable**: los objetos se almacenan en claro con nombres de archivo reales, en carpetas nombradas por artista y álbum. Puedes abrir el bucket con cualquier herramienta y copiar o reproducir tus archivos directamente. Nada está cifrado, así que el control de acceso propio del bucket es la única protección, y el hogar no se puede compartir.
+Cada hogar en la nube contiene lo mismo: objetos cifrados bajo nombres aleatorios. Cada cambio, imagen y archivo de audio se cifra en tu dispositivo antes de subirse. Tus álbumes no son una carpeta que cualquiera pueda explorar en tu Dropbox, y el proveedor no ve ningún nombre de álbum, artista o archivo. Consulta [Cifrado](/es/reference/encryption).
 
 ## Que se sincroniza
 
-- El catálogo: álbumes, lanzamientos, pistas, créditos, obras, identidades, ediciones. Cada dispositivo recibe todo.
-- Imagenes: portadas e imágenes de artistas, obtenidas con anticipación para que las cuadrículas se muestren en todas partes.
-- Audio: solo para los lanzamientos que elegiste administrar en la nube. Los lanzamientos no administrados permanecen puramente locales, con entradas de catálogo incluidas en otros dispositivos pero bytes solo dónde los importaste.
+- La biblioteca: álbumes, lanzamientos, pistas, créditos, obras y artistas. Cada dispositivo recibe todo, incluidos los lanzamientos cuyo audio se queda en el dispositivo que los importó.
+- Personas: el nombre y el avatar de cada persona, sus valoraciones, su historial de reproducción y sus listas. Tu historial y cada una de tus listas pueden ser privados o compartirse con el hogar.
+- Imágenes: portadas, imágenes de artistas y avatares, obtenidas con anticipación para que las cuadrículas se muestren en todas partes.
+- Audio: solo para los lanzamientos que moviste a la nube. Un lanzamiento local aparece en cada dispositivo, pero solo se reproduce en el dispositivo que lo importó, hasta que lo muevas a la nube. Consulta [Almacenamiento y sin conexión](/es/guide/storage).
 
 El estado por dispositivo no se sincroniza: posición de reproducción, volumen, cola y configuración del dispositivo permanecen en el dispositivo.
 
 ## Cuando se sincroniza
 
-La sincronización se ejecuta por sí sola: después de cambios, con un temporizador y bajo demanda con **Sync Now**. Las ediciones llegan a otros dispositivos como cambios pequeños, segundos después en condiciones normales. Dos dispositivos que editan al mismo tiempo ganan ambos donde no chocan: bae combina ediciones concurrentes campo por campo, y un lanzamiento eliminado sigue eliminado aunque se haya editado en otro sitio al mismo momento. Nunca se te pide resolver un conflicto.
+La sincronización se ejecuta por sí sola: después de cambios, con un temporizador y bajo demanda con **Sincronizar ahora**. Las ediciones llegan a otros dispositivos segundos después en condiciones normales. Dos dispositivos que editan al mismo tiempo ganan ambos donde no chocan: bae combina ediciones concurrentes campo por campo, la edición posterior gana un campo que ambos cambiaron, y un lanzamiento eliminado sigue eliminado aunque se haya editado en otro sitio al mismo momento. Nunca se te pide resolver un conflicto.
 
 ## Cuando falla
 
-Los fallos de sincronización no interrumpen la biblioteca; sigues explorando, reproduciendo e importando localmente mientras bae reintenta con espera progresiva. La línea de estado muestra la sincronización y la hora de última sincronización; un fallo muestra un aviso con el error, y las subidas se pueden pausar, reintentar e inspeccionar en el [Administrador de almacenamiento](/es/guide/storage#the-storage-manager). Si el inicio de sesión del hogar en la nube caduca, bae te pide reconectar.
+Los fallos de sincronización no interrumpen la biblioteca; sigues explorando, reproduciendo e importando localmente mientras bae reintenta. Configuración, Biblioteca muestra una sola línea para la sincronización: **Sincronizado**, o cuántos elementos esperan, como **Elementos en espera: 3**. Ábrela para ver cada elemento en palabras claras, con la acción que puedes tomar: **Iniciar sesión** cuando el proveedor quiere que vuelvas a iniciar sesión, devolver a su sitio un archivo que se movió antes de subirse, **Reintentar**, **Reconectar**, **Reanudar cargas** o **Actualizar aplicación**. Una espera en la que no puedes ayudar, como que otro dispositivo se conecte, no ofrece nada. Esta lista es el único lugar donde mirar; las subidas también se pueden pausar e inspeccionar en el [Administrador de almacenamiento](/es/guide/storage#el-administrador-de-almacenamiento).

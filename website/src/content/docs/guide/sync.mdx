@@ -9,35 +9,35 @@ One library, every device, and the only account involved is one you already own.
 
 ## The cloud home
 
-A library's cloud home is one location in your storage: a folder in your Dropbox, or OneDrive, your iCloud, or any S3-compatible bucket (AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, ...). It holds everything the library syncs: the catalog changes, artwork, and the audio of releases you let bae manage.
+A library's cloud home is one location in your storage: a folder in your Dropbox or OneDrive, your iCloud, or any S3-compatible bucket (AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, ...). It holds everything the library syncs: the library's changes, artwork, and the audio of releases you move to the cloud.
 
-Set it up in Settings, under Sync:
+Set it up in Settings, Library, with **Set up sync...**:
 
-1. Pick a provider. Consumer clouds sign in with the provider's own login page; nothing about your account is stored beyond the tokens it issues. iCloud uses your Apple ID as is. S3 takes bucket, region, endpoint, and keys, checked before they're saved.
-2. Choose how the home stores objects (see below).
-3. bae starts syncing.
+1. Pick a provider.
+   - **Dropbox** and **OneDrive** sign in through your browser, then ask which folder the library lives in. On Dropbox that is a shared folder, so you can invite your household to it; if you have none yet, share one in Dropbox and choose **Look Again**. On OneDrive it is any folder, and you can create a new one there. The sign-in is held by coven; bae never sees its tokens.
+   - **iCloud** uses the Apple Account the device is signed in to.
+   - **S3** asks for the bucket, region, endpoint, and access key, and nothing else. **Advanced** holds an optional key prefix and the service profile, automatic by default; for a service bae doesn't recognize, **Detect Settings** tests the bucket with your key and shows what it found. If the setup is refused, bae says why.
+2. bae starts syncing.
 
 A library with no cloud home is complete on its own. Local-only is a mode, not a limitation, and disconnecting the cloud home returns to it.
 
-## Opaque or browsable
+## Always encrypted
 
-At setup you choose what the provider gets to see, and the choice is permanent for that home:
-
-- **Opaque** (the default): every object is encrypted on your device before upload and stored under meaningless names. The provider, or anyone who gets into the bucket, sees ciphertext. This is the mode the [encryption](/reference/encryption) page describes, and the only mode that supports adding other devices and members.
-- **Browsable**: objects are stored in the clear with real filenames, in folders named by artist and album. You can open the bucket with any tool and copy or play your files directly. Nothing is encrypted, so the bucket's own access control is the only protection, and the home cannot be shared.
+Every cloud home holds the same thing: encrypted objects under random names. Every change, image, and audio file is encrypted on your device before upload. Your albums are not a folder anyone can browse in your Dropbox, and the provider sees no album, artist, or file name. See [Encryption](/reference/encryption).
 
 ## What syncs
 
-- The catalog: albums, releases, tracks, credits, works, identities, edits. Every device gets all of it.
-- Artwork: covers and artist images, fetched eagerly so grids render everywhere.
-- Audio: only for releases you chose to manage in the cloud. Unmanaged releases stay purely local, catalog entries included on other devices but bytes only where you imported them.
+- The library: albums, releases, tracks, credits, works, and artists. Every device gets all of it, including releases whose audio stays on the device that imported them.
+- People: each person's name and avatar, ratings, play history, and playlists. Your history and each of your playlists can be private to you or shared with the household.
+- Artwork: covers, artist images, and avatars, fetched eagerly so grids render everywhere.
+- Audio: only for releases you moved to the cloud. A local release shows on every device but plays only on the device that imported it, until you move it to the cloud. See [Storage and offline](/guide/storage).
 
 Per-device state does not sync: playback position, volume, queue, and device settings stay on the device.
 
 ## When it syncs
 
-Sync runs on its own: after changes, on a timer, and on demand with **Sync Now**. Edits land on other devices as small changes, seconds later under normal conditions. Two devices editing at the same time both win where they don't collide: bae merges concurrent edits field by field, and a deleted release stays deleted even if it was edited elsewhere at the same moment. Nothing ever asks you to resolve a conflict.
+Sync runs on its own: after changes, on a timer, and on demand with **Sync Now**. Edits land on other devices seconds later under normal conditions. Two devices editing at the same time both win where they don't collide: bae merges concurrent edits field by field, the later edit wins a field both changed, and a deleted release stays deleted even if it was edited elsewhere at the same moment. Nothing ever asks you to resolve a conflict.
 
 ## When it fails
 
-Sync failures don't interrupt the library; you keep browsing, playing, and importing locally while bae retries with backoff. The status line shows syncing and last-synced time; a failure shows a banner with the error, and uploads can be paused, retried, and inspected in the [Storage Manager](/guide/storage#the-storage-manager). If the cloud home's sign-in expires, bae asks you to reconnect.
+Sync failures don't interrupt the library; you keep browsing, playing, and importing locally while bae retries. Settings, Library shows one line for sync: **Synced**, or how many items are waiting, such as **Waiting: 3 items**. Open it to see each item in plain words, with the action you can take: **Sign In** when the provider wants you to sign in again, putting back a file that moved before it uploaded, **Retry**, **Reconnect**, **Resume Uploads**, or **Update App**. A wait you can't help, such as for another device to come online, offers nothing. This list is the one place to look; uploads can also be paused and inspected in the [Storage Manager](/guide/storage#the-storage-manager).

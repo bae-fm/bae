@@ -12,8 +12,8 @@ Las apps de escritorio (macOS, Windows) son la herramienta completa: crean bibli
 Abre bae en tu escritorio. Si no hay ningúna biblioteca en la máquina, la pantalla de bienvenida ofrece tres opciones:
 
 - **Crear una biblioteca nueva**, si este es tu primer dispositivo.
-- **Unirse a una biblioteca**, si otro dispositivo ya tiene una y su propietario te aprobará. Consulta [Dispositivos y miembros](/es/guide/devices).
-- **Restaurar desde la nube**, si es tu propia biblioteca y tienes su código de recuperación. Consulta [Dispositivos y miembros](/es/guide/devices#recovery-codes).
+- **Unirse a una biblioteca**, si alguien te invitó a la suya. Consulta [Dispositivos y miembros](/es/guide/devices#invitar-a-una-persona).
+- **Restaurar desde la nube**, si es tu propia biblioteca y tienes su código de restauración. Consulta [Dispositivos y miembros](/es/guide/devices#códigos-de-restauración).
 
 Crea una. Una biblioteca empieza local: todo vive en está máquina, nada necesita una cuenta y no interviene ningúna nube hasta que conectas una.
 
@@ -35,10 +35,10 @@ De vuelta en la sección **Library**, el álbum está en la cuadrícula. Haz cli
 
 Cuando quieras tener la biblioteca en más de un dispositivo, conecta un hogar en la nube: tu propio Dropbox, OneDrive, iCloud o cualquier bucket compatible con S3. Todo lo que bae pone allí se cifra antes de subirse; el proveedor lo almacena pero no puede leerlo.
 
-- [Sincronización](/es/guide/sync): conecta un hogar en la nube y elige que almacena.
-- [Dispositivos y miembros](/es/guide/devices): agrega tu teléfono u otro escritorio.
+- [Sincronización](/es/guide/sync): conecta un hogar en la nube y mira qué se sincroniza.
+- [Dispositivos y miembros](/es/guide/devices): agrega tu teléfono u otro escritorio, o invita a alguien.
 - [Almacenamiento y sin conexión](/es/guide/storage): conserva música en el dispositivo, o transmitela desde tu nube y fija lo que necesitas sin conexión.
 
 ## Dónde viven las cosas
 
-Cada biblioteca guarda su base de datos y configuración en `~/.bae/libraries/` en escritorio. Tu audio permanece dónde lo importaste, a menos que le pidas a bae que lo administre en tu nube. Las claves y credenciales viven en el llavero del sistema operativo, no en archivos.
+Cada biblioteca guarda su base de datos en `~/.bae/stores/` y su configuración en `~/.bae/libraries/` en escritorio. Tu audio permanece donde lo importaste; mover un lanzamiento a la nube sube una copia cifrada y deja tus archivos donde están. Las claves y credenciales viven en el llavero del sistema operativo, no en archivos.

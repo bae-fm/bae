@@ -42,7 +42,7 @@ Confirmar uma importação roda, em ordem:
 3. **Seleção de capa**: a arte escolhida (remota, imagem da pasta ou embutida) é renderizada novamente para uma miniatura de exibição; a original é mantida entre os arquivos do lançamento se veio da pasta.
 4. **Escrita atômica**: lançamento, faixas, créditos, identidades, formatos, segmentos, arquivos e capa são gravados em uma transação. Não existe estado meio importado.
 
-O lançamento entra referenciando os arquivos do usuário no lugar. Se o usuário escolheu gerenciado na nuvem, o upload acontece depois da gravação como uma transição de armazenamento, e os bytes originais dos arquivos permanecem a fonte de verdade o tempo todo; nada que o usuário deu a bae é apagado ou alterado.
+O lançamento entra referenciando os arquivos do usuário no lugar. Em uma importação na nuvem, coven lê e calcula o hash de cada arquivo antes da escrita, e a mesma escrita anexa cada arquivo à sua linha e coloca o upload dele na fila. Uma importação local registra, em vez disso, o caminho, o tamanho e o horário de modificação de cada arquivo neste dispositivo; os bytes só são lidos se o lançamento for movido depois para a nuvem. Em qualquer caso, os bytes originais dos arquivos permanecem a fonte de verdade o tempo todo; nada que o usuário deu a bae é apagado ou alterado.
 
 ## Reconhecendo rips
 

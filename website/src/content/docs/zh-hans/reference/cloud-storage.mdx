@@ -1,36 +1,35 @@
 ---
 title: 云存储
-description: 提供商、认证，以及云端主目录的形态
+description: 提供商、登录，以及云端主目录的形态
 ---
 
-云端主目录是用户已经拥有的存储中的一个位置。每个提供商都通过 [coven](https://coven.bae.fm) 中同一个存储接口驱动；各提供商不同的是认证方式，以及如何授予第二台设备访问权。
+云端主目录是用户已经拥有的存储中的一个位置。每个提供商都通过 [coven](https://coven.bae.fm) 中同一个存储接口驱动；各提供商不同的是登录、设置方式，以及其他人和设备如何到达它。
 
 ## 提供商
 
-| Provider | Auth | Access for a new device |
-|---|---|---|
-| S3-compatible | Access key + secret | 配对期间将凭证密封到批准的设备上 |
-| Dropbox | OAuth (PKCE) | 新设备的帐户获得批准，然后共享文件夹 |
-| OneDrive | OAuth (PKCE) | 新设备的帐户获得批准，然后共享文件夹 |
-| iCloud (CloudKit) | Apple ID, no sign-in | 配对期间接受 CloudKit 共享 |
+| 提供商 | 登录 | 你自己的新设备 | 你邀请的人 |
+|---|---|---|---|
+| S3-compatible | Access key + secret | 恢复码，加上在二维码中随它一起携带的你的访问密钥 | 为对方创建的访问密钥 |
+| Dropbox | OAuth，由 coven 保管 | 恢复码，然后登录你的 Dropbox | 资料库的共享文件夹共享给对方的账户 |
+| OneDrive | OAuth，由 coven 保管 | 恢复码，然后登录你的 OneDrive | 资料库的文件夹共享给对方的账户 |
+| iCloud (CloudKit) | Apple Account，无需登录 | 恢复码，也可从 iCloud 钥匙串中选取 | 资料库的 CloudKit 区域共享给对方的 Apple Account |
 
-S3-compatible 覆盖 AWS、Backblaze B2、Cloudflare R2、Wasabi、MinIO，以及任何使用该 API 的其他服务；bucket、region、endpoint 和 key prefix 可配置，并会在保存配置前探测 bucket，因此拼写错误会在设置时失败，而不是第一次同步时失败。OAuth providers 只存在于完整 **bae** 版本；**baeium** 构建会编译掉它们。
+S3-compatible 覆盖 AWS、Backblaze B2、Cloudflare R2、Wasabi、MinIO，以及任何使用该 API 的其他服务。设置表单只询问 bucket、region、endpoint 和访问密钥；coven 会根据 endpoint 的主机识别已知服务，并补全与它们通信的方式。**高级** 中有可选的 key prefix 和服务配置选项，默认为自动。对于 coven 不认识的服务，**检测设置** 会用该密钥探测 bucket 并显示它找到的结果。设置会在保存任何内容之前检查提供商，因此拼写错误会在设置时失败，而不是第一次同步时失败，bae 也会用通俗的话说明 coven 给出的原因。Dropbox、OneDrive 和 iCloud 只存在于完整 **bae** 版本；**baeium** 构建会编译掉它们。
 
-## OAuth
+## 登录和文件夹
 
-登录是带 PKCE 的 authorization-code flow，作为 public client。桌面端的 redirect 会落到绑定本地端口的 loopback server，仅用于一次 callback；移动端则由应用捕获 custom-scheme redirect。bae 请求提供商为该工作提供的最窄 scope。token 保存在 OS keyring 中，通过提供商的 refresh grant 刷新；被拒绝的刷新会表现为重新连接提示，而不是静默重试循环。
+coven 自行完成 Dropbox 和 OneDrive 的登录，因此没有任何 token 经过 bae。桌面端由浏览器打开提供商页面，本地监听器接收那一次 redirect；移动端则由平台的登录界面完成。coven 把 token 保存在 OS keyring 中，提供商拒绝某个 token 时会刷新一次；刷新失败会在同步状态中显示为 **登录** 操作，而不是静默重试循环。
 
-CloudKit 完全不需要流程：平台的 CloudKit driver 由应用实现并交给核心，以已登录 Apple ID 的身份运行。
+登录后，用户选择资料库放在哪里。在 Dropbox 上它是一个共享文件夹，因为家庭资料库要共享给其他人的账户；为此 bae 使用完整 Dropbox 访问权限，而不是应用文件夹。如果还没有共享文件夹，bae 会提示先在 Dropbox 中共享一个文件夹，再重新查找。在 OneDrive 上可以是任意文件夹，从顶层开始浏览，也可以在那里新建一个。
+
+CloudKit 完全不需要流程：coven 在 Apple 平台上以已登录 Apple Account 的身份驱动它。
 
 ## 主目录布局
 
-在主目录内，coven 布置每台设备的 changeset 流、snapshot 世代、成员资格记录和 blob namespace。bae 贡献三个 blob namespace：`release_files`、`covers` 和 `artist_images`。
+在主目录内，每个对象路径都以资料库的 store id 开头：coven 的编号变更序列、它的 snapshot、加入请求和已存储的文件。多个资料库可以共用同一个 Dropbox 或 OneDrive 文件夹，而不会触碰彼此的对象。
 
-对象如何取 key 取决于主目录的存储模式，该模式在创建时固定：
-
-- **不透明**：对象被加密，并存储在不泄露信息的 content-derived keys 下。这是完全信任密码学的模式；见[加密](/zh-hans/reference/encryption)。
-- **可浏览**：对象以明文存放在上传时按 blob 记录的可读路径：`release_files/{artist}/{album}/{filename}`、`covers/{album}/{release}/cover.{ext}`、`artist_images/{artist}/artist.{ext}`。bucket 同时成为可用的文件树；取舍是没有加密、没有成员资格，因此可浏览主目录不能共享给其他人。
+每个对象都会加密并以随机名称存储；没有明文模式。bae 的文件属于三张同步表 `release_files`、`covers` 和 `artist_images` 的行，以及每个 `people` 行上的头像。文件路径在附加到所属行时就已固定，因此重命名专辑永远不会移动它。见[加密](/zh-hans/reference/encryption)。
 
 ## 真实网络下的行为
 
-播放读取是 ranged：播放器串流它需要的字节窗口，而不是整个文件。超过大小阈值的上传会在提供商支持时使用 multipart。速率限制和临时提供商错误会用指数退避重试，并在给出 retry-after 时遵守它；过期 OAuth token 会原地刷新。同步发件箱能跨重启保留：退出应用打断的上传会恢复，而不是从头开始。
+播放读取是 ranged：播放器获取它需要的加密分块，而不是整个文件，并在按顺序播放文件时提前获取。速率限制和临时提供商错误会按同一个退避计划重试，并在给出 retry-after 时遵守它。上传队列能跨重启保留：退出应用打断的上传会接着进行，而不是从头开始，已暂停的上传也会保持暂停。

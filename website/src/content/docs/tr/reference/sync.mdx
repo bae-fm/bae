@@ -7,34 +7,36 @@ bae'in eşzamanlaması [coven](https://coven.bae.fm)'in eşzamanlamasıdır: bae
 
 ## Yakalama
 
-coven SQLite bağlantısının sahibidir, bu yüzden bae'in kaydettiği her yazma onun içinden geçer. SQLite'ın session extension'ı her işlemde tam olarak neyin değiştiğini kaydeder; eşzamanlanan tablolardaki değişiklikler **changeset** olur, kitaplık anahtarıyla mühürlenir ve aygıtın kimlik anahtarıyla imzalanır. Diff yok, dirty flag yok: yakalama bağlantının özelliğidir ve bir yazma kaçırılamaz.
+coven SQLite bağlantısının sahibidir, bu yüzden bae'in kaydettiği her yazma onun içinden geçer. Eşzamanlanan tabloları değiştiren bir işlem kaydedildiğinde coven, aynı işlemde her satır değişikliğini dokunduğu sütunlarla birlikte kaydeder; böylece kaydedilmiş bir değişiklik, uygulama bir an sonra çökse bile asla kaybolmaz. Diff yok, dirty flag yok: yakalama bağlantının özelliğidir ve bir yazma kaçırılamaz. Değişiklik aygıtta bekler ve yalnızca gönderilirken şifrelenip imzalanır, bu yüzden yazmak anahtar ya da ağ gerektirmez.
 
-## Akışlar
+## Dizi
 
-Her aygıt changeset'lerini bulut evindeki kendi akışına, sıralı numaralarla ekler. Aygıtlar birbirlerinin akışlarına asla yazmaz, bu yüzden depolamada yazma çakışmaları yoktur ve her aygıt eş akış başına bir imleç tutar. Bir eşzamanlama döngüsü önce yerel giden kutusunu iter, sonra her eşin akışını kendi imlecinden ileri çeker; her changeset'in imzasını ve yazarının üyeliğini uygulamadan önce doğrular.
+Bir kitaplığın bulut evindeki bütün geçmişi tek numaralı bir nesne dizisidir. Her biri bir aygıtın değişiklik grubunu, bir yönetici girdisini, bir üyeye mühürlenmiş bir anahtarı veya bir snapshot duyurusunu tutar. Her aygıt onları sırayla uygular ve hiçbirini atlamaz, böylece her aygıt neyin ne zaman olduğunda anlaşır. Bir aygıt sonraki nesneyi ancak öncekilerin hepsini uyguladıktan sonra ekler.
 
-Döngü yerel değişikliklerden sonra, backoff'lu boşta zamanlayıcıyla (anketler arasında beş dakikaya kadar) ve **Sync Now** ile hemen çalışır. Hatalar geri çekilir ve yeniden denenir; döngü her sonucu UI'a durum, hata metni ve uygulanan satır sayısı olarak bildirir.
+Bir eşzamanlama geçişi, aygıtın uyguladığı son nesneden itibaren biri eksik olana kadar ileri okur, her birinin imzasını denetleyip uygular, bu aygıtın bekleyen değişikliklerini tek yeni bir nesne olarak gönderir, sonra yeni durumun gerektirdiği işi yapar: erişimi paylaşmak veya kaldırmak, snapshot almak, eski geçmişi silmek. Sakin bir kitaplık üzerindeki geçiş, boyutu ne olursa olsun iki istek tutar.
+
+Geçişler yerel değişikliklerden sonra, boşta zamanlayıcıyla ve **Şimdi Eşzamanla** ile hemen çalışır. Hatalar tek bir geri çekilme takvimiyle yeniden denenir ve ilerleyemeyen her şey neyi beklediğini söyler; bae bunu eşzamanlama durum satırında gösterir.
 
 ## Birleştirme
 
 İki aygıtın ayrı kalırken aynı kitaplığı düzenlemesi olağan durumdur, istisna değil. Değişiklikleri buluştuğunda:
 
 - **Farklı satırlara veya farklı sütunlara** yapılan düzenlemeler birlikte uygulanır. Dizüstünde bir sürümün yılını, masaüstünde label'ını düzenlemek ikisini de verir.
-- **Aynı satırın aynı sütununa** yapılan düzenlemeler satırın `_updated_at` hybrid logical clock'una göre sıralanır: sonraki düzenleme kazanır, belirlenimlidir ve her aygıtta aynıdır.
-- **Silmeler** eşzamanlı düzenlemelere üstün gelir: bir aygıtta silinen sürüm, aynı aralıkta başka aygıtta düzenlenmiş olsa bile silinmiş kalır.
+- **Aynı satırın aynı sütununa** yapılan düzenlemeler zaman damgasına göre sıralanır: sonraki düzenleme kazanır, belirlenimlidir ve her aygıtta aynıdır.
+- **Silmeler** eşzamanlı düzenlemelere üstün gelir: o arada silinmiş bir satıra yapılan düzenleme, ne zaman ulaşırsa ulaşsın kaybeder; bu yüzden bir aygıtta silinen sürüm, aynı aralıkta başka aygıtta düzenlenmiş olsa bile silinmiş kalır.
 
-Çakışma UI'ı yoktur çünkü çözümsüz durum yoktur: her aygıt herhangi bir uygulama sırasından aynı sonuca yakınsar.
+coven yerine başkası geçen her değeri *kayıp değer* olarak tutar; bae hiçbirini göstermez ve hiçbirini atmaz, bu yüzden çakışma UI'ı yoktur. Her aygıt herhangi bir varış sırasından aynı sonuca yakınsar.
 
-## Başlatma
+## Snapshot'lar
 
-Katılan veya geri yüklenen aygıt geçmişi baştan oynatmaz. Bir **snapshot** indirir; bu, bulut evine düzenli yayımlanan tam SQLite imajıdır, sonra yalnızca her akışın ondan sonra biriktirdiği changeset'leri uygular. Snapshot üst verisi şema sürümünü ve içerdiği akış başına imleçleri kaydeder.
+Katılan veya geri yüklenen aygıt geçmişi baştan oynatmaz. Aygıtlar **snapshot** alır, yani kitaplığın dizideki bir noktadaki tam durumunu; kitaplığın ve her özel çemberin bir snapshot'ı olduğunda ondan önceki geçmiş silinir. Yeni bir aygıt en son snapshot'ı yükler, sonra yalnızca ondan sonra geleni uygular. Saklanan geçmişten daha uzun süre uzakta kalan bir aygıt da aynısını yapar ve gönderilmemiş düzenlemelerini korur.
 
 ## Şema sürümleri
 
-bae'in şeması numaralı bir merdivenden geçer ve merdivenin üst basamağı aygıtın yazdığı her changeset'e işlenir. Kendi şemasından daha yeni bir şemadan changeset çeken aygıt, uygulama güncellenene kadar o akışı bekletir ve ötesinde hiçbir şey uygulamaz; hiçbir şey kaybolmaz ve yanlış uygulanmaz. Veritabanı dosyası da kendi şemasından eski bir ikili altında açılmayı reddeder.
+bae'in şeması tek bir geçiştir ve bir aygıtın gönderdiği her değişiklik, yapıldığı şema sürümünü kaydeder. Kendi şemasından daha yeni bir şemadan gelen değişikliğe ulaşan aygıt orada durur, uygulama güncellenene kadar ötesinde hiçbir şey uygulamaz; hiçbir şey kaybolmaz ve yanlış uygulanmaz.
 
 Şema sürümünden daha kaba olan **uyumluluk çağıdır**: her ikiliye işlenen sabit coven revizyonu. İki derleme yalnızca aynı çağ içinde eşzamanlar; coven wire-format kırılması yeni bir çağ ve her uygulamada major sürüm artışıdır. 1.0 öncesinde her derleme çağ sıfırdır ve biçimler geçişsiz değişir.
 
 ## Sağlayıcı ne görür
 
-Opaque evde sağlayıcı şifreli changeset'leri, şifreli blob'ları ve imzalı üyelik kayıtlarını saklar; nesneleri sayabilir, boyutları ve zamanlamayı gözleyebilir, ama hiçbirini okuyamaz. Bir aygıtın çektiği her nesne, veritabanına dokunmadan önce imza ve üyelik açısından doğrulanır: depolama güvenilmeyen düz bir posta kutusudur. [Şifreleme](/tr/reference/encryption) ve [Kimlik ve üyelik](/tr/reference/membership) bölümlerine bakın.
+Sağlayıcı şifreli değişiklikleri, snapshot'ları, üyelik kayıtlarını ve dosyaları saklar; nesneleri sayabilir, boyutları ve zamanlamayı gözleyebilir ve her nesneyi hangi hesabın yazdığını görebilir, ama içeriklerin hiçbirini okuyamaz. Bir aygıtın çektiği her nesne, veritabanına dokunmadan önce imza ve üyelik açısından doğrulanır: depolama güvenilmeyen düz bir posta kutusudur. [Şifreleme](/tr/reference/encryption) ve [Kimlik ve üyelik](/tr/reference/membership) bölümlerine bakın.

@@ -16,22 +16,21 @@ Alongside the apps: `bae-mcp` (the MCP server) and `bae-automation`.
 
 ## One library on disk
 
-A library lives at `~/.bae/libraries/<library-id>/` (a platform data directory on mobile):
+A library lives in two directories (platform data directories on mobile): coven's store, and bae's own settings beside it.
 
 ```
-~/.bae/libraries/<id>/
-  library.db        # SQLite: catalog, credits, playback specs
-  config.yaml       # coven: library identity, cloud home; never synced
-  preferences.toml  # bae's settings; never synced
-  storage/
-    local/          # blobs this device owns (covers, artist images)
-    cache/          # evictable copies of cloud blobs
-    pinned/         # pinned-for-offline copies, never evicted
+~/.bae/stores/<id>/       # coven's store, opened only through coven
+  store.db                # SQLite: catalog, credits, playback specs, coven's bookkeeping
+  files/                  # coven's copies of bae's own files (covers, artist images, avatars)
+  cache/                  # cached and pinned copies of uploaded files
+~/.bae/libraries/<id>/    # bae's own; never synced
+  preferences.toml        # bae's settings
+  cache/                  # artwork fetched from the catalogs
 ```
 
-The database is opened only through coven, which layers its own bookkeeping tables (sync cursors, outbox, blob state) next to bae's schema and runs bae's migrations. Audio files imported unmanaged are not under `~/.bae` at all: the database references them at the paths where they were imported.
+The database is opened only through coven, which keeps its own bookkeeping tables (merge records, upload queue, file state) next to bae's schema and runs bae's migration. A local release's audio files are not under `~/.bae` at all: the database references them at the paths where they were imported.
 
-Secrets never live in these files. Identity keys, the library encryption key, cloud credentials, and API tokens live in the OS keyring (Keychain on Apple platforms, synced via iCloud Keychain; the platform equivalents elsewhere).
+Secrets never live in these files. Member keys, the library's keys, cloud sign-ins, and API tokens live in the OS keyring (Keychain on Apple platforms, the platform equivalents elsewhere); on Apple platforms the restore code is also saved in iCloud Keychain.
 
 ## Editions
 

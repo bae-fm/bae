@@ -16,22 +16,21 @@ Bên cạnh các ứng dụng: `bae-mcp` (máy chủ MCP) và `bae-automation`.
 
 ## Một thư viện trên đĩa
 
-Một thư viện nằm tại `~/.bae/libraries/<library-id>/` (một thư mục dữ liệu nền tảng trên mobile):
+Một thư viện nằm trong hai thư mục (thư mục dữ liệu nền tảng trên mobile): store của coven, và cài đặt riêng của bae bên cạnh nó.
 
 ```
-~/.bae/libraries/<id>/
-  library.db        # SQLite: catalog, credits, playback specs
-  config.yaml       # coven: danh tính thư viện, cloud home; không bao giờ đồng bộ
-  preferences.toml  # cài đặt của bae; không bao giờ đồng bộ
-  storage/
-    local/          # blobs this device owns (covers, artist images)
-    cache/          # evictable copies of cloud blobs
-    pinned/         # pinned-for-offline copies, never evicted
+~/.bae/stores/<id>/       # store của coven, chỉ mở qua coven
+  store.db                # SQLite: catalog, ghi công, thông số phát, sổ sách của coven
+  files/                  # bản sao do coven giữ của các tệp riêng của bae (bìa, ảnh nghệ sĩ, ảnh đại diện)
+  cache/                  # bản sao đệm và bản ghim của các tệp đã tải lên
+~/.bae/libraries/<id>/    # của riêng bae; không bao giờ đồng bộ
+  preferences.toml        # cài đặt của bae
+  cache/                  # artwork lấy từ các catalog
 ```
 
-Cơ sở dữ liệu chỉ được mở qua coven, lớp này đặt các bảng sổ sách riêng (con trỏ đồng bộ, hộp thư đi, trạng thái blob) cạnh schema của bae và chạy migration của bae. Tệp âm thanh được nhập không quản lý hoàn toàn không nằm dưới `~/.bae`: cơ sở dữ liệu tham chiếu tới chúng tại đường dẫn nơi chúng được nhập.
+Cơ sở dữ liệu chỉ được mở qua coven, lớp này giữ các bảng sổ sách riêng (bản ghi gộp, hàng đợi tải lên, trạng thái tệp) cạnh schema của bae và chạy migration của bae. Tệp âm thanh của một bản phát hành cục bộ hoàn toàn không nằm dưới `~/.bae`: cơ sở dữ liệu tham chiếu tới chúng tại đường dẫn nơi chúng được nhập.
 
-Bí mật không bao giờ nằm trong các tệp này. Khóa danh tính, khóa mã hóa thư viện, thông tin xác thực đám mây và token API nằm trong keyring của hệ điều hành (Keychain trên nền tảng Apple, đồng bộ qua iCloud Keychain; các tương đương nền tảng ở nơi khác).
+Bí mật không bao giờ nằm trong các tệp này. Khóa thành viên, các khóa của thư viện, phiên đăng nhập đám mây và token API nằm trong keyring của hệ điều hành (Keychain trên nền tảng Apple, các tương đương nền tảng ở nơi khác); trên nền tảng Apple, mã khôi phục cũng được lưu trong iCloud Keychain.
 
 ## Phiên bản
 

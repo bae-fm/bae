@@ -7,34 +7,36 @@ description: Cách thay đổi di chuyển giữa thiết bị, và cách chúng
 
 ## Ghi lại
 
-coven sở hữu kết nối SQLite, nên mọi lần ghi bae commit đều đi qua nó. Session extension của SQLite ghi lại chính xác thứ gì thay đổi trong mỗi transaction; các thay đổi trên bảng đồng bộ trở thành một **changeset**, được niêm phong bằng khóa thư viện và ký bằng khóa danh tính của thiết bị. Không diffing, không cờ bẩn: ghi lại là thuộc tính của kết nối, và một lần ghi không thể bị bỏ sót.
+coven sở hữu kết nối SQLite, nên mọi lần ghi bae commit đều đi qua nó. Khi một transaction thay đổi các bảng đồng bộ được commit, coven ghi lại từng thay đổi hàng, cùng các cột nó chạm tới, trong chính transaction đó, nên một thay đổi đã commit không bao giờ mất, kể cả khi ứng dụng sập ngay sau đó. Không diffing, không cờ bẩn: ghi lại là thuộc tính của kết nối, và một lần ghi không thể bị bỏ sót. Thay đổi chờ trên thiết bị và chỉ được mã hóa và ký khi được gửi, nên việc ghi không cần khóa hay mạng.
 
-## Luồng
+## Chuỗi
 
-Mỗi thiết bị thêm changeset của nó vào stream riêng trong nhà trên đám mây, đánh số tuần tự. Thiết bị không bao giờ ghi vào stream của nhau, nên không có xung đột ghi trong lưu trữ, và mỗi thiết bị theo dõi một con trỏ cho từng stream ngang hàng. Một chu kỳ đồng bộ đẩy hộp thư đi cục bộ, rồi kéo stream của từng ngang hàng từ con trỏ của nó về trước, xác minh chữ ký của từng changeset và tư cách thành viên của tác giả trước khi áp dụng.
+Toàn bộ lịch sử của một thư viện trong nhà trên đám mây là một chuỗi đối tượng đánh số. Mỗi đối tượng chứa một lô thay đổi của một thiết bị, một mục quản trị, một khóa được niêm phong cho một thành viên, hoặc một thông báo snapshot. Mọi thiết bị áp dụng chúng theo thứ tự và không bao giờ bỏ qua cái nào, nên mọi thiết bị thống nhất về việc gì đã xảy ra và khi nào. Một thiết bị chỉ thêm đối tượng kế tiếp sau khi đã áp dụng mọi đối tượng trước đó.
 
-Chu kỳ chạy sau thay đổi cục bộ, theo bộ hẹn giờ nhàn rỗi có backoff (tối đa năm phút giữa các lần thăm dò), và ngay lập tức với **Sync Now**. Lỗi back off và thử lại; vòng lặp báo kết quả của mỗi chu kỳ cho giao diện dưới dạng trạng thái, văn bản lỗi và số hàng đã áp dụng.
+Một lượt đồng bộ đọc tới từ đối tượng cuối cùng thiết bị đã áp dụng cho đến khi thiếu một đối tượng, kiểm tra chữ ký của từng cái và áp dụng nó, gửi các thay đổi đang chờ của thiết bị này thành một đối tượng mới, rồi làm phần việc trạng thái mới đòi hỏi: chia sẻ hoặc bỏ chia sẻ quyền truy cập, tạo snapshot, xóa lịch sử cũ. Một lượt trên thư viện yên tĩnh tốn hai yêu cầu, bất kể kích thước của nó.
+
+Các lượt chạy sau thay đổi cục bộ, theo bộ hẹn giờ nhàn rỗi, và ngay lập tức với **Sync Now**. Lỗi được thử lại theo một lịch backoff duy nhất, và mọi thứ không thể tiếp tục đều nêu nó đang chờ gì, điều bae hiển thị trên dòng trạng thái đồng bộ.
 
 ## Gộp
 
 Hai thiết bị sửa cùng thư viện khi tách rời là trường hợp bình thường, không phải ngoại lệ. Khi thay đổi của chúng gặp nhau:
 
 - Chỉnh sửa trên **hàng khác nhau hoặc cột khác nhau** đều áp dụng. Sửa năm của một bản phát hành trên laptop và hãng đĩa của nó trên desktop cho ra cả hai.
-- Chỉnh sửa trên **cùng cột của cùng hàng** được sắp thứ tự bởi đồng hồ logic lai `_updated_at` của hàng: chỉnh sửa muộn hơn thắng, xác định và giống nhau trên mọi thiết bị.
-- **Xóa thắng** chỉnh sửa đồng thời: một bản phát hành bị xóa trên một thiết bị vẫn bị xóa kể cả khi thiết bị khác sửa nó trong cùng khoảng.
+- Chỉnh sửa trên **cùng cột của cùng hàng** được sắp thứ tự theo dấu thời gian: chỉnh sửa muộn hơn thắng, xác định và giống nhau trên mọi thiết bị.
+- **Xóa thắng** chỉnh sửa đồng thời: một chỉnh sửa trên hàng đã bị xóa sau đó sẽ thua, bất kể khi nào nó tới, nên một bản phát hành bị xóa trên một thiết bị vẫn bị xóa kể cả khi thiết bị khác sửa nó trong cùng khoảng.
 
-Không có giao diện xung đột vì không có trạng thái chưa giải quyết: mọi thiết bị hội tụ về cùng kết quả từ bất kỳ thứ tự áp dụng nào.
+coven giữ mỗi giá trị bị thay thế dưới dạng *giá trị bị mất*; bae không hiển thị và không loại bỏ giá trị nào, nên không có giao diện xung đột. Mọi thiết bị hội tụ về cùng kết quả từ bất kỳ thứ tự tới nào.
 
-## Khởi tạo
+## Snapshot
 
-Thiết bị tham gia hoặc khôi phục không phát lại lịch sử từ đầu. Nó tải xuống một **snapshot**, ảnh SQLite đầy đủ được công bố định kỳ lên nhà trên đám mây, rồi chỉ áp dụng các changeset mà mỗi stream tích lũy sau đó. Siêu dữ liệu snapshot ghi phiên bản schema và con trỏ theo từng stream mà nó thể hiện.
+Thiết bị tham gia hoặc khôi phục không phát lại lịch sử từ đầu. Các thiết bị tạo **snapshot**, trạng thái đầy đủ của thư viện tại một điểm trong chuỗi, và khi thư viện cùng mọi vòng riêng đều có snapshot, lịch sử trước đó bị xóa. Một thiết bị mới tải snapshot mới nhất, rồi chỉ áp dụng những gì tới sau nó. Một thiết bị vắng mặt lâu hơn lịch sử được giữ lại cũng làm như vậy, và giữ các chỉnh sửa chưa gửi của nó.
 
 ## Phiên bản schema
 
-Schema của bae di chuyển qua một thang số, và bậc cao nhất của thang được đóng dấu trên mọi changeset mà thiết bị ghi. Thiết bị kéo một changeset từ schema mới hơn schema của nó sẽ giữ stream đó lại, không áp dụng gì sau nó, cho đến khi ứng dụng cập nhật; không gì bị mất và không gì được áp dụng sai. Bản thân tệp cơ sở dữ liệu từ chối mở dưới binary cũ hơn schema của nó.
+Schema của bae là một migration duy nhất, và mọi thay đổi một thiết bị gửi đều ghi phiên bản schema mà nó được tạo. Thiết bị gặp một thay đổi từ schema mới hơn của mình sẽ dừng tại đó, không áp dụng gì sau nó, cho đến khi ứng dụng cập nhật; không gì bị mất và không gì được áp dụng sai.
 
 Thô hơn phiên bản schema là **kỷ nguyên tương thích**: revision coven được ghim, nhúng vào mỗi binary. Hai bản dựng chỉ đồng bộ trong một kỷ nguyên; một thay đổi phá vỡ định dạng wire của coven là kỷ nguyên mới và tăng major version trên mọi ứng dụng. Trước 1.0, mọi bản dựng là kỷ nguyên không và định dạng thay đổi không migration.
 
 ## Nhà cung cấp thấy gì
 
-Trên nhà mờ đục, nhà cung cấp lưu changeset ciphertext, blob ciphertext và bản ghi thành viên đã ký; nó có thể đếm đối tượng và quan sát kích thước, thời điểm, và không đọc được gì trong đó. Mọi đối tượng thiết bị kéo về đều được xác minh, chữ ký và tư cách thành viên, trước khi bất cứ thứ gì chạm vào cơ sở dữ liệu: lưu trữ là hộp thư không đáng tin, không thông minh. Xem [Mã hóa](/vi/reference/encryption) và [Danh tính và tư cách thành viên](/vi/reference/membership).
+Nhà cung cấp lưu các thay đổi, snapshot, bản ghi thành viên và tệp đã mã hóa; nó có thể đếm đối tượng, quan sát kích thước, thời điểm và thấy tài khoản nào ghi mỗi đối tượng, nhưng không đọc được nội dung nào. Mọi đối tượng thiết bị kéo về đều được xác minh, chữ ký và tư cách thành viên, trước khi bất cứ thứ gì chạm vào cơ sở dữ liệu: lưu trữ là hộp thư không đáng tin, không thông minh. Xem [Mã hóa](/vi/reference/encryption) và [Danh tính và tư cách thành viên](/vi/reference/membership).

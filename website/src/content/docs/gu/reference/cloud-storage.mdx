@@ -1,36 +1,35 @@
 ---
 title: Cloud storage
-description: Providers, authentication, અને cloud home નું સ્વરૂપ
+description: પ્રદાતાઓ, સાઇન-ઇન અને cloud home નું સ્વરૂપ
 ---
 
-Cloud home એ user પાસે પહેલેથી હોય તે storage માં એક location છે. દરેક provider [coven](https://coven.bae.fm) માં એ જ storage interface મારફતે ચાલે છે; provider પ્રમાણે જે જુદું છે તે authentication અને second device ને access કેવી રીતે મળે છે.
+Cloud home એ વપરાશકર્તા પાસે પહેલેથી હોય તે સ્ટોરેજમાં એક જગ્યા છે. દરેક પ્રદાતા [coven](https://coven.bae.fm) માં એ જ storage interface મારફતે ચાલે છે; પ્રદાતા પ્રમાણે જે જુદું છે તે સાઇન-ઇન, ગોઠવણ, અને બીજા લોકો તથા ઉપકરણો ત્યાં કેવી રીતે પહોંચે છે તે છે.
 
 ## Providers
 
-| Provider | Auth | નવા device માટે access |
-|---|---|---|
-| S3-compatible | Access key + secret | જોડી બનાવવા દરમિયાન માન્ય ઉપકરણ પર ઓળખપત્રો સીલ કરવામાં આવ્યા છે |
-| Dropbox | OAuth (PKCE) | નવા ઉપકરણનું એકાઉન્ટ મંજૂર થયું, પછી ફોલ્ડર શેર કરવામાં આવે છે |
-| OneDrive | OAuth (PKCE) | નવા ઉપકરણનું એકાઉન્ટ મંજૂર થયું, પછી ફોલ્ડર શેર કરવામાં આવે છે |
-| iCloud (CloudKit) | Apple ID, sign-in નહીં | જોડી બનાવતી વખતે CloudKit શેર સ્વીકારવામાં આવ્યો |
+| પ્રદાતા | સાઇન-ઇન | તમારું પોતાનું નવું ઉપકરણ | તમે આમંત્રિત કરો તે વ્યક્તિ |
+|---|---|---|---|
+| S3-compatible | Access key + secret | Restore code, સાથે QR code માં તેની બાજુમાં આવતી તમારી access key | તેના માટે બનાવેલી access key |
+| Dropbox | OAuth, coven પાસે | Restore code, પછી તમારા Dropbox માં સાઇન ઇન | લાઇબ્રેરીનું શેર કરેલું ફોલ્ડર તેના ખાતા સાથે શેર થાય છે |
+| OneDrive | OAuth, coven પાસે | Restore code, પછી તમારા OneDrive માં સાઇન ઇન | લાઇબ્રેરીનું ફોલ્ડર તેના ખાતા સાથે શેર થાય છે |
+| iCloud (CloudKit) | Apple Account, સાઇન-ઇન નહીં | Restore code, iCloud Keychain માંથી પણ મળે છે | લાઇબ્રેરીનો CloudKit zone તેના Apple Account સાથે શેર થાય છે |
 
-S3-compatible માં AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, અને API બોલતું બીજું બધું આવે છે; bucket, region, endpoint, અને key prefix configurable છે, અને config save થાય તે પહેલાં bucket probe થાય છે જેથી typo setup વખતે fail થાય, પહેલી sync વખતે નહીં. OAuth providers ફક્ત full **bae** edition માં છે; **baeium** builds તેમને compile out કરે છે.
+S3-compatible માં AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO અને API બોલતી બીજી કોઈ પણ વસ્તુ આવે છે. ગોઠવણ ફોર્મ ફક્ત bucket, region, endpoint અને access key પૂછે છે; coven જાણીતી સેવાઓને endpoint ના host પરથી ઓળખે છે અને તેમની સાથે કેવી રીતે વાત કરવી તે ભરી દે છે. **Advanced** માં વૈકલ્પિક key prefix અને service profile ની પસંદગી હોય છે, જે મૂળભૂત રીતે આપમેળે છે. coven ન જાણતું હોય તેવી સેવા માટે **Detect Settings** key થી bucket ચકાસે છે અને જે મળ્યું તે બતાવે છે. કશું સાચવતાં પહેલાં ગોઠવણ પ્રદાતાને ચકાસે છે, જેથી typo પહેલા sync પર નહીં પણ ગોઠવણ વખતે જ નિષ્ફળ જાય, અને bae coven નું કારણ સરળ શબ્દોમાં જણાવે છે. Dropbox, OneDrive અને iCloud ફક્ત પૂર્ણ **bae** edition માં હોય છે; **baeium** builds તેમને બહાર રાખે છે.
 
-## OAuth
+## સાઇન-ઇન અને ફોલ્ડર્સ
 
-Sign-in public client તરીકે PKCE સાથે authorization-code flow છે. Desktop પર redirect એક callback માટે local port સાથે bound loopback server પર lands થાય છે; mobile પર app તેના બદલે custom-scheme redirect capture કરે છે. bae કામ માટે provider આપે તે narrowest scope માગે છે. Tokens OS keyring માં stored છે, provider ના refresh grant થી refreshed થાય છે, અને rejected refresh silent retry loop કરતાં reconnect prompt તરીકે surface થાય છે.
+coven Dropbox અને OneDrive નું સાઇન-ઇન જાતે કરે છે, તેથી કોઈ token bae માંથી પસાર થતું નથી. desktop પર browser પ્રદાતાનું page ખોલે છે અને સ્થાનિક listener તે એક redirect મેળવે છે; mobile પર આ કામ પ્લેટફોર્મની સાઇન-ઇન શીટ કરે છે. coven tokens OS keyring માં રાખે છે અને પ્રદાતા નકારે ત્યારે token એક વાર તાજું કરે છે; નિષ્ફળ તાજગી શાંત retry loop ને બદલે sync સ્થિતિમાં **Sign In** ક્રિયા તરીકે દેખાય છે.
 
-CloudKit ને flow જોઈએ નહીં: app માં implemented અને core ને આપેલો platform નો CloudKit driver signed-in Apple ID તરીકે operate કરે છે.
+સાઇન ઇન પછી વપરાશકર્તા પસંદ કરે છે કે લાઇબ્રેરી ક્યાં રહે. Dropbox પર તે શેર કરેલું ફોલ્ડર છે, કારણ કે ઘરની લાઇબ્રેરી બીજા લોકોના ખાતાઓ સાથે શેર થાય છે; આ માટે bae app ફોલ્ડર નહીં, પૂર્ણ Dropbox પહોંચ વાપરે છે. હજી કોઈ શેર કરેલું ફોલ્ડર ન હોય તો bae Dropbox માં ફોલ્ડર શેર કરીને ફરી શોધવાનું કહે છે. OneDrive પર તે કોઈ પણ ફોલ્ડર હોય છે, ઉપરથી જોવાય છે, અને ત્યાં નવું ફોલ્ડર બનાવી શકાય છે.
+
+CloudKit ને કોઈ flow ની જરૂર નથી: coven તેને Apple પ્લેટફોર્મ પર સાઇન ઇન થયેલા Apple Account તરીકે ચલાવે છે.
 
 ## Home layout
 
-Home અંદર, coven per-device changeset streams, snapshot generations, membership records, અને blob namespaces layout કરે છે. bae ત્રણ blob namespaces આપે છે: `release_files`, `covers`, અને `artist_images`.
+Home ની અંદર દરેક object path લાઇબ્રેરીના store id થી શરૂ થાય છે: coven નો ક્રમાંકિત ફેરફાર ક્રમ, તેના snapshots, જોડાવાની વિનંતીઓ અને સંગ્રહિત files. ઘણી લાઇબ્રેરીઓ એકબીજાના objects ને સ્પર્શ્યા વગર એક જ Dropbox અથવા OneDrive ફોલ્ડર વહેંચી શકે છે.
 
-Objects કેવી રીતે keyed થાય છે તે home ના storage mode પર depend કરે છે, creation વખતે fixed:
-
-- **Opaque**: objects encrypted થાય છે અને content-derived keys હેઠળ stored થાય છે જે કશું reveal કરતા નથી. આ full-trust-in-cryptography mode છે; [Encryption](/gu/reference/encryption) જુઓ.
-- **Browsable**: objects upload time પર per blob recorded readable paths પર plaintext છે: `release_files/{artist}/{album}/{filename}`, `covers/{album}/{release}/cover.{ext}`, `artist_images/{artist}/artist.{ext}`. Bucket usable file tree પણ બને છે; tradeoff encryption અને membership ન હોવાનો છે, એટલે browsable homes બીજા લોકોને share કરી શકાતા નથી.
+દરેક object encrypt થઈને રેન્ડમ નામ હેઠળ સંગ્રહાય છે; plaintext mode નથી. bae ની files ત્રણ sync થતાં tables `release_files`, `covers` અને `artist_images` ની હરોળો સાથે જોડાયેલી છે, સાથે દરેક `people` હરોળ પરનો avatar. File નો path તે પોતાની હરોળ સાથે જોડાય ત્યારે નક્કી થાય છે, તેથી album નું નામ બદલવાથી તે ક્યારેય ખસતી નથી. [Encryption](/gu/reference/encryption) જુઓ.
 
 ## વાસ્તવિક networks હેઠળ behavior
 
-Playback માટે reads ranged છે: player whole files કરતાં તેને જોઈએ તે byte windows stream કરે છે. Provider support કરે ત્યાં size threshold ઉપર uploads multipart થાય છે. Rate limiting અને transient provider errors exponential backoff સાથે retry થાય છે, provider retry-after આપે ત્યારે તેનું માન રાખીને; expired OAuth tokens in place refresh થાય છે. Sync outbox restarts survive કરે છે: app quit થતા interrupted upload ફરી શરૂ થાય છે, શરૂઆતથી નહીં.
+Playback માટેનું વાંચન ranged છે: player આખી files ને બદલે જરૂરી encrypted chunks લાવે છે, અને file ક્રમમાં વાગતી હોય ત્યારે આગળના chunks પહેલેથી લાવે છે. Rate limits અને કામચલાઉ પ્રદાતા errors એક જ backoff યોજનાથી ફરી પ્રયાસ કરે છે, પ્રદાતાએ retry-after આપ્યું હોય તો તેનું પાલન કરીને. Upload કતાર restart પછી પણ ટકે છે: app બંધ કરવાથી અટકેલું upload શરૂઆતથી નહીં, ત્યાંથી જ આગળ ચાલે છે, અને રોકેલાં uploads રોકાયેલાં જ રહે છે.

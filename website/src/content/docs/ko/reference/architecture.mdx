@@ -16,22 +16,21 @@ bae는 하나의 Rust 코어에 네 개의 네이티브 앱을 씌운 형태입�
 
 ## 디스크 위의 하나의 라이브러리
 
-라이브러리는 `~/.bae/libraries/<library-id>/`에 있습니다(모바일에서는 플랫폼 데이터 디렉터리).
+라이브러리는 두 디렉터리에 있습니다(모바일에서는 플랫폼 데이터 디렉터리). coven의 스토어와, 그 옆에 있는 bae 자체 설정입니다.
 
 ```
-~/.bae/libraries/<id>/
-  library.db        # SQLite: catalog, credits, playback specs
-  config.yaml       # coven: 라이브러리 식별 정보, 클라우드 홈; 동기화되지 않음
-  preferences.toml  # bae 설정; 동기화되지 않음
-  storage/
-    local/          # blobs this device owns (covers, artist images)
-    cache/          # evictable copies of cloud blobs
-    pinned/         # pinned-for-offline copies, never evicted
+~/.bae/stores/<id>/       # coven의 스토어, coven을 통해서만 열림
+  store.db                # SQLite: 카탈로그, 크레딧, 재생 사양, coven 기록
+  files/                  # bae 자체 파일의 coven 사본(커버, 아티스트 이미지, 아바타)
+  cache/                  # 업로드된 파일의 캐시 및 고정 사본
+~/.bae/libraries/<id>/    # bae 자체 디렉터리; 동기화되지 않음
+  preferences.toml        # bae 설정
+  cache/                  # 카탈로그에서 가져온 아트워크
 ```
 
-데이터베이스는 coven을 통해서만 열립니다. coven은 자체 bookkeeping table(sync cursors, outbox, blob state)을 bae schema 옆에 두고 bae migration을 실행합니다. 관리되지 않는 상태로 가져온 오디오 파일은 `~/.bae` 아래에 전혀 없습니다. 데이터베이스가 가져온 위치의 경로를 참조합니다.
+데이터베이스는 coven을 통해서만 열립니다. coven은 자체 bookkeeping table(병합 레코드, 업로드 대기열, 파일 상태)을 bae schema 옆에 두고 bae migration을 실행합니다. 로컬 릴리스의 오디오 파일은 `~/.bae` 아래에 전혀 없습니다. 데이터베이스가 가져온 위치의 경로를 참조합니다.
 
-비밀 값은 이 파일들에 절대 들어가지 않습니다. 신원 키, 라이브러리 암호화 키, 클라우드 자격 증명, API token은 OS keyring에 있습니다(Apple 플랫폼에서는 Keychain, iCloud Keychain을 통해 동기화됨. 다른 곳에서는 플랫폼 대응 항목).
+비밀 값은 이 파일들에 절대 들어가지 않습니다. 구성원 키, 라이브러리 키, 클라우드 로그인 정보, API token은 OS keyring에 있습니다(Apple 플랫폼에서는 Keychain, 다른 곳에서는 플랫폼 대응 항목). Apple 플랫폼에서는 복원 코드도 iCloud 키체인에 저장됩니다.
 
 ## 에디션
 

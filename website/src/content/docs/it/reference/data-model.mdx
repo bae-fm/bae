@@ -3,7 +3,7 @@ title: Modello dati
 description: Lo schema, cosa si sincronizza e cosa resta sul dispositivo
 ---
 
-Il catalogo di bae è SQLite ordinario, dichiarato a [coven](https://coven.bae.fm) tabella per tabella: le tabelle sincronizzate portano un clock di conflitto e viaggiano verso ogni dispositivo; le tabelle non dichiarate non lasciano mai il dispositivo. La divisione è la decisione più portante del modello dati, quindi questa pagina è organizzata attorno a essa.
+Il catalogo di bae è SQLite ordinario, dichiarato a [coven](https://coven.bae.fm) tabella per tabella: le tabelle sincronizzate viaggiano verso ogni dispositivo che può leggerle; le tabelle non dichiarate non lasciano mai il dispositivo. La divisione è la decisione più portante del modello dati, quindi questa pagina è organizzata attorno a essa.
 
 ## Il grafo del catalogo
 
@@ -16,26 +16,29 @@ Il cuore sincronizzato dello schema:
 - **`track_works`**, **`work_parts`**, **`work_artists`**: registrazioni collegate alle opere che eseguono.
 - **`audio_formats`** e **`audio_format_segments`**: le specifiche di riproduzione. Per traccia: codec, frequenza di campionamento, profondità in bit, canali, sonorità e picco misurati, e lunghezze dei pregap. I segmenti mappano una traccia su finestre ordinate di byte e campioni dei suoi file sorgente, ed è così che la traccia di un rip CUE, pregap incluso, può attraversare regioni di un file grande o di più file.
 - **`release_files`**, **`covers`**, **`artist_images`**: tabelle che portano blob. Le righe sono voci di catalogo; i byte vivono nel livello blob di coven (vedi sotto).
+- **`people`**, **`ratings`**, **`history`**, **`playlists`**, **`playlist_entries`**: il profilo di ogni persona e ciò che registra per sé. Sono tabelle del proprietario: solo i dispositivi del loro autore possono cambiarle. Le righe di `history` e `playlists` vivono ciascuna o nello store condiviso della famiglia o nella cerchia privata della persona.
 
-## Sincronizzato, vincolato, locale
+## Sincronizzato e locale
 
-Tutto quanto sopra si sincronizza, ma non incondizionatamente. `releases` è dichiarata come radice vincolata sulla sua colonna `remote`: una riga release e tutto il suo sottoalbero (tracce, file, crediti, formati, copertina) si sincronizzano solo mentre `remote` è true, cioè mentre la release è gestita nel cloud. Passare una release a gestita pubblica il sottoalbero; una release non gestita resta interamente sul dispositivo che l'ha importata, anche se il suo schema è sincronizzato. Le tabelle antenate (`artists`, `albums`, `works`) si sincronizzano solo mentre qualche release sincronizzata le riferisce ancora, così un dispositivo non riceve mai un artista senza nulla sotto.
+Ogni tabella sopra si sincronizza, incondizionatamente: le righe di una release locale raggiungono ogni dispositivo come quelle di qualunque altra release, così ogni dispositivo sa cosa possiede la famiglia, e una valutazione o una voce di playlist che punta a una traccia di una release locale punta a una riga che ogni dispositivo può leggere. Solo l'audio della release, e i percorsi in cui si trova, restano sul dispositivo che l'ha importata. Ogni tabella è dichiarata con la sua identità di riga, il suo pubblico, se è una tabella del proprietario e i file che porta; un test vincola le dichiarazioni esattamente a quell'elenco.
 
 Tabelle completamente locali, mai dichiarate a coven:
 
 - **`playback_state`**: traccia corrente, posizione, coda, volume, ordine casuale e ripetizione. La riproduzione è un fatto del dispositivo.
-- **`imports`**: tracciamento delle operazioni di importazione.
+- **Le tabelle di scansione e importazione**: cartelle monitorate, scansioni, candidati all'importazione e le loro bozze.
 - **`source_release`** e le tabelle sotto di essa: ciò che bae ha estratto da ogni pubblicazione MusicBrainz e Discogs recuperata — i dati dell’album e della stampa, la tracklist completa con crediti e opere, le copertine disponibili e come la chiamano gli altri cataloghi — con chiave di rilascio del fornitore piuttosto che di rilascio locale. Il JSON grezzo non viene conservato; qualsiasi dispositivo può recuperare di nuovo una pubblicazione.
+- **`local_release_files`**: i percorsi dei file e le date di modifica di una release locale su questo dispositivo.
+- **`local_history`**: gli ascolti precedenti al profilo della persona di questo dispositivo, spostati nella sua cerchia privata quando viene creato.
 
-Ogni tabella sincronizzata porta una colonna `_updated_at` di clock logico ibrido, il registro con cui l'unione campo per campo di coven ordina le modifiche concorrenti; un test impone che l'insieme sincronizzato e l'insieme con clock siano esattamente uguali.
+Le modifiche di due dispositivi si fondono cella per cella, e la modifica più tarda vince una cella cambiata da entrambi. coven tiene la contabilità della fusione nelle proprie tabelle, quindi le tabelle di bae non portano colonne di clock.
 
 ## Blob
 
-Audio e immagini passano dal livello blob di coven in tre namespace, ciascuno con il proprio budget di cache per dispositivo: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB).
+Audio e immagini passano dal livello file di coven, ciascun tipo con il proprio budget di cache per dispositivo: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB) e gli avatar di `people` (64 MiB).
 
-I file delle release sono forniti dall'utente e memorizzati in cache su richiesta: per una release non gestita il blob è un riferimento esterno al file dell'utente nel suo percorso originale; per una gestita è un oggetto caricato recuperato in cache alla prima lettura. Copertine e immagini artista sono fornite dall'host e memorizzate in cache in anticipo: bae produce i byte (le copertine vengono renderizzate di nuovo come miniature JPEG larghe al massimo 600px), e ogni dispositivo le recupera al pull così le griglie si mostrino localmente.
+I file delle release appartengono all'utente e sono memorizzati in cache su richiesta: i file di una release locale sono i file dell'utente nei loro percorsi originali, registrati in `local_release_files`; spostare la release nel cloud allega ogni file alla sua riga `release_files` in una sola scrittura, e gli altri dispositivi lo recuperano in cache alla prima lettura. Copertine, immagini artista e avatar appartengono a bae e sono memorizzati in cache in anticipo: bae produce i byte (le copertine vengono renderizzate di nuovo come miniature JPEG larghe al massimo 600px), e ogni dispositivo li recupera appena arrivano le loro righe così le griglie si mostrino localmente.
 
-Su una home opaca, i blob vengono caricati sotto chiavi di contenuto senza significato. Su una home esplorabile ogni riga blob registra un percorso cloud leggibile (`{artist}/{album}/{filename}` per l'audio, `{album}/{release}/cover.{ext}` per le copertine), calcolato una volta al caricamento così una rinomina successiva non sposta mai l'oggetto.
+Ogni file viene caricato cifrato sotto un nome casuale, in un percorso fissato quando viene allegato alla sua riga, così una rinomina successiva non sposta mai l'oggetto.
 
 ## Identità di un rip
 

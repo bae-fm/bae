@@ -1,36 +1,35 @@
 ---
 title: क्लाउड संग्रहण
-description: प्रदाता, प्रमाणीकरण, और क्लाउड घर का आकार
+description: प्रदाता, साइन-इन, और क्लाउड घर का आकार
 ---
 
-क्लाउड घर उपयोगकर्ता के अपने संग्रहण की एक जगह है। हर प्रदाता [coven](https://coven.bae.fm) के उसी संग्रहण interface से चलता है; प्रदाताओं में फर्क प्रमाणीकरण और दूसरे उपकरण को पहुंच देने के तरीके का है।
+क्लाउड घर उपयोगकर्ता के अपने संग्रहण की एक जगह है। हर प्रदाता [coven](https://coven.bae.fm) के उसी संग्रहण इंटरफ़ेस से चलता है; प्रदाताओं में फर्क साइन-इन, सेटअप और इस बात का है कि दूसरे लोग और उपकरण उस तक कैसे पहुंचते हैं।
 
 ## प्रदाता
 
-| प्रदाता | प्रमाणीकरण | नए उपकरण के लिए पहुंच |
-|---|---|---|
-| S3-compatible | Access कुंजी + secret | पेयरिंग के दौरान स्वीकृत डिवाइस पर क्रेडेंशियल सील कर दिए गए |
-| Dropbox | OAuth (PKCE) | नए डिवाइस का खाता स्वीकृत हो जाता है, फिर फ़ोल्डर साझा किया जाता है |
-| OneDrive | OAuth (PKCE) | नए डिवाइस का खाता स्वीकृत हो जाता है, फिर फ़ोल्डर साझा किया जाता है |
-| iCloud (CloudKit) | Apple ID, sign-in नहीं | पेयरिंग के दौरान CloudKit शेयर स्वीकार किया गया |
+| प्रदाता | साइन-इन | आपका अपना नया उपकरण | जिसे आप आमंत्रित करते हैं |
+|---|---|---|---|
+| S3-compatible | एक्सेस कुंजी + secret | रिस्टोर कोड, साथ में आपकी एक्सेस कुंजी, जो QR कोड में उसके बगल में आती है | उसके लिए बनाई गई एक्सेस कुंजी |
+| Dropbox | OAuth, coven के पास | रिस्टोर कोड, फिर आपके Dropbox में साइन इन | लाइब्रेरी का साझा फोल्डर उसके खाते के साथ साझा होता है |
+| OneDrive | OAuth, coven के पास | रिस्टोर कोड, फिर आपके OneDrive में साइन इन | लाइब्रेरी का फोल्डर उसके खाते के साथ साझा होता है |
+| iCloud (CloudKit) | Apple Account, साइन-इन नहीं | रिस्टोर कोड, iCloud Keychain से भी मिलता है | लाइब्रेरी का CloudKit ज़ोन उसके Apple Account के साथ साझा होता है |
 
-S3-compatible में AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO और API बोलने वाली कोई भी चीज आती है; bucket, region, endpoint और कुंजी prefix बदले जा सकते हैं, और config save होने से पहले bucket जांची जाती है ताकि typo setup पर ही विफल हो, पहले समन्वय पर नहीं। OAuth providers केवल पूरी **bae** edition में होते हैं; **baeium** builds उन्हें compile out करते हैं।
+S3-compatible में AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO और API बोलने वाली कोई भी चीज आती है। सेटअप फ़ॉर्म केवल bucket, region, endpoint और एक्सेस कुंजी पूछता है; coven जानी-पहचानी सेवाओं को endpoint के होस्ट से पहचानता है और उनसे बात करने का तरीका भर देता है। **Advanced** में वैकल्पिक key prefix और सेवा प्रोफ़ाइल का चुनाव होता है, जो डिफ़ॉल्ट रूप से स्वचालित है। जिस सेवा को coven नहीं जानता, उसके लिए **Detect Settings** कुंजी से bucket को जांचता है और जो मिला उसे दिखाता है। सेटअप कुछ भी सहेजने से पहले प्रदाता को जांचता है, ताकि टाइपो पहले सिंक पर नहीं, सेटअप पर ही विफल हो, और bae coven का कारण सरल शब्दों में बताता है। Dropbox, OneDrive और iCloud केवल पूरी **bae** edition में होते हैं; **baeium** builds उन्हें compile out करते हैं।
 
-## OAuth
+## साइन-इन और फोल्डर
 
-Sign-in public client के रूप में PKCE वाला authorization-code flow है। Desktop पर redirect एक callback के लिए स्थानीय port से bound loopback server पर आता है; mobile पर ऐप custom-scheme redirect पकड़ता है। bae काम के लिए प्रदाता द्वारा दी गई सबसे सीमित scope मांगता है। Tokens OS keyring में रखे जाते हैं, प्रदाता के refresh grant से refreshed होते हैं, और rejected refresh शांत retry loop के बजाय reconnect prompt के रूप में दिखता है।
+coven Dropbox और OneDrive का साइन-इन खुद करता है, इसलिए कोई टोकन bae से होकर नहीं गुजरता। डेस्कटॉप पर ब्राउज़र प्रदाता का पेज खोलता है और एक स्थानीय listener वह एक redirect प्राप्त करता है; मोबाइल पर यह काम प्लेटफ़ॉर्म की साइन-इन शीट करती है। coven टोकन OS keyring में रखता है और प्रदाता के अस्वीकार करने पर टोकन एक बार ताज़ा करता है; विफल ताज़ाकरण शांत retry loop के बजाय सिंक स्थिति में **Sign In** कार्रवाई के रूप में दिखता है।
 
-CloudKit को किसी flow की जरूरत नहीं: प्लेटफ़ॉर्म का CloudKit driver, जो ऐप में implement होता है और core को दिया जाता है, signed-in Apple ID के रूप में काम करता है।
+साइन इन के बाद उपयोगकर्ता चुनता है कि लाइब्रेरी कहां रहे। Dropbox पर यह साझा फोल्डर होता है, क्योंकि घर की लाइब्रेरी दूसरे लोगों के खातों के साथ साझा होती है; इसके लिए bae पूरा Dropbox एक्सेस उपयोग करता है, ऐप फोल्डर नहीं। अगर अभी कोई साझा फोल्डर नहीं है, तो bae Dropbox में एक फोल्डर साझा करके फिर देखने को कहता है। OneDrive पर यह कोई भी फोल्डर हो सकता है, ऊपर से ब्राउज़ किया जाता है, और वहां नया फोल्डर बनाया जा सकता है।
+
+CloudKit को किसी flow की जरूरत नहीं: coven Apple प्लेटफ़ॉर्म पर उसे साइन-इन Apple Account के रूप में चलाता है।
 
 ## घर का layout
 
-घर के भीतर coven हर उपकरण की changeset streams, snapshot generations, membership records और blob namespaces सजाता है। bae तीन blob namespaces देता है: `release_files`, `covers`, और `artist_images`।
+घर के भीतर हर ऑब्जेक्ट path लाइब्रेरी के store id से शुरू होता है: coven का क्रमांकित बदलाव क्रम, उसके snapshots, जुड़ने के अनुरोध और रखी गई फाइलें। कई लाइब्रेरी एक-दूसरे के ऑब्जेक्ट छुए बिना एक ही Dropbox या OneDrive फोल्डर साझा कर सकती हैं।
 
-Objects किस कुंजी से रखे जाते हैं यह घर के संग्रहण mode पर निर्भर करता है, जो creation पर fixed होता है:
-
-- **अपारदर्शी**: objects encrypted होते हैं और content-derived कुंजियां के नीचे रखे जाते हैं, जो कुछ उजागर नहीं करतीं। यह पूरा भरोसा cryptography पर रखने वाला mode है; देखें [एन्क्रिप्शन](/hi/reference/encryption)।
-- **ब्राउज-योग्य**: objects plaintext में readable paths पर रखे जाते हैं, जो हर blob के लिए अपलोड time पर दर्ज होते हैं: `release_files/{artist}/{album}/{filename}`, `covers/{album}/{release}/cover.{ext}`, `artist_images/{artist}/artist.{ext}`। Bucket उपयोगी फ़ाइल tree की तरह भी काम करता है; बदले में encryption और membership नहीं मिलते, इसलिए ब्राउज-योग्य घर दूसरे लोगों के साथ साझा नहीं किए जा सकते।
+हर ऑब्जेक्ट एन्क्रिप्ट होकर यादृच्छिक नाम के नीचे रखा जाता है; कोई plaintext मोड नहीं है। bae की फाइलें तीन सिंक होने वाली टेबल `release_files`, `covers` और `artist_images` की पंक्तियों से जुड़ी होती हैं, साथ में हर `people` पंक्ति का अवतार। किसी फाइल का path उसकी पंक्ति से जुड़ते समय तय हो जाता है, इसलिए एल्बम का नाम बदलने से वह कभी नहीं हिलती। देखें [एन्क्रिप्शन](/hi/reference/encryption)।
 
 ## असली networks में व्यवहार
 
-प्लेबैक के लिए पढ़ाई ranged होती है: player पूरी फाइलों के बजाय जरूरी बाइट खिड़कियां stream करता है। Size threshold से ऊपर अपलोड, प्रदाता support करे तो multipart जाते हैं। Rate limiting और transient provider errors exponential backoff से retry होते हैं, प्रदाता ने retry-after दिया हो तो उसका पालन करते हुए; expired OAuth टोकन वहीं refresh होते हैं। समन्वय outbox restart के बाद भी बचा रहता है: ऐप quit करने से interrupted अपलोड restart नहीं, resume होता है।
+प्लेबैक के लिए पढ़ाई ranged होती है: player पूरी फाइलों के बजाय जरूरी एन्क्रिप्टेड chunks लाता है, और फाइल क्रम से चलते समय आगे के chunks पहले से लाता है। Rate limiting और अस्थायी प्रदाता त्रुटियां एक ही backoff योजना से फिर कोशिश करती हैं, प्रदाता ने retry-after दिया हो तो उसका पालन करते हुए। अपलोड कतार restart के बाद भी बची रहती है: ऐप बंद करने से रुका अपलोड शुरू से नहीं, वहीं से आगे चलता है, और रोके गए अपलोड रुके ही रहते हैं।

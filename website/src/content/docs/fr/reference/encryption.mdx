@@ -1,28 +1,34 @@
 ---
 title: Chiffrement
-description: Ce qu’est la clé de bibliothèque, où elle vit et quel texte chiffré le fournisseur conserve
+description: Quelles clés existent, où elles vivent et ce que le fournisseur peut voir
 ---
 
-Tout ce que bae place dans un emplacement cloud opaque est chiffré avant de quitter l’appareil. bae n’implémente aucune cryptographie lui-même : tout le schéma est celui de [coven](https://coven.bae.fm), et cette page décrit comment bae l’utilise. Les emplacements navigables n’utilisent rien de tout cela ; ce qui suit ne s’applique pas à eux.
+Tout ce que bae place dans un emplacement cloud est chiffré avant de quitter l’appareil ; il n’existe pas de mode non chiffré. bae n’implémente aucune cryptographie lui-même : tout le schéma est celui de [coven](https://coven.bae.fm), et cette page décrit comment bae l’utilise.
 
-## La clé de bibliothèque
+## Les clés
 
-Une bibliothèque opaque a un secret racine : une clé aléatoire de 256 bits créée quand l’emplacement est créé. Elle vit dans le trousseau du système d’exploitation, jamais dans un fichier ; sur les plateformes Apple, l’entrée de trousseau se synchronise via le trousseau iCloud. La configuration de bae ne stocke qu’une empreinte de la clé, suffisante pour distinguer une mauvaise clé d’une bonne au déverrouillage sans conserver le secret.
+| Clé | Ce qu’elle fait |
+|---|---|
+| La clé de stockage | chiffre la bibliothèque et ses enregistrements d’appartenance |
+| La clé de cercle de chaque personne | chiffre ce que cette personne garde privé : son historique d’écoute privé et ses listes privées |
+| La clé de chaque fichier | chiffre un fichier, et ne circule qu’à l’intérieur des changements chiffrés de sa ligne |
+| La paire de clés de signature d’une personne | signe chaque changement qu’envoient ses appareils |
+| La paire de clés de scellement d’une personne | ouvre les clés scellées pour cette personne |
 
-La clé circule entre les appareils de deux manières, toutes deux décrites dans [Identité et appartenance](/fr/reference/membership) : scellée à la clé publique d'un appareil approuvé lors de l'association de l'appareil et transportée dans un code de récupération.
+La clé de stockage est aléatoire, créée quand la bibliothèque obtient son emplacement cloud. Les paires de clés d’une personne sont partagées par tous ses appareils. Les clés privées et les clés de la bibliothèque vivent dans le trousseau du système d’exploitation, jamais dans un fichier ni dans la base de données. Elles atteignent un appareil de deux manières, toutes deux décrites dans [Identité et appartenance](/fr/reference/membership) : un code de restauration transporte les propres paires de clés d’une personne, et un administrateur qui approuve une invitation scelle les clés de stockage pour la clé de scellement de la nouvelle personne.
 
-## Générations
+## Rotation
 
-La clé de bibliothèque est en réalité un trousseau de générations numérotées. Retirer un membre ajoute une nouvelle génération que le membre retiré ne reçoit jamais : tout ce qui est écrit ensuite utilise la nouvelle génération et lui est illisible, tandis que les membres restants gardent chaque génération et peuvent lire tout l’historique. Chaque objet scellé indique en clair quelle génération l’ouvre.
+Une clé n’est jamais modifiée sur place ; une nouvelle est ajoutée. Après le retrait d’une personne, l’appareil d’un membre restant ajoute une nouvelle clé de stockage, et une nouvelle clé pour chaque cercle dont elle faisait partie, avant d’y écrire d’autres données : tout ce qui est écrit ensuite lui est illisible, tandis que les membres restants gardent chaque clé plus ancienne et peuvent lire tout l’historique. Retirer un seul appareil ne fait tourner aucune clé, puisque les autres appareils de la personne partagent ses clés ; à partir du retrait, ce que cet appareil envoie ne compte plus.
 
 ## Ce qui est scellé
 
-Chaque objet de l’emplacement : jeux de changements, instantanés, blobs audio, illustrations, enregistrements d’appartenance, objets de contrôle. Les objets sont scellés avec XChaCha20-Poly1305 par blocs de 64 Ko, chaque bloc authentifié, et liés à leur contexte : un objet scellé ne se déchiffre que comme l’objet qu’il devait être, pour cette bibliothèque, avec cette clé. Le découpage en blocs est ce qui permet la diffusion : le lecteur peut déchiffrer exactement les plages d’octets qu’il récupère.
+Chaque objet de l’emplacement : changements, instantanés, enregistrements d’appartenance et fichiers. Le contenu est chiffré avec XChaCha20-Poly1305, chaque changement est signé avec Ed25519, et les clés sont scellées pour les personnes avec des boîtes scellées X25519. Les fichiers sont chiffrés par blocs de 64 Kio, chacun authentifié séparément et lié à sa position, donc un bloc ne peut pas être modifié, échangé ou réordonné sans que cela se voie. Le découpage en blocs est ce qui permet la diffusion : le lecteur peut déchiffrer exactement les blocs qu’il récupère.
 
 ## Ce que le fournisseur peut voir
 
-Nombre d’objets, tailles d’objets, moment des envois et motifs d’accès. Pas les noms, pas les métadonnées, pas l’audio, pas les illustrations, pas l’appartenance. Il n’y a pas de récupération côté serveur : un utilisateur qui perd chaque appareil et chaque copie de la clé a perdu pour toujours le texte chiffré de la bibliothèque, ce qui est le comportement prévu.
+Nombre d’objets, tailles d’objets, moment des envois, quel compte écrit chaque objet et quel appareil a envoyé chaque fichier et instantané, puisque leurs chemins nomment l’appareil. Pas les noms, pas les métadonnées, pas l’audio, pas les illustrations. Les fichiers sont sous des noms aléatoires, jamais un hachage de leur contenu. Il n’y a pas de récupération côté serveur : si chaque personne perd chaque appareil et chaque code de restauration, la bibliothèque est perdue, ce qui est le comportement prévu.
 
-## Déverrouillage et verrouillage
+## Le trousseau
 
-Ouvrir une bibliothèque lit la clé depuis le trousseau. Si la bibliothèque attend une clé et que le trousseau ne l’a pas, bae traite la bibliothèque comme verrouillée : il demande la clé avant l’ouverture, valide la saisie avec l’empreinte stockée, puis la réenregistre dans le trousseau. Verrouiller une bibliothèque retire volontairement la clé du trousseau ; rien dans l’emplacement cloud ne peut être lu ou écrit jusqu’à ce qu’elle soit saisie de nouveau.
+Ouvrir une bibliothèque lit ses clés depuis le trousseau du système d’exploitation. Un trousseau verrouillé à cet instant, par une session verrouillée ou un écran en veille, est distingué d’un trousseau défaillant : bae affiche la bibliothèque comme verrouillée et réessaie après le déverrouillage, plutôt que de déclarer la bibliothèque inutilisable. Un appareil peut aussi oublier la clé, ce qui verrouille la bibliothèque sur cet appareil jusqu’à ce qu’elle soit à nouveau déverrouillée.

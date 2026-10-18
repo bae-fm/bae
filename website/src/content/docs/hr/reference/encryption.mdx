@@ -1,28 +1,34 @@
 ---
 title: Šifriranje
-description: Što je ključ biblioteke, gdje živi i koji šifrirani tekst drži pružatelj
+description: Koji ključevi postoje, gdje žive i što pružatelj može vidjeti
 ---
 
-Sve što bae stavi u neprozirno mjesto u oblaku šifrira se prije nego što napusti uređaj. bae ne implementira vlastitu kriptografiju: cijela shema pripada [coven](https://coven.bae.fm)-u, a ova stranica opisuje kako je bae koristi. Pregledljiva mjesta odustaju od svega toga; ništa dolje ne odnosi se na njih.
+Sve što bae stavi u mjesto u oblaku šifrira se prije nego što napusti uređaj; nešifrirani način ne postoji. bae ne implementira vlastitu kriptografiju: cijela shema pripada [coven](https://coven.bae.fm)-u, a ova stranica opisuje kako je bae koristi.
 
-## Ključ biblioteke
+## Ključevi
 
-Neprozirna biblioteka ima jednu korijensku tajnu: nasumični 256-bitni ključ stvoren kad se mjesto napravi. Živi u privjesku ključeva OS-a, nikad u datoteci; na Apple platformama unos privjeska ključeva sinkronizira se kroz iCloud Keychain. Konfiguracija bae sprema samo otisak ključa, dovoljan da pri otključavanju razlikuje pogrešan ključ od pravog bez držanja tajne.
+| Ključ | Što radi |
+|---|---|
+| Ključ spremišta | šifrira biblioteku i njezine zapise članstva |
+| Ključ kruga svake osobe | šifrira ono što ta osoba drži privatnim: njezinu privatnu povijest reprodukcije i popise |
+| Ključ svake datoteke | šifrira jednu datoteku i putuje samo unutar šifriranih promjena njezina retka |
+| Par ključeva za potpisivanje osobe | potpisuje svaku promjenu koju njezini uređaji pošalju |
+| Par ključeva za pečaćenje osobe | otvara ključeve zapečaćene za tu osobu |
 
-Ključ putuje između uređaja na dva načina, oba opisana u [Identitet i članstvo](/hr/reference/membership): zapečaćen je za odobreni javni ključ uređaja tijekom uparivanja uređaja i nosi se unutar koda za oporavak.
+Ključ spremišta je nasumičan, stvoren kad biblioteka dobije mjesto u oblaku. Parove ključeva osobe dijele svi njezini uređaji. Privatni ključevi i ključevi biblioteke žive u privjesku ključeva OS-a, nikad u datoteci ni u bazi podataka. Do uređaja dolaze na dva načina, oba opisana u [Identitet i članstvo](/hr/reference/membership): kod za vraćanje nosi vlastite parove ključeva osobe, a administrator koji odobri pozivnicu pečati ključeve spremišta za ključ za pečaćenje nove osobe.
 
-## Generacije
+## Rotacija
 
-Ključ biblioteke zapravo je privjesak numeriranih generacija. Uklanjanje člana dodaje novu generaciju koju uklonjeni član nikad ne prima: sve zapisano poslije koristi novu generaciju i za njega je nečitljivo, dok preživjeli članovi zadržavaju svaku generaciju i mogu čitati cijelu povijest. Svaki zapečaćeni objekt jasno bilježi koja ga generacija otvara.
+Ključ se nikad ne mijenja na mjestu; dodaje se novi. Nakon uklanjanja osobe uređaj preostalog člana dodaje novi ključ spremišta i novi ključ za svaki krug u kojem je bila, prije nego što ondje zapiše još podataka: sve zapisano poslije za nju je nečitljivo, dok preostali članovi zadržavaju svaki stariji ključ i mogu čitati cijelu povijest. Uklanjanje jednog uređaja ništa ne rotira, jer ostali uređaji osobe dijele njegove ključeve; od uklanjanja se ono što taj uređaj pošalje ne računa.
 
 ## Što se pečati
 
-Svaki objekt u mjestu: skupovi promjena, snimke, zvučni binarni objekti, grafika, zapisi članstva, kontrolni objekti. Objekti se pečate s XChaCha20-Poly1305 u blokovima od 64 KB, svaki blok autentificiran i vezan za svoj kontekst: zapečaćeni objekt dešifrira se samo kao objekt za koji je napisan, za ovu biblioteku, na ovom ključu. Blokovi su razlog zašto strujanje radi, reproduktor može dešifrirati točno raspone bajtova koje dohvaća.
+Svaki objekt u mjestu: promjene, snimke, zapisi članstva i datoteke. Sadržaj se šifrira s XChaCha20-Poly1305, svaka promjena potpisuje se s Ed25519, a ključevi se za ljude pečate X25519 zapečaćenim kutijama. Datoteke se šifriraju u blokovima od 64 KiB, svaki zasebno autentificiran i vezan za svoj položaj, pa se blok ne može neprimjetno izmijeniti, zamijeniti ni preslagati. Blokovi su razlog zašto strujanje radi: reproduktor može dešifrirati točno one blokove koje dohvaća.
 
 ## Što pružatelj može vidjeti
 
-Broj objekata, veličine objekata, vrijeme prijenosa i obrasce pristupa. Ne nazive, ne metapodatke, ne zvuk, ne grafiku, ne članstvo. Nema oporavka na strani poslužitelja: korisnik koji izgubi svaki uređaj i svaku kopiju ključa zauvijek je izgubio šifrirani tekst biblioteke, što je namjerno ponašanje.
+Broj objekata, veličine objekata, vrijeme prijenosa, koji račun piše svaki objekt i koji je uređaj prenio svaku datoteku i snimku, jer njihovi putovi imenuju uređaj. Ne nazive, ne metapodatke, ne zvuk, ne grafiku. Datoteke stoje pod nasumičnim nazivima, nikad pod sažetkom svog sadržaja. Nema oporavka na strani poslužitelja: ako svaka osoba izgubi svaki uređaj i svaki kod za vraćanje, biblioteka je izgubljena, što je namjerno ponašanje.
 
-## Otključavanje i zaključavanje
+## Privjesak ključeva
 
-Otvaranje biblioteke čita ključ iz privjeska ključeva. Ako biblioteka očekuje ključ, a privjesak ga nema, bae tretira biblioteku kao zaključanu: traži ključ prije otvaranja, provjerava unos prema spremljenom otisku prije spremanja natrag u privjesak ključeva. Zaključavanje biblioteke namjerno uklanja ključ iz privjeska ključeva; ništa u mjestu u oblaku ne može se čitati ni pisati dok se ponovno ne unese.
+Otvaranje biblioteke čita njezine ključeve iz privjeska ključeva OS-a. Privjesak koji je trenutačno zaključan, zbog zaključane sesije ili zaslona u mirovanju, razlikuje se od pokvarenog: bae prikazuje biblioteku kao zaključanu i pokušava ponovno nakon otključavanja, umjesto da biblioteku proglasi neupotrebljivom. Uređaj može i zaboraviti ključ, što zaključava biblioteku na tom uređaju dok se ponovno ne otključa.

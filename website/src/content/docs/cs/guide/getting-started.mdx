@@ -12,8 +12,8 @@ Desktopové aplikace (macOS, Windows) jsou plný nástroj: vytvářejí knihovny
 Otevřete bae na desktopu. Když na počítači není žádná knihovna, uvítací obrazovka nabídne tři volby:
 
 - **Create a new library**, pokud je to vaše první zařízení.
-- **Join a library**, pokud jiné zařízení už knihovnu má a jeho vlastník vás schválí. Viz [Zařízení a členové](/cs/guide/devices).
-- **Restore from cloud**, pokud je to vaše vlastní knihovna a máte její obnovovací kód. Viz [Zařízení a členové](/cs/guide/devices#obnovovací-kódy).
+- **Připojit se ke knihovně**, pokud vás někdo pozval do své. Viz [Zařízení a členové](/cs/guide/devices#pozvání-osoby).
+- **Obnovit z cloudu**, pokud je to vaše vlastní knihovna a máte její kód pro obnovení. Viz [Zařízení a členové](/cs/guide/devices#kódy-pro-obnovení).
 
 Jednu vytvořte. Knihovna začíná místně: všechno žije na tomto počítači, není potřeba žádný účet a žádný cloud se nezapojí, dokud ho nepřipojíte.
 
@@ -35,10 +35,10 @@ Zpět v sekci **Library** je album v mřížce. Klikněte na něj a spusťte př
 
 Když chcete knihovnu na víc než jednom zařízení, připojte cloudový domov: vlastní Dropbox, OneDrive, iCloud nebo libovolný bucket kompatibilní se S3. Všechno, co tam bae uloží, se před nahráním zašifruje; poskytovatel to ukládá, ale nemůže to číst.
 
-- [Synchronizace](/cs/guide/sync): připojte cloudový domov a zvolte, co uchovává.
-- [Zařízení a členové](/cs/guide/devices): přidejte telefon nebo další desktop.
+- [Synchronizace](/cs/guide/sync): připojte cloudový domov a podívejte se, co se synchronizuje.
+- [Zařízení a členové](/cs/guide/devices): přidejte telefon nebo další desktop, nebo někoho pozvěte.
 - [Úložiště a offline](/cs/guide/storage): ponechte hudbu na zařízení, nebo ji streamujte z cloudu a připněte, co potřebujete offline.
 
 ## Kde věci žijí
 
-Každá knihovna drží svou databázi a nastavení na desktopu pod `~/.bae/libraries/`. Vaše audio zůstává tam, odkud jste ho importovali, pokud nepožádáte bae, aby ho spravovala ve vašem cloudu. Klíče a přihlašovací údaje žijí v klíčence operačního systému, ne v souborech.
+Každá knihovna drží na desktopu svou databázi pod `~/.bae/stores/` a nastavení pod `~/.bae/libraries/`. Vaše audio zůstává tam, odkud jste ho importovali; přesunutí vydání do cloudu nahraje zašifrovanou kopii a vaše soubory nechá, kde jsou. Klíče a přihlašovací údaje žijí v klíčence operačního systému, ne v souborech.

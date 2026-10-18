@@ -1,43 +1,55 @@
 ---
 title: Dispositivos e membros
-description: Adicione seu telefone, aprove um dispositivo, recupere sua biblioteca
+description: Adicione seus próprios dispositivos, convide pessoas e remova dispositivos
 ---
 
-Não existe conta bae. A identidade de um dispositivo é um par de chaves que ele gera para si e guarda no chaveiro do sistema operacional; a biblioteca reconhece dispositivos pelas chaves. Adicionar um dispositivo significa um dispositivo existente atestar um novo, criptograficamente, sem ninguém no meio.
+Não existe conta bae. Cada pessoa de uma biblioteca tem suas próprias chaves, que todos os seus dispositivos compartilham e guardam no chaveiro do sistema operacional; a biblioteca reconhece as pessoas por essas chaves. Toda mudança em quem faz parte é assinada e guardada no local na nuvem, sem ninguém no meio.
 
 Duas portas diferentes, para duas situações diferentes:
 
-- **Entrar**: um dispositivo novo é aprovado por um dispositivo que já tem a biblioteca. Use isto para adicionar seu telefone ou o dispositivo de outra pessoa.
-- **Restaurar**: seu próprio dispositivo novo ou reinstalado recupera a biblioteca diretamente do local na nuvem, usando um código de recuperação. Nenhum aprovador envolvido.
+- **Restaurar**: seu próprio dispositivo novo ou reinstalado entra com seu código de restauração. Nenhum outro dispositivo o aprova: o código contém suas chaves, então já prova que o dispositivo é seu.
+- **Entrar**: outra pessoa entra com um convite de um administrador, que aprova o pedido dela.
 
-## Adicionando um dispositivo
+## Adicionando seu próprio dispositivo
 
-Em um dispositivo que já possui a biblioteca, o proprietário abre Configurações, Dispositivos, **Adicionar um dispositivo**. bae mostra um código de emparelhamento como um QR e começa a escutar na rede local.
+No dispositivo novo, escolha **Restaurar da nuvem** e passe a ele seu código de restauração de uma de três maneiras:
 
-No novo dispositivo, escolha **Junte-se a uma biblioteca** e leia esse código. Faça login no provedor de armazenamento quando solicitado. Ambos os dispositivos mostram a impressão digital do novo dispositivo; compare-os e aprove no dispositivo existente. O novo dispositivo recebe acesso selado por meio da mesma conexão local, baixa a biblioteca e inicia a sincronização. Nenhum código viaja de volta.
+- **Leia** o código QR que um dos seus outros dispositivos mostra em **Mostrar código de restauração...**, em Ajustes, Biblioteca.
+- **Escolha-o** nas Chaves do iCloud, em dispositivos Apple: bae lista os códigos de restauração que seus outros dispositivos salvaram lá.
+- **Cole** ou digite o código.
 
-O código de emparelhamento não contém a chave da biblioteca nem as credenciais de armazenamento duradouro, e um emparelhamento interrompido ou rejeitado não concede nada. Detalhes em [Identidade e adesão](/pt-br/reference/membership).
+Entre no provedor de armazenamento quando solicitado. No S3, o dispositivo também precisa da sua chave de acesso: o código QR a leva ao lado do código, então basta ler, e um código digitado pede a chave. Depois, o dispositivo novo baixa a biblioteca e começa a sincronizar.
+
+Até carregar a biblioteca, o dispositivo mostra onde ela está guardada em vez do nome: o e-mail da conta no Dropbox e no OneDrive, o bucket e o endpoint no S3, ou iCloud. Depois de carregada, mostra o nome atual da biblioteca.
+
+## Convidando uma pessoa
+
+Um administrador abre Ajustes, Biblioteca, **Convidar uma pessoa...**, escolhe uma função e informa o e-mail da conta da pessoa; no S3, em vez disso, uma chave de acesso criada para ela. bae compartilha a pasta da biblioteca com essa conta e mostra um convite como código QR.
+
+No dispositivo dela, a pessoa escolhe **Participar de uma biblioteca**, lê ou cola o convite, digita o nome e entra na própria conta. O pedido aparece no dispositivo do administrador em **Aguardando para entrar**, e o administrador o aprova ou recusa. Depois de aprovado, o dispositivo novo baixa a biblioteca, e todo dispositivo mostra a pessoa nova pelo nome. Um convite expira em até um dia, e só o dispositivo que o criou pode aprovar o pedido. Detalhes em [Identidade e adesão](/pt-br/reference/membership).
 
 ## Membros e funções
 
-Ajustes, Dispositivos lista todos os membros: impressão digital, função e qual deles é este dispositivo. O dispositivo fundador é um **proprietário**; dispositivos que ele aprova entram como **membros**. Ambos leem e escrevem a biblioteca; só proprietários aprovam e removem dispositivos.
+Ajustes, Biblioteca lista cada pessoa e seus dispositivos, e qual deles é este dispositivo. Quem conecta uma biblioteca à nuvem é o primeiro **administrador** dela; um administrador convida outras pessoas como **administradores** ou **membros** e pode mudar a função de uma pessoa. Todos leem e editam a biblioteca. Só administradores convidam e removem pessoas e renomeiam a biblioteca.
 
 ## Removendo um dispositivo
 
-Proprietários podem remover qualquer membro. A remoção não fecha só a porta: a chave de criptografia da biblioteca é rotacionada, e o dispositivo removido nunca recebe a nova chave. O que ele já copiou fica com ele, nada pode desfazer o envio de dados, mas tudo que a biblioteca escreve a partir daí fica ilegível para ele.
+Cada pessoa pode remover os próprios dispositivos, e um administrador pode remover os de qualquer um, para que ninguém que perdeu todos os dispositivos fique travado. A partir daí, nada que o dispositivo removido envie conta. bae também mostra o que falta fazer no provedor, como desconectar esse dispositivo da sua conta: Dropbox, OneDrive e iCloud não conseguem cortar sozinhos um único dispositivo de uma conta.
 
-## Códigos de recuperação
+Remover uma pessoa, o que só um administrador pode fazer, também remove os dispositivos dela e o que ela mantinha privado. As avaliações, o histórico e as playlists dela compartilhados com a casa ficam, creditados a ela. As chaves da biblioteca são substituídas, então nada escrito depois fica legível para ela. O que ela já copiou fica com ela: nada pode desfazer o envio de dados.
 
-Um código de recuperação é um segredo bearer para sua própria biblioteca: coordenadas do local na nuvem mais a chave de criptografia, em uma string. **Show recovery code** em Ajustes o exibe; guarde-o em um lugar seguro, como um gerenciador de senhas. Em um dispositivo novo, **Restore from cloud** com o código reconstrói a biblioteca, sem precisar de aprovador.
+## Códigos de restauração
 
-Em plataformas Apple, o código também é guardado automaticamente no iCloud Keychain, então um Mac ou iPhone novo conectado ao seu Apple ID pode restaurar com um toque.
+Um código de restauração contém suas chaves para uma biblioteca e onde ela está guardada, em uma string. Ele não contém senha de armazenamento, login nem o nome da biblioteca. **Mostrar código de restauração...** em Ajustes, Biblioteca o exibe; guarde-o em um lugar seguro, como um gerenciador de senhas.
 
-Quem tiver o código tem a biblioteca, então trate-o como a chave que ele é.
+Em plataformas Apple, o código também é guardado automaticamente nas Chaves do iCloud, então um Mac ou iPhone novo conectado à sua Apple Account pode escolhê-lo em uma lista.
+
+Quem tiver o código e acesso ao seu armazenamento pode abrir a biblioteca como você, então mantenha-o em segredo.
 
 ## Bloqueio
 
-**Lock Library** remove a chave de criptografia do chaveiro do dispositivo. A biblioteca permanece no disco, ilegível, até alguém inserir a chave novamente; bae a confere contra uma impressão digital armazenada antes de aceitá-la. Use isso para um laptop que sai de casa.
+A chave de criptografia da biblioteca vive no chaveiro do sistema operacional. Enquanto o chaveiro estiver bloqueado, por exemplo com a sessão bloqueada, bae mostra a biblioteca como bloqueada e a abre assim que o chaveiro é desbloqueado; **Tentar novamente** tenta de novo manualmente.
 
 ## No telefone
 
-iOS e Android entram e restauram exatamente assim; esse é todo o onboarding deles. Um telefone também pode remover sua cópia da biblioteca (Ajustes, remover deste dispositivo), o que apaga arquivos locais e não toca em nada na nuvem.
+iOS e Android entram e restauram exatamente assim; esse é todo o onboarding deles. Um telefone também pode remover a biblioteca de si mesmo: primeiro ele se remove dos membros da biblioteca, o que precisa de conexão com seu armazenamento, e depois apaga a cópia local. A biblioteca na nuvem continua lá.

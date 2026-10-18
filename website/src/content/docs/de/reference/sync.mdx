@@ -7,34 +7,36 @@ Die Synchronisierung von bae ist die Synchronisierung von [coven](https://coven.
 
 ## Erfassung
 
-coven besitzt die SQLite-Verbindung, daher läuft jeder Schreibvorgang, den bae festschreibt, durch coven. Die Session-Erweiterung von SQLite erfasst exakt, was sich in jeder Transaktion geändert hat; die Änderungen an synchronisierten Tabellen werden zu einem **Changeset**, verschlossen mit dem Mediatheksschlüssel und signiert mit dem Identitätsschlüssel des Geräts. Kein Diffing, keine Dirty-Flags: Erfassung ist eine Eigenschaft der Verbindung, und ein Schreibvorgang kann nicht verpasst werden.
+coven besitzt die SQLite-Verbindung, daher läuft jeder Schreibvorgang, den bae festschreibt, durch coven. Wenn eine Transaktion festgeschrieben wird, die synchronisierte Tabellen ändert, erfasst coven jede Zeilenänderung mit den berührten Spalten in derselben Transaktion, sodass eine festgeschriebene Änderung nie verloren geht, selbst wenn die App einen Moment später abstürzt. Kein Diffing, keine Dirty-Flags: Erfassung ist eine Eigenschaft der Verbindung, und ein Schreibvorgang kann nicht verpasst werden. Die Änderung wartet auf dem Gerät und wird erst beim Senden verschlüsselt und signiert, daher braucht Schreiben weder Schlüssel noch Netzwerk.
 
-## Ströme
+## Die Abfolge
 
-Jedes Gerät hängt seine Changesets an seinen eigenen Strom im Cloud-Zuhause an, fortlaufend nummeriert. Geräte schreiben nie in die Ströme anderer Geräte, daher gibt es keine Schreibkonflikte im Speicher, und jedes Gerät verfolgt pro Peer-Strom einen Cursor. Ein Synchronisierungszyklus pusht den lokalen Postausgang, zieht dann den Strom jedes Peers ab seinem Cursor vorwärts und prüft die Signatur jedes Changesets und die Mitgliedschaft seines Autors, bevor es angewendet wird.
+Die gesamte Historie einer Mediathek im Cloud-Zuhause ist eine nummerierte Abfolge von Objekten. Jedes enthält den Stapel Änderungen eines Geräts, einen Admin-Eintrag, einen an ein Mitglied versiegelten Schlüssel oder eine Snapshot-Ankündigung. Jedes Gerät wendet sie der Reihe nach an und überspringt keines, sodass jedes Gerät darin übereinstimmt, was wann geschah. Ein Gerät fügt das nächste Objekt erst hinzu, nachdem es jedes davor angewendet hat.
 
-Der Zyklus läuft nach lokalen Änderungen, über einen Leerlauf-Timer mit Wartezeit (bis zu fünf Minuten zwischen Polls) und sofort bei **Jetzt synchronisieren**. Fehler warten und versuchen erneut; die Schleife meldet das Ergebnis jedes Zyklus an die Oberfläche als Status, Fehlertext und Anzahl angewendeter Zeilen.
+Ein Synchronisierungsdurchgang liest vom zuletzt angewendeten Objekt vorwärts, bis eines fehlt, prüft die Signatur jedes Objekts und wendet es an, sendet die wartenden Änderungen dieses Geräts als ein neues Objekt und erledigt dann die Arbeit, die der neue Zustand verlangt: Zugriff freigeben oder entziehen, Snapshots erstellen, alte Historie löschen. Ein Durchgang über eine ruhige Mediathek kostet zwei Anfragen, egal wie groß sie ist.
+
+Durchgänge laufen nach lokalen Änderungen, über einen Leerlauf-Timer und sofort bei **Jetzt synchronisieren**. Fehler werden nach einem gemeinsamen Wartezeitplan erneut versucht, und alles, was nicht weiterkommt, nennt, worauf es wartet; bae zeigt das in seiner Synchronisierungs-Statuszeile.
 
 ## Zusammenführen
 
 Dass zwei Geräte dieselbe Mediathek getrennt bearbeiten, ist der Normalfall, nicht die Ausnahme. Wenn ihre Änderungen zusammentreffen:
 
 - Änderungen an **verschiedenen Zeilen oder verschiedenen Spalten** werden beide angewendet. Das Jahr eines Releases auf dem Laptop und sein Label auf dem Desktop zu bearbeiten ergibt beides.
-- Änderungen an **derselben Spalte derselben Zeile** werden durch die `_updated_at`-Hybrid-Logical-Clock der Zeile geordnet: Die spätere Änderung gewinnt, deterministisch und auf jedem Gerät gleich.
-- **Löschungen gewinnen** gegen gleichzeitige Änderungen: Ein auf einem Gerät gelöschtes Release bleibt gelöscht, selbst wenn ein anderes Gerät es im selben Intervall bearbeitet hat.
+- Änderungen an **derselben Spalte derselben Zeile** werden nach Zeitstempel geordnet: Die spätere Änderung gewinnt, deterministisch und auf jedem Gerät gleich.
+- **Löschungen gewinnen** gegen gleichzeitige Änderungen: Eine Änderung an einer Zeile, die inzwischen gelöscht wurde, verliert, wann immer sie ankommt, sodass ein auf einem Gerät gelöschtes Release gelöscht bleibt, selbst wenn ein anderes Gerät es im selben Intervall bearbeitet hat.
 
-Es gibt keine Konfliktoberfläche, weil es keinen ungelösten Zustand gibt: Jedes Gerät gelangt aus jeder Anwendungsreihenfolge zum selben Ergebnis.
+coven behält jeden ersetzten Wert als *verlorenen Wert*; bae zeigt keinen davon an und verwirft keinen, daher gibt es keine Konfliktoberfläche. Jedes Gerät gelangt aus jeder Ankunftsreihenfolge zum selben Ergebnis.
 
-## Bootstrap
+## Snapshots
 
-Ein Gerät, das beitritt oder wiederherstellt, spielt die Historie nicht von Anfang an ab. Es lädt einen **Snapshot**, ein vollständiges SQLite-Image, das regelmäßig ins Cloud-Zuhause veröffentlicht wird, und wendet dann nur die Changesets an, die jeder Strom danach gesammelt hat. Snapshot-Metadaten erfassen die Schemaversion und die Cursor pro Strom, die er verkörpert.
+Ein Gerät, das beitritt oder wiederherstellt, spielt die Historie nicht von Anfang an ab. Geräte erstellen **Snapshots**, den vollständigen Zustand der Mediathek an einer Stelle der Abfolge, und sobald die Mediathek und jeder private Kreis einen haben, wird die Historie davor gelöscht. Ein neues Gerät lädt den neuesten Snapshot und wendet dann nur an, was danach kam. Ein Gerät, das länger weg war, als die Historie aufbewahrt wird, macht dasselbe und behält seine ungesendeten Änderungen.
 
 ## Schemaversionen
 
-Das Schema von bae migriert über eine nummerierte Leiter, und die oberste Sprosse der Leiter wird auf jedes Changeset gestempelt, das das Gerät schreibt. Ein Gerät, das ein Changeset aus einem neueren Schema zieht als dem eigenen, parkt diesen Strom und wendet nichts danach an, bis die App aktualisiert wird; nichts geht verloren und nichts wird falsch angewendet. Die Datenbankdatei selbst weigert sich, unter einem Binary zu öffnen, das älter ist als ihr Schema.
+Das Schema von bae ist eine Migration, und jede Änderung, die ein Gerät sendet, erfasst die Schemaversion, mit der sie gemacht wurde. Ein Gerät, das auf eine Änderung aus einem neueren Schema als dem eigenen trifft, hält dort an und wendet nichts danach an, bis die App aktualisiert wird; nichts geht verloren und nichts wird falsch angewendet.
 
 Gröber als die Schemaversion ist die **Kompatibilitätsära**: die gepinnte coven-Revision, die in jedes Binary eingebaut ist. Zwei Builds synchronisieren nur innerhalb einer Ära; ein Bruch im Wire-Format von coven ist eine neue Ära und eine Hauptversionsanhebung über jede App hinweg. Vor 1.0 ist jeder Build Ära null, und Formate ändern sich ohne Migration.
 
 ## Was der Anbieter sieht
 
-In einem undurchsichtigen Zuhause speichert der Anbieter verschlüsselte Changesets, verschlüsselte Blobs und signierte Mitgliedschaftsdatensätze; er kann Objekte zählen und Größen und Zeitpunkte beobachten, aber nichts davon lesen. Jedes Objekt, das ein Gerät zieht, wird geprüft, Signatur und Mitgliedschaft, bevor irgendetwas die Datenbank berührt: Der Speicher ist ein passiver, nicht vertrauenswürdiger Briefkasten. Siehe [Verschlüsselung](/de/reference/encryption) und [Identität und Mitgliedschaft](/de/reference/membership).
+Der Anbieter speichert verschlüsselte Änderungen, Snapshots, Mitgliedschaftsdatensätze und Dateien; er kann Objekte zählen, Größen und Zeitpunkte beobachten und sehen, welches Konto jedes Objekt schreibt, aber keinen Inhalt lesen. Jedes Objekt, das ein Gerät zieht, wird geprüft, Signatur und Mitgliedschaft, bevor irgendetwas die Datenbank berührt: Der Speicher ist ein passiver, nicht vertrauenswürdiger Briefkasten. Siehe [Verschlüsselung](/de/reference/encryption) und [Identität und Mitgliedschaft](/de/reference/membership).

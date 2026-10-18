@@ -1,43 +1,55 @@
 ---
 title: Appareils et membres
-description: Ajouter votre téléphone, approuver un appareil, récupérer votre bibliothèque
+description: Ajouter vos propres appareils, inviter des personnes et retirer des appareils
 ---
 
-Il n’y a pas de compte bae. L’identité d’un appareil est une paire de clés qu’il génère pour lui-même et conserve dans le trousseau du système d’exploitation ; la bibliothèque reconnaît les appareils par leurs clés. Ajouter un appareil signifie qu’un appareil existant se porte garant du nouveau, cryptographiquement, sans intermédiaire.
+Il n’y a pas de compte bae. Chaque personne d’une bibliothèque a ses propres clés, que tous ses appareils partagent et conservent dans le trousseau du système d’exploitation ; la bibliothèque reconnaît les personnes à ces clés. Chaque changement sur qui en fait partie est signé et conservé dans l’emplacement cloud, sans intermédiaire.
 
 Deux portes différentes, pour deux situations différentes :
 
-- **Rejoindre** : un nouvel appareil est approuvé par un appareil qui possède déjà la bibliothèque. Utilisez cela pour ajouter votre téléphone ou l’appareil d’une autre personne.
-- **Restaurer** : votre propre appareil neuf ou réinstallé récupère la bibliothèque directement depuis l’emplacement cloud, à l’aide d’un code de récupération. Aucun approbateur n’intervient.
+- **Restaurer** : votre propre appareil neuf ou réinstallé rejoint la bibliothèque avec votre code de restauration. Aucun autre appareil ne l’approuve : le code contient vos clés, il prouve donc déjà que l’appareil est le vôtre.
+- **Rejoindre** : une autre personne rejoint la bibliothèque avec l’invitation d’un administrateur, qui approuve sa demande.
 
-## Ajouter un appareil
+## Ajouter votre propre appareil
 
-Sur un appareil disposant déjà de la bibliothèque, un propriétaire ouvre Paramètres, Appareils, **Ajouter un appareil**. bae affiche un code d'association sous forme de QR et commence à écouter sur le réseau local.
+Sur le nouvel appareil, choisissez **Restaurer depuis le cloud** et donnez-lui votre code de restauration de l’une de ces trois façons :
 
-Sur le nouvel appareil, choisissez **Rejoindre une bibliothèque** et scannez ce code. Connectez-vous au fournisseur de stockage lorsque vous y êtes invité. Les deux appareils affichent l'empreinte digitale du nouvel appareil ; comparez-les, puis approuvez sur l’appareil existant. Le nouvel appareil reçoit son accès scellé via la même connexion locale, télécharge la bibliothèque et démarre la synchronisation. Aucun code ne revient.
+- **Scannez** le code QR qu’affiche l’un de vos autres appareils sous **Afficher le code de restauration…**, dans Réglages, Bibliothèque.
+- **Choisissez-le** dans le trousseau iCloud, sur les appareils Apple : bae liste les codes de restauration que vos autres appareils y ont enregistrés.
+- **Collez-le** ou saisissez-le.
 
-Le code de couplage ne contient ni la clé de bibliothèque ni les informations d'identification de stockage durables, et un couplage interrompu ou rejeté n'accorde rien. Détails dans [Identité et appartenance](/fr/reference/membership).
+Connectez-vous au fournisseur de stockage lorsque vous y êtes invité. Sur S3, l’appareil a aussi besoin de votre clé d’accès : le code QR la transporte à côté du code, il suffit donc de le scanner, et un code saisi demande la clé. Le nouvel appareil télécharge ensuite la bibliothèque et démarre la synchronisation.
+
+Tant qu’il n’a pas chargé la bibliothèque, l’appareil affiche où elle est stockée plutôt que son nom : l’e-mail du compte pour Dropbox et OneDrive, le bucket et l’endpoint pour S3, ou iCloud. Une fois la bibliothèque chargée, il affiche son nom actuel.
+
+## Inviter une personne
+
+Un administrateur ouvre Réglages, Bibliothèque, **Inviter une personne…**, choisit un rôle et saisit l’e-mail du compte de la personne ; sur S3, plutôt une clé d’accès créée pour elle. bae partage le dossier de la bibliothèque avec ce compte et affiche une invitation sous forme de code QR.
+
+Sur son appareil, la personne choisit **Rejoindre une bibliothèque**, scanne ou colle l’invitation, saisit son nom et se connecte à son propre compte. La demande apparaît sur l’appareil de l’administrateur sous **En attente d’adhésion**, et l’administrateur l’approuve ou la refuse. Une fois approuvée, le nouvel appareil télécharge la bibliothèque, et chaque appareil affiche la nouvelle personne par son nom. Une invitation expire dans la journée, et seul l’appareil qui l’a créée peut approuver sa demande. Détails dans [Identité et appartenance](/fr/reference/membership).
 
 ## Membres et rôles
 
-Réglages, Appareils liste chaque membre : empreinte, rôle, et lequel est cet appareil. L’appareil fondateur est un **propriétaire** ; les appareils qu’il approuve rejoignent comme **membres**. Les deux lisent et écrivent la bibliothèque ; seuls les propriétaires approuvent et retirent des appareils.
+Réglages, Bibliothèque liste chaque personne et ses appareils, et lequel est cet appareil. La personne qui connecte une bibliothèque au cloud en est le premier **administrateur** ; un administrateur invite d’autres personnes comme **administrateurs** ou **membres** et peut changer le rôle d’une personne. Tout le monde lit et modifie la bibliothèque. Seuls les administrateurs invitent et retirent des personnes et renomment la bibliothèque.
 
 ## Retirer un appareil
 
-Les propriétaires peuvent retirer n’importe quel membre. Le retrait ne ferme pas seulement la porte : la clé de chiffrement de la bibliothèque fait l’objet d’une rotation, et l’appareil retiré ne reçoit jamais la nouvelle clé. Ce qu’il a déjà copié, il le garde, rien ne peut annuler l’envoi de données, mais tout ce que la bibliothèque écrit à partir de ce moment-là lui est illisible.
+Chaque personne peut retirer ses propres appareils, et un administrateur peut retirer ceux de n’importe qui, pour qu’une personne qui a perdu tous ses appareils ne reste pas bloquée. Dès lors, rien de ce qu’envoie l’appareil retiré ne compte. bae affiche aussi ce qui reste à faire chez le fournisseur, comme déconnecter cet appareil de votre compte : Dropbox, OneDrive et iCloud ne peuvent pas couper à eux seuls un seul appareil d’un compte.
 
-## Codes de récupération
+Retirer une personne, ce que seul un administrateur peut faire, retire aussi ses appareils et ce qu’elle gardait privé. Ses notes, son historique et ses listes partagés avec le foyer restent, à son nom. Les clés de la bibliothèque sont remplacées, donc rien de ce qui est écrit ensuite ne lui est lisible. Ce qu’elle a déjà copié, elle le garde : rien ne peut annuler l’envoi de données.
 
-Un code de récupération est un secret porteur pour votre propre bibliothèque : coordonnées de l’emplacement cloud plus clé de chiffrement, en une seule chaîne. **Show recovery code** dans Réglages l’affiche ; stockez-le dans un endroit sûr, comme un gestionnaire de mots de passe. Sur un nouvel appareil, **Restore from cloud** avec le code reconstruit la bibliothèque, sans approbateur.
+## Codes de restauration
 
-Sur les plateformes Apple, le code est aussi conservé automatiquement dans le trousseau iCloud, donc un nouveau Mac ou iPhone connecté à votre Apple ID peut restaurer en un geste.
+Un code de restauration contient vos clés pour une bibliothèque et l’endroit où elle est stockée, en une seule chaîne. Il ne contient ni mot de passe de stockage, ni connexion, ni nom de bibliothèque. **Afficher le code de restauration…** dans Réglages, Bibliothèque l’affiche ; stockez-le dans un endroit sûr, comme un gestionnaire de mots de passe.
 
-Toute personne qui détient le code détient la bibliothèque, donc traitez-le comme la clé qu’il est.
+Sur les plateformes Apple, le code est aussi conservé automatiquement dans le trousseau iCloud, donc un nouveau Mac ou iPhone connecté à votre Apple Account peut le choisir dans une liste.
+
+Toute personne qui détient le code et un accès à votre stockage peut ouvrir la bibliothèque en votre nom, alors gardez-le secret.
 
 ## Verrouillage
 
-**Lock Library** retire la clé de chiffrement du trousseau de l’appareil. La bibliothèque reste sur disque, illisible, jusqu’à ce que quelqu’un saisisse de nouveau la clé ; bae la vérifie avec une empreinte stockée avant de l’accepter. Utilisez cela pour un ordinateur portable qui quitte la maison.
+La clé de chiffrement de la bibliothèque vit dans le trousseau du système d’exploitation. Tant que le trousseau est verrouillé, par exemple pendant que votre session est verrouillée, bae affiche la bibliothèque comme verrouillée et l’ouvre dès que le trousseau se déverrouille ; **Réessayer** relance la tentative à la main.
 
 ## Sur le téléphone
 
-iOS et Android rejoignent et restaurent exactement ainsi ; c’est tout leur accueil. Un téléphone peut aussi retirer sa copie de la bibliothèque (Réglages, retirer de cet appareil), ce qui supprime les fichiers locaux et ne touche à rien dans le cloud.
+iOS et Android rejoignent et restaurent exactement ainsi ; c’est tout leur accueil. Un téléphone peut aussi retirer la bibliothèque de lui-même : il se retire d’abord des membres de la bibliothèque, ce qui demande une connexion à votre stockage, puis supprime sa copie locale. La bibliothèque dans le cloud reste.

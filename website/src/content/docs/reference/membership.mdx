@@ -1,35 +1,54 @@
 ---
 title: Identity and membership
-description: Keys as identities, the join handshake, roles, and revocation
+description: People as keys, restore codes, invites, roles, and removal
 ---
 
-There is no account system anywhere in bae. A device's identity is an Ed25519 keypair it generates for itself and keeps in the OS keyring; the public key *is* the identity. Who belongs to a library is a set of signed records in the cloud home, verifiable by anyone holding them, issued by no server. The machinery is [coven](https://coven.bae.fm)'s; this page is how bae uses it.
+There is no account system anywhere in bae. Each person in a library is a coven *member*: a random, permanent member id and two key pairs, one to sign with and one that keys are sealed to, shared by all of that person's devices and kept in each device's OS keyring. A device is one installation, with its own id, belonging to one member. Who belongs to a library is a set of signed records in the cloud home, checked by every member's device, issued by no server. The machinery is [coven](https://coven.bae.fm)'s; this page is how bae uses it.
 
 ## Membership records
 
-Each owner writes an append-only stream of signed membership entries into the cloud home: this key was added with this role, this key was removed. Every entry links to the previous one, and each owner signs a head declaring their stream's tip, so a provider that drops or reorders records is detected rather than believed. What the library accepts is the union of every owner's verified stream.
+All of a library's history in the cloud home is one numbered sequence, and every device applies it in the same order. A change to membership or settings is an *admin entry* in that sequence, signed with its author's key and judged against the state just before it, so every device reaches the same verdict on its own. An entry counts only if its author may make it, and the library always keeps at least one admin.
 
-On every pull, each changeset's author is checked against this record: signed by a current member, with a role that may write. Changesets from removed devices, from keys never added, or with invalid signatures do not apply. The provider stores the records but cannot forge them; only holders of owner keys can change membership.
+Every change a device sends is checked against this record: signed by a current member, from a device that hasn't been removed. Changes from removed devices or members, from keys never added, or with invalid signatures don't count. The provider stores the records but cannot forge them.
 
 ## Roles
 
-**Owner** and **Member** both read and write the library; owners additionally approve and remove devices. bae's founding device is an owner and every device it approves joins as a member. (A third role exists in the underlying machinery, a read-only follower, which bae does not currently assign.)
+**Admin** and **Member** both read and write the library: coven checks no permission on library writes, so a read-only role couldn't hold. Admins additionally invite and remove people, change roles, and rename the library. The person who gives a library its cloud home is its first admin.
 
-## The join handshake
+| Action | Who |
+|---|---|
+| Invite a person | an admin |
+| Add a device | the person, from the new device, with their restore code |
+| Remove a device | its person, or any admin |
+| Remove a person | an admin |
+| Rename the library | an admin |
 
-Adding a device is one local pairing session with explicit human verification:
+A person's profile, ratings, history, and playlists are owner rows: only that person's devices can change them, so a rating credited to someone was made by them.
 
-1. An owner starts **Add a device**. bae listens briefly on the local network and shows one pairing code. It contains the listener addresses, an ephemeral session key, the library name, the provider, and an expiry — no library key or lasting storage credentials.
-2. The joining device scans the code, creates its device keypair, signs in to the provider when required, and sends its signed public key and provider account identity through the encrypted local connection. Both devices show the same fingerprint.
-3. The owner compares the fingerprints and approves that exact identity. Approval grants its cloud account access where required, signs the membership entry, and seals the library key and final storage access to the new device's public key.
-4. The sealed package returns through the same authenticated local connection. The joining device opens it, bootstraps from cloud storage, and starts syncing.
+## Adding your own device
 
-An expired, interrupted, or rejected pairing grants nothing.
+A restore code proves a device is its person's, so it needs no approval:
 
-## Revocation
+1. The new device gets the code by scanning the QR code another of the person's devices shows, from iCloud Keychain on Apple devices, or by typing it.
+2. It reaches storage: on Dropbox and OneDrive by signing in to the person's own account, on S3 with their access key, which the QR code carries beside the code.
+3. It loads the library, checks that the code's keys belong to a current member, and registers itself as a new device with an entry signed by those keys.
 
-Removing a member appends a signed removal and rotates the library key to a new generation the removed key never receives (see [Encryption](/reference/encryption#generations)). On storage that can revoke access, access is also withdrawn. What was already synced to the removed device stays with it; data cannot be unsent. Everything after the rotation is out of its reach.
+A code whose keys have since been replaced fails. Restoring always makes a fresh device; it doesn't rescue another installation's unsent edits.
 
-## Recovery codes
+## Inviting a person
 
-A recovery code bypasses membership on purpose: it is the cloud home's coordinates plus the library key, in one bearer string, for restoring your own library with no surviving approver. It is generated on demand, stored automatically in the iCloud Keychain on Apple platforms, and is exactly as sensitive as the library itself.
+1. An admin enters the person's provider account and picks their role. bae shares the library's folder with that account, or on S3 makes an access key for them, and shows an invite: a QR code holding the library's location, the member id chosen for the person, a one-time secret, and the library's current name. It expires one day after it was made.
+2. The person's device scans it, signs in to their own account, makes their key pairs, and writes a join request to storage, encrypted with a key derived from the invite's secret and signed with their new key.
+3. The admin's device, the only one holding the secret, shows the request, and the admin approves it.
+4. Approval seals every store key to the person's new sealing key, then adds the entry admitting them.
+5. The new device opens its keys, loads the library, registers itself, and writes the person's profile with the name they typed.
+
+Declining, or letting the invite expire, takes back the provider access it granted.
+
+## Removal
+
+Removing a device or a person is an admin entry, and its place in the sequence is a line in history: what the removed device or person sends after it doesn't count, while what landed before stays. Removing a person also removes their devices and their private circle, and the keys they held are replaced before more data is written (see [Encryption](/reference/encryption#rotation)). Cutting off storage access is provider work: the device of the account that holds the library unshares the folder, and on S3 the person's access key is deleted. What was already synced to a removed device stays with it; data cannot be unsent.
+
+## Restore codes
+
+A restore code holds a member's id and current private key pairs, the library's store id, and its storage location; never storage credentials, sign-in tokens, or the library's name. It is shown on demand, stored automatically in iCloud Keychain on Apple platforms, and is exactly as sensitive as the library itself: whoever holds it, with access to storage, is that person to the library. A person who loses every device and their code can be invited again by an admin to their existing member id, which replaces their keys.

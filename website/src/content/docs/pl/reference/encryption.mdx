@@ -1,28 +1,34 @@
 ---
 title: Szyfrowanie
-description: Czym jest klucz biblioteki, gdzie mieszka i jaki szyfrogram trzyma dostawca
+description: Jakie klucze istnieją, gdzie mieszkają i co widzi dostawca
 ---
 
-Wszystko, co bae umieszcza w nieprzezroczystym domu w chmurze, jest szyfrowane przed opuszczeniem urządzenia. bae nie implementuje własnej kryptografii: cały schemat należy do [coven](https://coven.bae.fm), a ta strona opisuje, jak bae go używa. Domy przeglądalne rezygnują z tego wszystkiego; nic poniżej ich nie dotyczy.
+Wszystko, co bae umieszcza w domu w chmurze, jest szyfrowane przed opuszczeniem urządzenia; trybu bez szyfrowania nie ma. bae nie implementuje własnej kryptografii: cały schemat należy do [coven](https://coven.bae.fm), a ta strona opisuje, jak bae go używa.
 
-## Klucz biblioteki
+## Klucze
 
-Nieprzezroczysta biblioteka ma jeden sekret główny: losowy klucz 256-bitowy utworzony przy tworzeniu domu. Żyje w pęku kluczy systemu operacyjnego, nigdy w pliku; na platformach Apple wpis pęku kluczy synchronizuje się przez iCloud Keychain. Konfiguracja bae przechowuje tylko odcisk klucza, wystarczający, by przy odblokowaniu odróżnić zły klucz od właściwego bez trzymania sekretu.
+| Klucz | Co robi |
+|---|---|
+| Klucz magazynu | szyfruje bibliotekę i jej rekordy członkostwa |
+| Klucz kręgu każdej osoby | szyfruje to, co ta osoba trzyma jako prywatne: jej prywatną historię odtwarzania i playlisty |
+| Klucz każdego pliku | szyfruje jeden plik i podróżuje tylko wewnątrz zaszyfrowanych zmian jego wiersza |
+| Para kluczy podpisu osoby | podpisuje każdą zmianę wysyłaną przez jej urządzenia |
+| Para kluczy pieczętowania osoby | otwiera klucze zapieczętowane dla tej osoby |
 
-Klucz przemieszcza się między urządzeniami na dwa sposoby, oba opisano w [Tożsamość i członkostwo](/pl/reference/membership): jest zapieczętowany w kluczu publicznym zatwierdzonego urządzenia podczas parowania urządzeń i przenoszony w kodzie odzyskiwania.
+Klucz magazynu jest losowy, tworzony, gdy biblioteka dostaje dom w chmurze. Pary kluczy osoby są dzielone przez wszystkie jej urządzenia. Klucze prywatne i klucze biblioteki mieszkają w pęku kluczy systemu operacyjnego, nigdy w pliku ani w bazie danych. Docierają do urządzenia na dwa sposoby, oba opisane w [Tożsamość i członkostwo](/pl/reference/membership): kod przywracania niesie własne pary kluczy osoby, a administrator zatwierdzający zaproszenie pieczętuje klucze magazynu dla klucza pieczętowania nowej osoby.
 
-## Generacje
+## Rotacja
 
-Klucz biblioteki jest naprawdę pękiem kluczy ponumerowanych generacji. Usunięcie członka dopisuje nową generację, której usunięty członek nigdy nie otrzymuje: wszystko zapisane później używa nowej generacji i jest dla niego nieczytelne, a pozostali członkowie zachowują każdą generację i mogą czytać całą historię. Każdy zamknięty obiekt zapisuje jawnie, która generacja go otwiera.
+Klucz nigdy nie jest zmieniany w miejscu; dodawany jest nowy. Po usunięciu osoby urządzenie pozostałego członka dodaje nowy klucz magazynu i nowy klucz dla każdego kręgu, w którym była, zanim zapisze tam więcej danych: wszystko zapisane później jest dla niej nieczytelne, a pozostali członkowie zachowują każdy starszy klucz i mogą czytać całą historię. Usunięcie jednego urządzenia niczego nie obraca, bo pozostałe urządzenia tej osoby dzielą jego klucze; od usunięcia to, co wysyła to urządzenie, się nie liczy.
 
 ## Co jest zamykane
 
-Każdy obiekt w domu: zestawy zmian, migawki, bloby audio, grafiki, rekordy członkostwa, obiekty kontrolne. Obiekty są zamykane XChaCha20-Poly1305 w kawałkach po 64 KB, każdy kawałek uwierzytelniony i związany z kontekstem: zamknięty obiekt odszyfruje się tylko jako ten obiekt, którym miał być, dla tej biblioteki, przy tym kluczu. Kawałkowanie jest powodem, dla którego streaming działa: odtwarzacz może odszyfrować dokładnie te zakresy bajtów, które pobiera.
+Każdy obiekt w domu: zmiany, migawki, rekordy członkostwa i pliki. Treść jest szyfrowana XChaCha20-Poly1305, każda zmiana jest podpisywana Ed25519, a klucze są pieczętowane dla osób zapieczętowanymi pudełkami X25519. Pliki są szyfrowane w kawałkach po 64 KiB, każdy uwierzytelniany osobno i związany ze swoją pozycją, więc kawałka nie da się niezauważenie zmienić, podmienić ani przestawić. Kawałkowanie jest powodem, dla którego streaming działa: odtwarzacz może odszyfrować dokładnie te kawałki, które pobiera.
 
 ## Co widzi dostawca
 
-Liczbę obiektów, rozmiary obiektów, momenty wysyłania i wzorce dostępu. Nie nazwy, nie metadane, nie audio, nie grafiki, nie członkostwo. Nie ma odzyskiwania po stronie serwera: użytkownik, który straci każde urządzenie i każdą kopię klucza, stracił szyfrogram biblioteki na zawsze, zgodnie z projektem.
+Liczbę obiektów, rozmiary obiektów, momenty wysyłania, które konto zapisuje każdy obiekt i które urządzenie wysłało każdy plik i migawkę, bo ich ścieżki nazywają urządzenie. Nie nazwy, nie metadane, nie audio, nie grafiki. Pliki leżą pod losowymi nazwami, nigdy pod skrótem ich treści. Nie ma odzyskiwania po stronie serwera: jeśli każda osoba straci każde urządzenie i każdy kod przywracania, biblioteka przepada, zgodnie z projektem.
 
-## Odblokowanie i blokada
+## Pęk kluczy
 
-Otwarcie biblioteki czyta klucz z pęku kluczy. Jeśli biblioteka oczekuje klucza, a pęk kluczy go nie ma, bae traktuje bibliotekę jako zablokowaną: prosi o klucz przed otwarciem, sprawdza wpis względem zapisanego odcisku i dopiero potem zapisuje go z powrotem do pęku kluczy. Zablokowanie biblioteki celowo usuwa klucz z pęku kluczy; nic w domu w chmurze nie może być czytane ani zapisywane, dopóki klucz nie zostanie ponownie wprowadzony.
+Otwarcie biblioteki czyta jej klucze z pęku kluczy systemu operacyjnego. Pęk kluczy, który jest w danej chwili zablokowany, przez zablokowaną sesję albo uśpiony ekran, jest odróżniany od uszkodzonego: bae pokazuje bibliotekę jako zablokowaną i próbuje ponownie po odblokowaniu, zamiast zgłaszać bibliotekę jako bezużyteczną. Urządzenie może też zapomnieć klucz, co blokuje bibliotekę na tym urządzeniu, dopóki nie zostanie ponownie odblokowana.

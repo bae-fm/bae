@@ -12,7 +12,7 @@ bae là nơi ở cho những album bạn sở hữu. Bạn dựng thư viện tr
 Mở bae trên desktop. Khi máy chưa có thư viện, màn hình chào mừng đưa ra ba lựa chọn:
 
 - **Create a new library**, nếu đây là thiết bị đầu tiên của bạn.
-- **Join a library**, nếu một thiết bị khác đã có thư viện và owner của nó sẽ phê duyệt bạn. Xem [Thiết bị và thành viên](/vi/guide/devices).
+- **Join a library**, nếu ai đó đã mời bạn vào thư viện của họ. Xem [Thiết bị và thành viên](/vi/guide/devices#mời-một-người).
 - **Restore from cloud**, nếu đây là thư viện của chính bạn và bạn có mã khôi phục của nó. Xem [Thiết bị và thành viên](/vi/guide/devices#mã-khôi-phục).
 
 Tạo một thư viện. Thư viện bắt đầu cục bộ: mọi thứ nằm trên máy này, không cần tài khoản, và không có đám mây nào tham gia cho đến khi bạn kết nối một đám mây.
@@ -35,10 +35,10 @@ Quay lại mục **Library**, album nằm trong lưới. Bấm vào nó, nhấn 
 
 Khi bạn muốn thư viện trên nhiều thiết bị, kết nối một nhà trên đám mây: Dropbox, OneDrive, iCloud của chính bạn, hoặc bất kỳ bucket tương thích S3 nào. Mọi thứ bae đặt ở đó được mã hóa trước khi tải lên; nhà cung cấp lưu nó nhưng không đọc được.
 
-- [Đồng bộ](/vi/guide/sync): kết nối nhà trên đám mây và chọn nó lưu những gì.
-- [Thiết bị và thành viên](/vi/guide/devices): thêm điện thoại hoặc desktop khác.
+- [Đồng bộ](/vi/guide/sync): kết nối nhà trên đám mây và xem những gì được đồng bộ.
+- [Thiết bị và thành viên](/vi/guide/devices): thêm điện thoại hoặc desktop khác, hoặc mời ai đó.
 - [Lưu trữ và ngoại tuyến](/vi/guide/storage): giữ nhạc trên thiết bị, hoặc phát trực tuyến từ đám mây của bạn và ghim những gì bạn cần ngoại tuyến.
 
 ## Nơi mọi thứ nằm
 
-Mỗi thư viện giữ cơ sở dữ liệu và cài đặt dưới `~/.bae/libraries/` trên desktop. Âm thanh của bạn vẫn ở nơi bạn đã nhập từ đó, trừ khi bạn yêu cầu bae quản lý nó trong đám mây. Khóa và thông tin xác thực nằm trong keyring của hệ điều hành, không nằm trong tệp.
+Trên desktop, mỗi thư viện giữ cơ sở dữ liệu dưới `~/.bae/stores/` và cài đặt dưới `~/.bae/libraries/`. Âm thanh của bạn vẫn ở nơi bạn đã nhập từ đó; chuyển một bản phát hành lên đám mây sẽ tải lên một bản sao đã mã hóa và để nguyên tệp của bạn tại chỗ. Khóa và thông tin xác thực nằm trong keyring của hệ điều hành, không nằm trong tệp.

@@ -1,43 +1,55 @@
 ---
 title: Geräte und Mitglieder
-description: Füge dein Telefon hinzu, bestätige ein Gerät, stelle deine Mediathek wieder her
+description: Eigene Geräte hinzufügen, Personen einladen und Geräte entfernen
 ---
 
-Es gibt kein bae-Konto. Die Identität eines Geräts ist ein Schlüsselpaar, das es für sich selbst erzeugt und im Schlüsselbund des Betriebssystems behält; die Mediathek erkennt Geräte an ihren Schlüsseln. Ein Gerät hinzuzufügen bedeutet, dass ein vorhandenes Gerät kryptografisch für ein neues bürgt, ohne jemanden dazwischen.
+Es gibt kein bae-Konto. Jede Person in einer Mediathek hat eigene Schlüssel, die alle ihre Geräte teilen und im Schlüsselbund des Betriebssystems behalten; die Mediathek erkennt Personen an diesen Schlüsseln. Jede Änderung daran, wer dazugehört, wird signiert und im Cloud-Zuhause abgelegt, ohne jemanden dazwischen.
 
 Zwei verschiedene Türen für zwei verschiedene Situationen:
 
-- **Beitreten**: Ein neues Gerät wird von einem Gerät bestätigt, das die Mediathek bereits hat. Nutze dies, um dein Telefon oder das Gerät einer anderen Person hinzuzufügen.
-- **Wiederherstellen**: Dein eigenes neues oder neu installiertes Gerät stellt die Mediathek direkt aus dem Cloud-Zuhause mit einem Wiederherstellungscode wieder her. Ohne bestätigendes Gerät.
+- **Wiederherstellen**: Dein eigenes neues oder neu installiertes Gerät tritt mit deinem Wiederherstellungscode bei. Kein anderes Gerät muss es bestätigen: Der Code enthält deine Schlüssel und beweist damit bereits, dass das Gerät deins ist.
+- **Beitreten**: Eine andere Person tritt mit einer Einladung eines Admins bei, der ihre Anfrage bestätigt.
 
-## Ein Gerät hinzufügen
+## Ein eigenes Gerät hinzufügen
 
-Auf einem Gerät, das bereits über die Bibliothek verfügt, öffnet ein Besitzer Einstellungen, Geräte, **Fügen Sie ein Gerät hinzu**. bae zeigt einen Kopplungscode als QR an und beginnt, das lokale Netzwerk abzuhören.
+Wähle auf dem neuen Gerät **Aus der Cloud wiederherstellen** und gib ihm deinen Wiederherstellungscode auf einem von drei Wegen:
 
-Wählen Sie auf dem neuen Gerät **Treten Sie einer Bibliothek bei** und scannen Sie den Code. Melden Sie sich beim Speicheranbieter an, wenn Sie dazu aufgefordert werden. Auf beiden Geräten wird der Fingerabdruck des neuen Geräts angezeigt; Vergleichen Sie sie und genehmigen Sie sie dann auf dem vorhandenen Gerät. Das neue Gerät erhält seinen versiegelten Zugriff über dieselbe lokale Verbindung, lädt die Bibliothek herunter und beginnt mit der Synchronisierung. Kein Code reist zurück.
+- **Scanne** den QR-Code, den eines deiner anderen Geräte unter **Wiederherstellungscode anzeigen …** in Einstellungen, Bibliothek zeigt.
+- **Wähle** ihn auf Apple-Geräten aus dem iCloud-Schlüsselbund: bae listet die Wiederherstellungscodes auf, die deine anderen Geräte dort gespeichert haben.
+- **Füge** ihn ein oder tippe ihn ab.
 
-Der Kopplungscode enthält weder den Bibliotheksschlüssel noch dauerhafte Speicherzugangsdaten, und eine unterbrochene oder abgelehnte Kopplung gewährt keine Gewährung. Details unter [Identität und Mitgliedschaft](/de/reference/membership).
+Melde dich beim Speicheranbieter an, wenn du dazu aufgefordert wirst. Bei S3 braucht das Gerät außerdem deinen Zugriffsschlüssel: Der QR-Code trägt ihn neben dem Code, Scannen genügt also, und ein abgetippter Code fragt nach dem Schlüssel. Danach lädt das neue Gerät die Mediathek herunter und beginnt zu synchronisieren.
+
+Bis es die Mediathek geladen hat, zeigt das Gerät statt ihres Namens, wo sie gespeichert ist: die E-Mail-Adresse des Kontos bei Dropbox und OneDrive, Bucket und Endpoint bei S3 oder iCloud. Sobald sie geladen ist, zeigt es den aktuellen Namen der Mediathek.
+
+## Eine Person einladen
+
+Ein Admin öffnet Einstellungen, Bibliothek, **Person einladen …**, wählt eine Rolle und gibt die E-Mail-Adresse des Kontos der Person ein; bei S3 stattdessen einen Zugriffsschlüssel, der für sie erstellt wurde. bae gibt den Ordner der Mediathek für dieses Konto frei und zeigt eine Einladung als QR-Code.
+
+Auf ihrem Gerät wählt die Person **Bibliothek beitreten**, scannt die Einladung oder fügt sie ein, gibt ihren Namen ein und meldet sich bei ihrem eigenen Konto an. Die Anfrage erscheint auf dem Gerät des Admins unter **Wartet auf Beitritt**, und der Admin genehmigt oder lehnt sie ab. Nach der Genehmigung lädt das neue Gerät die Mediathek herunter, und jedes Gerät zeigt die neue Person mit Namen. Eine Einladung läuft innerhalb eines Tages ab, und nur das Gerät, das sie erstellt hat, kann ihre Anfrage genehmigen. Details unter [Identität und Mitgliedschaft](/de/reference/membership).
 
 ## Mitglieder und Rollen
 
-Einstellungen, Geräte listet jedes Mitglied auf: Fingerabdruck, Rolle und welches davon dieses Gerät ist. Das Gründungsgerät ist ein **Besitzer**; Geräte, die es bestätigt, treten als **Mitglieder** bei. Beide lesen und schreiben die Mediathek; nur Besitzer bestätigen und entfernen Geräte.
+Einstellungen, Bibliothek listet jede Person und ihre Geräte auf und zeigt, welches davon dieses Gerät ist. Wer eine Mediathek mit der Cloud verbindet, ist ihr erster **Admin**; ein Admin lädt andere als **Admins** oder **Mitglieder** ein und kann die Rolle einer Person ändern. Alle lesen und bearbeiten die Mediathek. Nur Admins laden Personen ein, entfernen sie und benennen die Mediathek um.
 
 ## Ein Gerät entfernen
 
-Besitzer können jedes Mitglied entfernen. Das Entfernen schließt nicht nur die Tür: Der Verschlüsselungsschlüssel der Mediathek wird rotiert, und das entfernte Gerät erhält den neuen Schlüssel nie. Was es bereits kopiert hat, behält es; Daten lassen sich nicht zurückholen. Alles, was die Mediathek ab diesem Zeitpunkt schreibt, ist für es unlesbar.
+Jede Person kann ihre eigenen Geräte entfernen, und ein Admin kann die Geräte aller entfernen, sodass niemand festsitzt, der jedes Gerät verloren hat. Ab dann zählt nichts mehr, was das entfernte Gerät sendet. bae zeigt außerdem, was beim Anbieter noch zu tun ist, etwa das Gerät von deinem Konto abzumelden: Dropbox, OneDrive und iCloud können ein einzelnes Gerät eines Kontos nicht selbst aussperren.
+
+Eine Person zu entfernen, was nur ein Admin kann, entfernt auch ihre Geräte und das, was sie privat gehalten hat. Ihre mit dem Haushalt geteilten Bewertungen, ihr Verlauf und ihre Playlists bleiben, ihr zugeschrieben. Die Schlüssel der Mediathek werden ersetzt, sodass nichts, was danach geschrieben wird, für sie lesbar ist. Was sie bereits kopiert hat, behält sie: Daten lassen sich nicht zurückholen.
 
 ## Wiederherstellungscodes
 
-Ein Wiederherstellungscode ist ein Bearer-Geheimnis für deine eigene Mediathek: Koordinaten des Cloud-Zuhauses plus Verschlüsselungsschlüssel in einer Zeichenfolge. **Wiederherstellungscode anzeigen** in den Einstellungen zeigt ihn an; speichere ihn an einem sicheren Ort, etwa in einem Passwortmanager. Auf einem neuen Gerät baut **Aus Cloud wiederherstellen** mit dem Code die Mediathek wieder auf, ohne bestätigendes Gerät.
+Ein Wiederherstellungscode enthält deine Schlüssel für eine Mediathek und den Ort, an dem sie gespeichert ist, in einer Zeichenfolge. Er enthält kein Speicherpasswort, keine Anmeldung und keinen Namen der Mediathek. **Wiederherstellungscode anzeigen …** in Einstellungen, Bibliothek zeigt ihn an; bewahre ihn an einem sicheren Ort auf, etwa in einem Passwortmanager.
 
-Auf Apple-Plattformen wird der Code außerdem automatisch im iCloud-Schlüsselbund abgelegt, sodass ein neuer Mac oder ein neues iPhone, das mit deiner Apple-ID angemeldet ist, mit einem Tippen wiederherstellen kann.
+Auf Apple-Plattformen wird der Code außerdem automatisch im iCloud-Schlüsselbund abgelegt, sodass ein neuer Mac oder ein neues iPhone, das mit deinem Apple Account angemeldet ist, ihn aus einer Liste wählen kann.
 
-Wer den Code hat, hat die Mediathek. Behandle ihn also wie den Schlüssel, der er ist.
+Wer den Code und Zugriff auf deinen Speicher hat, kann die Mediathek als du öffnen. Halte ihn also geheim.
 
 ## Sperren
 
-**Mediathek sperren** entfernt den Verschlüsselungsschlüssel aus dem Schlüsselbund des Geräts. Die Mediathek bleibt auf der Festplatte, unlesbar, bis jemand den Schlüssel erneut eingibt; bae prüft ihn vor der Annahme gegen einen gespeicherten Fingerabdruck. Nutze das für einen Laptop, der das Haus verlässt.
+Der Verschlüsselungsschlüssel der Mediathek liegt im Schlüsselbund des Betriebssystems. Solange der Schlüsselbund gesperrt ist, etwa während deine Sitzung gesperrt ist, zeigt bae die Mediathek als gesperrt und öffnet sie, sobald der Schlüsselbund entsperrt ist; **Erneut versuchen** versucht es von Hand erneut.
 
 ## Auf dem Telefon
 
-iOS und Android treten genau so bei und stellen genau so wieder her; das ist ihr ganzer Einstieg. Ein Telefon kann auch seine Kopie der Mediathek entfernen (Einstellungen, von diesem Gerät entfernen), was lokale Dateien löscht und in der Cloud nichts berührt.
+iOS und Android treten genau so bei und stellen genau so wieder her; das ist ihr ganzer Einstieg. Ein Telefon kann die Mediathek auch von sich entfernen: Es entfernt sich zuerst aus den Mitgliedern der Mediathek, was eine Verbindung zu deinem Speicher braucht, und löscht dann seine lokale Kopie. Die Mediathek in der Cloud bleibt.

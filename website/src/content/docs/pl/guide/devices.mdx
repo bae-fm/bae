@@ -1,43 +1,55 @@
 ---
 title: Urządzenia i członkowie
-description: Dodaj telefon, zatwierdź urządzenie, odzyskaj bibliotekę
+description: Dodawaj własne urządzenia, zapraszaj osoby i usuwaj urządzenia
 ---
 
-Nie ma konta bae. Tożsamością urządzenia jest para kluczy, którą urządzenie generuje dla siebie i trzyma w pęku kluczy systemu operacyjnego; biblioteka rozpoznaje urządzenia po ich kluczach. Dodanie urządzenia oznacza, że istniejące urządzenie poświadcza kryptograficznie nowe urządzenie, bez żadnego pośrednika.
+Nie ma konta bae. Każda osoba w bibliotece ma własne klucze, które dzielą wszystkie jej urządzenia i które trzymają w pęku kluczy systemu operacyjnego; biblioteka rozpoznaje osoby po tych kluczach. Każda zmiana tego, kto należy do biblioteki, jest podpisywana i trzymana w domu w chmurze, bez żadnego pośrednika.
 
 Dwie różne drogi, dla dwóch różnych sytuacji:
 
-- **Joining**: nowe urządzenie jest zatwierdzane przez urządzenie, które już ma bibliotekę. Użyj tego, aby dodać telefon albo urządzenie innej osoby.
-- **Restoring**: Twoje nowe albo ponownie zainstalowane urządzenie odzyskuje bibliotekę bezpośrednio z domu w chmurze, używając kodu odzyskiwania. Bez urządzenia zatwierdzającego.
+- **Przywracanie**: Twoje nowe albo ponownie zainstalowane urządzenie dołącza z Twoim kodem przywracania. Żadne inne urządzenie go nie zatwierdza: kod zawiera Twoje klucze, więc już dowodzi, że urządzenie jest Twoje.
+- **Dołączanie**: inna osoba dołącza z zaproszeniem od administratora, który zatwierdza jej prośbę.
 
-## Dodawanie urządzenia
+## Dodawanie własnego urządzenia
 
-Na urządzeniu, które ma już bibliotekę, właściciel otwiera Ustawienia, Urządzenia, **Dodaj urządzenie**. bae pokazuje jeden kod parowania jako QR i rozpoczyna nasłuchiwanie w sieci lokalnej.
+Na nowym urządzeniu wybierz **Przywróć z chmury** i przekaż mu kod przywracania na jeden z trzech sposobów:
 
-Na nowym urządzeniu wybierz **Dołącz do biblioteki** i zeskanuj ten kod. Gdy zostaniesz o to poproszony, zaloguj się do dostawcy pamięci masowej. Na obu urządzeniach widać odcisk palca nowego urządzenia; porównaj je, a następnie zatwierdź na istniejącym urządzeniu. Nowe urządzenie uzyskuje zapieczętowany dostęp przez to samo połączenie lokalne, pobiera bibliotekę i rozpoczyna synchronizację. Żaden kod nie wraca.
+- **Zeskanuj** kod QR, który pokazuje jedno z Twoich innych urządzeń pod **Pokaż kod przywracania…** w Ustawienia, Biblioteka.
+- **Wybierz** go z pęku kluczy iCloud na urządzeniach Apple: bae wyświetla kody przywracania, które zapisały tam Twoje inne urządzenia.
+- **Wklej** albo wpisz go.
 
-Kod parowania nie zawiera klucza biblioteki ani poświadczeń trwałego magazynu, a przerwane lub odrzucone parowanie nic nie daje. Szczegóły w: [Tożsamość i członkostwo](/pl/reference/membership).
+Zaloguj się do dostawcy przechowywania, gdy pojawi się prośba. W S3 urządzenie potrzebuje też Twojego klucza dostępu: kod QR niesie go obok kodu, więc wystarczy zeskanować, a wpisany kod prosi o klucz. Potem nowe urządzenie pobiera bibliotekę i zaczyna synchronizować.
+
+Dopóki nie wczyta biblioteki, urządzenie pokazuje, gdzie jest przechowywana, zamiast jej nazwy: adres e-mail konta dla Dropbox i OneDrive, bucket i endpoint dla S3 albo iCloud. Po wczytaniu pokazuje bieżącą nazwę biblioteki.
+
+## Zapraszanie osoby
+
+Administrator otwiera Ustawienia, Biblioteka, **Zaproś osobę…**, wybiera rolę i wpisuje adres e-mail konta tej osoby; w S3 zamiast tego klucz dostępu utworzony dla niej. bae udostępnia folder biblioteki temu kontu i pokazuje zaproszenie jako kod QR.
+
+Na swoim urządzeniu osoba wybiera **Dołącz do biblioteki**, skanuje albo wkleja zaproszenie, wpisuje swoje imię i loguje się na własne konto. Prośba pojawia się na urządzeniu administratora pod **Czekają na dołączenie**, a administrator ją zatwierdza albo odrzuca. Po zatwierdzeniu nowe urządzenie pobiera bibliotekę, a każde urządzenie pokazuje nową osobę z imienia. Zaproszenie wygasa w ciągu doby, a jego prośbę może zatwierdzić tylko urządzenie, które je utworzyło. Szczegóły w: [Tożsamość i członkostwo](/pl/reference/membership).
 
 ## Członkowie i role
 
-Settings, Devices pokazuje każdego członka: odcisk, rolę i informację, które urządzenie jest tym urządzeniem. Urządzenie zakładające jest **owner**; zatwierdzone przez nie urządzenia dołączają jako **members**. Obie role czytają i zapisują bibliotekę; tylko owners zatwierdzają i usuwają urządzenia.
+Ustawienia, Biblioteka pokazuje każdą osobę i jej urządzenia oraz to, które z nich jest tym urządzeniem. Osoba, która łączy bibliotekę z chmurą, jest jej pierwszym **administratorem**; administrator zaprasza innych jako **administratorów** albo **członków** i może zmienić czyjąś rolę. Wszyscy czytają i edytują bibliotekę. Tylko administratorzy zapraszają i usuwają osoby oraz zmieniają nazwę biblioteki.
 
 ## Usuwanie urządzenia
 
-Owners mogą usunąć dowolnego member. Usunięcie nie tylko zamyka drzwi: klucz szyfrowania biblioteki jest obracany, a usunięte urządzenie nigdy nie otrzymuje nowego klucza. To, co już skopiowało, zostaje u niego; danych nie da się cofnąć po wysłaniu, ale wszystko, co biblioteka zapisze od tego momentu, jest dla niego nieczytelne.
+Każda osoba może usuwać własne urządzenia, a administrator może usunąć urządzenia każdego, więc nikt, kto stracił wszystkie urządzenia, nie zostaje bez wyjścia. Od tej chwili nic, co wyśle usunięte urządzenie, się nie liczy. bae pokazuje też, co zostało do zrobienia u dostawcy, na przykład wylogowanie tego urządzenia z konta: Dropbox, OneDrive i iCloud nie potrafią same odciąć jednego urządzenia konta.
 
-## Kody odzyskiwania
+Usunięcie osoby, które może wykonać tylko administrator, usuwa też jej urządzenia i to, co trzymała jako prywatne. Jej oceny, historia i playlisty udostępnione domownikom zostają, przypisane do niej. Klucze biblioteki są wymieniane, więc nic zapisanego później nie jest dla niej czytelne. To, co już skopiowała, zostaje u niej: danych nie da się cofnąć po wysłaniu.
 
-Kod odzyskiwania jest sekretem bearer dla Twojej własnej biblioteki: współrzędne domu w chmurze oraz klucz szyfrowania w jednym ciągu. **Show recovery code** w Settings wyświetla go; przechowuj go w bezpiecznym miejscu, na przykład w menedżerze haseł. Na nowym urządzeniu **Restore from cloud** z tym kodem odbudowuje bibliotekę bez urządzenia zatwierdzającego.
+## Kody przywracania
 
-Na platformach Apple kod jest też automatycznie trzymany w iCloud Keychain, więc nowy Mac albo iPhone zalogowany do Twojego Apple ID może odtworzyć bibliotekę jednym stuknięciem.
+Kod przywracania zawiera Twoje klucze do jednej biblioteki i miejsce jej przechowywania, w jednym ciągu. Nie zawiera hasła do przechowywania, logowania ani nazwy biblioteki. **Pokaż kod przywracania…** w Ustawienia, Biblioteka go wyświetla; przechowuj go w bezpiecznym miejscu, na przykład w menedżerze haseł.
 
-Każdy, kto ma kod, ma bibliotekę, więc traktuj go jak klucz, którym jest.
+Na platformach Apple kod jest też automatycznie trzymany w pęku kluczy iCloud, więc nowy Mac albo iPhone zalogowany na Twoje Apple Account może wybrać go z listy.
+
+Każdy, kto ma kod i dostęp do Twojego przechowywania, może otworzyć bibliotekę jako Ty, więc trzymaj go w tajemnicy.
 
 ## Blokowanie
 
-**Lock Library** usuwa klucz szyfrowania z pęku kluczy urządzenia. Biblioteka zostaje na dysku, nieczytelna, dopóki ktoś ponownie nie wprowadzi klucza; bae sprawdza go względem zapisanego odcisku, zanim go przyjmie. Użyj tego na laptopie wynoszonym z domu.
+Klucz szyfrowania biblioteki mieszka w pęku kluczy systemu operacyjnego. Dopóki pęk kluczy jest zablokowany, na przykład przy zablokowanej sesji, bae pokazuje bibliotekę jako zablokowaną i otwiera ją, gdy tylko pęk kluczy się odblokuje; **Spróbuj ponownie** ponawia próbę ręcznie.
 
 ## Na telefonie
 
-iOS i Android dołączają i odzyskują bibliotekę dokładnie w ten sposób; to cały ich proces pierwszego uruchomienia. Telefon może też usunąć swoją kopię biblioteki (Settings, remove from this device), co usuwa lokalne pliki i nie zmienia niczego w chmurze.
+iOS i Android dołączają i przywracają bibliotekę dokładnie w ten sposób; to cały ich proces pierwszego uruchomienia. Telefon może też usunąć bibliotekę z siebie: najpierw usuwa się z członków biblioteki, co wymaga połączenia z Twoim przechowywaniem, a potem kasuje swoją lokalną kopię. Biblioteka w chmurze zostaje.

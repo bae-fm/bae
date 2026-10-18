@@ -7,34 +7,36 @@ De sync van bae is de sync van [coven](https://coven.bae.fm): bae declareert zij
 
 ## Vastleggen
 
-coven bezit de SQLite-verbinding, dus elke write die bae commit gaat erdoorheen. De session extension van SQLite registreert exact wat in elke transactie is gewijzigd; de wijzigingen aan gesynchroniseerde tabellen worden een **changeset**, afgesloten met de bibliotheeksleutel en ondertekend met de identiteitssleutel van het apparaat. Geen diffs, geen dirty flags: vastleggen is een eigenschap van de verbinding, en een write kan niet worden gemist.
+coven bezit de SQLite-verbinding, dus elke write die bae commit gaat erdoorheen. Wanneer een transactie wordt gecommit die gesynchroniseerde tabellen wijzigt, legt coven elke rijwijziging, met de kolommen die ze raakte, in dezelfde transactie vast, zodat een gecommitte wijziging nooit verloren gaat, zelfs als de app een moment later crasht. Geen diffs, geen dirty flags: vastleggen is een eigenschap van de verbinding, en een write kan niet worden gemist. De wijziging wacht op het apparaat en wordt pas bij verzenden versleuteld en ondertekend, dus schrijven heeft geen sleutel en geen netwerk nodig.
 
-## Streams
+## De reeks
 
-Elk apparaat voegt zijn changesets toe aan zijn eigen stream in de cloud-home, opeenvolgend genummerd. Apparaten schrijven nooit naar elkaars streams, dus er zijn geen schrijfconflicten in opslag, en elk apparaat houdt een cursor bij per peer-stream. Een synccyclus pusht de lokale outbox, trekt daarna elke peer-stream vanaf zijn cursor vooruit, verifieert de handtekening van elke changeset en het lidmaatschap van de auteur voordat hij hem toepast.
+De hele geschiedenis van een bibliotheek in de cloud-home is één genummerde reeks objecten. Elk bevat de batch wijzigingen van één apparaat, een beheerdersvermelding, een sleutel verzegeld voor één lid, of een snapshotaankondiging. Elk apparaat past ze op volgorde toe en slaat er nooit een over, zodat elk apparaat het eens is over wat er wanneer gebeurde. Een apparaat voegt het volgende object pas toe nadat het alle vorige heeft toegepast.
 
-De cyclus draait na lokale wijzigingen, op een idle timer met backoff (tot vijf minuten tussen polls), en direct bij **Sync Now**. Fouten backoffen en proberen opnieuw; de loop rapporteert de uitkomst van elke cyclus aan de UI als status, fouttekst, en het aantal toegepaste rijen.
+Een sync-ronde leest vooruit vanaf het laatste object dat het apparaat toepaste tot er een ontbreekt, controleert van elk de handtekening en past het toe, stuurt de wachtende wijzigingen van dit apparaat als één nieuw object, en doet daarna het werk dat de nieuwe toestand vraagt: toegang delen of intrekken, snapshots maken, oude geschiedenis verwijderen. Een ronde over een rustige bibliotheek kost twee verzoeken, hoe groot ze ook is.
+
+Rondes draaien na lokale wijzigingen, op een idle timer, en direct bij **Nu synchroniseren**. Fouten proberen opnieuw volgens één backoffschema, en alles wat niet verder kan noemt waarop het wacht, wat bae in zijn sync-statusregel toont.
 
 ## Samenvoegen
 
 Twee apparaten die dezelfde bibliotheek bewerken terwijl ze gescheiden zijn, is normaal. Wanneer hun wijzigingen elkaar ontmoeten:
 
 - Bewerkingen aan **verschillende rijen of verschillende kolommen** passen allebei toe. Het jaar van een release op de laptop bewerken en het label op de desktop levert allebei op.
-- Bewerkingen aan **dezelfde kolom van dezelfde rij** worden geordend door de hybrid logical clock `_updated_at` van de rij: de latere bewerking wint, deterministisch en identiek op elk apparaat.
-- **Verwijderingen winnen** van gelijktijdige bewerkingen: een release die op een apparaat is verwijderd blijft verwijderd, zelfs als een ander apparaat hem in hetzelfde interval bewerkte.
+- Bewerkingen aan **dezelfde kolom van dezelfde rij** worden geordend op tijdstempel: de latere bewerking wint, deterministisch en identiek op elk apparaat.
+- **Verwijderingen winnen** van gelijktijdige bewerkingen: een bewerking aan een rij die inmiddels is verwijderd verliest, wanneer ze ook aankomt, dus een release die op een apparaat is verwijderd blijft verwijderd, zelfs als een ander apparaat hem in hetzelfde interval bewerkte.
 
-Er is geen conflict-UI omdat er geen onopgeloste status is: elk apparaat komt tot hetzelfde resultaat vanuit elke toepassingsvolgorde.
+coven bewaart elke vervangen waarde als *verloren waarde*; bae toont er geen en verwerpt er geen, dus er is geen conflict-UI. Elk apparaat komt tot hetzelfde resultaat vanuit elke aankomstvolgorde.
 
-## Bootstrap
+## Snapshots
 
-Een apparaat dat toetreedt of herstelt speelt de geschiedenis niet vanaf het begin af. Het downloadt een **snapshot**, een volledige SQLite-image die periodiek naar de cloud-home wordt gepubliceerd, en past daarna alleen de changesets toe die elke stream daarna heeft verzameld. Snapshotmetadata vermeldt de schemaversie en de per-stream cursors die erin zitten.
+Een apparaat dat toetreedt of herstelt speelt de geschiedenis niet vanaf het begin af. Apparaten maken **snapshots**, de volledige toestand van de bibliotheek op één punt in de reeks, en zodra de bibliotheek en elke privékring er een hebben, wordt de geschiedenis daarvoor verwijderd. Een nieuw apparaat laadt de nieuwste snapshot en past daarna alleen toe wat erna kwam. Een apparaat dat langer weg was dan de bewaarde geschiedenis doet hetzelfde, en houdt zijn niet-verzonden bewerkingen.
 
 ## Schemaversies
 
-Het schema van bae migreert via een genummerde ladder, en de bovenste sport van die ladder wordt op elke changeset gestempeld die het apparaat schrijft. Een apparaat dat een changeset uit een nieuwer schema trekt dan zijn eigen schema parkeert die stream, zonder iets erna toe te passen, totdat de app wordt bijgewerkt; niets raakt kwijt en niets wordt verkeerd toegepast. Het databasebestand zelf weigert te openen onder een binary die ouder is dan zijn schema.
+Het schema van bae is één migratie, en elke wijziging die een apparaat stuurt vermeldt de schemaversie waarmee ze is gemaakt. Een apparaat dat een wijziging uit een nieuwer schema dan zijn eigen tegenkomt, stopt daar, zonder iets erna toe te passen, totdat de app wordt bijgewerkt; niets raakt kwijt en niets wordt verkeerd toegepast.
 
 Grofmaziger dan de schemaversie is het **compatibiliteitstijdperk**: de gepinde coven-revisie die in elke binary zit. Twee builds synchroniseren alleen binnen een tijdperk; een breuk in het wire-format van coven is een nieuw tijdperk en een major-versieverhoging over elke app. Voor 1.0 is elke build tijdperk nul en veranderen formaten zonder migratie.
 
 ## Wat de provider ziet
 
-Op een opaque home bewaart de provider ciphertext-changesets, ciphertext-blobs en ondertekende lidmaatschapsrecords; hij kan objecten tellen en groottes en timing observeren, en niets ervan lezen. Elk object dat een apparaat ophaalt wordt geverifieerd, handtekening en lidmaatschap, voordat iets de database raakt: de opslag is een domme, onvertrouwde mailbox. Zie [Encryptie](/nl/reference/encryption) en [Identiteit en lidmaatschap](/nl/reference/membership).
+De provider bewaart versleutelde wijzigingen, snapshots, lidmaatschapsrecords en bestanden; hij kan objecten tellen, groottes en timing observeren en zien welk account elk object schrijft, en niets van de inhoud lezen. Elk object dat een apparaat ophaalt wordt geverifieerd, handtekening en lidmaatschap, voordat iets de database raakt: de opslag is een domme, onvertrouwde mailbox. Zie [Encryptie](/nl/reference/encryption) en [Identiteit en lidmaatschap](/nl/reference/membership).

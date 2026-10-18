@@ -16,22 +16,21 @@ bae అంటే నాలుగు స్థానిక యాప్‌లు 
 
 ## డిస్క్ మీద ఒక గ్రంథాలయం
 
-గ్రంథాలయం `~/.bae/libraries/<లైబ్రరీ-id>/` వద్ద ఉంటుంది (మొబైల్‌లో వేదిక డేటా సంచయం):
+గ్రంథాలయం రెండు డైరెక్టరీల్లో ఉంటుంది (mobile లో వేదిక డేటా డైరెక్టరీలు): coven store, దాని పక్కన bae స్వంత సెట్టింగ్‌లు.
 
 ```
-~/.bae/libraries/<id>/
-  లైబ్రరీ.db        # SQLite: catalog, credits, playback specs
-  config.yaml       # coven: లైబ్రరీ గుర్తింపు, క్లౌడ్ హోమ్; ఎప్పుడూ సింక్ కాదు
-  preferences.toml  # bae సెట్టింగులు; ఎప్పుడూ సింక్ కావు
-  నిల్వ/
-    స్థానిక/          # blobs this పరికరం owns (కవర్లు, కళాకారుడు images)
-    క్యాష్/          # evictable copies of క్లౌడ్ blobs
-    pinned/         # pinned-for-offline copies, never evicted
+~/.bae/stores/<id>/       # coven store, coven ద్వారా మాత్రమే తెరవబడుతుంది
+  store.db                # SQLite: catalog, credits, playback specs, coven లెక్క
+  files/                  # bae స్వంత దస్త్రాల coven కాపీలు (కవర్లు, కళాకారుల చిత్రాలు, avatars)
+  cache/                  # పంపిన దస్త్రాల cache మరియు pinned కాపీలు
+~/.bae/libraries/<id>/    # bae సొంతం; ఎప్పుడూ సమకాలీకరించబడదు
+  preferences.toml        # bae సెట్టింగ్‌లు
+  cache/                  # catalogs నుంచి తెచ్చిన చిత్రకళ
 ```
 
-డేటాబేసు coven ద్వారానే తెరవబడుతుంది; అది bae schema పక్కన తన bookkeeping పట్టికలు (సమకాలీకరణ cursors, outbox, blob state) వేస్తుంది మరియు bae migrations నడుపుతుంది. Unmanaged గా దిగుమతి చేసిన శబ్ద దస్త్రాలు అసలు `~/.bae` కింద ఉండవు: డేటాబేసు అవి దిగుమతి చేసిన paths నే చూపిస్తుంది.
+డేటాబేస్ coven ద్వారా మాత్రమే తెరవబడుతుంది; అది bae schema పక్కన తన లెక్క పట్టికలను (కలయిక రికార్డులు, పంపే వరుస, దస్త్ర స్థితి) ఉంచి, bae migration ను నడుపుతుంది. స్థానిక విడుదల శబ్ద దస్త్రాలు `~/.bae` కింద అసలు ఉండవు: డేటాబేస్ వాటిని దిగుమతి అయిన paths లోనే సూచిస్తుంది.
 
-రహస్యాలు ఈ దస్త్రాల్లో ఎప్పుడూ ఉండవు. గుర్తింపు కీలు, గ్రంథాలయ encryption కీ, మేఘ నిల్వ credentials, API టోకెన్లు OS keyring లో ఉంటాయి (Apple వేదికలపై Keychain, iCloud Keychain ద్వారా సమకాలీకరించబడుతుంది; మిగతా చోట వేదిక సమానాలు).
+రహస్యాలు ఈ దస్త్రాల్లో ఎప్పుడూ ఉండవు. సభ్య కీలు, గ్రంథాలయపు కీలు, మేఘ sign-ins, API టోకెన్లు OS keyring లో ఉంటాయి (Apple వేదికలపై Keychain, ఇతర చోట్ల వేదిక సమానమైనది); Apple వేదికలపై restore code iCloud Keychain లో కూడా సేవ్ అవుతుంది.
 
 ## Editions
 

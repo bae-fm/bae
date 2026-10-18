@@ -1,28 +1,34 @@
 ---
 title: Verschlüsselung
-description: Was der Mediatheksschlüssel ist, wo er lebt und welchen Geheimtext der Anbieter hält
+description: Welche Schlüssel es gibt, wo sie liegen und was der Anbieter sehen kann
 ---
 
-Alles, was bae in ein undurchsichtiges Cloud-Zuhause legt, wird verschlüsselt, bevor es das Gerät verlässt. bae implementiert keine eigene Kryptografie: Das gesamte Verfahren gehört zu [coven](https://coven.bae.fm), und diese Seite beschreibt, wie bae es verwendet. Durchsuchbare Zuhause verzichten auf all das; nichts unten gilt für sie.
+Alles, was bae in ein Cloud-Zuhause legt, wird verschlüsselt, bevor es das Gerät verlässt; einen unverschlüsselten Modus gibt es nicht. bae implementiert keine eigene Kryptografie: Das gesamte Verfahren gehört zu [coven](https://coven.bae.fm), und diese Seite beschreibt, wie bae es verwendet.
 
-## Der Mediatheksschlüssel
+## Die Schlüssel
 
-Eine undurchsichtige Mediathek hat ein Wurzelgeheimnis: einen zufälligen 256-Bit-Schlüssel, der beim Erstellen des Zuhauses erzeugt wird. Er lebt im OS-Schlüsselbund, nie in einer Datei; auf Apple-Plattformen synchronisiert der Schlüsselbundeintrag über den iCloud-Schlüsselbund. Die Konfiguration von bae speichert nur einen Fingerabdruck des Schlüssels, genug, um beim Entsperren einen falschen Schlüssel von einem richtigen zu unterscheiden, ohne das Geheimnis zu halten.
+| Schlüssel | Was er tut |
+|---|---|
+| Der Store-Schlüssel | verschlüsselt die Mediathek und ihre Mitgliedschaftsdatensätze |
+| Der Kreisschlüssel jeder Person | verschlüsselt, was diese Person privat hält: ihren privaten Wiedergabeverlauf und ihre privaten Playlists |
+| Der Schlüssel jeder Datei | verschlüsselt eine Datei und reist nur in den verschlüsselten Änderungen ihrer Zeile mit |
+| Das Signaturschlüsselpaar einer Person | signiert jede Änderung, die ihre Geräte senden |
+| Das Versiegelungsschlüsselpaar einer Person | öffnet Schlüssel, die an diese Person versiegelt sind |
 
-Der Schlüssel wird auf zwei Arten zwischen Geräten übertragen, die beide in [Identität und Mitgliedschaft](/de/reference/membership) beschrieben sind: während der Gerätekopplung an den öffentlichen Schlüssel eines zugelassenen Geräts versiegelt und in einem Wiederherstellungscode enthalten.
+Der Store-Schlüssel ist zufällig und wird erzeugt, wenn die Mediathek ihr Cloud-Zuhause bekommt. Die Schlüsselpaare einer Person teilen sich alle ihre Geräte. Private Schlüssel und Mediatheksschlüssel liegen im OS-Schlüsselbund, nie in einer Datei oder der Datenbank. Sie erreichen ein Gerät auf zwei Arten, beide in [Identität und Mitgliedschaft](/de/reference/membership) beschrieben: Ein Wiederherstellungscode trägt die eigenen Schlüsselpaare einer Person, und ein Admin, der eine Einladung genehmigt, versiegelt die Store-Schlüssel an den Versiegelungsschlüssel der neuen Person.
 
-## Generationen
+## Rotation
 
-Der Mediatheksschlüssel ist eigentlich ein Schlüsselbund nummerierter Generationen. Das Entfernen eines Mitglieds hängt eine neue Generation an, die das entfernte Mitglied nie erhält: Alles danach Geschriebene nutzt die neue Generation und ist für es unlesbar, während verbleibende Mitglieder jede Generation behalten und die ganze Historie lesen können. Jedes verschlossene Objekt erfasst im Klartext, welche Generation es öffnet.
+Ein Schlüssel wird nie an Ort und Stelle geändert; ein neuer kommt hinzu. Nachdem eine Person entfernt wurde, fügt das Gerät eines verbleibenden Mitglieds einen neuen Store-Schlüssel hinzu und einen neuen Schlüssel für jeden Kreis, in dem sie war, bevor es dort weitere Daten schreibt: Alles danach Geschriebene ist für sie unlesbar, während die verbleibenden Mitglieder jeden älteren Schlüssel behalten und die ganze Historie lesen können. Das Entfernen eines einzelnen Geräts rotiert nichts, da die anderen Geräte der Person seine Schlüssel teilen; ab der Entfernung zählt nicht mehr, was dieses Gerät sendet.
 
 ## Was verschlossen wird
 
-Jedes Objekt im Zuhause: Changesets, Snapshots, Audio-Blobs, Artwork, Mitgliedschaftsdatensätze, Steuerobjekte. Objekte werden mit XChaCha20-Poly1305 in 64-KB-Chunks verschlossen, jeder Chunk authentifiziert und an seinen Kontext gebunden: Ein verschlossenes Objekt entschlüsselt nur als das Objekt, als das es geschrieben wurde, für diese Mediathek, mit diesem Schlüssel. Chunking ist der Grund, warum Streaming funktioniert: Der Player kann genau die Bytebereiche entschlüsseln, die er holt.
+Jedes Objekt im Zuhause: Änderungen, Snapshots, Mitgliedschaftsdatensätze und Dateien. Inhalte werden mit XChaCha20-Poly1305 verschlüsselt, jede Änderung wird mit Ed25519 signiert, und Schlüssel werden mit X25519-Sealed-Boxes an Personen versiegelt. Dateien werden in 64-KiB-Chunks verschlüsselt, jeder für sich authentifiziert und an seine Position gebunden, sodass ein Chunk nicht unbemerkt verändert, vertauscht oder umgeordnet werden kann. Chunking ist der Grund, warum Streaming funktioniert: Der Player kann genau die Chunks entschlüsseln, die er holt.
 
 ## Was der Anbieter sehen kann
 
-Objektanzahl, Objektgrößen, Upload-Zeitpunkte und Zugriffsmuster. Keine Namen, keine Metadaten, kein Audio, kein Artwork, keine Mitgliedschaft. Es gibt keine serverseitige Wiederherstellung: Ein Benutzer, der jedes Gerät und jede Kopie des Schlüssels verliert, hat den Geheimtext der Mediathek für immer verloren; das ist das beabsichtigte Verhalten.
+Objektanzahl, Objektgrößen, Upload-Zeitpunkte, welches Konto jedes Objekt schreibt und welches Gerät jede Datei und jeden Snapshot hochgeladen hat, da ihre Pfade das Gerät nennen. Keine Namen, keine Metadaten, kein Audio, kein Artwork. Dateien liegen unter zufälligen Namen, nie unter einem Hash ihres Inhalts. Es gibt keine serverseitige Wiederherstellung: Wenn jede Person jedes Gerät und jeden Wiederherstellungscode verliert, ist die Mediathek verloren; das ist das beabsichtigte Verhalten.
 
-## Entsperren und sperren
+## Der Schlüsselbund
 
-Das Öffnen einer Mediathek liest den Schlüssel aus dem Schlüsselbund. Wenn die Mediathek einen Schlüssel erwartet und der Schlüsselbund ihn nicht hat, behandelt bae die Mediathek als gesperrt: Es fragt vor dem Öffnen nach dem Schlüssel, prüft die Eingabe gegen den gespeicherten Fingerabdruck und speichert sie erst dann zurück in den Schlüsselbund. Eine Mediathek zu sperren entfernt den Schlüssel absichtlich aus dem Schlüsselbund; im Cloud-Zuhause kann nichts gelesen oder geschrieben werden, bis er erneut eingegeben wird.
+Das Öffnen einer Mediathek liest ihre Schlüssel aus dem OS-Schlüsselbund. Ein Schlüsselbund, der gerade gesperrt ist, durch eine gesperrte Sitzung oder einen schlafenden Bildschirm, wird von einem defekten unterschieden: bae zeigt die Mediathek als gesperrt und versucht es nach dem Entsperren erneut, statt die Mediathek als unbrauchbar zu melden. Ein Gerät kann den Schlüssel auch vergessen, was die Mediathek auf diesem Gerät sperrt, bis sie wieder entsperrt wird.

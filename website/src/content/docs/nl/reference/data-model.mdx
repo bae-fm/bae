@@ -3,7 +3,7 @@ title: Datamodel
 description: Het schema, wat synchroniseert, en wat op het apparaat blijft
 ---
 
-De catalogus van bae is gewone SQLite, tabel voor tabel gedeclareerd aan [coven](https://coven.bae.fm): gesynchroniseerde tabellen dragen een conflictklok en reizen naar elk apparaat; niet-gedeclareerde tabellen verlaten het apparaat nooit. Die splitsing is de meest dragende beslissing van het datamodel, dus deze pagina is eromheen georganiseerd.
+De catalogus van bae is gewone SQLite, tabel voor tabel gedeclareerd aan [coven](https://coven.bae.fm): gesynchroniseerde tabellen reizen naar elk apparaat dat ze kan lezen; niet-gedeclareerde tabellen verlaten het apparaat nooit. Die splitsing is de meest dragende beslissing van het datamodel, dus deze pagina is eromheen georganiseerd.
 
 ## De catalogusgraaf
 
@@ -16,26 +16,29 @@ Het gesynchroniseerde hart van het schema:
 - **`track_works`**, **`work_parts`**, **`work_artists`**: opnamen gekoppeld aan de werken die ze uitvoeren.
 - **`audio_formats`** en **`audio_format_segments`**: de afspeelspecificaties. Per track: codec, sample rate, bitdiepte, kanalen, gemeten loudness en peak, en pregaplengtes. Segmenten mappen een track op geordende byte- en samplevensters van zijn bronbestanden, waarmee een track uit een CUE-rip, inclusief pregap, regio's van een groot bestand of meerdere bestanden kan overspannen.
 - **`release_files`**, **`covers`**, **`artist_images`**: blobdragende tabellen. Rijen zijn catalogusvermeldingen; de bytes leven in de bloblaag van coven (zie hieronder).
+- **`people`**, **`ratings`**, **`history`**, **`playlists`**, **`playlist_entries`**: het profiel van elke persoon en wat hij voor zichzelf vastlegt. Dit zijn eigenaarstabellen: alleen de apparaten van hun auteur kunnen ze wijzigen. Rijen van `history` en `playlists` staan elk ofwel in de gedeelde store van het huishouden, ofwel in de privékring van de persoon.
 
-## Gesynchroniseerd, gated, lokaal
+## Gesynchroniseerd en lokaal
 
-Al het bovenstaande synchroniseert, maar niet onvoorwaardelijk. `releases` is gedeclareerd als gated root op zijn kolom `remote`: een releaserij en zijn hele subtree (tracks, files, credits, formats, cover) synchroniseren alleen zolang `remote` true is, dus zolang de release cloud-beheerd is. Een release naar beheerd omzetten publiceert de subtree; een onbeheerde release blijft volledig op het importerende apparaat, ook al is zijn schema gesynchroniseerd. De ancestor-tabellen (`artists`, `albums`, `works`) synchroniseren alleen zolang een gesynchroniseerde release er nog naar verwijst, zodat een apparaat nooit een artiest ontvangt zonder iets eronder.
+Elke tabel hierboven synchroniseert, onvoorwaardelijk: de rijen van een lokale release bereiken elk apparaat zoals die van elke andere release, dus elk apparaat weet wat het huishouden bezit, en een beoordeling of afspeellijstvermelding die naar een track van een lokale release wijst, wijst naar een rij die elk apparaat kan lezen. Alleen de audio van de release, en de paden waar die staat, blijven op het importerende apparaat. Elke tabel wordt gedeclareerd met zijn rij-identiteit, zijn publiek, of het een eigenaarstabel is, en de bestanden die hij draagt; een test houdt de declaraties precies op die lijst.
 
 Volledig lokale tabellen, nooit aan coven gedeclareerd:
 
 - **`playback_state`**: huidige track, positie, wachtrij, volume, shuffle en repeat. Afspelen is een apparaatfeit.
-- **`imports`**: tracking van importbewerkingen.
+- **De scan- en importtabellen**: gevolgde mappen, scans, importkandidaten en hun concepten.
 - **`source_release`** en de tabellen eronder: wat bae heeft geëxtraheerd uit elke opgehaalde release van MusicBrainz en Discogs — album- en persgegevens, de volledige tracklijst met credits en werken, hoesopties en hoe andere catalogi hem noemen — gecodeerd door providerrelease in plaats van door een lokale release. De ruwe JSON wordt niet bewaard; elk apparaat kan een release opnieuw ophalen.
+- **`local_release_files`**: de bestandspaden en wijzigingstijden van een lokale release op dit apparaat.
+- **`local_history`**: afspeelbeurten van voordat de persoon van dit apparaat een profiel had, die naar zijn privékring gaan wanneer dat wordt gemaakt.
 
-Elke gesynchroniseerde tabel draagt een `_updated_at` hybrid-logical-clock-kolom, het register waarmee coven gelijktijdige bewerkingen veld voor veld ordent; een test dwingt af dat de gesynchroniseerde set en de klokdragende set exact gelijk zijn.
+De bewerkingen van twee apparaten worden cel voor cel samengevoegd, waarbij de latere bewerking een cel wint die beide wijzigden. coven houdt de samenvoegboekhouding bij in eigen tabellen, dus de tabellen van bae dragen geen klokkolommen.
 
 ## Blobs
 
-Audio en afbeeldingen gaan door de bloblaag van coven in drie namespaces, elk met zijn eigen apparaatcachebudget: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB).
+Audio en afbeeldingen gaan door de bestandslaag van coven, elk soort met zijn eigen apparaatcachebudget: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB), en de avatars op `people` (64 MiB).
 
-Releasebestanden zijn door de gebruiker geleverd en worden lui gecachet: voor een onbeheerde release is de blob een externe verwijzing naar het bestand van de gebruiker op zijn oorspronkelijke pad; voor een beheerde release is het een geupload object dat bij de eerste read in de cache wordt opgehaald. Hoezen en artiestafbeeldingen zijn door de host geleverd en worden vroeg gecachet: bae produceert de bytes (hoezen worden opnieuw gerenderd als JPEG-thumbnails van maximaal 600px breed), en elk apparaat haalt ze bij pull op zodat rasters lokaal renderen.
+Releasebestanden zijn van de gebruiker en worden lui gecachet: de bestanden van een lokale release zijn de bestanden van de gebruiker op hun oorspronkelijke paden, vastgelegd in `local_release_files`; de release naar de cloud verplaatsen koppelt elk bestand in één write aan zijn `release_files`-rij, en andere apparaten halen het bij de eerste read in de cache. Hoezen, artiestafbeeldingen en avatars zijn van bae en worden vroeg gecachet: bae produceert de bytes (hoezen worden opnieuw gerenderd als JPEG-thumbnails van maximaal 600px breed), en elk apparaat haalt ze op zodra hun rijen aankomen zodat rasters lokaal renderen.
 
-Op een opaque home uploaden blobs onder betekenisloze contentsleutels. Op een browsable home registreert elke blobrij een leesbaar cloudpad (`{artist}/{album}/{filename}` voor audio, `{album}/{release}/cover.{ext}` voor hoezen), eenmalig berekend bij upload zodat een latere naamswijziging het object nooit verplaatst.
+Elk bestand wordt versleuteld geüpload onder een willekeurige naam, op een pad dat wordt vastgelegd wanneer het aan zijn rij wordt gekoppeld, zodat een latere naamswijziging het object nooit verplaatst.
 
 ## Identiteit van een rip
 

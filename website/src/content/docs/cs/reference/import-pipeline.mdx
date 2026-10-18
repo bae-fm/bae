@@ -42,7 +42,7 @@ Potvrzení importu spustí v pořadí:
 3. **Výběr obalu**: zvolený obrázek (vzdálený, obrázek ze složky nebo vložený) se znovu vykreslí na náhled pro zobrazení; originál zůstane mezi soubory vydání, pokud přišel ze složky.
 4. **Atomický zápis**: vydání, stopy, kredity, identity, formáty, segmenty, soubory a obal se uloží v jedné transakci. Neexistuje napůl importovaný stav.
 
-Vydání se uloží s odkazy na uživatelovy soubory na místě. Pokud uživatel zvolil správu v cloudu, nahrání proběhne po uložení jako přechod úložiště a původní bajty souborů zůstávají po celou dobu zdrojem pravdy; nic, co uživatel dal bae, se nikdy nemaže ani nemění.
+Vydání se uloží s odkazy na uživatelovy soubory na místě. Při importu do cloudu coven před zápisem přečte každý soubor a spočítá jeho hash a týž zápis připojí každý soubor k jeho řádku a zařadí jeho nahrání do fronty. Místní import místo toho zaznamená cestu, velikost a čas změny každého souboru na tomto zařízení; jeho bajty se čtou, až když se vydání později přesune do cloudu. V obou případech zůstávají původní bajty souborů po celou dobu zdrojem pravdy; nic, co uživatel dal bae, se nikdy nemaže ani nemění.
 
 ## Rozpoznávání ripů
 

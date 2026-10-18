@@ -12,8 +12,8 @@ De desktopapps (macOS, Windows) zijn het volledige gereedschap: ze maken bibliot
 Open bae op je desktop. Zonder bibliotheek op de machine biedt het welkomstscherm drie keuzes:
 
 - **Create a new library**, als dit je eerste apparaat is.
-- **Join a library**, als een ander apparaat er al een heeft en de eigenaar jou zal goedkeuren. Zie [Apparaten en leden](/nl/guide/devices).
-- **Restore from cloud**, als dit je eigen bibliotheek is en je de herstelcode hebt. Zie [Apparaten en leden](/nl/guide/devices#herstelcodes).
+- **Deelnemen aan bibliotheek**, als iemand je voor de zijne heeft uitgenodigd. Zie [Apparaten en leden](/nl/guide/devices#iemand-uitnodigen).
+- **Herstellen vanuit cloud**, als dit je eigen bibliotheek is en je de herstelcode hebt. Zie [Apparaten en leden](/nl/guide/devices#herstelcodes).
 
 Maak er een. Een bibliotheek begint lokaal: alles staat op deze machine, niets heeft een account nodig, en er is geen cloud betrokken totdat je er een koppelt.
 
@@ -35,10 +35,10 @@ Terug in de sectie **Library** staat het album in het raster. Klik erop, druk op
 
 Wanneer je de bibliotheek op meer dan een apparaat wilt, koppel je een cloud-home: je eigen Dropbox, OneDrive, iCloud, of een S3-compatible bucket. Alles wat bae daar neerzet wordt voor upload versleuteld; de provider bewaart het maar kan het niet lezen.
 
-- [Sync](/nl/guide/sync): koppel een cloud-home en kies wat die bewaart.
-- [Apparaten en leden](/nl/guide/devices): voeg je telefoon of een andere desktop toe.
+- [Sync](/nl/guide/sync): koppel een cloud-home en zie wat er synchroniseert.
+- [Apparaten en leden](/nl/guide/devices): voeg je telefoon of een andere desktop toe, of nodig iemand uit.
 - [Opslag en offline](/nl/guide/storage): bewaar muziek op het apparaat, of stream hem uit je cloud en pin wat je offline nodig hebt.
 
 ## Waar dingen staan
 
-Elke bibliotheek bewaart zijn database en instellingen op desktop onder `~/.bae/libraries/`. Je audio blijft waar je hem vandaan hebt geimporteerd, tenzij je bae vraagt hem in je cloud te beheren. Sleutels en inloggegevens staan in de sleutelbos van het besturingssysteem, niet in bestanden.
+Elke bibliotheek bewaart op desktop zijn database onder `~/.bae/stores/` en zijn instellingen onder `~/.bae/libraries/`. Je audio blijft waar je hem vandaan hebt geïmporteerd; een release naar de cloud verplaatsen uploadt een versleutelde kopie en laat je bestanden staan waar ze staan. Sleutels en inloggegevens staan in de sleutelbos van het besturingssysteem, niet in bestanden.

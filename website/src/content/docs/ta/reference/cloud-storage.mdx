@@ -1,36 +1,35 @@
 ---
 title: மேகச் சேமிப்பு
-description: Providers, authentication, மேகம் home இன் வடிவம்
+description: வழங்குநர்கள், உள்நுழைவு, மேக இல்லத்தின் வடிவம்
 ---
 
-மேகம் home என்பது பயனர் ஏற்கனவே own செய்யும் சேமிப்பு இல் ஒரு இடம். ஒவ்வொரு provider உம் [coven](https://coven.bae.fm) இல் உள்ள அதே சேமிப்பு interface வழியாக இயக்கப்படும்; provider ஒன்றுக்கு மாறுவது authentication மற்றும் இரண்டாவது சாதனம் க்கு access எப்படி வழங்கப்படுகிறது என்பதில்தான்.
+மேக இல்லம் என்பது பயனரிடம் ஏற்கனவே உள்ள சேமிப்பில் ஒரு இடம். ஒவ்வொரு வழங்குநரும் [coven](https://coven.bae.fm) இன் அதே சேமிப்பு இடைமுகம் மூலம் இயங்குகிறது; வழங்குநருக்கு வழங்குநர் மாறுபடுவது உள்நுழைவு, அமைப்பு, மற்றும் பிற நபர்களும் சாதனங்களும் அங்கே எப்படிச் சென்றடைகின்றன என்பதே.
 
 ## Providers
 
-| Provider | Auth | Access for a new சாதனம் |
-|---|---|---|
-| S3-compatible | Access விசை + secret | இணைக்கும் போது அங்கீகரிக்கப்பட்ட சாதனத்திற்குச் சான்றுகள் சீல் வைக்கப்பட்டுள்ளன |
-| Dropbox | OAuth (PKCE) | புதிய சாதனத்தின் கணக்கு அங்கீகரிக்கப்பட்டது, பின்னர் கோப்புறை பகிரப்பட்டது |
-| OneDrive | OAuth (PKCE) | புதிய சாதனத்தின் கணக்கு அங்கீகரிக்கப்பட்டது, பின்னர் கோப்புறை பகிரப்பட்டது |
-| iCloud (CloudKit) | Apple ID, no sign-in | இணைக்கும் போது CloudKit பகிர்வு ஏற்றுக்கொள்ளப்பட்டது |
+| வழங்குநர் | உள்நுழைவு | உங்கள் சொந்த புதிய சாதனம் | நீங்கள் அழைக்கும் நபர் |
+|---|---|---|---|
+| S3-compatible | Access key + secret | restore code, QR குறியீட்டில் அதனுடன் வரும் உங்கள் access key உடன் | அவருக்காக உருவாக்கிய access key |
+| Dropbox | OAuth, coven இடம் | restore code, பின்னர் உங்கள் Dropbox இல் உள்நுழைவு | நூலகத்தின் பகிரப்பட்ட அடைவு அவரின் கணக்குடன் பகிரப்படும் |
+| OneDrive | OAuth, coven இடம் | restore code, பின்னர் உங்கள் OneDrive இல் உள்நுழைவு | நூலகத்தின் அடைவு அவரின் கணக்குடன் பகிரப்படும் |
+| iCloud (CloudKit) | Apple Account, உள்நுழைவு இல்லை | restore code, iCloud Keychain இலிருந்தும் கிடைக்கும் | நூலகத்தின் CloudKit zone அவரின் Apple Account உடன் பகிரப்படும் |
 
-S3-compatible என்பது AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, மற்றும் அந்த API பேசும் எதையும் உள்ளடக்கும்; bucket, region, endpoint, விசை prefix ஆகியவை configurable. config save ஆகும் முன் bucket probed செய்யப்படும்; typo முதல் ஒத்திசைவு இல் அல்ல setup இல் fail ஆகும். OAuth providers முழு **bae** edition இல் மட்டும் உள்ளன; **baeium** builds அவற்றை compile செய்யாது.
+S3-compatible இல் AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, மற்றும் அந்த API ஐப் பேசும் வேறு எதுவும் அடங்கும். அமைப்புப் படிவம் bucket, region, endpoint, access key ஆகியவற்றை மட்டுமே கேட்கும்; coven அறிந்த சேவைகளை endpoint இன் host மூலம் அடையாளம் கண்டு, அவற்றுடன் எப்படிப் பேசுவது என்பதை நிரப்பும். **Advanced** இல் விருப்பத்தேர்வான key prefix மற்றும் service profile தேர்வு உள்ளன, இயல்பாகத் தானியங்கி. coven அறியாத சேவைக்கு **Detect Settings** திறவுகோலால் bucket ஐ ஆய்ந்து கண்டதைக் காட்டும். எதையும் சேமிக்கும் முன் அமைப்பு வழங்குநரிடம் சரிபார்க்கும், அதனால் எழுத்துப்பிழை முதல் ஒத்திசைவில் அல்ல, அமைக்கும் போதே தோல்வியடையும்; coven தரும் காரணத்தை bae எளிய சொற்களில் சொல்லும். Dropbox, OneDrive, iCloud முழு **bae** பதிப்பில் மட்டுமே உள்ளன; **baeium** builds அவற்றை விலக்கும்.
 
-## OAuth
+## உள்நுழைவும் அடைவுகளும்
 
-Sign-in என்பது public client ஆக PKCE உடன் authorization-code flow. desktop இல் redirect ஒரு callback க்காக உள்ளூர் port இல் bound loopback server க்கு வரும்; mobile இல் app custom-scheme redirect ஐ capture செய்கிறது. provider job க்கு வழங்கும் மிகச் சுருக்கமான scope ஐ bae கேட்கும். Tokens OS keyring இல் stored, provider இன் refresh grant கொண்டு refreshed, rejected refresh silent retry loop ஆகாமல் reconnect prompt ஆகத் தெரியும்.
+coven Dropbox மற்றும் OneDrive உள்நுழைவைத் தானே நடத்துகிறது, அதனால் எந்த token உம் bae வழியாகச் செல்வதில்லை. மேசைக்கணினியில் உலாவி வழங்குநரின் பக்கத்தைத் திறக்கும், ஓர் உள்ளூர் listener அந்த ஒரு redirect ஐப் பெறும்; கைப்பேசியில் இதைத் தளத்தின் உள்நுழைவுத் தாள் செய்யும். coven token களை OS திறவுகோல் காப்பகத்தில் வைத்து, வழங்குநர் மறுக்கும் போது token ஐ ஒருமுறை புதுப்பிக்கும்; தோல்வியுற்ற புதுப்பிப்பு அமைதியான retry loop ஆக அல்லாமல் ஒத்திசைவு நிலையில் **Sign In** செயலாகத் தோன்றும்.
 
-CloudKit க்கு flow தேவையில்லை: app இல் implemented ஆகி core க்கு handed ஆன தளம் CloudKit driver, signed-in Apple ID ஆக இயங்கும்.
+உள்நுழைந்த பின் பயனர் நூலகம் எங்கே இருக்க வேண்டும் என்று தேர்ந்தெடுப்பார். Dropbox இல் அது பகிரப்பட்ட அடைவு, ஏனெனில் வீட்டின் நூலகம் பிற நபர்களின் கணக்குகளுடன் பகிரப்படுகிறது; இதற்காக bae app folder அல்ல, முழு Dropbox அணுகலைப் பயன்படுத்துகிறது. இன்னும் பகிரப்பட்ட அடைவு இல்லையெனில் bae Dropbox இல் ஒன்றைப் பகிர்ந்து மீண்டும் பார்க்கச் சொல்லும். OneDrive இல் அது எந்த அடைவும், மேலிருந்து உலாவப்படும், அங்கே புதிய அடைவையும் உருவாக்கலாம்.
+
+CloudKit க்கு எந்த ஓட்டமும் தேவையில்லை: coven அதை Apple தளங்களில் உள்நுழைந்துள்ள Apple Account ஆகவே இயக்குகிறது.
 
 ## Home layout
 
-home உள்ளே coven per-சாதனம் changeset streams, snapshot generations, membership records, blob namespaces ஆகியவற்றை அமைக்கிறது. bae மூன்று blob namespaces அளிக்கிறது: `release_files`, `covers`, `artist_images`.
+இல்லத்தினுள் ஒவ்வொரு உருப்படியின் பாதையும் நூலகத்தின் store id உடன் தொடங்கும்: coven இன் எண்ணிட்ட மாற்ற வரிசை, அதன் snapshots, சேரும் கோரிக்கைகள், சேமித்த கோப்புகள். பல நூலகங்கள் ஒன்றின் உருப்படிகளை மற்றொன்று தொடாமல் ஒரே Dropbox அல்லது OneDrive அடைவைப் பகிரலாம்.
 
-Objects எப்படி keyed செய்யப்படுகின்றன என்பது home உருவாக்கும்போது fixed ஆன சேமிப்பு mode மீது சார்ந்தது:
-
-- **Opaque**: objects encrypted செய்து எதையும் reveal செய்யாத content-derived விசைகள் கீழ் stored. இது cryptography மீது முழு நம்பிக்கை வைக்கும் mode; [மறைகுறியாக்கம்](/ta/reference/encryption) பார்க்கவும்.
-- **Browsable**: objects readable paths இல் plaintext ஆக இருக்கும்; பதிவேற்றம் time இல் per blob record செய்யப்படும்: `release_files/{artist}/{album}/{filename}`, `covers/{album}/{release}/cover.{ext}`, `artist_images/{artist}/artist.{ext}`. bucket usable கோப்பு tree ஆகவும் இருக்கும்; tradeoff encryption இல்லை, membership இல்லை, எனவே browsable homes பிறருடன் share செய்ய முடியாது.
+ஒவ்வொரு உருப்படியும் மறைகுறியாக்கப்பட்டு சீரற்ற பெயரின் கீழ் சேமிக்கப்படும்; மறைகுறியற்ற முறை இல்லை. bae இன் கோப்புகள் மூன்று ஒத்திசைக்கப்படும் அட்டவணைகளான `release_files`, `covers`, `artist_images` இன் வரிசைகளுடன் இணைக்கப்பட்டுள்ளன, கூடவே ஒவ்வொரு `people` வரிசையின் avatar. கோப்பின் பாதை அது தன் வரிசையுடன் இணைக்கப்படும் போது நிலைக்கும், அதனால் ஆல்பத்தின் பெயரை மாற்றினாலும் அது ஒருபோதும் நகராது. [மறைகுறியாக்கம்](/ta/reference/encryption) பார்க்கவும்.
 
 ## உண்மையான networks இல் நடத்தை
 
-Playback reads ranged: player முழு கோப்புகள் அல்ல, தேவைப்படும் பைட் சாளரங்கள் ஐ stream செய்கிறது. provider ஆதரித்தால் size threshold மேல் பதிவேற்றங்கள் multipart ஆகும். Rate limiting மற்றும் transient provider errors exponential backoff உடன் retry செய்யும்; provider retry-after கொடுத்தால் அதை மதிக்கும்; expired OAuth டோக்கன்கள் in place refresh ஆகும். ஒத்திசைவு outbox restarts ஐத் தாங்கும்: app quit ஆனதால் interrupted ஆன பதிவேற்றம் மீண்டும் தொடங்காமல் resume ஆகும்.
+இயக்கத்துக்கான வாசிப்புகள் ranged: player முழுக் கோப்புகளுக்குப் பதிலாகத் தேவையான மறைகுறியாக்கப்பட்ட chunks ஐ மட்டும் பெறும், கோப்பு வரிசையாக இயங்கும் போது அடுத்த chunks ஐ முன்கூட்டியே பெறும். வீத வரம்புகளும் தற்காலிக வழங்குநர் பிழைகளும் ஒரே backoff திட்டத்தில் மீண்டும் முயற்சிக்கும், வழங்குநர் retry-after கொடுத்தால் அதைப் பின்பற்றும். பதிவேற்ற வரிசை மறுதொடக்கத்துக்குப் பின்னும் நிலைக்கும்: செயலியை மூடியதால் நின்ற பதிவேற்றம் தொடக்கத்திலிருந்து அல்ல, நின்ற இடத்திலிருந்தே தொடரும்; இடைநிறுத்திய பதிவேற்றங்கள் இடைநிறுத்தத்திலேயே இருக்கும்.

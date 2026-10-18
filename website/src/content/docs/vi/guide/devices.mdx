@@ -1,43 +1,55 @@
 ---
 title: Thiết bị và thành viên
-description: Thêm điện thoại, phê duyệt thiết bị, khôi phục thư viện
+description: Thêm thiết bị của bạn, mời người khác và xóa thiết bị
 ---
 
-Không có tài khoản bae. Danh tính của một thiết bị là một cặp khóa do chính nó tạo và giữ trong keyring của hệ điều hành; thư viện nhận ra thiết bị bằng khóa của chúng. Thêm thiết bị nghĩa là một thiết bị hiện có xác nhận một thiết bị mới, bằng mật mã, không có ai ở giữa.
+Không có tài khoản bae. Mỗi người trong một thư viện có khóa riêng, được mọi thiết bị của họ dùng chung và giữ trong keyring của hệ điều hành; thư viện nhận ra người dùng bằng các khóa đó. Mọi thay đổi về việc ai thuộc thư viện đều được ký và lưu trong nhà trên đám mây, không có ai ở giữa.
 
 Hai cửa khác nhau, cho hai tình huống khác nhau:
 
-- **Tham gia**: một thiết bị mới được phê duyệt bởi thiết bị đã có thư viện. Dùng cách này để thêm điện thoại của bạn, hoặc thiết bị của người khác.
-- **Khôi phục**: thiết bị mới hoặc vừa cài lại của chính bạn khôi phục thư viện trực tiếp từ nhà trên đám mây, bằng mã khôi phục. Không cần người phê duyệt.
+- **Khôi phục**: thiết bị mới hoặc vừa cài lại của chính bạn tham gia bằng mã khôi phục của bạn. Không thiết bị nào khác phải phê duyệt: mã chứa khóa của bạn, nên tự nó đã chứng minh thiết bị là của bạn.
+- **Tham gia**: một người khác tham gia bằng lời mời của một quản trị viên, người sẽ phê duyệt yêu cầu của họ.
 
-## Thêm thiết bị
+## Thêm thiết bị của chính bạn
 
-Trên thiết bị đã có thư viện, chủ sở hữu sẽ mở Cài đặt, Thiết bị, **Thêm thiết bị**. bae hiển thị một mã ghép nối dưới dạng QR và bắt đầu nghe trên mạng cục bộ.
+Trên thiết bị mới, chọn **Restore from cloud** và đưa cho nó mã khôi phục theo một trong ba cách:
 
-Trên thiết bị mới, chọn **Tham gia thư viện** và quét mã đó. Đăng nhập vào nhà cung cấp bộ nhớ khi được yêu cầu. Cả hai thiết bị đều hiển thị dấu vân tay của thiết bị mới; so sánh chúng, sau đó phê duyệt trên thiết bị hiện có. Thiết bị mới nhận được quyền truy cập kín thông qua cùng một kết nối cục bộ, tải xuống thư viện và bắt đầu đồng bộ hóa. Không có mã nào quay trở lại.
+- **Quét** mã QR mà một thiết bị khác của bạn hiển thị trong **Show restore code...** ở Settings, Library.
+- **Chọn** nó từ iCloud Keychain, trên thiết bị Apple: bae liệt kê các mã khôi phục mà những thiết bị khác của bạn đã lưu ở đó.
+- **Dán** hoặc gõ nó.
 
-Mã ghép nối không chứa khóa thư viện cũng như thông tin xác thực bộ nhớ lâu dài và việc ghép nối bị gián đoạn hoặc bị từ chối sẽ không mang lại kết quả gì. Chi tiết trong [Danh tính và thành viên](/vi/reference/membership).
+Đăng nhập vào nhà cung cấp lưu trữ khi được yêu cầu. Với S3, thiết bị còn cần khóa truy cập của bạn: mã QR mang khóa đó bên cạnh mã, nên chỉ cần quét là đủ, còn mã gõ tay sẽ hỏi khóa. Sau đó thiết bị mới tải thư viện xuống và bắt đầu đồng bộ.
+
+Cho đến khi tải xong thư viện, thiết bị hiển thị nơi thư viện được lưu thay vì tên của nó: email tài khoản với Dropbox và OneDrive, bucket và endpoint với S3, hoặc iCloud. Khi đã tải xong, nó hiển thị tên hiện tại của thư viện.
+
+## Mời một người
+
+Một quản trị viên mở Settings, Library, **Invite a Person...**, chọn vai trò và nhập email tài khoản của người đó; với S3 thì nhập một khóa truy cập được tạo cho họ. bae chia sẻ thư mục của thư viện với tài khoản đó và hiển thị lời mời dưới dạng mã QR.
+
+Trên thiết bị của mình, người đó chọn **Join a library**, quét hoặc dán lời mời, gõ tên mình và đăng nhập vào tài khoản riêng. Yêu cầu xuất hiện trên thiết bị của quản trị viên dưới **Waiting to join**, và quản trị viên phê duyệt hoặc từ chối. Sau khi được phê duyệt, thiết bị mới tải thư viện xuống, và mọi thiết bị hiển thị người mới theo tên. Lời mời hết hạn trong vòng một ngày, và chỉ thiết bị đã tạo lời mời mới phê duyệt được yêu cầu của nó. Chi tiết trong [Danh tính và thành viên](/vi/reference/membership).
 
 ## Thành viên và vai trò
 
-Settings, Devices liệt kê mọi thành viên: vân tay, vai trò, và thiết bị nào là thiết bị này. Thiết bị sáng lập là **owner**; các thiết bị nó phê duyệt tham gia dưới vai trò **member**. Cả hai đều đọc và ghi thư viện; chỉ owner phê duyệt và xóa thiết bị.
+Settings, Library liệt kê mọi người và thiết bị của họ, và thiết bị nào là thiết bị này. Người kết nối thư viện với đám mây là **quản trị viên** đầu tiên; quản trị viên mời người khác làm **quản trị viên** hoặc **thành viên** và có thể đổi vai trò của một người. Mọi người đều đọc và sửa thư viện. Chỉ quản trị viên mới mời, xóa người và đổi tên thư viện.
 
 ## Xóa thiết bị
 
-Owner có thể xóa bất kỳ member nào. Việc xóa không chỉ đóng cửa: khóa mã hóa của thư viện được xoay vòng, và thiết bị bị xóa không bao giờ nhận khóa mới. Những gì nó đã sao chép thì nó vẫn giữ, không gì có thể thu hồi dữ liệu đã gửi, nhưng mọi thứ thư viện ghi từ thời điểm đó trở đi đều không đọc được đối với nó.
+Mỗi người có thể xóa thiết bị của chính mình, và quản trị viên có thể xóa thiết bị của bất kỳ ai, nên người đã mất mọi thiết bị không bị kẹt. Từ đó trở đi, không gì thiết bị bị xóa gửi lên được tính. bae cũng hiển thị việc còn phải làm ở nhà cung cấp, như đăng xuất thiết bị đó khỏi tài khoản của bạn: Dropbox, OneDrive và iCloud không tự cắt được một thiết bị riêng lẻ của một tài khoản.
+
+Xóa một người, việc chỉ quản trị viên làm được, cũng xóa các thiết bị của họ và những gì họ giữ riêng tư. Đánh giá, lịch sử và danh sách phát họ chia sẻ với gia đình vẫn còn, ghi tên họ. Các khóa của thư viện được thay, nên không gì được ghi sau đó còn đọc được với họ. Những gì họ đã sao chép thì họ vẫn giữ: không gì có thể thu hồi dữ liệu đã gửi.
 
 ## Mã khôi phục
 
-Mã khôi phục là bí mật mang quyền truy cập cho thư viện của chính bạn: tọa độ nhà trên đám mây cộng khóa mã hóa, trong một chuỗi. **Show recovery code** trong Settings hiển thị nó; lưu nó ở nơi an toàn, như trình quản lý mật khẩu. Trên thiết bị mới, **Restore from cloud** với mã này dựng lại thư viện, không cần người phê duyệt.
+Mã khôi phục chứa khóa của bạn cho một thư viện và nơi thư viện được lưu, trong một chuỗi. Nó không chứa mật khẩu lưu trữ, thông tin đăng nhập hay tên thư viện. **Show restore code...** trong Settings, Library hiển thị nó; lưu nó ở nơi an toàn, như trình quản lý mật khẩu.
 
-Trên nền tảng Apple, mã cũng được tự động giữ trong iCloud Keychain, nên một Mac hoặc iPhone mới đã đăng nhập Apple ID của bạn có thể khôi phục bằng một lần chạm.
+Trên nền tảng Apple, mã cũng được tự động giữ trong iCloud Keychain, nên một Mac hoặc iPhone mới đã đăng nhập Apple Account của bạn có thể chọn nó từ một danh sách.
 
-Bất cứ ai giữ mã này đều giữ thư viện, nên hãy xem nó như đúng chìa khóa mà nó là.
+Bất kỳ ai có mã và quyền truy cập vào lưu trữ của bạn đều có thể mở thư viện dưới danh nghĩa bạn, nên hãy giữ bí mật.
 
 ## Khóa
 
-**Lock Library** xóa khóa mã hóa khỏi keyring của thiết bị. Thư viện vẫn ở trên đĩa, không đọc được, cho đến khi ai đó nhập lại khóa; bae kiểm tra khóa với vân tay đã lưu trước khi chấp nhận. Dùng cho máy tính xách tay mang ra khỏi nhà.
+Khóa mã hóa của thư viện nằm trong keyring của hệ điều hành. Trong lúc keyring bị khóa, chẳng hạn khi phiên làm việc của bạn đang khóa, bae hiển thị thư viện là đã khóa và mở nó ngay khi keyring được mở khóa; **Try again** thử lại thủ công.
 
 ## Trên điện thoại
 
-iOS và Android tham gia và khôi phục đúng theo cách này; đó là toàn bộ quy trình vào ứng dụng của chúng. Điện thoại cũng có thể xóa bản sao thư viện của nó (Settings, remove from this device), thao tác này xóa tệp cục bộ và không chạm gì trong đám mây.
+iOS và Android tham gia và khôi phục đúng theo cách này; đó là toàn bộ quy trình vào ứng dụng của chúng. Điện thoại cũng có thể tự xóa thư viện khỏi chính nó: trước tiên nó tự rút khỏi danh sách thành viên của thư viện, việc này cần kết nối tới lưu trữ của bạn, rồi xóa bản sao cục bộ. Thư viện trên đám mây vẫn còn.

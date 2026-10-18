@@ -3,7 +3,7 @@ title: Data model
 description: The schema, what syncs, and what stays on the device
 ---
 
-bae's catalog is ordinary SQLite, declared to [coven](https://coven.bae.fm) table by table: synced tables carry a conflict clock and travel to every device; undeclared tables never leave the device. The split is the data model's most load-bearing decision, so this page is organized around it.
+bae's catalog is ordinary SQLite, declared to [coven](https://coven.bae.fm) table by table: synced tables travel to every device that can read them; undeclared tables never leave the device. The split is the data model's most load-bearing decision, so this page is organized around it.
 
 ## The catalog graph
 
@@ -16,26 +16,29 @@ The synced heart of the schema:
 - **`track_works`**, **`work_parts`**, **`work_artists`**: recordings linked to the works they perform.
 - **`audio_formats`** and **`audio_format_segments`**: the playback specs. Per track: codec, sample rate, bit depth, channels, measured loudness and peak, and pregap lengths. Segments map a track onto ordered byte and sample windows of its source files, which is how a CUE rip's track, pregap included, can span regions of one big file, or several files.
 - **`release_files`**, **`covers`**, **`artist_images`**: blob-bearing tables. Rows are catalog entries; the bytes live in coven's blob layer (see below).
+- **`people`**, **`ratings`**, **`history`**, **`playlists`**, **`playlist_entries`**: each person's profile and what they record for themselves. These are owner tables: only their author's devices can change them. `history` and `playlists` rows each live either in the household's shared store or in the person's private circle.
 
-## Synced, gated, local
+## Synced and local
 
-All of the above sync, but not unconditionally. `releases` is declared as a gated root on its `remote` column: a release row and its whole subtree (tracks, files, credits, formats, cover) sync only while `remote` is true, that is, while the release is cloud-managed. Flipping a release to managed publishes the subtree; an unmanaged release stays entirely on the importing device, even though its schema is synced. The ancestor tables (`artists`, `albums`, `works`) sync only while some synced release still references them, so a device never receives an artist with nothing under it.
+Every table above syncs, unconditionally: a local release's rows reach every device like any other release's, so every device knows what the household owns, and a rating or playlist entry pointing at a local release's track points at a row every device can read. Only the release's audio, and the paths it sits at, stay on the importing device. Each table is declared with its row identity, its audience, whether it is an owner table, and the files it carries; a test holds the declarations to exactly that list.
 
 Fully local tables, never declared to coven:
 
 - **`playback_state`**: current track, position, queue, volume, shuffle and repeat. Playback is a device fact.
-- **`imports`**: import operation tracking.
+- **The scan and import tables**: watched folders, scans, import candidates and their drafts.
 - **`source_release`** and the tables under it: what bae extracted from each MusicBrainz and Discogs release it fetched — album and pressing facts, the full tracklist with credits and works, cover options, and what other catalogs call it — keyed by the provider release rather than by a local release. The raw JSON is not kept; any device can fetch a release again.
+- **`local_release_files`**: a local release's file paths and modification times on this device.
+- **`local_history`**: plays from before this device's person had a profile, moved into their private circle when it is made.
 
-Every synced table carries an `_updated_at` hybrid-logical-clock column, the register coven's field-by-field merge orders concurrent edits by; a test enforces that the synced set and the clock-carrying set are exactly equal.
+Two devices' edits merge cell by cell, the later edit winning a cell both changed. coven keeps the merge bookkeeping in its own tables, so bae's tables carry no clock columns.
 
 ## Blobs
 
-Audio and images go through coven's blob layer in three namespaces, each with its own device cache budget: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB).
+Audio and images go through coven's file layer, each kind with its own device cache budget: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB), and the avatars on `people` (64 MiB).
 
-Release files are user-provided and lazily cached: for an unmanaged release the blob is an external reference to the user's file at its original path; for a managed one it's an uploaded object fetched into cache on first read. Covers and artist images are host-provided and eagerly cached: bae produces the bytes (covers are re-rendered as JPEG thumbnails at most 600px wide), and every device fetches them on pull so grids render locally.
+Release files are the user's own and lazily cached: a local release's files are the user's files at their original paths, recorded in `local_release_files`; moving the release to the cloud attaches every file to its `release_files` row in one write, and other devices fetch it into cache on first read. Covers, artist images, and avatars are bae's own and eagerly cached: bae produces the bytes (covers are re-rendered as JPEG thumbnails at most 600px wide), and every device fetches them as soon as their rows arrive so grids render locally.
 
-On an opaque home, blobs upload under meaningless content keys. On a browsable home each blob row records a readable cloud path (`{artist}/{album}/{filename}` for audio, `{album}/{release}/cover.{ext}` for covers), computed once at upload so a later rename never moves the object.
+Every file uploads encrypted under a random name, at a path fixed when it is attached to its row, so a later rename never moves the object.
 
 ## Identity of a rip
 

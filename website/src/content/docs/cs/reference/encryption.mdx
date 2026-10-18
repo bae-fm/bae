@@ -1,28 +1,34 @@
 ---
 title: Šifrování
-description: Co je klíč knihovny, kde žije a jaký šifrový text drží poskytovatel
+description: Jaké klíče existují, kde žijí a co poskytovatel vidí
 ---
 
-Všechno, co bae ukládá do neprůhledného cloudového domova, je zašifrováno, než opustí zařízení. bae neimplementuje vlastní kryptografii: celé schéma patří [coven](https://coven.bae.fm) a tato stránka popisuje, jak ho bae používá. Procházetelné domovy se z toho všeho odhlašují; nic níže se jich netýká.
+Všechno, co bae ukládá do cloudového domova, je zašifrováno, než opustí zařízení; nešifrovaný režim neexistuje. bae neimplementuje vlastní kryptografii: celé schéma patří [coven](https://coven.bae.fm) a tato stránka popisuje, jak ho bae používá.
 
-## Klíč knihovny
+## Klíče
 
-Neprůhledná knihovna má jedno kořenové tajemství: náhodný 256bitový klíč vytvořený při založení domova. Žije v klíčence operačního systému, nikdy v souboru; na platformách Apple se položka klíčenky synchronizuje přes iCloud Keychain. Konfigurace bae ukládá jen otisk klíče, dostatečný k rozlišení špatného klíče od správného při odemčení, aniž by držela tajemství.
+| Klíč | Co dělá |
+|---|---|
+| Klíč úložiště | šifruje knihovnu a její záznamy členství |
+| Klíč kruhu každé osoby | šifruje to, co si osoba nechává soukromé: její soukromou historii přehrávání a playlisty |
+| Klíč každého souboru | šifruje jeden soubor a putuje jen uvnitř šifrovaných změn jeho řádku |
+| Podpisový pár klíčů osoby | podepisuje každou změnu, kterou její zařízení pošlou |
+| Pečeticí pár klíčů osoby | otevírá klíče zapečetěné pro tuto osobu |
 
-Klíč putuje mezi zařízeními dvěma způsoby, oba jsou popsány v [Identita a členství](/cs/reference/membership): zapečetěný ve veřejném klíči schváleného zařízení během párování zařízení a uložen uvnitř kódu pro obnovení.
+Klíč úložiště je náhodný, vytvořený ve chvíli, kdy knihovna dostane cloudový domov. Páry klíčů osoby sdílejí všechna její zařízení. Soukromé klíče a klíče knihovny žijí v klíčence operačního systému, nikdy v souboru ani v databázi. K zařízení se dostanou dvěma způsoby, oba jsou popsány v [Identita a členství](/cs/reference/membership): kód pro obnovení nese vlastní páry klíčů osoby a správce, který schválí pozvánku, zapečetí klíče úložiště pro pečeticí klíč nové osoby.
 
-## Generace
+## Rotace
 
-Klíč knihovny je ve skutečnosti klíčenka číslovaných generací. Odebrání člena přidá novou generaci, kterou odebraný člen nikdy nedostane: všechno zapsané potom používá novou generaci a je pro něj nečitelné, zatímco zbývající členové drží každou generaci a mohou číst celou historii. Každý zapečetěný objekt uvádí v čitelné podobě, která generace ho otevře.
+Klíč se nikdy nemění na místě; přidá se nový. Po odebrání osoby přidá zařízení zbývajícího člena nový klíč úložiště a nový klíč pro každý kruh, ve kterém byla, než tam zapíše další data: všechno zapsané potom je pro ni nečitelné, zatímco zbývající členové drží každý starší klíč a mohou číst celou historii. Odebrání jediného zařízení nic neobmění, protože ostatní zařízení osoby sdílejí jeho klíče; od odebrání se to, co zařízení pošle, nepočítá.
 
 ## Co se pečetí
 
-Každý objekt v domově: changesety, snapshoty, audio bloby, obrázky, záznamy členství, řídicí objekty. Objekty se pečetí pomocí XChaCha20-Poly1305 v blocích po 64 KB, každý blok je ověřený a svázaný se svým kontextem: zapečetěný objekt se dešifruje jen jako objekt, kterým měl být, pro tuto knihovnu, s tímto klíčem. Díky blokům funguje streamování, přehrávač může dešifrovat přesně ta bajtová rozmezí, která načítá.
+Každý objekt v domově: změny, snapshoty, záznamy členství a soubory. Obsah se šifruje pomocí XChaCha20-Poly1305, každá změna je podepsaná Ed25519 a klíče se pro lidi pečetí zapečetěnými schránkami X25519. Soubory se šifrují v blocích po 64 KiB, každý ověřený samostatně a svázaný se svou pozicí, takže blok nelze nepozorovaně změnit, prohodit ani přeuspořádat. Díky blokům funguje streamování: přehrávač může dešifrovat přesně ty bloky, které načítá.
 
 ## Co vidí poskytovatel
 
-Počet objektů, velikosti objektů, časy nahrávání a vzorce přístupu. Ne názvy, ne metadata, ne audio, ne obrázky, ne členství. Neexistuje obnova na straně serveru: uživatel, který ztratí každé zařízení i každou kopii klíče, ztratil šifrový text knihovny navždy, což odpovídá návrhu.
+Počet objektů, velikosti objektů, časy nahrávání, který účet zapisuje každý objekt a které zařízení nahrálo každý soubor a snapshot, protože jejich cesty zařízení pojmenovávají. Ne názvy, ne metadata, ne audio, ne obrázky. Soubory leží pod náhodnými názvy, nikdy pod hashem svého obsahu. Neexistuje obnova na straně serveru: pokud každá osoba ztratí každé zařízení i každý kód pro obnovení, knihovna je ztracená, což odpovídá návrhu.
 
-## Odemčení a zamčení
+## Klíčenka
 
-Otevření knihovny čte klíč z klíčenky. Pokud knihovna klíč očekává a klíčenka ho nemá, bae považuje knihovnu za zamčenou: před otevřením si vyžádá klíč, ověří zadanou hodnotu proti uloženému otisku a teprve pak ji uloží zpět do klíčenky. Zamčení knihovny záměrně odstraní klíč z klíčenky; v cloudovém domově nelze nic číst ani zapisovat, dokud ho někdo znovu nezadá.
+Otevření knihovny čte její klíče z klíčenky operačního systému. Klíčenka, která je právě zamčená, zamčenou relací nebo uspanou obrazovkou, se rozlišuje od poškozené: bae ukáže knihovnu jako zamčenou a po odemčení to zkusí znovu, místo aby hlásil knihovnu jako nepoužitelnou. Zařízení může klíč také zapomenout, což knihovnu na tom zařízení zamkne, dokud se znovu neodemkne.

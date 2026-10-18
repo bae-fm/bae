@@ -12,8 +12,8 @@ Masaüstü uygulamaları (macOS, Windows) tam araçtır: kitaplık oluşturur, m
 Masaüstünüzde bae'i açın. Makinede kitaplık yoksa karşılama ekranı üç seçenek sunar:
 
 - **Create a new library**, bu ilk aygıtınızsa.
-- **Join a library**, başka bir aygıtta zaten kitaplık varsa ve owner sizi onaylayacaksa. [Aygıtlar ve üyeler](/tr/guide/devices) bölümüne bakın.
-- **Restore from cloud**, bu sizin kitaplığınızsa ve kurtarma kodunuz varsa. [Aygıtlar ve üyeler](/tr/guide/devices#kurtarma-kodları) bölümüne bakın.
+- **Bir kitaplığa katıl**, biri sizi kendi kitaplığına davet ettiyse. [Aygıtlar ve üyeler](/tr/guide/devices#bir-kişiyi-davet-etme) bölümüne bakın.
+- **Buluttan geri yükle**, bu sizin kitaplığınızsa ve geri yükleme kodunuz varsa. [Aygıtlar ve üyeler](/tr/guide/devices#geri-yükleme-kodları) bölümüne bakın.
 
 Birini oluşturun. Kitaplık yerel başlar: her şey bu makinede yaşar, hesap gerekmez ve siz birini bağlayana kadar bulut işin içinde değildir.
 
@@ -35,10 +35,10 @@ Dosyalarınız taşınmaz, kopyalanmaz veya yeniden yazılmaz. bae onları bulun
 
 Kitaplığı birden fazla aygıtta istediğinizde bir bulut evi bağlayın: kendi Dropbox, OneDrive, iCloud hesabınız veya S3 uyumlu herhangi bir bucket. bae'in oraya koyduğu her şey yüklenmeden önce şifrelenir; sağlayıcı saklar ama okuyamaz.
 
-- [Eşzamanlama](/tr/guide/sync): bir bulut evi bağlayın ve ne saklayacağını seçin.
-- [Aygıtlar ve üyeler](/tr/guide/devices): telefonunuzu veya başka bir masaüstünü ekleyin.
+- [Eşzamanlama](/tr/guide/sync): bir bulut evi bağlayın ve neyin eşzamanlandığını görün.
+- [Aygıtlar ve üyeler](/tr/guide/devices): telefonunuzu veya başka bir masaüstünü ekleyin ya da birini davet edin.
 - [Depolama ve çevrimdışı](/tr/guide/storage): müziği aygıtta tutun veya bulutunuzdan akıtıp çevrimdışı gerekenleri sabitleyin.
 
 ## Öğelerin bulunduğu yer
 
-Her kitaplık masaüstünde veritabanını ve ayarlarını `~/.bae/libraries/` altında tutar. Siz bae'den bulutunuzda yönetmesini istemedikçe ses dosyalarınız içe aktardığınız yerde kalır. Anahtarlar ve kimlik bilgileri dosyalarda değil, işletim sisteminin anahtarlığında yaşar.
+Her kitaplık masaüstünde veritabanını `~/.bae/stores/` altında, ayarlarını `~/.bae/libraries/` altında tutar. Ses dosyalarınız içe aktardığınız yerde kalır; bir sürümü buluta taşımak şifreli bir kopya yükler ve dosyalarınızı oldukları yerde bırakır. Anahtarlar ve kimlik bilgileri dosyalarda değil, işletim sisteminin anahtarlığında yaşar.

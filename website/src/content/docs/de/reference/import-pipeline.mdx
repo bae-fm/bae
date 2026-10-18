@@ -42,7 +42,7 @@ Die Bestätigung eines Imports läuft in dieser Reihenfolge:
 3. **Cover-Auswahl**: Das gewählte Artwork (remote, Ordnerbild oder eingebettet) wird zu einem Anzeige-Thumbnail neu gerendert; das Original wird unter den Dateien des Releases behalten, wenn es aus dem Ordner kam.
 4. **Atomarer Schreibvorgang**: Release, Tracks, Mitwirkende, Identitäten, Formate, Segmente, Dateien und Cover werden in einer Transaktion festgeschrieben. Es gibt keinen halb importierten Zustand.
 
-Das Release landet mit Verweisen auf die Dateien des Benutzers an Ort und Stelle. Wenn der Benutzer cloudverwaltet gewählt hat, geschieht der Upload nach dem Festschreiben als Speicherübergang, und die ursprünglichen Bytes der Dateien bleiben währenddessen die Quelle der Wahrheit; nichts, was der Benutzer bae gegeben hat, wird je gelöscht oder verändert.
+Das Release landet mit Verweisen auf die Dateien des Benutzers an Ort und Stelle. Bei einem Cloud-Import liest und hasht coven jede Datei vor dem Schreibvorgang, und derselbe Schreibvorgang hängt jede Datei an ihre Zeile und reiht ihren Upload ein. Ein lokaler Import erfasst stattdessen Pfad, Größe und Änderungszeit jeder Datei auf diesem Gerät; ihre Bytes werden erst gelesen, wenn das Release später in die Cloud verschoben wird. So oder so bleiben die ursprünglichen Bytes der Dateien die ganze Zeit die Quelle der Wahrheit; nichts, was der Benutzer bae gegeben hat, wird je gelöscht oder verändert.
 
 ## Rips erkennen
 

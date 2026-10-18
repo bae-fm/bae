@@ -9,35 +9,35 @@ Jedna knihovna, každé zařízení a jediný zapojený účet je ten, který u�
 
 ## Cloudový domov
 
-Cloudový domov knihovny je jedno místo ve vašem úložišti: složka v Dropboxu nebo OneDrivu, váš iCloud nebo libovolný bucket kompatibilní se S3 (AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, ...). Drží všechno, co knihovna synchronizuje: změny katalogu, obrázky a audio vydání, která necháte bae spravovat.
+Cloudový domov knihovny je jedno místo ve vašem úložišti: složka ve vašem Dropboxu nebo OneDrivu, váš iCloud nebo libovolný bucket kompatibilní se S3 (AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, ...). Drží všechno, co knihovna synchronizuje: změny knihovny, obrázky a audio vydání, která přesunete do cloudu.
 
-Nastavíte ho v Settings pod Sync:
+Nastavíte ho v Nastavení, Knihovna, volbou **Nastavit synchronizaci…**:
 
-1. Vyberte poskytovatele. Spotřebitelské cloudy se přihlašují vlastní přihlašovací stránkou poskytovatele; z vašeho účtu se neukládá nic kromě tokenů, které vydá. iCloud používá vaše Apple ID tak, jak je. S3 bere bucket, region, endpoint a klíče, ověřené před uložením.
-2. Zvolte, jak domov ukládá objekty (viz níže).
-3. bae začne synchronizovat.
+1. Vyberte poskytovatele.
+   - **Dropbox** a **OneDrive** se přihlásí přes prohlížeč a pak se zeptají, ve které složce knihovna žije. U Dropboxu je to sdílená složka, abyste do ní mohli pozvat domácnost; pokud ještě žádnou nemáte, nasdílejte nějakou v Dropboxu a zvolte **Hledat znovu**. U OneDrivu je to libovolná složka a můžete v něm založit novou. Přihlášení drží coven; bae jeho tokeny nikdy nevidí.
+   - **iCloud** používá Apple Account, ke kterému je zařízení přihlášené.
+   - **S3** se ptá na bucket, region, endpoint a přístupový klíč, a na nic dalšího. **Pokročilé** obsahuje volitelnou předponu klíčů a profil služby, ve výchozím stavu automatický; u služby, kterou bae nezná, **Zjistit nastavení** vyzkouší bucket vaším klíčem a ukáže, co našlo. Pokud je nastavení odmítnuto, bae řekne proč.
+2. bae začne synchronizovat.
 
 Knihovna bez cloudového domova je sama o sobě úplná. Místní režim je režim, ne omezení, a odpojení cloudového domova vás do něj vrátí.
 
-## Nečitelný nebo procházetelný
+## Vždy šifrováno
 
-Při nastavení volíte, co poskytovatel uvidí, a volba je pro daný domov trvalá:
-
-- **Opaque** (výchozí): každý objekt je před nahráním zašifrován na vašem zařízení a uložen pod bezvýznamným názvem. Poskytovatel nebo kdokoli, kdo se dostane do bucketu, vidí šifrový text. Tento režim popisuje stránka [Šifrování](/cs/reference/encryption) a je jediný, který podporuje přidávání dalších zařízení a členů.
-- **Browsable**: objekty jsou uloženy čitelně se skutečnými názvy souborů ve složkách pojmenovaných podle interpreta a alba. Bucket můžete otevřít libovolným nástrojem a soubory přímo kopírovat nebo přehrávat. Nic není zašifrované, takže jedinou ochranou je řízení přístupu samotného bucketu a domov nelze sdílet.
+Každý cloudový domov drží totéž: šifrované objekty pod náhodnými názvy. Každá změna, obrázek i audio soubor se před nahráním zašifruje na vašem zařízení. Vaše alba nejsou složka, kterou by kdokoli mohl procházet ve vašem Dropboxu, a poskytovatel nevidí žádný název alba, interpreta ani souboru. Viz [Šifrování](/cs/reference/encryption).
 
 ## Co se synchronizuje
 
-- Katalog: alba, vydání, stopy, kredity, díla, identity, úpravy. Každé zařízení dostane všechno.
-- Obrázky: obaly a obrázky interpretů, načítané předem, aby se mřížky vykreslovaly všude.
-- Audio: jen u vydání, která jste zvolili ke správě v cloudu. Nespravovaná vydání zůstávají čistě místní, záznamy katalogu jsou i na ostatních zařízeních, ale bajty jen tam, kde jste je importovali.
+- Knihovna: alba, vydání, stopy, kredity, díla a interpreti. Každé zařízení dostane všechno, včetně vydání, jejichž audio zůstává na zařízení, které je importovalo.
+- Lidé: jméno a avatar každé osoby, hodnocení, historie přehrávání a playlisty. Vaše historie i každý váš playlist mohou být soukromé nebo sdílené s domácností.
+- Obrázky: obaly, obrázky interpretů a avatary, načítané předem, aby se mřížky vykreslovaly všude.
+- Audio: jen u vydání, která jste přesunuli do cloudu. Místní vydání se zobrazí na každém zařízení, ale hraje jen na zařízení, které ho importovalo, dokud ho nepřesunete do cloudu. Viz [Úložiště a offline](/cs/guide/storage).
 
 Stav na zařízení se nesynchronizuje: pozice přehrávání, hlasitost, fronta a nastavení zařízení zůstávají na zařízení.
 
 ## Kdy se synchronizuje
 
-Synchronizace běží sama: po změnách, podle časovače a na vyžádání přes **Sync Now**. Úpravy dorazí na ostatní zařízení jako malé změny, za běžných podmínek o několik sekund později. Když dvě zařízení upravují zároveň, obě změny vyhrají tam, kde do sebe nenarážejí: bae slučuje souběžné úpravy pole po poli a smazané vydání zůstane smazané, i když bylo ve stejnou chvíli upraveno jinde. Nikdy vás nic nežádá o řešení konfliktu.
+Synchronizace běží sama: po změnách, podle časovače a na vyžádání přes **Synchronizovat nyní**. Úpravy dorazí na ostatní zařízení za běžných podmínek o několik sekund později. Když dvě zařízení upravují zároveň, obě změny vyhrají tam, kde do sebe nenarážejí: bae slučuje souběžné úpravy pole po poli, pozdější úprava vyhraje pole, které změnila obě, a smazané vydání zůstane smazané, i když bylo ve stejnou chvíli upraveno jinde. Nikdy vás nic nežádá o řešení konfliktu.
 
 ## Když selže
 
-Selhání synchronizace knihovnu nepřeruší; dál místně procházíte, přehráváte a importujete, zatímco bae opakuje pokusy se zpomalováním. Stavový řádek ukazuje synchronizaci a čas poslední synchronizace; selhání zobrazí pruh s chybou a nahrávání lze pozastavit, zopakovat a prohlédnout ve [správci úložiště](/cs/guide/storage#správce-úložiště). Pokud vyprší přihlášení cloudového domova, bae vás požádá o opětovné připojení.
+Selhání synchronizace knihovnu nepřeruší; dál místně procházíte, přehráváte a importujete, zatímco bae opakuje pokusy. Nastavení, Knihovna ukazuje pro synchronizaci jeden řádek: **Synchronizováno**, nebo kolik položek čeká, například **Čekající položky: 3**. Otevřete ho a uvidíte každou položku srozumitelnými slovy s akcí, kterou můžete provést: **Přihlásit se**, když poskytovatel chce nové přihlášení, vrácení souboru, který se před nahráním přesunul, na své místo, **Zkusit znovu**, **Znovu připojit**, **Pokračovat v nahrávání** nebo **Aktualizovat aplikaci**. Čekání, se kterým nemůžete pomoct, například na to, až se jiné zařízení připojí, nenabízí nic. Tento seznam je jediné místo, kam se dívat; nahrávání lze také pozastavit a prohlédnout ve [správci úložiště](/cs/guide/storage#správce-úložiště).

@@ -16,22 +16,21 @@ bae হলো এক Rust core, তার উপর চারটি native app�
 
 ## ডিস্কে এক লাইব্রেরি
 
-একটি লাইব্রেরি থাকে `~/.bae/libraries/<লাইব্রেরি-id>/`-এ (mobile-এ প্ল্যাটফর্ম ডেটা directory):
+একটি লাইব্রেরি দুটি directory-তে থাকে (mobile-এ প্ল্যাটফর্ম ডেটা directory): coven-এর store, আর তার পাশে bae-এর নিজের সেটিংস।
 
 ```
-~/.bae/libraries/<id>/
-  লাইব্রেরি.db        # SQLite: catalog, credits, playback specs
-  config.yaml       # coven: লাইব্রেরির পরিচয়, ক্লাউড হোম; কখনও সিঙ্ক হয় না
-  preferences.toml  # bae-এর সেটিংস; কখনও সিঙ্ক হয় না
-  সংরক্ষণ/
-    স্থানীয়/          # blobs this ডিভাইস owns (কভার, শিল্পী images)
-    ক্যাশ/          # evictable copies of ক্লাউড blobs
-    pinned/         # pinned-for-offline copies, never evicted
+~/.bae/stores/<id>/       # coven-এর store, শুধু coven দিয়ে খোলা হয়
+  store.db                # SQLite: তালিকা, কৃতিত্ব, প্লেব্যাক spec, coven-এর হিসাব
+  files/                  # bae-এর নিজের ফাইলের coven কপি (কভার, শিল্পীর ছবি, অবতার)
+  cache/                  # আপলোড করা ফাইলের ক্যাশে ও pinned কপি
+~/.bae/libraries/<id>/    # bae-এর নিজের; কখনও সিঙ্ক হয় না
+  preferences.toml        # bae-এর সেটিংস
+  cache/                  # তালিকা থেকে আনা চিত্র
 ```
 
-ডেটাবেস শুধু coven দিয়ে খোলা হয়, যা bae-এর schema-র পাশে নিজের হিসাবের টেবিল (সিঙ্ক cursor, outbox, blob state) বসায় এবং bae-এর migration চালায়। অ-পরিচালিত হিসেবে ইম্পোর্ট করা অডিও ফাইল মোটেই `~/.bae`-এর নিচে থাকে না: ডেটাবেস সেগুলোকে ইম্পোর্ট করার path-এই reference করে।
+ডেটাবেস শুধু coven দিয়ে খোলা হয়, যা bae-এর schema-র পাশে নিজের হিসাবের টেবিল (মেলানোর record, আপলোড সারি, ফাইলের অবস্থা) রাখে এবং bae-এর migration চালায়। স্থানীয় রিলিজের অডিও ফাইল মোটেই `~/.bae`-এর নিচে থাকে না: ডেটাবেস সেগুলোকে ইম্পোর্ট করার path-এই reference করে।
 
-Secret কখনও এই ফাইলগুলোতে থাকে না। Identity কী, লাইব্রেরি encryption কী, ক্লাউড credential, এবং API টোকেন OS keyring-এ থাকে (Apple প্ল্যাটফর্ম-এ Keychain, iCloud Keychain দিয়ে synced; অন্যত্র প্ল্যাটফর্ম equivalent)।
+গোপন জিনিস কখনও এই ফাইলগুলোতে থাকে না। সদস্যের কী, লাইব্রেরির কী, মেঘের সাইন-ইন এবং API টোকেন OS keyring-এ থাকে (Apple প্ল্যাটফর্মে Keychain, অন্যত্র প্ল্যাটফর্মের সমতুল্য); Apple প্ল্যাটফর্মে রিস্টোর কোড iCloud Keychain-এও রাখা হয়।
 
 ## সংস্করণ
 

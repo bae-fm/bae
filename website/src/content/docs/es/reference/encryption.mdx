@@ -1,28 +1,34 @@
 ---
 title: Cifrado
-description: Que es la clave de biblioteca, dónde vive y que texto cifrado conserva el proveedor
+description: Qué claves existen, dónde viven y qué puede ver el proveedor
 ---
 
-Todo lo que bae pone en un hogar opaco en la nube se cifra antes de salir del dispositivo. bae no implementa criptografía propia: todo el esquema es de [coven](https://coven.bae.fm), y está página describe cómo lo usa bae. Los hogares explorables optan por no usarlo; nada de lo siguiente se aplica a ellos.
+Todo lo que bae pone en un hogar en la nube se cifra antes de salir del dispositivo; no hay modo sin cifrar. bae no implementa criptografía propia: todo el esquema es de [coven](https://coven.bae.fm), y esta página describe cómo lo usa bae.
 
-## La clave de biblioteca
+## Las claves
 
-Una biblioteca opaca tiene un secreto raíz: una clave aleatoria de 256 bits creada cuando se crea el hogar. Vive en el llavero del sistema operativo, nunca en un archivo; en plataformas Apple la entrada del llavero se sincroniza mediante iCloud Keychain. La configuración de bae guarda solo una huella de la clave, suficiente para distinguir una clave incorrecta de una correcta al desbloquear sin conservar el secreto.
+| Clave | Qué hace |
+|---|---|
+| La clave de almacén | cifra la biblioteca y sus registros de membresía |
+| La clave de círculo de cada persona | cifra lo que esa persona mantiene privado: su historial de reproducción privado y sus listas privadas |
+| La clave de cada archivo | cifra un archivo, y viaja solo dentro de los cambios cifrados de su fila |
+| El par de claves de firma de una persona | firma cada cambio que envían sus dispositivos |
+| El par de claves de sellado de una persona | abre las claves selladas para esa persona |
 
-La clave viaja entre dispositivos de dos maneras, ambas descritas en [Identidad y membresía](/es/reference/membership): sellada a la clave pública de un dispositivo aprobado durante el emparejamiento del dispositivo y transportada dentro de un código de recuperación.
+La clave de almacén es aleatoria y se crea cuando la biblioteca obtiene su hogar en la nube. Los pares de claves de una persona los comparten todos sus dispositivos. Las claves privadas y las claves de la biblioteca viven en el llavero del sistema operativo, nunca en un archivo ni en la base de datos. Llegan a un dispositivo de dos maneras, ambas descritas en [Identidad y membresía](/es/reference/membership): un código de restauración lleva los propios pares de claves de una persona, y un administrador que aprueba una invitación sella las claves de almacén para la clave de sellado de la persona nueva.
 
-## Generaciones
+## Rotación
 
-La clave de biblioteca es en realidad un llavero de generaciones numeradas. Eliminar un miembro agrega una generación nueva que el miembro eliminado nunca recibe: todo lo escrito después usa la generación nueva y le resulta ilegible, mientras los miembros restantes conservan cada generación y pueden leer todo el historial. Cada objeto sellado registra, en claro, que generación lo abre.
+Una clave nunca se cambia en su sitio; se agrega una nueva. Después de eliminar a una persona, el dispositivo de un miembro restante agrega una clave de almacén nueva, y una clave nueva para cada círculo en el que estaba, antes de escribir más datos ahí: todo lo escrito después le resulta ilegible, mientras los miembros restantes conservan cada clave anterior y pueden leer todo el historial. Eliminar un solo dispositivo no rota nada, ya que los otros dispositivos de la persona comparten sus claves; desde la eliminación, lo que envía ese dispositivo no cuenta.
 
 ## Que se sella
 
-Cada objeto en el hogar: changesets, snapshots, blobs de audio, imágenes, registros de membresía, objetos de control. Los objetos se sellan con XChaCha20-Poly1305 en fragmentos de 64 KB, cada fragmento autenticado, y vinculados a su contexto: un objeto sellado se descifra solo como el objeto para el que fue escrito, para está biblioteca, con está clave. La fragmentacion es la razon por la que la transmision funciona: el reproductor puede descifrar exactamente los rangos de bytes que trae.
+Cada objeto en el hogar: cambios, snapshots, registros de membresía y archivos. El contenido se cifra con XChaCha20-Poly1305, cada cambio se firma con Ed25519, y las claves se sellan para las personas con cajas selladas X25519. Los archivos se cifran en fragmentos de 64 KiB, cada uno autenticado por separado y vinculado a su posición, así que un fragmento no se puede alterar, intercambiar ni reordenar sin que se note. La fragmentación es la razón por la que la transmisión funciona: el reproductor puede descifrar exactamente los fragmentos que trae.
 
 ## Que puede ver el proveedor
 
-Conteo de objetos, tamaños de objetos, momento de subida y patrones de acceso. No nombres, no metadatos, no audio, no imágenes, no membresía. No hay recuperación del lado del servidor: un usuario que pierde cada dispositivo y cada copia de la clave ha perdido para siempre el texto cifrado de la biblioteca, que es el diseño funcionando como se pretendía.
+Conteo de objetos, tamaños de objetos, momento de subida, qué cuenta escribe cada objeto y qué dispositivo subió cada archivo y snapshot, ya que sus rutas nombran el dispositivo. No nombres, no metadatos, no audio, no imágenes. Los archivos están bajo nombres aleatorios, nunca un hash de su contenido. No hay recuperación del lado del servidor: si cada persona pierde cada dispositivo y cada código de restauración, la biblioteca se pierde, que es el diseño funcionando como se pretendía.
 
-## Desbloquear y bloquear
+## El llavero
 
-Abrir una biblioteca lee la clave desde el llavero. Si la biblioteca espera una clave y el llavero no la tiene, bae trata la biblioteca como bloqueada: pide la clave antes de abrir, validando la entrada contra la huella almacenada antes de guardarla de nuevo en el llavero. Bloquear una biblioteca elimina deliberadamente la clave del llavero; nada en el hogar en la nube puede leerse ni escribirse hasta que se introduzca otra vez.
+Abrir una biblioteca lee sus claves desde el llavero del sistema operativo. Un llavero que está bloqueado en ese momento, por una sesión bloqueada o una pantalla en reposo, se distingue de uno averiado: bae muestra la biblioteca como bloqueada y lo vuelve a intentar tras el desbloqueo, en vez de declarar la biblioteca inutilizable. Un dispositivo también puede olvidar la clave, lo que bloquea la biblioteca en ese dispositivo hasta que se desbloquee de nuevo.

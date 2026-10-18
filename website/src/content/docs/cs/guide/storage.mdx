@@ -5,18 +5,18 @@ description: Kde vaše hudba žije a co hraje bez sítě
 
 Vaše soubory zůstávají vaše. bae je nikdy nepřesouvá, nepřejmenovává ani nepřepisuje; otázka, kterou řeší úložiště, je jen to, kde žije *přehrávatelná kopie* každého vydání: na zařízení, ve vašem cloudu, nebo na obou místech.
 
-## Nespravované a spravované
+## Místní a v cloudu
 
 Každé vydání je jedno nebo druhé, zvolené při importu a kdykoli změnitelné:
 
-- **Nespravované**: bae katalogizuje vaše soubory tam, kde jsou, a přehrává je odtud. Nic se nekopíruje. Vydání existuje v katalogu na každém synchronizovaném zařízení, ale jeho audio žije jen na počítači, který ho importoval.
-- **Spravované**: soubory se zašifrují a nahrají do cloudového domova. Každé zařízení teď může vydání přehrát, streamovat ho na vyžádání nebo stáhnout pro offline použití. Vašich původních souborů se nahrání nedotkne; zda je chcete dál používat místně, je vaše volba (**Keep local copy** při importu je připne).
+- **Místní**: bae katalogizuje vaše soubory tam, kde jsou, a přehrává je odtud. Nic se nekopíruje. Údaje vydání se synchronizují, takže každé zařízení ukáže album, jeho stopy a obal, ale jeho audio zůstane na počítači, který ho importoval, a ostatní zařízení ho přehrát nemohou.
+- **V cloudu**: soubory se zašifrují a nahrají do cloudového domova. Každé zařízení teď může vydání přehrát, streamovat ho na vyžádání nebo stáhnout pro offline použití. Vašich původních souborů se nahrání nedotkne.
 
-Přechod mezi oběma stavy je akce na úrovni vydání: **Manage** nahraje nespravované vydání; **Make local** stáhne soubory spravovaného vydání do zvolené složky a jsou znovu vaše jako běžné soubory.
+Při importu, s připojeným cloudovým domovem, **Cloud** nahraje nové vydání a **Připnuto** navíc ponechá jeho soubory na tomto zařízení. Později **Přesunout do cloudu** nahraje místní vydání; bae nejdřív ověří, že se žádný soubor od importu nezměnil, a změněný soubor nahrání zastaví. **Převést na místní…** zkopíruje soubory vydání z cloudu do zvolené složky, ověří každou kopii a přehrává vydání odtud; jsou znovu vaše jako běžné soubory a ostatní zařízení ho už přehrát nemohou.
 
 ## Streamování a mezipaměť
 
-Spravovaná vydání hrají všude, kde to síť dovolí: přehrávání streamuje soubor z vašeho cloudu a bajty se drží v místní mezipaměti, takže další přehrání je okamžité a bez sítě. Mezipaměť se drží v rámci limitu sama (20 GB pro audio na každém zařízení) a při nedostatku místa vyhazuje to, co jste nepřehrávali. Obaly a obrázky interpretů se ukládají odděleně, takže velké album nemůže vytlačit vaše obrázky.
+Vydání v cloudu hrají všude, kde to síť dovolí: přehrávání streamuje soubor z vašeho cloudu a bajty se drží v místní mezipaměti, takže další přehrání je okamžité a bez sítě. Mezipaměť se drží v rámci limitu sama (20 GB pro audio na každém zařízení) a při nedostatku místa vyhazuje to, co jste nepřehrávali. Obaly a obrázky interpretů se ukládají odděleně, takže velké album nemůže vytlačit vaše obrázky.
 
 ## Připnutí pro offline
 
@@ -26,11 +26,11 @@ Připnutí vydání stáhne celé vydání a ponechá ho: připnutá hudba se ni
 
 Desktopový správce úložiště (<kbd>⌘0</kbd>) je celý obraz v jednom okně:
 
-- Každé vydání s velikostí a stavem: nespravované, spravované, nahrává se. Filtrujte, řaďte, vyberte více položek a proveďte akci nad všemi najednou.
+- Každé vydání s velikostí a stavem: místní, v cloudu, nahrává se. Filtrujte, řaďte, vyberte více položek a proveďte akci nad všemi najednou.
 - **Stahování**: probíhající připnutá stahování, pozastavitelná a opakovatelná.
 - **Exporty**: fronta exportů. Viz [Export](/cs/guide/exporting).
 - **Odesílání**: odchozí fronta synchronizace s průběhem pro každé vydání, propustností a zbývajícím časem, čekajícími smazáními, pozastavením a pokračováním.
 
 ## Mazání
 
-Smazání spravovaného vydání ho odstraní z knihovny a cloudového domova. Smazání nespravovaného vydání odstraní jen položku katalogu: bae nikdy nemaže soubory, které tam sama nedala.
+Smazání vydání v cloudu ho odstraní z knihovny a odstraní jeho kopie z cloudového domova. Smazání místního vydání odstraní jen položku katalogu. V obou případech bae nikdy nemaže vaše vlastní soubory.

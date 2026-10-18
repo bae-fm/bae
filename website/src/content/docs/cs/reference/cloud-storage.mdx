@@ -1,36 +1,35 @@
 ---
 title: Cloudové úložiště
-description: Poskytovatelé, ověřování a tvar cloudového domova
+description: Poskytovatelé, přihlášení a tvar cloudového domova
 ---
 
-Cloudový domov je jedno místo v úložišti, které už uživatel vlastní. Každý poskytovatel je ovládán přes stejné rozhraní úložiště v [coven](https://coven.bae.fm); liší se ověřování a způsob, jakým se druhému zařízení udělí přístup.
+Cloudový domov je jedno místo v úložišti, které už uživatel vlastní. Každý poskytovatel je ovládán přes stejné rozhraní úložiště v [coven](https://coven.bae.fm); liší se přihlášení, nastavení a způsob, jakým se k němu dostanou další lidé a zařízení.
 
 ## Poskytovatelé
 
-| Poskytovatel | Ověření | Přístup pro nové zařízení |
-|---|---|---|
-| Kompatibilní se S3 | Access key + secret | Přihlašovací údaje zapečetěné na schváleném zařízení během párování |
-| Dropbox | OAuth (PKCE) | Účet nového zařízení byl schválen a složka je sdílena |
-| OneDrive | OAuth (PKCE) | Účet nového zařízení byl schválen a složka je sdílena |
-| iCloud (CloudKit) | Apple ID, bez přihlášení | Sdílení CloudKit přijato během párování |
+| Poskytovatel | Přihlášení | Vaše vlastní nové zařízení | Osoba, kterou pozvete |
+|---|---|---|---|
+| Kompatibilní se S3 | Access key + secret | Kód pro obnovení plus váš přístupový klíč, nesený vedle něj v QR kódu | Přístupový klíč vytvořený pro ni |
+| Dropbox | OAuth, drží ho coven | Kód pro obnovení, pak přihlášení k vašemu Dropboxu | Sdílená složka knihovny se nasdílí jejímu účtu |
+| OneDrive | OAuth, drží ho coven | Kód pro obnovení, pak přihlášení k vašemu OneDrivu | Složka knihovny se nasdílí jejímu účtu |
+| iCloud (CloudKit) | Apple Account, bez přihlášení | Kód pro obnovení, nabízený i z iCloud Klíčenky | Zóna CloudKit knihovny se nasdílí jejímu Apple Account |
 
-Kompatibilita se S3 zahrnuje AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO a cokoli dalšího, co mluví tímto API; bucket, region, endpoint a předpona klíčů jsou nastavitelné a bucket se vyzkouší před uložením konfigurace, takže překlep selže při nastavení, ne při první synchronizaci. Poskytovatelé OAuth existují jen v úplné edici **bae**; sestavení **baeium** je vynechávají.
+Kompatibilita se S3 zahrnuje AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO a cokoli dalšího, co mluví tímto API. Formulář nastavení se ptá jen na bucket, region, endpoint a přístupový klíč; coven pozná známé služby podle hostitele endpointu a doplní, jak s nimi mluvit. **Pokročilé** obsahuje volitelnou předponu klíčů a volbu profilu služby, ve výchozím stavu automatickou. U služby, kterou coven nezná, **Zjistit nastavení** vyzkouší bucket klíčem a ukáže, co našlo. Nastavení ověří poskytovatele dřív, než se cokoli uloží, takže překlep selže při nastavení, ne při první synchronizaci, a bae sdělí důvod od coven srozumitelnými slovy. Dropbox, OneDrive a iCloud existují jen v úplné edici **bae**; sestavení **baeium** je vynechávají.
 
-## OAuth
+## Přihlášení a složky
 
-Přihlášení je tok autorizačního kódu s PKCE jako veřejný klient. Na desktopu přesměrování dorazí na server na loopback adrese navázaný na místní port pro jediné zpětné volání; na mobilu aplikace místo toho zachytí přesměrování vlastního schématu. bae žádá nejužší rozsah, který poskytovatel pro danou práci nabízí. Tokeny jsou uloženy v klíčence operačního systému, obnovují se obnovovacím grantem poskytovatele a odmítnuté obnovení se zobrazí jako výzva k opětovnému připojení místo tiché smyčky pokusů.
+coven provádí přihlášení k Dropboxu a OneDrivu sám, takže přes bae neprochází žádný token. Na desktopu prohlížeč otevře stránku poskytovatele a místní posluchač přijme jediné přesměrování; na mobilu to obstará přihlašovací panel platformy. coven drží tokeny v klíčence operačního systému a token jednou obnoví, když ho poskytovatel odmítne; neúspěšné obnovení se ve stavu synchronizace zobrazí jako akce **Přihlásit se** místo tiché smyčky pokusů.
 
-CloudKit nepotřebuje žádný tok: ovladač CloudKit platformy, implementovaný v aplikaci a předaný jádru, funguje jako přihlášené Apple ID.
+Po přihlášení uživatel vybere, kde knihovna žije. U Dropboxu je to sdílená složka, protože knihovna domácnosti se sdílí s účty ostatních lidí; bae k tomu používá plný přístup k Dropboxu, ne složku aplikace. Pokud ještě žádná sdílená složka není, bae řekne, ať nějakou v Dropboxu nasdílíte a hledáte znovu. U OneDrivu je to libovolná složka, procházená od kořene, a lze tam založit novou.
+
+CloudKit nepotřebuje žádný tok: coven ho na platformách Apple ovládá jako přihlášený Apple Account.
 
 ## Rozložení domova
 
-Uvnitř domova coven rozkládá proudy changesetů pro každé zařízení, generace snapshotů, záznamy členství a jmenné prostory blobů. bae přidává tři jmenné prostory blobů: `release_files`, `covers` a `artist_images`.
+Uvnitř domova začíná každá cesta objektu ID úložiště knihovny: číslovaná posloupnost změn coven, jeho snapshoty, žádosti o připojení a uložené soubory. Několik knihoven může sdílet jednu složku Dropboxu nebo OneDrivu, aniž by se dotýkaly objektů ostatních.
 
-Klíčování objektů závisí na režimu úložiště domova, pevně daném při vytvoření:
-
-- **Opaque**: objekty jsou zašifrované a uložené pod klíči odvozenými z obsahu, které nic neprozrazují. Je to režim plné důvěry v kryptografii; viz [Šifrování](/cs/reference/encryption).
-- **Browsable**: objekty jsou prostý text v čitelných cestách zapsaných pro každý blob při nahrání: `release_files/{artist}/{album}/{filename}`, `covers/{album}/{release}/cover.{ext}`, `artist_images/{artist}/artist.{ext}`. Bucket zároveň funguje jako použitelný strom souborů; výměnou za to chybí šifrování a členství, takže procházetelné domovy nelze sdílet s dalšími lidmi.
+Každý objekt je zašifrovaný a uložený pod náhodným názvem; režim prostého textu neexistuje. Soubory bae patří k řádkům tří synchronizovaných tabulek, `release_files`, `covers` a `artist_images`, plus avatar v každém řádku `people`. Cesta souboru se pevně určí, když se soubor připojí ke svému řádku, takže přejmenování alba ho nikdy nepřesune. Viz [Šifrování](/cs/reference/encryption).
 
 ## Chování ve skutečných sítích
 
-Čtení pro přehrávání používá rozsahy: přehrávač streamuje okna bajtů, která potřebuje, ne celé soubory. Nahrávání nad velikostním prahem používá multipart tam, kde ho poskytovatel podporuje. Omezení rychlosti a dočasné chyby poskytovatele se opakují s exponenciálním zpomalováním a respektují `retry-after`, pokud je poskytnuto; vypršené tokeny OAuth se obnovují na místě. Odchozí fronta synchronizace přežije restart: nahrávání přerušené ukončením aplikace pokračuje místo restartu.
+Čtení pro přehrávání používá rozsahy: přehrávač stahuje šifrované bloky, které potřebuje, ne celé soubory, a při přehrávání souboru po pořadí stahuje dopředu. Omezení rychlosti a dočasné chyby poskytovatele se opakují podle jednoho plánu zpomalování a respektují `retry-after`, pokud je poskytnuto. Fronta nahrávání přežije restart: nahrávání přerušené ukončením aplikace pokračuje místo restartu a pozastavené nahrávání zůstane pozastavené.

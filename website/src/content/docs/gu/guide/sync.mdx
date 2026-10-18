@@ -9,35 +9,35 @@ Sync નો અર્થ ઘણી વાર બીજા કોઈનો server
 
 ## Cloud home
 
-Library નું cloud home તમારા storage માં એક location છે: તમારી Dropbox, અથવા OneDrive માં folder, તમારું iCloud, અથવા કોઈ પણ S3-compatible bucket (AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, ...). તે library sync કરે તે બધું રાખે છે: catalog changes, artwork, અને જે releases તમે bae ને manage કરવા દો તેનું audio.
+લાઇબ્રેરીનું cloud home તમારા સ્ટોરેજમાં એક જગ્યા છે: તમારા Dropbox અથવા OneDrive માં એક ફોલ્ડર, તમારું iCloud, અથવા કોઈ પણ S3-compatible bucket (AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, ...). લાઇબ્રેરી જે sync કરે તે બધું તે રાખે છે: લાઇબ્રેરીના ફેરફારો, artwork, અને તમે cloud માં ખસેડો તે releases નું audio.
 
-Settings માં, Sync હેઠળ તેને set up કરો:
+તેને Settings, Library માં **Set up sync...** થી ગોઠવો:
 
-1. Provider પસંદ કરો. Consumer clouds provider ના પોતાના login page થી sign in કરે છે; account વિશે tokens સિવાય કશું store થતું નથી. iCloud તમારું Apple ID જેમ છે તેમ વાપરે છે. S3 bucket, region, endpoint, અને keys લે છે, save થાય તે પહેલાં check થાય છે.
-2. Home objects કેવી રીતે store કરે તે પસંદ કરો (નીચે જુઓ).
-3. bae syncing શરૂ કરે છે.
+1. પ્રદાતા પસંદ કરો.
+   - **Dropbox** અને **OneDrive** તમારા browser થી સાઇન ઇન કરે છે, પછી પૂછે છે કે લાઇબ્રેરી કયા ફોલ્ડરમાં રહે. Dropbox પર તે શેર કરેલું ફોલ્ડર હોય છે, જેથી તમે તમારા ઘરના લોકોને તેમાં આમંત્રિત કરી શકો; હજી ન હોય તો Dropbox માં કોઈ ફોલ્ડર શેર કરો અને **Look Again** પસંદ કરો. OneDrive પર તે કોઈ પણ ફોલ્ડર હોઈ શકે, અને ત્યાં નવું ફોલ્ડર પણ બનાવી શકો છો. સાઇન-ઇન coven પાસે રહે છે; bae તેના tokens ક્યારેય જોતું નથી.
+   - **iCloud** ઉપકરણ જે Apple Account માં સાઇન ઇન છે તે વાપરે છે.
+   - **S3** ફક્ત bucket, region, endpoint અને access key પૂછે છે. **Advanced** માં વૈકલ્પિક key prefix અને service profile હોય છે, જે મૂળભૂત રીતે આપમેળે છે; bae ન ઓળખે તેવી સેવા માટે **Detect Settings** તમારી key થી bucket ચકાસે છે અને જે મળ્યું તે બતાવે છે. ગોઠવણ નકારાય તો bae કારણ જણાવે છે.
+2. bae sync શરૂ કરે છે.
 
 Cloud home વગરની library પોતાની રીતે complete છે. Local-only mode છે, limitation નહીં, અને cloud home disconnect કરવાથી તે પાછું આવે છે.
 
-## Opaque અથવા browsable
+## હંમેશા encrypted
 
-Setup વખતે provider ને શું દેખાશે તે તમે પસંદ કરો છો, અને તે પસંદગી એ home માટે permanent છે:
-
-- **Opaque** (default): દરેક object upload પહેલાં તમારા device પર encrypted થાય છે અને અર્થહીન names હેઠળ stored થાય છે. Provider, અથવા bucket માં પ્રવેશ મેળવનાર કોઈ પણ, ciphertext જુએ છે. આ [encryption](/gu/reference/encryption) page વર્ણવે છે તે mode છે, અને બીજા devices અને members ઉમેરવાનું support કરતો એકમાત્ર mode છે.
-- **Browsable**: objects real filenames સાથે clear માં stored થાય છે, artist અને album ના names વાળા folders માં. તમે કોઈ પણ tool થી bucket ખોલી શકો છો અને તમારી files સીધી copy અથવા play કરી શકો છો. કશું encrypted નથી, એટલે bucket નું પોતાનું access control જ protection છે, અને home share કરી શકાતું નથી.
+દરેક cloud home એક જ વસ્તુ રાખે છે: રેન્ડમ નામો હેઠળ encrypted objects. દરેક ફેરફાર, છબી અને audio file upload પહેલાં તમારા ઉપકરણ પર encrypt થાય છે. તમારા albums તમારા Dropbox માં કોઈ પણ જોઈ શકે તેવું ફોલ્ડર નથી, અને પ્રદાતા કોઈ album, કલાકાર કે file નું નામ જોતો નથી. [Encryption](/gu/reference/encryption) જુઓ.
 
 ## શું sync થાય છે
 
-- Catalog: albums, releases, tracks, credits, works, identities, edits. દરેક device ને બધું મળે છે.
-- Artwork: covers અને artist images, eagerly fetched જેથી grids everywhere render થાય.
-- Audio: ફક્ત તે releases માટે જેને તમે cloud માં manage કરવા પસંદ કર્યા. Unmanaged releases purely local રહે છે, catalog entries બીજા devices પર include થાય છે પણ bytes ફક્ત જ્યાં import કર્યા ત્યાં.
+- લાઇબ્રેરી: albums, releases, tracks, credits, રચનાઓ અને કલાકારો. દરેક ઉપકરણને બધું મળે છે, તે releases સહિત જેમનું audio import કરનાર ઉપકરણ પર જ રહે છે.
+- લોકો: દરેક વ્યક્તિનું નામ અને avatar, ratings, સાંભળવાનો ઇતિહાસ અને playlists. તમારો ઇતિહાસ અને તમારી દરેક playlist ફક્ત તમારા માટે ખાનગી રાખી શકાય અથવા ઘર સાથે વહેંચી શકાય.
+- Artwork: covers, કલાકારની છબીઓ અને avatars, grids બધે દેખાય તે માટે અગાઉથી લાવવામાં આવે છે.
+- Audio: ફક્ત તમે cloud માં ખસેડેલા releases માટે. સ્થાનિક release દરેક ઉપકરણ પર દેખાય છે, પણ તમે તેને cloud માં ન ખસેડો ત્યાં સુધી ફક્ત import કરનાર ઉપકરણ પર જ વાગે છે. [Storage અને offline](/gu/guide/storage) જુઓ.
 
 Per-device state sync થતી નથી: playback position, volume, queue, અને device settings device પર રહે છે.
 
 ## ક્યારે sync થાય છે
 
-Sync પોતાની રીતે ચાલે છે: changes પછી, timer પર, અને demand પર **Sync Now** સાથે. Edits normal conditions હેઠળ seconds પછી બીજા devices પર small changes તરીકે land થાય છે. એક જ સમયે edit કરતાં બે devices જ્યાં collide નથી કરતા ત્યાં બંને win કરે છે: bae concurrent edits ને field by field merge કરે છે, અને deleted release એ જ ક્ષણે બીજે edit થયો હોય તો પણ deleted જ રહે છે. Conflict resolve કરવા માટે કશું તમને ક્યારેય પૂછતું નથી.
+Sync પોતાની રીતે ચાલે છે: ફેરફારો પછી, timer પર, અને માંગ પર **Sync Now** સાથે. સામાન્ય સ્થિતિમાં સંપાદનો થોડી સેકન્ડ પછી બીજા ઉપકરણો પર પહોંચે છે. એક જ સમયે સંપાદન કરતાં બે ઉપકરણો જ્યાં ટકરાતા નથી ત્યાં બંને જીતે છે: bae સાથે થયેલાં સંપાદનોને field પ્રમાણે ભેગાં કરે છે, બંનેએ બદલેલા field માં પછીનું સંપાદન જીતે છે, અને કાઢી નાખેલો release એ જ ક્ષણે બીજે સંપાદિત થયો હોય તો પણ કાઢેલો જ રહે છે. ટકરાવ ઉકેલવા તમને ક્યારેય પૂછવામાં આવતું નથી.
 
 ## નિષ્ફળ જાય ત્યારે
 
-Sync failures library ને interrupt કરતી નથી; bae backoff સાથે retry કરે છે ત્યારે તમે locally browse, play અને import ચાલુ રાખો છો. Status line syncing અને last-synced time બતાવે છે; failure banner માં error બતાવે છે, અને uploads [Storage Manager](/gu/guide/storage#the-storage-manager) માં pause, retry અને inspect થઈ શકે છે. Cloud home નું sign-in expire થાય તો bae reconnect કરવા કહે છે.
+Sync નિષ્ફળતાઓ લાઇબ્રેરીને રોકતી નથી; bae ફરી પ્રયાસ કરે ત્યારે તમે સ્થાનિક રીતે જોવું, વગાડવું અને import કરવું ચાલુ રાખો છો. Settings, Library sync માટે એક લીટી બતાવે છે: **Synced**, અથવા કેટલી બાબતો રાહ જુએ છે, જેમ કે **Waiting: 3 items**. તેને ખોલીને દરેક બાબત સરળ શબ્દોમાં જુઓ, સાથે તમે લઈ શકો તે પગલું: પ્રદાતા ફરી સાઇન ઇન માંગે ત્યારે **Sign In**, upload પહેલાં ખસેલી file ને પાછી તેની જગ્યાએ મૂકવી, **Retry**, **Reconnect**, **Resume Uploads** અથવા **Update App**. જે રાહમાં તમે મદદ ન કરી શકો, જેમ કે બીજું ઉપકરણ online આવે તેની, તે કશું આપતી નથી. જોવાની જગ્યા ફક્ત આ યાદી છે; uploads ને [Storage Manager](/gu/guide/storage#storage-manager) માં રોકી અને તપાસી પણ શકાય છે.

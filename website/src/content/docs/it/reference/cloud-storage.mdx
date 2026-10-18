@@ -1,36 +1,35 @@
 ---
 title: Archiviazione cloud
-description: Provider, autenticazione e forma della home cloud
+description: Provider, accesso e forma della home cloud
 ---
 
-La home cloud è una posizione nello spazio che l'utente possiede già. Ogni provider è guidato tramite la stessa interfaccia di archiviazione in [coven](https://coven.bae.fm); ciò che cambia per provider è l'autenticazione e il modo in cui un secondo dispositivo ottiene accesso.
+La home cloud è una posizione nello spazio che l'utente possiede già. Ogni provider è guidato tramite la stessa interfaccia di archiviazione in [coven](https://coven.bae.fm); ciò che cambia per provider è l'accesso, la configurazione e il modo in cui altre persone e dispositivi la raggiungono.
 
 ## Provider
 
-| Provider | Auth | Accesso per un nuovo dispositivo |
-|---|---|---|
-| Compatibile con S3 | Access key + secret | Credenziali sigillate sul dispositivo approvato durante l'associazione |
-| Dropbox | OAuth (PKCE) | L'account del nuovo dispositivo viene approvato, quindi la cartella viene condivisa |
-| OneDrive | OAuth (PKCE) | L'account del nuovo dispositivo viene approvato, quindi la cartella viene condivisa |
-| iCloud (CloudKit) | Apple ID, nessun accesso | Condivisione CloudKit accettata durante l'associazione |
+| Provider | Accesso | Il tuo nuovo dispositivo | Una persona che inviti |
+|---|---|---|---|
+| Compatibile con S3 | Access key + secret | Codice di ripristino, più la tua chiave di accesso, portata accanto nel codice QR | Una chiave di accesso creata per lei |
+| Dropbox | OAuth, conservato da coven | Codice di ripristino, poi accesso al tuo Dropbox | La cartella condivisa della libreria viene condivisa con il suo account |
+| OneDrive | OAuth, conservato da coven | Codice di ripristino, poi accesso al tuo OneDrive | La cartella della libreria viene condivisa con il suo account |
+| iCloud (CloudKit) | Apple Account, nessun accesso | Codice di ripristino, offerto anche dal portachiavi iCloud | La zona CloudKit della libreria viene condivisa con il suo Apple Account |
 
-Compatibile con S3 copre AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO e qualunque altro servizio parli l'API; bucket, regione, endpoint e prefisso chiave sono configurabili, e il bucket viene provato prima che la configurazione sia salvata così un errore di battitura fallisce alla configurazione, non alla prima sincronizzazione. I provider OAuth esistono solo nell'edizione completa **bae**; le build **baeium** li compilano fuori.
+Compatibile con S3 copre AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO e qualunque altro servizio parli l'API. Il modulo di configurazione chiede solo bucket, regione, endpoint e chiave di accesso; coven riconosce i servizi noti dall'host dell'endpoint e completa il modo di parlarci. **Avanzate** contiene il prefisso chiave facoltativo e una scelta del profilo del servizio, automatico per impostazione predefinita. Per un servizio che coven non conosce, **Rileva impostazioni** prova il bucket con la chiave e mostra cosa ha trovato. La configurazione controlla il provider prima di salvare qualsiasi cosa, così un errore di battitura fallisce alla configurazione, non alla prima sincronizzazione, e bae riporta il motivo di coven in parole semplici. Dropbox, OneDrive e iCloud esistono solo nell'edizione completa **bae**; le build **baeium** li compilano fuori.
 
-## OAuth
+## Accesso e cartelle
 
-L'accesso è un flusso authorization-code con PKCE, come client pubblico. Su desktop il redirect arriva su un server loopback legato a una porta locale per l'unico callback; su mobile l'app cattura invece un redirect con schema personalizzato. bae richiede l'ambito più stretto offerto dal provider per il lavoro. I token sono conservati nel portachiavi del sistema operativo, aggiornati con il refresh grant del provider, e un refresh rifiutato emerge come richiesta di riconnessione invece che come ciclo silenzioso di tentativi.
+coven esegue da sé l'accesso a Dropbox e OneDrive, quindi nessun token passa attraverso bae. Su desktop il browser apre la pagina del provider e un listener locale riceve l'unico redirect; su mobile lo fa il foglio di accesso della piattaforma. coven conserva i token nel portachiavi del sistema operativo e ne aggiorna uno una volta quando il provider lo rifiuta; un aggiornamento fallito compare nello stato di sincronizzazione come azione **Accedi** invece che come ciclo silenzioso di tentativi.
 
-CloudKit non richiede alcun flusso: il driver CloudKit della piattaforma, implementato nell'app e passato al core, opera come l'ID Apple collegato.
+Dopo l'accesso, l'utente sceglie dove vive la libreria. Su Dropbox è una cartella condivisa, perché una libreria di famiglia è condivisa con gli account delle altre persone; bae usa per questo l'accesso completo a Dropbox, non una cartella dell'app. Se non c'è ancora una cartella condivisa, bae dice di condividerne una in Dropbox e cercare di nuovo. Su OneDrive è una cartella qualsiasi, esplorata dalla radice, e lì se ne può creare una nuova.
+
+CloudKit non richiede alcun flusso: coven lo guida sulle piattaforme Apple come l'Apple Account collegato.
 
 ## La disposizione della home
 
-Dentro la home, coven dispone stream di changeset per dispositivo, generazioni di snapshot, record di appartenenza e namespace blob. bae contribuisce tre namespace blob: `release_files`, `covers` e `artist_images`.
+Dentro la home, ogni percorso di oggetto inizia con l'id dello store della libreria: la sequenza numerata di modifiche di coven, i suoi snapshot, le richieste di unione e i file conservati. Più librerie possono condividere una cartella Dropbox o OneDrive senza toccare gli oggetti delle altre.
 
-Il modo in cui gli oggetti sono indicizzati dipende dalla modalità di archiviazione della home, fissata alla creazione:
-
-- **Opaca**: gli oggetti sono cifrati e conservati sotto chiavi derivate dal contenuto che non rivelano nulla. Questa è la modalità che si affida alla crittografia; vedi [Cifratura](/it/reference/encryption).
-- **Esplorabile**: gli oggetti sono testo in chiaro in percorsi leggibili registrati per blob al momento del caricamento: `release_files/{artist}/{album}/{filename}`, `covers/{album}/{release}/cover.{ext}`, `artist_images/{artist}/artist.{ext}`. Il bucket funge anche da albero di file utilizzabile; il compromesso è niente cifratura e niente appartenenza, quindi le home esplorabili non possono essere condivise con altre persone.
+Ogni oggetto è cifrato e conservato sotto un nome casuale; non esiste una modalità in chiaro. I file di bae appartengono a righe di tre tabelle sincronizzate, `release_files`, `covers` e `artist_images`, più l'avatar di ogni riga `people`. Il percorso di un file viene fissato quando viene allegato alla sua riga, così rinominare un album non lo sposta mai. Vedi [Cifratura](/it/reference/encryption).
 
 ## Comportamento su reti reali
 
-Le letture per la riproduzione sono a intervalli: il lettore scarica le finestre di byte che gli servono invece di file interi. I caricamenti sopra una soglia di dimensione diventano multipart dove il provider lo supporta. Rate limiting ed errori transitori del provider vengono ritentati con backoff esponenziale, rispettando il retry-after del provider quando viene fornito; i token OAuth scaduti si aggiornano sul posto. L'outbox di sincronizzazione sopravvive ai riavvii: un caricamento interrotto uscendo dall'app riprende invece di ricominciare.
+Le letture per la riproduzione sono a intervalli: il lettore scarica i blocchi cifrati che gli servono invece di file interi, e scarica in anticipo mentre un file suona in ordine. Rate limiting ed errori transitori del provider vengono ritentati secondo un unico calendario di attesa, rispettando il retry-after del provider quando viene fornito. La coda di caricamento sopravvive ai riavvii: un caricamento interrotto uscendo dall'app riprende invece di ricominciare, e i caricamenti in pausa restano in pausa.

@@ -1,36 +1,35 @@
 ---
 title: Armazenamento em nuvem
-description: Provedores, autenticação e o formato do local na nuvem
+description: Provedores, login e o formato do local na nuvem
 ---
 
-O local na nuvem é uma localização no armazenamento que o usuário já possui. Todo provedor é controlado pela mesma interface de armazenamento em [coven](https://coven.bae.fm); o que difere por provedor é autenticação e como um segundo dispositivo recebe acesso.
+O local na nuvem é uma localização no armazenamento que o usuário já possui. Todo provedor é controlado pela mesma interface de armazenamento em [coven](https://coven.bae.fm); o que difere por provedor é o login, a configuração e como outras pessoas e dispositivos chegam até ele.
 
 ## Provedores
 
-| Provedor | Autenticação | Acesso para um dispositivo novo |
-|---|---|---|
-| Compatível com S3 | Chave de acesso + segredo | Credenciais seladas ao dispositivo aprovado durante o emparelhamento |
-| Dropbox | OAuth (PKCE) | A conta do novo dispositivo é aprovada e a pasta é compartilhada |
-| OneDrive | OAuth (PKCE) | A conta do novo dispositivo é aprovada e a pasta é compartilhada |
-| iCloud (CloudKit) | Apple ID, sem login | Compartilhamento do CloudKit aceito durante o emparelhamento |
+| Provedor | Login | Seu próprio dispositivo novo | Uma pessoa que você convida |
+|---|---|---|---|
+| Compatível com S3 | Chave de acesso + segredo | Código de restauração, mais sua chave de acesso, levada ao lado dele no código QR | Uma chave de acesso criada para ela |
+| Dropbox | OAuth, mantido por coven | Código de restauração, depois login no seu Dropbox | A pasta compartilhada da biblioteca é compartilhada com a conta dela |
+| OneDrive | OAuth, mantido por coven | Código de restauração, depois login no seu OneDrive | A pasta da biblioteca é compartilhada com a conta dela |
+| iCloud (CloudKit) | Apple Account, sem login | Código de restauração, também oferecido pelas Chaves do iCloud | A zona CloudKit da biblioteca é compartilhada com a Apple Account dela |
 
-Compatível com S3 cobre AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO e qualquer outro que fale a API; bucket, região, endpoint e prefixo de chave são configuráveis, e o bucket é testado antes de a configuração ser salva para que erro de digitação falhe na configuração, não na primeira sincronização. Os provedores OAuth existem só na edição **bae** completa; builds **baeium** os compilam fora.
+Compatível com S3 cobre AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO e qualquer outro que fale a API. O formulário de configuração pede só bucket, região, endpoint e chave de acesso; coven reconhece serviços conhecidos pelo host do endpoint e preenche como falar com eles. **Avançado** guarda o prefixo de chave opcional e uma escolha de perfil de serviço, automático por padrão. Para um serviço que coven não conhece, **Detectar ajustes** testa o bucket com a chave e mostra o que encontrou. A configuração confere o provedor antes de salvar qualquer coisa, para que um erro de digitação falhe na configuração, não na primeira sincronização, e bae explica o motivo de coven em palavras simples. Dropbox, OneDrive e iCloud existem só na edição **bae** completa; builds **baeium** os compilam fora.
 
-## OAuth
+## Login e pastas
 
-O login é um fluxo de código de autorização com PKCE, como cliente público. No desktop, o redirecionamento chega a um servidor loopback vinculado a uma porta local para o único callback; no mobile, o app captura um redirecionamento de esquema personalizado. bae solicita o escopo mais estreito que o provedor oferece para o trabalho. Tokens são armazenados no chaveiro do sistema operacional, renovados com a concessão de atualização do provedor, e uma atualização rejeitada aparece como pedido de reconexão em vez de loop silencioso de nova tentativa.
+coven faz ele mesmo o login no Dropbox e no OneDrive, então nenhum token passa por bae. No desktop, o navegador abre a página do provedor e um ouvinte local recebe o único redirecionamento; no mobile, a folha de login da plataforma faz isso. coven guarda os tokens no chaveiro do sistema operacional e renova um deles uma vez quando o provedor o rejeita; uma renovação que falha aparece no status de sincronização como a ação **Entrar**, em vez de um loop silencioso de novas tentativas.
 
-CloudKit não precisa de fluxo: o driver CloudKit da plataforma, implementado no app e entregue ao núcleo, opera como o Apple ID conectado.
+Depois do login, o usuário escolhe onde a biblioteca vive. No Dropbox é uma pasta compartilhada, já que uma biblioteca da casa é compartilhada com as contas das outras pessoas; bae usa para isso acesso completo ao Dropbox, não uma pasta de app. Se ainda não houver pasta compartilhada, bae diz para compartilhar uma no Dropbox e procurar novamente. No OneDrive é qualquer pasta, navegada a partir do topo, e uma nova pode ser criada ali.
+
+CloudKit não precisa de fluxo: coven o controla nas plataformas Apple como a Apple Account conectada.
 
 ## O layout do local
 
-Dentro do local, coven organiza fluxos de changesets por dispositivo, gerações de snapshots, registros de associação e namespaces de blobs. bae contribui três namespaces de blobs: `release_files`, `covers` e `artist_images`.
+Dentro do local, todo caminho de objeto começa com o id do store da biblioteca: a sequência numerada de mudanças de coven, seus snapshots, pedidos de entrada e arquivos armazenados. Várias bibliotecas podem compartilhar uma pasta do Dropbox ou do OneDrive sem tocar nos objetos umas das outras.
 
-Como objetos recebem chaves depende do modo de armazenamento do local, fixado na criação:
-
-- **Opaco**: objetos são criptografados e armazenados sob chaves derivadas do conteúdo que não revelam nada. Este é o modo de confiança total na criptografia; veja [Criptografia](/pt-br/reference/encryption).
-- **Navegável**: objetos são texto claro em caminhos legíveis registrados por blob no momento do upload: `release_files/{artist}/{album}/{filename}`, `covers/{album}/{release}/cover.{ext}`, `artist_images/{artist}/artist.{ext}`. O bucket também é uma árvore de arquivos utilizável; a troca é não haver criptografia nem associação, então locais navegáveis não podem ser compartilhados com outras pessoas.
+Todo objeto é criptografado e armazenado com um nome aleatório; não existe modo em texto claro. Os arquivos de bae pertencem a linhas de três tabelas sincronizadas, `release_files`, `covers` e `artist_images`, mais o avatar de cada linha de `people`. O caminho de um arquivo é fixado quando ele é anexado à sua linha, então renomear um álbum nunca o move. Veja [Criptografia](/pt-br/reference/encryption).
 
 ## Comportamento em redes reais
 
-Leituras para reprodução usam intervalos: o player transmite as janelas de bytes de que precisa em vez de arquivos inteiros. Uploads acima de um limite de tamanho usam multipart onde o provedor oferece suporte. Limites de taxa e erros transitórios do provedor tentam novamente com espera exponencial, respeitando o retry-after do provedor quando fornecido; tokens OAuth expirados são renovados no lugar. A caixa de saída de sincronização sobrevive a reinícios: um upload interrompido ao sair do app retoma em vez de reiniciar.
+Leituras para reprodução usam intervalos: o player busca os blocos criptografados de que precisa em vez de arquivos inteiros, e busca adiante enquanto um arquivo toca em ordem. Limites de taxa e erros transitórios do provedor tentam novamente seguindo um único cronograma de espera, respeitando o retry-after do provedor quando fornecido. A fila de upload sobrevive a reinícios: um upload interrompido ao sair do app retoma em vez de reiniciar, e uploads pausados continuam pausados.

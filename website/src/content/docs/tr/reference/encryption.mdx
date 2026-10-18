@@ -1,28 +1,34 @@
 ---
 title: Şifreleme
-description: Kitaplık anahtarının ne olduğu, nerede yaşadığı ve sağlayıcının hangi şifreli metni tuttuğu
+description: Hangi anahtarların olduğu, nerede yaşadıkları ve sağlayıcının ne görebildiği
 ---
 
-bae'in opaque bulut evine koyduğu her şey aygıttan çıkmadan önce şifrelenir. bae kendi kriptografisini uygulamaz: düzenin tamamı [coven](https://coven.bae.fm)'e aittir ve bu sayfa bae'in onu nasıl kullandığını açıklar. Browsable evler bunların hepsinden çıkar; aşağıdakiler onlara uygulanmaz.
+bae'in bulut evine koyduğu her şey aygıttan çıkmadan önce şifrelenir; şifresiz mod yoktur. bae kendi kriptografisini uygulamaz: düzenin tamamı [coven](https://coven.bae.fm)'e aittir ve bu sayfa bae'in onu nasıl kullandığını açıklar.
 
-## Kitaplık anahtarı
+## Anahtarlar
 
-Opaque kitaplığın tek kök sırrı vardır: ev oluşturulduğunda üretilen rastgele 256 bit anahtar. OS keyring içinde yaşar, asla dosyada değil; Apple platformlarında keyring girdisi iCloud Keychain üzerinden eşzamanlanır. bae'in yapılandırması anahtarın yalnızca parmak izini saklar; bu, kilit açmada yanlış anahtarı doğru olandan ayırmaya yeter ve sırrı tutmaz.
+| Anahtar | Ne yapar |
+|---|---|
+| Depo anahtarı | kitaplığı ve üyelik kayıtlarını şifreler |
+| Her kişinin çember anahtarı | o kişinin özel tuttuklarını şifreler: özel çalma geçmişini ve çalma listelerini |
+| Her dosyanın anahtarı | tek bir dosyayı şifreler ve yalnızca satırının şifreli değişiklikleri içinde taşınır |
+| Bir kişinin imza anahtar çifti | aygıtlarının gönderdiği her değişikliği imzalar |
+| Bir kişinin mühürleme anahtar çifti | o kişiye mühürlenmiş anahtarları açar |
 
-Anahtar, cihazlar arasında iki şekilde dolaşır; her ikisi de [Kimlik ve üyelik](/tr/reference/membership)'te açıklanmaktadır: cihaz eşleştirme sırasında onaylı bir cihazın genel anahtarına mühürlenir ve bir kurtarma kodu içinde taşınır.
+Depo anahtarı rastgeledir ve kitaplık bulut evine kavuştuğunda üretilir. Bir kişinin anahtar çiftleri tüm aygıtlarınca paylaşılır. Özel anahtarlar ve kitaplık anahtarları OS keyring içinde yaşar, asla bir dosyada veya veritabanında değil. Bir aygıta iki yoldan ulaşırlar, ikisi de [Kimlik ve üyelik](/tr/reference/membership)'te açıklanır: geri yükleme kodu bir kişinin kendi anahtar çiftlerini taşır ve daveti onaylayan yönetici depo anahtarlarını yeni kişinin mühürleme anahtarına mühürler.
 
-## Kuşaklar
+## Döndürme
 
-Kitaplık anahtarı aslında numaralı kuşaklardan oluşan bir anahtarlıktır. Bir member kaldırmak, kaldırılan member'ın asla almadığı yeni bir kuşak ekler: sonrasında yazılan her şey yeni kuşağı kullanır ve onun için okunamaz olur; kalan members her kuşağı tutar ve tüm geçmişi okuyabilir. Her mühürlü nesne, onu hangi kuşağın açtığını açıkta kaydeder.
+Bir anahtar asla yerinde değiştirilmez; yenisi eklenir. Bir kişi kaldırıldıktan sonra kalan bir üyenin aygıtı, oraya daha fazla veri yazmadan önce yeni bir depo anahtarı ve kişinin bulunduğu her çember için yeni bir anahtar ekler: sonrasında yazılan her şey onun için okunamaz olur, kalan üyeler ise her eski anahtarı tutar ve tüm geçmişi okuyabilir. Tek bir aygıtı kaldırmak hiçbir şeyi döndürmez, çünkü kişinin diğer aygıtları onun anahtarlarını paylaşır; kaldırmadan itibaren o aygıtın gönderdiği sayılmaz.
 
 ## Ne mühürlenir
 
-Evdeki her nesne: changeset'ler, snapshot'lar, ses blob'ları, görseller, üyelik kayıtları, denetim nesneleri. Nesneler XChaCha20-Poly1305 ile 64 KB parçalar halinde mühürlenir; her parça doğrulanır ve bağlamına bağlanır: mühürlü nesne yalnızca yazılmak istendiği nesne olarak, bu kitaplık için, bu anahtarda çözülür. Parçalama akışın çalışmasının nedenidir; çalar tam olarak aldığı bayt aralıklarını çözebilir.
+Evdeki her nesne: değişiklikler, snapshot'lar, üyelik kayıtları ve dosyalar. İçerik XChaCha20-Poly1305 ile şifrelenir, her değişiklik Ed25519 ile imzalanır ve anahtarlar kişilere X25519 mühürlü kutularla mühürlenir. Dosyalar 64 KiB parçalar halinde şifrelenir; her parça ayrı doğrulanır ve konumuna bağlanır, böylece bir parça fark edilmeden değiştirilemez, takas edilemez veya yeniden sıralanamaz. Parçalama akışın çalışmasının nedenidir: çalar tam olarak aldığı parçaları çözebilir.
 
 ## Sağlayıcı ne görebilir
 
-Nesne sayısı, nesne boyutları, yükleme zamanlaması ve erişim desenleri. Adlar değil, üst veri değil, ses değil, görsel değil, üyelik değil. Sunucu taraflı kurtarma yoktur: bütün aygıtlarını ve anahtarın her kopyasını kaybeden kullanıcı kitaplığın şifreli metnini sonsuza dek kaybetmiştir; tasarımın amaçladığı budur.
+Nesne sayısı, nesne boyutları, yükleme zamanlaması, her nesneyi hangi hesabın yazdığı ve her dosyayı ve snapshot'ı hangi aygıtın yüklediği, çünkü yolları aygıtı adlandırır. Adlar değil, üst veri değil, ses değil, görsel değil. Dosyalar rastgele adlar altında durur, asla içeriklerinin karması altında değil. Sunucu taraflı kurtarma yoktur: herkes her aygıtını ve her geri yükleme kodunu kaybederse kitaplık kaybolur; tasarımın amaçladığı budur.
 
-## Kilit açma ve kilitleme
+## Anahtarlık
 
-Bir kitaplığı açmak anahtarı keyring'den okur. Kitaplık anahtar bekliyorsa ve keyring'de yoksa bae kitaplığı kilitli sayar: açmadan önce anahtarı ister, geri keyring'e kaydetmeden önce girdiyi saklanan parmak izine göre doğrular. Kitaplığı kilitlemek anahtarı bilerek keyring'den kaldırır; tekrar girilene kadar bulut evindeki hiçbir şey okunamaz veya yazılamaz.
+Bir kitaplığı açmak anahtarlarını OS keyring'den okur. O anda kilitli olan bir anahtarlık, kilitli bir oturum veya uyuyan bir ekran yüzünden, bozuk olandan ayrılır: bae kitaplığı kitaplık kullanılamaz demek yerine kilitli gösterir ve kilit açıldıktan sonra yeniden dener. Bir aygıt anahtarı unutabilir de; bu, kitaplığı o aygıtta yeniden açılana kadar kilitler.

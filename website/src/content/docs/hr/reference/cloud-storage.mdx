@@ -1,36 +1,35 @@
 ---
 title: Pohrana u oblaku
-description: Pružatelji, autentifikacija i oblik mjesta u oblaku
+description: Pružatelji, prijava i oblik mjesta u oblaku
 ---
 
-Mjesto u oblaku jedna je lokacija u pohrani koju korisnik već posjeduje. Svaki pružatelj pokreće se kroz isto sučelje pohrane u [coven](https://coven.bae.fm)-u; po pružatelju se razlikuju autentifikacija i način na koji drugi uređaj dobiva pristup.
+Mjesto u oblaku jedna je lokacija u pohrani koju korisnik već posjeduje. Svaki pružatelj pokreće se kroz isto sučelje pohrane u [coven](https://coven.bae.fm)-u; po pružatelju se razlikuju prijava, postavljanje i način na koji do njega dolaze drugi ljudi i uređaji.
 
 ## Pružatelji
 
-| Pružatelj | Autentifikacija | Pristup za novi uređaj |
-|---|---|---|
-| S3-kompatibilno | Pristupni ključ + tajna | Vjerodajnice su zapečaćene na odobrenom uređaju tijekom uparivanja |
-| Dropbox | OAuth (PKCE) | Račun novog uređaja odobren je, a zatim se mapa dijeli |
-| OneDrive | OAuth (PKCE) | Račun novog uređaja odobren je, a zatim se mapa dijeli |
-| iCloud (CloudKit) | Apple ID, bez prijave | CloudKit dijeljenje prihvaćeno tijekom uparivanja |
+| Pružatelj | Prijava | Vaš vlastiti novi uređaj | Osoba koju pozovete |
+|---|---|---|---|
+| S3-kompatibilno | Pristupni ključ + tajna | Kod za vraćanje, plus vaš pristupni ključ, nošen uz njega u QR kodu | Pristupni ključ izrađen za nju |
+| Dropbox | OAuth, drži ga coven | Kod za vraćanje, zatim prijava u vaš Dropbox | Dijeljena mapa biblioteke dijeli se s njezinim računom |
+| OneDrive | OAuth, drži ga coven | Kod za vraćanje, zatim prijava u vaš OneDrive | Mapa biblioteke dijeli se s njezinim računom |
+| iCloud (CloudKit) | Apple Account, bez prijave | Kod za vraćanje, nudi se i iz iCloud privjeska ključeva | CloudKit zona biblioteke dijeli se s njezinim Apple Accountom |
 
-S3-kompatibilno pokriva AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO i sve drugo što govori API; spremnik, regija, krajnja točka i prefiks ključa mogu se konfigurirati, a spremnik se ispituje prije spremanja konfiguracije pa se tipfeler ruši pri postavljanju, ne pri prvoj sinkronizaciji. OAuth pružatelji postoje samo u punom izdanju **bae**; gradnje **baeium** ih izostavljaju pri prevođenju.
+S3-kompatibilno pokriva AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO i sve drugo što govori API. Obrazac za postavljanje traži samo spremnik, regiju, krajnju točku i pristupni ključ; coven prepoznaje poznate usluge po hostu krajnje točke i popunjava kako s njima razgovarati. **Napredno** sadrži neobavezni prefiks ključa i izbor profila usluge, zadano automatski. Za uslugu koju coven ne poznaje, **Otkrij postavke** ispituje spremnik ključem i prikazuje što je pronašao. Postavljanje provjerava pružatelja prije nego što se išta spremi, pa se tipfeler ruši pri postavljanju, ne pri prvoj sinkronizaciji, a bae navodi covenov razlog jednostavnim riječima. Dropbox, OneDrive i iCloud postoje samo u punom izdanju **bae**; gradnje **baeium** ih izostavljaju pri prevođenju.
 
-## OAuth
+## Prijava i mape
 
-Prijava je tijek autorizacijskog koda s PKCE-om, kao javni klijent. Na desktopu preusmjeravanje stiže na povratni poslužitelj vezan za lokalni port za taj jedan povratni poziv; na mobilnom aplikacija umjesto toga hvata preusmjeravanje vlastite sheme. bae traži najuži opseg koji pružatelj nudi za posao. Tokeni se spremaju u privjesak ključeva OS-a, osvježavaju se pružateljevim refresh grantom, a odbijeno osvježavanje prikazuje upit za ponovno povezivanje umjesto tihe petlje ponovnog pokušaja.
+coven sam obavlja prijavu u Dropbox i OneDrive, pa nijedan token ne prolazi kroz bae. Na desktopu preglednik otvara stranicu pružatelja, a lokalni slušatelj prima to jedno preusmjeravanje; na mobilnom to radi prijavni prozor platforme. coven drži tokene u privjesku ključeva OS-a i jednom osvježava token kad ga pružatelj odbije; neuspjelo osvježavanje pojavljuje se u stanju sinkronizacije kao radnja **Prijavi se** umjesto tihe petlje ponovnog pokušaja.
 
-CloudKit ne treba tijek: platformin CloudKit upravljački sloj, implementiran u aplikaciji i predan jezgri, radi kao prijavljeni Apple ID.
+Nakon prijave korisnik odabire gdje biblioteka živi. Na Dropboxu je to dijeljena mapa, jer se biblioteka kućanstva dijeli s računima drugih ljudi; bae za to koristi puni pristup Dropboxu, ne mapu aplikacije. Ako još nema dijeljene mape, bae kaže da se jedna podijeli u Dropboxu i traži ponovno. Na OneDriveu je to bilo koja mapa, pregledavana od vrha, a ondje se može napraviti nova.
+
+CloudKit ne treba tijek: coven ga na Apple platformama pokreće kao prijavljeni Apple Account.
 
 ## Raspored mjesta
 
-Unutar mjesta coven raspoređuje tokove skupova promjena po uređaju, generacije snimki, zapise članstva i imenske prostore binarnih objekata. bae dodaje tri imenska prostora binarnih objekata: `release_files`, `covers` i `artist_images`.
+Unutar mjesta svaki put objekta počinje identifikatorom spremišta biblioteke: covenov numerirani niz promjena, njegove snimke, zahtjevi za pridruživanje i pohranjene datoteke. Više biblioteka može dijeliti jednu mapu Dropboxa ili OneDrivea bez diranja tuđih objekata.
 
-Način na koji se objekti ključaju ovisi o načinu pohrane mjesta, fiksiranom pri stvaranju:
-
-- **Neprozirno**: objekti su šifrirani i spremljeni pod ključevima izvedenima iz sadržaja koji ništa ne otkrivaju. To je način potpunog oslanjanja na kriptografiju; pogledajte [Šifriranje](/hr/reference/encryption).
-- **Pregledljivo**: objekti su otvoreni tekst na čitljivim putovima zabilježenima po binarnom objektu pri prijenosu: `release_files/{artist}/{album}/{filename}`, `covers/{album}/{release}/cover.{ext}`, `artist_images/{artist}/artist.{ext}`. Spremnik je ujedno upotrebljivo stablo datoteka; razmjena je bez šifriranja i bez članstva, pa se pregledljiva mjesta ne mogu dijeliti s drugim ljudima.
+Svaki objekt šifrira se i sprema pod nasumičnim nazivom; način otvorenog teksta ne postoji. Datoteke bae pripadaju recima triju sinkroniziranih tablica, `release_files`, `covers` i `artist_images`, plus avatar u svakom retku `people`. Put datoteke određuje se kad se pridruži svom retku, pa preimenovanje albuma nikad ne premješta datoteku. Pogledajte [Šifriranje](/hr/reference/encryption).
 
 ## Ponašanje na stvarnim mrežama
 
-Čitanja za reprodukciju su rasponska: reproduktor struji prozore bajtova koje treba umjesto cijelih datoteka. Prijenosi iznad praga veličine idu višedijelno gdje pružatelj to podržava. Ograničavanje učestalosti i prolazne pogreške pružatelja ponovno se pokušavaju s eksponencijalnom odgodom, poštujući pružateljev `Retry-After` kad je dan; istekli OAuth tokeni osvježavaju se na mjestu. Odlazni sandučić sinkronizacije preživljava ponovna pokretanja: prijenos prekinut izlaskom iz aplikacije nastavlja se umjesto da krene ispočetka.
+Čitanja za reprodukciju su rasponska: reproduktor dohvaća šifrirane blokove koje treba umjesto cijelih datoteka, a unaprijed dohvaća dok se datoteka reproducira redom. Ograničavanje učestalosti i prolazne pogreške pružatelja ponovno se pokušavaju po jednom rasporedu odgode, poštujući pružateljev `Retry-After` kad je dan. Red prijenosa preživljava ponovna pokretanja: prijenos prekinut izlaskom iz aplikacije nastavlja se umjesto da krene ispočetka, a pauzirani prijenosi ostaju pauzirani.

@@ -7,34 +7,36 @@ Synchronizace bae je synchronizace [coven](https://coven.bae.fm): bae deklaruje 
 
 ## Zachycení
 
-coven vlastní připojení SQLite, takže každý zápis, který bae uloží, jím prochází. Rozšíření session v SQLite zaznamená přesně to, co se změnilo v každé transakci; změny synchronizovaných tabulek se stanou **changesetem**, zapečetěným klíčem knihovny a podepsaným identitním klíčem zařízení. Žádné porovnávání rozdílů, žádné příznaky špinavosti: zachycení je vlastnost připojení a zápis nelze minout.
+coven vlastní připojení SQLite, takže každý zápis, který bae uloží, jím prochází. Když se uloží transakce, která mění synchronizované tabulky, coven ve stejné transakci zaznamená každou změnu řádku i se sloupci, kterých se týká, takže uložená změna se nikdy neztratí, ani když aplikace o chvíli později spadne. Žádné porovnávání rozdílů, žádné příznaky špinavosti: zachycení je vlastnost připojení a zápis nelze minout. Změna čeká na zařízení a šifruje a podepisuje se až při odeslání, takže zápis nepotřebuje klíč ani síť.
 
-## Proudy
+## Posloupnost
 
-Každé zařízení přidává své changesety do vlastního proudu v cloudovém domově, postupně číslovaného. Zařízení nikdy nezapisují do proudů ostatních, takže v úložišti nejsou konflikty zápisu, a každé zařízení sleduje kurzor pro proud každého protějšku. Synchronizační cyklus odešle místní odchozí frontu a potom stahuje proud každého protějšku od jeho kurzoru dál, ověřuje podpis každého changesetu a členství autora, než ho použije.
+Celá historie knihovny v cloudovém domově je jedna číslovaná posloupnost objektů. Každý obsahuje dávku změn jednoho zařízení, správcovský záznam, klíč zapečetěný pro jednoho člena, nebo oznámení snapshotu. Každé zařízení je používá po pořadí a žádný nepřeskočí, takže všechna zařízení se shodnou na tom, co se kdy stalo. Zařízení přidá další objekt teprve poté, co použilo všechny předchozí.
 
-Cyklus běží po místních změnách, na časovači nečinnosti se zpomalováním (až pět minut mezi dotazy) a okamžitě při **Sync Now**. Selhání se zpomalí a opakují; smyčka hlásí výsledek každého cyklu do uživatelského rozhraní jako stav, text chyby a počet použitých řádků.
+Synchronizační průchod čte dopředu od posledního objektu, který zařízení použilo, dokud nějaký nechybí, ověří podpis každého a použije ho, odešle čekající změny tohoto zařízení jako jeden nový objekt a pak udělá práci, kterou nový stav vyžaduje: nasdílí nebo odebere přístup, pořídí snapshoty, smaže starou historii. Průchod nad klidnou knihovnou stojí dva požadavky, bez ohledu na její velikost.
+
+Průchody běží po místních změnách, na časovači nečinnosti a okamžitě při **Synchronizovat nyní**. Selhání se opakují podle jednoho plánu zpomalování a všechno, co nemůže pokračovat, uvede, na co čeká, což bae ukazuje ve svém stavovém řádku synchronizace.
 
 ## Sloučení
 
 Dvě zařízení upravující stejnou knihovnu mimo spojení jsou běžný případ, ne výjimka. Když se jejich změny potkají:
 
 - Úpravy **různých řádků nebo různých sloupců** se použijí obě. Úprava roku vydání na notebooku a jeho vydavatelství na desktopu přinese obojí.
-- Úpravy **stejného sloupce stejného řádku** se seřadí podle hybridních logických hodin `_updated_at` daného řádku: pozdější úprava vyhraje deterministicky a stejně na každém zařízení.
-- **Smazání vítězí** nad souběžnými úpravami: vydání smazané na jednom zařízení zůstane smazané, i když ho jiné zařízení ve stejném intervalu upravilo.
+- Úpravy **stejného sloupce stejného řádku** se řadí podle časového razítka: pozdější úprava vyhraje deterministicky a stejně na každém zařízení.
+- **Smazání vítězí** nad souběžnými úpravami: úprava řádku, který byl mezitím smazán, prohraje, ať dorazí kdykoli, takže vydání smazané na jednom zařízení zůstane smazané, i když ho jiné zařízení ve stejném intervalu upravilo.
 
-Neexistuje UI konfliktů, protože neexistuje nevyřešený stav: každé zařízení dojde ke stejnému výsledku z libovolného pořadí použití.
+coven uchová každou nahrazenou hodnotu jako *ztracenou hodnotu*; bae žádnou nezobrazuje ani nezahazuje, takže neexistuje UI konfliktů. Každé zařízení dojde ke stejnému výsledku z libovolného pořadí příchodu.
 
-## Zavedení
+## Snapshoty
 
-Zařízení, které se připojuje nebo obnovuje, nepřehrává historii od začátku. Stáhne **snapshot**, úplný obraz SQLite pravidelně zveřejňovaný do cloudového domova, a potom použije jen changesety, které každý proud nasbíral po něm. Metadata snapshotu zaznamenávají verzi schématu a kurzory jednotlivých proudů, které zahrnuje.
+Zařízení, které se připojuje nebo obnovuje, nepřehrává historii od začátku. Zařízení pořizují **snapshoty**, úplný stav knihovny v jednom bodě posloupnosti, a jakmile ho má knihovna i každý soukromý kruh, historie před ním se smaže. Nové zařízení načte nejnovější snapshot a pak použije jen to, co přišlo po něm. Zařízení, které bylo pryč déle, než se historie uchovává, udělá totéž a své neodeslané úpravy si ponechá.
 
 ## Verze schématu
 
-Schéma bae migruje přes číslovaný žebřík a jeho horní příčka je vyražena na každém changesetu, který zařízení zapíše. Zařízení, které stáhne changeset z novějšího schématu, než samo má, tento proud odloží a nepoužije nic za ním, dokud se aplikace neaktualizuje; nic se neztratí a nic se nepoužije špatně. Samotný databázový soubor se odmítne otevřít v binárce starší než jeho schéma.
+Schéma bae je jedna migrace a každá změna, kterou zařízení pošle, zaznamenává verzi schématu, ve které vznikla. Zařízení, které narazí na změnu z novějšího schématu, než samo má, se tam zastaví a nepoužije nic za ní, dokud se aplikace neaktualizuje; nic se neztratí a nic se nepoužije špatně.
 
 Hrubší než verze schématu je **éra kompatibility**: připnutá revize coven zapečená v každé binárce. Dvě sestavení synchronizují jen uvnitř jedné éry; zlom formátu coven na drátu je nová éra a zvýšení major verze napříč všemi aplikacemi. Před 1.0 je každé sestavení éra nula a formáty se mění bez migrace.
 
 ## Co vidí poskytovatel
 
-V neprůhledném domově poskytovatel ukládá šifrové changesety, šifrové bloby a podepsané záznamy členství; může počítat objekty a pozorovat velikosti a časy, ale nic z toho nemůže číst. Každý objekt, který zařízení stáhne, se před dotykem databáze ověří, podpis i členství: úložiště je hloupá, nedůvěryhodná schránka. Viz [Šifrování](/cs/reference/encryption) a [Identita a členství](/cs/reference/membership).
+Poskytovatel ukládá šifrované změny, snapshoty, záznamy členství a soubory; může počítat objekty, pozorovat velikosti a časy a vidět, který účet zapisuje každý objekt, ale z obsahu nic nepřečte. Každý objekt, který zařízení stáhne, se před dotykem databáze ověří, podpis i členství: úložiště je hloupá, nedůvěryhodná schránka. Viz [Šifrování](/cs/reference/encryption) a [Identita a členství](/cs/reference/membership).

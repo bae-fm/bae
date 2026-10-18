@@ -1,36 +1,35 @@
 ---
 title: Przechowywanie w chmurze
-description: Dostawcy, uwierzytelnianie i kształt domu w chmurze
+description: Dostawcy, logowanie i kształt domu w chmurze
 ---
 
-Dom w chmurze to jedno miejsce w przechowywaniu, które użytkownik już posiada. Każdy dostawca działa przez ten sam interfejs przechowywania w [coven](https://coven.bae.fm); różnią się uwierzytelnianiem i sposobem nadania dostępu drugiemu urządzeniu.
+Dom w chmurze to jedno miejsce w przechowywaniu, które użytkownik już posiada. Każdy dostawca działa przez ten sam interfejs przechowywania w [coven](https://coven.bae.fm); różnią się logowaniem, konfiguracją i tym, jak docierają do niego inne osoby i urządzenia.
 
 ## Dostawcy
 
-| Dostawca | Uwierzytelnianie | Dostęp dla nowego urządzenia |
-|---|---|---|
-| Zgodny z S3 | Access key + secret | Dane uwierzytelniające przypisane do zatwierdzonego urządzenia podczas parowania |
-| Dropbox | OAuth (PKCE) | Konto nowego urządzenia zostało zatwierdzone, następnie folder jest udostępniany |
-| OneDrive | OAuth (PKCE) | Konto nowego urządzenia zostało zatwierdzone, następnie folder jest udostępniany |
-| iCloud (CloudKit) | Apple ID, bez logowania | Udział CloudKit zaakceptowany podczas parowania |
+| Dostawca | Logowanie | Twoje nowe urządzenie | Osoba, którą zapraszasz |
+|---|---|---|---|
+| Zgodny z S3 | Access key + secret | Kod przywracania plus Twój klucz dostępu, niesiony obok niego w kodzie QR | Klucz dostępu utworzony dla niej |
+| Dropbox | OAuth, trzymany przez coven | Kod przywracania, potem logowanie do Twojego Dropbox | Udostępniony folder biblioteki jest udostępniany jej kontu |
+| OneDrive | OAuth, trzymany przez coven | Kod przywracania, potem logowanie do Twojego OneDrive | Folder biblioteki jest udostępniany jej kontu |
+| iCloud (CloudKit) | Apple Account, bez logowania | Kod przywracania, oferowany też z pęku kluczy iCloud | Strefa CloudKit biblioteki jest udostępniana jej Apple Account |
 
-Zgodność z S3 obejmuje AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO i wszystko inne, co mówi tym API; bucket, region, endpoint i prefiks klucza są konfigurowalne, a bucket jest sprawdzany przed zapisaniem konfiguracji, żeby literówka zatrzymała konfigurację, a nie pierwszą synchronizację. Dostawcy OAuth istnieją tylko w pełnej edycji **bae**; kompilacje **baeium** kompilują je poza aplikacją.
+Zgodność z S3 obejmuje AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO i wszystko inne, co mówi tym API. Formularz konfiguracji pyta tylko o bucket, region, endpoint i klucz dostępu; coven rozpoznaje znane usługi po hoście endpointu i uzupełnia sposób rozmowy z nimi. **Zaawansowane** zawiera opcjonalny prefiks klucza i wybór profilu usługi, domyślnie automatyczny. Dla usługi, której coven nie zna, **Wykryj ustawienia** sprawdza bucket kluczem i pokazuje, co znalazło. Konfiguracja sprawdza dostawcę, zanim cokolwiek zostanie zapisane, żeby literówka zatrzymała konfigurację, a nie pierwszą synchronizację, a bae podaje powód coven prostymi słowami. Dropbox, OneDrive i iCloud istnieją tylko w pełnej edycji **bae**; kompilacje **baeium** kompilują je poza aplikacją.
 
-## OAuth
+## Logowanie i foldery
 
-Logowanie jest przepływem authorization-code z PKCE, jako klient publiczny. Na desktopie przekierowanie trafia na serwer loopback podpięty do lokalnego portu dla jednego wywołania zwrotnego; na mobile aplikacja przechwytuje zamiast tego przekierowanie z własnym schematem. bae prosi o najwęższy zakres, jaki dostawca oferuje dla zadania. Tokeny są przechowywane w pęku kluczy systemu operacyjnego, odświeżane grantem odświeżania dostawcy, a odrzucone odświeżenie pojawia się jako prośba o ponowne połączenie, nie jako cicha pętla ponowień.
+coven sam przeprowadza logowanie do Dropbox i OneDrive, więc żaden token nie przechodzi przez bae. Na desktopie przeglądarka otwiera stronę dostawcy, a lokalny odbiornik przyjmuje jedno przekierowanie; na mobile robi to arkusz logowania platformy. coven trzyma tokeny w pęku kluczy systemu operacyjnego i raz odświeża token, gdy dostawca go odrzuci; nieudane odświeżenie pojawia się w stanie synchronizacji jako działanie **Zaloguj się**, nie jako cicha pętla ponowień.
 
-CloudKit nie potrzebuje żadnego przepływu: platformowy sterownik CloudKit, zaimplementowany w aplikacji i przekazany rdzeniowi, działa jako zalogowany Apple ID.
+Po zalogowaniu użytkownik wybiera, gdzie mieszka biblioteka. W Dropbox to folder udostępniony, bo biblioteka domowa jest udostępniana kontom innych osób; bae używa do tego pełnego dostępu do Dropbox, nie folderu aplikacji. Jeśli nie ma jeszcze żadnego udostępnionego folderu, bae mówi, żeby udostępnić jakiś w Dropbox i szukać ponownie. W OneDrive to dowolny folder, przeglądany od góry, a nowy można tam utworzyć.
+
+CloudKit nie potrzebuje żadnego przepływu: coven obsługuje go na platformach Apple jako zalogowane Apple Account.
 
 ## Układ domu
 
-Wewnątrz domu coven układa strumienie zestawów zmian per urządzenie, generacje migawek, rekordy członkostwa i przestrzenie nazw blobów. bae dodaje trzy przestrzenie nazw blobów: `release_files`, `covers` i `artist_images`.
+Wewnątrz domu każda ścieżka obiektu zaczyna się od identyfikatora magazynu biblioteki: numerowanej sekwencji zmian coven, jego migawek, próśb o dołączenie i przechowywanych plików. Kilka bibliotek może dzielić jeden folder Dropbox albo OneDrive bez dotykania obiektów pozostałych.
 
-Sposób kluczowania obiektów zależy od trybu przechowywania domu, ustalonego przy tworzeniu:
-
-- **Nieprzezroczysty**: obiekty są szyfrowane i przechowywane pod kluczami pochodzącymi z treści, które niczego nie ujawniają. To tryb pełnego zaufania do kryptografii; zobacz [Szyfrowanie](/pl/reference/encryption).
-- **Przeglądalny**: obiekty są tekstem jawnym pod czytelnymi ścieżkami zapisanymi per blob przy wysyłaniu: `release_files/{artist}/{album}/{filename}`, `covers/{album}/{release}/cover.{ext}`, `artist_images/{artist}/artist.{ext}`. Bucket jest jednocześnie używalnym drzewem plików; skutkiem ubocznym jest brak szyfrowania i brak członkostwa, więc przeglądalnych domów nie można udostępniać innym osobom.
+Każdy obiekt jest szyfrowany i przechowywany pod losową nazwą; trybu jawnego nie ma. Pliki bae należą do wierszy trzech synchronizowanych tabel, `release_files`, `covers` i `artist_images`, plus awatar w każdym wierszu `people`. Ścieżka pliku jest ustalana, gdy plik zostaje dołączony do wiersza, więc zmiana nazwy albumu nigdy go nie przenosi. Zobacz [Szyfrowanie](/pl/reference/encryption).
 
 ## Zachowanie w rzeczywistych sieciach
 
-Odczyty do odtwarzania są zakresowe: odtwarzacz streamuje potrzebne okna bajtów zamiast całych plików. Wysyłania powyżej progu rozmiaru używają multipart tam, gdzie dostawca to obsługuje. Limity żądań i przejściowe błędy dostawcy są ponawiane z wykładniczym odstępem, z uszanowaniem `retry-after`, gdy dostawca je poda; wygasłe tokeny OAuth odświeżają się w miejscu. Skrzynka wysyłania synchronizacji przetrwa restart: wysyłanie przerwane przez zamknięcie aplikacji wznawia się zamiast zaczynać od początku.
+Odczyty do odtwarzania są zakresowe: odtwarzacz pobiera potrzebne zaszyfrowane kawałki zamiast całych plików i pobiera z wyprzedzeniem, gdy plik gra po kolei. Limity żądań i przejściowe błędy dostawcy są ponawiane według jednego harmonogramu odstępów, z uszanowaniem `retry-after`, gdy dostawca je poda. Kolejka wysyłania przetrwa restart: wysyłanie przerwane przez zamknięcie aplikacji wznawia się zamiast zaczynać od początku, a wstrzymane wysyłanie pozostaje wstrzymane.

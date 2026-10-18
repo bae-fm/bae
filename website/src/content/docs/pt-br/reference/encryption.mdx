@@ -1,28 +1,34 @@
 ---
 title: Criptografia
-description: O que é a chave da biblioteca, onde ela vive e que texto cifrado o provedor guarda
+description: Quais chaves existem, onde elas vivem e o que o provedor consegue ver
 ---
 
-Tudo que bae coloca em um local opaco na nuvem é criptografado antes de sair do dispositivo. bae não implementa criptografia própria: o esquema inteiro é de [coven](https://coven.bae.fm), e esta página descreve como bae o usa. Locais navegáveis ficam fora disso; nada abaixo se aplica a eles.
+Tudo que bae coloca em um local na nuvem é criptografado antes de sair do dispositivo; não existe modo sem criptografia. bae não implementa criptografia própria: o esquema inteiro é de [coven](https://coven.bae.fm), e esta página descreve como bae o usa.
 
-## A chave da biblioteca
+## As chaves
 
-Uma biblioteca opaca tem um segredo raiz: uma chave aleatória de 256 bits criada quando o local é criado. Ela vive no chaveiro do sistema operacional, nunca em um arquivo; em plataformas Apple, a entrada do chaveiro sincroniza pelo iCloud Keychain. A configuração de bae armazena só uma impressão digital da chave, suficiente para distinguir uma chave errada de uma certa ao desbloquear sem guardar o segredo.
+| Chave | O que faz |
+|---|---|
+| A chave do store | criptografa a biblioteca e seus registros de associação |
+| A chave de círculo de cada pessoa | criptografa o que essa pessoa mantém privado: seu histórico de reprodução privado e suas playlists privadas |
+| A chave de cada arquivo | criptografa um arquivo, e viaja só dentro das mudanças criptografadas da linha dele |
+| O par de chaves de assinatura de uma pessoa | assina cada mudança que os dispositivos dela enviam |
+| O par de chaves de selagem de uma pessoa | abre chaves seladas para essa pessoa |
 
-A chave viaja entre dispositivos de duas maneiras, ambas descritas em [Identidade e adesão](/pt-br/reference/membership): selada à chave pública de um dispositivo aprovado durante o emparelhamento do dispositivo e transportada dentro de um código de recuperação.
+A chave do store é aleatória, criada quando a biblioteca ganha seu local na nuvem. Os pares de chaves de uma pessoa são compartilhados por todos os dispositivos dela. Chaves privadas e chaves da biblioteca vivem no chaveiro do sistema operacional, nunca em um arquivo ou no banco de dados. Elas chegam a um dispositivo de duas maneiras, ambas descritas em [Identidade e adesão](/pt-br/reference/membership): um código de restauração leva os próprios pares de chaves de uma pessoa, e um administrador que aprova um convite sela as chaves do store para a chave de selagem da pessoa nova.
 
-## Gerações
+## Rotação
 
-A chave da biblioteca é na verdade um chaveiro de gerações numeradas. Remover um membro anexa uma nova geração que o membro removido nunca recebe: tudo escrito depois usa a nova geração e fica ilegível para ele, enquanto membros restantes mantêm todas as gerações e conseguem ler todo o histórico. Cada objeto selado registra, em claro, qual geração o abre.
+Uma chave nunca é alterada no lugar; uma nova é adicionada. Depois que uma pessoa é removida, o dispositivo de um membro restante adiciona uma chave do store nova, e uma chave nova para cada círculo de que ela fazia parte, antes de escrever mais dados ali: tudo escrito depois fica ilegível para ela, enquanto os membros restantes mantêm todas as chaves anteriores e conseguem ler todo o histórico. Remover um único dispositivo não rotaciona nada, já que os outros dispositivos da pessoa compartilham as chaves dele; a partir da remoção, o que esse dispositivo envia não conta.
 
 ## O que é selado
 
-Todo objeto no local: changesets, snapshots, blobs de áudio, arte, registros de associação, objetos de controle. Objetos são selados com XChaCha20-Poly1305 em blocos de 64 KB, cada bloco autenticado, e vinculados ao seu contexto: um objeto selado só descriptografa como o objeto que foi escrito para ser, para esta biblioteca, nesta chave. O particionamento em blocos é por isso que streaming funciona: o player pode descriptografar exatamente os intervalos de bytes que busca.
+Todo objeto no local: mudanças, snapshots, registros de associação e arquivos. O conteúdo é criptografado com XChaCha20-Poly1305, toda mudança é assinada com Ed25519, e as chaves são seladas para as pessoas com caixas seladas X25519. Arquivos são criptografados em blocos de 64 KiB, cada um autenticado separadamente e vinculado à sua posição, então um bloco não pode ser alterado, trocado ou reordenado sem que se perceba. O particionamento em blocos é por isso que streaming funciona: o player pode descriptografar exatamente os blocos que busca.
 
 ## O que o provedor consegue ver
 
-Quantidade de objetos, tamanhos de objetos, tempo de upload e padrões de acesso. Não nomes, não metadados, não áudio, não arte, não associação. Não há recuperação no servidor: um usuário que perde todos os dispositivos e toda cópia da chave perdeu o texto cifrado da biblioteca para sempre, que é o desenho funcionando como pretendido.
+Quantidade de objetos, tamanhos de objetos, tempo de upload, qual conta escreve cada objeto e qual dispositivo enviou cada arquivo e snapshot, já que os caminhos deles nomeiam o dispositivo. Não nomes, não metadados, não áudio, não arte. Arquivos ficam com nomes aleatórios, nunca um hash do conteúdo. Não há recuperação no servidor: se toda pessoa perde todos os dispositivos e todos os códigos de restauração, a biblioteca se perde, que é o desenho funcionando como pretendido.
 
-## Desbloquear e bloquear
+## O chaveiro
 
-Abrir uma biblioteca lê a chave do chaveiro. Se a biblioteca espera uma chave e o chaveiro não a tem, bae trata a biblioteca como bloqueada: pede a chave antes de abrir, validando a entrada contra a impressão digital armazenada antes de salvá-la de volta no chaveiro. Bloquear uma biblioteca remove a chave do chaveiro de propósito; nada no local na nuvem pode ser lido ou escrito até ela ser inserida novamente.
+Abrir uma biblioteca lê as chaves dela do chaveiro do sistema operacional. Um chaveiro bloqueado naquele momento, por uma sessão bloqueada ou uma tela em repouso, é diferenciado de um quebrado: bae mostra a biblioteca como bloqueada e tenta de novo depois do desbloqueio, em vez de declarar a biblioteca inutilizável. Um dispositivo também pode esquecer a chave, o que bloqueia a biblioteca nesse dispositivo até ela ser desbloqueada de novo.

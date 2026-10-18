@@ -7,34 +7,36 @@ bae-এর সিঙ্ক হলো [coven](https://coven.bae.fm)-এর সি
 
 ## ধরা
 
-coven SQLite connection-এর মালিক, তাই bae commit করা প্রতিটি write তার মধ্য দিয়ে যায়। SQLite-এর session extension প্রতিটি transaction-এ ঠিক কী বদলেছে record করে; synced টেবিল-এর change একটি **changeset** হয়, লাইব্রেরি কী দিয়ে sealed এবং ডিভাইস-এর identity কী দিয়ে signed। Diffing নেই, dirty flag নেই: capture connection-এর property, এবং write miss হতে পারে না।
+coven SQLite connection-এর মালিক, তাই bae commit করা প্রতিটি write তার মধ্য দিয়ে যায়। সিঙ্ক হওয়া টেবিল বদলানো কোনো transaction commit হলে coven সেই একই transaction-এ প্রতিটি সারির পরিবর্তন, তার ছোঁয়া column সহ, record করে, তাই commit হওয়া পরিবর্তন কখনও হারায় না, এক মুহূর্ত পরে app crash করলেও। Diffing নেই, dirty flag নেই: capture connection-এর বৈশিষ্ট্য, এবং write বাদ পড়তে পারে না। পরিবর্তনটি ডিভাইসে অপেক্ষা করে এবং পাঠানোর সময়ই encrypt ও স্বাক্ষরিত হয়, তাই লেখার জন্য কী বা নেটওয়ার্ক লাগে না।
 
-## ধারা
+## ক্রম
 
-প্রতিটি ডিভাইস মেঘ-ঘরে নিজের ধারায় sequentially numbered changeset append করে। ডিভাইস কখনও অন্যের ধারায় লেখে না, তাই সংরক্ষণ-এ write conflict নেই, আর প্রতিটি ডিভাইস peer stream প্রতি cursor ট্র্যাক করে। সিঙ্ক cycle স্থানীয় outbox push করে, তারপর প্রতিটি peer-এর stream নিজের cursor থেকে forward pull করে, প্রতিটি changeset-এর signature এবং author-এর membership verify করে apply করার আগে।
+মেঘ-ঘরে লাইব্রেরির পুরো ইতিহাস object-এর একটি নম্বর দেওয়া ক্রম। প্রতিটিতে থাকে একটি ডিভাইসের পরিবর্তনের গুচ্ছ, একটি অ্যাডমিন এন্ট্রি, একজন সদস্যের জন্য sealed একটি কী, বা একটি snapshot ঘোষণা। প্রতিটি ডিভাইস সেগুলো ক্রমানুসারে প্রয়োগ করে এবং কোনোটি বাদ দেয় না, তাই প্রতিটি ডিভাইস একমত হয় কী কখন ঘটেছে। একটি ডিভাইস আগের সব প্রয়োগ করার পরেই পরের object যোগ করে।
 
-Cycle স্থানীয় change-এর পরে, backoff সহ idle timer-এ (poll-এর মাঝে সর্বোচ্চ পাঁচ মিনিট), এবং **Sync Now**-এ সঙ্গে সঙ্গে চলে। Failure back off করে retry হয়; loop প্রতিটি cycle-এর outcome UI-তে status, error text, এবং applied সারি count হিসেবে report করে।
+একটি সিঙ্ক পাস ডিভাইসের শেষ প্রয়োগ করা object থেকে সামনে পড়ে যতক্ষণ না একটি অনুপস্থিত পায়, প্রতিটির স্বাক্ষর যাচাই করে প্রয়োগ করে, এই ডিভাইসের অপেক্ষমাণ পরিবর্তন একটি নতুন object হিসেবে পাঠায়, তারপর নতুন অবস্থা যে কাজ চায় তা করে: প্রবেশাধিকার ভাগ বা বন্ধ করা, snapshot নেওয়া, পুরোনো ইতিহাস মোছা। শান্ত লাইব্রেরিতে একটি পাসে দুটি অনুরোধ লাগে, আকার যা-ই হোক।
+
+পাস চলে স্থানীয় পরিবর্তনের পরে, idle timer-এ, এবং **Sync Now**-এ সঙ্গে সঙ্গে। ব্যর্থতা একটি একক backoff পরিকল্পনায় retry করে, এবং যা এগোতে পারে না তা জানায় কীসের অপেক্ষায় আছে, যা bae তার সিঙ্ক অবস্থার লাইনে দেখায়।
 
 ## মেলানো
 
 দুই ডিভাইস আলাদা থাকা অবস্থায় একই লাইব্রেরি সম্পাদনা করা স্বাভাবিক ঘটনা। তাদের পরিবর্তন মিললে:
 
 - **Different সারি বা different column**-এ edit দুটিই apply হয়। Laptop-এ রিলিজ-এর year edit এবং desktop-এ label edit করলে দুটিই থাকে।
-- **Same সারি-এর same column**-এ edit সারি-এর `_updated_at` hybrid logical clock দিয়ে ordered হয়: later edit wins, deterministically এবং প্রতিটি ডিভাইস-এ একইভাবে।
-- **Delete wins** concurrent edit-এর উপর: এক ডিভাইস-এ রিলিজ delete হলে, অন্য ডিভাইস একই interval-এ edit করলেও সেটি deleted থাকে।
+- **একই সারির একই column**-এ সম্পাদনা timestamp ধরে সাজানো হয়: পরের সম্পাদনা জেতে, নির্ধারিতভাবে এবং প্রতিটি ডিভাইসে একইভাবে।
+- একসঙ্গে হওয়া সম্পাদনার উপর **delete জেতে**: পরে মুছে ফেলা কোনো সারির উপর করা সম্পাদনা যখনই পৌঁছাক হারে, তাই এক ডিভাইসে মোছা রিলিজ মোছাই থাকে, অন্য ডিভাইস একই সময়ে সম্পাদনা করলেও।
 
-Conflict UI নেই কারণ unresolved state নেই: যেকোনো application order থেকে প্রতিটি ডিভাইস একই result-এ converges।
+coven প্রতিটি বদলে যাওয়া মান *হারানো মান* হিসেবে রাখে; bae সেগুলোর কোনোটি দেখায় না বা বাতিল করে না, তাই conflict UI নেই। যে ক্রমেই পৌঁছাক, প্রতিটি ডিভাইস একই ফলাফলে পৌঁছায়।
 
-## শুরুতে ভরানো
+## Snapshot
 
-যোগ দেওয়া বা পুনরুদ্ধার করা ডিভাইস শুরু থেকে পুরো history replay করে না। এটি একটি **snapshot** ডাউনলোড করে, মেঘ-ঘরে periodically published full SQLite image, তারপর প্রতিটি ধারায় তার পরে জমা হওয়া changeset শুধু apply করে। Snapshot মেটাডেটা schema version এবং per-stream cursor record করে যা সেটির মধ্যে embodied।
+যোগ দেওয়া বা পুনরুদ্ধার করা ডিভাইস শুরু থেকে পুরো ইতিহাস replay করে না। ডিভাইসগুলো **snapshot** নেয়, অর্থাৎ ক্রমের একটি বিন্দুতে লাইব্রেরির পূর্ণ অবস্থা, এবং লাইব্রেরি ও প্রতিটি ব্যক্তিগত circle-এর একটি করে হয়ে গেলে তার আগের ইতিহাস মুছে ফেলা হয়। নতুন ডিভাইস সর্বশেষ snapshot লোড করে, তারপর শুধু তার পরে যা এসেছে তা প্রয়োগ করে। রাখা ইতিহাসের চেয়ে বেশি সময় দূরে থাকা ডিভাইসও একই কাজ করে, এবং নিজের না-পাঠানো সম্পাদনা রেখে দেয়।
 
 ## Schema version
 
-bae-এর schema numbered ladder দিয়ে migrate করে, আর ladder-এর top rung প্রতিটি changeset-এ stamped থাকে যা ডিভাইস লেখে। কোনো ডিভাইস নিজের চেয়ে newer schema থেকে changeset pull করলে app update না হওয়া পর্যন্ত সেই stream park করে, তার পরে কিছুই apply করে না; কিছু হারায় না এবং ভুলভাবে apply হয় না। Database ফাইল নিজেও নিজের schema-র চেয়ে পুরোনো binary-তে open করতে অস্বীকার করে।
+bae-এর schema একটি মাত্র migration, এবং ডিভাইস যে প্রতিটি পরিবর্তন পাঠায় তাতে যে schema version দিয়ে তা তৈরি তা record থাকে। কোনো ডিভাইস নিজের চেয়ে নতুন schema-র পরিবর্তনে পৌঁছালে সেখানেই থামে, app update না হওয়া পর্যন্ত তার পরে কিছুই প্রয়োগ করে না; কিছু হারায় না এবং ভুলভাবে প্রয়োগও হয় না।
 
 Schema version-এর চেয়ে coarser হলো **compatibility era**: প্রতিটি binary-তে baked pinned coven revision। দুই build শুধু একই era-তে সিঙ্ক করে; coven wire-ফরম্যাট break নতুন era এবং প্রতিটি app-এ major version bump। Pre-1.0-তে প্রতিটি build era zero এবং ফরম্যাট migration ছাড়াই বদলায়।
 
 ## Provider কী দেখে
 
-Opaque home-এ provider ciphertext changeset, ciphertext blob, এবং signed membership record রাখে; object count করতে পারে এবং size ও timing দেখতে পারে, কিন্তু কিছু পড়তে পারে না। Device pull করা প্রতিটি object ডেটাবেস ছোঁয়ার আগে verified হয়, signature ও membership; সংরক্ষণ একটি dumb, untrusted mailbox। [Encryption](/bn/reference/encryption) এবং [পরিচয় ও সদস্যপদ](/bn/reference/membership) দেখুন।
+সেবা-দাতা encrypted পরিবর্তন, snapshot, সদস্যপদের record ও ফাইল রাখে; সে object গুনতে পারে, মাপ ও সময় দেখতে পারে, এবং কোন অ্যাকাউন্ট প্রতিটি object লেখে তা দেখতে পারে, কিন্তু বিষয়বস্তুর কিছুই পড়তে পারে না। ডিভাইসের আনা প্রতিটি object ডেটাবেস ছোঁয়ার আগে স্বাক্ষর ও সদস্যপদ দিয়ে যাচাই হয়: সংরক্ষণ একটি নিষ্ক্রিয়, অবিশ্বস্ত ডাকবাক্স। [Encryption](/bn/reference/encryption) এবং [পরিচয় ও সদস্যপদ](/bn/reference/membership) দেখুন।

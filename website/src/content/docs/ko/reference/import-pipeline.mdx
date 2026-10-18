@@ -42,7 +42,7 @@ MusicBrainz는 익명으로, 초당 한 요청의 엄격한 속도로 조회됩�
 3. **Cover selection**: 선택한 아트(remote, folder image, embedded)를 표시용 thumbnail로 다시 렌더링합니다. 폴더에서 온 원본은 릴리스 파일 사이에 보관됩니다.
 4. **Atomic write**: release, tracks, credits, identities, formats, segments, files, cover가 하나의 transaction으로 커밋됩니다. 반쯤 가져온 상태는 없습니다.
 
-릴리스는 사용자의 파일을 제자리에서 참조한 채 들어갑니다. 사용자가 cloud-managed를 골랐다면 업로드는 커밋 뒤 저장소 전환으로 일어나며, 파일의 원본 바이트는 내내 source of truth로 남습니다. 사용자가 bae에 준 것은 절대 삭제되거나 변경되지 않습니다.
+릴리스는 사용자의 파일을 제자리에서 참조한 채 들어갑니다. 클라우드 가져오기에서는 coven이 write 전에 각 파일을 읽고 해시를 계산하며, 같은 write가 각 파일을 row에 첨부하고 업로드를 대기열에 넣습니다. 로컬 가져오기는 대신 이 기기에 있는 각 파일의 경로, 크기, 수정 시각을 기록하며, 바이트는 나중에 릴리스를 클라우드로 옮길 때에만 읽습니다. 어느 경우든 파일의 원본 바이트는 내내 source of truth로 남습니다. 사용자가 bae에 준 것은 절대 삭제되거나 변경되지 않습니다.
 
 ## 리핑본 인식
 

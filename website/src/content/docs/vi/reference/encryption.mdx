@@ -1,28 +1,34 @@
 ---
 title: Mã hóa
-description: Khóa thư viện là gì, nó nằm ở đâu, và nhà cung cấp giữ ciphertext nào
+description: Có những khóa nào, chúng nằm ở đâu, và nhà cung cấp thấy được gì
 ---
 
-Mọi thứ bae đặt vào nhà trên đám mây mờ đục đều được mã hóa trước khi rời thiết bị. bae không tự triển khai mật mã: toàn bộ sơ đồ là của [coven](https://coven.bae.fm), và trang này mô tả cách bae dùng nó. Nhà duyệt được bỏ qua toàn bộ phần này; không gì bên dưới áp dụng cho chúng.
+Mọi thứ bae đặt vào nhà trên đám mây đều được mã hóa trước khi rời thiết bị; không có chế độ không mã hóa. bae không tự triển khai mật mã: toàn bộ sơ đồ là của [coven](https://coven.bae.fm), và trang này mô tả cách bae dùng nó.
 
-## Khóa thư viện
+## Các khóa
 
-Một thư viện mờ đục có một bí mật gốc: khóa ngẫu nhiên 256-bit được tạo khi nhà được tạo. Nó nằm trong keyring của hệ điều hành, không bao giờ trong tệp; trên nền tảng Apple, mục keyring đồng bộ qua iCloud Keychain. Cấu hình của bae chỉ lưu vân tay của khóa, đủ để phân biệt khóa sai với khóa đúng khi mở khóa mà không giữ bí mật.
+| Khóa | Công dụng |
+|---|---|
+| Khóa store | mã hóa thư viện và các bản ghi thành viên của nó |
+| Khóa vòng riêng của mỗi người | mã hóa những gì người đó giữ riêng tư: lịch sử phát và danh sách phát riêng của họ |
+| Khóa của mỗi tệp | mã hóa một tệp, và chỉ đi bên trong các thay đổi đã mã hóa của hàng chứa nó |
+| Cặp khóa ký của một người | ký mọi thay đổi mà thiết bị của họ gửi |
+| Cặp khóa niêm phong của một người | mở các khóa được niêm phong cho người đó |
 
-Khóa di chuyển giữa các thiết bị theo hai cách, cả hai đều được mô tả trong [Danh tính và thành viên](/vi/reference/membership): được gắn vào khóa chung của thiết bị đã được phê duyệt trong quá trình ghép nối thiết bị và được chứa bên trong mã khôi phục.
+Khóa store là ngẫu nhiên, được tạo khi thư viện có nhà trên đám mây. Cặp khóa của một người được mọi thiết bị của họ dùng chung. Khóa riêng và khóa thư viện nằm trong keyring của hệ điều hành, không bao giờ trong tệp hay cơ sở dữ liệu. Chúng tới một thiết bị theo hai cách, cả hai đều được mô tả trong [Danh tính và thành viên](/vi/reference/membership): mã khôi phục mang cặp khóa của chính người đó, và quản trị viên phê duyệt lời mời sẽ niêm phong các khóa store cho khóa niêm phong của người mới.
 
-## Các thế hệ
+## Xoay vòng
 
-Khóa thư viện thật ra là một keyring gồm các thế hệ đánh số. Xóa một thành viên sẽ thêm một thế hệ mới mà thành viên bị xóa không bao giờ nhận: mọi thứ được ghi sau đó dùng thế hệ mới và không đọc được đối với họ, trong khi thành viên còn lại giữ mọi thế hệ và đọc được toàn bộ lịch sử. Mỗi đối tượng được niêm phong ghi rõ, ở dạng không mã hóa, thế hệ nào mở nó.
+Một khóa không bao giờ được đổi tại chỗ; một khóa mới được thêm vào. Sau khi một người bị xóa, thiết bị của một thành viên còn lại thêm một khóa store mới, và một khóa mới cho mỗi vòng riêng mà người đó từng ở, trước khi ghi thêm dữ liệu vào đó: mọi thứ ghi sau đó đều không đọc được với họ, trong khi các thành viên còn lại giữ mọi khóa cũ hơn và đọc được toàn bộ lịch sử. Xóa một thiết bị không xoay vòng gì, vì các thiết bị khác của người đó dùng chung khóa; từ lúc bị xóa, những gì thiết bị đó gửi không được tính.
 
 ## Những gì được niêm phong
 
-Mọi đối tượng trong nhà: changeset, snapshot, blob âm thanh, artwork, bản ghi thành viên, đối tượng điều khiển. Đối tượng được niêm phong bằng XChaCha20-Poly1305 theo chunk 64 KB, mỗi chunk được xác thực, và được ràng buộc với ngữ cảnh của nó: một đối tượng được niêm phong chỉ giải mã như đúng đối tượng mà nó được ghi để trở thành, cho thư viện này, ở khóa này. Chia chunk là lý do phát trực tuyến hoạt động, trình phát có thể giải mã đúng các khoảng byte nó lấy.
+Mọi đối tượng trong nhà: thay đổi, snapshot, bản ghi thành viên và tệp. Nội dung được mã hóa bằng XChaCha20-Poly1305, mọi thay đổi được ký bằng Ed25519, và khóa được niêm phong cho từng người bằng sealed box X25519. Tệp được mã hóa theo chunk 64 KiB, mỗi chunk được xác thực riêng và gắn với vị trí của nó, nên không thể sửa, tráo hay sắp xếp lại một chunk mà không bị phát hiện. Chia chunk là lý do phát trực tuyến hoạt động: trình phát có thể giải mã đúng các chunk nó lấy.
 
 ## Nhà cung cấp thấy gì
 
-Số đối tượng, kích thước đối tượng, thời điểm tải lên và mẫu truy cập. Không tên, không siêu dữ liệu, không âm thanh, không artwork, không tư cách thành viên. Không có khôi phục phía máy chủ: người dùng mất mọi thiết bị và mọi bản sao khóa đã mất ciphertext của thư viện mãi mãi, đó là thiết kế hoạt động đúng như dự định.
+Số đối tượng, kích thước đối tượng, thời điểm tải lên, tài khoản nào ghi mỗi đối tượng, và thiết bị nào tải lên mỗi tệp và snapshot, vì đường dẫn của chúng nêu tên thiết bị. Không tên, không siêu dữ liệu, không âm thanh, không artwork. Tệp nằm dưới tên ngẫu nhiên, không bao giờ là hash nội dung của chúng. Không có khôi phục phía máy chủ: nếu mọi người đều mất mọi thiết bị và mọi mã khôi phục, thư viện sẽ mất, đó là thiết kế hoạt động đúng như dự định.
 
-## Mở khóa và khóa
+## Keyring
 
-Mở một thư viện đọc khóa từ keyring. Nếu thư viện cần khóa và keyring không có, bae xem thư viện là đã khóa: nó nhắc nhập khóa trước khi mở, kiểm tra mục nhập với vân tay đã lưu trước khi lưu lại vào keyring. Khóa thư viện chủ động xóa khóa khỏi keyring; không gì trong nhà trên đám mây có thể được đọc hoặc ghi cho đến khi khóa được nhập lại.
+Mở một thư viện đọc các khóa của nó từ keyring của hệ điều hành. Một keyring đang bị khóa lúc này, do phiên bị khóa hoặc màn hình đang ngủ, được phân biệt với một keyring bị hỏng: bae hiển thị thư viện là đã khóa và thử lại sau khi mở khóa, thay vì báo thư viện không dùng được. Một thiết bị cũng có thể quên khóa, việc này khóa thư viện trên thiết bị đó cho đến khi nó được mở khóa lại.

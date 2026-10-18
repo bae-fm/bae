@@ -16,22 +16,21 @@ bae ایک Rust مرکز ہے جس پر چار مقامی ایپیں ہیں۔ م
 
 ## Disk پر ایک لائبریری
 
-لائبریری `~/.bae/libraries/<library-id>/` پر رہتی ہے (mobile پر پلیٹ فارم data directory):
+لائبریری دو ڈائریکٹریوں میں رہتی ہے (موبائل پر پلیٹ فارم کی ڈیٹا ڈائریکٹریاں): coven کا store، اور اس کے ساتھ bae کی اپنی ترتیبات۔
 
 ```
-~/.bae/libraries/<id>/
-  library.db        # SQLite: catalog, credits, playback specs
-  config.yaml       # coven: لائبریری کی شناخت، کلاؤڈ ہوم؛ کبھی سنک نہیں ہوتا
-  preferences.toml  # bae کی ترتیبات؛ کبھی سنک نہیں ہوتیں
-  storage/
-    local/          # blobs this device owns (covers, artist images)
-    cache/          # evictable copies of cloud blobs
-    pinned/         # pinned-for-offline copies, never evicted
+~/.bae/stores/<id>/       # coven کا store، صرف coven کے ذریعے کھلتا ہے
+  store.db                # SQLite: catalog، credits، playback specs، coven کا حساب
+  files/                  # bae کی اپنی فائلوں کی coven نقول (غلاف، فنکار کی تصاویر، avatars)
+  cache/                  # اپ لوڈ شدہ فائلوں کی کیش اور pinned نقول
+~/.bae/libraries/<id>/    # bae کا اپنا؛ کبھی ہم آہنگ نہیں ہوتا
+  preferences.toml        # bae کی ترتیبات
+  cache/                  # فہرست ناموں سے لائی گئی تصاویر
 ```
 
-Database صرف coven کے ذریعے کھلتی ہے، جو اپنی حسابی جدولیں (ہم آہنگی cursors، outbox، blob حالت) کو bae کے خاکہ کے ساتھ رکھتا ہے اور bae کی migrations چلاتا ہے۔ غیر منظم درآمد شدہ صوتی فائلیں `~/.bae` کے تحت بالکل نہیں ہوتیں: database انہیں ان راستوں پر حوالہ دیتی ہے جہاں سے وہ درآمد ہوئی تھیں۔
+Database صرف coven کے ذریعے کھلتی ہے، جو bae کے خاکہ کے ساتھ اپنی حساب کی جدولیں (ملانے کے ریکارڈ، اپ لوڈ کی قطار، فائل کی حالت) رکھتا ہے اور bae کا migration چلاتا ہے۔ مقامی اجرا کی آواز کی فائلیں `~/.bae` کے تحت بالکل نہیں ہیں: database انہیں انہی راستوں پر حوالہ دیتی ہے جہاں سے وہ درآمد ہوئیں۔
 
-راز کبھی ان فائلوں میں نہیں رہتے۔ شناخت کلیدیں، لائبریری رمز بندی کی کلید، کلاؤڈ credentials، اور API tokens OS keyring میں رہتے ہیں (Apple پلیٹ فارم پر Keychain، iCloud Keychain کے ذریعے ہم آہنگ؛ دوسرے پلیٹ فارم پر ان کے برابر نظام)۔
+راز کبھی ان فائلوں میں نہیں رہتے۔ رکن کی کلیدیں، لائبریری کی کلیدیں، کلاؤڈ sign-ins اور API tokens OS کلید خانہ میں رہتے ہیں (Apple پلیٹ فارم پر Keychain، دوسرے پلیٹ فارم پر ان کے برابر نظام)؛ Apple پلیٹ فارم پر restore code iCloud Keychain میں بھی محفوظ ہوتا ہے۔
 
 ## Editions
 

@@ -16,22 +16,21 @@ Junto a las apps: `bae-mcp` (el servidor MCP) y `bae-automation`.
 
 ## Una biblioteca en disco
 
-Una biblioteca vive en `~/.bae/libraries/<library-id>/` (un directorio de datos de plataforma en móvil):
+Una biblioteca vive en dos directorios (directorios de datos de plataforma en móvil): el almacén de coven y, a su lado, los ajustes propios de bae.
 
 ```
-~/.bae/libraries/<id>/
-  library.db        # SQLite: catalog, credits, playback specs
-  config.yaml       # coven: identidad de la biblioteca, hogar en la nube; nunca se sincroniza
-  preferences.toml  # ajustes de bae; nunca se sincronizan
-  storage/
-    local/          # blobs this device owns (covers, artist images)
-    cache/          # evictable copies of cloud blobs
-    pinned/         # pinned-for-offline copies, never evicted
+~/.bae/stores/<id>/       # almacén de coven, abierto solo mediante coven
+  store.db                # SQLite: catálogo, créditos, datos de reproducción, contabilidad de coven
+  files/                  # copias de coven de los archivos propios de bae (portadas, imágenes de artistas, avatares)
+  cache/                  # copias en caché y fijadas de archivos subidos
+~/.bae/libraries/<id>/    # propio de bae; nunca se sincroniza
+  preferences.toml        # ajustes de bae
+  cache/                  # imágenes obtenidas de los catálogos
 ```
 
-La base de datos se abre solo mediante coven, que agrega sus propias tablas de contabilidad (cursores de sincronización, bandeja de salida, estado de blobs) junto al esquema de bae y ejecuta las migraciones de bae. Los archivos de audio importados como no administrados no están bajo `~/.bae`: la base de datos los referencia en las rutas donde se importaron.
+La base de datos se abre solo mediante coven, que mantiene sus propias tablas de contabilidad (registros de combinación, cola de subidas, estado de archivos) junto al esquema de bae y ejecuta la migración de bae. Los archivos de audio de un lanzamiento local no están bajo `~/.bae`: la base de datos los referencia en las rutas donde se importaron.
 
-Los secretos nunca viven en estos archivos. Las claves de identidad, la clave de cifrado de la biblioteca, las credenciales de nube y los tokens de API viven en el llavero del sistema operativo (Keychain en plataformas Apple, sincronizado mediante iCloud Keychain; los equivalentes de plataforma en otros lugares).
+Los secretos nunca viven en estos archivos. Las claves de miembro, las claves de la biblioteca, los inicios de sesión en la nube y los tokens de API viven en el llavero del sistema operativo (Keychain en plataformas Apple, los equivalentes de plataforma en otros lugares); en plataformas Apple el código de restauración también se guarda en el llavero de iCloud.
 
 ## Ediciones
 

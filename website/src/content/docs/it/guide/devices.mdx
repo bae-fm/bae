@@ -1,43 +1,55 @@
 ---
 title: Dispositivi e membri
-description: Aggiungi il telefono, approva un dispositivo, recupera la libreria
+description: Aggiungi i tuoi dispositivi, invita persone e rimuovi dispositivi
 ---
 
-Non esiste un account bae. L'identità di un dispositivo è una coppia di chiavi che genera per sé e conserva nel portachiavi del sistema operativo; la libreria riconosce i dispositivi dalle loro chiavi. Aggiungere un dispositivo significa che un dispositivo esistente garantisce per uno nuovo, crittograficamente, senza intermediari.
+Non esiste un account bae. Ogni persona di una libreria ha le proprie chiavi, che tutti i suoi dispositivi condividono e conservano nel portachiavi del sistema operativo; la libreria riconosce le persone da quelle chiavi. Ogni modifica a chi ne fa parte viene firmata e conservata nella home cloud, senza intermediari.
 
 Due porte diverse, per due situazioni diverse:
 
-- **Unione**: un nuovo dispositivo viene approvato da un dispositivo che ha già la libreria. Usalo per aggiungere il telefono o il dispositivo di un'altra persona.
-- **Ripristino**: il tuo nuovo dispositivo, o un dispositivo reinstallato, recupera la libreria direttamente dalla home cloud usando un codice di recupero. Nessun approvatore coinvolto.
+- **Ripristino**: il tuo nuovo dispositivo, o un dispositivo reinstallato, entra con il tuo codice di ripristino. Nessun altro dispositivo lo approva: il codice contiene le tue chiavi, quindi dimostra già che il dispositivo è tuo.
+- **Unione**: un'altra persona entra con un invito di un amministratore, che approva la sua richiesta.
 
-## Aggiungere un dispositivo
+## Aggiungere un tuo dispositivo
 
-Su un dispositivo che dispone già della libreria, il proprietario apre Impostazioni, Dispositivi, **Aggiungi un dispositivo**. bae mostra un codice di accoppiamento come QR e inizia ad ascoltare sulla rete locale.
+Sul nuovo dispositivo, scegli **Ripristina dal cloud** e dagli il tuo codice di ripristino in uno di tre modi:
 
-Sul nuovo dispositivo, scegli **Unisciti a una biblioteca** e scansiona il codice. Accedi al provider di archiviazione quando richiesto. Entrambi i dispositivi mostrano l'impronta digitale del nuovo dispositivo; confrontali, quindi approvali sul dispositivo esistente. Il nuovo dispositivo riceve l'accesso sigillato tramite la stessa connessione locale, scarica la libreria e avvia la sincronizzazione. Nessun codice torna indietro.
+- **Scansiona** il codice QR che uno dei tuoi altri dispositivi mostra in **Mostra codice di ripristino...**, in Impostazioni, Libreria.
+- **Sceglilo** dal portachiavi iCloud, sui dispositivi Apple: bae elenca i codici di ripristino che i tuoi altri dispositivi vi hanno salvato.
+- **Incollalo** o digitalo.
 
-Il codice di abbinamento non contiene né la chiave della libreria né credenziali di archiviazione durature e un abbinamento interrotto o rifiutato non garantisce nulla. Dettagli in [Identità e appartenenza](/it/reference/membership).
+Accedi al provider di archiviazione quando richiesto. Su S3 il dispositivo ha bisogno anche della tua chiave di accesso: il codice QR la porta accanto al codice, quindi basta la scansione, mentre un codice digitato chiede la chiave. Poi il nuovo dispositivo scarica la libreria e inizia a sincronizzare.
+
+Finché non ha caricato la libreria, il dispositivo mostra dove è conservata invece del suo nome: l'e-mail dell'account per Dropbox e OneDrive, bucket ed endpoint per S3, oppure iCloud. Una volta caricata, mostra il nome attuale della libreria.
+
+## Invitare una persona
+
+Un amministratore apre Impostazioni, Libreria, **Invita una persona...**, sceglie un ruolo e inserisce l'e-mail dell'account della persona; su S3, invece, una chiave di accesso creata per lei. bae condivide la cartella della libreria con quell'account e mostra un invito come codice QR.
+
+Sul suo dispositivo, la persona sceglie **Unisciti a una libreria**, scansiona o incolla l'invito, digita il suo nome e accede al proprio account. La richiesta compare sul dispositivo dell'amministratore in **In attesa di unirsi**, e l'amministratore la approva o la rifiuta. Una volta approvata, il nuovo dispositivo scarica la libreria e ogni dispositivo mostra la nuova persona per nome. Un invito scade entro un giorno, e solo il dispositivo che l'ha creato può approvarne la richiesta. Dettagli in [Identità e appartenenza](/it/reference/membership).
 
 ## Membri e ruoli
 
-Impostazioni, Dispositivi elenca ogni membro: impronta, ruolo e quale è questo dispositivo. Il dispositivo fondatore è un **proprietario**; i dispositivi che approva entrano come **membri**. Entrambi leggono e scrivono la libreria; solo i proprietari approvano e rimuovono dispositivi.
+Impostazioni, Libreria elenca ogni persona e i suoi dispositivi, e quale è questo dispositivo. Chi collega una libreria al cloud ne è il primo **amministratore**; un amministratore invita altri come **amministratori** o **membri** e può cambiare il ruolo di una persona. Tutti leggono e modificano la libreria. Solo gli amministratori invitano e rimuovono persone e rinominano la libreria.
 
 ## Rimuovere un dispositivo
 
-I proprietari possono rimuovere qualunque membro. La rimozione non chiude soltanto la porta: la chiave di cifratura della libreria viene ruotata e il dispositivo rimosso non riceve mai la nuova chiave. Ciò che ha già copiato resta con lui, niente può annullare l'invio dei dati, ma tutto ciò che la libreria scrive da quel momento è illeggibile per lui.
+Ogni persona può rimuovere i propri dispositivi, e un amministratore può rimuovere quelli di chiunque, così chi ha perso tutti i dispositivi non resta bloccato. Da quel momento, niente di ciò che il dispositivo rimosso invia conta. bae mostra anche cosa resta da fare presso il provider, come disconnettere quel dispositivo dal tuo account: Dropbox, OneDrive e iCloud non possono escludere da soli un singolo dispositivo di un account.
 
-## Codici di recupero
+Rimuovere una persona, cosa che solo un amministratore può fare, rimuove anche i suoi dispositivi e ciò che teneva privato. Le sue valutazioni, la sua cronologia e le sue playlist condivise con la famiglia restano, attribuite a lei. Le chiavi della libreria vengono sostituite, quindi niente di ciò che viene scritto dopo è leggibile per lei. Ciò che ha già copiato lo conserva: niente può annullare l'invio dei dati.
 
-Un codice di recupero è un segreto bearer per la tua libreria: coordinate della home cloud più chiave di cifratura, in una stringa. **Mostra codice di recupero** in Impostazioni lo visualizza; conservalo in un posto sicuro, come un gestore di password. Su un nuovo dispositivo, **Ripristina dal cloud** con il codice ricostruisce la libreria, senza approvatore.
+## Codici di ripristino
 
-Sulle piattaforme Apple il codice è conservato automaticamente anche nel Portachiavi iCloud, così un nuovo Mac o iPhone collegato al tuo ID Apple può ripristinare con un tocco.
+Un codice di ripristino contiene le tue chiavi per una libreria e il luogo in cui è conservata, in una stringa. Non contiene password di archiviazione, accessi né il nome della libreria. **Mostra codice di ripristino...** in Impostazioni, Libreria lo visualizza; conservalo in un posto sicuro, come un gestore di password.
 
-Chiunque possieda il codice possiede la libreria, quindi trattalo come la chiave che è.
+Sulle piattaforme Apple il codice è conservato automaticamente anche nel portachiavi iCloud, così un nuovo Mac o iPhone collegato al tuo Apple Account può sceglierlo da un elenco.
+
+Chiunque abbia il codice e accesso al tuo spazio di archiviazione può aprire la libreria come se fosse te, quindi tienilo segreto.
 
 ## Blocco
 
-**Blocca libreria** rimuove la chiave di cifratura dal portachiavi del dispositivo. La libreria resta su disco, illeggibile, finché qualcuno non inserisce di nuovo la chiave; bae la verifica contro un'impronta salvata prima di accettarla. Usalo per un portatile che esce di casa.
+La chiave di cifratura della libreria vive nel portachiavi del sistema operativo. Finché il portachiavi è bloccato, per esempio mentre la sessione è bloccata, bae mostra la libreria come bloccata e la apre appena il portachiavi si sblocca; **Riprova** ritenta a mano.
 
 ## Sul telefono
 
-iOS e Android si uniscono e ripristinano esattamente in questo modo; è tutto il loro avvio iniziale. Un telefono può anche rimuovere la propria copia della libreria (Impostazioni, rimuovi da questo dispositivo), eliminando i file locali e non toccando nulla nel cloud.
+iOS e Android si uniscono e ripristinano esattamente in questo modo; è tutto il loro avvio iniziale. Un telefono può anche rimuovere la libreria da sé: prima si rimuove dai membri della libreria, cosa che richiede una connessione al tuo spazio di archiviazione, poi elimina la copia locale. La libreria nel cloud resta.

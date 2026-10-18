@@ -7,34 +7,36 @@ La synchronisation de bae est celle de [coven](https://coven.bae.fm) : bae décl
 
 ## Capture
 
-coven possède la connexion SQLite, donc chaque écriture validée par bae passe par lui. L’extension session de SQLite enregistre exactement ce qui a changé dans chaque transaction ; les changements aux tables synchronisées deviennent un **changeset**, scellé avec la clé de bibliothèque et signé avec la clé d’identité de l’appareil. Pas de comparaison de diff, pas d’indicateurs de saleté : la capture est une propriété de la connexion, et une écriture ne peut pas être manquée.
+coven possède la connexion SQLite, donc chaque écriture validée par bae passe par lui. Quand une transaction qui modifie des tables synchronisées est validée, coven enregistre chaque changement de ligne, avec les colonnes touchées, dans la même transaction, donc un changement validé n’est jamais perdu, même si l’application plante un instant plus tard. Pas de comparaison de diff, pas d’indicateurs de saleté : la capture est une propriété de la connexion, et une écriture ne peut pas être manquée. Le changement attend sur l’appareil et n’est chiffré et signé qu’à l’envoi, donc écrire ne demande ni clé ni réseau.
 
-## Flux
+## La séquence
 
-Chaque appareil ajoute ses jeux de changements à son propre flux dans l’emplacement cloud, numérotés séquentiellement. Les appareils n’écrivent jamais dans les flux des autres, donc il n’y a pas de conflits d’écriture dans le stockage, et chaque appareil suit un curseur par flux pair. Un cycle de synchronisation pousse la boîte d’envoi locale, puis tire chaque flux pair depuis son curseur, en vérifiant la signature de chaque jeu de changements et l’appartenance de son auteur avant de l’appliquer.
+Tout l’historique d’une bibliothèque dans l’emplacement cloud est une séquence numérotée d’objets. Chacun contient le lot de changements d’un appareil, une entrée d’administration, une clé scellée pour un membre ou une annonce d’instantané. Chaque appareil les applique dans l’ordre et n’en saute jamais aucun, donc tous les appareils s’accordent sur ce qui s’est passé et quand. Un appareil n’ajoute l’objet suivant qu’après avoir appliqué tous ceux d’avant.
 
-Le cycle s’exécute après les changements locaux, sur un minuteur d’inactivité avec attente progressive (jusqu’à cinq minutes entre interrogations), et immédiatement avec **Sync Now**. Les échecs attendent puis réessaient ; la boucle rapporte le résultat de chaque cycle à l’interface sous forme d’état, de texte d’erreur et de nombre de lignes appliquées.
+Une passe de synchronisation lit en avant depuis le dernier objet que l’appareil a appliqué jusqu’à ce qu’il en manque un, vérifie la signature de chacun et l’applique, envoie les changements en attente de cet appareil comme un nouvel objet, puis fait le travail que demande le nouvel état : partager ou retirer un accès, prendre des instantanés, supprimer l’ancien historique. Une passe sur une bibliothèque calme coûte deux requêtes, quelle que soit sa taille.
+
+Les passes s’exécutent après les changements locaux, sur un minuteur d’inactivité, et immédiatement avec **Synchroniser maintenant**. Les échecs sont réessayés selon un calendrier d’attente unique, et tout ce qui ne peut pas avancer nomme ce qu’il attend, ce que bae affiche dans sa ligne d’état de synchronisation.
 
 ## Fusion
 
 Deux appareils qui modifient la même bibliothèque pendant qu’ils sont séparés sont le cas normal, pas l’exception. Quand leurs changements se rencontrent :
 
 - Les modifications de **lignes différentes ou de colonnes différentes** s’appliquent toutes les deux. Modifier l’année d’une sortie sur le portable et son label sur l’ordinateur de bureau donne les deux.
-- Les modifications de la **même colonne de la même ligne** sont ordonnées par l’horloge logique hybride `_updated_at` de la ligne : la modification la plus tardive gagne, de façon déterministe et identique sur chaque appareil.
-- **Les suppressions gagnent** sur les modifications concurrentes : une sortie supprimée sur un appareil reste supprimée même si un autre appareil l’a modifiée dans le même intervalle.
+- Les modifications de la **même colonne de la même ligne** sont ordonnées par horodatage : la modification la plus tardive gagne, de façon déterministe et identique sur chaque appareil.
+- **Les suppressions gagnent** sur les modifications concurrentes : une modification faite sur une ligne supprimée depuis perd, quel que soit son moment d’arrivée, donc une sortie supprimée sur un appareil reste supprimée même si un autre appareil l’a modifiée dans le même intervalle.
 
-Il n’y a pas d’interface de conflit parce qu’il n’y a pas d’état non résolu : chaque appareil converge vers le même résultat quel que soit l’ordre d’application.
+coven conserve chaque valeur remplacée comme *valeur perdue* ; bae n’en affiche aucune et n’en écarte aucune, donc il n’y a pas d’interface de conflit. Chaque appareil converge vers le même résultat quel que soit l’ordre d’arrivée.
 
-## Amorçage
+## Instantanés
 
-Un appareil qui rejoint ou restaure ne rejoue pas l’historique depuis le début. Il télécharge un **instantané**, une image SQLite complète publiée périodiquement dans l’emplacement cloud, puis applique seulement les jeux de changements accumulés par chaque flux après celui-ci. Les métadonnées de l’instantané enregistrent la version de schéma et les curseurs par flux qu’il incarne.
+Un appareil qui rejoint ou restaure ne rejoue pas l’historique depuis le début. Les appareils prennent des **instantanés**, l’état complet de la bibliothèque à un point de la séquence, et une fois que la bibliothèque et chaque cercle privé en ont un, l’historique antérieur est supprimé. Un nouvel appareil charge l’instantané le plus récent, puis n’applique que ce qui est venu après. Un appareil absent plus longtemps que l’historique conservé fait de même, et garde ses modifications non envoyées.
 
 ## Versions de schéma
 
-Le schéma de bae migre par une échelle numérotée, et l’échelon supérieur de l’échelle est inscrit sur chaque jeu de changements que l’appareil écrit. Un appareil qui tire un jeu de changements d’un schéma plus récent que le sien met ce flux de côté, sans rien appliquer au-delà, jusqu’à ce que l’application soit mise à jour ; rien n’est perdu et rien n’est appliqué au mauvais format. Le fichier de base de données lui-même refuse de s’ouvrir avec un binaire plus ancien que son schéma.
+Le schéma de bae est une seule migration, et chaque changement qu’envoie un appareil enregistre la version de schéma avec laquelle il a été fait. Un appareil qui atteint un changement d’un schéma plus récent que le sien s’arrête là, sans rien appliquer au-delà, jusqu’à ce que l’application soit mise à jour ; rien n’est perdu et rien n’est appliqué au mauvais format.
 
 Au-dessus de la version de schéma se trouve l’**ère de compatibilité** : la révision de coven épinglée dans chaque binaire. Deux versions ne synchronisent qu’au sein d’une ère ; une rupture de format de communication coven est une nouvelle ère et une augmentation de version majeure sur chaque application. Avant la 1.0, chaque version est en ère zéro et les formats changent sans migration.
 
 ## Ce que le fournisseur voit
 
-Sur un emplacement opaque, le fournisseur stocke des jeux de changements chiffrés, des blobs chiffrés et des enregistrements d’appartenance signés ; il peut compter les objets et observer tailles et timings, et ne rien lire de leur contenu. Chaque objet tiré par un appareil est vérifié, signature et appartenance, avant que quoi que ce soit ne touche la base de données : le stockage est une boîte aux lettres passive et non fiable. Consultez [Chiffrement](/fr/reference/encryption) et [Identité et appartenance](/fr/reference/membership).
+Le fournisseur stocke des changements, instantanés, enregistrements d’appartenance et fichiers chiffrés ; il peut compter les objets, observer tailles et timings et voir quel compte écrit chaque objet, sans rien lire de leur contenu. Chaque objet tiré par un appareil est vérifié, signature et appartenance, avant que quoi que ce soit ne touche la base de données : le stockage est une boîte aux lettres passive et non fiable. Consultez [Chiffrement](/fr/reference/encryption) et [Identité et appartenance](/fr/reference/membership).

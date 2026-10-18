@@ -9,35 +9,35 @@ Jedna biblioteka, svaki uređaj, a jedini uključeni račun jest onaj koji već 
 
 ## Mjesto u oblaku
 
-Mjesto biblioteke u oblaku jedna je lokacija u vašoj pohrani: mapa u Dropboxu ili OneDriveu, vaš iCloud ili bilo koji S3-kompatibilan spremnik (AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, ...). Sadrži sve što biblioteka sinkronizira: promjene kataloga, grafiku i zvuk izdanja kojima dopustite da bae upravlja.
+Mjesto biblioteke u oblaku jedna je lokacija u vašoj pohrani: mapa u vašem Dropboxu ili OneDriveu, vaš iCloud ili bilo koji S3-kompatibilan spremnik (AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, ...). Sadrži sve što biblioteka sinkronizira: promjene biblioteke, grafiku i zvuk izdanja koja premjestite u oblak.
 
-Postavite ga u Settings, pod Sync:
+Postavite ga u Postavke, Fonoteka, pomoću **Postavi sinkronizaciju...**:
 
-1. Odaberite pružatelja. Potrošački oblaci prijavljuju se vlastitom stranicom za prijavu pružatelja; o vašem računu ne sprema se ništa osim tokena koje izda. iCloud koristi vaš Apple ID takav kakav jest. S3 prima spremnik, regiju, krajnju točku i ključeve, provjerene prije spremanja.
-2. Odaberite kako mjesto pohranjuje objekte (vidi dolje).
-3. bae počinje sinkronizirati.
+1. Odaberite pružatelja.
+   - **Dropbox** i **OneDrive** prijavljuju se kroz vaš preglednik, a zatim pitaju u kojoj mapi biblioteka živi. Na Dropboxu je to dijeljena mapa, kako biste u nju mogli pozvati kućanstvo; ako je još nemate, podijelite jednu u Dropboxu i odaberite **Traži ponovno**. Na OneDriveu je to bilo koja mapa, a ondje možete napraviti i novu. Prijavu drži coven; bae nikad ne vidi njezine tokene.
+   - **iCloud** koristi Apple Account u koji je uređaj prijavljen.
+   - **S3** traži spremnik, regiju, krajnju točku i pristupni ključ, i ništa drugo. **Napredno** sadrži neobavezni prefiks ključa i profil usluge, zadano automatski; za uslugu koju bae ne prepoznaje, **Otkrij postavke** ispituje spremnik vašim ključem i prikazuje što je pronašao. Ako je postavljanje odbijeno, bae kaže zašto.
+2. bae počinje sinkronizirati.
 
 Biblioteka bez mjesta u oblaku potpuna je sama za sebe. Samo lokalni rad je način rada, ne ograničenje, a odspajanje mjesta u oblaku vraća se na njega.
 
-## Neprozirno ili pregledljivo
+## Uvijek šifrirano
 
-Pri postavljanju odabirete što pružatelj smije vidjeti, a odabir je trajan za to mjesto:
-
-- **Neprozirno** (zadano): svaki se objekt šifrira na vašem uređaju prije prijenosa i sprema pod besmislenim nazivima. Pružatelj, ili bilo tko tko uđe u spremnik, vidi šifrirani tekst. To je način koji opisuje stranica [šifriranje](/hr/reference/encryption), i jedini način koji podržava dodavanje drugih uređaja i članova.
-- **Pregledljivo**: objekti se spremaju otvoreno sa stvarnim imenima datoteka, u mapama nazvanima po izvođaču i albumu. Spremnik možete otvoriti bilo kojim alatom i izravno kopirati ili reproducirati svoje datoteke. Ništa nije šifrirano, pa je vlastita kontrola pristupa spremnika jedina zaštita, a mjesto se ne može dijeliti.
+Svako mjesto u oblaku sadrži isto: šifrirane objekte pod nasumičnim nazivima. Svaka promjena, slika i zvučna datoteka šifrira se na vašem uređaju prije prijenosa. Vaši albumi nisu mapa koju bilo tko može pregledavati u vašem Dropboxu, a pružatelj ne vidi nijedan naziv albuma, izvođača ili datoteke. Pogledajte [Šifriranje](/hr/reference/encryption).
 
 ## Što se sinkronizira
 
-- Katalog: albumi, izdanja, pjesme, zasluge, djela, identiteti, izmjene. Svaki uređaj dobiva sve.
-- Grafika: omoti i slike izvođača, dohvaćeni unaprijed kako bi se mreže svugdje prikazivale.
-- Zvuk: samo za izdanja kojima ste odabrali upravljati u oblaku. Neupravljana izdanja ostaju posve lokalna, s kataloškim zapisima uključenima na drugim uređajima, ali s bajtovima samo ondje gdje ste ih uvezli.
+- Biblioteka: albumi, izdanja, pjesme, zasluge, djela i izvođači. Svaki uređaj dobiva sve, uključujući izdanja čiji zvuk ostaje na uređaju koji ih je uvezao.
+- Osobe: ime i avatar svake osobe, ocjene, povijest reprodukcije i popisi za reprodukciju. Vaša povijest i svaki vaš popis mogu biti privatni ili podijeljeni s kućanstvom.
+- Grafika: omoti, slike izvođača i avatari, dohvaćeni unaprijed kako bi se mreže svugdje prikazivale.
+- Zvuk: samo za izdanja koja ste premjestili u oblak. Lokalno izdanje prikazuje se na svakom uređaju, ali reproducira se samo na uređaju koji ga je uvezao, dok ga ne premjestite u oblak. Pogledajte [Pohrana i izvanmrežno](/hr/guide/storage).
 
 Stanje po uređaju ne sinkronizira se: položaj reprodukcije, glasnoća, red čekanja i postavke uređaja ostaju na uređaju.
 
 ## Kada se sinkronizira
 
-Sinkronizacija radi sama: nakon promjena, prema mjeraču vremena i na zahtjev s **Sync Now**. Izmjene stižu na druge uređaje kao male promjene, nekoliko sekundi poslije u uobičajenim uvjetima. Dva uređaja koja uređuju u isto vrijeme oba pobjeđuju ondje gdje se ne sudaraju: bae spaja istodobne izmjene polje po polje, a izbrisano izdanje ostaje izbrisano čak i ako je u istom trenutku uređeno drugdje. Nikad se od vas ne traži rješavanje sukoba.
+Sinkronizacija radi sama: nakon promjena, prema mjeraču vremena i na zahtjev s **Sinkroniziraj sada**. Izmjene stižu na druge uređaje nekoliko sekundi poslije u uobičajenim uvjetima. Dva uređaja koja uređuju u isto vrijeme oba pobjeđuju ondje gdje se ne sudaraju: bae spaja istodobne izmjene polje po polje, kasnija izmjena pobjeđuje polje koje su oba promijenila, a izbrisano izdanje ostaje izbrisano čak i ako je u istom trenutku uređeno drugdje. Nikad se od vas ne traži rješavanje sukoba.
 
 ## Kada ne uspije
 
-Neuspjesi sinkronizacije ne prekidaju biblioteku; i dalje lokalno pregledavate, reproducirate i uvozite dok bae ponovno pokušava s odgodom. Redak stanja prikazuje sinkronizaciju i vrijeme zadnje sinkronizacije; neuspjeh prikazuje natpis s pogreškom, a prijenosi se mogu pauzirati, ponovno pokušati i pregledati u [upravitelju pohrane](/hr/guide/storage#upravitelj-pohrane). Ako prijava mjesta u oblaku istekne, bae traži ponovno povezivanje.
+Neuspjesi sinkronizacije ne prekidaju biblioteku; i dalje lokalno pregledavate, reproducirate i uvozite dok bae ponovno pokušava. Postavke, Fonoteka prikazuju jedan redak za sinkronizaciju: **Sinkronizirano** ili koliko stavki čeka, primjerice **Stavke na čekanju: 3**. Otvorite ga da vidite svaku stavku jednostavnim riječima, s radnjom koju možete poduzeti: **Prijavi se** kada pružatelj traži ponovnu prijavu, vraćanje na mjesto datoteke koja je premještena prije prijenosa, **Pokušaj ponovno**, **Ponovno poveži**, **Nastavi prijenose** ili **Ažuriraj aplikaciju**. Čekanje u kojem ne možete pomoći, primjerice da se drugi uređaj vrati na mrežu, ne nudi ništa. Ovaj popis jedino je mjesto koje treba gledati; prijenosi se mogu i pauzirati i pregledati u [upravitelju pohrane](/hr/guide/storage#upravitelj-pohrane).

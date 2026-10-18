@@ -1,28 +1,34 @@
 ---
 title: Encryption
-description: What the library key is, where it lives, and what ciphertext the provider holds
+description: Which keys exist, where they live, and what the provider can see
 ---
 
-Everything bae puts in an opaque cloud home is encrypted before it leaves the device. bae implements no cryptography of its own: the entire scheme is [coven](https://coven.bae.fm)'s, and this page describes how bae wears it. Browsable homes opt out of all of it; nothing below applies to them.
+Everything bae puts in a cloud home is encrypted before it leaves the device; there is no unencrypted mode. bae implements no cryptography of its own: the entire scheme is [coven](https://coven.bae.fm)'s, and this page describes how bae uses it.
 
-## The library key
+## The keys
 
-An opaque library has one root secret: a random 256-bit key minted when the home is created. It lives in the OS keyring, never in a file; on Apple platforms the keyring entry syncs through iCloud Keychain. bae's config stores only a fingerprint of the key, enough to tell a wrong key from a right one at unlock without holding the secret.
+| Key | What it does |
+|---|---|
+| The store key | encrypts the library and its membership records |
+| Each person's circle key | encrypts what that person keeps private: their private play history and playlists |
+| Each file's key | encrypts one file, and travels only inside its row's encrypted changes |
+| A person's signing key pair | signs every change their devices send |
+| A person's sealing key pair | opens keys sealed to that person |
 
-The key travels between devices in two ways, both described in [Identity and membership](/reference/membership): sealed to an approved device's public key during device pairing, and carried inside a recovery code.
+The store key is random, made when the library gets its cloud home. A person's key pairs are shared by all their devices. Private keys and library keys live in the OS keyring, never in a file or the database. They reach a device in two ways, both described in [Identity and membership](/reference/membership): a restore code carries a person's own key pairs, and an admin approving an invite seals the store keys to the new person's sealing key.
 
-## Generations
+## Rotation
 
-The library key is really a keyring of numbered generations. Removing a member appends a new generation that the removed member never receives: everything written afterward uses the new generation and is unreadable to them, while surviving members keep every generation and can read all history. Each sealed object records, in the clear, which generation opens it.
+A key is never changed in place; a new one is added. After a person is removed, a remaining member's device adds a new store key, and a new key for every circle they were in, before it writes more data there: everything written afterward is unreadable to them, while the remaining members keep every older key and can read all history. Removing one device rotates nothing, since the person's other devices share its keys; from the removal on, what that device sends doesn't count.
 
 ## What gets sealed
 
-Every object in the home: changesets, snapshots, audio blobs, artwork, membership records, control objects. Objects are sealed with XChaCha20-Poly1305 in 64 KB chunks, each chunk authenticated, and bound to their context: a sealed object decrypts only as the object it was written to be, for this library, at this key. Chunking is why streaming works, the player can decrypt exactly the byte ranges it fetches.
+Every object in the home: changes, snapshots, membership records, and files. Contents are encrypted with XChaCha20-Poly1305, every change is signed with Ed25519, and keys are sealed to people with X25519 sealed boxes. Files are encrypted in 64 KiB chunks, each authenticated on its own with its position bound in, so a chunk can't be altered, swapped, or reordered unnoticed. Chunking is why streaming works: the player can decrypt exactly the chunks it fetches.
 
 ## What the provider can see
 
-Object count, object sizes, upload timing, and access patterns. Not names, not metadata, not audio, not artwork, not membership. There is no server-side recovery: a user who loses every device and every copy of the key has lost the library's ciphertext forever, which is the design working as intended.
+Object count, object sizes, upload timing, which account writes each object, and which device uploaded each file and snapshot, since their paths name the device. Not names, not metadata, not audio, not artwork. Files sit under random names, never a hash of their content. There is no server-side recovery: if every person loses every device and every restore code, the library is lost, which is the design working as intended.
 
-## Unlock and lock
+## The keyring
 
-Opening a library reads the key from the keyring. If the library expects a key and the keyring doesn't have it, bae treats the library as locked: it prompts for the key before opening, validating the entry against the stored fingerprint before saving it back to the keyring. Locking a library removes the key from the keyring on purpose; nothing in the cloud home can be read or written until it's entered again.
+Opening a library reads its keys from the OS keyring. A keyring that is locked right now, by a locked session or a sleeping display, is told apart from a broken one: bae shows the library as locked and tries again after unlock, rather than reporting the library unusable. A device can also forget the key, which locks the library on that device until it is unlocked again.

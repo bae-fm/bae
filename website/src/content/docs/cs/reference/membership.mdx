@@ -1,35 +1,54 @@
 ---
 title: Identita a členství
-description: Klíče jako identity, připojovací handshake, role a odebrání
+description: Lidé jako klíče, kódy pro obnovení, pozvánky, role a odebrání
 ---
 
-V bae nikde není systém účtů. Identitou zařízení je pár klíčů Ed25519, který si samo vygeneruje a uchová v klíčence operačního systému; veřejný klíč *je* identita. Kdo patří do knihovny, je množina podepsaných záznamů v cloudovém domově, ověřitelná kýmkoli, kdo je drží, nevydaná žádným serverem. Mechanika patří [coven](https://coven.bae.fm); tato stránka popisuje, jak ji bae používá.
+V bae nikde není systém účtů. Každá osoba v knihovně je *člen* coven: náhodné, trvalé ID člena a dva páry klíčů, jeden k podepisování a jeden, pro který se pečetí klíče, sdílené všemi zařízeními dané osoby a uchovávané v klíčence operačního systému každého zařízení. Zařízení je jedna instalace s vlastním ID, která patří jednomu členovi. Kdo patří do knihovny, je množina podepsaných záznamů v cloudovém domově, kontrolovaná zařízením každého člena, nevydaná žádným serverem. Mechanika patří [coven](https://coven.bae.fm); tato stránka popisuje, jak ji bae používá.
 
 ## Záznamy členství
 
-Každý vlastník zapisuje do cloudového domova proud podepsaných záznamů členství, do kterého se jen přidává: tento klíč byl přidán s touto rolí, tento klíč byl odebrán. Každý záznam odkazuje na předchozí a každý vlastník podepisuje hlavu oznamující špičku svého proudu, takže poskytovatel, který záznamy zahodí nebo přeuspořádá, je odhalen místo toho, aby mu knihovna věřila. Knihovna přijímá sjednocení ověřených proudů všech vlastníků.
+Celá historie knihovny v cloudovém domově je jedna číslovaná posloupnost a každé zařízení ji použije ve stejném pořadí. Změna členství nebo nastavení je *správcovský záznam* v této posloupnosti, podepsaný klíčem autora a posouzený podle stavu těsně před ním, takže každé zařízení dojde ke stejnému verdiktu samo. Záznam se počítá, jen pokud ho autor smí provést, a knihovna si vždy ponechá alespoň jednoho správce.
 
-Při každém stažení změn se autor každého changesetu kontroluje proti tomuto záznamu: podepsaný aktuálním členem s rolí, která smí zapisovat. Changesety z odebraných zařízení, z klíčů, které nikdy nebyly přidány, nebo s neplatnými podpisy se nepoužijí. Poskytovatel záznamy ukládá, ale nemůže je padělat; členství mohou měnit jen držitelé klíčů vlastníků.
+Každá změna, kterou zařízení pošle, se kontroluje proti tomuto záznamu: podepsaná aktuálním členem, ze zařízení, které nebylo odebráno. Změny z odebraných zařízení nebo od odebraných členů, z klíčů, které nikdy nebyly přidány, nebo s neplatnými podpisy se nepočítají. Poskytovatel záznamy ukládá, ale nemůže je padělat.
 
 ## Role
 
-**Owner** a **Member** oba knihovnu čtou a zapisují do ní; vlastníci navíc schvalují a odebírají zařízení. Zakládající zařízení bae je owner a každé zařízení, které schválí, se připojí jako member. (V podkladové mechanice existuje třetí role, read-only follower, kterou bae aktuálně nepřiděluje.)
+**Správce** a **Člen** oba knihovnu čtou a zapisují do ní: coven u zápisů do knihovny nekontroluje oprávnění, takže role jen pro čtení by neobstála. Správci navíc zvou a odebírají lidi, mění role a přejmenovávají knihovnu. Kdo knihovně dá cloudový domov, je její první správce.
 
-## Připojovací handshake
+| Akce | Kdo |
+|---|---|
+| Pozvat osobu | správce |
+| Přidat zařízení | osoba sama, z nového zařízení, se svým kódem pro obnovení |
+| Odebrat zařízení | jeho osoba nebo kterýkoli správce |
+| Odebrat osobu | správce |
+| Přejmenovat knihovnu | správce |
 
-Přidání zařízení je jedna místní párovací relace s explicitním ověřením člověkem:
+Profil, hodnocení, historie a playlisty osoby jsou řádky vlastníka: měnit je mohou jen zařízení této osoby, takže hodnocení připsané někomu opravdu pochází od něj.
 
-1. Vlastník spustí zařízení **Přidejte zařízení**. bae krátce poslouchá v místní síti a ukazuje jeden párovací kód. Obsahuje adresy posluchačů, dočasný klíč relace, název knihovny, poskytovatele a vypršení platnosti – žádný klíč knihovny ani trvalé pověření úložiště.
-2. Připojované zařízení naskenuje kód, vytvoří svůj pár klíčů zařízení, v případě potřeby se přihlásí k poskytovateli a odešle svůj podepsaný veřejný klíč a identitu účtu poskytovatele prostřednictvím šifrovaného místního připojení. Obě zařízení zobrazují stejný otisk prstu.
-3. Majitel porovná otisky prstů a schválí přesnou identitu. Schválení uděluje svému cloudovému účtu přístup tam, kde je to požadováno, podepisuje záznam o členství a zapečetí klíč knihovny a konečný přístup k úložišti veřejnému klíči nového zařízení.
-4. Zapečetěný balík se vrací přes stejné ověřené místní připojení. Připojované zařízení jej otevře, spustí se z cloudového úložiště a spustí se synchronizace.
+## Přidání vlastního zařízení
 
-Vypršené, přerušené nebo odmítnuté párování nic neuděluje.
+Kód pro obnovení dokazuje, že zařízení patří své osobě, takže nepotřebuje schválení:
+
+1. Nové zařízení získá kód naskenováním QR kódu, který ukazuje jiné zařízení dané osoby, z iCloud Klíčenky na zařízeních Apple nebo opsáním.
+2. Dostane se k úložišti: u Dropboxu a OneDrivu přihlášením k vlastnímu účtu osoby, u S3 jejím přístupovým klíčem, který QR kód nese vedle kódu.
+3. Načte knihovnu, ověří, že klíče z kódu patří aktuálnímu členovi, a zaregistruje se jako nové zařízení záznamem podepsaným těmito klíči.
+
+Kód, jehož klíče byly mezitím vyměněny, selže. Obnovení vždy vytvoří nové zařízení; nezachrání neodeslané úpravy jiné instalace.
+
+## Pozvání osoby
+
+1. Správce zadá účet poskytovatele dané osoby a vybere její roli. bae nasdílí složku knihovny tomuto účtu, nebo u S3 vytvoří přístupový klíč pro ni, a ukáže pozvánku: QR kód s umístěním knihovny, ID člena zvoleným pro osobu, jednorázovým tajemstvím a aktuálním názvem knihovny. Vyprší den po vytvoření.
+2. Zařízení osoby ji naskenuje, přihlásí se k jejímu vlastnímu účtu, vytvoří její páry klíčů a zapíše do úložiště žádost o připojení, zašifrovanou klíčem odvozeným z tajemství pozvánky a podepsanou jejím novým klíčem.
+3. Zařízení správce, jediné, které tajemství drží, ukáže žádost a správce ji schválí.
+4. Schválení zapečetí každý klíč úložiště pro nový pečeticí klíč osoby a pak přidá záznam, který ji přijme.
+5. Nové zařízení otevře své klíče, načte knihovnu, zaregistruje se a zapíše profil osoby se jménem, které napsala.
+
+Odmítnutí pozvánky nebo její vypršení odebere přístup u poskytovatele, který udělila.
 
 ## Odebrání
 
-Odebrání člena přidá podepsané odebrání a otočí klíč knihovny na novou generaci, kterou odebraný klíč nikdy nedostane (viz [Šifrování](/cs/reference/encryption#generace)). V úložišti, které umí odebrat přístup, se přístup také odebere. Co už bylo synchronizováno na odebrané zařízení, zůstává u něj; data nejde vzít zpět. Všechno po obměně je mimo jeho dosah.
+Odebrání zařízení nebo osoby je správcovský záznam a jeho místo v posloupnosti je čára v historii: co odebrané zařízení nebo osoba pošle potom, se nepočítá, zatímco co dorazilo dřív, zůstává. Odebrání osoby odebere i její zařízení a její soukromý kruh a klíče, které měla, se vymění dřív, než se zapíšou další data (viz [Šifrování](/cs/reference/encryption#rotace)). Odříznutí přístupu k úložišti je práce poskytovatele: zařízení účtu, na kterém knihovna leží, zruší sdílení složky, a u S3 se přístupový klíč osoby smaže. Co už bylo synchronizováno na odebrané zařízení, zůstává u něj; data nejde vzít zpět.
 
-## Obnovovací kódy
+## Kódy pro obnovení
 
-Obnovovací kód záměrně obchází členství: jsou to souřadnice cloudového domova plus klíč knihovny v jednom bearer řetězci pro obnovení vlastní knihovny bez přeživšího schvalovatele. Generuje se na vyžádání, na platformách Apple se automaticky ukládá do iCloud Keychain a je přesně tak citlivý jako samotná knihovna.
+Kód pro obnovení obsahuje ID člena a jeho aktuální soukromé páry klíčů, ID úložiště knihovny a její umístění; nikdy přihlašovací údaje k úložišti, přihlašovací tokeny ani název knihovny. Zobrazuje se na vyžádání, na platformách Apple se automaticky ukládá do iCloud Klíčenky a je přesně tak citlivý jako samotná knihovna: kdo ho drží, s přístupem k úložišti, je pro knihovnu touto osobou. Osobu, která ztratí každé zařízení i svůj kód, může správce znovu pozvat na její stávající ID člena, čímž se její klíče vymění.

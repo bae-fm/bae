@@ -1,35 +1,54 @@
 ---
 title: Identidad y membresía
-description: Claves como identidades, el intercambio de unión, roles y revocación
+description: Personas como claves, códigos de restauración, invitaciones, roles y eliminación
 ---
 
-No hay sistema de cuentas en ningún lugar de bae. La identidad de un dispositivo es un par de claves Ed25519 que genera para sí mismo y conserva en el llavero del sistema operativo; la clave pública *es* la identidad. Quien pertenece a una biblioteca es un conjunto de registros firmados en el hogar en la nube, verificables por cualquiera que los tenga, emitidos por ningún servidor. La maquinaria es de [coven](https://coven.bae.fm); está página muestra como la usa bae.
+No hay sistema de cuentas en ningún lugar de bae. Cada persona de una biblioteca es un *miembro* de coven: un id de miembro aleatorio y permanente y dos pares de claves, uno para firmar y otro para el que se sellan claves, compartidos por todos los dispositivos de esa persona y guardados en el llavero del sistema operativo de cada dispositivo. Un dispositivo es una instalación, con su propio id, que pertenece a un miembro. Quién pertenece a una biblioteca es un conjunto de registros firmados en el hogar en la nube, comprobados por el dispositivo de cada miembro, emitidos por ningún servidor. La maquinaria es de [coven](https://coven.bae.fm); esta página muestra cómo la usa bae.
 
 ## Registros de membresía
 
-Cada propietario escribe un flujo de solo anexo de entradas de membresía firmadas en el hogar en la nube: está clave se agrego con este rol, está clave se elimino. Cada entrada enlaza a la anterior, y cada propietario firma una cabeza que declara la punta de su flujo, así que un proveedor que elimina o reordena registros se detecta en vez de ser creido. Lo que la biblioteca acepta es la unión de cada flujo verificado de propietarios.
+Todo el historial de una biblioteca en el hogar en la nube es una secuencia numerada, y cada dispositivo la aplica en el mismo orden. Un cambio de membresía o de configuración es una *entrada de administración* en esa secuencia, firmada con la clave de su autor y juzgada contra el estado justo anterior, así que cada dispositivo llega al mismo veredicto por su cuenta. Una entrada solo cuenta si su autor puede hacerla, y la biblioteca siempre conserva al menos un administrador.
 
-En cada descarga, el autor de cada changeset se comprueba contra este registro: firmado por un miembro actual, con un rol que puede escribir. Los changesets de dispositivos eliminados, de claves nunca agregadas o con firmas inválidas no se aplican. El proveedor almacena los registros pero no puede falsificarlos; solo quienes poseen claves de propietario pueden cambiar la membresía.
+Cada cambio que envía un dispositivo se comprueba contra este registro: firmado por un miembro actual, desde un dispositivo que no ha sido eliminado. Los cambios de dispositivos o miembros eliminados, de claves nunca agregadas o con firmas inválidas no cuentan. El proveedor almacena los registros pero no puede falsificarlos.
 
 ## Roles
 
-**Owner** y **Member** leen y escriben la biblioteca; los propietarios además aprueban y eliminan dispositivos. El dispositivo fundador de bae es propietario y cada dispositivo que aprueba se une como miembro. (Existe un tercer rol en la maquinaria subyacente, un seguidor de solo lectura, que bae no asigna actualmente.)
+**Administrador** y **Miembro** leen y escriben la biblioteca: coven no comprueba permisos en las escrituras de la biblioteca, así que un rol de solo lectura no se sostendría. Los administradores además invitan y eliminan personas, cambian roles y renombran la biblioteca. Quien le da a una biblioteca su hogar en la nube es su primer administrador.
 
-## El intercambio de unión
+| Acción | Quién |
+|---|---|
+| Invitar a una persona | un administrador |
+| Agregar un dispositivo | la persona, desde el dispositivo nuevo, con su código de restauración |
+| Eliminar un dispositivo | su persona, o cualquier administrador |
+| Eliminar a una persona | un administrador |
+| Renombrar la biblioteca | un administrador |
 
-Agregar un dispositivo es una sesión de emparejamiento local con verificación humana explícita:
+El perfil, las valoraciones, el historial y las listas de una persona son filas de propietario: solo los dispositivos de esa persona pueden cambiarlas, así que una valoración atribuida a alguien la hizo esa persona.
 
-1. Un propietario inicia **Agregar un dispositivo**. bae escucha brevemente en la red local y muestra un código de emparejamiento. Contiene las direcciones del oyente, una clave de sesión efímera, el nombre de la biblioteca, el proveedor y una fecha de vencimiento: no hay clave de biblioteca ni credenciales de almacenamiento duraderas.
-2. El dispositivo que se une escanea el código, crea su par de claves de dispositivo, inicia sesión en el proveedor cuando es necesario y envía su clave pública firmada y la identidad de la cuenta del proveedor a través de la conexión local cifrada. Ambos dispositivos muestran la misma huella digital.
-3. El propietario compara las huellas dactilares y aprueba esa identidad exacta. La aprobación otorga acceso a su cuenta en la nube cuando sea necesario, firma la entrada de membresía y sella la clave de la biblioteca y el acceso final al almacenamiento de la clave pública del nuevo dispositivo.
-4. El paquete sellado regresa a través de la misma conexión local autenticada. El dispositivo que se une lo abre, arranca desde el almacenamiento en la nube y comienza a sincronizarse.
+## Agregar tu propio dispositivo
 
-Un emparejamiento vencido, interrumpido o rechazado no otorga nada.
+Un código de restauración demuestra que un dispositivo es de su persona, así que no necesita aprobación:
 
-## Revocación
+1. El dispositivo nuevo obtiene el código escaneando el código QR que muestra otro dispositivo de la persona, desde el llavero de iCloud en dispositivos Apple, o escribiéndolo.
+2. Llega al almacenamiento: en Dropbox y OneDrive iniciando sesión en la propia cuenta de la persona, en S3 con su clave de acceso, que el código QR lleva junto al código.
+3. Carga la biblioteca, comprueba que las claves del código pertenecen a un miembro actual y se registra como dispositivo nuevo con una entrada firmada con esas claves.
 
-Eliminar un miembro agrega una eliminación firmada y rota la clave de biblioteca a una generación nueva que la clave eliminada nunca recibe (consulta [Cifrado](/es/reference/encryption#generations)). En almacenamiento que puede revocar acceso, el acceso también se retira. Lo que ya se había sincronizado al dispositivo eliminado permanece con él; los datos no se pueden retirar. Todo lo posterior a la rotación queda fuera de su alcance.
+Un código cuyas claves se hayan reemplazado desde entonces falla. Restaurar siempre crea un dispositivo nuevo; no rescata las ediciones sin enviar de otra instalación.
 
-## Códigos de recuperación
+## Invitar a una persona
 
-Un código de recuperación evita la membresía a propósito: son las coordenadas del hogar en la nube más la clave de biblioteca, en una sola cadena al portador, para restaurar tu propia biblioteca sin un aprobador sobreviviente. Se genera bajo demanda, se guarda automáticamente en el Llavero de iCloud en plataformas Apple, y es exactamente tan sensible como la biblioteca misma.
+1. Un administrador introduce la cuenta del proveedor de la persona y elige su rol. bae comparte la carpeta de la biblioteca con esa cuenta, o en S3 crea una clave de acceso para ella, y muestra una invitación: un código QR con la ubicación de la biblioteca, el id de miembro elegido para la persona, un secreto de un solo uso y el nombre actual de la biblioteca. Caduca un día después de crearse.
+2. El dispositivo de la persona la escanea, inicia sesión en su propia cuenta, crea sus pares de claves y escribe una solicitud de unión en el almacenamiento, cifrada con una clave derivada del secreto de la invitación y firmada con su clave nueva.
+3. El dispositivo del administrador, el único que tiene el secreto, muestra la solicitud, y el administrador la aprueba.
+4. La aprobación sella cada clave de almacén para la clave de sellado nueva de la persona y luego agrega la entrada que la admite.
+5. El dispositivo nuevo abre sus claves, carga la biblioteca, se registra y escribe el perfil de la persona con el nombre que escribió.
+
+Rechazar la invitación, o dejar que caduque, retira el acceso al proveedor que había concedido.
+
+## Eliminación
+
+Eliminar un dispositivo o una persona es una entrada de administración, y su lugar en la secuencia es una línea en el historial: lo que el dispositivo o la persona eliminados envían después no cuenta, mientras que lo que llegó antes se queda. Eliminar a una persona también elimina sus dispositivos y su círculo privado, y las claves que tenía se reemplazan antes de escribir más datos (consulta [Cifrado](/es/reference/encryption#rotación)). Cortar el acceso al almacenamiento es trabajo del proveedor: el dispositivo de la cuenta que aloja la biblioteca deja de compartir la carpeta, y en S3 se borra la clave de acceso de la persona. Lo que ya se había sincronizado a un dispositivo eliminado permanece con él; los datos no se pueden retirar.
+
+## Códigos de restauración
+
+Un código de restauración contiene el id de un miembro y sus pares de claves privadas actuales, el id de almacén de la biblioteca y su ubicación de almacenamiento; nunca credenciales de almacenamiento, tokens de inicio de sesión ni el nombre de la biblioteca. Se muestra bajo demanda, se guarda automáticamente en el llavero de iCloud en plataformas Apple, y es exactamente tan sensible como la biblioteca misma: quien lo tenga, con acceso al almacenamiento, es esa persona para la biblioteca. Una persona que pierde cada dispositivo y su código puede ser invitada de nuevo por un administrador a su id de miembro existente, lo que reemplaza sus claves.

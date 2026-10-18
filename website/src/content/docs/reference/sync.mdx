@@ -7,34 +7,36 @@ bae's sync is [coven](https://coven.bae.fm)'s sync: bae declares its tables and 
 
 ## Capture
 
-coven owns the SQLite connection, so every write bae commits passes through it. SQLite's session extension records exactly what changed in each transaction; the changes to synced tables become a **changeset**, sealed with the library key and signed with the device's identity key. No diffing, no dirty flags: capture is a property of the connection, and a write cannot be missed.
+coven owns the SQLite connection, so every write bae commits passes through it. When a transaction that changes synced tables commits, coven records each row change, with the columns it touched, in the same transaction, so a committed change is never lost, even if the app crashes a moment later. No diffing, no dirty flags: capture is a property of the connection, and a write cannot be missed. The change waits on the device and is encrypted and signed only when it is sent, so writing needs no key and no network.
 
-## Streams
+## The sequence
 
-Each device appends its changesets to its own stream in the cloud home, numbered sequentially. Devices never write to each other's streams, so there are no write conflicts in storage, and each device tracks a cursor per peer stream. A sync cycle pushes the local outbox, then pulls each peer's stream from its cursor forward, verifying each changeset's signature and its author's membership before applying it.
+All of a library's history in the cloud home is one numbered sequence of objects. Each holds one device's batch of changes, an admin entry, a key sealed to one member, or a snapshot announcement. Every device applies them in order and never skips one, so every device agrees on what happened and when. A device adds the next object only after it has applied every one before it.
 
-The cycle runs after local changes, on an idle timer with backoff (up to five minutes between polls), and immediately on **Sync Now**. Failures back off and retry; the loop reports each cycle's outcome to the UI as status, error text, and the number of rows applied.
+A sync pass reads forward from the last object the device applied until one is missing, checks each one's signature and applies it, sends this device's queued changes as one new object, then does the work the new state calls for: sharing or unsharing access, taking snapshots, deleting old history. A pass over a quiet library costs two requests, whatever its size.
+
+Passes run after local changes, on an idle timer, and immediately on **Sync Now**. Failures retry on one backoff schedule, and anything that can't proceed names what it is waiting for, which bae shows in its sync status line.
 
 ## Merge
 
 Two devices editing the same library while apart is the normal case, not the exception. When their changes meet:
 
 - Edits to **different rows or different columns** both apply. Editing a release's year on the laptop and its label on the desktop yields both.
-- Edits to the **same column of the same row** are ordered by the row's `_updated_at` hybrid logical clock: the later edit wins, deterministically and identically on every device.
-- **Deletes win** over concurrent edits: a release deleted on one device stays deleted even if another device edited it in the same interval.
+- Edits to the **same column of the same row** are ordered by timestamp: the later edit wins, deterministically and identically on every device.
+- **Deletes win** over concurrent edits: an edit made to a row that has since been deleted loses, whenever it arrives, so a release deleted on one device stays deleted even if another device edited it in the same interval.
 
-There is no conflict UI because there is no unresolved state: every device converges to the same result from any application order.
+coven keeps each replaced value as a *lost value*; bae shows none and dismisses none, so there is no conflict UI. Every device converges to the same result from any arrival order.
 
-## Bootstrap
+## Snapshots
 
-A device joining or restoring doesn't replay history from the beginning. It downloads a **snapshot**, a full SQLite image published periodically to the cloud home, then applies only the changesets each stream accumulated after it. Snapshot metadata records the schema version and the per-stream cursors it embodies.
+A device joining or restoring doesn't replay history from the beginning. Devices take **snapshots**, the complete state of the library as of one point in the sequence, and once the library and every private circle have one, the history before it is deleted. A new device loads the latest snapshot, then applies only what came after it. A device that has been away longer than the kept history does the same, and keeps its unsent edits.
 
 ## Schema versions
 
-bae's schema migrates through a numbered ladder, and the ladder's top rung is stamped on every changeset the device writes. A device that pulls a changeset from a newer schema than its own parks that stream, applying nothing past it, until the app updates; nothing is lost and nothing misapplies. The database file itself refuses to open under a binary older than its schema.
+bae's schema is one migration, and every change a device sends records the schema version it was made with. A device that reaches a change from a newer schema than its own stops there, applying nothing past it, until the app updates; nothing is lost and nothing misapplies.
 
 Coarser than the schema version is the **compatibility era**: the pinned coven revision baked into each binary. Two builds sync only within an era; a coven wire-format break is a new era and a major version bump across every app. Pre-1.0, every build is era zero and formats change without migration.
 
 ## What the provider sees
 
-On an opaque home the provider stores ciphertext changesets, ciphertext blobs, and signed membership records; it can count objects and observe sizes and timing, and read none of it. Every object a device pulls is verified, signature and membership, before anything touches the database: the storage is a dumb, untrusted mailbox. See [Encryption](/reference/encryption) and [Identity and membership](/reference/membership).
+The provider stores encrypted changes, snapshots, membership records, and files; it can count objects, observe sizes and timing, and see which account writes each object, and read none of the contents. Every object a device pulls is verified, signature and membership, before anything touches the database: the storage is a dumb, untrusted mailbox. See [Encryption](/reference/encryption) and [Identity and membership](/reference/membership).

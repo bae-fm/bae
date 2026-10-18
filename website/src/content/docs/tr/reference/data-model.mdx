@@ -3,7 +3,7 @@ title: Veri modeli
 description: Şema, neyin eşzamanlandığı ve neyin aygıtta kaldığı
 ---
 
-bae'in kataloğu sıradan SQLite'tır; [coven](https://coven.bae.fm)'e tablo tablo bildirilir: eşzamanlanan tablolar bir çakışma saati taşır ve her aygıta gider; bildirilmemiş tablolar aygıttan hiç ayrılmaz. Ayrım veri modelinin en çok yük taşıyan kararıdır, bu yüzden bu sayfa onun etrafında düzenlenmiştir.
+bae'in kataloğu sıradan SQLite'tır; [coven](https://coven.bae.fm)'e tablo tablo bildirilir: eşzamanlanan tablolar onları okuyabilen her aygıta gider; bildirilmemiş tablolar aygıttan hiç ayrılmaz. Ayrım veri modelinin en çok yük taşıyan kararıdır, bu yüzden bu sayfa onun etrafında düzenlenmiştir.
 
 ## Katalog grafiği
 
@@ -16,26 +16,29 @@ bae'in kataloğu sıradan SQLite'tır; [coven](https://coven.bae.fm)'e tablo tab
 - **`track_works`**, **`work_parts`**, **`work_artists`**: icra ettikleri eserlere bağlı kayıtlar.
 - **`audio_formats`** ve **`audio_format_segments`**: çalma özellikleri. Parça başına: codec, örnekleme hızı, bit derinliği, kanallar, ölçülen ses düzeyi ve tepe, pregap uzunlukları. Segmentler bir parçayı kaynak dosyalarının sıralı bayt ve örnek pencerelerine eşler; bu sayede bir CUE rip'inin parçası, pregap dahil, büyük bir dosyanın veya birkaç dosyanın bölgelerine yayılabilir.
 - **`release_files`**, **`covers`**, **`artist_images`**: blob taşıyan tablolar. Satırlar katalog girdileridir; baytlar coven'in blob katmanında yaşar (aşağıya bakın).
+- **`people`**, **`ratings`**, **`history`**, **`playlists`**, **`playlist_entries`**: her kişinin profili ve kendisi için kaydettikleri. Bunlar sahip tablolarıdır: yalnızca yazarlarının aygıtları onları değiştirebilir. `history` ve `playlists` satırlarının her biri ya hanehalkının paylaşılan deposunda ya da kişinin özel çemberinde yaşar.
 
-## Eşzamanlanan, kapılı, yerel
+## Eşzamanlanan ve yerel
 
-Yukarıdakilerin hepsi eşzamanlanır, ancak koşulsuz değil. `releases`, `remote` sütununda gated root olarak bildirilir: bir release satırı ve bütün alt ağacı (tracks, files, credits, formats, cover) yalnızca `remote` true iken, yani sürüm bulutta yönetilirken eşzamanlanır. Bir sürümü managed yapmak alt ağacı yayımlar; unmanaged bir sürüm, şeması eşzamanlanan olsa bile bütünüyle içe aktaran aygıtta kalır. Ata tablolar (`artists`, `albums`, `works`) yalnızca eşzamanlanan bir sürüm hâlâ onlara başvururken eşzamanlanır, böylece bir aygıt altında hiçbir şey olmayan bir sanatçı almaz.
+Yukarıdaki her tablo koşulsuz eşzamanlanır: yerel bir sürümün satırları diğer her sürüm gibi her aygıta ulaşır, böylece her aygıt hanehalkının neye sahip olduğunu bilir ve yerel bir sürümün parçasını gösteren bir puan ya da çalma listesi girdisi her aygıtın okuyabildiği bir satırı gösterir. Yalnızca sürümün sesi ve bulunduğu yollar içe aktaran aygıtta kalır. Her tablo satır kimliği, hedef kitlesi, sahip tablosu olup olmadığı ve taşıdığı dosyalarla bildirilir; bir test bildirimleri tam olarak bu listede tutar.
 
 Tamamen yerel tablolar, coven'e asla bildirilmez:
 
 - **`playback_state`**: geçerli parça, konum, kuyruk, ses seviyesi, shuffle ve repeat. Çalma bir aygıt gerçeğidir.
-- **`imports`**: içe aktarma işlemi takibi.
+- **Tarama ve içe aktarma tabloları**: izlenen klasörler, taramalar, içe aktarma adayları ve taslakları.
 - **`source_release`** ve altındaki tablolar: bae'nin getirdiği her MusicBrainz ve Discogs yayınından çıkardıkları — albüm ve baskı bilgileri, katkılar ve eserlerle birlikte tam parça listesi, kapak seçenekleri ve diğer kataloglarda nasıl anıldığı — yerel bir yayın yerine sağlayıcı yayını ile anahtarlanmış. Ham JSON saklanmaz; her cihaz bir yayını yeniden getirebilir.
+- **`local_release_files`**: yerel bir sürümün bu aygıttaki dosya yolları ve değişiklik zamanları.
+- **`local_history`**: bu aygıtın kişisinin profili olmadan önceki çalmalar; profil oluşturulduğunda kişinin özel çemberine taşınır.
 
-Her eşzamanlanan tablo bir `_updated_at` hybrid-logical-clock sütunu taşır; coven'in alan alan birleştirmesi eşzamanlı düzenlemeleri bu register ile sıralar. Bir test, eşzamanlanan küme ile saat taşıyan kümenin tam olarak eşit olduğunu denetler.
+İki aygıtın düzenlemeleri hücre hücre birleşir; ikisinin de değiştirdiği bir hücreyi sonraki düzenleme kazanır. coven birleştirme muhasebesini kendi tablolarında tutar, bu yüzden bae'in tabloları saat sütunu taşımaz.
 
 ## Blob'lar
 
-Ses ve görseller coven'in blob katmanından üç ad alanında geçer; her birinin kendi aygıt önbellek sınırı vardır: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB).
+Ses ve görseller coven'in dosya katmanından geçer; her türün kendi aygıt önbellek sınırı vardır: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB) ve `people` üzerindeki avatarlar (64 MiB).
 
-Sürüm dosyaları kullanıcı tarafından sağlanır ve tembel önbelleğe alınır: unmanaged sürümde blob, kullanıcının özgün yolundaki dosyasına dış başvurudur; managed sürümde ilk okumada önbelleğe alınan yüklenmiş nesnedir. Kapaklar ve sanatçı görselleri host tarafından sağlanır ve istekle önbelleğe alınır: bae baytları üretir (kapaklar en fazla 600px geniş JPEG küçük resimler olarak yeniden çizilir) ve her aygıt çekme sırasında alır, böylece ızgaralar yerel çizilir.
+Sürüm dosyaları kullanıcıya aittir ve tembel önbelleğe alınır: yerel bir sürümün dosyaları, kullanıcının özgün yollarındaki dosyalarıdır ve `local_release_files` içinde kaydedilir; sürümü buluta taşımak her dosyayı tek bir yazmada `release_files` satırına ekler ve diğer aygıtlar onu ilk okumada önbelleğe alır. Kapaklar, sanatçı görselleri ve avatarlar bae'e aittir ve istekle önbelleğe alınır: bae baytları üretir (kapaklar en fazla 600px geniş JPEG küçük resimler olarak yeniden çizilir) ve her aygıt satırları ulaşır ulaşmaz onları alır, böylece ızgaralar yerel çizilir.
 
-Opaque evde blob'lar anlamsız içerik anahtarları altında yüklenir. Browsable evde her blob satırı okunabilir bir bulut yolu kaydeder (ses için `{artist}/{album}/{filename}`, kapaklar için `{album}/{release}/cover.{ext}`); bu yol yükleme sırasında bir kez hesaplanır, böylece sonraki yeniden adlandırma nesneyi taşımaz.
+Her dosya rastgele bir ad altında şifreli yüklenir; yolu satırına eklendiğinde sabitlenir, böylece sonraki yeniden adlandırma nesneyi taşımaz.
 
 ## Bir rip'in kimliği
 

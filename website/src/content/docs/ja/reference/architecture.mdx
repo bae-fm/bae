@@ -16,22 +16,21 @@ bae は 1 つの Rust コアを、4 つのネイティブアプリから使い�
 
 ## ディスク上の 1 つのライブラリ
 
-ライブラリは `~/.bae/libraries/<library-id>/`（モバイルではプラットフォームのデータディレクトリ）にあります。
+ライブラリは 2 つのディレクトリにあります（モバイルではプラットフォームのデータディレクトリ）。coven のストアと、その横にある bae 自身の設定です。
 
 ```
-~/.bae/libraries/<id>/
-  library.db        # SQLite: catalog, credits, playback specs
-  config.yaml       # coven: ライブラリの識別情報、クラウドホーム。同期されない
-  preferences.toml  # bae の設定。同期されない
-  storage/
-    local/          # blobs this device owns (covers, artist images)
-    cache/          # evictable copies of cloud blobs
-    pinned/         # pinned-for-offline copies, never evicted
+~/.bae/stores/<id>/       # coven のストア。coven 経由でのみ開く
+  store.db                # SQLite: カタログ、クレジット、再生仕様、coven の管理情報
+  files/                  # bae 自身のファイルの coven によるコピー（カバー、アーティスト画像、アバター）
+  cache/                  # アップロード済みファイルのキャッシュとピン留めのコピー
+~/.bae/libraries/<id>/    # bae 自身のもの。同期されない
+  preferences.toml        # bae の設定
+  cache/                  # カタログから取得したアートワーク
 ```
 
-データベースは coven 経由でのみ開かれます。coven は bae のスキーマの横に自分の管理テーブル（同期カーソル、送信待ち、blob 状態）を重ね、bae のマイグレーションを実行します。管理外としてインポートされた音声ファイルは、`~/.bae` の下にはありません。データベースはインポート元のパスでそれらを参照します。
+データベースは coven 経由でのみ開かれます。coven は bae のスキーマの横に自分の管理テーブル（統合レコード、アップロードキュー、ファイル状態）を持ち、bae のマイグレーションを実行します。ローカルリリースの音声ファイルは、`~/.bae` の下にはありません。データベースはインポート元のパスでそれらを参照します。
 
-シークレットはこれらのファイルには入りません。身元鍵、ライブラリ暗号化鍵、クラウド認証情報、API トークンは OS のキーリングにあります（Apple プラットフォームでは Keychain、iCloud Keychain 経由で同期されます。他の場所では各プラットフォーム相当のものです）。
+シークレットはこれらのファイルには入りません。メンバー鍵、ライブラリの鍵、クラウドのサインイン情報、API トークンは OS のキーリングにあります（Apple プラットフォームでは Keychain、他の場所では各プラットフォーム相当のもの）。Apple プラットフォームでは、復元コードも iCloud キーチェーンに保存されます。
 
 ## エディション
 

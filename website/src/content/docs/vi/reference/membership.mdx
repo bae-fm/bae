@@ -1,35 +1,54 @@
 ---
 title: Danh tính và tư cách thành viên
-description: Khóa làm danh tính, bắt tay tham gia, vai trò và thu hồi
+description: Con người như khóa, mã khôi phục, lời mời, vai trò và xóa
 ---
 
-Không có hệ thống tài khoản ở bất cứ đâu trong bae. Danh tính của một thiết bị là cặp khóa Ed25519 do nó tự tạo và giữ trong keyring của hệ điều hành; khóa công khai *chính là* danh tính. Ai thuộc về một thư viện là tập bản ghi đã ký trong nhà trên đám mây, bất kỳ ai giữ chúng đều xác minh được, không máy chủ nào cấp. Bộ máy này là của [coven](https://coven.bae.fm); trang này là cách bae dùng nó.
+Không có hệ thống tài khoản ở bất cứ đâu trong bae. Mỗi người trong một thư viện là một *thành viên* coven: một id thành viên ngẫu nhiên, cố định và hai cặp khóa, một để ký và một để nhận các khóa được niêm phong cho họ, được mọi thiết bị của người đó dùng chung và giữ trong keyring của hệ điều hành trên từng thiết bị. Một thiết bị là một lần cài đặt, có id riêng, thuộc về một thành viên. Ai thuộc về một thư viện là tập bản ghi đã ký trong nhà trên đám mây, do thiết bị của từng thành viên kiểm tra, không máy chủ nào cấp. Bộ máy này là của [coven](https://coven.bae.fm); trang này là cách bae dùng nó.
 
 ## Bản ghi thành viên
 
-Mỗi owner ghi một stream chỉ thêm gồm các mục thành viên đã ký vào nhà trên đám mây: khóa này đã được thêm với vai trò này, khóa này đã bị xóa. Mỗi mục liên kết tới mục trước đó, và mỗi owner ký một head khai báo đầu stream của họ, nên nhà cung cấp bỏ hoặc sắp xếp lại bản ghi sẽ bị phát hiện thay vì được tin. Thư viện chấp nhận hợp của mọi stream owner đã xác minh.
+Toàn bộ lịch sử của một thư viện trong nhà trên đám mây là một chuỗi đánh số, và mọi thiết bị áp dụng nó theo cùng thứ tự. Một thay đổi về thành viên hoặc cài đặt là một *mục quản trị* trong chuỗi đó, được ký bằng khóa của tác giả và được xét theo trạng thái ngay trước nó, nên mọi thiết bị tự đi tới cùng một kết luận. Một mục chỉ có hiệu lực nếu tác giả có quyền tạo nó, và thư viện luôn giữ ít nhất một quản trị viên.
 
-Ở mỗi lần pull, tác giả của từng changeset được kiểm tra với bản ghi này: được ký bởi thành viên hiện tại, với vai trò được ghi. Changeset từ thiết bị đã bị xóa, từ khóa chưa từng được thêm, hoặc có chữ ký không hợp lệ không được áp dụng. Nhà cung cấp lưu bản ghi nhưng không thể giả mạo chúng; chỉ người giữ khóa owner mới đổi được tư cách thành viên.
+Mọi thay đổi một thiết bị gửi đều được kiểm tra với bản ghi này: được ký bởi một thành viên hiện tại, từ một thiết bị chưa bị xóa. Thay đổi từ thiết bị hoặc thành viên đã bị xóa, từ khóa chưa từng được thêm, hoặc có chữ ký không hợp lệ đều không được tính. Nhà cung cấp lưu bản ghi nhưng không thể giả mạo chúng.
 
 ## Vai trò
 
-**Owner** và **Member** đều đọc và ghi thư viện; owner còn phê duyệt và xóa thiết bị. Thiết bị sáng lập của bae là owner và mọi thiết bị nó phê duyệt tham gia dưới vai trò member. (Một vai trò thứ ba tồn tại trong bộ máy bên dưới, follower chỉ đọc, mà bae hiện không gán.)
+**Quản trị viên** và **Thành viên** đều đọc và ghi thư viện: coven không kiểm tra quyền khi ghi vào thư viện, nên vai trò chỉ đọc sẽ không đứng vững. Quản trị viên còn mời và xóa người, đổi vai trò và đổi tên thư viện. Người cho thư viện nhà trên đám mây của nó là quản trị viên đầu tiên.
 
-## Bắt tay tham gia
+| Thao tác | Ai |
+|---|---|
+| Mời một người | một quản trị viên |
+| Thêm một thiết bị | chính người đó, từ thiết bị mới, bằng mã khôi phục của họ |
+| Xóa một thiết bị | người sở hữu nó, hoặc bất kỳ quản trị viên nào |
+| Xóa một người | một quản trị viên |
+| Đổi tên thư viện | một quản trị viên |
 
-Việc thêm thiết bị là một phiên ghép nối cục bộ có xác minh rõ ràng của con người:
+Hồ sơ, đánh giá, lịch sử và danh sách phát của một người là các hàng chủ sở hữu: chỉ thiết bị của người đó mới đổi được chúng, nên một đánh giá ghi tên ai đó thật sự là của họ.
 
-1. Chủ sở hữu khởi động **Thêm thiết bị**. bae nghe ngắn gọn trên mạng cục bộ và hiển thị một mã ghép nối. Nó chứa địa chỉ người nghe, khóa phiên tạm thời, tên thư viện, nhà cung cấp và thời hạn sử dụng — không có khóa thư viện hoặc thông tin xác thực lưu trữ lâu dài.
-2. Thiết bị tham gia quét mã, tạo cặp khóa thiết bị, đăng nhập vào nhà cung cấp khi được yêu cầu và gửi khóa công khai đã ký và danh tính tài khoản nhà cung cấp thông qua kết nối cục bộ được mã hóa. Cả hai thiết bị đều hiển thị cùng một dấu vân tay.
-3. Chủ sở hữu đối chiếu dấu vân tay và xác nhận danh tính chính xác đó. Phê duyệt cấp quyền truy cập tài khoản đám mây của nó khi được yêu cầu, ký tên vào mục nhập thành viên và niêm phong khóa thư viện cũng như quyền truy cập bộ nhớ cuối cùng vào khóa chung của thiết bị mới.
-4. Gói hàng được niêm phong sẽ quay trở lại thông qua cùng một kết nối cục bộ đã được xác thực. Thiết bị tham gia sẽ mở nó, khởi động từ bộ lưu trữ đám mây và bắt đầu đồng bộ hóa.
+## Thêm thiết bị của chính bạn
 
-Việc ghép nối đã hết hạn, bị gián đoạn hoặc bị từ chối sẽ không mang lại kết quả gì.
+Mã khôi phục chứng minh một thiết bị thuộc về người của nó, nên không cần phê duyệt:
 
-## Thu hồi
+1. Thiết bị mới nhận mã bằng cách quét mã QR mà một thiết bị khác của người đó hiển thị, từ iCloud Keychain trên thiết bị Apple, hoặc bằng cách gõ.
+2. Nó tới được lưu trữ: với Dropbox và OneDrive bằng cách đăng nhập tài khoản riêng của người đó, với S3 bằng khóa truy cập của họ, mà mã QR mang bên cạnh mã.
+3. Nó tải thư viện, kiểm tra rằng các khóa trong mã thuộc về một thành viên hiện tại, và tự đăng ký là thiết bị mới bằng một mục được ký bằng các khóa đó.
 
-Xóa một thành viên thêm một mục xóa đã ký và xoay khóa thư viện sang thế hệ mới mà khóa bị xóa không bao giờ nhận (xem [Mã hóa](/vi/reference/encryption#các-thế-hệ)). Trên lưu trữ có thể thu hồi truy cập, quyền truy cập cũng bị rút. Những gì đã đồng bộ tới thiết bị bị xóa vẫn ở đó; dữ liệu không thể được lấy lại. Mọi thứ sau lần xoay khóa nằm ngoài tầm với của nó.
+Một mã có khóa đã bị thay kể từ đó sẽ thất bại. Khôi phục luôn tạo một thiết bị mới; nó không cứu các chỉnh sửa chưa gửi của một bản cài đặt khác.
+
+## Mời một người
+
+1. Một quản trị viên nhập tài khoản nhà cung cấp của người đó và chọn vai trò. bae chia sẻ thư mục của thư viện với tài khoản đó, hoặc với S3 thì tạo khóa truy cập cho họ, và hiển thị lời mời: một mã QR chứa vị trí của thư viện, id thành viên được chọn cho người đó, một bí mật dùng một lần và tên hiện tại của thư viện. Lời mời hết hạn một ngày sau khi được tạo.
+2. Thiết bị của người đó quét lời mời, đăng nhập tài khoản riêng của họ, tạo cặp khóa của họ và ghi một yêu cầu tham gia vào lưu trữ, được mã hóa bằng khóa dẫn xuất từ bí mật của lời mời và ký bằng khóa mới của họ.
+3. Thiết bị của quản trị viên, thiết bị duy nhất giữ bí mật, hiển thị yêu cầu, và quản trị viên phê duyệt nó.
+4. Việc phê duyệt niêm phong mọi khóa store cho khóa niêm phong mới của người đó, rồi thêm mục chấp nhận họ.
+5. Thiết bị mới mở các khóa của nó, tải thư viện, tự đăng ký và ghi hồ sơ của người đó với tên họ đã gõ.
+
+Từ chối lời mời, hoặc để nó hết hạn, sẽ thu hồi quyền truy cập ở nhà cung cấp mà nó đã cấp.
+
+## Xóa
+
+Xóa một thiết bị hoặc một người là một mục quản trị, và vị trí của nó trong chuỗi là một vạch trong lịch sử: những gì thiết bị hoặc người bị xóa gửi sau đó không được tính, còn những gì tới trước vẫn giữ nguyên. Xóa một người cũng xóa các thiết bị và vòng riêng của họ, và các khóa họ từng giữ được thay trước khi ghi thêm dữ liệu (xem [Mã hóa](/vi/reference/encryption#xoay-vòng)). Cắt quyền truy cập lưu trữ là việc của nhà cung cấp: thiết bị của tài khoản đang giữ thư viện ngừng chia sẻ thư mục, và với S3 thì khóa truy cập của người đó bị xóa. Những gì đã đồng bộ tới thiết bị bị xóa vẫn ở đó; dữ liệu không thể được lấy lại.
 
 ## Mã khôi phục
 
-Mã khôi phục cố ý đi vòng qua tư cách thành viên: đó là tọa độ nhà trên đám mây cộng khóa thư viện, trong một chuỗi mang quyền truy cập, để khôi phục thư viện của chính bạn khi không còn người phê duyệt sống sót. Nó được tạo theo yêu cầu, tự động lưu trong iCloud Keychain trên nền tảng Apple, và nhạy cảm đúng bằng chính thư viện.
+Mã khôi phục chứa id của một thành viên và các cặp khóa riêng hiện tại của họ, store id của thư viện và vị trí lưu trữ của nó; không bao giờ chứa thông tin xác thực lưu trữ, token đăng nhập hay tên thư viện. Nó được hiển thị theo yêu cầu, tự động lưu trong iCloud Keychain trên nền tảng Apple, và nhạy cảm đúng bằng chính thư viện: ai giữ nó, cùng quyền truy cập lưu trữ, chính là người đó đối với thư viện. Một người mất mọi thiết bị và mã của mình có thể được quản trị viên mời lại vào id thành viên hiện có, việc này thay các khóa của họ.

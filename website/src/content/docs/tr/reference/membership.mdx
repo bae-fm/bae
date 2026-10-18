@@ -1,35 +1,54 @@
 ---
 title: Kimlik ve üyelik
-description: Kimlik olarak anahtarlar, katılma el sıkışması, roller ve geri alma
+description: Anahtar olarak kişiler, geri yükleme kodları, davetler, roller ve kaldırma
 ---
 
-bae içinde hiçbir yerde hesap sistemi yoktur. Bir aygıtın kimliği, kendisi için ürettiği ve OS keyring içinde tuttuğu bir Ed25519 keypair'dir; public key kimliğin kendisidir. Bir kitaplığa kimlerin ait olduğu, bulut evindeki imzalı kayıt kümesidir; onları elinde tutan herkes doğrulayabilir ve hiçbir sunucu tarafından verilmez. Mekanizma [coven](https://coven.bae.fm)'indir; bu sayfa bae'in onu nasıl kullandığını anlatır.
+bae içinde hiçbir yerde hesap sistemi yoktur. Bir kitaplıktaki her kişi bir coven *üyesidir*: rastgele, kalıcı bir üye kimliği ve iki anahtar çifti, biri imzalamak, diğeri anahtarların mühürlendiği; bunlar o kişinin tüm aygıtlarınca paylaşılır ve her aygıtın OS keyring'inde tutulur. Bir aygıt, kendi kimliği olan ve tek bir üyeye ait tek bir kurulumdur. Bir kitaplığa kimlerin ait olduğu, bulut evindeki imzalı kayıt kümesidir; her üyenin aygıtı bunları denetler ve hiçbir sunucu tarafından verilmez. Mekanizma [coven](https://coven.bae.fm)'indir; bu sayfa bae'in onu nasıl kullandığını anlatır.
 
 ## Üyelik kayıtları
 
-Her owner bulut evine yalnızca eklenen imzalı üyelik girdilerinden oluşan bir akış yazar: bu anahtar bu rolle eklendi, bu anahtar kaldırıldı. Her girdi öncekine bağlanır ve her owner akışının ucunu bildiren bir head imzalar; böylece kayıtları düşüren veya yeniden sıralayan sağlayıcıya inanmak yerine durum saptanır. Kitaplığın kabul ettiği şey, her owner'ın doğrulanmış akışının birleşimidir.
+Bir kitaplığın bulut evindeki bütün geçmişi tek numaralı bir dizidir ve her aygıt onu aynı sırayla uygular. Üyelik veya ayar değişikliği bu dizide bir *yönetici girdisidir*; yazarının anahtarıyla imzalanır ve hemen önceki duruma göre değerlendirilir, böylece her aygıt kendi başına aynı karara varır. Bir girdi yalnızca yazarının yapmaya yetkisi varsa sayılır ve kitaplık her zaman en az bir yönetici tutar.
 
-Her çekmede, her changeset'in yazarı bu kayda göre denetlenir: güncel member tarafından imzalanmış mı, yazabilecek role sahip mi. Kaldırılmış aygıtlardan, hiç eklenmemiş anahtarlardan veya geçersiz imzalarla gelen changeset'ler uygulanmaz. Sağlayıcı kayıtları saklar ama sahtesini üretemez; yalnızca owner anahtarlarını elinde tutanlar üyeliği değiştirebilir.
+Bir aygıtın gönderdiği her değişiklik bu kayda göre denetlenir: güncel bir üye tarafından, kaldırılmamış bir aygıttan imzalanmış mı. Kaldırılmış aygıtlardan veya üyelerden, hiç eklenmemiş anahtarlardan ya da geçersiz imzalarla gelen değişiklikler sayılmaz. Sağlayıcı kayıtları saklar ama sahtesini üretemez.
 
 ## Roller
 
-**Owner** ve **Member** kitaplığı hem okur hem yazar; owners ayrıca aygıtları onaylar ve kaldırır. bae'in kurucu aygıtı owner'dır ve onun onayladığı her aygıt member olarak katılır. (Alttaki mekanizmada üçüncü bir rol, salt okunur follower, vardır; bae şu anda bunu atamaz.)
+**Yönetici** ve **Üye** kitaplığı hem okur hem yazar: coven kitaplık yazmalarında izin denetlemez, bu yüzden salt okunur bir rol tutunamazdı. Yöneticiler ayrıca kişileri davet eder ve kaldırır, rolleri değiştirir ve kitaplığı yeniden adlandırır. Kitaplığa bulut evini veren kişi onun ilk yöneticisidir.
 
-## Katılma el sıkışması
+| İşlem | Kim |
+|---|---|
+| Bir kişiyi davet etmek | bir yönetici |
+| Bir aygıt eklemek | kişinin kendisi, yeni aygıttan, geri yükleme koduyla |
+| Bir aygıtı kaldırmak | sahibi olan kişi veya herhangi bir yönetici |
+| Bir kişiyi kaldırmak | bir yönetici |
+| Kitaplığı yeniden adlandırmak | bir yönetici |
 
-Cihaz eklemek, açık bir insan doğrulaması ile yerel bir eşleştirme oturumudur:
+Bir kişinin profili, puanları, geçmişi ve çalma listeleri sahip satırlarıdır: yalnızca o kişinin aygıtları onları değiştirebilir, bu yüzden birine atfedilen bir puan gerçekten ondan gelir.
 
-1. Bir sahip **Cihaz ekle** cihazını başlatır. bae yerel ağı kısaca dinler ve bir eşleştirme kodunu gösterir. Dinleyici adreslerini, geçici bir oturum anahtarını, kitaplık adını, sağlayıcıyı ve son kullanma tarihini içerir; kitaplık anahtarı veya kalıcı depolama kimlik bilgileri yoktur.
-2. Katılan cihaz kodu tarar, cihaz anahtar çiftini oluşturur, gerektiğinde sağlayıcıda oturum açar ve imzalanmış genel anahtarını ve sağlayıcı hesap kimliğini şifrelenmiş yerel bağlantı üzerinden gönderir. Her iki cihaz da aynı parmak izini gösteriyor.
-3. Sahibi parmak izlerini karşılaştırır ve bu kesin kimliği onaylar. Onay, gerektiğinde bulut hesabına erişim izni verir, üyelik girişini imzalar ve kitaplık anahtarını ve yeni cihazın genel anahtarına son depolama erişimini mühürler.
-4. Mühürlü paket aynı kimliği doğrulanmış yerel bağlantı üzerinden geri döner. Katılan cihaz onu açar, bulut depolama alanından önyükleme yapar ve senkronizasyona başlar.
+## Kendi aygıtınızı ekleme
 
-Süresi dolmuş, kesintiye uğramış veya reddedilmiş bir eşleştirme hiçbir şey sağlamaz.
+Geri yükleme kodu bir aygıtın kişiye ait olduğunu kanıtlar, bu yüzden onaya gerek yoktur:
 
-## Geri alma
+1. Yeni aygıt kodu, kişinin başka bir aygıtının gösterdiği QR kodu tarayarak, Apple aygıtlarında iCloud Anahtar Zinciri'nden veya yazarak alır.
+2. Depolamaya ulaşır: Dropbox ve OneDrive'da kişinin kendi hesabında oturum açarak, S3'te QR kodun kodun yanında taşıdığı erişim anahtarıyla.
+3. Kitaplığı yükler, kodun anahtarlarının güncel bir üyeye ait olduğunu denetler ve kendini bu anahtarlarla imzalanmış bir girdiyle yeni aygıt olarak kaydeder.
 
-Bir member'ı kaldırmak imzalı kaldırma ekler ve kitaplık anahtarını, kaldırılan anahtarın asla almadığı yeni bir kuşağa döndürür ([Şifreleme](/tr/reference/encryption#kuşaklar) bölümüne bakın). Erişimi geri alabilen depolamada erişim de çekilir. Kaldırılan aygıta daha önce eşzamanlanan şey onda kalır; veri geri gönderilemez. Döndürmeden sonraki her şey onun erişiminin dışındadır.
+Anahtarları o zamandan beri değiştirilmiş bir kod başarısız olur. Geri yükleme her zaman yeni bir aygıt oluşturur; başka bir kurulumun gönderilmemiş düzenlemelerini kurtarmaz.
 
-## Kurtarma kodları
+## Bir kişiyi davet etme
 
-Kurtarma kodu üyeliği bilerek atlar: hayatta kalan onaylayıcı olmadan kendi kitaplığınızı geri yüklemek için bulut evi koordinatları ve kitaplık anahtarını tek bearer dizgesinde taşır. İstek üzerine üretilir, Apple platformlarında iCloud Keychain içinde otomatik saklanır ve kitaplığın kendisi kadar hassastır.
+1. Bir yönetici kişinin sağlayıcı hesabını girer ve rolünü seçer. bae kitaplığın klasörünü o hesapla paylaşır ya da S3'te onun için bir erişim anahtarı oluşturur ve bir davet gösterir: kitaplığın konumunu, kişi için seçilen üye kimliğini, tek kullanımlık bir sırrı ve kitaplığın güncel adını tutan bir QR kod. Davet oluşturulduktan bir gün sonra sona erer.
+2. Kişinin aygıtı onu tarar, kişinin kendi hesabında oturum açar, anahtar çiftlerini oluşturur ve depolamaya, davetin sırrından türetilen bir anahtarla şifrelenmiş ve yeni anahtarıyla imzalanmış bir katılma isteği yazar.
+3. Sırrı tutan tek aygıt olan yöneticinin aygıtı isteği gösterir ve yönetici onaylar.
+4. Onay her depo anahtarını kişinin yeni mühürleme anahtarına mühürler, ardından onu kabul eden girdiyi ekler.
+5. Yeni aygıt anahtarlarını açar, kitaplığı yükler, kendini kaydeder ve kişinin profilini yazdığı adla yazar.
+
+Daveti reddetmek veya süresinin dolmasına izin vermek, verdiği sağlayıcı erişimini geri alır.
+
+## Kaldırma
+
+Bir aygıtı veya kişiyi kaldırmak bir yönetici girdisidir ve dizideki yeri geçmişte bir çizgidir: kaldırılan aygıtın veya kişinin ondan sonra gönderdiği sayılmaz, önce ulaşanlar ise kalır. Bir kişiyi kaldırmak aygıtlarını ve özel çemberini de kaldırır ve tuttuğu anahtarlar daha fazla veri yazılmadan önce değiştirilir ([Şifreleme](/tr/reference/encryption#döndürme) bölümüne bakın). Depolama erişimini kesmek sağlayıcının işidir: kitaplığı tutan hesabın aygıtı klasörün paylaşımını kaldırır ve S3'te kişinin erişim anahtarı silinir. Kaldırılan aygıta daha önce eşzamanlanan şey onda kalır; veri geri gönderilemez.
+
+## Geri yükleme kodları
+
+Geri yükleme kodu bir üyenin kimliğini ve güncel özel anahtar çiftlerini, kitaplığın depo kimliğini ve depolama konumunu tutar; asla depolama kimlik bilgilerini, oturum token'larını veya kitaplığın adını tutmaz. İstek üzerine gösterilir, Apple platformlarında iCloud Anahtar Zinciri'nde otomatik saklanır ve kitaplığın kendisi kadar hassastır: onu elinde tutan, depolamaya erişimi de varsa, kitaplık için o kişidir. Her aygıtını ve kodunu kaybeden bir kişi, bir yönetici tarafından mevcut üye kimliğine yeniden davet edilebilir; bu onun anahtarlarını değiştirir.

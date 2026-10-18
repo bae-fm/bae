@@ -1,36 +1,35 @@
 ---
 title: Cloudopslag
-description: Providers, authenticatie en de vorm van de cloud-home
+description: Providers, aanmelden en de vorm van de cloud-home
 ---
 
-De cloud-home is een locatie in opslag die de gebruiker al bezit. Elke provider wordt aangestuurd via dezelfde opslaginterface in [coven](https://coven.bae.fm); wat per provider verschilt is authenticatie en hoe een tweede apparaat toegang krijgt.
+De cloud-home is een locatie in opslag die de gebruiker al bezit. Elke provider wordt aangestuurd via dezelfde opslaginterface in [coven](https://coven.bae.fm); wat per provider verschilt is het aanmelden, de instelling en hoe andere mensen en apparaten erbij komen.
 
 ## Providers
 
-| Provider | Auth | Toegang voor een nieuw apparaat |
-|---|---|---|
-| S3-compatible | Access key + secret | Inloggegevens die tijdens het koppelen op het goedgekeurde apparaat zijn verzegeld |
-| Dropbox | OAuth (PKCE) | Het account van het nieuwe apparaat is goedgekeurd en de map wordt gedeeld |
-| OneDrive | OAuth (PKCE) | Het account van het nieuwe apparaat is goedgekeurd en de map wordt gedeeld |
-| iCloud (CloudKit) | Apple ID, geen login | CloudKit-share geaccepteerd tijdens het koppelen |
+| Provider | Aanmelden | Je eigen nieuwe apparaat | Iemand die je uitnodigt |
+|---|---|---|---|
+| S3-compatible | Access key + secret | Herstelcode, plus je toegangssleutel, die ernaast in de QR-code meekomt | Een toegangssleutel die voor hem is gemaakt |
+| Dropbox | OAuth, bewaard door coven | Herstelcode, daarna aanmelden bij je Dropbox | De gedeelde map van de bibliotheek wordt met zijn account gedeeld |
+| OneDrive | OAuth, bewaard door coven | Herstelcode, daarna aanmelden bij je OneDrive | De map van de bibliotheek wordt met zijn account gedeeld |
+| iCloud (CloudKit) | Apple Account, geen login | Herstelcode, ook aangeboden vanuit de iCloud-sleutelhanger | De CloudKit-zone van de bibliotheek wordt met zijn Apple Account gedeeld |
 
-S3-compatible omvat AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, en alles wat verder de API spreekt; bucket, regio, endpoint en key prefix zijn configureerbaar, en de bucket wordt getest voordat de configuratie wordt opgeslagen zodat een typefout bij het instellen faalt, niet bij de eerste sync. De OAuth-providers bestaan alleen in de volledige **bae**-editie; **baeium**-builds compileren ze eruit.
+S3-compatible omvat AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, en alles wat verder de API spreekt. Het instelformulier vraagt alleen om bucket, regio, endpoint en toegangssleutel; coven herkent bekende services aan de host van het endpoint en vult in hoe ermee te praten. **Geavanceerd** bevat de optionele key prefix en een keuze van serviceprofiel, standaard automatisch. Voor een service die coven niet kent, test **Instellingen detecteren** de bucket met de sleutel en toont wat het vond. Het instellen controleert de provider voordat er iets wordt opgeslagen, zodat een typefout bij het instellen faalt, niet bij de eerste sync, en bae geeft de reden van coven in gewone woorden. Dropbox, OneDrive en iCloud bestaan alleen in de volledige **bae**-editie; **baeium**-builds compileren ze eruit.
 
-## OAuth
+## Aanmelden en mappen
 
-Inloggen is een authorization-code-flow met PKCE, als public client. Op desktop komt de redirect binnen op een loopback-server die voor die ene callback aan een lokale poort bindt; op mobiel vangt de app in plaats daarvan een custom-scheme redirect af. bae vraagt de smalste scope die de provider voor de taak aanbiedt. Tokens worden in de OS-sleutelbos bewaard, ververst met de refresh grant van de provider, en een geweigerde refresh verschijnt als een reconnect-prompt in plaats van een stille retry-loop.
+coven doet het aanmelden bij Dropbox en OneDrive zelf, dus er gaat geen token door bae. Op desktop opent de browser de pagina van de provider en ontvangt een lokale listener die ene redirect; op mobiel doet het aanmeldvenster van het platform dat. coven bewaart de tokens in de OS-sleutelbos en ververst er één eenmalig wanneer de provider hem weigert; een mislukte verversing verschijnt in de syncstatus als de actie **Aanmelden** in plaats van een stille retry-loop.
 
-CloudKit heeft helemaal geen flow nodig: de CloudKit-driver van het platform, geimplementeerd in de app en aan de core gegeven, werkt als de ingelogde Apple ID.
+Na het aanmelden kiest de gebruiker waar de bibliotheek staat. Bij Dropbox is dat een gedeelde map, omdat een huishoudbibliotheek met de accounts van de andere mensen wordt gedeeld; bae gebruikt daarvoor volledige Dropbox-toegang, geen app-map. Is er nog geen gedeelde map, dan zegt bae dat je er een in Dropbox moet delen en opnieuw moet zoeken. Bij OneDrive is het een willekeurige map, doorbladerd vanaf de top, en daar kan een nieuwe worden gemaakt.
+
+CloudKit heeft helemaal geen flow nodig: coven stuurt het op Apple-platforms aan als het ingelogde Apple Account.
 
 ## De indeling van de home
 
-Binnen de home legt coven per-apparaat changeset-streams, snapshotgeneraties, lidmaatschapsrecords en blob-namespaces neer. bae draagt drie blob-namespaces bij: `release_files`, `covers` en `artist_images`.
+Binnen de home begint elk objectpad met de store-id van de bibliotheek: de genummerde reeks wijzigingen van coven, zijn snapshots, toetredingsverzoeken en opgeslagen bestanden. Meerdere bibliotheken kunnen één Dropbox- of OneDrive-map delen zonder elkaars objecten aan te raken.
 
-Hoe objecten worden gesleuteld hangt af van de opslagmodus van de home, vastgelegd bij aanmaak:
-
-- **Opaque**: objecten worden versleuteld en onder uit content afgeleide sleutels bewaard die niets prijsgeven. Dit is de modus die volledig op cryptografie vertrouwt; zie [Encryptie](/nl/reference/encryption).
-- **Browsable**: objecten zijn plaintext op leesbare paden die per blob bij upload worden vastgelegd: `release_files/{artist}/{album}/{filename}`, `covers/{album}/{release}/cover.{ext}`, `artist_images/{artist}/artist.{ext}`. De bucket is ook een bruikbare bestandsboom; de afweging is geen encryptie en geen lidmaatschap, dus browsable homes kunnen niet met andere mensen worden gedeeld.
+Elk object wordt versleuteld en onder een willekeurige naam opgeslagen; er is geen plaintext-modus. De bestanden van bae horen bij rijen van drie gesynchroniseerde tabellen, `release_files`, `covers` en `artist_images`, plus de avatar op elke `people`-rij. Het pad van een bestand wordt vastgelegd wanneer het aan zijn rij wordt gekoppeld, zodat het hernoemen van een album het nooit verplaatst. Zie [Encryptie](/nl/reference/encryption).
 
 ## Gedrag op echte netwerken
 
-Leesacties voor afspelen gebruiken bereiken: de speler streamt de bytevensters die hij nodig heeft in plaats van hele bestanden. Uploadtaken boven een groottedrempel worden multipart uitgevoerd waar de provider dat ondersteunt. Snelheidsbeperking en tijdelijke providerfouten proberen opnieuw met exponentiele backoff, met respect voor retry-after wanneer die wordt gegeven; verlopen OAuth-tokens worden ter plekke ververst. De sync-outbox overleeft herstarts: een upload die door afsluiten van de app wordt onderbroken gaat verder in plaats van opnieuw te beginnen.
+Leesacties voor afspelen gebruiken bereiken: de speler haalt de versleutelde chunks op die hij nodig heeft in plaats van hele bestanden, en haalt vooruit op terwijl een bestand op volgorde speelt. Snelheidsbeperking en tijdelijke providerfouten proberen opnieuw volgens één backoffschema, met respect voor retry-after wanneer die wordt gegeven. De uploadwachtrij overleeft herstarts: een upload die door afsluiten van de app wordt onderbroken gaat verder in plaats van opnieuw te beginnen, en gepauzeerde uploads blijven gepauzeerd.

@@ -1,43 +1,55 @@
 ---
 title: Uređaji i članovi
-description: Dodajte telefon, odobrite uređaj, oporavite biblioteku
+description: Dodajte vlastite uređaje, pozovite ljude i uklonite uređaje
 ---
 
-Ne postoji bae račun. Identitet uređaja jest par ključeva koji sam generira i čuva u privjesku ključeva operacijskog sustava; biblioteka prepoznaje uređaje po njihovim ključevima. Dodavanje uređaja znači da postojeći uređaj kriptografski jamči za novi, bez posrednika.
+Ne postoji bae račun. Svaka osoba u biblioteci ima vlastite ključeve, koje dijele svi njezini uređaji i čuvaju ih u privjesku ključeva operacijskog sustava; biblioteka prepoznaje ljude po tim ključevima. Svaka promjena toga tko pripada biblioteci potpisuje se i čuva u mjestu u oblaku, bez posrednika.
 
 Dvoja različita vrata, za dvije različite situacije:
 
-- **Pridruživanje**: novi uređaj odobrava uređaj koji već ima biblioteku. Koristite to za dodavanje telefona ili uređaja druge osobe.
-- **Obnova**: vaš vlastiti novi ili ponovno instalirani uređaj obnavlja biblioteku izravno iz mjesta u oblaku, pomoću koda za oporavak. Nema odobravatelja.
+- **Obnova**: vaš vlastiti novi ili ponovno instalirani uređaj pridružuje se s vašim kodom za vraćanje. Nijedan drugi uređaj ga ne odobrava: kod sadrži vaše ključeve, pa već dokazuje da je uređaj vaš.
+- **Pridruživanje**: druga osoba pridružuje se pozivnicom administratora, koji odobrava njezin zahtjev.
 
-## Dodavanje uređaja
+## Dodavanje vlastitog uređaja
 
-Na uređaju koji već ima biblioteku, vlasnik otvara Postavke, Uređaji, **Dodajte uređaj**. bae prikazuje jedan kod za uparivanje kao QR i počinje slušati na lokalnoj mreži.
+Na novom uređaju odaberite **Vrati iz oblaka** i predajte mu kod za vraćanje na jedan od tri načina:
 
-Na novom uređaju odaberite **Pridružite se knjižnici** i skenirajte taj kod. Prijavite se kod davatelja pohrane kada se to od vas zatraži. Oba uređaja prikazuju otisak prsta novog uređaja; usporedite ih, a zatim odobrite na postojećem uređaju. Novi uređaj dobiva zapečaćeni pristup putem iste lokalne veze, preuzima biblioteku i započinje sinkronizaciju. Nikakav kod ne putuje natrag.
+- **Skenirajte** QR kod koji jedan od vaših drugih uređaja prikazuje pod **Prikaži kod za vraćanje...** u Postavke, Fonoteka.
+- **Odaberite** ga iz iCloud privjeska ključeva na Apple uređajima: bae navodi kodove za vraćanje koje su ondje spremili vaši drugi uređaji.
+- **Zalijepite** ga ili ga upišite.
 
-Kod za uparivanje ne sadrži ni ključ knjižnice ni vjerodajnice za trajnu pohranu, a prekinuto ili odbijeno uparivanje ne daje ništa. Pojedinosti u [Identitet i članstvo](/hr/reference/membership).
+Prijavite se kod pružatelja pohrane kada se to od vas zatraži. Na S3 uređaj treba i vaš pristupni ključ: QR kod nosi ga uz kod, pa je skeniranje dovoljno, a upisani kod traži ključ. Novi uređaj zatim preuzima biblioteku i počinje sinkronizirati.
+
+Dok ne učita biblioteku, uređaj umjesto njezina naziva prikazuje gdje je pohranjena: e-poštu računa za Dropbox i OneDrive, spremnik i krajnju točku za S3 ili iCloud. Nakon učitavanja prikazuje trenutačni naziv biblioteke.
+
+## Pozivanje osobe
+
+Administrator otvara Postavke, Fonoteka, **Pozovi osobu...**, odabire ulogu i unosi e-poštu računa te osobe; na S3 umjesto toga pristupni ključ izrađen za nju. bae dijeli mapu biblioteke s tim računom i prikazuje pozivnicu kao QR kod.
+
+Na svom uređaju osoba odabire **Pridruži se knjižnici**, skenira ili zalijepi pozivnicu, upiše svoje ime i prijavi se u vlastiti račun. Zahtjev se pojavljuje na administratorovu uređaju pod **Čekaju pridruživanje**, a administrator ga odobrava ili odbija. Nakon odobrenja novi uređaj preuzima biblioteku, a svaki uređaj prikazuje novu osobu po imenu. Pozivnica istječe u roku od jednog dana, a njezin zahtjev može odobriti samo uređaj koji ju je izradio. Pojedinosti u [Identitet i članstvo](/hr/reference/membership).
 
 ## Članovi i uloge
 
-Settings, Devices navodi svakog člana: otisak, ulogu i koji je ovaj uređaj. Osnivački uređaj je **owner**; uređaji koje odobri pridružuju se kao **members**. Oboje čitaju i pišu biblioteku; samo vlasnici odobravaju i uklanjaju uređaje.
+Postavke, Fonoteka navodi svaku osobu i njezine uređaje te koji je od njih ovaj uređaj. Tko poveže biblioteku s oblakom, njezin je prvi **administrator**; administrator poziva druge kao **administratore** ili **članove** i može promijeniti nečiju ulogu. Svi čitaju i uređuju biblioteku. Samo administratori pozivaju i uklanjaju ljude i preimenuju biblioteku.
 
 ## Uklanjanje uređaja
 
-Vlasnici mogu ukloniti bilo kojeg člana. Uklanjanje ne zatvara samo vrata: ključ šifriranja biblioteke rotira se, a uklonjeni uređaj nikad ne prima novi ključ. Ono što je već kopirao zadržava, podaci se ne mogu opozvati, ali sve što biblioteka od tog trenutka napiše za njega je nečitljivo.
+Svaka osoba može ukloniti svoje uređaje, a administrator može ukloniti tuđe, pa nitko tko je izgubio sve uređaje ne ostaje zaglavljen. Od tada se ništa što uklonjeni uređaj pošalje ne računa. bae također prikazuje što preostaje učiniti kod pružatelja, primjerice odjaviti taj uređaj iz vašeg računa: Dropbox, OneDrive i iCloud ne mogu sami odsjeći jedan uređaj računa.
 
-## Kodovi za oporavak
+Uklanjanje osobe, što može samo administrator, uklanja i njezine uređaje i ono što je držala privatnim. Njezine ocjene, povijest i popisi za reprodukciju podijeljeni s kućanstvom ostaju, pripisani njoj. Ključevi biblioteke se zamjenjuju, pa ništa zapisano poslije za nju nije čitljivo. Ono što je već kopirala zadržava: podaci se ne mogu opozvati.
 
-Kod za oporavak bearer je tajna za vašu vlastitu biblioteku: koordinate mjesta u oblaku plus ključ šifriranja, u jednom nizu. **Show recovery code** u Settings ga prikazuje; spremite ga na sigurno mjesto, poput upravitelja lozinki. Na novom uređaju **Restore from cloud** s kodom ponovno izgrađuje biblioteku, bez odobravatelja.
+## Kodovi za vraćanje
 
-Na Apple platformama kod se automatski čuva i u iCloud Keychainu, pa se novi Mac ili iPhone prijavljen u vaš Apple ID može obnoviti jednim dodirom.
+Kod za vraćanje sadrži vaše ključeve za jednu biblioteku i mjesto gdje je pohranjena, u jednom nizu. Ne sadrži lozinku pohrane, prijavu ni naziv biblioteke. **Prikaži kod za vraćanje...** u Postavke, Fonoteka ga prikazuje; spremite ga na sigurno mjesto, poput upravitelja lozinki.
 
-Tko god drži kod drži biblioteku, pa ga tretirajte kao ključ koji jest.
+Na Apple platformama kod se automatski čuva i u iCloud privjesku ključeva, pa ga novi Mac ili iPhone prijavljen u vaš Apple Account može odabrati s popisa.
+
+Tko god ima kod i pristup vašoj pohrani, može otvoriti biblioteku kao vi, pa ga čuvajte u tajnosti.
 
 ## Zaključavanje
 
-**Lock Library** uklanja ključ šifriranja iz privjeska ključeva uređaja. Biblioteka ostaje na disku, nečitljiva, dok netko ponovno ne unese ključ; bae ga provjerava prema spremljenom otisku prije prihvaćanja. Koristite to za prijenosno računalo koje izlazi iz kuće.
+Ključ šifriranja biblioteke živi u privjesku ključeva operacijskog sustava. Dok je privjesak ključeva zaključan, primjerice dok je vaša sesija zaključana, bae prikazuje biblioteku kao zaključanu i otvara je čim se privjesak otključa; **Pokušaj ponovno** ponavlja pokušaj ručno.
 
 ## Na telefonu
 
-iOS i Android pridružuju se i obnavljaju upravo ovako; to je cijeli njihov početni tijek. Telefon može ukloniti i svoju kopiju biblioteke (Settings, remove from this device), što briše lokalne datoteke i ne dira ništa u oblaku.
+iOS i Android pridružuju se i obnavljaju upravo ovako; to je cijeli njihov početni tijek. Telefon može i ukloniti biblioteku sa sebe: najprije se uklanja iz članova biblioteke, za što treba vezu s vašom pohranom, a zatim briše svoju lokalnu kopiju. Biblioteka u oblaku ostaje.

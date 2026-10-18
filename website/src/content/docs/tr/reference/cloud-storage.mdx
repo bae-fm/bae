@@ -1,36 +1,35 @@
 ---
 title: Bulut depolama
-description: Sağlayıcılar, kimlik doğrulama ve bulut evinin biçimi
+description: Sağlayıcılar, oturum açma ve bulut evinin biçimi
 ---
 
-Bulut evi, kullanıcının zaten sahip olduğu depolamadaki tek konumdur. Her sağlayıcı [coven](https://coven.bae.fm) içindeki aynı depolama arayüzü üzerinden çalıştırılır; sağlayıcıya göre değişen şey kimlik doğrulama ve ikinci bir aygıta erişimin nasıl verildiğidir.
+Bulut evi, kullanıcının zaten sahip olduğu depolamadaki tek konumdur. Her sağlayıcı [coven](https://coven.bae.fm) içindeki aynı depolama arayüzü üzerinden çalıştırılır; sağlayıcıya göre değişen şey oturum açma, kurulum ve diğer kişilerle aygıtların ona nasıl ulaştığıdır.
 
 ## Sağlayıcılar
 
-| Sağlayıcı | Auth | Yeni aygıt için erişim |
-|---|---|---|
-| S3 uyumlu | Access key + secret | Eşleştirme sırasında onaylı cihaza mühürlenen kimlik bilgileri |
-| Dropbox | OAuth (PKCE) | Yeni cihazın hesabı onaylandı ve ardından klasör paylaşıldı |
-| OneDrive | OAuth (PKCE) | Yeni cihazın hesabı onaylandı ve ardından klasör paylaşıldı |
-| iCloud (CloudKit) | Apple ID, giriş yok | Eşleştirme sırasında CloudKit paylaşımı kabul edildi |
+| Sağlayıcı | Oturum açma | Kendi yeni aygıtınız | Davet ettiğiniz kişi |
+|---|---|---|---|
+| S3 uyumlu | Access key + secret | Geri yükleme kodu, artı QR kodda onun yanında taşınan erişim anahtarınız | Onun için oluşturulan bir erişim anahtarı |
+| Dropbox | OAuth, coven tarafından tutulur | Geri yükleme kodu, ardından Dropbox'ınızda oturum açma | Kitaplığın paylaşılan klasörü onun hesabıyla paylaşılır |
+| OneDrive | OAuth, coven tarafından tutulur | Geri yükleme kodu, ardından OneDrive'ınızda oturum açma | Kitaplığın klasörü onun hesabıyla paylaşılır |
+| iCloud (CloudKit) | Apple Hesabı, oturum açma yok | Geri yükleme kodu, iCloud Anahtar Zinciri'nden de sunulur | Kitaplığın CloudKit bölgesi onun Apple Hesabıyla paylaşılır |
 
-S3 uyumlu; AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO ve API'yi konuşan başka her şeyi kapsar. Bucket, region, endpoint ve key prefix yapılandırılabilir; bucket yapılandırma kaydedilmeden önce yoklanır, böylece yazım hatası ilk eşzamanlamada değil kurulumda başarısız olur. OAuth sağlayıcıları yalnızca tam **bae** edisyonunda vardır; **baeium** derlemeleri onları dışarıda derler.
+S3 uyumlu; AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO ve API'yi konuşan başka her şeyi kapsar. Kurulum formu yalnızca bucket, region, endpoint ve erişim anahtarını sorar; coven bilinen hizmetleri endpoint'in ana bilgisayarından tanır ve onlarla nasıl konuşulacağını doldurur. **Gelişmiş** isteğe bağlı anahtar önekini ve varsayılan olarak otomatik olan bir hizmet profili seçimini içerir. coven'in tanımadığı bir hizmet için **Ayarları algıla** bucket'ı anahtarla yoklar ve bulduklarını gösterir. Kurulum, herhangi bir şey kaydedilmeden önce sağlayıcıyı denetler, böylece yazım hatası ilk eşzamanlamada değil kurulumda başarısız olur ve bae coven'in nedenini sade sözcüklerle söyler. Dropbox, OneDrive ve iCloud yalnızca tam **bae** edisyonunda vardır; **baeium** derlemeleri onları dışarıda derler.
 
-## OAuth
+## Oturum açma ve klasörler
 
-Giriş, public client olarak PKCE'li authorization-code akışıdır. Masaüstünde yönlendirme tek callback için yerel bir bağlantı noktasına bağlı loopback sunucusuna gelir; mobilde uygulama bunun yerine custom-scheme yönlendirmesini yakalar. bae iş için sağlayıcının sunduğu en dar kapsamı ister. Token'lar OS keyring içinde saklanır, sağlayıcının refresh grant'iyle yenilenir ve reddedilen yenileme sessiz yeniden deneme döngüsü yerine yeniden bağlanma istemi olarak görünür.
+coven Dropbox ve OneDrive oturum açmasını kendisi yapar, bu yüzden hiçbir token bae'ten geçmez. Masaüstünde tarayıcı sağlayıcının sayfasını açar ve yerel bir dinleyici tek yönlendirmeyi alır; mobilde bunu platformun oturum açma sayfası yapar. coven token'ları OS keyring içinde tutar ve sağlayıcı bir token'ı reddettiğinde onu bir kez yeniler; başarısız bir yenileme sessiz yeniden deneme döngüsü yerine eşzamanlama durumunda **Oturum Aç** işlemi olarak görünür.
 
-CloudKit hiç akış gerektirmez: uygulamada uygulanıp çekirdeğe verilen platformun CloudKit sürücüsü, giriş yapılmış Apple ID olarak çalışır.
+Oturum açtıktan sonra kullanıcı kitaplığın nerede yaşayacağını seçer. Dropbox'ta bu paylaşılan bir klasördür, çünkü hanehalkı kitaplığı diğer kişilerin hesaplarıyla paylaşılır; bae bunun için uygulama klasörü değil tam Dropbox erişimi kullanır. Henüz paylaşılan klasör yoksa bae Dropbox'ta bir klasör paylaşıp yeniden aramayı söyler. OneDrive'da herhangi bir klasördür, en üstten gezilir ve orada yeni bir tane oluşturulabilir.
+
+CloudKit hiç akış gerektirmez: coven onu Apple platformlarında oturum açmış Apple Hesabı olarak çalıştırır.
 
 ## Evin yerleşimi
 
-Evin içinde coven aygıt başına changeset akışları, snapshot kuşakları, üyelik kayıtları ve blob ad alanları yerleştirir. bae üç blob ad alanı ekler: `release_files`, `covers` ve `artist_images`.
+Evin içinde her nesne yolu kitaplığın depo kimliğiyle başlar: coven'in numaralı değişiklik dizisi, snapshot'ları, katılma istekleri ve saklanan dosyalar. Birden çok kitaplık birbirinin nesnelerine dokunmadan tek bir Dropbox veya OneDrive klasörünü paylaşabilir.
 
-Nesnelerin nasıl anahtarlanacağı, ev oluşturulurken sabitlenen depolama moduna bağlıdır:
-
-- **Opaque**: nesneler şifrelenir ve hiçbir şey açığa çıkarmayan içerikten türetilmiş anahtarlar altında saklanır. Bu, kriptografiye tam güven modudur; [Şifreleme](/tr/reference/encryption) bölümüne bakın.
-- **Browsable**: nesneler yükleme zamanında blob başına kaydedilen okunabilir yollarda düz metindir: `release_files/{artist}/{album}/{filename}`, `covers/{album}/{release}/cover.{ext}`, `artist_images/{artist}/artist.{ext}`. Bucket kullanılabilir bir dosya ağacı gibi de çalışır; bedeli şifreleme ve üyelik olmamasıdır, bu yüzden browsable evler başka kişilerle paylaşılamaz.
+Her nesne şifrelenir ve rastgele bir ad altında saklanır; düz metin modu yoktur. bae'in dosyaları üç eşzamanlanan tablonun satırlarına aittir: `release_files`, `covers` ve `artist_images`, artı her `people` satırındaki avatar. Bir dosyanın yolu satırına eklendiğinde sabitlenir, bu yüzden bir albümü yeniden adlandırmak onu asla taşımaz. [Şifreleme](/tr/reference/encryption) bölümüne bakın.
 
 ## Gerçek ağlarda davranış
 
-Çalma için okumalar aralıklıdır: çalar dosyaların tamamı yerine ihtiyaç duyduğu bayt pencerelerini akıtır. Eşik üstü yüklemeler sağlayıcının desteklediği yerde multipart gider. Hız sınırlama ve geçici sağlayıcı hataları exponential backoff ile, verildiğinde sağlayıcının retry-after değerine uyarak yeniden denenir; süresi dolan OAuth token'ları yerinde yenilenir. Eşzamanlama giden kutusu yeniden başlatmalardan sağ çıkar: uygulamadan çıkılarak kesilen yükleme baştan başlamak yerine sürer.
+Çalma için okumalar aralıklıdır: çalar dosyaların tamamı yerine ihtiyaç duyduğu şifreli parçaları alır ve bir dosya sırayla çalarken önceden alır. Hız sınırlama ve geçici sağlayıcı hataları tek bir geri çekilme takvimiyle, verildiğinde sağlayıcının retry-after değerine uyarak yeniden denenir. Yükleme kuyruğu yeniden başlatmalardan sağ çıkar: uygulamadan çıkılarak kesilen yükleme baştan başlamak yerine sürer ve duraklatılmış yüklemeler duraklatılmış kalır.

@@ -16,22 +16,21 @@ Vedle aplikací: `bae-mcp` (server MCP) a `bae-automation`.
 
 ## Jedna knihovna na disku
 
-Knihovna žije v `~/.bae/libraries/<library-id>/` (na mobilu v datovém adresáři platformy):
+Knihovna žije ve dvou adresářích (na mobilu v datových adresářích platformy): v úložišti coven a vedle něj ve vlastním nastavení bae.
 
 ```
-~/.bae/libraries/<id>/
-  library.db        # SQLite: katalog, kredity, specifikace přehrávání
-  config.yaml       # coven: identita knihovny, cloudový domov; nikdy se nesynchronizuje
-  preferences.toml  # nastavení bae; nikdy se nesynchronizuje
-  storage/
-    local/          # bloby vlastněné tímto zařízením (obaly, obrázky interpretů)
-    cache/          # zahoditelné kopie cloudových blobů
-    pinned/         # kopie připnuté pro offline, nikdy se nevyhazují
+~/.bae/stores/<id>/       # úložiště coven, otevírané jen přes coven
+  store.db                # SQLite: katalog, kredity, specifikace přehrávání, účetnictví coven
+  files/                  # kopie vlastních souborů bae v coven (obaly, obrázky interpretů, avatary)
+  cache/                  # kopie nahraných souborů v mezipaměti a připnuté
+~/.bae/libraries/<id>/    # vlastní adresář bae; nikdy se nesynchronizuje
+  preferences.toml        # nastavení bae
+  cache/                  # obrázky stažené z katalogů
 ```
 
-Databáze se otevírá jen přes coven, který vedle schématu bae přidává vlastní účetní tabulky (kurzory synchronizace, odchozí frontu, stav blobů) a spouští migrace bae. Audio soubory importované jako nespravované nejsou pod `~/.bae` vůbec: databáze na ně odkazuje cestami, odkud byly importovány.
+Databáze se otevírá jen přes coven, který vedle schématu bae drží vlastní účetní tabulky (záznamy slučování, frontu nahrávání, stav souborů) a spouští migraci bae. Audio soubory místního vydání nejsou pod `~/.bae` vůbec: databáze na ně odkazuje cestami, odkud byly importovány.
 
-Tajemství v těchto souborech nikdy nežijí. Klíče identit, šifrovací klíč knihovny, cloudové přihlašovací údaje a API tokeny žijí v klíčence operačního systému (Keychain na platformách Apple, synchronizovaný přes iCloud Keychain; odpovídající mechanismy na ostatních platformách).
+Tajemství v těchto souborech nikdy nežijí. Klíče členů, klíče knihovny, přihlášení ke cloudu a API tokeny žijí v klíčence operačního systému (Keychain na platformách Apple, odpovídající mechanismy na ostatních platformách); na platformách Apple se kód pro obnovení ukládá také do iCloud Klíčenky.
 
 ## Edice
 

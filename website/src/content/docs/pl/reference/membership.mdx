@@ -1,35 +1,54 @@
 ---
 title: Tożsamość i członkostwo
-description: Klucze jako tożsamości, uzgodnienie dołączenia, role i odwołanie
+description: Osoby jako klucze, kody przywracania, zaproszenia, role i usuwanie
 ---
 
-Nigdzie w bae nie ma systemu kont. Tożsamością urządzenia jest para kluczy Ed25519, którą urządzenie generuje dla siebie i trzyma w pęku kluczy systemu operacyjnego; klucz publiczny *jest* tożsamością. To, kto należy do biblioteki, jest zestawem podpisanych rekordów w domu w chmurze, weryfikowalnych przez każdego, kto je ma, niewydawanych przez żaden serwer. Mechanizm należy do [coven](https://coven.bae.fm); ta strona opisuje, jak używa go bae.
+Nigdzie w bae nie ma systemu kont. Każda osoba w bibliotece jest *członkiem* coven: ma losowy, stały identyfikator członka i dwie pary kluczy, jedną do podpisywania i jedną, dla której pieczętuje się klucze, dzielone przez wszystkie urządzenia tej osoby i trzymane w pęku kluczy systemu operacyjnego każdego urządzenia. Urządzenie to jedna instalacja z własnym identyfikatorem, należąca do jednego członka. To, kto należy do biblioteki, jest zestawem podpisanych rekordów w domu w chmurze, sprawdzanych przez urządzenie każdego członka, niewydawanych przez żaden serwer. Mechanizm należy do [coven](https://coven.bae.fm); ta strona opisuje, jak używa go bae.
 
 ## Rekordy członkostwa
 
-Każdy owner zapisuje w domu w chmurze dopisywany strumień podpisanych wpisów członkostwa: ten klucz został dodany z tą rolą, ten klucz został usunięty. Każdy wpis łączy się z poprzednim, a każdy owner podpisuje głowę deklarującą koniec swojego strumienia, więc dostawca, który upuszcza albo przestawia rekordy, zostaje wykryty, a nie uznany. Biblioteka akceptuje sumę każdego zweryfikowanego strumienia ownera.
+Cała historia biblioteki w domu w chmurze to jedna numerowana sekwencja, a każde urządzenie stosuje ją w tej samej kolejności. Zmiana członkostwa albo ustawień jest *wpisem administracyjnym* w tej sekwencji, podpisanym kluczem autora i ocenianym względem stanu tuż przed nim, więc każde urządzenie samo dochodzi do tego samego werdyktu. Wpis liczy się tylko wtedy, gdy jego autor może go dokonać, a biblioteka zawsze zachowuje co najmniej jednego administratora.
 
-Przy każdym pobraniu autor każdego zestawu zmian jest sprawdzany względem tego rekordu: podpisany przez obecnego członka, z rolą, która może pisać. Zestawy zmian z usuniętych urządzeń, z kluczy nigdy niedodanych albo z nieprawidłowymi podpisami nie są stosowane. Dostawca przechowuje rekordy, ale nie może ich podrobić; tylko posiadacze kluczy owner mogą zmieniać członkostwo.
+Każda zmiana wysyłana przez urządzenie jest sprawdzana względem tego rekordu: podpisana przez obecnego członka, z urządzenia, które nie zostało usunięte. Zmiany z usuniętych urządzeń lub od usuniętych członków, z kluczy nigdy niedodanych albo z nieprawidłowymi podpisami się nie liczą. Dostawca przechowuje rekordy, ale nie może ich podrobić.
 
 ## Role
 
-**Owner** i **Member** czytają i zapisują bibliotekę; owners dodatkowo zatwierdzają i usuwają urządzenia. Urządzenie zakładające bae jest ownerem, a każde zatwierdzone przez nie urządzenie dołącza jako member. (W mechanizmie pod spodem istnieje trzecia rola, obserwator tylko do odczytu, której bae obecnie nie przydziela.)
+**Administrator** i **Członek** czytają i zapisują bibliotekę: coven nie sprawdza uprawnień przy zapisach do biblioteki, więc rola tylko do odczytu by się nie utrzymała. Administratorzy dodatkowo zapraszają i usuwają osoby, zmieniają role i zmieniają nazwę biblioteki. Osoba, która daje bibliotece dom w chmurze, jest jej pierwszym administratorem.
 
-## Uzgodnienie dołączenia
+| Działanie | Kto |
+|---|---|
+| Zaproszenie osoby | administrator |
+| Dodanie urządzenia | sama osoba, z nowego urządzenia, ze swoim kodem przywracania |
+| Usunięcie urządzenia | jego osoba albo dowolny administrator |
+| Usunięcie osoby | administrator |
+| Zmiana nazwy biblioteki | administrator |
 
-Dodanie urządzenia to jedna lokalna sesja parowania z wyraźną weryfikacją przez człowieka:
+Profil, oceny, historia i playlisty osoby są wierszami właściciela: tylko urządzenia tej osoby mogą je zmieniać, więc ocena przypisana komuś pochodzi od niego.
 
-1. Właściciel uruchamia **Dodaj urządzenie**. bae nasłuchuje przez chwilę w sieci lokalnej i wyświetla jeden kod parowania. Zawiera adresy odbiorników, efemeryczny klucz sesji, nazwę biblioteki, dostawcę i datę wygaśnięcia — nie ma klucza biblioteki ani poświadczeń trwałego magazynu.
-2. Dołączające urządzenie skanuje kod, tworzy swoją parę kluczy, w razie potrzeby loguje się do dostawcy i wysyła swój podpisany klucz publiczny oraz tożsamość konta dostawcy poprzez szyfrowane połączenie lokalne. Obydwa urządzenia pokazują ten sam odcisk palca.
-3. Właściciel porównuje odciski palców i potwierdza tę dokładną tożsamość. Zatwierdzenie zapewnia dostęp do konta w chmurze, jeśli jest to wymagane, podpisuje wpis członkostwa i pieczętuje klucz biblioteki oraz ostateczny dostęp do klucza publicznego nowego urządzenia.
-4. Zapieczętowana przesyłka powraca tym samym uwierzytelnionym połączeniem lokalnym. Dołączające urządzenie otwiera je, ładuje dane z pamięci w chmurze i rozpoczyna synchronizację.
+## Dodawanie własnego urządzenia
 
-Parowanie wygasłe, przerwane lub odrzucone nic nie daje.
+Kod przywracania dowodzi, że urządzenie należy do swojej osoby, więc nie potrzebuje zatwierdzenia:
 
-## Odwołanie
+1. Nowe urządzenie dostaje kod, skanując kod QR pokazany przez inne urządzenie tej osoby, z pęku kluczy iCloud na urządzeniach Apple albo przez wpisanie.
+2. Dociera do przechowywania: w Dropbox i OneDrive przez zalogowanie się na własne konto osoby, w S3 jej kluczem dostępu, który kod QR niesie obok kodu.
+3. Wczytuje bibliotekę, sprawdza, że klucze z kodu należą do obecnego członka, i rejestruje się jako nowe urządzenie wpisem podpisanym tymi kluczami.
 
-Usunięcie członka dopisuje podpisane usunięcie i obraca klucz biblioteki do nowej generacji, której usunięty klucz nigdy nie otrzymuje (zobacz [Szyfrowanie](/pl/reference/encryption#generacje)). W przechowywaniu, które potrafi odebrać dostęp, dostęp też jest cofany. To, co już zsynchronizowało się na usunięte urządzenie, zostaje z nim; danych nie da się cofnąć po wysłaniu. Wszystko po obrocie klucza jest poza jego zasięgiem.
+Kod, którego klucze zostały od tego czasu wymienione, nie zadziała. Przywracanie zawsze tworzy nowe urządzenie; nie ratuje niewysłanych edycji innej instalacji.
 
-## Kody odzyskiwania
+## Zapraszanie osoby
 
-Kod odzyskiwania celowo omija członkostwo: to współrzędne domu w chmurze plus klucz biblioteki w jednym ciągu bearer, do odzyskania własnej biblioteki bez żyjącego urządzenia zatwierdzającego. Jest generowany na żądanie, automatycznie przechowywany w iCloud Keychain na platformach Apple i jest dokładnie tak wrażliwy jak sama biblioteka.
+1. Administrator wpisuje konto dostawcy osoby i wybiera jej rolę. bae udostępnia folder biblioteki temu kontu albo w S3 tworzy dla niej klucz dostępu i pokazuje zaproszenie: kod QR z lokalizacją biblioteki, identyfikatorem członka wybranym dla tej osoby, jednorazowym sekretem i bieżącą nazwą biblioteki. Wygasa dobę po utworzeniu.
+2. Urządzenie osoby skanuje je, loguje się na jej własne konto, tworzy jej pary kluczy i zapisuje w przechowywaniu prośbę o dołączenie, zaszyfrowaną kluczem wyprowadzonym z sekretu zaproszenia i podpisaną jej nowym kluczem.
+3. Urządzenie administratora, jedyne, które ma sekret, pokazuje prośbę, a administrator ją zatwierdza.
+4. Zatwierdzenie pieczętuje każdy klucz magazynu dla nowego klucza pieczętowania osoby, a potem dodaje wpis, który ją przyjmuje.
+5. Nowe urządzenie otwiera swoje klucze, wczytuje bibliotekę, rejestruje się i zapisuje profil osoby z imieniem, które wpisała.
+
+Odrzucenie zaproszenia albo pozwolenie mu wygasnąć cofa dostęp u dostawcy, który przyznało.
+
+## Usuwanie
+
+Usunięcie urządzenia albo osoby to wpis administracyjny, a jego miejsce w sekwencji jest linią w historii: to, co usunięte urządzenie albo osoba wyśle później, się nie liczy, a to, co dotarło wcześniej, zostaje. Usunięcie osoby usuwa też jej urządzenia i jej prywatny krąg, a klucze, które miała, są wymieniane, zanim zostaną zapisane kolejne dane (zobacz [Szyfrowanie](/pl/reference/encryption#rotacja)). Odcięcie dostępu do przechowywania to praca dostawcy: urządzenie konta, na którym leży biblioteka, przestaje udostępniać folder, a w S3 klucz dostępu osoby jest usuwany. To, co już zsynchronizowało się na usunięte urządzenie, zostaje z nim; danych nie da się cofnąć po wysłaniu.
+
+## Kody przywracania
+
+Kod przywracania zawiera identyfikator członka i jego bieżące prywatne pary kluczy, identyfikator magazynu biblioteki i miejsce jej przechowywania; nigdy danych dostępowych do przechowywania, tokenów logowania ani nazwy biblioteki. Jest pokazywany na żądanie, automatycznie przechowywany w pęku kluczy iCloud na platformach Apple i jest dokładnie tak wrażliwy jak sama biblioteka: kto go ma, z dostępem do przechowywania, jest dla biblioteki tą osobą. Osobę, która straci każde urządzenie i swój kod, administrator może zaprosić ponownie do jej istniejącego identyfikatora członka, co wymienia jej klucze.

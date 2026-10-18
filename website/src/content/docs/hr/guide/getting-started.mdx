@@ -12,8 +12,8 @@ Desktop aplikacije (macOS, Windows) puni su alat: stvaraju biblioteke, uvoze gla
 Otvorite bae na desktopu. Kad na računalu nema biblioteke, početni zaslon nudi tri izbora:
 
 - **Create a new library**, ako je ovo vaš prvi uređaj.
-- **Join a library**, ako drugi uređaj već ima biblioteku i njezin će vas vlasnik odobriti. Pogledajte [Uređaji i članovi](/hr/guide/devices).
-- **Restore from cloud**, ako je ovo vaša biblioteka i imate njezin kod za oporavak. Pogledajte [Uređaji i članovi](/hr/guide/devices#kodovi-za-oporavak).
+- **Pridruži se knjižnici**, ako vas je netko pozvao u svoju. Pogledajte [Uređaji i članovi](/hr/guide/devices#pozivanje-osobe).
+- **Vrati iz oblaka**, ako je ovo vaša biblioteka i imate njezin kod za vraćanje. Pogledajte [Uređaji i članovi](/hr/guide/devices#kodovi-za-vraćanje).
 
 Stvorite je. Biblioteka počinje lokalno: sve živi na ovom računalu, ništa ne treba račun i nema oblaka dok ga ne povežete.
 
@@ -35,10 +35,10 @@ Natrag u odjeljku **Library**, album je u mreži. Kliknite ga, pritisnite reprod
 
 Kad želite biblioteku na više od jednog uređaja, povežite mjesto u oblaku: svoj Dropbox, OneDrive, iCloud ili bilo koji S3-kompatibilan spremnik. Sve što bae ondje stavi šifrira se prije prijenosa; pružatelj to pohranjuje, ali ne može čitati.
 
-- [Sinkronizacija](/hr/guide/sync): povežite mjesto u oblaku i odaberite što pohranjuje.
-- [Uređaji i članovi](/hr/guide/devices): dodajte telefon ili drugi desktop.
+- [Sinkronizacija](/hr/guide/sync): povežite mjesto u oblaku i pogledajte što se sinkronizira.
+- [Uređaji i članovi](/hr/guide/devices): dodajte telefon ili drugi desktop, ili pozovite nekoga.
 - [Pohrana i izvanmrežno](/hr/guide/storage): držite glazbu na uređaju ili je strujite iz svog oblaka i prikvačite ono što trebate izvan mreže.
 
 ## Gdje stvari žive
 
-Svaka biblioteka drži svoju bazu podataka i postavke pod `~/.bae/libraries/` na desktopu. Vaš zvuk ostaje ondje odakle ste ga uvezli, osim ako tražite da bae njime upravlja u vašem oblaku. Ključevi i vjerodajnice žive u privjesku ključeva operacijskog sustava, ne u datotekama.
+Svaka biblioteka na desktopu drži svoju bazu podataka pod `~/.bae/stores/` i postavke pod `~/.bae/libraries/`. Vaš zvuk ostaje ondje odakle ste ga uvezli; premještanje izdanja u oblak prenosi šifriranu kopiju i ostavlja vaše datoteke gdje jesu. Ključevi i vjerodajnice žive u privjesku ključeva operacijskog sustava, ne u datotekama.

@@ -1,35 +1,54 @@
 ---
 title: Identitet i članstvo
-description: Ključevi kao identiteti, rukovanje pridruživanja, uloge i opoziv
+description: Ljudi kao ključevi, kodovi za vraćanje, pozivnice, uloge i uklanjanje
 ---
 
-Nigdje u bae ne postoji sustav računa. Identitet uređaja je Ed25519 par ključeva koji sam generira i čuva u privjesku ključeva OS-a; javni ključ *jest* identitet. Tko pripada biblioteci skup je potpisanih zapisa u mjestu u oblaku, provjerljiv svakome tko ih drži, bez poslužitelja koji ih izdaje. Mehanizam pripada [coven](https://coven.bae.fm)-u; ova stranica opisuje kako ga bae koristi.
+Nigdje u bae ne postoji sustav računa. Svaka osoba u biblioteci jest coven *član*: nasumičan, trajan identifikator člana i dva para ključeva, jedan za potpisivanje i jedan za koji se ključevi pečate, koje dijele svi uređaji te osobe i čuvaju se u privjesku ključeva OS-a na svakom uređaju. Uređaj je jedna instalacija, s vlastitim identifikatorom, koja pripada jednom članu. Tko pripada biblioteci skup je potpisanih zapisa u mjestu u oblaku, koje provjerava uređaj svakog člana, bez poslužitelja koji ih izdaje. Mehanizam pripada [coven](https://coven.bae.fm)-u; ova stranica opisuje kako ga bae koristi.
 
 ## Zapisi članstva
 
-Svaki vlasnik piše samo-dodavajući tok potpisanih zapisa članstva u mjesto u oblaku: ovaj je ključ dodan s ovom ulogom, ovaj je ključ uklonjen. Svaki zapis povezuje se s prethodnim, a svaki vlasnik potpisuje glavu koja objavljuje vrh njegova toka, pa se pružatelj koji ispusti ili presloži zapise otkriva umjesto da mu se vjeruje. Biblioteka prihvaća uniju svakog provjerenog toka vlasnika.
+Cijela povijest biblioteke u mjestu u oblaku jedan je numerirani niz, a svaki ga uređaj primjenjuje istim redoslijedom. Promjena članstva ili postavki *administratorski je zapis* u tom nizu, potpisan ključem autora i procijenjen prema stanju neposredno prije njega, pa svaki uređaj sam dolazi do iste presude. Zapis se računa samo ako ga autor smije napraviti, a biblioteka uvijek zadržava barem jednog administratora.
 
-Pri svakom povlačenju autor svakog skupa promjena provjerava se prema tom zapisu: potpisan trenutačnim članom, s ulogom koja smije pisati. Skupovi promjena s uklonjenih uređaja, ključeva koji nikad nisu dodani ili s nevažećim potpisima ne primjenjuju se. Pružatelj sprema zapise, ali ih ne može krivotvoriti; samo držatelji vlasničkih ključeva mogu mijenjati članstvo.
+Svaka promjena koju uređaj pošalje provjerava se prema tom zapisu: potpisana trenutačnim članom, s uređaja koji nije uklonjen. Promjene s uklonjenih uređaja ili od uklonjenih članova, s ključeva koji nikad nisu dodani ili s nevažećim potpisima ne računaju se. Pružatelj sprema zapise, ali ih ne može krivotvoriti.
 
 ## Uloge
 
-**Owner** i **Member** oboje čitaju i pišu biblioteku; vlasnici dodatno odobravaju i uklanjaju uređaje. Osnivački uređaj bae je vlasnik, a svaki uređaj koji odobri pridružuje se kao član. (Treća uloga postoji u temeljnome mehanizmu, sljedbenik samo za čitanje, koju bae trenutačno ne dodjeljuje.)
+**Administrator** i **Član** oboje čitaju i pišu biblioteku: coven ne provjerava dopuštenja pri pisanju u biblioteku, pa uloga samo za čitanje ne bi izdržala. Administratori dodatno pozivaju i uklanjaju ljude, mijenjaju uloge i preimenuju biblioteku. Tko biblioteci da mjesto u oblaku, njezin je prvi administrator.
 
-## Rukovanje pridruživanja
+| Radnja | Tko |
+|---|---|
+| Pozvati osobu | administrator |
+| Dodati uređaj | sama osoba, s novog uređaja, svojim kodom za vraćanje |
+| Ukloniti uređaj | njegova osoba ili bilo koji administrator |
+| Ukloniti osobu | administrator |
+| Preimenovati biblioteku | administrator |
 
-Dodavanje uređaja je jedna lokalna sesija uparivanja s eksplicitnom ljudskom provjerom:
+Profil, ocjene, povijest i popisi za reprodukciju osobe vlasnički su reci: mijenjati ih mogu samo uređaji te osobe, pa je ocjena pripisana nekome doista njegova.
 
-1. Vlasnik pokreće **Dodajte uređaj**. bae kratko sluša lokalnu mrežu i prikazuje jedan kod za uparivanje. Sadrži adrese slušatelja, efemerni ključ sesije, naziv biblioteke, davatelja i rok trajanja - bez ključa biblioteke ili trajnih vjerodajnica za pohranu.
-2. Uređaj koji se pridružuje skenira kod, stvara svoj par ključeva uređaja, prijavljuje se davatelju kada je to potrebno i šalje svoj potpisani javni ključ i identitet računa davatelja putem šifrirane lokalne veze. Oba uređaja pokazuju isti otisak prsta.
-3. Vlasnik uspoređuje otiske prstiju i potvrđuje točan identitet. Odobrenje daje pristup svom računu u oblaku gdje je to potrebno, potpisuje unos članstva i pečati ključ knjižnice i konačni pristup pohrani javnom ključu novog uređaja.
-4. Zapečaćeni paket vraća se putem iste provjerene lokalne veze. Uređaj koji se pridružuje otvara ga, pokreće se iz pohrane u oblaku i započinje sinkronizaciju.
+## Dodavanje vlastitog uređaja
 
-Isteklo, prekinuto ili odbijeno uparivanje ne daje ništa.
+Kod za vraćanje dokazuje da uređaj pripada svojoj osobi, pa ne treba odobrenje:
 
-## Opoziv
+1. Novi uređaj dobiva kod skeniranjem QR koda koji prikazuje drugi uređaj te osobe, iz iCloud privjeska ključeva na Apple uređajima ili upisivanjem.
+2. Dolazi do pohrane: na Dropboxu i OneDriveu prijavom u vlastiti račun osobe, na S3 njezinim pristupnim ključem, koji QR kod nosi uz kod.
+3. Učitava biblioteku, provjerava da ključevi iz koda pripadaju trenutačnom članu i registrira se kao novi uređaj zapisom potpisanim tim ključevima.
 
-Uklanjanje člana dodaje potpisano uklanjanje i rotira ključ biblioteke na novu generaciju koju uklonjeni ključ nikad ne prima (vidi [Šifriranje](/hr/reference/encryption#generacije)). Na pohrani koja može opozvati pristup, pristup se također povlači. Ono što je već sinkronizirano na uklonjeni uređaj ostaje kod njega; podaci se ne mogu poslati natrag. Sve nakon rotacije izvan je njegova dosega.
+Kod čiji su ključevi u međuvremenu zamijenjeni ne uspijeva. Obnova uvijek stvara novi uređaj; ne spašava neposlane izmjene druge instalacije.
 
-## Kodovi za oporavak
+## Pozivanje osobe
 
-Kod za oporavak namjerno zaobilazi članstvo: to su koordinate mjesta u oblaku plus ključ biblioteke, u jednom bearer nizu, za obnovu vlastite biblioteke bez preživjelog odobravatelja. Generira se na zahtjev, automatski sprema u iCloud Keychain na Apple platformama i jednako je osjetljiv kao sama biblioteka.
+1. Administrator unosi račun pružatelja te osobe i odabire njezinu ulogu. bae dijeli mapu biblioteke s tim računom, ili na S3 izrađuje pristupni ključ za nju, i prikazuje pozivnicu: QR kod s lokacijom biblioteke, identifikatorom člana odabranim za osobu, jednokratnom tajnom i trenutačnim nazivom biblioteke. Istječe jedan dan nakon izrade.
+2. Uređaj osobe skenira je, prijavljuje se u njezin vlastiti račun, stvara njezine parove ključeva i zapisuje u pohranu zahtjev za pridruživanje, šifriran ključem izvedenim iz tajne pozivnice i potpisan njezinim novim ključem.
+3. Administratorov uređaj, jedini koji drži tajnu, prikazuje zahtjev, a administrator ga odobrava.
+4. Odobrenje pečati svaki ključ spremišta za novi ključ za pečaćenje osobe, a zatim dodaje zapis koji je prima.
+5. Novi uređaj otvara svoje ključeve, učitava biblioteku, registrira se i zapisuje profil osobe s imenom koje je upisala.
+
+Odbijanje pozivnice ili puštanje da istekne povlači pristup kod pružatelja koji je dodijelila.
+
+## Uklanjanje
+
+Uklanjanje uređaja ili osobe administratorski je zapis, a njegovo mjesto u nizu crta je u povijesti: ono što uklonjeni uređaj ili osoba pošalje poslije ne računa se, a ono što je stiglo prije ostaje. Uklanjanje osobe uklanja i njezine uređaje i njezin privatni krug, a ključevi koje je imala zamjenjuju se prije nego što se zapiše još podataka (pogledajte [Šifriranje](/hr/reference/encryption#rotacija)). Odsijecanje pristupa pohrani posao je pružatelja: uređaj računa koji drži biblioteku prestaje dijeliti mapu, a na S3 se briše pristupni ključ osobe. Ono što je već sinkronizirano na uklonjeni uređaj ostaje kod njega; podaci se ne mogu poslati natrag.
+
+## Kodovi za vraćanje
+
+Kod za vraćanje sadrži identifikator člana i njegove trenutačne privatne parove ključeva, identifikator spremišta biblioteke i njezinu lokaciju pohrane; nikad vjerodajnice pohrane, tokene prijave ni naziv biblioteke. Prikazuje se na zahtjev, automatski se sprema u iCloud privjesak ključeva na Apple platformama i jednako je osjetljiv kao sama biblioteka: tko ga drži, s pristupom pohrani, za biblioteku je ta osoba. Osobu koja izgubi svaki uređaj i svoj kod administrator može ponovno pozvati na njezin postojeći identifikator člana, čime se njezini ključevi zamjenjuju.

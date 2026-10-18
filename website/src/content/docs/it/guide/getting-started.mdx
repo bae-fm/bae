@@ -12,8 +12,8 @@ Le app desktop (macOS, Windows) sono lo strumento completo: creano librerie, imp
 Apri bae sul desktop. Senza una libreria sulla macchina, la schermata di benvenuto offre tre scelte:
 
 - **Crea una nuova libreria**, se questo è il tuo primo dispositivo.
-- **Unisciti a una libreria**, se un altro dispositivo ne ha già una e il suo proprietario ti approverà. Vedi [Dispositivi e membri](/it/guide/devices).
-- **Ripristina dal cloud**, se questa è la tua libreria e hai il suo codice di recupero. Vedi [Dispositivi e membri](/it/guide/devices#recovery-codes).
+- **Unisciti a una libreria**, se qualcuno ti ha invitato nella sua. Vedi [Dispositivi e membri](/it/guide/devices#invitare-una-persona).
+- **Ripristina dal cloud**, se questa è la tua libreria e hai il suo codice di ripristino. Vedi [Dispositivi e membri](/it/guide/devices#codici-di-ripristino).
 
 Creane una. Una libreria inizia locale: tutto vive su questa macchina, niente richiede un account e nessun cloud è coinvolto finché non ne colleghi uno.
 
@@ -35,10 +35,10 @@ Tornando nella sezione **Libreria**, l'album è nella griglia. Fai clic, premi r
 
 Quando vuoi la libreria su più di un dispositivo, collega una home cloud: il tuo Dropbox, OneDrive, iCloud o qualunque bucket compatibile con S3. Tutto ciò che bae vi mette viene cifrato prima del caricamento; il provider lo conserva ma non può leggerlo.
 
-- [Sincronizzazione](/it/guide/sync): collega una home cloud e scegli cosa conserva.
-- [Dispositivi e membri](/it/guide/devices): aggiungi il telefono o un altro desktop.
+- [Sincronizzazione](/it/guide/sync): collega una home cloud e guarda cosa si sincronizza.
+- [Dispositivi e membri](/it/guide/devices): aggiungi il telefono o un altro desktop, oppure invita qualcuno.
 - [Archiviazione e offline](/it/guide/storage): tieni la musica sul dispositivo, oppure riproducila in streaming dal tuo cloud e fissa offline ciò che ti serve.
 
 ## Dove vivono le cose
 
-Ogni libreria conserva database e impostazioni in `~/.bae/libraries/` sul desktop. Il tuo audio resta ovunque fosse quando l'hai importato, a meno che tu non chieda a bae di gestirlo nel tuo cloud. Chiavi e credenziali vivono nel portachiavi del sistema operativo, non nei file.
+Ogni libreria conserva il database in `~/.bae/stores/` e le impostazioni in `~/.bae/libraries/` sul desktop. Il tuo audio resta dove l'hai importato; spostare una release nel cloud carica una copia cifrata e lascia i tuoi file dove sono. Chiavi e credenziali vivono nel portachiavi del sistema operativo, non nei file.

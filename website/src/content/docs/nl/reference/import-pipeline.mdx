@@ -42,7 +42,7 @@ Een import bevestigen draait, op volgorde:
 3. **Hoesselectie**: de gekozen art (remote, mapafbeelding, of ingesloten) wordt opnieuw gerenderd naar een displaythumbnail; het origineel wordt bij de bestanden van de release bewaard als het uit de map kwam.
 4. **Atomaire write**: de release, tracks, credits, identities, formats, segments, files en cover committen in een transactie. Er is geen half-geimporteerde toestand.
 
-De release landt met verwijzingen naar de bestanden van de gebruiker op hun plek. Als de gebruiker cloud-beheerd heeft gekozen, gebeurt de upload na de commit als opslagovergang, en blijven de oorspronkelijke bytes van de bestanden de bron van waarheid; niets wat de gebruiker aan bae gaf wordt ooit verwijderd of gewijzigd.
+De release landt met verwijzingen naar de bestanden van de gebruiker op hun plek. Bij een cloud-import leest en hasht coven elk bestand vóór de write, en dezelfde write koppelt elk bestand aan zijn rij en zet de upload in de wachtrij. Een lokale import legt in plaats daarvan het pad, de grootte en de wijzigingstijd van elk bestand op dit apparaat vast; de bytes worden pas gelezen als de release later naar de cloud wordt verplaatst. Hoe dan ook blijven de oorspronkelijke bytes van de bestanden de bron van waarheid; niets wat de gebruiker aan bae gaf wordt ooit verwijderd of gewijzigd.
 
 ## Rips herkennen
 

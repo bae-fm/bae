@@ -7,34 +7,36 @@ Synchronizacja bae jest synchronizacją [coven](https://coven.bae.fm): bae dekla
 
 ## Przechwytywanie
 
-coven posiada połączenie SQLite, więc każdy zapis zatwierdzony przez bae przechodzi przez niego. Rozszerzenie sesji SQLite zapisuje dokładnie to, co zmieniło się w każdej transakcji; zmiany w synchronizowanych tabelach stają się **zestawem zmian**, zamkniętym kluczem biblioteki i podpisanym kluczem tożsamości urządzenia. Bez porównywania różnic, bez flag zabrudzenia: przechwytywanie jest właściwością połączenia, a zapis nie może zostać przeoczony.
+coven posiada połączenie SQLite, więc każdy zapis zatwierdzony przez bae przechodzi przez niego. Gdy zatwierdzana jest transakcja zmieniająca synchronizowane tabele, coven zapisuje każdą zmianę wiersza, z kolumnami, których dotknęła, w tej samej transakcji, więc zatwierdzona zmiana nigdy nie ginie, nawet jeśli aplikacja chwilę później się zawiesi. Bez porównywania różnic, bez flag zabrudzenia: przechwytywanie jest właściwością połączenia, a zapis nie może zostać przeoczony. Zmiana czeka na urządzeniu i jest szyfrowana i podpisywana dopiero przy wysyłaniu, więc zapis nie potrzebuje ani klucza, ani sieci.
 
-## Strumienie
+## Sekwencja
 
-Każde urządzenie dopisuje swoje zestawy zmian do własnego strumienia w domu w chmurze, numerowane kolejno. Urządzenia nigdy nie piszą do strumieni innych urządzeń, więc nie ma konfliktów zapisu w przechowywaniu, a każde urządzenie śledzi kursor per strumień innego urządzenia. Cykl synchronizacji wypycha lokalną skrzynkę wysyłania, potem pobiera każdy strumień innego urządzenia od jego kursora naprzód, weryfikując podpis każdego zestawu zmian i członkostwo autora przed zastosowaniem.
+Cała historia biblioteki w domu w chmurze to jedna numerowana sekwencja obiektów. Każdy zawiera paczkę zmian jednego urządzenia, wpis administracyjny, klucz zapieczętowany dla jednego członka albo zapowiedź migawki. Każde urządzenie stosuje je po kolei i nigdy żadnego nie pomija, więc wszystkie urządzenia zgadzają się co do tego, co i kiedy się stało. Urządzenie dodaje kolejny obiekt dopiero po zastosowaniu wszystkich wcześniejszych.
 
-Cykl uruchamia się po lokalnych zmianach, na timerze bezczynności z wydłużanym odstępem (do pięciu minut między odpytywaniami) i natychmiast przez **Sync Now**. Błędy wydłużają odstęp i są ponawiane; pętla zgłasza wynik każdego cyklu do interfejsu jako status, tekst błędu i liczbę zastosowanych wierszy.
+Przebieg synchronizacji czyta naprzód od ostatniego obiektu zastosowanego przez urządzenie, aż któregoś zabraknie, sprawdza podpis każdego i go stosuje, wysyła oczekujące zmiany tego urządzenia jako jeden nowy obiekt, a potem wykonuje pracę, której wymaga nowy stan: udostępnia albo odbiera dostęp, robi migawki, usuwa starą historię. Przebieg nad spokojną biblioteką kosztuje dwa żądania, niezależnie od jej rozmiaru.
+
+Przebiegi uruchamiają się po lokalnych zmianach, na timerze bezczynności i natychmiast przez **Synchronizuj teraz**. Błędy są ponawiane według jednego harmonogramu odstępów, a wszystko, co nie może pójść dalej, mówi, na co czeka, co bae pokazuje w swoim wierszu stanu synchronizacji.
 
 ## Scalanie
 
 Dwa urządzenia edytujące tę samą bibliotekę osobno są normalnym przypadkiem, nie wyjątkiem. Gdy ich zmiany się spotykają:
 
 - Edycje **różnych wierszy albo różnych kolumn** stosują się obie. Edycja roku wydania na laptopie i jego wytwórni na desktopie daje oba wyniki.
-- Edycje **tej samej kolumny tego samego wiersza** są porządkowane według hybrydowego zegara logicznego `_updated_at` wiersza: późniejsza edycja wygrywa, deterministycznie i identycznie na każdym urządzeniu.
-- **Usunięcia wygrywają** z równoległymi edycjami: wydanie usunięte na jednym urządzeniu zostaje usunięte, nawet jeśli inne urządzenie edytowało je w tym samym przedziale.
+- Edycje **tej samej kolumny tego samego wiersza** są porządkowane według znacznika czasu: późniejsza edycja wygrywa, deterministycznie i identycznie na każdym urządzeniu.
+- **Usunięcia wygrywają** z równoległymi edycjami: edycja wiersza, który został później usunięty, przegrywa, kiedykolwiek dotrze, więc wydanie usunięte na jednym urządzeniu zostaje usunięte, nawet jeśli inne urządzenie edytowało je w tym samym przedziale.
 
-Nie ma interfejsu konfliktów, bo nie ma nierozwiązanego stanu: każde urządzenie dochodzi do tego samego wyniku przy dowolnej kolejności stosowania.
+coven zachowuje każdą zastąpioną wartość jako *utraconą wartość*; bae żadnej nie pokazuje i żadnej nie odrzuca, więc nie ma interfejsu konfliktów. Każde urządzenie dochodzi do tego samego wyniku przy dowolnej kolejności nadejścia.
 
-## Bootstrap
+## Migawki
 
-Urządzenie dołączające albo odzyskujące bibliotekę nie odtwarza historii od początku. Pobiera **migawkę**, pełny obraz SQLite publikowany okresowo do domu w chmurze, a potem stosuje tylko zestawy zmian, które każdy strumień zgromadził po niej. Metadane migawki zapisują wersję schematu i kursory per strumień, które migawka zawiera.
+Urządzenie dołączające albo przywracające bibliotekę nie odtwarza historii od początku. Urządzenia robią **migawki**, pełny stan biblioteki w jednym punkcie sekwencji, a gdy biblioteka i każdy prywatny krąg mają swoją, historia sprzed niej jest usuwana. Nowe urządzenie wczytuje najnowszą migawkę, a potem stosuje tylko to, co przyszło po niej. Urządzenie, którego nie było dłużej, niż przechowywana jest historia, robi to samo i zachowuje swoje niewysłane edycje.
 
 ## Wersje schematu
 
-Schemat bae migruje przez numerowaną drabinę, a najwyższy szczebel tej drabiny jest zapisany w każdym zestawie zmian, który pisze urządzenie. Urządzenie, które pobierze zestaw zmian z nowszego schematu niż własny, odkłada ten strumień bez stosowania niczego za nim, dopóki aplikacja nie zostanie zaktualizowana; nic nie ginie i nic nie stosuje się błędnie. Sam plik bazy danych odmawia otwarcia pod binarium starszym niż jego schemat.
+Schemat bae to jedna migracja, a każda zmiana wysyłana przez urządzenie zapisuje wersję schematu, w której powstała. Urządzenie, które natrafi na zmianę z nowszego schematu niż własny, zatrzymuje się tam, nie stosując niczego dalej, dopóki aplikacja nie zostanie zaktualizowana; nic nie ginie i nic nie stosuje się błędnie.
 
 Grubszą jednostką niż wersja schematu jest **era zgodności**: przypięta rewizja coven wbudowana w każde binarium. Dwie kompilacje synchronizują się tylko w ramach jednej ery; niezgodna zmiana formatu przewodowego coven jest nową erą i podbiciem wersji major w każdej aplikacji. Przed 1.0 każda kompilacja jest w erze zero, a formaty zmieniają się bez migracji.
 
 ## Co widzi dostawca
 
-W nieprzezroczystym domu dostawca przechowuje zaszyfrowane zestawy zmian, zaszyfrowane bloby i podpisane rekordy członkostwa; może liczyć obiekty oraz obserwować rozmiary i czasy, a nie może odczytać żadnej treści. Każdy obiekt pobierany przez urządzenie jest weryfikowany, podpis i członkostwo, zanim cokolwiek dotknie bazy danych: przechowywanie jest pasywną, niezaufaną skrzynką. Zobacz [Szyfrowanie](/pl/reference/encryption) i [Tożsamość i członkostwo](/pl/reference/membership).
+Dostawca przechowuje zaszyfrowane zmiany, migawki, rekordy członkostwa i pliki; może liczyć obiekty, obserwować rozmiary i czasy oraz widzieć, które konto zapisuje każdy obiekt, ale nie może odczytać żadnej treści. Każdy obiekt pobierany przez urządzenie jest weryfikowany, podpis i członkostwo, zanim cokolwiek dotknie bazy danych: przechowywanie jest pasywną, niezaufaną skrzynką. Zobacz [Szyfrowanie](/pl/reference/encryption) i [Tożsamość i członkostwo](/pl/reference/membership).

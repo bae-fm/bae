@@ -42,7 +42,7 @@ Bir içe aktarmayı onaylamak sırayla şunları çalıştırır:
 3. **Cover selection**: seçilen görsel (uzak, klasör görüntüsü veya gömülü) görüntüleme küçük resmine yeniden çizilir; klasörden geldiyse özgünü sürümün dosyaları arasında tutulur.
 4. **Atomik yazma**: sürüm, parçalar, katkılar, kimlikler, biçimler, kesitler, dosyalar ve kapak tek işlemde kaydedilir. Yarı içe aktarılmış durum yoktur.
 
-Sürüm, kullanıcının dosyalarına yerinde başvurarak kaydedilir. Kullanıcı cloud-managed seçtiyse yükleme kayıttan sonra depolama geçişi olarak gerçekleşir ve dosyaların özgün baytları baştan sona doğruluk kaynağı olarak kalır; kullanıcının bae'e verdiği hiçbir şey silinmez veya değiştirilmez.
+Sürüm, kullanıcının dosyalarına yerinde başvurarak kaydedilir. Bulut içe aktarmasında coven yazmadan önce her dosyayı okur ve karmasını alır; aynı yazma her dosyayı satırına ekler ve yüklemesini kuyruğa koyar. Yerel içe aktarma ise her dosyanın yolunu, boyutunu ve değişiklik zamanını bu aygıtta kaydeder; baytları ancak sürüm daha sonra buluta taşınırsa okunur. Her iki durumda da dosyaların özgün baytları baştan sona doğruluk kaynağı olarak kalır; kullanıcının bae'e verdiği hiçbir şey silinmez veya değiştirilmez.
 
 ## Rip'leri tanıma
 

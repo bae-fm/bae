@@ -5,18 +5,18 @@ description: Gdje živi vaša glazba i što se reproducira bez mreže
 
 Vaše datoteke ostaju vaše. bae ih nikad ne premješta, ne preimenuje i ne prepisuje; pitanje na koje pohrana odgovara samo je gdje živi *reprodukcijska kopija* svakog izdanja: na uređaju, u vašem oblaku ili na oba mjesta.
 
-## Neupravljano i upravljano
+## Lokalno i u oblaku
 
 Svako izdanje je jedno ili drugo, odabrano pri uvozu i promjenjivo u bilo kojem trenutku:
 
-- **Neupravljano**: bae katalogizira vaše datoteke ondje gdje jesu i reproducira ih odande. Ništa se ne kopira. Izdanje postoji u katalogu na svakom sinkroniziranom uređaju, ali njegov zvuk živi samo na računalu koje ga je uvezlo.
-- **Upravljano**: datoteke se šifriraju i prenose u mjesto u oblaku. Sada svaki uređaj može reproducirati izdanje, strujeći ga na zahtjev ili preuzimajući ga za izvanmrežni rad. Prijenos ne dira vaše izvorne datoteke; hoćete li ih nastaviti lokalno koristiti vaš je izbor (**Keep local copy** pri uvozu ih prikvačuje).
+- **Lokalno**: bae katalogizira vaše datoteke ondje gdje jesu i reproducira ih odande. Ništa se ne kopira. Podaci izdanja se sinkroniziraju, pa svaki uređaj prikazuje album, njegove pjesme i omot, ali njegov zvuk ostaje na računalu koje ga je uvezlo, a drugi ga uređaji ne mogu reproducirati.
+- **U oblaku**: datoteke se šifriraju i prenose u mjesto u oblaku. Sada svaki uređaj može reproducirati izdanje, strujeći ga na zahtjev ili preuzimajući ga za izvanmrežni rad. Prijenos ne dira vaše izvorne datoteke.
 
-Prelazak između ta dva stanja radnja je na razini izdanja: **Manage** prenosi neupravljano izdanje; **Make local** preuzima datoteke upravljanog izdanja u mapu koju odaberete i ponovno su vaše kao obične datoteke.
+Pri uvozu, s povezanim mjestom u oblaku, **Oblak** prenosi novo izdanje, a **Prikvačeno** dodatno zadržava njegove datoteke na ovom uređaju. Poslije **Premjesti u oblak** prenosi lokalno izdanje; bae najprije provjerava da se nijedna datoteka nije promijenila od uvoza, a promijenjena datoteka zaustavlja prijenos. **Postavi lokalno…** kopira datoteke izdanja iz oblaka u mapu koju odaberete, provjerava svaku kopiju i reproducira izdanje odande; ponovno su vaše kao obične datoteke, a drugi ga uređaji više ne mogu reproducirati.
 
 ## Strujanje i predmemorija
 
-Upravljana izdanja reproduciraju se svugdje gdje mreža dopušta: reprodukcija struji datoteku iz vašeg oblaka, a bajtovi se drže u lokalnoj predmemoriji pa je sljedeća reprodukcija trenutna i bez mrežnog prijenosa. Predmemorija se sama drži unutar proračuna (20 GB za zvuk na svakom uređaju), izbacujući ono što niste reproducirali kad ponestane prostora. Omoti i slike izvođača predmemoriraju se zasebno, pa veliki album ne može izgurati vašu grafiku.
+Izdanja u oblaku reproduciraju se svugdje gdje mreža dopušta: reprodukcija struji datoteku iz vašeg oblaka, a bajtovi se drže u lokalnoj predmemoriji pa je sljedeća reprodukcija trenutna i bez mrežnog prijenosa. Predmemorija se sama drži unutar proračuna (20 GB za zvuk na svakom uređaju), izbacujući ono što niste reproducirali kad ponestane prostora. Omoti i slike izvođača predmemoriraju se zasebno, pa veliki album ne može izgurati vašu grafiku.
 
 ## Prikvačivanje za izvanmrežno
 
@@ -26,11 +26,11 @@ Prikvačivanje izdanja preuzima ga cijelog i zadržava: prikvačena glazba nikad
 
 Desktopov upravitelj pohrane (<kbd>⌘0</kbd>) prikazuje cijelu sliku u jednom prozoru:
 
-- Svako izdanje s veličinom i stanjem: neupravljano, upravljano, prijenos u tijeku. Filtrirajte, razvrstajte, odaberite više njih i djelujte na sve odjednom.
+- Svako izdanje s veličinom i stanjem: lokalno, u oblaku, prijenos u tijeku. Filtrirajte, razvrstajte, odaberite više njih i djelujte na sve odjednom.
 - **Preuzimanja**: prikvačena preuzimanja u tijeku, s pauzom i ponovnim pokušajem.
 - **Izvozi**: red čekanja izvoza. Pogledajte [Izvoz](/hr/guide/exporting).
 - **Prijenosi**: odlazni sandučić sinkronizacije, s napretkom po izdanju, propusnošću i preostalim vremenom, brisanjima na čekanju, pauzom i nastavkom.
 
 ## Brisanje
 
-Brisanje upravljanog izdanja uklanja ga iz biblioteke i mjesta u oblaku. Brisanje neupravljanog izdanja uklanja samo kataloški zapis: bae nikad ne briše datoteke koje nije ondje stavio.
+Brisanje izdanja u oblaku uklanja ga iz biblioteke i uklanja njegove kopije iz mjesta u oblaku. Brisanje lokalnog izdanja uklanja samo kataloški zapis. U oba slučaja bae nikad ne briše vaše vlastite datoteke.

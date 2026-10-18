@@ -16,22 +16,21 @@ Obok aplikacji: `bae-mcp` (serwer MCP) i `bae-automation`.
 
 ## Jedna biblioteka na dysku
 
-Biblioteka żyje w `~/.bae/libraries/<library-id>/` (na mobile w katalogu danych platformy):
+Biblioteka żyje w dwóch katalogach (na mobile w katalogach danych platformy): magazynie coven i obok w ustawieniach samego bae.
 
 ```
-~/.bae/libraries/<id>/
-  library.db        # SQLite: katalog, przypisania, specyfikacje odtwarzania
-  config.yaml       # coven: tożsamość biblioteki, dom w chmurze; nigdy niesynchronizowany
-  preferences.toml  # ustawienia bae; nigdy niesynchronizowane
-  storage/
-    local/          # bloby należące do tego urządzenia (okładki, obrazy wykonawców)
-    cache/          # usuwalne kopie blobów z chmury
-    pinned/         # kopie przypięte offline, nigdy nieusuwane automatycznie
+~/.bae/stores/<id>/       # magazyn coven, otwierany tylko przez coven
+  store.db                # SQLite: katalog, przypisania, specyfikacje odtwarzania, księgowość coven
+  files/                  # kopie coven własnych plików bae (okładki, obrazy wykonawców, awatary)
+  cache/                  # kopie w cache i przypięte kopie wysłanych plików
+~/.bae/libraries/<id>/    # własny katalog bae; nigdy niesynchronizowany
+  preferences.toml        # ustawienia bae
+  cache/                  # grafiki pobrane z katalogów
 ```
 
-Baza danych jest otwierana tylko przez coven, który dokłada własne tabele księgowe (kursory synchronizacji, skrzynkę wysyłania, stan blobów) obok schematu bae i uruchamia migracje bae. Pliki audio importowane jako niezarządzane wcale nie są pod `~/.bae`: baza danych wskazuje je ścieżkami, z których zostały zaimportowane.
+Baza danych jest otwierana tylko przez coven, który trzyma własne tabele księgowe (rekordy scalania, kolejkę wysyłania, stan plików) obok schematu bae i uruchamia migrację bae. Pliki audio lokalnego wydania wcale nie są pod `~/.bae`: baza danych wskazuje je ścieżkami, z których zostały zaimportowane.
 
-Sekrety nigdy nie żyją w tych plikach. Klucze tożsamości, klucz szyfrowania biblioteki, dane dostępowe chmury i tokeny API żyją w pęku kluczy systemu operacyjnego (Keychain na platformach Apple, synchronizowany przez iCloud Keychain; odpowiedniki platformowe gdzie indziej).
+Sekrety nigdy nie żyją w tych plikach. Klucze członków, klucze biblioteki, logowania do chmury i tokeny API żyją w pęku kluczy systemu operacyjnego (Keychain na platformach Apple, odpowiedniki platformowe gdzie indziej); na platformach Apple kod przywracania jest też zapisywany w pęku kluczy iCloud.
 
 ## Edycje
 

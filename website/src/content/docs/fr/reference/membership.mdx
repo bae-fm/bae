@@ -1,35 +1,54 @@
 ---
 title: Identité et appartenance
-description: Clés comme identités, échange de jonction, rôles et révocation
+description: Les personnes comme clés, codes de restauration, invitations, rôles et retrait
 ---
 
-Il n’y a aucun système de compte dans bae. L’identité d’un appareil est une paire de clés Ed25519 qu’il génère pour lui-même et conserve dans le trousseau du système d’exploitation ; la clé publique *est* l’identité. Les membres d’une bibliothèque sont un ensemble d’enregistrements signés dans l’emplacement cloud, vérifiables par toute personne qui les détient, émis par aucun serveur. La mécanique est celle de [coven](https://coven.bae.fm) ; cette page explique comment bae l’utilise.
+Il n’y a aucun système de compte dans bae. Chaque personne d’une bibliothèque est un *membre* coven : un identifiant de membre aléatoire et permanent et deux paires de clés, l’une pour signer et l’autre pour laquelle des clés sont scellées, partagées par tous les appareils de cette personne et conservées dans le trousseau du système d’exploitation de chaque appareil. Un appareil est une installation, avec son propre identifiant, qui appartient à un membre. Qui fait partie d’une bibliothèque est un ensemble d’enregistrements signés dans l’emplacement cloud, vérifiés par l’appareil de chaque membre, émis par aucun serveur. La mécanique est celle de [coven](https://coven.bae.fm) ; cette page explique comment bae l’utilise.
 
 ## Enregistrements d’appartenance
 
-Chaque propriétaire écrit un flux append-only d’entrées d’appartenance signées dans l’emplacement cloud : cette clé a été ajoutée avec ce rôle, cette clé a été retirée. Chaque entrée pointe vers la précédente, et chaque propriétaire signe une tête déclarant la pointe de son flux ; ainsi, un fournisseur qui supprime ou réordonne des enregistrements est détecté au lieu d’être cru. Ce que la bibliothèque accepte est l’union de chaque flux de propriétaire vérifié.
+Tout l’historique d’une bibliothèque dans l’emplacement cloud est une séquence numérotée, et chaque appareil l’applique dans le même ordre. Un changement d’appartenance ou de réglages est une *entrée d’administration* dans cette séquence, signée avec la clé de son auteur et jugée selon l’état juste avant elle, donc chaque appareil arrive seul au même verdict. Une entrée ne compte que si son auteur a le droit de la faire, et la bibliothèque garde toujours au moins un administrateur.
 
-À chaque pull, l’auteur de chaque jeu de changements est vérifié avec cet enregistrement : signé par un membre actuel, avec un rôle autorisé à écrire. Les jeux de changements d’appareils retirés, de clés jamais ajoutées, ou avec des signatures invalides ne s’appliquent pas. Le fournisseur stocke les enregistrements mais ne peut pas les falsifier ; seuls les détenteurs de clés de propriétaire peuvent modifier l’appartenance.
+Chaque changement qu’envoie un appareil est vérifié avec cet enregistrement : signé par un membre actuel, depuis un appareil qui n’a pas été retiré. Les changements d’appareils ou de membres retirés, de clés jamais ajoutées, ou avec des signatures invalides ne comptent pas. Le fournisseur stocke les enregistrements mais ne peut pas les falsifier.
 
 ## Rôles
 
-**Owner** et **Member** lisent et écrivent tous les deux la bibliothèque ; les propriétaires approuvent et retirent en plus des appareils. L’appareil fondateur de bae est propriétaire et chaque appareil qu’il approuve rejoint comme membre. (Un troisième rôle existe dans la mécanique sous-jacente, un suiveur en lecture seule, que bae n’assigne pas actuellement.)
+**Administrateur** et **Membre** lisent et écrivent tous les deux la bibliothèque : coven ne vérifie aucune permission sur les écritures de la bibliothèque, donc un rôle en lecture seule ne tiendrait pas. Les administrateurs invitent et retirent en plus des personnes, changent les rôles et renomment la bibliothèque. La personne qui donne à une bibliothèque son emplacement cloud en est le premier administrateur.
 
-## L’échange de jonction
+| Action | Qui |
+|---|---|
+| Inviter une personne | un administrateur |
+| Ajouter un appareil | la personne, depuis le nouvel appareil, avec son code de restauration |
+| Retirer un appareil | sa personne, ou n’importe quel administrateur |
+| Retirer une personne | un administrateur |
+| Renommer la bibliothèque | un administrateur |
 
-L'ajout d'un appareil correspond à une session d'appairage locale avec vérification humaine explicite :
+Le profil, les notes, l’historique et les listes de lecture d’une personne sont des lignes de propriétaire : seuls les appareils de cette personne peuvent les modifier, donc une note attribuée à quelqu’un vient bien de lui.
 
-1. Un propriétaire démarre **Ajouter un appareil**. bae écoute brièvement sur le réseau local et affiche un code d'appairage. Il contient les adresses des auditeurs, une clé de session éphémère, le nom de la bibliothèque, le fournisseur et une date d'expiration – aucune clé de bibliothèque ni informations d'identification de stockage durables.
-2. L'appareil qui rejoint scanne le code, crée sa paire de clés d'appareil, se connecte au fournisseur si nécessaire et envoie sa clé publique signée et l'identité du compte du fournisseur via la connexion locale cryptée. Les deux appareils affichent la même empreinte digitale.
-3. Le propriétaire compare les empreintes digitales et approuve cette identité exacte. L'approbation accorde à son compte cloud l'accès si nécessaire, signe l'entrée d'adhésion et scelle la clé de bibliothèque et l'accès au stockage final à la clé publique du nouvel appareil.
-4. Le colis scellé est renvoyé via la même connexion locale authentifiée. Le périphérique qui rejoint l'ouvre, démarre à partir du stockage cloud et commence la synchronisation.
+## Ajouter votre propre appareil
 
-Un appariement expiré, interrompu ou rejeté n’accorde rien.
+Un code de restauration prouve qu’un appareil appartient à sa personne, il n’a donc besoin d’aucune approbation :
 
-## Révocation
+1. Le nouvel appareil obtient le code en scannant le code QR qu’affiche un autre appareil de la personne, depuis le trousseau iCloud sur les appareils Apple, ou par saisie.
+2. Il accède au stockage : sur Dropbox et OneDrive en se connectant au propre compte de la personne, sur S3 avec sa clé d’accès, que le code QR transporte à côté du code.
+3. Il charge la bibliothèque, vérifie que les clés du code appartiennent à un membre actuel et s’enregistre comme nouvel appareil avec une entrée signée par ces clés.
 
-Retirer un membre ajoute un retrait signé et fait tourner la clé de bibliothèque vers une nouvelle génération que la clé retirée ne reçoit jamais (consultez [Chiffrement](/fr/reference/encryption#generations)). Sur les stockages qui peuvent révoquer l’accès, l’accès est aussi retiré. Ce qui était déjà synchronisé sur l’appareil retiré reste avec lui ; les données ne peuvent pas être rappelées. Tout ce qui suit la rotation est hors de sa portée.
+Un code dont les clés ont été remplacées depuis échoue. Restaurer crée toujours un nouvel appareil ; cela ne récupère pas les modifications non envoyées d’une autre installation.
 
-## Codes de récupération
+## Inviter une personne
 
-Un code de récupération contourne volontairement l’appartenance : ce sont les coordonnées de l’emplacement cloud plus la clé de bibliothèque, en une seule chaîne porteuse, pour restaurer votre propre bibliothèque sans approbateur restant. Il est généré à la demande, stocké automatiquement dans le trousseau iCloud sur les plateformes Apple, et est exactement aussi sensible que la bibliothèque elle-même.
+1. Un administrateur saisit le compte de fournisseur de la personne et choisit son rôle. bae partage le dossier de la bibliothèque avec ce compte, ou sur S3 crée une clé d’accès pour elle, et affiche une invitation : un code QR contenant l’emplacement de la bibliothèque, l’identifiant de membre choisi pour la personne, un secret à usage unique et le nom actuel de la bibliothèque. Elle expire un jour après sa création.
+2. L’appareil de la personne la scanne, se connecte à son propre compte, crée ses paires de clés et écrit une demande d’adhésion dans le stockage, chiffrée avec une clé dérivée du secret de l’invitation et signée avec sa nouvelle clé.
+3. L’appareil de l’administrateur, le seul à détenir le secret, affiche la demande, et l’administrateur l’approuve.
+4. L’approbation scelle chaque clé de stockage pour la nouvelle clé de scellement de la personne, puis ajoute l’entrée qui l’admet.
+5. Le nouvel appareil ouvre ses clés, charge la bibliothèque, s’enregistre et écrit le profil de la personne avec le nom qu’elle a saisi.
+
+Refuser l’invitation, ou la laisser expirer, reprend l’accès au fournisseur qu’elle avait accordé.
+
+## Retrait
+
+Retirer un appareil ou une personne est une entrée d’administration, et sa place dans la séquence est une ligne dans l’historique : ce que l’appareil ou la personne retirés envoient ensuite ne compte pas, tandis que ce qui est arrivé avant reste. Retirer une personne retire aussi ses appareils et son cercle privé, et les clés qu’elle détenait sont remplacées avant que d’autres données soient écrites (consultez [Chiffrement](/fr/reference/encryption#rotation)). Couper l’accès au stockage est le travail du fournisseur : l’appareil du compte qui héberge la bibliothèque cesse de partager le dossier, et sur S3 la clé d’accès de la personne est supprimée. Ce qui était déjà synchronisé sur un appareil retiré reste avec lui ; les données ne peuvent pas être rappelées.
+
+## Codes de restauration
+
+Un code de restauration contient l’identifiant d’un membre et ses paires de clés privées actuelles, l’identifiant de stockage de la bibliothèque et son emplacement de stockage ; jamais d’identifiants de stockage, de jetons de connexion ni le nom de la bibliothèque. Il est affiché à la demande, stocké automatiquement dans le trousseau iCloud sur les plateformes Apple, et est exactement aussi sensible que la bibliothèque elle-même : qui le détient, avec un accès au stockage, est cette personne pour la bibliothèque. Une personne qui perd chaque appareil et son code peut être invitée à nouveau par un administrateur sur son identifiant de membre existant, ce qui remplace ses clés.

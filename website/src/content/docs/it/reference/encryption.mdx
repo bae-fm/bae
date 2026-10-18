@@ -1,28 +1,34 @@
 ---
 title: Cifratura
-description: Cos'è la chiave della libreria, dove vive e quale testo cifrato conserva il provider
+description: Quali chiavi esistono, dove vivono e cosa può vedere il provider
 ---
 
-Tutto ciò che bae mette in una home cloud opaca viene cifrato prima di lasciare il dispositivo. bae non implementa crittografia propria: l'intero schema è quello di [coven](https://coven.bae.fm), e questa pagina descrive come bae lo usa. Le home esplorabili rinunciano a tutto questo; nulla di ciò che segue si applica a loro.
+Tutto ciò che bae mette in una home cloud viene cifrato prima di lasciare il dispositivo; non esiste una modalità non cifrata. bae non implementa crittografia propria: l'intero schema è quello di [coven](https://coven.bae.fm), e questa pagina descrive come bae lo usa.
 
-## La chiave della libreria
+## Le chiavi
 
-Una libreria opaca ha un segreto radice: una chiave casuale a 256 bit generata quando la home viene creata. Vive nel portachiavi del sistema operativo, mai in un file; sulle piattaforme Apple la voce del portachiavi si sincronizza tramite Portachiavi iCloud. La configurazione di bae salva solo un'impronta della chiave, sufficiente a distinguere una chiave sbagliata da una giusta allo sblocco senza conservare il segreto.
+| Chiave | Cosa fa |
+|---|---|
+| La chiave dello store | cifra la libreria e i suoi record di appartenenza |
+| La chiave di cerchia di ogni persona | cifra ciò che quella persona tiene privato: la sua cronologia di ascolto privata e le sue playlist private |
+| La chiave di ogni file | cifra un file, e viaggia solo dentro le modifiche cifrate della sua riga |
+| La coppia di chiavi di firma di una persona | firma ogni modifica che i suoi dispositivi inviano |
+| La coppia di chiavi di sigillatura di una persona | apre le chiavi sigillate per quella persona |
 
-La chiave viaggia tra i dispositivi in ​​due modi, entrambi descritti in [Identità e appartenenza](/it/reference/membership): sigillata sulla chiave pubblica di un dispositivo approvato durante l'accoppiamento del dispositivo e trasportata all'interno di un codice di ripristino.
+La chiave dello store è casuale, creata quando la libreria ottiene la sua home cloud. Le coppie di chiavi di una persona sono condivise da tutti i suoi dispositivi. Le chiavi private e le chiavi della libreria vivono nel portachiavi del sistema operativo, mai in un file o nel database. Raggiungono un dispositivo in due modi, entrambi descritti in [Identità e appartenenza](/it/reference/membership): un codice di ripristino porta le coppie di chiavi di una persona, e un amministratore che approva un invito sigilla le chiavi dello store per la chiave di sigillatura della nuova persona.
 
-## Generazioni
+## Rotazione
 
-La chiave della libreria è in realtà un portachiavi di generazioni numerate. Rimuovere un membro aggiunge una nuova generazione che il membro rimosso non riceve mai: tutto ciò che viene scritto dopo usa la nuova generazione ed è illeggibile per lui, mentre i membri rimasti conservano ogni generazione e possono leggere tutta la storia. Ogni oggetto sigillato registra in chiaro quale generazione lo apre.
+Una chiave non viene mai cambiata sul posto; se ne aggiunge una nuova. Dopo la rimozione di una persona, il dispositivo di un membro rimasto aggiunge una nuova chiave dello store, e una nuova chiave per ogni cerchia di cui faceva parte, prima di scrivervi altri dati: tutto ciò che viene scritto dopo è illeggibile per lei, mentre i membri rimasti conservano ogni chiave precedente e possono leggere tutta la storia. Rimuovere un solo dispositivo non ruota nulla, perché gli altri dispositivi della persona ne condividono le chiavi; dalla rimozione in poi, ciò che quel dispositivo invia non conta.
 
 ## Cosa viene sigillato
 
-Ogni oggetto nella home: changeset, snapshot, blob audio, grafica, record di appartenenza, oggetti di controllo. Gli oggetti sono sigillati con XChaCha20-Poly1305 in blocchi da 64 KB, ogni blocco autenticato, e legati al loro contesto: un oggetto sigillato si decifra solo come l'oggetto che doveva essere, per questa libreria, con questa chiave. Il frazionamento è il motivo per cui lo streaming funziona: il lettore può decifrare esattamente gli intervalli di byte che recupera.
+Ogni oggetto nella home: modifiche, snapshot, record di appartenenza e file. Il contenuto è cifrato con XChaCha20-Poly1305, ogni modifica è firmata con Ed25519, e le chiavi sono sigillate per le persone con sealed box X25519. I file sono cifrati in blocchi da 64 KiB, ognuno autenticato per conto proprio e legato alla sua posizione, così un blocco non può essere alterato, scambiato o riordinato senza che si noti. Il frazionamento è il motivo per cui lo streaming funziona: il lettore può decifrare esattamente i blocchi che recupera.
 
 ## Cosa può vedere il provider
 
-Numero di oggetti, dimensioni degli oggetti, tempi di caricamento e schemi di accesso. Non nomi, non metadati, non audio, non grafica, non appartenenza. Non c'è recupero lato server: un utente che perde ogni dispositivo e ogni copia della chiave ha perso per sempre il testo cifrato della libreria, che è il comportamento previsto dal progetto.
+Numero di oggetti, dimensioni degli oggetti, tempi di caricamento, quale account scrive ogni oggetto e quale dispositivo ha caricato ogni file e snapshot, perché i loro percorsi nominano il dispositivo. Non nomi, non metadati, non audio, non grafica. I file stanno sotto nomi casuali, mai un hash del loro contenuto. Non c'è recupero lato server: se ogni persona perde ogni dispositivo e ogni codice di ripristino, la libreria è perduta, che è il comportamento previsto dal progetto.
 
-## Sblocco e blocco
+## Il portachiavi
 
-Aprire una libreria legge la chiave dal portachiavi. Se la libreria si aspetta una chiave e il portachiavi non ce l'ha, bae tratta la libreria come bloccata: chiede la chiave prima di aprire, validando l'inserimento contro l'impronta salvata prima di risalvarla nel portachiavi. Bloccare una libreria rimuove apposta la chiave dal portachiavi; nulla nella home cloud può essere letto o scritto finché non viene inserita di nuovo.
+Aprire una libreria legge le sue chiavi dal portachiavi del sistema operativo. Un portachiavi bloccato in quel momento, da una sessione bloccata o da uno schermo in stop, viene distinto da uno guasto: bae mostra la libreria come bloccata e ritenta dopo lo sblocco, invece di dichiarare la libreria inutilizzabile. Un dispositivo può anche dimenticare la chiave, il che blocca la libreria su quel dispositivo finché non viene sbloccata di nuovo.

@@ -16,22 +16,21 @@ Uygulamaların yanında: `bae-mcp` (MCP sunucusu) ve `bae-automation`.
 
 ## Diskte tek kitaplık
 
-Bir kitaplık `~/.bae/libraries/<library-id>/` konumunda yaşar (mobilde platform veri dizini):
+Bir kitaplık iki dizinde yaşar (mobilde platform veri dizinleri): coven'in deposu ve yanında bae'in kendi ayarları.
 
 ```
-~/.bae/libraries/<id>/
-  library.db        # SQLite: katalog, krediler, çalma özellikleri
-  config.yaml       # coven: kitaplık kimliği, bulut evi; asla eşzamanlanmaz
-  preferences.toml  # bae ayarları; asla eşzamanlanmaz
-  storage/
-    local/          # bu aygıtın sahip olduğu blob'lar (kapaklar, sanatçı görselleri)
-    cache/          # bulut blob'larının çıkarılabilir kopyaları
-    pinned/         # çevrimdışı için sabitlenmiş kopyalar, asla çıkarılmaz
+~/.bae/stores/<id>/       # coven'in deposu, yalnızca coven üzerinden açılır
+  store.db                # SQLite: katalog, krediler, çalma özellikleri, coven muhasebesi
+  files/                  # bae'in kendi dosyalarının coven kopyaları (kapaklar, sanatçı görselleri, avatarlar)
+  cache/                  # yüklenen dosyaların önbellekteki ve sabitlenmiş kopyaları
+~/.bae/libraries/<id>/    # bae'in kendisine ait; asla eşzamanlanmaz
+  preferences.toml        # bae ayarları
+  cache/                  # kataloglardan alınan görseller
 ```
 
-Veritabanı yalnızca coven üzerinden açılır; coven kendi muhasebe tablolarını (eşzamanlama imleçleri, giden kutusu, blob durumu) bae'in şemasının yanına katmanlar ve bae'in geçişlerini çalıştırır. Yönetilmeyen olarak içe aktarılan ses dosyaları `~/.bae` altında değildir: veritabanı onları içe aktarıldıkları yollardan başvurur.
+Veritabanı yalnızca coven üzerinden açılır; coven kendi muhasebe tablolarını (birleştirme kayıtları, yükleme kuyruğu, dosya durumu) bae'in şemasının yanında tutar ve bae'in geçişini çalıştırır. Yerel bir sürümün ses dosyaları `~/.bae` altında değildir: veritabanı onları içe aktarıldıkları yollardan başvurur.
 
-Gizli değerler bu dosyalarda asla yaşamaz. Kimlik anahtarları, kitaplık şifreleme anahtarı, bulut kimlik bilgileri ve API token'ları OS keyring içinde yaşar (Apple platformlarında Keychain, iCloud Keychain üzerinden eşzamanlanır; başka yerlerde platform eşdeğerleri).
+Gizli değerler bu dosyalarda asla yaşamaz. Üye anahtarları, kitaplığın anahtarları, bulut oturumları ve API token'ları OS keyring içinde yaşar (Apple platformlarında Keychain, başka yerlerde platform eşdeğerleri); Apple platformlarında geri yükleme kodu ayrıca iCloud Anahtar Zinciri'ne kaydedilir.
 
 ## Edisyonlar
 

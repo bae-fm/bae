@@ -16,22 +16,21 @@ bae est un cœur Rust porté par quatre applications natives. Tout ce qui défin
 
 ## Une bibliothèque sur disque
 
-Une bibliothèque vit dans `~/.bae/libraries/<library-id>/` (un dossier de données de plateforme sur mobile) :
+Une bibliothèque vit dans deux dossiers (des dossiers de données de plateforme sur mobile) : le stockage de coven et, à côté, les réglages propres à bae.
 
 ```
-~/.bae/libraries/<id>/
-  library.db        # SQLite: catalog, credits, playback specs
-  config.yaml       # coven : identité de la bibliothèque, espace cloud ; jamais synchronisé
-  preferences.toml  # réglages de bae ; jamais synchronisés
-  storage/
-    local/          # blobs this device owns (covers, artist images)
-    cache/          # evictable copies of cloud blobs
-    pinned/         # pinned-for-offline copies, never evicted
+~/.bae/stores/<id>/       # stockage de coven, ouvert seulement via coven
+  store.db                # SQLite : catalogue, crédits, données de lecture, suivi de coven
+  files/                  # copies par coven des fichiers propres à bae (pochettes, images d’artistes, avatars)
+  cache/                  # copies en cache et épinglées des fichiers envoyés
+~/.bae/libraries/<id>/    # propre à bae ; jamais synchronisé
+  preferences.toml        # réglages de bae
+  cache/                  # illustrations récupérées depuis les catalogues
 ```
 
-La base de données n’est ouverte que via coven, qui ajoute ses propres tables de suivi (curseurs de synchronisation, boîte d’envoi, état des blobs) à côté du schéma de bae et exécute les migrations de bae. Les fichiers audio importés comme non gérés ne sont pas du tout sous `~/.bae` : la base de données les référence aux chemins où ils ont été importés.
+La base de données n’est ouverte que via coven, qui garde ses propres tables de suivi (enregistrements de fusion, file d’envoi, état des fichiers) à côté du schéma de bae et exécute la migration de bae. Les fichiers audio d’une sortie locale ne sont pas du tout sous `~/.bae` : la base de données les référence aux chemins où ils ont été importés.
 
-Les secrets ne vivent jamais dans ces fichiers. Clés d’identité, clé de chiffrement de la bibliothèque, identifiants cloud et jetons d’API vivent dans le trousseau du système d’exploitation (Keychain sur les plateformes Apple, synchronisé via le trousseau iCloud ; les équivalents de plateforme ailleurs).
+Les secrets ne vivent jamais dans ces fichiers. Clés de membre, clés de la bibliothèque, connexions cloud et jetons d’API vivent dans le trousseau du système d’exploitation (Keychain sur les plateformes Apple, les équivalents de plateforme ailleurs) ; sur les plateformes Apple, le code de restauration est aussi enregistré dans le trousseau iCloud.
 
 ## Éditions
 

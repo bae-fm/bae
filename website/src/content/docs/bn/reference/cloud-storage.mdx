@@ -1,36 +1,35 @@
 ---
 title: মেঘ-সংরক্ষণ
-description: Provider, authentication, এবং মেঘ-ঘরের আকার
+description: সেবা-দাতা, সাইন-ইন, এবং মেঘ-ঘরের আকার
 ---
 
-মেঘ-ঘর হলো ব্যবহারকারীর আগে থেকেই থাকা সংরক্ষণের একটি জায়গা। প্রতিটি provider [coven](https://coven.bae.fm)-এর একই সংরক্ষণ interface দিয়ে চালিত হয়; provider অনুযায়ী যা বদলায় তা হলো authentication এবং দ্বিতীয় ডিভাইসকে কীভাবে প্রবেশাধিকার দেওয়া হয়।
+মেঘ-ঘর হলো ব্যবহারকারীর আগে থেকেই থাকা সংরক্ষণের একটি জায়গা। প্রতিটি সেবা-দাতা [coven](https://coven.bae.fm)-এর একই সংরক্ষণ interface দিয়ে চালিত হয়; সেবা-দাতা অনুযায়ী যা বদলায় তা হলো সাইন-ইন, সেটআপ, এবং অন্য মানুষ ও ডিভাইস কীভাবে সেখানে পৌঁছায়।
 
 ## Provider
 
-| Provider | Auth | নতুন ডিভাইসের প্রবেশাধিকার |
-|---|---|---|
-| S3-compatible | Access কী + secret | পেয়ারিংয়ের সময় অনুমোদিত ডিভাইসে শংসাপত্রগুলি সিল করা হয়েছে |
-| Dropbox | OAuth (PKCE) | নতুন ডিভাইসের অ্যাকাউন্ট অনুমোদিত, তারপর ফোল্ডার ভাগ করা হয় |
-| OneDrive | OAuth (PKCE) | নতুন ডিভাইসের অ্যাকাউন্ট অনুমোদিত, তারপর ফোল্ডার ভাগ করা হয় |
-| iCloud (CloudKit) | Apple ID, sign-in নেই | পেয়ার করার সময় ক্লাউডকিট শেয়ার গ্রহণ করা হয়েছে |
+| সেবা-দাতা | সাইন-ইন | আপনার নিজের নতুন ডিভাইস | আপনি যাকে আমন্ত্রণ জানান |
+|---|---|---|---|
+| S3-compatible | অ্যাক্সেস কী + secret | রিস্টোর কোড, সঙ্গে QR কোডে তার পাশে থাকা আপনার অ্যাক্সেস কী | তাঁর জন্য তৈরি একটি অ্যাক্সেস কী |
+| Dropbox | OAuth, coven রাখে | রিস্টোর কোড, তারপর আপনার Dropbox-এ সাইন ইন | লাইব্রেরির শেয়ার করা ফোল্ডার তাঁর অ্যাকাউন্টের সঙ্গে ভাগ হয় |
+| OneDrive | OAuth, coven রাখে | রিস্টোর কোড, তারপর আপনার OneDrive-এ সাইন ইন | লাইব্রেরির ফোল্ডার তাঁর অ্যাকাউন্টের সঙ্গে ভাগ হয় |
+| iCloud (CloudKit) | Apple Account, সাইন-ইন নেই | রিস্টোর কোড, iCloud Keychain থেকেও পাওয়া যায় | লাইব্রেরির CloudKit জোন তাঁর Apple Account-এর সঙ্গে ভাগ হয় |
 
-S3-compatible AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, এবং API বলা অন্য সবকিছু কভার করে; bucket, region, endpoint, এবং কী prefix configurable, আর config save করার আগে bucket probe করা হয় যাতে typo setup-এই fail করে, প্রথম সিঙ্কে নয়। OAuth provider শুধু full **bae** edition-এ থাকে; **baeium** build সেগুলো compile করে না।
+S3-compatible AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, এবং এই API বলা অন্য সবকিছু কভার করে। সেটআপ ফর্ম শুধু bucket, region, endpoint ও অ্যাক্সেস কী চায়; coven পরিচিত সার্ভিসগুলো endpoint-এর host দেখে চেনে এবং তাদের সঙ্গে কথা বলার পদ্ধতি পূরণ করে। **Advanced**-এ ঐচ্ছিক key prefix এবং সার্ভিস প্রোফাইল বাছাই থাকে, যা ডিফল্টে স্বয়ংক্রিয়। যে সার্ভিস coven চেনে না তার জন্য **Detect Settings** কী দিয়ে bucket যাচাই করে যা পেয়েছে তা দেখায়। কিছু সংরক্ষণের আগে সেটআপ সেবা-দাতা যাচাই করে, যাতে typo প্রথম সিঙ্কে নয়, সেটআপেই ব্যর্থ হয়, আর bae coven-এর কারণ সহজ ভাষায় জানায়। Dropbox, OneDrive ও iCloud শুধু পূর্ণ **bae** edition-এ থাকে; **baeium** build সেগুলো compile করে না।
 
-## OAuth
+## সাইন-ইন ও ফোল্ডার
 
-Sign-in হলো PKCE সহ authorization-code flow, public client হিসেবে। ডেস্কটপে redirect এক callback-এর জন্য স্থানীয় port-এ bound loopback server-এ আসে; mobile-এ app custom-scheme redirect ধরে। bae কাজের জন্য provider যে সবচেয়ে সরু scope দেয় সেটিই চায়। Token OS keyring-এ stored হয়, provider-এর refresh grant দিয়ে refresh হয়, আর rejected refresh silent retry loop না হয়ে reconnect prompt হিসেবে দেখা যায়।
+coven Dropbox ও OneDrive-এর সাইন-ইন নিজেই করে, তাই কোনো টোকেন bae-এর মধ্য দিয়ে যায় না। ডেস্কটপে ব্রাউজার সেবা-দাতার পৃষ্ঠা খোলে এবং একটি স্থানীয় listener সেই একটি redirect গ্রহণ করে; মোবাইলে কাজটি করে প্ল্যাটফর্মের সাইন-ইন শিট। coven টোকেন OS keyring-এ রাখে এবং সেবা-দাতা প্রত্যাখ্যান করলে একবার refresh করে; ব্যর্থ refresh নীরব retry loop না হয়ে সিঙ্ক অবস্থায় **Sign In** কাজ হিসেবে দেখা যায়।
 
-CloudKit-এর কোনো flow লাগে না: প্ল্যাটফর্মের CloudKit driver, app-এ implemented এবং core-কে দেওয়া, signed-in Apple ID হিসেবেই কাজ করে।
+সাইন ইনের পরে ব্যবহারকারী বেছে নেন লাইব্রেরি কোথায় থাকবে। Dropbox-এ এটি একটি শেয়ার করা ফোল্ডার, কারণ পরিবারের লাইব্রেরি অন্যদের অ্যাকাউন্টের সঙ্গে ভাগ হয়; এর জন্য bae অ্যাপ ফোল্ডার নয়, পূর্ণ Dropbox প্রবেশাধিকার ব্যবহার করে। এখনও কোনো শেয়ার করা ফোল্ডার না থাকলে bae Dropbox-এ একটি ফোল্ডার শেয়ার করে আবার খুঁজতে বলে। OneDrive-এ এটি যেকোনো ফোল্ডার, উপর থেকে ঘুরে দেখা যায়, আর সেখানে নতুন ফোল্ডার তৈরি করা যায়।
+
+CloudKit-এর কোনো flow লাগে না: coven Apple প্ল্যাটফর্মে সাইন-ইন করা Apple Account হিসেবেই সেটি চালায়।
 
 ## ঘরের বিন্যাস
 
-ঘরের ভেতরে coven প্রতি-ডিভাইস changeset stream, snapshot generation, membership record, এবং blob namespace সাজায়। bae তিনটি blob namespace দেয়: `release_files`, `covers`, এবং `artist_images`।
+ঘরের ভেতরে প্রতিটি object path লাইব্রেরির store id দিয়ে শুরু হয়: coven-এর নম্বর দেওয়া পরিবর্তনের ক্রম, তার snapshot, যোগদানের অনুরোধ এবং রাখা ফাইল। একাধিক লাইব্রেরি একে অপরের object না ছুঁয়ে একটি Dropbox বা OneDrive ফোল্ডার ভাগ করতে পারে।
 
-Object কী কী হবে তা ঘরের সংরক্ষণ mode-এর উপর নির্ভর করে, creation-এ fixed:
-
-- **Opaque**: object encrypted হয় এবং content-derived কী-এর নিচে stored হয়, যা কিছু প্রকাশ করে না। এটি cryptography-তে পূর্ণ বিশ্বাসের mode; [Encryption](/bn/reference/encryption) দেখুন।
-- **Browsable**: object plaintext হিসেবে আপলোড time-এ প্রতি blob-এ recorded readable path-এ থাকে: `release_files/{artist}/{album}/{filename}`, `covers/{album}/{release}/cover.{ext}`, `artist_images/{artist}/artist.{ext}`। Bucket একটি ব্যবহারযোগ্য ফাইল tree হিসেবেও কাজ করে; বিনিময়ে encryption ও membership নেই, তাই browsable home অন্যদের সঙ্গে share করা যায় না।
+প্রতিটি object encrypted হয়ে এলোমেলো নামের নিচে রাখা হয়; plaintext mode নেই। bae-এর ফাইল তিনটি সিঙ্ক হওয়া টেবিলের সারির অংশ: `release_files`, `covers` এবং `artist_images`, সঙ্গে প্রতিটি `people` সারির অবতার। একটি ফাইলের path তার সারির সঙ্গে যুক্ত হওয়ার সময় নির্দিষ্ট হয়, তাই অ্যালবামের নাম বদলালে সেটি কখনও নড়ে না। [Encryption](/bn/reference/encryption) দেখুন।
 
 ## বাস্তব network-এ আচরণ
 
-প্লেব্যাকের read ranged: player পুরো ফাইল নয়, দরকারি বাইট উইন্ডো stream করে। Provider support করলে size threshold-এর বেশি আপলোড multipart হয়। Rate limit ও transient provider error exponential backoff দিয়ে retry করে, provider retry-after দিলে তা মানে; expired OAuth টোকেন জায়গাতেই refresh হয়। Sync outbox restart টিকে থাকে: app quit করার কারণে interrupted আপলোড restart না হয়ে resume করে।
+প্লেব্যাকের read ranged: player পুরো ফাইল নয়, দরকারি encrypted chunk আনে, এবং ফাইল ক্রমানুসারে বাজার সময় আগাম আনে। Rate limit ও সাময়িক সেবা-দাতা error একটি একক backoff পরিকল্পনায় retry করে, সেবা-দাতা retry-after দিলে তা মানে। আপলোড সারি restart টিকে থাকে: app বন্ধ করায় থেমে যাওয়া আপলোড আবার শুরু থেকে নয়, যেখানে থেমেছিল সেখান থেকে চলে, আর বিরতি দেওয়া আপলোড বিরতিতেই থাকে।

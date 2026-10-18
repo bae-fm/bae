@@ -12,8 +12,8 @@ Les applications de bureau (macOS, Windows) sont l’outil complet : elles crée
 Ouvrez bae sur votre ordinateur. Quand aucune bibliothèque n’est présente sur la machine, l’écran d’accueil propose trois choix :
 
 - **Créer une nouvelle bibliothèque**, si c’est votre premier appareil.
-- **Rejoindre une bibliothèque**, si un autre appareil en possède déjà une et que son propriétaire vous approuvera. Consultez [Appareils et membres](/fr/guide/devices).
-- **Restaurer depuis le cloud**, si c’est votre propre bibliothèque et que vous avez son code de récupération. Consultez [Appareils et membres](/fr/guide/devices#recovery-codes).
+- **Rejoindre une bibliothèque**, si quelqu’un vous a invité dans la sienne. Consultez [Appareils et membres](/fr/guide/devices#inviter-une-personne).
+- **Restaurer depuis le cloud**, si c’est votre propre bibliothèque et que vous avez son code de restauration. Consultez [Appareils et membres](/fr/guide/devices#codes-de-restauration).
 
 Créez-en une. Une bibliothèque commence en local : tout vit sur cette machine, aucun compte n’est nécessaire, et aucun cloud n’intervient tant que vous n’en connectez pas un.
 
@@ -35,10 +35,10 @@ De retour dans la section **Library**, l’album est dans la grille. Cliquez des
 
 Quand vous voulez la bibliothèque sur plus d’un appareil, connectez un emplacement cloud : votre propre Dropbox, OneDrive, iCloud ou tout bucket compatible S3. Tout ce que bae y place est chiffré avant l’envoi ; le fournisseur le stocke mais ne peut pas le lire.
 
-- [Synchronisation](/fr/guide/sync) : connecter un emplacement cloud et choisir ce qu’il stocke.
-- [Appareils et membres](/fr/guide/devices) : ajouter votre téléphone ou un autre ordinateur.
+- [Synchronisation](/fr/guide/sync) : connecter un emplacement cloud et voir ce qui se synchronise.
+- [Appareils et membres](/fr/guide/devices) : ajouter votre téléphone ou un autre ordinateur, ou inviter quelqu’un.
 - [Stockage et hors ligne](/fr/guide/storage) : garder la musique sur l’appareil, ou la diffuser depuis votre cloud et épingler ce dont vous avez besoin hors ligne.
 
 ## Où vivent les éléments
 
-Chaque bibliothèque conserve sa base de données et ses réglages sous `~/.bae/libraries/` sur ordinateur. Votre audio reste là d’où vous l’avez importé, sauf si vous demandez à bae de le gérer dans votre cloud. Les clés et identifiants vivent dans le trousseau du système d’exploitation, pas dans des fichiers.
+Chaque bibliothèque conserve sa base de données sous `~/.bae/stores/` et ses réglages sous `~/.bae/libraries/` sur ordinateur. Votre audio reste là d’où vous l’avez importé ; déplacer une sortie vers le cloud envoie une copie chiffrée et laisse vos fichiers où ils sont. Les clés et identifiants vivent dans le trousseau du système d’exploitation, pas dans des fichiers.

@@ -5,18 +5,18 @@ description: તમારું music ક્યાં રહે છે, અન�
 
 તમારી files તમારી જ રહે છે. bae તેમને ક્યારેય move, rename અથવા rewrite કરતું નથી; storage જે પ્રશ્નનો જવાબ આપે છે તે ફક્ત આ છે કે દરેક release ની *playable copy* ક્યાં રહે છે: device પર, તમારા cloud માં, કે બંનેમાં.
 
-## Unmanaged અને managed
+## સ્થાનિક અને cloud માં
 
 દરેક release બેમાંથી એક છે, import વખતે પસંદ કરેલું અને કોઈ પણ સમયે બદલી શકાય તેવું:
 
-- **Unmanaged**: bae તમારી files જ્યાં છે ત્યાં catalog કરે છે અને ત્યાંથી વગાડે છે. કશું copy થતું નથી. Release દરેક synced device પર catalog માં હોય છે, પરંતુ તેનું audio ફક્ત તેને import કરનાર machine પર રહે છે.
-- **Managed**: files encrypted થઈને cloud home પર upload થાય છે. હવે દરેક device release વગાડી શકે છે, demand પર stream કરીને અથવા offline માટે download કરીને. Upload તમારી original files ને સ્પર્શતું નથી; locally તેમને વાપરતાં રહેવું કે નહીં તે તમારો નિર્ણય છે (import વખતે **Keep local copy** તેમને pin કરે છે).
+- **સ્થાનિક**: bae તમારી files જ્યાં છે ત્યાં સૂચિબદ્ધ કરે છે અને ત્યાંથી વગાડે છે. કશું copy થતું નથી. release ની માહિતી sync થાય છે, તેથી દરેક ઉપકરણ album, તેના tracks અને cover બતાવે છે, પણ તેનું audio import કરનાર machine પર જ રહે છે, અને બીજાં ઉપકરણો તેને વગાડી શકતાં નથી.
+- **Cloud માં**: files encrypt થઈને cloud home પર upload થાય છે. હવે દરેક ઉપકરણ release વગાડી શકે છે, માંગ પર stream કરીને અથવા offline માટે download કરીને. Upload તમારી મૂળ files ને સ્પર્શતું નથી.
 
-બે સ્થિતિ વચ્ચે જવું release-level action છે: **Manage** unmanaged release upload કરે છે; **Make local** managed release ની files તમે પસંદ કરેલા folder માં download કરે છે, અને તે ફરી plain files તરીકે તમારી છે.
+Import વખતે, cloud home જોડાયેલું હોય તો, **Cloud** નવો release upload કરે છે અને **Pinned** તેની files આ ઉપકરણ પર પણ રાખે છે. પછી **Move to Cloud** કોઈ સ્થાનિક release upload કરે છે; bae પહેલાં ચકાસે છે કે import પછી દરેક file બદલાઈ નથી, અને બદલાયેલી file upload અટકાવે છે. **Make Local…** cloud ના release ની files તમે પસંદ કરેલા ફોલ્ડરમાં copy કરે છે, દરેક નકલ ચકાસે છે અને release ને ત્યાંથી વગાડે છે; તે ફરી તમારી સામાન્ય files બને છે, અને બીજાં ઉપકરણો તેને હવે વગાડી શકતાં નથી.
 
 ## Streaming અને cache
 
-Managed releases everywhere વાગે છે, network મળે તો: playback file ને તમારા cloud માંથી stream કરે છે, અને bytes local cache માં રાખે છે જેથી next play તરત અને network વગર થાય. Cache budget અંદર પોતે manage થાય છે (દરેક device પર audio માટે 20 GB), જગ્યા ઓછી પડે ત્યારે જે તમે વગાડ્યું નથી તે evict કરે છે. Covers અને artist images અલગ cache થાય છે, જેથી મોટું album તમારા artwork ને બહાર ધકેલી ન શકે.
+Cloud માંના releases network મળે તો બધે વાગે છે: playback file ને તમારા cloud માંથી stream કરે છે, અને bytes સ્થાનિક cache માં રાખે છે જેથી પછીનું વગાડવું તરત અને network વગર થાય. Cache પોતાની મર્યાદામાં પોતાને સંભાળે છે (દરેક ઉપકરણ પર audio માટે 20 GB), જગ્યા ઓછી પડે ત્યારે જે તમે વગાડ્યું નથી તે કાઢે છે. Covers અને કલાકારની છબીઓ અલગ cache થાય છે, જેથી મોટું album તમારું artwork બહાર ધકેલી ન શકે.
 
 ## Offline માટે pinning
 
@@ -26,11 +26,11 @@ Release pin કરવાથી આખું download થાય છે અને 
 
 Desktop નો Storage Manager (<kbd>⌘0</kbd>) એક window માં આખું picture છે:
 
-- દરેક release તેની size અને state સાથે: unmanaged, managed, uploading. Filter, sort, many select કરો, બધાં પર એકસાથે act કરો.
+- દરેક release તેના કદ અને સ્થિતિ સાથે: સ્થાનિક, cloud માં, upload થઈ રહ્યું. Filter કરો, ક્રમ બદલો, ઘણાં પસંદ કરો, બધાં પર એકસાથે ક્રિયા કરો.
 - **Downloads**: ચાલી રહેલા pin downloads, pausable, retryable.
 - **Exports**: export queue. [Exporting](/gu/guide/exporting) જુઓ.
 - **Uploads**: sync outbox, per-release progress, throughput અને time remaining, pending deletions, pause અને resume.
 
 ## Deleting
 
-Managed release delete કરવાથી તે library અને cloud home માંથી દૂર થાય છે. Unmanaged release delete કરવાથી ફક્ત catalog entry દૂર થાય છે: bae જે files ત્યાં મૂકી ન હોય તેને ક્યારેય delete કરતું નથી.
+Cloud માંનો release કાઢી નાખવાથી તે લાઇબ્રેરીમાંથી અને તેની નકલો cloud home માંથી દૂર થાય છે. સ્થાનિક release કાઢી નાખવાથી ફક્ત catalog entry દૂર થાય છે. બંને રીતે bae તમારી પોતાની files ક્યારેય કાઢતું નથી.

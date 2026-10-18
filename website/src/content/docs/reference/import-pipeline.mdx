@@ -52,7 +52,7 @@ Confirming an import runs, in order:
 3. **Cover selection**: the chosen art (remote, folder image, or embedded) is re-rendered to a display thumbnail; the original is kept among the release's files if it came from the folder.
 4. **Atomic write**: the release, tracks, credits, identities, formats, segments, files, and cover commit in one transaction. There is no half-imported state.
 
-The release lands referencing the user's files in place. If the user chose cloud-managed, the upload happens after the commit as a storage transition, and the files' original bytes remain the source of truth throughout; nothing the user gave bae is ever deleted or altered.
+The release lands referencing the user's files in place. For a cloud import, coven reads and hashes each file before the write, and the same write attaches every file to its row and queues its upload. A local import records each file's path, size, and modification time on this device instead; its bytes are read only if the release is later moved to the cloud. Either way the files' original bytes remain the source of truth throughout; nothing the user gave bae is ever deleted or altered.
 
 ## Recognizing rips
 

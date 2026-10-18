@@ -9,35 +9,35 @@ Một thư viện, mọi thiết bị, và tài khoản duy nhất tham gia là 
 
 ## Nhà trên đám mây
 
-Nhà trên đám mây của một thư viện là một vị trí trong lưu trữ của bạn: một thư mục trong Dropbox hoặc OneDrive, iCloud của bạn, hoặc bất kỳ bucket tương thích S3 nào (AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, ...). Nó giữ mọi thứ thư viện đồng bộ: các thay đổi catalog, artwork và âm thanh của những bản phát hành bạn cho bae quản lý.
+Nhà trên đám mây của một thư viện là một vị trí trong lưu trữ của bạn: một thư mục trong Dropbox hoặc OneDrive của bạn, iCloud của bạn, hoặc bất kỳ bucket tương thích S3 nào (AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO, ...). Nó giữ mọi thứ thư viện đồng bộ: các thay đổi của thư viện, artwork và âm thanh của những bản phát hành bạn chuyển lên đám mây.
 
-Thiết lập trong Settings, dưới Sync:
+Thiết lập trong Settings, Library, bằng **Set up sync...**:
 
-1. Chọn nhà cung cấp. Đám mây tiêu dùng đăng nhập bằng trang đăng nhập riêng của nhà cung cấp; không có gì về tài khoản của bạn được lưu ngoài token mà trang đó cấp. iCloud dùng Apple ID của bạn như hiện có. S3 nhận bucket, region, endpoint và khóa, được kiểm tra trước khi lưu để lỗi gõ sai thất bại lúc thiết lập, không phải ở lần đồng bộ đầu.
-2. Chọn cách nhà lưu đối tượng (xem bên dưới).
-3. bae bắt đầu đồng bộ.
+1. Chọn nhà cung cấp.
+   - **Dropbox** và **OneDrive** đăng nhập qua trình duyệt, rồi hỏi thư viện nằm trong thư mục nào. Với Dropbox đó là một thư mục được chia sẻ, để bạn mời gia đình vào; nếu chưa có, hãy chia sẻ một thư mục trong Dropbox rồi chọn **Look Again**. Với OneDrive đó là bất kỳ thư mục nào, và bạn có thể tạo thư mục mới ở đó. Phiên đăng nhập do coven giữ; bae không bao giờ thấy token của nó.
+   - **iCloud** dùng Apple Account mà thiết bị đang đăng nhập.
+   - **S3** chỉ hỏi bucket, region, endpoint và khóa truy cập. **Advanced** chứa tiền tố khóa tùy chọn và hồ sơ dịch vụ, mặc định là tự động; với dịch vụ bae không nhận ra, **Detect Settings** thử bucket bằng khóa của bạn và hiển thị những gì nó tìm thấy. Nếu thiết lập bị từ chối, bae nói lý do.
+2. bae bắt đầu đồng bộ.
 
 Thư viện không có nhà trên đám mây vẫn đầy đủ tự thân. Chỉ cục bộ là một chế độ, không phải giới hạn, và ngắt kết nối nhà trên đám mây đưa thư viện về chế độ đó.
 
-## Mờ đục hoặc duyệt được
+## Luôn được mã hóa
 
-Khi thiết lập, bạn chọn nhà cung cấp được thấy gì, và lựa chọn này là vĩnh viễn cho nhà đó:
-
-- **Mờ đục** (mặc định): mọi đối tượng được mã hóa trên thiết bị của bạn trước khi tải lên và được lưu dưới tên vô nghĩa. Nhà cung cấp, hoặc bất kỳ ai vào được bucket, thấy ciphertext. Đây là chế độ trang [mã hóa](/vi/reference/encryption) mô tả, và là chế độ duy nhất hỗ trợ thêm thiết bị và thành viên khác.
-- **Duyệt được**: đối tượng được lưu rõ với tên tệp thật, trong thư mục đặt theo nghệ sĩ và album. Bạn có thể mở bucket bằng bất kỳ công cụ nào và sao chép hoặc phát tệp trực tiếp. Không có gì được mã hóa, nên kiểm soát truy cập riêng của bucket là lớp bảo vệ duy nhất, và nhà này không thể được chia sẻ.
+Mọi nhà trên đám mây đều chứa cùng một thứ: các đối tượng đã mã hóa dưới tên ngẫu nhiên. Mọi thay đổi, hình ảnh và tệp âm thanh đều được mã hóa trên thiết bị của bạn trước khi tải lên. Album của bạn không phải một thư mục ai cũng duyệt được trong Dropbox của bạn, và nhà cung cấp không thấy tên album, nghệ sĩ hay tệp nào. Xem [Mã hóa](/vi/reference/encryption).
 
 ## Những gì đồng bộ
 
-- Catalog: album, bản phát hành, track, ghi công, tác phẩm, danh tính, chỉnh sửa. Mọi thiết bị nhận toàn bộ.
-- Artwork: bìa và ảnh nghệ sĩ, được lấy sớm để lưới hiển thị ở mọi nơi.
-- Âm thanh: chỉ cho các bản phát hành bạn chọn quản lý trong đám mây. Bản phát hành không quản lý vẫn thuần cục bộ, mục catalog có trên thiết bị khác nhưng byte chỉ nằm nơi bạn đã nhập.
+- Thư viện: album, bản phát hành, track, ghi công, tác phẩm và nghệ sĩ. Mọi thiết bị nhận toàn bộ, kể cả những bản phát hành có âm thanh vẫn ở trên thiết bị đã nhập chúng.
+- Mọi người: tên và ảnh đại diện của từng người, đánh giá, lịch sử phát và danh sách phát. Lịch sử của bạn và từng danh sách phát có thể chỉ riêng bạn thấy hoặc chia sẻ với gia đình.
+- Artwork: bìa, ảnh nghệ sĩ và ảnh đại diện, được lấy sớm để lưới hiển thị ở mọi nơi.
+- Âm thanh: chỉ cho các bản phát hành bạn đã chuyển lên đám mây. Một bản phát hành cục bộ hiện trên mọi thiết bị nhưng chỉ phát được trên thiết bị đã nhập nó, cho đến khi bạn chuyển nó lên đám mây. Xem [Lưu trữ và ngoại tuyến](/vi/guide/storage).
 
 Trạng thái theo thiết bị không đồng bộ: vị trí phát, âm lượng, hàng đợi và cài đặt thiết bị nằm trên thiết bị.
 
 ## Khi nào đồng bộ
 
-Đồng bộ tự chạy: sau thay đổi, theo bộ hẹn giờ, và theo yêu cầu với **Sync Now**. Chỉnh sửa đến thiết bị khác dưới dạng thay đổi nhỏ, vài giây sau trong điều kiện bình thường. Hai thiết bị sửa cùng lúc đều thắng ở nơi chúng không va chạm: bae gộp chỉnh sửa đồng thời theo từng trường, và một bản phát hành đã xóa vẫn bị xóa kể cả khi nó được sửa ở nơi khác cùng lúc. Không có gì yêu cầu bạn giải quyết xung đột.
+Đồng bộ tự chạy: sau thay đổi, theo bộ hẹn giờ, và theo yêu cầu với **Sync Now**. Chỉnh sửa đến thiết bị khác vài giây sau trong điều kiện bình thường. Hai thiết bị sửa cùng lúc đều thắng ở nơi chúng không va chạm: bae gộp chỉnh sửa đồng thời theo từng trường, chỉnh sửa muộn hơn thắng ở trường cả hai cùng sửa, và một bản phát hành đã xóa vẫn bị xóa kể cả khi nó được sửa ở nơi khác cùng lúc. Không có gì yêu cầu bạn giải quyết xung đột.
 
 ## Khi thất bại
 
-Lỗi đồng bộ không ngắt thư viện; bạn vẫn duyệt, phát và nhập cục bộ trong khi bae thử lại với backoff. Dòng trạng thái hiển thị đang đồng bộ và thời gian đồng bộ gần nhất; lỗi hiển thị banner với thông báo lỗi, và lượt tải lên có thể được tạm dừng, thử lại và xem trong [trình quản lý lưu trữ](/vi/guide/storage#trình-quản-lý-lưu-trữ). Nếu đăng nhập của nhà trên đám mây hết hạn, bae yêu cầu bạn kết nối lại.
+Lỗi đồng bộ không ngắt thư viện; bạn vẫn duyệt, phát và nhập cục bộ trong khi bae thử lại. Settings, Library hiển thị một dòng cho đồng bộ: **Synced**, hoặc số mục đang chờ, chẳng hạn **Waiting: 3 items**. Mở dòng đó để xem từng mục bằng lời lẽ dễ hiểu, kèm thao tác bạn có thể làm: **Sign In** khi nhà cung cấp muốn bạn đăng nhập lại, đặt lại đúng chỗ một tệp đã bị di chuyển trước khi tải lên, **Retry**, **Reconnect**, **Resume Uploads** hoặc **Update App**. Một lần chờ bạn không giúp được, như chờ thiết bị khác trực tuyến, không đưa ra thao tác nào. Danh sách này là nơi duy nhất cần xem; lượt tải lên cũng có thể được tạm dừng và xem trong [trình quản lý lưu trữ](/vi/guide/storage#trình-quản-lý-lưu-trữ).

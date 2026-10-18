@@ -1,28 +1,34 @@
 ---
 title: Encryptie
-description: Wat de bibliotheeksleutel is, waar hij staat, en welke ciphertext de provider bewaart
+description: Welke sleutels er zijn, waar ze staan en wat de provider kan zien
 ---
 
-Alles wat bae in een opaque cloud-home zet wordt versleuteld voordat het het apparaat verlaat. bae implementeert geen eigen cryptografie: het hele schema is van [coven](https://coven.bae.fm), en deze pagina beschrijft hoe bae het draagt. Browsable homes kiezen dit allemaal niet; niets hieronder geldt voor ze.
+Alles wat bae in een cloud-home zet wordt versleuteld voordat het het apparaat verlaat; er is geen onversleutelde modus. bae implementeert geen eigen cryptografie: het hele schema is van [coven](https://coven.bae.fm), en deze pagina beschrijft hoe bae het gebruikt.
 
-## De bibliotheeksleutel
+## De sleutels
 
-Een opaque bibliotheek heeft een rootgeheim: een willekeurige 256-bit sleutel die wordt gemaakt wanneer de home wordt aangemaakt. Hij staat in de OS-sleutelbos, nooit in een bestand; op Apple-platforms synchroniseert de sleutelbosvermelding via iCloud Keychain. De configuratie van bae bewaart alleen een vingerafdruk van de sleutel, genoeg om bij ontgrendelen een verkeerde sleutel van een juiste te onderscheiden zonder het geheim vast te houden.
+| Sleutel | Wat hij doet |
+|---|---|
+| De store-sleutel | versleutelt de bibliotheek en haar lidmaatschapsrecords |
+| De kringsleutel van elke persoon | versleutelt wat die persoon privé houdt: zijn privé-afspeelgeschiedenis en afspeellijsten |
+| De sleutel van elk bestand | versleutelt één bestand, en reist alleen mee in de versleutelde wijzigingen van zijn rij |
+| Het ondertekeningssleutelpaar van een persoon | ondertekent elke wijziging die zijn apparaten sturen |
+| Het verzegelingssleutelpaar van een persoon | opent sleutels die voor die persoon zijn verzegeld |
 
-De sleutel reist op twee manieren tussen apparaten, beide beschreven in [Identiteit en lidmaatschap](/nl/reference/membership): verzegeld aan de openbare sleutel van een goedgekeurd apparaat tijdens het koppelen van apparaten, en opgenomen in een herstelcode.
+De store-sleutel is willekeurig en wordt gemaakt wanneer de bibliotheek haar cloud-home krijgt. De sleutelparen van een persoon worden door al zijn apparaten gedeeld. Privésleutels en bibliotheeksleutels staan in de OS-sleutelbos, nooit in een bestand of de database. Ze bereiken een apparaat op twee manieren, beide beschreven in [Identiteit en lidmaatschap](/nl/reference/membership): een herstelcode draagt de eigen sleutelparen van een persoon, en een beheerder die een uitnodiging goedkeurt verzegelt de store-sleutels voor de verzegelingssleutel van de nieuwe persoon.
 
-## Generaties
+## Rotatie
 
-De bibliotheeksleutel is eigenlijk een sleutelbos met genummerde generaties. Een lid verwijderen voegt een nieuwe generatie toe die het verwijderde lid nooit ontvangt: alles wat daarna wordt geschreven gebruikt de nieuwe generatie en is onleesbaar voor dat lid, terwijl overblijvende leden elke generatie behouden en de hele geschiedenis kunnen lezen. Elk afgesloten object vermeldt, in plaintext, welke generatie het opent.
+Een sleutel wordt nooit ter plekke gewijzigd; er komt een nieuwe bij. Nadat een persoon is verwijderd, voegt het apparaat van een overgebleven lid een nieuwe store-sleutel toe, en een nieuwe sleutel voor elke kring waar hij in zat, voordat het daar meer data schrijft: alles wat daarna wordt geschreven is onleesbaar voor hem, terwijl de overgebleven leden elke oudere sleutel houden en de hele geschiedenis kunnen lezen. Eén apparaat verwijderen roteert niets, omdat de andere apparaten van die persoon zijn sleutels delen; vanaf de verwijdering telt niet meer wat dat apparaat stuurt.
 
 ## Wat wordt afgesloten
 
-Elk object in de home: changesets, snapshots, audioblobs, artwork, lidmaatschapsrecords, control objects. Objecten worden afgesloten met XChaCha20-Poly1305 in chunks van 64 KB, elke chunk geauthenticeerd, en gebonden aan hun context: een afgesloten object ontsleutelt alleen als het object dat het moest zijn, voor deze bibliotheek, met deze sleutel. Chunking is waarom streamen werkt: de speler kan precies de byte-ranges ontsleutelen die hij ophaalt.
+Elk object in de home: wijzigingen, snapshots, lidmaatschapsrecords en bestanden. Inhoud wordt versleuteld met XChaCha20-Poly1305, elke wijziging wordt ondertekend met Ed25519, en sleutels worden voor mensen verzegeld met X25519-sealed boxes. Bestanden worden versleuteld in chunks van 64 KiB, elk afzonderlijk geauthenticeerd en aan zijn positie gebonden, zodat een chunk niet ongemerkt kan worden gewijzigd, verwisseld of herschikt. Chunking is waarom streamen werkt: de speler kan precies de chunks ontsleutelen die hij ophaalt.
 
 ## Wat de provider kan zien
 
-Aantal objecten, objectgroottes, uploadtiming en toegangspatronen. Geen namen, geen metadata, geen audio, geen artwork, geen lidmaatschap. Er is geen server-side herstel: een gebruiker die elk apparaat en elke kopie van de sleutel verliest, is de ciphertext van de bibliotheek voorgoed kwijt, wat het ontwerp doet wat het moet doen.
+Aantal objecten, objectgroottes, uploadtiming, welk account elk object schrijft en welk apparaat elk bestand en snapshot uploadde, omdat hun paden het apparaat noemen. Geen namen, geen metadata, geen audio, geen artwork. Bestanden staan onder willekeurige namen, nooit een hash van hun inhoud. Er is geen server-side herstel: als iedereen elk apparaat en elke herstelcode verliest, is de bibliotheek verloren, wat het ontwerp doet wat het moet doen.
 
-## Ontgrendelen en vergrendelen
+## De sleutelbos
 
-Een bibliotheek openen leest de sleutel uit de sleutelbos. Als de bibliotheek een sleutel verwacht en de sleutelbos hem niet heeft, behandelt bae de bibliotheek als vergrendeld: het vraagt om de sleutel voordat het opent, valideert de invoer tegen de opgeslagen vingerafdruk, en bewaart hem daarna terug in de sleutelbos. Een bibliotheek vergrendelen verwijdert de sleutel bewust uit de sleutelbos; niets in de cloud-home kan worden gelezen of geschreven totdat hij opnieuw wordt ingevoerd.
+Een bibliotheek openen leest haar sleutels uit de OS-sleutelbos. Een sleutelbos die op dat moment vergrendeld is, door een vergrendelde sessie of een slapend scherm, wordt onderscheiden van een kapotte: bae toont de bibliotheek als vergrendeld en probeert het na ontgrendelen opnieuw, in plaats van de bibliotheek onbruikbaar te melden. Een apparaat kan de sleutel ook vergeten, wat de bibliotheek op dat apparaat vergrendelt totdat ze weer wordt ontgrendeld.

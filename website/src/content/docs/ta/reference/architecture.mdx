@@ -16,22 +16,21 @@ apps உடன்: `bae-mcp` (MCP server) மற்றும் `bae-automation`
 
 ## Disk இல் ஒரு நூலகம்
 
-நூலகம் `~/.bae/libraries/<நூலகம்-id>/` இல் வாழ்கிறது (mobile இல் தளம் தரவு directory):
+நூலகம் இரண்டு அடைவுகளில் இருக்கும் (கைப்பேசியில் தளத்தின் தரவு அடைவுகள்): coven இன் store, அதன் அருகில் bae இன் சொந்த அமைப்புகள்.
 
 ```
-~/.bae/libraries/<id>/
-  நூலகம்.db        # SQLite: catalog, credits, playback specs
-  config.yaml       # coven: நூலக அடையாளம், கிளவுட் ஹோம்; ஒருபோதும் ஒத்திசைக்கப்படாது
-  preferences.toml  # bae அமைப்புகள்; ஒருபோதும் ஒத்திசைக்கப்படாது
-  சேமிப்பு/
-    உள்ளூர்/          # blobs this சாதனம் owns (அட்டைகள், கலைஞர் images)
-    இடைநினைவகம்/          # evictable copies of மேகம் blobs
-    pinned/         # pinned-for-offline copies, never evicted
+~/.bae/stores/<id>/       # coven இன் store, coven வழியாக மட்டுமே திறக்கப்படும்
+  store.db                # SQLite: catalog, credits, playback specs, coven இன் கணக்கு
+  files/                  # bae இன் சொந்தக் கோப்புகளின் coven நகல்கள் (அட்டைப்படங்கள், கலைஞர் படங்கள், avatars)
+  cache/                  # பதிவேற்றிய கோப்புகளின் தற்காலிக மற்றும் pinned நகல்கள்
+~/.bae/libraries/<id>/    # bae க்கு மட்டும்; ஒருபோதும் ஒத்திசைக்கப்படாது
+  preferences.toml        # bae அமைப்புகள்
+  cache/                  # பட்டியல்களிலிருந்து பெற்ற கலைப்படம்
 ```
 
-தரவுத்தளம் coven வழியாக மட்டுமே open செய்யப்படும்; அது bae schema அருகே தன் bookkeeping அட்டவணைகள் (ஒத்திசைவு cursors, outbox, blob state) சேர்த்து, bae migrations ஐ இயக்கும். unmanaged ஆக imported audio கோப்புகள் `~/.bae` கீழ் இல்லை: தரவுத்தளம் அவை imported செய்யப்பட்ட paths ஐ reference செய்கிறது.
+தரவுத்தளம் coven வழியாக மட்டுமே திறக்கப்படும்; அது bae இன் schema வுடன் தன் கணக்கு அட்டவணைகளை (இணைப்புப் பதிவுகள், பதிவேற்ற வரிசை, கோப்பு நிலை) வைத்து, bae இன் migration ஐ இயக்கும். உள்ளூர் வெளியீட்டின் ஒலிக் கோப்புகள் `~/.bae` கீழ் இல்லவே இல்லை: தரவுத்தளம் அவற்றை இறக்குமதி செய்த பாதைகளிலேயே சுட்டும்.
 
-Secrets ஒருபோதும் இந்த கோப்புகள் இல் வாழாது. Identity விசைகள், நூலகம் encryption விசை, மேகம் credentials, API டோக்கன்கள் ஆகியவை OS keyring இல் வாழ்கின்றன (Apple platforms இல் Keychain, iCloud Keychain வழியாக synced; மற்ற இடங்களில் தளம் equivalents).
+ரகசியங்கள் இந்தக் கோப்புகளில் ஒருபோதும் இருக்காது. உறுப்பினர் திறவுகோல்கள், நூலகத்தின் திறவுகோல்கள், மேக உள்நுழைவுகள், API token கள் OS திறவுகோல் காப்பகத்தில் இருக்கும் (Apple தளங்களில் Keychain, மற்ற இடங்களில் தளத்தின் இணை); Apple தளங்களில் restore code iCloud Keychain இலும் சேமிக்கப்படும்.
 
 ## Editions
 

@@ -3,7 +3,7 @@ title: Data model
 description: Schema, શું sync થાય છે, અને device પર શું રહે છે
 ---
 
-bae નો catalog સામાન્ય SQLite છે, [coven](https://coven.bae.fm) ને table by table declared: synced tables conflict clock ધરાવે છે અને દરેક device પર જાય છે; undeclared tables device છોડતા નથી. આ split data model નો સૌથી load-bearing નિર્ણય છે, તેથી આ page તેની આસપાસ organized છે.
+bae નો catalog સામાન્ય SQLite છે, [coven](https://coven.bae.fm) ને table by table જાહેર કરેલો: sync થતાં tables તેમને વાંચી શકે તે દરેક ઉપકરણ પર જાય છે; જાહેર ન કરેલાં tables ઉપકરણ છોડતાં નથી. આ વિભાજન data model નો સૌથી મહત્ત્વનો નિર્ણય છે, તેથી આ page તેની આસપાસ ગોઠવાયેલું છે.
 
 ## Catalog graph
 
@@ -16,26 +16,29 @@ Schema નું synced heart:
 - **`track_works`**, **`work_parts`**, **`work_artists`**: recordings તેઓ perform કરે તે works સાથે linked.
 - **`audio_formats`** અને **`audio_format_segments`**: playback specs. Per track: codec, sample rate, bit depth, channels, measured loudness અને peak, અને pregap lengths. Segments track ને તેના source files ના ordered byte અને sample windows પર map કરે છે, તેથી CUE rip નો track, pregap સહિત, એક મોટી file ના regions અથવા અનેક files માં span કરી શકે છે.
 - **`release_files`**, **`covers`**, **`artist_images`**: blob-bearing tables. Rows catalog entries છે; bytes coven ના blob layer માં રહે છે (નીચે જુઓ).
+- **`people`**, **`ratings`**, **`history`**, **`playlists`**, **`playlist_entries`**: દરેક વ્યક્તિની profile અને તે પોતાના માટે જે નોંધે છે તે. આ owner tables છે: ફક્ત તેમના લેખકનાં ઉપકરણો તેમને બદલી શકે છે. `history` અને `playlists` ની દરેક હરોળ કાં તો ઘરના વહેંચાયેલા store માં, કાં તો વ્યક્તિના ખાનગી circle માં રહે છે.
 
-## Synced, gated, local
+## Sync અને સ્થાનિક
 
-ઉપરનું બધું sync થાય છે, પરંતુ unconditional નહીં. `releases` તેના `remote` column પર gated root તરીકે declared છે: release row અને તેની આખી subtree (tracks, files, credits, formats, cover) ફક્ત `remote` true હોય ત્યારે sync થાય છે, એટલે release cloud-managed હોય ત્યારે. Release ને managed કરવાથી subtree publish થાય છે; unmanaged release importing device પર જ રહે છે, ભલે તેનું schema synced હોય. Ancestor tables (`artists`, `albums`, `works`) ત્યારે જ sync થાય છે જ્યારે કોઈ synced release હજી તેમને reference કરે છે, એટલે device ક્યારેય એવો artist receive કરતું નથી જેના નીચે કશું નથી.
+ઉપરનું દરેક table બિનશરતી sync થાય છે: સ્થાનિક release ની હરોળો બીજા કોઈ પણ release ની જેમ દરેક ઉપકરણ પર પહોંચે છે, તેથી દરેક ઉપકરણ જાણે છે કે ઘર પાસે શું છે, અને સ્થાનિક release ના track તરફ નિર્દેશ કરતું rating કે playlist entry એવી હરોળ તરફ નિર્દેશ કરે છે જે દરેક ઉપકરણ વાંચી શકે. ફક્ત release નું audio, અને તે જ્યાં છે તે paths, import કરનાર ઉપકરણ પર રહે છે. દરેક table તેની હરોળ-ઓળખ, વાચકો, owner table છે કે નહીં, અને તે જે files રાખે છે તેની સાથે જાહેર થાય છે; એક test જાહેરાતોને બરાબર આ યાદી પર રાખે છે.
 
 સંપૂર્ણ local tables, coven ને ક્યારેય declared નહીં:
 
 - **`playback_state`**: current track, position, queue, volume, shuffle અને repeat. Playback device fact છે.
-- **`imports`**: import operation tracking.
+- **Scan અને import tables**: નજર રખાતાં ફોલ્ડર્સ, scans, import ઉમેદવારો અને તેમના મુસદ્દા.
 - **`source_release`** અને તેની નીચેની tables: bae એ fetch કરેલી દરેક MusicBrainz અને Discogs release માંથી extract કરેલું — album અને pressing ની વિગતો, credits અને works સાથેની આખી tracklist, cover ના વિકલ્પો, અને બીજા catalogs તેને શું કહે છે — સ્થાનિક release ની જગ્યાએ પૂરૂં પાડનાર release દ્વારા કી થયેલ છે. raw JSON રાખવામાં આવતું નથી; કોઈ પણ ઉપકરણ release ફરીથી fetch કરી શકે છે.
+- **`local_release_files`**: આ ઉપકરણ પર સ્થાનિક release ના file paths અને ફેરફાર સમય.
+- **`local_history`**: આ ઉપકરણની વ્યક્તિની profile બને તે પહેલાંનાં plays, જે profile બને ત્યારે તેના ખાનગી circle માં ખસેડાય છે.
 
-દરેક synced table `_updated_at` hybrid-logical-clock column ધરાવે છે, register જેનાથી coven concurrent edits ને field-by-field merge order કરે છે; test enforce કરે છે કે synced set અને clock-carrying set exactly equal છે.
+બે ઉપકરણોનાં સંપાદનો cell by cell ભેગાં થાય છે, બંનેએ બદલેલા cell માં પછીનું સંપાદન જીતે છે. coven ભેગા કરવાનો હિસાબ પોતાનાં tables માં રાખે છે, તેથી bae નાં tables માં clock columns નથી.
 
 ## Blobs
 
-Audio અને images coven ના blob layer મારફતે ત્રણ namespaces માં જાય છે, દરેક પોતાના device cache budget સાથે: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB).
+Audio અને images coven ના file layer મારફતે જાય છે, દરેક પ્રકાર પોતાની ઉપકરણ cache મર્યાદા સાથે: `release_files` (20 GiB), `covers` (512 MiB), `artist_images` (256 MiB), અને `people` પરના avatars (64 MiB).
 
-Release files user-provided છે અને lazily cached છે: unmanaged release માટે blob user ની file ના original path પર external reference છે; managed માટે તે uploaded object છે જે first read પર cache માં fetched થાય છે. Covers અને artist images host-provided છે અને eagerly cached છે: bae bytes બનાવે છે (covers મહત્તમ 600px wide JPEG thumbnails તરીકે re-render થાય છે), અને દરેક device pull પર તેમને fetch કરે છે જેથી grids locally render થાય.
+Release files વપરાશકર્તાની હોય છે અને જરૂર પડે ત્યારે cache થાય છે: સ્થાનિક release ની files એ વપરાશકર્તાની પોતાની files છે તેમના મૂળ paths પર, `local_release_files` માં નોંધાયેલી; release ને cloud માં ખસેડવાથી એક જ write માં દરેક file તેની `release_files` હરોળ સાથે જોડાય છે, અને બીજાં ઉપકરણો પહેલા વાંચન વખતે તેને cache માં લાવે છે. Covers, કલાકારની છબીઓ અને avatars bae નાં છે અને અગાઉથી cache થાય છે: bae bytes બનાવે છે (covers વધુમાં વધુ 600px પહોળા JPEG thumbnails તરીકે ફરી બને છે), અને દરેક ઉપકરણ તેમની હરોળો પહોંચે કે તરત તેમને લાવે છે જેથી grids સ્થાનિક રીતે દેખાય.
 
-Opaque home પર, blobs meaningless content keys હેઠળ upload થાય છે. Browsable home પર દરેક blob row readable cloud path record કરે છે (audio માટે `{artist}/{album}/{filename}`, covers માટે `{album}/{release}/cover.{ext}`), upload વખતે એક વાર computed જેથી પછીનું rename object move ન કરે.
+દરેક file રેન્ડમ નામ હેઠળ encrypt થઈને upload થાય છે, એવા path પર જે તે પોતાની હરોળ સાથે જોડાય ત્યારે નક્કી થાય છે, તેથી પછીનું rename object ખસેડતું નથી.
 
 ## Rip ની identity
 

@@ -7,21 +7,21 @@
 
 A music library manager that uses decentralized identity and end-to-end encryption over pluggable storage for serverless, multi-device sync.
 
-You pick releases from MusicBrainz or Discogs, point bae at your files, and it handles storage, playback, and organization. Everything in the cloud is encrypted. The storage provider sees opaque blobs. All trust lives in cryptography, not in the storage backend.
+You pick releases from MusicBrainz or Discogs, point bae at your files, and it handles storage, playback, and organization. Everything in the cloud is encrypted. The storage provider sees encrypted objects under random names. All trust lives in cryptography, not in the storage backend.
 
 ## How it works
 
 **Import and play.** Import from local folders (file-per-track or CUE/FLAC). Match to a MusicBrainz or Discogs release for metadata, cover art, credits, label info. Browse and play with native audio, CUE pregap support, and media key integration.
 
-**Sync across devices.** Sign in with a cloud provider (Dropbox, OneDrive) or configure an S3-compatible bucket. This creates your cloud home -- one encrypted location that holds everything. bae runs no server of its own; your devices sync directly through the cloud home, incrementally via changesets. Same user, multiple devices, one library. When sync hits a snag (storage full, access revoked, network out), the banner names the cause and the recovery step; transient failures back off and retry.
+**Sync across devices.** Sign in with a cloud provider (Dropbox, OneDrive), use iCloud on Apple devices, or configure an S3-compatible bucket. This creates your cloud home -- one encrypted location that holds everything. bae runs no server of its own; your devices sync through the cloud home with [coven](https://github.com/bae-fm/coven). One household, several people, each with their own devices, one library: you add your own devices with your restore code, and an admin invites other people. When sync is waiting on something (a sign-in, a moved file, another device), Settings shows it in one status line that lists each item with the action that resolves it; transient failures back off and retry.
 
 ## Architecture
 
-- **Identity**: each device has a locally generated Ed25519/X25519 keypair. Public keys are identities. No central identity server.
-- **Encryption**: one symmetric key per library, shared across your devices. Everything in the cloud home is encrypted before it leaves the device.
-- **Storage**: pluggable via a `CloudHome` trait -- Dropbox, OneDrive, iCloud Drive, any S3-compatible bucket, or local-only.
-- **Sync**: SQLite session extension captures changesets automatically. Concurrent edits merge column by column; edits to the same column are ordered by a hybrid logical clock. Deterministic merge.
-- **Membership**: append-only chain of signed membership entries. Each changeset is signed by its author and verified against the membership chain on pull.
+- **Identity**: each person is a coven member with an Ed25519 signing key pair and an X25519 sealing key pair, shared by their devices. A person's new device joins with their restore code; a new person joins by an admin's invite and approval. No central identity server.
+- **Encryption**: a store key per library, a key for each person's private circle, and a key per file. Everything in the cloud home is encrypted before it leaves the device and stored under random names.
+- **Storage**: Dropbox, OneDrive, iCloud (CloudKit), any S3-compatible bucket, or local-only.
+- **Sync**: coven owns the SQLite connection and records each committed write, then publishes it in one numbered sequence in storage that every device applies in order. Concurrent edits merge column by column; of two edits to the same column, the later timestamp wins. Deterministic merge.
+- **Membership**: signed admin entries in that same sequence, judged by every device against the state before them. Each write is checked against its author's membership when applied.
 
 ## Crates
 
@@ -40,7 +40,7 @@ You pick releases from MusicBrainz or Discogs, point bae at your files, and it h
 
 Each app is versioned independently as `MAJOR.MINOR`, with a separate monotonic build number and a stamp of the exact source it was built from.
 
-- **MAJOR -- the compatibility era, shared across every app.** It's the sync-and-storage compatibility generation: devices on the same major can sync and read each other's data. It bumps -- in lockstep across macOS, Android, and the rest -- only when the wire/on-disk format breaks: the `coven` sync format, or bae-core's own schema, membership chain, or encryption. So `macos-2.x` and `android-2.x` are the same generation no matter their minors, and `3.0` is a new, incompatible era. `coven` is a SemVer library, and a break in its *format* (not merely its API) forces a bae major bump -- though bae-core's own schema changes can force one too.
+- **MAJOR -- the compatibility era, shared across every app.** It's the sync-and-storage compatibility generation: devices on the same major can sync and read each other's data. It bumps -- in lockstep across macOS, Android, and the rest -- only when the wire/on-disk format breaks: the `coven` sync format, or bae-core's own schema. So `macos-2.x` and `android-2.x` are the same generation no matter their minors, and `3.0` is a new, incompatible era. `coven` is a SemVer library, and a break in its *format* (not merely its API) forces a bae major bump -- though bae-core's own schema changes can force one too.
 - **MINOR -- the per-app release count within the era.** Auto-incremented from that app's tags (`macos-v*`, `android-v*`). Minors diverge by design: macOS shipping more often than Android just means a higher minor. Only the major is comparable across platforms.
 - **Build number** -- the CI run number, written into `CFBundleVersion` / Android `versionCode`. Monotonic; what Sparkle and the app stores use to order builds. Not user-facing.
 - **Source stamp** -- every build records the bae commit and the pinned `coven` rev (macOS `Info.plist`, Android `BuildConfig`) for crash triage and sync-compatibility debugging.
@@ -96,7 +96,7 @@ baeium needs nothing proprietary to build, run, or distribute.
   BAE_BRIDGE_FEATURES=cast ./bae-bridge/build-ios.sh
   ```
 
-  The iCloud Keychain still works under free provisioning, so your library's encryption keys sync across your Apple devices as usual — that needs only the keychain entitlement, which baeium keeps.
+  The iCloud Keychain still works under free provisioning, so your restore code is saved there and your other Apple devices can restore from it as usual — that needs only the keychain entitlement, which baeium keeps.
 
 - **Android** — build the `baeium` product flavor; it carries no Google Play or other proprietary dependencies (barcode scanning uses ZXing, not ML Kit):
 
@@ -109,10 +109,10 @@ baeium needs nothing proprietary to build, run, or distribute.
 
 ## Configuration
 
-Secrets live in the system keyring. Each library directory,
-`~/.bae/libraries/<library-id>/`, holds coven's `config.yaml` (library identity
-and cloud home, written by coven) and bae's own `preferences.toml`. Preferences
-can be edited by hand; see [the settings reference](spec/bae.md#appendix-c-settings).
+Secrets live in the system keyring. coven keeps each library's store, its
+database and files, under `~/.bae/stores/<library-id>/`; bae keeps its own
+`preferences.toml` in `~/.bae/libraries/<library-id>/`. Preferences can be
+edited by hand; see [the settings reference](spec/bae.md#appendix-c-settings).
 The Discogs API key is entered in the app's settings.
 
 ## Logging

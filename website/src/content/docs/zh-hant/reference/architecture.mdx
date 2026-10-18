@@ -16,22 +16,21 @@ App 旁邊還有：`bae-mcp`（MCP 伺服器）和 `bae-automation`。
 
 ## 磁碟上的一個資料庫
 
-資料庫位於 `~/.bae/libraries/<library-id>/`（行動裝置上為平台資料目錄）：
+資料庫位於兩個目錄中（行動裝置上為平台資料目錄）：coven 的存放區，以及旁邊 bae 自己的設定。
 
 ```
-~/.bae/libraries/<id>/
-  library.db        # SQLite: catalog, credits, playback specs
-  config.yaml       # coven：資料庫身分、雲端主目錄；從不同步
-  preferences.toml  # bae 的設定；從不同步
-  storage/
-    local/          # blobs this device owns (covers, artist images)
-    cache/          # evictable copies of cloud blobs
-    pinned/         # pinned-for-offline copies, never evicted
+~/.bae/stores/<id>/       # coven 的存放區，只透過 coven 開啟
+  store.db                # SQLite：目錄、名單、播放規格、coven 的簿記
+  files/                  # coven 保存的 bae 自有檔案副本（封面、藝人圖片、頭像）
+  cache/                  # 已上傳檔案的快取副本與釘選副本
+~/.bae/libraries/<id>/    # bae 自己的目錄；從不同步
+  preferences.toml        # bae 的設定
+  cache/                  # 從目錄服務抓取的圖片
 ```
 
-資料庫只透過 coven 開啟；coven 會在 bae 的 schema 旁加入自己的簿記表（同步游標、寄件匣、blob 狀態），並執行 bae 的遷移。不受管理匯入的音訊檔完全不在 `~/.bae` 下：資料庫會引用它們匯入時所在的路徑。
+資料庫只透過 coven 開啟；coven 會在 bae 的 schema 旁保留自己的簿記表（合併紀錄、上傳佇列、檔案狀態），並執行 bae 的遷移。本機發行版本的音訊檔完全不在 `~/.bae` 下：資料庫會引用它們匯入時所在的路徑。
 
-秘密永遠不存放在這些檔案中。身分金鑰、資料庫加密金鑰、雲端憑證與 API token 都存在 OS 鑰匙圈中（Apple 平台上是 Keychain，透過 iCloud Keychain 同步；其他平台使用對應機制）。
+秘密永遠不存放在這些檔案中。成員金鑰、資料庫的金鑰、雲端登入資訊與 API token 都存在 OS 鑰匙圈中（Apple 平台上是 Keychain，其他平台使用對應機制）；在 Apple 平台上，還原碼也會保存在 iCloud 鑰匙圈中。
 
 ## 版本
 

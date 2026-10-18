@@ -16,22 +16,21 @@ bae चार native ऐप के भीतर एक Rust core है। produ
 
 ## disk पर एक लाइब्रेरी
 
-लाइब्रेरी `~/.bae/libraries/<लाइब्रेरी-id>/` में रहती है (mobile पर प्लेटफ़ॉर्म डेटा directory):
+लाइब्रेरी दो directories में रहती है (mobile पर प्लेटफ़ॉर्म डेटा directories): coven का store, और उसके बगल में bae की अपनी सेटिंग्स।
 
 ```
-~/.bae/libraries/<id>/
-  लाइब्रेरी.db        # SQLite: catalog, credits, playback specs
-  config.yaml       # coven: लाइब्रेरी की पहचान, क्लाउड होम; कभी सिंक नहीं होता
-  preferences.toml  # bae की सेटिंग; कभी सिंक नहीं होतीं
-  संग्रहण/
-    स्थानीय/          # blobs this उपकरण owns (कवर, कलाकार images)
-    कैश/          # evictable copies of क्लाउड blobs
-    pinned/         # pinned-for-offline copies, never evicted
+~/.bae/stores/<id>/       # coven का store, केवल coven के जरिए खुलता है
+  store.db                # SQLite: कैटलॉग, क्रेडिट, प्लेबैक specs, coven का हिसाब
+  files/                  # bae की अपनी फाइलों की coven कॉपियां (कवर, कलाकार चित्र, अवतार)
+  cache/                  # अपलोड की गई फाइलों की कैश और पिन की गई कॉपियां
+~/.bae/libraries/<id>/    # bae की अपनी; कभी सिंक नहीं होती
+  preferences.toml        # bae की सेटिंग्स
+  cache/                  # कैटलॉग से लाए गए चित्र
 ```
 
-Database केवल coven के जरिए खुलता है, जो bae के schema के पास अपनी bookkeeping टेबल (समन्वय cursors, outbox, blob state) रखता है और bae की migrations चलाता है। अप्रबंधित रूप से आयात की गई audio फाइलें `~/.bae` के नीचे नहीं होतीं: डेटाबेस उन्हें उन्हीं paths पर संदर्भित करता है जहां से वे आयात हुई थीं।
+डेटाबेस केवल coven के जरिए खुलता है, जो bae के schema के पास अपनी हिसाब-किताब तालिकाएं (मिलाने के रिकॉर्ड, अपलोड कतार, फाइल स्थिति) रखता है और bae का migration चलाता है। स्थानीय रिलीज की ऑडियो फाइलें `~/.bae` के नीचे बिल्कुल नहीं होतीं: डेटाबेस उन्हें उन्हीं paths पर संदर्भित करता है जहां से वे आयात हुई थीं।
 
-Secrets इन फाइलों में कभी नहीं रहते। Identity कुंजियां, लाइब्रेरी encryption कुंजी, क्लाउड credentials और API टोकन OS keyring में रहते हैं (Apple platforms पर Keychain, iCloud Keychain से synced; बाकी जगह प्लेटफ़ॉर्म equivalents)।
+गुप्त चीजें इन फाइलों में कभी नहीं रहतीं। सदस्य कुंजियां, लाइब्रेरी की कुंजियां, क्लाउड साइन-इन और API टोकन OS keyring में रहते हैं (Apple प्लेटफ़ॉर्म पर Keychain, बाकी जगह प्लेटफ़ॉर्म के समकक्ष); Apple प्लेटफ़ॉर्म पर रिस्टोर कोड iCloud Keychain में भी सहेजा जाता है।
 
 ## editions
 

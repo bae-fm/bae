@@ -1,35 +1,54 @@
 ---
 title: Identität und Mitgliedschaft
-description: Schlüssel als Identitäten, Beitrittsaustausch, Rollen und Widerruf
+description: Personen als Schlüssel, Wiederherstellungscodes, Einladungen, Rollen und Entfernen
 ---
 
-Es gibt nirgendwo in bae ein Kontosystem. Die Identität eines Geräts ist ein Ed25519-Schlüsselpaar, das es für sich selbst erzeugt und im OS-Schlüsselbund behält; der öffentliche Schlüssel *ist* die Identität. Wer zu einer Mediathek gehört, ist eine Menge signierter Datensätze im Cloud-Zuhause, prüfbar von jedem, der sie hält, von keinem Server ausgegeben. Die Mechanik gehört zu [coven](https://coven.bae.fm); diese Seite beschreibt, wie bae sie nutzt.
+Es gibt nirgendwo in bae ein Kontosystem. Jede Person in einer Mediathek ist ein coven-*Mitglied*: eine zufällige, dauerhafte Mitglieds-ID und zwei Schlüsselpaare, eines zum Signieren und eines, an das Schlüssel versiegelt werden, geteilt von allen Geräten dieser Person und im OS-Schlüsselbund jedes Geräts gehalten. Ein Gerät ist eine Installation mit eigener ID, die einem Mitglied gehört. Wer zu einer Mediathek gehört, ist eine Menge signierter Datensätze im Cloud-Zuhause, geprüft vom Gerät jedes Mitglieds, von keinem Server ausgegeben. Die Mechanik gehört zu [coven](https://coven.bae.fm); diese Seite beschreibt, wie bae sie nutzt.
 
 ## Mitgliedschaftsdatensätze
 
-Jeder Besitzer schreibt einen append-only Strom signierter Mitgliedschaftseinträge in das Cloud-Zuhause: Dieser Schlüssel wurde mit dieser Rolle hinzugefügt, dieser Schlüssel wurde entfernt. Jeder Eintrag verweist auf den vorherigen, und jeder Besitzer signiert einen Kopf, der die Spitze seines Stroms erklärt, sodass ein Anbieter, der Datensätze fallen lässt oder umordnet, erkannt statt geglaubt wird. Was die Mediathek akzeptiert, ist die Vereinigung aller verifizierten Besitzerströme.
+Die gesamte Historie einer Mediathek im Cloud-Zuhause ist eine nummerierte Abfolge, und jedes Gerät wendet sie in derselben Reihenfolge an. Eine Änderung an Mitgliedschaft oder Einstellungen ist ein *Admin-Eintrag* in dieser Abfolge, signiert mit dem Schlüssel seines Autors und am Zustand direkt davor gemessen, sodass jedes Gerät von sich aus zum selben Urteil kommt. Ein Eintrag zählt nur, wenn sein Autor ihn machen darf, und die Mediathek behält immer mindestens einen Admin.
 
-Bei jedem Pull wird der Autor jedes Changesets gegen diesen Datensatz geprüft: signiert von einem aktuellen Mitglied, mit einer Rolle, die schreiben darf. Changesets von entfernten Geräten, von nie hinzugefügten Schlüsseln oder mit ungültigen Signaturen werden nicht angewendet. Der Anbieter speichert die Datensätze, kann sie aber nicht fälschen; nur Inhaber von Besitzerschlüsseln können die Mitgliedschaft ändern.
+Jede Änderung, die ein Gerät sendet, wird gegen diesen Datensatz geprüft: signiert von einem aktuellen Mitglied, von einem Gerät, das nicht entfernt wurde. Änderungen von entfernten Geräten oder Mitgliedern, von nie hinzugefügten Schlüsseln oder mit ungültigen Signaturen zählen nicht. Der Anbieter speichert die Datensätze, kann sie aber nicht fälschen.
 
 ## Rollen
 
-**Besitzer** und **Mitglied** lesen und schreiben beide die Mediathek; Besitzer bestätigen und entfernen zusätzlich Geräte. Das Gründungsgerät von bae ist ein Besitzer, und jedes Gerät, das es bestätigt, tritt als Mitglied bei. (Eine dritte Rolle existiert in der zugrunde liegenden Mechanik, ein Nur-Lese-Follower, den bae derzeit nicht zuweist.)
+**Admin** und **Mitglied** lesen und schreiben beide die Mediathek: coven prüft bei Schreibvorgängen in der Mediathek keine Berechtigung, daher könnte eine Nur-Lese-Rolle nicht halten. Admins laden zusätzlich Personen ein, entfernen sie, ändern Rollen und benennen die Mediathek um. Wer einer Mediathek ihr Cloud-Zuhause gibt, ist ihr erster Admin.
 
-## Der Beitrittsaustausch
+| Aktion | Wer |
+|---|---|
+| Eine Person einladen | ein Admin |
+| Ein Gerät hinzufügen | die Person, vom neuen Gerät aus, mit ihrem Wiederherstellungscode |
+| Ein Gerät entfernen | seine Person oder jeder Admin |
+| Eine Person entfernen | ein Admin |
+| Die Mediathek umbenennen | ein Admin |
 
-Das Hinzufügen eines Geräts ist eine lokale Kopplungssitzung mit expliziter menschlicher Überprüfung:
+Profil, Bewertungen, Verlauf und Playlists einer Person sind Besitzerzeilen: Nur die Geräte dieser Person können sie ändern, sodass eine jemandem zugeschriebene Bewertung auch von ihm stammt.
 
-1. Ein Besitzer startet **Fügen Sie ein Gerät hinzu**. bae lauscht kurz im lokalen Netzwerk und zeigt einen Kopplungscode an. Es enthält die Listener-Adressen, einen kurzlebigen Sitzungsschlüssel, den Bibliotheksnamen, den Anbieter und ein Ablaufdatum – keinen Bibliotheksschlüssel oder dauerhafte Speicheranmeldeinformationen.
-2. Das beitretende Gerät scannt den Code, erstellt sein Geräteschlüsselpaar, meldet sich bei Bedarf beim Anbieter an und sendet seinen signierten öffentlichen Schlüssel und die Anbieterkontoidentität über die verschlüsselte lokale Verbindung. Beide Geräte zeigen den gleichen Fingerabdruck.
-3. Der Besitzer vergleicht die Fingerabdrücke und bestätigt die genaue Identität. Die Genehmigung gewährt seinem Cloud-Konto bei Bedarf Zugriff, signiert den Mitgliedseintrag und versiegelt den Bibliotheksschlüssel und den endgültigen Speicherzugriff auf den öffentlichen Schlüssel des neuen Geräts.
-4. Das versiegelte Paket kehrt über dieselbe authentifizierte lokale Verbindung zurück. Das beitretende Gerät öffnet es, bootet vom Cloud-Speicher und beginnt mit der Synchronisierung.
+## Ein eigenes Gerät hinzufügen
 
-Eine abgelaufene, unterbrochene oder abgelehnte Paarung bringt nichts.
+Ein Wiederherstellungscode beweist, dass ein Gerät seiner Person gehört, daher braucht es keine Genehmigung:
 
-## Widerruf
+1. Das neue Gerät erhält den Code, indem es den QR-Code scannt, den ein anderes Gerät der Person zeigt, aus dem iCloud-Schlüsselbund auf Apple-Geräten oder durch Abtippen.
+2. Es erreicht den Speicher: bei Dropbox und OneDrive durch Anmeldung beim eigenen Konto der Person, bei S3 mit ihrem Zugriffsschlüssel, den der QR-Code neben dem Code mitbringt.
+3. Es lädt die Mediathek, prüft, dass die Schlüssel des Codes zu einem aktuellen Mitglied gehören, und registriert sich als neues Gerät mit einem Eintrag, der mit diesen Schlüsseln signiert ist.
 
-Das Entfernen eines Mitglieds hängt eine signierte Entfernung an und rotiert den Mediatheksschlüssel zu einer neuen Generation, die der entfernte Schlüssel nie erhält (siehe [Verschlüsselung](/de/reference/encryption#generationen)). Bei Speicher, der Zugriff widerrufen kann, wird der Zugriff ebenfalls entzogen. Was bereits auf das entfernte Gerät synchronisiert wurde, bleibt dort; Daten lassen sich nicht zurückholen. Alles nach der Rotation liegt außerhalb seiner Reichweite.
+Ein Code, dessen Schlüssel inzwischen ersetzt wurden, schlägt fehl. Wiederherstellen erzeugt immer ein neues Gerät; es rettet keine ungesendeten Änderungen einer anderen Installation.
+
+## Eine Person einladen
+
+1. Ein Admin gibt das Anbieterkonto der Person ein und wählt ihre Rolle. bae gibt den Ordner der Mediathek für dieses Konto frei, oder erstellt bei S3 einen Zugriffsschlüssel für sie, und zeigt eine Einladung: einen QR-Code mit dem Ort der Mediathek, der für die Person gewählten Mitglieds-ID, einem einmaligen Geheimnis und dem aktuellen Namen der Mediathek. Sie läuft einen Tag nach ihrer Erstellung ab.
+2. Das Gerät der Person scannt sie, meldet sich bei ihrem eigenen Konto an, erzeugt ihre Schlüsselpaare und schreibt eine Beitrittsanfrage in den Speicher, verschlüsselt mit einem aus dem Geheimnis der Einladung abgeleiteten Schlüssel und signiert mit ihrem neuen Schlüssel.
+3. Das Gerät des Admins, das einzige, das das Geheimnis hält, zeigt die Anfrage, und der Admin genehmigt sie.
+4. Die Genehmigung versiegelt jeden Store-Schlüssel an den neuen Versiegelungsschlüssel der Person und fügt dann den Eintrag hinzu, der sie aufnimmt.
+5. Das neue Gerät öffnet seine Schlüssel, lädt die Mediathek, registriert sich und schreibt das Profil der Person mit dem Namen, den sie eingegeben hat.
+
+Ablehnen oder Ablaufenlassen der Einladung nimmt den Anbieterzugriff zurück, den sie gewährt hat.
+
+## Entfernen
+
+Ein Gerät oder eine Person zu entfernen ist ein Admin-Eintrag, und seine Stelle in der Abfolge ist eine Linie in der Historie: Was das entfernte Gerät oder die entfernte Person danach sendet, zählt nicht, während das, was davor ankam, bleibt. Eine Person zu entfernen entfernt auch ihre Geräte und ihren privaten Kreis, und die Schlüssel, die sie hielt, werden ersetzt, bevor weitere Daten geschrieben werden (siehe [Verschlüsselung](/de/reference/encryption#rotation)). Den Speicherzugriff zu entziehen ist Sache des Anbieters: Das Gerät des Kontos, das die Mediathek hält, hebt die Freigabe des Ordners auf, und bei S3 wird der Zugriffsschlüssel der Person gelöscht. Was bereits auf ein entferntes Gerät synchronisiert wurde, bleibt dort; Daten lassen sich nicht zurückholen.
 
 ## Wiederherstellungscodes
 
-Ein Wiederherstellungscode umgeht die Mitgliedschaft absichtlich: Er ist die Koordinaten des Cloud-Zuhauses plus Mediatheksschlüssel in einer Bearer-Zeichenfolge, um deine eigene Mediathek ohne verbleibendes bestätigendes Gerät wiederherzustellen. Er wird bei Bedarf erzeugt, auf Apple-Plattformen automatisch im iCloud-Schlüsselbund gespeichert und ist genau so sensibel wie die Mediathek selbst.
+Ein Wiederherstellungscode enthält die ID eines Mitglieds und seine aktuellen privaten Schlüsselpaare, die Store-ID der Mediathek und ihren Speicherort; nie Speicherzugangsdaten, Anmelde-Tokens oder den Namen der Mediathek. Er wird bei Bedarf angezeigt, auf Apple-Plattformen automatisch im iCloud-Schlüsselbund gespeichert und ist genau so sensibel wie die Mediathek selbst: Wer ihn hält, ist mit Zugriff auf den Speicher für die Mediathek diese Person. Eine Person, die jedes Gerät und ihren Code verliert, kann von einem Admin erneut zu ihrer bestehenden Mitglieds-ID eingeladen werden, was ihre Schlüssel ersetzt.

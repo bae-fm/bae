@@ -42,7 +42,7 @@ Potvrda uvoza izvodi, redom:
 3. **Odabir omota**: odabrana grafika (udaljena, slika iz mape ili ugrađena) ponovno se renderira u prikaznu sličicu; izvornik se čuva među datotekama izdanja ako je došao iz mape.
 4. **Atomski zapis**: izdanje, pjesme, zasluge, identiteti, formati, segmenti, datoteke i omot zapisuju se u jednoj transakciji. Ne postoji napola uvezeno stanje.
 
-Izdanje se upisuje s referencom na korisnikove datoteke na mjestu. Ako je korisnik odabrao upravljanje u oblaku, prijenos se događa nakon zapisa kao prijelaz pohrane, a izvorni bajtovi datoteka ostaju izvor istine cijelo vrijeme; ništa što je korisnik dao bae nikad se ne briše ni mijenja.
+Izdanje se upisuje s referencom na korisnikove datoteke na mjestu. Pri uvozu u oblak coven prije pisanja čita svaku datoteku i računa njezin sažetak, a isto pisanje pridružuje svaku datoteku njezinu retku i stavlja njezin prijenos u red. Lokalni uvoz umjesto toga bilježi put, veličinu i vrijeme izmjene svake datoteke na ovom uređaju; njezini se bajtovi čitaju tek ako se izdanje poslije premjesti u oblak. U oba slučaja izvorni bajtovi datoteka ostaju izvor istine cijelo vrijeme; ništa što je korisnik dao bae nikad se ne briše ni mijenja.
 
 ## Prepoznavanje ripova
 
