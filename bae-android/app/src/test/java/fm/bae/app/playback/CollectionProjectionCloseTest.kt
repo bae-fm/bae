@@ -25,7 +25,7 @@ class CollectionProjectionCloseTest {
                     CollectionSnapshotReader(
                         windows = { emptyMap() },
                         totalCount = { 0 },
-                        cause = { BridgeLiveQueryCause.INITIAL },
+                        cause = { BridgeLiveQueryCause.REQUEST },
                     ),
                     onChanged = {},
                     onError = {},

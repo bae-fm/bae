@@ -162,15 +162,13 @@ private fun AppearanceScene(
 @Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES, fontScale = 1.5f)
 @Composable
-fun ArtworkFailure() {
+fun ArtworkCancelled() {
     val store =
         remember {
             ArtworkLoadingStore {}.apply {
                 apply(
-                    BridgeEagerCacheFillStatus.Failed(
-                        titleKey = "core.artwork_cache.failed",
-                        progress = BridgeEagerCacheFillProgress(0uL, 12uL, 0uL, 980_000uL),
-                        error = "The artwork object is missing from cloud storage.",
+                    BridgeEagerCacheFillStatus.Cancelled(
+                        progress = BridgeEagerCacheFillProgress(4uL, 12uL, 310_000uL, 980_000uL),
                     ),
                 )
             }
@@ -186,7 +184,7 @@ fun ArtworkFailure() {
 fun SyncUpdateRequired() {
     BaeTheme {
         Column {
-            ArtworkFailure()
+            ArtworkCancelled()
             ErrorBanner(message = LocalContext.current.coreString("core.error.sync_update_required"))
         }
     }

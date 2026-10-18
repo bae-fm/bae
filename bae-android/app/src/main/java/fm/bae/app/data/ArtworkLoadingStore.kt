@@ -14,7 +14,7 @@ data class ArtworkLoadingState(
 class ArtworkLoadingStore(
     private val cancelAction: () -> Unit,
 ) {
-    private val mutableState = MutableStateFlow(ArtworkLoadingState(BridgeEagerCacheFillStatus.NotRunning))
+    private val mutableState = MutableStateFlow(ArtworkLoadingState(BridgeEagerCacheFillStatus.Idle))
     val state: StateFlow<ArtworkLoadingState> = mutableState.asStateFlow()
 
     fun apply(status: BridgeEagerCacheFillStatus) {

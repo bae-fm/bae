@@ -100,7 +100,7 @@ class LibraryBrowseTreeTest {
             handle.albumBrowseSubscriptions.single().emitRows(
                 rows = listOf(BridgeFixtures.album(id = "album-changed")),
                 totalCount = 3uL,
-                cause = BridgeLiveQueryCause.REQUEST_AND_DATABASE_CHANGED,
+                cause = BridgeLiveQueryCause.REQUEST_AND_WRITE,
             )
 
             assertEquals(listOf(BrowseId.Albums.mediaId to 3), notifications)

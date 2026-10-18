@@ -16,6 +16,8 @@ import org.robolectric.annotation.Config
 import uniffi.bae_bridge.BridgeEagerCacheFillProgress
 import uniffi.bae_bridge.BridgeEagerCacheFillStatus
 
+private const val CANCELLED_TITLE = "Artwork download stopped."
+
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class ArtworkLoadingBannerTest {
@@ -23,37 +25,37 @@ class ArtworkLoadingBannerTest {
     val compose = createComposeRule()
 
     @Test
-    fun failureDetailsAreHiddenUntilRequested() {
-        val store = ArtworkLoadingStore {}
-        store.apply(failure())
+    fun downloadingShowsItsProgressAndCancels() {
+        var cancelled = false
+        val store = ArtworkLoadingStore { cancelled = true }
+        store.apply(BridgeEagerCacheFillStatus.Downloading(progress(bytesCached = 490_000uL)))
         compose.setContent { BaeTheme { ArtworkLoadingBanner(store) } }
 
-        compose.onNodeWithText("The artwork object is missing.").assertDoesNotExist()
-        compose.onNodeWithText("Details").performClick()
-        compose.onNodeWithText("The artwork object is missing.").assertIsDisplayed()
-        compose.onNodeWithText("Close").performClick()
-        compose.onNodeWithText("The artwork object is missing.").assertDoesNotExist()
+        compose.onNodeWithText("Downloading artwork…").assertIsDisplayed()
+        compose.onNodeWithText("Cancel").performClick()
+        compose.runOnIdle { assert(cancelled) }
     }
 
     @Test
-    fun dismissedFailureStaysHiddenUntilAnotherStatusArrives() {
+    fun dismissedCancellationStaysHiddenUntilAnotherStatusArrives() {
         val store = ArtworkLoadingStore {}
-        val failure = failure()
-        store.apply(failure)
+        val cancelled = BridgeEagerCacheFillStatus.Cancelled(progress(bytesCached = 0uL))
+        store.apply(cancelled)
         compose.setContent { BaeTheme { ArtworkLoadingBanner(store) } }
 
         compose.onNodeWithContentDescription("Close").performClick()
-        compose.runOnIdle { store.apply(failure) }
-        compose.onNodeWithText("Some artwork couldn’t be downloaded.").assertDoesNotExist()
-        compose.runOnIdle { store.apply(BridgeEagerCacheFillStatus.Scanning("core.artwork_cache.scanning")) }
-        compose.runOnIdle { store.apply(failure) }
-        compose.onNodeWithText("Some artwork couldn’t be downloaded.").assertIsDisplayed()
+        compose.runOnIdle { store.apply(cancelled) }
+        compose.onNodeWithText(CANCELLED_TITLE).assertDoesNotExist()
+        compose.runOnIdle { store.apply(BridgeEagerCacheFillStatus.Downloading(progress(bytesCached = 1uL))) }
+        compose.runOnIdle { store.apply(cancelled) }
+        compose.onNodeWithText(CANCELLED_TITLE).assertIsDisplayed()
     }
 
-    private fun failure() =
-        BridgeEagerCacheFillStatus.Failed(
-            titleKey = "core.artwork_cache.failed",
-            progress = BridgeEagerCacheFillProgress(filesDone = 0uL, filesTotal = 2uL, bytesDone = 0uL, bytesTotal = 980_000uL),
-            error = "The artwork object is missing.",
+    private fun progress(bytesCached: ULong) =
+        BridgeEagerCacheFillProgress(
+            filesCompleted = 0uL,
+            filesTotal = 2uL,
+            bytesCached = bytesCached,
+            bytesTotal = 980_000uL,
         )
 }

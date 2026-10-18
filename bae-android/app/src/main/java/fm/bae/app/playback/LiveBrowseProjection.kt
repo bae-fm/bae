@@ -189,13 +189,11 @@ internal class CollectionProjection<Row : Any, Snapshot : Any>(
                         }
                         ready.complete(Unit)
                         when (snapshotReader.cause(snapshot)) {
-                            BridgeLiveQueryCause.DATABASE_CHANGED,
-                            BridgeLiveQueryCause.REQUEST_AND_DATABASE_CHANGED,
+                            BridgeLiveQueryCause.WRITE,
+                            BridgeLiveQueryCause.REQUEST_AND_WRITE,
                             -> true
 
-                            BridgeLiveQueryCause.INITIAL,
-                            BridgeLiveQueryCause.REQUEST_CHANGED,
-                            -> false
+                            BridgeLiveQueryCause.REQUEST -> false
                         }
                     }
                 if (notify) onChanged(snapshotReader.totalCount(snapshot))

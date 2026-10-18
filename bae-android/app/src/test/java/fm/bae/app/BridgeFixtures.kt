@@ -235,21 +235,14 @@ object BridgeFixtures {
         BridgeOutboxSnapshot(
             revision = 0uL,
             uploadGroups = emptyList(),
+            otherFiles = emptyList(),
             perRelease = emptyMap(),
             total =
                 BridgeUploadProgress(
                     queued = 0u,
-                    preparing = 0u,
-                    prepared = 0u,
                     uploading = 0u,
-                    retrying = 0u,
-                    uploaded = 0u,
-                    publishing = 0u,
-                    cancelling = 0u,
                     bar = null,
                     activity = null,
-                    canCancel = false,
-                    issue = null,
                 ),
             summaryParts = emptyList(),
             pauseState = pauseState,
@@ -271,15 +264,13 @@ object BridgeFixtures {
             id = id,
             name = name,
             path = "/tmp/$id",
-            cloudProvider = null,
+            storage = null,
             isActive = false,
-            error = null,
         )
 
     fun config(libraryId: String = "lib-1"): BridgeConfig =
         BridgeConfig(
             libraryId = libraryId,
-            libraryName = "bae Library",
             libraryPath = "/tmp/lib",
             pauseBetweenSides = false,
             sidePauseCountdown = BridgeSidePauseCountdown.OFF,
@@ -333,7 +324,6 @@ object BridgeFixtures {
             mcp = BridgeMcpConfig(enabled = false, port = 47777u),
             discogsTokenStatus = BridgeDiscogsTokenStatus.NOT_CONFIGURED,
             discogsUsable = false,
-            sync = null,
             subsonic =
                 BridgeSubsonicConfig(
                     enabled = false,

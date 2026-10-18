@@ -396,7 +396,7 @@ internal class FakeAlbumBrowseSubscription(
         get() = windows
 
     init {
-        if (deliverBaselineImmediately) emitSnapshot(0uL, BridgeLiveQueryCause.INITIAL)
+        if (deliverBaselineImmediately) emitSnapshot(0uL, BridgeLiveQueryCause.REQUEST)
     }
 
     override fun setWindows(windows: List<BridgeLibraryPageWindow>) {
@@ -406,7 +406,7 @@ internal class FakeAlbumBrowseSubscription(
         observedWindows += windows.map { it.offset to it.limit }
         if (deliverWindowsImmediately) {
             if (initialError == null) {
-                emitSnapshot(cause = BridgeLiveQueryCause.REQUEST_CHANGED)
+                emitSnapshot(cause = BridgeLiveQueryCause.REQUEST)
             } else {
                 events.trySend(Result.failure(initialError))
             }
@@ -422,7 +422,7 @@ internal class FakeAlbumBrowseSubscription(
     fun emitRows(
         rows: List<BridgeAlbum>,
         totalCount: ULong = rows.size.toULong(),
-        cause: BridgeLiveQueryCause = BridgeLiveQueryCause.DATABASE_CHANGED,
+        cause: BridgeLiveQueryCause = BridgeLiveQueryCause.WRITE,
     ) {
         val window = windows.lastOrNull() ?: BridgeLibraryPageWindow(0uL, rows.size.toULong().coerceAtLeast(1uL))
         events.trySend(
@@ -439,7 +439,7 @@ internal class FakeAlbumBrowseSubscription(
         )
     }
 
-    fun emitCount(totalCount: ULong) = emitSnapshot(totalCount, BridgeLiveQueryCause.DATABASE_CHANGED)
+    fun emitCount(totalCount: ULong) = emitSnapshot(totalCount, BridgeLiveQueryCause.WRITE)
 
     private fun emitSnapshot(
         totalCount: ULong? = null,
@@ -521,7 +521,7 @@ internal class FakeComposerBrowseSubscription(
     var cancelled = false
 
     init {
-        events.trySend(BridgeComposerBrowseSnapshot(emptyList(), emptyList(), 0uL, 0uL, revision, BridgeLiveQueryCause.INITIAL))
+        events.trySend(BridgeComposerBrowseSnapshot(emptyList(), emptyList(), 0uL, 0uL, revision, BridgeLiveQueryCause.REQUEST))
     }
 
     override fun setWindows(windows: List<BridgeLibraryPageWindow>) {
@@ -536,7 +536,7 @@ internal class FakeComposerBrowseSubscription(
                 projected.sumOf { it.rows.size }.toULong(),
                 projected.sumOf { it.rows.size }.toULong(),
                 revision,
-                BridgeLiveQueryCause.REQUEST_CHANGED,
+                BridgeLiveQueryCause.REQUEST,
             ),
         )
     }

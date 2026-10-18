@@ -6,14 +6,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -23,20 +17,15 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.data.ArtworkLoadingStore
 import fm.bae.app.formatFileSize
 import fm.bae.app.requireDisplayableByteCount
-import fm.bae.app.ui.appearance.ThemeIcon
 import fm.bae.app.ui.appearance.ThemeSpace
 import fm.bae.app.ui.appearance.ThemeText
 import fm.bae.app.ui.components.Notice
@@ -49,68 +38,42 @@ internal fun ArtworkLoadingBanner(store: ArtworkLoadingStore) {
     val state by store.state.collectAsState()
     if (state.dismissed) return
     when (val current = state.status) {
-        BridgeEagerCacheFillStatus.NotRunning,
-        is BridgeEagerCacheFillStatus.Complete,
-        -> {
+        BridgeEagerCacheFillStatus.Idle -> {
             Unit
         }
 
-        is BridgeEagerCacheFillStatus.Scanning -> {
-            ArtworkScanningStatus(current.titleKey, store::cancel)
-        }
-
         is BridgeEagerCacheFillStatus.Downloading -> {
-            ArtworkDownloadingStatus(current, store::cancel)
+            ArtworkDownloadingStatus(current.progress, store::cancel)
         }
 
         is BridgeEagerCacheFillStatus.Cancelled -> {
             ArtworkNotice {
                 ArtworkStatusLine(
-                    title = LocalContext.current.coreString(current.titleKey),
+                    title = LocalContext.current.coreString("core.artwork_cache.cancelled"),
                     progress = current.progress,
                     trailing = { DismissArtworkButton(store::dismiss) },
                 )
             }
         }
-
-        is BridgeEagerCacheFillStatus.Failed -> {
-            ArtworkFailureStatus(current, store::dismiss)
-        }
-    }
-}
-
-@Composable
-private fun ArtworkScanningStatus(
-    titleKey: String,
-    onCancel: () -> Unit,
-) {
-    ArtworkNotice {
-        CircularProgressIndicator(modifier = Modifier.size(ThemeIcon.medium))
-        Text(
-            LocalContext.current.coreString(titleKey),
-            modifier = Modifier.weight(1f),
-        )
-        CancelArtworkButton(onCancel)
     }
 }
 
 @Composable
 private fun ArtworkDownloadingStatus(
-    status: BridgeEagerCacheFillStatus.Downloading,
+    progress: BridgeEagerCacheFillProgress,
     onCancel: () -> Unit,
 ) {
-    val progress = status.progress
     require(progress.bytesTotal > 0uL) { "downloading artwork has no byte total" }
     ArtworkNotice {
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(ThemeSpace.compact)) {
             ArtworkStatusLine(
-                title = LocalContext.current.coreString(status.titleKey),
+                title = LocalContext.current.coreString("core.artwork_cache.downloading"),
                 progress = progress,
                 trailing = { CancelArtworkButton(onCancel) },
             )
             LinearProgressIndicator(
                 progress = {
-                    (progress.bytesDone.toDouble() / progress.bytesTotal.toDouble()).toFloat()
+                    (progress.bytesCached.toDouble() / progress.bytesTotal.toDouble()).toFloat()
                 },
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -118,14 +81,11 @@ private fun ArtworkDownloadingStatus(
     }
 }
 
-/** The artwork status as a full-width notice in its tone. */
+/** The artwork status as a full-width notice. */
 @Composable
-private fun ArtworkNotice(
-    tone: StatusTone = StatusTone.NEUTRAL,
-    content: @Composable RowScope.() -> Unit,
-) {
+private fun ArtworkNotice(content: @Composable RowScope.() -> Unit) {
     Notice(
-        tone = tone,
+        tone = StatusTone.NEUTRAL,
         modifier = Modifier.padding(horizontal = ThemeSpace.edge, vertical = ThemeSpace.related),
         content = content,
     )
@@ -156,47 +116,6 @@ private fun CancelArtworkButton(onCancel: () -> Unit) {
 }
 
 @Composable
-private fun ArtworkFailureStatus(
-    status: BridgeEagerCacheFillStatus.Failed,
-    onDismiss: () -> Unit,
-) {
-    var detailsVisible by rememberSaveable(status) { mutableStateOf(false) }
-    val title = LocalContext.current.coreString(status.titleKey)
-    ArtworkNotice(StatusTone.WARNING) {
-        Text(
-            text = title,
-            modifier = Modifier.weight(1f),
-            style = ThemeText.body.style,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
-        TextButton(onClick = { detailsVisible = true }) { Text(stringResource(R.string.details)) }
-        DismissArtworkButton(onDismiss)
-    }
-    if (detailsVisible) {
-        AlertDialog(
-            onDismissRequest = { detailsVisible = false },
-            title = { Text(title) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(ThemeSpace.group)) {
-                    ArtworkByteProgress(status.progress)
-                    SelectionContainer {
-                        Text(
-                            text = status.error,
-                            modifier = Modifier.verticalScroll(rememberScrollState()),
-                            style = ThemeText.mono.style,
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { detailsVisible = false }) { Text(stringResource(R.string.close)) }
-            },
-        )
-    }
-}
-
-@Composable
 private fun DismissArtworkButton(onDismiss: () -> Unit) {
     IconButton(onClick = onDismiss) {
         Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.close))
@@ -210,7 +129,7 @@ private fun ArtworkByteProgress(progress: BridgeEagerCacheFillProgress) {
         context.coreString(
             "core.download.bytes_progress",
             mapOf(
-                "done" to context.formatFileSize(progress.bytesDone.requireDisplayableByteCount()),
+                "done" to context.formatFileSize(progress.bytesCached.requireDisplayableByteCount()),
                 "total" to context.formatFileSize(progress.bytesTotal.requireDisplayableByteCount()),
             ),
         ),
