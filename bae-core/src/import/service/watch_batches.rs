@@ -274,8 +274,8 @@ mod tests {
     use notify::event::{CreateKind, Flag};
     use notify::EventKind;
 
-    fn created(path: &str) -> Event {
-        Event::new(EventKind::Create(CreateKind::File)).add_path(PathBuf::from(path))
+    fn created(path: impl Into<PathBuf>) -> Event {
+        Event::new(EventKind::Create(CreateKind::File)).add_path(path.into())
     }
 
     fn lost_track(path: Option<&str>) -> Event {
@@ -380,21 +380,16 @@ mod tests {
             path: PathBuf::from("/var/music"),
             reported: PathBuf::from("/private/var/music"),
         };
+        // A watch names a file under the spelling it reports the root by,
+        // joined with the platform's separator.
+        let under = |root: &Path, file: &str| root.join("One").join(file);
         let mut batches = WatchBatches::new();
         let start = Instant::now();
-        batches.add(&root, created("/private/var/music/One/01.flac"), start);
-        batches.add(&root, created("/private/var/music/One/02.flac"), start);
+        batches.add(&root, created(under(&root.reported, "01.flac")), start);
+        batches.add(&root, created(under(&root.reported, "02.flac")), start);
         batches.add(&root, lost_track(Some("/private/var")), start + QUIET);
 
-        // Rebuilt from the root's own spelling, so the separator is the
-        // platform's.
-        let spelled = |file: &str| {
-            root.path
-                .join("One")
-                .join(file)
-                .to_string_lossy()
-                .into_owned()
-        };
+        let spelled = |file: &str| under(&root.path, file).to_string_lossy().into_owned();
         assert_eq!(
             paths(&batches.take_quiet(start + QUIET)),
             vec![vec![spelled("01.flac"), spelled("02.flac")]]
