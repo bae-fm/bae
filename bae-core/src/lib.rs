@@ -49,6 +49,7 @@ pub mod migrations;
 pub mod musicbrainz;
 #[cfg(any(test, feature = "test-utils"))]
 pub mod open_files_peak;
+pub mod people;
 pub mod playback;
 pub mod pressing;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

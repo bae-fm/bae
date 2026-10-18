@@ -46,6 +46,8 @@ pub const RELEASE_FILES_NAMESPACE: &str = "release_files";
 pub const COVERS_NAMESPACE: &str = "covers";
 /// Cloud namespace for the bae-produced artist image blob (1:1 with an artist).
 pub const ARTIST_IMAGES_NAMESPACE: &str = "artist_images";
+/// Profile avatars, fetched with their people rows.
+pub const PEOPLE_NAMESPACE: &str = "people";
 
 /// This device's cache budget (bytes) per namespace. Each namespace evicts
 /// against its own budget, so audio pressure never wipes the cover cache:
@@ -53,10 +55,11 @@ pub const ARTIST_IMAGES_NAMESPACE: &str = "artist_images";
 /// and `artist_images` each keep a reserved slice. A `CacheEager` cover evicted
 /// under pressure shows a placeholder and re-fetches on the next pull — covers
 /// are not pinned.
-pub const CACHE_BUDGETS: [(&str, u64); 3] = [
+pub const CACHE_BUDGETS: [(&str, u64); 4] = [
     (RELEASE_FILES_NAMESPACE, 20 * 1024 * 1024 * 1024), // 20 GiB
     (COVERS_NAMESPACE, 512 * 1024 * 1024),              // 512 MiB
-    (ARTIST_IMAGES_NAMESPACE, 256 * 1024 * 1024),       // 256 MiB
+    (ARTIST_IMAGES_NAMESPACE, 256 * 1024 * 1024),
+    (PEOPLE_NAMESPACE, 64 * 1024 * 1024), // 256 MiB
 ];
 
 /// The library rows shared with the store. Local audio paths are deliberately
@@ -109,6 +112,18 @@ pub fn synced_tables() -> Vec<SyncedTable> {
             .with_id_column("blob_id")
             .with_size_column("file_size"),
         ),
+        SyncedTable::new("people", RowIdentity::SharedKey)
+            .owner_only()
+            .carries_files(
+                FileDecl::new(
+                    PEOPLE_NAMESPACE,
+                    CACHE_BUDGETS[3].1,
+                    Provenance::AppProvided,
+                    CacheFill::CacheEager,
+                )
+                .with_id_column("avatar_id")
+                .with_size_column("file_size"),
+            ),
     ]
 }
 
@@ -143,13 +158,14 @@ mod tests {
                 "audio_format_segments",
                 "covers",
                 "artist_images",
+                "people",
             ])
         );
         for table in &tables {
             assert_eq!(table.get_key_columns(), &["id"]);
             assert_eq!(table.get_audience_column(), None);
             assert_eq!(table.get_audience_from(), None);
-            assert!(!table.is_owner_only());
+            assert_eq!(table.is_owner_only(), table.name() == "people");
             let expected = match table.name() {
                 "release_files" => Some((
                     RELEASE_FILES_NAMESPACE,
@@ -173,6 +189,14 @@ mod tests {
                     Provenance::AppProvided,
                     CacheFill::CacheEager,
                     "blob_id",
+                    false,
+                )),
+                "people" => Some((
+                    PEOPLE_NAMESPACE,
+                    64 * 1024 * 1024,
+                    Provenance::AppProvided,
+                    CacheFill::CacheEager,
+                    "avatar_id",
                     false,
                 )),
                 _ => None,

@@ -348,6 +348,7 @@ impl Database {
                 },
                 "covers" => (Some(id.to_string()), crate::library::UploadFileLabel::Cover),
                 "artist_images" => (None, crate::library::UploadFileLabel::ArtistImage),
+                "people" => (None, crate::library::UploadFileLabel::Avatar),
                 table => {
                     return Err(DbError::Message(format!(
                         "upload names undeclared file table {table:?}"

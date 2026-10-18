@@ -78,6 +78,7 @@ desktop_only! {
     mod source_releases;
     mod album_link_rows;
 }
+mod people;
 mod playback;
 pub(crate) use blobs::{OutboxDisplayContext, OutboxDisplayRequest};
 pub(crate) use playback::{QueueCatalogProjection, QueueCatalogRequest};
@@ -129,6 +130,7 @@ struct DatabaseInner {
     handle: CovenHandle,
     /// Wall clock for `created_at` and status timestamps bound into write SQL.
     clock: ClockRef,
+    profile_creation: tokio::sync::Mutex<()>,
 }
 
 /// Database client over coven's owned connection. Writes to synced tables are
@@ -231,7 +233,11 @@ impl Database {
 
     pub fn from_handle(handle: CovenHandle, clock: ClockRef) -> Self {
         Database {
-            inner: Arc::new(DatabaseInner { handle, clock }),
+            inner: Arc::new(DatabaseInner {
+                handle,
+                clock,
+                profile_creation: tokio::sync::Mutex::new(()),
+            }),
         }
     }
 

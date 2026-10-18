@@ -10,6 +10,7 @@ pub enum UploadFileLabel {
     Filename(String),
     Cover,
     ArtistImage,
+    Avatar,
     /// A file whose row went with its release. The entry is on its way out of
     /// the cloud, and there is nothing left to name it with — nor anything to
     /// name: what the person is watching is the release leaving, which the
@@ -27,7 +28,7 @@ impl UploadFileLabel {
         fn rank(label: &UploadFileLabel) -> u8 {
             match label {
                 UploadFileLabel::Cover => 0,
-                UploadFileLabel::ArtistImage => 1,
+                UploadFileLabel::ArtistImage | UploadFileLabel::Avatar => 1,
                 UploadFileLabel::Filename(_) => 2,
                 // Nameless, so there is nothing to sort it among the names by.
                 UploadFileLabel::Unwinding => 3,

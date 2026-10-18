@@ -1991,3 +1991,16 @@ CREATE TABLE IF NOT EXISTS source_release_unfetched (
     FOREIGN KEY (catalog, release_id)
         REFERENCES source_release (catalog, release_id) ON DELETE CASCADE
 ) STRICT;
+
+-- Profiles retain the stable member id even after membership removal.
+-- Only coven writes file hashes and locations; no avatar means no file.
+CREATE TABLE people (
+    id TEXT PRIMARY KEY NOT NULL,
+    name TEXT NOT NULL CHECK (length(trim(name)) > 0),
+    private_circle TEXT NOT NULL,
+    history_sharing TEXT NOT NULL CHECK (history_sharing IN ('private', 'household')),
+    avatar_id TEXT,
+    file_size INTEGER,
+    hash BLOB,
+    location TEXT
+) STRICT;

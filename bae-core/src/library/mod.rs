@@ -82,6 +82,8 @@ pub(crate) struct SaveTrackPlan {
 
 #[derive(Debug, thiserror::Error)]
 pub enum RestoreFromCodeError {
+    #[error(transparent)]
+    Profile(#[from] crate::people::ProfileError),
     #[error("restore cancelled")]
     Cancelled,
     #[error("restore failed: {0}")]
@@ -93,6 +95,7 @@ impl RestoreFromCodeError {
     /// credentials, or the keyring, or retry once the cloud is reachable.
     pub fn category(&self) -> crate::ui::UiErrorCategory {
         match self {
+            Self::Profile(_) => crate::ui::UiErrorCategory::Internal,
             Self::Cancelled => crate::ui::UiErrorCategory::Internal,
             Self::Restore(error) => manager::bootstrap_category(error),
         }
@@ -185,22 +188,41 @@ pub async fn restore_from_keychain(
     .map_err(restore_error)
 }
 
+/// The membership is established even if writing its profile failed. Retain
+/// this handle and retry profile creation; do not join as another identity.
+pub type JoinedLibrary = (
+    coven::CovenHandle,
+    Result<crate::people::PersonProfile, crate::people::ProfileError>,
+);
+
 pub async fn join_with_invite(
     builder: coven::CovenBuilder,
     code: &str,
     device_name: &str,
+    person_name: &str,
+    clock: coven::ClockRef,
     on_status: impl Fn(coven::BootstrapStatus),
     cancel: &watch::Receiver<bool>,
-) -> Result<Option<coven::CovenHandle>, RestoreFromCodeError> {
-    coven::join_with_invite(
+) -> Result<Option<JoinedLibrary>, RestoreFromCodeError> {
+    if person_name.trim().is_empty() {
+        return Err(crate::people::ProfileError::EmptyName.into());
+    }
+    let Some(handle) = Box::pin(coven::join_with_invite(
         configure_store(builder),
         code,
         device_name,
         on_status,
         cancel,
-    )
+    ))
     .await
-    .map_err(restore_error)
+    .map_err(restore_error)?
+    else {
+        return Ok(None);
+    };
+    let profile = crate::db::Database::from_handle(handle.clone(), clock)
+        .create_profile(person_name)
+        .await;
+    Ok(Some((handle, profile)))
 }
 
 /// Replace this device after the caller has warned that unsent edits are discarded.
