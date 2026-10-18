@@ -18,6 +18,7 @@ use bae_core::playback::SharedSparseBuffer;
 use bytes::Bytes;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
+use tokio_stream::StreamExt;
 use tracing::{debug, warn};
 
 use crate::envelope::Element;
@@ -36,7 +37,9 @@ const STREAM_CHUNK: usize = 64 * 1024;
 /// of a CUE image, a pregap read from another file or generated as silence —
 /// is decoded from its own segments and served as uncompressed WAV, since no
 /// stored file holds exactly its samples. A transcode request encodes the
-/// track's stream and streams it chunked.
+/// track's stream and streams it chunked. A file this device can't read is
+/// refused with core's reason before any response commits to a status and
+/// length.
 pub(crate) async fn stream(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -80,12 +83,7 @@ async fn stream_inner(
     if wants_original {
         match audio.whole_file() {
             Some(file) => stream_file(services, file, headers).await,
-            None => Ok(stream_encoded(
-                services,
-                &audio,
-                audio.wav_stream_format(),
-                None,
-            )),
+            None => stream_encoded(services, &audio, audio.wav_stream_format(), None).await,
         }
     } else {
         let format = transcode_format(&audio, requested_format, max_bitrate);
@@ -93,7 +91,7 @@ async fn stream_inner(
             .bool_or("estimateContentLength", false)
             .then(|| estimated_length(&audio, format))
             .flatten();
-        Ok(stream_encoded(services, &audio, format, estimated_length))
+        stream_encoded(services, &audio, format, estimated_length).await
     }
 }
 
@@ -119,7 +117,7 @@ async fn stream_file(
     match parse_range(headers, total) {
         Some((start, end_inclusive)) => {
             let len = end_inclusive - start + 1;
-            let body = reader_body(buffer, start, len);
+            let body = reader_body(buffer, start, len).await?;
             Ok(Response::builder()
                 .status(StatusCode::PARTIAL_CONTENT)
                 .header(CONTENT_TYPE, content_type)
@@ -133,7 +131,7 @@ async fn stream_file(
                 .expect("range response builds"))
         }
         None => {
-            let body = reader_body(buffer, 0, total);
+            let body = reader_body(buffer, 0, total).await?;
             Ok(Response::builder()
                 .status(StatusCode::OK)
                 .header(CONTENT_TYPE, content_type)
@@ -145,31 +143,29 @@ async fn stream_file(
     }
 }
 
-/// Stream `len` bytes of `buffer` from `start` as an HTTP body. The blocking
-/// reads run on the blocking pool; each chunk is handed to the response through
-/// a bounded channel for backpressure.
-fn reader_body(buffer: SharedSparseBuffer, start: u64, len: u64) -> Body {
-    let (tx, rx) = mpsc::channel::<Result<Bytes, std::io::Error>>(4);
+/// Stream `len` bytes of `buffer` from `start` as an HTTP body, once the first
+/// chunk is read: a file that can't be read is refused here, before the
+/// response is built. The blocking reads run on the blocking pool; each chunk
+/// is handed to the response through a bounded channel for backpressure.
+async fn reader_body(buffer: SharedSparseBuffer, start: u64, len: u64) -> Result<Body, SubError> {
+    let (tx, mut rx) = mpsc::channel::<Result<Bytes, BufferStop>>(4);
     tokio::task::spawn_blocking(move || {
         let mut reader = buffer.new_reader();
-        if start > 0 && !reader.seek(start) {
-            let _ = tx.blocking_send(Err(std::io::Error::other(format!(
-                "failed to seek stream to byte {start}"
-            ))));
-            return;
-        }
+        // A stopped buffer refuses the seek; the first read reports why.
+        reader.seek(start);
         let mut remaining = len;
         let mut chunk = vec![0u8; STREAM_CHUNK];
         while remaining > 0 {
             let want = remaining.min(chunk.len() as u64) as usize;
             match reader.read(&mut chunk[..want]) {
-                // EOF or a cancelled buffer: end the body. A short body
-                // signals the truncation to the client.
-                Ok(0) | Err(BufferStop::Cancelled) => break,
-                // The source couldn't be read: fail the body with the read's
-                // error, so the response aborts instead of ending as if clean.
-                Err(BufferStop::Failed(error)) => {
-                    let _ = tx.blocking_send(Err(std::io::Error::other(error)));
+                // EOF: end the body. A short body signals the truncation to
+                // the client.
+                Ok(0) => break,
+                // The read stopped: before the first chunk the response is
+                // refused with the reason; after it, the body fails with it,
+                // so the response aborts instead of ending as if clean.
+                Err(stop) => {
+                    let _ = tx.blocking_send(Err(stop));
                     break;
                 }
                 Ok(n) => {
@@ -184,21 +180,50 @@ fn reader_body(buffer: SharedSparseBuffer, start: u64, len: u64) -> Body {
             }
         }
     });
-    Body::from_stream(ReceiverStream::new(rx))
+    let first = match rx.recv().await {
+        Some(Ok(bytes)) => bytes,
+        Some(Err(stop)) => return Err(unreadable(stop)),
+        None => Bytes::new(),
+    };
+    let rest = ReceiverStream::new(rx).map(|chunk| chunk.map_err(stop_error));
+    Ok(Body::from_stream(tokio_stream::once(Ok(first)).chain(rest)))
+}
+
+/// The Subsonic error for a track's file this device can't read, carrying
+/// core's reason (not uploaded from the device that imported it, the original
+/// missing, an upload still under way, …).
+fn unreadable(stop: BufferStop) -> SubError {
+    SubError::generic(stop_error(stop).to_string())
+}
+
+/// Why a buffer stopped, as the error a failed body carries.
+fn stop_error(stop: BufferStop) -> std::io::Error {
+    match stop {
+        BufferStop::Failed(error) => std::io::Error::other(error),
+        BufferStop::Cancelled => std::io::Error::other("the audio stream was cancelled"),
+    }
 }
 
 /// Encode the track's stream as `format` and stream the bytes chunked, with
-/// `content_length` declared when the client asked for an estimate. The
-/// encode runs on the blocking pool, writing frame by frame into a
+/// `content_length` declared when the client asked for an estimate, once every
+/// file the track reads has delivered its first bytes — the encoder writes its
+/// header before the decode reads anything, so an unreadable file is refused
+/// first. The encode runs on the blocking pool, writing frame by frame into a
 /// non-seekable sink (the response channel) — a socket can't patch a header,
 /// which is why the encoder's streaming constructor is required.
-fn stream_encoded(
+async fn stream_encoded(
     services: &AppServices,
     audio: &ResolvedTrackAudio,
     format: StreamEncodeFormat,
     content_length: Option<u64>,
-) -> Response {
+) -> Result<Response, SubError> {
     let decode = services.open_track_decode(audio);
+    let decode = tokio::task::spawn_blocking(move || decode.wait_readable().map(|()| decode))
+        .await
+        .map_err(|error| {
+            SubError::generic(format!("waiting for the track's files failed: {error}"))
+        })?
+        .map_err(unreadable)?;
 
     let (tx, rx) = mpsc::channel::<Result<Bytes, std::io::Error>>(4);
     let cancel = Arc::new(AtomicBool::new(false));
@@ -221,9 +246,9 @@ fn stream_encoded(
     if let Some(bytes) = content_length {
         builder = builder.header(CONTENT_LENGTH, bytes);
     }
-    builder
+    Ok(builder
         .body(Body::from_stream(ReceiverStream::new(rx)))
-        .expect("transcode response builds")
+        .expect("transcode response builds"))
 }
 
 /// The transcode for the requested format and bitrate. `wav` is the track's

@@ -157,6 +157,49 @@ async fn stream_wav_is_the_tracks_pcm_in_an_unsized_wav() {
     assert!(wav.data == expected, "the data is the track's own samples");
 }
 
+/// A track whose original file is gone from this device is refused with
+/// core's reason before the response commits to a status and length, whether
+/// it is asked for as stored or transcoded; the release's other tracks, whose
+/// originals are still there, keep streaming.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_track_whose_original_is_gone_is_refused_with_the_reason() {
+    let lib = seed_library().await;
+    let router = bae_subsonic::router(lib.services.clone(), credential());
+    let album = call(
+        &router,
+        "getAlbum",
+        &authed(&format!("f=json&id=al-{}", lib.per_track_release)),
+    )
+    .await;
+    let songs = album.sub()["album"]["song"].clone();
+    assert_eq!(songs[0]["title"], "First Track");
+    let gone = songs[0]["id"].as_str().unwrap().to_string();
+    let kept = songs[1]["id"].as_str().unwrap().to_string();
+    std::fs::remove_file(lib.per_track_source.join("01.flac")).unwrap();
+
+    for format in ["raw", "mp3", "wav"] {
+        let refused = call(
+            &router,
+            "stream",
+            &authed(&format!("f=json&id={gone}&format={format}")),
+        )
+        .await;
+        assert_eq!(refused.status, StatusCode::OK, "{format}");
+        assert!(refused.content_type.contains("json"), "{format}");
+        let sub = refused.sub();
+        assert_eq!(sub["status"], "failed", "{format}: {sub}");
+        assert_eq!(
+            sub["error"]["message"],
+            bae_core::playback::PlaybackError::OriginalMissing.to_string(),
+            "{format}: {sub}"
+        );
+    }
+
+    let served = call(&router, "stream", &authed(&format!("id={kept}&format=raw"))).await;
+    assert_eq!(served.status, StatusCode::OK);
+    assert_eq!(&served.body[0..4], b"fLaC", "the other track's original streams");
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn stream_transcode_mp3_is_chunked_and_decodes() {
     let lib = seed_library().await;
@@ -303,8 +346,6 @@ async fn a_changed_cover_gets_a_new_cover_art_id() {
                 height: None,
                 source: "local".to_string(),
                 source_url: None,
-                cloud_path: None,
-                content_hash: bae_core::util::fs::hash_bytes(&support::cover_png()),
                 created_at: chrono::Utc::now(),
             },
             &support::cover_png(),
@@ -348,8 +389,6 @@ async fn an_artist_cover_art_is_the_artist_image() {
                 height: None,
                 source: "local".to_string(),
                 source_url: None,
-                cloud_path: None,
-                content_hash: bae_core::util::fs::hash_bytes(&image),
                 created_at: chrono::Utc::now(),
             },
             &image,
@@ -426,7 +465,6 @@ async fn musicbrainz_id_surfaces_when_present() {
         release_name: None,
         pressing: bae_core::pressing::Pressing::blank(),
         draft_from_tags: true,
-        remote: false,
         source_folder_name: None,
         content_hash: None,
         album_loudness_lufs: None,

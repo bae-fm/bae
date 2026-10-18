@@ -199,38 +199,12 @@ mod tests {
     use super::*;
     use std::sync::Arc;
 
-    use bae_core::db::Database;
-    use bae_core::library::{AppServices, LibraryManager};
+    use bae_core::library::AppServices;
     use bae_test_support as support;
-    use coven::StoreDir;
     use tempfile::TempDir;
 
     async fn test_manager() -> (AppServices, TempDir) {
-        support::tracing_init();
-        let temp = TempDir::new().unwrap();
-        let db_dir = temp.path().join("db");
-        std::fs::create_dir_all(&db_dir).unwrap();
-        let database = Database::new_test(
-            db_dir.join("test.db").to_str().unwrap(),
-            Arc::new(coven::SystemClock),
-        )
-        .await
-        .expect("database");
-        let library_dir = StoreDir::new(db_dir);
-        let config_handle = support::test_config(&library_dir);
-        let manager = LibraryManager::new(
-            database,
-            bae_core::config::AppDir::under_home(temp.path()),
-            config_handle,
-            Arc::new(coven::SystemClock),
-            Arc::new(coven::UuidProvider),
-            bae_core::diagnostics::Diagnostics::noop(),
-            tokio::runtime::Handle::current(),
-            bae_core::import::cover_art::RemoteImageCache::for_test(
-                bae_core::util::http::Http::for_test(),
-            ),
-            bae_core::providers::Providers::offline(),
-        );
+        let (manager, _database, temp) = support::setup_test_library().await;
         let services = AppServices::for_test(manager).await.expect("app services");
         (services, temp)
     }

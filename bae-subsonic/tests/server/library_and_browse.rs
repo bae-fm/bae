@@ -5,7 +5,7 @@ use axum::http::header::{CONTENT_LENGTH, CONTENT_RANGE, CONTENT_TYPE, RANGE};
 use axum::http::{Request, StatusCode};
 use axum::Router;
 use bae_core::config::SubsonicCredential;
-use bae_core::db::{Database, DbAlbum, DbArtist, DbRelease, DbTrack};
+use bae_core::db::{DbAlbum, DbArtist, DbRelease, DbTrack};
 use bae_core::discogs::models::DiscogsRelease;
 use bae_core::import::release_candidate::CandidateSource;
 use bae_core::import::{
@@ -13,7 +13,6 @@ use bae_core::import::{
 };
 use bae_core::library::{AppServices, LibraryManager};
 use bae_test_support as support;
-use coven::StoreDir;
 use md5::{Digest, Md5};
 use serde_json::Value;
 use tempfile::TempDir;
@@ -104,29 +103,7 @@ async fn call_with_range(router: &Router, method: &str, qs: &str, range: Option<
 }
 
 async fn new_manager() -> (LibraryManager, TempDir) {
-    support::tracing_init();
-    let temp = TempDir::new().unwrap();
-    let db_dir = temp.path().join("db");
-    std::fs::create_dir_all(&db_dir).unwrap();
-    let database = Database::new_test(
-        db_dir.join("test.db").to_str().unwrap(),
-        std::sync::Arc::new(coven::SystemClock),
-    )
-    .await
-    .expect("database");
-    let library_dir = StoreDir::new(db_dir);
-    let config_handle = support::test_config(&library_dir);
-    let manager = LibraryManager::new(
-        database,
-        bae_core::config::AppDir::under_home(temp.path()),
-        config_handle,
-        std::sync::Arc::new(coven::SystemClock),
-        std::sync::Arc::new(coven::UuidProvider),
-        bae_core::diagnostics::Diagnostics::noop(),
-        tokio::runtime::Handle::current(),
-        bae_core::import::cover_art::RemoteImageCache::for_test(bae_core::util::http::Http::for_test()),
-        bae_core::providers::Providers::offline(),
-    );
+    let (manager, _database, temp) = support::setup_test_library().await;
     (manager, temp)
 }
 
@@ -157,6 +134,9 @@ struct Library {
     services: AppServices,
     manager: LibraryManager,
     per_track_release: String,
+    /// The folder the per-track release was imported from, which holds its
+    /// originals on this device.
+    per_track_source: std::path::PathBuf,
     cue_release: String,
     _temps: Vec<TempDir>,
 }
@@ -202,7 +182,7 @@ async fn seed_library() -> Library {
             import_id: import_id.clone(),
             candidate_key: "pt".to_string(),
             source: CandidateSource {
-                path: pt_dir,
+                path: pt_dir.clone(),
                 scope: ReleaseFileScope::Recursive,
                 parts: Vec::new(),
             },
@@ -266,6 +246,7 @@ async fn seed_library() -> Library {
         services,
         manager,
         per_track_release,
+        per_track_source: pt_dir,
         cue_release,
         _temps: vec![db_temp, pt_temp, cue_temp],
     }
