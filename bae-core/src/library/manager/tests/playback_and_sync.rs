@@ -600,3 +600,39 @@ async fn startup_and_retry_publish_the_native_connection_status() {
     tokio::time::timeout(std::time::Duration::from_secs(20), values.wait_for(|value| matches!(value.status, coven::SyncStatus::Synced { .. }))).await.unwrap().unwrap();
     manager.close().await.unwrap();
 }
+
+/// A launch whose connect failed records why in the failure's own category —
+/// a keychain locked for this session reads as locked, not as an internal
+/// failure —
+/// and a retry that gets under way supersedes it: the recorded error clears as
+/// the retry starts, so the status line reflects the attempt in flight instead
+/// of the one that already failed.
+#[tokio::test]
+async fn reconnect_sync_clears_the_failure_it_retries() {
+    let (manager, _temp) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
+    manager.database.disconnect_storage().await.unwrap();
+    manager.start();
+    manager.installation.fail_next_keychain_operation();
+    manager.attach_and_start_sync_at_startup().await;
+    let recorded = manager
+        .get_sync_status()
+        .error
+        .expect("the failed startup connect is recorded");
+    let crate::ui::UiError::Diagnostic { category, .. } = &recorded;
+    assert_eq!(
+        *category,
+        crate::ui::UiErrorCategory::KeyringLocked,
+        "a keychain refused for this session reads as locked: {recorded:?}"
+    );
+
+    manager
+        .reconnect_sync()
+        .await
+        .expect("the keychain answers the retry");
+    assert!(
+        manager.get_sync_status().error.is_none(),
+        "the stale failure is gone the moment the retry runs"
+    );
+    manager.close().await.unwrap();
+}

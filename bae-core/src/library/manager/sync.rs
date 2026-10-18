@@ -195,14 +195,15 @@ impl LibraryManager {
     /// browse and pinned playback need no network, and the connect can be retried on
     /// the next launch (idempotently). coven's connect leaves the handle home-less on
     /// failure, so nothing is half-attached: the failure is recorded as the
-    /// sync-status error (identical to a later cycle failing) so the UI shows its
-    /// reconnect banner, and `has_cloud_home` / `is_sync_ready` report not connected.
+    /// sync-status error, in its own category as a later cycle's failure is, so
+    /// the status line says why and offers Reconnect, and `has_cloud_home` /
+    /// `is_sync_ready` report not connected.
     pub async fn attach_and_start_sync_at_startup(&self) {
         let started = std::time::Instant::now();
         tracing::info!("startup sync attachment started");
         if let Err(error) = self.attach_and_start_sync().await {
             warn!("startup sync connect failed; opening library not connected: {error}");
-            self.set_sync_error(Some(error.to_string()));
+            self.set_sync_error(Some(&error));
         }
         tracing::info!(
             attachment_ms = started.elapsed().as_millis(),
@@ -234,7 +235,7 @@ impl LibraryManager {
         if !self.is_sync_ready() {
             if let Err(error) = self.attach_and_start_sync().await {
                 warn!("sync reconnect failed: {error}");
-                self.set_sync_error(Some(error.to_string()));
+                self.set_sync_error(Some(&error));
                 return Err(error);
             }
         }
@@ -243,11 +244,12 @@ impl LibraryManager {
         Ok(())
     }
 
-    /// Write the sync-status error the UI's failure banner reads, matching the
-    /// sync loop's own failure path. `None` clears it.
-    fn set_sync_error(&self, error: Option<String>) {
+    /// Write the sync-status error the status line reads, in the failure's own
+    /// category, as the sync loop's failures are: a locked keychain reads as
+    /// locked, a refused sign-in as credentials. `None` clears it.
+    fn set_sync_error(&self, error: Option<&LibraryError>) {
         self.sync_status
-            .set_error(error.map(crate::ui::UiError::internal));
+            .set_error(error.map(|error| crate::ui::UiError::diagnostic(error.category(), error)));
     }
 }
 
